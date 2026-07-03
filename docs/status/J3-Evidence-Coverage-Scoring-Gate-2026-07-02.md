@@ -102,6 +102,26 @@ metadata.evidence   := { snapshot_id, evidence_count, syllabus_mentions, fingerp
 reviewer_status     := 'draft'
 ```
 
+> **Addendum (checkpost fix, post-signoff — flagged, not silent):** the two-value
+> `derivation_basis: 'pyq' | 'hybrid'` enum above is scoped by its own
+> parenthetical to "evidence-only vs evidence + verified syllabus mention" —
+> i.e. `hybrid` requires BOTH PYQ evidence and a syllabus mention, not
+> "evidence OR syllabus". That leaves the §5.1 `mentioned` bucket
+> (`evidence_count = 0 AND syllabus_mentions >= 1`) uncovered by either
+> value. The implementation emits a third value, `syllabus_only`, for that
+> case. **The enum is hereby extended to `pyq | hybrid | syllabus_only`.**
+> Rationale: overloading `hybrid` to also mean "syllabus contributed with
+> zero PYQ evidence" would blur a genuinely different provenance signal
+> (mixed evidence-and-syllabus vs. syllabus-only, no PYQ evidence at all)
+> that operators reviewing a draft need to distinguish at a glance.
+>
+> ```
+> metadata.evidence.derivation_basis:
+>   pyq            — evidence_count > 0, syllabus_mentions == 0
+>   hybrid         — evidence_count > 0, syllabus_mentions >= 1
+>   syllabus_only  — evidence_count == 0, syllabus_mentions >= 1
+> ```
+
 - **No new arithmetic beyond a documented monotonic bucketing** for `coverage_depth`. Priority/high-yield/confidence are copied verbatim from the reviewed-and-locked snapshot — the deterministic scoring already passed operator review at the snapshot gate, so J3 does not re-score, it **projects**.
 - Idempotent via a fingerprint over (snapshot_id, snapshot fingerprint, syllabus-mention count, DERIVATION_VERSION) stored in `metadata`; unchanged inputs → skip.
 - Fail-closed: a read failure is a compute failure, not "no evidence" (mirror `score_snapshots.py` `read_error`).

@@ -55,7 +55,7 @@ def test_derive_blocked_for_caller_without_manage_permission(monkeypatch):
     monkeypatch.setattr(admin_api, "derive_topic_coverage", lambda *a, **k: _happy_result())
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb, role="admin"))
-    r = client.post(_DERIVE_BASE, json={})
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
     assert r.status_code == 403
 
 
@@ -63,7 +63,7 @@ def test_derive_blocked_for_plain_user(monkeypatch):
     monkeypatch.setattr(admin_api, "derive_topic_coverage", lambda *a, **k: _happy_result())
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb, role="user"))
-    r = client.post(_DERIVE_BASE, json={})
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
     assert r.status_code == 403
 
 
@@ -91,7 +91,7 @@ def test_derive_read_error_returns_502(monkeypatch):
     monkeypatch.setattr(admin_api, "derive_topic_coverage", _fake)
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb))
-    r = client.post(_DERIVE_BASE, json={})
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
     assert r.status_code == 502
 
 
@@ -109,7 +109,7 @@ def test_derive_success_invokes_audit_with_derive_action(monkeypatch):
 
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb))
-    r = client.post(_DERIVE_BASE, json={})
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
     assert r.status_code == 200
     assert len(calls) == 1
     assert calls[0]["action"] == "exam_topic_coverage.derive"
@@ -122,10 +122,37 @@ def test_derive_happy_path_returns_200_with_summary(monkeypatch):
     monkeypatch.setattr(admin_api, "derive_topic_coverage", lambda *a, **k: _happy_result())
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb))
-    r = client.post(_DERIVE_BASE, json={})
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
     assert r.status_code == 200
     body = r.json()
     assert body["exam_id"] == "e1"
     assert body["written"] == 3
     assert body["updated"] == 1
     assert "derivation_version" in body
+
+
+# ─── P1-4 fix (checkpost): exam_phase_id is a REQUIRED key ─────────────────
+# (its value may be null for explicit exam-wide) — no more implicit
+# exam-wide default from an omitted/empty body.
+def test_derive_empty_body_returns_422_missing_required_key(monkeypatch):
+    monkeypatch.setattr(admin_api, "derive_topic_coverage", lambda *a, **k: _happy_result())
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.post(_DERIVE_BASE, json={})
+    assert r.status_code == 422
+
+
+def test_derive_explicit_null_exam_phase_id_succeeds_exam_wide(monkeypatch):
+    calls: list[dict] = []
+
+    def _fake(sb, exam_id, *, exam_phase_id=None):
+        calls.append({"exam_id": exam_id, "exam_phase_id": exam_phase_id})
+        return _happy_result()
+
+    monkeypatch.setattr(admin_api, "derive_topic_coverage", _fake)
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.post(_DERIVE_BASE, json={"exam_phase_id": None})
+    assert r.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["exam_phase_id"] is None

@@ -3,20 +3,27 @@
 The real migration SQL is intentionally NOT placed under
 app/supabase/migrations/ yet (coordination: migration slot lands after PR 2,
 per docs/status/J3-Implementation-Checklist-2026-07-02.md). It is held as a
-`.sql.pending` file that no migration runner picks up. These tests assert on
-the SQL TEXT directly (no live DB) to prove the fail-closed duplicate-
-detection DO block and the two required schema changes are present and
-structured correctly, per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md
-§5.3/§5.5.
+`.sql.pending` file OUTSIDE app/supabase/migrations/ entirely (P1-5 fix,
+checkpost: the file used to live physically inside
+app/supabase/migrations/, which contradicted "held outside" even though the
+`.pending` extension meant no `*.sql` migration-runner glob picked it up —
+see .github/workflows/migration-numbers.yml and the e2e Supabase-apply step,
+both of which only ever match `app/supabase/migrations/*.sql`). It now lives
+under docs/status/j3-pr4-pending-migration/ alongside the other J3 PR4
+status docs. These tests assert on the SQL TEXT directly (no live DB) to
+prove the fail-closed duplicate-detection DO block and the two required
+schema changes are present and structured correctly, per
+docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5.3/§5.5.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 _PENDING_MIGRATION = (
-    Path(__file__).resolve().parents[3]
-    / "supabase"
-    / "migrations"
+    Path(__file__).resolve().parents[4]
+    / "docs"
+    / "status"
+    / "j3-pr4-pending-migration"
     / "215_PENDING_evidence_derived_coverage.sql.pending"
 )
 
@@ -28,6 +35,15 @@ def _sql_text() -> str:
         "it is not placed in app/supabase/migrations/ yet"
     )
     return _PENDING_MIGRATION.read_text()
+
+
+def test_pending_migration_not_under_live_migrations_dir():
+    """P1-5: the file must be physically OUTSIDE app/supabase/migrations/,
+    not merely excluded from it by a `.pending` extension."""
+    live_migrations_dir = (
+        Path(__file__).resolve().parents[3] / "supabase" / "migrations"
+    )
+    assert live_migrations_dir not in _PENDING_MIGRATION.parents
 
 
 def test_pending_migration_not_a_live_sql_file():

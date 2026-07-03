@@ -477,6 +477,7 @@ def locked_score_snapshots(
             "score_components": dict,
             "computed_at": str|None,
             "evidence_count": int|None,
+            "fingerprint": str|None,   # snapshot's own input_summary.fingerprint
         }
     """
     if not exam_id:
@@ -487,7 +488,8 @@ def locked_score_snapshots(
             sb.table("exam_topic_score_snapshots")
             .select(
                 "id, topic_id, exam_priority_score, is_high_yield, "
-                "confidence_score, model_version, score_components, computed_at, evidence_count"
+                "confidence_score, model_version, score_components, computed_at, "
+                "evidence_count, input_summary"
             )
             .eq("exam_id", exam_id)
             .eq("status", "locked")
@@ -524,6 +526,15 @@ def locked_score_snapshots(
                 "score_components": r.get("score_components") or {},
                 "computed_at": r.get("computed_at"),
                 "evidence_count": r.get("evidence_count"),
+                # P1-1 fix (J3 PR4 checkpost): expose the snapshot's OWN input
+                # fingerprint (input_summary.fingerprint) so downstream
+                # projections (coverage_derivation.py) can build their
+                # derivation fingerprint over the snapshot's actual inputs,
+                # not just its model_version. model_version alone does not
+                # change when the underlying verified evidence changes, so
+                # using it as a proxy for "did the snapshot's inputs change"
+                # silently masked real input changes.
+                "fingerprint": (r.get("input_summary") or {}).get("fingerprint"),
             })
     # Re-sort by priority descending for planner consumption.
     deduped.sort(key=lambda r: (r.get("exam_priority_score") or 0), reverse=True)

@@ -141,7 +141,7 @@ def test_no_snapshot_no_mentions_writes_nothing():
     assert result == {
         "written": 0, "updated": 0, "skipped": 0, "triaged": 0, "no_row": 0,
         "errors": 0, "total_topics": 0, "read_error": False, "invalid_scope": False,
-        "deltas": [], "triage": [],
+        "deltas": [], "triage": [], "stale_reconciled": 0, "stale_rows": [],
     }
 
 
@@ -563,3 +563,271 @@ def test_evidence_derived_row_with_unowned_model_version_is_never_overwritten(ba
     # Never overwritten — retains its original (non-owned) values.
     assert row["exam_priority_score"] == 1.0
     assert row["model_version"] == bad_model_version
+
+
+# ── Checkpost P1-1: fingerprint must use the SNAPSHOT'S OWN input
+# fingerprint, not its model_version (docs/status/J3-Evidence-Coverage-
+# Scoring-Gate-2026-07-02.md Section C: fingerprint over (snapshot_id,
+# snapshot's own input fingerprint, syllabus_mentions, DERIVATION_VERSION)).
+
+
+def test_same_snapshot_id_and_model_version_different_input_fingerprint_recomputes():
+    """model_version does not change on a re-score of the same formula
+    version over a DIFFERENT verified-evidence corpus — only the snapshot's
+    own input_summary.fingerprint changes. Before the P1-1 fix, the
+    derivation fingerprint was built from model_version, so this scenario
+    was silently idempotent-skipped instead of recomputed."""
+    sb = _sb_with_snapshot(input_summary={"fingerprint": "fp-A"})
+    derive_topic_coverage(sb, "exam-1")
+    original = dict(sb.db["exam_topic_coverage"][0])
+    original_fp = original["metadata"]["evidence"]["fingerprint"]
+
+    # Same snapshot id + same model_version — only the snapshot's OWN input
+    # fingerprint and priority changed (simulating a re-score whose
+    # underlying verified evidence corpus changed).
+    sb.db["exam_topic_score_snapshots"][0]["input_summary"] = {"fingerprint": "fp-B"}
+    sb.db["exam_topic_score_snapshots"][0]["exam_priority_score"] = 99.0
+
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["updated"] == 1
+    assert result["skipped"] == 0
+    updated = sb.db["exam_topic_coverage"][0]
+    assert updated["exam_priority_score"] == 99.0
+    assert updated["metadata"]["evidence"]["fingerprint"] != original_fp
+
+
+# ── Checkpost P1-2: insert-vs-insert race (unique-violation superseded) ────
+
+
+class _UniqueViolation(Exception):
+    code = "23505"
+
+
+class _InsertConflictQuery(_Query):
+    """Simulates a concurrent derivation run that already won the INSERT
+    race for this scope/topic by the time this run's own insert executes."""
+
+    def execute(self):
+        if self.name == "exam_topic_coverage" and self._pending_insert is not None:
+            self.db.setdefault(self.name, []).append(
+                {
+                    "id": "winner-row",
+                    "exam_id": "exam-1",
+                    "exam_cycle_id": None,
+                    "exam_phase_id": None,
+                    "topic_id": "t1",
+                    "source_basis": "evidence_derived",
+                    "model_version": DERIVATION_VERSION,
+                    "reviewer_status": "draft",
+                    "exam_priority_score": 50.0,
+                    "is_high_yield": False,
+                    "confidence_score": 0.5,
+                    "coverage_depth": "light",
+                    "metadata": {"evidence": {"fingerprint": "winner-fp"}},
+                }
+            )
+            raise _UniqueViolation("duplicate key value violates unique constraint")
+        return super().execute()
+
+
+class _InsertConflictSB(SBStub):
+    def table(self, name):
+        if name == "exam_topic_coverage":
+            return _InsertConflictQuery(name, self.db)
+        return super().table(name)
+
+
+def test_insert_unique_violation_superseded_by_concurrent_owned_insert_is_skipped_cleanly():
+    sb = _InsertConflictSB({"exam_topic_score_snapshots": [_snapshot_row()]})
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["written"] == 0
+    assert result["errors"] == 0
+    assert result["skipped"] == 1
+    assert len(sb.db["exam_topic_coverage"]) == 1
+    assert sb.db["exam_topic_coverage"][0]["id"] == "winner-row"
+
+
+# ── Checkpost P1-2: update-vs-update race from DIFFERENT competing
+# snapshots (different fingerprints), not just a reviewer status change ────
+
+
+class _FingerprintRaceQuery(_Query):
+    """A competing derivation run (computed from a DIFFERENT locked
+    snapshot, hence a different fingerprint) commits its own UPDATE in the
+    window between this run's read and this run's UPDATE."""
+
+    def __init__(self, name, db, race_row_id, new_fp):
+        super().__init__(name, db)
+        self._race_row_id = race_row_id
+        self._new_fp = new_fp
+
+    def execute(self):
+        if self.name == "exam_topic_coverage" and self._pending_update is not None:
+            for row in self.db.get(self.name, []):
+                if row.get("id") == self._race_row_id:
+                    row.setdefault("metadata", {}).setdefault("evidence", {})[
+                        "fingerprint"
+                    ] = self._new_fp
+        return super().execute()
+
+
+class _FingerprintRaceSB(SBStub):
+    def __init__(self, db, race_row_id, new_fp):
+        super().__init__(db)
+        self._race_row_id = race_row_id
+        self._new_fp = new_fp
+
+    def table(self, name):
+        if name == "exam_topic_coverage":
+            return _FingerprintRaceQuery(name, self.db, self._race_row_id, self._new_fp)
+        return super().table(name)
+
+
+def test_concurrent_derivation_from_different_snapshot_does_not_clobber_newer_commit():
+    """Two derivation runs race for the SAME topic from DIFFERENT locked
+    snapshots (different fingerprints/snapshot ids) — not merely a reviewer
+    status change. A coarser CAS predicate (id + source_basis +
+    model_version + status) would let both writers' updates through
+    identically; the fingerprint predicate must observe that the row's
+    fingerprint no longer matches what this run read and refuse to
+    overwrite the competing commit."""
+    sb = _FingerprintRaceSB(
+        {
+            "exam_topic_score_snapshots": [_snapshot_row(exam_priority_score=10.0)],
+            "exam_topic_coverage": [
+                {
+                    "id": "row-1",
+                    "exam_id": "exam-1",
+                    "exam_cycle_id": None,
+                    "exam_phase_id": None,
+                    "topic_id": "t1",
+                    "source_basis": "evidence_derived",
+                    "reviewer_status": "draft",
+                    "model_version": DERIVATION_VERSION,
+                    "exam_priority_score": 1.0,
+                    "is_high_yield": False,
+                    "confidence_score": 0.1,
+                    "coverage_depth": "light",
+                    "metadata": {"evidence": {"fingerprint": "stale-fp"}},
+                }
+            ],
+        },
+        race_row_id="row-1",
+        new_fp="winner-fp",
+    )
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["updated"] == 0
+    assert result["skipped"] == 1
+    row = sb.db["exam_topic_coverage"][0]
+    # The competing commit's content must survive untouched — this run's
+    # stale exam_priority_score=10.0 must NEVER land in the row.
+    assert row["exam_priority_score"] == 1.0
+    assert row["metadata"]["evidence"]["fingerprint"] == "winner-fp"
+
+
+# ── Checkpost P1-3: stale derivation-owned rows reconciled when their
+# evidence/mentions disappear from the current input set ───────────────────
+
+
+def _owned_row(**overrides):
+    row = {
+        "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
+        "topic_id": "t9", "source_basis": "evidence_derived", "reviewer_status": "draft",
+        "model_version": DERIVATION_VERSION,
+        "exam_priority_score": 0, "is_high_yield": False, "confidence_score": 0,
+        "coverage_depth": "mentioned", "metadata": {"evidence": {"fingerprint": "fp-old"}},
+    }
+    row.update(overrides)
+    return row
+
+
+def test_stale_reconcile_a_verified_mention_revoked_last_evidence_gone():
+    """(a) The topic's last verified syllabus mention is revoked and it has
+    no locked snapshot — the topic drops out of the current input set
+    entirely, so the pre-existing derivation-owned draft must be flagged
+    stale rather than left untouched forever."""
+    sb = SBStub({"exam_topic_coverage": [_owned_row()]})
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["stale_reconciled"] == 1
+    assert result["stale_rows"] == [{"topic_id": "t9", "row_id": "row-1"}]
+    row = sb.db["exam_topic_coverage"][0]
+    assert row["metadata"]["stale"] is True
+    assert row["reviewer_status"] == "draft"  # lifecycle untouched
+    assert row["coverage_depth"] == "mentioned"  # scoring fields untouched
+
+
+def test_stale_reconcile_b_last_locked_snapshot_unlocked_or_removed():
+    """(b) Same shape but the row is `rejected` (still mutable/owned) and
+    the topic previously had PYQ evidence via a locked snapshot that has
+    since been unlocked/removed — no snapshot, no mentions, so it too must
+    be reconciled."""
+    sb = SBStub({
+        "exam_topic_coverage": [
+            _owned_row(
+                topic_id="t1", reviewer_status="rejected",
+                exam_priority_score=50.0, is_high_yield=True, confidence_score=0.5,
+                coverage_depth="deep",
+            )
+        ],
+    })
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["stale_reconciled"] == 1
+    row = sb.db["exam_topic_coverage"][0]
+    assert row["metadata"]["stale"] is True
+
+
+@pytest.mark.parametrize("status", ("reviewed", "locked"))
+def test_stale_reconcile_c_reviewed_or_locked_evidence_derived_row_not_touched(status):
+    """(c) A reviewed/locked evidence_derived row with zero current inputs
+    must NEVER be touched by reconciliation — only draft/rejected
+    derivation-owned rows are in scope."""
+    sb = SBStub({
+        "exam_topic_coverage": [
+            _owned_row(topic_id="t1", reviewer_status=status, coverage_depth="deep")
+        ],
+    })
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["stale_reconciled"] == 0
+    row = sb.db["exam_topic_coverage"][0]
+    assert "stale" not in row["metadata"]
+    assert row["reviewer_status"] == status
+
+
+def test_stale_reconcile_d_human_authored_draft_row_not_touched():
+    """(d) A human-authored (manual) draft row with zero current inputs is
+    NEVER touched by reconciliation — only derivation-owned rows are ever
+    reconciled here, matching the main loop's ownership rules."""
+    sb = SBStub({
+        "exam_topic_coverage": [
+            {
+                "id": "row-1", "exam_id": "exam-1", "exam_cycle_id": None, "exam_phase_id": None,
+                "topic_id": "t1", "source_basis": "manual", "reviewer_status": "draft",
+                "exam_priority_score": 50.0, "is_high_yield": True, "confidence_score": 0.5,
+                "coverage_depth": "deep", "metadata": {},
+            }
+        ],
+    })
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["stale_reconciled"] == 0
+    row = sb.db["exam_topic_coverage"][0]
+    assert "stale" not in row["metadata"]
+
+
+def test_stale_reconcile_is_idempotent_across_reruns():
+    """A topic already flagged stale=true must not be re-flagged/re-written
+    on every subsequent run (avoids redundant writes forever)."""
+    sb = SBStub({"exam_topic_coverage": [_owned_row()]})
+    r1 = derive_topic_coverage(sb, "exam-1")
+    assert r1["stale_reconciled"] == 1
+    r2 = derive_topic_coverage(sb, "exam-1")
+    assert r2["stale_reconciled"] == 0
+
+
+def test_stale_reconcile_does_not_flag_topics_still_in_current_input_set():
+    """A derivation-owned draft whose topic IS still in the current
+    evidence/mentions input set must not be flagged stale — it goes through
+    the normal recompute/idempotency path instead."""
+    sb = _sb_with_snapshot(topic_id="t1")
+    result = derive_topic_coverage(sb, "exam-1")
+    assert result["stale_reconciled"] == 0
+    assert "stale" not in sb.db["exam_topic_coverage"][0].get("metadata", {})

@@ -196,21 +196,35 @@ def bucket_coverage_depth(
 
 def _build_fingerprint(
     snapshot_id: str | None,
-    model_version: str | None,
+    snapshot_fingerprint: str | None,
     syllabus_mentions: int,
     derivation_version: str,
 ) -> str:
     """SHA-256 fingerprint over the exact inputs that affect the projection.
 
+    Per the gate contract (docs/status/J3-Evidence-Coverage-Scoring-Gate-
+    2026-07-02.md §C), the derivation fingerprint is a function of
+    (snapshot_id, the snapshot's OWN input fingerprint, syllabus_mentions,
+    DERIVATION_VERSION).
+
+    P1-1 fix (checkpost): this used to substitute the snapshot's
+    ``model_version`` for its input fingerprint. ``model_version`` does not
+    change when the underlying verified evidence corpus changes (it only
+    bumps on a code/formula change), so a re-score of the same model version
+    over a *different* verified-evidence corpus was silently treated as
+    "unchanged" and the derivation would idempotent-skip a stale draft
+    instead of recomputing it. ``snapshot_fingerprint`` (the snapshot's own
+    ``input_summary.fingerprint`` from ``score_snapshots.py``) DOES change
+    whenever its inputs change, so it is the correct input here.
+
     ``snapshot_id`` uniquely identifies an immutable locked snapshot row —
     once locked its scoring values never change in place (a re-score creates
-    a new draft/locked row with a new id). So re-deriving from the same
-    locked snapshot id + the same syllabus-mention count + the same
-    derivation version is guaranteed to reproduce byte-identical output.
+    a new draft/locked row with a new id) — but is included defensively
+    alongside the fingerprint, not as a substitute for it.
     """
     raw = (
         f"snapshot={snapshot_id or 'none'}:"
-        f"model={model_version or 'none'}:"
+        f"snapshot_fp={snapshot_fingerprint or 'none'}:"
         f"mentions={syllabus_mentions}:"
         f"derivation={derivation_version}"
     )
@@ -321,6 +335,18 @@ def _proposed_row(
     if depth is None:
         return None
 
+    # P2 fix (checkpost): the gate doc (Section C) defines the two-value
+    # enum as `derivation_basis: 'pyq' | 'hybrid'` with the parenthetical
+    # "pyq-vs-hybrid detail (evidence-only vs evidence + verified syllabus
+    # mention)" — i.e. 'hybrid' is explicitly scoped to BOTH evidence AND a
+    # syllabus mention being present together, not "evidence OR syllabus".
+    # That definition does not cover the zero-PYQ-evidence,
+    # syllabus-mentions-only case (the 'mentioned' bucket), which the §5.1
+    # bucket table structurally allows. Rather than silently overload
+    # 'hybrid' to also mean "syllabus only", this emits the more honest
+    # 'syllabus_only' value and the gate doc is amended (see
+    # docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md, Section C
+    # addendum) to extend the enum to `pyq | hybrid | syllabus_only`.
     derivation_basis = "hybrid" if syllabus_mentions >= 1 and evidence_count > 0 else "pyq"
     if evidence_count == 0 and syllabus_mentions >= 1:
         derivation_basis = "syllabus_only"
@@ -349,6 +375,50 @@ def _proposed_row(
     }
 
 
+def _existing_fingerprint(row: dict[str, Any]) -> str | None:
+    return ((row.get("metadata") or {}).get("evidence") or {}).get("fingerprint")
+
+
+def _cas_update_owned_row(
+    sb: Any,
+    row_id: str,
+    model_version: str,
+    expected_fingerprint: str | None,
+    patch: dict[str, Any],
+) -> int:
+    """Attempt one CAS-guarded UPDATE of a derivation-owned coverage row.
+
+    P1-2 fix (checkpost): the predicate now ALSO requires the row's current
+    ``metadata.evidence.fingerprint`` to still equal *expected_fingerprint*
+    (the fingerprint this call read the row with), in addition to id +
+    source_basis + model_version + reviewer_status IN (draft, rejected).
+    Without the fingerprint check, two concurrent derivations of the SAME
+    topic from DIFFERENT (competing) locked snapshots both satisfy the
+    coarser predicate — whichever UPDATE commits last would win even if it
+    were computed from a now-stale snapshot. Requiring the exact fingerprint
+    read at select-time means only a caller that observed the CURRENT row
+    state may write it; a competing writer that already committed changes
+    the fingerprint out from under a stale caller, forcing a 0-row (CAS
+    conflict) response instead of a silent overwrite.
+
+    Returns the number of rows the UPDATE actually affected (0 or 1).
+    """
+    q = (
+        sb.table("exam_topic_coverage")
+        .update(patch)
+        .eq("id", row_id)
+        .eq("source_basis", _EVIDENCE_DERIVED_BASIS)
+        .eq("model_version", model_version)
+        .in_("reviewer_status", list(_MUTABLE_STATUSES))
+    )
+    if expected_fingerprint is None:
+        q = q.is_("metadata->evidence->>fingerprint", None)
+    else:
+        q = q.eq("metadata->evidence->>fingerprint", expected_fingerprint)
+    resp = q.execute()
+    return len(resp.data or [])
+
+
 def _delta(existing: dict[str, Any], proposed: dict[str, Any]) -> dict[str, Any]:
     """Proposed-vs-current comparison, for audit/derivation metadata ONLY
     (PD-4b / OD-5) — never written as a shadow coverage row."""
@@ -364,6 +434,90 @@ def _delta(existing: dict[str, Any], proposed: dict[str, Any]) -> dict[str, Any]
             if existing.get(f) != proposed.get(f)
         },
     }
+
+
+def _reconcile_stale_owned_rows(
+    sb: Any,
+    exam_id: str,
+    exam_phase_id: str | None,
+    current_topic_ids: set[str],
+) -> tuple[int, list[dict[str, Any]]] | None:
+    """P1-3 fix (checkpost): flag derivation-owned draft/rejected rows whose
+    topic has fallen OUT of the current evidence+syllabus input set.
+
+    ``derive_topic_coverage`` builds its topic universe from CURRENT locked
+    snapshots + CURRENT verified syllabus mentions only (PD-1). If a topic
+    previously had an ``evidence_derived`` draft/rejected row and its last
+    verified mention is revoked, or its last locked snapshot is unlocked/
+    removed, that topic silently drops out of ``topic_ids`` — the stale row
+    is never revisited by the main loop and would otherwise sit forever as a
+    draft an operator could mistakenly promote, even though the §5.1
+    zero-evidence+zero-mentions bucket contract says "no row" for that
+    topic.
+
+    Per PD-4b / "no shadow rows" and the "never touch human-authored or
+    reviewed/locked rows" invariant, this function is scoped as narrowly as
+    the main loop's ownership check: ONLY rows with
+    ``source_basis='evidence_derived'`` AND a recognized (owned)
+    ``model_version`` AND ``reviewer_status`` in (draft, rejected) are
+    candidates. Chosen behavior (documented per the task's option (b)):
+    flag via ``metadata.stale=true`` for operator triage rather than delete
+    — deletion is irreversible and this derivation module otherwise never
+    deletes rows (mirrors the existing model_generated "skip + flag for
+    triage" pattern already used elsewhere in this module), so triage-flag
+    is the consistent, less-destructive choice. Reviewed/locked
+    `evidence_derived` rows and rows of any other `source_basis` are never
+    touched here, matching the main loop's ownership rules.
+
+    Returns ``(reconciled_count, topic_ids)`` or ``None`` on a read failure
+    (fail-closed — caller should treat this the same as any other read
+    error).
+    """
+
+    def _page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+        q = (
+            sb.table("exam_topic_coverage")
+            .select(
+                "id, topic_id, exam_id, exam_cycle_id, exam_phase_id, "
+                "source_basis, model_version, reviewer_status, metadata"
+            )
+            .eq("exam_id", exam_id)
+            .eq("source_basis", _EVIDENCE_DERIVED_BASIS)
+            .in_("reviewer_status", list(_MUTABLE_STATUSES))
+            .is_("exam_cycle_id", None)
+        )
+        if exam_phase_id:
+            q = q.eq("exam_phase_id", exam_phase_id)
+        else:
+            q = q.is_("exam_phase_id", None)
+        return q.range(from_n, to_n).execute().data
+
+    rows = _paginate(_page, table="exam_topic_coverage", operation="select_owned_for_reconcile")
+    if rows is None:
+        return None
+
+    reconciled = 0
+    flagged: list[dict[str, Any]] = []
+    for r in rows:
+        if r.get("model_version") not in _OWNED_MODEL_VERSIONS:
+            continue
+        tid = r.get("topic_id")
+        if not tid or tid in current_topic_ids:
+            continue
+        meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else {}
+        if meta.get("stale") is True:
+            continue  # already flagged — idempotent, avoid redundant writes
+        patch = {"metadata": {**meta, "stale": True}}
+        try:
+            sb.table("exam_topic_coverage").update(patch).eq("id", r["id"]).execute()
+            reconciled += 1
+            flagged.append({"topic_id": tid, "row_id": r.get("id")})
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "coverage_derivation stale-reconcile update failed",
+                extra={"topic_id": tid, "row_id": r.get("id"), "error": str(exc)},
+            )
+    return reconciled, flagged
 
 
 def derive_topic_coverage(
@@ -399,6 +553,8 @@ def derive_topic_coverage(
             "invalid_scope": bool,
             "deltas": list[dict],     # proposed-vs-current comparisons (PD-4b)
             "triage": list[dict],     # model_generated rows flagged (topic_id, row_id)
+            "stale_reconciled": int,  # P1-3: derivation-owned rows flagged stale=true
+            "stale_rows": list[dict],  # (topic_id, row_id) flagged this run
         }
 
     ``read_error=True`` means a critical DB read failed; the caller (admin
@@ -416,6 +572,8 @@ def derive_topic_coverage(
         "invalid_scope": False,
         "deltas": [],
         "triage": [],
+        "stale_reconciled": 0,
+        "stale_rows": [],
     }
     if not exam_id:
         return zero
@@ -461,8 +619,12 @@ def derive_topic_coverage(
         return {**zero, "read_error": True}
 
     topic_ids = sorted(set(snapshot_by_topic.keys()) | set(mention_counts.keys()))
-    if not topic_ids:
-        return zero
+    # NOTE (P1-3 fix): do NOT early-return here when topic_ids is empty. A
+    # scope can legitimately go from "has current evidence/mentions" to
+    # "none at all" (every snapshot unlocked, every mention un-verified) —
+    # that is exactly the case stale reconciliation below must still catch,
+    # so an empty current-input set must still fall through to the
+    # reconciliation pass rather than short-circuiting before it.
 
     # ── 4. Existing coverage rows at this exact scope (PD-4a) ──────────────
     existing_rows = _existing_coverage_rows(sb, exam_id, topic_ids, exam_phase_id=exam_phase_id)
@@ -480,9 +642,11 @@ def derive_topic_coverage(
         snapshot = snapshot_by_topic.get(tid)
         syllabus_mentions = mention_counts.get(tid, 0)
         snapshot_id = (snapshot or {}).get("snapshot_id")
-        model_version = (snapshot or {}).get("model_version")
+        # P1-1 fix: use the snapshot's OWN input fingerprint, not its
+        # model_version — see _build_fingerprint docstring.
+        snapshot_fingerprint = (snapshot or {}).get("fingerprint")
         fingerprint = _build_fingerprint(
-            snapshot_id, model_version, syllabus_mentions, DERIVATION_VERSION
+            snapshot_id, snapshot_fingerprint, syllabus_mentions, DERIVATION_VERSION
         )
 
         proposed = _proposed_row(exam_id, exam_phase_id, tid, snapshot, syllabus_mentions, fingerprint)
@@ -495,13 +659,49 @@ def derive_topic_coverage(
         if existing is None:
             # No row at this scope/topic yet — safe to insert a fresh
             # derivation-owned draft.
+            #
+            # P1-2 fix (checkpost): two concurrent "no existing row" reads
+            # (e.g. two overlapping derivation runs) can both reach this
+            # branch and both attempt an INSERT; the exam-wide/scope unique
+            # index (OD-5a) means only one commits and the other raises a
+            # unique-violation. Previously that loser was just counted as a
+            # generic error with no attempt to determine whether the winner
+            # was actually a newer/consistent computation. Now: on a unique-
+            # violation, re-read the row the winner created. If it is
+            # derivation-owned (evidence_derived + a recognized
+            # model_version), this run is cleanly superseded by a concurrent
+            # winner computing the same projection — treat as an idempotent
+            # skip, not an error. Any other outcome (e.g. the winner is not
+            # derivation-owned, which should be impossible given the
+            # ownership-scoped insert path but is treated fail-closed
+            # anyway) is still counted as an error.
             try:
                 sb.table("exam_topic_coverage").insert(proposed).execute()
                 written += 1
             except Exception as exc:  # noqa: BLE001
+                code = getattr(exc, "code", None) or getattr(exc, "pgcode", None)
+                is_unique_violation = code == "23505" or "23505" in str(exc) or "duplicate key" in str(exc).lower()
+                if is_unique_violation:
+                    winner_rows = _existing_coverage_rows(
+                        sb, exam_id, [tid], exam_phase_id=exam_phase_id
+                    )
+                    winner = (winner_rows or [{}])[0] if winner_rows else None
+                    if (
+                        winner
+                        and winner.get("source_basis") == _EVIDENCE_DERIVED_BASIS
+                        and winner.get("model_version") in _OWNED_MODEL_VERSIONS
+                    ):
+                        logger.info(
+                            "coverage_derivation insert superseded by a "
+                            "concurrent derivation-owned insert — skipping cleanly",
+                            extra={"topic_id": tid},
+                        )
+                        skipped += 1
+                        deltas.append(_delta(winner, proposed))
+                        continue
                 logger.warning(
                     "coverage_derivation insert failed",
-                    extra={"topic_id": tid, "error": str(exc)},
+                    extra={"topic_id": tid, "error": str(exc), "error_code": code},
                 )
                 errors += 1
             continue
@@ -549,36 +749,47 @@ def derive_topic_coverage(
                 # place. `rejected` returns to `draft` with fresh inputs.
                 #
                 # CAS guard: the read-then-write gap between fetching
-                # `existing` above and this UPDATE is a real race — another
-                # actor (a reviewer) could move the row to pending_review/
-                # reviewed/locked in between. Constrain the UPDATE itself
-                # by id + source_basis + model_version + reviewer_status IN
-                # (draft, rejected) so the database, not stale in-memory
-                # state, decides whether the write applies. Treat "0 rows
-                # affected" as a conflict — the row is no longer
-                # derivation-owned/mutable — and fall back to the
-                # skip+delta path rather than assuming success.
+                # `existing` above and this UPDATE is a real race. Two
+                # DIFFERENT hazards close here (P1-2 / checkpost):
+                #  (a) a reviewer moves the row to pending_review/reviewed/
+                #      locked in between — the reviewer_status IN
+                #      (draft, rejected) predicate catches this;
+                #  (b) a CONCURRENT derivation run for the SAME topic,
+                #      computed from a DIFFERENT (newer or older) locked
+                #      snapshot, commits its own UPDATE in between — the
+                #      coarser predicate alone (id + source_basis +
+                #      model_version + status) does NOT catch this, because
+                #      both runs' updates satisfy it identically. The
+                #      fingerprint predicate in `_cas_update_owned_row`
+                #      closes that gap: only a caller whose in-memory
+                #      `existing` still matches the row's CURRENT fingerprint
+                #      may write it.
+                #
+                # On a 0-row CAS conflict, retry exactly once (re-issuing the
+                # same CAS predicate) to absorb a transient conflict; if the
+                # row still doesn't match after the retry, this run's inputs
+                # are stale relative to what's now in the database — report
+                # a delta/conflict and skip rather than silently applying a
+                # stale write.
                 patch = {**proposed}
                 try:
-                    resp = (
-                        sb.table("exam_topic_coverage")
-                        .update(patch)
-                        .eq("id", existing["id"])
-                        .eq("source_basis", _EVIDENCE_DERIVED_BASIS)
-                        .eq("model_version", existing_model_version)
-                        .in_("reviewer_status", list(_MUTABLE_STATUSES))
-                        .execute()
+                    affected = _cas_update_owned_row(
+                        sb, existing["id"], existing_model_version, existing_fp, patch
                     )
-                    affected = resp.data or []
-                    if len(affected) == 1:
+                    if affected == 0:
+                        affected = _cas_update_owned_row(
+                            sb, existing["id"], existing_model_version, existing_fp, patch
+                        )
+                    if affected == 1:
                         updated += 1
                     else:
-                        # Conflict: row moved out of draft/rejected (or was
-                        # otherwise mutated) between read and write. Do NOT
-                        # proceed as if the update succeeded.
+                        # Conflict survived the retry: row moved out of
+                        # draft/rejected, or a competing derivation already
+                        # wrote a different fingerprint, between read and
+                        # write. Do NOT proceed as if the update succeeded.
                         logger.warning(
-                            "coverage_derivation update CAS conflict — "
-                            "row no longer derivation-owned/mutable",
+                            "coverage_derivation update CAS conflict (after retry) — "
+                            "row no longer matches the fingerprint/status this run read",
                             extra={"topic_id": tid, "row_id": existing.get("id")},
                         )
                         skipped += 1
@@ -612,6 +823,27 @@ def derive_topic_coverage(
         skipped += 1
         deltas.append(_delta(existing, proposed))
 
+    # ── 5. Stale derivation-owned row reconciliation (P1-3 / PD-4b) ────────
+    # Runs over the FULL current topic_ids set (which may be empty — see the
+    # note at step 3 above) so a topic whose evidence/mentions disappeared
+    # entirely this run is still caught.
+    reconcile_result = _reconcile_stale_owned_rows(sb, exam_id, exam_phase_id, set(topic_ids))
+    if reconcile_result is None:
+        # The main derivation pass above already committed real writes —
+        # reporting `read_error=True` here would misrepresent a successful
+        # (partial) run as if nothing happened. Log loudly and report zero
+        # reconciliation for this run instead; the next invocation will
+        # retry reconciliation from scratch (it is independently idempotent
+        # per-row via the `metadata.stale` check).
+        logger.warning(
+            "coverage_derivation: stale-row reconciliation read failed; "
+            "primary derivation results below are still valid",
+            extra={"exam_id": exam_id, "exam_phase_id": exam_phase_id},
+        )
+        stale_reconciled, stale_rows = 0, []
+    else:
+        stale_reconciled, stale_rows = reconcile_result
+
     return {
         "written": written,
         "updated": updated,
@@ -624,4 +856,6 @@ def derive_topic_coverage(
         "invalid_scope": False,
         "deltas": deltas,
         "triage": triage,
+        "stale_reconciled": stale_reconciled,
+        "stale_rows": stale_rows,
     }

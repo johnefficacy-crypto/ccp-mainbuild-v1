@@ -2398,14 +2398,23 @@ class ComputeSnapshotBody(BaseModel):
 class DeriveCoverageBody(BaseModel):
     """Scope selector for the manual coverage-derivation action (OD-4/OD-6).
 
-    ``exam_phase_id=None`` means exam-wide derivation. There is
+    ``exam_phase_id: null`` means exam-wide derivation. There is
     deliberately no ``exam_cycle_id`` field — cycle-only derivation is not
     supported (score snapshots are cycle-independent), so it cannot even be
     expressed through this body.
+
+    P1-4 fix (checkpost): ``exam_phase_id`` has NO default — the gate
+    requires ONE EXPLICIT scope per invocation (OD-6), so the caller MUST
+    include the key in the request body (its value may still be ``null``
+    for an explicit exam-wide derivation). A missing/omitted body used to
+    silently default to implicit exam-wide derivation via
+    ``Body(default_factory=DeriveCoverageBody)``; now an empty body ``{}``
+    fails Pydantic validation (422) because the required key is absent,
+    rather than silently choosing exam-wide scope.
     """
 
     model_config = ConfigDict(extra="forbid")
-    exam_phase_id: str | None = None
+    exam_phase_id: str | None
 
 
 def _validate_accept_body(proposals: list, *, require_client_key: bool = False) -> None:
@@ -2732,7 +2741,7 @@ def compute_score_snapshots(
 @router.post("/exams/{exam_id}/coverage/derive")
 def derive_coverage(
     exam_id: str,
-    body: DeriveCoverageBody = Body(default_factory=DeriveCoverageBody),
+    body: DeriveCoverageBody = Body(...),
     admin: dict = Depends(require_permission(EXAM_INTELLIGENCE_MANAGE)),
 ) -> dict[str, Any]:
     """Trigger evidence-derived coverage projection for one explicit scope.
