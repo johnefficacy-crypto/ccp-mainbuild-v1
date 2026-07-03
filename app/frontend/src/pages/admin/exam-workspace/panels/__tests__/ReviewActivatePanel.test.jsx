@@ -26,19 +26,6 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
-// RowLockButton mutates via useApiAction. Mock it so tests exercise the real
-// api.patch call without needing a ToastProvider — mirrors PanelWritePayloads.
-jest.mock("../../../../../lib/hooks/useApiAction", () => ({
-  __esModule: true,
-  default: () => ({
-    run: jest.fn(async ({ action, onSuccess }) => {
-      const result = await action();
-      if (onSuccess) onSuccess(result);
-      return { ok: true, data: result };
-    }),
-    busy: false,
-  }),
-}));
 
 const { api } = require("../../../../../lib/api");
 const { useAuth } = require("../../../../../lib/authContext");
@@ -67,7 +54,8 @@ const READINESS_READY = {
       weight: 1,
       blockers: ["no competition metric for this cycle"],
       note: "",
-      metrics: { row_id: "comp-row-1" },
+      // Real aggregate shape from _competition() — counts only, no row id.
+      metrics: { present_for_cycle: false, reviewer_status: null, breakdown: { draft: 0, reviewed: 0, locked: 0 } },
     },
   ],
 };
@@ -138,34 +126,41 @@ describe("ReviewActivatePanel — per-section blocker text labels", () => {
   });
 });
 
-describe("ReviewActivatePanel — per-row lock action", () => {
-  beforeEach(() => {
-    api.patch.mockResolvedValue({ reviewer_status: "locked" });
-  });
-
+describe("ReviewActivatePanel — no inline row lock (aggregate panel routes to tabs)", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it("shows Lock row button when user has exam_intelligence.review", () => {
+  it("does not render an inline Lock row button (readiness sections carry no actionable row id)", () => {
     setup({ readiness: READINESS_READY, permissions: ["exam_intelligence.review"] });
-    expect(screen.getByRole("button", { name: /lock this row/i })).toBeTruthy();
-  });
-
-  it("calls PATCH /admin/exam-intelligence/competition-metrics/{id}/review on click", async () => {
-    setup({ readiness: READINESS_READY, permissions: ["exam_intelligence.review"] });
-    fireEvent.click(screen.getByRole("button", { name: /lock this row/i }));
-    await waitFor(() =>
-      expect(api.patch).toHaveBeenCalledWith(
-        "/api/admin/exam-intelligence/competition-metrics/comp-row-1/review",
-        { reviewer_status: "locked" },
-      ),
-    );
-  });
-
-  it("does NOT show Lock row button when user lacks exam_intelligence.review", () => {
-    setup({ readiness: READINESS_READY, permissions: [] });
     expect(screen.queryByRole("button", { name: /lock this row/i })).toBeNull();
+  });
+
+  it("routes an unresolved section to its tab via Resolve → for a reviewer", () => {
+    const onGotoTab = jest.fn();
+    useExamWorkspace.mockReturnValue({
+      readiness: READINESS_READY,
+      readiness_loading: false,
+      refetchReadiness: jest.fn(),
+    });
+    useAuth.mockReturnValue({ user: { permissions: ["exam_intelligence.review"] } });
+    render(<ReviewActivatePanel onGotoTab={onGotoTab} />);
+    fireEvent.click(screen.getByRole("button", { name: /resolve/i }));
+    expect(onGotoTab).toHaveBeenCalledWith("competition");
+  });
+
+  it("shows a View → (not Resolve) for a read-only user and still routes to the tab", () => {
+    const onGotoTab = jest.fn();
+    useExamWorkspace.mockReturnValue({
+      readiness: READINESS_READY,
+      readiness_loading: false,
+      refetchReadiness: jest.fn(),
+    });
+    useAuth.mockReturnValue({ user: { permissions: [] } });
+    render(<ReviewActivatePanel onGotoTab={onGotoTab} />);
+    expect(screen.queryByRole("button", { name: /resolve/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /view/i }));
+    expect(onGotoTab).toHaveBeenCalledWith("competition");
   });
 
   it("shows read-only notice when user lacks exam_intelligence.review", () => {
@@ -188,6 +183,14 @@ describe("ReviewActivatePanel — lifecycle contract copy", () => {
     // "locked (preferred)" is split across <strong> nodes — assert on the container text.
     const note = screen.getByTestId("created-not-planner-ready-note");
     expect(note.textContent).toMatch(/locked.*preferred/i);
+  });
+
+  it("uses the locked contract wording: reviewed or locked feed the planner, locked preferred", () => {
+    setup();
+    const note = screen.getByTestId("created-not-planner-ready-note");
+    // Not framed as "locked required, reviewed also accepted".
+    expect(note.textContent).toMatch(/reviewed or locked rows feed the planner, locked preferred/i);
+    expect(note.textContent).not.toMatch(/is also accepted/i);
   });
 });
 

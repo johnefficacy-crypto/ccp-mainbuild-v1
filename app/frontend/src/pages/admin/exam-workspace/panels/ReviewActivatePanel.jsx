@@ -1,35 +1,29 @@
 /**
  * Readiness & Activation panel (PR-0 §7).
  *
- * There is NO one-click activate endpoint. Activation = per-row
- * reviewer_status → 'locked' via PATCH /admin/exam-intelligence/{entity}/{id}/review,
- * gated by the exam_intelligence.review permission.
- *
- * Reviewable entities that appear in readiness sections:
- *   competition → PATCH /competition-metrics/{id}/review
- *   updates     → PATCH /policy-updates/{id}/review
- *   topic-coverage rows → PATCH /topic-coverage/{id}/review
+ * There is NO one-click activate endpoint. This panel is an aggregate readiness
+ * summary: it surfaces per-section status/blockers and routes the operator to
+ * the section's own tab to resolve them. It does NOT lock individual rows —
+ * `compute_exam_workspace_readiness` returns per-section counts only (no
+ * actionable row id), so there is no deterministic single row to lock here.
+ * Row locking (reviewer_status transitions) happens in each section's own tab
+ * against its real, ID-bearing rows, gated by exam_intelligence.review.
  *
  * Lifecycle: draft → pending_review → reviewed → locked → rejected
- * Planner consumes: locked (preferred) or reviewed. pending/rejected never
- * reach aspirants.
+ * Planner consumes reviewed or locked rows (locked preferred); pending/rejected
+ * never reach aspirants.
  */
 import React, { useState } from "react";
 import { useAuth } from "../../../../lib/authContext";
-import { api } from "../../../../lib/api";
-import useApiAction from "../../../../lib/hooks/useApiAction";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 
-const REVIEW_BASE = "/api/admin/exam-intelligence";
-
-// Sections that have directly-reviewable rows from the readiness payload
-// and the PATCH endpoint pattern for locking them.
-const SECTION_REVIEW_ENTITY = {
-  competition: "competition-metrics",
-  updates: "policy-updates",
-  // topic-coverage rows are surfaced via the syllabus_mapper / pyq sections
-  // but are not directly exposed by readiness metrics; left here for reference.
-};
+// NOTE: this aggregate readiness panel does NOT lock individual rows. The
+// per-section `metrics` from `compute_exam_workspace_readiness` are counts only
+// (e.g. competition → {present_for_cycle, reviewer_status, breakdown}; updates →
+// {total, pending, verified, stale, rejected}); they carry no actionable row id,
+// so there is no deterministic single row to lock here. Locking happens in each
+// section's own tab against its real, ID-bearing rows. Unresolved sections route
+// there via the "Resolve →" / "View →" CTA.
 
 const TAB_FOR_SECTION = {
   setup: "setup",
@@ -132,47 +126,8 @@ function StatusBadge({ status }) {
   );
 }
 
-// Per-row lock action for a single reviewable entity row.
-// Mutation runs through the shared useApiAction runner (busy state + toast),
-// not a raw api.patch, per the data-layer governance rule.
-function RowLockButton({ entity, rowId, onLocked }) {
-  const { run, busy } = useApiAction();
-  const [err, setErr] = useState("");
-
-  async function handleLock() {
-    setErr("");
-    const res = await run({
-      action: () =>
-        api.patch(`${REVIEW_BASE}/${entity}/${rowId}/review`, {
-          reviewer_status: "locked",
-        }),
-      onSuccess: () => onLocked?.(),
-      errorMessage: "Lock failed",
-    });
-    if (!res.ok) setErr(res.error?.message || "Lock failed");
-  }
-
-  return (
-    <span className="row" style={{ gap: 6, alignItems: "center" }}>
-      {err && (
-        <span className="csub" style={{ color: "var(--err)", fontSize: 11 }}>
-          {err}
-        </span>
-      )}
-      <button
-        className="btn small"
-        disabled={busy}
-        onClick={handleLock}
-        aria-label="Lock this row"
-      >
-        {busy ? "Locking…" : "Lock row"}
-      </button>
-    </span>
-  );
-}
-
 export default function ReviewActivatePanel({ onGotoTab }) {
-  const { readiness, readiness_loading, refetchReadiness, mgmtVersionError, refetchMgmt } = useExamWorkspace();
+  const { readiness, readiness_loading, mgmtVersionError, refetchMgmt } = useExamWorkspace();
   const { user } = useAuth();
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -245,9 +200,6 @@ export default function ReviewActivatePanel({ onGotoTab }) {
   function renderSectionRow(s) {
     const ok = isOk(s);
     const tabTarget = TAB_FOR_SECTION[s.section];
-    const reviewEntity = SECTION_REVIEW_ENTITY[s.section];
-    // metrics may carry a single row id for competition / policy rows
-    const singleRowId = s.metrics?.row_id || s.metrics?.id || null;
     const pyqMissingTags = pyqMissingTagsFor(s);
 
     return (
@@ -303,14 +255,9 @@ export default function ReviewActivatePanel({ onGotoTab }) {
             >
               Review missing topic tags →
             </button>
-          ) : /* Per-row lock action — gated on exam_intelligence.review */
-          canReview && reviewEntity && singleRowId && !ok ? (
-            <RowLockButton
-              entity={reviewEntity}
-              rowId={singleRowId}
-              onLocked={refetchReadiness}
-            />
-          ) : canReview && !ok && tabTarget ? (
+          ) : /* Resolve/lock happens in the section's own tab (rows there carry
+                 real IDs); this aggregate panel only routes there. */
+          canReview && !ok && tabTarget ? (
             <button className="btn small" onClick={() => onGotoTab(tabTarget)}>
               Resolve →
             </button>
@@ -416,15 +363,16 @@ export default function ReviewActivatePanel({ onGotoTab }) {
           <p className="csub" style={{ lineHeight: 1.6, margin: 0 }}>
             <strong>Created ≠ planner-ready.</strong> An exam with rows in the
             database is <em>not</em> automatically visible in Study OS. The
-            planner requires at least one topic-coverage row at{" "}
-            <span className="font-mono" style={{ fontSize: 11 }}>
-              locked
-            </span>{" "}
-            status (
+            planner requires at least one topic-coverage row that is{" "}
             <span className="font-mono" style={{ fontSize: 11 }}>
               reviewed
             </span>{" "}
-            is also accepted). Until that threshold is met, the exam shows{" "}
+            or{" "}
+            <span className="font-mono" style={{ fontSize: 11 }}>
+              locked
+            </span>{" "}
+            — reviewed or locked rows feed the planner, locked preferred. Until
+            at least one such row exists, the exam shows{" "}
             <span className="font-mono" style={{ fontSize: 11 }}>
               planner_ready: false
             </span>{" "}
