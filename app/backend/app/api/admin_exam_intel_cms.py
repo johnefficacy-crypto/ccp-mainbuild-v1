@@ -745,37 +745,65 @@ _PAPER_SOURCE_TYPES = ("official", "memory_based", "coaching", "community", "agg
 # Changes to these fields on a verified paper must go through set-provenance.
 _PROVENANCE_FIELDS = frozenset({"source_url", "source_type", "source_document_id", "pyq_source_id"})
 
+# Scope fields (exam/cycle/phase identity). Changing any of these re-triggers the
+# scope validator, and on a verified paper they are review-sensitive (EI-CLEAN-09).
+_PAPER_SCOPE_FIELDS = frozenset({"exam_id", "exam_cycle_id", "exam_phase_id"})
 
-def _pyq_paper_phase_cycle_error(
+
+def _pyq_paper_scope_error(
     supabase: Any,
     *,
     exam_id: Any,
     exam_cycle_id: Any,
     exam_phase_id: Any,
 ) -> str | None:
-    """EI-CLEAN-09: phase↔cycle consistency for the direct pyq_papers write paths.
+    """EI-CLEAN-09: full exam/cycle/phase scope integrity for the direct
+    pyq_papers write paths (create / patch / bulk-import).
 
-    Mirrors the fail-closed rule enforced by the ``cms_pyq_onboarding`` RPC
-    (migration 220) so the Advanced Repair create/patch/bulk-import paths cannot
-    persist a paper whose phase belongs to a different cycle of the same exam
-    (contradictory D05 phase-compatible provenance). Frontend filtering is not an
-    authority boundary.
+    ``pyq_papers.exam_id``, ``exam_cycle_id`` and ``exam_phase_id`` are
+    independent FKs, so — mirroring the ``cms_pyq_onboarding`` RPC (migration
+    220) — this validates each dimension independently and returns the same
+    stable token vocabulary (mapped to HTTP 422 by callers), or ``None`` when the
+    combination is consistent:
 
-    Returns an error token (mapped to HTTP 422 by callers) or ``None`` when the
-    combination is valid. A paper without a phase (``exam_phase_id`` falsy) is
-    always valid. When a phase IS supplied it must resolve to a phase of this
-    exam AND be bound to exactly the supplied cycle — a null cycle, a
-    cross-cycle phase, and a cycle-agnostic (template) phase all fail closed.
+      * ``exam_not_found``            — supplied exam does not exist;
+      * ``exam_cycle_not_found``      — supplied cycle does not exist;
+      * ``exam_cycle_exam_mismatch``  — cycle belongs to a different exam;
+      * ``exam_phase_not_found``      — supplied phase does not exist;
+      * ``exam_phase_exam_mismatch``  — phase belongs to a different exam;
+      * ``exam_phase_cycle_mismatch`` — phase not bound to the paper's cycle.
+
+    Phase↔cycle uses null-safe equality: the paper's cycle must equal the
+    phase's own cycle. An exam-level / cycle-agnostic phase (cycle NULL) is a
+    legitimate target for an exam-level paper (cycle also NULL) — unlike the
+    cycle-scoped onboarding modal, the general pyq_papers table supports
+    exam-level phases, so both-NULL is consistent. A cycle-bound phase on a
+    cycle-less paper (or vice versa) and a cross-cycle phase both fail closed.
     """
-    if not exam_phase_id:
-        return None
-    phase = _safe_select(supabase, "exam_phases", id=exam_phase_id)
-    if not phase:
-        return "exam_phase_not_found"
-    if exam_id is not None and str(phase.get("exam_id")) != str(exam_id):
-        return "exam_phase_exam_mismatch"
-    if exam_cycle_id is None or str(phase.get("exam_cycle_id")) != str(exam_cycle_id):
-        return "exam_phase_cycle_mismatch"
+    if exam_id is not None:
+        if not _safe_select(supabase, "exams", id=exam_id):
+            return "exam_not_found"
+
+    if exam_cycle_id is not None:
+        cycle = _safe_select(supabase, "exam_cycles", id=exam_cycle_id)
+        if not cycle:
+            return "exam_cycle_not_found"
+        if exam_id is not None and str(cycle.get("exam_id")) != str(exam_id):
+            return "exam_cycle_exam_mismatch"
+
+    if exam_phase_id:
+        phase = _safe_select(supabase, "exam_phases", id=exam_phase_id)
+        if not phase:
+            return "exam_phase_not_found"
+        if exam_id is not None and str(phase.get("exam_id")) != str(exam_id):
+            return "exam_phase_exam_mismatch"
+        phase_cycle = phase.get("exam_cycle_id")
+        paper_cycle_none = exam_cycle_id is None
+        phase_cycle_none = phase_cycle is None
+        if paper_cycle_none != phase_cycle_none or (
+            not paper_cycle_none and str(phase_cycle) != str(exam_cycle_id)
+        ):
+            return "exam_phase_cycle_mismatch"
     return None
 
 
@@ -829,7 +857,7 @@ def create_pyq_paper(
         raise HTTPException(status_code=422, detail="exam_id and year are required")
     if row.get("source_type") and row["source_type"] not in _PAPER_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
-    _pc_err = _pyq_paper_phase_cycle_error(
+    _pc_err = _pyq_paper_scope_error(
         supabase,
         exam_id=row.get("exam_id"),
         exam_cycle_id=row.get("exam_cycle_id"),
@@ -866,13 +894,29 @@ def update_pyq_paper(
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     if patch.get("source_type") and patch["source_type"] not in _PAPER_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"source_type must be one of {_PAPER_SOURCE_TYPES}")
-    # EI-CLEAN-09: re-validate phase↔cycle only when the patch touches either
-    # column, on the merged (existing ⊕ patch) values — so unrelated edits to a
-    # legacy row are never retroactively blocked, but any change to phase/cycle
-    # must leave them consistent.
-    if {"exam_phase_id", "exam_cycle_id"} & set(patch):
+    # EI-CLEAN-09: a verified paper's scope identity (exam/cycle/phase) is
+    # review-sensitive — reassigning trusted evidence to another exam/cycle/phase
+    # must go back through review, not the generic curate endpoint.
+    if existing.get("trust_status") == "verified" and _PAPER_SCOPE_FIELDS & set(patch):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "scope_locked",
+                "message": (
+                    "Scope fields (exam_id, exam_cycle_id, exam_phase_id) cannot be "
+                    "changed on a verified paper — reassigning trusted evidence to "
+                    "another exam/cycle/phase requires re-review. Move the paper back "
+                    "to pending first."
+                ),
+            },
+        )
+    # EI-CLEAN-09: re-validate the full exam/cycle/phase scope whenever the patch
+    # touches ANY scope field, on the merged (existing ⊕ patch) values — so an
+    # exam_id-only change still revalidates the retained cycle/phase, while
+    # unrelated edits to a legacy row are never retroactively blocked.
+    if _PAPER_SCOPE_FIELDS & set(patch):
         merged = {**existing, **patch}
-        _pc_err = _pyq_paper_phase_cycle_error(
+        _pc_err = _pyq_paper_scope_error(
             supabase,
             exam_id=merged.get("exam_id"),
             exam_cycle_id=merged.get("exam_cycle_id"),
@@ -3543,7 +3587,7 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "fks": {"exam_id": "exams"},
         "enums": {"source_type": _PAPER_SOURCE_TYPES},
         # EI-CLEAN-09: reject rows whose phase belongs to a different cycle.
-        "row_validator": lambda sb, cleaned: _pyq_paper_phase_cycle_error(
+        "row_validator": lambda sb, cleaned: _pyq_paper_scope_error(
             sb,
             exam_id=cleaned.get("exam_id"),
             exam_cycle_id=cleaned.get("exam_cycle_id"),
