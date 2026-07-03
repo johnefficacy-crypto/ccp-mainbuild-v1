@@ -3,6 +3,7 @@ import { Navigate, Route, useParams } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
+import MockContentRedirect from "./mockContentRedirect";
 
 const AdminShell = lazy(() => import("../pages/admin/AdminShell"));
 const AdminOverview = lazy(() => import("../pages/admin/Overview"));
@@ -41,10 +42,8 @@ const AdminContentAccessRequests = lazy(() => import("../pages/admin/studyos/Con
 const AdminGroupsConsole = lazy(() => import("../pages/admin/community/GroupsConsole"));
 const AdminPartnersConsole = lazy(() => import("../pages/admin/community/PartnersConsole"));
 const AdminResourcesReviewQueue = lazy(() => import("../pages/admin/community/ResourcesReviewQueue"));
-const AdminMockQuestionList = lazy(() => import("../pages/admin/mocks/QuestionList"));
-const AdminMockReviewQueue = lazy(() => import("../pages/admin/mocks/ReviewQueue"));
 const AdminMockQuestionEditor = lazy(() => import("../pages/admin/mocks/QuestionEditor"));
-const AdminMockImportWizard = lazy(() => import("../pages/admin/mocks/ImportWizard"));
+const AdminContentStudio = lazy(() => import("../pages/admin/content-studio/ContentStudio"));
 const AdminVerificationReports = lazy(() => import("../pages/admin/VerificationReports"));
 const AdminReverificationBatches = lazy(() => import("../pages/admin/ReverificationBatches"));
 const AdminKnowledgeGovernance = lazy(() => import("../pages/admin/KnowledgeGovernance"));
@@ -58,6 +57,9 @@ export function AddCycleRedirect() {
     />
   );
 }
+
+// Legacy Mock Content → Content Studio redirects live in ./mockContentRedirect
+// (extracted so the param-carry-through is unit-testable).
 
 // Compat redirects: legacy workspace and per-exam console URLs → Manage Exam.
 function ExamRedirect() {
@@ -121,12 +123,17 @@ export const adminRouteElements = (
     <Route path="/admin/study-os/social" element={<AdminStudyOsSocial />} />
     <Route path="/admin/study-os/exam-intel-cms" element={<Navigate to="/admin/exam-intelligence/cms" replace />} />
     <Route path="/admin/study-os/content-access" element={<AdminContentAccessRequests />} />
-    {/* Mock Content */}
-    <Route path="/admin/mocks/questions" element={<AdminMockQuestionList />} />
+    {/* Content Studio — consolidated canonical-content surface. The legacy
+        Mock Content list routes redirect into it; the question editor keeps its
+        drill-in routes (not a top-level destination). */}
+    <Route element={<RouteErrorBoundary />}>
+      <Route path="/admin/content-studio" element={<AdminContentStudio />} />
+    </Route>
+    <Route path="/admin/mocks/questions" element={<MockContentRedirect tab="library" />} />
     <Route path="/admin/mocks/questions/new" element={<AdminMockQuestionEditor />} />
     <Route path="/admin/mocks/questions/:id" element={<AdminMockQuestionEditor />} />
-    <Route path="/admin/mocks/review-queue" element={<AdminMockReviewQueue />} />
-    <Route path="/admin/mocks/import" element={<AdminMockImportWizard />} />
+    <Route path="/admin/mocks/review-queue" element={<MockContentRedirect tab="review-queue" />} />
+    <Route path="/admin/mocks/import" element={<MockContentRedirect tab="bulk-import" />} />
     {/* Verification reports — exam_intelligence.cms permission checked inside page */}
     <Route element={<RouteErrorBoundary />}>
       <Route path="/admin/verification-reports" element={<AdminVerificationReports />} />

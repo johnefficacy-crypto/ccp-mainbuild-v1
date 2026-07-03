@@ -129,10 +129,8 @@ const ADMIN_NAV_PATHS = [
   "/admin/study-os/reports",
   "/admin/study-os/social",
   "/admin/study-os/content-access",
-  // Mock Content
-  "/admin/mocks/questions",
-  "/admin/mocks/review-queue",
-  "/admin/mocks/import",
+  // Content Studio (replaces the three Mock Content destinations)
+  "/admin/content-studio",
   // Safety & Config
   "/admin/moderation",
   "/admin/copyright",
@@ -188,6 +186,7 @@ const ADMIN_ROUTE_PATHS = new Set([
   "/admin/study-os/social",
   "/admin/study-os/exam-intel-cms",
   "/admin/study-os/content-access",
+  "/admin/content-studio",
   "/admin/mocks/questions",
   "/admin/mocks/questions/new",
   "/admin/mocks/questions/:id",

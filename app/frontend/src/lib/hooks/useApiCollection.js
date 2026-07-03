@@ -29,6 +29,10 @@ export default function useApiCollection(url, seed = [], options = {}) {
   const { adapter, params } = options;
   const [items, setItems] = useState(seed);
   const [status, setStatus] = useState("loading");
+  // Total row count from a `{items,total,limit,offset}` response, when the
+  // backend provides it (null otherwise). Lets paginated callers know whether a
+  // next page exists without treating a full page as proof of more rows.
+  const [total, setTotal] = useState(null);
 
   // Stable reference so the effect doesn't refetch every render.
   const paramsKey = params ? JSON.stringify(params) : "";
@@ -46,11 +50,13 @@ export default function useApiCollection(url, seed = [], options = {}) {
       }
       const next = adapterRef.current ? raw.map((it, i) => adapterRef.current(it, i)) : raw;
       setItems(next);
+      setTotal(typeof d?.total === "number" ? d.total : null);
       setStatus(next.length === 0 ? "empty" : "live");
     } catch {
       // In demo mode, keep seeds visible as offline-friendly fallback.
       // In production, clear items so real error UI shows instead of fake data.
       if (!ENABLE_DEMO_DATA) setItems([]);
+      setTotal(null);
       setStatus("error");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,5 +66,5 @@ export default function useApiCollection(url, seed = [], options = {}) {
     refresh();
   }, [refresh]);
 
-  return { items, status, refresh, setItems };
+  return { items, status, total, refresh, setItems };
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import StatusBadge from "./components/StatusBadge";
 import { RefreshCw } from "lucide-react";
@@ -18,7 +18,16 @@ export default function ReviewQueue() {
   const [data, setData] = useState({ items: [], page: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
+  // Page is URL-backed so a deep link / legacy redirect (?page=2) lands on the
+  // right page and back-button history is preserved.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, parseInt(searchParams.get("page"), 10) || 1);
+  const setPage = (next) => {
+    const value = typeof next === "function" ? next(page) : next;
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(Math.max(1, value)));
+    setSearchParams(params);
+  };
 
   const load = useCallback(() => {
     setLoading(true);

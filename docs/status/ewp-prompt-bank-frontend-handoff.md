@@ -1,9 +1,18 @@
 # EWP Prompt Operations — Frontend Handoff (Content Studio)
 
-Status: **CODE PRESENT IN PR / VALIDATION PENDING** (migration 215 + `app/api/content_studio.py`,
-PR #855 — not yet merged; RPC apply + live round-trip + operator app-metadata provisioning
-pending). Frontend **not started**.
+Status: **BACKEND MERGED (#855) / FRONTEND IN PR #868 — VALIDATION PENDING.**
+Migration 215 + `app/api/content_studio.py` merged to `main` in PR #855; RPC apply +
+live round-trip + operator app-metadata provisioning remain OPERATOR PENDING. The
+Content Studio operator UI is in PR #868 (`CODE PRESENT, VALIDATION PENDING`).
 Owner of this doc: the EWP backend slice. Consumer: the Content Studio frontend owner.
+
+> Backend gap flagged during #868 review (follow-up required): `reviewer_notes` from
+> a review decision is written only to `admin_audit_logs.new_value` (migration 215) —
+> it is not stored on `writing_prompts` nor returned by list/get, so a
+> `needs_correction` author cannot retrieve the reviewer's instructions. Surfacing
+> notes to authors needs a backend read contract (a review-history/latest-decision
+> read endpoint, or a persisted reviewer-feedback field). The UI copy no longer
+> claims notes are "shown to authors"; it states they are recorded in the audit log.
 
 This is the API contract + placement rules for building the operator UI that authors,
 curates, reviews, bulk-imports, and assigns **writing prompts**. Read the backend
