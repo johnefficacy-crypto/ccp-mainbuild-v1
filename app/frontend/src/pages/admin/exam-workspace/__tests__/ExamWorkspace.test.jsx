@@ -450,6 +450,69 @@ describe("ExamWorkspace embedded action console (I8-B)", () => {
   });
 });
 
+// ── EI-CLEAN-05: collapsed action / advisory disclosure ──────────────────────
+
+describe("ExamWorkspace action disclosure (EI-CLEAN-05)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("action console lives inside a collapsed, keyboard-accessible disclosure", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-action-details"));
+    const details = screen.getByTestId("workspace-action-details");
+    // Native <details> is keyboard operable and starts collapsed (not always-expanded).
+    expect(details.tagName.toLowerCase()).toBe("details");
+    expect(details.open).toBe(false);
+    expect(screen.getByTestId("workspace-action-summary")).toBeTruthy();
+    // The embedded action console content is nested inside the disclosure.
+    expect(details).toContainElement(screen.getByTestId("exam-action-console"));
+  });
+
+  test("advisory content readiness and lifecycle legend moved out of the header into the disclosure", async () => {
+    mockAllEndpoints();
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("smart-header-status"));
+    const details = screen.getByTestId("workspace-action-details");
+    const advisory = screen.getByTestId("workspace-advisory-readiness");
+    expect(details).toContainElement(advisory);
+    // Header no longer carries the advisory readiness strip.
+    const header = screen.getByTestId("smart-header-status");
+    expect(header).not.toContainElement(advisory);
+  });
+
+  test("management read failure surfaces a visible error + Retry outside the collapsed disclosure", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) return Promise.reject(new Error("500"));
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-mgmt-error"));
+    const banner = screen.getByTestId("workspace-mgmt-error");
+    // The failure is discoverable without expanding the action disclosure.
+    const details = screen.getByTestId("workspace-action-details");
+    expect(details.open).toBe(false);
+    expect(details).not.toContainElement(banner);
+    expect(screen.getByTestId("workspace-mgmt-error-retry")).toBeTruthy();
+    // No authoritative verdict strip renders on a failed management read.
+    expect(screen.queryByTestId("smart-header-status")).toBeNull();
+  });
+
+  test("Retry on the management-error banner refetches management", async () => {
+    let mgmtCalls = 0;
+    api.get.mockImplementation((url) => {
+      if (url.includes("/management/exams/")) { mgmtCalls++; return Promise.reject(new Error("500")); }
+      if (url.includes("/readiness")) return Promise.resolve(READINESS_RESPONSE);
+      return Promise.resolve(CONTEXT_RESPONSE);
+    });
+    renderWorkspace();
+    await waitFor(() => screen.getByTestId("workspace-mgmt-error-retry"));
+    const before = mgmtCalls;
+    fireEvent.click(screen.getByTestId("workspace-mgmt-error-retry"));
+    await waitFor(() => expect(mgmtCalls).toBeGreaterThan(before));
+  });
+});
+
 // ── PR2 Tests: readiness provider ─────────────────────────────────────────────
 
 describe("ExamWorkspace readiness provider (PR2)", () => {

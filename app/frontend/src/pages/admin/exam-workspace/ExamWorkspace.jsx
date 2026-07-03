@@ -157,7 +157,7 @@ function AdvancedRepairMenu({ examId, cycleId }) {
 // ─── Smart readiness header ──────────────────────────────────────────────────
 
 function SmartHeader({ onGotoTab }) {
-  const { exam, cycles, cycle, readiness, mgmt, organization, family } = useExamWorkspace();
+  const { exam, cycles, cycle, mgmt, organization, family } = useExamWorkspace();
   const { user } = useAuth();
   const { exam_id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -323,17 +323,9 @@ function SmartHeader({ onGotoTab }) {
         </div>
       )}
 
-      {/* Advisory content readiness from workspace context */}
-      {readiness && (
-        <div className="ctx-strip" style={{ marginTop: 4 }}>
-          <span className="lbl" style={{ marginRight: 8 }}>Advisory content readiness</span>
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-mute)" }}>
-            {readiness.overall?.score_percent ?? 0}%
-          </span>
-        </div>
-      )}
-
-      <div className="ctx-strip" style={{ marginTop: 4 }}><LifecycleLegend /></div>
+      {/* Advisory content readiness and the lifecycle legend moved into the
+          collapsed action disclosure (EI-CLEAN-05) so the header stays canonical:
+          headline + first blocker + one next action. */}
       <div style={{ height: 14 }} />
     </div>
   );
@@ -520,6 +512,15 @@ function WorkspaceShell() {
   // keeps identity/navigation intact so the operator can still navigate away.
   const compatError = mgmtVersionError && !mgmtLoading;
 
+  // EI-CLEAN-05 follow-up: the management read is the top-level verdict
+  // authority, and SmartHeader only renders its verdict strip when mgmt is
+  // present. Because the action console (which carries the error + Retry) now
+  // lives inside a collapsed disclosure, a failed management read would leave
+  // the operator with no visible verdict and no recovery. Surface that failure
+  // at the workspace level so it is discoverable without expanding the
+  // disclosure. The unsupported-version case has its own banner above.
+  const mgmtLoadError = Boolean(mgmtError) && !mgmtLoading && !compatError;
+
   return (
     <div className="oc">
       <SmartHeader onGotoTab={gotoTab} />
@@ -539,14 +540,63 @@ function WorkspaceShell() {
           </div>
         </div>
       )}
-      {/* Pass management data so ExamActionConsole skips its own fetch */}
-      <ExamActionConsole
-        examId={exam_id}
-        embedded
-        data={mgmt}
-        dataStatus={mgmtLoading ? "loading" : (mgmtError || compatError) ? "error" : "ready"}
-        onRetry={refetchMgmt}
-      />
+      {mgmtLoadError && (
+        <div
+          data-testid="workspace-mgmt-error"
+          className="card"
+          style={{ margin: "12px 16px 0", borderLeft: "3px solid var(--err, #c00)" }}
+        >
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="err-row" style={{ flex: 1, margin: 0 }}>
+              Could not load the activation verdict and action queue. The header
+              verdict is unavailable until this loads.
+            </span>
+            <button
+              className="btn"
+              onClick={refetchMgmt}
+              data-testid="workspace-mgmt-error-retry"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      {/* EI-CLEAN-05: the action queue, activation checks, evidence, mock
+          advisory and lifecycle legend collapse into one keyboard-accessible
+          disclosure so they no longer sit always-expanded above the tabs. The
+          native <details> element is inherently keyboard operable. SmartHeader
+          above remains the canonical headline + first blocker + next action.
+          Management data is passed so ExamActionConsole skips its own fetch. */}
+      <details
+        className="oc-action-disclosure"
+        data-testid="workspace-action-details"
+        style={{ margin: "0 22px" }}
+      >
+        <summary
+          className="lbl"
+          data-testid="workspace-action-summary"
+          style={{ cursor: "pointer", padding: "10px 0", userSelect: "none" }}
+        >
+          Action queue, activation checks &amp; advisories
+        </summary>
+        <ExamActionConsole
+          examId={exam_id}
+          embedded
+          data={mgmt}
+          dataStatus={mgmtLoading ? "loading" : (mgmtError || compatError) ? "error" : "ready"}
+          onRetry={refetchMgmt}
+        />
+        {readiness && (
+          <div className="ctx-strip" style={{ marginTop: 4 }} data-testid="workspace-advisory-readiness">
+            <span className="lbl" style={{ marginRight: 8 }}>Advisory content readiness</span>
+            <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-mute)" }}>
+              {readiness.overall?.score_percent ?? 0}%
+            </span>
+          </div>
+        )}
+        <div className="ctx-strip" style={{ marginTop: 4 }}><LifecycleLegend /></div>
+      </details>
       <TabStrip active={activeTab} onChange={gotoTab} readiness={readiness} />
 
       <main className="oc-main" style={{ paddingTop: 18 }}>
