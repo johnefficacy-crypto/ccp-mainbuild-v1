@@ -183,7 +183,7 @@ def competition_context(
     # CHECK, so reading them directly off `best` is safe and simply yields
     # nothing for disposed data; only a legacy, undisposed row (metric_kind
     # still NULL) that happens to carry both on the same row surfaces cutoff
-    # facts here, exactly matching pre-migration-215 behavior for that data.
+    # facts here, exactly matching pre-migration-216 behavior for that data.
     score = best.get("competition_pressure_score")
     try:
         score = float(score) if score is not None else None

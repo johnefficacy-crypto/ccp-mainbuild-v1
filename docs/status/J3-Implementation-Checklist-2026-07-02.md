@@ -21,7 +21,7 @@
 
 **Serial anchor.** Nothing in the competition read/write surface may be branched concurrently.
 
-**Status: CODE-FIXED, VALIDATION PENDING** (implemented on branch `claude/j3-pr1-competition-structure`, migration `215_j3_competition_structure.sql`). Every item below is implemented in code; the boxes are left unchecked because none has live/staging proof yet (per the cross-cutting rule: code inspection alone does not close a checklist item). See the `career-copilot-checklist.md` "J3 PR 1" row for the detailed file-by-file summary and the explicitly deferred/simplified items (no live-duplicate fixture for §1.4; PR 2 not started).
+**Status: CODE-FIXED, VALIDATION PENDING** (implemented on branch `claude/j3-pr1-competition-structure`, migration `216_j3_competition_structure.sql`). Every item below is implemented in code; the boxes are left unchecked because none has live/staging proof yet (per the cross-cutting rule: code inspection alone does not close a checklist item). See the `career-copilot-checklist.md` "J3 PR 1" row for the detailed file-by-file summary and the explicitly deferred/simplified items (no live-duplicate fixture for §1.4; PR 2 not started).
 
 ### Migration(s)
 - [ ] `reservation_categories` + `reservation_category_aliases` tables (resolutions §6). Seed `general/ews/obc/sc/st`; aliases `ur→general`, `gen→general`, `obc_ncl→obc`. RLS admin/service-role only.

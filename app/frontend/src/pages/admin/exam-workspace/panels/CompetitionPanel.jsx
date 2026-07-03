@@ -3,7 +3,7 @@ import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 
 // Vertical reservation categories, v1 (resolutions §OD-1). Kept in sync with
-// the `reservation_categories` seed in migration 215 — do not add PwBD /
+// the `reservation_categories` seed in migration 216 — do not add PwBD /
 // ex-servicemen / domicile here (separate horizontal dimension, later).
 const CATEGORIES = [
   { code: "general", label: "General" },
@@ -33,7 +33,7 @@ const emptyCutoffMap = () =>
   Object.fromEntries(CATEGORIES.map((c) => [c.code, emptyCutoffRow()]));
 const emptyVacancyMap = () => Object.fromEntries(CATEGORIES.map((c) => [c.code, ""]));
 
-// Lifecycle actions matching the DB transition matrix (migration 215):
+// Lifecycle actions matching the DB transition matrix (migration 216):
 // draft -> pending_review -> reviewed -> locked, with locked -> reviewed
 // reopen (notes required) and rejected -> draft reset. Publication
 // (aspirant visibility) happens at pending_review -> reviewed, NOT at
@@ -285,7 +285,7 @@ export default function CompetitionPanel() {
     try {
       // Competition review uses the draft/pending_review/reviewed/locked/
       // rejected lifecycle enforced server-side by the cms_review_competition_metric
-      // RPC (migration 215) — publication happens at pending_review->reviewed;
+      // RPC (migration 216) — publication happens at pending_review->reviewed;
       // reviewed->locked is a status bump on the already-published row.
       await api.patch(`${EI_BASE}/competition-metrics/${encodeURIComponent(metric.id)}/review`, {
         reviewer_status: action.to,

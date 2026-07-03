@@ -1,4 +1,4 @@
-"""Schema-contract tests for J3 PR1 migration 215 (competition structure).
+"""Schema-contract tests for J3 PR1 migration 216 (competition structure).
 
 Following the repo's documented convention (see test_mock_generated_blueprints_migration.py):
 "The repo has no live-DB migration harness; existing migration tests assert
@@ -13,7 +13,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[2]
-    / "supabase" / "migrations" / "215_j3_competition_structure.sql"
+    / "supabase" / "migrations" / "216_j3_competition_structure.sql"
 ).read_text().lower()
 
 

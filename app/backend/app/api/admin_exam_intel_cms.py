@@ -2034,7 +2034,7 @@ def _validate_competition_payload(row: dict[str, Any]) -> None:
             raise HTTPException(status_code=422, detail="competition_pressure_score must be numeric")
         if not (0 <= n <= 100):
             raise HTTPException(status_code=422, detail="competition_pressure_score must be in [0, 100]")
-    # App-layer fast-path mirror of the DB validation trigger (migration 215
+    # App-layer fast-path mirror of the DB validation trigger (migration 216
     # `_ecm_validate_jsonb`) — the DB trigger is the source of truth; this
     # gives a fast 422 instead of a raw DB error for the common cases.
     cutoff = row.get("cutoff_by_category")

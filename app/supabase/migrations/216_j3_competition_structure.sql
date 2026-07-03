@@ -1,4 +1,4 @@
--- 215_j3_competition_structure.sql
+-- 216_j3_competition_structure.sql
 --
 -- J3 PR 1 — Competition structure (serial anchor).
 --
@@ -7,8 +7,9 @@
 -- (§1-§4, §6). Implementation checklist: docs/status/J3-Implementation-Checklist-2026-07-02.md.
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 215 = MAX(filesystem)+1 as of the
--- branch cut. Confirm with:
+-- state at apply time (operator step); 216 = MAX(filesystem)+1 as of the
+-- rebase onto main after 215_writing_prompt_content_studio_ops.sql landed.
+-- Confirm with:
 --   SELECT MAX(version) FROM schema_migrations;
 -- before applying to any environment.
 --

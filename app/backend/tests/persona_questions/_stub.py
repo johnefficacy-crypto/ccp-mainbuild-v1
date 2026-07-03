@@ -715,7 +715,7 @@ class SBStub:
     }
 
     def _cms_review_competition_metric(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_competition_metric (migration 215): transition
+        """Emulate cms_review_competition_metric (migration 216): transition
         matrix + CAS + atomic current-published supersession on publish."""
         metric_id = params.get("p_metric_id")
         expected_status = params.get("p_expected_status")
@@ -785,7 +785,7 @@ class SBStub:
         }
 
     def _cms_reopen_competition_metric_for_edit(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_reopen_competition_metric_for_edit (migration 215):
+        """Emulate cms_reopen_competition_metric_for_edit (migration 216):
         clone-to-draft, never mutates the published row in place."""
         import uuid as _uuid
 

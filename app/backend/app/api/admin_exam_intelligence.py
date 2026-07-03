@@ -755,7 +755,7 @@ class CoverageReviewBody(BaseModel):
         ..., pattern="^(draft|pending_review|reviewed|locked|rejected)$"
     )
     # Optional; required by the DB RPC only for the locked->reviewed reopen
-    # transition (competition-metrics review, migration 215). Other callers
+    # transition (competition-metrics review, migration 216). Other callers
     # of this shared body (e.g. /topic-coverage/{id}/review) may omit it.
     reviewer_notes: str | None = None
 
@@ -943,7 +943,7 @@ def attach_competition_metric_evidence(
 ) -> dict[str, Any]:
     """Attach evidence to a working (draft/pending_review) competition-metric
     revision. Evidence is append-only and immutable once the parent is
-    published (migration 215 trigger blocks INSERT on a published parent)."""
+    published (migration 216 trigger blocks INSERT on a published parent)."""
     sb = get_supabase_admin()
     metric = _safe(
         lambda: sb.table("exam_competition_metrics").select("id, reviewer_status").eq("id", row_id).limit(1).execute().data,
@@ -972,7 +972,7 @@ def attach_competition_metric_evidence(
         raise HTTPException(status_code=422, detail="At least one of source_id, document_asset_id, evidence_url is required")
 
     # evidence_key is NOT computed here — the DB trigger
-    # (_ecme_compute_evidence_key, migration 215) unconditionally overwrites
+    # (_ecme_compute_evidence_key, migration 216) unconditionally overwrites
     # whatever is sent with its own canonical server-side digest, so
     # evidence_key authority lives entirely in the database, not the caller.
     row = {
@@ -1107,7 +1107,7 @@ def review_competition_metric(
 
     Lifecycle: ``draft → pending_review → reviewed → locked``, ``→ rejected``,
     ``locked → reviewed`` (reopen; reviewer_notes required). Enforced
-    atomically by ``cms_review_competition_metric`` (migration 215) — the
+    atomically by ``cms_review_competition_metric`` (migration 216) — the
     transition matrix, CAS, evidence/vacancy-sum validation, and the
     current-published supersession are all inside one DB transaction so a
     direct service-role UPDATE cannot bypass them (the published-parent

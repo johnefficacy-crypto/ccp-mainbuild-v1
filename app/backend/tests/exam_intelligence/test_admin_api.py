@@ -442,7 +442,7 @@ def _competition_seed():
              "vacancy_total": 17727, "competition_pressure_score": 72,
              "source_basis": "reviewed_analysis", "confidence_score": 0.76,
              "created_at": "2026-05-01T00:00:00+00:00"},
-            # J3 PR1: the lifecycle RPC (migration 215) enforces a transition
+            # J3 PR1: the lifecycle RPC (migration 216) enforces a transition
             # matrix — draft can no longer jump straight to locked (that was
             # exactly the defect this gate fixes). Seeded at "reviewed" so
             # the review-locks-for-planner test exercises a legal transition.
@@ -487,7 +487,7 @@ def test_competition_metrics_status_filter_and_invalid():
 
 
 def test_competition_metric_review_locks_for_planner():
-    # J3 PR1: the review endpoint is now RPC-backed (migration 215); the
+    # J3 PR1: the review endpoint is now RPC-backed (migration 216); the
     # response shape carries new_status/prev_status/audit_id, not a raw row.
     sb = SBStub(_competition_seed())
     client = TestClient(_build_app(sb))

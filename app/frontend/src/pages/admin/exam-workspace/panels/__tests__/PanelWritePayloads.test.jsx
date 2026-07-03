@@ -241,7 +241,7 @@ describe("CompetitionPanel.saveMetric", () => {
   // promote action must send a valid status — only "locked" feeds the planner.
   test("Lock action PATCHes a valid coverage status (locked), never 'verified'", async () => {
     // J3 PR1: publication (aspirant visibility) happens at pending_review ->
-    // reviewed (migration 215); reviewed -> locked is a status bump on the
+    // reviewed (migration 216); reviewed -> locked is a status bump on the
     // already-published row, so a "reviewed" row is what exercises "Lock".
     api.get.mockResolvedValue({
       items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "reviewed" }],

@@ -118,7 +118,7 @@ def _select_current(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The shared current-row selector (OD-10): rows disposed with a
     metric_kind use ``is_current_published`` as the single source of truth —
     no per-reader "pick best" heuristic. Legacy rows with metric_kind IS NULL
-    (pre-migration-215 or awaiting operator triage) fall back to being
+    (pre-migration-216 or awaiting operator triage) fall back to being
     included as-is so existing verified data does not vanish.
     """
     out: list[dict[str, Any]] = []
@@ -229,7 +229,7 @@ def competition_series(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
                 e["competition_pressure_score"] = sibling["competition_pressure_score"]
         else:
             # Legacy undisposed row (metric_kind IS NULL): surface as-is,
-            # exactly as before migration 215.
+            # exactly as before migration 216.
             e = _entry(cycle_id, row.get("exam_phase_id"))
             e["id"] = row.get("id")
             e["vacancy_total"] = row.get("vacancy_total")
