@@ -1,0 +1,511 @@
+{
+  "reason": "Seed batch: vocabulary-in-context prompts (pending review).",
+  "subject_id": "dae70ac3-f38c-2a75-7e4c-ce7b7aae85fd",
+  "rows": [
+    {
+      "external_key": "ewp-seed-vocab-001",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "The medicine had an adverse affect on his health."
+    },
+    {
+      "external_key": "ewp-seed-vocab-002",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "The lawyer will council her client before the trial."
+    },
+    {
+      "external_key": "ewp-seed-vocab-003",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "Please accept my apology; I did not mean to loose your book."
+    },
+    {
+      "external_key": "ewp-seed-vocab-004",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "The two countries signed a peace treaty to avoid further conflict, which had a profound principle on the region."
+    },
+    {
+      "external_key": "ewp-seed-vocab-005",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "He gave me a complement on my new haircut."
+    },
+    {
+      "external_key": "ewp-seed-vocab-006",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the incorrectly chosen word with the right one.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "source_text": "The weather had a bad effect on the crops, so farmers had to adopt to the change."
+    },
+    {
+      "external_key": "ewp-seed-vocab-007",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"meticulous\" correctly in a sentence about someone's work.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "meticulous"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-008",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"inevitable\" correctly in a sentence.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "inevitable"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-009",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"deteriorate\" correctly in a sentence.",
+      "difficulty_level": 4,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "deteriorate"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-010",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"prudent\" correctly in a sentence about a decision.",
+      "difficulty_level": 5,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "prudent"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-011",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"abundant\" correctly in a sentence.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "abundant"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-012",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"reluctant\" correctly in a sentence.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "reluctant"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-013",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Use the word \"diligent\" correctly in a sentence about a student.",
+      "difficulty_level": 3,
+      "microtopic_id": "d24db813-295b-cb39-e6b3-327409910c6f",
+      "required_words": [
+        "diligent"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-014",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Replace the underlined-style verb collocation error if any, or rewrite using the natural collocation for 'mistake'.",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "source_text": "She made a big mistake by ignoring the warning signs."
+    },
+    {
+      "external_key": "ewp-seed-vocab-015",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Correct the verb collocation.",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "source_text": "He did a strong effort to finish the project on time."
+    },
+    {
+      "external_key": "ewp-seed-vocab-016",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Correct the collocation to standard usage.",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "source_text": "They took a decision to postpone the event."
+    },
+    {
+      "external_key": "ewp-seed-vocab-017",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "This collocation may be correct; if it is, keep it and add a second sentence using 'make a decision' correctly.",
+      "difficulty_level": 4,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "source_text": "Please do me a favour and pass the salt."
+    },
+    {
+      "external_key": "ewp-seed-vocab-018",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "If the collocation is correct, keep it; otherwise correct it.",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "source_text": "The scientist made an important discovery about the virus."
+    },
+    {
+      "external_key": "ewp-seed-vocab-019",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"keen interest\".",
+      "difficulty_level": 4,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "keen"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-020",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"heavy rain\".",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "heavy"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-021",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"make progress\".",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "progress"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-022",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"pay attention\".",
+      "difficulty_level": 3,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "attention"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-023",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"bitterly disappointed\".",
+      "difficulty_level": 5,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "bitterly"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-024",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"strong argument\".",
+      "difficulty_level": 4,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "argument"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-025",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Write one sentence using the collocation \"meet a deadline\".",
+      "difficulty_level": 4,
+      "microtopic_id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+      "required_words": [
+        "deadline"
+      ],
+      "min_words": 6,
+      "max_words": 40
+    },
+    {
+      "external_key": "ewp-seed-vocab-026",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite the sentence in formal English, replacing the informal phrase.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The manager wants to get rid of the old rules."
+    },
+    {
+      "external_key": "ewp-seed-vocab-027",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The report says the plan is a big deal for the company."
+    },
+    {
+      "external_key": "ewp-seed-vocab-028",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "We need to figure out what went wrong."
+    },
+    {
+      "external_key": "ewp-seed-vocab-029",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 3,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The kids were told to shut up during the exam."
+    },
+    {
+      "external_key": "ewp-seed-vocab-030",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 3,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The boss was okay with the new timings."
+    },
+    {
+      "external_key": "ewp-seed-vocab-031",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "They put off the meeting because of the rain."
+    },
+    {
+      "external_key": "ewp-seed-vocab-032",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 3,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "A lot of people showed up for the event."
+    },
+    {
+      "external_key": "ewp-seed-vocab-033",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The company is going to look into the complaint."
+    },
+    {
+      "external_key": "ewp-seed-vocab-034",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite \"The plan fell through\" in formal English.",
+      "difficulty_level": 5,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8"
+    },
+    {
+      "external_key": "ewp-seed-vocab-035",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 3,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "He wants to get the job done quickly."
+    },
+    {
+      "external_key": "ewp-seed-vocab-036",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "The staff were fed up with the constant changes."
+    },
+    {
+      "external_key": "ewp-seed-vocab-037",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Rewrite in formal English.",
+      "difficulty_level": 4,
+      "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+      "source_text": "Let's touch base after lunch."
+    },
+    {
+      "external_key": "ewp-seed-vocab-038",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundant word(s) and rewrite the sentence.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "She returned back the book to the library."
+    },
+    {
+      "external_key": "ewp-seed-vocab-039",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "The two twins looked exactly alike in every way."
+    },
+    {
+      "external_key": "ewp-seed-vocab-040",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "Please repeat that again for the class."
+    },
+    {
+      "external_key": "ewp-seed-vocab-041",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "We must plan ahead for the future carefully."
+    },
+    {
+      "external_key": "ewp-seed-vocab-042",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the wordiness and rewrite concisely.",
+      "difficulty_level": 4,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "At this moment in time, the office is closed."
+    },
+    {
+      "external_key": "ewp-seed-vocab-043",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "He is a new beginner who just started last week."
+    },
+    {
+      "external_key": "ewp-seed-vocab-044",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "The final outcome of the match was a draw."
+    },
+    {
+      "external_key": "ewp-seed-vocab-045",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "She combined together all the ingredients in the bowl."
+    },
+    {
+      "external_key": "ewp-seed-vocab-046",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite concisely.",
+      "difficulty_level": 4,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "In my personal opinion, I think the plan is good."
+    },
+    {
+      "external_key": "ewp-seed-vocab-047",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "They gathered together in the hall for the meeting."
+    },
+    {
+      "external_key": "ewp-seed-vocab-048",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the wordiness and rewrite concisely.",
+      "difficulty_level": 4,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "The reason why he left is because he was unwell."
+    },
+    {
+      "external_key": "ewp-seed-vocab-049",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "Each and every one of the students passed the test."
+    },
+    {
+      "external_key": "ewp-seed-vocab-050",
+      "exercise_type": "vocabulary_in_context",
+      "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
+      "prompt_text": "Remove the redundancy and rewrite.",
+      "difficulty_level": 3,
+      "microtopic_id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+      "source_text": "It is a true fact that the earth orbits the sun."
+    }
+  ]
+}
