@@ -46,7 +46,11 @@ coverage; Study OS = select/deliver.**
 `writing_prompts` carries **no exam-scope column** — migration 214 **drops**
 `exam_id`, `exam_cycle_id`, and `exam_phase_id`. `writing_prompt_targets` is the
 **sole** applicability authority (no dual authority; nothing on the content row
-can contradict a mapping row).
+can contradict a mapping row). Content `metadata` must **never** carry
+`exam_id` / `exam_cycle_id` / `exam_phase_id` (nor the system-owned `external_key`):
+the Content Studio write path rejects those reserved keys at both the API boundary
+and the RPC (migration 215) so free-form metadata cannot reopen the dropped
+dual-authority backdoor.
 
 Applicability precedence: `phase-specific > exam-specific > exam-family >
 global`. Applicability is **evergreen** — no `exam_cycle_id`; cycle rules stay in

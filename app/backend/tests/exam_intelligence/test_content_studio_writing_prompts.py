@@ -311,6 +311,18 @@ def test_create_rejects_reserved_external_key_in_metadata():
     assert not sb.rpc_calls
 
 
+def test_create_rejects_exam_scope_keys_in_metadata():
+    # exam_id/exam_cycle_id/exam_phase_id in metadata would reopen the dual-authority
+    # backdoor migration 214 closed — reject them at the boundary.
+    for key in ("exam_id", "exam_cycle_id", "exam_phase_id"):
+        sb = CSSBStub(_seed())
+        r = _client(sb).post(
+            f"{_BASE}/writing-prompts",
+            json={"reason": "smuggle exam scope", "payload": _valid_payload(metadata={key: _EXAM})})
+        assert r.status_code == 422, key
+        assert not sb.rpc_calls
+
+
 def test_create_rejects_blank_prompt_text():
     sb = CSSBStub(_seed())
     r = _client(sb).post(

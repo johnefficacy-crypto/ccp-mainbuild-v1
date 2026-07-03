@@ -699,6 +699,13 @@ def test_create_rejects_reserved_external_key_metadata():
     assert proc.returncode != 0 and "reserved_metadata_key" in proc.stderr, proc.stderr
 
 
+def test_create_rejects_exam_scope_keys_in_metadata():
+    ex = _scalar("INSERT INTO exams DEFAULT VALUES RETURNING id;")
+    for key in ("exam_id", "exam_cycle_id", "exam_phase_id"):
+        proc = _create(_base_payload(metadata={key: ex}))
+        assert proc.returncode != 0 and "reserved_metadata_key" in proc.stderr, (key, proc.stderr)
+
+
 def test_patch_preserves_external_key_across_metadata_edit():
     _bulk_counts([_row("ek-keep", prompt_text="Keepable sentence.")])
     pid = _scalar(f"SELECT id FROM writing_prompts WHERE metadata->>'external_key'='ek-keep' AND subject_id='{_ENGLISH_ID}';")

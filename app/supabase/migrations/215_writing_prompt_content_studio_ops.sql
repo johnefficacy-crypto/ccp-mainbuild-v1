@@ -143,6 +143,20 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
         OR a.metadata IS DISTINCT FROM b.metadata;
 $$;
 
+-- Reject the DROPPED dual-authority scope columns if smuggled back through
+-- free-form metadata (exam_id / exam_cycle_id / exam_phase_id) — applicability is
+-- writing_prompt_targets' job alone. (external_key is guarded separately: the bulk
+-- RPC legitimately sets it; create/update reject it.)
+CREATE OR REPLACE FUNCTION ewp_assert_no_scope_metadata(p_metadata jsonb)
+RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
+BEGIN
+    IF p_metadata IS NOT NULL
+       AND (p_metadata ? 'exam_id' OR p_metadata ? 'exam_cycle_id' OR p_metadata ? 'exam_phase_id') THEN
+        RAISE EXCEPTION 'reserved_metadata_key: metadata may not carry exam scope keys (use writing_prompt_targets)' USING ERRCODE = 'P0422';
+    END IF;
+END;
+$$;
+
 -- Coarse in-DB guard for prompt_text + required_words (defense-in-depth behind the
 -- API canonicalizer): reject a blank/whitespace prompt, and any required word that
 -- is blank, whitespace-only, multi-token (contains whitespace), or a
@@ -249,6 +263,7 @@ BEGIN
     IF coalesce(p_payload->'metadata', '{}'::jsonb) ? 'external_key' THEN
         RAISE EXCEPTION 'reserved_metadata_key: metadata.external_key is system-owned (bulk import only)' USING ERRCODE = 'P0422';
     END IF;
+    PERFORM ewp_assert_no_scope_metadata(p_payload->'metadata');
     v_rec := jsonb_populate_record(NULL::public.writing_prompts,
         (coalesce(p_payload, '{}'::jsonb) - 'id' - 'created_at' - 'updated_at'
          - 'reviewer_status' - 'is_active'));
@@ -386,6 +401,7 @@ BEGIN
         IF (v_existing.metadata ? 'external_key') THEN
             v_patch := jsonb_set(v_patch, '{metadata,external_key}', v_existing.metadata->'external_key');
         END IF;
+        PERFORM ewp_assert_no_scope_metadata(v_patch->'metadata');
     END IF;
     v_new := jsonb_populate_record(v_existing, v_patch);
     PERFORM ewp_validate_prompt_scope(v_new.subject_id, v_new.topic_id, v_new.microtopic_id, v_new.source_document_id);
@@ -451,6 +467,7 @@ BEGIN
         -- Serialize concurrent first-imports of the SAME (subject, key): the lock
         -- is held to txn end, so a racing caller waits and then observes the row.
         PERFORM pg_advisory_xact_lock(hashtext(p_subject_id::text), hashtext(v_ext));
+        PERFORM ewp_assert_no_scope_metadata(v_elem->'metadata');
         v_meta := coalesce(v_elem->'metadata', '{}'::jsonb) || jsonb_build_object('external_key', v_ext);
         v_incoming := jsonb_populate_record(NULL::public.writing_prompts,
             (v_elem - 'external_key' - 'id' - 'created_at' - 'updated_at')
@@ -676,6 +693,8 @@ REVOKE EXECUTE ON FUNCTION ewp_assert_reason(text) FROM PUBLIC, anon, authentica
 GRANT  EXECUTE ON FUNCTION ewp_assert_reason(text) TO service_role;
 REVOKE EXECUTE ON FUNCTION ewp_assert_prompt_content(text, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION ewp_assert_prompt_content(text, jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION ewp_assert_no_scope_metadata(jsonb) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION ewp_assert_no_scope_metadata(jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION ewp_writing_prompt_content_differs(public.writing_prompts, public.writing_prompts) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION ewp_writing_prompt_content_differs(public.writing_prompts, public.writing_prompts) TO service_role;
 REVOKE EXECUTE ON FUNCTION ewp_validate_prompt_scope(uuid, uuid, uuid, uuid) FROM PUBLIC, anon, authenticated;

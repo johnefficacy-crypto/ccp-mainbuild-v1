@@ -88,11 +88,17 @@ _NOT_NULL = frozenset({
     "difficulty_level", "max_rewrite_attempts", "metadata",
 })
 
-# `external_key` is a SYSTEM-OWNED bulk-import identity (migration 215 idempotency
-# index). Normal create/patch must never set or mutate it through free-form
-# metadata — only the bulk RPC assigns it — so a manual prompt can't hijack an
-# import key and a patch can't drop it and orphan the row from a re-import.
-_RESERVED_METADATA_KEYS = frozenset({"external_key"})
+# Reserved metadata keys the authoring boundary must never accept:
+#   * `external_key` is a SYSTEM-OWNED bulk-import identity (migration 215
+#     idempotency index) — only the bulk RPC assigns it, so a manual prompt can't
+#     hijack an import key and a patch can't drop it and orphan a re-import.
+#   * `exam_id` / `exam_cycle_id` / `exam_phase_id` are the dual-authority scope
+#     columns migration 214 DROPPED — stashing them in free-form metadata would
+#     reopen exactly the exam-scope backdoor content-scoping closed. Applicability
+#     lives solely in writing_prompt_targets.
+_RESERVED_METADATA_KEYS = frozenset({
+    "external_key", "exam_id", "exam_cycle_id", "exam_phase_id",
+})
 
 
 def _canonicalize_required_words(words: list[str]) -> list[str]:
@@ -321,7 +327,7 @@ def _map_rpc_error(exc: Exception, ctx: str) -> HTTPException:
         return HTTPException(status_code=422, detail={
             "error": "prompt_verified_locked",
             "message": "A verified prompt cannot be edited. Move it to 'needs_correction' via review first."})
-    if "target_exists" in low:
+    if "target_exists" in low or "violates unique constraint" in low:
         return HTTPException(status_code=409, detail=str(exc))
     if any(tok in low for tok in (
         "transition_not_allowed", "invalid_target_status", "missing_actor_id",
