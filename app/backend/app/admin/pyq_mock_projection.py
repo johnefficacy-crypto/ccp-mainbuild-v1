@@ -396,6 +396,9 @@ def sync_paper_projection(
         outcome_counts[outcome] = outcome_counts.get(outcome, 0) + 1
         results.append({
             "question_id": qid,
+            # EI-CLEAN-04: same readable label as preview so sync-result rows show
+            # the question text, not a truncated UUID.
+            "label": _short_label(q.get("question_text")),
             "outcome": outcome,
             "mock_question_id": result_data.get("mock_question_id"),
             "detail": result_data,

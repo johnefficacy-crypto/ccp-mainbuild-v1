@@ -15,8 +15,11 @@ import useApiAction from "../../../../lib/hooks/useApiAction";
 
 const _BASE = (paperId) => `/api/admin/mocks/pyq-papers/${paperId}/projection`;
 
-// EI-CLEAN-04: map internal eligibility reason codes to operator-readable text.
-// Codes carry a ":detail" suffix (status / count) which is folded into the label.
+// EI-CLEAN-04: map EVERY internal eligibility reason code (see
+// pyq_mock_projection._check_question_eligibility) to operator-readable
+// remediation text. A ":detail" suffix that is a safe scalar (status / count)
+// may be shown; an identifier detail (correct_option_id, a UUID) is NEVER
+// rendered — the default fallback also drops detail so no code can leak an id.
 function humanizeProjectionReason(reason) {
   const [code, detail] = String(reason ?? "").split(":");
   switch (code) {
@@ -26,31 +29,65 @@ function humanizeProjectionReason(reason) {
       return `Paper not verified${detail ? ` (${detail})` : ""}`;
     case "question_not_verified":
       return `Question not verified${detail ? ` (${detail})` : ""}`;
+    case "not_mcq":
+      return "Not a multiple-choice question";
     case "empty_question_text":
       return "Question text is empty";
+    case "too_few_verified_options":
+      return `Fewer than 2 verified options${detail ? ` (${detail})` : ""}`;
+    case "empty_verified_option_text":
+      return "A verified option has empty text";
+    case "not_exactly_one_correct":
+      return `Needs exactly one correct option (has ${detail ?? "0"})`;
+    case "correct_option_id_mismatch":
+      // detail is a UUID (correct_option_id) — suppress it, describe the fix.
+      return "Correct-answer option mismatch";
     case "not_exactly_one_verified_primary_tag":
-      return detail === "0" || detail === undefined
-        ? "Missing verified primary topic tag"
-        : `Needs exactly one verified primary tag (has ${detail})`;
+      return Number(detail) > 1
+        ? `Multiple verified primary tags (${detail})`
+        : "Missing verified primary topic tag";
     default:
-      // Graceful fallback: de-snake-case an unknown code rather than leak it raw.
+      // Unknown code: de-snake-case the CODE only; never append raw detail.
       return code
-        ? code.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) +
-            (detail ? ` (${detail})` : "")
+        ? code.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())
         : "Ineligible";
+  }
+}
+
+// Group key that preserves remediation-significant detail: a missing primary
+// tag (:0) and duplicate primary tags (:>1) need opposite fixes, so they must
+// aggregate separately even though they share a reason code.
+function blockerGroupKey(reason) {
+  const [code, detail] = String(reason ?? "").split(":");
+  if (code === "not_exactly_one_verified_primary_tag") {
+    return Number(detail) > 1
+      ? "not_exactly_one_verified_primary_tag:multiple"
+      : "not_exactly_one_verified_primary_tag:missing";
+  }
+  return code || "ineligible";
+}
+
+function blockerGroupLabel(key) {
+  switch (key) {
+    case "not_exactly_one_verified_primary_tag:missing":
+      return "Missing verified primary topic tag";
+    case "not_exactly_one_verified_primary_tag:multiple":
+      return "Multiple verified primary tags";
+    default:
+      return humanizeProjectionReason(key);
   }
 }
 
 // Aggregate ineligible preview rows into humanized blocker groups (largest first).
 function aggregateBlockers(questions) {
-  const byCode = new Map();
+  const byKey = new Map();
   for (const q of questions ?? []) {
     if (q.eligible) continue;
-    const code = String(q.reason ?? "").split(":")[0] || "ineligible";
-    byCode.set(code, (byCode.get(code) || 0) + 1);
+    const key = blockerGroupKey(q.reason);
+    byKey.set(key, (byKey.get(key) || 0) + 1);
   }
-  return Array.from(byCode.entries())
-    .map(([code, count]) => ({ code, count, label: humanizeProjectionReason(code) }))
+  return Array.from(byKey.entries())
+    .map(([key, count]) => ({ code: key, count, label: blockerGroupLabel(key) }))
     .sort((a, b) => b.count - a.count);
 }
 

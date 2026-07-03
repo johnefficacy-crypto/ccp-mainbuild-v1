@@ -330,6 +330,12 @@ export default function ReviewActivatePanel({ onGotoTab }) {
             // metrics may carry a single row id for competition / policy rows
             const singleRowId =
               s.metrics?.row_id || s.metrics?.id || null;
+            // EI-CLEAN-03: missing-tag remediation is independent of D10 readiness.
+            // Once one question is planner-ready the section is "ok", but untagged
+            // questions still need attention — surface the CTA regardless of `ok`.
+            const pyqMissingTags =
+              s.section === "pyq_workbench" &&
+              (s.metrics?.pyq_readiness?.missing_verified_tag_count || 0) > 0;
 
             return (
               <div
@@ -384,8 +390,18 @@ export default function ReviewActivatePanel({ onGotoTab }) {
                   )}
                 </div>
                 <div style={{ textAlign: "right", minWidth: 120 }}>
-                  {/* Per-row lock action — gated on exam_intelligence.review */}
-                  {canReview && reviewEntity && singleRowId && !ok ? (
+                  {/* Missing-tag CTA takes priority for the PYQ section even when
+                      the section is otherwise "ok" (planner-ready ≥ 1). */}
+                  {pyqMissingTags ? (
+                    <button
+                      className="btn small"
+                      onClick={() => onGotoTab("pyq")}
+                      data-testid="pyq-review-missing-cta"
+                    >
+                      Review missing topic tags →
+                    </button>
+                  ) : /* Per-row lock action — gated on exam_intelligence.review */
+                  canReview && reviewEntity && singleRowId && !ok ? (
                     <RowLockButton
                       entity={reviewEntity}
                       rowId={singleRowId}
@@ -396,10 +412,7 @@ export default function ReviewActivatePanel({ onGotoTab }) {
                       className="btn small"
                       onClick={() => onGotoTab(tabTarget)}
                     >
-                      {s.section === "pyq_workbench" &&
-                      (s.metrics?.pyq_readiness?.missing_verified_tag_count || 0) > 0
-                        ? "Review missing topic tags →"
-                        : "Resolve →"}
+                      Resolve →
                     </button>
                   ) : !canReview && !ok && tabTarget ? (
                     <button

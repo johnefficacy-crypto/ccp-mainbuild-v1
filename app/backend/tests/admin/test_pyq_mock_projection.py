@@ -555,6 +555,8 @@ class TestSyncPaperProjection:
         assert len(calls) == 1
         assert calls[0]["p_pyq_question_id"] == Q_ID
         assert calls[0]["p_actor_id"] == ACTOR_ID
+        # EI-CLEAN-04: sync-result rows carry the readable label, like preview.
+        assert result["questions"][0]["label"] == "What is X?"
 
     def test_rpc_exception_propagates(self):
         """Internal RPC errors must propagate as exceptions, not silently return outcome='error'."""
