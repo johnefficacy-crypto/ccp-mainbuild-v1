@@ -55,6 +55,11 @@ router = APIRouter(prefix="/admin/exam-intelligence-cms", tags=["admin-exam-inte
 
 PERM_CMS = "exam_intelligence.cms"
 PERM_REVIEW = "exam_intelligence.review"
+# Normal Manage-Exam canonical editing tier (J2 gate §D, permissions.py
+# lines 92-98). Candidate-count create/curate are ordinary operational edits,
+# NOT Advanced Repair — they are gated on `manage`, not `cms`. `cms` stays
+# exclusive to Advanced Repair; `review` stays exclusive to trust/lifecycle.
+PERM_MANAGE = "exam_intelligence.manage"
 
 
 # ─── Helpers (mirror admin_study_os patterns) ─────────────────────────────
@@ -2405,7 +2410,7 @@ def _validate_candidate_count_scope(supabase, row: dict[str, Any]) -> None:
 @router.post("/exam-candidate-counts")
 def create_candidate_count(
     body: WriteEnvelope,
-    admin: dict = Depends(require_permission(PERM_CMS)),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Create an applied-vs-appeared candidate-count row (J3 PR 2).
@@ -2459,7 +2464,7 @@ def create_candidate_count(
 def update_candidate_count(
     count_id: str,
     body: WriteEnvelope,
-    admin: dict = Depends(require_permission(PERM_CMS)),
+    admin: dict = Depends(require_permission(PERM_MANAGE)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     """Curate an existing candidate-count row. ``reviewer_status`` is not

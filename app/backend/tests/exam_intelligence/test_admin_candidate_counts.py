@@ -13,15 +13,13 @@ from app.core.auth import get_current_user
 from tests.persona_questions._stub import SBStub
 
 
-def _build_app(sb: SBStub, role: str = "super_admin"):
+def _build_app(sb: SBStub, role: str = "super_admin", permissions=None):
     app = FastAPI()
     app.include_router(admin_api.router, prefix="/api")
     admin_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
-    user_dict = {
-        "id": "admin-1",
-        "role": role,
-        "permissions": ["exam_intelligence.review"] if role == "admin" else [],
-    }
+    if permissions is None:
+        permissions = ["exam_intelligence.review"] if role == "admin" else []
+    user_dict = {"id": "admin-1", "role": role, "permissions": permissions}
     app.dependency_overrides[get_current_user] = lambda: user_dict
     return app
 
@@ -301,3 +299,45 @@ def test_candidate_counts_blocked_for_non_admin():
     sb = SBStub(_seed())
     client = TestClient(_build_app(sb, role="user"))
     assert client.get("/api/admin/exam-intelligence/candidate-counts").status_code == 403
+
+
+# ── Permission tiers (checkpost P0-1) ────────────────────────────────────────
+
+def test_list_allowed_for_manage_or_review():
+    sb = SBStub(_seed())
+    for perm in ("exam_intelligence.manage", "exam_intelligence.review"):
+        client = TestClient(_build_app(sb, role="admin", permissions=[perm]))
+        assert client.get("/api/admin/exam-intelligence/candidate-counts?exam_id=e1").status_code == 200, perm
+
+
+def test_list_scoped_by_exam_cycle_id():
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb))
+    r = client.get("/api/admin/exam-intelligence/candidate-counts?exam_id=e1&exam_cycle_id=cy1")
+    assert r.status_code == 200
+    assert all(it["exam_cycle_id"] == "cy1" for it in r.json()["items"])
+
+
+def test_list_forbidden_for_cms_only():
+    sb = SBStub(_seed())
+    client = TestClient(_build_app(sb, role="admin", permissions=["exam_intelligence.cms"]))
+    assert client.get("/api/admin/exam-intelligence/candidate-counts").status_code == 403
+
+
+def test_evidence_attach_requires_manage_not_review():
+    sb = SBStub(_seed())
+    body = {"evidence_kind": "official_result", "evidence_role": "primary",
+            "evidence_url": "https://x/y.pdf", "claim_value": {"count_value": 500000}}
+    # review-only operator cannot attach (attach is a manage-tier edit)
+    review = TestClient(_build_app(sb, role="admin", permissions=["exam_intelligence.review"]))
+    assert review.post("/api/admin/exam-intelligence/candidate-counts/cc1/evidence", json=body).status_code == 403
+    # manage operator can attach
+    manage = TestClient(_build_app(sb, role="admin", permissions=["exam_intelligence.manage"]))
+    assert manage.post("/api/admin/exam-intelligence/candidate-counts/cc1/evidence", json=body).status_code == 200
+
+
+def test_review_transition_requires_review_not_manage():
+    sb = SBStub(_seed())
+    body = {"reviewer_status": "reviewed"}
+    manage = TestClient(_build_app(sb, role="admin", permissions=["exam_intelligence.manage"]))
+    assert manage.patch("/api/admin/exam-intelligence/candidate-counts/cc1/review", json=body).status_code == 403

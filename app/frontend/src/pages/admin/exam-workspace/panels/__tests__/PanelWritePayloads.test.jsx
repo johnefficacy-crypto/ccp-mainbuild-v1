@@ -26,6 +26,15 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
+// CompetitionPanel now renders CandidateCountsSection, which reads useAuth and
+// lists /candidate-counts. Mock auth (super_admin) so the section mounts; the
+// candidate list is routed to an empty response below so its rows never
+// collide with the competition-metric lifecycle assertions.
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
+}));
+
 // SetupPanel now imports useApiAction (for cycle create/edit). Mock it so
 // tests never need a ToastProvider context — mirrors Organizations.create.test.jsx.
 jest.mock("../../../../../lib/hooks/useApiAction", () => ({
@@ -63,11 +72,23 @@ function lastPostUrl() {
   return calls[calls.length - 1][0];
 }
 
+// Competition-metrics list response for the current test. Routed by URL so the
+// sibling CandidateCountsSection (which lists /candidate-counts) always gets an
+// empty list and never renders lifecycle buttons that would shadow the
+// competition-metric ones under getByRole.
+let compResponse = { items: [] };
+function setCompetition(resp) {
+  compResponse = resp;
+}
+
 beforeEach(() => {
   api.get.mockReset();
   api.post.mockReset();
   api.patch.mockReset();
-  api.get.mockResolvedValue({ items: [] });
+  compResponse = { items: [] };
+  api.get.mockImplementation((url) =>
+    Promise.resolve(String(url).includes("/candidate-counts") ? { items: [] } : compResponse),
+  );
   api.post.mockResolvedValue({ ok: true });
 });
 
@@ -245,7 +266,7 @@ describe("CompetitionPanel.saveMetric", () => {
     // J3 PR1: publication (aspirant visibility) happens at pending_review ->
     // reviewed (migration 216); reviewed -> locked is a status bump on the
     // already-published row, so a "reviewed" row is what exercises "Lock".
-    api.get.mockResolvedValue({
+    setCompetition({
       items: [{ id: "metric-1", exam_cycle_id: "cyc-1", vacancy_total: 1056, applicant_count: 1100000, reviewer_status: "reviewed" }],
       count: 1,
     });
@@ -265,7 +286,7 @@ describe("CompetitionPanel.saveMetric", () => {
   });
 
   test("Mark reviewed action PATCHes pending_review -> reviewed (publication step)", async () => {
-    api.get.mockResolvedValue({
+    setCompetition({
       items: [{ id: "metric-2", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "pending_review" }],
       count: 1,
     });
@@ -282,7 +303,7 @@ describe("CompetitionPanel.saveMetric", () => {
   });
 
   test("Reopen action requires notes and sends reviewer_notes", async () => {
-    api.get.mockResolvedValue({
+    setCompetition({
       items: [{ id: "metric-3", exam_cycle_id: "cyc-1", vacancy_total: 1056, reviewer_status: "locked" }],
       count: 1,
     });
