@@ -73,9 +73,12 @@ export default function PyqMockProjectionPanel({ paperId }) {
     scope.current = { paperId, version: scope.current.version + 1 };
   }
 
-  useEffect(() => () => {
-    mounted.current = false;
-    scope.current = { paperId: null, version: scope.current.version + 1 };
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      scope.current = { ...scope.current, version: scope.current.version + 1 };
+    };
   }, []);
 
   const current = useCallback((id, version) => (
