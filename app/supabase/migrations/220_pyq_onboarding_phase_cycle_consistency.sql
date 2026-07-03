@@ -25,19 +25,23 @@
 -- schema_migrations version — the CI migration-numbers guard exempts renaming a
 -- duplicate-version file.
 --
--- VERIFY DB (OPERATOR, before applying) — the rename direction assumes the live
--- schema_migrations ledger does NOT already record version 219 as THIS PYQ
--- migration. Both #870 and #871 left apply as OPERATOR PENDING; the repository
--- cannot prove which (if any) 219 is deployed. Query each target FIRST:
+-- OPERATOR ATTESTED (johnefficacy, 2026-07-03): the deployed schema_migrations
+-- ledger records version 219 as 219_j3_applied_vs_appeared — the PYQ onboarding
+-- migration was NOT applied as 219. Per the disposition below this is case (a):
+-- the 219 == J3 / 220 == PYQ mapping is CORRECT. Apply 220 (this file) after 219
+-- (j3). The attestation stands in for the raw ledger query, which cannot be run
+-- from the repo/CI environment; re-verify per target before a fresh rollout.
+--
+-- Disposition (retained for audit / other targets):
+--   * no 219 row, OR 219 == j3_applied_vs_appeared  → this mapping is correct;
+--     apply 219 (j3) then 220 (this file).   ← operator-confirmed case
+--   * 219 == pyq_onboarding_phase_cycle_consistency → the WRONG file would be
+--     renamed: keep PYQ at 219 and renumber/reconcile J3 instead, or execute an
+--     explicit ledger-repair plan before rollout. Do NOT apply blindly.
+-- Re-verification query:
 --   select version, name from supabase_migrations.schema_migrations
 --     where version in ('219','220') order by version;
 --   select max(version::bigint) from supabase_migrations.schema_migrations;
--- Disposition:
---   * no 219 row, OR 219 == j3_applied_vs_appeared  → this mapping is correct;
---     apply 219 (j3) then 220 (this file).
---   * 219 == pyq_onboarding_phase_cycle_consistency → this branch renamed the
---     WRONG file: keep PYQ at 219 and renumber/reconcile J3 instead, or execute
---     an explicit ledger-repair plan before rollout. Do NOT apply blindly.
 
 CREATE OR REPLACE FUNCTION public.cms_pyq_onboarding(
     p_actor_id      text,
