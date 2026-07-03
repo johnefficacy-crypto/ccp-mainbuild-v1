@@ -13,13 +13,14 @@ _BASE = "/api/admin/exam-intelligence-cms"
 _CC = f"{_BASE}/exam-candidate-counts"
 
 
-def _client(sb: SBStub) -> TestClient:
+def _client(sb: SBStub, *, role: str = "super_admin", permissions=None) -> TestClient:
     app = FastAPI()
     app.include_router(cms_api.router, prefix="/api")
     cms_api.get_supabase_admin = lambda: sb  # type: ignore[assignment]
     app.dependency_overrides[cms_api._flag_enabled] = lambda: None
     app.dependency_overrides[get_current_user] = lambda: {
-        "id": "admin-1", "role": "super_admin", "permissions": [cms_api.PERM_CMS],
+        "id": "admin-1", "role": role,
+        "permissions": [cms_api.PERM_CMS] if permissions is None else permissions,
     }
     return TestClient(app, raise_server_exceptions=False)
 
@@ -162,3 +163,44 @@ def test_patch_candidate_count_rejects_category_change():
     assert r.status_code == 422
     assert "No allowed fields" in r.json()["detail"]
     assert sb.db["exam_candidate_counts"][0]["reservation_category_id"] is None
+
+
+# ── Permission tier (checkpost P0-1): candidate-count create/patch are normal
+# Manage-Exam canonical edits gated on `exam_intelligence.manage`, NOT on the
+# Advanced-Repair `exam_intelligence.cms`. ────────────────────────────────────
+
+def _create_body():
+    return {"reason": "seed applied", "payload": {
+        "exam_id": "e1", "exam_cycle_id": "cy1", "scope_kind": "cycle",
+        "count_type": "applied", "count_value": 1200000,
+    }}
+
+
+def test_create_allowed_for_manage_permission():
+    sb = SBStub(_seed())
+    r = _client(sb, role="admin", permissions=["exam_intelligence.manage"]).post(_CC, json=_create_body())
+    assert r.status_code == 200, r.text
+
+
+def test_create_forbidden_for_cms_only_permission():
+    sb = SBStub(_seed())
+    r = _client(sb, role="admin", permissions=["exam_intelligence.cms"]).post(_CC, json=_create_body())
+    assert r.status_code == 403, r.text
+
+
+def test_create_forbidden_for_review_only_permission():
+    sb = SBStub(_seed())
+    r = _client(sb, role="admin", permissions=["exam_intelligence.review"]).post(_CC, json=_create_body())
+    assert r.status_code == 403, r.text
+
+
+def test_patch_allowed_for_manage_permission():
+    sb = SBStub({**_seed(), "exam_candidate_counts": [
+        {"id": "cc1", "exam_id": "e1", "exam_cycle_id": "cy1", "scope_kind": "cycle",
+         "count_type": "applied", "reservation_category_id": None, "count_value": 1000,
+         "reviewer_status": "draft", "version_no": 1},
+    ]})
+    r = _client(sb, role="admin", permissions=["exam_intelligence.manage"]).patch(
+        f"{_CC}/cc1", json={"reason": "curate value", "payload": {"count_value": 1050}})
+    assert r.status_code == 200, r.text
+    assert sb.db["exam_candidate_counts"][0]["count_value"] == 1050

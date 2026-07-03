@@ -21,7 +21,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.auth import require_permission
+from app.core.auth import get_current_user, require_permission
 from app.core.permissions import EXAM_INTELLIGENCE_MANAGE
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence import work_queue as _wq
@@ -50,8 +50,29 @@ from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_dec
 logger = logging.getLogger("career_copilot.api.admin_exam_intelligence")
 
 ADMIN_PERM = "exam_intelligence.review"
+# Manage-Exam canonical editing tier (J2 gate §D). Candidate-count create/
+# curate/reopen/evidence-attach are `manage` operations; their read/list is
+# reachable by `manage` OR `review` so a reviewer can load what they review.
+MANAGE_PERM = "exam_intelligence.manage"
 
 router = APIRouter(prefix="/admin/exam-intelligence", tags=["admin-exam-intelligence"])
+
+
+def _manage_or_review(user: dict = Depends(get_current_user)) -> dict:
+    """Read gate for candidate-count list/read surfaces: `manage` OR `review`
+    (super_admin bypasses). A review-only operator must be able to load the
+    rows they review; a manage operator must be able to load rows they edit."""
+    if user.get("is_anonymous"):
+        raise HTTPException(status_code=403, detail="Anonymous users cannot access this resource")
+    if user.get("role") == "super_admin":
+        return user
+    perms = set(user.get("permissions") or [])
+    if MANAGE_PERM in perms or ADMIN_PERM in perms:
+        return user
+    raise HTTPException(
+        status_code=403,
+        detail="Missing permission: exam_intelligence.manage or exam_intelligence.review",
+    )
 
 # A review row is "stale" once it has sat un-actioned for this long.
 _STALE_REVIEW_DAYS = 14
@@ -1302,7 +1323,7 @@ class CandidateCountEvidenceBody(BaseModel):
 def attach_candidate_count_evidence(
     row_id: str,
     body: CandidateCountEvidenceBody = Body(...),
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(require_permission(MANAGE_PERM)),
 ) -> dict[str, Any]:
     """Attach evidence to a working (draft/pending_review) candidate-count
     revision (resolutions §4.1). Evidence is append-only and immutable once
@@ -1347,7 +1368,7 @@ def attach_candidate_count_evidence(
 @router.get("/candidate-counts/{row_id}/evidence")
 def list_candidate_count_evidence(
     row_id: str,
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(_manage_or_review),
 ) -> dict[str, Any]:
     """List evidence attached to a candidate-count row (review surface)."""
     sb = get_supabase_admin()
@@ -1373,12 +1394,18 @@ def list_candidate_count_evidence(
 @router.get("/candidate-counts")
 def list_candidate_counts(
     exam_id: str | None = Query(None),
+    exam_cycle_id: str | None = Query(None),
     status: str = Query("all"),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0, le=10000),
-    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+    _admin: dict = Depends(_manage_or_review),
 ) -> dict[str, Any]:
-    """List ``exam_candidate_counts`` rows for admin review."""
+    """List ``exam_candidate_counts`` rows for admin review.
+
+    Candidate counts are cycle-scoped facts; pass ``exam_cycle_id`` to scope
+    the read server-side so the caller never has to rely on a client-side
+    slice of an exam-wide top-N (which would drop current-cycle rows once an
+    exam exceeds ``limit`` rows across all cycles)."""
     if status != "all" and status not in _COVERAGE_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status filter")
     sb = get_supabase_admin()
@@ -1387,6 +1414,8 @@ def list_candidate_counts(
         q = sb.table("exam_candidate_counts").select(_CANDIDATE_COUNT_COLUMNS)
         if exam_id:
             q = q.eq("exam_id", exam_id)
+        if exam_cycle_id:
+            q = q.eq("exam_cycle_id", exam_cycle_id)
         if status != "all":
             q = q.eq("reviewer_status", status)
         return q.order("created_at", desc=True).limit(limit + offset).execute().data
@@ -1504,7 +1533,7 @@ def review_candidate_count(
 def reopen_candidate_count_for_edit(
     row_id: str,
     body: ReopenForEditBody = Body(...),
-    admin: dict = Depends(require_permission(ADMIN_PERM)),
+    admin: dict = Depends(require_permission(MANAGE_PERM)),
 ) -> dict[str, Any]:
     """Clone a published (reviewed/locked) candidate-count row into a new
     draft revision. The published row is never mutated in place (OD-7)."""
