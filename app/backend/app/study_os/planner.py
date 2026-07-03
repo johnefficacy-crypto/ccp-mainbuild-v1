@@ -184,6 +184,31 @@ def _resolve_target_exam(supabase: Any, user_id: str) -> dict[str, Any] | None:
     return resolve_exam_by_slug(supabase, candidate)
 
 
+def _cycle_planner_exposed(supabase: Any, cycle_id: str | None) -> bool:
+    """D12/D14 canonical planner / Study-OS exposure for a cycle.
+
+    Reads ``exam_cycles.planner_activation_enabled`` — the same authority cycle_readiness Step 9
+    consumes. Fail-closed: no cycle, a read failure, or an unset flag → not exposed (a `light`
+    exam is never planner-activated without an explicit per-cycle opt-in).
+    """
+    if not cycle_id:
+        return False
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("planner_activation_enabled")
+            .eq("id", cycle_id)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if not rows:
+        return False
+    return bool(rows[0].get("planner_activation_enabled"))
+
+
 def _days_remaining(supabase: Any, exam_id: str) -> int | None:
     today = datetime.now(timezone.utc).date()
     cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
@@ -1021,6 +1046,17 @@ def _compute_plan(
 
     today = datetime.now(timezone.utc).date()
     resolver_result = resolve_exam_target_window(supabase, exam_id=exam_id, today=today)
+
+    # D12/D14 (D05 evidence-engine PR-3): a `light` exam is exposed to Study OS / planner
+    # activation ONLY when its target cycle opts in via `exam_cycles.planner_activation_enabled`
+    # — the SAME canonical authority cycle_readiness Step 9 consumes (shared authority, no
+    # readiness↔planner drift). A non-exposed light exam is not a planner target; readiness marks
+    # its review_activate not_applicable. `core` is always planner-eligible; index_only/archive
+    # planner gating is a separate concern (readiness already marks them N/A).
+    if (exam or {}).get("management_mode") == "light" and not _cycle_planner_exposed(
+        supabase, resolver_result.get("cycle_id")
+    ):
+        return {"generated": False, "reason": "planner_activation_disabled", "exam": exam.get("slug")}
 
     # User autonomy: weighting focus, plan-shape overrides, pin / mute.
     prefs = get_plan_preferences(supabase, user_id)

@@ -84,6 +84,12 @@ def test_exam_activation_empty_to_planner_ready(monkeypatch):
     sb.db["exam_topic_coverage"][0]["reviewer_status"] = "locked"
     coverage_id = sb.db["exam_topic_coverage"][0]["id"]
 
+    # D12 v1 (PR-3): new exams default to management_mode='light' (CMS create-only default).
+    # A `light` cycle is not a Study OS / planner target until an operator opts it in via the
+    # canonical exposure authority `exam_cycles.planner_activation_enabled` — the same flag
+    # cycle_readiness Step 9 and planner._compute_plan share. Perform that operator step.
+    sb.db["exam_cycles"][0]["planner_activation_enabled"] = True
+
     # 11. readiness validator passes.
     monkeypatch.setattr(validator, "get_supabase_admin", lambda: sb)
     monkeypatch.setattr(sys, "argv", ["validate", "--exam-slug", "ssc-cgl", "--strict"])

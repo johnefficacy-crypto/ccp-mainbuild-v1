@@ -141,10 +141,12 @@ class _Seed:
                 })
         return self
 
-    def cycle(self, cid, exam_id, *, name="Cycle 2026", year=2026, status="active"):
+    def cycle(self, cid, exam_id, *, name="Cycle 2026", year=2026, status="active",
+              planner_activation_enabled=False):
         self.db["exam_cycles"].append({
             "id": cid, "exam_id": exam_id, "cycle_name": name,
             "year": year, "status": status, "created_at": _RECENT,
+            "planner_activation_enabled": planner_activation_enabled,
         })
         return self
 
@@ -638,14 +640,30 @@ def test_d12_step9_default_active_phase_lacking_classification_not_ready():
     assert phase_chk["status"] == "missing"
 
 
-def test_d12_step9_light_evaluated_not_na_no_is_active_shortcut():
-    """light has no canonical planner-activation source, so it is NOT marked N/A by
-    is_active — it is evaluated like core (fail-closed). Step 9 is 'missing', never
-    'not_applicable', regardless of is_active."""
+def test_d12_step9_light_not_exposed_is_not_applicable():
+    """PR-3: `light` review_activate is conditional on planner exposure. With
+    planner_activation_enabled=false the cycle is N/A (planner_activation_disabled),
+    applicability=conditional — and is_active is irrelevant. (Shared authority with the planner,
+    which also refuses to generate for this cycle.)"""
     s = _Seed()
     s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
-    s.cycle("cA", "e1")
-    s.phase("pA", "e1", "cA", status="active")
+    s.cycle("cA", "e1", planner_activation_enabled=False)
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
+    step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
+    assert step9["status"] == "not_applicable"
+    assert step9["applicability"] == "conditional"
+    assert step9["not_applicable_reason"] == "planner_activation_disabled"
+
+
+def test_d12_step9_light_exposed_is_evaluated_like_core():
+    """`light` with planner_activation_enabled=true is evaluated like core: with a classified
+    phase but no registered evidence it is `missing` (not N/A) — the exposure gate is lifted."""
+    s = _Seed()
+    s.exam("e1", name="Exam1", mode="light", locked=1, active=False)
+    s.cycle("cA", "e1", planner_activation_enabled=True)
+    s.phase("pA", "e1", "cA", status="active", phase_kind="objective_written")
+    s.policy("light")
     r = _detail(_client_from_seed(s), "e1", cycle_id="cA")
     step9 = next(st for st in r.json()["cycle_readiness"]["steps"] if st["step"] == 9)
     assert step9["status"] == "missing"

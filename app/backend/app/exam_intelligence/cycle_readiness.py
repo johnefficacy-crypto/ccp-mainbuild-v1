@@ -240,6 +240,10 @@ def compute_cycle_readiness(
     management_mode = (exam or {}).get("management_mode", "")
     steps: list[dict[str, Any]] = []
     cycle_status: str | None = None  # captured in Step 1; used by Step 9 evidence conditions
+    # D12/D14: canonical planner/Study-OS exposure for the SELECTED cycle
+    # (exam_cycles.planner_activation_enabled) — the same authority study_os/planner.py consumes.
+    # Captured in Step 1, consumed by Step 9 to gate `light` applicability. Fail-closed default.
+    planner_exposed = False
 
     # -------------------------------------------------------------------------
     # Step 1: cycle_details
@@ -254,7 +258,7 @@ def compute_cycle_readiness(
     else:
         rows = (
             sb.table("exam_cycles")
-            .select("id, cycle_name, year, status")
+            .select("id, cycle_name, year, status, planner_activation_enabled")
             .eq("id", cycle_id)
             .limit(1)
             .execute()
@@ -263,6 +267,7 @@ def compute_cycle_readiness(
         )
         cycle_row = rows[0] if rows else None
         cycle_status = (cycle_row or {}).get("status")
+        planner_exposed = bool((cycle_row or {}).get("planner_activation_enabled"))
         if cycle_row and cycle_row.get("cycle_name") and cycle_row.get("year") is not None:
             s1 = _step(
                 1, "cycle_details", "Cycle details", _READY,
@@ -640,8 +645,10 @@ def compute_cycle_readiness(
     # Step 9 stays fail-closed (never false-ready) — the correct posture.
     #
     # Mode applicability: index_only/archive -> N/A. `light` planner-exposure applicability +
-    # planner enforcement land together in PR-3; here `light` is evaluated like `core`
-    # (fail-closed over-block), so no readiness/planner inconsistency is introduced.
+    # planner enforcement landed together in PR-3: a `light` cycle not exposed via
+    # exam_cycles.planner_activation_enabled is N/A here AND the planner refuses to generate for
+    # it (shared authority, no readiness↔planner drift). An exposed `light` cycle is evaluated
+    # like `core`.
     if management_mode in _MGMT_MODES_NO_ACTIVATE:
         s9 = _na_step(
             9, "review_activate", "Review & activate", "planner_activation_disabled",
@@ -662,6 +669,18 @@ def compute_cycle_readiness(
             applicability="conditional",
             not_applicable_reason="planner_activation_disabled",
             note="Selected cycle is not operational (closed/completed/cancelled)",
+        )
+    elif management_mode == "light" and not planner_exposed:
+        # D12/D14: `light` review_activate is conditional on Study-OS/planner exposure. The
+        # canonical authority (exam_cycles.planner_activation_enabled) is now enforced by BOTH
+        # readiness and study_os/planner.py (PR-3), so a non-exposed light cycle is N/A here AND
+        # the planner refuses to generate for it — no readiness↔planner drift.
+        s9 = _step(
+            9, "review_activate", "Review & activate", _NA,
+            gate_class="hard", evidence_scope="selected_cycle_plus_exam_wide",
+            applicability="conditional",
+            not_applicable_reason="planner_activation_disabled",
+            note="light exam not exposed to Study OS / planner activation for this cycle",
         )
     else:
         cycle_ok = s1["status"] == _READY
