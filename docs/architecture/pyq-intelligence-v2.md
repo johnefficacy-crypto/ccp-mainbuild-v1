@@ -261,6 +261,19 @@ Build a deterministic score computation service that:
 
 Do not write directly into locked `exam_topic_coverage` from an AI job.
 
+**P1 elaboration (J3 PR 4 — Evidence-Coverage derivation):** the gap this
+leaves — locked snapshots exist, but nothing deterministically projects them
+into the canonical `exam_topic_coverage` overlay the planner reads — is
+closed by `app.exam_intelligence.coverage_derivation`. It reads the latest
+**locked** `exam_topic_score_snapshots` row (+ verified
+`syllabus_topic_mentions`) and writes only `draft` `exam_topic_coverage`
+rows (`source_basis='evidence_derived'`); priority/confidence/high-yield are
+copied verbatim from the locked snapshot, never recomputed, preserving the
+rule above. See `docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md`
+and `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5 for the full,
+resolved contract — this note is a pointer, not a re-specification of the
+scoring or bucketing logic.
+
 ### P2 — governed cognitive and distractor classification
 
 Add a reviewed classification record rather than hiding labels in generic JSON metadata. It should support:
