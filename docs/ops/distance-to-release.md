@@ -5,12 +5,29 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 2eb611fb` · 2026-07-02
+**as_of:** `main @ 443a74e` · 2026-07-03
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
 **Legend:** ✅ CLEAR · 🟡 PARTIAL / validation-pending · ⛔ BLOCKED/open · ⏳ NOT STARTED
 **Owner:** OPS = operator (staging/prod/Render/Supabase) · ENG = code change still needed
+
+---
+
+## Canonical gate status (operator-confirmed 2026-07-03)
+
+```text
+F1  Core features:                  COMPLETE
+F3  Extraction archive race:        OPERATOR PASS
+P3  Migration 182 validation:       OPERATOR PASS
+P5  Telemetry + boundary sign-off:  OPERATOR PASS (freeze record MERGED, PR #864)
+P6  Scheduler drain:                OPERATOR PASS
+P7  Final candidate revalidation:   OPERATOR PASS
+P8  14-day shadow window:           NOT STARTED — OPERATOR HOLD
+P9  Bounded live canary:            NOT STARTED
+P10 Live mastery flip:              BLOCKED
+T0: NOT SET (deliberate operator hold)
+```
 
 ---
 
@@ -20,97 +37,99 @@
 |---|------|-------|--------|----------------------------|--------|
 | **Feature-complete (Condition 1)** |
 | F1 | Core features merged (RPC/RLS hardening, snapshot RPC, I9 containment, placeholder isolation) | ENG | ✅ CLEAR | on `main` | checklist |
-| F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | 🟡 PARTIAL — D12 v1 IN PROGRESS; D06/D11/D14/D15 v2 deferred | **D12 v1:** full D05 evidence-policy engine (multi-PR program: PR-1=#843 schema ✅, PR-2=#849 evaluator ✅, PR-3 planner enforcement, PR-4 UI wiring). Step 9 fail-closed until PR-4 registers evidence. **D06/D11/D14/D15:** operator-approved v2 deferral (product decision 2026-07-02). | checklist "I9 implementation" |
-| F3 | Extraction archive-race terminalization | ENG | 🟡 CODE-FIXED, VALIDATION PENDING | Caller now calls `_fail()` before raising on `document_archived` (and `finalize_failed`); mid-flight regression test added. Needs live/staging validation no jobs strand `running` after archive race. | `text_extract.py:476-492` + regression test |
+| F2 | I9 deferred noncompliance frozen as v1/v2 — **D11, D12, D14, D06, D15** | ENG | 🟡 PARTIAL — D12 v1 IN PROGRESS; D06/D11/D14/D15 v2 deferred | **D12 v1:** full D05 evidence-policy engine (multi-PR program). **PR-1=#843 (schema) ✅ merged**, **PR-2=#849 (evaluator + Step 9 wiring) ✅ merged**; **PR-3 (planner enforcement) + PR-4 (evidence upload/review UI) OPEN**. Step 9 evidence-driven but fail-closed until PR-4 registers evidence (never false-ready). D06/D11/D14/D15 = operator-approved v2 deferral (2026-07-02). | checklist "I9 implementation" |
+| F3 | Extraction archive-race terminalization | ENG+OPS | ✅ CLEAR | **OPERATOR PASS (2026-07-02, deployed SHA `920024c4`):** archive-race test ended with job `failed` (`error_code=document_archived`), document still `archived`, zero pages committed. | `audits/2026-07-02-f3-extraction-archive-race-validation.md` |
 | **Production-ready (Condition 2)** |
-| P1 | Apply full migration chain to staging→prod (head `212`) via the approved runner | OPS | ⏳ NOT STARTED | **precedes P2/P4; parallel with P8 — does NOT gate T0** | runbook Phase 1 |
-| P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run | verification script |
+| P1 | Apply full migration chain to staging→prod via the approved runner | OPS | ⏳ NOT STARTED — **recalc needed** | Ledger head is now **220** (not 212). Instructions must be recalculated against the live `schema_migrations` state. **parallel with P8 — does NOT gate T0** | runbook Phase 1 |
+| P2 | RPC/RLS live verification (`scripts/v1_release_verification.sql`) + RLS real-JWT proof | OPS | 🟡 CODE-READY | needs P1, then a live run; no newer operator evidence in repo | verification script |
 | P3 | Migration 182 operator validation | OPS | ✅ CLEAR | OPERATOR VALIDATED | `audits/2026-06-30-migration-182-operator-validation.md` |
-| P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle | checklist (mig 204) |
-| P5 | PR-7 36-file fingerprint boundary approved + re-pinned at deployed SHA | OPS | 🟡 OPERATOR-APPROVAL ONLY | verifier code/tooling closed (#803/#814, ref digest `f2ee2c40…`); needs **PR #800 staging delivery validation + boundary sign-off**; fingerprint is reference-only until re-pinned at `window_start` | `pr7_shadow_gate_results.md` |
-| P6 | Scheduler verification (jobs/manual-run/drain) | OPS | ✅ CLEAR | OPERATOR PASS (2026-07-01, candidate SHA `b9bd9d7b`): job `cf2a8f44` drained in 19.67 s; `manual: absent`, `derivations: 1` on capturing tick; all `pr1_scheduler_drain_verification.md` steps met. | `audits/2026-07-01-scheduler-drain-validation.md` |
-| P7 | **PR-6** final-candidate revalidation rerun (clear Gate A) | OPS+ENG | ✅ CLEAR | OPERATOR PASS 2026-07-02 at deployed SHA `6ecfbed956cc467c70ad50c4f7dce3b1a2443d25`: all 12 start gates PASS; Gate 4 fresh fingerprint `b3cec4ac…` (36 files); Gate A PASS (`review_state` updated, notes-only preserved, null-guard held, 409 on breakdowns); Gates B–E, H–J PASS; F/G INSUFFICIENT_DATA exit 3 (permitted). PR #840 (code fix) + PR #850 (PASS audit) merged. | `audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md` |
-| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **THE FLOOR** | full prerequisite chain below; **any threshold miss restarts the 14 days** | `pr7_shadow_gate_results.md` |
+| P4 | Migration 204 snapshot-review RPC validated on staging | OPS | 🟡 CODE-READY | needs P1; grant matrix + review→lock cycle; no newer operator evidence in repo | checklist (mig 204) |
+| P5 | Telemetry (PR #800) staging validation + 36-file fingerprint boundary approval + freeze record | OPS | ✅ CLEAR | **OPERATOR PASS (2026-07-03), freeze record MERGED (PR #864):** checks 3A/3B/3C passed at source SHA `6171027a…`; 36-file boundary approved; freeze-candidate digest `51cd6928…`. | checklist rows P5 / PR #800; PR #864 |
+| P6 | Scheduler verification (jobs/manual-run/drain) | OPS | ✅ CLEAR | OPERATOR PASS (2026-07-01) | `audits/2026-07-01-scheduler-drain-validation.md` |
+| P7 | **PR-6** final-candidate revalidation rerun | OPS+ENG | ✅ CLEAR | OPERATOR PASS 2026-07-02 at deployed SHA `6ecfbed9`: all 12 start gates PASS; Gate A PASS; B–E,H–J PASS; F/G INSUFFICIENT_DATA exit 3 (permitted). | `audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md` |
+| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **OPERATOR HOLD (the floor)** | T0 deliberately held until in-flight development + E2E onboarding readiness complete; then re-pin at the final SHA + record `window_start`. **Any threshold miss restarts the 14 days.** | `pr7_shadow_gate_results.md` |
 | P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
-| P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + sign-offs | `pr9_live_approval.md` |
+| P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + P1/P2/P4 + sign-offs | `pr9_live_approval.md` |
 | **Release-validated (Condition 3)** |
-| R1 | Deployed-env E2E green (main user + admin journeys) | OPS | ⏳ NOT STARTED | Playwright vs deployed env | runbook Phase 5 |
+| R1 | Deployed-env E2E green (main user + admin journeys) | OPS | ⏳ NOT STARTED | Playwright vs deployed env; part of the pre-T0 E2E-onboarding readiness the operator is holding T0 for | runbook Phase 5 |
 | R2 | Staging pilot (primary journey, no manual DB intervention) | OPS | ⏳ NOT STARTED | content + real users; **can overlap P8** | runbook Phase 5 |
 | R3 | Prod canary + no open P0/P1 + perf/error targets | OPS | ⏳ NOT STARTED | after R1/R2 + P10 | runbook Phase 5 |
 | R4 | Support / privacy / terms / operational ownership | OPS | ⏳ NOT STARTED | non-eng readiness; **parallel** | runbook Phase 5 |
 
 ---
 
-## P8 (PR-7) start prerequisites — the exact chain
+## Recently-merged feature tracks (merged ≠ operator-complete)
 
-The 14-day clock may start **only** when ALL hold (do not start on P5+P7 alone):
-1. **F3** extraction terminalization fixed (no jobs can strand `running`).
-2. **P6** scheduler evidence complete (jobs/manual-run/**drain**) — ✅ OPERATOR PASS (2026-07-01).
-3. **P7** PR-6 PASS (Gate A cleared) on the deployed candidate SHA — ✅ OPERATOR PASS (2026-07-02, SHA `6ecfbed9`).
-4. **P5** PR #800 staging delivery validation + explicit 36-file boundary approval.
-5. Deployed SHA **matches the approved candidate**, with **continuous `FF_MOCK_MASTERY_WRITES=shadow`**.
-6. A **freshly computed + attested fingerprint at that deployed SHA** (re-pin from the `f2ee2c40…` reference).
-7. An exact UTC **`window_start`** recorded.
+These landed on `main` since the July-2 snapshot but are **not** release-validated — each still
+needs some combination of live migration application, RLS/grant verification, click-through, or
+live E2E before it counts toward production readiness:
 
-Call the moment all 7 hold **T0**. T0 has not occurred.
+- **D12 v1 (D05 evidence engine):** PR-1 #843 + PR-2 #849 merged; PR-3/PR-4 open.
+- **J3 — Applied-vs-Appeared (PR #870):** typed candidate-count tables + atomic ratio switch merged; **live DB validation pending**.
+- **J3 — Evidence-Coverage derivation (PR #867):** migration + endpoint code-landed; **staging validation pending**.
+- **Content Studio (PR #868):** consolidated UI + route + writing-prompt operator surface merged.
+- **Exam-intel cleanup:** phase-kind editor + PYQ phase selector (PR #871); EI-CLEAN-03/04 (#875); EI-CLEAN-05/06 (#876, current head). Remaining: **EI-CLEAN-07** (Setup phase-timeline regression + mutation governance).
+- **Migration collision resolved:** J3 migration 219 vs PYQ-onboarding 219 → latter renumbered **220** with operator attestation of the deployed ledger mapping.
+
+---
+
+## Pre-T0 status
+
+```text
+F3:               complete (OPERATOR PASS)
+P5:               complete (OPERATOR PASS; freeze record MERGED, PR #864)
+Final T0 re-pin:  pending after development freeze (fresh verify at the final SHA)
+window_start:     not recorded
+```
+
+F3 and P5 are **no longer** on the remaining-pre-T0 blocker list. T0 is a **deliberate operator
+hold** — not a single pending fingerprint step — until in-flight development and E2E onboarding
+readiness complete.
 
 ## Dependency edges (for an honest ETA, not a single number)
 
 ```
 Serial spine to T0:
-  F3 ─┐
-  P1 ─┴─► P2, P4          (P1 must precede the live P2/P4 verification)
-  P6(drain) ─► P7(PR-6) ✅  (both CLOSED 2026-07-01 / 2026-07-02)
-  P5(boundary+#800) ──────┐
-  [P7 PASS — done] ───────┴─► [re-pin fingerprint + set window_start] = T0
-        │
-        ▼
-  P8  PR-7 14-day shadow   = 14 days HARD (restart on any miss)   ← only fixed number
-        │
-        ▼
+  F3 ✅ ─┐
+  P5 ✅ ─┤ (freeze record MERGED #864)
+  P6 ✅ ─┤
+  P7 ✅ ─┴─► [finish pre-T0 dev + E2E-onboarding readiness]
+                    │
+                    ▼
+        [choose final release SHA → deploy exact SHA (FE+BE)
+         → confirm FF_MOCK_MASTERY_WRITES=shadow
+         → re-run 36-file fingerprint verifier at that SHA (fresh, not 51cd6928 blindly)
+         → record window_start] = T0
+                    │
+                    ▼
+  P8  PR-7 14-day shadow   = 14 days HARD (restart on any threshold miss)   ← only fixed number
+                    │
+                    ▼
   P9 canary ─► P10 flip ─► R1 E2E ─► R3 prod canary
-Parallelizable: F2 decision, R2 pilot (overlaps P8), R4 readiness.
+Parallelizable (do NOT gate T0): P1/P2/P4 live-migration (head 220) + RLS proof; R2 pilot; R4 readiness.
 ```
 
-**ETA:** the only hard duration is **P8 = 14 days**. Remaining pre-T0 work (F3 validation + P5
-approval; **P6/P7 DONE**) is operator-/eng-paced — realistically a **handful of days** but not
-reproducibly fixed here, so it is expressed as a range, not a promise. **P1/P2/P4** (migration
-chain `head 212` + RLS + snapshot RPC) are **parallel release gates** that run concurrently with
-P8 and do NOT gate T0 — they must complete before P10 (live flip). Post-window (P9→R3) is a
-**few days**. **Floor ≈ 3 weeks from T0**, *longer* if the shadow window restarts.
-Do not quote a calendar date until T0 is set.
+**ETA:** the only hard duration is **P8 = 14 days**. **A calendar estimate is not supportable now:**
+T0 is intentionally held pending development + E2E-onboarding readiness, whose completion is
+operator-paced and not fixed here. The prior "≈ 4 weeks from T0" framing is withdrawn until T0 is
+actually set. P1/P2/P4 (migration chain to prod at ledger head 220 + RLS/RPC verification) are
+parallel release gates that must complete before the P10 live flip but do not gate T0.
+Do not quote a calendar date until `window_start` is recorded.
 
-## Shortest path right now
+## Shortest path to T0
 
-**P6 is CLOSED** (PR #827 merged). **P7 is CLOSED** (OPERATOR PASS 2026-07-02 at SHA `6ecfbed9`;
-PR #840 code fix + PR #850 PASS audit merged). **F3 is CODE-FIXED**
-(PR #834 merged: `_update_job` guard + `finalize_failed` regression test; needs live/staging
-validation only). **P5** is the active operator blocker running in parallel with F3 validation.
+```text
+Finish selected pre-T0 development
+→ complete required live/E2E operator validation (incl. onboarding readiness)
+→ choose final release SHA
+→ deploy the exact SHA to frontend and backend
+→ confirm FF_MOCK_MASTERY_WRITES=shadow
+→ rerun the 36-file fingerprint verifier at that SHA (fresh attestation)
+→ record exact UTC window_start
+→ start P8 (14-day shadow window)
+```
 
-### F3 — CODE-FIXED, VALIDATION PENDING (PR #834, merged)
-`finalize_document_extraction` → `document_archived` now calls `_fail()` before raising (no job
-can strand `running`); mid-flight regression test added. No code work remains — ENG dependency is
-MET. Live/staging confirmation still required before T0.
-
-### P7 — OPERATOR PASS (2026-07-02, SHA `6ecfbed9`)
-CLOSED. Full evidence in `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`.
-Gate 4 fresh fingerprint: `b3cec4accf3bdf729d3f68d9694dcbb5fc69e96bfbc165f5739973de7738da8b`
-(36 files; one file differs from reference `f2ee2c40…`: `canonical.py`, the Gate A fix).
-Gate A PASS: `review_state` changed `unreviewed→reviewed`; notes-only preserved; null-guard held.
-Gates B–E, H–J PASS. F/G INSUFFICIENT_DATA exit 3 (permitted). No ENG action remains.
-
-### P5 — active operator track (independent; parallel with F3)
-PR #800 staging delivery validation (3 manual checks) + explicit 36-file boundary sign-off.
-The fingerprint re-attestation at the final deployed SHA must happen at T0 time, not before.
-
-### After F3 validation + P5 approval → T0
-F3 and P5 are the remaining **external** gates. Once both clear, the operator must still satisfy
-conditions 5–7 from the prerequisite chain before recording T0:
-
-5. Deployed SHA **matches the approved candidate**, with **continuous `FF_MOCK_MASTERY_WRITES=shadow`** — re-verify at the final SHA, not the P7 SHA.
-6. **Freshly computed + attested fingerprint at that exact deployed SHA** — re-run `verify_mastery_fingerprint.sh` at the final SHA; do NOT copy the P7 digest (`b3cec4ac…`) blindly. Record the new per-file attestation.
-7. **Exact UTC `window_start` recorded** — set T0 only when 5 and 6 are both confirmed. This is the moment the 14-day **P8** clock starts.
-
-> **Now:** F3 live/staging validation + P5 operator sign-off (parallel). On completion, re-verify
-> conditions 5–7 at the final deployed SHA and record `window_start`. The 14-day P8 window cannot
-> open until F3 + P5 + conditions 5–7 all hold simultaneously.
+> **Now:** the pre-T0 floor is operator-held. F3 + P5 + P6 + P7 are all CLOSED. The remaining
+> pre-T0 work is finishing in-flight development and the live/E2E-onboarding validation the
+> operator is holding T0 for; then re-pin at the final SHA and record `window_start`. In parallel
+> (not gating T0): P1/P2/P4 live-migration application at ledger head **220** + RLS/RPC verification.
