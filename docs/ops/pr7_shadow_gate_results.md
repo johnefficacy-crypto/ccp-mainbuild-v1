@@ -11,7 +11,7 @@ related_audit: docs/audits/mastery-shadow-14day-gate-2026-06-20.md
 # PR7: 14-Day Mastery Shadow Gate
 
 **Type:** Operator evidence
-**Status:** NOT STARTED — BLOCKED ON P5 (36-file boundary sign-off); T0 not set
+**Status:** NOT STARTED — OPERATOR HOLD; T0 not set (P5 + freeze record MERGED, PR #864)
 
 ---
 
@@ -29,9 +29,16 @@ Full evidence: `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.
 | `FF_MOCK_MASTERY_WRITES=shadow` confirmed in deployed environment | **✅ MET (2026-07-02)** | Confirmed active throughout the 2026-07-02 operator run. |
 | Validated baseline SHA deployed and confirmed A==B | **✅ MET (2026-07-02)** | Render deployed SHA B == candidate SHA A confirmed at the 2026-07-02 run. |
 
-All three conditions met as of 2026-07-02. The window has not opened because P5
-(36-file boundary operator approval) is still pending and `window_start` has not
-been recorded. T0 has not occurred.
+All three conditions above were met at the 2026-07-02 P7 run SHA. **P5 (36-file
+boundary approval) and the freeze control record are now COMPLETE and MERGED**
+(PR #864, 2026-07-03; approved source SHA `6171027a…`, freeze-candidate digest
+`51cd6928…`). The window has still not opened because **T0 is a deliberate operator
+hold** pending completion of in-flight development + E2E onboarding readiness — it is
+NOT blocked on any single fingerprint step. `main` has since advanced past both the
+P7 SHA (`6ecfbed9`) and the freeze-candidate SHA, so conditions above (deployed SHA
+== candidate, continuous shadow, fresh fingerprint) must be **re-verified at the final
+deployment SHA** chosen after development freeze — do NOT reuse the `51cd6928…` digest
+blindly. `window_start` has not been recorded. T0 has not occurred.
 
 ---
 
@@ -81,8 +88,8 @@ superseded. The v2 fingerprint manifest boundary is defined at
 event-acceptance dependencies `core/auth.py` + `lib/supabase.js` + the
 answer-write dependency `useAnswerSync.js`).
 
-**FREEZE PENDING — all code/tooling blockers resolved; OPERATOR APPROVAL the
-only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
+**FREEZE COMPLETE — operator approval recorded and MERGED (PR #864, 2026-07-03);
+T0 remains an operator hold pending development/E2E-onboarding freeze.** Disposition of the PR #803 blockers:
 - **[P0 RESOLVED]** Submit-time telemetry race — (a) `MockAttemptShell.doSubmit()`
   `await`s `eventBus.flushAndWait()` (time-bounded, ACK-gated) BEFORE POSTing
   `/submit`; (b) the backend idempotently recomputes analytics on late `/events`
@@ -151,12 +158,15 @@ Steps 3–8 are sequential and each depends on those above it.
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
 2. **Freeze the v2 fingerprint manifest (BOUNDARY APPROVED; FREEZE RECORD
-   PENDING MERGE):** The operator completed PR #800 staging checks 3A, 3B,
+   MERGED — PR #864, 2026-07-03):** The operator completed PR #800 staging checks 3A, 3B,
    and 3C and approved the 36-file boundary on 2026-07-03 against source main
    SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`. The regenerated freeze-candidate digest is
-   `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`. Merge this control-record change, confirm the deployed
-   Render SHA and `FF_MOCK_MASTERY_WRITES=shadow`, then verify the fingerprint
-   at that post-merge main SHA before setting `window_start`.
+   `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`. **The control record is
+   merged; T0 remains an operator hold.** Because `main` has advanced past the freeze-candidate
+   SHA, this digest is a CANDIDATE only — after the development freeze, choose the final release
+   SHA, confirm the deployed Render SHA and `FF_MOCK_MASTERY_WRITES=shadow`, then **re-verify the
+   fingerprint at that final SHA** (fresh attestation, do not reuse `51cd6928…` blindly) before
+   setting `window_start`.
 
 3. **Migration 182 deployment: OPERATOR VALIDATED (2026-06-30).** All
    eight durable evidence items — target environment, deployed SHA, UTC
