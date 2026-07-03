@@ -2197,6 +2197,182 @@ def update_competition_metric(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  Applied-vs-Appeared candidate counts (migration 217, J3 PR 2). Created
+#  at reviewer_status='draft'; moves through review lifecycle via the
+#  review-side router (admin_exam_intelligence.py). CMS-side create + curate.
+# ════════════════════════════════════════════════════════════════════════
+
+_CANDIDATE_COUNT_FIELDS = {
+    "exam_id", "exam_cycle_id", "exam_phase_id",
+    "scope_kind", "count_type", "reservation_category_id", "count_value",
+    "source_basis", "confidence_score", "reviewer_notes", "metadata",
+    # version_no/supersedes_id/superseded_at/is_current_published are
+    # server-controlled (lifecycle RPC only) — never client-writable.
+}
+_CANDIDATE_COUNT_SOURCE_BASIS = (
+    "manual", "official", "reviewed_analysis", "derived", "model_generated"
+)
+
+
+def _validate_candidate_count_payload(row: dict[str, Any]) -> None:
+    if row.get("source_basis") and row["source_basis"] not in _CANDIDATE_COUNT_SOURCE_BASIS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"source_basis must be one of {_CANDIDATE_COUNT_SOURCE_BASIS}",
+        )
+    if row.get("confidence_score") is not None:
+        try:
+            n = float(row["confidence_score"])
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="confidence_score must be numeric")
+        if not (0 <= n <= 1):
+            raise HTTPException(status_code=422, detail="confidence_score must be in [0, 1]")
+    if "count_value" in row:
+        try:
+            n = int(row["count_value"])
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="count_value must be a non-negative integer")
+        if n < 0:
+            raise HTTPException(status_code=422, detail="count_value must be a non-negative integer")
+    if row.get("scope_kind") and row["scope_kind"] not in ("cycle", "phase"):
+        raise HTTPException(status_code=422, detail="scope_kind must be one of ('cycle', 'phase')")
+    if row.get("count_type") and row["count_type"] not in ("applied", "appeared"):
+        raise HTTPException(status_code=422, detail="count_type must be one of ('applied', 'appeared')")
+
+
+def _validate_candidate_count_scope(supabase, row: dict[str, Any]) -> None:
+    """App-layer fast-path mirror of the DB scope-integrity trigger and the
+    OD-3 count_type/scope_kind shape CHECK (migration 217) — a phase must
+    belong to the same exam AND cycle. The DB is the source of truth; this
+    gives a fast 422 instead of a raw DB error for the common cases."""
+    count_type = row.get("count_type")
+    scope_kind = row.get("scope_kind")
+    phase_id = row.get("exam_phase_id")
+
+    if count_type == "applied" and (scope_kind != "cycle" or phase_id):
+        raise HTTPException(
+            status_code=422,
+            detail="applied counts must be scope_kind='cycle' with no exam_phase_id (OD-3)",
+        )
+    if count_type == "appeared":
+        if scope_kind == "phase" and not phase_id:
+            raise HTTPException(status_code=422, detail="A phase-scoped appeared count requires exam_phase_id")
+        if scope_kind == "cycle" and phase_id:
+            raise HTTPException(status_code=422, detail="A cycle-scoped appeared count must not carry exam_phase_id")
+    if scope_kind == "cycle" and phase_id:
+        raise HTTPException(status_code=422, detail="scope_kind='cycle' rows must not carry exam_phase_id")
+    if scope_kind == "phase" and not phase_id:
+        raise HTTPException(status_code=422, detail="scope_kind='phase' rows require exam_phase_id")
+
+    if phase_id:
+        phase = _safe_select(supabase, "exam_phases", id=phase_id)
+        if not phase:
+            raise HTTPException(status_code=422, detail="exam_phase_id does not resolve")
+        if phase.get("exam_id") != row.get("exam_id"):
+            raise HTTPException(status_code=422, detail="exam_phase_id belongs to a different exam")
+        phase_cycle = phase.get("exam_cycle_id")
+        if phase_cycle and phase_cycle != row.get("exam_cycle_id"):
+            raise HTTPException(status_code=422, detail="exam_phase_id belongs to a different exam_cycle_id")
+
+
+@router.post("/exam-candidate-counts")
+def create_candidate_count(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Create an applied-vs-appeared candidate-count row (J3 PR 2).
+
+    Lands at ``reviewer_status='draft'``. Reviewers move it through
+    pending_review -> reviewed -> locked via the review-side router; only
+    reviewed/locked rows feed the ratio denominator (resolutions §1.2 PR-2
+    half) and are surfaced to aspirants.
+    """
+    supabase = get_supabase_admin()
+    row = {k: v for k, v in body.payload.items() if k in _CANDIDATE_COUNT_FIELDS}
+    if not row.get("exam_id"):
+        raise HTTPException(status_code=422, detail="exam_id is required")
+    if not row.get("exam_cycle_id"):
+        raise HTTPException(status_code=422, detail="exam_cycle_id is required")
+    if not row.get("scope_kind"):
+        raise HTTPException(status_code=422, detail="scope_kind is required")
+    if not row.get("count_type"):
+        raise HTTPException(status_code=422, detail="count_type is required")
+    if row.get("count_value") is None:
+        raise HTTPException(status_code=422, detail="count_value is required")
+    if not _safe_select(supabase, "exams", id=row["exam_id"]):
+        raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    if not _safe_select(supabase, "exam_cycles", id=row["exam_cycle_id"]):
+        raise HTTPException(status_code=422, detail="exam_cycle_id does not resolve")
+    _validate_candidate_count_payload(row)
+    _validate_candidate_count_scope(supabase, row)
+
+    row["reviewer_status"] = "draft"
+    row["version_no"] = 1
+    try:
+        inserted = supabase.table("exam_candidate_counts").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        if "duplicate key" in msg.lower() or "ecc_working" in msg.lower():
+            raise HTTPException(
+                status_code=409,
+                detail="A working (draft/pending_review) revision already exists for this scope — edit it instead of creating a new one",
+            ) from exc
+        raise HTTPException(status_code=422, detail=f"Could not create candidate count: {msg}") from exc
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.candidate_count.create",
+        entity_type="exam_candidate_count", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/exam-candidate-counts/{count_id}")
+def update_candidate_count(
+    count_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Curate an existing candidate-count row. ``reviewer_status`` is not
+    movable here; the review-side router owns that lifecycle. Scope fields
+    are immutable post-create for the same reason as competition metrics —
+    correcting scope means creating a new row for the right scope."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "exam_candidate_counts", id=count_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="exam_candidate_count not found")
+    patch = {
+        k: v for k, v in body.payload.items()
+        if k in _CANDIDATE_COUNT_FIELDS
+        and k not in ("exam_id", "exam_cycle_id", "exam_phase_id", "scope_kind", "count_type")
+    }
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    _validate_candidate_count_payload(patch)
+
+    patch["updated_at"] = _now_iso()
+    try:
+        updated = supabase.table("exam_candidate_counts").update(patch).eq("id", count_id).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        low = msg.lower()
+        if "published_row_immutable" in low:
+            raise HTTPException(
+                status_code=409,
+                detail="This row is published (reviewed/locked) and its content is frozen — reopen it for edit (clones a new draft revision) instead of patching it",
+            ) from exc
+        raise HTTPException(status_code=422, detail=f"Could not update candidate count: {msg}") from exc
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.candidate_count.update",
+        entity_type="exam_candidate_count", entity_id=count_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Subjects (taxonomy, migration 029)
 # ════════════════════════════════════════════════════════════════════════
 
