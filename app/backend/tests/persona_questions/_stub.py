@@ -161,13 +161,28 @@ class _Query:
             return re.fullmatch(pattern, str(cell), flags) is not None
         return True  # unknown operator: do not exclude
 
+    @staticmethod
+    def _cell(row, key):
+        """Resolve a filter key that may be a PostgREST JSON path
+        (``col->k1->>k2``) against nested dict/JSONB columns, or a plain
+        top-level column name."""
+        if "->" not in key:
+            return row.get(key)
+        parts = key.replace("->>", "->").split("->")
+        value: Any = row
+        for part in parts:
+            if not isinstance(value, dict):
+                return None
+            value = value.get(part)
+        return value
+
     def _matches(self, row):
         for key, op, val in self.filters:
             if op == "or":
                 if not any(self._or_cond_true(row, c, o, v) for c, o, v in val):
                     return False
                 continue
-            cell = row.get(key)
+            cell = self._cell(row, key)
             if op == "eq" and cell != val:
                 return False
             if op == "neq" and (cell is None or cell == val):

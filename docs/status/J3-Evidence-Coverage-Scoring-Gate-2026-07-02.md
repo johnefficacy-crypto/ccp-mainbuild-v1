@@ -1,7 +1,7 @@
 # Evidence-Based Coverage Scoring Gate — J3 sub-item
 
 - Document type: J3 implementation contract — deterministic, evidence-derived `exam_topic_coverage` scoring, its review lifecycle, and its relationship to the already-locked `exam_topic_score_snapshots` pipeline.
-- Status: **OPERATOR APPROVED — 2026-07-02.** Resolutions from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 are approved by the operator (recorded on PR #861, 2026-07-02). Implementation may dispatch as PR 4 (Coverage derivation, migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.
+- Status: **OPERATOR APPROVED — 2026-07-02.** Resolutions from docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 are approved by the operator (recorded on PR #861, 2026-07-02). Implementation dispatched as PR 4 (Coverage derivation) and **landed as migration `217_evidence_derived_coverage.sql`, merged 2026-07-03 in PR #867 immediately after PR 1 (+ follow-up fix #869), ahead of PR 2 (Applied-vs-Appeared)** — this deviates from the originally planned PR1 → PR2 → PR4 migration-slot sequencing in docs/status/J3-Implementation-Checklist-2026-07-02.md and reflects an explicit operator override ("merge PR #867 now that PR #869 has merged") rather than a mistake; PR 2 has not landed yet.
 - Date: 2026-07-02
 - Parent track: `J3 — schema/domain redesign` (checklist row: "evidence-based coverage scoring"), `DEFERRED — CONTRACT-FIRST`.
 - Authority: `docs/architecture/pyq-intelligence-v2.md` (scoring contracts, snapshot authority, "do not write directly into locked `exam_topic_coverage` from an AI job"); `docs/architecture/domain-model.md` (entity canonicity); `CLAUDE.md` invariants (Determinism > Heuristics, verified-only reads, primary-only PYQ frequency, no new AI writes).
@@ -13,7 +13,7 @@
 
 This gate **reconciles the existing implementation** — a large evidence-scoring pipeline already exists (Section 0). It does not design from scratch. Every section states a LOCKED decision or an exact specification. The operator-decision items (OD-1…OD-6, OD-5a) are **RESOLVED (pending sign-off)** — Section E — with the resolutions folded in from `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5.
 
-**Operator sign-off is RECORDED (PR #861, 2026-07-02).** Implementation dispatches as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md` (migration slot after PR 2).
+**Operator sign-off is RECORDED (PR #861, 2026-07-02).** Implementation dispatched as PR 4 in `docs/status/J3-Implementation-Checklist-2026-07-02.md`. **Landing-sequence deviation (operator-approved, 2026-07-03):** the migration slot was originally planned for after PR 2, but the operator explicitly directed PR 4 to merge immediately after PR 1 (+ its follow-up fix #869) instead, ahead of PR 2. Migration `217_evidence_derived_coverage.sql` landed on this basis; PR 2 (Applied-vs-Appeared) has not merged as of this landing.
 
 **Serial delivery rule (locked):** J3 coverage scoring touches shared exam-intelligence write paths (`admin_exam_intel_manage.py`, `admin_exam_intel_cms.py`) and the score-snapshot computation module — one owner's sequential work, no fan-out.
 
@@ -101,6 +101,26 @@ metadata.evidence   := { snapshot_id, evidence_count, syllabus_mentions, fingerp
                          derivation_basis: 'pyq' | 'hybrid' }         # pyq-vs-hybrid detail lives here, not in source_basis
 reviewer_status     := 'draft'
 ```
+
+> **Addendum (checkpost fix, post-signoff — flagged, not silent):** the two-value
+> `derivation_basis: 'pyq' | 'hybrid'` enum above is scoped by its own
+> parenthetical to "evidence-only vs evidence + verified syllabus mention" —
+> i.e. `hybrid` requires BOTH PYQ evidence and a syllabus mention, not
+> "evidence OR syllabus". That leaves the §5.1 `mentioned` bucket
+> (`evidence_count = 0 AND syllabus_mentions >= 1`) uncovered by either
+> value. The implementation emits a third value, `syllabus_only`, for that
+> case. **The enum is hereby extended to `pyq | hybrid | syllabus_only`.**
+> Rationale: overloading `hybrid` to also mean "syllabus contributed with
+> zero PYQ evidence" would blur a genuinely different provenance signal
+> (mixed evidence-and-syllabus vs. syllabus-only, no PYQ evidence at all)
+> that operators reviewing a draft need to distinguish at a glance.
+>
+> ```
+> metadata.evidence.derivation_basis:
+>   pyq            — evidence_count > 0, syllabus_mentions == 0
+>   hybrid         — evidence_count > 0, syllabus_mentions >= 1
+>   syllabus_only  — evidence_count == 0, syllabus_mentions >= 1
+> ```
 
 - **No new arithmetic beyond a documented monotonic bucketing** for `coverage_depth`. Priority/high-yield/confidence are copied verbatim from the reviewed-and-locked snapshot — the deterministic scoring already passed operator review at the snapshot gate, so J3 does not re-score, it **projects**.
 - Idempotent via a fingerprint over (snapshot_id, snapshot fingerprint, syllabus-mention count, DERIVATION_VERSION) stored in `metadata`; unchanged inputs → skip.
@@ -302,4 +322,4 @@ locked → reviewed (reopen, notes required)
 
 ---
 
-*Status: OPERATOR APPROVED — 2026-07-02. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED and APPROVED per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5, recorded on PR #861 (2026-07-02); implementation dispatches as PR 4 (migration slot after PR 2) per docs/status/J3-Implementation-Checklist-2026-07-02.md.*
+*Status: OPERATOR APPROVED — 2026-07-02. Reconciles a substantial existing evidence-scoring pipeline (`exam_topic_score_snapshots` + `score_snapshots.py`, merged PRs #767/#773/#810); J3 adds only the governed, deterministic projection of locked snapshots into reviewable `draft` `exam_topic_coverage` rows. All operator-decision items (OD-1…OD-6, OD-5a) are RESOLVED and APPROVED per docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5, recorded on PR #861 (2026-07-02); implementation dispatched as PR 4 and landed as migration `217_evidence_derived_coverage.sql` (PR #867, merged 2026-07-03) immediately after PR 1 (+ fix #869), ahead of PR 2 — an explicit, documented operator override of the originally planned migration-slot sequencing in docs/status/J3-Implementation-Checklist-2026-07-02.md.*

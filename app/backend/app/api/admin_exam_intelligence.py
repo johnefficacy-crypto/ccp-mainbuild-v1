@@ -22,8 +22,13 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.auth import require_permission
+from app.core.permissions import EXAM_INTELLIGENCE_MANAGE
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence import work_queue as _wq
+from app.exam_intelligence.coverage_derivation import (
+    DERIVATION_VERSION as _COVERAGE_DERIVATION_VERSION,
+    derive_topic_coverage,
+)
 from app.exam_intelligence.diagnostics import assemble_mock_readiness_report
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.exam_intelligence.readiness import compute_exam_workspace_readiness
@@ -71,6 +76,41 @@ def _now_iso() -> str:
 
 def _iso_days_ago(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+
+def _audit(
+    supabase,
+    actor: dict,
+    action: str,
+    *,
+    entity_type: str,
+    entity_id: str | None = None,
+    new_value: Any = None,
+    notes: str = "admin_exam_intelligence",
+) -> str | None:
+    """Best-effort admin_audit_logs insert (mirrors admin_exam_intel_cms._audit)."""
+    try:
+        rows = (
+            supabase.table("admin_audit_logs")
+            .insert(
+                {
+                    "actor_id": actor.get("id"),
+                    "actor_email": actor.get("email"),
+                    "action": action,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "new_value": new_value,
+                    "notes": notes,
+                }
+            )
+            .execute()
+            .data
+            or []
+        )
+        return rows[0].get("id") if rows else None
+    except Exception:  # noqa: BLE001
+        logger.exception("audit log insert failed (admin_exam_intelligence)")
+        return None
 
 
 def _as_float(value: Any) -> float | None:
@@ -2618,6 +2658,28 @@ class ComputeSnapshotBody(BaseModel):
     exam_phase_id: str | None = None
 
 
+class DeriveCoverageBody(BaseModel):
+    """Scope selector for the manual coverage-derivation action (OD-4/OD-6).
+
+    ``exam_phase_id: null`` means exam-wide derivation. There is
+    deliberately no ``exam_cycle_id`` field — cycle-only derivation is not
+    supported (score snapshots are cycle-independent), so it cannot even be
+    expressed through this body.
+
+    P1-4 fix (checkpost): ``exam_phase_id`` has NO default — the gate
+    requires ONE EXPLICIT scope per invocation (OD-6), so the caller MUST
+    include the key in the request body (its value may still be ``null``
+    for an explicit exam-wide derivation). A missing/omitted body used to
+    silently default to implicit exam-wide derivation via
+    ``Body(default_factory=DeriveCoverageBody)``; now an empty body ``{}``
+    fails Pydantic validation (422) because the required key is absent,
+    rather than silently choosing exam-wide scope.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    exam_phase_id: str | None
+
+
 def _validate_accept_body(proposals: list, *, require_client_key: bool = False) -> None:
     if not proposals:
         raise HTTPException(status_code=422, detail="proposals must not be empty")
@@ -2921,3 +2983,80 @@ def compute_score_snapshots(
             detail="one or more input reads failed during score computation — check DB and retry",
         )
     return {**result, "exam_id": exam_id, "model_version": _SNAPSHOT_MODEL_VERSION}
+
+
+# ─── Evidence-Coverage derivation (J3 PR 4) ────────────────────────────────
+#
+# Manual, operator-triggered projection of locked exam_topic_score_snapshots
+# (+ verified syllabus mentions) into draft exam_topic_coverage rows. See
+# docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md and
+# docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 (OD-1...OD-6, OD-5a).
+#
+# OD-4: manual operator-triggered derivation only — no scheduler, no
+# piggy-back on snapshot computation. Gated on exam_intelligence.manage
+# (not .review) because this action WRITES new draft rows into the exam's
+# operational coverage data, matching the J2-gate manage/review/cms
+# separation (app/backend/app/core/permissions.py). Added on the EXISTING
+# admin exam-intelligence surface — no new top-level route (no-new-surface
+# rule).
+
+
+@router.post("/exams/{exam_id}/coverage/derive")
+def derive_coverage(
+    exam_id: str,
+    body: DeriveCoverageBody = Body(...),
+    admin: dict = Depends(require_permission(EXAM_INTELLIGENCE_MANAGE)),
+) -> dict[str, Any]:
+    """Trigger evidence-derived coverage projection for one explicit scope.
+
+    Delegates to ``derive_topic_coverage`` from
+    ``app.exam_intelligence.coverage_derivation``. Writes/updates only
+    ``draft`` ``exam_topic_coverage`` rows with
+    ``source_basis='evidence_derived'`` (PD-3/PD-4/PD-4a); reviewed/locked
+    and human-authored rows in any status are never mutated — see the
+    §5.2 conflict matrix. Proposed-vs-current deltas for skipped rows are
+    returned and recorded in the audit log, never written as shadow rows
+    (PD-4b / OD-5).
+
+    Returns HTTP 422 when ``exam_phase_id`` does not belong to *exam_id*,
+    and HTTP 502 when a critical input read fails (``read_error=True``) —
+    a read failure is a compute failure, never a partial write.
+
+    Every invocation is audited via ``admin_audit_logs`` regardless of
+    outcome counts, so operators can trace who ran a derivation and when.
+    """
+    sb = get_supabase_admin()
+    result = derive_topic_coverage(sb, exam_id, exam_phase_id=body.exam_phase_id)
+    if result.get("invalid_scope"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"exam_phase_id does not belong to exam {exam_id}",
+        )
+    if result.get("read_error"):
+        raise HTTPException(
+            status_code=502,
+            detail="one or more input reads failed during coverage derivation — check DB and retry",
+        )
+
+    _audit(
+        sb,
+        admin,
+        "exam_topic_coverage.derive",
+        entity_type="exam_topic_coverage",
+        entity_id=exam_id,
+        new_value={
+            "exam_phase_id": body.exam_phase_id,
+            "derivation_version": _COVERAGE_DERIVATION_VERSION,
+            "written": result.get("written"),
+            "updated": result.get("updated"),
+            "skipped": result.get("skipped"),
+            "triaged": result.get("triaged"),
+            "no_row": result.get("no_row"),
+            "errors": result.get("errors"),
+            "deltas": result.get("deltas"),
+            "triage": result.get("triage"),
+        },
+        notes="admin_exam_intelligence coverage derivation (J3 PR4)",
+    )
+
+    return {**result, "exam_id": exam_id, "derivation_version": _COVERAGE_DERIVATION_VERSION}

@@ -95,8 +95,8 @@ def test_secondary_tag_covered_topic_gets_zero_freq():
             {"question_id": "q1", "topic_id": "t2", "reviewer_status": "verified", "tag_role": "secondary"},
         ],
         "exam_topic_coverage": [
-            {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked"},
-            {"topic_id": "t2", "exam_id": "exam-1", "exam_priority_score": 60, "is_high_yield": False, "reviewer_status": "locked"},
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 80, "is_high_yield": True, "reviewer_status": "locked", "source_basis": "manual"},
+            {"topic_id": "t2", "exam_id": "exam-1", "exam_priority_score": 60, "is_high_yield": False, "reviewer_status": "locked", "source_basis": "manual"},
         ],
     })
 
@@ -131,8 +131,8 @@ def test_multiple_primary_tags_excluded_from_frequency():
             {"question_id": "q1", "topic_id": "t2", "reviewer_status": "verified", "tag_role": "primary"},
         ],
         "exam_topic_coverage": [
-            {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 70, "is_high_yield": True, "reviewer_status": "locked"},
-            {"topic_id": "t2", "exam_id": "exam-1", "exam_priority_score": 60, "is_high_yield": False, "reviewer_status": "locked"},
+            {"topic_id": "t1", "exam_id": "exam-1", "exam_priority_score": 70, "is_high_yield": True, "reviewer_status": "locked", "source_basis": "manual"},
+            {"topic_id": "t2", "exam_id": "exam-1", "exam_priority_score": 60, "is_high_yield": False, "reviewer_status": "locked", "source_basis": "manual"},
         ],
     })
 
@@ -541,3 +541,115 @@ def test_multi_draft_per_topic_idempotency():
     assert result2["written"] == 0, "should skip when current fingerprint is already present"
     assert result2["skipped"] == 1
     assert len(sb.db["exam_topic_score_snapshots"]) == 2  # stale row still there, no new insert
+
+
+# ── Break-the-edge invariant (OD-3, Option A) ───────────────────────────────
+#
+# docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md Section D /
+# docs/status/J3-OD-Resolutions-Locked-2026-07-02.md §5 OD-3: score_snapshots
+# MUST exclude source_basis='evidence_derived' coverage rows from its
+# coverage_component input. This closes the residual feedback loop where a
+# derived-and-locked coverage row would otherwise be folded back into the
+# snapshot that produced it (via coverage_derivation.py), causing
+# self-reinforcement across recompute cycles. This is a genuine scoring
+# invariant — it must hold even when the evidence_derived row is locked.
+
+
+def test_locked_evidence_derived_coverage_excluded_from_coverage_component():
+    """A locked coverage row with source_basis='evidence_derived' must NOT
+    contribute to coverage_component — only genuinely human-authored
+    coverage does. Verified against the real scoring formula: with the
+    evidence_derived row excluded, coverage_component must be 0 (no
+    qualifying locked-coverage input for the topic)."""
+    sb = SBStub({
+        "pyq_papers": [{"id": "p1", "exam_id": "exam-1", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {
+                "topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+                "exam_priority_score": 99, "is_high_yield": True,
+                "reviewer_status": "locked", "source_basis": "evidence_derived",
+            },
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1")
+    assert result["written"] == 1
+    snap = sb.db["exam_topic_score_snapshots"][0]
+    # coverage_component would be 0.99 (99/100) if the evidence_derived row
+    # leaked in — it must be exactly 0 once excluded.
+    assert snap["score_components"]["coverage_component"] == 0.0
+
+
+def test_human_authored_locked_coverage_still_feeds_coverage_component():
+    """Control case: a genuinely human-authored source_basis (e.g. 'manual')
+    at the same priority MUST still be included — proves the exclusion is
+    specific to 'evidence_derived', not a blanket coverage-read regression."""
+    sb = SBStub({
+        "pyq_papers": [{"id": "p1", "exam_id": "exam-1", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [
+            {
+                "topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+                "exam_priority_score": 99, "is_high_yield": True,
+                "reviewer_status": "locked", "source_basis": "manual",
+            },
+        ],
+    })
+
+    result = compute_exam_topic_scores(sb, "exam-1")
+    assert result["written"] == 1
+    snap = sb.db["exam_topic_score_snapshots"][0]
+    assert snap["score_components"]["coverage_component"] == 0.99
+
+
+def test_no_self_reinforcement_across_derive_lock_recompute_cycle():
+    """Simulates the full residual loop the gate calls out: a snapshot is
+    computed with no coverage input, an operator locks a derived coverage
+    row projected from that snapshot (as coverage_derivation.py would
+    produce), and the snapshot is recomputed again. The recompute must be
+    STABLE — the newly-locked evidence_derived row must not push the
+    snapshot's priority any higher than the pre-derivation snapshot."""
+    seed = {
+        "pyq_papers": [{"id": "p1", "exam_id": "exam-1", "trust_status": "verified"}],
+        "pyq_questions": [{"id": "q1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "pyq_question_topic_tags": [
+            {"question_id": "q1", "topic_id": "t1",
+             "reviewer_status": "verified", "tag_role": "primary"},
+        ],
+        "exam_topic_coverage": [],
+    }
+    sb = SBStub(seed)
+
+    # Cycle 1: compute with no coverage at all.
+    r1 = compute_exam_topic_scores(sb, "exam-1")
+    assert r1["written"] == 1
+    baseline_priority = sb.db["exam_topic_score_snapshots"][0]["exam_priority_score"]
+
+    # Simulate: an operator locks a derived coverage row projected from that
+    # snapshot.
+    sb.db["exam_topic_coverage"].append({
+        "topic_id": "t1", "exam_id": "exam-1", "exam_phase_id": None,
+        "exam_priority_score": baseline_priority, "is_high_yield": True,
+        "reviewer_status": "locked", "source_basis": "evidence_derived",
+    })
+
+    # Cycle 2: recompute. Because evidence_derived coverage is excluded from
+    # BOTH the coverage_component AND the fingerprint's coverage input, the
+    # newly-locked evidence_derived row is fully invisible to the recompute:
+    # the fingerprint is byte-identical to cycle 1, so the existing draft is
+    # skipped rather than replaced — the strongest form of "no reinforcement"
+    # (not just same priority, but literally no new write).
+    r2 = compute_exam_topic_scores(sb, "exam-1")
+    assert r2["written"] == 0
+    assert r2["skipped"] == 1
+    assert len(sb.db["exam_topic_score_snapshots"]) == 1
+    assert sb.db["exam_topic_score_snapshots"][0]["exam_priority_score"] == baseline_priority

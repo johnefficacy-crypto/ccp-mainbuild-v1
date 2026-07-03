@@ -1,4 +1,4 @@
-"""Schema-contract tests for J3 PR2 migration 217 (applied-vs-appeared).
+"""Schema-contract tests for J3 PR2 migration 218 (applied-vs-appeared).
 
 Following the repo's documented convention (see
 test_j3_competition_structure_migration.py / test_mock_generated_blueprints_migration.py):
@@ -9,7 +9,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[2]
-    / "supabase" / "migrations" / "217_j3_applied_vs_appeared.sql"
+    / "supabase" / "migrations" / "218_j3_applied_vs_appeared.sql"
 ).read_text().lower()
 
 
