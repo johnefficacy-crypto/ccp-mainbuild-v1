@@ -1,8 +1,9 @@
 import React, { lazy } from "react";
-import { Navigate, Route, useLocation, useParams } from "react-router-dom";
+import { Navigate, Route, useParams } from "react-router-dom";
 import { ProtectedRoute } from "../lib/ProtectedRoute";
 import { ADMIN_ROLES } from "../lib/rbac";
 import RouteErrorBoundary from "../components/RouteErrorBoundary";
+import MockContentRedirect from "./mockContentRedirect";
 
 const AdminShell = lazy(() => import("../pages/admin/AdminShell"));
 const AdminOverview = lazy(() => import("../pages/admin/Overview"));
@@ -57,16 +58,8 @@ export function AddCycleRedirect() {
   );
 }
 
-// Content Studio consolidation (content-studio.md §3.1): the three legacy Mock
-// Content destinations redirect to the equivalent Content Studio tab, carrying
-// their query params (filters, pagination) through the redirect.
-function MockContentRedirect({ tab }) {
-  const location = useLocation();
-  const search = new URLSearchParams(location.search);
-  search.set("tab", tab);
-  search.set("type", "objective_question");
-  return <Navigate to={`/admin/content-studio?${search.toString()}`} replace />;
-}
+// Legacy Mock Content → Content Studio redirects live in ./mockContentRedirect
+// (extracted so the param-carry-through is unit-testable).
 
 // Compat redirects: legacy workspace and per-exam console URLs → Manage Exam.
 function ExamRedirect() {
