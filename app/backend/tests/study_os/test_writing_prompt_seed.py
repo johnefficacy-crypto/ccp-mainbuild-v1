@@ -12,8 +12,8 @@ Two layers:
     parse every row through the authoritative `PromptBulkRow` Pydantic model.
 
 The full round-trip through `cms_bulk_upsert_writing_prompts` on a disposable
-Postgres (270 pending rows + idempotent re-import) lives in the EWP_PG_DSN-gated
-`test_content_studio_seed_pg_behaviour.py`.
+Postgres (270 pending rows + idempotent re-import) is still pending as an
+EWP_PG_DSN-gated behavior test and is tracked in the checklist/seed README.
 """
 from __future__ import annotations
 
