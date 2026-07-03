@@ -7,7 +7,7 @@ const { api } = require("../../../../../lib/api");
 const Panel = require("../PyqMockProjectionPanel").default;
 const status = (n) => ({ total_questions: n, unprojected_count: n, projection_counts: {}, stale_projections: [] });
 const row = (id, reason, label = id) => ({ question_id: id, label, eligible: false, reason });
-const report = (rows, eligible = 0) => ({ eligible_count: eligible, ineligible_count: rows.length, would_create_count: eligible, would_update_count: 0, questions: rows });
+const report = (rows) => ({ eligible_count: 0, ineligible_count: rows.length, would_create_count: 0, would_update_count: 0, questions: rows });
 const defer = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 beforeEach(() => { api.get.mockReset(); api.post.mockReset(); });
 
@@ -19,12 +19,15 @@ test("renders complete, truthful projection remediation", async () => {
     row("cn", "not_exactly_one_correct:0"),
     row("cm", "not_exactly_one_correct:2"),
     row("bad", `correct_option_id_mismatch:${uuid}`, "Mismatch"),
-  ], 1);
+  ]);
   api.get.mockImplementation((url) => Promise.resolve(url.endsWith("/status") ? status(5) : data));
   api.post.mockResolvedValue({ attempted: 1, outcomes: { created: 1 }, questions: [{ question_id: "s", label: "Synced question", outcome: "created" }] });
   render(<Panel paperId="p" />);
   const info = await screen.findByTestId("projection-info-disclosure");
   expect(info.textContent).toMatch(/MCQ type.*at least two verified options.*exactly one verified correct option.*exactly one verified primary topic tag/i);
+  fireEvent.change(screen.getByTestId("projection-audit-reason-input"), { target: { value: "sync before preview" } });
+  fireEvent.click(screen.getByTestId("projection-sync-btn"));
+  expect((await screen.findByTestId("sync-row-s")).textContent).toContain("Synced question");
   fireEvent.click(screen.getByTestId("projection-preview-btn"));
   const summary = await screen.findByTestId("projection-blocker-summary");
   expect(summary.textContent).toMatch(/1\s*Missing verified primary topic tag/);
@@ -33,9 +36,9 @@ test("renders complete, truthful projection remediation", async () => {
   expect(summary.textContent).toMatch(/1\s*Multiple verified correct options/);
   expect(screen.getByTestId("preview-row-cm").textContent).toMatch(/has 2/);
   expect(screen.getByTestId("projection-preview-results").textContent).not.toContain(uuid);
-  fireEvent.change(screen.getByTestId("projection-audit-reason-input"), { target: { value: "sync this question" } });
-  fireEvent.click(screen.getByTestId("projection-sync-btn"));
-  expect((await screen.findByTestId("sync-row-s")).textContent).toContain("Synced question");
+  fireEvent.change(screen.getByTestId("projection-audit-reason-input"), { target: { value: "valid audit reason" } });
+  expect(screen.getByTestId("projection-sync-btn")).toBeDisabled();
+  expect(screen.getByTestId("projection-zero-eligible-note")).toBeTruthy();
 });
 
 test("drops stale status, preview and sync after a paper change", async () => {
