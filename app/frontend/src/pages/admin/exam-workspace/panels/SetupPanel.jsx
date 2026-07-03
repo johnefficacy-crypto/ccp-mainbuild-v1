@@ -5,7 +5,7 @@ import DateField from "../../../../shared/ui/DateField";
 import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
-import PhaseForm from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
+import PhaseForm, { PHASE_KIND_OPTIONS } from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
 import CycleActivationChecklist from "./CycleActivationChecklist";
 
 function TrustBadge({ status }) {
@@ -44,6 +44,15 @@ function legacyWindow(phase) {
   return phase.metadata?.phase_window || phase.phase_window || null;
 }
 
+// D05 §1: NULL and 'other' are UNCLASSIFIED — only the 7 canonical kinds count as
+// classified for Step 9 required-phase completeness (see migration 210 + document_policy).
+// Only cycle-bound, non-cancelled phases can block cycle activation.
+function needsPhaseKindClassification(phase) {
+  const kind = phase.phase_kind;
+  const unclassified = !kind || kind === "other";
+  return unclassified && phase.exam_cycle_id != null && phase.status !== "cancelled";
+}
+
 function needsPhaseDateAuthoring(phase) {
   if (phase.phase_start) return false;
   const metadata = phase.metadata || {};
@@ -64,18 +73,22 @@ const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "ca
 const PHASE_STATUSES = ["expected", "active", "completed", "cancelled"];
 
 export default function SetupPanel({ action = null }) {
-  const { exam, cycles, phases, refetch } = useExamWorkspace();
+  const { exam, cycles, phases, refetch, refetchReadiness } = useExamWorkspace();
 
   // ── add-phase form ──────────────────────────────────────────────────────
   const EMPTY_PHASE = {
     phase_name: "", base_slug: "", phase_order: "",
-    mode: "", createTemplate: false, phase_start: null, phase_end: null,
+    mode: "", phase_kind: "", createTemplate: false, phase_start: null, phase_end: null,
   };
   const [addingPhase, setAddingPhase] = useState(false);
   const [phaseFormValues, setPhaseFormValues] = useState(EMPTY_PHASE);
   const [pickedCycleId, setPickedCycleId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saveErr, setSaveErr] = useState("");
+  const { run: runPhaseCreate, busy: phaseCreateBusy } = useApiAction();
+
+  // ── classify-phases worklist (canonical phase_kind) ─────────────────────
+  const [kindEdits, setKindEdits] = useState({});
+  const [classifiedPhaseIds, setClassifiedPhaseIds] = useState(new Set());
+  const { run: runPhaseKindSave, busy: phaseKindBusy } = useApiAction();
 
   // ── promote-template form ────────────────────────────────────────────────
   const [promotingTemplate, setPromotingTemplate] = useState(false);
@@ -204,6 +217,13 @@ export default function SetupPanel({ action = null }) {
     p => !datedPhaseIds.has(p.id)
   );
 
+  // Deep-link target for the Step 9 "Classify exam phases" CTA
+  // (?tab=setup&action=classify-phases): only unclassified phases are listed.
+  const needsKind = phases
+    .filter(needsPhaseKindClassification)
+    .filter(p => !classifiedPhaseIds.has(p.id));
+  const showClassifyWorklist = action === "classify-phases" || needsKind.length > 0;
+
   // ── cycle create/edit handlers ──────────────────────────────────────────
 
   function openCreateCycle() {
@@ -278,16 +298,14 @@ export default function SetupPanel({ action = null }) {
   }
 
   async function addPhase() {
-    const { phase_name, base_slug, phase_order, phase_start, phase_end } = phaseFormValues;
+    const { phase_name, base_slug, phase_order, phase_kind, phase_start, phase_end } = phaseFormValues;
     if (!phase_name.trim()) return;
-    setSaving(true);
-    setSaveErr("");
-    try {
-      const activeCycle = cycles.find((c) => c.status === "active") || cycles[0];
-      const targetCycleId = pickedCycleId || activeCycle?.id || null;
-      const name = phase_name.trim();
-      const slug = base_slug.trim() ? slugify(base_slug.trim()) : slugify(name);
-      await api.post("/api/admin/exam-intelligence-cms/exam-phases", {
+    const activeCycle = cycles.find((c) => c.status === "active") || cycles[0];
+    const targetCycleId = pickedCycleId || activeCycle?.id || null;
+    const name = phase_name.trim();
+    const slug = base_slug.trim() ? slugify(base_slug.trim()) : slugify(name);
+    await runPhaseCreate({
+      action: () => api.post("/api/admin/exam-intelligence-cms/exam-phases", {
         reason: "Add exam phase via workspace setup panel",
         payload: {
           exam_id: exam?.id,
@@ -296,18 +314,41 @@ export default function SetupPanel({ action = null }) {
           phase_slug: slug,
           phase_order: phase_order ? parseInt(phase_order, 10) : (phases.length + 1),
           status: "expected",
+          phase_kind: phase_kind || null,
           phase_start: phase_start || null,
           phase_end: phase_end || null,
           metadata: {},
         },
-      });
-      setPhaseFormValues(EMPTY_PHASE);
-      setPickedCycleId(null); setAddingPhase(false);
-    } catch (e) {
-      setSaveErr(e?.message || "Failed to add phase");
-    } finally {
-      setSaving(false);
-    }
+      }),
+      successMessage: "Phase created",
+      errorMessage: "Failed to add phase",
+      onSuccess: () => {
+        setPhaseFormValues(EMPTY_PHASE);
+        setPickedCycleId(null); setAddingPhase(false);
+        // Step 9 (review_activate) counts unclassified phases — refresh both the
+        // workspace context and the management/readiness read model.
+        refetch?.(); refetchReadiness?.();
+      },
+    });
+  }
+
+  // PATCH canonical phase_kind for one unclassified phase, then refresh
+  // management/readiness so the Step 9 unclassified count updates.
+  async function savePhaseKind(phase) {
+    const kind = kindEdits[phase.id] || "";
+    if (!kind) return;
+    await runPhaseKindSave({
+      action: () => api.patch(`/api/admin/exam-intelligence-cms/exam-phases/${phase.id}`, {
+        reason: "Classify canonical phase kind via setup panel",
+        payload: { phase_kind: kind },
+      }),
+      successMessage: "Phase classified",
+      errorMessage: "Failed to classify phase",
+      onSuccess: () => {
+        setClassifiedPhaseIds(prev => new Set([...prev, phase.id]));
+        refetch?.(); refetchReadiness?.();
+      },
+    });
   }
 
   async function patchPhaseDate(phase) {
@@ -579,26 +620,24 @@ export default function SetupPanel({ action = null }) {
               onChange={setPhaseField}
               showSlug
               showMode={false}
+              showKind
               showTemplate={false}
               showDates
             />
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn primary small" onClick={addPhase} disabled={saving} data-testid="add-phase-submit">
-                {saving ? "Saving…" : "Add phase"}
+              <button className="btn primary small" onClick={addPhase} disabled={phaseCreateBusy} data-testid="add-phase-submit">
+                {phaseCreateBusy ? "Saving…" : "Add phase"}
               </button>
               <button
                 className="btn ghost small"
                 onClick={() => {
-                  setAddingPhase(false); setSaveErr(""); setPickedCycleId(null);
+                  setAddingPhase(false); setPickedCycleId(null);
                   setPhaseFormValues(EMPTY_PHASE);
                 }}
               >
                 Cancel
               </button>
             </div>
-            {saveErr && (
-              <span className="err-row" style={{ padding: "3px 8px" }}>{saveErr}</span>
-            )}
           </div>
         )}
       </div>
@@ -816,6 +855,95 @@ export default function SetupPanel({ action = null }) {
             </div>
           )}
       </div>
+
+      {/* Phases needing classification — canonical phase_kind (D05 §1). Deep-link
+          target of the Step 9 "Classify exam phases" CTA (?action=classify-phases). */}
+      {showClassifyWorklist && (
+        <div className="card" data-testid="phase-classify-worklist">
+          <div className="card-head">
+            <h3 className="oc-title">Phases needing classification</h3>
+            <span className="anno">
+              {needsKind.length === 0
+                ? "All phases classified ✓"
+                : `${needsKind.length} phase${needsKind.length !== 1 ? "s" : ""} without a canonical phase kind`}
+            </span>
+          </div>
+          {needsKind.length === 0 ? (
+            <div className="card-body">
+              <div className="empty" style={{ padding: "12px 0" }}>
+                <div className="empty-title" data-testid="classify-all-classified">
+                  All phases have a canonical phase kind
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card-body">
+              <div className="row-sub" style={{ fontSize: 12, marginBottom: 8 }}>
+                Cycle activation (Step 9) requires every non-cancelled phase to carry a
+                canonical phase kind. Classification is an operator decision — it is never
+                inferred from the phase name, slug, or mode.
+              </div>
+              {needsKind.map(phase => {
+                const phaseCycle = cycles.find(
+                  c => c.id === (phase.exam_cycle_id ?? phase.cycle_id)
+                ) || null;
+                const cycleLabel = phaseCycle
+                  ? `${phaseCycle.cycle_name ?? phaseCycle.name ?? "Cycle"}${phaseCycle.year ? ` (${phaseCycle.year})` : ""}`
+                  : null;
+                return (
+                  <div
+                    key={phase.id}
+                    data-testid={`classify-row-${phase.id}`}
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      alignItems: "center",
+                      padding: "10px 0",
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ minWidth: 160, flex: "0 0 auto" }}>
+                      <div className="field-lbl">{phase.phase_name ?? phase.name}</div>
+                      {cycleLabel && (
+                        <div
+                          className="row-sub"
+                          data-testid={`classify-cycle-${phase.id}`}
+                          style={{ fontSize: 11, color: "var(--info)", marginTop: 1, fontWeight: 500 }}
+                        >
+                          {cycleLabel}
+                        </div>
+                      )}
+                    </div>
+                    <select
+                      className="input"
+                      style={{ maxWidth: 220 }}
+                      data-testid={`classify-kind-${phase.id}`}
+                      value={kindEdits[phase.id] || ""}
+                      onChange={e =>
+                        setKindEdits(prev => ({ ...prev, [phase.id]: e.target.value }))
+                      }
+                    >
+                      <option value="">— select phase kind —</option>
+                      {PHASE_KIND_OPTIONS.map(k => (
+                        <option key={k.value} value={k.value}>{k.label}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn primary small"
+                      data-testid={`classify-save-${phase.id}`}
+                      onClick={() => savePhaseKind(phase)}
+                      disabled={phaseKindBusy || !kindEdits[phase.id]}
+                    >
+                      {phaseKindBusy ? "Saving…" : "Classify"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
       {phaseDateWorklistPhases.length > 0 && (

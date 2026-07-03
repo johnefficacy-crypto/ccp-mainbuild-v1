@@ -699,7 +699,7 @@ def compute_cycle_readiness(
             cta = {"label": "Complete setup", "url": f"{_base}&tab=setup"}
             note = "Selected-cycle activation prerequisites incomplete"
         elif _unclassified > 0:
-            cta = {"label": "Classify exam phases", "url": f"{_base}&tab=setup"}
+            cta = {"label": "Classify exam phases", "url": f"{_base}&tab=setup&action=classify-phases"}
             note = "One or more phases are unclassified (missing canonical phase_kind)"
         elif _unmet:
             cta = {"label": "Register required documents", "url": f"{_base}&tab=documents"}
