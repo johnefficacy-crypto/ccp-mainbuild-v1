@@ -2463,6 +2463,10 @@ def test_cms_patch_policy_update_allows_clean_edit():
 
 
 def test_cms_create_competition_metric_happy_path():
+    # J3 PR1 / OD-11: every new-model row is cycle-anchored — exam_cycle_id
+    # is now required. cutoff_trend is deprecated (dropped from the write
+    # allowlist); a cycle-level (no exam_phase_id) row is cycle_summary and
+    # only carries vacancy fields.
     sb = ExtSBStub()
     _seed_cms_with_pyq_and_competition(sb)
     app = _cms_app(sb)
@@ -2472,9 +2476,9 @@ def test_cms_create_competition_metric_happy_path():
             "reason": "seeding 2024 cycle metrics",
             "payload": {
                 "exam_id": "exam-1",
+                "exam_cycle_id": "cyc-2024",
                 "vacancy_total": 850,
                 "vacancy_by_category": {"general": 350, "obc": 230},
-                "cutoff_trend": {"general": 110.5, "obc": 104.0},
                 "source_basis": "official",
                 "confidence_score": 0.9,
             },
@@ -2483,6 +2487,8 @@ def test_cms_create_competition_metric_happy_path():
     assert r.status_code == 200, r.text
     row = [r for r in sb.db["exam_competition_metrics"] if r["vacancy_total"] == 850][0]
     assert row["reviewer_status"] == "draft"
+    assert row["metric_kind"] == "cycle_summary"
+    assert row["version_no"] == 1
     assert any(a["action"] == "exam_intel.cms.competition_metric.create" for a in sb.db["admin_audit_logs"])
 
 
@@ -2492,27 +2498,62 @@ def test_cms_create_competition_metric_rejects_unresolvable_exam():
     app = _cms_app(sb)
     r = TestClient(app).post(
         "/api/admin/exam-intelligence-cms/exam-competition-metrics",
-        json={"reason": "should not insert", "payload": {"exam_id": "exam-nope"}},
+        json={"reason": "should not insert", "payload": {"exam_id": "exam-nope", "exam_cycle_id": "cyc-2024"}},
     )
     assert r.status_code == 422
 
 
-def test_cms_create_competition_metric_validates_selection_ratio_range():
+def test_cms_create_competition_metric_requires_exam_cycle_id():
+    # J3 PR1 / OD-11: competition rows are cycle-anchored in the new model.
+    sb = ExtSBStub()
+    _seed_cms_with_pyq_and_competition(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exam-competition-metrics",
+        json={"reason": "missing cycle", "payload": {"exam_id": "exam-1"}},
+    )
+    assert r.status_code == 422
+    assert "exam_cycle_id" in r.json()["detail"]
+
+
+def test_cms_create_competition_metric_validates_confidence_score_range():
+    # selection_ratio is deprecated and no longer in the write allowlist
+    # (resolutions §1.2) — the remaining ranged field is confidence_score.
     sb = ExtSBStub()
     _seed_cms_with_pyq_and_competition(sb)
     app = _cms_app(sb)
     r = TestClient(app).post(
         "/api/admin/exam-intelligence-cms/exam-competition-metrics",
         json={
-            "reason": "ratio out of bounds",
-            "payload": {"exam_id": "exam-1", "selection_ratio": 1.5},
+            "reason": "confidence out of bounds",
+            "payload": {"exam_id": "exam-1", "exam_cycle_id": "cyc-2024", "confidence_score": 1.5},
         },
     )
     assert r.status_code == 422
-    assert "selection_ratio" in r.json()["detail"]
+    assert "confidence_score" in r.json()["detail"]
 
 
-def test_cms_patch_competition_metric_updates_cutoff_trend():
+def test_cms_create_competition_metric_drops_deprecated_selection_ratio():
+    # selection_ratio is excluded from the write allowlist — silently
+    # dropped, never validated or persisted (resolutions §1.2).
+    sb = ExtSBStub()
+    _seed_cms_with_pyq_and_competition(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exam-competition-metrics",
+        json={
+            "reason": "legacy field ignored",
+            "payload": {"exam_id": "exam-1", "exam_cycle_id": "cyc-2024", "selection_ratio": 1.5, "vacancy_total": 5},
+        },
+    )
+    assert r.status_code == 200, r.text
+    row = [r for r in sb.db["exam_competition_metrics"] if r["vacancy_total"] == 5][0]
+    assert "selection_ratio" not in row or row.get("selection_ratio") is None
+
+
+def test_cms_patch_competition_metric_updates_cutoff_by_category():
+    # cutoff_trend is deprecated (dropped from the write allowlist); the
+    # canonical replacement is cutoff_by_category (resolutions §1.1).
     sb = ExtSBStub()
     _seed_cms_with_pyq_and_competition(sb)
     app = _cms_app(sb)
@@ -2520,11 +2561,16 @@ def test_cms_patch_competition_metric_updates_cutoff_trend():
         "/api/admin/exam-intelligence-cms/exam-competition-metrics/cm-1",
         json={
             "reason": "official cutoff correction",
-            "payload": {"cutoff_trend": {"general": 108.0, "obc": 100.0}},
+            "payload": {
+                "cutoff_by_category": {
+                    "general": {"marks": 108.0},
+                    "obc": {"marks": 100.0},
+                }
+            },
         },
     )
-    assert r.status_code == 200
-    assert sb.db["exam_competition_metrics"][0]["cutoff_trend"]["obc"] == 100.0
+    assert r.status_code == 200, r.text
+    assert sb.db["exam_competition_metrics"][0]["cutoff_by_category"]["obc"]["marks"] == 100.0
 
 
 def test_cms_bulk_import_supports_competition_metrics():

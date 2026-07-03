@@ -97,21 +97,6 @@ def _pick_best(
     return sorted(legacy, key=_key, reverse=True)[0]
 
 
-def _pick_phase_cutoff(
-    rows: list[dict[str, Any]], exam_phase_id: str | None
-) -> dict[str, Any] | None:
-    """Shared selector for the current-published phase_cutoff row matching
-    ``exam_phase_id``, if one is requested and exists."""
-    if not exam_phase_id:
-        return None
-    for r in rows:
-        if (
-            r.get("metric_kind") == "phase_cutoff"
-            and r.get("is_current_published")
-            and r.get("exam_phase_id") == exam_phase_id
-        ):
-            return r
-    return None
 
 
 def _pressure_level(score: float | None, days_remaining: int | None) -> str:
@@ -189,7 +174,20 @@ def competition_context(
     if not best:
         return _empty(exam_id)
 
-    phase_cutoff = _pick_phase_cutoff(rows, exam_phase_id) if exam_phase_id else None
+    # This function is not called with an explicit phase — pick the
+    # current-published phase_cutoff row for whichever cycle `best` resolved
+    # to (there is at most one per cycle+phase, and typically one phase per
+    # cycle in the read paths that call this helper).
+    resolved_cycle_id = best.get("exam_cycle_id")
+    phase_cutoff = next(
+        (
+            r for r in rows
+            if r.get("metric_kind") == "phase_cutoff"
+            and r.get("is_current_published")
+            and r.get("exam_cycle_id") == resolved_cycle_id
+        ),
+        None,
+    )
 
     score = best.get("competition_pressure_score")
     try:
@@ -208,7 +206,7 @@ def competition_context(
         "available": True,
         "exam_id": exam_id,
         "exam_cycle_id": best.get("exam_cycle_id"),
-        "exam_phase_id": (phase_cutoff or {}).get("exam_phase_id") or exam_phase_id,
+        "exam_phase_id": (phase_cutoff or {}).get("exam_phase_id"),
         "vacancy_total": best.get("vacancy_total"),
         "vacancy_by_category": best.get("vacancy_by_category") or {},
         "applicant_count": best.get("applicant_count"),

@@ -301,6 +301,10 @@ class SBStub:
             return _RpcCall(self._ensure_mock_correction_drafts(params))
         if name == "replace_manual_mock_correction_drafts":
             return _RpcCall(self._replace_manual_mock_correction_drafts(params))
+        if name == "cms_review_competition_metric":
+            return _RpcCall(self._cms_review_competition_metric(params))
+        if name == "cms_reopen_competition_metric_for_edit":
+            return _RpcCall(self._cms_reopen_competition_metric_for_edit(params))
         return _RpcCall(None)
 
 
@@ -695,6 +699,116 @@ class SBStub:
                     option_count += 1
 
         return {"question": question, "cascaded_option_count": option_count}
+
+    _ECM_TRANSITIONS = {
+        "draft": {"pending_review", "rejected"},
+        "pending_review": {"reviewed", "rejected", "draft"},
+        "reviewed": {"locked", "rejected"},
+        "locked": {"reviewed"},
+        "rejected": {"draft"},
+    }
+
+    def _cms_review_competition_metric(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_review_competition_metric (migration 215): transition
+        matrix + CAS + atomic current-published supersession."""
+        metric_id = params.get("p_metric_id")
+        expected_status = params.get("p_expected_status")
+        new_status = params.get("p_new_status")
+        reviewer_notes = params.get("p_reviewer_notes")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if new_status not in ("draft", "pending_review", "reviewed", "locked", "rejected"):
+            raise RuntimeError(f"invalid_target_status: {new_status} is not a recognised status")
+
+        row = next((r for r in self.db.get("exam_competition_metrics", []) if r.get("id") == metric_id), None)
+        if row is None:
+            raise RuntimeError(f"not_found: metric {metric_id} does not exist")
+
+        current_status = row.get("reviewer_status")
+        if current_status != expected_status:
+            raise RuntimeError(
+                f"concurrent_modification: expected status={expected_status} but found {current_status}"
+            )
+        if new_status not in self._ECM_TRANSITIONS.get(current_status, set()):
+            raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
+        if current_status == "locked" and new_status == "reviewed" and not (reviewer_notes or "").strip():
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a locked row")
+
+        row["reviewer_status"] = new_status
+        row["reviewed_by"] = actor_id
+        row["reviewed_at"] = "2026-07-03T00:00:00Z"
+        if reviewer_notes is not None:
+            row["reviewer_notes"] = reviewer_notes
+
+        if new_status == "locked" and current_status == "reviewed":
+            scope = (row.get("exam_id"), row.get("exam_cycle_id"), row.get("exam_phase_id"), row.get("metric_kind"))
+            for other in self.db.get("exam_competition_metrics", []):
+                other_scope = (
+                    other.get("exam_id"), other.get("exam_cycle_id"),
+                    other.get("exam_phase_id"), other.get("metric_kind"),
+                )
+                if other is not row and other.get("is_current_published") and other_scope == scope:
+                    other["is_current_published"] = False
+                    other["superseded_at"] = "2026-07-03T00:00:00Z"
+            row["is_current_published"] = True
+        elif new_status not in ("reviewed", "locked"):
+            row["is_current_published"] = False
+
+        import uuid as _uuid
+
+        audit_id = str(_uuid.uuid4())
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id, "action": "competition_metric_status_transition",
+            "entity_type": "exam_competition_metric", "entity_id": metric_id,
+            "old_value": {"status": expected_status}, "new_value": {"status": new_status},
+            "notes": reviewer_notes,
+        })
+        return {
+            "ok": True, "audit_id": audit_id, "metric_id": metric_id,
+            "prev_status": expected_status, "new_status": new_status,
+        }
+
+    def _cms_reopen_competition_metric_for_edit(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_reopen_competition_metric_for_edit (migration 215):
+        clone-to-draft, never mutates the published row in place."""
+        import uuid as _uuid
+
+        metric_id = params.get("p_metric_id")
+        reviewer_notes = params.get("p_reviewer_notes")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if not (reviewer_notes or "").strip():
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required to reopen for edit")
+
+        pub = next((r for r in self.db.get("exam_competition_metrics", []) if r.get("id") == metric_id), None)
+        if pub is None:
+            raise RuntimeError(f"not_found: metric {metric_id} does not exist")
+        if pub.get("reviewer_status") not in ("reviewed", "locked"):
+            raise RuntimeError("not_published: only a reviewed/locked row can be reopened for edit")
+
+        new_row = dict(pub)
+        new_row["id"] = str(_uuid.uuid4())
+        new_row["reviewer_status"] = "draft"
+        new_row["supersedes_id"] = pub["id"]
+        new_row["version_no"] = (pub.get("version_no") or 1) + 1
+        new_row["is_current_published"] = False
+        new_row["superseded_at"] = None
+        self.db.setdefault("exam_competition_metrics", []).append(new_row)
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": str(_uuid.uuid4()), "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id, "action": "competition_metric_reopen_for_edit",
+            "entity_type": "exam_competition_metric", "entity_id": metric_id,
+            "old_value": {"published_id": pub["id"]}, "new_value": {"draft_id": new_row["id"]},
+            "notes": reviewer_notes,
+        })
+        return new_row
 
     def _apply_mock_mastery_delta(self, params: dict[str, Any]) -> dict[str, Any]:
         """Emulate the atomic, idempotent mastery-apply function (migration 145).
