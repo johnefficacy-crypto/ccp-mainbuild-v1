@@ -1105,6 +1105,7 @@ def pyq_onboarding(
                 "exam_cycle_exam_mismatch",
                 "exam_phase_not_found",
                 "exam_phase_exam_mismatch",
+                "exam_phase_cycle_mismatch",
                 "pyq_source_not_found",
                 "pyq_source_exam_mismatch",
                 "invalid_source_type",

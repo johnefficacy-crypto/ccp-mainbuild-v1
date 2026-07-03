@@ -95,6 +95,11 @@ class _OnboardingRpc:
                 raise Exception(f"exam_phase_not_found: phase {phase_id} does not exist")
             if str(ph.get("exam_id")) != str(exam_id):
                 raise Exception("exam_phase_exam_mismatch")
+            # Phase↔cycle consistency (migration 219, fail-closed): a supplied
+            # phase must be bound to exactly the supplied cycle. Rejects
+            # cross-cycle, cycle-agnostic, and phase-without-cycle combinations.
+            if cycle_id is None or str(ph.get("exam_cycle_id")) != str(cycle_id):
+                raise Exception("exam_phase_cycle_mismatch")
 
         # ── 2. source resolution (locals only; commit at end) ──
         src = p.get("p_source")
@@ -551,12 +556,56 @@ def test_phase_cross_exam_is_422():
     assert len(sb.db["pyq_papers"]) == 0
 
 
-def test_phase_ownership_validated_ok():
-    ph = {"id": "ph-1", "exam_id": "e1"}
+def test_phase_with_matching_cycle_ok():
+    # New contract (migration 219): a supplied phase must be accompanied by its
+    # own cycle. Cycle-bound phase + matching cycle → persisted together.
+    cyc = {"id": "cyc-1", "exam_id": "e1"}
+    ph = {"id": "ph-1", "exam_id": "e1", "exam_cycle_id": "cyc-1"}
+    sb = OnboardingSBStub(_base_db(exam_cycles=[cyc], exam_phases=[ph]))
+    r = _onboard(_client(sb), _body(exam_cycle_id="cyc-1", exam_phase_id="ph-1"))
+    assert r.status_code == 200, r.text
+    assert sb.db["pyq_papers"][0]["exam_cycle_id"] == "cyc-1"
+    assert sb.db["pyq_papers"][0]["exam_phase_id"] == "ph-1"
+
+
+def test_phase_cross_cycle_same_exam_is_422_and_rolls_back():
+    # Cycle A supplied, but the phase belongs to cycle B of the SAME exam.
+    # This is the exact hole the review flagged — must fail closed, no writes.
+    cyc_a = {"id": "cyc-A", "exam_id": "e1"}
+    cyc_b = {"id": "cyc-B", "exam_id": "e1"}
+    ph_b = {"id": "ph-B", "exam_id": "e1", "exam_cycle_id": "cyc-B"}
+    sb = OnboardingSBStub(_base_db(exam_cycles=[cyc_a, cyc_b], exam_phases=[ph_b]))
+    r = _onboard(_client(sb), _body(
+        exam_cycle_id="cyc-A", exam_phase_id="ph-B",
+        source={"source_type": "official"},
+    ))
+    assert r.status_code == 422, r.text
+    assert "exam_phase_cycle_mismatch" in r.text
+    # Transaction rollback: no paper, no source, no audit rows persisted.
+    assert len(sb.db["pyq_papers"]) == 0
+    assert len(sb.db["pyq_sources"]) == 0
+    assert len(sb.db["admin_audit_logs"]) == 0
+
+
+def test_phase_without_cycle_is_422():
+    # Fail-closed: a phase supplied with no cycle at all is contradictory.
+    ph = {"id": "ph-1", "exam_id": "e1", "exam_cycle_id": "cyc-1"}
     sb = OnboardingSBStub(_base_db(exam_phases=[ph]))
     r = _onboard(_client(sb), _body(exam_phase_id="ph-1"))
-    assert r.status_code == 200, r.text
-    assert sb.db["pyq_papers"][0]["exam_phase_id"] == "ph-1"
+    assert r.status_code == 422, r.text
+    assert "exam_phase_cycle_mismatch" in r.text
+    assert len(sb.db["pyq_papers"]) == 0
+
+
+def test_template_phase_no_cycle_binding_is_422():
+    # A cycle-agnostic (template) phase cannot anchor a cycle-scoped paper.
+    cyc = {"id": "cyc-1", "exam_id": "e1"}
+    ph = {"id": "ph-tmpl", "exam_id": "e1", "exam_cycle_id": None}
+    sb = OnboardingSBStub(_base_db(exam_cycles=[cyc], exam_phases=[ph]))
+    r = _onboard(_client(sb), _body(exam_cycle_id="cyc-1", exam_phase_id="ph-tmpl"))
+    assert r.status_code == 422, r.text
+    assert "exam_phase_cycle_mismatch" in r.text
+    assert len(sb.db["pyq_papers"]) == 0
 
 
 # ── Authorization ──────────────────────────────────────────────────────────
