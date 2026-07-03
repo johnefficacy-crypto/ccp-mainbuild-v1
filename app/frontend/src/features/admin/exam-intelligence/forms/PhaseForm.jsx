@@ -15,6 +15,19 @@ import DateField from "../../../../shared/ui/DateField";
 
 const INPUT_CLS = "input w-full";
 
+// Canonical D05 classified phase kinds — mirrors backend
+// app/exam_intelligence/document_policy.py CLASSIFIED_PHASE_KINDS (migration 210
+// CHECK). NULL/unset = unclassified; do not add values here without a backend change.
+export const PHASE_KIND_OPTIONS = [
+  { value: "objective_written", label: "Objective written" },
+  { value: "descriptive_written", label: "Descriptive written" },
+  { value: "mixed_written", label: "Mixed written" },
+  { value: "interview", label: "Interview" },
+  { value: "physical_test", label: "Physical test" },
+  { value: "medical", label: "Medical" },
+  { value: "document_verification", label: "Document verification" },
+];
+
 function effectiveSlug(phase_name, base_slug) {
   return (base_slug || "").trim() || slugify((phase_name || "").trim());
 }
@@ -31,6 +44,7 @@ function effectiveSlug(phase_name, base_slug) {
  *   year?: string,
  *   showSlug?: boolean,
  *   showMode?: boolean,
+ *   showKind?: boolean,
  *   showTemplate?: boolean,
  *   showDates?: boolean,
  *   isDuplicate?: boolean,
@@ -43,6 +57,7 @@ export default function PhaseForm({
   year = "",
   showSlug = true,
   showMode = true,
+  showKind = false,
   showTemplate = true,
   showDates = true,
   isDuplicate = false,
@@ -53,6 +68,7 @@ export default function PhaseForm({
     base_slug = "",
     phase_order = "",
     mode = "",
+    phase_kind = "",
     createTemplate = false,
     phase_start = null,
     phase_end = null,
@@ -117,6 +133,29 @@ export default function PhaseForm({
               onChange={e => onChange("mode", e.target.value)}
               data-testid="phase-form-mode"
             />
+          </div>
+        )}
+
+        {showKind && (
+          <div>
+            <label
+              className="text-xs font-medium text-muted-foreground"
+              htmlFor={rowId ? `phase-kind-${rowId}` : "phase-form-kind"}
+            >
+              Phase kind
+            </label>
+            <select
+              id={rowId ? `phase-kind-${rowId}` : "phase-form-kind"}
+              className={INPUT_CLS}
+              value={phase_kind || ""}
+              onChange={e => onChange("phase_kind", e.target.value)}
+              data-testid={rowId ? `phase-kind-${rowId}` : "phase-form-kind"}
+            >
+              <option value="">— unclassified —</option>
+              {PHASE_KIND_OPTIONS.map(k => (
+                <option key={k.value} value={k.value}>{k.label}</option>
+              ))}
+            </select>
           </div>
         )}
 

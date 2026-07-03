@@ -44,6 +44,7 @@ from app.exam_intelligence.diagnostics import (
     find_stuck_documents,
     find_stuck_text_extract_jobs,
 )
+from app.exam_intelligence.document_policy import CLASSIFIED_PHASE_KINDS
 from app.exam_intelligence.lookup import invalidate_exam_lookup_cache
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from app.utils.safe import safe_required
@@ -467,9 +468,22 @@ _PHASE_FIELDS = {
     "exam_id", "exam_cycle_id", "phase_name", "phase_slug", "phase_order",
     "mode", "duration_mins", "total_questions", "total_marks",
     "negative_marking", "status", "metadata",
-    "phase_start", "phase_end",
+    "phase_start", "phase_end", "phase_kind",
 }
 _PHASE_STATUSES = ("expected", "active", "completed", "cancelled")
+# Canonical classified kinds are owned by document_policy (D05 §1). 'other' is a
+# DB-legal explicit "unclassified" marker (migration 210 CHECK) — accepted here so
+# the API surface matches the column constraint (422 here instead of a DB error).
+_PHASE_KINDS = (*CLASSIFIED_PHASE_KINDS, "other")
+
+
+def _validate_phase_kind(row: dict[str, Any]) -> None:
+    """422 on unknown phase_kind; None/absent is allowed (unset / unclassified)."""
+    if "phase_kind" in row and row["phase_kind"] is not None and row["phase_kind"] not in _PHASE_KINDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"invalid_phase_kind: phase_kind must be one of {_PHASE_KINDS} or null",
+        )
 
 
 @router.get("/exam-phases")
@@ -503,6 +517,7 @@ def create_phase(
         raise HTTPException(status_code=422, detail="exam_id, phase_name, phase_slug are required")
     if row.get("status") and row["status"] not in _PHASE_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {_PHASE_STATUSES}")
+    _validate_phase_kind(row)
     inserted = supabase.table("exam_phases").insert(row).execute().data or []
     new = inserted[0] if inserted else row
     audit_id = _audit(
@@ -527,6 +542,7 @@ def update_phase(
     patch = {k: v for k, v in body.payload.items() if k in _PHASE_FIELDS}
     if not patch:
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    _validate_phase_kind(patch)
     patch["updated_at"] = _now_iso()
     updated = supabase.table("exam_phases").update(patch).eq("id", phase_id).execute().data or []
     audit_id = _audit(
@@ -3257,7 +3273,7 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "required": ["exam_id", "phase_name", "phase_slug"],
         "forced": {},
         "fks": {"exam_id": "exams"},
-        "enums": {"status": _PHASE_STATUSES},
+        "enums": {"status": _PHASE_STATUSES, "phase_kind": _PHASE_KINDS},
         "audit": "exam_intel.cms.phase.bulk_create",
     },
     "syllabus-documents": {
