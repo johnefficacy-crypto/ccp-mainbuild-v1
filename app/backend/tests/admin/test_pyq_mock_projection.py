@@ -415,6 +415,22 @@ class TestPreviewPaperProjection:
         assert q_entry["eligible"] is True
         assert q_entry["content_hash"] is not None
 
+    def test_preview_entry_carries_readable_label(self):
+        # EI-CLEAN-04: every preview row exposes a readable label (question text)
+        # so the operator UI shows text, not a truncated UUID.
+        sb = _seed_sb()
+        result = preview_paper_projection(sb, PAPER_ID)
+        assert result["questions"][0]["label"] == "What is X?"
+
+    def test_preview_label_truncates_long_and_collapses_whitespace(self):
+        long_q = _question(question_text="  " + "word " * 40 + "  ")
+        sb = _seed_sb(questions=[long_q])
+        result = preview_paper_projection(sb, PAPER_ID)
+        label = result["questions"][0]["label"]
+        assert len(label) <= 80
+        assert label.endswith("…")
+        assert "  " not in label  # whitespace collapsed to single spaces
+
     def test_ineligible_unverified_paper(self):
         sb = _seed_sb(paper=_paper(trust_status="pending"))
         result = preview_paper_projection(sb, PAPER_ID)
@@ -539,6 +555,8 @@ class TestSyncPaperProjection:
         assert len(calls) == 1
         assert calls[0]["p_pyq_question_id"] == Q_ID
         assert calls[0]["p_actor_id"] == ACTOR_ID
+        # EI-CLEAN-04: sync-result rows carry the readable label, like preview.
+        assert result["questions"][0]["label"] == "What is X?"
 
     def test_rpc_exception_propagates(self):
         """Internal RPC errors must propagate as exceptions, not silently return outcome='error'."""

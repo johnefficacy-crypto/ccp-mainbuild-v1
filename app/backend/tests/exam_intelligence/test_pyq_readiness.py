@@ -718,3 +718,76 @@ def test_questions_eligible_before_tag_gate_reflects_gates_1_and_2():
 
     assert result["questions_eligible_before_tag_gate"] == 1
     assert result["verified_question_count"] == 0
+
+
+# ===========================================================================
+# EI-CLEAN-03 — explicit metric decomposition
+# (planner-ready vs reviewed vs missing-tag vs rejected)
+# ===========================================================================
+
+def test_metrics_reviewed_vs_planner_ready_vs_missing_tag_vs_rejected():
+    """The exact screenshot scenario: a verified paper with 98 SME-verified
+    questions (no verified tags) + 2 rejected → 0 planner-ready, not '0 of 100
+    verified' overloaded onto the review count."""
+    paper = {"id": "paper-v", "exam_id": EXAM_ID, "exam_cycle_id": CYCLE_2026, "trust_status": "verified"}
+    questions = (
+        [{"id": f"q{i}", "pyq_paper_id": "paper-v", "reviewer_status": "verified"} for i in range(98)]
+        + [{"id": f"r{i}", "pyq_paper_id": "paper-v", "reviewer_status": "rejected"} for i in range(2)]
+    )
+    result = _call([paper], questions, tags=[])
+
+    assert result["questions_total"] == 100
+    assert result["reviewed_question_count"] == 98
+    assert result["rejected_question_count"] == 2
+    assert result["planner_ready_question_count"] == 0
+    assert result["verified_question_count"] == 0            # planner-ready alias
+    assert result["missing_verified_tag_count"] == 98
+    assert result["questions_eligible_before_tag_gate"] == 98
+
+
+def test_metrics_planner_ready_increments_and_missing_tag_decrements_with_tags():
+    """Tagging one of the reviewed questions moves it from missing-tag to
+    planner-ready; reviewed count is unchanged."""
+    paper = {"id": "paper-v", "exam_id": EXAM_ID, "exam_cycle_id": CYCLE_2026, "trust_status": "verified"}
+    questions = [
+        {"id": "q1", "pyq_paper_id": "paper-v", "reviewer_status": "verified"},
+        {"id": "q2", "pyq_paper_id": "paper-v", "reviewer_status": "verified"},
+    ]
+    tags = [{"id": "t1", "question_id": "q1", "reviewer_status": "verified"}]
+    result = _call([paper], questions, tags)
+
+    assert result["reviewed_question_count"] == 2
+    assert result["planner_ready_question_count"] == 1
+    assert result["missing_verified_tag_count"] == 1
+    assert result["rejected_question_count"] == 0
+
+
+def test_metrics_reviewed_counts_only_verified_reviewer_status():
+    """reviewed_question_count is reviewer_status=='verified' only — pending /
+    needs_correction / rejected are excluded."""
+    paper = {"id": "paper-v", "exam_id": EXAM_ID, "exam_cycle_id": CYCLE_2026, "trust_status": "verified"}
+    questions = [
+        {"id": "qv", "pyq_paper_id": "paper-v", "reviewer_status": "verified"},
+        {"id": "qp", "pyq_paper_id": "paper-v", "reviewer_status": "pending"},
+        {"id": "qn", "pyq_paper_id": "paper-v", "reviewer_status": "needs_correction"},
+        {"id": "qr", "pyq_paper_id": "paper-v", "reviewer_status": "rejected"},
+    ]
+    result = _call([paper], questions, tags=[])
+
+    assert result["reviewed_question_count"] == 1
+    assert result["rejected_question_count"] == 1
+    assert result["pending_question_count"] == 2            # pending + needs_correction
+    assert result["missing_verified_tag_count"] == 1        # the one verified, untagged
+
+
+def test_metrics_missing_tag_excludes_questions_on_unverified_papers():
+    """A verified question on a PENDING paper never reaches the tag gate, so it
+    is not counted as missing-tag (it fails gate 1 first)."""
+    pending_paper = {"id": "paper-p", "exam_id": EXAM_ID, "exam_cycle_id": CYCLE_2026, "trust_status": "pending"}
+    questions = [{"id": "qpp", "pyq_paper_id": "paper-p", "reviewer_status": "verified"}]
+    result = _call([pending_paper], questions, tags=[])
+
+    assert result["reviewed_question_count"] == 1           # SME-verified regardless of paper
+    assert result["questions_eligible_before_tag_gate"] == 0
+    assert result["missing_verified_tag_count"] == 0
+    assert result["planner_ready_question_count"] == 0

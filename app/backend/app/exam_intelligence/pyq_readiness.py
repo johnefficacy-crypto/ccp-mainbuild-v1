@@ -66,9 +66,18 @@ def aggregate_pyq_evidence(
     dict with keys:
         scope, selected_cycle_id, papers_total, selected_cycle_papers,
         other_cycle_papers, unscoped_papers, questions_total,
-        verified_question_count, questions_eligible_before_tag_gate,
+        verified_question_count, planner_ready_question_count,
+        reviewed_question_count, missing_verified_tag_count,
+        rejected_question_count, questions_eligible_before_tag_gate,
         pending_question_count, pending_tag_count, papers_pending_review,
         state.
+
+    EI-CLEAN-03 metric semantics (activation surfaces must use these explicit
+    names, not the overloaded "verified"):
+        planner_ready_question_count — all three gates pass (== verified_question_count)
+        reviewed_question_count      — reviewer_status=='verified' (SME-reviewed)
+        missing_verified_tag_count   — reviewed (gates 1+2) but no verified tag
+        rejected_question_count      — reviewer_status=='rejected'
 
     Invariants:
         selected_cycle_papers + other_cycle_papers + unscoped_papers == papers_total
@@ -116,6 +125,8 @@ def aggregate_pyq_evidence(
 
     questions_total = len(questions)
     pending_question_count = 0
+    rejected_question_count = 0
+    reviewed_question_count = 0
     questions_on_verified_papers = 0
 
     # Questions that cleared gates 1+2 (verified paper + verified question);
@@ -129,6 +140,13 @@ def aggregate_pyq_evidence(
 
         if reviewer_status in _QUESTION_PENDING_STATES:
             pending_question_count += 1
+        elif reviewer_status == "rejected":
+            rejected_question_count += 1
+
+        # SME-reviewed (verified) questions, independent of the paper/tag gates.
+        # This is the "98 verified" the PYQ Workbench shows — NOT planner-ready.
+        if reviewer_status == "verified":
+            reviewed_question_count += 1
 
         # Track how many questions are on verified papers (regardless of their own status).
         if paper_id in verified_paper_ids:
@@ -166,7 +184,13 @@ def aggregate_pyq_evidence(
             questions_with_verified_tag.add(question_id)
 
     # Final verified count: questions that cleared all three gates (distinct).
+    # This is the PLANNER-READY count — the only number that gates activation.
     verified_question_count = len(questions_with_verified_tag)
+
+    # Questions that are SME-reviewed (gates 1+2) but still lack a verified tag
+    # (gate 3). These are the "missing verified topic tag" questions the operator
+    # must remediate — NOT rejected, NOT pending, just untagged.
+    missing_verified_tag_count = questions_eligible_before_tag_gate - verified_question_count
 
     # ── State derivation ─────────────────────────────────────────────────────
     # "failed" is never set here; callers set it externally when appropriate.
@@ -189,6 +213,17 @@ def aggregate_pyq_evidence(
         "unscoped_papers": unscoped_papers,
         "questions_total": questions_total,
         "verified_question_count": verified_question_count,
+        # ── EI-CLEAN-03: explicit, non-overloaded metric names ───────────────
+        # planner_ready_question_count is the SAME value as verified_question_count
+        # (all three gates) — named explicitly so activation surfaces stop labelling
+        # it "verified" (which collides with the workbench's question-review count).
+        "planner_ready_question_count": verified_question_count,
+        # reviewed_question_count = SME-verified questions (reviewer_status=='verified'),
+        # independent of paper/tag gates. This is the workbench "98 verified".
+        "reviewed_question_count": reviewed_question_count,
+        # missing_verified_tag_count = reviewed (gates 1+2) but no verified tag yet.
+        "missing_verified_tag_count": missing_verified_tag_count,
+        "rejected_question_count": rejected_question_count,
         "questions_eligible_before_tag_gate": questions_eligible_before_tag_gate,
         "pending_question_count": pending_question_count,
         "questions_on_verified_papers": questions_on_verified_papers,
