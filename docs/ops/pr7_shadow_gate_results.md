@@ -117,28 +117,26 @@ only remaining gate (PR #803 review).** Disposition of the PR #803 blockers:
 - **[P2 RESOLVED]** `verify_mastery_fingerprint.sh` cross-checks the recorded
   digest across the manifest / pr7 / checklist AND requires a pinned SHA
   (`EXPECTED_SHA`, or `SKIP_SHA=1` for a content-only check).
-- **[CODE-FIXED, VALIDATION PENDING - 2026-07-02 staging failure]**
-  The first PR #800 staging check exposed a frontend-origin defect:
-  authenticated `POST /api/study/mocks/attempts/{id}/events` carried
-  `question.visited` but was sent to the Vercel frontend origin and returned
-  HTTP 405. `MockAttemptShell.jsx` now initializes the direct-fetch event bus
-  with the configured backend origin (`BACKEND_URL`). Regression tests and
-  the production frontend build pass locally. All three staging checks remain
-  unchecked until this remediation is deployed and revalidated. The 36-file
-  manifest expansion remains PROPOSED pending operator approval; the gate
-  stays FREEZE PENDING.
+- **[OPERATOR PASS - 2026-07-03]** PR #800 staging validation completed
+  against source main SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`. Check 3A confirmed authenticated
+  `question.visited` delivery to the configured Render backend with HTTP 200.
+  Check 3B confirmed a forced HTTP 500 retained one durable event, followed by
+  a successful HTTP 200 retry and an empty durable queue. Check 3C confirmed
+  persisted partial-coverage analytics with `fallback_question_count=12`,
+  `events_used=5`, `event_covered_questions=3`, and zero malformed events.
+  The operator explicitly approved the 36-file validation boundary.
 
-**Reference fingerprint (PR #803 branch, 36 files) — NOT the freeze /
-window_start hash; re-pin to the post-merge main SHA at window_start:**
-`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`
+**Freeze-candidate fingerprint for the operator-approved 36-file boundary
+at source main SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`:**
+`51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`
 
-A per-file SHA-256 attestation is committed at
-`docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`; verify
-fail-closed with `bash scripts/verify_mastery_fingerprint.sh`. The freeze hash
-must be recomputed (with the final boundary) once the blockers above clear and
-operator approval is captured.
+The regenerated per-file attestation is committed at
+`docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt`.
+This is not yet `window_start`; verify it again at the post-merge deployed
+main SHA immediately before setting T0.
 
 Superseded reference hashes (NOT window_start hashes):
+`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c` (PR #803 branch reference, superseded by `6171027a42fce011ea295cf9e07609bf3f25ac3a`);
 `b7394b79e00dc320705a4ccb0380afb2b0275f6cf9f0289f07d80e7ba0c3bc2b` (`1679adb8`, 32 files, pre-#800);
 `96dd2a67756d7af4837daa68c495c8ebef88b2bb5d1b64bf1206c1720b907a4b` (`c9c44a9e`, 32 files, bugs present)
 
@@ -152,22 +150,14 @@ Steps 3–8 are sequential and each depends on those above it.
 1. ✅ **Lane A code merges (DONE — 2026-06-21):** User allowlist /
    effective-mode (PR #746, PR #753) and error-pattern writer / schema
    remediation (PR #745) merged to `main`.
-2. **Freeze the v2 fingerprint manifest (FREEZE PENDING — code/tooling closed;
-   OPERATOR APPROVAL is the only remaining gate):** Boundary closed at 36 files
-   (added event-acceptance deps `core/auth.py` + `lib/supabase.js` and answer-
-   write deps `useAnswerSync.js` + `lib/api.js`); reference fingerprint + per-file
-   attestation regenerated (`f2ee2c407b15813bfbcdca37c843334d0793315a6dcd8063e9b2b8a5d815c28c`).
-   This is NOT yet the freeze hash. PR #803 review disposition: (i) ✅ submit/
-   late-event race fixed via an awaited pre-submit ACKed flush AND backend
-   idempotent recompute on late `/events`; (ii) ✅ boundary closed over
-   `useAnswerSync.js` + a transitive-dependency rule; (iii) ✅ telemetry-quality
-   gate is LEDGER-scoped — population = submitted `mock_attempts`, shadow intent
-   from the `mock_attempt_jobs` ledger, `mock_mastery_shadow` validated as output
-   only (PR #803 #4 closed: a failed writer can no longer vanish into a false PASS);
-   (v) ✅ `verify_mastery_fingerprint.sh` hardened
-   (cross-document digest + required `EXPECTED_SHA`). (iv) ⛔ OPERATOR PENDING —
-   PR #800 staging validation + boundary approval. After approval: re-pin the
-   fingerprint to the post-merge main SHA and record it here.
+2. **Freeze the v2 fingerprint manifest (BOUNDARY APPROVED; FREEZE RECORD
+   PENDING MERGE):** The operator completed PR #800 staging checks 3A, 3B,
+   and 3C and approved the 36-file boundary on 2026-07-03 against source main
+   SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`. The regenerated freeze-candidate digest is
+   `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`. Merge this control-record change, confirm the deployed
+   Render SHA and `FF_MOCK_MASTERY_WRITES=shadow`, then verify the fingerprint
+   at that post-merge main SHA before setting `window_start`.
+
 3. **Migration 182 deployment: OPERATOR VALIDATED (2026-06-30).** All
    eight durable evidence items — target environment, deployed SHA, UTC
    validation time, `schema_migrations` history row, exact RPC signatures,
