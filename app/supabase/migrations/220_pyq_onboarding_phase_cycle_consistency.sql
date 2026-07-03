@@ -1,4 +1,4 @@
--- Migration 219: harden cms_pyq_onboarding() with phase↔cycle consistency
+-- Migration 220: harden cms_pyq_onboarding() with phase↔cycle consistency
 --
 -- EI-CLEAN-02 review (PR #871, BLOCKING): the modal now submits both
 -- exam_cycle_id and exam_phase_id, but migration 192's cms_pyq_onboarding()
@@ -19,8 +19,12 @@
 --   * phase supplied with no cycle at all (p_exam_cycle_id IS NULL)
 -- all raise exam_phase_cycle_mismatch (P0422 → HTTP 422).
 --
--- 219 = MAX(main filesystem)+1 (current max is 218). Reconcile the applied
--- version against the deployed schema_migrations state at apply time.
+-- 220 = MAX(main filesystem)+1. NOTE: this file was originally merged as 219
+-- (PR #871) but collided with 219_j3_applied_vs_appeared.sql (PR #870), which
+-- merged first and keeps 219. Renumbered to 220 to resolve the duplicate
+-- schema_migrations version — the CI migration-numbers guard exempts renaming a
+-- duplicate-version file, and neither 219 was live-applied yet. Reconcile the
+-- applied version against the deployed schema_migrations state at apply time.
 
 CREATE OR REPLACE FUNCTION public.cms_pyq_onboarding(
     p_actor_id      text,
