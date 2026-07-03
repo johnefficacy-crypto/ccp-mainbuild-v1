@@ -318,7 +318,7 @@ export default function CompetitionPanel() {
                   </select>
                   <input
                     className="input"
-                    placeholder="basis (8-500 chars, e.g. \"cutoff rose 4th consecutive year\")"
+                    placeholder="basis (8-500 chars, e.g. 'cutoff rose 4th consecutive year')"
                     value={form.difficulty_basis}
                     onChange={(e) => setForm((f) => ({ ...f, difficulty_basis: e.target.value }))}
                   />
