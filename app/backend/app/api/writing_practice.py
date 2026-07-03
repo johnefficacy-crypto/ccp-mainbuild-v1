@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.study_os.writing_practice import applicability
 from app.study_os.writing_practice import coverage_checker
 from app.study_os.writing_practice import deterministic as det
 from app.study_os.writing_practice import session_state as st
@@ -220,13 +221,37 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
         raise HTTPException(status_code=404, detail="prompt not found or not verified/active")
 
     # A supplied study_task must belong to the caller (launch-identity check).
+    # It is ALSO the authoritative source of exam context for applicability
+    # enforcement (§17 content-scoping): study_tasks carry the exam_id /
+    # exam_phase_id the task was scheduled under (migration 034). We never trust
+    # an unvalidated client-supplied exam — the context is derived from the
+    # owner-validated task, or is absent (fail-closed) when no task is supplied.
+    exam_id: str | None = None
+    exam_phase_id: str | None = None
     if body.study_task_id is not None:
         task = (
-            supabase.table("study_tasks").select("id,user_id")
+            supabase.table("study_tasks").select("id,user_id,exam_id,exam_phase_id")
             .eq("id", str(body.study_task_id)).maybe_single().execute()
         ).data
         if not task or task.get("user_id") != user_id:
             raise HTTPException(status_code=404, detail="study task not found")
+        exam_id = task.get("exam_id")
+        exam_phase_id = task.get("exam_phase_id")
+
+    # DEFAULT-DENY applicability (migration 214): the prompt must have an ACTIVE
+    # matching target for the authoritative exam context — otherwise it is not
+    # launchable, regardless of its verified/active content state. With no task
+    # (hence no exam context) only an explicit active GLOBAL target passes; a
+    # scoped prompt is denied fail-closed. This is the SOLE launch authority now
+    # that migration 214 removed the exam-scope columns from writing_prompts and
+    # the raw public-read policy is being locked down (migration 218).
+    if not applicability.is_prompt_applicable(
+        supabase, str(body.prompt_id), exam_id=exam_id, exam_phase_id=exam_phase_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="prompt is not applicable for this exam context",
+        )
 
     constraints = validate_unit_constraints({"schema_version": 1})
     # Atomic: session + all units in one transaction (§8.0). Learning-mode
