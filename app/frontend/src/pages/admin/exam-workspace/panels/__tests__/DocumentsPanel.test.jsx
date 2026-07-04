@@ -24,10 +24,18 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 jest.mock("../../../../../lib/api", () => ({
   __esModule: true,
   api: { get: jest.fn(), post: jest.fn() },
+  // DocumentsPanel now renders EvidenceSection, which uses getApiErrorMessage.
+  getApiErrorMessage: (e) => (e && e.message) || "error",
 }));
 
 jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
+}));
+
+// DocumentsPanel now renders EvidenceSection, which reads auth for capability gating.
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
 }));
 
 const { api } = require("../../../../../lib/api");

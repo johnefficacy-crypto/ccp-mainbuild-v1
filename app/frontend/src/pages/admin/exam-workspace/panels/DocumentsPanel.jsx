@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
+import EvidenceSection from "./EvidenceSection";
 
 const CMS     = "/api/admin/exam-intelligence-cms";
 const DOC_BASE = `${CMS}/documents`;
@@ -749,6 +750,7 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
           defaultCycleId={cycle?.id}
           onUploaded={handleUploaded}
         />
+        <EvidenceSection examId={exam?.id} cycleId={cycle?.id} phases={phases ?? []} />
       </div>
     );
   }
@@ -964,6 +966,8 @@ export default function DocumentsPanel({ onGotoTab, documentId = null, docStatus
           onUploaded={handleUploaded}
         />
       )}
+
+      <EvidenceSection examId={exam?.id} cycleId={cycle?.id} phases={phases ?? []} />
     </div>
   );
 }

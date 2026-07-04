@@ -64,7 +64,7 @@ These landed on `main` since the July-2 snapshot but are **not** release-validat
 needs some combination of live migration application, RLS/grant verification, click-through, or
 live E2E before it counts toward production readiness:
 
-- **D12 v1 (D05 evidence engine):** PR-1 #843 + PR-2 #849 merged; PR-3/PR-4 open.
+- **D12 v1 (D05 evidence engine):** PR-1 #843 + PR-2 #849 merged; PR-4 (document-evidence registration + trust-review UI/API) code-landed on `claude/evidence-ui-97o0qf` (staging RLS/grant + click-through pending); PR-3 (planner shared authority) open.
 - **J3 — Applied-vs-Appeared (PR #870):** typed candidate-count tables + atomic ratio switch merged; **live DB validation pending**.
 - **J3 — Evidence-Coverage derivation (PR #867):** migration + endpoint code-landed; **staging validation pending**.
 - **Content Studio (PR #868):** consolidated UI + route + writing-prompt operator surface merged.
