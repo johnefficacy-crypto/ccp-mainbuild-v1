@@ -1,4 +1,4 @@
--- 221_ewp_prompt_snapshot_and_exam_derivation.sql
+-- 222_ewp_prompt_snapshot_and_exam_derivation.sql
 -- Fix EWP pipeline breakage from migration 214 (dropped writing_prompts.exam_id).
 -- v_prompt.exam_id/exercise_type/topic_id/rubric_id reads in ewp_claim_evaluation_job,
 -- ewp_claim_mastery_outbox, ewp_private.ewp_outbox_evidence_context now RAISE.

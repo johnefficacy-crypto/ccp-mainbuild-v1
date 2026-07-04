@@ -1,8 +1,8 @@
-"""Behavioural integration test for migration 221 — the EWP pipeline fix after
+"""Behavioural integration test for migration 222 — the EWP pipeline fix after
 migration 214 dropped the exam-scope columns from ``writing_prompts``.
 
-Applies the FULL post-214 chain (205 → 207 → 209 → 214 → 221) to a real Postgres
-and proves what 221 changes:
+Applies the FULL post-214 chain (205 → 207 → 209 → 214 → 222) to a real Postgres
+and proves what 222 changes:
 
   1. Immutable prompt snapshot — ``ewp_create_writing_session`` freezes the
      prompt's scope/content/constraints (exercise_type, topic_id, prompt_text,
@@ -29,8 +29,8 @@ regression that re-reads the prompt's exam column would fail loudly here.
 
 Runs in CI (the backend job provides Postgres + EWP_PG_DSN); locally set
 EWP_PG_DSN to a disposable superuser DB. Applies its full migration chain
-(205→207→209→214→221) to a DEDICATED disposable database
-(``ewp_it_snapshot221``, created/dropped by this module) rather than the
+(205→207→209→214→222) to a DEDICATED disposable database
+(``ewp_it_snapshot222``, created/dropped by this module) rather than the
 shared ``EWP_PG_DSN`` database, since 214 permanently drops
 ``writing_prompts.exam_id`` and would otherwise contaminate sibling test
 modules sharing one CI database. Skips when no DB is configured.
@@ -49,7 +49,7 @@ import pytest
 _DSN = os.environ.get("EWP_PG_DSN")
 _PSQL = shutil.which("psql")
 _MIG = Path(__file__).parents[3] / "supabase/migrations"
-_PRIVATE_DB = "ewp_it_snapshot221"
+_PRIVATE_DB = "ewp_it_snapshot222"
 
 pytestmark = pytest.mark.skipif(
     not (_DSN and _PSQL),
@@ -176,7 +176,7 @@ def _apply():
     _psql_file(_MIG / "207_english_writing_practice_rpcs.sql")
     _psql_file(_MIG / "209_english_writing_practice_evaluator.sql")
     _psql_file(_MIG / "214_writing_prompt_content_scoping.sql")
-    _psql_file(_MIG / "221_ewp_prompt_snapshot_and_exam_derivation.sql")
+    _psql_file(_MIG / "222_ewp_prompt_snapshot_and_exam_derivation.sql")
     _psql(_FIXTURES)
     yield
 
