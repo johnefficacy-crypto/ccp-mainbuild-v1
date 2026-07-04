@@ -1,0 +1,327 @@
+{
+  "document_id": "a75ba7b2-8008-494d-b9a5-06e0ef128f1f",
+  "extractor_version": "0.2.0",
+  "pages_processed": [
+    3,
+    5,
+    7
+  ],
+  "pages_skipped": [
+    1,
+    2,
+    4,
+    6,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48
+  ],
+  "errors": [],
+  "expected_questions": [
+    {
+      "question_number": 1,
+      "question_text": "Question :\nX receives three coins of different\ndenominations : 1, 2, 5, 10 and 20. If\nthe total amount received by X is m,\ndoes X receive a coin of denomi-\nnation 5?\nStatement I :\nm is not a prime number.\nStatement II :\nThe sum of the digits of m is greater\nthan 5.",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.07053422370617696,
+            0.48215977265550997,
+            0.45200333889816363,
+            0.6908746447742343
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 2,
+      "question_text": "Question :\nFor two distinct real numbers x and\ny, which of them is bigger?\nStatement I :\nxo < y<l\nStatement II :\ny<vx <1\nTDMN-B-AST/66A",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.04632721202003339,
+            0.7123460688348595,
+            0.4515859766277129,
+            0.9144300599936849
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 3,
+      "question_text": "Question :\nIf x and y are integers, then is x\neven?\nStatement I :\nis even.\nStatement II :\n+y? is odd.",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.5212854757929883,
+            0.08904325860435744,
+            0.9048414023372288,
+            0.22987053994316387
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 4,
+      "question_text": "Question :\nX is a collection of certain odd\nnumbers whereas Y is a collection of\ncertain even numbers. T consists of\nthe numbers all of which are either\nfrom X or from Y. Is every number\nof T from Y?\nStatement I :\nThe sum of any two numbers\nbelonging to T is even.\nStatement II :\nIf both p and q are picked from T,\nthen (p- 1)q is even.",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.5221202003338898,
+            0.24313230186296178,
+            0.9069282136894825,
+            0.48373855383643827
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 95.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 5,
+      "question_text": "Question :\nIf x, yand z are integers, each greater\nthan 1, then is x a prime number?\nStatement I :\nxy” = 116\nStatement II :\n261:\nDirections for the next 2 (two) items :\nRead the following passage and answer the\nitems that follow. Your answers should be\nbased solely on the passage.\nPassage\n‘Kalagram’, the cultural village set up at the\nMaha Kumbh Mela, unfolded as a mosaic of\nIndia’s diverse regions, each represented by\nseven meticulously crafted ‘Sanskriti Angans’—\nstepping through the grand portal was like\nentering another world. These thematic zones,\n[ P.T.O.",
+      "regions": [
+        {
+          "page": 3,
+          "bbox": [
+            0.5004173622704507,
+            0.4941585096305652,
+            0.9115191986644408,
+            0.9134827912851279
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 6,
+      "question_text": "Which of the following conclusions are\nvalid?\n1. Seven Sanskriti Angans,\nrepresenting different regions of\nIndia, had been showcased in\nKalagram.\n2. Regional artistry was recognised via\nthe inspiration drawn from iconic\ntemples.\n3. India’s ancient history had been\ncrafted by the contemporary\ncraftsmanship of 230 artisans into\ncreations to behold.\n4. Art forms from all regions of India\nhad been showcased in these living\ngalleries.",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.07220367278797997,
+            0.28965736040609136,
+            0.45534223706176963,
+            0.5618654822335025
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 7,
+      "question_text": "Which one of the following statements is\nnot correct?",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.07679465776293823,
+            0.6878172588832487,
+            0.4570116861435726,
+            0.7173223350253807
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 8,
+      "question_text": "The weight of X, in kg, is denoted by X.\nThe weights of A, B, C, D, P, Q, Rand S\nare measured. Given :\nA+B+C+D=17\nA+C=6\nP+Q0+S+D=15\nP+Q+R+B=17\nP=Rand Q=S\nWhich one of the following statements is\ncorrect?",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.5242070116861436,
+            0.10025380710659898,
+            0.9085976627712855,
+            0.3020304568527919
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 93.5,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 9,
+      "question_text": "How many words can one form by\nshuffling the letters of the word QUEUE,\nif Q is always followed by U? The words\nthus formed need not necessarily have\nany meaning.",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.5279632721202003,
+            0.46097715736040606,
+            0.9102671118530885,
+            0.5434644670050761
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 10,
+      "question_text": "X, Y and Z jump forward 4’, 6’ and 5’,\nrespectively. At 8 AM, they all land on\nmark 199’. How many times will they all\nland on the same mark (need not be at\nthe same moment) between mark 195’\nand 1000’, if all of them cross mark\n1000’ by 9 AM?",
+      "regions": [
+        {
+          "page": 5,
+          "bbox": [
+            0.5208681135225376,
+            0.6592639593908629,
+            0.914440734557596,
+            0.7756979695431472
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 11,
+      "question_text": "Which of the following conclusions are\nvalid?\n1. Sport is more than just games; it is\na way of life.\n2. Sport can help mitigate the\nproblems of seclusion among the\nyoung.\n3. Earning laurels in sport can help\none secure a job on the basis of an\nassigned quota.\n4. Standard corporate sector skills\ncannot be learnt through sport.",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.06636060100166945,
+            0.4543147208121827,
+            0.4582637729549249,
+            0.6941624365482234
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 12,
+      "question_text": "Which of the following statements is/are\ncorrect?\n1. Parents are not encouraging\nenough when it comes to children\nplaying sport.\n2. Participation in sporting activities\ncan help develop life skills.\n3. Sport as a way of life can help\nevolve the very nature of society\nitself.",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5179465776293823,
+            0.10025380710659898,
+            0.9106844741235393,
+            0.3112309644670051
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    },
+    {
+      "question_number": 13,
+      "question_text": "A toy T jumps forward or backward. In\neach forward jump, it moves 5’ forward\nwhereas in each backward jump, it\nmoves 2’ backward. If in 31 jumps, T\nmoves exactly 15’ forward, then what is\nthe difference of the number of forward\nand backward jumps?",
+      "regions": [
+        {
+          "page": 7,
+          "bbox": [
+            0.5217028380634391,
+            0.5799492385786802,
+            0.9156928213689483,
+            0.6954314720812182
+          ]
+        }
+      ],
+      "confidence_by_field": {
+        "ocr_p50": 96.0,
+        "segmentation": 1.0
+      }
+    }
+  ],
+  "_stats": {
+    "total_questions": 13,
+    "total_pages_processed": 3,
+    "total_pages_skipped": 45,
+    "total_errors": 0,
+    "question_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ]
+  }
+}
