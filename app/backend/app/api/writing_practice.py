@@ -69,24 +69,25 @@ def _owned_session(supabase: Any, session_id: str, user_id: str) -> dict:
     return row
 
 
-_PROMPT_RESUME_COLUMNS = (
-    "id,exercise_type,prompt_text,source_text,required_words,"
-    "required_sentence_count,difficulty_level,min_words,max_words"
-)
-
-
 def _session_prompt(supabase: Any, session: dict) -> dict | None:
-    """The verified prompt for a session, projected to the fields the UI needs."""
+    """The prompt view for a session, projected from the IMMUTABLE per-session
+    snapshot (migration 221) — never the live writing_prompts row, so a later
+    prompt edit cannot retro-change an in-flight or historical session."""
+    snap = session.get("prompt_snapshot")
     prompt_id = session.get("prompt_id")
-    if not prompt_id:
+    if not snap or not prompt_id:
         return None
-    return (
-        supabase.table("writing_prompts")
-        .select(_PROMPT_RESUME_COLUMNS)
-        .eq("id", prompt_id)
-        .maybe_single()
-        .execute()
-    ).data
+    return {
+        "id": prompt_id,
+        "exercise_type": snap.get("exercise_type"),
+        "prompt_text": snap.get("prompt_text"),
+        "source_text": snap.get("source_text"),
+        "required_words": snap.get("required_words") or [],
+        "required_sentence_count": snap.get("required_sentence_count"),
+        "difficulty_level": snap.get("difficulty_level"),
+        "min_words": snap.get("min_words"),
+        "max_words": snap.get("max_words"),
+    }
 
 
 def _resume_unit_state(supabase: Any, session: dict, unit_ids: list[str]) -> dict[str, dict]:
@@ -301,16 +302,16 @@ def submit_unit(
     if not unit:
         raise HTTPException(status_code=404, detail="unit not found")
 
-    prompt = (
-        supabase.table("writing_prompts").select("min_words,max_words,required_words")
-        .eq("id", session["prompt_id"]).single().execute()
-    ).data
-    required_words = prompt.get("required_words") or []
+    # Read from the session's IMMUTABLE prompt snapshot (migration 221), not the
+    # live writing_prompts row — a prompt edit after session creation must not
+    # change word-limit/required-word validation for an already-created session.
+    snap = session.get("prompt_snapshot") or {}
+    required_words = snap.get("required_words") or []
     constraints = unit.get("unit_constraints") or {}
 
     # Per-unit bounds override prompt-level bounds when present (§4.4a).
-    min_words = constraints.get("min_words", prompt.get("min_words"))
-    max_words = constraints.get("max_words", prompt.get("max_words"))
+    min_words = constraints.get("min_words", snap.get("min_words"))
+    max_words = constraints.get("max_words", snap.get("max_words"))
 
     # Deterministic Stage-1 (pure) — computed before the atomic write.
     siblings = _sibling_latest_texts(supabase, str(session_id), exclude_unit_id=unit["id"])
