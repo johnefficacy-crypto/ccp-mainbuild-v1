@@ -49,3 +49,38 @@ def test_light_no_resolvable_cycle_is_not_exposed():
     out = compute_draft_plan(SBStub(db), "u-1")
     assert out["generated"] is False
     assert out["reason"] == "planner_activation_disabled"
+
+
+def test_light_exposed_but_closed_cycle_refuses():
+    # resolve_exam_target_window excludes only `cancelled`; its fallback can select a `closed`
+    # cycle. cycle_readiness marks a non-operational cycle Step 9 not_applicable, so the planner
+    # MUST refuse even when the stale flag is set — otherwise readiness<->planner drift returns.
+    db = _seed(mode="light", exposed=True)
+    db["exam_cycles"][0]["status"] = "closed"
+    out = compute_draft_plan(SBStub(db), "u-1")
+    assert out["generated"] is False
+    assert out["reason"] == "planner_activation_disabled"
+
+
+def test_light_exposed_but_completed_cycle_refuses():
+    db = _seed(mode="light", exposed=True)
+    db["exam_cycles"][0]["status"] = "completed"
+    out = compute_draft_plan(SBStub(db), "u-1")
+    assert out["generated"] is False
+    assert out["reason"] == "planner_activation_disabled"
+
+
+def test_exposed_sibling_cycle_does_not_leak_to_unexposed_target_cycle():
+    # Selected-cycle canonicity (D08/D12): Cycle B is exposed AND has its own locked coverage, but
+    # Cycle A (the resolved target, `active`) is NOT exposed and has no applicable coverage. The
+    # planner must refuse for A — B's exposure/coverage must never generate A's plan.
+    db = _seed(mode="light", exposed=False)  # A ("c-1"): active, not exposed
+    db["exam_cycles"].append({
+        "id": "c-2", "exam_id": "exam-1", "status": "open",
+        "exam_start": "2027-09-15", "planner_activation_enabled": True,
+    })
+    db["exam_topic_coverage"][0]["exam_cycle_id"] = "c-2"  # B-scoped only; not applicable to A
+    out = compute_draft_plan(SBStub(db), "u-1")
+    # Resolver picks the `active` cycle A (step 1); A is unexposed -> refuse.
+    assert out["generated"] is False
+    assert out["reason"] == "planner_activation_disabled"
