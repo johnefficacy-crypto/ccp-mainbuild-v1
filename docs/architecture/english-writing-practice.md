@@ -1037,6 +1037,16 @@ Backend resolution before any `writing_issue_events` insert:
 
 Any future schema field that carries a taxonomy ID from the model is validated against subject + level + active state + allowed issue-type mapping before insert.
 
+**Current implementation status:** `language_evaluator.py` ships only
+`MockLanguageEvaluator` (`lang-mock-v1`) — a deterministic rule-based stand-in,
+not the LLM call this section describes. It does not receive `source_text`, so
+it cannot judge whether an answer is a meaning-preserving correction of a
+supplied sentence (`sentence_correction`/`grammar`/source-bearing
+`vocabulary_in_context` prompt types). See
+`docs/architecture/ewp-semantic-evaluator-adapter.md` for the gated real-adapter
+proposal that closes this gap — **not yet approved**; those prompt types stay
+inactive until it is.
+
 ### 5.4 Stage 3 — Rubric evaluation
 
 For paragraphs, essays and précis. Scores separate dimensions:

@@ -73,21 +73,37 @@ class _FakeSupabase:
 
 
 def _fixture(*, feedback_released=True, mode="learning"):
-    session = {"id": "S1", "prompt_id": "P1", "mode": mode}
+    session = {
+        "id": "S1", "prompt_id": "P1", "mode": mode,
+        # The immutable per-session snapshot (migration 221) — _session_prompt
+        # must read from here, never the live writing_prompts row.
+        "prompt_snapshot": {
+            "exercise_type": "sentence_construction",
+            "prompt_text": "Use the word diligent.",
+            "source_text": None,
+            "required_words": ["diligent"],
+            "required_sentence_count": 1,
+            "difficulty_level": 3,
+            "min_words": 4,
+            "max_words": 20,
+        },
+    }
     if mode == "exam" and feedback_released:
         session["feedback_released_at"] = "2000-01-01T00:00:00+00:00"
     tables = {
+        # Deliberately DIVERGENT from prompt_snapshot: proves _session_prompt
+        # reads the frozen snapshot, never this (possibly since-edited) row.
         "writing_prompts": [
             {
                 "id": "P1",
                 "exercise_type": "sentence_construction",
-                "prompt_text": "Use the word diligent.",
-                "source_text": None,
-                "required_words": ["diligent"],
-                "required_sentence_count": 1,
-                "difficulty_level": 3,
-                "min_words": 4,
-                "max_words": 20,
+                "prompt_text": "EDITED LIVE PROMPT (must not leak into resume)",
+                "source_text": "EDITED LIVE SOURCE (must not leak)",
+                "required_words": ["EDITED"],
+                "required_sentence_count": 99,
+                "difficulty_level": 9,
+                "min_words": 999,
+                "max_words": 999,
             }
         ],
         "writing_session_units": [
@@ -117,6 +133,9 @@ def test_resume_payload_includes_prompt_latest_version_and_issues():
 
     assert out["prompt"]["prompt_text"] == "Use the word diligent."
     assert out["prompt"]["required_words"] == ["diligent"]
+    # Never the live (divergent) writing_prompts row — proves the snapshot wins.
+    assert "EDITED" not in out["prompt"]["prompt_text"]
+    assert out["prompt"]["min_words"] == 4 and out["prompt"]["max_words"] == 20
     assert out["feedback_released"] is True
 
     unit = out["units"][0]
