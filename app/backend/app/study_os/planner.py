@@ -184,6 +184,44 @@ def _resolve_target_exam(supabase: Any, user_id: str) -> dict[str, Any] | None:
     return resolve_exam_by_slug(supabase, candidate)
 
 
+_OPERATIONAL_CYCLE_STATUSES = ("expected", "open", "active")
+
+
+def _cycle_planner_exposed(supabase: Any, cycle_id: str | None) -> bool:
+    """D12/D14 canonical planner / Study-OS exposure for a cycle.
+
+    Exposure requires BOTH: the cycle is operational (``status`` in
+    ``expected``/``open``/``active``) AND ``planner_activation_enabled`` is set — read from the
+    same resolved cycle row so the planner and cycle_readiness Step 9 agree on the SAME authority.
+    ``resolve_exam_target_window`` only excludes ``cancelled`` cycles and its fallback can select a
+    ``closed``/``completed`` cycle; readiness marks such a cycle Step 9 not_applicable (D05 §6:
+    activation policy applies only to operational cycles), so the planner MUST refuse it too or the
+    exact readiness↔planner drift this gate removes would reappear.
+
+    Fail-closed: no cycle, a read failure, a non-operational status, or an unset flag → not exposed
+    (a `light` exam is never planner-activated without an explicit per-cycle opt-in).
+    """
+    if not cycle_id:
+        return False
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("status, planner_activation_enabled")
+            .eq("id", cycle_id)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if not rows:
+        return False
+    row = rows[0]
+    if (row.get("status") or "") not in _OPERATIONAL_CYCLE_STATUSES:
+        return False
+    return bool(row.get("planner_activation_enabled"))
+
+
 def _days_remaining(supabase: Any, exam_id: str) -> int | None:
     today = datetime.now(timezone.utc).date()
     cycle = _cached_next_cycle(supabase, exam_id, today.isoformat())
@@ -1021,6 +1059,17 @@ def _compute_plan(
 
     today = datetime.now(timezone.utc).date()
     resolver_result = resolve_exam_target_window(supabase, exam_id=exam_id, today=today)
+
+    # D12/D14 (D05 evidence-engine PR-3): a `light` exam is exposed to Study OS / planner
+    # activation ONLY when its target cycle opts in via `exam_cycles.planner_activation_enabled`
+    # — the SAME canonical authority cycle_readiness Step 9 consumes (shared authority, no
+    # readiness↔planner drift). A non-exposed light exam is not a planner target; readiness marks
+    # its review_activate not_applicable. `core` is always planner-eligible; index_only/archive
+    # planner gating is a separate concern (readiness already marks them N/A).
+    if (exam or {}).get("management_mode") == "light" and not _cycle_planner_exposed(
+        supabase, resolver_result.get("cycle_id")
+    ):
+        return {"generated": False, "reason": "planner_activation_disabled", "exam": exam.get("slug")}
 
     # User autonomy: weighting focus, plan-shape overrides, pin / mute.
     prefs = get_plan_preferences(supabase, user_id)
