@@ -1,25 +1,31 @@
 /**
  * EvidenceSection — D05 document-evidence registration + trust review (PR-4).
  *
- * Renders inside DocumentsPanel. Lets an operator promote an uploaded/processed
+ * Renders inside DocumentsPanel. Lets an operator promote an uploaded+completed
  * document_asset into the D05 evidence model (exam_document_evidence + roles),
  * run the human trust review (verify / reject / supersede), and see the resolved
  * requirement coverage for the selected cycle — the same evaluation Step 9
  * (Review & activate) uses.
  *
- * All endpoints come from admin_exam_intel_evidence.py:
- *   GET  /exam-intelligence-cms/evidence?exam_id=&exam_cycle_id=
- *   GET  /exam-intelligence-cms/evidence/coverage?exam_id=&exam_cycle_id=
- *   GET  /exam-intelligence-cms/evidence/sources
- *   POST /exam-intelligence-cms/evidence
- *   POST /exam-intelligence-cms/evidence/{id}/review
- *   POST /exam-intelligence-cms/evidence/{id}/supersede
+ * Permission tiers (locked J2 §D, mirrored from the backend router):
+ *   reads               → manage OR review
+ *   register            → exam_intelligence.manage  (operational edit)
+ *   verify/reject/supersede → exam_intelligence.review  (trust/lifecycle)
+ * cms is NOT a normal-surface capability here. Actions are hidden/disabled by
+ * capability; super_admin sees everything.
  *
- * Registering never auto-verifies: new registrations land trust_status='pending'.
+ * All mutations go through useApiAction (mandatory per AGENTS.md) — shared
+ * toast + busy/error handling. Registering never auto-verifies (lands pending).
+ *
+ * Endpoints (admin_exam_intel_evidence.py):
+ *   GET  /evidence?exam_id=&exam_cycle_id=   GET /evidence/coverage   GET /evidence/sources
+ *   POST /evidence   POST /evidence/{id}/review   POST /evidence/{id}/supersede
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { api, getApiErrorMessage } from "../../../../lib/api";
+import { useAuth } from "../../../../lib/authContext";
+import useApiAction from "../../../../lib/hooks/useApiAction";
 
 const CMS = "/api/admin/exam-intelligence-cms";
 const EV_BASE = `${CMS}/evidence`;
@@ -47,6 +53,13 @@ TrustBadge.propTypes = { status: PropTypes.string };
 const shortId = (id) => (id ? `…${String(id).slice(-6)}` : "—");
 const phaseLabel = (p) => p?.phase_name ?? p?.name ?? p?.phase_slug ?? `Phase ${shortId(p?.id)}`;
 
+// An asset is registerable only once its upload handshake is complete (independent of extraction).
+// Mirrors the backend _upload_incomplete guard so the picker can't offer a placeholder.
+function isRegisterableAsset(a) {
+  if (!a || a.status === "archived" || a.status === "uploaded") return false;
+  return !String(a.content_hash || "").startsWith("pending:");
+}
+
 // ── RegisterForm ────────────────────────────────────────────────────────────
 
 function RegisterForm({ examId, cycleId, phases, assets, sources, onDone, onCancel }) {
@@ -55,17 +68,16 @@ function RegisterForm({ examId, cycleId, phases, assets, sources, onDone, onCanc
   const [phaseId, setPhaseId] = useState("");
   const [sourceId, setSourceId] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { run, busy } = useApiAction();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setErr("");
     if (!assetId) { setErr("Choose a document to register."); return; }
     if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
-    setBusy(true);
-    try {
-      await api.post(EV_BASE, {
+    const res = await run({
+      action: () => api.post(EV_BASE, {
         document_asset_id: assetId,
         exam_id: examId,
         exam_cycle_id: cycleId || null,
@@ -73,13 +85,12 @@ function RegisterForm({ examId, cycleId, phases, assets, sources, onDone, onCanc
         source_registry_id: sourceId || null,
         roles: [{ evidence_kind: kind, exam_phase_id: phaseId || null, exam_cycle_id: cycleId || null }],
         reason: reason.trim(),
-      });
-      onDone();
-    } catch (ex) {
-      setErr(getApiErrorMessage(ex) || "Registration failed");
-    } finally {
-      setBusy(false);
-    }
+      }),
+      successMessage: "Evidence registered — pending review.",
+      errorMessage: "Registration failed",
+    });
+    if (res.ok) onDone();
+    else setErr(getApiErrorMessage(res.error) || "Registration failed");
   }
 
   return (
@@ -91,7 +102,7 @@ function RegisterForm({ examId, cycleId, phases, assets, sources, onDone, onCanc
             <div className="field-lbl">Document <span style={{ color: "var(--ink-accent)" }}>*</span></div>
             {assets.length === 0 ? (
               <div style={{ fontSize: 12, color: "var(--ink-mute)" }} data-testid="ev-no-assets">
-                No uploaded documents for this exam — upload a PDF first.
+                No upload-complete documents for this exam — upload and finish a PDF first.
               </div>
             ) : (
               <select className="field" value={assetId} onChange={(e) => setAssetId(e.target.value)} data-testid="ev-asset-select">
@@ -157,42 +168,45 @@ RegisterForm.propTypes = {
   onCancel: PropTypes.func,
 };
 
-// ── ReviewRow (inline verify/reject/supersede) ──────────────────────────────
+// ── ReviewControls (inline verify/reject/supersede — review tier) ────────────
 
-function ReviewControls({ ev, others, onChanged }) {
+function ReviewControls({ ev, others, canReview, onChanged }) {
   const [mode, setMode] = useState(null); // 'reject' | 'supersede'
   const [reason, setReason] = useState("");
   const [target, setTarget] = useState("");
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { run, busy } = useApiAction();
 
   const terminal = ev.trust_status === "superseded";
 
   async function verify() {
-    setErr(""); setBusy(true);
-    try {
-      await api.post(`${EV_BASE}/${ev.id}/review`, { decision: "verified", reason: "operator verified evidence" });
-      onChanged();
-    } catch (ex) { setErr(getApiErrorMessage(ex) || "Verify failed"); } finally { setBusy(false); }
+    setErr("");
+    const res = await run({
+      action: () => api.post(`${EV_BASE}/${ev.id}/review`, { decision: "verified", reason: "operator verified evidence" }),
+      successMessage: "Evidence verified.",
+      errorMessage: "Verify failed",
+    });
+    if (res.ok) onChanged();
+    else setErr(getApiErrorMessage(res.error) || "Verify failed");
   }
 
   async function submitReason() {
     setErr("");
     if (reason.trim().length < 8) { setErr("Reason must be at least 8 characters."); return; }
     if (mode === "supersede" && !target) { setErr("Choose the superseding evidence."); return; }
-    setBusy(true);
-    try {
-      if (mode === "reject") {
-        await api.post(`${EV_BASE}/${ev.id}/review`, { decision: "rejected", reason: reason.trim() });
-      } else {
-        await api.post(`${EV_BASE}/${ev.id}/supersede`, { superseded_by_id: target, reason: reason.trim() });
-      }
-      setMode(null); setReason(""); setTarget("");
-      onChanged();
-    } catch (ex) { setErr(getApiErrorMessage(ex) || "Action failed"); } finally { setBusy(false); }
+    const res = await run({
+      action: () => (mode === "reject"
+        ? api.post(`${EV_BASE}/${ev.id}/review`, { decision: "rejected", reason: reason.trim() })
+        : api.post(`${EV_BASE}/${ev.id}/supersede`, { superseded_by_id: target, reason: reason.trim() })),
+      successMessage: mode === "reject" ? "Evidence rejected." : "Evidence superseded.",
+      errorMessage: "Action failed",
+    });
+    if (res.ok) { setMode(null); setReason(""); setTarget(""); onChanged(); }
+    else setErr(getApiErrorMessage(res.error) || "Action failed");
   }
 
   if (terminal) return <span style={{ fontSize: 11, color: "var(--ink-mute)" }}>→ {shortId(ev.superseded_by_id)}</span>;
+  if (!canReview) return <span style={{ fontSize: 11, color: "var(--ink-mute)" }} data-testid={`ev-review-na-${ev.id}`}>review-only</span>;
 
   if (mode) {
     return (
@@ -234,7 +248,7 @@ function ReviewControls({ ev, others, onChanged }) {
     </div>
   );
 }
-ReviewControls.propTypes = { ev: PropTypes.object, others: PropTypes.array, onChanged: PropTypes.func };
+ReviewControls.propTypes = { ev: PropTypes.object, others: PropTypes.array, canReview: PropTypes.bool, onChanged: PropTypes.func };
 
 // ── CoverageSummary ─────────────────────────────────────────────────────────
 
@@ -284,6 +298,14 @@ CoverageSummary.propTypes = { coverage: PropTypes.object };
 // ── EvidenceSection (main) ──────────────────────────────────────────────────
 
 export default function EvidenceSection({ examId, cycleId, phases }) {
+  const { user } = useAuth();
+  const canManage =
+    user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.manage"));
+  const canReview =
+    user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.review"));
+
   const [items, setItems] = useState([]);
   const [coverage, setCoverage] = useState(null);
   const [assets, setAssets] = useState([]);
@@ -306,9 +328,8 @@ export default function EvidenceSection({ examId, cycleId, phases }) {
       ]);
       setItems(evRes?.items || []);
       setSources(srcRes?.items || []);
-      // Only processed (extractable) non-archived assets are worth registering.
-      const docs = (docRes?.items || []).filter((d) => d.status !== "archived");
-      setAssets(docs);
+      // Only upload-complete (registerable) assets are offered — mirrors backend guard.
+      setAssets((docRes?.items || []).filter(isRegisterableAsset));
       if (cycleId) {
         try {
           const cov = await api.get(`${EV_BASE}/coverage?${new URLSearchParams({ exam_id: examId, exam_cycle_id: cycleId })}`);
@@ -342,9 +363,11 @@ export default function EvidenceSection({ examId, cycleId, phases }) {
         </div>
         <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
           <button className="btn small" onClick={load} data-testid="ev-refresh">Refresh</button>
-          <button className="btn small" onClick={() => setFormOpen((v) => !v)} data-testid="ev-toggle-register">
-            {formOpen ? "Cancel" : "+ Register evidence"}
-          </button>
+          {canManage && (
+            <button className="btn small" onClick={() => setFormOpen((v) => !v)} data-testid="ev-toggle-register">
+              {formOpen ? "Cancel" : "+ Register evidence"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -352,7 +375,7 @@ export default function EvidenceSection({ examId, cycleId, phases }) {
 
       <CoverageSummary coverage={coverage} />
 
-      {formOpen && (
+      {canManage && formOpen && (
         <RegisterForm
           examId={examId}
           cycleId={cycleId}
@@ -369,8 +392,8 @@ export default function EvidenceSection({ examId, cycleId, phases }) {
       ) : items.length === 0 ? (
         <div className="card" style={{ borderStyle: "dashed" }}>
           <div className="empty" style={{ padding: "20px 16px", fontSize: 13 }} data-testid="ev-empty">
-            No evidence registered yet. Register uploaded documents so the Review &amp; Activate gate
-            can evaluate required-phase completeness.
+            No evidence registered yet. Register upload-complete documents so the Review &amp; Activate
+            gate can evaluate required-phase completeness.
           </div>
         </div>
       ) : (
@@ -411,7 +434,7 @@ export default function EvidenceSection({ examId, cycleId, phases }) {
                   </td>
                   <td><TrustBadge status={ev.trust_status} /></td>
                   <td style={{ textAlign: "right", minWidth: 160 }}>
-                    <ReviewControls ev={ev} others={supersedeCandidates(ev.id)} onChanged={load} />
+                    <ReviewControls ev={ev} others={supersedeCandidates(ev.id)} canReview={canReview} onChanged={load} />
                   </td>
                 </tr>
               ))}

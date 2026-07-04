@@ -3,13 +3,16 @@
  *
  * Covers:
  * - load: coverage summary + registered-evidence table render
- * - register flow: POST /evidence with a role, then reload
- * - verify: POST /evidence/{id}/review decision=verified
- * - reject: inline reason → POST review decision=rejected
+ * - register flow (manage): POST /evidence with a role via useApiAction
+ * - verify (review): POST /evidence/{id}/review decision=verified
+ * - reject (review): inline reason → POST review decision=rejected
+ * - permission gating: manage sees Register but not Verify; review sees Verify but not Register
+ * - picker filters out upload-incomplete (placeholder) assets
  * - empty state when no evidence registered
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { ToastProvider } from "../../../../../shared/ui/core";
 
 jest.mock("../../../../../lib/api", () => ({
   __esModule: true,
@@ -17,7 +20,13 @@ jest.mock("../../../../../lib/api", () => ({
   getApiErrorMessage: (e) => (e && e.message) || "error",
 }));
 
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: jest.fn(),
+}));
+
 const { api } = require("../../../../../lib/api");
+const { useAuth } = require("../../../../../lib/authContext");
 const EvidenceSection = require("../EvidenceSection").default;
 
 const EV = {
@@ -34,25 +43,41 @@ const EV = {
 const COVERAGE = { applicable: true, complete: false, unclassified_phases: 0,
   unmet_requirements: [{ scope: "phase", evidence_kind: "exam_pattern", phase_kind: "objective_written" }] };
 
-function mockGet({ evidence = [EV], coverage = COVERAGE } = {}) {
+const ASSETS = [
+  { id: "doc-1", title: "SSC CGL Syllabus", document_kind: "syllabus", status: "processed", content_hash: "abc" },
+  { id: "doc-2", title: "Placeholder", document_kind: "syllabus", status: "uploaded", content_hash: "pending:x" },
+];
+
+function mockGet({ evidence = [EV], coverage = COVERAGE, assets = ASSETS } = {}) {
   api.get.mockImplementation((url) => {
     if (url.includes("/evidence/coverage")) return Promise.resolve(coverage);
     if (url.includes("/evidence/sources")) return Promise.resolve({ items: [{ id: "src-1", source_name: "SSC Official", is_authoritative: true }] });
-    if (url.includes("/documents")) return Promise.resolve({ items: [{ id: "doc-1", title: "SSC CGL Syllabus", document_kind: "syllabus", status: "processed" }] });
+    if (url.includes("/documents")) return Promise.resolve({ items: assets });
     if (url.includes("/evidence")) return Promise.resolve({ items: evidence, total: evidence.length });
     return Promise.resolve({ items: [] });
   });
 }
 
+function setUser({ manage = true, review = true, superAdmin = false } = {}) {
+  const permissions = [];
+  if (manage) permissions.push("exam_intelligence.manage");
+  if (review) permissions.push("exam_intelligence.review");
+  useAuth.mockReturnValue({ user: { role: superAdmin ? "super_admin" : "admin", permissions } });
+}
+
 async function renderSection(props = {}) {
   let utils;
   await act(async () => {
-    utils = render(<EvidenceSection examId="e1" cycleId="cA" phases={[{ id: "pA", phase_name: "Tier I" }]} {...props} />);
+    utils = render(
+      <ToastProvider>
+        <EvidenceSection examId="e1" cycleId="cA" phases={[{ id: "pA", phase_name: "Tier I" }]} {...props} />
+      </ToastProvider>,
+    );
   });
   return utils;
 }
 
-beforeEach(() => { jest.clearAllMocks(); });
+beforeEach(() => { jest.clearAllMocks(); setUser(); });
 
 test("renders coverage summary and evidence row", async () => {
   mockGet();
@@ -70,13 +95,16 @@ test("empty state when nothing registered", async () => {
   expect(await screen.findByTestId("ev-empty")).toBeInTheDocument();
 });
 
-test("register flow posts evidence with a role", async () => {
+test("register flow posts evidence with a role and filters placeholder assets", async () => {
   mockGet();
   api.post.mockResolvedValue({ ok: true, evidence: { id: "ev-2" } });
   await renderSection();
   fireEvent.click(await screen.findByTestId("ev-toggle-register"));
-  const form = await screen.findByTestId("ev-register-form");
-  expect(form).toBeInTheDocument();
+  await screen.findByTestId("ev-register-form");
+  // Placeholder (uploaded / pending hash) asset must not be offered.
+  const options = Array.from(screen.getByTestId("ev-asset-select").querySelectorAll("option")).map((o) => o.value);
+  expect(options).toContain("doc-1");
+  expect(options).not.toContain("doc-2");
   fireEvent.change(screen.getByTestId("ev-asset-select"), { target: { value: "doc-1" } });
   fireEvent.change(screen.getByTestId("ev-kind-select"), { target: { value: "exam_pattern" } });
   fireEvent.change(screen.getByTestId("ev-reason"), { target: { value: "official pattern doc" } });
@@ -113,4 +141,23 @@ test("reject requires a reason then posts rejected decision", async () => {
     "/api/admin/exam-intelligence-cms/evidence/ev-1/review",
     expect.objectContaining({ decision: "rejected", reason: "wrong year uploaded" }),
   ));
+});
+
+test("manage-only operator sees Register but not Verify", async () => {
+  setUser({ manage: true, review: false });
+  mockGet();
+  await renderSection();
+  await screen.findByTestId("ev-row-ev-1");
+  expect(screen.getByTestId("ev-toggle-register")).toBeInTheDocument();
+  expect(screen.queryByTestId("ev-verify-ev-1")).not.toBeInTheDocument();
+  expect(screen.getByTestId("ev-review-na-ev-1")).toBeInTheDocument();
+});
+
+test("review-only operator sees Verify but not Register", async () => {
+  setUser({ manage: false, review: true });
+  mockGet();
+  await renderSection();
+  await screen.findByTestId("ev-row-ev-1");
+  expect(screen.queryByTestId("ev-toggle-register")).not.toBeInTheDocument();
+  expect(screen.getByTestId("ev-verify-ev-1")).toBeInTheDocument();
 });

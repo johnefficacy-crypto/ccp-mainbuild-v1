@@ -32,6 +32,12 @@ jest.mock("../../ExamWorkspaceContext", () => ({
   useExamWorkspace: jest.fn(),
 }));
 
+// DocumentsPanel now renders EvidenceSection, which reads auth for capability gating.
+jest.mock("../../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
+}));
+
 const { api } = require("../../../../../lib/api");
 const { useExamWorkspace: mockUseExamWorkspace } = require("../../ExamWorkspaceContext");
 const DocumentsPanel = require("../DocumentsPanel").default;
