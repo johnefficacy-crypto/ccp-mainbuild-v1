@@ -27,6 +27,7 @@ import EmptyState from "../../shared/ui/EmptyState";
 import { PageHeader, StudyCard, SectionHeader, StatusDot } from "../../shared/ui/studyos";
 import SentenceBuilder from "../../features/study/english-practice/SentenceBuilder";
 import RewriteEditor from "../../features/study/english-practice/RewriteEditor";
+import SourceContext from "../../features/study/english-practice/SourceContext";
 import SentenceIssueCard from "../../features/study/english-practice/SentenceIssueCard";
 import BeforeAfterDiff from "../../features/study/english-practice/BeforeAfterDiff";
 import useEnglishPracticeSession from "../../features/study/english-practice/useEnglishPracticeSession";
@@ -309,11 +310,23 @@ export default function EnglishPracticeShell() {
               </span>
             </div>
 
+            {/* Source/task context stays visible across states where no editor
+                is mounted (evaluation-pending, resumed ready/completed, failed).
+                Compose + rewrite render their own copy inside the editor. */}
+            {!["not_started", "draft", "rewrite_required"].includes(unit.status) && (
+              <SourceContext
+                sourceText={prompt.source_text}
+                exerciseType={prompt.exercise_type}
+              />
+            )}
+
             {/* Compose (not_started/draft): submit version 1+. */}
             {["not_started", "draft"].includes(unit.status) && (
               <SentenceBuilder
                 unitNumber={unit.unit_number}
                 promptText={prompt.prompt_text}
+                sourceText={prompt.source_text}
+                exerciseType={prompt.exercise_type}
                 minWords={minWords}
                 maxWords={maxWords}
                 requiredWords={requiredWords}
@@ -353,6 +366,8 @@ export default function EnglishPracticeShell() {
             {unit.status === "rewrite_required" && (
               <RewriteEditor
                 previousAnswer={answerText}
+                sourceText={prompt.source_text}
+                exerciseType={prompt.exercise_type}
                 minWords={minWords}
                 maxWords={maxWords}
                 sessionId={sessionId}

@@ -47,6 +47,26 @@ describe("SentenceBuilder", () => {
     expect(screen.getByText("Describe your day")).toBeInTheDocument();
   });
 
+  test("renders read-only source context above the editor when sourceText is present", () => {
+    render(
+      <SentenceBuilder
+        unitNumber={1}
+        sourceText="He go to school."
+        exerciseType="sentence_correction"
+        onSubmit={() => {}}
+      />
+    );
+    expect(screen.getByTestId("source-context")).toBeInTheDocument();
+    expect(screen.getByTestId("source-context-label")).toHaveTextContent("Sentence to correct");
+    // The source is not the answer field.
+    expect(screen.getByTestId("source-context-text")).toHaveTextContent("He go to school.");
+  });
+
+  test("does not render source context when sourceText is absent", () => {
+    render(<SentenceBuilder unitNumber={1} onSubmit={() => {}} />);
+    expect(screen.queryByTestId("source-context")).not.toBeInTheDocument();
+  });
+
   test("renders required-word chips when requiredWords are given", () => {
     render(
       <SentenceBuilder unitNumber={1} requiredWords={["diligent"]} onSubmit={() => {}} />

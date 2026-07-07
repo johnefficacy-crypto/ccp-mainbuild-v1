@@ -350,6 +350,89 @@ describe("EnglishPracticeShell", () => {
     expect(screen.queryByTestId("issue-card")).not.toBeInTheDocument();
   });
 
+  // EWP-SP1: source_text is immutable task context visible across every state.
+  const SOURCE_PROMPT = {
+    prompt_text: "Correct the sentence.",
+    exercise_type: "sentence_correction",
+    source_text: "He go to school every day.",
+    required_words: [],
+  };
+
+  test("renders source context in the compose (not_started) state", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }],
+          { prompt: SOURCE_PROMPT }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("sentence-builder");
+    expect(screen.getByTestId("source-context")).toBeInTheDocument();
+    expect(screen.getByTestId("source-context-text")).toHaveTextContent("He go to school every day.");
+    expect(screen.getByTestId("source-context")).toHaveAttribute("aria-readonly", "true");
+  });
+
+  test("keeps source context visible in evaluation-pending state", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "evaluation_pending", unit_constraints: {},
+          latest_version: { id: "v1", version_number: 1, answer_text: "He go to school every day." } }],
+          { prompt: SOURCE_PROMPT }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("unit-1-pending");
+    expect(screen.getByTestId("source-context")).toBeInTheDocument();
+  });
+
+  test("keeps source context visible in the rewrite state", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "rewrite_required", unit_constraints: {},
+          latest_version: { id: "v1", version_number: 1, answer_text: "He go to school every day." } }],
+          { prompt: SOURCE_PROMPT }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("rewrite-input");
+    expect(screen.getByTestId("source-context")).toBeInTheDocument();
+  });
+
+  test("keeps source context visible in a resumed completed/ready state", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "completed", unit_constraints: {},
+          latest_version: { id: "v2", version_number: 2, answer_text: "He goes to school every day." } }],
+          { prompt: SOURCE_PROMPT }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("unit-1-done");
+    expect(screen.getByTestId("source-context")).toBeInTheDocument();
+  });
+
+  test("omits source context when the prompt has no source_text (construction prompt)", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }],
+          { prompt: { prompt_text: "Use diligent.", exercise_type: "sentence_construction", required_words: [] } }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("sentence-builder");
+    expect(screen.queryByTestId("source-context")).not.toBeInTheDocument();
+  });
+
   test("renders an empty state when the session has no units", async () => {
     useEnglishPracticeSession.mockReturnValue({
       fetchSession: jest.fn().mockResolvedValue(payload([])),

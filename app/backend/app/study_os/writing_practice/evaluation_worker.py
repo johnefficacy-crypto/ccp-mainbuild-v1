@@ -78,18 +78,27 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
         result = lang.evaluate_language(
             claim["answer_text"],
             exercise_type=claim["exercise_type"],
+            # EWP-SP1: thread the immutable snapshot's prompt/source through so the
+            # evaluator can run deterministic source-comparison (migration 222 returns
+            # these on the claim). Missing source on a source-dependent type fails
+            # closed to human review inside the evaluator.
+            prompt_text=claim.get("prompt_text"),
+            source_text=claim.get("source_text"),
             active_prior_issues=claim.get("active_prior_issues") or [],
             resolved_prior_lineages=claim.get("resolved_prior_lineages") or [],
         )
         issues = result.to_issue_dicts()
 
         dimension_scores: dict | None = None
-        needs_review = False
+        # EWP-SP1: a deterministic source-comparison verdict (source_unchanged /
+        # meaning_not_preserved / source_comparison_uncertain) fails CLOSED to
+        # human review — never positive/passing mastery evidence.
+        needs_review = result.needs_human_review
         if claim["exercise_type"] in _RUBRIC_EXERCISES:
             rr = rubric.evaluate_rubric(
                 claim["answer_text"], dimensions=claim.get("rubric_dimensions") or [])
             dimension_scores = rr.to_dict()
-            needs_review = rr.needs_human_review
+            needs_review = needs_review or rr.needs_human_review
 
         # A successful language stage lands overall_status='completed' in the RPC.
         # Predict the mastery evidence key deterministically so it matches the key
@@ -97,7 +106,10 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
         flag = resolve_effective_writing_mastery_flag(
             get_writing_mastery_write_flag(), claim["user_id"])
         idempotency_key: str | None = None
-        if flag in ("shadow", "live") and claim.get("is_current"):
+        # Skip mastery derivation entirely when routed to human review: no positive
+        # OR negative mastery evidence flows from a source-comparison-uncertain /
+        # unchanged / not-preserved submission (fail-closed, §3.4).
+        if flag in ("shadow", "live") and claim.get("is_current") and not needs_review:
             has_must_fix = any(i.get("severity") == "must_fix" for i in issues)
             predecessors = {i.get("predecessor_issue_event_id") for i in issues}
             resolved_count = sum(
@@ -120,8 +132,7 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
                 "p_claim_token": token,
                 "p_evaluator_version": result.evaluator_version,
                 "p_issues": issues,
-                "p_language_result": {
-                    "issues": issues, "evaluator_version": result.evaluator_version},
+                "p_language_result": result.to_result_dict(),
                 "p_dimension_scores": dimension_scores,
                 "p_needs_human_review": needs_review,
                 "p_mastery_flag": flag,
