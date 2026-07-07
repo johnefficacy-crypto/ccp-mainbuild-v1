@@ -26,7 +26,7 @@ export default function SourceContext({ sourceText, exerciseType }) {
     <section
       data-testid="source-context"
       aria-labelledby={labelId}
-      aria-readonly="true"
+      data-readonly="true"
       className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
     >
       <p

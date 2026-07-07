@@ -18,7 +18,7 @@ describe("RewriteEditor", () => {
     );
     const region = screen.getByTestId("source-context");
     expect(region).toBeInTheDocument();
-    expect(region).toHaveAttribute("aria-readonly", "true");
+    expect(region).toHaveAttribute("data-readonly", "true");
     expect(screen.getByTestId("source-context-text")).toHaveTextContent("He go to school.");
   });
 

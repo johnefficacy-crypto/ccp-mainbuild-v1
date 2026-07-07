@@ -37,7 +37,7 @@ describe("SourceContext", () => {
     const region = screen.getByTestId("source-context");
     // Announced via label association.
     expect(region).toHaveAttribute("aria-labelledby");
-    expect(region).toHaveAttribute("aria-readonly", "true");
+    expect(region).toHaveAttribute("data-readonly", "true");
     const labelId = region.getAttribute("aria-labelledby");
     expect(document.getElementById(labelId)).toHaveTextContent("Sentence to correct");
     // It is static text — never an editable field the learner could submit.

@@ -371,7 +371,7 @@ describe("EnglishPracticeShell", () => {
     await screen.findByTestId("sentence-builder");
     expect(screen.getByTestId("source-context")).toBeInTheDocument();
     expect(screen.getByTestId("source-context-text")).toHaveTextContent("He go to school every day.");
-    expect(screen.getByTestId("source-context")).toHaveAttribute("aria-readonly", "true");
+    expect(screen.getByTestId("source-context")).toHaveAttribute("data-readonly", "true");
   });
 
   test("keeps source context visible in evaluation-pending state", async () => {
