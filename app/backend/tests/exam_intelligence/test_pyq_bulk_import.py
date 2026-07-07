@@ -26,8 +26,10 @@ from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intel_cms as cms_api
 from app.core.auth import get_current_user
+from app.exam_intelligence import pyq_bulk_import as _bi
 from app.exam_intelligence.option_normalize import option_hash, question_hash
 from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub
+from tests.persona_questions._stub import _Query
 
 _BASE = "/api/admin/exam-intelligence-cms"
 
@@ -477,3 +479,75 @@ class TestHashParity:
         )
         opt_row = next(o for o in sb.db["pyq_options"] if o["option_label"] == "A")
         assert opt_row["normalized_option_hash"] == option_hash(opt_text)
+
+
+# ── Fail-closed on existing-row lookup failure (checkpost fix 7) ─────────────
+
+
+class _RaiseOnSelectQuery(_Query):
+    """Raises on a read (.execute() with no pending write) against
+    ``fail_table`` -- simulates a transient Supabase error on the
+    existing-rows fetch that dedup/idempotency depends on."""
+
+    def __init__(self, name, db, *, fail_table: str):
+        super().__init__(name, db)
+        self._fail_table = fail_table
+
+    def execute(self):
+        is_write = (
+            self._pending_insert is not None
+            or self._pending_update is not None
+            or self._pending_upsert is not None
+        )
+        if self.name == self._fail_table and not is_write:
+            raise RuntimeError(f"simulated select failure on {self.name}")
+        return super().execute()
+
+
+class RaiseOnSelectSBStub(TaxSBStub):
+    def __init__(self, db, *, fail_table: str):
+        super().__init__(db)
+        self._fail_table = fail_table
+
+    def table(self, name: str):
+        return _RaiseOnSelectQuery(name, self.db, fail_table=self._fail_table)
+
+
+class TestFailClosedExistingRowLookup:
+    """A Supabase error fetching existing pyq_questions rows must fail closed
+    (raise) rather than silently degrade to empty dedup/idempotency sets --
+    the old behavior made a transient DB error silently disable the
+    importer's own duplicate-detection guarantee."""
+
+    def test_preflight_raises_when_existing_rows_fetch_fails(self):
+        sb = RaiseOnSelectSBStub(_seed(), fail_table="pyq_questions")
+        with pytest.raises(RuntimeError):
+            _bi.preflight(
+                sb, {"id": "admin-99"}, "paper-1",
+                _make_csv([_clean_row(1)]), "text/csv",
+            )
+
+    def test_commit_raises_when_existing_rows_fetch_fails(self):
+        # Preflight against a healthy stub first, to get a real token +
+        # preflight_rows payload.
+        sb_ok = TaxSBStub(_seed())
+        client = _client(sb_ok)
+        pf = _preflight(client, [_clean_row(1)])
+        token = pf["import_token"]
+        token_row = next(r for r in sb_ok.db["pyq_import_tokens"] if r["token"] == token)
+
+        # Replay commit() against a stub carrying the same token row, but
+        # whose pyq_questions SELECT raises.
+        seed = _seed()
+        seed["pyq_import_tokens"] = [dict(token_row)]
+        sb = RaiseOnSelectSBStub(seed, fail_table="pyq_questions")
+        with pytest.raises(RuntimeError):
+            _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
+        # Nothing was written.
+        assert sb.db["pyq_questions"] == []
+        # Checkpost round 3, fix #4: the existing-rows fetch now runs BEFORE
+        # the token claim, so a RuntimeError here never burns the token --
+        # the caller can safely retry the exact same commit() call once the
+        # transient DB issue clears.
+        row = next(r for r in sb.db["pyq_import_tokens"] if r["token"] == token)
+        assert row["consumed_at"] is None
