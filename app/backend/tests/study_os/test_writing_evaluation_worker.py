@@ -157,6 +157,67 @@ def test_failure_path(monkeypatch):
     assert p["p_claim_token"] == "tok-abc"
 
 
+def test_worker_threads_prompt_and_source_text(monkeypatch):
+    # EWP-SP1: the worker must pass the claim's prompt_text/source_text into the
+    # evaluator so deterministic source-comparison can run.
+    captured = {}
+
+    def _spy(answer_text, **kwargs):
+        captured.update(kwargs)
+        captured["answer_text"] = answer_text
+        return evaluation_worker.lang.LanguageResult(issues=[])
+
+    monkeypatch.setattr(evaluation_worker.lang, "evaluate_language", _spy)
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(
+            exercise_type="sentence_correction",
+            prompt_text="Correct the sentence.",
+            source_text="He go home.",
+        ),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+    result = evaluation_worker.run_worker_pass(sb)
+    assert result["status"] == "succeeded"
+    assert captured["prompt_text"] == "Correct the sentence."
+    assert captured["source_text"] == "He go home."
+
+
+def test_source_uncertain_fails_closed_no_mastery(monkeypatch):
+    # A source-dependent submission that can't be deterministically decided routes
+    # to needs_human_review with NO positive mastery evidence, even under shadow.
+    monkeypatch.setenv("FF_WRITING_MASTERY_WRITES", "shadow")
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(
+            answer_text="He goes to school every day.",
+            exercise_type="sentence_correction",
+            source_text="He go to school every day.",
+        ),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+    result = evaluation_worker.run_worker_pass(sb)
+    assert result["status"] == "succeeded"
+    p = sb.params_for("ewp_complete_language_evaluation")
+    assert p["p_needs_human_review"] is True
+    assert p["p_mastery_idempotency_key"] is None
+    assert p["p_language_result"]["source_comparison"] == "source_comparison_uncertain"
+
+
+def test_missing_source_fails_closed_no_mastery(monkeypatch):
+    monkeypatch.setenv("FF_WRITING_MASTERY_WRITES", "shadow")
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(
+            answer_text="He goes home.",
+            exercise_type="sentence_correction",
+            source_text=None,
+        ),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+    evaluation_worker.run_worker_pass(sb)
+    p = sb.params_for("ewp_complete_language_evaluation")
+    assert p["p_needs_human_review"] is True
+    assert p["p_mastery_idempotency_key"] is None
+
+
 def test_content_hash_mismatch_rejects_corrupt_not_recoverable():
     # A hash mismatch is CORRUPTION: it must fail closed through the DISTINCT
     # ewp_reject_corrupt_version path (never scored, never the recoverable

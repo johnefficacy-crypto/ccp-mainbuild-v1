@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SourceContext from "./SourceContext";
 import WordChips from "./WordChips";
 import { wordCount as countWords } from "./requiredWords";
 import { clearDraft, loadDraft, saveDraft } from "./autosave";
@@ -22,6 +23,8 @@ import { clearDraft, loadDraft, saveDraft } from "./autosave";
 export default function SentenceBuilder({
   unitNumber,
   promptText,
+  sourceText,
+  exerciseType,
   minWords,
   maxWords,
   requiredWords,
@@ -72,6 +75,7 @@ export default function SentenceBuilder({
       data-testid="sentence-builder"
       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
     >
+      <SourceContext sourceText={sourceText} exerciseType={exerciseType} />
       {promptText ? (
         <p className="mb-2 text-sm font-medium text-slate-700">{promptText}</p>
       ) : null}
