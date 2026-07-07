@@ -113,14 +113,21 @@ EXAM_INTELLIGENCE_MANAGE = "exam_intelligence.manage"
 # pending_review assignment; exam_intelligence.review PROMOTES it to an EFFECTIVE
 # active|excluded state and removes it (making content applicable is a lifecycle
 # transition — manage never promotes activation state; see §1.1 + J2 gate §D).
+#   content_studio.activate — verified→live activation lifecycle (is_active).
+# Activation is a SEPARATE, higher-trust authority: neither content_studio.author
+# nor content_studio.review may activate. Making verified content live to
+# aspirants is gated by the deterministic precondition machine in migration 224
+# (cms_activate_writing_prompt) — the permission only authorizes the attempt.
 CONTENT_STUDIO_AUTHOR = "content_studio.author"
 CONTENT_STUDIO_REVIEW = "content_studio.review"
+CONTENT_STUDIO_ACTIVATE = "content_studio.activate"
 EXAM_INTELLIGENCE_REVIEW = "exam_intelligence.review"
 
 
 __all__ = [
     "CONTENT_STUDIO_AUTHOR",
     "CONTENT_STUDIO_REVIEW",
+    "CONTENT_STUDIO_ACTIVATE",
     "SOURCES_MANAGE",
     "SCRAPING_MANAGE",
     "SCRAPING_REVIEW",
