@@ -14,8 +14,10 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Copy, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Copy, ExternalLink, Trash2, Link2 } from "lucide-react";
 import { api } from "../../../lib/api";
+import { useAuth } from "../../../lib/authContext";
+import useApiAction from "../../../lib/hooks/useApiAction";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,6 +43,14 @@ const QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching"
 const DIFFICULTY_OPTIONS = ["easy", "medium", "hard", "very_hard"];
 const REJECT_REASONS = ["incomplete", "duplicate", "out_of_scope", "illegible", "other"];
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
+// Mirrors backend _STIMULUS_TYPES (admin_exam_intel_cms.py). Shared passages,
+// caselets, tables, charts etc. that back one or more questions.
+const STIMULUS_TYPES = ["passage", "caselet", "table", "chart", "image", "diagram", "other"];
+
+// Review-status transitions for a stimulus's CONTENT and for a
+// question↔stimulus LINK go through the review-queue router, not CMS_BASE.
+const STIMULUS_ITEM_TYPE = "pyq_stimulus";
+const LINK_ITEM_TYPE = "pyq_question_stimulus";
 
 const AUDIT_REASON = "workspace reviewer action";
 
@@ -221,7 +231,7 @@ function QuestionList({
 
 // ── Options editor ────────────────────────────────────────────────────────────
 
-function OptionsEditor({ questionId, initialOptions, onSaved }) {
+function OptionsEditor({ questionId, initialOptions, onSaved, canEdit = true }) {
   const [options, setOptions] = useState(initialOptions || []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -253,6 +263,11 @@ function OptionsEditor({ questionId, initialOptions, onSaved }) {
           payload: {
             option_text: opt.option_text,
             is_correct: opt.is_correct,
+            source_label: opt.source_label?.trim() ? opt.source_label.trim() : null,
+            display_order:
+              opt.display_order !== "" && opt.display_order != null
+                ? Number(opt.display_order)
+                : null,
           },
         });
       } else {
@@ -263,6 +278,11 @@ function OptionsEditor({ questionId, initialOptions, onSaved }) {
             option_label: opt.option_label,
             option_text: opt.option_text,
             is_correct: opt.is_correct,
+            source_label: opt.source_label?.trim() ? opt.source_label.trim() : null,
+            display_order:
+              opt.display_order !== "" && opt.display_order != null
+                ? Number(opt.display_order)
+                : null,
           },
         });
         const saved = res.row || res;
@@ -283,21 +303,46 @@ function OptionsEditor({ questionId, initialOptions, onSaved }) {
   return (
     <div className="space-y-1.5">
       {options.map((opt, idx) => (
-        <div key={opt.id || idx} className="flex items-start gap-2">
+        <div key={opt.id || idx} className="flex items-start gap-2" data-testid={`option-row-${opt.option_label}`}>
           <span className="w-6 flex-shrink-0 text-[12px] font-bold text-clay-600 mt-1.5">
             [{opt.option_label}]
           </span>
-          <input
-            className="flex-1 border border-clay-200 rounded px-2 py-1 text-sm bg-white"
-            value={opt.option_text || ""}
-            onChange={(e) => updateOption(idx, { option_text: e.target.value })}
-            onBlur={() => saveOption(opt, idx)}
-            placeholder="Option text…"
-          />
+          <div className="flex-1 space-y-1">
+            <input
+              className="w-full border border-clay-200 rounded px-2 py-1 text-sm bg-white"
+              value={opt.option_text || ""}
+              onChange={(e) => updateOption(idx, { option_text: e.target.value })}
+              onBlur={() => saveOption(opt, idx)}
+              placeholder="Option text…"
+              disabled={!canEdit}
+            />
+            <div className="flex gap-1.5">
+              <input
+                className="flex-1 border border-clay-200 rounded px-2 py-0.5 text-[11px] bg-white"
+                value={opt.source_label ?? ""}
+                onChange={(e) => updateOption(idx, { source_label: e.target.value })}
+                onBlur={() => saveOption(opt, idx)}
+                placeholder="Printed label (source_label)…"
+                disabled={!canEdit}
+                data-testid={`option-source-label-${opt.option_label}`}
+              />
+              <input
+                type="number"
+                className="w-24 border border-clay-200 rounded px-2 py-0.5 text-[11px] bg-white"
+                value={opt.display_order ?? ""}
+                onChange={(e) => updateOption(idx, { display_order: e.target.value })}
+                onBlur={() => saveOption(opt, idx)}
+                placeholder="order"
+                disabled={!canEdit}
+                data-testid={`option-display-order-${opt.option_label}`}
+              />
+            </div>
+          </div>
           <label className="flex items-center gap-1 text-[11px] text-clay-600 mt-1.5">
             <input
               type="checkbox"
               checked={!!opt.is_correct}
+              disabled={!canEdit}
               data-testid={`option-correct-${opt.option_label}`}
               onChange={(e) => {
                 const updated = { ...opt, is_correct: e.target.checked };
@@ -312,12 +357,14 @@ function OptionsEditor({ questionId, initialOptions, onSaved }) {
       {options.length === 0 && !adding && (
         <p className="text-[12px] text-muted-foreground">
           No options yet.{" "}
-          <button type="button" className="underline text-clay-700" onClick={startAdd}>
-            Add options
-          </button>
+          {canEdit && (
+            <button type="button" className="underline text-clay-700" onClick={startAdd}>
+              Add options
+            </button>
+          )}
         </p>
       )}
-      {options.length > 0 && options.length < 6 && (
+      {canEdit && options.length > 0 && options.length < 6 && (
         <button type="button" className="text-[11px] text-clay-600 underline" onClick={startAdd}>
           + Add option
         </button>
@@ -398,12 +445,166 @@ function DupPanel({ paperId, questionId, questionText, onDismiss, onLinkDuplicat
   );
 }
 
+// ── Question ↔ stimulus links (shown inside the question editor) ───────────────
+
+function truncate(text, n = 90) {
+  const t = (text || "").trim();
+  return t.length > n ? `${t.slice(0, n)}…` : t;
+}
+
+function QuestionStimuliLinks({ questionId, stimuli = [], canEdit, canReview, refreshKey, onMutated }) {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const genRef = useRef(0);
+  const { run } = useApiAction();
+
+  const stimulusById = React.useMemo(() => {
+    const m = {};
+    for (const s of stimuli) m[s.id] = s;
+    return m;
+  }, [stimuli]);
+
+  const load = useCallback(async () => {
+    if (!questionId) { setLinks([]); return; }
+    genRef.current += 1;
+    const gen = genRef.current;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get(
+        `${CMS_BASE}/pyq-question-stimuli?question_id=${encodeURIComponent(questionId)}`,
+      );
+      if (genRef.current !== gen) return;
+      setLinks(res.items || []);
+    } catch (e) {
+      if (genRef.current !== gen) return;
+      setError(e?.message || "Could not load linked passages");
+    } finally {
+      if (genRef.current === gen) setLoading(false);
+    }
+  }, [questionId]);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  async function reviewLink(link, nextStatus) {
+    await run({
+      action: () => api.patch(
+        `${REVIEW_BASE}/items/${LINK_ITEM_TYPE}/${link.id}/review`,
+        { reviewer_status: nextStatus },
+      ),
+      onSuccess: () => { if (onMutated) onMutated(); else load(); },
+      errorMessage: "Could not update link status",
+    });
+  }
+
+  async function unlink(link) {
+    await run({
+      action: () => api.delete(`${CMS_BASE}/pyq-question-stimuli/${link.id}`),
+      onSuccess: () => { if (onMutated) onMutated(); else load(); },
+      errorMessage: "Could not unlink passage",
+    });
+  }
+
+  return (
+    <div data-testid="question-stimuli-links">
+      <p className="text-[11px] font-semibold text-clay-700 mb-1 uppercase tracking-wider">
+        Linked passages / stimuli
+      </p>
+      <p className="text-[10.5px] text-clay-500 mb-1.5">
+        Verifying this question also verifies its links. The shared passage content is
+        reviewed independently in the Passages panel.
+      </p>
+      {loading && <p className="text-[11px] text-muted-foreground">Loading linked passages…</p>}
+      {error && <p className="text-[11px] text-rose-600" data-testid="question-stimuli-links-error">{error}</p>}
+      {!loading && !error && links.length === 0 && (
+        <p className="text-[11px] text-muted-foreground" data-testid="question-stimuli-links-empty">
+          No passages linked to this question.
+        </p>
+      )}
+      <div className="space-y-1.5">
+        {links.map((link) => {
+          const stim = stimulusById[link.stimulus_id];
+          return (
+            <div
+              key={link.id}
+              className="rounded-lg border border-clay-200 bg-white px-2 py-1.5 text-[11px]"
+              data-testid={`question-link-${link.id}`}
+            >
+              <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                {stim?.stimulus_type && (
+                  <Badge label={stim.stimulus_type} colorClass="bg-violet-100 text-violet-700" />
+                )}
+                <Badge
+                  label={link.reviewer_status}
+                  colorClass={STATUS_COLORS[link.reviewer_status] || "bg-gray-100 text-gray-600"}
+                />
+                <span className="text-clay-600 truncate flex-1">
+                  {stim ? truncate(stim.content_text, 60) || <em>(no text)</em> : link.stimulus_id}
+                </span>
+              </div>
+              {(canReview || canEdit) && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {canReview && (
+                    <>
+                      <button
+                        type="button"
+                        className="text-[10px] border border-emerald-300 text-emerald-700 rounded px-1.5 py-0.5 hover:bg-emerald-50"
+                        onClick={() => reviewLink(link, "verified")}
+                        data-testid={`link-verify-${link.id}`}
+                      >
+                        Verify
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] border border-rose-300 text-rose-600 rounded px-1.5 py-0.5 hover:bg-rose-50"
+                        onClick={() => reviewLink(link, "rejected")}
+                        data-testid={`link-reject-${link.id}`}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] border border-orange-300 text-orange-700 rounded px-1.5 py-0.5 hover:bg-orange-50"
+                        onClick={() => reviewLink(link, "needs_correction")}
+                        data-testid={`link-needs-correction-${link.id}`}
+                      >
+                        Needs correction
+                      </button>
+                    </>
+                  )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="text-[10px] text-clay-500 hover:text-rose-600 ml-auto flex items-center gap-0.5"
+                      onClick={() => unlink(link)}
+                      data-testid={`link-unlink-${link.id}`}
+                    >
+                      <Trash2 className="h-3 w-3" /> Unlink
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Center pane ───────────────────────────────────────────────────────────────
 
 function QuestionEditor({
   question,
   options,
   paperId,
+  sections = [],
+  stimuli = [],
+  canEdit = true,
+  canReview = true,
+  linkRefreshKey = 0,
+  onMutated,
   onSaved,
   onStatusChange,
   onNavigate,
@@ -424,6 +625,9 @@ function QuestionEditor({
       question_type: question.question_type ?? "mcq",
       observed_difficulty: question.observed_difficulty ?? "",
       expected_solve_time_sec: question.expected_solve_time_sec ?? "",
+      section_id: question.section_id ?? "",
+      source_question_ref: question.source_question_ref ?? "",
+      display_order: question.display_order ?? "",
       metadata: question.metadata ? JSON.stringify(question.metadata, null, 2) : "{}",
     });
     setError("");
@@ -451,6 +655,12 @@ function QuestionEditor({
         observed_difficulty: form.observed_difficulty || null,
         expected_solve_time_sec:
           form.expected_solve_time_sec !== "" ? Number(form.expected_solve_time_sec) : null,
+        // Section assignment + printed-order preservation (migration 223, PR-3).
+        // A section not in the paper's phase is rejected server-side (422),
+        // surfaced via the catch below.
+        section_id: form.section_id || null,
+        source_question_ref: form.source_question_ref?.trim() ? form.source_question_ref.trim() : null,
+        display_order: form.display_order !== "" && form.display_order != null ? Number(form.display_order) : null,
         metadata: meta,
       };
       await api.patch(`${CMS_BASE}/pyq-questions/${question.id}`, {
@@ -620,6 +830,46 @@ function QuestionEditor({
             onChange={(e) => set("expected_solve_time_sec", e.target.value)}
           />
         </WsField>
+
+        {/* Section assignment + printed-order (migration 223, PR-3) */}
+        <WsField label="Section">
+          <select
+            className="input-ws"
+            value={form.section_id ?? ""}
+            onChange={(e) => set("section_id", e.target.value)}
+            disabled={!canEdit}
+            data-testid="editor-question-section"
+          >
+            <option value="">— none —</option>
+            {sections.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.section_label}
+              </option>
+            ))}
+          </select>
+        </WsField>
+        <div className="flex gap-2">
+          <WsField label="Source question ref" className="flex-1">
+            <input
+              className="input-ws"
+              value={form.source_question_ref ?? ""}
+              onChange={(e) => set("source_question_ref", e.target.value)}
+              disabled={!canEdit}
+              placeholder="e.g. Q12 / Set-B 7"
+              data-testid="editor-source-question-ref"
+            />
+          </WsField>
+          <WsField label="Display order" className="flex-1">
+            <input
+              type="number"
+              className="input-ws"
+              value={form.display_order ?? ""}
+              onChange={(e) => set("display_order", e.target.value)}
+              disabled={!canEdit}
+              data-testid="editor-display-order"
+            />
+          </WsField>
+        </div>
       </div>
 
       {/* Provenance (read-only) */}
@@ -693,8 +943,19 @@ function QuestionEditor({
           questionId={question.id}
           initialOptions={options}
           onSaved={onSaved}
+          canEdit={canEdit}
         />
       </div>
+
+      {/* Linked passages / stimuli for this question (migration 223, PR-3) */}
+      <QuestionStimuliLinks
+        questionId={question.id}
+        stimuli={stimuli}
+        canEdit={canEdit}
+        canReview={canReview}
+        refreshKey={linkRefreshKey}
+        onMutated={onMutated}
+      />
 
       {/* Metadata */}
       <WsField label="Metadata (JSON)">
@@ -1088,12 +1349,362 @@ function ProgressBar({ progress }) {
   );
 }
 
+// ── Passages / stimuli panel ──────────────────────────────────────────────────
+
+function StimulusRow({
+  stimulus,
+  sectionLabel,
+  canEdit,
+  canReview,
+  selectedQuestionId,
+  refreshKey,
+  onMutated,
+}) {
+  const [count, setCount] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(stimulus.content_text || "");
+  const { run } = useApiAction();
+
+  const loadCount = useCallback(async () => {
+    try {
+      const res = await api.get(
+        `${CMS_BASE}/pyq-question-stimuli?stimulus_id=${encodeURIComponent(stimulus.id)}`,
+      );
+      setCount(res.total ?? (res.items || []).length);
+    } catch {
+      setCount(null);
+    }
+  }, [stimulus.id]);
+
+  useEffect(() => { loadCount(); }, [loadCount, refreshKey]);
+  useEffect(() => { setDraft(stimulus.content_text || ""); setEditing(false); }, [stimulus.content_text, stimulus.id]);
+
+  async function review(nextStatus) {
+    await run({
+      action: () => api.patch(
+        `${REVIEW_BASE}/items/${STIMULUS_ITEM_TYPE}/${stimulus.id}/review`,
+        { reviewer_status: nextStatus },
+      ),
+      onSuccess: onMutated,
+      errorMessage: "Could not update stimulus status",
+    });
+  }
+
+  async function saveContent() {
+    await run({
+      action: () => api.patch(`${CMS_BASE}/pyq-stimuli/${stimulus.id}`, {
+        reason: AUDIT_REASON,
+        payload: { content_text: draft },
+      }),
+      onSuccess: () => { setEditing(false); if (onMutated) onMutated(); },
+      errorMessage: "Could not save stimulus content",
+    });
+  }
+
+  async function remove() {
+    await run({
+      action: () => api.delete(`${CMS_BASE}/pyq-stimuli/${stimulus.id}`),
+      onSuccess: onMutated,
+      confirm: "Delete this passage/stimulus? Its question links will be removed.",
+      errorMessage: "Could not delete stimulus",
+    });
+  }
+
+  async function linkSelected() {
+    if (!selectedQuestionId) return;
+    await run({
+      action: () => api.post(`${CMS_BASE}/pyq-question-stimuli`, {
+        reason: AUDIT_REASON,
+        payload: { question_id: selectedQuestionId, stimulus_id: stimulus.id },
+      }),
+      onSuccess: onMutated,
+      errorMessage: "Could not link question to stimulus",
+    });
+  }
+
+  return (
+    <div
+      className="rounded-lg border border-clay-200 bg-white px-3 py-2 text-[11px] space-y-1"
+      data-testid={`stimulus-row-${stimulus.id}`}
+    >
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Badge label={stimulus.stimulus_type} colorClass="bg-violet-100 text-violet-700" />
+        <Badge
+          label={stimulus.reviewer_status}
+          colorClass={STATUS_COLORS[stimulus.reviewer_status] || "bg-gray-100 text-gray-600"}
+        />
+        {sectionLabel && (
+          <span className="text-clay-500" data-testid={`stimulus-section-${stimulus.id}`}>
+            § {sectionLabel}
+          </span>
+        )}
+        <span className="text-clay-500 ml-auto" data-testid={`stimulus-linkcount-${stimulus.id}`}>
+          {count == null ? "…" : `${count} linked`}
+        </span>
+      </div>
+
+      {editing ? (
+        <textarea
+          rows={3}
+          className="w-full border border-clay-200 rounded px-2 py-1 text-[11px] bg-white"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          data-testid={`stimulus-content-input-${stimulus.id}`}
+        />
+      ) : (
+        <p className="text-clay-700">
+          {truncate(stimulus.content_text, 160) || <em className="text-clay-400">(no text)</em>}
+        </p>
+      )}
+
+      {(canReview || canEdit) && (
+        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+          {canReview && (
+            <>
+              <button
+                type="button"
+                className="text-[10px] border border-emerald-300 text-emerald-700 rounded px-1.5 py-0.5 hover:bg-emerald-50"
+                onClick={() => review("verified")}
+                data-testid={`stimulus-verify-${stimulus.id}`}
+              >
+                Verify
+              </button>
+              <button
+                type="button"
+                className="text-[10px] border border-rose-300 text-rose-600 rounded px-1.5 py-0.5 hover:bg-rose-50"
+                onClick={() => review("rejected")}
+                data-testid={`stimulus-reject-${stimulus.id}`}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="text-[10px] border border-orange-300 text-orange-700 rounded px-1.5 py-0.5 hover:bg-orange-50"
+                onClick={() => review("needs_correction")}
+                data-testid={`stimulus-needs-correction-${stimulus.id}`}
+              >
+                Needs correction
+              </button>
+            </>
+          )}
+          {canEdit && (
+            <>
+              {selectedQuestionId && !editing && (
+                <button
+                  type="button"
+                  className="text-[10px] border border-indigo-300 text-indigo-700 rounded px-1.5 py-0.5 hover:bg-indigo-50 flex items-center gap-0.5"
+                  onClick={linkSelected}
+                  data-testid={`stimulus-link-question-${stimulus.id}`}
+                >
+                  <Link2 className="h-3 w-3" /> Link question
+                </button>
+              )}
+              {editing ? (
+                <>
+                  <button
+                    type="button"
+                    className="text-[10px] border border-clay-300 text-clay-700 rounded px-1.5 py-0.5 hover:bg-clay-50"
+                    onClick={saveContent}
+                    data-testid={`stimulus-content-save-${stimulus.id}`}
+                  >
+                    Save content
+                  </button>
+                  <button
+                    type="button"
+                    className="text-[10px] text-clay-500 rounded px-1.5 py-0.5"
+                    onClick={() => { setEditing(false); setDraft(stimulus.content_text || ""); }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="text-[10px] border border-clay-300 text-clay-700 rounded px-1.5 py-0.5 hover:bg-clay-50"
+                  onClick={() => setEditing(true)}
+                  data-testid={`stimulus-edit-${stimulus.id}`}
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                type="button"
+                className="text-[10px] text-clay-500 hover:text-rose-600 ml-auto flex items-center gap-0.5"
+                onClick={remove}
+                data-testid={`stimulus-delete-${stimulus.id}`}
+              >
+                <Trash2 className="h-3 w-3" /> Delete
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StimuliPanel({
+  stimuli,
+  loading,
+  error,
+  sectionLabelById,
+  sections,
+  canEdit,
+  canReview,
+  selectedQuestionId,
+  paperId,
+  refreshKey,
+  onMutated,
+}) {
+  const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newType, setNewType] = useState("passage");
+  const [newContent, setNewContent] = useState("");
+  const [newSection, setNewSection] = useState("");
+  const [createError, setCreateError] = useState("");
+  const { run, busy } = useApiAction();
+
+  async function createStimulus() {
+    setCreateError("");
+    const payload = { pyq_paper_id: paperId, stimulus_type: newType };
+    if (newContent.trim()) payload.content_text = newContent.trim();
+    if (newSection) payload.section_id = newSection;
+    const res = await run({
+      action: () => api.post(`${CMS_BASE}/pyq-stimuli`, { reason: AUDIT_REASON, payload }),
+      errorMessage: "Could not create stimulus",
+    });
+    if (res?.ok) {
+      setNewContent("");
+      setNewSection("");
+      setShowCreate(false);
+      if (onMutated) onMutated();
+    } else {
+      setCreateError(res?.error?.message || "Could not create stimulus");
+    }
+  }
+
+  return (
+    <div
+      className="flex-shrink-0 border-t border-clay-200 bg-[#FFFDF9]"
+      data-testid="pyq-stimuli-panel"
+    >
+      <button
+        type="button"
+        className="w-full flex items-center gap-2 px-4 py-2 text-[12px] font-semibold text-clay-700"
+        onClick={() => setOpen((p) => !p)}
+        data-testid="pyq-stimuli-panel-toggle"
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        Passages / stimuli
+        {stimuli.length > 0 && (
+          <span className="text-[10px] text-clay-500">({stimuli.length})</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-3 space-y-2 max-h-[40vh] overflow-y-auto">
+          {canEdit && (
+            <div>
+              {!showCreate ? (
+                <button
+                  type="button"
+                  className="text-[11px] text-indigo-700 underline"
+                  onClick={() => setShowCreate(true)}
+                  data-testid="stimulus-create-open"
+                >
+                  + Add passage / stimulus
+                </button>
+              ) : (
+                <div className="rounded-lg border border-clay-200 bg-white p-2 space-y-1.5" data-testid="stimulus-create-form">
+                  <div className="flex gap-1.5">
+                    <select
+                      className="border border-clay-200 rounded px-1.5 py-0.5 text-[11px] bg-white"
+                      value={newType}
+                      onChange={(e) => setNewType(e.target.value)}
+                      data-testid="stimulus-create-type"
+                    >
+                      {STIMULUS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select
+                      className="border border-clay-200 rounded px-1.5 py-0.5 text-[11px] bg-white flex-1"
+                      value={newSection}
+                      onChange={(e) => setNewSection(e.target.value)}
+                      data-testid="stimulus-create-section"
+                    >
+                      <option value="">— no section —</option>
+                      {sections.map((s) => <option key={s.id} value={s.id}>{s.section_label}</option>)}
+                    </select>
+                  </div>
+                  <textarea
+                    rows={3}
+                    className="w-full border border-clay-200 rounded px-2 py-1 text-[11px] bg-white"
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    placeholder="Passage / stimulus content…"
+                    data-testid="stimulus-create-content"
+                  />
+                  {createError && <p className="text-[10.5px] text-rose-600" data-testid="stimulus-create-error">{createError}</p>}
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="text-[11px] border border-indigo-300 text-indigo-700 rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-50"
+                      onClick={createStimulus}
+                      disabled={busy}
+                      data-testid="stimulus-create-submit"
+                    >
+                      Add stimulus
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[11px] text-clay-500 px-2 py-0.5"
+                      onClick={() => { setShowCreate(false); setCreateError(""); }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {loading && <p className="text-[11px] text-muted-foreground" data-testid="pyq-stimuli-loading">Loading passages/stimuli…</p>}
+          {error && <p className="text-[11px] text-rose-600" data-testid="pyq-stimuli-error">{error}</p>}
+          {!loading && !error && stimuli.length === 0 && (
+            <p className="text-[11px] text-muted-foreground" data-testid="pyq-stimuli-empty">
+              No passages/stimuli for this paper.
+            </p>
+          )}
+          {!loading && !error && stimuli.map((s) => (
+            <StimulusRow
+              key={s.id}
+              stimulus={s}
+              sectionLabel={s.section_id ? sectionLabelById[s.section_id] : null}
+              canEdit={canEdit}
+              canReview={canReview}
+              selectedQuestionId={selectedQuestionId}
+              refreshKey={refreshKey}
+              onMutated={onMutated}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = false, status = null, rowId = null }) {
   const { pyq_paper_id: pyq_paper_id_param } = useParams();
   const pyq_paper_id = paperIdProp || pyq_paper_id_param;
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const canReview = user?.role === "super_admin"
+    || (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.review"));
+  const canEdit = user?.role === "super_admin"
+    || (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
   const [paper, setPaper] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -1124,6 +1735,21 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
 
   const [showAddMissing, setShowAddMissing] = useState(false);
   const [addMissingNumber, setAddMissingNumber] = useState(null);
+
+  // ── Sections + stimuli (migration 223, PR-3) ─────────────────────────────
+  const [sections, setSections] = useState([]);
+  const [stimuli, setStimuli] = useState([]);
+  const [stimuliLoading, setStimuliLoading] = useState(false);
+  const [stimuliError, setStimuliError] = useState("");
+  // Bumped on any stimulus/link mutation so link lists + link counts reload.
+  const [linkRefreshKey, setLinkRefreshKey] = useState(0);
+  const stimuliGenRef = useRef(0);
+
+  const sectionLabelById = React.useMemo(() => {
+    const m = {};
+    for (const s of sections) m[s.id] = s.section_label;
+    return m;
+  }, [sections]);
 
   // ── Data loading ─────────────────────────────────────────────────────────
 
@@ -1210,6 +1836,45 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     }
   }, []);
 
+  const loadStimuli = useCallback(async () => {
+    if (!pyq_paper_id) return;
+    stimuliGenRef.current += 1;
+    const sgen = stimuliGenRef.current;
+    setStimuliLoading(true);
+    setStimuliError("");
+    try {
+      const res = await api.get(
+        `${CMS_BASE}/pyq-stimuli?pyq_paper_id=${encodeURIComponent(pyq_paper_id)}&limit=100`,
+      );
+      if (stimuliGenRef.current !== sgen) return;
+      setStimuli(res.items || []);
+    } catch (e) {
+      if (stimuliGenRef.current !== sgen) return;
+      setStimuliError(e?.message || "Could not load passages/stimuli");
+    } finally {
+      if (stimuliGenRef.current === sgen) setStimuliLoading(false);
+    }
+  }, [pyq_paper_id]);
+
+  // Any stimulus/link mutation reloads the paper-level stimuli list and bumps
+  // the refresh key so per-question link lists + link counts re-fetch.
+  const handleStimuliMutated = useCallback(() => {
+    loadStimuli();
+    setLinkRefreshKey((k) => k + 1);
+  }, [loadStimuli]);
+
+  // Load the paper's phase sections once the paper (and its exam_phase_id) is known.
+  useEffect(() => {
+    const phaseId = paper?.exam_phase_id;
+    if (!phaseId) { setSections([]); return undefined; }
+    let cancelled = false;
+    api
+      .get(`${CMS_BASE}/exam-phase-sections?exam_phase_id=${encodeURIComponent(phaseId)}&limit=100`)
+      .then((res) => { if (!cancelled) setSections(res.items || []); })
+      .catch(() => { if (!cancelled) setSections([]); });
+    return () => { cancelled = true; };
+  }, [paper?.exam_phase_id]);
+
   // ── Reset all paper-scoped state when the paper changes ─────────────────
   // Increment load generation so any in-flight responses from the previous
   // paper are discarded when they resolve. Must run before the data-loading
@@ -1218,6 +1883,7 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     loadGenRef.current += 1;
     optionsGenRef.current += 1;   // discard any running loadOptions from the old paper
     progressGenRef.current += 1;  // discard any running loadProgress from the old paper
+    stimuliGenRef.current += 1;    // discard any running loadStimuli from the old paper
     setPaper(null);
     setQuestions([]);
     setProgress(null);
@@ -1227,6 +1893,9 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
     setPdfPage(null);
     setOffset(0);
     setTotal(null);
+    setSections([]);
+    setStimuli([]);
+    setStimuliError("");
     deepLinkApplied.current = false;
     setDeepLinkNotFound(false);
   }, [pyq_paper_id]);
@@ -1255,11 +1924,13 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
   useEffect(() => {
     setLoading(true);
     let effectActive = true;
-    Promise.all([loadPaper(), loadQuestions(), loadProgress()]).finally(() => {
+    // loadStimuli runs here (after the reset/status effects above) so the reset
+    // effect's stimuliGenRef increment cannot discard this paper's fetch.
+    Promise.all([loadPaper(), loadQuestions(), loadProgress(), loadStimuli()]).finally(() => {
       if (effectActive) setLoading(false);
     });
     return () => { effectActive = false; };
-  }, [loadPaper, loadQuestions, loadProgress]);
+  }, [loadPaper, loadQuestions, loadProgress, loadStimuli]);
 
   // ── Filter handlers — reset offset so results are correct ───────────────
 
@@ -1528,6 +2199,12 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
             question={selectedQuestion}
             options={selectedOptions}
             paperId={pyq_paper_id}
+            sections={sections}
+            stimuli={stimuli}
+            canEdit={canEdit}
+            canReview={canReview}
+            linkRefreshKey={linkRefreshKey}
+            onMutated={handleStimuliMutated}
             onSaved={handleSaved}
             onStatusChange={handleStatusChange}
             onNavigate={navigateQuestion}
@@ -1547,6 +2224,21 @@ export default function PyqPaperWorkspace({ paperId: paperIdProp, embedded = fal
           />
         </div>
       </div>
+
+      {/* Passages / stimuli panel (migration 223, PR-3) */}
+      <StimuliPanel
+        stimuli={stimuli}
+        loading={stimuliLoading}
+        error={stimuliError}
+        sectionLabelById={sectionLabelById}
+        sections={sections}
+        canEdit={canEdit}
+        canReview={canReview}
+        selectedQuestionId={selectedQuestion?.id || null}
+        paperId={pyq_paper_id}
+        refreshKey={linkRefreshKey}
+        onMutated={handleStimuliMutated}
+      />
 
       {/* Add missing modal */}
       {showAddMissing && (

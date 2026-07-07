@@ -168,7 +168,8 @@ _REVIEWABLE = {
     "pyq_question": {
         "table": "pyq_questions",
         "select": (
-            "id, pyq_paper_id, question_number, question_type, language, "
+            "id, pyq_paper_id, section_id, source_question_ref, display_order, "
+            "question_number, question_type, language, "
             "reviewer_status, created_at, updated_at"
         ),
         "supports_notes": False,
@@ -181,6 +182,31 @@ _REVIEWABLE = {
             "metadata, created_at"
         ),
         # pyq_options has no reviewer_notes column; notes ride on metadata.
+        "supports_notes": False,
+    },
+    # Shared passage/stimulus CONTENT (migration 223). Reviewed INDEPENDENTLY:
+    # a question's review must NOT auto-verify shared stimulus content, because
+    # the same passage may back other still-unreviewed questions. Only the
+    # question→stimulus LINK (pyq_question_stimulus below) is cascaded by
+    # question review (migration 226). Flows through the generic review_item
+    # else-branch — no new endpoint code.
+    "pyq_stimulus": {
+        "table": "pyq_stimuli",
+        "select": (
+            "id, pyq_paper_id, section_id, stimulus_type, content_text, "
+            "language, display_order, reviewer_status, reviewed_by, "
+            "reviewed_at, metadata, created_at"
+        ),
+        "supports_notes": False,
+    },
+    # Question↔stimulus ASSOCIATION (migration 223). Independently review-gated;
+    # question review cascades to these link rows via migration 226's RPC.
+    "pyq_question_stimulus": {
+        "table": "pyq_question_stimuli",
+        "select": (
+            "id, question_id, stimulus_id, display_order, reviewer_status, "
+            "reviewed_by, reviewed_at, created_at"
+        ),
         "supports_notes": False,
     },
 }
