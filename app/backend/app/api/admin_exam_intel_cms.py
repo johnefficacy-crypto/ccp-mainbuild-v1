@@ -1655,6 +1655,12 @@ def pyq_bulk_commit(
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        # Batch-level conflict (e.g. checkpost round 3 fix #3b: a stimulus
+        # ref's content diverges from the already-canonical stored row) —
+        # mirrors preflight's existing ValueError -> 422 mapping. Raised
+        # before any writes, so nothing was committed.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     _audit(
         supabase, admin, "exam_intel.cms.pyq_bulk_import.commit",

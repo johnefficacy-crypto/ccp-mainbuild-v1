@@ -41,11 +41,14 @@ import csv
 import io
 import json
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import admin_exam_intel_cms as cms_api
 from app.core.auth import get_current_user
+from app.exam_intelligence import pyq_bulk_import as _bi
+from app.exam_intelligence.option_normalize import question_hash
 from tests.exam_intelligence.test_cms_taxonomy import TaxSBStub
 
 _BASE = "/api/admin/exam-intelligence-cms"
@@ -647,3 +650,280 @@ class TestV2ScopeRestrictions:
         )
         assert r.status_code == 422, r.text
         assert "PR-11" in r.json()["detail"]
+
+
+# ── 12. Checkpost round 3 fixes ─────────────────────────────────────────────
+#
+# Fix 1: no-identity duplicate across two SEPARATE commit() calls (not a
+#        race -- sequential preflight-both-then-commit-both is enough).
+# Fix 2: batch_hash_map must be seeded even when a row ends up "fuzzy", not
+#        just "ok".
+# Fix 3b: stimulus content-mismatch detection on a corrected retry.
+# Fix 4 (secondary): bearer-token design -- a different actor can commit.
+# Fix 5: default option display_order from array position; duplicate
+#        stimulus_refs within one question; duplicate display_order across
+#        questions/stimuli within one upload.
+
+
+class TestV2NoIdentityDuplicateAcrossSeparateCommits:
+    """Fix 1: batch_hash_map (round 2) only guards duplicates WITHIN one
+    preflight batch. Two SEPARATE commit() calls for byte-identical
+    no-identity question text -- each preflighted BEFORE either commits, so
+    neither preflight's own dedup ladder can see the other's row -- must not
+    both insert. commit()'s idempotency re-check must catch it via
+    normalized_question_hash even though neither source_question_ref nor
+    question_number is set on either row."""
+
+    def test_second_separate_commit_skips_as_already_exists(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        q = _q(question_text="No identity fields on this question at all.")
+
+        # Both preflighted BEFORE either commits -- this is the reproduction:
+        # at preflight time, batch B's dedup ladder only ever compares
+        # against rows already IN THE DB, and batch A hasn't committed yet.
+        pf_a = _preflight_json_v2(client, _v2_payload([dict(q)]))
+        pf_b = _preflight_json_v2(client, _v2_payload([dict(q)]))
+        assert pf_a["summary"]["ok"] == 1
+        assert pf_b["summary"]["ok"] == 1
+
+        result_a = _commit(client, pf_a["import_token"])
+        assert result_a["committed"] == 1
+        assert len(sb.db["pyq_questions"]) == 1
+
+        result_b = _commit(client, pf_b["import_token"])
+        assert result_b["committed"] == 0
+        assert result_b["skipped"] == 1
+        assert result_b["per_row"][0]["reason"] == "already_exists"
+        # Only one pyq_questions row ends up existing for this paper.
+        assert len(sb.db["pyq_questions"]) == 1
+
+
+class TestV2FuzzySeedsBatchHashMap:
+    """Fix 2: a row whose only fate is "fuzzy" (near-miss ratio >= 0.85
+    against an EXISTING DB row, no exact hash match) must still seed
+    batch_hash_map -- not just rows that end up "ok" -- so a second,
+    byte-identical row later in the same batch is caught as a batch-local
+    "duplicate" instead of independently repeating the same fuzzy check and
+    also landing on "fuzzy" (which would silently commit both, since fuzzy
+    rows commit by default unless also flagged error)."""
+
+    def test_second_identical_fuzzy_row_is_batch_duplicate_not_fuzzy(self):
+        existing_text = (
+            "What is the capital of France and why is it important to European history?"
+        )
+        seed = _seed_v2(extra_questions=[{
+            "id": "q-existing", "pyq_paper_id": "paper-1",
+            "question_number": 1, "question_text": existing_text,
+            "normalized_question_hash": question_hash(existing_text),
+        }])
+        sb = TaxSBStub(seed)
+        client = _client(sb)
+        near_text = (
+            "What is the capital of France and why is it important to European history today?"
+        )
+        q = _q(question_text=near_text)
+        pf = _preflight_json_v2(client, _v2_payload([dict(q), dict(q)]))
+        row1, row2 = pf["rows"]
+        assert row1["status"] == "fuzzy"
+        assert row2["status"] == "duplicate"
+        assert "row 1" in row2["messages"][0]
+
+        result = _commit(client, pf["import_token"])
+        # Row 1 ("fuzzy") commits by default; row 2 is skipped as a
+        # batch-local duplicate of row 1, not independently committed.
+        assert result["committed"] == 1
+        assert result["skipped"] == 1
+        # Existing seeded row + the one newly committed fuzzy row = 2 total.
+        assert len(sb.db["pyq_questions"]) == 2
+
+
+class TestV2StimulusContentMismatch:
+    """Fix 3a/3b: a corrected retry (same ref, different content_text) must
+    not silently link new questions to the STALE, uncorrected stimulus.
+    commit() must abort the WHOLE call before any writes, with a clear error
+    naming the ref and the conflict, leaving the original stimulus row's
+    content untouched."""
+
+    def test_second_commit_with_changed_content_text_fails_no_partial_writes(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli1 = [{"ref": "passage-04", "stimulus_type": "passage", "content_text": "Original text"}]
+        payload1 = _v2_payload(
+            [_q(question_text="First question about the passage.", stimulus_refs=["passage-04"])],
+            stimuli=stimuli1,
+        )
+        pf1 = _preflight_json_v2(client, payload1)
+        result1 = _commit(client, pf1["import_token"])
+        assert result1["committed"] == 1
+        original_stim = dict(sb.db["pyq_stimuli"][0])
+
+        stimuli2 = [{"ref": "passage-04", "stimulus_type": "passage", "content_text": "Corrected text"}]
+        payload2 = _v2_payload(
+            [_q(question_text="Second question, corrected retry.", stimulus_refs=["passage-04"])],
+            stimuli=stimuli2,
+        )
+        pf2 = _preflight_json_v2(client, payload2)
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/commit",
+            json={"import_token": pf2["import_token"], "reason": "corrected retry conflict"},
+        )
+        assert r.status_code == 422, r.text
+        detail = r.json()["detail"]
+        assert "passage-04" in detail
+        assert "different content" in detail
+
+        # No partial writes: still exactly 1 stimulus row, unchanged content;
+        # no second question committed either.
+        assert len(sb.db["pyq_stimuli"]) == 1
+        assert sb.db["pyq_stimuli"][0] == original_stim
+        assert sb.db["pyq_stimuli"][0]["content_text"] == "Original text"
+        assert len(sb.db["pyq_questions"]) == 1
+
+
+class TestV2BearerTokenDesign:
+    """Fix 4 (secondary): tokens are a bearer/transferable capability -- any
+    actor holding a valid, unexpired, unconsumed token for the correct paper
+    may commit it, regardless of who ran the original preflight. This test
+    documents/proves the CURRENT (intentionally unchanged) behavior."""
+
+    def test_different_actor_can_commit_same_token(self):
+        sb = TaxSBStub(_seed_v2())
+        payload = _v2_payload([_q(question_text="Bearer-token capability question.")])
+        pf = _bi.preflight(
+            sb, {"id": "preflighter-1"}, "paper-1",
+            json.dumps(payload).encode(), "application/json",
+        )
+        token = pf["import_token"]
+        result = _bi.commit(sb, {"id": "someone-else-entirely"}, token, paper_id="paper-1")
+        assert result["committed"] == 1
+
+
+class TestV2OptionDisplayOrderDefaults:
+    """Fix 5a: an omitted options[i].display_order defaults to the option's
+    1-based position in the supplied options array, instead of staying
+    None. An explicitly-given value is still validated as before."""
+
+    def test_omitted_option_display_order_defaults_to_array_position(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([_q(
+            question_text="Options omit display_order entirely.",
+            options=[
+                {"label": "1", "text": "Alpha"},
+                {"label": "2", "text": "Beta"},
+                {"label": "3", "text": "Gamma"},
+            ],
+            correct_option_label="2",
+        )])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+        opts = {o["option_label"]: o for o in sb.db["pyq_options"]}
+        assert opts["1"]["display_order"] == 1
+        assert opts["2"]["display_order"] == 2
+        assert opts["3"]["display_order"] == 3
+
+
+class TestV2DuplicateStimulusRefsInQuestion:
+    """Fix 5b: a question's stimulus_refs listing the same ref twice must be
+    a row-level validation error, not a silent double-link (which would hit
+    pyq_question_stimuli's unique(question_id, stimulus_id) constraint at
+    commit time as a late, confusing failure)."""
+
+    def test_duplicate_stimulus_ref_in_same_question_is_row_error(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli = [{"ref": "passage-04", "stimulus_type": "passage", "content_text": "Passage."}]
+        payload = _v2_payload(
+            [_q(stimulus_refs=["passage-04", "passage-04"])],
+            stimuli=stimuli,
+        )
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        row = pf["rows"][0]
+        assert row["status"] == "error"
+        assert any("duplicate ref" in m for m in row["messages"])
+
+
+class TestV2DuplicateDisplayOrderWithinUpload:
+    """Fix 5c: duplicate EXPLICIT display_order among questions within one
+    upload, and among stimuli within the batch's top-level stimuli array,
+    are caught at preflight time -- a UX/DX improvement layered on top of
+    migration 223's already-safe commit-time unique-index backstop for the
+    cross-batch case, not a new correctness gap."""
+
+    def test_duplicate_question_display_order_within_upload_is_row_error(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([
+            _q(question_text="First question, display_order 5.", display_order=5),
+            _q(question_text="Second question, ALSO display_order 5.", display_order=5),
+        ])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1
+        assert pf["summary"]["error"] == 1
+        row2 = pf["rows"][1]
+        assert row2["status"] == "error"
+        assert any(
+            "display_order 5 is duplicated within this upload" in m and "row 1" in m
+            for m in row2["messages"]
+        )
+
+    def test_duplicate_stimulus_display_order_within_batch_is_batch_error(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli = [
+            {"ref": "passage-01", "stimulus_type": "passage", "content_text": "P1", "display_order": 1},
+            {"ref": "passage-02", "stimulus_type": "passage", "content_text": "P2", "display_order": 1},
+        ]
+        payload = _v2_payload(
+            [_q(stimulus_refs=["passage-01"]), _q(stimulus_refs=["passage-02"])],
+            stimuli=stimuli,
+        )
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/preflight",
+            content=json.dumps(payload).encode(),
+            headers={"content-type": "application/json"},
+        )
+        assert r.status_code == 422, r.text
+        assert "duplicated within this batch" in r.json()["detail"]
+
+
+class TestV2StimuliFailClosedLookup:
+    """Fix 3a: the existing-pyq_stimuli fetch (durable stimulus identity
+    across separate commit() calls) used to catch its own exception and
+    just logger.warning() -- the ONE fail-open lookup left standing after
+    round 2. A transient failure here must now raise RuntimeError (fail
+    closed), consistent with the existing-questions lookup, since silently
+    degrading to per-call-only identity can create duplicate canonical
+    stimuli. Also proves fix #4's reordering: the fetch runs BEFORE the
+    token claim, so the token is untouched when this raises."""
+
+    def test_commit_raises_when_existing_stimuli_fetch_fails(self):
+        from tests.exam_intelligence.test_pyq_bulk_import import RaiseOnSelectSBStub
+
+        sb_ok = TaxSBStub(_seed_v2())
+        client = _client(sb_ok)
+        stimuli = [{"ref": "passage-04", "stimulus_type": "passage", "content_text": "Passage."}]
+        payload = _v2_payload(
+            [_q(question_text="Uses a stimulus.", stimulus_refs=["passage-04"])],
+            stimuli=stimuli,
+        )
+        pf = _preflight_json_v2(client, payload)
+        token = pf["import_token"]
+        token_row = next(r for r in sb_ok.db["pyq_import_tokens"] if r["token"] == token)
+
+        seed = _seed_v2()
+        seed["pyq_import_tokens"] = [dict(token_row)]
+        sb = RaiseOnSelectSBStub(seed, fail_table="pyq_stimuli")
+        with pytest.raises(RuntimeError):
+            _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
+
+        assert sb.db["pyq_questions"] == []
+        assert sb.db["pyq_stimuli"] == []
+        # Token untouched -- the fetch runs before the claim (fix #4), so a
+        # RuntimeError here never burns the token.
+        row = next(r for r in sb.db["pyq_import_tokens"] if r["token"] == token)
+        assert row["consumed_at"] is None

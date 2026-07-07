@@ -543,5 +543,11 @@ class TestFailClosedExistingRowLookup:
         sb = RaiseOnSelectSBStub(seed, fail_table="pyq_questions")
         with pytest.raises(RuntimeError):
             _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
-        # Nothing was written despite the token having been claimed.
+        # Nothing was written.
         assert sb.db["pyq_questions"] == []
+        # Checkpost round 3, fix #4: the existing-rows fetch now runs BEFORE
+        # the token claim, so a RuntimeError here never burns the token --
+        # the caller can safely retry the exact same commit() call once the
+        # transient DB issue clears.
+        row = next(r for r in sb.db["pyq_import_tokens"] if r["token"] == token)
+        assert row["consumed_at"] is None
