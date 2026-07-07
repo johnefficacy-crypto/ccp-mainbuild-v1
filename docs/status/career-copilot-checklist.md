@@ -99,6 +99,25 @@ Current verdict: **core arc complete; cleanup tier remains**.
 | CL-6 remove orphaned root console layout + `ExamTaskRail` | CODE PRESENT IN THIS CHECKOUT | `ExamWorkspace` no longer accepts or branches on `variant="console"` and `ExamTaskRail` is deleted. The standalone eight-tab workspace is unchanged. |
 | CL-6b retire dormant console presentation plumbing | CODE PRESENT IN THIS CHECKOUT | Provider variant was removed from `ExamWorkspaceContext`; `OverviewPanel` and `ReviewActivatePanel` now contain workspace-only behavior with readiness percentages preserved for the standalone workspace; orphaned `ExamPublishImpact` and its isolated test were deleted; active standalone workspace and `ExamActionConsole` routes remain unchanged; `SetupPanel` remains unchanged. |
 
+## PYQ Intelligence v2 — section/stimulus/variable-option schema (PR-1)
+
+Tracks the delivery-order sequence in `docs/architecture/pyq-intelligence-v2.md`'s
+sibling gap analysis (section linkage, printed-order preservation, variable
+option counts, shared stimuli). PR-1 is schema-only; importer v2, admin
+review, projection, and learner delivery are separate, later PRs.
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| PR-1 schema: `pyq_questions.section_id`/`source_question_ref`/`display_order`, `pyq_options.display_order`/`source_label`, `pyq_stimuli`, `pyq_question_stimuli` | CODE-FIXED, VALIDATION PENDING | Migration `223_pyq_section_stimulus_schema.sql`. All new columns nullable; `pyq_bulk_import.py`'s fixed A-D/four-option write path is unchanged and remains the legacy import format. New tables mirror the existing `pyq_papers`/`pyq_questions`/`pyq_options` admin-only RLS posture (`public.is_admin(auth.uid())`); no aspirant-facing read policy added. `VERIFY DB`: run `SELECT * FROM pg_policies WHERE tablename IN ('pyq_stimuli','pyq_question_stimuli')` and confirm the migration applies cleanly against a live/staging Supabase instance before relying on it. |
+| PR-2 importer v2 (variable options, `options_json`, section/stimulus refs, non-integer `source_question_ref`) | PLANNED | Not started; extends `pyq_bulk_import.py` while keeping the legacy 4-option CSV/JSON path as a backward-compatible mode. |
+| PR-3 admin review UI for section assignment / passage grouping | PLANNED | Extends the existing PYQ workspace; no new top-level surface. |
+| PR-4 projection/snapshot fidelity (section, stimulus, display order, source labels in `mock_question_bank`) | PLANNED | Depends on PR-1 (this entry) + PR-2. |
+| PR-5/6 learner PYQ practice (full paper / section / topic / revision) | PLANNED | Embedded Study OS drill-in per no-new-surface rule; depends on PR-1 through PR-4. |
+| PR-7 unified attempt evidence adapter | PLANNED | Normalizes mock + direct-PYQ attempts into one evidence contract for mastery/planner/persona. |
+| PR-8 mastery/revision integration | PLANNED | Must run in shadow mode; `FF_MOCK_MASTERY_WRITES=live` remains blocked pending the P8 shadow window (see Mock Engine v2 gate above). |
+| PR-9/10 planner task resolver + persona behavioural aggregates | PLANNED | Not started. |
+| PR-11 media/advanced question types (MSQ, integer, image stem/options, matching, descriptive) | PLANNED | Blocked on stimulus model (PR-1) and importer v2 (PR-2). |
+
 ## Exam intelligence / workspace — design defects & UX cleanup
 
 Findings confirmed against this checkout. Full audit evidence:
