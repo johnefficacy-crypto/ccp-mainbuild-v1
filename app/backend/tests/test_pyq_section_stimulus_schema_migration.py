@@ -120,3 +120,64 @@ def test_no_authenticated_read_policy_added_for_canonical_pyq_tables():
     # Aspirant-facing reads continue to flow through the reviewed
     # mock_question_bank projection, matching pyq_papers/pyq_questions/pyq_options.
     assert "for select to authenticated using (true)" not in MIGRATION
+
+
+def test_linked_section_reassignment_hole_is_closed():
+    # checkpost 2nd pass P0-1b: changing section_id on an already-linked
+    # question/stimulus must re-check the existing link, not just the paper/
+    # phase match of the new section_id in isolation.
+    assert "v_section_changed" in MIGRATION
+    assert "would break an existing pyq_question_stimuli section compatibility" in MIGRATION
+    # both directions (question->stimuli and stimulus->questions) are covered
+    assert MIGRATION.count("would break an existing pyq_question_stimuli section compatibility") == 2
+
+
+def test_parent_move_checks_are_null_safe():
+    # checkpost 2nd pass P0-2b: `<>` against a NULL new value is NULL (never
+    # true), so the EXISTS guard would silently no-op when a paper/section is
+    # moved to a NULL phase. All four move-revalidation predicates must use
+    # IS DISTINCT FROM instead of a bare `<>`.
+    assert "p.exam_phase_id is distinct from new.exam_phase_id" in MIGRATION
+    assert "s.exam_phase_id is distinct from new.exam_phase_id" in MIGRATION
+    assert "st.pyq_paper_id is distinct from new.pyq_paper_id" in MIGRATION
+    assert "q.pyq_paper_id is distinct from new.pyq_paper_id" in MIGRATION
+    # no leftover bare `<>` comparisons against a NEW.* nullable move target
+    assert "exam_phase_id <> new.exam_phase_id" not in MIGRATION
+    assert "pyq_paper_id <> new.pyq_paper_id" not in MIGRATION
+
+
+def test_validation_functions_take_explicit_row_locks():
+    # checkpost 2nd pass P0-3: plain SELECTs in a check-then-act trigger race
+    # under concurrent writes; the parent/child rows a decision depends on
+    # must be locked before the decision is made.
+    assert "from public.pyq_papers where id = new.pyq_paper_id for share" in MIGRATION
+    assert "from public.exam_phase_sections where id = new.section_id for share" in MIGRATION
+    assert "from public.pyq_questions where id = new.question_id for share" in MIGRATION
+    assert "from public.pyq_stimuli where id = new.stimulus_id for share" in MIGRATION
+    assert "for share of st" in MIGRATION
+    assert "for share of q" in MIGRATION
+    assert "for share of s" in MIGRATION
+
+
+def test_pyq_question_stimuli_has_its_own_review_gate():
+    # checkpost 2nd pass P1b: the association is independently governed
+    # (mirrors pyq_question_topic_tags) rather than inheriting trust from
+    # either endpoint, and a repoint forces it back to 'pending'.
+    link_table_section = MIGRATION[
+        MIGRATION.index("create table if not exists public.pyq_question_stimuli"):
+        MIGRATION.index("idx_pyq_question_stimuli_question")
+    ]
+    assert "reviewer_status text not null default 'pending'" in link_table_section
+    assert "reviewed_by uuid references public.profiles(id) on delete set null" in link_table_section
+    assert "idx_pyq_question_stimuli_review" in MIGRATION
+    assert "v_repointed" in MIGRATION
+    assert "new.reviewer_status := 'pending';" in MIGRATION
+
+
+def test_verified_stimulus_content_edit_downgrades_review_status():
+    # checkpost 2nd pass P1b: editing content_text/stimulus_type/language/
+    # metadata on a verified stimulus must not silently leave it verified.
+    assert "pyq_downgrade_stimulus_review_on_content_edit" in MIGRATION
+    assert "trg_pyq_stimuli_downgrade_on_content_edit" in MIGRATION
+    assert "new.reviewer_status := 'needs_correction';" in MIGRATION
+    assert "before update of content_text, stimulus_type, language, metadata on public.pyq_stimuli" in MIGRATION
