@@ -434,3 +434,216 @@ class TestV1RegressionSmoke:
         assert result["committed"] == 2
         assert len(sb.db["pyq_questions"]) == 2
         assert len(sb.db["pyq_options"]) == 8  # 2 questions x 4 options
+
+
+# ── 11. Checkpost round 2 fixes ─────────────────────────────────────────────
+#
+# Fix 3: ambiguous section_ref (same label, two subjects, one phase).
+# Fix 4: pyq_question_stimuli.display_order preserves stimulus_refs order.
+# Fix 5: JSON v2 envelope requires format_version == 2 exactly.
+# Fix 6: same-upload duplicate detection (no identity field on either row).
+# Fix 8: durable shared-stimulus identity across separate commit() calls.
+# Fix 9: v2 restricts question_type to 'mcq' and stimulus_type to a subset.
+
+
+class TestV2AmbiguousSectionRef:
+    """Fix 3: exam_phase_sections is only unique on (exam_phase_id,
+    subject_id, section_label) -- the same label can legitimately repeat
+    under two different subjects in one phase. Resolving must error, not
+    silently pick one by fetch order."""
+
+    @staticmethod
+    def _dup_label_sections():
+        return [
+            {"id": "sec-a", "exam_phase_id": _PAPER_PHASE_ID, "subject_id": "s1", "section_label": "General"},
+            {"id": "sec-b", "exam_phase_id": _PAPER_PHASE_ID, "subject_id": "s2", "section_label": "General"},
+        ]
+
+    def test_question_section_ref_ambiguous_is_row_error(self):
+        sb = TaxSBStub(_seed_v2(extra_sections=self._dup_label_sections()))
+        client = _client(sb)
+        payload = _v2_payload([_q(section_ref="General")])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        row = pf["rows"][0]
+        assert row["status"] == "error"
+        assert any("ambiguous" in m for m in row["messages"])
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 0
+        assert len(sb.db["pyq_questions"]) == 0
+
+    def test_stimulus_section_ref_ambiguous_is_batch_error(self):
+        sb = TaxSBStub(_seed_v2(extra_sections=self._dup_label_sections()))
+        client = _client(sb)
+        stimuli = [{
+            "ref": "passage-01", "stimulus_type": "passage",
+            "content_text": "Shared passage.", "section_ref": "General",
+        }]
+        payload = _v2_payload(
+            [_q(stimulus_refs=["passage-01"])],
+            stimuli=stimuli,
+        )
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/preflight",
+            content=json.dumps(payload).encode(),
+            headers={"content-type": "application/json"},
+        )
+        # A broken stimuli[] entry invalidates the whole batch (parse failure).
+        assert r.status_code == 422, r.text
+        assert "ambiguous" in r.json()["detail"]
+
+
+class TestV2QuestionStimuliDisplayOrder:
+    """Fix 4: pyq_question_stimuli.display_order (migration 223) must record
+    the 1-based position of each ref in the question's stimulus_refs list."""
+
+    def test_display_order_matches_stimulus_refs_array_order(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli = [
+            {"ref": "passage-04", "stimulus_type": "passage", "content_text": "Passage."},
+            {"ref": "table-02", "stimulus_type": "table", "content_text": "Table."},
+        ]
+        payload = _v2_payload(
+            [_q(question_text="Refers to both a passage and a table.",
+                stimulus_refs=["passage-04", "table-02"])],
+            stimuli=stimuli,
+        )
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+
+        stim_by_ref_type = {s["stimulus_type"]: s["id"] for s in sb.db["pyq_stimuli"]}
+        links = sb.db["pyq_question_stimuli"]
+        assert len(links) == 2
+        by_stim_id = {link["stimulus_id"]: link["display_order"] for link in links}
+        assert by_stim_id[stim_by_ref_type["passage"]] == 1
+        assert by_stim_id[stim_by_ref_type["table"]] == 2
+
+
+class TestV2FormatVersionEnvelope:
+    """Fix 5: a JSON object must declare "format_version": 2 exactly to be
+    treated as v2 -- missing / wrong-type / wrong-value must reject, not
+    silently be accepted as v2."""
+
+    def _raw_post(self, client: TestClient, payload: dict):
+        return client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/preflight",
+            content=json.dumps(payload).encode(),
+            headers={"content-type": "application/json"},
+        )
+
+    def test_missing_format_version_rejected(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = {"stimuli": [], "questions": [_q()]}
+        r = self._raw_post(client, payload)
+        assert r.status_code == 422, r.text
+        assert "format_version" in r.json()["detail"]
+
+    def test_format_version_1_rejected(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = {"format_version": 1, "questions": [_q()]}
+        r = self._raw_post(client, payload)
+        assert r.status_code == 422, r.text
+
+    def test_format_version_string_2_rejected(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = {"format_version": "2", "questions": [_q()]}
+        r = self._raw_post(client, payload)
+        assert r.status_code == 422, r.text
+
+    def test_format_version_3_rejected(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = {"format_version": 3, "questions": [_q()]}
+        r = self._raw_post(client, payload)
+        assert r.status_code == 422, r.text
+
+
+class TestV2SameUploadDuplicate:
+    """Fix 6: two byte-identical v2 questions with neither identity field set
+    must be flagged as duplicates of EACH OTHER, not just checked against the
+    DB (which has nothing for either, on a first-time import)."""
+
+    def test_second_identical_row_flagged_duplicate_only_one_committed(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        q = _q(question_text="This exact question text repeats verbatim in the same upload.")
+        payload = _v2_payload([dict(q), dict(q)])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1
+        assert pf["summary"]["duplicate"] == 1
+        assert pf["rows"][0]["status"] == "ok"
+        assert pf["rows"][1]["status"] == "duplicate"
+        assert "row 1" in pf["rows"][1]["messages"][0]
+
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+        assert len(sb.db["pyq_questions"]) == 1
+
+
+class TestV2DurableStimulusIdentity:
+    """Fix 8: a stimulus's identity (metadata.import_ref) must survive across
+    SEPARATE commit() calls (a retry after a partial failure), so a second
+    batch referencing the same ref reuses the existing pyq_stimuli row
+    instead of creating a duplicate."""
+
+    def test_second_separate_commit_reuses_existing_stimulus_row(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli = [{"ref": "passage-04", "stimulus_type": "passage", "content_text": "Shared passage."}]
+
+        payload1 = _v2_payload([_q(question_text="First question about the passage.",
+                                    stimulus_refs=["passage-04"])], stimuli=stimuli)
+        pf1 = _preflight_json_v2(client, payload1)
+        result1 = _commit(client, pf1["import_token"])
+        assert result1["committed"] == 1
+        assert len(sb.db["pyq_stimuli"]) == 1
+        first_stim_id = sb.db["pyq_stimuli"][0]["id"]
+
+        # Fresh, separate preflight/commit cycle (new token) referencing the
+        # SAME ref for a different question.
+        payload2 = _v2_payload([_q(question_text="Second question, same passage, later batch.",
+                                    stimulus_refs=["passage-04"])], stimuli=stimuli)
+        pf2 = _preflight_json_v2(client, payload2)
+        result2 = _commit(client, pf2["import_token"])
+        assert result2["committed"] == 1
+
+        assert len(sb.db["pyq_stimuli"]) == 1  # still just one stimulus row
+        assert sb.db["pyq_stimuli"][0]["id"] == first_stim_id
+        links = sb.db["pyq_question_stimuli"]
+        assert len(links) == 2
+        assert all(link["stimulus_id"] == first_stim_id for link in links)
+
+
+class TestV2ScopeRestrictions:
+    """Fix 9: v2 only supports question_type='mcq' (no scoring/import path
+    for other types yet) and a text/shared-grouping-only stimulus_type subset
+    (media types are PR-11 scope)."""
+
+    def test_non_mcq_question_type_is_row_error(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([_q(question_type="numerical")])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        row = pf["rows"][0]
+        assert row["status"] == "error"
+        assert any("not yet supported" in m for m in row["messages"])
+
+    def test_image_stimulus_type_is_batch_error(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        stimuli = [{"ref": "img-01", "stimulus_type": "image", "content_text": None}]
+        payload = _v2_payload([_q(stimulus_refs=["img-01"])], stimuli=stimuli)
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/preflight",
+            content=json.dumps(payload).encode(),
+            headers={"content-type": "application/json"},
+        )
+        assert r.status_code == 422, r.text
+        assert "PR-11" in r.json()["detail"]

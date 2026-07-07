@@ -143,6 +143,35 @@ def _consume_token(sb, *, token: str) -> None:
     sb.table("pyq_import_tokens").update({"consumed_at": _now_iso()}).eq("token", token).execute()
 
 
+def _claim_token(sb, *, token: str, paper_id: str) -> dict | None:
+    """Atomically claim (consume) a token scoped to ``paper_id``.
+
+    Performs ``UPDATE pyq_import_tokens SET consumed_at = now() WHERE
+    token = $1 AND paper_id = $2 AND consumed_at IS NULL`` as a single
+    database operation — this IS the consume step, done first, so two
+    concurrent callers racing on the same token can never both see it as
+    unconsumed. Supabase/PostgREST returns the modified row(s) from an
+    UPDATE by default, so ``.data`` on success is the claimed token row.
+
+    Returns the claimed row dict, or ``None`` if no row matched (unknown
+    token, wrong paper_id, or already consumed). Does NOT check
+    ``expires_at`` — the caller checks expiry separately after claiming
+    (an expired-but-unconsumed token is still atomically claimed here;
+    the caller then rejects it, which is fine since it was one-shot
+    either way).
+    """
+    rows = (
+        sb.table("pyq_import_tokens")
+        .update({"consumed_at": _now_iso()})
+        .eq("token", token)
+        .eq("paper_id", paper_id)
+        .is_("consumed_at", None)
+        .execute()
+        .data
+    ) or []
+    return rows[0] if rows else None
+
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 _CORRECT_OPTIONS = {"A", "B", "C", "D"}
@@ -154,7 +183,20 @@ _CSV_REQUIRED = {
 }
 
 # v2: mirrors the pyq_stimuli.stimulus_type check constraint (migration 223).
+# This is the full DB-level allow-list — kept for documentation of what the
+# schema permits. The importer itself only accepts the smaller
+# _STIMULUS_TYPES_V2_SUPPORTED subset below (PR-11 scope note).
 _STIMULUS_TYPES = frozenset(("passage", "caselet", "table", "chart", "image", "diagram", "other"))
+
+# v2 importer scope (this PR): text/shared-grouping only. Media/asset types
+# (chart, image, diagram) have no asset/locator/alt-text contract yet — that
+# is explicitly deferred to PR-11 per docs/status/career-copilot-checklist.md.
+_STIMULUS_TYPES_V2_SUPPORTED = frozenset(("passage", "caselet", "table"))
+
+# v2 importer scope (this PR): single-answer MCQ scoring/import only — no
+# correct_text_answer import, no multi-select, no descriptive-answer
+# handling exists yet for the other _QUESTION_TYPES values.
+_QUESTION_TYPES_V2_SUPPORTED = frozenset(("mcq",))
 
 # ── Parse helpers ─────────────────────────────────────────────────────────────
 
@@ -178,6 +220,17 @@ def parse_bytes(content: bytes, content_type: str) -> dict:
         if isinstance(raw, list):
             return {"format_version": 1, "is_csv": False, "stimuli": [], "rows": raw}
         if isinstance(raw, dict):
+            fmt_version = raw.get("format_version")
+            # Must be present and exactly the integer 2 — bool is an int
+            # subclass in Python, so explicitly exclude True/False too.
+            if (
+                not isinstance(fmt_version, int)
+                or isinstance(fmt_version, bool)
+                or fmt_version != 2
+            ):
+                raise ValueError(
+                    f'JSON v2 object must declare "format_version": 2; got {fmt_version!r}'
+                )
             questions = raw.get("questions")
             if not isinstance(questions, list):
                 raise ValueError("JSON v2 object must include a 'questions' list")
@@ -319,7 +372,7 @@ def _validate_row_v2(
     seen_numbers: set[int],
     seen_source_refs: set[str],
     stimulus_refs_available: set[str],
-    section_lookup: dict[str, str],
+    section_lookup: dict[str, list[str]],
 ) -> tuple[dict | None, list[str]]:
     """Validate one raw v2 row (JSON question object or CSV row with
     options_json). Returns (parsed, errors), mirroring ``_validate_row``'s
@@ -361,10 +414,15 @@ def _validate_row_v2(
     if not question_text:
         errors.append("question_text is required")
 
-    # question_type
+    # question_type — v2 currently only supports single-answer MCQ import;
+    # other _QUESTION_TYPES values (numerical, descriptive, caselet,
+    # matching, other) have no scoring/import path implemented yet.
     qtype = str(raw.get("question_type") or "").strip().lower()
-    if qtype not in _QUESTION_TYPES:
-        errors.append(f"question_type must be one of {sorted(_QUESTION_TYPES)}; got {qtype!r}")
+    if qtype not in _QUESTION_TYPES_V2_SUPPORTED:
+        errors.append(
+            f"question_type {qtype!r} is not yet supported by the v2 importer; "
+            f"only 'mcq' is currently supported"
+        )
 
     # observed_difficulty — nullable
     diff_raw = raw.get("observed_difficulty")
@@ -373,16 +431,26 @@ def _validate_row_v2(
         observed_difficulty = str(diff_raw).strip()
 
     # section_ref — optional, resolved against exam_phase_sections scoped to
-    # the paper's exam_phase_id (section_lookup keys are lower-cased labels).
+    # the paper's exam_phase_id (section_lookup keys are lower-cased labels,
+    # each mapping to a LIST of ids since section_label is only unique per
+    # (exam_phase_id, subject_id) — the same label can legitimately repeat
+    # under two different subjects within one phase).
     section_ref_raw = raw.get("section_ref")
     section_ref = str(section_ref_raw).strip() if section_ref_raw not in (None, "") else None
     section_id: str | None = None
     if section_ref:
-        section_id = section_lookup.get(section_ref.lower())
-        if section_id is None:
+        matches = section_lookup.get(section_ref.lower(), [])
+        if not matches:
             errors.append(
                 f"section_ref '{section_ref}' does not resolve to a section in this paper's exam phase"
             )
+        elif len(matches) > 1:
+            errors.append(
+                f"section_ref '{section_ref}' is ambiguous — {len(matches)} sections named "
+                f"{section_ref!r} exist in this paper's exam phase; use an unambiguous reference"
+            )
+        else:
+            section_id = matches[0]
 
     # stimulus_refs — each must match a ref declared in the batch's top-level
     # 'stimuli' array.
@@ -473,7 +541,7 @@ def _validate_row_v2(
     }, []
 
 
-def _validate_stimuli_batch(stimuli: list[Any], section_lookup: dict[str, str]) -> dict[str, dict]:
+def _validate_stimuli_batch(stimuli: list[Any], section_lookup: dict[str, list[str]]) -> dict[str, dict]:
     """Validate the top-level v2 'stimuli' array and resolve each entry's
     section_ref. Raises ValueError on any structural problem: a stimulus is
     shared infrastructure referenced by many questions, so a broken entry
@@ -491,21 +559,30 @@ def _validate_stimuli_batch(stimuli: list[Any], section_lookup: dict[str, str]) 
             raise ValueError(f"stimuli ref {ref!r} is duplicated")
 
         stype = str(s.get("stimulus_type") or "").strip().lower()
-        if stype not in _STIMULUS_TYPES:
+        if stype not in _STIMULUS_TYPES_V2_SUPPORTED:
             raise ValueError(
-                f"stimuli[{i}].stimulus_type must be one of {sorted(_STIMULUS_TYPES)}; got {stype!r}"
+                f"stimuli[{i}].stimulus_type {stype!r} is not yet supported by the importer "
+                f"(PR-11 scope: text/shared-grouping only); use one of "
+                f"{sorted(_STIMULUS_TYPES_V2_SUPPORTED)}"
             )
 
         section_ref_raw = s.get("section_ref")
         section_ref = str(section_ref_raw).strip() if section_ref_raw not in (None, "") else None
         section_id: str | None = None
         if section_ref:
-            section_id = section_lookup.get(section_ref.lower())
-            if section_id is None:
+            matches = section_lookup.get(section_ref.lower(), [])
+            if not matches:
                 raise ValueError(
                     f"stimuli[{i}] section_ref '{section_ref}' does not resolve to a section "
                     "in this paper's exam phase"
                 )
+            if len(matches) > 1:
+                raise ValueError(
+                    f"stimuli[{i}] section_ref '{section_ref}' is ambiguous — {len(matches)} "
+                    f"sections named {section_ref!r} exist in this paper's exam phase; use an "
+                    "unambiguous reference"
+                )
+            section_id = matches[0]
 
         do_raw = s.get("display_order")
         display_order: int | None = None
@@ -562,7 +639,12 @@ def preflight(
     is_csv = batch["is_csv"]
     raw_rows = batch["rows"]
 
-    section_lookup: dict[str, str] = {}
+    # Each lowercased section_label maps to a LIST of matching ids:
+    # exam_phase_sections is only unique on (exam_phase_id, subject_id,
+    # section_label), so the same label can legitimately repeat under two
+    # different subjects within one phase — see _validate_row_v2 /
+    # _validate_stimuli_batch for how ambiguous (2+) matches are handled.
+    section_lookup: dict[str, list[str]] = {}
     stimuli_meta: dict[str, dict] = {}
 
     if format_version == 2:
@@ -594,17 +676,20 @@ def preflight(
             for sr in section_rows:
                 lbl = sr.get("section_label")
                 if lbl:
-                    section_lookup[str(lbl).strip().lower()] = sr["id"]
+                    section_lookup.setdefault(str(lbl).strip().lower(), []).append(sr["id"])
 
         try:
             stimuli_meta = _validate_stimuli_batch(batch["stimuli"], section_lookup)
         except Exception as exc:
             raise ValueError(f"parse failed: {exc}") from exc
 
-    # Fetch existing question_numbers/source_question_refs and hashes for this paper
-    existing_rows: list[dict] = []
+    # Fetch existing question_numbers/source_question_refs and hashes for this
+    # paper. This powers the dedup ladder's guarantee against re-importing
+    # existing content — a failure here must fail closed (raise) rather than
+    # silently degrade to "no duplicates found" (that would defeat the whole
+    # point of preflight dedup on a transient DB error).
     try:
-        existing_rows = (
+        existing_rows: list[dict] = (
             supabase.table("pyq_questions")
             .select("id, question_number, question_text, normalized_question_hash, source_question_ref")
             .eq("pyq_paper_id", paper_id)
@@ -613,7 +698,10 @@ def preflight(
             .data
         ) or []
     except Exception as exc:  # noqa: BLE001
-        logger.warning("preflight: could not fetch existing rows for paper %s: %s", paper_id, exc)
+        raise RuntimeError(
+            f"preflight: could not fetch existing pyq_questions for paper {paper_id!r}; "
+            f"refusing to run dedup with an incomplete existing-row set: {exc}"
+        ) from exc
 
     existing_numbers: set[int] = set()
     existing_source_refs: set[str] = set()
@@ -641,6 +729,18 @@ def preflight(
     stimulus_refs_available = set(stimuli_meta.keys())
     preview_rows: list[dict] = []
     valid_parsed: list[dict] = []  # only rows that passed validation
+
+    # Same-upload duplicate detection: both identity fields (source_question_ref,
+    # question_number) are optional for v2, so two byte-identical v2 questions
+    # with neither field set would otherwise both preflight "ok" — the existing
+    # dedup ladder below only ever compares against rows already in the DB.
+    # Maps normalized-question-hash -> the first row number that produced it,
+    # within THIS upload only. Only rows that end up status=="ok" seed this map
+    # (simplest correct choice: a row already flagged duplicate for another
+    # reason shouldn't become the "original" that later rows are compared
+    # against — though in practice byte-identical rows would still correctly
+    # cascade as duplicates of the first either way).
+    batch_hash_map: dict[str, int] = {}
 
     for row_idx, raw in enumerate(raw_rows):
         if format_version == 2:
@@ -691,8 +791,15 @@ def preflight(
                 messages.append(f"question_number {qn} already exists in this paper")
 
         if status == "ok":
-            # Exact hash match
-            if h in existing_hash_map:
+            # Same-upload duplicate: check BEFORE the existing-DB hash/fuzzy
+            # checks, so a batch-local dupe short-circuits them entirely.
+            if h in batch_hash_map:
+                status = "duplicate"
+                messages.append(
+                    f"exact text match with row {batch_hash_map[h]} earlier in this same upload"
+                )
+            # Exact hash match against the DB
+            elif h in existing_hash_map:
                 status = "duplicate"
                 dup = existing_hash_map[h]
                 messages.append(
@@ -717,6 +824,9 @@ def preflight(
                         f"question_number {best_row.get('question_number')} "
                         f"(id={best_row.get('id')})"
                     )
+
+        if status == "ok":
+            batch_hash_map[h] = row_idx + 1
 
         if format_version == 2:
             preview_rows.append({
@@ -790,39 +900,59 @@ def commit(
     actor: dict,
     import_token: str,
     *,
+    paper_id: str,
     override_errors: bool = False,
 ) -> dict:
     """Commit previously preflighted rows.
 
+    ``paper_id`` MUST be the URL's ``{paper_id}`` path parameter — the token
+    lookup is scoped to it (``.eq("token", ...).eq("paper_id", ...)``), so a
+    token preflighted for a different paper can never be committed through
+    this paper's URL (it will simply not resolve, raising ``LookupError``).
+
+    Token consumption is atomic: the very first DB operation is an UPDATE
+    that both claims (sets ``consumed_at``) and reads the token row in one
+    statement (see ``_claim_token``), so two concurrent commits racing on the
+    same token can never both proceed — only one claims it, the other gets
+    ``LookupError``.
+
     Idempotent on question_number (v1), or on source_question_ref falling
     back to question_number when present (v2).
     """
-    # Derive paper_id from token lookup — we need it to scope the query.
-    # The caller (router) passes paper_id implicitly via the URL; commit()
-    # receives it indirectly by loading the token which carries paper_id.
-    # We do a two-phase lookup: first find the token without paper_id
-    # constraint to get paper_id, then validate it matches.
-    token_rows = (
-        supabase.table("pyq_import_tokens")
-        .select("*")
-        .eq("token", import_token)
-        .is_("consumed_at", None)
-        .gt("expires_at", _now_iso())
-        .execute()
-        .data
-    ) or []
-    if not token_rows:
-        raise LookupError(f"import_token {import_token!r} not found or expired")
-    store = token_rows[0]
+    store = _claim_token(supabase, token=import_token, paper_id=paper_id)
+    if store is None:
+        raise LookupError(
+            f"import_token {import_token!r} not found for paper_id {paper_id!r} "
+            "(wrong paper, unknown token, or already consumed)"
+        )
 
-    paper_id: str = store["paper_id"]
+    # Expiry is checked AFTER the atomic claim above. The token is already
+    # consumed either way by this point — an expired token was one-shot
+    # regardless, so there is nothing unsafe about claiming-then-rejecting it.
+    expires_at_raw = store.get("expires_at")
+    if expires_at_raw:
+        try:
+            expires_dt = datetime.fromisoformat(str(expires_at_raw))
+        except ValueError:
+            expires_dt = None
+        if expires_dt is not None:
+            if expires_dt.tzinfo is None:
+                expires_dt = expires_dt.replace(tzinfo=timezone.utc)
+            if expires_dt <= datetime.now(timezone.utc):
+                raise LookupError(
+                    f"import_token {import_token!r} for paper_id {paper_id!r} has expired"
+                )
+
     row_payload: dict = store.get("preflight_rows") or {}
     parsed_rows: list[dict | None] = row_payload.get("parsed", [])
     preview_rows: list[dict] = row_payload.get("preview", [])
     batch_format_version: int = row_payload.get("format_version", 1)
     stimuli_meta: dict[str, dict] = row_payload.get("stimuli_meta") or {}
 
-    # Re-fetch existing question_numbers/source_question_refs for idempotency check
+    # Re-fetch existing question_numbers/source_question_refs for idempotency
+    # check. Must fail closed: a failure here silently degrading to empty
+    # sets would mean a transient DB error causes duplicate inserts instead
+    # of the intended idempotent skip.
     try:
         existing_qns_rows = (
             supabase.table("pyq_questions")
@@ -832,20 +962,46 @@ def commit(
             .execute()
             .data
         ) or []
-        already_inserted: set[int] = {
-            int(er["question_number"])
-            for er in existing_qns_rows
-            if er.get("question_number") is not None
-        }
-        already_inserted_refs: set[str] = {
-            er["source_question_ref"]
-            for er in existing_qns_rows
-            if er.get("source_question_ref")
-        }
     except Exception as exc:  # noqa: BLE001
-        logger.warning("commit: could not fetch existing qns for paper %s: %s", paper_id, exc)
-        already_inserted = set()
-        already_inserted_refs = set()
+        raise RuntimeError(
+            f"commit: could not fetch existing pyq_questions for paper {paper_id!r}; "
+            f"refusing to commit with an incomplete idempotency set: {exc}"
+        ) from exc
+    already_inserted: set[int] = {
+        int(er["question_number"])
+        for er in existing_qns_rows
+        if er.get("question_number") is not None
+    }
+    already_inserted_refs: set[str] = {
+        er["source_question_ref"]
+        for er in existing_qns_rows
+        if er.get("source_question_ref")
+    }
+
+    # Durable shared-stimulus identity across separate commit() calls/retries:
+    # a stimulus we create is tagged with metadata.import_ref = ref, so a
+    # later retry (new token, new commit() call) that references the same
+    # ref reuses the existing row instead of creating a second one.
+    existing_stimuli_by_ref: dict[str, str] = {}
+    try:
+        existing_stim_rows = (
+            supabase.table("pyq_stimuli")
+            .select("id, metadata")
+            .eq("pyq_paper_id", paper_id)
+            .execute()
+            .data
+        ) or []
+        for sr in existing_stim_rows:
+            meta = sr.get("metadata")
+            if isinstance(meta, dict):
+                ref = meta.get("import_ref")
+                if ref and ref not in existing_stimuli_by_ref:
+                    existing_stimuli_by_ref[ref] = sr["id"]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "commit: could not fetch existing pyq_stimuli for paper %s (cross-retry stimulus "
+            "reuse degraded to this call only): %s", paper_id, exc,
+        )
 
     from app.exam_intelligence.option_normalize import option_hash
 
@@ -856,6 +1012,7 @@ def commit(
 
     # Shared within this commit call only: a stimulus ref is created once and
     # reused by every subsequent question in the same call that references it.
+    # (existing_stimuli_by_ref, above, extends this reuse across calls too.)
     stimulus_cache: dict[str, str] = {}
 
     for idx, (parsed, preview) in enumerate(zip(parsed_rows, preview_rows)):
@@ -936,24 +1093,31 @@ def commit(
                     stim_ids: list[str] = []
                     for ref in parsed.get("stimulus_refs") or []:
                         if ref not in stimulus_cache:
-                            meta = stimuli_meta.get(ref) or {}
-                            stim_row: dict[str, Any] = {
-                                "pyq_paper_id": paper_id,
-                                "stimulus_type": meta.get("stimulus_type", "other"),
-                                "content_text": meta.get("content_text"),
-                                "language": meta.get("language"),
-                                "reviewer_status": "pending",
-                            }
-                            if meta.get("display_order") is not None:
-                                stim_row["display_order"] = meta["display_order"]
-                            if meta.get("section_id"):
-                                stim_row["section_id"] = meta["section_id"]
-                            inserted_stim = (
-                                supabase.table("pyq_stimuli").insert(stim_row).execute().data or []
-                            )
-                            if not inserted_stim:
-                                raise RuntimeError(f"stimulus insert for ref {ref!r} returned no row")
-                            stimulus_cache[ref] = inserted_stim[0]["id"]
+                            # Reuse across separate commit()/retry calls first
+                            # (fix for durable shared-stimulus identity), then
+                            # fall back to creating a new row.
+                            if ref in existing_stimuli_by_ref:
+                                stimulus_cache[ref] = existing_stimuli_by_ref[ref]
+                            else:
+                                meta = stimuli_meta.get(ref) or {}
+                                stim_row: dict[str, Any] = {
+                                    "pyq_paper_id": paper_id,
+                                    "stimulus_type": meta.get("stimulus_type", "other"),
+                                    "content_text": meta.get("content_text"),
+                                    "language": meta.get("language"),
+                                    "reviewer_status": "pending",
+                                    "metadata": {"import_ref": ref},
+                                }
+                                if meta.get("display_order") is not None:
+                                    stim_row["display_order"] = meta["display_order"]
+                                if meta.get("section_id"):
+                                    stim_row["section_id"] = meta["section_id"]
+                                inserted_stim = (
+                                    supabase.table("pyq_stimuli").insert(stim_row).execute().data or []
+                                )
+                                if not inserted_stim:
+                                    raise RuntimeError(f"stimulus insert for ref {ref!r} returned no row")
+                                stimulus_cache[ref] = inserted_stim[0]["id"]
                         stim_ids.append(stimulus_cache[ref])
 
                     correct_label = parsed.get("correct_option_label")
@@ -979,11 +1143,15 @@ def commit(
 
                     supabase.table("pyq_options").insert(opt_rows).execute()
 
-                    for stim_id in stim_ids:
+                    # display_order = 1-based position in stimulus_refs (the
+                    # order-preserving JSON array / CSV parse) — preserves
+                    # e.g. "passage then chart" ordering for a question.
+                    for link_order, stim_id in enumerate(stim_ids, start=1):
                         supabase.table("pyq_question_stimuli").insert({
                             "question_id": question_id,
                             "stimulus_id": stim_id,
                             "reviewer_status": "pending",
+                            "display_order": link_order,
                         }).execute()
                 except Exception as child_exc:  # noqa: BLE001
                     try:
@@ -1054,7 +1222,8 @@ def commit(
             failed.append({"row": row_num, "question_number": qn, "reason": str(exc)[:200]})
             per_row.append({"row": row_num, "question_number": qn, "result": "failed", "reason": str(exc)[:200]})
 
-    _consume_token(supabase, token=import_token)
+    # Token is already consumed — the atomic claim at the top of this
+    # function (_claim_token) IS the consume step; no separate call needed.
 
     return {
         "paper_id": paper_id,

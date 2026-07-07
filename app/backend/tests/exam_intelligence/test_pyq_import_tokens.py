@@ -347,3 +347,96 @@ class TestPreflightCommitIntegration:
         )
         assert r.status_code == 200
         assert r.json()["committed"] == 1
+
+
+# ── Checkpost round 2: paper binding (fix 1) + atomic consumption (fix 2) ────
+
+
+def _two_paper_sb() -> TaxSBStub:
+    return TaxSBStub({
+        "pyq_papers": [{"id": "paper-1", "exam_id": "exam-1"}, {"id": "paper-2", "exam_id": "exam-1"}],
+        "pyq_questions": [],
+        "pyq_options": [],
+        "admin_audit_logs": [],
+        "pyq_import_tokens": [],
+    })
+
+
+class TestCommitPaperBinding:
+    """Fix 1: commit() must be scoped to the URL's paper_id -- a token
+    preflighted for paper-1 must never be committable through paper-2's
+    URL/paper_id argument, even though the token itself is valid and
+    unconsumed."""
+
+    def test_commit_with_mismatched_paper_id_raises_lookuperror_writes_nothing(self):
+        sb = _two_paper_sb()
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1)], paper_id="paper-1")
+        token = pf["import_token"]
+
+        with pytest.raises(LookupError):
+            _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-2")
+
+        assert sb.db["pyq_questions"] == []
+        # Token is untouched (wrong-paper attempt did not burn it) -- the
+        # correct paper_id can still commit it.
+        row = next(r for r in sb.db["pyq_import_tokens"] if r["token"] == token)
+        assert row["consumed_at"] is None
+
+        result = _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
+        assert result["committed"] == 1
+
+    def test_commit_via_http_with_mismatched_paper_id_returns_404(self):
+        sb = _two_paper_sb()
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1)], paper_id="paper-1")
+        token = pf["import_token"]
+
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-2/bulk-import/commit",
+            json={"import_token": token, "reason": "wrong paper via URL"},
+        )
+        assert r.status_code == 404, r.text
+        assert sb.db["pyq_questions"] == []
+
+
+class TestCommitAtomicConsumption:
+    """Fix 2: token consumption must be the FIRST database operation (an
+    atomic claim), so a second commit() call for an already-committed token
+    raises LookupError and never double-inserts."""
+
+    def test_second_direct_commit_call_raises_lookuperror_no_duplicate(self):
+        sb = _fresh_sb()
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1)], paper_id="paper-1")
+        token = pf["import_token"]
+
+        result1 = _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
+        assert result1["committed"] == 1
+        assert len(sb.db["pyq_questions"]) == 1
+
+        with pytest.raises(LookupError):
+            _bi.commit(sb, {"id": "admin-99"}, token, paper_id="paper-1")
+
+        # No duplicate row from the second (rejected) attempt.
+        assert len(sb.db["pyq_questions"]) == 1
+
+    def test_claim_token_is_the_first_write_and_is_race_safe(self):
+        """_claim_token itself: a second claim attempt on an already-consumed
+        token returns None (simulates two concurrent commits racing)."""
+        sb = _fresh_sb()
+        sb.db["pyq_import_tokens"] = [{
+            "token": "race-tok",
+            "paper_id": "paper-1",
+            "preflight_summary": {},
+            "preflight_rows": {"parsed": [], "preview": [], "format_version": 1},
+            "consumed_at": None,
+            "expires_at": _future(),
+            "created_at": _iso(datetime.now(timezone.utc)),
+        }]
+        first = _bi._claim_token(sb, token="race-tok", paper_id="paper-1")
+        assert first is not None
+        assert first["consumed_at"] is not None
+
+        second = _bi._claim_token(sb, token="race-tok", paper_id="paper-1")
+        assert second is None

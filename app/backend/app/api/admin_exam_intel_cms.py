@@ -1650,7 +1650,8 @@ def pyq_bulk_commit(
 
     try:
         result = _bi.commit(
-            supabase, admin, body.import_token, override_errors=body.override_errors
+            supabase, admin, body.import_token,
+            paper_id=paper_id, override_errors=body.override_errors,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
