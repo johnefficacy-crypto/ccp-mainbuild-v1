@@ -403,6 +403,18 @@ def build_task_reasoning_detail(
             "report_confidence": sa_conf_raw,
         })
 
+    # PYQ v2 PR-9: surface the typed PYQ-practice launch target when the planner
+    # stamped one onto this task (from persisted lineage only, no re-query).
+    if why.get("launch_target") == "pyq_practice":
+        trace.append(
+            {
+                "layer": "plan",
+                "rule_key": "pyq_practice_launch",
+                "label": "Launches a PYQ practice set on this topic",
+                "status": "live",
+            }
+        )
+
     trace.append(
         {
             "layer": "plan",
