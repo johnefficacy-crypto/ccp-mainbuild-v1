@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import ToastProvider from "../../shared/ui/ToastProvider";
 
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({ useNavigate: () => mockNavigate }));
@@ -18,6 +19,15 @@ const listPayload = {
   ],
 };
 
+// The practice CTA mutates through the shared useApiAction runner, which uses the
+// toast context — render inside a real ToastProvider so the governed path runs.
+const renderExplorer = (props = {}) =>
+  render(
+    <ToastProvider>
+      <PyqExplorerSection examSlug="upsc-cse" {...props} />
+    </ToastProvider>
+  );
+
 beforeEach(() => {
   api.get.mockReset();
   api.post.mockReset();
@@ -25,12 +35,11 @@ beforeEach(() => {
   api.get.mockResolvedValue(listPayload);
 });
 
-test("starts paper practice and navigates to the attempt shell", async () => {
+test("starts paper practice through useApiAction and navigates to the attempt shell", async () => {
   api.post.mockResolvedValue({ outcome: "ready", attempt_id: "att-1" });
-  render(<PyqExplorerSection examSlug="upsc-cse" />);
+  renderExplorer();
 
-  const btn = await screen.findByTestId("pyq-practice-paper-btn");
-  fireEvent.click(btn);
+  fireEvent.click(await screen.findByTestId("pyq-practice-paper-btn"));
 
   await waitFor(() =>
     expect(api.post).toHaveBeenCalledWith("/api/study/mocks/practice/start", {
@@ -42,11 +51,11 @@ test("starts paper practice and navigates to the attempt shell", async () => {
   await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/app/study/mocks/attempts/att-1"));
 });
 
-test("shows a graceful message when the paper has no projected questions (409)", async () => {
+test("shows a graceful inline message on 409 without navigating", async () => {
   const err = new Error("empty pool");
   err.status = 409;
   api.post.mockRejectedValue(err);
-  render(<PyqExplorerSection examSlug="upsc-cse" />);
+  renderExplorer();
 
   fireEvent.click(await screen.findByTestId("pyq-practice-paper-btn"));
 
@@ -55,9 +64,30 @@ test("shows a graceful message when the paper has no projected questions (409)",
   expect(mockNavigate).not.toHaveBeenCalled();
 });
 
+test("disables the practice button while the useApiAction run is in flight", async () => {
+  let resolvePost;
+  api.post.mockReturnValue(
+    new Promise((res) => {
+      resolvePost = res;
+    })
+  );
+  renderExplorer();
+
+  const btn = await screen.findByTestId("pyq-practice-paper-btn");
+  fireEvent.click(btn);
+
+  await waitFor(() => expect(screen.getByTestId("pyq-practice-paper-btn")).toBeDisabled());
+  expect(screen.getByTestId("pyq-practice-paper-btn").textContent).toMatch(/Starting/i);
+
+  await act(async () => {
+    resolvePost({ outcome: "ready", attempt_id: "att-1" });
+  });
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/app/study/mocks/attempts/att-1"));
+});
+
 test("no practice button when a row has no paper_id", async () => {
   api.get.mockResolvedValue({ exam_id: EXAM_ID, total: 1, items: [{ id: "q2", paper_year: 2024, question_text: "No paper", options: [] }] });
-  render(<PyqExplorerSection examSlug="upsc-cse" />);
+  renderExplorer();
 
   await screen.findByTestId("pyq-question-card");
   expect(screen.queryByTestId("pyq-practice-paper-btn")).toBeNull();

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api } from "../../lib/api";
+import useApiAction from "../../lib/hooks/useApiAction";
 
 const DIFFICULTY_OPTIONS = [
   { value: "", label: "Any difficulty" },
@@ -141,6 +142,7 @@ function useDebounce(value, delay) {
 
 export default function PyqExplorerSection({ examSlug }) {
   const navigate = useNavigate();
+  const { run, busy } = useApiAction();
   const [year, setYear] = useState("");
   const [phase, setPhase] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -224,35 +226,47 @@ export default function PyqExplorerSection({ examSlug }) {
 
   const examId = data?.exam_id || null;
 
+  // Route the mutation through the shared useApiAction runner (frontend
+  // governance). The expected 409 (paper not yet projected) is caught inside the
+  // action and surfaced as an inline notice — returned as a handled result so
+  // useApiAction's generic error toast does not also fire; any unexpected error
+  // is rethrown onto the standard action error path.
   const startPaperPractice = useCallback(
     async (paperId) => {
-      if (!paperId || practicingPaperId) return;
+      if (!paperId || busy) return;
       setPracticingPaperId(paperId);
       setPracticeError("");
-      try {
-        const out = await api.post("/api/study/mocks/practice/start", {
-          mode: "paper",
-          target_id: paperId,
-          ...(examId ? { exam_id: examId } : {}),
-        });
-        if (out?.attempt_id) {
-          navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
-          return;
-        }
-        setPracticeError("This paper isn't available for practice yet.");
-      } catch (e) {
-        if (e?.status === 409) {
-          setPracticeError(
-            "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
-          );
-        } else {
-          setPracticeError(e?.data?.detail || e?.message || "Couldn't start practice. Please try again.");
-        }
-      } finally {
-        setPracticingPaperId(null);
-      }
+      await run({
+        action: async () => {
+          try {
+            return await api.post("/api/study/mocks/practice/start", {
+              mode: "paper",
+              target_id: paperId,
+              ...(examId ? { exam_id: examId } : {}),
+            });
+          } catch (e) {
+            if (e?.status === 409) return { emptyPool: true };
+            throw e;
+          }
+        },
+        onSuccess: (out) => {
+          if (out?.emptyPool) {
+            setPracticeError(
+              "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
+            );
+            return;
+          }
+          if (out?.attempt_id) {
+            navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
+            return;
+          }
+          setPracticeError("This paper isn't available for practice yet.");
+        },
+        errorMessage: "Couldn't start practice. Please try again.",
+      });
+      setPracticingPaperId(null);
     },
-    [navigate, examId, practicingPaperId]
+    [run, busy, navigate, examId]
   );
 
   if (!examSlug) return null;
@@ -331,8 +345,8 @@ export default function PyqExplorerSection({ examSlug }) {
               key={q.id}
               q={q}
               onPractice={startPaperPractice}
-              practicing={practicingPaperId === q.paper_id}
-              practiceDisabled={practicingPaperId != null}
+              practicing={busy && practicingPaperId === q.paper_id}
+              practiceDisabled={busy}
             />
           ))}
         </div>
