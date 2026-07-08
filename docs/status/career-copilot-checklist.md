@@ -311,6 +311,7 @@ Write the code; operator sign-off required before merge.
 | M1 topic prerequisites | Schema design decision: data model for strength values between topics before any UI. |
 | Management mode / cadence / coverage governance | Product contract: deterministic rule vs admin judgement vs model suggestion for `management_mode`, `cadence`, coverage depth. |
 | KG rename ("Knowledge Governance" → "Policy & Trust") | Separate PR; touches sidebar labels, masthead/page titles, breadcrumbs, tests. Do not fold into any Wave 1–2 work. |
+| Operations Console review/publish split | Contract drafted: `docs/architecture/operations-console-review-publish-split.md` (**PLANNED — operator approval required before implementation**). Splits `OperationsConsole.jsx`'s redundant `sources`/`runs` fan-out out to the already-existing Source Registry/Scrape Monitor surfaces; no new nav destination, no backend router change. Open questions: `progressState` replacement for dropped source/run status, official-source resolver's `sources` dependency shape, optional nav label rename. |
 
 ### Parallelism constraints (enforced by repo rules)
 
