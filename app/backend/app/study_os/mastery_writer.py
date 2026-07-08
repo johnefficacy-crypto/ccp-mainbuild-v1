@@ -8,12 +8,9 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from app.study_os.attempt_classification_readiness import check_classification_readiness
+from app.study_os.attempt_evidence import load_mock_attempt_evidence
 from app.study_os.mastery_engine import derive_from_analytics
-from app.study_os.mastery_engine.schemas import (
-    AttemptQuestionAnalytics,
-    AttemptTopicAnalytics,
-    DerivedAttemptAnalytics,
-)
+from app.study_os.mastery_engine.schemas import DerivedAttemptAnalytics
 
 logger = logging.getLogger("career_copilot.study_os.mastery_writer")
 
@@ -131,76 +128,10 @@ class MasteryWriter:
         self._draft_correction_tasks(attempt_id, result.correction_task_drafts)
 
     def _load_analytics(self, attempt_id: str) -> DerivedAttemptAnalytics | None:
-        attempt_rows = self.supabase.table("mock_attempts").select("id,user_id").eq("id", attempt_id).limit(1).execute().data or []
-        if not attempt_rows:
-            return None
-        attempt = attempt_rows[0]
-        responses = self.supabase.table("mock_attempt_responses").select("question_id,selected_option_id,is_correct,time_spent_sec,question_snapshot").eq("attempt_id", attempt_id).execute().data or []
-        # error_type is authoritative ONLY from mock_attempt_response_classification
-        # (keyed (attempt_id, question_id)) — mock_attempt_responses has no
-        # error_type column, so the prior r.get("error_type") was always None.
-        # Unknown/missing classification stays None: never an invented category.
-        classification_rows = (
-            self.supabase.table("mock_attempt_response_classification")
-            .select("question_id,error_type")
-            .eq("attempt_id", attempt_id)
-            .execute()
-            .data
-            or []
-        )
-        error_type_by_qid: dict[str, str | None] = {
-            c.get("question_id"): c.get("error_type") for c in classification_rows
-        }
-        by_topic: dict[tuple[str, str | None], dict[str, Any]] = {}
-        questions: list[AttemptQuestionAnalytics] = []
-        for r in responses:
-            q = r.get("question_snapshot") or {}
-            topic_id = q.get("topic_id")
-            if not topic_id:
-                continue
-            microtopic_id = q.get("microtopic_id")
-            is_correct = bool(r.get("is_correct"))
-            # The user answered iff selected_option_id is not null. Only answered
-            # rows move mastery; unanswered/marked rows are kept here (attempted=
-            # False) so the correction path still sees them.
-            attempted = r.get("selected_option_id") is not None
-            questions.append(
-                AttemptQuestionAnalytics(
-                    question_id=r.get("question_id"),
-                    topic_id=topic_id,
-                    microtopic_id=microtopic_id,
-                    is_correct=is_correct,
-                    attempted=attempted,
-                    difficulty=q.get("difficulty") or "medium",
-                    source_type=q.get("source_type") or "authored",
-                    pyq_year=q.get("pyq_year"),
-                    expected_time_sec=q.get("expected_time_sec"),
-                    actual_time_sec=r.get("time_spent_sec"),
-                    error_type=error_type_by_qid.get(r.get("question_id")),
-                    confidence=Decimal(str(q.get("confidence") or "0.5")),
-                )
-            )
-            key = (topic_id, microtopic_id)
-            # Always register the topic so unanswered-only topics still reach the
-            # correction path, but count attempted/correct (hence accuracy_pct)
-            # from answered rows only — an unanswered row must not masquerade as a
-            # wrong answer and drag accuracy into a false concept_gap.
-            stats = by_topic.setdefault(key, {"attempted": 0, "correct": 0})
-            if attempted:
-                stats["attempted"] += 1
-                stats["correct"] += 1 if is_correct else 0
-
-        topics = [
-            AttemptTopicAnalytics(
-                topic_id=t,
-                microtopic_id=mt,
-                attempted=s["attempted"],
-                correct=s["correct"],
-                accuracy_pct=(Decimal(s["correct"]) * Decimal("100") / Decimal(s["attempted"])) if s["attempted"] else Decimal("0"),
-            )
-            for (t, mt), s in by_topic.items()
-        ]
-        return DerivedAttemptAnalytics(attempt_id=attempt_id, user_id=attempt["user_id"], questions=questions, topics=topics)
+        # PR-7: the mock-attempt normalization now lives in the unified attempt
+        # evidence adapter, so mock and direct-PYQ (trap-drill) attempts share one
+        # evidence surface. Behaviour is unchanged for the mock path.
+        return load_mock_attempt_evidence(self.supabase, attempt_id)
 
     def _load_trust_level(self, attempt_id: str) -> str:
         rows = (
