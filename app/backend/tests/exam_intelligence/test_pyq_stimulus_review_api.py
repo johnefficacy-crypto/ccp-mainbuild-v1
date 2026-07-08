@@ -323,29 +323,75 @@ def test_delete_stimulus_allowed_when_no_verified_linked_question():
     assert all(s["id"] != "st-1" for s in sb.db["pyq_stimuli"])
 
 
-# ── fix #4: media/advanced stimulus types gated to PR-11 ──────────────────────
+# ── PR-11 slice 1: media stimulus authoring (migration 233) ──────────────────
 
-def test_create_stimulus_media_type_deferred_422():
+def test_create_image_stimulus_persists_media_fields():
+    """image/chart/diagram are now creatable; the media fields (document_asset_id,
+    asset_locator, alt_text) pass through to the row. DB integrity (asset must be
+    a live admin image; verify needs alt_text + asset) is enforced by migration
+    233's guard, not this layer."""
     sb = TaxSBStub(_seed())
     r = _cms_client(sb).post(
         f"{_CMS_BASE}/pyq-stimuli",
-        json={"reason": "attempting an image stimulus", "payload": {
-            "pyq_paper_id": "paper-1", "stimulus_type": "image", "content_text": "x"}},
+        json={"reason": "adding a Venn-diagram image", "payload": {
+            "pyq_paper_id": "paper-1", "stimulus_type": "image",
+            "document_asset_id": "asset-1", "alt_text": "A Venn diagram of three sets",
+            "asset_locator": {"page_number": 4, "bbox": [10, 20, 30, 40]},
+            "display_order": 3}},
     )
-    assert r.status_code == 422, r.text
-    assert "PR-11" in str(r.json()["detail"])
-    assert all(s.get("stimulus_type") != "image" for s in sb.db["pyq_stimuli"])
+    assert r.status_code == 200, r.text
+    row = next(s for s in sb.db["pyq_stimuli"] if s.get("stimulus_type") == "image")
+    assert row["document_asset_id"] == "asset-1"
+    assert row["alt_text"] == "A Venn diagram of three sets"
+    assert row["asset_locator"] == {"page_number": 4, "bbox": [10, 20, 30, 40]}
+    assert sb.db["admin_audit_logs"][-1]["action"] == "exam_intel.cms.pyq_stimulus.create"
 
 
-def test_patch_stimulus_media_type_deferred_422():
+def test_patch_stimulus_to_media_type_allowed():
     sb = TaxSBStub(_seed())
     r = _cms_client(sb).patch(
         f"{_CMS_BASE}/pyq-stimuli/st-1",
-        json={"reason": "switching to a diagram", "payload": {"stimulus_type": "diagram"}},
+        json={"reason": "switching to a diagram", "payload": {
+            "stimulus_type": "diagram", "alt_text": "flowchart"}},
+    )
+    assert r.status_code == 200, r.text
+    row = next(s for s in sb.db["pyq_stimuli"] if s["id"] == "st-1")
+    assert row["stimulus_type"] == "diagram"
+    assert row["alt_text"] == "flowchart"
+
+
+def test_create_stimulus_other_type_still_422():
+    """'other' has no authoring contract yet and stays deferred."""
+    sb = TaxSBStub(_seed())
+    r = _cms_client(sb).post(
+        f"{_CMS_BASE}/pyq-stimuli",
+        json={"reason": "attempting an other stimulus", "payload": {
+            "pyq_paper_id": "paper-1", "stimulus_type": "other", "content_text": "x"}},
     )
     assert r.status_code == 422, r.text
-    assert "PR-11" in str(r.json()["detail"])
-    assert next(s for s in sb.db["pyq_stimuli"] if s["id"] == "st-1")["stimulus_type"] == "passage"
+    assert all(s.get("stimulus_type") != "other" for s in sb.db["pyq_stimuli"])
+
+
+def test_create_media_stimulus_db_guard_maps_to_422():
+    """A DB media-guard rejection (e.g. non-image asset) surfaces as 422, not 500."""
+    class _GuardStub(TaxSBStub):
+        def table(self, name):
+            if name == "pyq_stimuli":
+                raise RuntimeError(
+                    "pyq_stimuli.document_asset_id asset-x has document_kind pyq_paper "
+                    "(media stimuli require an image asset)"
+                )
+            return super().table(name)
+
+    sb = _GuardStub(_seed())
+    r = _cms_client(sb).post(
+        f"{_CMS_BASE}/pyq-stimuli",
+        json={"reason": "wrong-kind asset", "payload": {
+            "pyq_paper_id": "paper-1", "stimulus_type": "chart",
+            "document_asset_id": "asset-x", "alt_text": "bar chart"}},
+    )
+    assert r.status_code == 422, r.text
+    assert "document_kind" in str(r.json()["detail"])
 
 
 def test_create_stimulus_text_types_allowed():
