@@ -219,10 +219,11 @@ test("happy path posts exact payload and calls refetch()", async () => {
 
 // ── 6. 409 collision → operator error with existing phase id ─────────────────
 
-test("409 collision shows operator error with existing_phase_id", async () => {
+test("409 collision shows operator error with humanized existing phase id (no raw UUID)", async () => {
+  const rawId = "3f9a2c1e-7b84-4d21-9e6f-1a2b3c4d5e6f";
   const err = Object.assign(new Error("conflict"), {
     status: 409,
-    detail: { code: "cycle_phase_already_exists", existing_phase_id: "existing-phase-99" },
+    detail: { code: "cycle_phase_already_exists", existing_phase_id: rawId },
     code: "cycle_phase_already_exists",
   });
   api.post.mockRejectedValueOnce(err);
@@ -236,7 +237,9 @@ test("409 collision shows operator error with existing_phase_id", async () => {
   await waitFor(() => expect(screen.getByTestId("pt-error-collision")).toBeTruthy());
   const errEl = screen.getByTestId("pt-error-collision");
   expect(errEl.textContent).toMatch(/already has a phase/i);
-  expect(errEl.textContent).toContain("existing-phase-99");
+  // I2: the collision path must humanize the id — never render the raw UUID.
+  expect(errEl.textContent).not.toContain(rawId);
+  expect(screen.getByTestId("pt-error-existing-id").textContent).toBe("3f9a2c1e…");
 });
 
 // ── 7. 500 audit_write_failed shows warning with phase_id ────────────────────
@@ -259,7 +262,11 @@ test("500 audit_write_failed displays visible warning including phase_id", async
   const errEl = screen.getByTestId("pt-error-audit-failed");
   expect(errEl.textContent).toMatch(/phase was created/i);
   expect(errEl.textContent).toMatch(/do not re-promote/i);
-  expect(screen.getByTestId("pt-error-phase-id").textContent).toBe("created-phase-abc");
+  // I2: raw id must not leak verbatim — operatorChrome.humanizeToken humanizes
+  // non-UUID tokens (capitalizes first letter); UUID-shaped ids are truncated
+  // to "${first8}…" instead (see ReviewQueueTable's I1 regression test).
+  expect(screen.getByTestId("pt-error-phase-id").textContent).toBe("Created-phase-abc");
+  expect(screen.getByTestId("pt-error-phase-id").textContent).not.toBe("created-phase-abc");
 });
 
 // ── 8. audit_write_failed does NOT auto-retry / no retry button ───────────────

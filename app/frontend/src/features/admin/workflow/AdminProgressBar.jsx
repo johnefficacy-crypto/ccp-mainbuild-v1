@@ -1,9 +1,6 @@
 import React from "react";
 
 const STEPS = [
-  { id: "source_ready", label: "Source ready" },
-  { id: "dry_scrape", label: "Dry scrape" },
-  { id: "live_scrape", label: "Live scrape" },
   { id: "queue_review", label: "Queue review" },
   { id: "field_fixes", label: "Field fixes" },
   { id: "official_source_resolved", label: "Official proof attached" },
@@ -16,45 +13,19 @@ const STEPS = [
   { id: "eligibility_monitored", label: "Post-publish health" },
 ];
 
-// state: { source, latestRun, queueItem, recruitment, validateResult, eligibilityOps }
+// state: { queueItem, recruitment, validateResult, eligibilityOps, conflicts }
 // Returns { id -> { status: "pending"|"active"|"complete"|"blocked", reason?: string } }
+//
+// Source/scrape-run readiness (formerly `source_ready`/`dry_scrape`/`live_scrape`,
+// derived from `state.source`/`state.latestRun`) has been removed. Those are
+// Source Registry / Scrape Monitor concerns (`/admin/sources`, `/admin/scraper`),
+// not Review & Publish — see
+// docs/architecture/operations-console-review-publish-split.md Section 6, Open
+// Question 1 (resolved: drop entirely).
 export function computeProgress(state = {}) {
   const out = {};
-  const { source, latestRun, queueItem, recruitment, validateResult, eligibilityOps, conflicts } = state;
+  const { queueItem, recruitment, validateResult, eligibilityOps, conflicts } = state;
   const openConflicts = (conflicts || []).filter((c) => (c?.status || "open") === "open");
-
-  const sourceType = source?.source_type || source?.kind;
-  if (source) {
-    if (sourceType === "aggregator") {
-      out.source_ready = { status: "active", reason: "Aggregator: discovery-only. Confirm official source on each candidate." };
-    } else if (source.is_verified && source.is_active !== false) {
-      out.source_ready = { status: "complete" };
-    } else if (source.is_active === false) {
-      out.source_ready = { status: "blocked", reason: "Source is inactive." };
-    } else {
-      out.source_ready = { status: "blocked", reason: "Source not verified." };
-    }
-  } else {
-    out.source_ready = { status: "pending", reason: "Select a source." };
-  }
-
-  if (latestRun?.mode === "dry" || latestRun?.triggered_by === "dry") {
-    out.dry_scrape = { status: "complete" };
-  } else if (latestRun) {
-    out.dry_scrape = { status: "complete", reason: "Dry already implied by recent scrape run." };
-  } else {
-    out.dry_scrape = { status: "pending", reason: "Run a dry scrape." };
-  }
-
-  if (latestRun && latestRun.status === "completed") {
-    out.live_scrape = { status: "complete" };
-  } else if (latestRun && latestRun.status === "failed") {
-    out.live_scrape = { status: "blocked", reason: "Last scrape run failed." };
-  } else if (latestRun) {
-    out.live_scrape = { status: "active", reason: `Last run status: ${latestRun.status || "unknown"}` };
-  } else {
-    out.live_scrape = { status: "pending", reason: "Run a live scrape." };
-  }
 
   if (queueItem) {
     if (queueItem.status === "rejected" || queueItem.status === "duplicate") {
@@ -169,7 +140,6 @@ export function computeProgress(state = {}) {
 }
 
 const PHASES = [
-  { id: "discovery", label: "Discovery", stepIds: ["source_ready", "dry_scrape", "live_scrape"] },
   { id: "review", label: "Review", stepIds: ["queue_review", "field_fixes", "official_source_resolved", "conflicts_resolved"] },
   { id: "promote", label: "Promote", stepIds: ["promoted_draft", "draft_blockers_fixed"] },
   { id: "publish", label: "Publish & Monitor", stepIds: ["validated", "verified", "published", "eligibility_monitored"] },
@@ -216,7 +186,7 @@ export default function AdminProgressBar({ state = {}, onStepClick }) {
   return (
     <section className="card" data-testid="admin-progress-bar">
       <div className="card-body">
-        <div className="lbl" style={{ marginBottom: 8 }}>Pipeline · 4 phases · 13 steps</div>
+        <div className="lbl" style={{ marginBottom: 8 }}>Pipeline · 3 phases · 10 steps</div>
         <div className="phase-rail">
           {PHASES.map((phase, phaseIndex) => {
             const phaseStatus = rollupPhaseStatus(phase.stepIds, progress);

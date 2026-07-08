@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { api, getApiUnverifiedFields } from "../../lib/api";
 import useAdminAction from "../../features/admin/shared/useAdminAction";
 import { computeProgress } from "../../features/admin/workflow/AdminProgressBar";
@@ -56,7 +56,6 @@ export default function OperationsConsole() {
   const recruitmentId = searchParams.get("recruitment_id") || null;
 
   const [sources, setSources] = useState([]);
-  const [runs, setRuns] = useState([]);
   const [queue, setQueue] = useState([]);
   const [recruitments, setRecruitments] = useState([]);
   const [validateResult, setValidateResult] = useState(null);
@@ -86,7 +85,6 @@ export default function OperationsConsole() {
 
   const { runAction, busyKey, error: actionError } = useAdminAction();
   const toast = useToast();
-  const navigate = useNavigate();
 
   const updateParams = useCallback((next) => {
     const merged = new URLSearchParams(searchParams);
@@ -101,14 +99,21 @@ export default function OperationsConsole() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [s, r, q, recs] = await Promise.all([
+      // `/api/admin/scrape/runs` is intentionally NOT fetched here — scrape-run
+      // telemetry is a Scrape Monitor concern (`/admin/scraper`), not Review &
+      // Publish. See docs/architecture/operations-console-review-publish-split.md
+      // Section 6, Open Question 1 (resolved: drop entirely).
+      // `/api/admin/sources` IS kept: AdminFixPanel's official-source resolver
+      // (and RecruitmentBlockerFixForm) depend on the full `sources` list as a
+      // read-only lookup during review — see Section 6, Open Question 2 and
+      // Section 3.3. It is no longer fed into `progressState`, only passed
+      // through as the `sources` prop.
+      const [s, q, recs] = await Promise.all([
         api.get("/api/admin/sources"),
-        api.get("/api/admin/scrape/runs?limit=10"),
         api.get("/api/admin/scrape/queue?status=all&limit=50"),
         api.get("/api/admin/recruitments"),
       ]);
       setSources(s.items || []);
-      setRuns(r.items || []);
       setQueue(q.items || []);
       setRecruitments(recs.items || []);
     } catch (e) {
@@ -241,7 +246,6 @@ export default function OperationsConsole() {
     () => recruitments.find((r) => r.id === recruitmentId) || null,
     [recruitments, recruitmentId],
   );
-  const latestRun = runs[0] || null;
 
   useEffect(() => {
     setValidateResult(null);
@@ -253,26 +257,25 @@ export default function OperationsConsole() {
     return () => { cancelled = true; };
   }, [recruitmentId]);
 
+  // Deliberately excludes `source`/`latestRun` (formerly `selectedSource`/
+  // `latestRun` fed the now-removed `source_ready`/`dry_scrape`/`live_scrape`
+  // computeProgress steps). Source verification and scrape-run status are
+  // Source Registry / Scrape Monitor concerns, not Review & Publish — see
+  // docs/architecture/operations-console-review-publish-split.md Section 6,
+  // Open Question 1 (resolved: drop entirely).
   const progressState = useMemo(() => ({
-    source: selectedSource,
-    latestRun,
     queueItem: selectedQueueItem,
     recruitment: selectedRecruitment,
     validateResult,
     conflicts,
-  }), [selectedSource, latestRun, selectedQueueItem, selectedRecruitment, validateResult, conflicts]);
+  }), [selectedQueueItem, selectedRecruitment, validateResult, conflicts]);
 
   // CurrentActionCard primary button: focus the matching AdminFixPanel
-  // section and scroll it into view. Setup-phase kinds switch to the
-  // setup view; everything else lives in the queue/review workspace.
+  // section and scroll it into view. All remaining progress steps live in
+  // this workspace; setup-phase kinds (source/scrape-run readiness) no
+  // longer exist in computeProgress, so there is nothing left to hand off
+  // to Scrape Monitor from here.
   const onPrimaryAction = useCallback((kind) => {
-    // Running scrapes lives in the Scrape Monitor now; setup-phase prompts
-    // hand off there. Everything else scrolls to its panel in this workspace.
-    const setupKinds = new Set(["source_ready", "dry_scrape", "live_scrape"]);
-    if (setupKinds.has(kind)) {
-      navigate("/admin/scraper");
-      return;
-    }
     const anchorByKind = {
       attach_official_source: "official-source-quick-resolver",
       verify_fields: "queue-fix-section",
@@ -288,7 +291,7 @@ export default function OperationsConsole() {
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(scroll);
     else scroll();
-  }, [navigate]);
+  }, []);
 
   const queueFieldAction = useCallback(async (id, field, action, correctedValue, scope) => {
     await runAction({
