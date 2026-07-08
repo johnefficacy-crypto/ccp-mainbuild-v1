@@ -2,19 +2,26 @@
 -- Injects the UPSC Civil Services Examination 2025 Prelims Paper II (CSAT)
 -- official question paper as a canonical PYQ source.
 --
--- Canonical designation lives at the source/paper level:
---   pyq_sources.source_type = 'official', trust_status = 'verified'
---   pyq_papers.source_type  = 'official', trust_status = 'verified'
--- The provided source document (official question paper) contains NO answer
--- key, so question/option/stimulus rows are inserted at reviewer_status =
--- 'pending' and NO correct option is asserted (correct_option_id = null,
--- is_correct = false). Per docs/architecture/pyq-intelligence and migration
--- 032/223 posture, aspirant-facing reads flow through the mock projection,
--- which gates on reviewer_status='verified' AND exactly one correct option
--- (app/backend/app/admin/pyq_mock_projection.py) — so this canonical paper
--- is stored but stays out of learner surfaces until an operator adds and
--- verifies the answer key. Answer-key verdicts must come from operator review,
--- never fabricated here (determinism > heuristics).
+-- Canonical designation lives at the source/paper level via
+-- source_type = 'official'. Trust lifecycle stays 'pending' because the
+-- provided document has NO exact paper-source URL / source_document_id and
+-- NO answer key: promoting to 'verified' without exact provenance would let
+-- verified_pyq_papers() surface a verified paper backed only by the UPSC
+-- homepage (checkpost P1). So source AND paper are trust_status='pending';
+-- question/option/stimulus rows are reviewer_status='pending' and NO correct
+-- option is asserted (correct_option_id = null, is_correct = false). Per
+-- migration 032/186/223 posture, aspirant-facing reads flow through the mock
+-- projection, which gates on reviewer_status='verified' AND exactly one
+-- correct option (app/backend/app/admin/pyq_mock_projection.py). An operator
+-- attaches the exact official paper (source_url / source_document_id), adds
+-- and verifies the answer key, and runs the review lifecycle to 'verified'
+-- before this paper reaches learner surfaces. Verdicts come from operator
+-- review, never fabricated here (determinism > heuristics).
+--
+-- Cycle reuse (checkpost P1): the 2025 UPSC CSE cycle is resolved by
+-- (exam_id, year) and reused when present (the demo seed creates it as
+-- 'CSE 2025'); only created when absent, using the seed's deterministic id so
+-- a later seed run no-ops cleanly. A guard asserts exactly one 2025 cycle.
 --
 -- Idempotent: every insert is keyed on a deterministic UUID with
 -- ON CONFLICT (id) DO NOTHING, and the exam cycle/phase upserts are guarded,
@@ -35,11 +42,32 @@ begin
     raise exception 'exam slug upsc-cse not found; seed migration 110 must run first';
   end if;
 
-  -- Exam cycle: UPSC CSE 2025
-  insert into public.exam_cycles (exam_id, year, cycle_name, status, exam_start)
-  values (v_exam_id, 2025, 'UPSC CSE 2025', 'completed', date '2025-05-25')
-  on conflict (exam_id, year, cycle_name) do update set updated_at = now()
-  returning id into v_cycle_id;
+  -- Exam cycle: reuse the existing UPSC CSE 2025 cycle if one already exists
+  -- for this exam+year (the demo seed creates it as 'CSE 2025'); create one
+  -- only when absent, reusing the seed's deterministic id so a later seed run
+  -- no-ops via ON CONFLICT (id). Guarantees exactly one 2025 cycle.
+  select id into v_cycle_id
+    from public.exam_cycles
+    where exam_id = v_exam_id and year = 2025
+    order by created_at asc
+    limit 1;
+
+  if v_cycle_id is null then
+    insert into public.exam_cycles
+      (id, exam_id, year, cycle_name, status, notification_date,
+       application_start, application_end, exam_start, source_url)
+    values
+      ('a0000003-0000-0000-0000-000000000025', v_exam_id, 2025, 'CSE 2025',
+       'active', date '2025-01-22', date '2025-01-22', date '2025-02-11',
+       date '2025-05-25', 'https://upsc.gov.in/')
+    on conflict (id) do nothing;
+
+    select id into v_cycle_id
+      from public.exam_cycles
+      where exam_id = v_exam_id and year = 2025
+      order by created_at asc
+      limit 1;
+  end if;
 
   -- Exam phase: Prelims Paper II (CSAT). 80 items, 200 marks, 2 hours.
   insert into public.exam_phases
@@ -52,20 +80,22 @@ begin
   do update set updated_at = now()
   returning id into v_phase_id;
 
-  -- Canonical official source
+  -- Canonical official source (trust pending until exact provenance supplied)
   insert into public.pyq_sources (id, exam_id, source_type, source_url, title, trust_status, metadata)
   values ('fceab600-0aed-5052-ab10-89ba36934908', v_exam_id, 'official',
-          'https://upsc.gov.in/', 'UPSC CSE 2025 Prelims Paper II (CSAT) — Official Question Paper',
-          'verified', jsonb_build_object('paper','UPSC CSE 2025 Prelims Paper II (CSAT)','exam_slug','upsc-cse','canonical', true, 'answer_key_present', false))
+          'https://upsc.gov.in/examinations/previous-question-papers',
+          'UPSC CSE 2025 Prelims Paper II (CSAT) — Official Question Paper',
+          'pending', jsonb_build_object('paper','UPSC CSE 2025 Prelims Paper II (CSAT)','exam_slug','upsc-cse','canonical', true, 'answer_key_present', false, 'provenance_pending', true))
   on conflict (id) do nothing;
 
-  -- Canonical paper
+  -- Canonical paper. source_url left null (no exact paper URL in source doc —
+  -- operator attaches source_url / source_document_id at verification time).
   insert into public.pyq_papers
     (id, pyq_source_id, exam_id, exam_cycle_id, exam_phase_id, year, paper_date,
      paper_code, source_url, source_type, trust_status, metadata)
   values ('505b29a0-0d4d-5230-88aa-3bbc525a6db5', 'fceab600-0aed-5052-ab10-89ba36934908', v_exam_id, v_cycle_id, v_phase_id, 2025,
-          date '2025-05-25', 'GS-PAPER-II-CSAT', 'https://upsc.gov.in/', 'official',
-          'verified', jsonb_build_object('title','UPSC CSE 2025 Prelims Paper II (CSAT)','total_questions',80,'total_marks',200,'canonical',true,'answer_key_present',false,'note','Injected verbatim from official question paper docx; answer key pending operator review.'))
+          date '2025-05-25', 'GS-PAPER-II-CSAT', null, 'official',
+          'pending', jsonb_build_object('title','UPSC CSE 2025 Prelims Paper II (CSAT)','total_questions',80,'total_marks',200,'canonical',true,'answer_key_present',false,'provenance_pending',true,'note','Injected verbatim from official question paper docx. Trust pending: operator must attach the exact official CSAT 2025 paper (source_url or source_document_id) and verify the answer key before promotion to verified.'))
   on conflict (id) do nothing;
 end $$;
 
@@ -170,7 +200,7 @@ insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
 values ('55f57180-512f-596a-b7d3-ea6160f1e272', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 3, 'Which one of the following statements best reflects the crux of the passage?', '04c50b4dc3ac6277e96d4d2eb58202dca0974e9de0bfc81220913cc5ae9a68ef',
-        'mcq', null, 'pending', 3, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
+        'mcq', null, 'pending', 3, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false,'missing_stimulus',true,'source_passage_absent',true,'missing_stimulus_reason','Passage-2 (animal- vs plant-based protein) for items 3–4 was absent from the source document.'))
 on conflict (id) do nothing;
 insert into public.pyq_options
   (id, question_id, option_label, option_text, normalized_option_hash, is_correct, display_order, source_label)
@@ -193,7 +223,7 @@ insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
 values ('70207b87-6621-5341-82e2-01b0f629c952', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 4, 'With reference to the above passage, the following assumptions have been made: I. The food manufacturing and processing industries in every country should align their objectives and processes in accordance with the changing needs of the societies. II. Wealthier societies tend to incur great loss of calories of food materials due to indirect utilization of their agricultural produce. Which of the above assumptions is/are valid?', '1f71d08d51bf219fda9beef7cde33bc96cc8cde8cc82d8924aaa09fdf156ecd1',
-        'mcq', null, 'pending', 4, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
+        'mcq', null, 'pending', 4, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false,'missing_stimulus',true,'source_passage_absent',true,'missing_stimulus_reason','Passage-2 (animal- vs plant-based protein) for items 3–4 was absent from the source document.'))
 on conflict (id) do nothing;
 insert into public.pyq_options
   (id, question_id, option_label, option_text, normalized_option_hash, is_correct, display_order, source_label)
@@ -354,7 +384,7 @@ insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
 values ('9f967de9-a961-5556-a986-50b73f1ca23e', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 11, 'Which one of the following statements best reflects the corollary to the above passage?', 'd2a0f59ee5a55c8942541ee5a9089c83a80138a702066df327f259af17e503d3',
-        'mcq', null, 'pending', 11, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
+        'mcq', null, 'pending', 11, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false,'missing_stimulus',true,'source_passage_absent',true,'missing_stimulus_reason','The agriculture / economic-reforms passage for items 11–12 was absent from the source document.'))
 on conflict (id) do nothing;
 insert into public.pyq_options
   (id, question_id, option_label, option_text, normalized_option_hash, is_correct, display_order, source_label)
@@ -377,7 +407,7 @@ insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
 values ('72bd302c-e9bb-5a1c-a8da-2646fc8bd2d8', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 12, 'With reference to the passage, the following assumptions have been made: The growing divergence between the fortunes of the agricultural and non-agricultural economy in India could have been reduced/contained by: I. adapting large-scale cultivation of commercial crops and viable corporate farming. II. providing free insurance for all crops and heavily subsidizing seeds, fertilizers, electricity and farm machinery at par with developed countries. Which of the above assumptions is/are valid?', '7f33c90d6e9640cbbd9b6471b12dcdfca6a8107a5244e07d4d4642fd0834a433',
-        'mcq', null, 'pending', 12, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
+        'mcq', null, 'pending', 12, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false,'missing_stimulus',true,'source_passage_absent',true,'missing_stimulus_reason','The agriculture / economic-reforms passage for items 11–12 was absent from the source document.'))
 on conflict (id) do nothing;
 insert into public.pyq_options
   (id, question_id, option_label, option_text, normalized_option_hash, is_correct, display_order, source_label)
@@ -2028,5 +2058,47 @@ insert into public.pyq_options
   (id, question_id, option_label, option_text, normalized_option_hash, is_correct, display_order, source_label)
 values ('cec52dc7-1377-5c57-aed2-6c966ed01b7e', '4b10a361-2644-5719-abc8-1254acf93473', 'D', 'Neither I nor II', 'd06ae3a9e56cafa0ccbbfeb1f657c28e5acba23091a6306703604f45028f6b9e', false, 4, '(d)')
 on conflict (id) do nothing;
+
+-- ── Invariants ───────────────────────────────────────────────────────────
+do $$
+declare
+  v_exam_id uuid;
+  v_cycles int;
+  v_bad_paper int;
+  v_missing int;
+begin
+  select id into v_exam_id from public.exams where slug = 'upsc-cse';
+
+  -- P1: exactly one 2025 cycle for upsc-cse (no duplicate).
+  select count(*) into v_cycles
+    from public.exam_cycles where exam_id = v_exam_id and year = 2025;
+  if v_cycles <> 1 then
+    raise exception 'expected exactly one upsc-cse 2025 exam_cycle, found %', v_cycles;
+  end if;
+
+  -- P1: the canonical paper must never be 'verified' without exact provenance
+  -- (a non-root source_url or a source_document_id).
+  select count(*) into v_bad_paper
+    from public.pyq_papers
+   where id = '505b29a0-0d4d-5230-88aa-3bbc525a6db5'
+     and trust_status = 'verified'
+     and source_document_id is null
+     and (source_url is null
+          or btrim(source_url) = ''
+          or source_url in ('https://upsc.gov.in', 'https://upsc.gov.in/'));
+  if v_bad_paper > 0 then
+    raise exception 'canonical CSAT 2025 paper is verified without an exact source_url or source_document_id';
+  end if;
+
+  -- P2: the four items whose passage was absent from the source doc must
+  -- carry the machine-readable blocker flag.
+  select count(*) into v_missing
+    from public.pyq_questions
+   where pyq_paper_id = '505b29a0-0d4d-5230-88aa-3bbc525a6db5'
+     and (metadata ->> 'missing_stimulus')::boolean is true;
+  if v_missing <> 4 then
+    raise exception 'expected 4 missing-stimulus questions (items 3,4,11,12), found %', v_missing;
+  end if;
+end $$;
 
 notify pgrst, 'reload schema';
