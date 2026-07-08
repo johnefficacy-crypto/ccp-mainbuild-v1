@@ -106,6 +106,7 @@ export const adminRouteElements = (
       <Route path="/admin/exam-intelligence/new" element={<AdminGuidedExamWizard />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id" element={<AdminExamWorkspace />} />
       <Route path="/admin/exam-intelligence/exams/:exam_id/add-cycle" element={<AddCycleRedirect />} />
+      {/* E4: deep-link-only entry; primary flow is the embedded tab via PyqWorkbenchPanel row click/bulk-import. */}
       <Route path="/admin/exam-intelligence/pyq-papers/:pyq_paper_id/workspace" element={<AdminPyqPaperWorkspace />} />
       <Route path="/admin/exam-intelligence/workspace/:exam_id" element={<ExamRedirect />} />
       <Route path="/admin/exam-intelligence/workspace/:exam_id/:cycle_id" element={<ExamRedirect />} />
