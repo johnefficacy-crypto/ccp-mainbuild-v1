@@ -219,7 +219,7 @@ def _apply():
         _psql_file(_MIG / "213_english_writing_practice_error_lab_read_model.sql")
         _psql_file(_MIG / "214_writing_prompt_content_scoping.sql")
         _psql_file(_MIG / "215_writing_prompt_content_studio_ops.sql")
-        _psql_file(_MIG / "224_ewp_prompt_activation_lifecycle.sql")
+        _psql_file(_MIG / "226_ewp_prompt_activation_lifecycle.sql")
         _ENGLISH_ID = _scalar(f"SELECT {_ENGLISH};")
         _GRAMMAR_ID = _scalar(f"SELECT {_GRAMMAR};")
         yield
