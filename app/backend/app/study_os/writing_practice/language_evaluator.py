@@ -429,9 +429,20 @@ class LlmLanguageEvaluator:
 
 
 def _build_llm_evaluator() -> LanguageEvaluator:
-    """Construct the (stub) LLM adapter. Isolated so it is trivially observable
-    in tests that it is never called on the off path."""
-    return LlmLanguageEvaluator()
+    """Construct the SHADOW semantic adapter (EWP-SP1b).
+
+    Isolated so tests can observe it is never called on the off path. Imported
+    lazily to avoid a hard dependency on the provider SDK for the deterministic
+    path and to break the language_evaluator <-> semantic_evaluator import cycle.
+    Authorized in SHADOW mode only by
+    docs/architecture/ewp-semantic-evaluator-adapter.md; this adapter is reached
+    exclusively through get_semantic_shadow_evaluator() when
+    FF_WRITING_LLM_EVAL=shadow, and its output never feeds the canonical
+    completion RPC.
+    """
+    from . import semantic_evaluator
+
+    return semantic_evaluator.build_semantic_evaluator()
 
 
 def get_semantic_shadow_evaluator() -> LanguageEvaluator | None:

@@ -314,10 +314,13 @@ def test_shadow_semantic_probe_is_separate_from_primary_evaluator(monkeypatch):
     primary = get_language_evaluator()
     assert isinstance(primary, le.MockLanguageEvaluator)
 
-    # SP1a adds a separate shadow-only semantic probe. Its output must be
-    # measured/recorded separately, never returned as the primary evaluator.
+    # SP1b wires the real provider-backed semantic adapter behind this shadow
+    # seam (superseding the SP1a stub). Its output must be measured/recorded
+    # separately, never returned as the primary evaluator.
+    from app.study_os.writing_practice import semantic_evaluator as se
+
     shadow = le.get_semantic_shadow_evaluator()
-    assert isinstance(shadow, le.LlmLanguageEvaluator)
+    assert isinstance(shadow, se.SemanticLanguageEvaluator)
 
 def test_semantic_shadow_evaluator_none_when_off(monkeypatch):
     monkeypatch.delenv("FF_WRITING_LLM_EVAL", raising=False)
