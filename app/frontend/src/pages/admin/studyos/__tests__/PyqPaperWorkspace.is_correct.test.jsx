@@ -19,8 +19,14 @@ jest.mock("../../../../lib/api", () => ({
     get: jest.fn(),
     patch: jest.fn(),
     post: jest.fn(),
+    delete: jest.fn(),
   },
   getApiErrorMessage: (e) => String(e?.message || e),
+}));
+
+jest.mock("../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
 }));
 
 // eslint-disable-next-line global-require

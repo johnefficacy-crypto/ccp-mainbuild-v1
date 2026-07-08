@@ -13,6 +13,10 @@ Nothing here touches the database — callers persist the results.
 """
 from __future__ import annotations
 
+import logging
+import os
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -20,10 +24,94 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from . import deterministic
 
+logger = logging.getLogger("career_copilot.study_os.writing_language_evaluator")
+
 # Bump when the mock rule set or output contract changes; stored on the
 # evaluation row as language_evaluator_version so historical findings stay
-# auditable (§4.6).
-LANGUAGE_EVALUATOR_VERSION = "lang-mock-v1"
+# auditable (§4.6). v2 adds deterministic source-comparison result states
+# (EWP-SP1): source_unchanged / meaning_not_preserved / source_comparison_uncertain.
+LANGUAGE_EVALUATOR_VERSION = "lang-mock-v2"
+
+# --- EWP-SP1 source-aware evaluation ---------------------------------------
+
+# Deterministic source-comparison outcomes. These are RESULT-LEVEL states, NOT
+# §5.1 issue types — they deliberately do NOT reuse `off_topic` (that projects
+# to misread_question/concept_gap in §6 and would contaminate content-relevance
+# mastery; PR #882 mistake). Any non-None state here fails CLOSED to human
+# review (never positive/passing mastery evidence). See
+# docs/architecture/ewp-semantic-evaluator-adapter.md §3.4.
+SourceComparison = Literal[
+    "source_unchanged",
+    "meaning_not_preserved",
+    "source_comparison_uncertain",
+]
+
+# Exercise types whose correctness is defined against `source_text` (the learner
+# must correct / transform a given sentence). Pure CONSTRUCTION prompts
+# (sentence_construction, paragraph_writing, …) have no source and are UNAFFECTED
+# — source-comparison is skipped for them entirely.
+def _is_source_dependent(exercise_type: str | None) -> bool:
+    t = (exercise_type or "").lower()
+    return (
+        "correction" in t
+        or "grammar" in t
+        or t.startswith("vocabulary")
+        or "vocabulary_in_context" in t
+    )
+
+
+_WS_RE = re.compile(r"\s+")
+
+
+def _normalize_for_compare(text: str | None) -> str:
+    """NFC + whitespace-collapse + case-fold normalisation for source comparison.
+
+    Built on the same NFC base the deterministic layer uses (deterministic._normalise)
+    so the two stages agree on Unicode form. Punctuation is preserved (adding a
+    period can itself be a valid correction), only surrounding/duplicated
+    whitespace and letter case are normalised away.
+    """
+    normalized = unicodedata.normalize("NFC", text or "")
+    return _WS_RE.sub(" ", normalized.strip()).casefold()
+
+
+def compute_source_comparison(
+    answer_text: str,
+    *,
+    exercise_type: str | None,
+    source_text: str | None,
+) -> SourceComparison | None:
+    """DETERMINISTIC source-comparison verdict (no heuristics, no model call).
+
+    Returns None when the exercise is not source-dependent (construction prompts
+    are unaffected). Otherwise:
+
+    - source required but missing/empty  -> source_comparison_uncertain (fail closed)
+    - answer empty after normalisation   -> meaning_not_preserved (nothing was
+      submitted to preserve the source's meaning — never a false positive on a
+      real, non-empty correction)
+    - normalised answer == normalised source -> source_unchanged (returned as-is)
+    - otherwise                          -> source_comparison_uncertain
+
+    `meaning_not_preserved` is emitted ONLY on the empty-answer case. Semantic
+    "is this a meaning-preserving correction" is NOT deterministically decidable
+    from (answer, source) — any string-similarity / token-overlap threshold is
+    gameable and false-positives on aggressive-but-correct rewrites (rejected in
+    the adapter doc §2). So every non-trivial changed answer falls to
+    `source_comparison_uncertain` and is routed to human review rather than
+    guessed at.
+    """
+    if not _is_source_dependent(exercise_type):
+        return None
+    norm_source = _normalize_for_compare(source_text)
+    if not norm_source:
+        return "source_comparison_uncertain"
+    norm_answer = _normalize_for_compare(answer_text)
+    if not norm_answer:
+        return "meaning_not_preserved"
+    if norm_answer == norm_source:
+        return "source_unchanged"
+    return "source_comparison_uncertain"
 
 # The §5.1 issue-type taxonomy. These map to canonical microtopics backend-side
 # (§4.15); the evaluator returns only the issue_type, never taxonomy IDs.
@@ -107,6 +195,21 @@ class LanguageResult:
 
     issues: list[LanguageIssueOut]
     evaluator_version: str = LANGUAGE_EVALUATOR_VERSION
+    # EWP-SP1: deterministic source-comparison verdict (None when the exercise is
+    # not source-dependent). Any non-None value forces needs_human_review.
+    source_comparison: SourceComparison | None = None
+    # Fail-closed routing flag. When True the worker sets needs_human_review on
+    # the evaluation and emits NO positive/negative mastery evidence.
+    needs_human_review: bool = False
+
+    def to_result_dict(self) -> dict:
+        """Serialised language_result payload persisted on the evaluation row."""
+        return {
+            "issues": self.to_issue_dicts(),
+            "evaluator_version": self.evaluator_version,
+            "source_comparison": self.source_comparison,
+            "needs_human_review": self.needs_human_review,
+        }
 
     def to_issue_dicts(self) -> list[dict]:
         """Return each issue as a plain dict with the fixed §5.3 key order."""
@@ -134,6 +237,8 @@ class LanguageEvaluator(Protocol):
         answer_text: str,
         *,
         exercise_type: str,
+        prompt_text: str | None = None,
+        source_text: str | None = None,
         active_prior_issues: list[dict] | None = None,
         resolved_prior_lineages: list[dict] | None = None,
     ) -> LanguageResult:
@@ -161,6 +266,8 @@ class MockLanguageEvaluator:
         answer_text: str,
         *,
         exercise_type: str,
+        prompt_text: str | None = None,
+        source_text: str | None = None,
         active_prior_issues: list[dict] | None = None,
         resolved_prior_lineages: list[dict] | None = None,
     ) -> LanguageResult:
@@ -258,7 +365,19 @@ class MockLanguageEvaluator:
         _apply_lineage(issues, active_prior_issues or [])
 
         issues.sort(key=lambda i: i.span_start_utf16)
-        return LanguageResult(issues=issues, evaluator_version=LANGUAGE_EVALUATOR_VERSION)
+
+        # EWP-SP1: deterministic source-comparison. Only meaningful for
+        # source-dependent exercise types; construction prompts get None and are
+        # unaffected. Any verdict fails CLOSED to human review.
+        source_comparison = compute_source_comparison(
+            answer_text, exercise_type=exercise_type, source_text=source_text,
+        )
+        return LanguageResult(
+            issues=issues,
+            evaluator_version=LANGUAGE_EVALUATOR_VERSION,
+            source_comparison=source_comparison,
+            needs_human_review=source_comparison is not None,
+        )
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -277,12 +396,59 @@ def _apply_lineage(issues: list[LanguageIssueOut], active_prior_issues: list[dic
                 break
 
 
+FlagState = Literal["off", "shadow", "live"]
+
+
+def get_writing_llm_eval_flag() -> FlagState:
+    """Resolve FF_WRITING_LLM_EVAL. Fails CLOSED to ``off``.
+
+    SCAFFOLD ONLY (EWP-SP1): no real semantic/LLM adapter ships in this slice.
+    The flag exists so the off→shadow→live rollout plumbing is in place; the
+    real model adapter is gated on docs/architecture/ewp-semantic-evaluator-adapter.md
+    being APPROVED (still a PROPOSAL). Default and effective value today is ``off``.
+    """
+    raw = (os.getenv("FF_WRITING_LLM_EVAL") or "off").strip().lower()
+    return raw if raw in {"off", "shadow", "live"} else "off"  # fail closed
+
+
+class LlmLanguageEvaluator:
+    """STUB semantic/LLM adapter slot — NOT IMPLEMENTED in this slice.
+
+    Deliberately holds no model client, makes no network call, and adds no
+    dependency. It exists only to mark the adapter seam. It is NEVER instantiated
+    or invoked while FF_WRITING_LLM_EVAL is off (the effective value today);
+    reaching it is a bug, so every method fails loudly.
+    """
+
+    def evaluate(self, *args, **kwargs) -> LanguageResult:  # noqa: D401
+        raise NotImplementedError(
+            "LlmLanguageEvaluator is a scaffold stub — the semantic adapter is "
+            "gated on ewp-semantic-evaluator-adapter.md APPROVAL and is never "
+            "invoked while FF_WRITING_LLM_EVAL=off"
+        )
+
+
+def _build_llm_evaluator() -> LanguageEvaluator:
+    """Construct the (stub) LLM adapter. Isolated so it is trivially observable
+    in tests that it is never called on the off path."""
+    return LlmLanguageEvaluator()
+
+
 def get_language_evaluator() -> LanguageEvaluator:
     """Return the active language evaluator.
 
-    TODO: when the real LLM adapter slice lands, select it here behind a feature
-    flag (e.g. FF_WRITING_LLM_EVAL); default remains the deterministic mock.
+    While FF_WRITING_LLM_EVAL is ``off`` (the only supported value this slice),
+    this returns the deterministic mock and NEVER touches the LLM stub. Any
+    non-off flag also falls back to the mock for now (no approved adapter) — a
+    non-off flag is a no-op until the adapter doc is approved; the stub is only
+    constructed once that lands.
     """
+    flag = get_writing_llm_eval_flag()
+    if flag != "off":
+        logger.warning(
+            "FF_WRITING_LLM_EVAL=%s but no approved semantic adapter — using the "
+            "deterministic mock (scaffold only)", flag,
+        )
     return MockLanguageEvaluator()
 
 
@@ -290,10 +456,17 @@ def evaluate_language(
     answer_text: str,
     *,
     exercise_type: str,
+    prompt_text: str | None = None,
+    source_text: str | None = None,
     active_prior_issues: list[dict] | None = None,
     resolved_prior_lineages: list[dict] | None = None,
 ) -> LanguageResult:
     """Evaluate ``answer_text`` and return structured language findings.
+
+    ``prompt_text`` / ``source_text`` come from the immutable per-session snapshot
+    (migration 221/222) and enable deterministic source-comparison for
+    source-dependent exercise types (EWP-SP1). Both default to None so existing
+    callers stay backward-compatible.
 
     ``active_prior_issues`` items look like
     ``{"issue_event_id": str, "issue_type": str, "quoted_text": str}``. Any
@@ -304,6 +477,8 @@ def evaluate_language(
     result = get_language_evaluator().evaluate(
         answer_text,
         exercise_type=exercise_type,
+        prompt_text=prompt_text,
+        source_text=source_text,
         active_prior_issues=active_prior_issues,
         resolved_prior_lineages=resolved_prior_lineages,
     )

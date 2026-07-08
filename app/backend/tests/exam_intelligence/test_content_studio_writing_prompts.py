@@ -706,9 +706,153 @@ def test_map_rpc_error_handles_real_postgrest_apierror():
         assert mapped.status_code == expected, (message, mapped.status_code)
 
 
-# ── there is NO activate endpoint (activation is gated by migration 214) ───
+# ── Activation lifecycle (migration 224) — content_studio.activate authority ──
+#
+# Activation is a SEPARATE, higher-trust permission. Neither author nor review
+# may activate. The RPC is the SOLE eligibility authority: a blocked activation
+# is a NORMAL 200 {eligible:false, blockers} answer; CAS mismatch → 409.
+
+ACTIVATE = cs.PERM_ACTIVATE
 
 
-def test_no_activate_route_is_registered():
+def test_activate_route_is_registered():
     paths = {r.path for r in cs.router.routes}
-    assert not any("activate" in p or p.endswith("/active") for p in paths)
+    assert any(p.endswith("/activate") for p in paths)
+    assert any(p.endswith("/deactivate") for p in paths)
+
+
+def _activate_body(**over) -> dict:
+    body = {"reason": "content is verified and assigned", "expected_updated_at": _TOKEN}
+    body.update(over)
+    return body
+
+
+def test_activate_denied_for_author():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[AUTHOR]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate", json=_activate_body())
+    assert r.status_code == 403
+    assert not sb.rpc_calls
+
+
+def test_activate_denied_for_reviewer():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate", json=_activate_body())
+    assert r.status_code == 403
+    assert not sb.rpc_calls
+
+
+def test_activate_allowed_for_activate_permission_and_super_admin():
+    for perms, role in (([ACTIVATE], "admin"), ([], "super_admin")):
+        sb = CSSBStub(_seed())
+        sb.rpc_result = {"eligible": True, "ok": True, "prompt_id": _PROMPT, "is_active": True}
+        r = _client(sb, permissions=perms, role=role).post(
+            f"{_BASE}/writing-prompts/{_PROMPT}/activate", json=_activate_body())
+        assert r.status_code == 200, (perms, role, r.text)
+        assert sb.rpc_calls[-1][0] == "cms_activate_writing_prompt"
+
+
+def test_activate_requires_cas_token():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate", json={"reason": "no CAS token here"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_activate_requires_reason_min_length():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate",
+        json={"reason": "short", "expected_updated_at": _TOKEN})
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_activate_rejects_unknown_field():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate",
+        json=_activate_body(is_active=True))
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_activate_passes_client_token_and_omits_runtime_allowlist():
+    # The API must NOT widen the server-owned runtime allowlist.
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"eligible": True, "ok": True, "prompt_id": _PROMPT, "is_active": True}
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate",
+        json=_activate_body(expected_updated_at="2019-01-01T00:00:00Z"))
+    assert r.status_code == 200, r.text
+    call = sb.rpc_calls[-1][1]
+    assert call["p_expected_updated_at"] == "2019-01-01T00:00:00Z"
+    assert "p_exercise_runtime_allowlist" not in call
+
+
+def test_activate_eligibility_blocked_is_200_with_blockers():
+    # A blocked activation is a NORMAL answer (not an error). The router surfaces
+    # the RPC's {eligible:false, blockers} verdict verbatim at HTTP 200.
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"eligible": False, "prompt_id": _PROMPT,
+                     "blockers": ["prompt_not_verified", "no_active_applicability_target"]}
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate", json=_activate_body())
+    assert r.status_code == 200, r.text
+    res = r.json()["result"]
+    assert res["eligible"] is False
+    assert set(res["blockers"]) == {"prompt_not_verified", "no_active_applicability_target"}
+
+
+def test_activate_maps_stale_cas_to_409():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "concurrent_modification: stale_prompt — prompt changed since read"
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/activate", json=_activate_body())
+    assert r.status_code == 409
+
+
+def test_activate_maps_not_found_to_404():
+    sb = CSSBStub(_seed())
+    sb.rpc_error = "not_found: writing_prompt does not exist"
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_ABSENT}/activate", json=_activate_body())
+    assert r.status_code == 404
+
+
+def test_activate_malformed_uuid_is_422():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/not-a-uuid/activate", json=_activate_body())
+    assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_deactivate_denied_for_author_and_reviewer():
+    for perms in ([AUTHOR], [REVIEW]):
+        sb = CSSBStub(_seed())
+        r = _client(sb, permissions=perms).post(
+            f"{_BASE}/writing-prompts/{_PROMPT}/deactivate", json=_activate_body())
+        assert r.status_code == 403, perms
+        assert not sb.rpc_calls
+
+
+def test_deactivate_happy_path_passes_client_token():
+    sb = CSSBStub(_seed())
+    sb.rpc_result = {"ok": True, "prompt_id": _PROMPT, "is_active": False}
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/deactivate",
+        json=_activate_body(reason="retire this prompt", expected_updated_at="2018-01-01T00:00:00Z"))
+    assert r.status_code == 200, r.text
+    assert sb.rpc_calls[-1][0] == "cms_deactivate_writing_prompt"
+    assert sb.rpc_calls[-1][1]["p_expected_updated_at"] == "2018-01-01T00:00:00Z"
+
+
+def test_deactivate_requires_cas_token():
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[ACTIVATE]).post(
+        f"{_BASE}/writing-prompts/{_PROMPT}/deactivate", json={"reason": "no CAS token here"})
+    assert r.status_code == 422
+    assert not sb.rpc_calls

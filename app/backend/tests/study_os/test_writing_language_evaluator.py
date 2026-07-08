@@ -5,10 +5,14 @@ pytest.importorskip("pydantic")
 
 from pydantic import ValidationError
 
+import app.study_os.writing_practice.language_evaluator as le
 from app.study_os.writing_practice.language_evaluator import (
     LANGUAGE_EVALUATOR_VERSION,
     LanguageIssueOut,
+    compute_source_comparison,
     evaluate_language,
+    get_language_evaluator,
+    get_writing_llm_eval_flag,
     utf16_span,
 )
 
@@ -153,3 +157,151 @@ def test_invalid_predecessor_reference_raises(monkeypatch):
     monkeypatch.setattr(le.MockLanguageEvaluator, "evaluate", patched)
     with pytest.raises(ValueError):
         evaluate_language("gonna win", exercise_type="paragraph_writing")
+
+
+# --- EWP-SP1: deterministic source-comparison result states ----------------
+
+
+def test_evaluator_version_bumped():
+    # Historical fixtures are keyed on the version; the source-aware change bumps it.
+    assert LANGUAGE_EVALUATOR_VERSION == "lang-mock-v2"
+
+
+def test_source_unchanged_detected_and_fails_closed():
+    source = "He go to school every day."
+    # Learner returns the sentence unchanged (only whitespace/case noise differs).
+    result = evaluate_language(
+        "  he GO to school every day.  ",
+        exercise_type="sentence_correction",
+        source_text=source,
+    )
+    assert result.source_comparison == "source_unchanged"
+    assert result.needs_human_review is True
+
+
+def test_meaning_not_preserved_only_on_empty_answer():
+    # An empty answer for a source-dependent task cannot preserve meaning — this is
+    # the ONLY deterministic meaning_not_preserved trigger (no similarity heuristic).
+    result = evaluate_language(
+        "   ", exercise_type="sentence_correction", source_text="He go home.",
+    )
+    assert result.source_comparison == "meaning_not_preserved"
+    assert result.needs_human_review is True
+
+
+def test_no_false_positive_meaning_not_preserved_on_real_correction():
+    # A genuine, heavily-reworded correction must NOT be flagged meaning_not_preserved
+    # (that was the gameable-threshold trap). It falls to uncertain -> human review.
+    result = evaluate_language(
+        "He runs quickly.",
+        exercise_type="sentence_correction",
+        source_text="Him fast run.",
+    )
+    assert result.source_comparison == "source_comparison_uncertain"
+    assert result.needs_human_review is True
+
+
+def test_uncertain_fails_closed_to_review():
+    result = evaluate_language(
+        "He goes to school every day.",
+        exercise_type="sentence_correction",
+        source_text="He go to school every day.",
+    )
+    assert result.source_comparison == "source_comparison_uncertain"
+    assert result.needs_human_review is True
+
+
+def test_missing_source_on_source_dependent_fails_closed():
+    for missing in (None, "", "   "):
+        result = evaluate_language(
+            "He goes home.", exercise_type="sentence_correction", source_text=missing,
+        )
+        assert result.source_comparison == "source_comparison_uncertain"
+        assert result.needs_human_review is True
+
+
+def test_off_topic_not_emitted_for_source_mismatch():
+    # Source mismatch must NEVER reuse off_topic (would contaminate content-relevance
+    # mastery, PR #882). The verdict lives at the result level, not as an issue.
+    result = evaluate_language(
+        "Totally different clean sentence here.",
+        exercise_type="sentence_correction",
+        source_text="He go to school.",
+    )
+    assert all(i.issue_type != "off_topic" for i in result.issues)
+    assert result.source_comparison == "source_comparison_uncertain"
+
+
+def test_construction_prompts_unaffected_by_source_comparison():
+    # Pure construction has no source; source-comparison is skipped, no review gate.
+    result = evaluate_language(
+        "The cat sat on the mat.",
+        exercise_type="sentence_construction",
+        source_text=None,
+    )
+    assert result.source_comparison is None
+    assert result.needs_human_review is False
+    # Even if a stray source is supplied, a construction type is never gated.
+    result2 = evaluate_language(
+        "The cat sat.", exercise_type="sentence_construction", source_text="unused",
+    )
+    assert result2.source_comparison is None
+    assert result2.needs_human_review is False
+
+
+def test_compute_source_comparison_pure_function():
+    assert compute_source_comparison(
+        "x", exercise_type="paragraph_writing", source_text="x") is None
+    assert compute_source_comparison(
+        "abc", exercise_type="grammar_fix", source_text="abc") == "source_unchanged"
+
+
+def test_result_dict_carries_source_comparison():
+    result = evaluate_language(
+        "he go to school.", exercise_type="sentence_correction",
+        source_text="he go to school.",
+    )
+    payload = result.to_result_dict()
+    assert payload["source_comparison"] == "source_unchanged"
+    assert payload["needs_human_review"] is True
+    assert payload["evaluator_version"] == LANGUAGE_EVALUATOR_VERSION
+
+
+# --- EWP-SP1: FF_WRITING_LLM_EVAL scaffold (off by default, stub never called) --
+
+
+def test_ff_writing_llm_eval_defaults_off(monkeypatch):
+    monkeypatch.delenv("FF_WRITING_LLM_EVAL", raising=False)
+    assert get_writing_llm_eval_flag() == "off"
+    # Garbage / unknown values fail closed to off.
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "banana")
+    assert get_writing_llm_eval_flag() == "off"
+
+
+def test_llm_stub_never_built_or_called_when_off(monkeypatch):
+    monkeypatch.delenv("FF_WRITING_LLM_EVAL", raising=False)
+    calls = {"built": 0}
+
+    def _spy():
+        calls["built"] += 1
+        return le.LlmLanguageEvaluator()
+
+    monkeypatch.setattr(le, "_build_llm_evaluator", _spy)
+    ev = get_language_evaluator()
+    assert isinstance(ev, le.MockLanguageEvaluator)
+    # Full evaluation path must not construct or invoke the LLM stub.
+    evaluate_language("he go home.", exercise_type="sentence_correction",
+                      source_text="he go home.")
+    assert calls["built"] == 0
+
+
+def test_llm_stub_raises_if_ever_invoked():
+    with pytest.raises(NotImplementedError):
+        le.LlmLanguageEvaluator().evaluate("x", exercise_type="sentence_correction")
+
+
+def test_non_off_flag_still_uses_mock_no_stub(monkeypatch):
+    # Scaffold only: even shadow/live fall back to the mock (no approved adapter),
+    # and never touch the stub in this slice.
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
+    assert isinstance(get_language_evaluator(), le.MockLanguageEvaluator)

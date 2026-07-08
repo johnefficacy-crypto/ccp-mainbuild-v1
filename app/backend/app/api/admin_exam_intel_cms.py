@@ -121,6 +121,54 @@ def _safe_select(supabase, table: str, **filters):
         return None
 
 
+def _safe_list(supabase, table: str, **filters) -> list[dict[str, Any]]:
+    """Best-effort list of rows matching equality filters (returns [] on error)."""
+    try:
+        q = supabase.table(table).select("*")
+        for k, v in filters.items():
+            q = q.eq(k, v)
+        return q.execute().data or []
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _constraint_violation_http_error(exc: Exception) -> HTTPException | None:
+    """Map a Postgres unique (23505) / check (23514) violation to a friendly
+    HTTP error, or return None if the exception is not a recognised constraint
+    violation (caller should then fall through to other handling / re-raise).
+
+    supabase-py surfaces these as ``postgrest.exceptions.APIError`` carrying a
+    ``.code`` (SQLSTATE) and a message that includes the offending
+    index/constraint name; we match on the code first and fall back to the
+    message so it stays robust across client versions."""
+    code = getattr(exc, "code", None) or getattr(exc, "pgcode", None)
+    msg = str(exc)
+    low = msg.lower()
+    is_unique = code == "23505" or "23505" in msg or "duplicate key" in low
+    is_check = code == "23514" or "23514" in msg or "check constraint" in low
+
+    if is_unique:
+        # unique(question_id, stimulus_id) on pyq_question_stimuli.
+        if ("question_id" in low and "stimulus_id" in low) or "question_id_stimulus_id" in low:
+            detail = "a link between this question and stimulus already exists"
+        elif "question_display_order" in low:
+            detail = "display_order already used for this question"
+        elif "paper_display_order" in low:
+            detail = "display_order already used for this paper"
+        else:
+            detail = "a row with these unique values already exists"
+        return HTTPException(status_code=409, detail=detail)
+
+    if is_check:
+        if "display_order" in low:
+            detail = "display_order must be >= 1"
+        else:
+            detail = msg
+        return HTTPException(status_code=422, detail=detail)
+
+    return None
+
+
 class WriteEnvelope(BaseModel):
     """Standard write-body shape used by every CMS endpoint."""
 
@@ -1650,10 +1698,17 @@ def pyq_bulk_commit(
 
     try:
         result = _bi.commit(
-            supabase, admin, body.import_token, override_errors=body.override_errors
+            supabase, admin, body.import_token,
+            paper_id=paper_id, override_errors=body.override_errors,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        # Batch-level conflict (e.g. checkpost round 3 fix #3b: a stimulus
+        # ref's content diverges from the already-canonical stored row) —
+        # mirrors preflight's existing ValueError -> 422 mapping. Raised
+        # before any writes, so nothing was committed.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     _audit(
         supabase, admin, "exam_intel.cms.pyq_bulk_import.commit",
@@ -1685,9 +1740,18 @@ _QUESTION_FIELDS = {
     "source_kind", "source_document_id", "source_page", "source_regions",
     "extractor_version", "extraction_run_id", "idempotency_key",
     "content_hash", "confidence_by_field",
+    # Section linkage + printed-order preservation (migration 223, PR-3).
+    # section_id assignment is backstopped by DB triggers enforcing the
+    # question's section shares its paper's exam_phase_id.
+    "section_id", "source_question_ref", "display_order",
 }
 _QUESTION_TYPES = ("mcq", "numerical", "descriptive", "caselet", "matching", "other")
-_OPTION_FIELDS = {"option_label", "option_text", "normalized_option_hash", "normalized_value", "is_correct", "metadata"}
+_OPTION_FIELDS = {
+    "option_label", "option_text", "normalized_option_hash", "normalized_value",
+    "is_correct", "metadata",
+    # Printed label + explicit display order (migration 223, PR-3).
+    "display_order", "source_label",
+}
 
 
 @router.get("/pyq-questions")
@@ -1828,7 +1892,20 @@ def update_pyq_question(
         q_hash = question_hash(patch["question_text"])
         if q_hash:
             patch["normalized_question_hash"] = q_hash
-    updated = supabase.table("pyq_questions").update(patch).eq("id", question_id).execute().data or []
+    # Assigning section_id is backstopped by migration 223's DB trigger, which
+    # enforces the question's section shares its paper's exam_phase_id (and that
+    # any existing stimulus link stays section-compatible). Surface that trigger
+    # failure as a 422 with the DB message rather than a raw 500.
+    if "section_id" in patch and patch.get("section_id") is not None:
+        try:
+            updated = supabase.table("pyq_questions").update(patch).eq("id", question_id).execute().data or []
+        except Exception as exc:  # noqa: BLE001
+            msg = str(exc)
+            if "exam_phase" in msg or "section" in msg:
+                raise HTTPException(status_code=422, detail=msg) from exc
+            raise
+    else:
+        updated = supabase.table("pyq_questions").update(patch).eq("id", question_id).execute().data or []
     audit_id = _audit(
         supabase, admin, "exam_intel.cms.pyq_question.update",
         entity_type="pyq_question", entity_id=question_id,
@@ -1922,6 +1999,348 @@ def update_pyq_option(
         new_value={"reason": body.reason, "patch": patch, "previous": existing},
     )
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  PYQ stimuli (shared passages / caselets / DI tables) + question links
+#  Migration 223 (PR-3). Stimuli are created at reviewer_status='pending'
+#  (DB default) and reviewed INDEPENDENTLY through the review-side router —
+#  shared passage CONTENT is not auto-verified by a question's review,
+#  because the same passage may back other still-unreviewed questions. Only
+#  the question→stimulus LINK is cascaded by question review (migration 227).
+# ════════════════════════════════════════════════════════════════════════
+
+
+# reviewer_status is intentionally absent — lifecycle moves go through the
+# review-side router (PATCH /items/pyq_stimulus/{id}/review), never curate.
+_STIMULUS_FIELDS = {
+    "pyq_paper_id", "section_id", "stimulus_type", "content_text",
+    "language", "display_order", "metadata",
+}
+_STIMULUS_TYPES = ("passage", "caselet", "table", "chart", "image", "diagram", "other")
+# Media/advanced stimulus types (chart/image/diagram/other) are deferred to
+# PR-11 (advanced question types + first-class media storage, see migration 223
+# scope note). This PR is text/shared-grouping only, matching importer v2, so
+# creation/update from this surface is gated to the three text-shaped kinds.
+# READS of pre-existing media rows are NOT gated — only writes.
+_STIMULUS_TYPES_CREATABLE = frozenset(("passage", "caselet", "table"))
+_LINK_FIELDS = {"question_id", "stimulus_id", "display_order"}
+
+
+def _reject_uncreatable_stimulus_type(stimulus_type: Any) -> None:
+    """422 when a create/edit tries to set a media/advanced stimulus_type that
+    is deferred to PR-11. Assumes the value already passed the full-enum check,
+    so anything outside the creatable set is a valid-but-deferred media kind."""
+    if stimulus_type is not None and stimulus_type not in _STIMULUS_TYPES_CREATABLE:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"stimulus_type {stimulus_type!r} is not creatable from this "
+                "surface yet; media types are deferred to PR-11 — use "
+                "passage/caselet/table"
+            ),
+        )
+
+
+@router.get("/pyq-stimuli")
+def list_pyq_stimuli(
+    pyq_paper_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """List PYQ stimuli, filtered by paper (and optional reviewer_status),
+    ordered by display_order (nulls last) then created_at."""
+    supabase = get_supabase_admin()
+    q = (
+        supabase.table("pyq_stimuli")
+        .select("*", count="exact")
+        .order("display_order", desc=False, nullsfirst=False)
+        .order("created_at", desc=False)
+    )
+    if pyq_paper_id:
+        q = q.eq("pyq_paper_id", pyq_paper_id)
+    if reviewer_status:
+        q = q.eq("reviewer_status", reviewer_status)
+    res = q.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-stimuli")
+def create_pyq_stimulus(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Create a shared stimulus. Lands at reviewer_status='pending' (DB
+    default) — reviewer_status is never accepted here; promotion is the
+    review router's job. A bad section_id is backstopped by migration 223's
+    trigger (section must share the paper's exam_phase_id) → surfaced as 422."""
+    supabase = get_supabase_admin()
+    row = {k: v for k, v in body.payload.items() if k in _STIMULUS_FIELDS}
+    if not row.get("pyq_paper_id"):
+        raise HTTPException(status_code=422, detail="pyq_paper_id is required")
+    if row.get("stimulus_type") and row["stimulus_type"] not in _STIMULUS_TYPES:
+        raise HTTPException(status_code=422, detail=f"stimulus_type must be one of {_STIMULUS_TYPES}")
+    _reject_uncreatable_stimulus_type(row.get("stimulus_type"))
+    try:
+        inserted = supabase.table("pyq_stimuli").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        mapped = _constraint_violation_http_error(exc)
+        if mapped is not None:
+            raise mapped from exc
+        msg = str(exc)
+        if "exam_phase" in msg or "section" in msg:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        raise
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_stimulus.create",
+        entity_type="pyq_stimulus", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-stimuli/{stimulus_id}")
+def update_pyq_stimulus(
+    stimulus_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Curate a stimulus. pyq_paper_id (reparenting the paper) and
+    reviewer_status are NOT allowed here — lifecycle moves belong to the
+    review router. Note: migration 223's trigger downgrades a *verified*
+    stimulus back to 'needs_correction' when content_text/stimulus_type/
+    language/metadata change, so no extra code is needed for that demotion."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_stimuli", id=stimulus_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_stimulus not found")
+    # Exclude pyq_paper_id from curate — no reparenting via this endpoint.
+    patch = {k: v for k, v in body.payload.items() if k in (_STIMULUS_FIELDS - {"pyq_paper_id"})}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("stimulus_type") and patch["stimulus_type"] not in _STIMULUS_TYPES:
+        raise HTTPException(status_code=422, detail=f"stimulus_type must be one of {_STIMULUS_TYPES}")
+    _reject_uncreatable_stimulus_type(patch.get("stimulus_type"))
+    try:
+        updated = supabase.table("pyq_stimuli").update(patch).eq("id", stimulus_id).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        mapped = _constraint_violation_http_error(exc)
+        if mapped is not None:
+            raise mapped from exc
+        msg = str(exc)
+        if "exam_phase" in msg or "section" in msg:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        raise
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_stimulus.update",
+        entity_type="pyq_stimulus", entity_id=stimulus_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.delete("/pyq-stimuli/{stimulus_id}")
+def delete_pyq_stimulus(
+    stimulus_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Hard-delete a stimulus (its question links cascade-delete via FK).
+
+    Content-integrity guard (fix #3): a stimulus may NOT be deleted while any
+    question it provides context to is terminally 'verified' — that would leave
+    a verified question whose reviewed passage/table context is gone. Move those
+    questions to needs_correction/rejected first. Deletion is allowed when no
+    linked question is verified."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_stimuli", id=stimulus_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_stimulus not found")
+
+    # Resolve the links this delete would cascade, and the questions they back.
+    links = _safe_list(supabase, "pyq_question_stimuli", stimulus_id=stimulus_id)
+    linked_question_ids = [l.get("question_id") for l in links if l.get("question_id")]
+    verified_question_ids: list[str] = []
+    if linked_question_ids:
+        q_rows = (
+            supabase.table("pyq_questions")
+            .select("id, reviewer_status")
+            .in_("id", linked_question_ids)
+            .execute()
+            .data
+            or []
+        )
+        verified_question_ids = [
+            r.get("id") for r in q_rows if r.get("reviewer_status") == "verified"
+        ]
+    if verified_question_ids:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"cannot delete a stimulus while {len(verified_question_ids)} linked "
+                "question(s) are verified; move those questions to "
+                "needs_correction/rejected first"
+            ),
+        )
+
+    supabase.table("pyq_stimuli").delete().eq("id", stimulus_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_stimulus.delete",
+        entity_type="pyq_stimulus", entity_id=stimulus_id,
+        new_value={
+            "reason": reason,
+            "previous": existing,
+            "cascade_deleted_link_count": len(links),
+            "linked_question_count": len(linked_question_ids),
+        },
+    )
+    return {
+        "ok": True,
+        "audit_id": audit_id,
+        "deleted": existing,
+        "cascade_deleted_link_count": len(links),
+    }
+
+
+@router.get("/pyq-question-stimuli")
+def list_pyq_question_stimuli(
+    question_id: str | None = Query(default=None),
+    stimulus_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """List question↔stimulus links, filtered by question_id and/or
+    stimulus_id (at least one required). Ordered by display_order (nulls
+    last) then created_at."""
+    if not question_id and not stimulus_id:
+        raise HTTPException(status_code=422, detail="question_id or stimulus_id is required")
+    supabase = get_supabase_admin()
+    q = (
+        supabase.table("pyq_question_stimuli")
+        .select("*", count="exact")
+        .order("display_order", desc=False, nullsfirst=False)
+        .order("created_at", desc=False)
+    )
+    if question_id:
+        q = q.eq("question_id", question_id)
+    if stimulus_id:
+        q = q.eq("stimulus_id", stimulus_id)
+    res = q.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-question-stimuli")
+def create_pyq_question_stimulus(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Link a question to a stimulus. Lands at reviewer_status='pending'
+    (DB default). Migration 223's trigger enforces both sides share a paper
+    (and section, when both set) → surfaced as 422 on violation."""
+    supabase = get_supabase_admin()
+    row = {k: v for k, v in body.payload.items() if k in _LINK_FIELDS}
+    if not row.get("question_id") or not row.get("stimulus_id"):
+        raise HTTPException(status_code=422, detail="question_id and stimulus_id are required")
+    try:
+        inserted = supabase.table("pyq_question_stimuli").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        mapped = _constraint_violation_http_error(exc)
+        if mapped is not None:
+            raise mapped from exc
+        msg = str(exc)
+        if "exam_phase" in msg or "section" in msg or "paper" in msg:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        raise
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_question_stimulus.create",
+        entity_type="pyq_question_stimulus", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-question-stimuli/{link_id}")
+def update_pyq_question_stimulus(
+    link_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Curate a link's display_order only. Repointing (question_id/
+    stimulus_id) and reviewer_status are NOT allowed here — a repoint would
+    reset the link's own review state via the DB trigger and belongs to a
+    delete+create, and lifecycle moves belong to the review router."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_stimuli", id=link_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_question_stimulus not found")
+    patch = {k: v for k, v in body.payload.items() if k == "display_order"}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    try:
+        updated = supabase.table("pyq_question_stimuli").update(patch).eq("id", link_id).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        mapped = _constraint_violation_http_error(exc)
+        if mapped is not None:
+            raise mapped from exc
+        raise
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_question_stimulus.update",
+        entity_type="pyq_question_stimulus", entity_id=link_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.delete("/pyq-question-stimuli/{link_id}")
+def delete_pyq_question_stimulus(
+    link_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Delete a question↔stimulus link.
+
+    Content-integrity guard (fix #3): a link may NOT be deleted while the
+    question it provides context to is terminally 'verified' — dropping the
+    passage/table association a verified question was reviewed against would
+    orphan that reviewed evidence. Move the question to needs_correction/
+    rejected first. Deletion is allowed when the question is
+    pending/needs_correction/rejected."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_stimuli", id=link_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="pyq_question_stimulus not found")
+
+    question_id = existing.get("question_id")
+    question = _safe_select(supabase, "pyq_questions", id=question_id) if question_id else None
+    if question and question.get("reviewer_status") == "verified":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "cannot delete a link whose question is verified; move the "
+                "question to needs_correction/rejected first"
+            ),
+        )
+
+    supabase.table("pyq_question_stimuli").delete().eq("id", link_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_question_stimulus.delete",
+        entity_type="pyq_question_stimulus", entity_id=link_id,
+        new_value={"reason": reason, "previous": existing, "question_id": question_id},
+    )
+    return {"ok": True, "audit_id": audit_id, "deleted": existing}
 
 
 # ════════════════════════════════════════════════════════════════════════

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import BeforeAfterDiff from "./BeforeAfterDiff";
+import SourceContext from "./SourceContext";
 import { wordCount as countWords } from "./requiredWords";
 import { clearDraft, loadDraft, saveDraft } from "./autosave";
 
@@ -28,6 +29,8 @@ import { clearDraft, loadDraft, saveDraft } from "./autosave";
  */
 export default function RewriteEditor({
   previousAnswer,
+  sourceText,
+  exerciseType,
   minWords,
   maxWords,
   sessionId,
@@ -70,6 +73,7 @@ export default function RewriteEditor({
       data-testid="rewrite-editor"
       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
     >
+      <SourceContext sourceText={sourceText} exerciseType={exerciseType} />
       <textarea
         data-testid="rewrite-input"
         aria-label="Rewrite answer"

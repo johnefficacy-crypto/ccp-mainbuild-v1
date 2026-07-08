@@ -7,6 +7,26 @@ describe("RewriteEditor", () => {
     expect(screen.getByTestId("rewrite-input")).toHaveValue("the cat sat");
   });
 
+  test("shows read-only source context above the editor while rewriting", () => {
+    render(
+      <RewriteEditor
+        previousAnswer="the cat sat"
+        sourceText="He go to school."
+        exerciseType="sentence_correction"
+        onSubmit={() => {}}
+      />
+    );
+    const region = screen.getByTestId("source-context");
+    expect(region).toBeInTheDocument();
+    expect(region).toHaveAttribute("data-readonly", "true");
+    expect(screen.getByTestId("source-context-text")).toHaveTextContent("He go to school.");
+  });
+
+  test("omits source context when no sourceText is given", () => {
+    render(<RewriteEditor previousAnswer="the cat sat" onSubmit={() => {}} />);
+    expect(screen.queryByTestId("source-context")).not.toBeInTheDocument();
+  });
+
   test("editing updates the embedded diff with emerald styling", () => {
     render(<RewriteEditor previousAnswer="the cat sat" onSubmit={() => {}} />);
     fireEvent.change(screen.getByTestId("rewrite-input"), {
