@@ -642,19 +642,27 @@ const EDIT_EXCLUDED_FIELDS = {
   "pyq-sources": new Set(["trust_status", "source_id"]),
 };
 
-// Fields excluded from the *bulk* edit field picker on top of
-// EDIT_EXCLUDED_FIELDS above. name/cycle_name/phase_name/slug are
-// identity-ish columns — setting the same value across a whole selected
-// batch is never the intent of a bulk edit, and for the unique/compound-key
-// ones (slug, cycle_name, phase_name) it would just fail past the first row.
-// Mirrors the backend's _BULK_EDIT_CONFIG allowed-field sets exactly.
+// Fields excluded from the *bulk* edit field picker. Mirrors the backend's
+// _BULK_EDIT_PROTECTED set exactly (the backend is the integrity boundary; this
+// is only the UX affordance so the picker never offers a field /bulk-update will
+// reject). Two exclusion classes:
+//   - identity/dedup: name/slug/cycle_name/phase_name/phase_slug (unique or
+//     compound keys — a batch-wide set is never the intent and would fail past
+//     row 1), and pyq_sources.source_id (external dedup key).
+//   - reference/scope/hierarchy FKs: exam_family_id, conducting_organization_id,
+//     exam_cycle_id, subject_id, parent_topic_id, level, and the owning exam_id.
+//     bulk_update() is a generic direct UPDATE and does NOT run the FK-existence /
+//     scope-consistency / topic-hierarchy validators the single-row path does, so
+//     reassigning these in bulk could land invalid combinations. FK/scope changes
+//     go through the single-row edit form where that validation lives.
 const BULK_EDIT_EXCLUDED_FIELDS = {
   "exam-families": new Set(["slug", "name"]),
-  exams: new Set(["name"]),
+  exams: new Set(["name", "slug", "exam_family_id", "conducting_organization_id"]),
   "exam-cycles": new Set(["exam_id", "cycle_name"]),
-  "exam-phases": new Set(["exam_id", "phase_name", "phase_slug"]),
+  "exam-phases": new Set(["exam_id", "phase_name", "phase_slug", "exam_cycle_id"]),
   subjects: new Set(["slug", "name"]),
-  topics: new Set(["slug", "name"]),
+  topics: new Set(["slug", "name", "subject_id", "parent_topic_id", "level"]),
+  "pyq-sources": new Set(["source_id", "exam_id"]),
 };
 
 function bulkEditableFields(entityKey, cfg) {

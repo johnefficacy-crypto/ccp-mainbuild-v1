@@ -4348,40 +4348,61 @@ def bulk_import(
 # (pyq-papers, pyq-questions, ...) stay out of scope; those go through the
 # review queue, not a bulk field-set.
 #
-# Unique/identity columns (slug, the owning exam_id on a cycle/phase) are
-# excluded from the allowed set: setting the same value across many
-# selected rows is never the intent of a bulk edit and would just fail
-# past the first row on a unique constraint.
+# Columns that must NEVER be bulk-editable, per entity. This is the integrity
+# boundary for /bulk-update — NOT the frontend field picker, which is only a UX
+# affordance. bulk_update() is a generic direct-table UPDATE and does NOT run the
+# entity-specific FK-existence / scope-consistency / hierarchy validators that the
+# single-row create/PATCH paths do (e.g. phase↔cycle belongs-to-exam, topic
+# parent is a level=topic in the same subject, pyq_source belongs to exam). So a
+# reference/scope/hierarchy column set in one bulk call across many rows could
+# land invalid combinations the single-row path would have rejected. Rather than
+# duplicate every validator here, we keep bulk-edit to scalar/enum/flag columns
+# and route all FK/scope/hierarchy reassignment through the single-row form where
+# the validation lives. Also excludes identity/dedup columns:
+#   - slug / cycle_name / phase_name / phase_slug — unique/compound keys; setting
+#     one value across a batch fails past row 1 anyway.
+#   - name — never a meaningful batch-wide set.
+#   - pyq_sources.source_id — external dedup/provenance key (same rationale the
+#     single-row edit form uses to hide it; UI hiding is not an integrity boundary).
+#   - trust_status — pipeline-owned (matches the single-row exclusion).
+_BULK_EDIT_PROTECTED: dict[str, set[str]] = {
+    "exam-families": {"slug", "name"},
+    # exam_family_id / conducting_organization_id are FKs with no existence check here.
+    "exams": {"name", "slug", "exam_family_id", "conducting_organization_id"},
+    "exam-cycles": {"exam_id", "cycle_name"},
+    # exam_cycle_id is the scope FK validated (phase↔cycle↔exam) only on the single-row path.
+    "exam-phases": {"exam_id", "phase_name", "phase_slug", "exam_cycle_id"},
+    "subjects": {"slug", "name"},
+    # subject_id / parent_topic_id are FKs; level ties into the "microtopic/concept
+    # needs a level=topic parent in the same subject" rule enforced only single-row.
+    "topics": {"slug", "name", "subject_id", "parent_topic_id", "level"},
+    "pyq-sources": {"trust_status", "source_id", "exam_id"},
+}
+
 _MAX_BULK_IDS = 500
 
 _BULK_EDIT_CONFIG: dict[str, dict[str, Any]] = {
-    # name/slug/cycle_name/phase_name are identity-ish columns — setting the
-    # same value across a whole selected batch is never the intent of a bulk
-    # edit (and, for slug/cycle_name/phase_name, would just fail past row 1
-    # on a unique/compound-key constraint). Kept out of the allowed set the
-    # same way the frontend keeps them out of the bulk-edit field picker.
-    "exam-families": {"table": "exam_families", "allowed": _FAMILY_FIELDS - {"slug", "name"}, "enums": {}},
+    "exam-families": {"table": "exam_families", "allowed": _FAMILY_FIELDS - _BULK_EDIT_PROTECTED["exam-families"], "enums": {}},
     "exams": {
         "table": "exams",
-        "allowed": _EXAM_FIELDS - {"name"},
+        "allowed": _EXAM_FIELDS - _BULK_EDIT_PROTECTED["exams"],
         "enums": {"exam_type": _EXAM_TYPES, "management_mode": _EXAM_MGMT_MODES, "cadence": _EXAM_CADENCES},
     },
     "exam-cycles": {
         "table": "exam_cycles",
-        "allowed": _CYCLE_FIELDS - {"exam_id", "cycle_name"},
+        "allowed": _CYCLE_FIELDS - _BULK_EDIT_PROTECTED["exam-cycles"],
         "enums": {"status": _CYCLE_STATUSES},
     },
     "exam-phases": {
         "table": "exam_phases",
-        "allowed": _PHASE_FIELDS - {"exam_id", "phase_name", "phase_slug"},
+        "allowed": _PHASE_FIELDS - _BULK_EDIT_PROTECTED["exam-phases"],
         "enums": {"status": _PHASE_STATUSES, "phase_kind": _PHASE_KINDS},
     },
-    "subjects": {"table": "subjects", "allowed": _SUBJECT_FIELDS - {"slug", "name"}, "enums": {}},
-    "topics": {"table": "topics", "allowed": _TOPIC_FIELDS - {"slug", "name"}, "enums": {"level": _TOPIC_LEVELS}},
+    "subjects": {"table": "subjects", "allowed": _SUBJECT_FIELDS - _BULK_EDIT_PROTECTED["subjects"], "enums": {}},
+    "topics": {"table": "topics", "allowed": _TOPIC_FIELDS - _BULK_EDIT_PROTECTED["topics"], "enums": {}},
     "pyq-sources": {
         "table": "pyq_sources",
-        # trust_status is pipeline-owned — same exclusion as the single-row edit form.
-        "allowed": _PYQ_SOURCE_FIELDS - {"trust_status"},
+        "allowed": _PYQ_SOURCE_FIELDS - _BULK_EDIT_PROTECTED["pyq-sources"],
         "enums": {"source_type": _PYQ_SOURCE_TYPES},
     },
 }

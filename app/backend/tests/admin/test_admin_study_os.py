@@ -2727,6 +2727,124 @@ def test_cms_bulk_update_rejects_unsupported_entity():
     assert r.status_code == 422
 
 
+# ─── Bulk-update protected-field enforcement (integrity boundary lives on the
+#     backend, not the frontend picker) ────────────────────────────────────────
+
+
+def test_cms_bulk_update_rejects_pyq_source_source_id():
+    # source_id is the external dedup/provenance key. The single-row edit form
+    # hides it, but UI hiding is not an integrity boundary — the bulk endpoint
+    # must reject it too so a direct API caller can't rewrite the dedup key
+    # across many rows. A patch of source_id ALONE has no allowed field → 422.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("pyq_sources", []).append(
+        {"id": "src-1", "exam_id": "exam-1", "source_id": "orig-key", "trust_status": "pending"}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "attempt to rewrite the dedup key in bulk",
+            "entity": "pyq-sources",
+            "ids": ["src-1"],
+            "patch": {"source_id": "new-dedup-key"},
+        },
+    )
+    assert r.status_code == 422
+    assert sb.db["pyq_sources"][0]["source_id"] == "orig-key"
+
+
+def test_cms_bulk_update_ignores_source_id_when_mixed_with_editable_field():
+    # A patch mixing a protected field (source_id) with an editable one
+    # (source_type) applies only the editable field; source_id is never written.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("pyq_sources", []).append(
+        {"id": "src-1", "exam_id": "exam-1", "source_id": "orig-key", "source_type": "official", "trust_status": "pending"}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "sneak source_id in alongside a legit field",
+            "entity": "pyq-sources",
+            "ids": ["src-1"],
+            "patch": {"source_id": "new-dedup-key", "source_type": "coaching"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    src = sb.db["pyq_sources"][0]
+    assert src["source_id"] == "orig-key"        # protected — untouched
+    assert src["source_type"] == "coaching"      # editable — applied
+
+
+def test_cms_bulk_update_rejects_phase_cycle_reassignment():
+    # exam_cycle_id is the scope FK validated (phase↔cycle↔exam) only on the
+    # single-row path. Bulk-update must not accept it (no validator here).
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("exam_phases", []).append(
+        {"id": "ph-1", "exam_id": "exam-1", "phase_name": "P1", "phase_slug": "p1", "exam_cycle_id": None}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "reassign phase scope in bulk without validation",
+            "entity": "exam-phases",
+            "ids": ["ph-1"],
+            "patch": {"exam_cycle_id": "some-other-cycle"},
+        },
+    )
+    assert r.status_code == 422
+    assert sb.db["exam_phases"][0]["exam_cycle_id"] is None
+
+
+def test_cms_bulk_update_rejects_topic_hierarchy_fields():
+    # subject_id / parent_topic_id / level tie into the topic-hierarchy rule
+    # enforced only on the single-row path — never bulk-editable.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("topics", []).append(
+        {"id": "t-1", "subject_id": "subj-1", "slug": "t", "name": "T", "level": "topic"}
+    )
+    app = _cms_app(sb)
+    for field, value in (("subject_id", "other-subj"), ("parent_topic_id", "other-topic"), ("level", "microtopic")):
+        r = TestClient(app).post(
+            "/api/admin/exam-intelligence-cms/bulk-update",
+            json={
+                "reason": f"reassign topic {field} in bulk without validation",
+                "entity": "topics",
+                "ids": ["t-1"],
+                "patch": {field: value},
+            },
+        )
+        assert r.status_code == 422, f"{field} should be rejected: {r.text}"
+    t = sb.db["topics"][0]
+    assert t["subject_id"] == "subj-1" and t["level"] == "topic"
+
+
+def test_cms_bulk_update_rejects_exam_reference_fields():
+    # exam_family_id / conducting_organization_id are FKs with no existence
+    # check in bulk_update — reassignment goes through the single-row form.
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    for field in ("exam_family_id", "conducting_organization_id"):
+        r = TestClient(app).post(
+            "/api/admin/exam-intelligence-cms/bulk-update",
+            json={
+                "reason": f"reassign exam {field} in bulk without existence check",
+                "entity": "exams",
+                "ids": ["exam-1"],
+                "patch": {field: "nonexistent-ref"},
+            },
+        )
+        assert r.status_code == 422, f"{field} should be rejected: {r.text}"
+    assert sb.db["exams"][0].get("exam_family_id") == "fam-1"
+
+
 def test_cms_bulk_deactivate_retires_many_rows():
     sb = ExtSBStub()
     _seed_two_exams(sb)

@@ -161,14 +161,21 @@ test("retire selected rows posts entity/ids to /bulk-deactivate", async () => {
   ));
 });
 
-test("bulk edit field picker excludes 'name' (identity column, not bulk-settable)", async () => {
+test("bulk edit field picker excludes identity + reference/scope fields (backend rejects them)", async () => {
   renderCms();
   await screen.findByTestId(`cms-select-row-${EXAMS[0].id}`);
   fireEvent.click(screen.getByTestId(`cms-select-row-${EXAMS[0].id}`));
   fireEvent.click(screen.getByTestId("cms-bulk-edit-toggle"));
   const fieldSelect = await screen.findByTestId("cms-bulk-edit-field-select");
-  const labels = Array.from(fieldSelect.options).map((o) => o.textContent);
-  expect(labels.some((l) => l === "name")).toBe(false);
+  const optionValues = Array.from(fieldSelect.options).map((o) => o.value);
+  // identity column
+  expect(optionValues).not.toContain("name");
+  // reference FKs — bulk_update has no existence check, so these are single-row-only
+  expect(optionValues).not.toContain("exam_family_id");
+  expect(optionValues).not.toContain("conducting_organization_id");
+  // a legitimate scalar/enum IS offered
+  expect(optionValues).toContain("cadence");
+  expect(optionValues).toContain("management_mode");
 });
 
 test("bulk toolbar is not shown for entities without bulk-update/bulk-deactivate backend support", async () => {
