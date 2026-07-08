@@ -84,7 +84,13 @@ def _record_semantic_shadow_run(
     error_code: str | None = None,
     error_message: str | None = None,
 ) -> None:
-    """Best-effort SHADOW telemetry. Never affects lifecycle/mastery completion."""
+    """Best-effort SHADOW telemetry. Never affects lifecycle/mastery completion.
+
+    Provider / model / prompt_version / confidence / token / cost fields are read
+    off the semantic result via getattr (present on SemanticShadowResult, absent
+    on a plain deterministic LanguageResult) so no raw text is ever persisted —
+    only the input hash + summary telemetry.
+    """
     if not claim.get("evaluation_id") or not claim.get("unit_version_id"):
         logger.warning(
             "semantic shadow telemetry skipped for job %s: missing evaluation/version id",
@@ -93,6 +99,9 @@ def _record_semantic_shadow_run(
         return
 
     result_json, semantic_issue_count = _semantic_shadow_result_summary(semantic_result)
+
+    def _sem(attr: str) -> Any:
+        return getattr(semantic_result, attr, None) if semantic_result is not None else None
 
     try:
         sb.rpc("ewp_record_language_evaluator_run", {
@@ -106,13 +115,13 @@ def _record_semantic_shadow_run(
             "p_deterministic_issue_count": len(deterministic_issues),
             "p_adapter_version": adapter_version,
             "p_status": status,
-            "p_provider": None,
-            "p_provider_model": None,
-            "p_prompt_version": None,
+            "p_provider": _sem("provider"),
+            "p_provider_model": _sem("provider_model"),
+            "p_prompt_version": _sem("prompt_version"),
             "p_semantic_source_comparison": (
                 semantic_result.source_comparison if semantic_result is not None else None
             ),
-            "p_semantic_confidence": None,
+            "p_semantic_confidence": _sem("confidence"),
             "p_semantic_needs_human_review": (
                 semantic_result.needs_human_review if semantic_result is not None else None
             ),
@@ -121,10 +130,10 @@ def _record_semantic_shadow_run(
             "p_error_code": error_code,
             "p_error_message": error_message,
             "p_latency_ms": latency_ms,
-            "p_input_tokens": None,
-            "p_output_tokens": None,
-            "p_total_tokens": None,
-            "p_estimated_cost_usd": None,
+            "p_input_tokens": _sem("input_tokens"),
+            "p_output_tokens": _sem("output_tokens"),
+            "p_total_tokens": _sem("total_tokens"),
+            "p_estimated_cost_usd": _sem("estimated_cost_usd"),
             "p_metadata": {
                 "job_id": str(claim.get("job_id")),
                 "exercise_type": claim.get("exercise_type"),
@@ -163,15 +172,21 @@ def _run_semantic_shadow_probe(
         )
         latency_ms = int((time.monotonic() - started) * 1000)
         adapter_version = shadow_result.evaluator_version or adapter_version
+        # The adapter reports its own telemetry status (succeeded / malformed /
+        # refusal / low_confidence / timeout / provider_error / skipped). A plain
+        # LanguageResult (mock/stub) has no `status` attr -> default succeeded.
+        status = getattr(shadow_result, "status", "succeeded")
         _record_semantic_shadow_run(
             sb,
             claim=claim,
             deterministic_result=deterministic_result,
             deterministic_issues=deterministic_issues,
             adapter_version=adapter_version,
-            status="succeeded",
+            status=status,
             latency_ms=latency_ms,
             semantic_result=shadow_result,
+            error_code=getattr(shadow_result, "error_code", None),
+            error_message=getattr(shadow_result, "error_message", None),
         )
     except Exception as exc:  # noqa: BLE001 - shadow must not affect primary lifecycle
         latency_ms = int((time.monotonic() - started) * 1000)
