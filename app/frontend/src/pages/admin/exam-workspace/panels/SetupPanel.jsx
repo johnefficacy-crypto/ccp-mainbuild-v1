@@ -7,6 +7,7 @@ import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleF
 import PhaseForm, { PHASE_KIND_OPTIONS } from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
 import CycleActivationChecklist from "./CycleActivationChecklist";
 import PhaseTimeline from "./PhaseTimeline";
+import { humanizeToken } from "../../../../features/admin/exam-intelligence/operatorChrome";
 
 // exam_phases.phase_slug is a required column with no server-side default —
 // it must be sent explicitly (see _PHASE_FIELDS, admin_exam_intel_cms.py:433).
@@ -804,7 +805,7 @@ export default function SetupPanel({ action = null }) {
                   style={{ background: "var(--color-background-warning, #fff3cd)", borderColor: "var(--color-border-warning, #f0c36d)" }}
                 >
                   The phase was created
-                  {ptError.phaseId && <> (id: <code data-testid="pt-error-phase-id">{ptError.phaseId}</code>)</>},
+                  {ptError.phaseId && <> (id: <code data-testid="pt-error-phase-id">{humanizeToken(ptError.phaseId)}</code>)</>},
                   but its audit record failed to write. Do NOT re-promote — it will conflict.
                   Refresh, confirm the phase is present, and reconcile the missing audit record.
                 </div>

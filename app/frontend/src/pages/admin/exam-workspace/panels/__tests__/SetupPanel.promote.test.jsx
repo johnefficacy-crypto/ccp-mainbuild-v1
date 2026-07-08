@@ -259,7 +259,11 @@ test("500 audit_write_failed displays visible warning including phase_id", async
   const errEl = screen.getByTestId("pt-error-audit-failed");
   expect(errEl.textContent).toMatch(/phase was created/i);
   expect(errEl.textContent).toMatch(/do not re-promote/i);
-  expect(screen.getByTestId("pt-error-phase-id").textContent).toBe("created-phase-abc");
+  // I2: raw id must not leak verbatim — operatorChrome.humanizeToken humanizes
+  // non-UUID tokens (capitalizes first letter); UUID-shaped ids are truncated
+  // to "${first8}…" instead (see ReviewQueueTable's I1 regression test).
+  expect(screen.getByTestId("pt-error-phase-id").textContent).toBe("Created-phase-abc");
+  expect(screen.getByTestId("pt-error-phase-id").textContent).not.toBe("created-phase-abc");
 });
 
 // ── 8. audit_write_failed does NOT auto-retry / no retry button ───────────────
