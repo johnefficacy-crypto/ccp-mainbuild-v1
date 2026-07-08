@@ -6,6 +6,17 @@ import ExamCycleTimeline from "../../features/study/components/ExamCycleTimeline
 import ExamJourneyCard from "../../features/study/components/ExamJourneyCard";
 import PlanChangeLogCard from "../../features/study/components/PlanChangeLogCard";
 import HowItWorksHeaderButton from "../../shared/components/HowItWorksHeaderButton";
+import LaunchWritingPracticeButton from "../../features/study/english-practice/LaunchWritingPracticeButton";
+
+// A planner task whose typed launch target is an English writing session
+// (mission_control stamps launch_type === "english_writing_session"). Such a
+// task launches through the server-owned launch endpoint, not the generic
+// "open plan" CTA.
+const LAUNCH_ENGLISH_WRITING_SESSION = "english_writing_session";
+
+function isWritingTask(task) {
+  return task?.launch_type === LAUNCH_ENGLISH_WRITING_SESSION;
+}
 
 const NUDGE_SEVERITY_CLASS = {
   high: "border-[#E8B9C1] bg-[#FCEBEC] text-[#7A1D2C]",
@@ -266,14 +277,20 @@ function NextActionCard({ task, plan, loading, error, onRetry }) {
       title={task ? task.title || task.topic || "Untitled task" : "Nothing queued"}
       right={
         task ? (
-          <Link
-            to="/app/study/plan"
-            className="btn btn-primary"
-            data-testid="study-home-next-action-cta"
-          >
-            <Play className="h-4 w-4" />
-            Start
-          </Link>
+          isWritingTask(task) ? (
+            // Writing/English planner task: launch through the server-owned
+            // endpoint and navigate to the returned practice route.
+            <LaunchWritingPracticeButton task={task} />
+          ) : (
+            <Link
+              to="/app/study/plan"
+              className="btn btn-primary"
+              data-testid="study-home-next-action-cta"
+            >
+              <Play className="h-4 w-4" />
+              Start
+            </Link>
+          )
         ) : null
       }
     >
