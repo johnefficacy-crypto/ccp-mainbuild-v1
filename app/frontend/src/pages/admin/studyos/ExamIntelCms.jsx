@@ -149,7 +149,7 @@ const refPaper = (filters) => ({ endpoint: "pyq-papers", labelKey: "paper_code",
 const refQuestion = (filters) => ({ endpoint: "pyq-questions", labelKey: "question_text", secondaryKey: "question_number", filters });
 const refSection = (filters) => ({ endpoint: "exam-phase-sections", labelKey: "section_label", secondaryKey: "subject_id", filters });
 
-// exams.cadence CHECK constraint (migration 172, widened by migration 236 to
+// exams.cadence CHECK constraint (migration 172, widened by migration 237 to
 // add 'biannual' for exams that run twice a year).
 const EXAM_CADENCES = ["annual", "biannual", "recurring", "irregular", "one_off", "unknown"];
 const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
