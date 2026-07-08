@@ -38,6 +38,7 @@ class _Query:
         self._pending_upsert: Any = None
         self._on_conflict: list[str] | None = None
         self._ignore_duplicates = False
+        self._single = False  # q.maybe_single() collapses execute() to one row / None
         self.not_: Any = _NotProxy(self)  # q.not_.in_(...) negates the next filter
 
     def select(self, *args, **kwargs):
@@ -83,6 +84,16 @@ class _Query:
     def limit(self, n):
         self._limit = n
         return self
+
+    def maybe_single(self):
+        # PostgREST `.maybe_single()`: execute() yields a single row (or None)
+        # instead of a list. `.single()` behaves the same for the stub's purposes.
+        self._single = True
+        self._limit = 1
+        return self
+
+    def single(self):
+        return self.maybe_single()
 
     def or_(self, *args, **kwargs):
         # Faithfully model PostgREST `.or_("a.op.v,b.op.v")`: the row must
@@ -264,6 +275,8 @@ class _Query:
             )
         if self._limit is not None:
             rows = rows[: self._limit]
+        if self._single:
+            return _Exec(rows[0] if rows else None)
         return _Exec(rows)
 
 

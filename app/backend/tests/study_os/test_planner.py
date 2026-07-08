@@ -569,3 +569,60 @@ def test_load_prerequisites_consumes_only_locked_edges():
     # Non-locked edges leave no trace.
     assert "t3" not in prereqs
     assert "t4" not in prereqs
+
+
+# ─── PYQ v2 PR-9: typed PYQ-practice launch stamp ─────────────────────────
+def test_pyq_practice_launch_stamped_on_practice_and_revision_tasks():
+    """retrieval_practice and revision tasks on a real topic+exam carry the
+    typed PYQ-practice launch stamp; concept_learning tasks do not."""
+    sb = SBStub(_seed())
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+
+    tasks_by_topic = {t["topic_id"]: t for t in sb.db["study_tasks"]}
+    exam_id = "exam-1"
+
+    # t1: mastery 80 → revision
+    revision = tasks_by_topic["t1"]
+    assert revision["task_type"] == "revision"
+    assert revision["launch_type"] == "pyq_practice"
+    assert revision["launch_entity_id"] == "t1"
+    assert revision["launch_context"] == {
+        "mode": "topic", "target_id": "t1", "exam_id": exam_id,
+    }
+    assert revision["why_this_task"]["launch_target"] == "pyq_practice"
+
+    # t3: mastery 50 + error pattern → retrieval_practice
+    practice = tasks_by_topic["t3"]
+    assert practice["task_type"] == "retrieval_practice"
+    assert practice["launch_type"] == "pyq_practice"
+    assert practice["launch_entity_id"] == "t3"
+    assert practice["launch_context"] == {
+        "mode": "topic", "target_id": "t3", "exam_id": exam_id,
+    }
+    assert practice["why_this_task"]["launch_target"] == "pyq_practice"
+
+    # t2: mastery 30 → concept_learning → NO launch stamp
+    concept = tasks_by_topic["t2"]
+    assert concept["task_type"] == "concept_learning"
+    assert concept.get("launch_type") is None
+    assert concept.get("launch_entity_id") is None
+    assert concept.get("launch_context") is None
+    assert "launch_target" not in concept["why_this_task"]
+
+
+def test_pyq_practice_launch_columns_persist_on_study_tasks():
+    """The launch columns actually persist onto the study_tasks rows."""
+    sb = SBStub(_seed())
+    out = generate_plan(sb, "u-1")
+    assert out["generated"] is True
+
+    stamped = [t for t in sb.db["study_tasks"] if t.get("launch_type")]
+    # At least the revision (t1) and retrieval_practice (t3) tasks are stamped.
+    assert stamped, "no study_tasks row carried a launch stamp"
+    for t in stamped:
+        assert t["launch_type"] == "pyq_practice"
+        assert t["launch_entity_id"] == t["topic_id"]
+        assert t["launch_context"]["mode"] == "topic"
+        assert t["launch_context"]["target_id"] == t["topic_id"]
+        assert t["launch_context"]["exam_id"] == "exam-1"

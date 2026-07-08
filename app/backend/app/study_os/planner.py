@@ -44,6 +44,14 @@ logger = logging.getLogger("career_copilot.study_os.planner")
 
 PLANNER_VERSION = "planner_v1"
 
+# Typed launch target for practice/revision tasks (PYQ v2 PR-9). Kept as a
+# local string literal rather than importing from ``study_os.pyq_practice_launch``
+# to avoid a cross-lane import dependency; a shared constant can be unified later.
+LAUNCH_PYQ_PRACTICE = "pyq_practice"
+
+# task_type values whose plan tasks resolve to a PYQ topic-practice launch.
+_LAUNCH_STAMP_TASK_TYPES = {"retrieval_practice", "revision"}
+
 # preferred_task_size -> minutes per task block.
 _SIZE_MINUTES = {"small": 25, "medium": 40, "large": 60}
 _DEFAULT_SIZE = "medium"
@@ -746,26 +754,40 @@ def _build_tasks(
             why["self_assessment_prior_mastery"] = prior_entry.get("prior_mastery")
             why["self_assessment_confidence"] = prior_entry.get("report_confidence")
             why["self_assessment_level"] = prior_entry.get("assessment_level") or "subject"
-        tasks.append(
-            {
-                "user_id": None,  # filled in by _persist
-                "title": f"{cov['topic_name']} · {label}",
-                "task_type": task_type,
-                "subject": cov.get("subject_name"),
-                "topic": cov["topic_name"],
-                "subject_id": cov.get("subject_id"),
-                "topic_id": cov["topic_id"],
+        task = {
+            "user_id": None,  # filled in by _persist
+            "title": f"{cov['topic_name']} · {label}",
+            "task_type": task_type,
+            "subject": cov.get("subject_name"),
+            "topic": cov["topic_name"],
+            "subject_id": cov.get("subject_id"),
+            "topic_id": cov["topic_id"],
+            "exam_id": exam_id,
+            "exam_phase_id": cov.get("exam_phase_id"),
+            "exam_topic_coverage_id": cov.get("coverage_id"),
+            "scheduled_date": today,
+            "day_label": "Today",
+            "status": "planned",
+            "planned_minutes": minutes,
+            "priority_score": cov["_priority_score"],
+            "why_this_task": why,
+        }
+        # PYQ v2 PR-9: a practice/revision task on a real topic+exam resolves to
+        # a typed PYQ topic-practice launch. Stamp the launch columns
+        # (migration 205) so the client can open the right target deterministically.
+        # Other task types (e.g. concept_learning) or tasks missing topic/exam are
+        # left unstamped — launch columns stay absent, preserving prior behaviour.
+        topic_id = cov.get("topic_id")
+        if task_type in _LAUNCH_STAMP_TASK_TYPES and topic_id and exam_id:
+            task["launch_type"] = LAUNCH_PYQ_PRACTICE
+            task["launch_entity_id"] = topic_id
+            task["launch_context"] = {
+                "mode": "topic",
+                "target_id": topic_id,
                 "exam_id": exam_id,
-                "exam_phase_id": cov.get("exam_phase_id"),
-                "exam_topic_coverage_id": cov.get("coverage_id"),
-                "scheduled_date": today,
-                "day_label": "Today",
-                "status": "planned",
-                "planned_minutes": minutes,
-                "priority_score": cov["_priority_score"],
-                "why_this_task": why,
             }
-        )
+            why["launch_target"] = LAUNCH_PYQ_PRACTICE
+        tasks.append(task)
     return tasks
 
 

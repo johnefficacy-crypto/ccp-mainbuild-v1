@@ -92,6 +92,7 @@ from app.api.study_os import router as study_os_router
 from app.api.writing_practice import router as writing_practice_router
 from app.api.writing_practice import tasks_router as writing_practice_tasks_router
 from app.api.mock_engine import router as mock_engine_router
+from app.api.pyq_practice_launch import router as pyq_practice_launch_router
 from app.api.generated_mock import router as generated_mock_router
 from app.api.mock_attempt_events import router as mock_attempt_events_router
 from app.api.admin_mocks import router as admin_mocks_router
@@ -357,6 +358,7 @@ api.include_router(study_os_router)  # PR3 Study OS Mission Control — before c
 api.include_router(writing_practice_router)  # EWP-2 English Writing Practice deterministic runtime
 api.include_router(writing_practice_tasks_router)  # EWP-SP3 planner task -> writing-session launch
 api.include_router(mock_engine_router)          # PR1 Mock Engine: start→answer→submit→score
+api.include_router(pyq_practice_launch_router)  # PYQ-PR9 planner task -> PYQ practice launch
 api.include_router(generated_mock_router)        # A-PR3 generated-mock attempt start (D4 Option-B)
 api.include_router(mock_attempt_events_router)  # PR2b attempt events & telemetry
 api.include_router(admin_templates_router)      # PR2d mock template authoring

@@ -127,3 +127,37 @@ def test_detail_unmatched_topic_has_no_exam_signals():
     )
     assert out["reasoning"]["exam_signals"] == []
     assert not any(e["type"] == "exam_intelligence" for e in out["evidence"])
+
+
+def test_detail_emits_pyq_practice_launch_trace_row_when_stamped():
+    """A task whose persisted why_this_task carries launch_target=pyq_practice
+    gets one additive plan-layer reasoning_trace row for the launch."""
+    task = {
+        "id": "t-launch", "title": "Percentage · Retrieval practice",
+        "task_type": "retrieval_practice", "topic": "Percentage",
+        "status": "planned",
+        "why_this_task": {"launch_target": "pyq_practice"},
+    }
+    out = build_task_reasoning_detail(task)
+    launch_rows = [
+        r for r in out["reasoning_trace"]
+        if r.get("rule_key") == "pyq_practice_launch"
+    ]
+    assert len(launch_rows) == 1
+    row = launch_rows[0]
+    assert row["layer"] == "plan"
+    assert row["status"] == "live"
+    assert row["label"] == "Launches a PYQ practice set on this topic"
+
+
+def test_detail_no_launch_trace_row_without_stamp():
+    """No launch row when the task was not stamped."""
+    task = {
+        "id": "t-plain", "title": "Algebra · Concept learning",
+        "task_type": "concept_learning", "topic": "Algebra",
+        "status": "planned", "why_this_task": {},
+    }
+    out = build_task_reasoning_detail(task)
+    assert not any(
+        r.get("rule_key") == "pyq_practice_launch" for r in out["reasoning_trace"]
+    )
