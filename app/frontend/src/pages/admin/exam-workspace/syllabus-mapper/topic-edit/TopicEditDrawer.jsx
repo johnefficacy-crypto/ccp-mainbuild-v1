@@ -167,10 +167,10 @@ export default function TopicEditDrawer({ hook, onSaved }) {
 
               <hr className="border-gray-100" />
 
-              {/* M2: Alias management is only accessible from this mapper context (TopicEditDrawer
-                  inside SyllabusMapperPanel). There is no standalone alias management route —
-                  operators who need to manage aliases must open the topic drawer from the Syllabus
-                  Mapper panel within ExamWorkspace. */}
+              {/* M2: this drawer's alias editor is reached via a mapper proposal (TopicTreePanel
+                  onEditTopic). A standalone, pre-proposal path also exists: SyllabusTopicEditorPanel
+                  (mounted above the mapper in SyllabusMapperPanel) lets an operator pick a subject and
+                  topic directly and manage aliases without running a mapper proposal first. */}
               <TopicAliasesEditor
                 aliases={aliases}
                 canWrite={canAliasWrite}

@@ -196,6 +196,14 @@ const ENTITY_CYCLE_SCOPE = new Set([
   "pyq-papers",
 ]);
 
+// M4: entities whose list endpoint accepts exam_family_id as a query param.
+// subjects has no direct exam_family_id column — the backend resolves it via
+// the exam_topic_coverage -> topics -> subject_id path (see
+// admin_exam_intel_cms._subject_ids_for_exam_family). This is separate from
+// ENTITY_EXAM_SCOPE (which drives off the URL exam_id/cycle_id scope params);
+// the family filter below is an independent, entity-local control.
+const ENTITY_FAMILY_SCOPE = new Set(["subjects"]);
+
 // J1: per-entity status filter config — options derived from DB CHECK constraints.
 // See migrations 030/031/032/056; coverage uses COVERAGE_REVIEWER_STATUSES (migration 030).
 const ENTITY_STATUS_CONFIG = {
@@ -372,8 +380,11 @@ const ENTITY_CONFIG = {
     label: "Subjects",
     // M4: subject_id (the row's own UUID) is included in the table columns so operators can
     // reference it when setting up topic scoping fields. renderCellValue truncates UUIDs via
-    // humanizeToken — raw UUIDs never appear verbatim. Exam-family filtering is not yet
-    // implemented for the subjects entity; filter by subject_group or slug instead.
+    // humanizeToken — raw UUIDs never appear verbatim. The "Exam family" filter (rendered
+    // whenever ENTITY_FAMILY_SCOPE has this entity) scopes the list to subjects reachable
+    // from the selected family's exams via exam_topic_coverage -> topics -> subject_id
+    // (subjects has no direct exam_family_id column — see
+    // admin_exam_intel_cms._subject_ids_for_exam_family).
     fields: [
       { key: "slug", label: "slug", required: true },
       { key: "name", label: "name", required: true },
@@ -821,6 +832,9 @@ export default function AdminExamIntelCms() {
   // J1: search / filter / pagination state
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  // M4: exam-family filter, entity-local (only ENTITY_FAMILY_SCOPE entities use it).
+  const [familyFilter, setFamilyFilter] = useState("");
+  const [examFamilies, setExamFamilies] = useState([]);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(null);
   const [hasMore, setHasMore] = useState(false);
@@ -854,7 +868,7 @@ export default function AdminExamIntelCms() {
     (scopeExamId && (examScopeState !== "valid" || resolvedExamId !== scopeExamId)) ||
     (scopeExamId && scopeCycleId && (cycleScopeState !== "valid" || resolvedCycleId !== scopeCycleId));
 
-  async function load({ searchVal, filterVal, pageVal } = {}) {
+  async function load({ searchVal, filterVal, pageVal, familyVal } = {}) {
     const gen = ++loadGenRef.current;
     if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
@@ -870,6 +884,7 @@ export default function AdminExamIntelCms() {
     const effectiveSearch = searchVal !== undefined ? searchVal : search;
     const effectiveFilter = filterVal !== undefined ? filterVal : statusFilter;
     const effectivePage = pageVal !== undefined ? pageVal : page;
+    const effectiveFamily = familyVal !== undefined ? familyVal : familyFilter;
     const noOffset = ENTITY_NO_OFFSET.has(entity);
     const offset = noOffset ? 0 : (effectivePage - 1) * PAGE_SIZE;
     try {
@@ -891,6 +906,10 @@ export default function AdminExamIntelCms() {
       const statusCfg = ENTITY_STATUS_CONFIG[entity];
       if (effectiveFilter && statusCfg) {
         params.set(statusCfg.param, effectiveFilter);
+      }
+      // M4: exam-family filter, independent of the URL exam/cycle scope.
+      if (effectiveFamily && ENTITY_FAMILY_SCOPE.has(entity)) {
+        params.set("exam_family_id", effectiveFamily);
       }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
@@ -1167,10 +1186,11 @@ export default function AdminExamIntelCms() {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     setSearch("");
     setStatusFilter("");
+    setFamilyFilter("");
     setPage(1);
     setTotalCount(null);
     setHasMore(false);
-    load({ searchVal: "", filterVal: "", pageVal: 1 });
+    load({ searchVal: "", filterVal: "", pageVal: 1, familyVal: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
 
@@ -1229,6 +1249,24 @@ export default function AdminExamIntelCms() {
     return () => { cancelled = true; };
   }, [isAuthorized, scopeCycleId, scopeExamId]);
 
+  // M4: populate the exam-family picker once an ENTITY_FAMILY_SCOPE entity is
+  // selected (currently only subjects). Small, admin-only list — one page.
+  // async/await + try/catch (not raw .then chaining) so a mocked/unmocked
+  // api.get that resolves to a non-promise in tests can't throw here.
+  useEffect(() => {
+    if (!isAuthorized || !ENTITY_FAMILY_SCOPE.has(entity) || examFamilies.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get("/api/admin/exam-intelligence-cms/exam-families?limit=200");
+        if (!cancelled) setExamFamilies(r?.items || []);
+      } catch {
+        if (!cancelled) setExamFamilies([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthorized, entity, examFamilies.length]);
+
   function handleSearchChange(e) {
     const val = e.target.value;
     setSearch(val);
@@ -1245,6 +1283,14 @@ export default function AdminExamIntelCms() {
     setStatusFilter(val);
     setPage(1);
     load({ searchVal: search, filterVal: val, pageVal: 1 });
+  }
+
+  function handleFamilyChange(e) {
+    const val = e.target.value;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setFamilyFilter(val);
+    setPage(1);
+    load({ searchVal: search, filterVal: statusFilter, pageVal: 1, familyVal: val });
   }
 
   function handlePageChange(newPage) {
@@ -1396,7 +1442,7 @@ export default function AdminExamIntelCms() {
       </div>
 
       {/* J1: search + status filter; search only for entities with documented backend support */}
-      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity]) && (
+      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity] || ENTITY_FAMILY_SCOPE.has(entity)) && (
         <div className="flex gap-2 items-end flex-wrap">
           {ENTITY_SEARCH_PARAM[entity] && (
             <label>
@@ -1425,6 +1471,25 @@ export default function AdminExamIntelCms() {
                 <option value="">All statuses</option>
                 {ENTITY_STATUS_CONFIG[entity].options.map((s) => (
                   <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {/* M4: exam-family filter — subjects has no direct exam_family_id column;
+              the backend resolves membership via exam_topic_coverage -> topics ->
+              subject_id for every exam in the selected family. */}
+          {ENTITY_FAMILY_SCOPE.has(entity) && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">Exam family</span>
+              <select
+                value={familyFilter}
+                onChange={handleFamilyChange}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-family-filter"
+              >
+                <option value="">All families (unscoped)</option>
+                {examFamilies.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
                 ))}
               </select>
             </label>

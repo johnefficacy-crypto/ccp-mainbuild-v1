@@ -569,6 +569,112 @@ def test_policy_update_review_rejects_unknown_status():
     assert r.status_code == 422
 
 
+# ── F5: policy affects_* correction-request path ───────────────────────────
+# The affects_* flags stay immutable — this endpoint only records a disputed
+# request (reviewer_status -> needs_correction + admin_audit_logs entry).
+
+
+def test_policy_update_correction_request_records_audit_and_leaves_flags_unchanged():
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/pu1/review",
+        json={
+            "reviewer_status": "needs_correction",
+            "reviewer_notes": "affects_vacancy looks wrong for this cycle",
+            "disputed_flags": ["affects_vacancy"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["reviewer_status"] == "needs_correction"
+    # affects_* is never touched by this endpoint.
+    row = next(p for p in sb.db["exam_policy_updates"] if p["id"] == "pu1")
+    assert row["affects_plan"] is True
+    assert row["affects_vacancy"] is True
+    audit_rows = [
+        a for a in sb.db.get("admin_audit_logs", [])
+        if a["action"] == "exam_intel.review.policy_update.correction_requested"
+    ]
+    assert len(audit_rows) == 1
+    assert audit_rows[0]["entity_id"] == "pu1"
+    assert audit_rows[0]["new_value"]["disputed_flags"] == ["affects_vacancy"]
+    assert audit_rows[0]["new_value"]["reviewer_notes"] == "affects_vacancy looks wrong for this cycle"
+
+
+def test_policy_update_correction_request_rejects_unknown_flag():
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/pu1/review",
+        json={
+            "reviewer_status": "needs_correction",
+            "reviewer_notes": "not a real flag",
+            "disputed_flags": ["affects_bogus"],
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_policy_update_correction_request_requires_needs_correction_status():
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/pu1/review",
+        json={
+            "reviewer_status": "verified",
+            "reviewer_notes": "should be needs_correction instead",
+            "disputed_flags": ["affects_plan"],
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_policy_update_correction_request_requires_reason_of_at_least_8_chars():
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/pu1/review",
+        json={
+            "reviewer_status": "needs_correction",
+            "reviewer_notes": "short",
+            "disputed_flags": ["affects_plan"],
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_policy_update_correction_request_missing_row_returns_404():
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/no-such/review",
+        json={
+            "reviewer_status": "needs_correction",
+            "reviewer_notes": "disputing a flag on a missing row",
+            "disputed_flags": ["affects_plan"],
+        },
+    )
+    assert r.status_code == 404
+
+
+def test_policy_update_review_without_disputed_flags_writes_no_audit_row():
+    """Plain reviewer_status transitions (no disputed_flags) keep the existing
+    behaviour — no correction-request audit entry is written."""
+    sb = SBStub(_competition_seed())
+    client = TestClient(_build_app(sb))
+    r = client.patch(
+        "/api/admin/exam-intelligence/policy-updates/pu2/review",
+        json={"reviewer_status": "needs_correction", "reviewer_notes": "generic note"},
+    )
+    assert r.status_code == 200, r.text
+    audit_rows = [
+        a for a in sb.db.get("admin_audit_logs", [])
+        if a["action"] == "exam_intel.review.policy_update.correction_requested"
+    ]
+    assert audit_rows == []
+
+
 def test_competition_and_policy_blocked_for_non_admin():
     sb = SBStub(_competition_seed())
     client = TestClient(_build_app(sb, role="user"))

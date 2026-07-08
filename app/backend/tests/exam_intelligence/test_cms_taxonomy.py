@@ -685,6 +685,61 @@ def test_list_subjects_q_filter():
     assert slugs == ["reasoning"]
 
 
+# ── M4: subjects exam-family-scoped filtering ──────────────────────────────
+# subjects has no direct exam_family_id column; the endpoint resolves family
+# membership via exams(exam_family_id) -> exam_topic_coverage -> topics ->
+# distinct subject_id (mirrors the LOCKED J2-A coverage-path resolution for a
+# single exam, generalised across every exam in the family).
+
+
+def test_list_subjects_exam_family_filter_scopes_via_coverage():
+    sb = TaxSBStub({
+        **_seed(),
+        "exams": [
+            {"id": "e1", "exam_family_id": "fam-a"},
+            {"id": "e2", "exam_family_id": "fam-b"},
+        ],
+        # t1/t2 both belong to s1 (quant) per _seed(); only fam-a's exam (e1)
+        # has coverage, and only of t1.
+        "exam_topic_coverage": [
+            {"id": "c1", "exam_id": "e1", "topic_id": "t1"},
+            {"id": "c2", "exam_id": "e2", "topic_id": "t2"},
+        ],
+    })
+    r = _client(sb).get(f"{_BASE}/subjects?exam_family_id=fam-a")
+    assert r.status_code == 200, r.text
+    slugs = [s["slug"] for s in r.json()["items"]]
+    assert slugs == ["quant"]
+
+
+def test_list_subjects_exam_family_filter_empty_coverage_returns_empty_not_global():
+    sb = TaxSBStub({
+        **_seed(),
+        "exams": [{"id": "e1", "exam_family_id": "fam-a"}],
+        "exam_topic_coverage": [],
+    })
+    r = _client(sb).get(f"{_BASE}/subjects?exam_family_id=fam-a")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+def test_list_subjects_exam_family_filter_unknown_family_returns_empty():
+    sb = TaxSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/subjects?exam_family_id=no-such-family")
+    assert r.status_code == 200, r.text
+    assert r.json()["items"] == []
+
+
+def test_list_subjects_without_family_filter_returns_all():
+    sb = TaxSBStub(_seed())
+    r = _client(sb).get(f"{_BASE}/subjects")
+    assert r.status_code == 200, r.text
+    slugs = {s["slug"] for s in r.json()["items"]}
+    assert slugs == {"quant", "reasoning"}
+
+
 def test_list_topics_filters_by_subject_and_level():
     sb = TaxSBStub({
         **_seed(),

@@ -430,3 +430,21 @@ test("TopicTreePanel renders proposal counts correctly (regression)", () => {
   expect(tree.textContent).toContain("Economy");
   expect(tree.textContent).toContain("Polity");
 });
+
+// ---------------------------------------------------------------------------
+// 17. M2 — drawer alias editor no longer claims aliases are mapper-only
+// ---------------------------------------------------------------------------
+test("M2: alias editor note points to the standalone 'Manage topics' path instead of claiming mapper-only access", async () => {
+  api.get
+    .mockResolvedValueOnce(makeTopicsRes())
+    .mockResolvedValueOnce(makeAliasesRes());
+
+  render(<DrawerHarness />);
+  fireEvent.click(screen.getByTestId("open-btn"));
+
+  const note = await screen.findByTestId("alias-mapper-only-note");
+  expect(note.textContent).toMatch(/without a mapper proposal/i);
+  expect(note.textContent).toMatch(/Manage topics/i);
+  // The old, now-inaccurate claim must not reappear.
+  expect(note.textContent).not.toMatch(/only accessible from the Syllabus Mapper context/i);
+});

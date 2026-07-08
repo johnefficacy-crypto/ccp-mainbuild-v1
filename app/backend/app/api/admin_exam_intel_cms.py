@@ -2969,16 +2969,50 @@ def _norm_alias(text: str) -> str:
     return (text or "").strip().lower()
 
 
+def _subject_ids_for_exam_family(supabase, exam_family_id: str) -> list[str]:
+    """M4: subjects have no direct exam_family_id column (see J2-A gate,
+    Section 0.5). Resolve the same way exam-scoped topic resolution is
+    LOCKED to resolve for a single exam (coverage path), generalised to
+    every exam in the family: exams(exam_family_id) -> exam_topic_coverage
+    (exam_id) -> topics -> distinct subject_id.
+    """
+    exam_rows = (
+        supabase.table("exams").select("id").eq("exam_family_id", exam_family_id).execute().data or []
+    )
+    exam_ids = [r["id"] for r in exam_rows if r.get("id")]
+    if not exam_ids:
+        return []
+    coverage_rows = (
+        supabase.table("exam_topic_coverage").select("topic_id").in_("exam_id", exam_ids).execute().data or []
+    )
+    topic_ids = sorted({r["topic_id"] for r in coverage_rows if r.get("topic_id")})
+    if not topic_ids:
+        return []
+    topic_rows = (
+        supabase.table("topics").select("subject_id").in_("id", topic_ids).execute().data or []
+    )
+    return sorted({r["subject_id"] for r in topic_rows if r.get("subject_id")})
+
+
 @router.get("/subjects")
 def list_subjects(
     is_active: bool | None = Query(default=None),
     q: str | None = Query(default=None),
+    exam_family_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    subject_ids: list[str] | None = None
+    if exam_family_id:
+        subject_ids = _subject_ids_for_exam_family(supabase, exam_family_id)
+        if not subject_ids:
+            # M4 empty-scope contract (mirrors OD-5 for exam-scoped topics):
+            # no fallback to the global subject list — an empty, well-formed
+            # result communicates "no subjects mapped for this family yet".
+            return {"items": [], "total": 0, "limit": limit, "offset": offset}
     query = supabase.table("subjects").select(
         "id, slug, name, subject_group, default_difficulty_level, description, is_active, metadata, created_at, updated_at",
         count="exact",
@@ -2987,6 +3021,8 @@ def list_subjects(
         query = query.eq("is_active", is_active)
     if q:
         query = query.ilike("name", f"%{q.strip()}%")
+    if subject_ids is not None:
+        query = query.in_("id", subject_ids)
     res = query.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 

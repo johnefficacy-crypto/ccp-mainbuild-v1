@@ -43,10 +43,13 @@ export default function TopicAliasesEditor({
   return (
     <div>
       <h3 className="text-sm font-medium text-gray-700 mb-1">Aliases</h3>
-      {/* M2: Standalone alias management is not yet available — aliases can only be managed here,
-          from the topic drawer inside the Syllabus Mapper context. */}
+      {/* M2: this inline editor stays scoped to a topic reached from a mapper proposal.
+          A standalone, pre-proposal alias manager also exists — the "Manage topics" bar
+          at the top of the Syllabus tab (SyllabusTopicEditorPanel -> Aliases) lets an
+          operator pick any subject/topic and manage aliases without running the mapper. */}
       <p className="text-xs text-gray-400 mb-2" data-testid="alias-mapper-only-note">
-        Alias management is only accessible from the Syllabus Mapper context.
+        Aliases can also be managed without a mapper proposal — use &quot;Manage topics&quot; at the
+        top of the Syllabus tab to pick a topic directly.
       </p>
 
       {aliases.length === 0 ? (

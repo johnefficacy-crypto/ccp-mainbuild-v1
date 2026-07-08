@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
+import useApiAction from "../../../../lib/hooks/useApiAction";
+import { AffectsCell, CorrectionRequestControl } from "../../../../features/admin/exam-intelligence/PolicyUpdatesTable";
 
 function TrustBadge({ status }) {
   const map = {
@@ -30,6 +32,12 @@ export default function UpdatesPanel({ status: statusFilter = null, rowId = null
   const [newSource, setNewSource] = useState("");
   const [newKind, setNewKind] = useState("official");
   const [savingNew, setSavingNew] = useState(false);
+
+  // F5: correction-request affordance for the immutable affects_* flags.
+  // Mutation goes through useApiAction per repo convention; correctionBusyId
+  // keeps the per-row disabled state the existing verify() busyId pattern uses.
+  const [correctionBusyId, setCorrectionBusyId] = useState(null);
+  const correctionAction = useApiAction();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +102,22 @@ export default function UpdatesPanel({ status: statusFilter = null, rowId = null
     } finally {
       setSavingNew(false);
     }
+  }
+
+  async function requestCorrection(row, { disputedFlags, reason }) {
+    setCorrectionBusyId(row.id);
+    await correctionAction.run({
+      action: () =>
+        api.patch(`${EI_BASE}/policy-updates/${encodeURIComponent(row.id)}/review`, {
+          reviewer_status: "needs_correction",
+          reviewer_notes: reason,
+          disputed_flags: disputedFlags,
+        }),
+      successMessage: "Correction request recorded.",
+      errorMessage: "Could not record correction request.",
+      onSuccess: load,
+    });
+    setCorrectionBusyId(null);
   }
 
   const impactClass = (u) => {
@@ -196,6 +220,7 @@ export default function UpdatesPanel({ status: statusFilter = null, rowId = null
                 <th>Update</th>
                 <th>Source</th>
                 <th>Plan impact</th>
+                <th>Affects</th>
                 <th>Added</th>
                 <th>Trust</th>
                 <th></th>
@@ -230,6 +255,14 @@ export default function UpdatesPanel({ status: statusFilter = null, rowId = null
                   </td>
                   <td>
                     <span className={impactClass(u)}>{impactLabel(u)}</span>
+                  </td>
+                  <td>
+                    <AffectsCell row={u} />
+                    <CorrectionRequestControl
+                      row={u}
+                      onRequestCorrection={requestCorrection}
+                      busy={correctionBusyId === u.id}
+                    />
                   </td>
                   <td className="num" style={{ color: "var(--ink-mute)" }}>
                     {u.created_at
