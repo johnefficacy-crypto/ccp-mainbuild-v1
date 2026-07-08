@@ -8,7 +8,12 @@
  *   the `reviewer_status`) the browser actually read; stale token → 409
  * - bulk import is atomic all-or-nothing; success returns
  *   `{ok, result:{created,updated,unchanged}}` — there are no per-row results
- * - there is NO activate endpoint (activation is migration-gated) — do not add one
+ * - activation/deactivation shipped in SP2 (`/writing-prompts/{id}/activate` and
+ *   `/deactivate`) under the SEPARATE content_studio.activate authority; the RPC
+ *   (migration 224) is the sole eligibility authority, returning a structured
+ *   `{eligible, blockers}` verdict at HTTP 200. Neither author nor review may
+ *   flip is_active, so those endpoints are intentionally not exposed on this
+ *   author/review adapter.
  */
 import { api } from "../../../lib/api";
 
@@ -27,6 +32,17 @@ export const contentStudioApi = {
   // Reads — author OR review OR exam_intelligence.manage/review OR super_admin
   listPrompts: (params) => api.get(`${BASE}/writing-prompts${qs(params)}`),
   getPrompt: (id) => api.get(`${BASE}/writing-prompts/${id}`),
+
+  // Selector option feeds (EWP-SP4) — readable, dependent pickers replace raw UUIDs.
+  listSubjects: () => api.get(`${BASE}/taxonomy/subjects`),
+  listTopics: (params) => api.get(`${BASE}/taxonomy/topics${qs(params)}`),
+  listExamFamilies: () => api.get(`${BASE}/exam-scope/families`),
+  listExams: (params) => api.get(`${BASE}/exam-scope/exams${qs(params)}`),
+  listExamPhases: (params) => api.get(`${BASE}/exam-scope/phases${qs(params)}`),
+  listRubrics: () => api.get(`${BASE}/rubrics`),
+  listSourceDocuments: () => api.get(`${BASE}/source-documents`),
+  // Author read-back of the latest reviewer correction note (needs_correction).
+  getCorrectionNote: (id) => api.get(`${BASE}/writing-prompts/${id}/correction-note`),
 
   // Authoring — content_studio.author
   createPrompt: ({ reason, payload }) =>

@@ -27,6 +27,7 @@ _VERIFIED_PAPER       = "verified"
 _VERIFIED_QUESTION    = "verified"
 _VERIFIED_OPTION      = "verified"
 _VERIFIED_TAG         = "verified"
+_VERIFIED_STIMULUS    = "verified"
 _PRIMARY_TAG_ROLE     = "primary"
 
 
@@ -61,7 +62,7 @@ def _fetch_paper_questions(sb: Any, paper_id: str) -> list[dict]:
         .select(
             "id, pyq_paper_id, question_text, question_type, reviewer_status, "
             "correct_option_id, observed_difficulty, expected_solve_time_sec, "
-            "explanation_text, language"
+            "explanation_text, language, section_id"
         )
         .eq("pyq_paper_id", paper_id)
         .execute()
@@ -72,11 +73,63 @@ def _fetch_paper_questions(sb: Any, paper_id: str) -> list[dict]:
 def _fetch_options_for_question(sb: Any, question_id: str) -> list[dict]:
     return (
         sb.table("pyq_options")
-        .select("id, question_id, option_text, option_label, is_correct, reviewer_status")
+        .select(
+            "id, question_id, option_text, option_label, is_correct, "
+            "reviewer_status, source_label, display_order"
+        )
         .eq("question_id", question_id)
         .execute()
         .data
     ) or []
+
+
+def _fetch_question_stimuli(sb: Any, question_id: str) -> list[dict]:
+    """Fetch a question's shared-stimulus links joined to their stimuli.
+
+    Returns ALL links for the question (regardless of trust) so the eligibility
+    gate can detect an unverified link/stimulus, each combined dict carrying
+    both the link's and the stimulus's reviewer_status plus the snapshot fields.
+    compute_content_hash / the projection snapshot filter to verified-verified.
+
+    Mirrors the SQL join in project_pyq_question_to_mock_bank (migration 229).
+    """
+    links = (
+        sb.table("pyq_question_stimuli")
+        .select("id, question_id, stimulus_id, display_order, reviewer_status")
+        .eq("question_id", question_id)
+        .execute()
+        .data
+    ) or []
+    if not links:
+        return []
+
+    stim_ids = [l.get("stimulus_id") for l in links if l.get("stimulus_id")]
+    stimuli = (
+        (
+            sb.table("pyq_stimuli")
+            .select("id, stimulus_type, content_text, language, display_order, reviewer_status")
+            .in_("id", stim_ids)
+            .execute()
+            .data
+        )
+        or []
+    ) if stim_ids else []
+    stim_map = {s.get("id"): s for s in stimuli}
+
+    combined: list[dict] = []
+    for l in links:
+        s = stim_map.get(l.get("stimulus_id"), {})
+        combined.append({
+            "stimulus_id": l.get("stimulus_id"),
+            "link_reviewer_status": l.get("reviewer_status"),
+            "link_display_order": l.get("display_order"),
+            "stimulus_reviewer_status": s.get("reviewer_status"),
+            "stimulus_type": s.get("stimulus_type"),
+            "content_text": s.get("content_text"),
+            "language": s.get("language"),
+            "stimulus_display_order": s.get("display_order"),
+        })
+    return combined
 
 
 def _fetch_primary_tags(sb: Any, question_id: str) -> list[dict]:
@@ -118,6 +171,7 @@ def compute_content_hash(
     options: list[dict],
     paper: dict | None = None,
     all_verified_tags: list[dict] | None = None,
+    stimuli: list[dict] | None = None,
 ) -> str:
     """Stable SHA-256 hash of ALL fields projected to mock_question_bank.
 
@@ -176,10 +230,48 @@ def compute_content_hash(
         for t in v_tags
     )
 
+    # ── PR-4 (migration 229) appended fields — lockstep with the SQL hash ─────
+    # Appended AFTER the existing fields (existing order preserved) so already-
+    # projected rows only re-hash on genuinely new data: section_id, then per-
+    # verified-option source_label+display_order (same verified-option ordering),
+    # then per-verified-stimulus type+content+language+link display_order.
+    section_id = str(question.get("section_id") or "")
+
+    opt_meta_parts = FS.join(
+        (o.get("source_label") or "")
+        + RS
+        + ("" if o.get("display_order") is None else str(o.get("display_order")))
+        for o in verified_opts
+    )
+
+    def _nulls_last(v: Any) -> tuple[int, Any]:
+        return (1, 0) if v is None else (0, v)
+
+    verified_stims = sorted(
+        (
+            s for s in (stimuli or [])
+            if s.get("link_reviewer_status") == _VERIFIED_STIMULUS
+            and s.get("stimulus_reviewer_status") == _VERIFIED_STIMULUS
+        ),
+        key=lambda s: (
+            _nulls_last(s.get("link_display_order")),
+            _nulls_last(s.get("stimulus_display_order")),
+            s.get("stimulus_id") or "",
+        ),
+    )
+    stim_parts = FS.join(
+        (s.get("stimulus_type") or "")
+        + RS + (s.get("content_text") or "")
+        + RS + (s.get("language") or "")
+        + RS + ("" if s.get("link_display_order") is None else str(s.get("link_display_order")))
+        for s in verified_stims
+    )
+
     raw = NUL.join([
         q_text, expl, diff, language, exp_time, paper_id,
         paper_year, paper_exam, paper_src_url, paper_src_type, paper_src_doc_id,
         opt_parts, correct_opt, tag_parts,
+        section_id, opt_meta_parts, stim_parts,
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -189,6 +281,7 @@ def _check_question_eligibility(
     question: dict,
     options: list[dict],
     primary_tags: list[dict],
+    stimuli: list[dict] | None = None,
 ) -> tuple[bool, str]:
     """Return (eligible, reason) for a single question.
 
@@ -233,6 +326,18 @@ def _check_question_eligibility(
     if len(verified_primary) != 1:
         return False, f"not_exactly_one_verified_primary_tag:{len(verified_primary)}"
 
+    # Stimulus verification gate (PR-4, conjunctive trust): if the question has
+    # any shared-stimulus link, EVERY link AND its referenced stimulus must be
+    # verified. A question with no links is unaffected (still projectable).
+    if stimuli:
+        all_verified = all(
+            s.get("link_reviewer_status") == _VERIFIED_STIMULUS
+            and s.get("stimulus_reviewer_status") == _VERIFIED_STIMULUS
+            for s in stimuli
+        )
+        if not all_verified:
+            return False, "stimulus_not_verified"
+
     return True, "eligible"
 
 
@@ -274,10 +379,14 @@ def preview_paper_projection(sb: Any, paper_id: str) -> dict:
         options    = _fetch_options_for_question(sb, qid)
         p_tags     = _fetch_primary_tags(sb, qid)
         all_tags   = _fetch_all_verified_tags(sb, qid)
+        stimuli    = _fetch_question_stimuli(sb, qid)
         projection = _fetch_existing_projection(sb, qid)
 
-        eligible, reason = _check_question_eligibility(paper, q, options, p_tags)
-        content_hash = compute_content_hash(q, options, paper=paper, all_verified_tags=all_tags) if eligible else None
+        eligible, reason = _check_question_eligibility(paper, q, options, p_tags, stimuli)
+        content_hash = (
+            compute_content_hash(q, options, paper=paper, all_verified_tags=all_tags, stimuli=stimuli)
+            if eligible else None
+        )
 
         entry: dict = {
             "question_id": qid,

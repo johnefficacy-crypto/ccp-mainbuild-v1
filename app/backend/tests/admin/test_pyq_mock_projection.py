@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 
 from app.admin.pyq_mock_projection import (
     _check_question_eligibility,
+    _fetch_question_stimuli,
     compute_content_hash,
     get_paper_projection_status,
     preview_paper_projection,
@@ -68,6 +69,7 @@ def _question(
         "expected_solve_time_sec": 60,
         "explanation_text": "Because X.",
         "language": "en",
+        "section_id": None,
     }
     base.update(extras)
     return base
@@ -86,9 +88,57 @@ def _options(
             "option_label": chr(65 + i),
             "is_correct": i == correct_idx,
             "reviewer_status": reviewer_status,
+            "source_label": f"({chr(97 + i)})",
+            "display_order": i + 1,
         }
         for i in range(n)
     ]
+
+
+def _stimulus(
+    reviewer_status: str = "verified",
+    stimulus_id: str = "stim-1",
+    content_text: str = "A shared reading passage.",
+    display_order: int = 1,
+    **extras,
+) -> dict:
+    base = {
+        "id": stimulus_id,
+        "pyq_paper_id": PAPER_ID,
+        "stimulus_type": "passage",
+        "content_text": content_text,
+        "language": "en",
+        "display_order": display_order,
+        "reviewer_status": reviewer_status,
+    }
+    base.update(extras)
+    return base
+
+
+def _question_stimulus(
+    stimulus_id: str = "stim-1",
+    reviewer_status: str = "verified",
+    display_order: int = 1,
+    question_id: str = Q_ID,
+    **extras,
+) -> dict:
+    base = {
+        "id": f"qs-{stimulus_id}",
+        "question_id": question_id,
+        "stimulus_id": stimulus_id,
+        "display_order": display_order,
+        "reviewer_status": reviewer_status,
+    }
+    base.update(extras)
+    return base
+
+
+def _combined_stimuli(stimuli: list[dict], links: list[dict]) -> list[dict]:
+    """Build the combined link+stimulus dicts via the real fetch translation."""
+    sb = SBStub()
+    sb.db["pyq_stimuli"] = stimuli
+    sb.db["pyq_question_stimuli"] = links
+    return _fetch_question_stimuli(sb, Q_ID)
 
 
 def _primary_tag(reviewer_status: str = "verified") -> list[dict]:
@@ -109,6 +159,8 @@ def _seed_sb(
     options: list[dict] | None = None,
     tags: list[dict] | None = None,
     projections: list[dict] | None = None,
+    stimuli: list[dict] | None = None,
+    question_stimuli: list[dict] | None = None,
 ) -> SBStub:
     sb = SBStub()
     sb.db["pyq_papers"] = [paper or _paper()]
@@ -116,6 +168,8 @@ def _seed_sb(
     sb.db["pyq_options"] = options if options is not None else _options()
     sb.db["pyq_question_topic_tags"] = tags if tags is not None else _primary_tag()
     sb.db["pyq_mock_question_projections"] = projections or []
+    sb.db["pyq_stimuli"] = stimuli or []
+    sb.db["pyq_question_stimuli"] = question_stimuli or []
     return sb
 
 
@@ -269,16 +323,68 @@ class TestComputeContentHash:
         h_none = compute_content_hash(_question(expected_solve_time_sec=None), opts)
         assert h_zero != h_none
 
+    # ── PR-4 (migration 229): section, printed-order, stimulus fidelity ────────
+
+    def test_changes_when_section_id_changes(self):
+        opts = _options()
+        h1 = compute_content_hash(_question(section_id="sec-A"), opts)
+        h2 = compute_content_hash(_question(section_id="sec-B"), opts)
+        assert h1 != h2
+
+    def test_changes_when_option_source_label_changes(self):
+        opts_a = _options()
+        opts_b = [dict(o, source_label="ROMAN-IV") if i == 0 else o
+                  for i, o in enumerate(_options())]
+        assert compute_content_hash(_question(), opts_a) != compute_content_hash(_question(), opts_b)
+
+    def test_changes_when_option_display_order_changes(self):
+        opts_a = _options()
+        opts_b = [dict(o, display_order=99) if i == 0 else o
+                  for i, o in enumerate(_options())]
+        assert compute_content_hash(_question(), opts_a) != compute_content_hash(_question(), opts_b)
+
+    def test_changes_when_verified_stimulus_content_changes(self):
+        s1 = _combined_stimuli([_stimulus(content_text="Passage one")], [_question_stimulus()])
+        s2 = _combined_stimuli([_stimulus(content_text="Passage two")], [_question_stimulus()])
+        h1 = compute_content_hash(_question(), _options(), stimuli=s1)
+        h2 = compute_content_hash(_question(), _options(), stimuli=s2)
+        assert h1 != h2
+
+    def test_stimulus_hash_is_stable_when_unchanged(self):
+        s = _combined_stimuli([_stimulus()], [_question_stimulus()])
+        h1 = compute_content_hash(_question(), _options(), stimuli=s)
+        h2 = compute_content_hash(_question(), _options(), stimuli=s)
+        assert h1 == h2
+
+    def test_adding_verified_stimulus_changes_hash(self):
+        h_none = compute_content_hash(_question(), _options(), stimuli=[])
+        s = _combined_stimuli([_stimulus()], [_question_stimulus()])
+        h_with = compute_content_hash(_question(), _options(), stimuli=s)
+        assert h_none != h_with
+
+    def test_unverified_stimulus_does_not_affect_hash(self):
+        """A link or stimulus that is not verified-verified must be excluded from the hash."""
+        h_none = compute_content_hash(_question(), _options(), stimuli=[])
+        s_unverified_stim = _combined_stimuli(
+            [_stimulus(reviewer_status="pending")], [_question_stimulus(reviewer_status="verified")]
+        )
+        s_unverified_link = _combined_stimuli(
+            [_stimulus(reviewer_status="verified")], [_question_stimulus(reviewer_status="pending")]
+        )
+        assert compute_content_hash(_question(), _options(), stimuli=s_unverified_stim) == h_none
+        assert compute_content_hash(_question(), _options(), stimuli=s_unverified_link) == h_none
+
 
 # ─── Unit: _check_question_eligibility ────────────────────────────────────────
 
 class TestCheckEligibility:
     def _eligible_call(self, **overrides):
-        paper = {**_paper(), **overrides.get("paper", {})}
-        q     = {**_question(), **overrides.get("question", {})}
-        opts  = overrides.get("options", _options())
-        tags  = overrides.get("tags", _primary_tag())
-        return _check_question_eligibility(paper, q, opts, tags)
+        paper  = {**_paper(), **overrides.get("paper", {})}
+        q      = {**_question(), **overrides.get("question", {})}
+        opts   = overrides.get("options", _options())
+        tags   = overrides.get("tags", _primary_tag())
+        stims  = overrides.get("stimuli")
+        return _check_question_eligibility(paper, q, opts, tags, stims)
 
     def test_fully_eligible(self):
         eligible, reason = self._eligible_call()
@@ -390,6 +496,46 @@ class TestCheckEligibility:
         assert eligible is False
         assert "not_exactly_one_verified_primary_tag" in reason
 
+    # ── PR-4 (migration 229): stimulus verification gate ──────────────────────
+
+    def test_no_stimulus_links_is_eligible(self):
+        eligible, reason = self._eligible_call(stimuli=[])
+        assert eligible is True
+        assert reason == "eligible"
+
+    def test_all_verified_stimuli_is_eligible(self):
+        stims = _combined_stimuli([_stimulus()], [_question_stimulus()])
+        eligible, reason = self._eligible_call(stimuli=stims)
+        assert eligible is True
+        assert reason == "eligible"
+
+    def test_unverified_stimulus_blocks(self):
+        stims = _combined_stimuli(
+            [_stimulus(reviewer_status="pending")], [_question_stimulus(reviewer_status="verified")]
+        )
+        eligible, reason = self._eligible_call(stimuli=stims)
+        assert eligible is False
+        assert reason == "stimulus_not_verified"
+
+    def test_unverified_link_blocks(self):
+        stims = _combined_stimuli(
+            [_stimulus(reviewer_status="verified")], [_question_stimulus(reviewer_status="pending")]
+        )
+        eligible, reason = self._eligible_call(stimuli=stims)
+        assert eligible is False
+        assert reason == "stimulus_not_verified"
+
+    def test_one_unverified_among_verified_blocks(self):
+        stims = _combined_stimuli(
+            [_stimulus(stimulus_id="stim-1"),
+             _stimulus(stimulus_id="stim-2", reviewer_status="pending", display_order=2)],
+            [_question_stimulus(stimulus_id="stim-1", display_order=1),
+             _question_stimulus(stimulus_id="stim-2", display_order=2)],
+        )
+        eligible, reason = self._eligible_call(stimuli=stims)
+        assert eligible is False
+        assert reason == "stimulus_not_verified"
+
 
 # ─── preview_paper_projection ────────────────────────────────────────────────
 
@@ -500,6 +646,40 @@ class TestPreviewPaperProjection:
             "stale projection with matching hash must still require re-projection"
         )
         assert result["would_update_count"] == 1
+
+    # ── PR-4 (migration 229): stimulus fidelity in preview ────────────────────
+
+    def test_preview_blocks_unverified_stimulus(self):
+        sb = _seed_sb(
+            stimuli=[_stimulus(reviewer_status="pending")],
+            question_stimuli=[_question_stimulus()],
+        )
+        result = preview_paper_projection(sb, PAPER_ID)
+        q_entry = result["questions"][0]
+        assert q_entry["eligible"] is False
+        assert "stimulus_not_verified" in q_entry["reason"]
+        assert q_entry["content_hash"] is None
+
+    def test_preview_passes_with_verified_stimulus(self):
+        sb = _seed_sb(
+            stimuli=[_stimulus()],
+            question_stimuli=[_question_stimulus()],
+        )
+        result = preview_paper_projection(sb, PAPER_ID)
+        q_entry = result["questions"][0]
+        assert q_entry["eligible"] is True
+        assert q_entry["content_hash"] is not None
+
+    def test_preview_hash_reflects_stimulus_content(self):
+        sb_none = _seed_sb()
+        sb_with = _seed_sb(
+            stimuli=[_stimulus()],
+            question_stimuli=[_question_stimulus()],
+        )
+        h_none = preview_paper_projection(sb_none, PAPER_ID)["questions"][0]["content_hash"]
+        h_with = preview_paper_projection(sb_with, PAPER_ID)["questions"][0]["content_hash"]
+        assert h_none is not None and h_with is not None
+        assert h_none != h_with
 
 
 # ─── sync_paper_projection ────────────────────────────────────────────────────
