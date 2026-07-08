@@ -3,13 +3,16 @@
  *
  * One fetch owner: useApiCollection holds items/status; filters are sanitized
  * before they reach the hook (no empty-string typed params → no 422s).
- * No activate control (activation is migration-gated).
+ * Activate/Deactivate (EWP-SP2) is gated on the SEPARATE content_studio.activate
+ * authority (perms.canActivate) and offered only on verified prompts; eligibility
+ * is decided by the server RPC, never here.
  */
 import React, { useMemo, useState } from "react";
 import useApiCollection from "../../../lib/hooks/useApiCollection";
 import { ErrorState, EmptyState } from "../../../shared/ui/core";
 import { EXERCISE_TYPES, REVIEWER_STATUSES } from "./contentStudioApi";
 import PromptEditor from "./PromptEditor";
+import PromptActivationDialog from "./PromptActivation";
 
 const PAGE_SIZE = 50;
 
@@ -31,6 +34,7 @@ export default function PromptLibrary({ perms, onAssign }) {
   });
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(null); // null closed | {} create | prompt edit
+  const [activating, setActivating] = useState(null); // null | { prompt, mode }
 
   const params = useMemo(() => cleanParams(filters, offset), [filters, offset]);
   const { items, status, total, refresh } = useApiCollection(
@@ -196,6 +200,27 @@ export default function PromptLibrary({ perms, onAssign }) {
                           Assign
                         </button>
                       ) : null}
+                      {/* Activation authority (content_studio.activate) — offered
+                          only on verified prompts; the server RPC decides eligibility. */}
+                      {perms.canActivate && p.is_active ? (
+                        <button
+                          type="button"
+                          className="btn small"
+                          onClick={() => setActivating({ prompt: p, mode: "deactivate" })}
+                          data-testid={`prompt-deactivate-${p.id}`}
+                        >
+                          Deactivate
+                        </button>
+                      ) : perms.canActivate && p.reviewer_status === "verified" ? (
+                        <button
+                          type="button"
+                          className="btn small"
+                          onClick={() => setActivating({ prompt: p, mode: "activate" })}
+                          data-testid={`prompt-activate-${p.id}`}
+                        >
+                          Activate
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -229,6 +254,18 @@ export default function PromptLibrary({ perms, onAssign }) {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
+            refresh();
+          }}
+        />
+      ) : null}
+
+      {activating !== null ? (
+        <PromptActivationDialog
+          prompt={activating.prompt}
+          mode={activating.mode}
+          onClose={() => setActivating(null)}
+          onDone={() => {
+            setActivating(null);
             refresh();
           }}
         />

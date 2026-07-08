@@ -12,9 +12,11 @@
  * UI over /api/admin/content-studio (handoff:
  * docs/status/ewp-prompt-bank-frontend-handoff.md).
  *
- * There is deliberately NO prompt activate/publish control anywhere in this
- * surface — activation is migration-gated until the applicability resolver
- * lands (content-studio.md §7.1).
+ * Prompt activation (is_active) is a SEPARATE, higher-trust authority
+ * (content_studio.activate, EWP-SP2): the Library offers an Activate/Deactivate
+ * control only to operators holding that permission, and the server RPC
+ * (migration 226) is the sole eligibility authority — the UI never computes
+ * eligibility, it only renders the RPC's `{eligible, blockers}` verdict.
  */
 import React, { Suspense, lazy } from "react";
 import { useSearchParams } from "react-router-dom";

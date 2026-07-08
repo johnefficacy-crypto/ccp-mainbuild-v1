@@ -10,10 +10,12 @@
  *   `{ok, result:{created,updated,unchanged}}` — there are no per-row results
  * - activation/deactivation shipped in SP2 (`/writing-prompts/{id}/activate` and
  *   `/deactivate`) under the SEPARATE content_studio.activate authority; the RPC
- *   (migration 224) is the sole eligibility authority, returning a structured
+ *   (migration 226) is the sole eligibility authority, returning a structured
  *   `{eligible, blockers}` verdict at HTTP 200. Neither author nor review may
- *   flip is_active, so those endpoints are intentionally not exposed on this
- *   author/review adapter.
+ *   flip is_active — these mutations are gated on content_studio.activate and
+ *   carry the client's `expected_updated_at` (CAS) unchanged + a reason, exactly
+ *   like PATCH/review. The UI NEVER computes eligibility: on `{eligible:false,
+ *   blockers}` it simply renders the blocker codes the RPC returned.
  */
 import { api } from "../../../lib/api";
 
@@ -62,6 +64,15 @@ export const contentStudioApi = {
       ...(reviewer_notes ? { reviewer_notes } : {}),
     }),
 
+  // Activation lifecycle (is_active) — content_studio.activate authority (EWP-SP2).
+  // CAS token (expected_updated_at) is passed through UNCHANGED (no pre-write
+  // refetch), mirroring PATCH/review. activate resolves the RPC verdict:
+  // {eligible:false, blockers} arrives at HTTP 200 (a valid answer, not an error).
+  activateWritingPrompt: (id, { expected_updated_at, reason }) =>
+    api.post(`${BASE}/writing-prompts/${id}/activate`, { expected_updated_at, reason }),
+  deactivateWritingPrompt: (id, { expected_updated_at, reason }) =>
+    api.post(`${BASE}/writing-prompts/${id}/deactivate`, { expected_updated_at, reason }),
+
   // Exam Assignments (writing_prompt_targets) — J2 propose/review/remove split
   listTargets: (promptId) => api.get(`${BASE}/writing-prompts/${promptId}/targets`),
   proposeTarget: (promptId, body) => api.post(`${BASE}/writing-prompts/${promptId}/targets`, body),
@@ -95,4 +106,27 @@ export const REVIEW_TRANSITIONS = {
 export function isValidReason(reason) {
   const r = (reason || "").trim();
   return r.length >= 8 && r.length <= 500;
+}
+
+// Human-readable text for the activation blocker codes the RPC (migration 226)
+// returns in `{eligible:false, blockers}`. The UI NEVER computes these — it only
+// translates the codes the server sent. An unrecognised code falls back to the
+// raw code so a newly-added server blocker is surfaced, never silently dropped.
+export const ACTIVATION_BLOCKER_LABELS = {
+  prompt_not_verified: "Prompt is not verified — only a verified prompt can be activated.",
+  already_active: "Prompt is already active.",
+  no_active_applicability_target:
+    "No active exam applicability target — assign the prompt to an exam/family/phase (or global) and have it reviewed active first.",
+  exercise_type_not_runtime_ready:
+    "This exercise type is not runtime-ready yet (server-owned readiness allowlist).",
+  semantic_evaluator_not_live:
+    "The semantic evaluator gate is not live for this source-dependent exercise type.",
+  rubric_missing: "A rubric is required for this exercise type but none is attached.",
+  paragraph_gate_closed: "The paragraph-writing release gate is closed.",
+  invalid_scope: "The prompt's subject/topic scope no longer validates.",
+  reason_required: "A reason (8–500 characters) is required.",
+};
+
+export function describeActivationBlocker(code) {
+  return ACTIVATION_BLOCKER_LABELS[code] || code;
 }
