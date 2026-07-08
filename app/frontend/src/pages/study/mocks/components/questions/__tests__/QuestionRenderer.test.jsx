@@ -43,3 +43,31 @@ test("renders options in display_order, not array/option_index order", ()=>{
   expect(aIdx).toBeGreaterThanOrEqual(0);
   expect(aIdx).toBeLessThan(bIdx); // (a) rendered before (b)
 });
+
+// ── PYQ v2 PR-11: media stimuli (image/chart/diagram) ─────────────────────────
+
+test("renders a media stimulus as an image with alt text", ()=>{
+  const pyq = { ...q, stimuli:[{ id:"m1", stimulus_type:"image", asset_url:"https://cdn.example/x.png", alt_text:"A Venn diagram of three sets", display_order:1 }] };
+  render(<QuestionRenderer question={pyq} mode="attempt" value={{}} onChange={jest.fn()} />);
+  const img = screen.getByTestId("question-stimulus-media-0");
+  expect(img.tagName).toBe("IMG");
+  expect(img.getAttribute("src")).toBe("https://cdn.example/x.png");
+  expect(img.getAttribute("alt")).toBe("A Venn diagram of three sets");
+  expect(screen.getByText("Image")).toBeTruthy();
+});
+
+test("falls back to alt text when a media stimulus has no asset url", ()=>{
+  const pyq = { ...q, stimuli:[{ id:"m2", stimulus_type:"chart", alt_text:"Bar chart: sales by quarter", display_order:1 }] };
+  render(<QuestionRenderer question={pyq} mode="attempt" value={{}} onChange={jest.fn()} />);
+  expect(screen.queryByTestId("question-stimulus-media-0")).toBeNull(); // no <img>
+  const fb = screen.getByTestId("question-stimulus-media-fallback-0");
+  expect(fb.getAttribute("aria-label")).toBe("Bar chart: sales by quarter");
+  expect(screen.getByText(/Bar chart: sales by quarter/)).toBeTruthy();
+});
+
+test("media stimulus does not render its content_text as markdown body", ()=>{
+  const pyq = { ...q, stimuli:[{ id:"m3", stimulus_type:"diagram", asset_url:"https://cdn.example/d.png", alt_text:"flow", content_text:"raw-caption", display_order:1 }] };
+  render(<QuestionRenderer question={pyq} mode="attempt" value={{}} onChange={jest.fn()} />);
+  expect(screen.getByTestId("question-stimulus-media-0")).toBeTruthy();
+  expect(screen.queryByText("raw-caption")).toBeNull();
+});
