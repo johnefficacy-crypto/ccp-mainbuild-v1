@@ -37,7 +37,7 @@ const ExamWorkspaceContext = require("../../ExamWorkspaceContext");
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const EXAM = { id: "exam-1", name: "SSC CGL", exam_type: "recruitment" };
-const DOCS = [{ id: "doc-1", title: "Syllabus 2026.pdf", document_type: "syllabus_pdf" }];
+const DOCS = [{ id: "doc-1", title: "Syllabus 2026.pdf", document_type: "syllabus_pdf", source_document_id: "asset-doc-1" }];
 
 const PROPOSALS = [
   {
@@ -112,8 +112,10 @@ function mockContextApi({ contextOk = true, readinessOk = true } = {}) {
         ? Promise.resolve({ exam: EXAM, cycle: null, cycles: [], phases: [] })
         : Promise.reject(new Error("context err"));
     }
-    if (url.includes("/documents/doc-1/pages/")) {
-      return Promise.resolve({ text_content: "Arithmetic fundamentals and number theory." });
+    // Pages are keyed by the document_assets id (source_document_id),
+    // NOT the syllabus_documents id — so the panel must request `asset-doc-1`.
+    if (url.includes("/documents/asset-doc-1/pages")) {
+      return Promise.resolve({ items: [{ page_number: 1, text_content: "Arithmetic fundamentals and number theory." }] });
     }
     if (url.includes("/syllabus-documents") || url.includes("/documents")) {
       return Promise.resolve({ items: DOCS });
@@ -159,6 +161,23 @@ describe("SyllabusMapperPanel", () => {
     ));
     await waitFor(() => expect(screen.getByTestId("proposal-count")).toBeTruthy());
     expect(screen.getByTestId("proposal-count").textContent).toContain("2");
+  });
+
+  test("page-text fetch uses the document_assets id (source_document_id), not the syllabus_documents id", async () => {
+    api.post.mockResolvedValue(PROPOSE_RESPONSE);
+    render(<TestWrapper><SyllabusMapperPanel /></TestWrapper>);
+    await waitForDocOption();
+
+    fireEvent.change(screen.getByTestId("syllabus-doc-select"), { target: { value: "doc-1" } });
+
+    // The pages listing must be requested with the asset id `asset-doc-1`,
+    // never the syllabus_documents id `doc-1` (which would 404 — BUG-EI-4).
+    await waitFor(() => {
+      const pageCall = api.get.mock.calls.find(([u]) => /\/documents\/[^/]+\/pages/.test(u));
+      expect(pageCall).toBeTruthy();
+      expect(pageCall[0]).toContain("/documents/asset-doc-1/pages");
+      expect(pageCall[0]).not.toContain("/documents/doc-1/pages");
+    });
   });
 
   test("error in /propose surfaces inline without crashing", async () => {

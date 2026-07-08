@@ -19,7 +19,7 @@ const { api } = require("../../../../../lib/api");
 const DocumentSelector = require("../DocumentSelector").default;
 
 const SYL_DOCS = [
-  { id: "doc-1", title: "SSC CGL Syllabus 2026",    document_type: "syllabus_pdf" },
+  { id: "doc-1", title: "SSC CGL Syllabus 2026",    document_type: "syllabus_pdf", source_document_id: "asset-1" },
   { id: "doc-2", title: "SSC CGL Notification 2025", document_type: "notification"  },
 ];
 
@@ -76,7 +76,8 @@ test("fires onChange with selected doc id", async () => {
   fireEvent.change(screen.getByTestId("syllabus-doc-select"), {
     target: { value: "doc-1" },
   });
-  expect(onChange).toHaveBeenCalledWith("doc-1");
+  // Passes the id AND the selected row so callers can reach source_document_id.
+  expect(onChange).toHaveBeenCalledWith("doc-1", SYL_DOCS[0]);
 });
 
 test("does not fetch when examId is falsy", () => {

@@ -43,7 +43,13 @@ export default function DocumentSelector({ examId, value, onChange }) {
         id="syllabus-doc-select"
         data-testid="syllabus-doc-select"
         value={value || ""}
-        onChange={(e) => onChange(e.target.value || null)}
+        onChange={(e) => {
+          const id = e.target.value || null;
+          // Pass the selected row too so callers can reach its
+          // `source_document_id` (document_assets id) — the page-text listing
+          // is keyed by the asset id, not the syllabus_documents id.
+          onChange(id, id ? docs.find((d) => d.id === id) || null : null);
+        }}
         disabled={loading || docs.length === 0}
         className="text-sm border border-gray-300 rounded px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
       >
@@ -56,7 +62,7 @@ export default function DocumentSelector({ examId, value, onChange }) {
         </option>
         {docs.map((d) => (
           <option key={d.id} value={d.id}>
-            {d.title || d.document_type || d.id}
+            {d.title || d.document_type || `Untitled document (…${String(d.id).slice(-6)})`}
           </option>
         ))}
       </select>

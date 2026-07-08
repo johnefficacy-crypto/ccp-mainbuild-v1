@@ -52,19 +52,45 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
     if (!rowId || pendingLoading || pendingError) return;
     setRowNotFound(!pendingItems.some((item) => item.id === rowId));
   }, [rowId, pendingItems, pendingLoading, pendingError]);
-  const [pageText, setPageText] = useState("");
+  const [pagesByNumber, setPagesByNumber] = useState({});
+  // document_assets id backing the selected syllabus_documents row. The
+  // extracted-page store (`document_pages`) is keyed by the asset id
+  // (`source_document_id`), NOT the syllabus_documents id — see
+  // syllabus_mapper.py:119-122 and BUG-EI-3.
+  //
+  // The `|| id` legacy fallback below is best-effort only: the CMS pages route
+  // validates the path id against `document_assets` (`_load_admin_asset`), so a
+  // legacy row with `source_document_id = null` (migration-198 ambiguous
+  // backfills) 404s here and the pane stays blank — even though the proposer
+  // still reads those rows' pages by syllabus id. Serving page text for those
+  // rows needs a backend change to the pages endpoint; deferred (BUG-EI-4).
+  const [pageAssetId, setPageAssetId] = useState(null);
 
   const mapper = useSyllabusMapper(examId);
   const topicEdit = useTopicEdit();
 
-  // Fetch page text when page changes
+  // Fetch the document's extracted per-page text once per document, then index
+  // by page_number. The old code hit a non-existent
+  // `/exam-intelligence/workspace/{examId}/documents/{id}/pages/{n}` route (404);
+  // the real endpoint is the CMS documents pages listing, which returns
+  // `{ items: [{ page_number, text_content }] }`. Proposals' `source_page` are
+  // real page numbers, so the map must be keyed by page_number, not list offset.
   useEffect(() => {
-    if (!mapper.syllabusDocumentId || !mapper.currentPage) { setPageText(""); return; }
+    if (!pageAssetId) { setPagesByNumber({}); return undefined; }
+    let cancelled = false;
     api
-      .get(`/api/admin/exam-intelligence/workspace/${examId}/documents/${mapper.syllabusDocumentId}/pages/${mapper.currentPage}`)
-      .then((d) => setPageText(d?.text_content || ""))
-      .catch(() => setPageText(""));
-  }, [examId, mapper.syllabusDocumentId, mapper.currentPage]);
+      .get(`/api/admin/exam-intelligence-cms/documents/${pageAssetId}/pages`)
+      .then((d) => {
+        if (cancelled) return;
+        const map = {};
+        (d?.items || []).forEach((p) => { map[p.page_number] = p.text_content || ""; });
+        setPagesByNumber(map);
+      })
+      .catch(() => { if (!cancelled) setPagesByNumber({}); });
+    return () => { cancelled = true; };
+  }, [pageAssetId]);
+
+  const pageText = pagesByNumber[mapper.currentPage] || "";
 
   const currentPageProposals = mapper.proposals.filter((p) => p.source_page === mapper.currentPage);
   const selectedProposals = mapper.proposals.filter((p) => mapper.selectedKeys.has(p.client_proposal_key));
@@ -114,7 +140,11 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
         <DocumentSelector
           examId={examId}
           value={mapper.syllabusDocumentId}
-          onChange={(id) => { mapper.setSyllabusDocumentId(id); if (id) mapper.runPropose(id); }}
+          onChange={(id, doc) => {
+            mapper.setSyllabusDocumentId(id);
+            setPageAssetId(id ? (doc?.source_document_id || id) : null);
+            if (id) mapper.runPropose(id);
+          }}
         />
 
         <ProposalRunner
