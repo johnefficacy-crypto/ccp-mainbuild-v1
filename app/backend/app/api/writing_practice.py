@@ -31,6 +31,22 @@ logger = logging.getLogger("career_copilot.api.writing_practice")
 
 router = APIRouter(prefix="/study/practice/english", tags=["writing-practice"])
 
+# EWP-SP3 planner-launch endpoint. A backend route under the existing /api/study
+# surface — NOT a new top-level/sidebar destination (respects the serial-delivery
+# routing lock; no AdminShell/adminRoutes/nav changes).
+tasks_router = APIRouter(prefix="/study/tasks", tags=["writing-practice"])
+
+# Runtime-ready exercise-type allowlist. This is a MIRROR of the server-owned
+# SQL function ``cms_writing_runtime_ready_types()`` (migration 224). At runtime
+# the DB function is authoritative (``_runtime_ready_types``); the mirror is only
+# a fail-safe fallback. ``test_writing_launch_endpoint.py`` asserts the mirror
+# stays in parity with the migration's ARRAY definition so the two never drift.
+RUNTIME_READY_EXERCISE_TYPES: tuple[str, ...] = ("sentence_construction",)
+
+# Terminal writing-session statuses (see migration 205 CHECK). Any other status
+# is a live/in-progress session for idempotent re-launch.
+_TERMINAL_SESSION_STATUSES = frozenset({st.SESSION_COMPLETED, st.SESSION_ABANDONED})
+
 
 # --- request models -------------------------------------------------------
 
@@ -200,19 +216,48 @@ def _session_payload(supabase: Any, session: dict) -> dict:
 
 # --- endpoints ------------------------------------------------------------
 
-@router.post("/sessions")
-def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)) -> dict:
-    user_id = user.get("id")
-    # EWP-2 ships learning mode only; the exam-session runtime (§9.2/§9.3 —
-    # answer locking, blank versions, feedback release) is a later slice.
-    if body.mode != "learning":
-        raise HTTPException(status_code=400, detail="exam mode is not available in EWP-2")
+def _owned_task(supabase: Any, user_id: str, study_task_id: str) -> dict:
+    """The caller-owned ``study_tasks`` row, or 404.
 
-    supabase = get_supabase_admin()
+    The task is the SOLE authoritative source of exam context for applicability
+    enforcement (§17 content-scoping): study_tasks carry the exam_id /
+    exam_phase_id the task was scheduled under (migration 034), plus the
+    subject/topic scope used to derive candidate prompts. A client-supplied exam
+    is NEVER trusted — everything downstream reads the pinned columns here.
+    """
+    task = (
+        supabase.table("study_tasks")
+        .select("id,user_id,exam_id,exam_phase_id,subject_id,topic_id,launch_context")
+        .eq("id", str(study_task_id))
+        .maybe_single()
+        .execute()
+    ).data
+    if not task or task.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="study task not found")
+    return task
+
+
+def _create_learning_session(
+    supabase: Any,
+    *,
+    user_id: str,
+    prompt_id: str,
+    study_task_id: str | None,
+    exam_id: str | None,
+    exam_phase_id: str | None,
+) -> dict:
+    """Shared session-creation path — the SINGLE place a writing session is born.
+
+    Both ``POST /sessions`` (browser-supplied prompt) and the planner launch
+    endpoint (server-resolved prompt) funnel through here so the verified/active
+    gate, the DEFAULT-DENY applicability re-check, and the atomic snapshot-taking
+    create RPC (migrations 214/221/222) always run — no bypass path exists.
+    Returns the raw session row from the RPC.
+    """
     prompt = (
         supabase.table("writing_prompts")
         .select("*")
-        .eq("id", str(body.prompt_id))
+        .eq("id", str(prompt_id))
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .maybe_single()
@@ -220,24 +265,6 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
     ).data
     if not prompt:
         raise HTTPException(status_code=404, detail="prompt not found or not verified/active")
-
-    # A supplied study_task must belong to the caller (launch-identity check).
-    # It is ALSO the authoritative source of exam context for applicability
-    # enforcement (§17 content-scoping): study_tasks carry the exam_id /
-    # exam_phase_id the task was scheduled under (migration 034). We never trust
-    # an unvalidated client-supplied exam — the context is derived from the
-    # owner-validated task, or is absent (fail-closed) when no task is supplied.
-    exam_id: str | None = None
-    exam_phase_id: str | None = None
-    if body.study_task_id is not None:
-        task = (
-            supabase.table("study_tasks").select("id,user_id,exam_id,exam_phase_id")
-            .eq("id", str(body.study_task_id)).maybe_single().execute()
-        ).data
-        if not task or task.get("user_id") != user_id:
-            raise HTTPException(status_code=404, detail="study task not found")
-        exam_id = task.get("exam_id")
-        exam_phase_id = task.get("exam_phase_id")
 
     # DEFAULT-DENY applicability (migration 214): the prompt must have an ACTIVE
     # matching target for the authoritative exam context — otherwise it is not
@@ -247,7 +274,7 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
     # that migration 214 removed the exam-scope columns from writing_prompts and
     # the raw public-read policy is being locked down (migration 218).
     if not applicability.is_prompt_applicable(
-        supabase, str(body.prompt_id), exam_id=exam_id, exam_phase_id=exam_phase_id
+        supabase, str(prompt_id), exam_id=exam_id, exam_phase_id=exam_phase_id
     ):
         raise HTTPException(
             status_code=403,
@@ -257,11 +284,11 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
     constraints = validate_unit_constraints({"schema_version": 1})
     # Atomic: session + all units in one transaction (§8.0). Learning-mode
     # feedback is immediate.
-    session = (
+    return (
         supabase.rpc("ewp_create_writing_session", {
             "p_user": user_id,
-            "p_prompt": str(body.prompt_id),
-            "p_study_task": str(body.study_task_id) if body.study_task_id else None,
+            "p_prompt": str(prompt_id),
+            "p_study_task": str(study_task_id) if study_task_id else None,
             "p_mode": "learning",
             "p_projection_revision": _current_projection_revision(),
             "p_policy": "immediate",
@@ -271,7 +298,167 @@ def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_
             "p_constraints": constraints,
         }).execute()
     ).data
+
+
+@router.post("/sessions")
+def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)) -> dict:
+    user_id = user.get("id")
+    # EWP-2 ships learning mode only; the exam-session runtime (§9.2/§9.3 —
+    # answer locking, blank versions, feedback release) is a later slice.
+    if body.mode != "learning":
+        raise HTTPException(status_code=400, detail="exam mode is not available in EWP-2")
+
+    supabase = get_supabase_admin()
+    # A supplied study_task must belong to the caller (launch-identity check) and
+    # is the authoritative exam-context source; no task => no exam context
+    # (fail-closed, only an explicit active global target can pass downstream).
+    exam_id: str | None = None
+    exam_phase_id: str | None = None
+    if body.study_task_id is not None:
+        task = _owned_task(supabase, user_id, str(body.study_task_id))
+        exam_id = task.get("exam_id")
+        exam_phase_id = task.get("exam_phase_id")
+
+    session = _create_learning_session(
+        supabase,
+        user_id=user_id,
+        prompt_id=str(body.prompt_id),
+        study_task_id=str(body.study_task_id) if body.study_task_id else None,
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+    )
     return _session_payload(supabase, session)
+
+
+# --- planner task -> writing-session launch (EWP-SP3) ----------------------
+
+def _launch_response(session_id: Any) -> dict:
+    return {
+        "session_id": str(session_id),
+        "practice_route": f"/app/study/practice/english/{session_id}",
+    }
+
+
+def _runtime_ready_types(supabase: Any) -> list[str]:
+    """The server-owned runtime-ready exercise-type allowlist.
+
+    The DB function ``cms_writing_runtime_ready_types()`` (migration 224) is
+    authoritative; ``RUNTIME_READY_EXERCISE_TYPES`` is only a fail-safe fallback
+    kept in parity by test. Reading the allowlist from the DB means a future
+    migration widening the runtime-ready set needs no code change here.
+    """
+    try:
+        data = (supabase.rpc("cms_writing_runtime_ready_types", {}).execute()).data
+    except Exception:  # noqa: BLE001 — fall back to the mirrored constant
+        data = None
+    if isinstance(data, (list, tuple)) and data and all(isinstance(x, str) for x in data):
+        return [str(x) for x in data]
+    return list(RUNTIME_READY_EXERCISE_TYPES)
+
+
+def _english_subject_id(supabase: Any, task: dict) -> str | None:
+    """The canonical English-language subject id (writing content is subject-scoped).
+
+    Resolved from the ``english-language`` subject slug (migration 205 seed);
+    falls back to the task's own ``subject_id`` if the slug can't be resolved.
+    """
+    row = (
+        supabase.table("subjects").select("id").eq("slug", "english-language")
+        .maybe_single().execute()
+    ).data
+    if row and row.get("id"):
+        return str(row["id"])
+    return task.get("subject_id")
+
+
+def _select_launch_prompt(
+    supabase: Any, task: dict, *, exam_id: str | None, exam_phase_id: str | None
+) -> str | None:
+    """Deterministically select ONE launchable prompt for a task, or None.
+
+    Candidate set = verified + active + English-subject writing prompts, narrowed
+    to the task's topic scope (when the task pins a ``topic_id``). Candidates then
+    pass BOTH gates (defense in depth): the runtime-readiness allowlist AND the
+    DEFAULT-DENY applicability resolver for the task's pinned exam context. From
+    the surviving set the prompt with the lexicographically-smallest id is chosen
+    — a stable, content-independent order so the SAME task always launches the
+    SAME prompt. NO arbitrary fallback: an empty surviving set returns None.
+    """
+    query = (
+        supabase.table("writing_prompts")
+        .select("id,exercise_type,subject_id,topic_id")
+        .eq("reviewer_status", "verified")
+        .eq("is_active", True)
+    )
+    subject_id = _english_subject_id(supabase, task)
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    if task.get("topic_id"):
+        query = query.eq("topic_id", task["topic_id"])
+    rows = query.execute().data or []
+
+    ready_types = set(_runtime_ready_types(supabase))
+    ready_ids = [str(r["id"]) for r in rows if r.get("exercise_type") in ready_types]
+    if not ready_ids:
+        return None
+
+    eligible = applicability.resolve_applicable_prompt_ids(
+        supabase, ready_ids, exam_id=exam_id, exam_phase_id=exam_phase_id
+    )
+    surviving = [pid for pid in ready_ids if pid in eligible]
+    if not surviving:
+        return None
+    return sorted(surviving)[0]
+
+
+@tasks_router.post("/{study_task_id}/launch-writing")
+def launch_writing(study_task_id: UUID, user: dict = Depends(get_current_user)) -> dict:
+    """Server-owned planner task -> writing-session launch (EWP-SP3).
+
+    The browser never picks a ``prompt_id``: the server verifies task ownership,
+    reads the pinned exam context, resolves + gates candidate prompts, selects one
+    deterministically, and creates the session through the shared enforcement path.
+    Idempotent — a task with a live (non-terminal) writing session re-launches
+    into it rather than spawning a duplicate.
+    """
+    supabase = get_supabase_admin()
+    user_id = user.get("id")
+    task = _owned_task(supabase, user_id, str(study_task_id))
+    exam_id = task.get("exam_id")
+    exam_phase_id = task.get("exam_phase_id")
+
+    # Idempotency: reuse an existing non-terminal session for this task
+    # (writing_sessions.study_task_id, migration 205). Deterministic pick of the
+    # smallest id keeps re-launch stable if more than one somehow exists.
+    existing = (
+        supabase.table("writing_sessions")
+        .select("id,status")
+        .eq("study_task_id", str(study_task_id))
+        .eq("user_id", user_id)
+        .execute()
+    ).data or []
+    live = [s for s in existing if s.get("status") not in _TERMINAL_SESSION_STATUSES]
+    if live:
+        chosen = min(live, key=lambda s: str(s.get("id")))
+        return _launch_response(chosen.get("id"))
+
+    prompt_id = _select_launch_prompt(
+        supabase, task, exam_id=exam_id, exam_phase_id=exam_phase_id
+    )
+    if prompt_id is None:
+        # No verified+active+applicable+runtime-ready prompt for this task's
+        # scope. Fail loudly — never fall back to an arbitrary prompt.
+        raise HTTPException(status_code=409, detail="no_eligible_prompt")
+
+    session = _create_learning_session(
+        supabase,
+        user_id=user_id,
+        prompt_id=prompt_id,
+        study_task_id=str(study_task_id),
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+    )
+    return _launch_response(session.get("id"))
 
 
 @router.get("/sessions/{session_id}")
