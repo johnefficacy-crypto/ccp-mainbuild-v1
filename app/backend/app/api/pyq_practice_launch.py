@@ -12,7 +12,7 @@ mock attempt served by the existing ``/attempts/{id}`` routes.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid5, NAMESPACE_URL
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -23,6 +23,13 @@ from app.study_os.pyq_practice import start_pyq_practice
 from app.study_os.pyq_practice_launch import resolve_practice_payload
 
 router = APIRouter(prefix="/study/tasks", tags=["pyq-practice-launch"])
+
+
+def _launch_blueprint_id(user_id: str, study_task_id: str) -> str:
+    """Deterministic blueprint id for a (user, study task) launch, so a repeated
+    POST (double-click / retry / refresh) reuses the same in-progress attempt via
+    start_attempt_from_blueprint's idempotency path instead of duplicating it."""
+    return str(uuid5(NAMESPACE_URL, f"pyq-practice-launch:{user_id}:{study_task_id}"))
 
 
 def _owned_task(supabase: Any, user_id: str, study_task_id: str) -> dict:
@@ -70,6 +77,8 @@ def launch_pyq_practice(study_task_id: UUID, user: dict = Depends(get_current_us
             mode=payload["mode"],
             target_id=payload["target_id"],
             exam_id=payload["exam_id"],
+            # idempotent for the same task while the attempt is in-progress.
+            blueprint_id=_launch_blueprint_id(user_id, str(study_task_id)),
         )
     except (pyq_practice.PracticeInputError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

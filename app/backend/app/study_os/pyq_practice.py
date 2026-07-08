@@ -300,6 +300,7 @@ def start_pyq_practice(
     target_id: str,
     exam_id: str | None = None,
     limit: int = _DEFAULT_LIMIT,
+    blueprint_id: str | None = None,
 ) -> dict:
     """Assemble and atomically start a PYQ practice attempt.
 
@@ -308,6 +309,13 @@ def start_pyq_practice(
     no eligible projected PYQ matches (endpoint → 409, zero writes). Raises
     ``PracticeInputError`` (→ 422) for bad input, or RuntimeError if the atomic
     RPC write fails (rolled back).
+
+    ``blueprint_id``: pass a deterministic id to make the launch **idempotent** —
+    ``start_attempt_from_blueprint`` reuses the existing in-progress attempt for a
+    reused blueprint id (unique-violation path, migration 179) instead of starting
+    a duplicate. Task-bound launchers (PR-9) derive it from the study task id so a
+    double-click / retry returns the same attempt; once that attempt is submitted,
+    the same id correctly starts a fresh attempt. Omit for a one-shot attempt.
     """
     if mode not in _MODES:
         raise PracticeInputError(f"unknown practice mode: {mode!r}")
@@ -360,6 +368,9 @@ def start_pyq_practice(
         "question_ids": ordered_ids,
         "readiness_snapshot": {"question_count": len(ordered_ids)},
     }
+    if blueprint_id:
+        # Deterministic id → RPC reuses the in-progress attempt on retry (idempotent).
+        blueprint_for_rpc["id"] = blueprint_id
     expires_at = (datetime.now(timezone.utc) + _ATTEMPT_TTL).isoformat()
 
     rows_out = safe_required(

@@ -2,21 +2,22 @@
 
 A planner "practice"/"revision" study task launches a PYQ practice attempt over
 the task's topic. The task row is the SOLE authority for exam context (§17
-content-scoping): a client never supplies mode/target/exam. This module holds the
-two PURE resolution helpers the launch endpoint composes:
+content-scoping): a client never supplies mode/target/exam.
 
-  * ``resolve_practice_payload`` — map a ``study_tasks`` row to the
-    ``start_pyq_practice`` argument shape, or None when the task has no
-    topic/exam to practice (only topic practice is wired here).
-  * ``pyq_practice_action`` — the typed launch-target -> action URL/label shape
-    (mirrors ``writing_practice/launch.py::compute_action``); the frontend
-    affordance a mission-control response renders. Never store a URL in the DB.
+``resolve_practice_payload`` maps a ``study_tasks`` row to the
+``start_pyq_practice`` argument shape, or None when the task has no topic/exam to
+practice (only topic practice is wired here).
+
+The typed-launch -> action URL/label computation is deliberately NOT implemented
+here yet: the launch endpoint is **task-owned** (`POST /study/tasks/{task_id}/
+launch-pyq-practice`), but a task's `launch_entity_id` is the TOPIC id, not the
+task id — so an action helper keyed on `launch_entity_id` would encode the wrong
+identity. Computing the action belongs at the mission-control call site (which
+has the `study_tasks.id`) and is a later slice.
 """
 from __future__ import annotations
 
 LAUNCH_PYQ_PRACTICE = "pyq_practice"
-
-_ACTION_LABEL = "Practice this topic"
 
 
 def resolve_practice_payload(task: dict) -> dict | None:
@@ -31,19 +32,3 @@ def resolve_practice_payload(task: dict) -> dict | None:
     if not topic_id or not exam_id:
         return None
     return {"mode": "topic", "target_id": topic_id, "exam_id": exam_id}
-
-
-def pyq_practice_action(launch_type: str | None, launch_entity_id, launch_context) -> dict | None:
-    """Return {action_url, action_label} for a PYQ-practice launch target, or None.
-
-    Only ``pyq_practice`` is handled here; unknown/None launch types return None
-    so callers fall back to their existing behaviour. ``action_url`` is the stable
-    frontend affordance placeholder (a button POSTs the launch endpoint; the exact
-    wiring is a later slice), NEVER persisted to the database.
-    """
-    if launch_type != LAUNCH_PYQ_PRACTICE or not launch_entity_id:
-        return None
-    return {
-        "action_url": f"/app/study/tasks/{launch_entity_id}/pyq-practice",
-        "action_label": _ACTION_LABEL,
-    }

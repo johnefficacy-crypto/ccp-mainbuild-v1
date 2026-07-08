@@ -12,11 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.api import pyq_practice_launch as api
 from app.core.auth import get_current_user
-from app.study_os.pyq_practice_launch import (
-    LAUNCH_PYQ_PRACTICE,
-    pyq_practice_action,
-    resolve_practice_payload,
-)
+from app.study_os.pyq_practice_launch import resolve_practice_payload
 from tests.study_os.test_pyq_practice import EXAM, TOPIC, _db, _q
 
 TASK = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -90,6 +86,22 @@ def test_topic_with_no_projected_questions_is_409_empty_pool():
     assert sb.db["mock_attempts"] == []
 
 
+def test_relaunch_is_idempotent_while_attempt_in_progress():
+    # A double-click / retry / refresh must NOT create a second in-progress
+    # attempt: the deterministic per-task blueprint id reuses the existing one.
+    sb = _seed_task(_db([_q("q1"), _q("q2")]))
+    client = _client(sb)
+    r1 = _launch(client)
+    r2 = _launch(client)
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert r1.json()["attempt_id"] == r2.json()["attempt_id"]
+    # exactly one attempt and one blueprint persisted, responses not double-inserted.
+    assert len(sb.db["mock_attempts"]) == 1
+    assert len(sb.db["mock_generated_blueprints"]) == 1
+    qids = {r["question_id"] for r in sb.db["mock_attempt_responses"]}
+    assert len(sb.db["mock_attempt_responses"]) == len(qids)  # no duplicate response rows
+
+
 # --- resolve_practice_payload (pure) ---------------------------------------
 
 def test_resolve_payload_both_present():
@@ -101,19 +113,3 @@ def test_resolve_payload_missing_returns_none():
     assert resolve_practice_payload({"topic_id": None, "exam_id": EXAM}) is None
     assert resolve_practice_payload({"topic_id": TOPIC, "exam_id": None}) is None
     assert resolve_practice_payload({}) is None
-
-
-# --- pyq_practice_action (pure) --------------------------------------------
-
-def test_action_for_pyq_practice_launch():
-    action = pyq_practice_action(LAUNCH_PYQ_PRACTICE, TASK, None)
-    assert action == {
-        "action_url": f"/app/study/tasks/{TASK}/pyq-practice",
-        "action_label": "Practice this topic",
-    }
-
-
-def test_action_none_for_other_or_missing_entity():
-    assert pyq_practice_action("english_writing_session", TASK, None) is None
-    assert pyq_practice_action(None, TASK, None) is None
-    assert pyq_practice_action(LAUNCH_PYQ_PRACTICE, None, None) is None
