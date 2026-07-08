@@ -1,4 +1,4 @@
--- Migration 224: EWP prompt activation lifecycle (Content Studio).
+-- Migration 226: EWP prompt activation lifecycle (Content Studio).
 --
 -- Adds the DELIBERATELY-OMITTED activation path that migration 215 left out
 -- (215 header §"ACTIVATION IS DELIBERATELY OMITTED"). Migration 214's activation
@@ -58,9 +58,11 @@
 -- RLS surface is introduced. All functions REVOKE FROM PUBLIC/anon/authenticated
 -- and GRANT TO service_role only.
 --
--- Migration number: filesystem max on main is 223 → 224 is the contiguous slot
--- (.github/workflows/migration-numbers.yml requires exactly MAX+1). Apply after
--- 215. Live schema_migrations reconciliation is OPERATOR PENDING.
+-- Migration number: originally authored as 224 but RENUMBERED to 226 — PR #894
+-- landed 224_pyq_bulk_import_v2_uniqueness.sql first (and 225_pyq_stimuli_service_
+-- role_grant.sql), so 224/225 were taken; 226 is the contiguous MAX+1 slot
+-- (.github/workflows/migration-numbers.yml). Apply after 215. Live
+-- schema_migrations reconciliation is OPERATOR PENDING.
 
 -- ---------------------------------------------------------------------------
 -- Server-owned readiness constants (IMMUTABLE — surfaced to SQL, no client row).
