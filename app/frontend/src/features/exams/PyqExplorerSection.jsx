@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api } from "../../lib/api";
 
@@ -40,7 +41,7 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function QuestionCard({ q }) {
+function QuestionCard({ q, onPractice, practicing, practiceDisabled }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -77,6 +78,21 @@ function QuestionCard({ q }) {
       </div>
 
       <p className="text-sm leading-relaxed">{q.question_text || "—"}</p>
+
+      {q.paper_id ? (
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => onPractice(q.paper_id)}
+            disabled={practiceDisabled}
+            className="btn btn-ghost text-xs disabled:opacity-40"
+            data-testid="pyq-practice-paper-btn"
+            title="Start a practice attempt over this paper's verified questions"
+          >
+            {practicing ? "Starting…" : "Practice this paper"}
+          </button>
+        </div>
+      ) : null}
 
       {expanded && (
         <div className="mt-2 space-y-1.5">
@@ -124,6 +140,7 @@ function useDebounce(value, delay) {
 }
 
 export default function PyqExplorerSection({ examSlug }) {
+  const navigate = useNavigate();
   const [year, setYear] = useState("");
   const [phase, setPhase] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -133,6 +150,13 @@ export default function PyqExplorerSection({ examSlug }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Practice launcher (PYQ v2 PR-5/6 slice C): start a practice attempt over a
+  // paper's verified, projected questions and hand off to the existing attempt
+  // shell. Not every listed paper is projected to the mock bank yet, so a 409
+  // (empty pool) is an expected, gracefully-handled state.
+  const [practicingPaperId, setPracticingPaperId] = useState(null);
+  const [practiceError, setPracticeError] = useState("");
 
   // Available years derived from first load (no filter)
   const [availableYears, setAvailableYears] = useState([]);
@@ -198,6 +222,39 @@ export default function PyqExplorerSection({ examSlug }) {
     setPage(1);
   }, [debouncedYear, phase, difficulty, sourceType]);
 
+  const examId = data?.exam_id || null;
+
+  const startPaperPractice = useCallback(
+    async (paperId) => {
+      if (!paperId || practicingPaperId) return;
+      setPracticingPaperId(paperId);
+      setPracticeError("");
+      try {
+        const out = await api.post("/api/study/mocks/practice/start", {
+          mode: "paper",
+          target_id: paperId,
+          ...(examId ? { exam_id: examId } : {}),
+        });
+        if (out?.attempt_id) {
+          navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
+          return;
+        }
+        setPracticeError("This paper isn't available for practice yet.");
+      } catch (e) {
+        if (e?.status === 409) {
+          setPracticeError(
+            "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
+          );
+        } else {
+          setPracticeError(e?.data?.detail || e?.message || "Couldn't start practice. Please try again.");
+        }
+      } finally {
+        setPracticingPaperId(null);
+      }
+    },
+    [navigate, examId, practicingPaperId]
+  );
+
   if (!examSlug) return null;
 
   const items = data?.items || [];
@@ -235,6 +292,16 @@ export default function PyqExplorerSection({ examSlug }) {
         </div>
       </div>
 
+      {practiceError ? (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-800"
+          data-testid="pyq-practice-error"
+          role="status"
+        >
+          {practiceError}
+        </div>
+      ) : null}
+
       {/* Results */}
       {error ? (
         <div className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
@@ -260,7 +327,13 @@ export default function PyqExplorerSection({ examSlug }) {
       ) : (
         <div className="space-y-3">
           {items.map((q) => (
-            <QuestionCard key={q.id} q={q} />
+            <QuestionCard
+              key={q.id}
+              q={q}
+              onPractice={startPaperPractice}
+              practicing={practicingPaperId === q.paper_id}
+              practiceDisabled={practicingPaperId != null}
+            />
           ))}
         </div>
       )}
