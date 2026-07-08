@@ -76,6 +76,8 @@ def _claim(**overrides):
         "is_current": True,
         "user_id": "user-1",
         "evaluation_id": "eval-1",
+        "unit_version_id": "ver-1",
+        "evaluation_revision": 1,
         "topic_id": "topic-1",
         "session_id": "sess-1",
         "microtopic_id": None,
@@ -234,3 +236,174 @@ def test_content_hash_mismatch_rejects_corrupt_not_recoverable():
     p = sb.params_for("ewp_reject_corrupt_version")
     assert p["p_claim_token"] == "tok-abc"
     assert p["p_error"] == "content_hash_mismatch"
+
+def test_worker_runs_semantic_shadow_probe_without_affecting_primary_rpc(monkeypatch):
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
+    monkeypatch.delenv("FF_WRITING_MASTERY_WRITES", raising=False)
+
+    calls = {}
+
+    class _ShadowEvaluator:
+        def evaluate(self, answer_text, **kwargs):
+            calls["answer_text"] = answer_text
+            calls["kwargs"] = kwargs
+            return evaluation_worker.lang.LanguageResult(
+                issues=[
+                    evaluation_worker.lang.LanguageIssueOut(
+                        issue_type="subject_verb_agreement",
+                        span_start_utf16=0,
+                        span_end_utf16=4,
+                        quoted_text="They",
+                        explanation="Shadow-only semantic finding.",
+                        severity="must_fix",
+                    )
+                ],
+                evaluator_version="lang-llm-shadow-test",
+                source_comparison="meaning_not_preserved",
+                needs_human_review=True,
+            )
+
+    monkeypatch.setattr(
+        evaluation_worker.lang,
+        "get_semantic_shadow_evaluator",
+        lambda: _ShadowEvaluator(),
+    )
+
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(
+            answer_text="They are happy.",
+            exercise_type="sentence_correction",
+            prompt_text="Correct the sentence.",
+            source_text="They are happy.",
+        ),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+
+    result = evaluation_worker.run_worker_pass(sb)
+
+    assert result["status"] == "succeeded"
+    assert calls["answer_text"] == "They are happy."
+    assert calls["kwargs"]["prompt_text"] == "Correct the sentence."
+    assert calls["kwargs"]["source_text"] == "They are happy."
+
+    p = sb.params_for("ewp_complete_language_evaluation")
+    assert p["p_evaluator_version"] != "lang-llm-shadow-test"
+    assert p["p_language_result"]["evaluator_version"] != "lang-llm-shadow-test"
+    assert p["p_language_result"]["source_comparison"] == "source_unchanged"
+    assert all(i["explanation"] != "Shadow-only semantic finding." for i in p["p_issues"])
+
+
+def test_worker_ignores_semantic_shadow_failure(monkeypatch):
+    def _job():
+        return _claim(
+            answer_text="He goes to school.",
+            exercise_type="sentence_correction",
+            prompt_text="Correct the sentence.",
+            source_text="He goes to school.",
+        )
+
+    monkeypatch.delenv("FF_WRITING_LLM_EVAL", raising=False)
+    baseline_sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _job(),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+
+    baseline_result = evaluation_worker.run_worker_pass(baseline_sb)
+    assert baseline_result["status"] == "succeeded"
+    baseline_p = baseline_sb.params_for("ewp_complete_language_evaluation")
+
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
+
+    class _FailingShadowEvaluator:
+        def evaluate(self, answer_text, **kwargs):
+            raise RuntimeError("shadow provider unavailable")
+
+    monkeypatch.setattr(
+        evaluation_worker.lang,
+        "get_semantic_shadow_evaluator",
+        lambda: _FailingShadowEvaluator(),
+    )
+
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _job(),
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+
+    result = evaluation_worker.run_worker_pass(sb)
+
+    assert result["status"] == "succeeded"
+    p = sb.params_for("ewp_complete_language_evaluation")
+    assert p["p_evaluator_version"] == baseline_p["p_evaluator_version"]
+    assert p["p_language_result"] == baseline_p["p_language_result"]
+    assert p["p_issues"] == baseline_p["p_issues"]
+    assert p["p_needs_human_review"] == baseline_p["p_needs_human_review"]
+    assert p.get("p_mastery_signals") == baseline_p.get("p_mastery_signals")
+    assert p.get("p_mastery_idempotency_key") == baseline_p.get("p_mastery_idempotency_key")
+
+def test_worker_records_semantic_shadow_telemetry_without_raw_payload(monkeypatch):
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
+
+    class _ShadowEvaluator:
+        def evaluate(self, answer_text, **kwargs):
+            return evaluation_worker.lang.LanguageResult(
+                issues=[
+                    evaluation_worker.lang.LanguageIssueOut(
+                        issue_type="subject_verb_agreement",
+                        span_start_utf16=0,
+                        span_end_utf16=15,
+                        quoted_text="They are happy.",
+                        explanation="Raw semantic shadow snippet must not persist.",
+                        severity="must_fix",
+                    )
+                ],
+                evaluator_version="lang-llm-shadow-test",
+                source_comparison="source_unchanged",
+                needs_human_review=False,
+            )
+
+    monkeypatch.setattr(
+        evaluation_worker.lang,
+        "get_semantic_shadow_evaluator",
+        lambda: _ShadowEvaluator(),
+    )
+
+    sb = FakeSupabase({
+        "ewp_claim_evaluation_job": _claim(
+            evaluation_id="eval-1",
+            unit_version_id="ver-1",
+            evaluation_revision=2,
+            answer_text="They are happy.",
+            exercise_type="sentence_correction",
+            prompt_text="Correct the sentence.",
+            source_text="They are happy.",
+        ),
+        "ewp_record_language_evaluator_run": {"ok": True, "id": "run-1"},
+        "ewp_complete_language_evaluation": {"ok": True},
+    })
+
+    result = evaluation_worker.run_worker_pass(sb)
+
+    assert result["status"] == "succeeded"
+    assert "ewp_record_language_evaluator_run" in sb.call_names()
+
+    telemetry = sb.params_for("ewp_record_language_evaluator_run")
+    assert telemetry["p_evaluation_id"] == "eval-1"
+    assert telemetry["p_unit_version_id"] == "ver-1"
+    assert telemetry["p_evaluation_revision"] == 2
+    assert _HEX64.match(telemetry["p_input_hash"])
+    assert telemetry["p_deterministic_evaluator_version"] == evaluation_worker.lang.LANGUAGE_EVALUATOR_VERSION
+    assert telemetry["p_deterministic_source_comparison"] == "source_unchanged"
+    completion = sb.params_for("ewp_complete_language_evaluation")
+    assert telemetry["p_deterministic_needs_human_review"] == completion["p_needs_human_review"]
+    assert telemetry["p_deterministic_issue_count"] == 0
+    assert telemetry["p_adapter_version"] == "lang-llm-shadow-test"
+    assert telemetry["p_status"] == "succeeded"
+    assert telemetry["p_semantic_source_comparison"] == "source_unchanged"
+    assert telemetry["p_semantic_needs_human_review"] is False
+    assert telemetry["p_semantic_issue_count"] == 1
+    assert telemetry["p_result_json"]["issue_count"] == 1
+
+    serialized = repr(telemetry)
+    assert "They are happy." not in serialized
+    assert "Correct the sentence." not in serialized
+    assert "Raw semantic shadow snippet must not persist." not in serialized
