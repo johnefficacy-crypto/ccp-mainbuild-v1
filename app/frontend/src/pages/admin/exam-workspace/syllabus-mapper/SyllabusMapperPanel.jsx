@@ -53,6 +53,12 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
     setRowNotFound(!pendingItems.some((item) => item.id === rowId));
   }, [rowId, pendingItems, pendingLoading, pendingError]);
   const [pagesByNumber, setPagesByNumber] = useState({});
+  // document_assets id backing the selected syllabus_documents row. The
+  // extracted-page store (`document_pages`) is keyed by the asset id
+  // (`source_document_id`), NOT the syllabus_documents id — see
+  // syllabus_mapper.py:119-122 and BUG-EI-3. Fall back to the syllabus id for
+  // legacy rows where `source_document_id` was never populated.
+  const [pageAssetId, setPageAssetId] = useState(null);
 
   const mapper = useSyllabusMapper(examId);
   const topicEdit = useTopicEdit();
@@ -64,10 +70,10 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
   // `{ items: [{ page_number, text_content }] }`. Proposals' `source_page` are
   // real page numbers, so the map must be keyed by page_number, not list offset.
   useEffect(() => {
-    if (!mapper.syllabusDocumentId) { setPagesByNumber({}); return undefined; }
+    if (!pageAssetId) { setPagesByNumber({}); return undefined; }
     let cancelled = false;
     api
-      .get(`/api/admin/exam-intelligence-cms/documents/${mapper.syllabusDocumentId}/pages`)
+      .get(`/api/admin/exam-intelligence-cms/documents/${pageAssetId}/pages`)
       .then((d) => {
         if (cancelled) return;
         const map = {};
@@ -76,7 +82,7 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
       })
       .catch(() => { if (!cancelled) setPagesByNumber({}); });
     return () => { cancelled = true; };
-  }, [mapper.syllabusDocumentId]);
+  }, [pageAssetId]);
 
   const pageText = pagesByNumber[mapper.currentPage] || "";
 
@@ -128,7 +134,11 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
         <DocumentSelector
           examId={examId}
           value={mapper.syllabusDocumentId}
-          onChange={(id) => { mapper.setSyllabusDocumentId(id); if (id) mapper.runPropose(id); }}
+          onChange={(id, doc) => {
+            mapper.setSyllabusDocumentId(id);
+            setPageAssetId(id ? (doc?.source_document_id || id) : null);
+            if (id) mapper.runPropose(id);
+          }}
         />
 
         <ProposalRunner
