@@ -108,6 +108,18 @@ test("extra filters (exam_type, management_mode, cadence, is_active, organizatio
   await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining("conducting_organization_id=org-1")));
 });
 
+test("exams name search sends a `q` param (ilike on name)", async () => {
+  renderCms();
+  const searchInput = await screen.findByTestId("cms-search-input");
+  api.get.mockClear();
+  fireEvent.change(searchInput, { target: { value: "ssc" } });
+  // search is debounced (300ms) then fires load with the `q` param
+  await waitFor(
+    () => expect(api.get).toHaveBeenCalledWith(expect.stringContaining("q=ssc")),
+    { timeout: 1000 },
+  );
+});
+
 test("row checkboxes drive a selected count and enable bulk edit / retire", async () => {
   renderCms();
   await screen.findByTestId(`cms-select-row-${EXAMS[0].id}`);

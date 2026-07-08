@@ -225,8 +225,9 @@ describe("G.2 Search input", () => {
     const input = await screen.findByTestId("cms-search-input");
     fireEvent.change(input, { target: { value: "hello" } });
     expect(input.value).toBe("hello");
-    // Switch to entity with no search support — input disappears
-    fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exams" } });
+    // Switch to entity with no search support — input disappears.
+    // (exam-families has no `q` param; exams now does, so use exam-families here.)
+    fireEvent.change(screen.getByTestId("cms-entity-select"), { target: { value: "exam-families" } });
     await waitFor(() => expect(screen.queryByTestId("cms-search-input")).toBeNull());
   });
 

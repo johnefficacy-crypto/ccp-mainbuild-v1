@@ -2633,6 +2633,28 @@ def _seed_two_exams(sb: ExtSBStub) -> None:
     )
 
 
+def test_cms_list_exams_name_search_ilike():
+    # `q` does a case-insensitive substring match on exam name.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    now = datetime.now(timezone.utc).isoformat()
+    sb.db["exams"] = [
+        {"id": "e-cgl", "slug": "ssc-cgl", "name": "SSC CGL", "exam_type": "recruitment", "is_active": True, "created_at": now},
+        {"id": "e-chsl", "slug": "ssc-chsl", "name": "SSC CHSL", "exam_type": "recruitment", "is_active": True, "created_at": now},
+        {"id": "e-nda", "slug": "upsc-nda", "name": "UPSC NDA", "exam_type": "recruitment", "is_active": True, "created_at": now},
+    ]
+    c = TestClient(_cms_app(sb))
+    r = c.get("/api/admin/exam-intelligence-cms/exams?q=ssc")
+    assert r.status_code == 200, r.text
+    assert sorted(x["id"] for x in r.json()["items"]) == ["e-cgl", "e-chsl"]
+    # combines with other filters
+    r2 = c.get("/api/admin/exam-intelligence-cms/exams?q=cgl&exam_type=recruitment")
+    assert sorted(x["id"] for x in r2.json()["items"]) == ["e-cgl"]
+    # no match → empty
+    r3 = c.get("/api/admin/exam-intelligence-cms/exams?q=zzz")
+    assert r3.json()["items"] == []
+
+
 def test_cms_bulk_update_sets_field_across_many_rows():
     sb = ExtSBStub()
     _seed_two_exams(sb)
