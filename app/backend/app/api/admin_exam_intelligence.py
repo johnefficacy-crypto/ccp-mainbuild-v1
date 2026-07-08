@@ -168,7 +168,8 @@ _REVIEWABLE = {
     "pyq_question": {
         "table": "pyq_questions",
         "select": (
-            "id, pyq_paper_id, question_number, question_type, language, "
+            "id, pyq_paper_id, section_id, source_question_ref, display_order, "
+            "question_number, question_type, language, "
             "reviewer_status, created_at, updated_at"
         ),
         "supports_notes": False,
@@ -181,6 +182,31 @@ _REVIEWABLE = {
             "metadata, created_at"
         ),
         # pyq_options has no reviewer_notes column; notes ride on metadata.
+        "supports_notes": False,
+    },
+    # Shared passage/stimulus CONTENT (migration 223). Reviewed INDEPENDENTLY:
+    # a question's review must NOT auto-verify shared stimulus content, because
+    # the same passage may back other still-unreviewed questions. Only the
+    # question→stimulus LINK (pyq_question_stimulus below) is cascaded by
+    # question review (migration 227). Flows through the generic review_item
+    # else-branch — no new endpoint code.
+    "pyq_stimulus": {
+        "table": "pyq_stimuli",
+        "select": (
+            "id, pyq_paper_id, section_id, stimulus_type, content_text, "
+            "language, display_order, reviewer_status, reviewed_by, "
+            "reviewed_at, metadata, created_at"
+        ),
+        "supports_notes": False,
+    },
+    # Question↔stimulus ASSOCIATION (migration 223). Independently review-gated;
+    # question review cascades to these link rows via migration 227's RPC.
+    "pyq_question_stimulus": {
+        "table": "pyq_question_stimuli",
+        "select": (
+            "id, question_id, stimulus_id, display_order, reviewer_status, "
+            "reviewed_by, reviewed_at, created_at"
+        ),
         "supports_notes": False,
     },
 }
@@ -638,8 +664,10 @@ def list_items(
         # syllabus mentions and pyq question topic tags have exam-side joins.
         if kind == "syllabus_topic_mention":
             q = q.eq("exam_id", exam_id)
-        elif kind in {"pyq_question_topic_tag", "pyq_option"}:
-            # Both are keyed via question → paper → exam.
+        elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus"}:
+            # All keyed via question → paper → exam. pyq_question_stimulus (the
+            # question↔stimulus LINK) filters on its own question_id, exactly
+            # like the topic-tag / option children.
             paper_rows = _safe(
                 lambda: (
                     sb.table("pyq_papers")
@@ -669,7 +697,10 @@ def list_items(
             if not question_ids:
                 return []
             q = q.in_("question_id", question_ids)
-        elif kind == "pyq_question":
+        elif kind in {"pyq_question", "pyq_stimulus"}:
+            # Both hang directly off the paper (pyq_paper_id → exam). A stimulus
+            # is shared passage/table CONTENT owned by a paper, so it scopes the
+            # same way a question does.
             paper_rows = _safe(
                 lambda: (
                     sb.table("pyq_papers")

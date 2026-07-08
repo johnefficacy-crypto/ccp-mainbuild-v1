@@ -7,7 +7,12 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 jest.mock("../../../../lib/api", () => ({
   __esModule: true,
-  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
+  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+}));
+
+jest.mock("../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
 }));
 
 const { api } = require("../../../../lib/api");
@@ -803,5 +808,193 @@ describe("PyqPaperWorkspace deep-link (I8-B)", () => {
     // Resolve the stale paper A progress — must be discarded; paper B counts must remain
     await act(async () => { resolveStalePaperAProgress(PROGRESS); });
     expect(document.body.textContent).toContain("/ 10 expected");
+  });
+});
+
+// ── PR-3: section assignment + passage/stimulus grouping (migration 223) ──────
+
+describe("PyqPaperWorkspace PR-3 sections + stimuli", () => {
+  const PAPER_PR3 = { ...PAPER, exam_phase_id: "phase-1", exam_id: "exam-1" };
+  const SECTIONS = [
+    { id: "sec-1", exam_phase_id: "phase-1", section_label: "General Awareness" },
+    { id: "sec-2", exam_phase_id: "phase-1", section_label: "Quantitative Aptitude" },
+  ];
+  const STIMULI = [
+    {
+      id: "stim-1",
+      pyq_paper_id: PAPER_ID,
+      section_id: "sec-1",
+      stimulus_type: "passage",
+      content_text: "Read the following passage about the rivers of India.",
+      reviewer_status: "pending",
+      display_order: 1,
+    },
+  ];
+  const LINKS = [
+    { id: "link-1", question_id: "q1", stimulus_id: "stim-1", reviewer_status: "pending", display_order: 1 },
+  ];
+
+  function baseGet(url, overrides = {}) {
+    if (url.includes("/progress")) return Promise.resolve(PROGRESS);
+    if (url.includes("/signed-pdf")) return Promise.resolve({ signed_url: "https://example.com/doc.pdf" });
+    if (url.includes("/exam-phase-sections")) return overrides.sections || Promise.resolve({ items: SECTIONS, total: 2 });
+    if (url.includes("/pyq-question-stimuli")) return Promise.resolve({ items: LINKS, total: LINKS.length });
+    if (url.includes("/pyq-stimuli")) return overrides.stimuli || Promise.resolve({ items: STIMULI, total: STIMULI.length });
+    if (url.includes("/pyq-options?")) return Promise.resolve({ items: OPTIONS });
+    if (url.includes("/pyq-questions?")) return Promise.resolve({ items: QUESTIONS, total: 3 });
+    if (url.includes("/pyq-papers/")) return Promise.resolve(PAPER_PR3);
+    if (url.includes("/dup-check")) return Promise.resolve({ matches: [] });
+    return Promise.resolve({});
+  }
+
+  function setupPr3Mocks(overrides = {}) {
+    api.get.mockImplementation((url) => baseGet(url, overrides));
+    api.post.mockResolvedValue({ ok: true, row: { id: "new-stim" } });
+    api.patch.mockResolvedValue({ ok: true, row: {} });
+    api.delete.mockResolvedValue({ ok: true });
+  }
+
+  function renderPr3() {
+    return render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PyqPaperWorkspace paperId={PAPER_ID} embedded />
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupPr3Mocks();
+  });
+
+  test("section dropdown loads the paper's phase sections and renders them in the editor", async () => {
+    renderPr3();
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/exam-phase-sections?exam_phase_id=phase-1")),
+    );
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("editor-question-section"));
+    const select = screen.getByTestId("editor-question-section");
+    expect(select.textContent).toContain("General Awareness");
+    expect(select.textContent).toContain("Quantitative Aptitude");
+  });
+
+  test("assigning a section saves via PATCH /pyq-questions with section_id", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("editor-question-section"));
+    fireEvent.change(screen.getByTestId("editor-question-section"), { target: { value: "sec-1" } });
+    fireEvent.click(screen.getByTestId("btn-save-draft"));
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-questions/q1"),
+        expect.objectContaining({ payload: expect.objectContaining({ section_id: "sec-1" }) }),
+      ),
+    );
+  });
+
+  test("stimuli panel lists stimuli for the paper after expanding", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("stimulus-row-stim-1"));
+    expect(screen.getByTestId("stimulus-row-stim-1").textContent).toContain("rivers of India");
+    // section label resolves from section_id
+    expect(screen.getByTestId("stimulus-section-stim-1").textContent).toContain("General Awareness");
+  });
+
+  test("stimulus verify button calls the review router PATCH /items/pyq_stimulus/{id}/review", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("stimulus-verify-stim-1"));
+    fireEvent.click(screen.getByTestId("stimulus-verify-stim-1"));
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith(
+        expect.stringContaining("/items/pyq_stimulus/stim-1/review"),
+        expect.objectContaining({ reviewer_status: "verified" }),
+      ),
+    );
+  });
+
+  test("creating a stimulus posts to /pyq-stimuli with the paper id", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("stimulus-create-open"));
+    fireEvent.click(screen.getByTestId("stimulus-create-open"));
+    fireEvent.change(screen.getByTestId("stimulus-create-content"), { target: { value: "New passage text" } });
+    fireEvent.click(screen.getByTestId("stimulus-create-submit"));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        expect.stringContaining("/pyq-stimuli"),
+        expect.objectContaining({
+          payload: expect.objectContaining({ pyq_paper_id: PAPER_ID, stimulus_type: "passage", content_text: "New passage text" }),
+        }),
+      ),
+    );
+  });
+
+  test("create-stimulus type dropdown offers only PR-3 text types (no PR-11 media types)", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("stimulus-create-open"));
+    fireEvent.click(screen.getByTestId("stimulus-create-open"));
+    const select = screen.getByTestId("stimulus-create-type");
+    const values = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    expect(values).toEqual(["passage", "caselet", "table"]);
+    expect(values).not.toContain("image");
+    expect(values).not.toContain("chart");
+    expect(values).not.toContain("diagram");
+  });
+
+  test("linked-stimuli list renders for the selected question", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/pyq-question-stimuli?question_id=q1")),
+    );
+    await waitFor(() => screen.getByTestId("question-link-link-1"));
+  });
+
+  test("per-link verify calls PATCH /items/pyq_question_stimulus/{id}/review", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("question-list-item-q1"));
+    fireEvent.click(screen.getByTestId("question-list-item-q1"));
+    await waitFor(() => screen.getByTestId("link-verify-link-1"));
+    fireEvent.click(screen.getByTestId("link-verify-link-1"));
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith(
+        expect.stringContaining("/items/pyq_question_stimulus/link-1/review"),
+        expect.objectContaining({ reviewer_status: "verified" }),
+      ),
+    );
+  });
+
+  test("stimuli panel shows empty state when there are none", async () => {
+    setupPr3Mocks({ stimuli: Promise.resolve({ items: [], total: 0 }) });
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("pyq-stimuli-empty"));
+  });
+
+  test("stimuli panel shows loading state while the fetch is pending", async () => {
+    setupPr3Mocks({ stimuli: new Promise(() => {}) }); // never resolves
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("pyq-stimuli-loading"));
+  });
+
+  test("stimuli panel shows error state when the fetch fails", async () => {
+    setupPr3Mocks({ stimuli: Promise.reject(new Error("boom")) });
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("pyq-stimuli-error"));
   });
 });

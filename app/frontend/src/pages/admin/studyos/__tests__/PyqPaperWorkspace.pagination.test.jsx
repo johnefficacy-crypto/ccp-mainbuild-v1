@@ -18,7 +18,12 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 jest.mock("../../../../lib/api", () => ({
   __esModule: true,
-  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
+  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+}));
+
+jest.mock("../../../../lib/authContext", () => ({
+  __esModule: true,
+  useAuth: () => ({ user: { role: "super_admin", permissions: [] } }),
 }));
 
 const { api } = require("../../../../lib/api");
