@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api } from "../../lib/api";
+import useApiAction from "../../lib/hooks/useApiAction";
 
 const DIFFICULTY_OPTIONS = [
   { value: "", label: "Any difficulty" },
@@ -40,7 +42,7 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function QuestionCard({ q }) {
+function QuestionCard({ q, onPractice, practicing, practiceDisabled }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -77,6 +79,21 @@ function QuestionCard({ q }) {
       </div>
 
       <p className="text-sm leading-relaxed">{q.question_text || "—"}</p>
+
+      {q.paper_id ? (
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => onPractice(q.paper_id)}
+            disabled={practiceDisabled}
+            className="btn btn-ghost text-xs disabled:opacity-40"
+            data-testid="pyq-practice-paper-btn"
+            title="Start a practice attempt over this paper's verified questions"
+          >
+            {practicing ? "Starting…" : "Practice this paper"}
+          </button>
+        </div>
+      ) : null}
 
       {expanded && (
         <div className="mt-2 space-y-1.5">
@@ -124,6 +141,8 @@ function useDebounce(value, delay) {
 }
 
 export default function PyqExplorerSection({ examSlug }) {
+  const navigate = useNavigate();
+  const { run, busy } = useApiAction();
   const [year, setYear] = useState("");
   const [phase, setPhase] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -133,6 +152,13 @@ export default function PyqExplorerSection({ examSlug }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Practice launcher (PYQ v2 PR-5/6 slice C): start a practice attempt over a
+  // paper's verified, projected questions and hand off to the existing attempt
+  // shell. Not every listed paper is projected to the mock bank yet, so a 409
+  // (empty pool) is an expected, gracefully-handled state.
+  const [practicingPaperId, setPracticingPaperId] = useState(null);
+  const [practiceError, setPracticeError] = useState("");
 
   // Available years derived from first load (no filter)
   const [availableYears, setAvailableYears] = useState([]);
@@ -198,6 +224,51 @@ export default function PyqExplorerSection({ examSlug }) {
     setPage(1);
   }, [debouncedYear, phase, difficulty, sourceType]);
 
+  const examId = data?.exam_id || null;
+
+  // Route the mutation through the shared useApiAction runner (frontend
+  // governance). The expected 409 (paper not yet projected) is caught inside the
+  // action and surfaced as an inline notice — returned as a handled result so
+  // useApiAction's generic error toast does not also fire; any unexpected error
+  // is rethrown onto the standard action error path.
+  const startPaperPractice = useCallback(
+    async (paperId) => {
+      if (!paperId || busy) return;
+      setPracticingPaperId(paperId);
+      setPracticeError("");
+      await run({
+        action: async () => {
+          try {
+            return await api.post("/api/study/mocks/practice/start", {
+              mode: "paper",
+              target_id: paperId,
+              ...(examId ? { exam_id: examId } : {}),
+            });
+          } catch (e) {
+            if (e?.status === 409) return { emptyPool: true };
+            throw e;
+          }
+        },
+        onSuccess: (out) => {
+          if (out?.emptyPool) {
+            setPracticeError(
+              "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
+            );
+            return;
+          }
+          if (out?.attempt_id) {
+            navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
+            return;
+          }
+          setPracticeError("This paper isn't available for practice yet.");
+        },
+        errorMessage: "Couldn't start practice. Please try again.",
+      });
+      setPracticingPaperId(null);
+    },
+    [run, busy, navigate, examId]
+  );
+
   if (!examSlug) return null;
 
   const items = data?.items || [];
@@ -235,6 +306,16 @@ export default function PyqExplorerSection({ examSlug }) {
         </div>
       </div>
 
+      {practiceError ? (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-800"
+          data-testid="pyq-practice-error"
+          role="status"
+        >
+          {practiceError}
+        </div>
+      ) : null}
+
       {/* Results */}
       {error ? (
         <div className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
@@ -260,7 +341,13 @@ export default function PyqExplorerSection({ examSlug }) {
       ) : (
         <div className="space-y-3">
           {items.map((q) => (
-            <QuestionCard key={q.id} q={q} />
+            <QuestionCard
+              key={q.id}
+              q={q}
+              onPractice={startPaperPractice}
+              practicing={busy && practicingPaperId === q.paper_id}
+              practiceDisabled={busy}
+            />
           ))}
         </div>
       )}
