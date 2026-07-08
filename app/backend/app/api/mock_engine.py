@@ -10,13 +10,14 @@ Routes (all under /api/study/mocks):
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.study_os.pyq_practice import start_pyq_practice
 from app.study_os.mastery_writer import (
     MasteryClassificationNotReady,
     MasteryWriter,
@@ -69,7 +70,49 @@ class SubmitBody(BaseModel):
     claimed_answered_count: int | None = None
 
 
+class StartPracticeBody(BaseModel):
+    mode: Literal["paper", "section", "topic"]
+    target_id: str = Field(min_length=1)
+    exam_id: str | None = None
+    limit: int = Field(default=100, ge=1, le=200)
+
+
 # ── routes ─────────────────────────────────────────────────────────────────────
+
+
+@router.post("/practice/start")
+async def start_practice(
+    body: StartPracticeBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Start a learner PYQ practice attempt over projected PYQs (by paper /
+    section / topic). Reuses the generated-attempt blueprint path; the resulting
+    attempt is served by the existing /attempts/{id} answer/submit/result/review
+    routes. 409 when no eligible projected PYQ matches (zero writes)."""
+    user_id = user["id"]
+    try:
+        result = start_pyq_practice(
+            get_supabase_admin(),
+            user_id=user_id,
+            mode=body.mode,
+            target_id=body.target_id,
+            exam_id=body.exam_id,
+            limit=body.limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except RuntimeError:
+        logger.exception(
+            "start_pyq_practice failed user=%s mode=%s target=%s",
+            user_id, body.mode, body.target_id,
+        )
+        raise HTTPException(status_code=500, detail="Could not create practice attempt.")
+    if result.get("outcome") == "empty_pool":
+        raise HTTPException(
+            status_code=409,
+            detail="No verified, projected PYQ questions match this practice selection.",
+        )
+    return result
 
 @router.post("/attempts/start")
 async def start(
