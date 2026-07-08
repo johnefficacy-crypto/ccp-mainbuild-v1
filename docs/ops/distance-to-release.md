@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ 443a74e` · 2026-07-03
+**as_of:** `main @ a4e4939` · 2026-07-08 (P8 T0-ended + PYQ v2 track refresh; earlier v1 gate rows as of 2026-07-03)
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
@@ -47,7 +47,7 @@ T0: NOT SET (deliberate operator hold)
 | P5 | Telemetry (PR #800) staging validation + 36-file fingerprint boundary approval + freeze record | OPS | ✅ CLEAR | **OPERATOR PASS (2026-07-03), freeze record MERGED (PR #864):** checks 3A/3B/3C passed at source SHA `6171027a…`; 36-file boundary approved; freeze-candidate digest `51cd6928…`. | checklist rows P5 / PR #800; PR #864 |
 | P6 | Scheduler verification (jobs/manual-run/drain) | OPS | ✅ CLEAR | OPERATOR PASS (2026-07-01) | `audits/2026-07-01-scheduler-drain-validation.md` |
 | P7 | **PR-6** final-candidate revalidation rerun | OPS+ENG | ✅ CLEAR | OPERATOR PASS 2026-07-02 at deployed SHA `6ecfbed9`: all 12 start gates PASS; Gate A PASS; B–E,H–J PASS; F/G INSUFFICIENT_DATA exit 3 (permitted). | `audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md` |
-| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **OPERATOR HOLD (the floor)** | T0 deliberately held until in-flight development + E2E onboarding readiness complete; then re-pin at the final SHA + record `window_start`. **Any threshold miss restarts the 14 days.** | `pr7_shadow_gate_results.md` |
+| P8 | **PR-7 14-day shadow window** | OPS | ⏳ NOT STARTED — **prior T0 ENDED BY OWNER (2026-07-08); fresh T0 pending** | A T0 was pinned 2026-07-06 (`window_start 2026-07-06T19:18:15Z`, SHA `15db4873…`, `FF_MOCK_MASTERY_WRITES=shadow`) then **terminated early by owner direction on 2026-07-08**; the 36-file fingerprint freeze from it no longer constrains edits. A new T0 must be re-pinned at the final SHA once in-flight dev + E2E onboarding readiness complete. **Any threshold miss restarts the 14 days.** | checklist P8 note (2026-07-08); `audits/2026-07-06-p8-t0-start.md`; `pr7_shadow_gate_results.md` |
 | P9 | PR-8 bounded live canary | OPS | ⏳ NOT STARTED | after P8 passes | `pr8_live_canary_plan.md` |
 | P10 | PR-9 approval → flip `FF_MOCK_MASTERY_WRITES=live` | OPS | ⛔ BLOCKED | after P9 + P1/P2/P4 + sign-offs | `pr9_live_approval.md` |
 | **Release-validated (Condition 3)** |
@@ -70,6 +70,7 @@ live E2E before it counts toward production readiness:
 - **Content Studio (PR #868):** consolidated UI + route + writing-prompt operator surface merged.
 - **Exam-intel cleanup:** phase-kind editor + PYQ phase selector (PR #871); EI-CLEAN-03/04 (#875); EI-CLEAN-05/06 (#876, current head). Remaining: **EI-CLEAN-07** (Setup phase-timeline regression + mutation governance).
 - **Migration collision resolved:** J3 migration 219 vs PYQ-onboarding 219 → latter renumbered **220** with operator attestation of the deployed ledger mapping.
+- **PYQ Intelligence v2 track (PR-1 → PR-10 merged; PR-11 partial):** schema fidelity + importer/CMS review (mig 223/224/227), projection/snapshot fidelity (mig 229), learner practice (mig 231 + `pyq_practice.py`), unified evidence adapter, trap-drill shadow mastery (mig 232, `FF_TRAP_DRILL_MASTERY_SHADOW`), planner PYQ launch, persona aggregates (PR #914). Data: UPSC CSE 2025 CSAT canonical (mig 228, stays `pending`) + explanation layer (mig 230). PR-11: media storage (mig 233) + CMS media authoring landed; advanced-answer-type runtimes (MSQ/integer/descriptive) + asset-upload/importer/projection-media lanes **deferred**. All rows `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` — apply migrations 223→233 to staging→prod in order, then verify. No live mastery writes (PR-8 shadow-only; the mastery live-write gate P8–P10 above stays closed). Source-of-record detail: `docs/status/career-copilot-checklist.md` + `docs/status/PYQ-Unified-Practice-Implementation-Checklist-2026-07-07.md`.
 
 ---
 

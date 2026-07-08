@@ -1,10 +1,13 @@
 # Unified PYQ Practice and Intelligence — Implementation Checklist
 
-Status: **PLANNED — CONTRACT / DELIVERY CHECKLIST**  
-Verified against repository `main`: **2026-07-07**  
+Status: **IN DELIVERY — PR-1 → PR-10 CODE-LANDED (VALIDATION PENDING); PR-11 PARTIAL**  
+Verified against repository `main`: **2026-07-08**  
 Owners: Exam Intelligence + Study OS + Mock Engine  
 Primary architecture: `docs/architecture/pyq-intelligence-v2.md`  
-Mock/Study OS integration: `docs/study_os/mock-engine-v2-study-os-integration.md`
+Mock/Study OS integration: `docs/study_os/mock-engine-v2-study-os-integration.md`  
+Source-of-record delivery detail per PR: `docs/status/career-copilot-checklist.md` (this file is the contract map; the checklist carries the merged-PR evidence).
+
+> **Delivery snapshot (2026-07-08).** The ordered plan below (§6) has shipped PR-1 through PR-10 to `main`, all at `CODE-FIXED, VALIDATION PENDING` (code merged + tested; operator/DB validation and the mastery live-write gate still pending). PR-11 has landed slice 1 (media storage, migration 233) and slice 2 (CMS media authoring); its advanced-answer-type runtimes and asset-upload/importer lanes remain deferred. Every unchecked `[ ]` box in this document that a merged PR satisfies is tracked as done in the source-of-record checklist — this contract file is retained as the original scope map and is **not** re-ticked box-by-box. See each PR's status line in §6 for the merged pointer.
 
 ## 1. Locked product decision
 
@@ -61,9 +64,9 @@ UI rule: embed this under the existing Study/Mocks/Learning hierarchy. Do not in
 | Planner consumption of coverage, PYQ frequency, mastery, errors and persona policy | MERGED / CODE PRESENT | `planner.py` |
 | Persona snapshots and study-policy derivation | MERGED / CODE PRESENT | `docs/architecture/persona-layer.md` and persona runtime |
 | Revision calendar for topic/note/deck/mistake/custom sources | MERGED / CODE PRESENT | `Revision.jsx` + revision service |
-| Dedicated aspirant PYQ catalogue and attempt flow | MISSING / PLANNED | No learner PYQ route in `appRoutes.jsx` |
-| Passage/chart/image fidelity | MISSING / PLANNED | Canonical and mock runtime are text-only |
-| Unified direct-PYQ attempt evidence into mastery/planner/revision/persona | MISSING / PLANNED | Current mastery is mock-breakdown based |
+| Dedicated aspirant PYQ catalogue and attempt flow | CODE-LANDED / VALIDATION PENDING (PR-5/6) | Embedded practice via `pyq_practice.py` + `POST /study/mocks/practice/start`, launched from `PyqExplorerSection`; reuses the mock attempt shell (no new surface) |
+| Passage/chart/image fidelity | PARTIAL — text/passage CODE-LANDED (PR-5/6 slice A); media storage CODE-LANDED (PR-11 slice 1, migration 233); advanced-type runtimes deferred | `QuestionStimuli` renders passage/caselet/table + `image`/`chart`/`diagram`; MSQ/integer/descriptive runtimes still deferred |
+| Unified direct-PYQ attempt evidence into mastery/planner/revision/persona | CODE-LANDED / VALIDATION PENDING (PR-7 → PR-10) | `attempt_evidence.py` normalizes mock + PYQ + trap-drill to `DerivedAttemptAnalytics`; PR-8 shadow mastery, PR-9 planner launch, PR-10 persona aggregates all consume it |
 
 ## 3. Confirmed gaps
 
@@ -243,7 +246,7 @@ Example:
 
 ### PR-1 — Schema fidelity
 
-Status: **PLANNED**
+Status: **CODE-LANDED / VALIDATION PENDING** — see checklist (migrations 223 stimulus/section schema + 224 uniqueness).
 
 - [ ] Add section, source-reference and display-order fields.
 - [ ] Add stimuli and question-stimulus links.
@@ -256,7 +259,7 @@ Exit gate: canonical schema can represent SSC/IBPS/banking/defence/regulatory fi
 
 ### PR-2 — Importer v2
 
-Status: **BLOCKED on PR-1**
+Status: **CODE-LANDED / VALIDATION PENDING** — bulk-import v2 (migration 224 uniqueness); variable-option/label + stimulus-ref handling per checklist. Media-type import deferred to PR-11.
 
 - [ ] Implement canonical variable-option JSON parser.
 - [ ] Add legacy CSV adapter and `options_json` CSV support.
@@ -269,7 +272,7 @@ Exit gate: official paper JSON can be imported without manual SQL and without th
 
 ### PR-3 — Operator review and correction
 
-Status: **BLOCKED on PR-2**
+Status: **CODE-LANDED / VALIDATION PENDING** — CMS stimulus review + cascade (migration 227) and `/pyq-stimuli` authoring in the existing exam-intelligence workspace (no new admin surface).
 
 - [ ] Extend the existing PYQ workspace; no new admin top-level surface.
 - [ ] Review paper structure, sections, stimuli, question ordering and options.
@@ -281,7 +284,7 @@ Exit gate: operators can fully verify a paper without direct database editing.
 
 ### PR-4 — Projection and snapshot fidelity
 
-Status: **BLOCKED on PR-1 and PR-3**
+Status: **CODE-LANDED / VALIDATION PENDING** — projection stores section_id + per-option `source_label`/`display_order` + `mock_question_stimuli` passage snapshot (migration 229); SQL/Python content-hash parity. Media (`asset_url`/`alt_text`) projection wiring deferred to PR-11.
 
 - [ ] Extend PYQ → mock projection with section and stimulus snapshots.
 - [ ] Preserve source labels and display ordering.
@@ -293,7 +296,7 @@ Exit gate: projected text MCQs, including shared passage sets, render correctly 
 
 ### PR-5 — Learner PYQ catalogue and full-paper practice
 
-Status: **BLOCKED on PR-4**
+Status: **CODE-LANDED / VALIDATION PENDING** — slice A (render fidelity) + slice B (practice attempt assembly, migration 231) + slice C (learner launcher `PyqExplorerSection`); reuses the mock attempt shell. Revision mode deferred to PR-8/SRS.
 
 - [ ] Add embedded PYQ catalogue under existing Study IA.
 - [ ] Browse by exam, phase/tier, year and paper/shift.
@@ -305,7 +308,7 @@ Exit gate: aspirant can complete and review a verified previous-year paper.
 
 ### PR-6 — Section and topic practice
 
-Status: **BLOCKED on PR-5**
+Status: **CODE-LANDED / VALIDATION PENDING** — `pyq_practice.py` supports `paper`/`section`/`topic` modes (topic requires `exam_id`; source printed-order sort; exam-scoped pool); same `POST /study/mocks/practice/start` endpoint. Merged with PR-5.
 
 - [ ] Add section practice with optional year range.
 - [ ] Add subject/topic/microtopic practice from verified primary tags.
@@ -317,7 +320,7 @@ Exit gate: SSC/IBPS/banking-style sectional practice and UPSC topic practice bot
 
 ### PR-7 — Unified attempt evidence adapter
 
-Status: **BLOCKED on PR-5; prerequisite for intelligence integration**
+Status: **CODE-LANDED / VALIDATION PENDING** — `attempt_evidence.py` normalizes mock/generated/PYQ-practice + trap-drill into `mastery_engine.schemas.DerivedAttemptAnalytics`; `MasteryWriter._load_analytics` delegates to it. Read-only (no schema).
 
 - [ ] Define versioned source-neutral attempt evidence.
 - [ ] Adapt mock and all PYQ attempt kinds to the same evidence contract.
@@ -329,7 +332,7 @@ Exit gate: downstream systems do not need separate mock-vs-PYQ interpretation co
 
 ### PR-8 — Mastery and revision integration
 
-Status: **BLOCKED on PR-7 and active mastery promotion gates**
+Status: **CODE-LANDED / VALIDATION PENDING (shadow only)** — isolated `trap_drill_mastery_shadow` table (migration 232) + `trap_drill_shadow.py`, gated behind its own `FF_TRAP_DRILL_MASTERY_SHADOW` (no live value). No live mastery writes; the mastery live-write gate (§G12) stays closed.
 
 - [ ] Feed normalized evidence into topic mastery and error patterns.
 - [ ] Implement revision recommendation adapter: relearn/practice/review.
@@ -341,7 +344,7 @@ Exit gate: PYQ practice produces validated shadow mastery and revision recommend
 
 ### PR-9 — Planner task resolver
 
-Status: **BLOCKED on PR-8**
+Status: **CODE-LANDED / VALIDATION PENDING** — `pyq_practice_launch.py` resolver + `POST /api/study/tasks/{id}/launch-pyq-practice` (task is sole exam-context authority; idempotent via deterministic `uuid5` blueprint id); `planner.py` stamps `launch_type='pyq_practice'` on `retrieval_practice`/`revision` topic tasks. No new migration/surface.
 
 - [ ] Resolve retrieval/revision tasks into bounded PYQ sessions.
 - [ ] Respect exam, cycle, phase, section and topic scope.
@@ -353,7 +356,7 @@ Exit gate: Study OS can launch the correct PYQ practice from planner tasks.
 
 ### PR-10 — Persona behavioural aggregates
 
-Status: **BLOCKED on PR-7**
+Status: **CODE-LANDED / VALIDATION PENDING (PR #914 merged)** — `collect_user_signals` adds `pyq_practice_sessions_30d` (recent-attempt-window-first derivation) + `trap_drill_sessions_30d`; classifier `mock_avoider` and no-activity guards both account for PYQ engagement. Read-derived (no schema).
 
 - [ ] Emit aggregate practice signals after submission/review.
 - [ ] Add deterministic persona collector inputs.
@@ -365,7 +368,7 @@ Exit gate: persona can adapt task size, mix and cadence based on practice behavi
 
 ### PR-11 — Advanced question types and media
 
-Status: **BLOCKED until text single-answer pipeline is stable**
+Status: **PARTIAL — slice 1 (media storage, migration 233) + slice 2 (CMS media authoring) CODE-LANDED / VALIDATION PENDING; advanced-answer-type runtimes DEFERRED** — `pyq_stimuli` gains `document_asset_id`/`asset_locator`/`alt_text` with fail-closed accessibility governance; `QuestionStimuli` renders `image`/`chart`/`diagram`; `/pyq-stimuli` CMS authors media. Deferred lanes: MSQ/integer/matching/descriptive scoring + UI, image-option accessibility, asset-upload surface, bulk-importer media, PR-4-owned projection/snapshot media wiring.
 
 - [ ] MSQ scoring and multi-select UI.
 - [ ] Integer/numerical scoring and input UI.
