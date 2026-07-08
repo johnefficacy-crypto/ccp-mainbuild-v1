@@ -2,9 +2,12 @@
  * Data-layer hook for the English Writing Practice surface (EWP-3).
  *
  * The single API source of truth for `/app/study/practice/english/*` is the
- * backend `/api/study/practice/english/*` surface (AGENTS.md). All mutations go
- * through this hook (via `useApiAction`, which handles optimistic/rollback +
- * toast) rather than raw `fetch`/`api.post` in components.
+ * backend `/api/study/practice/english/*` surface (AGENTS.md). Mutations go
+ * through this hook rather than raw `fetch`/`api.post` in components. Most use
+ * `useApiAction` (optimistic/rollback + auto error toast); the exception is
+ * `launchWriting`, deliberately returned as a bare promise so its EXPECTED
+ * `409 no_eligible_prompt` is handled by the caller as a calm state instead of
+ * firing an auto error toast (see LaunchWritingPracticeButton).
  */
 import { useCallback } from "react";
 
