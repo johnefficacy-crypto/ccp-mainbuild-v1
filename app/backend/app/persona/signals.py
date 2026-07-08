@@ -222,38 +222,56 @@ def collect_user_signals(supabase: Any, user_id: str) -> dict[str, Any]:
     # missing/denied source table via _safe, keeping the classifier stable.
     #
     # pyq_practice_sessions_30d: mock attempts started from a PYQ-practice blueprint
-    # (PR-5/6). Two-step: PYQ-practice blueprint ids for the user, then attempts on
-    # them within the window.
+    # (PR-5/6). We window the *attempts* first (bounded to the recent 30d), collect
+    # the blueprint ids they reference, then classify those bounded ids by source.
+    # Deriving blueprint-ids-first would let a user with >500 historical practice
+    # blueprints push a recent attempt's blueprint past the row cap and undercount;
+    # windowing attempts first makes the cap track the 30d activity, not all history.
     pyq_practice_sessions_30d = 0
-    bp_rows = _safe(
+    recent_attempts = _safe(
         lambda: (
-            supabase.table("mock_generated_blueprints")
-            .select("id")
+            supabase.table("mock_attempts")
+            .select("id, generated_blueprint_id")
             .eq("user_id", user_id)
-            .in_("source", _PYQ_PRACTICE_SOURCES)
+            .not_.is_("generated_blueprint_id", "null")
+            .gte("started_at", since_30d)
             .limit(500)
             .execute()
             .data
         ),
         default=None,
     )
-    bp_ids = [b["id"] for b in (bp_rows or []) if b.get("id")]
-    if bp_ids:
-        practice_attempts = _safe(
-            lambda: (
-                supabase.table("mock_attempts")
-                .select("id")
-                .eq("user_id", user_id)
-                .in_("generated_blueprint_id", bp_ids)
-                .gte("started_at", since_30d)
-                .limit(500)
-                .execute()
-                .data
-            ),
-            default=None,
+    if recent_attempts:
+        # Python-side null guard: the PostgREST `not.is.null` filter drops NULLs in
+        # the real DB but is a no-op in the test stub, so re-guard here.
+        attempt_bp_ids = sorted(
+            {a["generated_blueprint_id"] for a in recent_attempts if a.get("generated_blueprint_id")}
         )
-        if practice_attempts is not None:
-            pyq_practice_sessions_30d = len(practice_attempts)
+        if attempt_bp_ids:
+            practice_bp_ids: set[str] = set()
+            # Bounded lookup keyed by the (already-bounded) recent blueprint ids,
+            # chunked so a very active window never exceeds a single PostgREST `in`.
+            for start in range(0, len(attempt_bp_ids), 100):
+                chunk = attempt_bp_ids[start : start + 100]
+                bp_rows = _safe(
+                    lambda chunk=chunk: (
+                        supabase.table("mock_generated_blueprints")
+                        .select("id")
+                        .in_("id", chunk)
+                        .in_("source", _PYQ_PRACTICE_SOURCES)
+                        .execute()
+                        .data
+                    ),
+                    default=None,
+                )
+                for b in bp_rows or []:
+                    if b.get("id"):
+                        practice_bp_ids.add(b["id"])
+            pyq_practice_sessions_30d = sum(
+                1
+                for a in recent_attempts
+                if a.get("generated_blueprint_id") in practice_bp_ids
+            )
 
     # trap_drill_sessions_30d: distinct drill runs (a drill_seed is one shuffled
     # run, PR-8 source) in the window; seedless legacy rows each count as one.

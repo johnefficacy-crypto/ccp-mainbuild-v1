@@ -186,7 +186,12 @@ def _classify_learning_behavior(signals: dict[str, Any], evidence: list) -> str:
     trap_drill = int(signals.get("trap_drill_sessions_30d") or 0)
     pyq_engagement = pyq_practice + trap_drill
 
-    if total_tasks_14d == 0 and focus_minutes == 0 and mocks == 0:
+    if (
+        total_tasks_14d == 0
+        and focus_minutes == 0
+        and mocks == 0
+        and pyq_engagement == 0
+    ):
         value = "insufficient_data"
         reason = "no_study_activity"
     elif (

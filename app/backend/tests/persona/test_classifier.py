@@ -56,6 +56,15 @@ def test_heavy_pyq_practice_is_not_mock_avoider():
     assert classify_persona(drill_signals)["dimensions"]["learning_behavior"] != "mock_avoider"
 
 
+def test_pyq_only_activity_is_not_no_study_activity():
+    # A learner with zero tasks/focus/mocks but real PYQ practice is engaged —
+    # the no-activity guard must not label them insufficient_data/no_study_activity.
+    signals = _base_signals(pyq_practice_sessions_30d=3)
+    result = classify_persona(signals)
+    lb = [e for e in result["evidence"] if e["dimension"] == "learning_behavior"]
+    assert lb and lb[0]["reason"] != "no_study_activity"
+
+
 # ─── empty input ────────────────────────────────────────────────────────────
 def test_empty_signals_produce_unknown_or_insufficient_data():
     result = classify_persona({})
