@@ -1,4 +1,4 @@
--- 226_pyq_upsc_cse_2025_prelims_csat_canonical.sql
+-- 228_pyq_upsc_cse_2025_prelims_csat_canonical.sql
 -- Injects the UPSC Civil Services Examination 2025 Prelims Paper II (CSAT)
 -- official question paper as a canonical PYQ source.
 --
