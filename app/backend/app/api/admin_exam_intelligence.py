@@ -1658,11 +1658,25 @@ def list_policy_updates(
     return {"items": items, "count": len(rows)}
 
 
+_POLICY_AFFECT_FLAGS = (
+    "affects_plan", "affects_deadline", "affects_eligibility",
+    "affects_documents", "affects_syllabus", "affects_vacancy",
+)
+
+
 class PolicyUpdateReviewBody(BaseModel):
     reviewer_status: str = Field(
         ..., pattern="^(pending|verified|rejected|needs_correction)$"
     )
     reviewer_notes: str | None = Field(default=None, max_length=500)
+    # F5: optional correction-request payload. When an operator disputes one
+    # or more of the immutable affects_* flags, the caller sends the disputed
+    # flag names alongside a reviewer_notes reason. This never edits the
+    # flags themselves (DB check-constraint immutability is preserved) — it
+    # only records the dispute as an auditable admin_audit_logs entry and
+    # moves reviewer_status to needs_correction so the row surfaces for a
+    # cms-permission operator to investigate and correct out-of-band.
+    disputed_flags: list[str] | None = Field(default=None)
 
 
 @router.patch("/policy-updates/{row_id}/review")
@@ -1677,8 +1691,45 @@ def review_policy_update(
     by ``policy_update_context`` as plan-affecting; everything else stays
     discovery-only. This endpoint never flips ``affects_*`` flags — those
     are set when the row is created and gated by a DB check constraint.
+
+    F5 correction-request path: when ``disputed_flags`` is supplied, the
+    request must target ``needs_correction`` and carry a reviewer_notes
+    reason of at least 8 characters; the flags named must be real affects_*
+    columns. The flags are never modified here — this only creates an
+    auditable correction-request record (admin_audit_logs) that a
+    cms-permission operator resolves in Advanced Repair.
     """
+    if body.disputed_flags is not None:
+        unknown = [f for f in body.disputed_flags if f not in _POLICY_AFFECT_FLAGS]
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown affects_* flag(s): {unknown}",
+            )
+        if not body.disputed_flags:
+            raise HTTPException(status_code=422, detail="disputed_flags must not be empty")
+        if body.reviewer_status != "needs_correction":
+            raise HTTPException(
+                status_code=422,
+                detail="A correction request must set reviewer_status=needs_correction",
+            )
+        if not body.reviewer_notes or len(body.reviewer_notes.strip()) < 8:
+            raise HTTPException(
+                status_code=422,
+                detail="A correction request requires reviewer_notes of at least 8 characters",
+            )
+
     sb = get_supabase_admin()
+    existing_rows = _safe(
+        lambda: (
+            sb.table("exam_policy_updates").select("*").eq("id", row_id).limit(1).execute().data
+        ),
+        default=[],
+    ) or []
+    existing = existing_rows[0] if existing_rows else None
+    if not existing:
+        raise HTTPException(status_code=404, detail="Policy update not found")
+
     patch: dict[str, Any] = {
         "reviewer_status": body.reviewer_status,
         "reviewed_by": admin.get("id"),
@@ -1700,6 +1751,19 @@ def review_policy_update(
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Policy update not found")
+    if body.disputed_flags:
+        _audit(
+            sb, admin, "exam_intel.review.policy_update.correction_requested",
+            entity_type="exam_policy_update", entity_id=row_id,
+            new_value={
+                "disputed_flags": body.disputed_flags,
+                "reviewer_notes": body.reviewer_notes,
+                "flag_values_at_request": {
+                    k: existing.get(k) for k in _POLICY_AFFECT_FLAGS
+                },
+            },
+            notes="F5 correction request — affects_* flags remain immutable pending cms review",
+        )
     invalidate_per_exam_intelligence()
     return updated[0]
 
