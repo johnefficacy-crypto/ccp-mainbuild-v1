@@ -19,6 +19,8 @@ def _base_signals(**overrides):
         "skipped_task_count_14d": 0,
         "focus_minutes_7d": 0,
         "mocks_taken_30d": 0,
+        "pyq_practice_sessions_30d": 0,
+        "trap_drill_sessions_30d": 0,
         "weekly_review_available": False,
         "_career_stage": None,
         "_onboarding_completed": False,
@@ -26,6 +28,32 @@ def _base_signals(**overrides):
     }
     base.update(overrides)
     return base
+
+
+def test_heavy_pyq_practice_is_not_mock_avoider():
+    # Same sustained-history + zero-full-mocks shape as the mock_avoider case, but
+    # the learner is doing retrieval practice via PYQs -> must NOT be mock_avoider.
+    signals = _base_signals(
+        _total_tasks_14d=20,
+        task_completion_rate_14d=0.75,
+        missed_task_count_14d=1,
+        mocks_taken_30d=0,
+        pyq_practice_sessions_30d=5,
+        goal_exams_count=1,
+    )
+    result = classify_persona(signals)
+    assert result["dimensions"]["learning_behavior"] != "mock_avoider"
+
+    # trap-drill engagement alone also suppresses the false label.
+    drill_signals = _base_signals(
+        _total_tasks_14d=20,
+        task_completion_rate_14d=0.75,
+        missed_task_count_14d=1,
+        mocks_taken_30d=0,
+        trap_drill_sessions_30d=4,
+        goal_exams_count=1,
+    )
+    assert classify_persona(drill_signals)["dimensions"]["learning_behavior"] != "mock_avoider"
 
 
 # ─── empty input ────────────────────────────────────────────────────────────
