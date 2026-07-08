@@ -595,8 +595,14 @@ def test_list_exams_includes_conducting_organization_id(monkeypatch):
     monkeypatch.setattr(cms, "get_supabase_admin", lambda: sb)
     monkeypatch.setattr(cms, "_flag_enabled", lambda: None)
 
+    # Direct unit call (not via FastAPI), so every param must be passed
+    # explicitly — an omitted param keeps its Query(...) sentinel default
+    # instead of resolving to None, which then breaks the `q.strip()` filter
+    # guard added for exam name search.
     cms.list_exams(
-        is_active=None, exam_family_id=None, limit=50, offset=0,
+        is_active=None, exam_family_id=None, exam_type=None,
+        management_mode=None, cadence=None, conducting_organization_id=None,
+        q=None, limit=50, offset=0,
         _admin={"id": "admin-1"}, __=None,
     )
     assert sb.select_cols is not None
