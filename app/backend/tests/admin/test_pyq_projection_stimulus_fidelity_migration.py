@@ -15,6 +15,8 @@ _MIGRATIONS = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
 MIGRATION = (_MIGRATIONS / "229_pyq_projection_stimulus_fidelity.sql").read_text().lower()
 MIG_183 = (_MIGRATIONS / "183_pyq_mock_projection_bridge.sql").read_text().lower()
 MIG_184 = (_MIGRATIONS / "184_repair_pyq_mock_projection_bridge.sql").read_text().lower()
+MIG_186 = (_MIGRATIONS / "186_pyq_paper_source_document.sql").read_text().lower()
+MIG_187 = (_MIGRATIONS / "187_review_doc_lock.sql").read_text().lower()
 
 
 # ── Schema ───────────────────────────────────────────────────────────────────
@@ -110,6 +112,79 @@ def test_rpc_service_role_posture_preserved():
     assert "revoke execute on function public.project_pyq_question_to_mock_bank(uuid, uuid, text) from anon" in MIGRATION
     assert "grant execute on function public.project_pyq_question_to_mock_bank(uuid, uuid, text) to service_role" in MIGRATION
     assert "notify pgrst, 'reload schema'" in MIGRATION
+
+
+# ── 186 / 187 provenance deltas preserved (no regression) ─────────────────────
+#
+# 229 CREATE-OR-REPLACEs the RPC and fn_invalidate that migrations 186 and 187
+# had already extended with source_document_id provenance. Because a stale
+# 184-era body would silently drop those deltas, these tests assert that 229's
+# rebuilt bodies still carry every 186/187 addition.
+
+def test_rpc_selects_paper_source_document_id_alias():
+    # 186: the paper SELECT must alias p.source_document_id so the hash and the
+    # mock_question_sources write can reference it.
+    assert "p.source_document_id    as paper_source_document_id" in MIGRATION
+
+
+def test_content_hash_includes_source_document_id_before_option_and_section_fields():
+    # 186: paper_source_document_id is hashed immediately after paper_source_type
+    # and BEFORE the options/correct/tag/section/stimulus fields.
+    assert "coalesce(v_q.paper_source_document_id::text, '')" in MIGRATION
+    doc_pos = MIGRATION.index("coalesce(v_q.paper_source_document_id::text, '')")
+    type_pos = MIGRATION.index("coalesce(v_q.paper_source_type, '')")
+    section_pos = MIGRATION.index("coalesce(v_q.section_id::text, '')")
+    opt_meta_pos = MIGRATION.index("coalesce(o.source_label, '')")
+    # source_type (186 predecessor field) comes first, then paper_source_document_id,
+    # then the PR-4 section_id and per-option printed-order fields.
+    assert type_pos < doc_pos < section_pos
+    assert doc_pos < opt_meta_pos
+
+
+def test_mock_question_sources_insert_writes_source_document_id():
+    # 186: the provenance INSERT carries source_document_id.
+    assert "pyq_paper_id, pyq_year, evidence_text, source_document_id" in MIGRATION
+    assert "v_q.paper_source_document_id" in MIGRATION
+
+
+def test_rpc_revalidates_source_document_provenance_step_2a():
+    # 187 step-2a: revalidate the attached document before projecting.
+    assert "source_document_invalid" in MIGRATION
+    assert "and scope         = 'admin_exam_intelligence'" in MIGRATION
+    assert "and document_kind = 'pyq_paper'" in MIGRATION
+    assert "and status        not in ('failed', 'archived')" in MIGRATION
+
+
+def test_invalidation_fn_watches_source_document_id_on_pyq_papers():
+    # 186: fn_invalidate_pyq_projection must re-invalidate when a paper's
+    # source_document_id changes (the content hash includes it).
+    assert "or (old.source_document_id is distinct from new.source_document_id)" in MIGRATION
+
+
+def test_186_and_187_provenance_deltas_are_the_source_of_truth():
+    # Sanity: the deltas 229 must preserve genuinely originate in 186/187.
+    assert "p.source_document_id    as paper_source_document_id" in MIG_186
+    assert "coalesce(v_q.paper_source_document_id::text, '')" in MIG_186
+    assert "or (old.source_document_id  is distinct from new.source_document_id)" in MIG_186
+    assert "source_document_invalid" in MIG_187
+
+
+def test_rpc_follows_187_base_no_review_log_reintroduction():
+    # 187 dropped the mock_question_review_log write from the projection RPC
+    # (admin_audit_logs remains the authoritative audit trail). Because 229 is a
+    # CREATE OR REPLACE that becomes the new live definition, it must NOT silently
+    # revert that removal — 229 builds forward from 187, not 186/184.
+    assert "insert into public.mock_question_review_log" not in MIGRATION
+    assert "mock_question_review_log" not in MIG_187
+    # 186/184 predecessors still carry the insert (proving the divergence is real).
+    assert "insert into public.mock_question_review_log" in MIG_186
+
+
+def test_rpc_return_object_matches_187_slim_shape():
+    # 187 slimmed the RETURN to the fields the Python caller consumes; 229 keeps
+    # that shape rather than 186/184's fuller object.
+    assert "'mock_question_id', v_mock_q_id," in MIGRATION
+    assert "'is_new',           v_is_new" in MIGRATION
 
 
 # ── 183 / 184 remain immutable (new logic is forward-only) ────────────────────

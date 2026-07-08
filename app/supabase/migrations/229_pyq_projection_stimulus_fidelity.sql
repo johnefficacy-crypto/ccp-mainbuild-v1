@@ -90,7 +90,13 @@ end $$;
 -- (see migration 225 for the same lesson on pyq_stimuli).
 grant select, insert, update, delete on public.mock_question_stimuli to service_role;
 
--- ── B. Projection RPC (create or replace, 184 body + PR-4 additions) ────────
+-- ── B. Projection RPC (create or replace, 187 body + PR-4 additions) ────────
+-- Base is migration 187 (the latest authoritative RPC): 186's source_document_id
+-- in the SELECT + content hash + mock_question_sources write, plus 187's step-2a
+-- source_document_id provenance revalidation. PR-4 additions (section_id, printed
+-- option order, verified-stimulus snapshot + gate) are layered on top. The RETURN
+-- object and the omission of the mock_question_review_log write also follow 187
+-- (187 dropped that step; admin_audit_logs remains the authoritative audit trail).
 
 create or replace function public.project_pyq_question_to_mock_bank(
     p_pyq_question_id uuid,
@@ -149,7 +155,8 @@ begin
         p.year                  as paper_year,
         p.trust_status          as paper_trust_status,
         p.source_url            as paper_source_url,
-        p.source_type           as paper_source_type
+        p.source_type           as paper_source_type,
+        p.source_document_id    as paper_source_document_id
     into v_q
     from public.pyq_questions q
     join public.pyq_papers    p on p.id = q.pyq_paper_id
@@ -172,6 +179,29 @@ begin
             'paper_trust_status', v_q.paper_trust_status,
             'pyq_question_id',    p_pyq_question_id
         );
+    end if;
+
+    -- 2a. Revalidate source_document_id when present (defence-in-depth, from 187).
+    --     review_pyq_paper() validates under lock at verification time; this step
+    --     catches documents that were archived after the paper was verified.
+    if v_q.paper_source_document_id is not null then
+        if not exists (
+            select 1 from public.document_assets
+            where id            = v_q.paper_source_document_id
+              and scope         = 'admin_exam_intelligence'
+              and document_kind = 'pyq_paper'
+              and status        not in ('failed', 'archived')
+              and coalesce(trim(storage_bucket), '') != ''
+              and coalesce(trim(storage_path),  '') != ''
+        ) then
+            perform public.fn_block_projection_for_question(p_pyq_question_id, 'source_document_invalid');
+            return jsonb_build_object(
+                'outcome',            'blocked',
+                'reason',             'source_document_invalid',
+                'source_document_id', v_q.paper_source_document_id,
+                'pyq_question_id',    p_pyq_question_id
+            );
+        end if;
     end if;
 
     if v_q.q_reviewer_status != 'verified' then
@@ -356,6 +386,7 @@ begin
             coalesce(v_q.exam_id::text, '') || chr(0) ||
             coalesce(v_q.paper_source_url, '') || chr(0) ||
             coalesce(v_q.paper_source_type, '') || chr(0) ||
+            coalesce(v_q.paper_source_document_id::text, '') || chr(0) ||
             coalesce((
                 select string_agg(
                     coalesce(lower(o.option_label), '') || chr(30) ||
@@ -580,11 +611,12 @@ begin
 
     insert into public.mock_question_sources (
         question_id, source_kind, source_trust, source_url,
-        pyq_paper_id, pyq_year, evidence_text
+        pyq_paper_id, pyq_year, evidence_text, source_document_id
     ) values (
         v_mock_q_id, 'pyq', 'verified', v_q.paper_source_url,
         v_q.pyq_paper_id, v_q.paper_year,
-        'projected_from_pyq_question_id:' || p_pyq_question_id::text
+        'projected_from_pyq_question_id:' || p_pyq_question_id::text,
+        v_q.paper_source_document_id
     );
 
     insert into public.pyq_mock_question_projections (
@@ -628,29 +660,12 @@ begin
         p_audit_reason
     );
 
-    insert into public.mock_question_review_log (
-        question_id, actor_id, action, from_status, to_status, notes, at
-    ) values (
-        v_mock_q_id, p_actor_id,
-        'pyq_projection_' || v_outcome,
-        case when v_is_new then null else 'published' end,
-        'published',
-        p_audit_reason,
-        now()
-    );
-
     return jsonb_build_object(
-        'outcome',           v_outcome,
-        'mock_question_id',  v_mock_q_id,
-        'pyq_question_id',   p_pyq_question_id,
-        'pyq_paper_id',      v_q.pyq_paper_id,
-        'exam_id',           v_q.exam_id,
-        'pyq_year',          v_q.paper_year,
-        'topic_id',          v_primary_tag.topic_id,
-        'subject_id',        v_topic.subject_id,
-        'content_hash',      v_content_hash,
-        'correct_option_id', v_correct_opt_id,
-        'is_new',            v_is_new
+        'outcome',          v_outcome,
+        'mock_question_id', v_mock_q_id,
+        'pyq_question_id',  p_pyq_question_id,
+        'content_hash',     v_content_hash,
+        'is_new',           v_is_new
     );
 
 exception
@@ -658,7 +673,11 @@ exception
 end;
 $fn$;
 
--- ── C. Invalidation trigger fn (184 body + pyq_stimuli / pyq_question_stimuli) ─
+-- ── C. Invalidation trigger fn (186 body + pyq_stimuli / pyq_question_stimuli) ─
+-- Base is migration 186: keeps the source_document_id watch on the pyq_papers
+-- branch (the content hash includes it) plus 186's option/tag distinct-checks.
+-- PR-4 adds the source_label/display_order/section_id watches and the two new
+-- stimulus source-table branches.
 
 create or replace function public.fn_invalidate_pyq_projection()
 returns trigger
@@ -697,6 +716,7 @@ begin
             or (OLD.year          is distinct from NEW.year)
             or (OLD.source_url    is distinct from NEW.source_url)
             or (OLD.source_type   is distinct from NEW.source_type)
+            or (OLD.source_document_id is distinct from NEW.source_document_id)
         ) then
             for v_qid in
                 select id from public.pyq_questions where pyq_paper_id = NEW.id
