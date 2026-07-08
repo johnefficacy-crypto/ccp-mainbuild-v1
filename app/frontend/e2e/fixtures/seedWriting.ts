@@ -251,7 +251,9 @@ export async function proposeTarget(
     body: { reason: REASON, ...scope },
   });
   if (r.status !== 200) throw new Error(`proposeTarget ${r.status}: ${JSON.stringify(r.body)}`);
-  const row = r.body.result;
+  // The propose endpoint wraps the RPC jsonb as { ok, result: { ok, target_id, row } },
+  // so the created target row is at result.row (not result itself).
+  const row = r.body.result.row;
   return { id: row.id, updatedAt: row.updated_at };
 }
 
