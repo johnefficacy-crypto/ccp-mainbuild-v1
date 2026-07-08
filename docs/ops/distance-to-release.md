@@ -5,7 +5,7 @@
 > live evidence lives in the gate docs / `docs/audits/`. When a gate changes, update the
 > checklist + its audit, then regenerate this view. Each row links its authoritative source.
 
-**as_of:** `main @ a4e4939` · 2026-07-08 (P8 T0-ended + PYQ v2 track refresh; earlier v1 gate rows as of 2026-07-03)
+**as_of:** `main @ d487949` · 2026-07-08 — this refresh covers only the P8 T0-end and the PYQ v2 track (PYQ-v2 rows checkpointed at `a4e4939`, PR #914). The v1 mastery-gate rows (P1–P10, R1–R4) below remain as of their 2026-07-03 operator confirmation and were **not** re-attested against current `main`.
 **Companion:** `docs/ops/v1-go-live-runbook.md` (the *how*) · `scripts/v1_release_verification.sql` (the *evidence*)
 **Position:** late-stage beta — feature-complete-approaching, **not** production-ready.
 
