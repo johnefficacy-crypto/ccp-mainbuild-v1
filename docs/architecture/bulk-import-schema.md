@@ -126,7 +126,7 @@ required); anything else in the row is dropped silently, not rejected.
 | `entity` slug | table | required | enum fields (allowed values) | forced on insert | FK checks | upsert key | max rows |
 |---|---|---|---|---|---|---|---|
 | `exam-families` | `exam_families` | `slug`, `name` | — | — | — | — | 500 |
-| `exams` | `exams` | `slug`, `name` | `exam_type`: recruitment/entrance/certification/opportunity/other | — | `exam_family_id` → `exam_families` | — | 500 |
+| `exams` | `exams` | `slug`, `name` | `exam_type`: recruitment/entrance/certification/opportunity/other | — | `exam_family_id` → `exam_families` | — | 500 — ⚠️ **not usable via bulk import today** (see note below) |
 | `exam-cycles` | `exam_cycles` | `exam_id`, `year`, `cycle_name` | `status`: expected/open/active/closed/completed/cancelled | — | `exam_id` → `exams` | — | 500 |
 | `exam-phases` | `exam_phases` | `exam_id`, `phase_name`, `phase_slug` | `status`: expected/active/completed/cancelled; `phase_kind`: classified kinds + `other` | — | `exam_id` → `exams` | — | 500 |
 | `syllabus-documents` | `syllabus_documents` | `exam_id`, `document_type`, `title` | `document_type`: notification/syllabus_pdf/official_page/pattern_notice/corrigendum/other | `trust_status="pending"` | `exam_id` → `exams` | — | 500 |
@@ -147,6 +147,7 @@ dropped, not rejected):
 
 - **exam-families** (`_FAMILY_FIELDS`): `slug`, `name`, `description`, `is_active`, `metadata`
 - **exams** (`_EXAM_FIELDS`): `exam_family_id`, `name`, `exam_type`, `default_difficulty_level`, `description`, `is_active`, `metadata`, `conducting_organization_id`, `management_mode`, `cadence`
+  - ⚠️ **`exams` bulk import is currently non-functional.** `_IMPORT_CONFIG["exams"]` marks `slug` **required**, but `slug` is **not** in `_EXAM_FIELDS` (allowed) because it is server-derived from `name` (+ conducting org) via `_exam_slug()` on the single-create path (`POST /exams`). `_validate_bulk_row()` strips every key not in `allowed` **before** the required-field check and the bulk path performs no per-row slug derivation, so `slug` is always missing → every `exams` row fails with `missing required field 'slug'`. Until the bulk path grows a per-row slug-derivation hook (mirroring the pyq-papers `row_validator` pattern), create exams via the single `POST /exams` endpoint or the Guided Exam Wizard, not bulk import. (Unlike `exam-families`/`subjects`/`topics`, whose allowed sets DO include a user-supplied `slug`, so their bulk import works.)
 - **exam-cycles** (`_CYCLE_FIELDS`): `exam_id`, `year`, `cycle_name`, `status`, `notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`, `source_url`, `metadata`
 - **exam-phases** (`_PHASE_FIELDS`): `exam_id`, `exam_cycle_id`, `phase_name`, `phase_slug`, `phase_order`, `mode`, `duration_mins`, `total_questions`, `total_marks`, `negative_marking`, `status`, `metadata`, `phase_start`, `phase_end`, `phase_kind`
 - **syllabus-documents** (`_DOC_FIELDS`): `exam_id`, `exam_cycle_id`, `source_id`, `document_type`, `title`, `source_url`, `storage_path`, `content_hash`, `published_at`, `fetched_at`, `metadata`
@@ -465,16 +466,20 @@ Applied in this order per row, first match wins:
 
 ## Minimal valid example payloads
 
-### A. Generic bulk-import — create two exams under an existing family
+### A. Generic bulk-import — create two exam cycles under an existing exam
+
+> Note: `exams` itself is **not** bulk-importable today (server-derived `slug`; see
+> the exams field-set note above). Create exams via `POST /exams` or the Guided
+> Exam Wizard, then bulk-import their cycles/phases/etc. as shown here.
 
 ```json
 POST /api/admin/exam-intelligence-cms/bulk-import
 {
-  "reason": "Seed SSC exam family — CGL and CHSL",
-  "entity": "exams",
+  "reason": "Seed SSC CGL 2025 and 2026 cycles",
+  "entity": "exam-cycles",
   "rows": [
-    { "exam_family_id": "8f2b...", "name": "SSC CGL", "exam_type": "recruitment" },
-    { "exam_family_id": "8f2b...", "name": "SSC CHSL", "exam_type": "recruitment" }
+    { "exam_id": "8f2b...", "year": 2025, "cycle_name": "SSC CGL 2025" },
+    { "exam_id": "8f2b...", "year": 2026, "cycle_name": "SSC CGL 2026" }
   ]
 }
 ```

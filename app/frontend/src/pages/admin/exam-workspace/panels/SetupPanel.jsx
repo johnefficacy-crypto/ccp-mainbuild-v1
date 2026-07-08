@@ -793,7 +793,7 @@ export default function SetupPanel({ action = null }) {
                 <div className="err-row" data-testid="pt-error-collision">
                   {ptError.message}
                   {ptError.existingId && (
-                    <span> Existing phase id: <code>{ptError.existingId}</code></span>
+                    <span> Existing phase id: <code data-testid="pt-error-existing-id">{humanizeToken(ptError.existingId)}</code></span>
                   )}
                 </div>
               )}
