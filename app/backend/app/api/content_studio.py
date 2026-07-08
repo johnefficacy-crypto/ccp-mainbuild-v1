@@ -374,6 +374,114 @@ def _rpc_row(result) -> dict:
     return (data or [{}])[0] if isinstance(data, list) and data else (data or {})
 
 
+# ── Readable-label enrichment (operator usability, EWP-SP4) ─────────────────
+#
+# Canonical rows store bare FK UUIDs; the operator surfaces must show human
+# names. Enrichment is READ-ONLY and best-effort (a resolved name that is None
+# simply renders as "—"); it never changes the authoritative id columns, which
+# stay `subject_id` / `topic_id` / `exam_id` / `exam_phase_id` on the wire.
+
+
+def _name_of(supabase, table: str, id_val, field: str = "name"):
+    if not id_val:
+        return None
+    row = _safe_select(supabase, table, id=str(id_val))
+    return (row.get(field) if row else None)
+
+
+# Mirror of ewp_validate_prompt_scope's source_document provenance predicate
+# (migration 215). A picker must never offer a document the write RPC would
+# reject with invalid_scope, so the feed replicates the exact check: scope,
+# non-null valid document_kind, non-null status not in (failed, archived), and
+# non-blank storage bucket + path.
+_VALID_DOCUMENT_KINDS = frozenset(
+    {"syllabus", "notification", "corrigendum", "pyq_paper", "answer_key", "other"}
+)
+_INVALID_DOCUMENT_STATUSES = frozenset({"failed", "archived"})
+
+
+def _document_passes_provenance(doc: dict) -> bool:
+    """Exact replica of ewp_validate_prompt_scope's source_document check."""
+    if doc.get("scope") != "admin_exam_intelligence":
+        return False
+    kind = doc.get("document_kind")
+    if kind is None or kind not in _VALID_DOCUMENT_KINDS:
+        return False
+    status = doc.get("status")
+    if status is None or status in _INVALID_DOCUMENT_STATUSES:
+        return False
+    if not (doc.get("storage_bucket") or "").strip():
+        return False
+    if not (doc.get("storage_path") or "").strip():
+        return False
+    return True
+
+
+def _batch_name_map(supabase, table: str, ids, field: str = "name") -> dict:
+    """One SELECT resolving id → label for a set of ids (no N+1)."""
+    uniq = sorted({str(i) for i in ids if i})
+    if not uniq:
+        return {}
+    res = supabase.table(table).select(f"id,{field}").in_("id", uniq).execute()
+    return {r.get("id"): r.get(field) for r in (res.data or [])}
+
+
+def _enrich_prompt_labels_batch(supabase, items: list) -> list:
+    """Attach *_name/*_title display labels to a PAGE of writing_prompts rows,
+    resolving each taxonomy/provenance table in a SINGLE batched query (distinct
+    ids across the page) — never per-row. Ids are never mutated."""
+    rows = [p for p in (items or []) if isinstance(p, dict)]
+    if not rows:
+        return items
+    subjects = _batch_name_map(supabase, "subjects", [p.get("subject_id") for p in rows])
+    topics = _batch_name_map(
+        supabase, "topics",
+        [p.get("topic_id") for p in rows] + [p.get("microtopic_id") for p in rows])
+    rubrics = _batch_name_map(supabase, "writing_rubrics", [p.get("rubric_id") for p in rows])
+    doc_ids = sorted({str(p.get("source_document_id")) for p in rows if p.get("source_document_id")})
+    docs: dict = {}
+    if doc_ids:
+        res = (supabase.table("document_assets")
+               .select("id,title,original_filename").in_("id", doc_ids).execute())
+        docs = {r.get("id"): (r.get("title") or r.get("original_filename")) for r in (res.data or [])}
+    for p in rows:
+        sid, tid, mid = p.get("subject_id"), p.get("topic_id"), p.get("microtopic_id")
+        rid, did = p.get("rubric_id"), p.get("source_document_id")
+        p["subject_name"] = subjects.get(str(sid)) if sid else None
+        p["topic_name"] = topics.get(str(tid)) if tid else None
+        p["microtopic_name"] = topics.get(str(mid)) if mid else None
+        p["rubric_name"] = rubrics.get(str(rid)) if rid else None
+        p["source_document_title"] = docs.get(str(did)) if did else None
+    return items
+
+
+def _enrich_prompt_labels(supabase, prompt: dict) -> dict:
+    """Attach *_name display labels to a writing_prompt row (never mutates ids)."""
+    if not isinstance(prompt, dict):
+        return prompt
+    prompt["subject_name"] = _name_of(supabase, "subjects", prompt.get("subject_id"))
+    prompt["topic_name"] = _name_of(supabase, "topics", prompt.get("topic_id"))
+    prompt["microtopic_name"] = _name_of(supabase, "topics", prompt.get("microtopic_id"))
+    prompt["rubric_name"] = _name_of(supabase, "writing_rubrics", prompt.get("rubric_id"))
+    doc_id = prompt.get("source_document_id")
+    doc = _safe_select(supabase, "document_assets", id=str(doc_id)) if doc_id else None
+    prompt["source_document_title"] = (
+        (doc.get("title") or doc.get("original_filename")) if doc else None
+    )
+    return prompt
+
+
+def _enrich_target_labels(supabase, target: dict) -> dict:
+    """Attach exam-scope display labels to a writing_prompt_targets row."""
+    if not isinstance(target, dict):
+        return target
+    target["exam_family_name"] = _name_of(supabase, "exam_families", target.get("exam_family_id"))
+    target["exam_name"] = _name_of(supabase, "exams", target.get("exam_id"))
+    target["exam_phase_name"] = _name_of(
+        supabase, "exam_phases", target.get("exam_phase_id"), field="phase_name")
+    return target
+
+
 # ── Library / Review Queue ─────────────────────────────────────────────────
 
 
@@ -406,7 +514,8 @@ def list_writing_prompts(
     if q:
         query = query.ilike("prompt_text", f"%{q}%")
     res = query.range(offset, offset + limit - 1).execute()
-    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+    items = _enrich_prompt_labels_batch(supabase, res.data or [])
+    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
 
 @router.get("/writing-prompts/{prompt_id}")
@@ -419,7 +528,7 @@ def get_writing_prompt(
     prompt = _safe_select(supabase, "writing_prompts", id=str(prompt_id))
     if not prompt:
         raise HTTPException(status_code=404, detail="writing_prompt not found")
-    return prompt
+    return _enrich_prompt_labels(supabase, prompt)
 
 
 @router.post("/writing-prompts")
@@ -598,7 +707,8 @@ def list_writing_prompt_targets(
     supabase = get_supabase_admin()
     res = (supabase.table("writing_prompt_targets").select("*")
            .eq("prompt_id", str(prompt_id)).order("created_at", desc=True).execute())
-    return {"items": res.data or []}
+    items = [_enrich_target_labels(supabase, t) for t in (res.data or [])]
+    return {"items": items}
 
 
 @router.post("/writing-prompts/{prompt_id}/targets")
@@ -677,3 +787,190 @@ def remove_writing_prompt_target(
     except Exception as exc:  # noqa: BLE001
         raise _map_rpc_error(exc, "remove_writing_prompt_target") from exc
     return {"ok": True, "result": _rpc_row(result)}
+
+
+# ── Selector option lists (EWP-SP4 operator usability) ──────────────────────
+#
+# Read-only, permission-gated (_require_content_read) option feeds so the create/
+# edit and assignment forms can offer readable, DEPENDENT selectors instead of
+# raw-UUID text entry. These expose only {id, display label} tuples of canonical
+# taxonomy / exam-scope rows — no aspirant-facing content — so the verified-only
+# read rule (which governs learner content) does not apply here; they are the
+# operator's own picker feeds under the Content Studio API source of truth.
+
+
+# Bound every option feed so a runaway taxonomy/registry can never return an
+# unbounded page to the operator's picker.
+_OPTION_LIMIT = 500
+
+
+@router.get("/taxonomy/subjects")
+def list_subject_options(
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Writing-prompt subject feed. HARD-SCOPED to the single subject the write
+    validator (ewp_validate_prompt_scope) accepts — the ACTIVE `english-language`
+    subject — so the picker can never offer a subject create/verify would reject
+    with invalid_scope."""
+    supabase = get_supabase_admin()
+    res = (supabase.table("subjects").select("id,slug,name")
+           .eq("slug", "english-language").eq("is_active", True)
+           .order("name").limit(_OPTION_LIMIT).execute())
+    return {"items": res.data or []}
+
+
+@router.get("/taxonomy/topics")
+def list_topic_options(
+    subject_id: UUID | None = Query(default=None),
+    parent_topic_id: UUID | None = Query(default=None),
+    level: str | None = Query(default=None, description="topic | microtopic | concept"),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Dependent taxonomy feed mirroring the write validator: only ACTIVE topics,
+    scoped to a subject (topics) or a parent topic (microtopics). A parent filter
+    is REQUIRED — an unfiltered call would return the whole tree, so it is a 422."""
+    if subject_id is None and parent_topic_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="taxonomy/topics requires subject_id (topics) or parent_topic_id (microtopics)")
+    supabase = get_supabase_admin()
+    query = (supabase.table("topics")
+             .select("id,slug,name,level,subject_id,parent_topic_id,is_active")
+             .eq("is_active", True).order("name").limit(_OPTION_LIMIT))
+    if subject_id is not None:
+        query = query.eq("subject_id", str(subject_id))
+    if parent_topic_id is not None:
+        query = query.eq("parent_topic_id", str(parent_topic_id))
+    if level is not None:
+        query = query.eq("level", level)
+    res = query.execute()
+    return {"items": res.data or []}
+
+
+@router.get("/exam-scope/families")
+def list_exam_family_options(
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    res = (supabase.table("exam_families").select("id,slug,name")
+           .eq("is_active", True).order("name").limit(_OPTION_LIMIT).execute())
+    return {"items": res.data or []}
+
+
+@router.get("/exam-scope/exams")
+def list_exam_options(
+    exam_family_id: UUID | None = Query(default=None),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Dependent feed: active exams, optionally narrowed to one exam family."""
+    supabase = get_supabase_admin()
+    query = (supabase.table("exams").select("id,slug,name,exam_family_id")
+             .eq("is_active", True).order("name").limit(_OPTION_LIMIT))
+    if exam_family_id is not None:
+        query = query.eq("exam_family_id", str(exam_family_id))
+    res = query.execute()
+    return {"items": res.data or []}
+
+
+@router.get("/exam-scope/phases")
+def list_exam_phase_options(
+    exam_id: UUID | None = Query(default=None),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Dependent feed: phases of one exam. exam_id is REQUIRED — an unfiltered
+    call would return every phase in the registry, so it is a 422."""
+    if exam_id is None:
+        raise HTTPException(status_code=422, detail="exam-scope/phases requires exam_id")
+    supabase = get_supabase_admin()
+    res = (supabase.table("exam_phases").select("id,phase_name,exam_id,exam_cycle_id,status")
+           .eq("exam_id", str(exam_id)).order("phase_name").limit(_OPTION_LIMIT).execute())
+    return {"items": res.data or []}
+
+
+@router.get("/rubrics")
+def list_rubric_options(
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    res = (supabase.table("writing_rubrics").select("id,name,version")
+           .order("name").limit(_OPTION_LIMIT).execute())
+    return {"items": res.data or []}
+
+
+@router.get("/source-documents")
+def list_source_document_options(
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Admin exam-intelligence documents that a prompt may cite as its source.
+
+    Every returned row is guaranteed to PASS ewp_validate_prompt_scope's
+    provenance check (mirrored in `_document_passes_provenance`): valid
+    document_kind, live status (not failed/archived), and non-blank storage
+    bucket + path. The kind allowlist is pushed to the query; the null/blank
+    guards are applied in Python to match the RPC's `btrim` semantics exactly.
+
+    All filterable provenance clauses (scope, kind allowlist, non-null status,
+    status not in failed/archived, non-null + non-empty storage bucket/path) are
+    pushed into the query so the `limit` window can never hide older valid
+    documents behind newer invalid ones; the Python guard only adds the
+    whitespace-only (`btrim`) edge the SQL layer can't express."""
+    supabase = get_supabase_admin()
+    res = (supabase.table("document_assets")
+           .select("id,title,original_filename,document_kind,scope,status,"
+                   "storage_bucket,storage_path")
+           .eq("scope", "admin_exam_intelligence")
+           .in_("document_kind", sorted(_VALID_DOCUMENT_KINDS))
+           .not_.is_("status", "null")
+           .not_.in_("status", sorted(_INVALID_DOCUMENT_STATUSES))
+           .not_.is_("storage_bucket", "null").neq("storage_bucket", "")
+           .not_.is_("storage_path", "null").neq("storage_path", "")
+           .order("created_at", desc=True).limit(_OPTION_LIMIT).execute())
+    items = [
+        {"id": d.get("id"), "title": d.get("title"),
+         "original_filename": d.get("original_filename"),
+         "document_kind": d.get("document_kind")}
+        for d in (res.data or []) if _document_passes_provenance(d)
+    ]
+    return {"items": items}
+
+
+@router.get("/writing-prompts/{prompt_id}/correction-note")
+def get_writing_prompt_correction_note(
+    prompt_id: UUID,
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Author read-back of the LATEST reviewer correction note.
+
+    Review decisions are audited in admin_audit_logs (the note is not stored on
+    the prompt row). When a prompt sits in `needs_correction`, the author needs to
+    see WHY: this returns the most recent status-transition audit whose new_value
+    set reviewer_status='needs_correction', exposing the reviewer_notes + reason
+    read-only. Returns {note: null} when there is none."""
+    supabase = get_supabase_admin()
+    try:
+        res = (supabase.table("admin_audit_logs")
+               .select("actor_email,new_value,notes,created_at")
+               .eq("entity_type", "writing_prompt")
+               .eq("entity_id", str(prompt_id))
+               .eq("action", "writing_prompt_status_transition")
+               .order("created_at", desc=True).limit(50).execute())
+    except Exception:  # noqa: BLE001
+        return {"note": None}
+    for row in (res.data or []):
+        new_value = row.get("new_value") or {}
+        if isinstance(new_value, dict) and new_value.get("reviewer_status") == "needs_correction":
+            return {"note": {
+                "reviewer_notes": new_value.get("reviewer_notes"),
+                "reason": new_value.get("reason") or row.get("notes"),
+                "actor_email": row.get("actor_email"),
+                "created_at": row.get("created_at"),
+            }}
+    return {"note": None}

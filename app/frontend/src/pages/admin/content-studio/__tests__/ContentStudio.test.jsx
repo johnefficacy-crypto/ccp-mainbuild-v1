@@ -346,3 +346,30 @@ describe("PromptLibrary screen", () => {
     expect(screen.getByTestId("prompt-next")).toBeInTheDocument();
   });
 });
+
+// ---- Real PromptReviewQueue (collection hook mocked) -----------------------
+
+describe("PromptReviewQueue screen", () => {
+  // eslint-disable-next-line global-require
+  const PromptReviewQueue = require("../PromptReviewQueue").default;
+  const perms = { canReview: true };
+
+  test("queue table renders backend-resolved subject/topic NAMES, not UUIDs", () => {
+    const SUBJ = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const TOPIC = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    mockCollection = {
+      items: [{
+        id: U1, prompt_text: "Write a paragraph.", exercise_type: "paragraph_writing",
+        difficulty_level: 4, reviewer_status: "pending", updated_at: "2026-07-03T00:00:00Z",
+        subject_id: SUBJ, topic_id: TOPIC,
+        subject_name: "English Language", topic_name: "Reading Comprehension",
+      }],
+      status: "live", total: 1, refresh: jest.fn(),
+    };
+    render(<PromptReviewQueue perms={perms} />);
+    const cell = screen.getByTestId(`review-taxonomy-${U1}`);
+    expect(cell).toHaveTextContent("English Language › Reading Comprehension");
+    expect(cell).not.toHaveTextContent(SUBJ);
+    expect(cell).not.toHaveTextContent(TOPIC);
+  });
+});

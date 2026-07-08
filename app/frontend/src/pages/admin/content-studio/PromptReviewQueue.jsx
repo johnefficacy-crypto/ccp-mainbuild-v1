@@ -21,18 +21,20 @@ const QUEUE_STATUSES = ["pending", "needs_correction", "verified"];
 const PAGE_SIZE = 50;
 
 // The full set of review-relevant fields a reviewer must see before verifying.
+// Taxonomy/provenance rows show the backend-resolved *_name label (readable),
+// falling back to the raw id only if a name could not be resolved.
 const SNAPSHOT_ROWS = [
-  ["Subject ID", "subject_id"],
-  ["Topic ID", "topic_id"],
-  ["Microtopic ID", "microtopic_id"],
+  ["Subject", "subject_name", "subject_id"],
+  ["Topic", "topic_name", "topic_id"],
+  ["Microtopic", "microtopic_name", "microtopic_id"],
   ["Exercise type", "exercise_type"],
   ["Difficulty", "difficulty_level"],
   ["Required sentence count", "required_sentence_count"],
   ["Min words", "min_words"],
   ["Max words", "max_words"],
   ["Max rewrite attempts", "max_rewrite_attempts"],
-  ["Rubric ID", "rubric_id"],
-  ["Source document ID", "source_document_id"],
+  ["Rubric", "rubric_name", "rubric_id"],
+  ["Source document", "source_document_title", "source_document_id"],
 ];
 
 function fmt(v) {
@@ -158,12 +160,17 @@ function ReviewDialog({ promptRow, onClose, onDone }) {
             </div>
             <table className="data-table" style={{ fontSize: 12, marginBottom: 12 }} data-testid="review-snapshot">
               <tbody>
-                {SNAPSHOT_ROWS.map(([label, key]) => (
-                  <tr key={key}>
-                    <td style={{ opacity: 0.7, width: 190 }}>{label}</td>
-                    <td>{fmt(snapshot[key])}</td>
-                  </tr>
-                ))}
+                {SNAPSHOT_ROWS.map(([label, key, fallbackKey]) => {
+                  const val = snapshot[key];
+                  const shown = (val === null || val === undefined || val === "")
+                    && fallbackKey ? snapshot[fallbackKey] : val;
+                  return (
+                    <tr key={key}>
+                      <td style={{ opacity: 0.7, width: 190 }}>{label}</td>
+                      <td>{fmt(shown)}</td>
+                    </tr>
+                  );
+                })}
                 <tr>
                   <td style={{ opacity: 0.7 }}>Current status</td>
                   <td><strong>{snapshot.reviewer_status}</strong> (active: {String(!!snapshot.is_active)})</td>
@@ -254,6 +261,7 @@ export default function PromptReviewQueue({ perms }) {
             <thead>
               <tr>
                 <th>Prompt</th>
+                <th>Subject / Topic</th>
                 <th>Exercise type</th>
                 <th style={{ textAlign: "right" }}>Difficulty</th>
                 <th>Updated</th>
@@ -264,9 +272,15 @@ export default function PromptReviewQueue({ perms }) {
               {items.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <span style={{ display: "block", maxWidth: 460, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
+                    <span style={{ display: "block", maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
                       {p.prompt_text}
                     </span>
+                  </td>
+                  <td style={{ fontSize: 12, opacity: 0.85 }} data-testid={`review-taxonomy-${p.id}`}>
+                    {/* Backend-resolved labels (batched, id fallback) so the queue
+                        is readable without opening each prompt. */}
+                    {[p.subject_name || p.subject_id, p.topic_name || p.topic_id, p.microtopic_name]
+                      .filter(Boolean).join(" › ") || "—"}
                   </td>
                   <td style={{ fontSize: 12 }}>{(p.exercise_type || "").replaceAll("_", " ")}</td>
                   <td style={{ textAlign: "right", fontSize: 12 }}>{p.difficulty_level}/10</td>
