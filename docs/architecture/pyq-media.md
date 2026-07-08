@@ -5,7 +5,7 @@ _Last updated: 2026-07-08_
 Migration 223 shipped shared **text** stimuli (`passage` / `caselet` / `table`)
 and explicitly deferred first-class media storage to PR-11. This is that lane.
 
-## Slice 1 — media storage on `pyq_stimuli` (migration 232)
+## Slice 1 — media storage on `pyq_stimuli` (migration 233)
 
 `public.pyq_stimuli` gains:
 
@@ -35,7 +35,7 @@ and explicitly deferred first-class media storage to PR-11. This is that lane.
   stimulus forces it back to `needs_correction`.
 
 Additive + idempotent; no importer or projection contract changes here.
-Regression: `app/supabase/tests/regression_232_pyq_stimuli_media_assets.sql`
+Regression: `app/supabase/tests/regression_233_pyq_stimuli_media_assets.sql`
 (8 cases: asset scope/status integrity, both verify preconditions, compliant
 verify, media-edit downgrade, non-media verify).
 

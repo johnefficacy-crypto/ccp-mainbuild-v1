@@ -1,4 +1,4 @@
--- 232_pyq_stimuli_media_assets.sql
+-- 233_pyq_stimuli_media_assets.sql
 -- PYQ v2 PR-11 (advanced question types & media), slice 1: first-class media
 -- storage for stimuli.
 --

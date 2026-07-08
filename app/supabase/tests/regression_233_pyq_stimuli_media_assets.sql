@@ -1,6 +1,6 @@
--- regression_232_pyq_stimuli_media_assets.sql
+-- regression_233_pyq_stimuli_media_assets.sql
 --
--- Manual PostgreSQL regression tests for migration 232's PYQ stimuli media
+-- Manual PostgreSQL regression tests for migration 233's PYQ stimuli media
 -- model (PYQ v2 PR-11, slice 1).
 --
 -- Proves:
@@ -16,8 +16,8 @@
 --      stimulus downgrades it to needs_correction.
 --   8. A non-media (passage) stimulus can be verified without alt_text.
 --
--- Prerequisites: migrations 223 + 232 applied.
--- Usage: psql "$DATABASE_URL" -f regression_232_pyq_stimuli_media_assets.sql
+-- Prerequisites: migrations 223 + 233 applied.
+-- Usage: psql "$DATABASE_URL" -f regression_233_pyq_stimuli_media_assets.sql
 -- Expected output: ten NOTICE "PASS" lines, no unexpected errors.
 
 \set ON_ERROR_STOP on
@@ -26,9 +26,9 @@ BEGIN;
 
 -- ── Fixture ────────────────────────────────────────────────────────────────
 insert into public.exam_families (id, slug, name)
-values ('33333333-3333-3333-3333-333333333301'::uuid, 'rg232-family', 'Regression 232 Family');
+values ('33333333-3333-3333-3333-333333333301'::uuid, 'rg233-family', 'Regression 233 Family');
 insert into public.exams (id, exam_family_id, slug, name)
-values ('33333333-3333-3333-3333-333333333302'::uuid, '33333333-3333-3333-3333-333333333301'::uuid, 'rg232-exam', 'Regression 232 Exam');
+values ('33333333-3333-3333-3333-333333333302'::uuid, '33333333-3333-3333-3333-333333333301'::uuid, 'rg233-exam', 'Regression 233 Exam');
 insert into public.pyq_papers (id, exam_id, year, trust_status, source_type)
 values ('33333333-3333-3333-3333-333333333303'::uuid, '33333333-3333-3333-3333-333333333302'::uuid, 2025, 'pending', 'official');
 
