@@ -26,6 +26,10 @@ export const EWP = {
   familyId: "e2e0e2e0-0000-4000-8000-000000000020",
   examId: "e2e0e2e0-0000-4000-8000-000000000021",
   phaseId: "e2e0e2e0-0000-4000-8000-000000000022",
+  // Fixture-unique topics that isolate the 409 no_eligible_prompt negatives from
+  // any prompt seeded on the shared 'sentence-construction' topic by other specs.
+  excludedPhaseTopicId: "e2e0e2e0-0000-4000-8000-000000000023",
+  noEligibleScopeTopicId: "e2e0e2e0-0000-4000-8000-000000000024",
 };
 
 const REASON = "e2e sentence-practice journey fixture setup (EWP-SP5)";
@@ -64,6 +68,41 @@ export async function resolveEnglishScope(): Promise<{
     throw new Error("English 'sentence-construction'/'grammar' topics missing (migration 205 seed).");
   }
   return { subjectId: subject.id, sentenceTopicId: sentence.id, grammarTopicId: grammar.id };
+}
+
+/**
+ * Idempotent, fixture-unique English topic. Because `_select_launch_prompt`
+ * narrows candidates by `.eq("topic_id", ...)`, seeding BOTH a negative's
+ * prompt-under-test and its study_task under a dedicated topic guarantees the
+ * candidate set contains only that test's prompt(s) — so a 409 no_eligible_prompt
+ * assertion is deterministic and immune to prompts other specs seed on the shared
+ * `sentence-construction` topic (serial-safe, re-run-safe; no global mutation).
+ *
+ * Deterministic: caller passes a fixed `id` (stable UUID) and `slug`; the upsert
+ * on the primary key makes repeated runs converge on the same row. No random or
+ * time-based identifiers.
+ */
+export async function seedUniqueTopic(args: {
+  id: string;
+  slug: string;
+  name: string;
+  subjectId: string;
+}): Promise<string> {
+  const client = db();
+  const { error } = await client.from("topics").upsert(
+    {
+      id: args.id,
+      subject_id: args.subjectId,
+      parent_topic_id: null,
+      slug: args.slug,
+      name: args.name,
+      level: "topic",
+      is_active: true,
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(`topics upsert (${args.slug}): ${error.message}`);
+  return args.id;
 }
 
 /** Idempotent exam family / exam / phase for exam-scoped applicability negatives. */

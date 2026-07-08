@@ -42,11 +42,20 @@ async function waitWorker(adminToken: string): Promise<void> {
   // The claim/run RPC processes at most one job per pass; a fresh submit enqueues
   // exactly one language_evaluation job, so a single pass drains it. Retry a few
   // times to absorb claim/lease races without hiding a real stall.
+  //
+  // `POST /admin/jobs/run/{job_id}` returns HTTP 200 even when the job records an
+  // operational failure (encoded as `ok:false` in the body), so assert `ok===true`
+  // — an HTTP-status-only check would go green on a broken worker.
+  let last: { status: number; body: any } | null = null;
   for (let i = 0; i < 5; i += 1) {
     const r = await runWritingEvaluator(adminToken);
-    if (r.status === 200 && (r.body?.result?.processed ?? 0) >= 1) return;
+    last = r;
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body?.ok, JSON.stringify(r.body)).toBe(true);
+    if ((r.body?.result?.processed ?? 0) >= 1) return;
     await new Promise((res) => setTimeout(res, 500));
   }
+  throw new Error(`writing:evaluate never processed a job: ${JSON.stringify(last?.body)}`);
 }
 
 test.describe("EWP-SP5: sentence-practice journey (real backend/DB)", () => {
@@ -141,6 +150,8 @@ test.describe("EWP-SP5: sentence-practice journey (real backend/DB)", () => {
     // mastery magnitude, only that the pass is operationally clean).
     const outbox = await runWritingMasteryOutbox(adminToken);
     expect(outbox.status).toBe(200);
+    // job-run returns 200 even on an operational failure — require ok:true.
+    expect(outbox.body?.ok, JSON.stringify(outbox.body)).toBe(true);
 
     // Error Lab entry point is reachable from the shell (no sidebar surface).
     await expect(page.getByTestId("error-lab-link")).toBeVisible();

@@ -2,8 +2,10 @@ import { test, expect } from "@playwright/test";
 import { ensureSeededUser, getAccessToken } from "../fixtures/seedUser";
 import { ensureAdminUser, getAdminAccessToken } from "../fixtures/seedWorkspace";
 import {
+  EWP,
   resolveEnglishScope,
   ensureExamPhaseFixture,
+  seedUniqueTopic,
   createStudyTask,
   createPrompt,
   getPrompt,
@@ -77,11 +79,19 @@ test.describe("EWP-SP5 negatives: fail-closed launch/activation gates", () => {
   });
 
   test("no eligible prompt for the task scope → launch 409 no_eligible_prompt", async () => {
-    // Task pinned to the 'grammar' topic, for which no active prompt exists.
+    // Isolate: task pinned to a fixture-UNIQUE topic that no prompt targets, so
+    // `_select_launch_prompt`'s `.eq("topic_id", ...)` yields an empty candidate
+    // set regardless of prompts other specs seed on 'sentence-construction'.
+    const topicId = await seedUniqueTopic({
+      id: EWP.noEligibleScopeTopicId,
+      slug: "e2e-ewp-no-eligible-scope",
+      name: "E2E EWP No-Eligible Scope",
+      subjectId: scope.subjectId,
+    });
     const taskId = await createStudyTask({
       userId,
       subjectId: scope.subjectId,
-      topicId: scope.grammarTopicId,
+      topicId,
     });
     const res = await launchWriting(learnerToken, taskId);
     expect(res.status).toBe(409);
@@ -90,10 +100,20 @@ test.describe("EWP-SP5 negatives: fail-closed launch/activation gates", () => {
 
   test("excluded phase is not applicable → launch 409 (exclusion beats global)", async () => {
     const exam = await ensureExamPhaseFixture();
+    // Isolate on a fixture-UNIQUE topic so the ONLY candidate for this task's
+    // topic is the prompt under test. Its global target makes it active/eligible;
+    // the excluded phase carve-out then removes it for the pinned phase, so the
+    // candidate set is empty → 409, independent of prompts on shared topics.
+    const topicId = await seedUniqueTopic({
+      id: EWP.excludedPhaseTopicId,
+      slug: "e2e-ewp-excluded-phase",
+      name: "E2E EWP Excluded Phase",
+      subjectId: scope.subjectId,
+    });
     // Active global prompt (so activation succeeds), then an excluded phase carve-out.
     const promptId = await seedActiveSentencePrompt(adminToken, {
       subjectId: scope.subjectId,
-      topicId: scope.sentenceTopicId,
+      topicId,
     });
     const excl = await proposeTarget(adminToken, promptId, { exam_phase_id: exam.phaseId });
     await reviewTarget(adminToken, excl.id, excl.updatedAt, "excluded");
@@ -103,7 +123,7 @@ test.describe("EWP-SP5 negatives: fail-closed launch/activation gates", () => {
     const taskId = await createStudyTask({
       userId,
       subjectId: scope.subjectId,
-      topicId: scope.sentenceTopicId,
+      topicId,
       examId: exam.examId,
       phaseId: exam.phaseId,
     });
