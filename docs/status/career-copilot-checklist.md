@@ -346,6 +346,7 @@ Write the code; operator sign-off required before merge.
 | M1 topic prerequisites | Schema design decision: data model for strength values between topics before any UI. |
 | Management mode / cadence / coverage governance | Product contract: deterministic rule vs admin judgement vs model suggestion for `management_mode`, `cadence`, coverage depth. |
 | KG rename ("Knowledge Governance" → "Policy & Trust") | Separate PR; touches sidebar labels, masthead/page titles, breadcrumbs, tests. Do not fold into any Wave 1–2 work. |
+| Exam Knowledge Compiler v1 (topic co-occurrence) | **PLANNED — contract drafted, operator sign-off required before implementation.** `docs/architecture/exam-knowledge-compiler-v1.md` — bounded v1 slice compiling `topic_relation_edges` (`relation_type='co_occurs_with'`) from verified PYQ primary-tag co-occurrence; reuses the `cms_review_exam_topic_snapshot` (migration 204) RPC shape for draft→reviewed→locked review. Open questions OQ-1…OQ-7 in the doc require operator/product resolution before any migration or code PR. |
 
 ### Parallelism constraints (enforced by repo rules)
 
