@@ -180,8 +180,18 @@ def _classify_learning_behavior(signals: dict[str, Any], evidence: list) -> str:
     mocks = int(signals.get("mocks_taken_30d") or 0)
     focus_minutes = int(signals.get("focus_minutes_7d") or 0)
     weekly_review = bool(signals.get("weekly_review_available"))
+    # PYQ v2 PR-10 — PYQ practice + trap-drill sessions are retrieval practice too,
+    # so a heavy PYQ practitioner is NOT a mock avoider even with zero full mocks.
+    pyq_practice = int(signals.get("pyq_practice_sessions_30d") or 0)
+    trap_drill = int(signals.get("trap_drill_sessions_30d") or 0)
+    pyq_engagement = pyq_practice + trap_drill
 
-    if total_tasks_14d == 0 and focus_minutes == 0 and mocks == 0:
+    if (
+        total_tasks_14d == 0
+        and focus_minutes == 0
+        and mocks == 0
+        and pyq_engagement == 0
+    ):
         value = "insufficient_data"
         reason = "no_study_activity"
     elif (
@@ -192,9 +202,9 @@ def _classify_learning_behavior(signals: dict[str, Any], evidence: list) -> str:
     ):
         value = "planner_poor_executor"
         reason = "tasks_planned_but_low_completion_and_high_miss"
-    elif total_tasks_14d >= 10 and mocks == 0:
+    elif total_tasks_14d >= 10 and mocks == 0 and pyq_engagement == 0:
         value = "mock_avoider"
-        reason = "sustained_study_no_mocks"
+        reason = "sustained_study_no_mocks_or_pyq_practice"
     elif mocks >= 3 and not weekly_review:
         value = "high_mock_low_review"
         reason = "many_mocks_but_no_review_signal"
@@ -218,6 +228,8 @@ def _classify_learning_behavior(signals: dict[str, Any], evidence: list) -> str:
             "completion_rate_14d": completion_rate,
             "missed_14d": missed,
             "mocks_30d": mocks,
+            "pyq_practice_sessions_30d": pyq_practice,
+            "trap_drill_sessions_30d": trap_drill,
             "focus_minutes_7d": focus_minutes,
             "weekly_review_available": weekly_review,
         },

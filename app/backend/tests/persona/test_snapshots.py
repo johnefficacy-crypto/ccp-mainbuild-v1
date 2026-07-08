@@ -144,6 +144,8 @@ def test_collect_signals_safe_when_tables_missing():
     assert signals["missed_task_count_14d"] == 0
     assert signals["focus_minutes_7d"] == 0
     assert signals["mocks_taken_30d"] == 0
+    assert signals["pyq_practice_sessions_30d"] == 0
+    assert signals["trap_drill_sessions_30d"] == 0
     assert signals["weekly_review_available"] is False
 
 

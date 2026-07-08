@@ -39,6 +39,13 @@ _PROFILE_COMPLETENESS_FIELDS = (
     "career_stage",
 )
 
+# mock_generated_blueprints.source tags that mark a PYQ-practice attempt (PR-5/6).
+_PYQ_PRACTICE_SOURCES = (
+    "pyq_practice_paper",
+    "pyq_practice_section",
+    "pyq_practice_topic",
+)
+
 
 def _profile_completeness(profile: dict[str, Any], prefs: dict[str, Any]) -> float:
     if not profile:
@@ -210,6 +217,82 @@ def collect_user_signals(supabase: Any, user_id: str) -> dict[str, Any]:
     if mock_rows is not None:
         mocks_taken_30d = len(mock_rows)
 
+    # PYQ v2 PR-10 — direct-PYQ engagement, read-derived over the same 30d window
+    # (no new table/migration, mirroring mocks_taken_30d). Both degrade to 0 on a
+    # missing/denied source table via _safe, keeping the classifier stable.
+    #
+    # pyq_practice_sessions_30d: mock attempts started from a PYQ-practice blueprint
+    # (PR-5/6). We window the *attempts* first (bounded to the recent 30d), collect
+    # the blueprint ids they reference, then classify those bounded ids by source.
+    # Deriving blueprint-ids-first would let a user with >500 historical practice
+    # blueprints push a recent attempt's blueprint past the row cap and undercount;
+    # windowing attempts first makes the cap track the 30d activity, not all history.
+    pyq_practice_sessions_30d = 0
+    recent_attempts = _safe(
+        lambda: (
+            supabase.table("mock_attempts")
+            .select("id, generated_blueprint_id")
+            .eq("user_id", user_id)
+            .not_.is_("generated_blueprint_id", "null")
+            .gte("started_at", since_30d)
+            .limit(500)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if recent_attempts:
+        # Python-side null guard: the PostgREST `not.is.null` filter drops NULLs in
+        # the real DB but is a no-op in the test stub, so re-guard here.
+        attempt_bp_ids = sorted(
+            {a["generated_blueprint_id"] for a in recent_attempts if a.get("generated_blueprint_id")}
+        )
+        if attempt_bp_ids:
+            practice_bp_ids: set[str] = set()
+            # Bounded lookup keyed by the (already-bounded) recent blueprint ids,
+            # chunked so a very active window never exceeds a single PostgREST `in`.
+            for start in range(0, len(attempt_bp_ids), 100):
+                chunk = attempt_bp_ids[start : start + 100]
+                bp_rows = _safe(
+                    lambda chunk=chunk: (
+                        supabase.table("mock_generated_blueprints")
+                        .select("id")
+                        .in_("id", chunk)
+                        .in_("source", _PYQ_PRACTICE_SOURCES)
+                        .execute()
+                        .data
+                    ),
+                    default=None,
+                )
+                for b in bp_rows or []:
+                    if b.get("id"):
+                        practice_bp_ids.add(b["id"])
+            pyq_practice_sessions_30d = sum(
+                1
+                for a in recent_attempts
+                if a.get("generated_blueprint_id") in practice_bp_ids
+            )
+
+    # trap_drill_sessions_30d: distinct drill runs (a drill_seed is one shuffled
+    # run, PR-8 source) in the window; seedless legacy rows each count as one.
+    trap_drill_sessions_30d = 0
+    drill_rows = _safe(
+        lambda: (
+            supabase.table("user_trap_drill_attempts")
+            .select("drill_seed, attempted_at")
+            .eq("user_id", user_id)
+            .gte("attempted_at", since_30d)
+            .limit(1000)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if drill_rows is not None:
+        seeds = {r.get("drill_seed") for r in drill_rows if r.get("drill_seed")}
+        seedless = sum(1 for r in drill_rows if not r.get("drill_seed"))
+        trap_drill_sessions_30d = len(seeds) + seedless
+
     # Weekly review availability — heuristic: at least one completed task
     # this week is enough to render a meaningful review. The Study OS
     # WeeklyReview endpoint is the source of truth for the UI; persona
@@ -259,6 +342,8 @@ def collect_user_signals(supabase: Any, user_id: str) -> dict[str, Any]:
         "skipped_task_count_14d": skipped,
         "focus_minutes_7d": focus_minutes_7d,
         "mocks_taken_30d": mocks_taken_30d,
+        "pyq_practice_sessions_30d": pyq_practice_sessions_30d,
+        "trap_drill_sessions_30d": trap_drill_sessions_30d,
         "weekly_review_available": weekly_review_available,
         "persona_question_answers": persona_question_answers,
         # PR 13 — study-OS comparison signals.
@@ -412,6 +497,8 @@ def _empty_signals() -> dict[str, Any]:
         "skipped_task_count_14d": 0,
         "focus_minutes_7d": 0,
         "mocks_taken_30d": 0,
+        "pyq_practice_sessions_30d": 0,
+        "trap_drill_sessions_30d": 0,
         "weekly_review_available": False,
         "persona_question_answers": {},
         "relative_consistency_percentile": None,
