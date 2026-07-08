@@ -8,7 +8,12 @@
  *   the `reviewer_status`) the browser actually read; stale token → 409
  * - bulk import is atomic all-or-nothing; success returns
  *   `{ok, result:{created,updated,unchanged}}` — there are no per-row results
- * - there is NO activate endpoint (activation is migration-gated) — do not add one
+ * - activation/deactivation shipped in SP2 (`/writing-prompts/{id}/activate` and
+ *   `/deactivate`) under the SEPARATE content_studio.activate authority; the RPC
+ *   (migration 224) is the sole eligibility authority, returning a structured
+ *   `{eligible, blockers}` verdict at HTTP 200. Neither author nor review may
+ *   flip is_active, so those endpoints are intentionally not exposed on this
+ *   author/review adapter.
  */
 import { api } from "../../../lib/api";
 

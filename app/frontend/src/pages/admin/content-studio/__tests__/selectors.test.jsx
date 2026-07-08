@@ -161,6 +161,28 @@ describe("readable labels in tables", () => {
   });
 });
 
+describe("selector feeds honour the collection contract (no silent fail-closed)", () => {
+  test("a failed load shows an explicit error with retry, not an empty dropdown", async () => {
+    api.get.mockReset();
+    api.get.mockRejectedValueOnce(Object.assign(new Error("denied"), { status: 403 }));
+    render(<SubjectSelect value="" onChange={() => {}} />);
+    // Error state is distinct from empty: alert + retry, not a silent <select>.
+    expect(await screen.findByTestId("select-subject-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("select-subject")).toBeNull();
+  });
+
+  test("retry recovers the feed after a transient failure", async () => {
+    api.get.mockReset();
+    api.get
+      .mockRejectedValueOnce(new Error("outage"))
+      .mockResolvedValueOnce({ items: [{ id: SUBJ, name: "English" }] });
+    render(<SubjectSelect value="" onChange={() => {}} />);
+    fireEvent.click(await screen.findByTestId("select-subject-retry"));
+    expect(await screen.findByText("English")).toBeInTheDocument();
+    expect(screen.queryByTestId("select-subject-error")).toBeNull();
+  });
+});
+
 describe("needs_correction note is shown read-only to the author", () => {
   test("renders the reviewer note without any edit control", async () => {
     routeGet({ correctionNote: { note: { reviewer_notes: "Fix the tense in sentence 2.", reason: "grammar issues", actor_email: "rev@x.io", created_at: "2026-07-05T00:00:00Z" } } });

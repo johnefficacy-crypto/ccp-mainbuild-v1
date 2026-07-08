@@ -389,6 +389,72 @@ def _name_of(supabase, table: str, id_val, field: str = "name"):
     return (row.get(field) if row else None)
 
 
+# Mirror of ewp_validate_prompt_scope's source_document provenance predicate
+# (migration 215). A picker must never offer a document the write RPC would
+# reject with invalid_scope, so the feed replicates the exact check: scope,
+# non-null valid document_kind, non-null status not in (failed, archived), and
+# non-blank storage bucket + path.
+_VALID_DOCUMENT_KINDS = frozenset(
+    {"syllabus", "notification", "corrigendum", "pyq_paper", "answer_key", "other"}
+)
+_INVALID_DOCUMENT_STATUSES = frozenset({"failed", "archived"})
+
+
+def _document_passes_provenance(doc: dict) -> bool:
+    """Exact replica of ewp_validate_prompt_scope's source_document check."""
+    if doc.get("scope") != "admin_exam_intelligence":
+        return False
+    kind = doc.get("document_kind")
+    if kind is None or kind not in _VALID_DOCUMENT_KINDS:
+        return False
+    status = doc.get("status")
+    if status is None or status in _INVALID_DOCUMENT_STATUSES:
+        return False
+    if not (doc.get("storage_bucket") or "").strip():
+        return False
+    if not (doc.get("storage_path") or "").strip():
+        return False
+    return True
+
+
+def _batch_name_map(supabase, table: str, ids, field: str = "name") -> dict:
+    """One SELECT resolving id → label for a set of ids (no N+1)."""
+    uniq = sorted({str(i) for i in ids if i})
+    if not uniq:
+        return {}
+    res = supabase.table(table).select(f"id,{field}").in_("id", uniq).execute()
+    return {r.get("id"): r.get(field) for r in (res.data or [])}
+
+
+def _enrich_prompt_labels_batch(supabase, items: list) -> list:
+    """Attach *_name/*_title display labels to a PAGE of writing_prompts rows,
+    resolving each taxonomy/provenance table in a SINGLE batched query (distinct
+    ids across the page) — never per-row. Ids are never mutated."""
+    rows = [p for p in (items or []) if isinstance(p, dict)]
+    if not rows:
+        return items
+    subjects = _batch_name_map(supabase, "subjects", [p.get("subject_id") for p in rows])
+    topics = _batch_name_map(
+        supabase, "topics",
+        [p.get("topic_id") for p in rows] + [p.get("microtopic_id") for p in rows])
+    rubrics = _batch_name_map(supabase, "writing_rubrics", [p.get("rubric_id") for p in rows])
+    doc_ids = sorted({str(p.get("source_document_id")) for p in rows if p.get("source_document_id")})
+    docs: dict = {}
+    if doc_ids:
+        res = (supabase.table("document_assets")
+               .select("id,title,original_filename").in_("id", doc_ids).execute())
+        docs = {r.get("id"): (r.get("title") or r.get("original_filename")) for r in (res.data or [])}
+    for p in rows:
+        sid, tid, mid = p.get("subject_id"), p.get("topic_id"), p.get("microtopic_id")
+        rid, did = p.get("rubric_id"), p.get("source_document_id")
+        p["subject_name"] = subjects.get(str(sid)) if sid else None
+        p["topic_name"] = topics.get(str(tid)) if tid else None
+        p["microtopic_name"] = topics.get(str(mid)) if mid else None
+        p["rubric_name"] = rubrics.get(str(rid)) if rid else None
+        p["source_document_title"] = docs.get(str(did)) if did else None
+    return items
+
+
 def _enrich_prompt_labels(supabase, prompt: dict) -> dict:
     """Attach *_name display labels to a writing_prompt row (never mutates ids)."""
     if not isinstance(prompt, dict):
@@ -448,7 +514,8 @@ def list_writing_prompts(
     if q:
         query = query.ilike("prompt_text", f"%{q}%")
     res = query.range(offset, offset + limit - 1).execute()
-    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+    items = _enrich_prompt_labels_batch(supabase, res.data or [])
+    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
 
 @router.get("/writing-prompts/{prompt_id}")
@@ -732,13 +799,24 @@ def remove_writing_prompt_target(
 # operator's own picker feeds under the Content Studio API source of truth.
 
 
+# Bound every option feed so a runaway taxonomy/registry can never return an
+# unbounded page to the operator's picker.
+_OPTION_LIMIT = 500
+
+
 @router.get("/taxonomy/subjects")
 def list_subject_options(
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
+    """Writing-prompt subject feed. HARD-SCOPED to the single subject the write
+    validator (ewp_validate_prompt_scope) accepts — the ACTIVE `english-language`
+    subject — so the picker can never offer a subject create/verify would reject
+    with invalid_scope."""
     supabase = get_supabase_admin()
-    res = supabase.table("subjects").select("id,slug,name").order("name").execute()
+    res = (supabase.table("subjects").select("id,slug,name")
+           .eq("slug", "english-language").eq("is_active", True)
+           .order("name").limit(_OPTION_LIMIT).execute())
     return {"items": res.data or []}
 
 
@@ -750,11 +828,17 @@ def list_topic_options(
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """Dependent taxonomy feed: topics filtered by subject (level=topic) or
-    microtopics filtered by their parent topic (level=microtopic)."""
+    """Dependent taxonomy feed mirroring the write validator: only ACTIVE topics,
+    scoped to a subject (topics) or a parent topic (microtopics). A parent filter
+    is REQUIRED — an unfiltered call would return the whole tree, so it is a 422."""
+    if subject_id is None and parent_topic_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="taxonomy/topics requires subject_id (topics) or parent_topic_id (microtopics)")
     supabase = get_supabase_admin()
-    query = supabase.table("topics").select(
-        "id,slug,name,level,subject_id,parent_topic_id").order("name")
+    query = (supabase.table("topics")
+             .select("id,slug,name,level,subject_id,parent_topic_id,is_active")
+             .eq("is_active", True).order("name").limit(_OPTION_LIMIT))
     if subject_id is not None:
         query = query.eq("subject_id", str(subject_id))
     if parent_topic_id is not None:
@@ -772,7 +856,7 @@ def list_exam_family_options(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     res = (supabase.table("exam_families").select("id,slug,name")
-           .eq("is_active", True).order("name").execute())
+           .eq("is_active", True).order("name").limit(_OPTION_LIMIT).execute())
     return {"items": res.data or []}
 
 
@@ -785,7 +869,7 @@ def list_exam_options(
     """Dependent feed: active exams, optionally narrowed to one exam family."""
     supabase = get_supabase_admin()
     query = (supabase.table("exams").select("id,slug,name,exam_family_id")
-             .eq("is_active", True).order("name"))
+             .eq("is_active", True).order("name").limit(_OPTION_LIMIT))
     if exam_family_id is not None:
         query = query.eq("exam_family_id", str(exam_family_id))
     res = query.execute()
@@ -798,13 +882,13 @@ def list_exam_phase_options(
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """Dependent feed: phases of one exam (exam_id required for a meaningful list)."""
+    """Dependent feed: phases of one exam. exam_id is REQUIRED — an unfiltered
+    call would return every phase in the registry, so it is a 422."""
+    if exam_id is None:
+        raise HTTPException(status_code=422, detail="exam-scope/phases requires exam_id")
     supabase = get_supabase_admin()
-    query = (supabase.table("exam_phases").select("id,phase_name,exam_id,exam_cycle_id,status")
-             .order("phase_name"))
-    if exam_id is not None:
-        query = query.eq("exam_id", str(exam_id))
-    res = query.execute()
+    res = (supabase.table("exam_phases").select("id,phase_name,exam_id,exam_cycle_id,status")
+           .eq("exam_id", str(exam_id)).order("phase_name").limit(_OPTION_LIMIT).execute())
     return {"items": res.data or []}
 
 
@@ -815,7 +899,7 @@ def list_rubric_options(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     res = (supabase.table("writing_rubrics").select("id,name,version")
-           .order("name").execute())
+           .order("name").limit(_OPTION_LIMIT).execute())
     return {"items": res.data or []}
 
 
@@ -824,13 +908,27 @@ def list_source_document_options(
     _admin: dict = Depends(_require_content_read),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    """Admin exam-intelligence documents that a prompt may cite as its source."""
+    """Admin exam-intelligence documents that a prompt may cite as its source.
+
+    Every returned row is guaranteed to PASS ewp_validate_prompt_scope's
+    provenance check (mirrored in `_document_passes_provenance`): valid
+    document_kind, live status (not failed/archived), and non-blank storage
+    bucket + path. The kind allowlist is pushed to the query; the null/blank
+    guards are applied in Python to match the RPC's `btrim` semantics exactly."""
     supabase = get_supabase_admin()
     res = (supabase.table("document_assets")
-           .select("id,title,original_filename,document_kind")
+           .select("id,title,original_filename,document_kind,scope,status,"
+                   "storage_bucket,storage_path")
            .eq("scope", "admin_exam_intelligence")
-           .order("created_at", desc=True).limit(500).execute())
-    return {"items": res.data or []}
+           .in_("document_kind", sorted(_VALID_DOCUMENT_KINDS))
+           .order("created_at", desc=True).limit(_OPTION_LIMIT).execute())
+    items = [
+        {"id": d.get("id"), "title": d.get("title"),
+         "original_filename": d.get("original_filename"),
+         "document_kind": d.get("document_kind")}
+        for d in (res.data or []) if _document_passes_provenance(d)
+    ]
+    return {"items": items}
 
 
 @router.get("/writing-prompts/{prompt_id}/correction-note")

@@ -261,6 +261,7 @@ export default function PromptReviewQueue({ perms }) {
             <thead>
               <tr>
                 <th>Prompt</th>
+                <th>Subject / Topic</th>
                 <th>Exercise type</th>
                 <th style={{ textAlign: "right" }}>Difficulty</th>
                 <th>Updated</th>
@@ -271,9 +272,15 @@ export default function PromptReviewQueue({ perms }) {
               {items.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <span style={{ display: "block", maxWidth: 460, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
+                    <span style={{ display: "block", maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
                       {p.prompt_text}
                     </span>
+                  </td>
+                  <td style={{ fontSize: 12, opacity: 0.85 }} data-testid={`review-taxonomy-${p.id}`}>
+                    {/* Backend-resolved labels (batched, id fallback) so the queue
+                        is readable without opening each prompt. */}
+                    {[p.subject_name || p.subject_id, p.topic_name || p.topic_id, p.microtopic_name]
+                      .filter(Boolean).join(" › ") || "—"}
                   </td>
                   <td style={{ fontSize: 12 }}>{(p.exercise_type || "").replaceAll("_", " ")}</td>
                   <td style={{ textAlign: "right", fontSize: 12 }}>{p.difficulty_level}/10</td>

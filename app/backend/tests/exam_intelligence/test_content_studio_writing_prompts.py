@@ -865,14 +865,19 @@ _FAMILY = "00000000-0000-0000-0000-0000000000f1"
 _PHASE = "00000000-0000-0000-0000-0000000000f2"
 
 
+_DOC = "00000000-0000-0000-0000-0000000000d9"
+
+
 def _seed_selectors() -> dict:
     seed = _seed()
-    seed["subjects"] = [{"id": _SUBJECT, "slug": "english", "name": "English Language"}]
+    # subject slug/is_active mirror the write validator (english-language, active).
+    seed["subjects"] = [{"id": _SUBJECT, "slug": "english-language",
+                         "name": "English Language", "is_active": True}]
     seed["topics"] = [
         {"id": _TOPIC, "subject_id": _SUBJECT, "parent_topic_id": None,
-         "slug": "rc", "name": "Reading Comprehension", "level": "topic"},
+         "slug": "rc", "name": "Reading Comprehension", "level": "topic", "is_active": True},
         {"id": _MICRO, "subject_id": _SUBJECT, "parent_topic_id": _TOPIC,
-         "slug": "inference", "name": "Inference", "level": "microtopic"},
+         "slug": "inference", "name": "Inference", "level": "microtopic", "is_active": True},
     ]
     seed["exam_families"] = [{"id": _FAMILY, "slug": "ssc", "name": "SSC", "is_active": True}]
     seed["exams"] = [{"id": _EXAM, "exam_family_id": _FAMILY, "slug": "cgl",
@@ -881,16 +886,25 @@ def _seed_selectors() -> dict:
                             "phase_name": "Tier 1", "status": "active"}]
     seed["writing_rubrics"] = [{"id": "00000000-0000-0000-0000-0000000000a9",
                                 "name": "Essay Rubric", "version": 2}]
-    seed["document_assets"] = [{"id": "00000000-0000-0000-0000-0000000000d9",
+    # A document that PASSES ewp_validate_prompt_scope's provenance predicate.
+    seed["document_assets"] = [{"id": _DOC,
                                 "scope": "admin_exam_intelligence", "title": "Syllabus PDF",
                                 "original_filename": "syllabus.pdf", "document_kind": "syllabus",
+                                "status": "ready", "storage_bucket": "exam-docs",
+                                "storage_path": "ssc/syllabus.pdf",
                                 "created_at": "2026-07-01T00:00:00Z"}]
     return seed
 
 
 def test_selector_feeds_require_content_read_permission():
-    for path in ("taxonomy/subjects", "taxonomy/topics", "exam-scope/families",
-                 "exam-scope/exams", "exam-scope/phases", "rubrics", "source-documents"):
+    # topics/phases require a parent filter (P1-3); include it so we exercise the
+    # 200 path, not the 422 unfiltered-rejection path.
+    paths = (
+        "taxonomy/subjects", f"taxonomy/topics?subject_id={_SUBJECT}",
+        "exam-scope/families", "exam-scope/exams", f"exam-scope/phases?exam_id={_EXAM}",
+        "rubrics", "source-documents",
+    )
+    for path in paths:
         sb = CSSBStub(_seed_selectors())
         denied = _client(sb, permissions=["some.other"]).get(f"{_BASE}/{path}")
         assert denied.status_code == 403, (path, denied.text)
@@ -987,3 +1001,118 @@ def test_correction_note_absent_returns_null():
         f"{_BASE}/writing-prompts/{_PROMPT}/correction-note")
     assert r.status_code == 200, r.text
     assert r.json()["note"] is None
+
+
+# ── Selector feeds mirror the write validators (P1-1) ───────────────────────
+#
+# A feed must NEVER offer an option the write RPC (ewp_validate_prompt_scope)
+# would reject with invalid_scope, else the operator picks a value that 422s on
+# save. Each negative test seeds a row the validator rejects and asserts the
+# feed hard-filters it out.
+
+
+def test_subjects_feed_excludes_non_english_and_inactive():
+    seed = _seed_selectors()
+    seed["subjects"].append(
+        {"id": "00000000-0000-0000-0000-0000000000a2", "slug": "reasoning",
+         "name": "Reasoning", "is_active": True})          # wrong slug
+    seed["subjects"].append(
+        {"id": "00000000-0000-0000-0000-0000000000a3", "slug": "english-language",
+         "name": "English (retired)", "is_active": False})  # inactive
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/taxonomy/subjects")
+    assert r.status_code == 200, r.text
+    assert {s["id"] for s in r.json()["items"]} == {_SUBJECT}
+
+
+def test_topics_feed_excludes_inactive_topics():
+    seed = _seed_selectors()
+    seed["topics"].append(
+        {"id": "00000000-0000-0000-0000-0000000000b9", "subject_id": _SUBJECT,
+         "parent_topic_id": None, "slug": "dead", "name": "Retired Topic",
+         "level": "topic", "is_active": False})
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/taxonomy/topics?subject_id={_SUBJECT}&level=topic")
+    assert r.status_code == 200, r.text
+    assert {t["id"] for t in r.json()["items"]} == {_TOPIC}
+
+
+def test_topics_feed_requires_a_parent_filter():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/taxonomy/topics")
+    assert r.status_code == 422, r.text
+
+
+def test_topics_feed_bounded_to_limit():
+    seed = _seed_selectors()
+    seed["topics"] = [
+        {"id": f"00000000-0000-0000-0000-{i:012d}", "subject_id": _SUBJECT,
+         "parent_topic_id": None, "slug": f"t{i}", "name": f"Topic {i}",
+         "level": "topic", "is_active": True}
+        for i in range(600)
+    ]
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/taxonomy/topics?subject_id={_SUBJECT}&level=topic")
+    assert r.status_code == 200, r.text
+    assert len(r.json()["items"]) == 500
+
+
+def test_phases_feed_requires_exam_id():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[ASSIGN]).get(f"{_BASE}/exam-scope/phases")
+    assert r.status_code == 422, r.text
+
+
+def test_rubrics_feed_bounded_to_limit():
+    seed = _seed_selectors()
+    seed["writing_rubrics"] = [
+        {"id": f"00000000-0000-0000-0001-{i:012d}", "name": f"Rubric {i}", "version": 1}
+        for i in range(600)
+    ]
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/rubrics")
+    assert r.status_code == 200, r.text
+    assert len(r.json()["items"]) == 500
+
+
+def test_source_documents_feed_returns_only_valid_provenance():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/source-documents")
+    assert r.status_code == 200, r.text
+    assert {d["id"] for d in r.json()["items"]} == {_DOC}
+
+
+def test_source_documents_feed_excludes_rejected_provenance():
+    # Each appended doc violates ONE clause of ewp_validate_prompt_scope and must
+    # be filtered out, so every returned doc would pass the write RPC.
+    seed = _seed_selectors()
+    base = dict(seed["document_assets"][0])
+    seed["document_assets"] += [
+        {**base, "id": "d-archived", "status": "archived"},
+        {**base, "id": "d-failed", "status": "failed"},
+        {**base, "id": "d-nostatus", "status": None},
+        {**base, "id": "d-nobucket", "storage_bucket": "   "},
+        {**base, "id": "d-nopath", "storage_path": ""},
+        {**base, "id": "d-wrongscope", "scope": "user_upload"},
+        {**base, "id": "d-nokind", "document_kind": None},
+        {**base, "id": "d-badkind", "document_kind": "meme"},
+    ]
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/source-documents")
+    assert r.status_code == 200, r.text
+    assert {d["id"] for d in r.json()["items"]} == {_DOC}
+
+
+def test_list_prompts_enriches_labels_batched():
+    seed = _seed_selectors()
+    seed["writing_prompts"][0]["microtopic_id"] = _MICRO
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[REVIEW]).get(f"{_BASE}/writing-prompts")
+    assert r.status_code == 200, r.text
+    item = r.json()["items"][0]
+    assert item["subject_name"] == "English Language"
+    assert item["topic_name"] == "Reading Comprehension"
+    assert item["microtopic_name"] == "Inference"
+    assert item["subject_id"] == _SUBJECT  # ids never mutated
