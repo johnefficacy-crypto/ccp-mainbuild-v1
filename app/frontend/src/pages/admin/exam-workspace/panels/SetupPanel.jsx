@@ -2,23 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useExamWorkspace } from "../ExamWorkspaceContext";
 import { api } from "../../../../lib/api";
 import DateField from "../../../../shared/ui/DateField";
-import { formatDDMMYYYY } from "../../../../shared/forms/dateFormat";
 import useApiAction from "../../../../lib/hooks/useApiAction";
 import CycleForm from "../../../../features/admin/exam-intelligence/forms/CycleForm";
 import PhaseForm, { PHASE_KIND_OPTIONS } from "../../../../features/admin/exam-intelligence/forms/PhaseForm";
 import CycleActivationChecklist from "./CycleActivationChecklist";
-
-function TrustBadge({ status }) {
-  const map = {
-    pending:          { cls: "badge pending",  text: "pending" },
-    needs_correction: { cls: "badge blocker",  text: "needs fix" },
-    draft:            { cls: "badge neutral",  text: "draft" },
-    verified:         { cls: "badge info",     text: "verified" },
-    locked:           { cls: "badge ink",      text: "locked" },
-  };
-  const b = map[status] || map.pending;
-  return <span className={b.cls}>{b.text}</span>;
-}
+import PhaseTimeline from "./PhaseTimeline";
 
 // exam_phases.phase_slug is a required column with no server-side default —
 // it must be sent explicitly (see _PHASE_FIELDS, admin_exam_intel_cms.py:433).
@@ -30,20 +18,6 @@ function slugify(s) {
     .replace(/^-+|-+$/g, "");
 }
 
-function formatPhaseWindow(phase) {
-  if (phase.phase_start) {
-    const start = formatDDMMYYYY(phase.phase_start);
-    const end = phase.phase_end ? ` – ${formatDDMMYYYY(phase.phase_end)}` : "";
-    return start + end;
-  }
-  // Legacy freeform fallback for un-backfilled rows.
-  return phase.metadata?.phase_window ?? phase.phase_window ?? "TBD";
-}
-
-function legacyWindow(phase) {
-  return phase.metadata?.phase_window || phase.phase_window || null;
-}
-
 // D05 §1: NULL and 'other' are UNCLASSIFIED — only the 7 canonical kinds count as
 // classified for Step 9 required-phase completeness (see migration 210 + document_policy).
 // Only cycle-bound, non-cancelled phases can block cycle activation.
@@ -51,22 +25,6 @@ function needsPhaseKindClassification(phase) {
   const kind = phase.phase_kind;
   const unclassified = !kind || kind === "other";
   return unclassified && phase.exam_cycle_id != null && phase.status !== "cancelled";
-}
-
-function needsPhaseDateAuthoring(phase) {
-  if (phase.phase_start) return false;
-  const metadata = phase.metadata || {};
-  return Boolean(
-    legacyWindow(phase) ||
-    metadata.needs_phase_date_authoring === true ||
-    metadata.import_source === "exam_registry_workbook"
-  );
-}
-
-function phaseDateSourceLabel(phase) {
-  const windowText = legacyWindow(phase);
-  if (windowText) return `Legacy: ${windowText}`;
-  return "Imported workbook phase stub";
 }
 
 const CYCLE_STATUSES = ["expected", "open", "active", "closed", "completed", "cancelled"];
@@ -99,13 +57,15 @@ export default function SetupPanel({ action = null }) {
   const [ptOrder, setPtOrder] = useState("");
   const [ptStatus, setPtStatus] = useState("expected");
   const [ptReason, setPtReason] = useState("");
-  const [ptBusy, setPtBusy] = useState(false);
+  const { run: runPromote, busy: ptBusy } = useApiAction();
   const [ptError, setPtError] = useState(null); // null | {type, message, phaseId?, existingId?}
   const [ptSuccess, setPtSuccess] = useState("");
 
-  // ── worklist: inline patch state per phase id ───────────────────────────
+  // ── inline phase-date authoring state per phase id (rendered in the
+  //    canonical PhaseTimeline, not a separate worklist card) ──────────────
   const [patchEdits, setPatchEdits] = useState({});
   const [datedPhaseIds, setDatedPhaseIds] = useState(new Set());
+  const { run: runPhaseDate } = useApiAction();
 
   // ── cycle create form ───────────────────────────────────────────────────
   const EMPTY_CYCLE = {
@@ -164,11 +124,10 @@ export default function SetupPanel({ action = null }) {
 
   async function promoteTemplate() {
     if (!ptCanSubmit) return;
-    setPtBusy(true);
     setPtError(null);
     setPtSuccess("");
-    try {
-      await api.post(
+    const res = await runPromote({
+      action: () => api.post(
         "/api/admin/exam-intelligence-cms/exam-phases/promote-template",
         {
           template_phase_id: ptTemplateId,
@@ -179,15 +138,22 @@ export default function SetupPanel({ action = null }) {
           status: ptStatus,
           reason: ptReason,
         },
-      );
-      setPtSuccess("Cycle-bound copy created.");
-      setPromotingTemplate(false);
-      setPtTemplateId(""); setPtCycleId(""); setPtStart(null); setPtEnd(null);
-      setPtOrder(""); setPtStatus("expected"); setPtReason("");
-      refetch();
-    } catch (e) {
-      const status = e?.status;
-      const detail = e?.detail;
+      ),
+      successMessage: "Cycle-bound copy created.",
+      errorMessage: "Promote failed.",
+      onSuccess: () => {
+        setPtSuccess("Cycle-bound copy created.");
+        setPromotingTemplate(false);
+        setPtTemplateId(""); setPtCycleId(""); setPtStart(null); setPtEnd(null);
+        setPtOrder(""); setPtStatus("expected"); setPtReason("");
+        refetch();
+      },
+    });
+    if (!res.ok) {
+      // Preserve the structured collision / audit-write-failed / generic surfaces.
+      const e = res.error || {};
+      const status = e.status;
+      const detail = e.detail;
       if (status === 409) {
         const existingId =
           detail && typeof detail === "object" ? detail.existing_phase_id : null;
@@ -196,7 +162,7 @@ export default function SetupPanel({ action = null }) {
           message: "This cycle already has a phase with this template slug.",
           existingId,
         });
-      } else if (status === 500 && e?.code === "audit_write_failed") {
+      } else if (status === 500 && e.code === "audit_write_failed") {
         const phaseId =
           detail && typeof detail === "object" ? detail.phase_id : null;
         setPtError({ type: "audit_write_failed", phaseId });
@@ -204,18 +170,11 @@ export default function SetupPanel({ action = null }) {
         const msg =
           typeof detail === "string"
             ? detail
-            : detail?.message || e?.message || "Promote failed.";
+            : detail?.message || e.message || "Promote failed.";
         setPtError({ type: "generic", message: msg });
       }
-    } finally {
-      setPtBusy(false);
     }
   }
-
-  const phaseDateWorklistPhases = phases.filter(needsPhaseDateAuthoring);
-  const needsDates = phaseDateWorklistPhases.filter(
-    p => !datedPhaseIds.has(p.id)
-  );
 
   // Deep-link target for the Step 9 "Classify exam phases" CTA
   // (?tab=setup&action=classify-phases): only unclassified phases are listed.
@@ -354,18 +313,22 @@ export default function SetupPanel({ action = null }) {
   async function patchPhaseDate(phase) {
     const edit = editFor(phase.id);
     setEdit(phase.id, { saving: true, err: "" });
-    try {
-      await api.patch(`/api/admin/exam-intelligence-cms/exam-phases/${phase.id}`, {
-        reason: "Set structured phase dates via worklist",
+    const res = await runPhaseDate({
+      action: () => api.patch(`/api/admin/exam-intelligence-cms/exam-phases/${phase.id}`, {
+        reason: "Set structured phase dates via setup panel",
         payload: {
           phase_start: edit.start || null,
           phase_end: edit.end || null,
         },
-      });
-      setDatedPhaseIds(prev => new Set([...prev, phase.id]));
-    } catch (e) {
-      setEdit(phase.id, { saving: false, err: e?.message || "Failed to save" });
-    }
+      }),
+      successMessage: "Phase dates saved",
+      errorMessage: "Failed to save phase dates",
+      onSuccess: () => {
+        setDatedPhaseIds(prev => new Set([...prev, phase.id]));
+        refetch?.(); refetchReadiness?.();
+      },
+    });
+    if (!res.ok) setEdit(phase.id, { saving: false, err: res.error?.message || "Failed to save" });
   }
 
   const activeCycle = cycles.find((c) => c.status === "active");
@@ -411,7 +374,6 @@ export default function SetupPanel({ action = null }) {
                 <th>Cycle</th>
                 <th>Year</th>
                 <th>Status</th>
-                <th>Trust</th>
                 <th></th>
               </tr>
             </thead>
@@ -420,7 +382,7 @@ export default function SetupPanel({ action = null }) {
                 <React.Fragment key={c.id}>
                   {editingCycleId === c.id ? (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={4}>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "8px 0", alignItems: "center" }}>
                           <input
                             data-testid={`edit-cycle-name-${c.id}`}
@@ -479,9 +441,6 @@ export default function SetupPanel({ action = null }) {
                         {c.status === "active"
                           ? <span className="badge info no-dot">active</span>
                           : <span className="badge neutral no-dot">{c.status ?? "archived"}</span>}
-                      </td>
-                      <td>
-                        <TrustBadge status={c.status === "active" ? "locked" : "verified"} />
                       </td>
                       <td>
                         <button
@@ -564,28 +523,17 @@ export default function SetupPanel({ action = null }) {
           )}
         </div>
         <div className="card-body" style={{ paddingBottom: 4 }}>
-          {phases.length === 0 ? (
-            <div className="empty" style={{ padding: "16px 0" }}>
-              <div className="empty-title">No phases defined</div>
-              <div>Add the first phase below.</div>
-            </div>
-          ) : (
-            <div className="phase-rail">
-              {phases.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={
-                    "phase" +
-                    (p.status === "active" ? " active" : p.status === "completed" ? " done" : "")
-                  }
-                >
-                  <div className="phase-num">PH-{i + 1}</div>
-                  <div className="phase-name">{p.phase_name ?? p.name}</div>
-                  <div className="phase-count">{formatPhaseWindow(p)}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Single canonical phase list. Needs-date phases carry an inline
+              "Needs date" badge and an in-place date editor — there is no
+              separate "Phases needing dates" card duplicating this list. */}
+          <PhaseTimeline
+            phases={phases}
+            cycles={cycles}
+            onSaveDates={patchPhaseDate}
+            editFor={editFor}
+            onEditChange={setEdit}
+            datedPhaseIds={datedPhaseIds}
+          />
         </div>
         {addingPhase && (
           <div
@@ -642,11 +590,20 @@ export default function SetupPanel({ action = null }) {
         )}
       </div>
 
-      {/* Promote template to cycle */}
-      <div className="card" data-testid="promote-template-card">
-        <div className="card-head">
-          <h3 className="oc-title">Template phases</h3>
-          {templatePhases.length > 0 && cycles.length > 0 && !promotingTemplate && (
+      {/* Template phases — collapsed advanced section (EI-CLEAN-07). Generic,
+          cycle-unbound phase definitions live here, out of the main flow. */}
+      <details className="card" data-testid="promote-template-card">
+        <summary
+          className="card-head"
+          data-testid="promote-template-summary"
+          style={{ cursor: "pointer", listStyle: "revert" }}
+        >
+          <h3 className="oc-title" style={{ display: "inline" }}>Template phases</h3>
+          <span className="anno" style={{ marginLeft: 8 }}>Advanced</span>
+        </summary>
+
+        {templatePhases.length > 0 && cycles.length > 0 && !promotingTemplate && (
+          <div style={{ padding: "8px 16px 0" }}>
             <button
               className="btn small"
               data-testid="promote-template-btn"
@@ -654,8 +611,8 @@ export default function SetupPanel({ action = null }) {
             >
               + Create cycle-bound copy
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {ptSuccess && (
           <div className="success-row" data-testid="pt-success" style={{ margin: "8px 16px 0" }}>
@@ -854,7 +811,7 @@ export default function SetupPanel({ action = null }) {
               )}
             </div>
           )}
-      </div>
+      </details>
 
       {/* Phases needing classification — canonical phase_kind (D05 §1). Deep-link
           target of the Step 9 "Classify exam phases" CTA (?action=classify-phases). */}
@@ -945,110 +902,9 @@ export default function SetupPanel({ action = null }) {
         </div>
       )}
 
-      {/* Phases needing dates — missing phase_start plus explicit worklist signal */}
-      {phaseDateWorklistPhases.length > 0 && (
-        <div className="card" data-testid="phase-date-worklist">
-          <div className="card-head">
-            <h3 className="oc-title">Phases needing dates</h3>
-            <span className="anno">
-              {needsDates.length === 0
-                ? "All phases have structured dates ✓"
-                : `${needsDates.length} phase${needsDates.length !== 1 ? "s" : ""} without a structured start date`}
-            </span>
-          </div>
-          {needsDates.length === 0 ? (
-            <div className="card-body">
-              <div className="empty" style={{ padding: "12px 0" }}>
-                <div className="empty-title" data-testid="worklist-all-dated">
-                  All phases have structured dates
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="card-body">
-              {needsDates.map(phase => {
-                const edit = editFor(phase.id);
-                // Resolve the cycle this phase belongs to for context display.
-                const phaseCycle = cycles.find(
-                  c => c.id === (phase.exam_cycle_id ?? phase.cycle_id)
-                ) || null;
-                const cycleLabel = phaseCycle
-                  ? `${phaseCycle.cycle_name ?? phaseCycle.name ?? "Cycle"}${phaseCycle.year ? ` (${phaseCycle.year})` : ""}`
-                  : null;
-                return (
-                  <div
-                    key={phase.id}
-                    data-testid={`worklist-row-${phase.id}`}
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 10,
-                      alignItems: "flex-start",
-                      padding: "10px 0",
-                      borderBottom: "1px solid var(--border)",
-                    }}
-                  >
-                    <div style={{ minWidth: 160, flex: "0 0 auto" }}>
-                      <div className="field-lbl">{phase.phase_name ?? phase.name}</div>
-                      {cycleLabel && (
-                        <div
-                          className="row-sub"
-                          data-testid={`worklist-cycle-${phase.id}`}
-                          style={{ fontSize: 11, color: "var(--info)", marginTop: 1, fontWeight: 500 }}
-                        >
-                          {cycleLabel}
-                        </div>
-                      )}
-                      <div
-                        className="row-sub"
-                        data-testid={`worklist-legacy-${phase.id}`}
-                        style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
-                      >
-                        {phaseDateSourceLabel(phase)}
-                      </div>
-                    </div>
-                    <div style={{ minWidth: 170 }}>
-                      <DateField
-                        value={edit.start}
-                        onChange={v => setEdit(phase.id, { start: v })}
-                        mode="any"
-                        label="Phase start"
-                        name={`worklist-phase-start-${phase.id}`}
-                        id={`worklist-phase-start-${phase.id}`}
-                      />
-                    </div>
-                    <div style={{ minWidth: 170 }}>
-                      <DateField
-                        value={edit.end}
-                        onChange={v => setEdit(phase.id, { end: v })}
-                        mode="any"
-                        label="Phase end"
-                        name={`worklist-phase-end-${phase.id}`}
-                        id={`worklist-phase-end-${phase.id}`}
-                      />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end", paddingTop: 20 }}>
-                      <button
-                        className="btn primary small"
-                        data-testid={`worklist-save-${phase.id}`}
-                        onClick={() => patchPhaseDate(phase)}
-                        disabled={edit.saving || !edit.start}
-                      >
-                        {edit.saving ? "Saving…" : "Set dates"}
-                      </button>
-                      {edit.err && (
-                        <span className="err-row" style={{ fontSize: 11 }}>{edit.err}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-
+      {/* NOTE: date authoring for needs-date phases is rendered inline in the
+          canonical PhaseTimeline above (EI-CLEAN-07) — there is no separate
+          "Phases needing dates" card. */}
     </div>
   );
 }

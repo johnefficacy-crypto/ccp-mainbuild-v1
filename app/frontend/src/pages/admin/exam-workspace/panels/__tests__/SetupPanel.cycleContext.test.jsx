@@ -1,7 +1,7 @@
 /**
- * SetupPanel — UX-EI-5 (D3): cycle context in "Phases needing dates" worklist.
+ * SetupPanel — UX-EI-5 (D3): cycle context on inline date-editor rows (single canonical PhaseTimeline).
  *
- * For multi-cycle exams, each undated phase stub now shows the cycle it
+ * For multi-cycle exams, each undated phase row now shows the cycle it
  * belongs to (cycle name + year) so operators don't have to mentally join
  * the phase name to its cycle.
  *
@@ -43,7 +43,7 @@ const BASE_EXAM = { id: "exam-1", name: "UPSC CSE", slug: "upsc-cse" };
 const CYCLE_2026 = { id: "cyc-2026", cycle_name: "2026 Cycle", year: 2026, status: "active" };
 const CYCLE_2027 = { id: "cyc-2027", cycle_name: "2027 Cycle", year: 2027, status: "expected" };
 
-// Phase stubs that trigger the date-authoring worklist
+// Phase stubs that trigger the inline date editor
 function makePhase(id, name, cycleId, extraMeta = {}) {
   return {
     id,
@@ -54,7 +54,7 @@ function makePhase(id, name, cycleId, extraMeta = {}) {
   };
 }
 
-describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => {
+describe("SetupPanel — UX-EI-5: cycle context on inline date-editor rows", () => {
   test("shows cycle name and year for a phase in a single cycle", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
@@ -64,7 +64,7 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
     });
     render(<SetupPanel />);
 
-    const cycleLabel = screen.getByTestId("worklist-cycle-ph-1");
+    const cycleLabel = screen.getByTestId("phase-cycle-label-ph-1");
     expect(cycleLabel.textContent).toMatch(/2026 Cycle/);
     expect(cycleLabel.textContent).toMatch(/2026/);
   });
@@ -81,8 +81,8 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
     });
     render(<SetupPanel />);
 
-    expect(screen.getByTestId("worklist-cycle-ph-prelims-26").textContent).toMatch(/2026 Cycle/);
-    expect(screen.getByTestId("worklist-cycle-ph-prelims-27").textContent).toMatch(/2027 Cycle/);
+    expect(screen.getByTestId("phase-cycle-label-ph-prelims-26").textContent).toMatch(/2026 Cycle/);
+    expect(screen.getByTestId("phase-cycle-label-ph-prelims-27").textContent).toMatch(/2027 Cycle/);
   });
 
   test("cycle label includes the year in parentheses", () => {
@@ -93,7 +93,7 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
       refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByTestId("worklist-cycle-ph-1").textContent).toMatch(/\(2026\)/);
+    expect(screen.getByTestId("phase-cycle-label-ph-1").textContent).toMatch(/\(2026\)/);
   });
 
   test("phase with no matching cycle_id renders no cycle label (no crash)", () => {
@@ -108,10 +108,10 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
     });
     render(<SetupPanel />);
 
-    // Worklist row still renders
-    expect(screen.getByTestId("worklist-row-ph-orphan")).toBeTruthy();
+    // Editor row still renders
+    expect(screen.getByTestId("phase-date-editor-ph-orphan")).toBeTruthy();
     // But no cycle label since cycle can't be resolved
-    expect(screen.queryByTestId("worklist-cycle-ph-orphan")).toBeNull();
+    expect(screen.queryByTestId("phase-cycle-label-ph-orphan")).toBeNull();
   });
 
   test("phase with no cycle_id renders no cycle label (graceful)", () => {
@@ -130,8 +130,8 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
       refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByTestId("worklist-row-ph-nocycle")).toBeTruthy();
-    expect(screen.queryByTestId("worklist-cycle-ph-nocycle")).toBeNull();
+    expect(screen.getByTestId("phase-date-editor-ph-nocycle")).toBeTruthy();
+    expect(screen.queryByTestId("phase-cycle-label-ph-nocycle")).toBeNull();
   });
 
   test("phase name still appears alongside the cycle label", () => {
@@ -143,6 +143,6 @@ describe("SetupPanel — UX-EI-5: cycle context in Phases needing dates", () => 
     });
     render(<SetupPanel />);
     expect(screen.getAllByText("Prelims")[0]).toBeTruthy();
-    expect(screen.getByTestId("worklist-cycle-ph-1")).toBeTruthy();
+    expect(screen.getByTestId("phase-cycle-label-ph-1")).toBeTruthy();
   });
 });
