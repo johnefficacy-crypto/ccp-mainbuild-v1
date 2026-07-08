@@ -114,7 +114,7 @@ describe("SetupPanel — UX-EI-5: cycle context on inline date-editor rows", () 
     expect(screen.queryByTestId("phase-cycle-label-ph-orphan")).toBeNull();
   });
 
-  test("phase with no cycle_id renders no cycle label (graceful)", () => {
+  test("phase with no exam_cycle_id is a template — no inline editor in the timeline", () => {
     useExamWorkspace.mockReturnValue({
       exam: BASE_EXAM,
       cycles: [CYCLE_2026],
@@ -123,14 +123,17 @@ describe("SetupPanel — UX-EI-5: cycle context on inline date-editor rows", () 
           id: "ph-nocycle",
           phase_name: "No Cycle Phase",
           phase_start: null,
-          // no exam_cycle_id
+          // no exam_cycle_id → unbound template, not an operational phase
           metadata: { phase_window: "TBD" },
         },
       ],
       refetch: jest.fn(),
     });
     render(<SetupPanel />);
-    expect(screen.getByTestId("phase-date-editor-ph-nocycle")).toBeTruthy();
+    // A cycle-unbound phase is a template: it must not appear in the canonical
+    // timeline or be date-editable there (checkpost Finding 1).
+    expect(screen.queryByTestId("phase-date-editor-ph-nocycle")).toBeNull();
+    expect(screen.queryByTestId("phase-timeline-row-ph-nocycle")).toBeNull();
     expect(screen.queryByTestId("phase-cycle-label-ph-nocycle")).toBeNull();
   });
 

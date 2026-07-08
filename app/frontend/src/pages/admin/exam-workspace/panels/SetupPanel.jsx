@@ -98,6 +98,10 @@ export default function SetupPanel({ action = null }) {
     setPatchEdits(prev => ({ ...prev, [id]: { ...editFor(id), ...updates } }));
   }
 
+  // Cycle-bound operational phases render in the canonical timeline; generic,
+  // unbound template phases render ONLY in the collapsed Template phases section
+  // (they carry no dates and must not be date-edited as if operational).
+  const cyclePhases = phases.filter(p => p.exam_cycle_id != null);
   const templatePhases = phases.filter(p => p.exam_cycle_id == null);
 
   const ptDateError =
@@ -527,7 +531,7 @@ export default function SetupPanel({ action = null }) {
               "Needs date" badge and an in-place date editor — there is no
               separate "Phases needing dates" card duplicating this list. */}
           <PhaseTimeline
-            phases={phases}
+            phases={cyclePhases}
             cycles={cycles}
             onSaveDates={patchPhaseDate}
             editFor={editFor}

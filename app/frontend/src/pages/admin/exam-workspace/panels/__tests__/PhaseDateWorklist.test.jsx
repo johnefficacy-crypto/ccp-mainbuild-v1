@@ -62,7 +62,7 @@ describe("inline date-editor visibility", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+        { id: "ph-1", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" } },
       ],
     });
@@ -76,7 +76,7 @@ describe("inline date-editor visibility", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+        { id: "ph-1", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "May–June 2026" } },
       ],
     });
@@ -102,7 +102,7 @@ describe("inline date-editor visibility", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-import", phase_name: "Prelims", phase_start: null,
+        { id: "ph-import", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: {
             import_source: "exam_registry_workbook",
             needs_phase_date_authoring: true,
@@ -121,7 +121,7 @@ describe("inline date-editor visibility", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-author", phase_name: "Mains", phase_start: null,
+        { id: "ph-author", phase_name: "Mains", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { needs_phase_date_authoring: true } },
       ],
     });
@@ -152,7 +152,7 @@ describe("inline date-editor visibility", () => {
       phases: [
         { id: "ph-1", phase_name: "Prelims", phase_start: "2026-05-24",
           metadata: { phase_window: "24 May 2026" } },
-        { id: "ph-2", phase_name: "Mains", phase_start: null,
+        { id: "ph-2", phase_name: "Mains", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" } },
       ],
     });
@@ -172,7 +172,7 @@ describe("needs-date keys off phase_start IS NULL (regression guard)", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-tbd", phase_name: "Tier I", phase_start: null,
+        { id: "ph-tbd", phase_name: "Tier I", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" /* no phase_window_needs_review */ } },
       ],
     });
@@ -203,7 +203,7 @@ describe("inline date save flow", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+        { id: "ph-1", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" } },
       ],
     });
@@ -216,7 +216,7 @@ describe("inline date save flow", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+        { id: "ph-1", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" } },
       ],
     });
@@ -244,7 +244,7 @@ describe("inline date save flow", () => {
       exam: BASE_EXAM,
       cycles: BASE_CYCLES,
       phases: [
-        { id: "ph-1", phase_name: "Prelims", phase_start: null,
+        { id: "ph-1", phase_name: "Prelims", exam_cycle_id: "cyc-1", phase_start: null,
           metadata: { phase_window: "TBD" } },
       ],
     });
@@ -262,5 +262,39 @@ describe("inline date save flow", () => {
     );
     // And the "Needs date" badge clears for that row too.
     expect(screen.queryByTestId("phase-needs-date-badge-ph-1")).toBeNull();
+  });
+});
+
+// ── template phases stay out of the canonical timeline (checkpost Finding 1) ──
+
+describe("template phases are not rendered or date-edited in the main timeline", () => {
+  test("an unbound template phase appears only under Template phases, never in the timeline", () => {
+    useExamWorkspace.mockReturnValue({
+      exam: BASE_EXAM,
+      cycles: BASE_CYCLES,
+      phases: [
+        // Cycle-bound operational phase — belongs in the canonical timeline.
+        { id: "cyc-ph-1", phase_name: "Prelims 2026", exam_cycle_id: "cyc-1",
+          phase_start: null, metadata: { phase_window: "TBD" } },
+        // Unbound template (exam_cycle_id == null) with a date-authoring signal —
+        // must NOT leak into the timeline or become date-editable there.
+        { id: "tpl-1", phase_name: "Generic Prelims", phase_slug: "generic-prelims",
+          phase_start: null, metadata: { needs_phase_date_authoring: true } },
+      ],
+    });
+    render(<SetupPanel />);
+
+    // Cycle-bound phase is in the timeline with an inline editor.
+    expect(screen.getByTestId("phase-timeline-row-cyc-ph-1")).toBeTruthy();
+    expect(screen.getByTestId("phase-date-editor-cyc-ph-1")).toBeTruthy();
+
+    // Template phase is absent from the timeline and has no date editor/badge.
+    expect(screen.queryByTestId("phase-timeline-row-tpl-1")).toBeNull();
+    expect(screen.queryByTestId("phase-date-editor-tpl-1")).toBeNull();
+    expect(screen.queryByTestId("phase-needs-date-badge-tpl-1")).toBeNull();
+
+    // It appears only inside the collapsed Template phases section.
+    const templateCard = screen.getByTestId("promote-template-card");
+    expect(templateCard).toContainElement(screen.getByTestId("template-phase-tpl-1"));
   });
 });
