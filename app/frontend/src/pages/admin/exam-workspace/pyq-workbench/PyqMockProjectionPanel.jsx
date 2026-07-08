@@ -19,6 +19,7 @@ function reasonText(reason) {
     empty_question_text: "Question text is empty",
     empty_verified_option_text: "A verified option has empty text",
     correct_option_id_mismatch: "Correct-answer option mismatch",
+    stimulus_not_verified: "Linked passage/stimulus is not verified",
   };
   if (fixed[code]) return fixed[code];
   if (code === "paper_not_verified") return `Paper not verified${detail ? ` (${detail})` : ""}`;
@@ -168,7 +169,7 @@ export default function PyqMockProjectionPanel({ paperId }) {
       </div>
       <details className="mb-2 text-xs text-gray-500" data-testid="projection-info-disclosure">
         <summary className="cursor-pointer select-none text-gray-600">ⓘ What gets projected?</summary>
-        <p className="mt-1 leading-relaxed">Projection requires a verified paper and question, MCQ type, non-empty question and verified option text, at least two verified options, exactly one verified correct option, a matching correct-option reference, and exactly one verified primary topic tag. Preview shows what would change; Sync writes eligible questions.</p>
+        <p className="mt-1 leading-relaxed">Projection requires a verified paper and question, MCQ type, non-empty question and verified option text, at least two verified options, exactly one verified correct option, a matching correct-option reference, exactly one verified primary topic tag, and — if the question has linked passages/stimuli — that every linked stimulus is verified. Preview shows what would change; Sync writes eligible questions.</p>
       </details>
       <div className="flex gap-2 mb-2">
         <input value={auditReason} onChange={(e) => setAuditReason(e.target.value)} placeholder="Audit reason (min 8 chars)" maxLength={500} className={ui.input} data-testid="projection-audit-reason-input" />
