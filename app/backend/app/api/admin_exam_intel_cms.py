@@ -2007,7 +2007,7 @@ def update_pyq_option(
 #  (DB default) and reviewed INDEPENDENTLY through the review-side router —
 #  shared passage CONTENT is not auto-verified by a question's review,
 #  because the same passage may back other still-unreviewed questions. Only
-#  the question→stimulus LINK is cascaded by question review (migration 226).
+#  the question→stimulus LINK is cascaded by question review (migration 227).
 # ════════════════════════════════════════════════════════════════════════
 
 

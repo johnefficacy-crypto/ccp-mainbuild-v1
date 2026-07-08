@@ -1,6 +1,6 @@
-"""Text-assertion checks on migration 226 (no live DB).
+"""Text-assertion checks on migration 227 (no live DB).
 
-Migration 226 supersedes migration 162's update_pyq_question_review_atomic()
+Migration 227 supersedes migration 162's update_pyq_question_review_atomic()
 via CREATE OR REPLACE, keeping the same signature so the existing caller
 (review_item) is unchanged, and extends the atomic question-review cascade to
 the question<->stimulus ASSOCIATION rows (pyq_question_stimuli) — but NOT to
@@ -19,7 +19,7 @@ _MIGRATION = (
     / "app"
     / "supabase"
     / "migrations"
-    / "226_pyq_question_stimulus_review_cascade.sql"
+    / "227_pyq_question_stimulus_review_cascade.sql"
 )
 
 
@@ -118,7 +118,7 @@ def test_preserves_security_definer_and_grant_pattern():
 
 
 def test_does_not_edit_migration_162():
-    """226 supersedes 162 via CREATE OR REPLACE — 162 must remain untouched."""
+    """227 supersedes 162 via CREATE OR REPLACE — 162 must remain untouched."""
     m162 = (
         Path(__file__).resolve().parents[4]
         / "app" / "supabase" / "migrations" / "162_pyq_review_cascade_rpc.sql"

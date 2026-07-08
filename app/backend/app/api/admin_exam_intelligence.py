@@ -188,7 +188,7 @@ _REVIEWABLE = {
     # a question's review must NOT auto-verify shared stimulus content, because
     # the same passage may back other still-unreviewed questions. Only the
     # question→stimulus LINK (pyq_question_stimulus below) is cascaded by
-    # question review (migration 226). Flows through the generic review_item
+    # question review (migration 227). Flows through the generic review_item
     # else-branch — no new endpoint code.
     "pyq_stimulus": {
         "table": "pyq_stimuli",
@@ -200,7 +200,7 @@ _REVIEWABLE = {
         "supports_notes": False,
     },
     # Question↔stimulus ASSOCIATION (migration 223). Independently review-gated;
-    # question review cascades to these link rows via migration 226's RPC.
+    # question review cascades to these link rows via migration 227's RPC.
     "pyq_question_stimulus": {
         "table": "pyq_question_stimuli",
         "select": (
