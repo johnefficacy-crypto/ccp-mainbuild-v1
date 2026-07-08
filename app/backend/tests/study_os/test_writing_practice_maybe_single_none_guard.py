@@ -134,3 +134,47 @@ def test_english_subject_id_falls_back_when_slug_unresolved():
     fs = FakeSupabase({"subjects": []})
     task = {"subject_id": "fallback-subject"}
     assert wp._english_subject_id(fs, task) == "fallback-subject"
+
+
+# --------------------------------------------------------------------------- #
+# EWP-SP5 e2e negative, exact shape: the prompt ROW EXISTS and is verified but
+# is_active=false. The .eq("is_active", True) filter drops it to zero rows, so
+# .maybe_single() returns bare None. Proves 404 (not 500) with the row present,
+# which the empty-table cases above do not exercise.                          #
+# --------------------------------------------------------------------------- #
+def _verified_inactive_prompt():
+    return {
+        "id": _PROMPT,
+        "reviewer_status": "verified",
+        "is_active": False,  # verified-but-inactive: hidden from launch
+        "exercise_type": "sentence_construction",
+        "required_sentence_count": 1,
+        "microtopic_id": None,
+    }
+
+
+def test_create_learning_session_404_on_verified_but_inactive_prompt():
+    fs = FakeSupabase({"writing_prompts": [_verified_inactive_prompt()]})
+    with pytest.raises(wp.HTTPException) as exc:
+        wp._create_learning_session(
+            fs,
+            user_id=_USER,
+            prompt_id=_PROMPT,
+            study_task_id=None,
+            exam_id=None,
+            exam_phase_id=None,
+        )
+    assert exc.value.status_code == 404
+    assert "not verified/active" in exc.value.detail
+
+
+def test_create_session_endpoint_404_on_verified_but_inactive_prompt(monkeypatch):
+    # End-to-end path: create_session -> _create_learning_session -> ).data.
+    # The traceback that failed e2e (AttributeError on None) must now be a 404.
+    fs = FakeSupabase({"writing_prompts": [_verified_inactive_prompt()]})
+    _patch(monkeypatch, fs)
+    body = wp.CreateSessionRequest(prompt_id=_PROMPT, study_task_id=None, mode="learning")
+    with pytest.raises(wp.HTTPException) as exc:
+        wp.create_session(body, user={"id": _USER})
+    assert exc.value.status_code == 404
+    assert "not verified/active" in exc.value.detail
