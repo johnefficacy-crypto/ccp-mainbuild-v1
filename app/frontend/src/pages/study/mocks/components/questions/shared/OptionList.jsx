@@ -21,9 +21,12 @@ export default function OptionList({ options = [], selected = [], onSelect, mult
     <div>
       {options.map((o, i) => {
         const active = selected.includes(o.id);
+        // Prefer the projected printed label (e.g. "(a)") so a PYQ shows its
+        // original option labels; fall back to the numeric index / a-d letter.
+        const label = o.source_label || `${o.option_index || String.fromCharCode(65 + i)}.`;
         return (
           <button key={o.id} type="button" onClick={() => onSelect(o.id)} onKeyDown={(e) => onKey(e, i, o.id)} disabled={disabled} dir="auto">
-            <strong>{o.option_index || String.fromCharCode(65 + i)}.</strong> <MathRenderer text={o.option_text || ""} />
+            <strong>{label}</strong> <MathRenderer text={o.option_text || ""} />
             {multiple && active ? " ✓" : ""}
           </button>
         );
