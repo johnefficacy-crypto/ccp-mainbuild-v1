@@ -21,18 +21,20 @@ const QUEUE_STATUSES = ["pending", "needs_correction", "verified"];
 const PAGE_SIZE = 50;
 
 // The full set of review-relevant fields a reviewer must see before verifying.
+// Taxonomy/provenance rows show the backend-resolved *_name label (readable),
+// falling back to the raw id only if a name could not be resolved.
 const SNAPSHOT_ROWS = [
-  ["Subject ID", "subject_id"],
-  ["Topic ID", "topic_id"],
-  ["Microtopic ID", "microtopic_id"],
+  ["Subject", "subject_name", "subject_id"],
+  ["Topic", "topic_name", "topic_id"],
+  ["Microtopic", "microtopic_name", "microtopic_id"],
   ["Exercise type", "exercise_type"],
   ["Difficulty", "difficulty_level"],
   ["Required sentence count", "required_sentence_count"],
   ["Min words", "min_words"],
   ["Max words", "max_words"],
   ["Max rewrite attempts", "max_rewrite_attempts"],
-  ["Rubric ID", "rubric_id"],
-  ["Source document ID", "source_document_id"],
+  ["Rubric", "rubric_name", "rubric_id"],
+  ["Source document", "source_document_title", "source_document_id"],
 ];
 
 function fmt(v) {
@@ -158,12 +160,17 @@ function ReviewDialog({ promptRow, onClose, onDone }) {
             </div>
             <table className="data-table" style={{ fontSize: 12, marginBottom: 12 }} data-testid="review-snapshot">
               <tbody>
-                {SNAPSHOT_ROWS.map(([label, key]) => (
-                  <tr key={key}>
-                    <td style={{ opacity: 0.7, width: 190 }}>{label}</td>
-                    <td>{fmt(snapshot[key])}</td>
-                  </tr>
-                ))}
+                {SNAPSHOT_ROWS.map(([label, key, fallbackKey]) => {
+                  const val = snapshot[key];
+                  const shown = (val === null || val === undefined || val === "")
+                    && fallbackKey ? snapshot[fallbackKey] : val;
+                  return (
+                    <tr key={key}>
+                      <td style={{ opacity: 0.7, width: 190 }}>{label}</td>
+                      <td>{fmt(shown)}</td>
+                    </tr>
+                  );
+                })}
                 <tr>
                   <td style={{ opacity: 0.7 }}>Current status</td>
                   <td><strong>{snapshot.reviewer_status}</strong> (active: {String(!!snapshot.is_active)})</td>

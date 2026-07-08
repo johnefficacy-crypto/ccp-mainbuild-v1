@@ -856,3 +856,134 @@ def test_deactivate_requires_cas_token():
         f"{_BASE}/writing-prompts/{_PROMPT}/deactivate", json={"reason": "no CAS token here"})
     assert r.status_code == 422
     assert not sb.rpc_calls
+
+
+# ── Selector option feeds + correction-note read-back (EWP-SP4) ─────────────
+
+
+_FAMILY = "00000000-0000-0000-0000-0000000000f1"
+_PHASE = "00000000-0000-0000-0000-0000000000f2"
+
+
+def _seed_selectors() -> dict:
+    seed = _seed()
+    seed["subjects"] = [{"id": _SUBJECT, "slug": "english", "name": "English Language"}]
+    seed["topics"] = [
+        {"id": _TOPIC, "subject_id": _SUBJECT, "parent_topic_id": None,
+         "slug": "rc", "name": "Reading Comprehension", "level": "topic"},
+        {"id": _MICRO, "subject_id": _SUBJECT, "parent_topic_id": _TOPIC,
+         "slug": "inference", "name": "Inference", "level": "microtopic"},
+    ]
+    seed["exam_families"] = [{"id": _FAMILY, "slug": "ssc", "name": "SSC", "is_active": True}]
+    seed["exams"] = [{"id": _EXAM, "exam_family_id": _FAMILY, "slug": "cgl",
+                      "name": "SSC CGL", "is_active": True}]
+    seed["exam_phases"] = [{"id": _PHASE, "exam_id": _EXAM, "exam_cycle_id": None,
+                            "phase_name": "Tier 1", "status": "active"}]
+    seed["writing_rubrics"] = [{"id": "00000000-0000-0000-0000-0000000000a9",
+                                "name": "Essay Rubric", "version": 2}]
+    seed["document_assets"] = [{"id": "00000000-0000-0000-0000-0000000000d9",
+                                "scope": "admin_exam_intelligence", "title": "Syllabus PDF",
+                                "original_filename": "syllabus.pdf", "document_kind": "syllabus",
+                                "created_at": "2026-07-01T00:00:00Z"}]
+    return seed
+
+
+def test_selector_feeds_require_content_read_permission():
+    for path in ("taxonomy/subjects", "taxonomy/topics", "exam-scope/families",
+                 "exam-scope/exams", "exam-scope/phases", "rubrics", "source-documents"):
+        sb = CSSBStub(_seed_selectors())
+        denied = _client(sb, permissions=["some.other"]).get(f"{_BASE}/{path}")
+        assert denied.status_code == 403, (path, denied.text)
+        ok = _client(sb, permissions=[ASSIGN]).get(f"{_BASE}/{path}")
+        assert ok.status_code == 200, (path, ok.text)
+
+
+def test_subject_options_shape():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(f"{_BASE}/taxonomy/subjects")
+    assert r.status_code == 200, r.text
+    assert r.json()["items"][0]["name"] == "English Language"
+
+
+def test_topic_options_filter_by_subject_and_level():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/taxonomy/topics?subject_id={_SUBJECT}&level=topic")
+    assert r.status_code == 200, r.text
+    ids = {t["id"] for t in r.json()["items"]}
+    assert ids == {_TOPIC}
+
+
+def test_microtopic_options_filter_by_parent_topic():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/taxonomy/topics?parent_topic_id={_TOPIC}&level=microtopic")
+    assert r.status_code == 200, r.text
+    ids = {t["id"] for t in r.json()["items"]}
+    assert ids == {_MICRO}
+
+
+def test_exam_options_filter_by_family():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[ASSIGN]).get(
+        f"{_BASE}/exam-scope/exams?exam_family_id={_FAMILY}")
+    assert r.status_code == 200, r.text
+    assert {e["id"] for e in r.json()["items"]} == {_EXAM}
+
+
+def test_phase_options_filter_by_exam():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[ASSIGN]).get(f"{_BASE}/exam-scope/phases?exam_id={_EXAM}")
+    assert r.status_code == 200, r.text
+    assert r.json()["items"][0]["phase_name"] == "Tier 1"
+
+
+def test_get_prompt_enriches_readable_labels():
+    seed = _seed_selectors()
+    seed["writing_prompts"][0]["microtopic_id"] = _MICRO
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[REVIEW]).get(f"{_BASE}/writing-prompts/{_PROMPT}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["subject_name"] == "English Language"
+    assert body["topic_name"] == "Reading Comprehension"
+    assert body["microtopic_name"] == "Inference"
+    # ids are never mutated by enrichment
+    assert body["subject_id"] == _SUBJECT
+
+
+def test_targets_enriched_with_exam_names():
+    seed = _seed_selectors()
+    seed["writing_prompt_targets"] = [
+        {"id": _TARGET, "prompt_id": _PROMPT, "exam_id": _EXAM, "is_global": False,
+         "applicability_status": "active", "updated_at": _TOKEN, "created_at": _TOKEN}]
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[ASSIGN]).get(f"{_BASE}/writing-prompts/{_PROMPT}/targets")
+    assert r.status_code == 200, r.text
+    assert r.json()["items"][0]["exam_name"] == "SSC CGL"
+
+
+def test_correction_note_returns_latest_needs_correction_audit():
+    seed = _seed_selectors()
+    seed["admin_audit_logs"] = [
+        {"actor_email": "rev@x.io", "action": "writing_prompt_status_transition",
+         "entity_type": "writing_prompt", "entity_id": _PROMPT,
+         "new_value": {"reviewer_status": "needs_correction", "reviewer_notes": "Fix tense.",
+                       "reason": "grammar"}, "notes": "grammar",
+         "created_at": "2026-07-05T00:00:00Z"},
+    ]
+    sb = CSSBStub(seed)
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/writing-prompts/{_PROMPT}/correction-note")
+    assert r.status_code == 200, r.text
+    note = r.json()["note"]
+    assert note["reviewer_notes"] == "Fix tense."
+    assert note["actor_email"] == "rev@x.io"
+
+
+def test_correction_note_absent_returns_null():
+    sb = CSSBStub(_seed_selectors())
+    r = _client(sb, permissions=[AUTHOR]).get(
+        f"{_BASE}/writing-prompts/{_PROMPT}/correction-note")
+    assert r.status_code == 200, r.text
+    assert r.json()["note"] is None

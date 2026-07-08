@@ -28,6 +28,17 @@ export const contentStudioApi = {
   listPrompts: (params) => api.get(`${BASE}/writing-prompts${qs(params)}`),
   getPrompt: (id) => api.get(`${BASE}/writing-prompts/${id}`),
 
+  // Selector option feeds (EWP-SP4) — readable, dependent pickers replace raw UUIDs.
+  listSubjects: () => api.get(`${BASE}/taxonomy/subjects`),
+  listTopics: (params) => api.get(`${BASE}/taxonomy/topics${qs(params)}`),
+  listExamFamilies: () => api.get(`${BASE}/exam-scope/families`),
+  listExams: (params) => api.get(`${BASE}/exam-scope/exams${qs(params)}`),
+  listExamPhases: (params) => api.get(`${BASE}/exam-scope/phases${qs(params)}`),
+  listRubrics: () => api.get(`${BASE}/rubrics`),
+  listSourceDocuments: () => api.get(`${BASE}/source-documents`),
+  // Author read-back of the latest reviewer correction note (needs_correction).
+  getCorrectionNote: (id) => api.get(`${BASE}/writing-prompts/${id}/correction-note`),
+
   // Authoring — content_studio.author
   createPrompt: ({ reason, payload }) =>
     api.post(`${BASE}/writing-prompts`, { reason, payload }),
