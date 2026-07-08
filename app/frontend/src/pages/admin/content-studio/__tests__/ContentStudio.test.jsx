@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ContentStudio from "../ContentStudio";
 import { parseCsv } from "../csv";
@@ -24,13 +24,14 @@ jest.mock("../../../../lib/api", () => ({
 // Component tests below drive the real screens with the collection hook mocked
 // (so env/transport stays out of it); shell tests stub the heavy tab bodies.
 let mockCollection;
+let mockRun;
 jest.mock("../../../../lib/hooks/useApiCollection", () => ({
   __esModule: true,
   default: () => mockCollection,
 }));
 jest.mock("../../../../lib/hooks/useApiAction", () => ({
   __esModule: true,
-  default: () => ({ run: jest.fn(async () => ({ ok: true })), busy: false }),
+  default: () => ({ run: (...args) => mockRun(...args), busy: false }),
 }));
 
 jest.mock("../../mocks/QuestionList", () => () => <div data-testid="mock-question-list" />);
@@ -51,6 +52,7 @@ function renderStudio(url = "/admin/content-studio") {
 
 beforeEach(() => {
   mockCollection = { items: [], status: "empty", total: 0, refresh: jest.fn() };
+  mockRun = jest.fn(async () => ({ ok: true, data: { ok: true, result: {} } }));
 });
 
 // ---- Shell (real prompt bodies; collection hook mocked) --------------------
@@ -371,5 +373,135 @@ describe("PromptReviewQueue screen", () => {
     expect(cell).toHaveTextContent("English Language › Reading Comprehension");
     expect(cell).not.toHaveTextContent(SUBJ);
     expect(cell).not.toHaveTextContent(TOPIC);
+  });
+});
+
+// ---- Activation affordance permission gating (PromptLibrary) ----------------
+
+describe("PromptLibrary activation affordance", () => {
+  // eslint-disable-next-line global-require
+  const PromptLibrary = require("../PromptLibrary").default;
+  const row = (over) => ({
+    id: U1, prompt_text: "A prompt", exercise_type: "sentence_construction", difficulty_level: 3,
+    reviewer_status: "verified", is_active: false, updated_at: "2026-07-03T00:00:00Z", ...over,
+  });
+  const perms = (over) => ({
+    canAuthor: false, canReview: false, canProposeAssignment: false, canReviewAssignment: false,
+    canActivate: false, ...over,
+  });
+
+  test("Activate hidden without content_studio.activate", () => {
+    mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms()} onAssign={jest.fn()} />);
+    expect(screen.queryByTestId(`prompt-activate-${U1}`)).toBeNull();
+  });
+
+  test("Activate visible on a verified prompt with content_studio.activate", () => {
+    mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms({ canActivate: true })} onAssign={jest.fn()} />);
+    expect(screen.getByTestId(`prompt-activate-${U1}`)).toBeInTheDocument();
+  });
+
+  test("Activate NOT offered on a non-verified prompt (server requires verified)", () => {
+    mockCollection = { items: [row({ reviewer_status: "pending" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms({ canActivate: true })} onAssign={jest.fn()} />);
+    expect(screen.queryByTestId(`prompt-activate-${U1}`)).toBeNull();
+    expect(screen.queryByTestId(`prompt-deactivate-${U1}`)).toBeNull();
+  });
+
+  test("active prompt shows Deactivate instead of Activate", () => {
+    mockCollection = { items: [row({ is_active: true })], status: "live", total: 1, refresh: jest.fn() };
+    render(<PromptLibrary perms={perms({ canActivate: true })} onAssign={jest.fn()} />);
+    expect(screen.getByTestId(`prompt-deactivate-${U1}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`prompt-activate-${U1}`)).toBeNull();
+  });
+});
+
+// ---- Activation dialog (CAS + reason + server-only eligibility) -------------
+
+describe("PromptActivationDialog", () => {
+  // eslint-disable-next-line global-require
+  const PromptActivationDialog = require("../PromptActivation").default;
+  const CAS = "2026-07-05T09:00:00Z";
+  const prompt = { id: U1, updated_at: CAS, is_active: false };
+
+  function open(mode = "activate", over = {}) {
+    const onDone = jest.fn();
+    render(<PromptActivationDialog prompt={{ ...prompt, ...over }} mode={mode} onClose={jest.fn()} onDone={onDone} />);
+    return { onDone };
+  }
+  const typeReason = () =>
+    fireEvent.change(screen.getByTestId("activation-reason"), { target: { value: "activating for launch" } });
+
+  test("reason is required — no request fires on a short reason", async () => {
+    open();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    expect(await screen.findByTestId("activation-error")).toHaveTextContent(/8–500/);
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  test("passes the client CAS token (expected_updated_at) through UNCHANGED", async () => {
+    // Assert against the real adapter call by inspecting the action thunk's effect.
+    const apiMock = require("../../../../lib/api").api;
+    mockRun = jest.fn(async ({ action }) => { await action(); return { ok: true, data: { ok: true, result: { eligible: true, is_active: true } } }; });
+    const { onDone } = open();
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith({ is_active: true }));
+    expect(apiMock.post).toHaveBeenCalledWith(
+      `/api/admin/content-studio/writing-prompts/${U1}/activate`,
+      { expected_updated_at: CAS, reason: "activating for launch" },
+    );
+  });
+
+  test("{eligible:false, blockers} renders Activation blocked with each reason (no client-side eligibility)", async () => {
+    mockRun = jest.fn(async () => ({
+      ok: true,
+      data: { ok: true, result: { eligible: false, blockers: ["no_active_applicability_target", "semantic_evaluator_not_live"] } },
+    }));
+    const { onDone } = open();
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    expect(await screen.findByTestId("activation-blocked")).toBeInTheDocument();
+    expect(screen.getByTestId("activation-blocker-no_active_applicability_target"))
+      .toHaveTextContent(/applicability target/i);
+    expect(screen.getByTestId("activation-blocker-semantic_evaluator_not_live"))
+      .toHaveTextContent(/semantic evaluator/i);
+    // Blocked activation is a 200, not a success — is_active must NOT be reflected.
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  test("success reflects the new is_active via onDone", async () => {
+    mockRun = jest.fn(async () => ({ ok: true, data: { ok: true, result: { eligible: true, is_active: true } } }));
+    const { onDone } = open();
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith({ is_active: true }));
+  });
+
+  test("409 shows a conflict / re-read message (not a silent failure)", async () => {
+    mockRun = jest.fn(async () => ({ ok: false, error: { status: 409 } }));
+    open();
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    expect(await screen.findByTestId("activation-conflict")).toHaveTextContent(/changed since you loaded/i);
+  });
+
+  test("422/404 surfaces an explicit error state; the operator can retry", async () => {
+    mockRun = jest.fn(async () => ({ ok: false, error: { status: 422, message: "invalid" } }));
+    open();
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    expect(await screen.findByTestId("activation-error")).toHaveTextContent(/invalid/);
+    // Not silent: the submit control remains available for a retry.
+    expect(screen.getByTestId("activation-submit")).toBeInTheDocument();
+  });
+
+  test("deactivate does not inspect eligibility and reports the new state", async () => {
+    mockRun = jest.fn(async () => ({ ok: true, data: { ok: true, result: { is_active: false } } }));
+    const { onDone } = open("deactivate", { is_active: true });
+    typeReason();
+    fireEvent.click(screen.getByTestId("activation-submit"));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith({ is_active: false }));
   });
 });

@@ -22,5 +22,8 @@ export function studioPerms(user) {
     canReview: has("content_studio.review"),
     canProposeAssignment: has("exam_intelligence.manage"),
     canReviewAssignment: has("exam_intelligence.review"),
+    // Activation is a SEPARATE, higher-trust authority (EWP-SP2). Neither author
+    // nor review may flip is_active — only content_studio.activate (or super_admin).
+    canActivate: has("content_studio.activate"),
   };
 }
