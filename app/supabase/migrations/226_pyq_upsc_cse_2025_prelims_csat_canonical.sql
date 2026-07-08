@@ -1,4 +1,4 @@
--- 224_pyq_upsc_cse_2025_prelims_csat_canonical.sql
+-- 226_pyq_upsc_cse_2025_prelims_csat_canonical.sql
 -- Injects the UPSC Civil Services Examination 2025 Prelims Paper II (CSAT)
 -- official question paper as a canonical PYQ source.
 --
@@ -147,7 +147,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('108c4a0e-dd96-5015-9e38-6a63b2cb5ad5', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 1, 'Which one of the following statements best reflects the central idea conveyed by the passage?', '8cf35e1f24ba9e798e2fb06a224994961aee51dca2bbf31a6c1149f400f287b0',
+values ('108c4a0e-dd96-5015-9e38-6a63b2cb5ad5', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 1, 'Which one of the following statements best reflects the central idea conveyed by the passage?', 'c88e239ff0d0714a105f41c95eb4c94f5df28ec31d544478d49192e3a8f7cb73',
         'mcq', null, 'pending', 1, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -199,7 +199,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('55f57180-512f-596a-b7d3-ea6160f1e272', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 3, 'Which one of the following statements best reflects the crux of the passage?', '04c50b4dc3ac6277e96d4d2eb58202dca0974e9de0bfc81220913cc5ae9a68ef',
+values ('55f57180-512f-596a-b7d3-ea6160f1e272', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 3, 'Which one of the following statements best reflects the crux of the passage?', '83afc8e08a55ba1b2720cb2d48d896966889e28a85f4f3d904e2d401267add26',
         'mcq', null, 'pending', 3, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false,'missing_stimulus',true,'source_passage_absent',true,'missing_stimulus_reason','Passage-2 (animal- vs plant-based protein) for items 3–4 was absent from the source document.'))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -861,7 +861,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('a606923b-e693-561f-ae15-d81ccebedd10', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 31, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'ec70ac8779127da33e7e2a849bef7c148cd26c67f51794255ec9620d33e75d8e',
+values ('a606923b-e693-561f-ae15-d81ccebedd10', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 31, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'a3e2979e5d2ac17bbeba0562c5174ded757574f8343886f596022dc0501f760c',
         'mcq', null, 'pending', 31, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -1129,7 +1129,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('3fdd07ff-9408-5b7f-a8f2-e3822b7cf289', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 42, 'Which one of the following statements best reflects the crux of the passage?', '04c50b4dc3ac6277e96d4d2eb58202dca0974e9de0bfc81220913cc5ae9a68ef',
+values ('3fdd07ff-9408-5b7f-a8f2-e3822b7cf289', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 42, 'Which one of the following statements best reflects the crux of the passage?', 'e63c2d75cbe271d08c75de5194f4fcf68cdccae6d661b895349d77cbaea3fc82',
         'mcq', null, 'pending', 42, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -1339,7 +1339,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('e83d03f7-40a5-57bc-8d46-d48eb99d4ded', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 51, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'ec70ac8779127da33e7e2a849bef7c148cd26c67f51794255ec9620d33e75d8e',
+values ('e83d03f7-40a5-57bc-8d46-d48eb99d4ded', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 51, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'e6479c76922840595b3f5ab68e3451ad6cad556d2a5fb9f970c90f5fae09b2e2',
         'mcq', null, 'pending', 51, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -1578,7 +1578,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('20b8d1ca-6eee-5fef-b68f-0ee65591b94d', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 61, 'Which one of the following statements best reflects the central idea conveyed by the passage?', '8cf35e1f24ba9e798e2fb06a224994961aee51dca2bbf31a6c1149f400f287b0',
+values ('20b8d1ca-6eee-5fef-b68f-0ee65591b94d', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 61, 'Which one of the following statements best reflects the central idea conveyed by the passage?', '4103aa7d1a5fe39a473aa7bd97a7a2d7dd261c65f4851a0807dec594bb5e23ec',
         'mcq', null, 'pending', 61, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -1630,7 +1630,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('4e0f0a0c-8d00-54a8-9aee-fe5f0adcf4ee', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 63, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'ec70ac8779127da33e7e2a849bef7c148cd26c67f51794255ec9620d33e75d8e',
+values ('4e0f0a0c-8d00-54a8-9aee-fe5f0adcf4ee', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 63, 'Which one of the following statements best reflects the critical message conveyed by the author of the passage?', 'f4ee272c4559d8c3f604e28b1b5c37cb77c67f1c0e40d846e6913f6ee5710b92',
         'mcq', null, 'pending', 63, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
@@ -1820,7 +1820,7 @@ on conflict (id) do nothing;
 insert into public.pyq_questions
   (id, pyq_paper_id, question_number, question_text, normalized_question_hash,
    question_type, correct_option_id, reviewer_status, display_order, metadata)
-values ('872b98f8-b23b-5e16-9e74-32d5098f8610', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 71, 'Which one of the following statements best reflects the central idea conveyed by the passage?', '8cf35e1f24ba9e798e2fb06a224994961aee51dca2bbf31a6c1149f400f287b0',
+values ('872b98f8-b23b-5e16-9e74-32d5098f8610', '505b29a0-0d4d-5230-88aa-3bbc525a6db5', 71, 'Which one of the following statements best reflects the central idea conveyed by the passage?', 'a42c8365e839720f8e1cbbe397e077116eca7a0252c0e4564281e3703ef620b6',
         'mcq', null, 'pending', 71, jsonb_build_object('paper','upsc-cse-2025-prelims-csat','answer_key_present',false))
 on conflict (id) do nothing;
 insert into public.pyq_options
