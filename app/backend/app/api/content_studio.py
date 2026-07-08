@@ -914,13 +914,23 @@ def list_source_document_options(
     provenance check (mirrored in `_document_passes_provenance`): valid
     document_kind, live status (not failed/archived), and non-blank storage
     bucket + path. The kind allowlist is pushed to the query; the null/blank
-    guards are applied in Python to match the RPC's `btrim` semantics exactly."""
+    guards are applied in Python to match the RPC's `btrim` semantics exactly.
+
+    All filterable provenance clauses (scope, kind allowlist, non-null status,
+    status not in failed/archived, non-null + non-empty storage bucket/path) are
+    pushed into the query so the `limit` window can never hide older valid
+    documents behind newer invalid ones; the Python guard only adds the
+    whitespace-only (`btrim`) edge the SQL layer can't express."""
     supabase = get_supabase_admin()
     res = (supabase.table("document_assets")
            .select("id,title,original_filename,document_kind,scope,status,"
                    "storage_bucket,storage_path")
            .eq("scope", "admin_exam_intelligence")
            .in_("document_kind", sorted(_VALID_DOCUMENT_KINDS))
+           .not_.is_("status", "null")
+           .not_.in_("status", sorted(_INVALID_DOCUMENT_STATUSES))
+           .not_.is_("storage_bucket", "null").neq("storage_bucket", "")
+           .not_.is_("storage_path", "null").neq("storage_path", "")
            .order("created_at", desc=True).limit(_OPTION_LIMIT).execute())
     items = [
         {"id": d.get("id"), "title": d.get("title"),
