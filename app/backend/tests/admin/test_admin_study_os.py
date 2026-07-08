@@ -1716,6 +1716,22 @@ def test_cms_create_exam_invalid_cadence_422():
     assert len(sb.db["exams"]) == 1  # no DB write
 
 
+def test_cms_create_exam_biannual_cadence_persists():
+    # Some exams (e.g. certain banking/insurance recruitment cycles) run
+    # twice a year — 'biannual' widens the cadence enum alongside annual/
+    # recurring/irregular/one_off/unknown.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/exams",
+        json={"reason": "exam runs twice a year", "payload": {"name": "Biannual Exam", "cadence": "biannual"}},
+    )
+    assert r.status_code == 200, r.text
+    exam = next(e for e in sb.db["exams"] if e.get("name") == "Biannual Exam")
+    assert exam["cadence"] == "biannual"
+
+
 def test_cms_update_exam_invalid_management_mode_422():
     sb = ExtSBStub()
     _seed_cms(sb)
@@ -2593,3 +2609,271 @@ def test_cms_bulk_import_supports_competition_metrics():
     body = r.json()
     assert body["ok_count"] == 2
     assert body["error_count"] == 1
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  Bulk update / bulk retire — CMS multi-row filter-driven actions
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _seed_two_exams(sb: ExtSBStub) -> None:
+    _seed_cms(sb)
+    now = datetime.now(timezone.utc).isoformat()
+    sb.db["exams"].append(
+        {
+            "id": "exam-2",
+            "exam_family_id": "fam-1",
+            "slug": "exam-y",
+            "name": "Exam Y",
+            "exam_type": "recruitment",
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+
+def test_cms_bulk_update_sets_field_across_many_rows():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "reclassify both exams as biannual",
+            "entity": "exams",
+            "ids": ["exam-1", "exam-2"],
+            "patch": {"cadence": "biannual"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok_count"] == 2
+    assert body["error_count"] == 0
+    assert all(e["cadence"] == "biannual" for e in sb.db["exams"])
+    assert any(a["action"] == "exam_intel.cms.exams.bulk_update" for a in sb.db["admin_audit_logs"])
+
+
+def test_cms_bulk_update_reports_per_id_not_found():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "one valid, one missing id",
+            "entity": "exams",
+            "ids": ["exam-1", "does-not-exist"],
+            "patch": {"cadence": "annual"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is False
+    assert body["ok_count"] == 1
+    assert body["error_count"] == 1
+    exam1 = next(e for e in sb.db["exams"] if e["id"] == "exam-1")
+    assert exam1["cadence"] == "annual"
+
+
+def test_cms_bulk_update_rejects_invalid_enum():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "bad cadence value across the batch",
+            "entity": "exams",
+            "ids": ["exam-1", "exam-2"],
+            "patch": {"cadence": "daily"},
+        },
+    )
+    assert r.status_code == 422
+    assert all(e.get("cadence") != "daily" for e in sb.db["exams"])
+
+
+def test_cms_bulk_update_rejects_disallowed_field():
+    # 'name' is excluded from bulk edit — setting the same name across many
+    # rows is never the intent of a bulk edit.
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "trying to rename both exams identically",
+            "entity": "exams",
+            "ids": ["exam-1", "exam-2"],
+            "patch": {"name": "Same Name For Both"},
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_cms_bulk_update_rejects_unsupported_entity():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "pyq-questions is lifecycle-owned, not bulk-editable here",
+            "entity": "pyq-questions",
+            "ids": ["q-1"],
+            "patch": {"question_text": "x"},
+        },
+    )
+    assert r.status_code == 422
+
+
+# ─── Bulk-update protected-field enforcement (integrity boundary lives on the
+#     backend, not the frontend picker) ────────────────────────────────────────
+
+
+def test_cms_bulk_update_rejects_pyq_source_source_id():
+    # source_id is the external dedup/provenance key. The single-row edit form
+    # hides it, but UI hiding is not an integrity boundary — the bulk endpoint
+    # must reject it too so a direct API caller can't rewrite the dedup key
+    # across many rows. A patch of source_id ALONE has no allowed field → 422.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("pyq_sources", []).append(
+        {"id": "src-1", "exam_id": "exam-1", "source_id": "orig-key", "trust_status": "pending"}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "attempt to rewrite the dedup key in bulk",
+            "entity": "pyq-sources",
+            "ids": ["src-1"],
+            "patch": {"source_id": "new-dedup-key"},
+        },
+    )
+    assert r.status_code == 422
+    assert sb.db["pyq_sources"][0]["source_id"] == "orig-key"
+
+
+def test_cms_bulk_update_ignores_source_id_when_mixed_with_editable_field():
+    # A patch mixing a protected field (source_id) with an editable one
+    # (source_type) applies only the editable field; source_id is never written.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("pyq_sources", []).append(
+        {"id": "src-1", "exam_id": "exam-1", "source_id": "orig-key", "source_type": "official", "trust_status": "pending"}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "sneak source_id in alongside a legit field",
+            "entity": "pyq-sources",
+            "ids": ["src-1"],
+            "patch": {"source_id": "new-dedup-key", "source_type": "coaching"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    src = sb.db["pyq_sources"][0]
+    assert src["source_id"] == "orig-key"        # protected — untouched
+    assert src["source_type"] == "coaching"      # editable — applied
+
+
+def test_cms_bulk_update_rejects_phase_cycle_reassignment():
+    # exam_cycle_id is the scope FK validated (phase↔cycle↔exam) only on the
+    # single-row path. Bulk-update must not accept it (no validator here).
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("exam_phases", []).append(
+        {"id": "ph-1", "exam_id": "exam-1", "phase_name": "P1", "phase_slug": "p1", "exam_cycle_id": None}
+    )
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-update",
+        json={
+            "reason": "reassign phase scope in bulk without validation",
+            "entity": "exam-phases",
+            "ids": ["ph-1"],
+            "patch": {"exam_cycle_id": "some-other-cycle"},
+        },
+    )
+    assert r.status_code == 422
+    assert sb.db["exam_phases"][0]["exam_cycle_id"] is None
+
+
+def test_cms_bulk_update_rejects_topic_hierarchy_fields():
+    # subject_id / parent_topic_id / level tie into the topic-hierarchy rule
+    # enforced only on the single-row path — never bulk-editable.
+    sb = ExtSBStub()
+    _seed_cms(sb)
+    sb.db.setdefault("topics", []).append(
+        {"id": "t-1", "subject_id": "subj-1", "slug": "t", "name": "T", "level": "topic"}
+    )
+    app = _cms_app(sb)
+    for field, value in (("subject_id", "other-subj"), ("parent_topic_id", "other-topic"), ("level", "microtopic")):
+        r = TestClient(app).post(
+            "/api/admin/exam-intelligence-cms/bulk-update",
+            json={
+                "reason": f"reassign topic {field} in bulk without validation",
+                "entity": "topics",
+                "ids": ["t-1"],
+                "patch": {field: value},
+            },
+        )
+        assert r.status_code == 422, f"{field} should be rejected: {r.text}"
+    t = sb.db["topics"][0]
+    assert t["subject_id"] == "subj-1" and t["level"] == "topic"
+
+
+def test_cms_bulk_update_rejects_exam_reference_fields():
+    # exam_family_id / conducting_organization_id are FKs with no existence
+    # check in bulk_update — reassignment goes through the single-row form.
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    for field in ("exam_family_id", "conducting_organization_id"):
+        r = TestClient(app).post(
+            "/api/admin/exam-intelligence-cms/bulk-update",
+            json={
+                "reason": f"reassign exam {field} in bulk without existence check",
+                "entity": "exams",
+                "ids": ["exam-1"],
+                "patch": {field: "nonexistent-ref"},
+            },
+        )
+        assert r.status_code == 422, f"{field} should be rejected: {r.text}"
+    assert sb.db["exams"][0].get("exam_family_id") == "fam-1"
+
+
+def test_cms_bulk_deactivate_retires_many_rows():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-deactivate",
+        json={
+            "reason": "retiring both duplicate exams",
+            "entity": "exams",
+            "ids": ["exam-1", "exam-2"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok_count"] == 2
+    assert all(e["is_active"] is False for e in sb.db["exams"])
+    assert any(a["action"] == "exam_intel.cms.exams.bulk_deactivate" for a in sb.db["admin_audit_logs"])
+
+
+def test_cms_bulk_deactivate_rejects_unsupported_entity():
+    sb = ExtSBStub()
+    _seed_two_exams(sb)
+    app = _cms_app(sb)
+    r = TestClient(app).post(
+        "/api/admin/exam-intelligence-cms/bulk-deactivate",
+        json={
+            "reason": "subjects has no soft-delete lifecycle",
+            "entity": "subjects",
+            "ids": ["subj-1"],
+        },
+    )
+    assert r.status_code == 422
