@@ -224,8 +224,10 @@ describe("inline date save flow", () => {
 
     // Enter a date into the phase start DateField for ph-1.
     const startInputs = screen.getAllByLabelText(/phase start/i);
+    // DateField wraps a native <input type="date">, whose IDL value is ISO
+    // (YYYY-MM-DD); a dd-mm-yyyy string would be sanitized to "".
     fireEvent.change(startInputs[startInputs.length - 1], {
-      target: { value: "24-05-2026" },
+      target: { value: "2026-05-24" },
     });
 
     fireEvent.click(screen.getByTestId("phase-date-save-ph-1"));
@@ -251,8 +253,9 @@ describe("inline date save flow", () => {
     render(<SetupPanel />);
 
     const startInputs = screen.getAllByLabelText(/phase start/i);
+    // Native date input IDL value is ISO (YYYY-MM-DD).
     fireEvent.change(startInputs[startInputs.length - 1], {
-      target: { value: "24-05-2026" },
+      target: { value: "2026-05-24" },
     });
 
     fireEvent.click(screen.getByTestId("phase-date-save-ph-1"));

@@ -143,8 +143,9 @@ test("clicking Edit pre-fills fields from the row", async () => {
   expect(screen.getByTestId("cms-edit-field-year").value).toBe("2026");
   // enum select prefilled.
   expect(screen.getByTestId("cms-edit-field-status").value).toBe("active");
-  // DateField prefills from the YYYY-MM-DD value, displayed dd-mm-yyyy, no TZ drift.
-  expect(container.querySelector("#cms-edit-date-exam_start").value).toBe("15-09-2026");
+  // DateField wraps a native <input type="date">; its .value IDL attribute is
+  // ISO (YYYY-MM-DD) regardless of the locale-specific display format, no TZ drift.
+  expect(container.querySelector("#cms-edit-date-exam_start").value).toBe("2026-09-15");
 });
 
 test("diff-only: changing exam_start submits ONLY that key (+ reason), in YYYY-MM-DD", async () => {
@@ -153,8 +154,9 @@ test("diff-only: changing exam_start submits ONLY that key (+ reason), in YYYY-M
   fireEvent.click(await screen.findByTestId("cms-edit-cyc-11111111"));
   await screen.findByTestId("cms-edit-form");
 
+  // Native date input IDL value is ISO (YYYY-MM-DD).
   fireEvent.change(container.querySelector("#cms-edit-date-exam_start"), {
-    target: { value: "20-09-2026" },
+    target: { value: "2026-09-20" },
   });
   fireEvent.change(screen.getByTestId("cms-edit-reason"), {
     target: { value: "shift exam_start to the confirmed date" },

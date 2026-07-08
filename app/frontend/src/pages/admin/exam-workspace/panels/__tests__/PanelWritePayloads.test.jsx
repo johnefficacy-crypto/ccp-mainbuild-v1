@@ -109,9 +109,10 @@ describe("SetupPanel.addPhase", () => {
     fireEvent.change(screen.getByPlaceholderText("Phase name"), {
       target: { value: "Prelims" },
     });
-    // Enter a date into the Phase start DateField (dd-mm-yyyy format).
+    // DateField wraps a native <input type="date">; its IDL value is ISO
+    // (YYYY-MM-DD), so fire that (a dd-mm-yyyy string sanitizes to "").
     fireEvent.change(screen.getByLabelText(/phase start/i), {
-      target: { value: "24-05-2026" },
+      target: { value: "2026-05-24" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add phase" }));
 

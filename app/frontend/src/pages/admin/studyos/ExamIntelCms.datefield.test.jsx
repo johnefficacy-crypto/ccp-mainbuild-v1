@@ -52,13 +52,14 @@ test("exam-cycles create: a date picked/typed via DateField submits as ISO", asy
   });
   fireEvent.click(screen.getByTestId("cms-toggle-create"));
 
-  // The date field renders a DateField (text input shows dd-mm-yyyy).
+  // The date field renders a DateField wrapping a native <input type="date">,
+  // whose IDL value is ISO (YYYY-MM-DD).
   const examStart = await waitFor(() => {
     const el = container.querySelector("#cms-date-exam_start");
     if (!el) throw new Error("date input not mounted yet");
     return el;
   });
-  fireEvent.change(examStart, { target: { value: "15-06-2027" } });
+  fireEvent.change(examStart, { target: { value: "2027-06-15" } });
 
   fireEvent.change(screen.getByTestId("cms-reason"), {
     target: { value: "adding a new exam cycle" },
