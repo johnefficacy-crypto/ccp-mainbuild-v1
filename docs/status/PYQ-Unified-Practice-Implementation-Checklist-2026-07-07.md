@@ -1,13 +1,13 @@
 # Unified PYQ Practice and Intelligence — Implementation Checklist
 
-Status: **IN DELIVERY — PR-1 → PR-10 CODE-LANDED (VALIDATION PENDING); PR-11 PARTIAL**  
+Status: **IN DELIVERY — PR-1 → PR-10 CODE-LANDED (VALIDATION PENDING), except PR-5/6 revision mode DEFERRED; PR-11 PARTIAL**  
 Verified against repository `main`: **2026-07-08**  
 Owners: Exam Intelligence + Study OS + Mock Engine  
 Primary architecture: `docs/architecture/pyq-intelligence-v2.md`  
 Mock/Study OS integration: `docs/study_os/mock-engine-v2-study-os-integration.md`  
 Source-of-record delivery detail per PR: `docs/status/career-copilot-checklist.md` (this file is the contract map; the checklist carries the merged-PR evidence).
 
-> **Delivery snapshot (2026-07-08).** The ordered plan below (§6) has shipped PR-1 through PR-10 to `main`, all at `CODE-FIXED, VALIDATION PENDING` (code merged + tested; operator/DB validation and the mastery live-write gate still pending). PR-11 has landed slice 1 (media storage, migration 233) and slice 2 (CMS media authoring); its advanced-answer-type runtimes and asset-upload/importer lanes remain deferred. Every unchecked `[ ]` box in this document that a merged PR satisfies is tracked as done in the source-of-record checklist — this contract file is retained as the original scope map and is **not** re-ticked box-by-box. See each PR's status line in §6 for the merged pointer.
+> **Delivery snapshot (2026-07-08).** The ordered plan below (§6) has shipped PR-1 through PR-10 to `main`, all at `CODE-FIXED, VALIDATION PENDING` (code merged + tested; operator/DB validation and the mastery live-write gate still pending) — **except PR-5/6's revision entry mode, which is deferred** (PR-8/SRS), so the learner-practice exit gate is not yet fully code-complete. PR-11 has landed slice 1 (media storage, migration 233) and slice 2 (CMS media authoring); its advanced-answer-type runtimes and asset-upload/importer lanes remain deferred. Every unchecked `[ ]` box in this document that a merged PR satisfies is tracked as done in the source-of-record checklist — this contract file is retained as the original scope map and is **not** re-ticked box-by-box. See each PR's status line in §6 for the merged pointer.
 
 ## 1. Locked product decision
 
@@ -296,7 +296,7 @@ Exit gate: projected text MCQs, including shared passage sets, render correctly 
 
 ### PR-5 — Learner PYQ catalogue and full-paper practice
 
-Status: **CODE-LANDED / VALIDATION PENDING** — slice A (render fidelity) + slice B (practice attempt assembly, migration 231) + slice C (learner launcher `PyqExplorerSection`); reuses the mock attempt shell. Revision mode deferred to PR-8/SRS.
+Status: **PARTIAL — full-paper/section/topic CODE-LANDED / VALIDATION PENDING; revision mode DEFERRED (PR-8/SRS)** — slice A (render fidelity) + slice B (practice attempt assembly, migration 231) + slice C (learner launcher `PyqExplorerSection`); reuses the mock attempt shell. The source-of-record checklist tracks the combined PR-5/6 row as `IN PROGRESS` for the same reason — the revision entry mode is not yet built, so the full learner-practice exit gate is not code-complete.
 
 - [ ] Add embedded PYQ catalogue under existing Study IA.
 - [ ] Browse by exam, phase/tier, year and paper/shift.
