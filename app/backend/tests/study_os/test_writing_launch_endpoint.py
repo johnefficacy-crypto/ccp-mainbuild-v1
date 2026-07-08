@@ -9,7 +9,7 @@ selection (same task -> same prompt), the runtime-readiness gate excluding a
 non-ready active prompt, resolver default-deny (excluded/pending never selected),
 idempotent re-launch reusing a live session, that creation goes through the
 shared enforcement path (the create RPC + applicability re-check run), and that
-the mirrored runtime-ready allowlist stays in parity with migration 224.
+the mirrored runtime-ready allowlist stays in parity with migration 226.
 """
 from __future__ import annotations
 
@@ -282,18 +282,18 @@ def test_no_task_exam_context_denies_scoped_prompt(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# Runtime-ready allowlist parity with migration 224                           #
+# Runtime-ready allowlist parity with migration 226                           #
 # --------------------------------------------------------------------------- #
-def test_runtime_ready_mirror_matches_migration_224():
+def test_runtime_ready_mirror_matches_migration_226():
     mig = (
         Path(__file__).parents[3]
-        / "supabase/migrations/224_ewp_prompt_activation_lifecycle.sql"
+        / "supabase/migrations/226_ewp_prompt_activation_lifecycle.sql"
     ).read_text()
     body = re.search(
         r"FUNCTION\s+cms_writing_runtime_ready_types\(\).*?SELECT\s+ARRAY\[(.*?)\]",
         mig, re.DOTALL | re.IGNORECASE,
     )
-    assert body, "could not locate cms_writing_runtime_ready_types() in migration 224"
+    assert body, "could not locate cms_writing_runtime_ready_types() in migration 226"
     sql_types = tuple(re.findall(r"'([^']+)'", body.group(1)))
     assert sql_types == wp.RUNTIME_READY_EXERCISE_TYPES
 
