@@ -1,6 +1,6 @@
 """EWP semantic shadow telemetry migration contract.
 
-Migration 232 adds append-only, service-role-only telemetry for semantic
+Migration 235 adds append-only, service-role-only telemetry for semantic
 evaluator SHADOW runs. These rows are measurement artifacts only and must not
 become lifecycle, prompt activation, human-review, or mastery authority.
 """
@@ -10,14 +10,14 @@ from pathlib import Path
 
 _SQL = (
     Path(__file__).parents[3]
-    / "supabase/migrations/232_ewp_semantic_shadow_telemetry.sql"
+    / "supabase/migrations/235_ewp_semantic_shadow_telemetry.sql"
 ).read_text()
 _SQLL = _SQL.lower()
 _SQLW = " ".join(_SQLL.split())
 
 
-def test_migration_is_number_232():
-    assert _SQL.startswith("-- Migration 232")
+def test_migration_is_number_235():
+    assert _SQL.startswith("-- Migration 235")
 
 
 def test_shadow_telemetry_table_created():

@@ -1,8 +1,8 @@
--- Migration 232: EWP semantic shadow evaluator telemetry.
+-- Migration 235: EWP semantic shadow evaluator telemetry.
 --
 -- Remote schema_migrations is currently applied through 222, but this branch
 -- already contains local migration files 223..231. This migration therefore
--- uses the next local filesystem slot, 232, and must be applied after 223..231.
+-- RENUMBERED 232 → 235: main already carried 232 (trap_drill_mastery_shadow), 233, 234, so 235 is the next contiguous slot; apply after 234.
 --
 -- Purpose:
 --   Append-only, service-role-only telemetry for semantic evaluator SHADOW runs.
