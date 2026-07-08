@@ -2016,28 +2016,41 @@ def update_pyq_option(
 _STIMULUS_FIELDS = {
     "pyq_paper_id", "section_id", "stimulus_type", "content_text",
     "language", "display_order", "metadata",
+    # Media fields (PR-11 slice 1, migration 233): first-class media storage.
+    "document_asset_id", "asset_locator", "alt_text",
 }
 _STIMULUS_TYPES = ("passage", "caselet", "table", "chart", "image", "diagram", "other")
-# Media/advanced stimulus types (chart/image/diagram/other) are deferred to
-# PR-11 (advanced question types + first-class media storage, see migration 223
-# scope note). This PR is text/shared-grouping only, matching importer v2, so
-# creation/update from this surface is gated to the three text-shaped kinds.
-# READS of pre-existing media rows are NOT gated — only writes.
-_STIMULUS_TYPES_CREATABLE = frozenset(("passage", "caselet", "table"))
+# Text stimuli (passage/caselet/table) and media stimuli (image/chart/diagram)
+# are authored from this surface. Media rows are validated by migration 233's
+# pyq_stimuli_media_guard() (a linked document_asset_id must be a live
+# admin_exam_intelligence image asset; verification later requires alt_text +
+# a linked asset), so this layer just passes the fields through and surfaces the
+# DB guard as 422. 'other' has no defined authoring contract yet and stays
+# deferred. READS of any pre-existing rows are NOT gated — only writes.
+_STIMULUS_TYPES_CREATABLE = frozenset(("passage", "caselet", "table", "image", "chart", "diagram"))
 _LINK_FIELDS = {"question_id", "stimulus_id", "display_order"}
+
+# Substrings of migration 233 pyq_stimuli_media_guard() raises (and the 223
+# section trigger) that indicate a client-fixable bad write → HTTP 422.
+_STIMULUS_GUARD_422_MARKERS = (
+    "exam_phase", "section",
+    "document_asset_id", "document_kind", "unusable status",
+    "media_stimulus_requires_alt_text", "media_stimulus_requires_asset",
+)
 
 
 def _reject_uncreatable_stimulus_type(stimulus_type: Any) -> None:
-    """422 when a create/edit tries to set a media/advanced stimulus_type that
-    is deferred to PR-11. Assumes the value already passed the full-enum check,
-    so anything outside the creatable set is a valid-but-deferred media kind."""
+    """422 when a create/edit tries to set a stimulus_type with no authoring
+    contract on this surface yet ('other'). Media types (image/chart/diagram)
+    ARE creatable and validated by the DB media guard. Assumes the value already
+    passed the full-enum check."""
     if stimulus_type is not None and stimulus_type not in _STIMULUS_TYPES_CREATABLE:
         raise HTTPException(
             status_code=422,
             detail=(
                 f"stimulus_type {stimulus_type!r} is not creatable from this "
-                "surface yet; media types are deferred to PR-11 — use "
-                "passage/caselet/table"
+                "surface; use passage/caselet/table or a media type "
+                "(image/chart/diagram)"
             ),
         )
 
@@ -2092,7 +2105,7 @@ def create_pyq_stimulus(
         if mapped is not None:
             raise mapped from exc
         msg = str(exc)
-        if "exam_phase" in msg or "section" in msg:
+        if any(m in msg for m in _STIMULUS_GUARD_422_MARKERS):
             raise HTTPException(status_code=422, detail=msg) from exc
         raise
     new = inserted[0] if inserted else row
@@ -2113,9 +2126,10 @@ def update_pyq_stimulus(
 ) -> dict[str, Any]:
     """Curate a stimulus. pyq_paper_id (reparenting the paper) and
     reviewer_status are NOT allowed here — lifecycle moves belong to the
-    review router. Note: migration 223's trigger downgrades a *verified*
-    stimulus back to 'needs_correction' when content_text/stimulus_type/
-    language/metadata change, so no extra code is needed for that demotion."""
+    review router. Note: migration 223's trigger (extended by 233) downgrades a
+    *verified* stimulus back to 'needs_correction' when content_text/
+    stimulus_type/language/metadata or the media fields (alt_text/
+    document_asset_id/asset_locator) change, so no extra code is needed here."""
     supabase = get_supabase_admin()
     existing = _safe_select(supabase, "pyq_stimuli", id=stimulus_id)
     if not existing:
@@ -2134,7 +2148,7 @@ def update_pyq_stimulus(
         if mapped is not None:
             raise mapped from exc
         msg = str(exc)
-        if "exam_phase" in msg or "section" in msg:
+        if any(m in msg for m in _STIMULUS_GUARD_422_MARKERS):
             raise HTTPException(status_code=422, detail=msg) from exc
         raise
     audit_id = _audit(

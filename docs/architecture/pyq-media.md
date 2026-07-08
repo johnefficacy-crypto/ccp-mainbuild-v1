@@ -56,12 +56,34 @@ the frozen stimulus snapshot and degrades gracefully when absent. Tests:
 `QuestionRenderer.test.jsx` (image renders with alt; fallback when no URL; media
 does not leak `content_text`).
 
+## Slice 1 — admin authoring (backend)
+
+The exam-intelligence CMS stimulus endpoints (`admin_exam_intel_cms.py`,
+`POST`/`PATCH /pyq-stimuli`) now author media stimuli:
+
+- `_STIMULUS_TYPES_CREATABLE` includes `image` / `chart` / `diagram` (was
+  text-only); `other` stays deferred (no authoring contract yet).
+- The write allowlist accepts `document_asset_id`, `asset_locator`, `alt_text`.
+- The endpoints pass the fields straight to the row; migration 233's
+  `pyq_stimuli_media_guard()` enforces asset integrity (live
+  `admin_exam_intelligence` `image` asset, not `failed`/`archived`) and the
+  verify-time accessibility contract. Those guard raises are mapped to HTTP 422.
+- `reviewer_status` is still never settable here — promotion stays with the
+  review router; new media rows land `pending`.
+
+Tests: `test_pyq_stimulus_review_api.py` (image create persists media fields;
+patch to a media type allowed; `other` still 422; DB guard rejection → 422).
+
 ## Deferred (later PR-11 slices, out of scope here)
 
-- Importer support for media stimulus types and the asset upload flow.
+- **Asset upload flow** — an admin surface to upload the image binary to a
+  `document_assets` row before linking it. Bounded by the no-new-surface rule
+  and left for a dedicated slice.
+- **Bulk importer** (`pyq_bulk_import.py`) media/advanced-type support — still
+  fixed A–D MCQ; media stimuli come through the single-row CMS path above.
 - Wiring the media fields (`asset_url`, `alt_text`) through the mock projection /
-  attempt snapshot — that surface is owned by the PR-4 projection work; this PR
-  only lands the canonical model + the renderer's ability to display it.
+  attempt snapshot — that surface is owned by the PR-4 projection work; this
+  slice lands the canonical model, authoring, and renderer only.
 - Advanced answer runtimes (MSQ, integer/numeric input, descriptive) and their
   scorers — these depend on the mock runtime/scoring surface and are sequenced
   separately.
