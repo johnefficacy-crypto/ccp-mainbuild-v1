@@ -60,6 +60,9 @@ def test_check_asserts_table_and_columns():
 def test_check_asserts_source_and_status_constraints():
     sql = _check_sql()
     assert "exam_realistic" in sql and "personalized" in sql
+    # migration 231 extended the source set — the smoke-check must prove them too.
+    for src in ("pyq_practice_paper", "pyq_practice_section", "pyq_practice_topic"):
+        assert src in sql
     for status in ("draft", "started", "expired", "cancelled"):
         assert status in sql
 

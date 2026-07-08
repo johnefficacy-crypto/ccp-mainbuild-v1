@@ -174,16 +174,21 @@ begin
     raise exception 'mock_generated_blueprints.updated_at (timestamptz not null default now()) missing';
   end if;
 
-  -- ── 3. source + status check constraints (174) ────────────────────────────
+  -- ── 3. source + status check constraints (174, extended by 231) ───────────
   -- Inline column CHECKs are auto-named; assert by definition, not name.
+  -- Migration 231 extends the source set with the three PYQ-practice sources —
+  -- assert all five so this smoke-check proves the post-231 accepted set.
   if not exists (
     select 1 from pg_constraint
      where conrelid = 'public.mock_generated_blueprints'::regclass
        and contype = 'c'
        and pg_get_constraintdef(oid) ilike '%exam_realistic%'
        and pg_get_constraintdef(oid) ilike '%personalized%'
+       and pg_get_constraintdef(oid) ilike '%pyq_practice_paper%'
+       and pg_get_constraintdef(oid) ilike '%pyq_practice_section%'
+       and pg_get_constraintdef(oid) ilike '%pyq_practice_topic%'
   ) then
-    raise exception 'mock_generated_blueprints source check (exam_realistic/personalized) missing';
+    raise exception 'mock_generated_blueprints source check (exam_realistic/personalized/pyq_practice_paper/section/topic) missing';
   end if;
 
   if not exists (
