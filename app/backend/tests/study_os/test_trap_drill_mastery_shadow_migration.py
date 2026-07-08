@@ -26,9 +26,11 @@ def test_revision_bucket_constraint():
         assert bucket in MIGRATION
 
 
-def test_source_column_defaults_trap_drill():
+def test_source_column_defaults_and_is_check_pinned():
     assert "source" in MIGRATION
     assert "default 'trap_drill'" in MIGRATION
+    # source is a structural invariant, not just a default.
+    assert "check (source = 'trap_drill')" in MIGRATION
 
 
 def test_rls_enabled_and_service_role_grant():

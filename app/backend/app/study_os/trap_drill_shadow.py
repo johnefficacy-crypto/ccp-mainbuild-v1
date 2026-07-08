@@ -74,9 +74,15 @@ def _revision_bucket(would_be_mastery_db: Decimal) -> str:
     return "practice"
 
 
-def _load_current_mastery(sb: Any, user_id: str) -> dict[str, Decimal]:
+def _load_current_mastery(sb: Any, user_id: str) -> dict[str, Decimal] | None:
     """Read-only current per-topic mastery (unit scale 0–1) for the user, so the
-    would-be delta is faithful. Missing → treated as baseline by the engine."""
+    would-be delta is faithful.
+
+    Returns ``None`` on a read *failure* (distinguishable from ``{}`` for a
+    successful empty read). The caller fails the shadow write closed on ``None``:
+    deriving against an invented baseline would write contaminated shadow
+    analytics, which for a validation-only table is worse than writing nothing.
+    """
     try:
         rows = (
             sb.table("user_topic_mastery")
@@ -86,9 +92,9 @@ def _load_current_mastery(sb: Any, user_id: str) -> dict[str, Decimal]:
             .data
             or []
         )
-    except Exception as exc:  # noqa: BLE001 - shadow read must never break drill logging
+    except Exception as exc:  # noqa: BLE001 - fail closed (return None), never raise
         logger.warning("trap_drill_shadow: current mastery read failed: %s", exc)
-        return {}
+        return None
     out: dict[str, Decimal] = {}
     for r in rows:
         score = r.get("mastery_score")
@@ -125,6 +131,11 @@ def record_trap_drill_shadow(
 
     trust_level = trust_level_for_source(SOURCE_TRAP_DRILL)
     current = _load_current_mastery(sb, user_id)
+    if current is None:
+        # Fail closed: without the learner's real current mastery, the would-be
+        # numbers would be computed off an invented baseline — contaminating the
+        # shadow analysis. Skip the write entirely (drill response stays fine).
+        return {"outcome": "read_failed", "rows": 0}
     result = derive_from_analytics(analytics, current, source_trust=trust_level)
 
     payload: list[dict[str, Any]] = []

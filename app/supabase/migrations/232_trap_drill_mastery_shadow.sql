@@ -37,7 +37,8 @@ create table if not exists public.trap_drill_mastery_shadow (
   -- P3 revision routing (relearn | review | practice); trap-drill is application
   -- evidence, so a mid-band topic routes to 'practice'.
   revision_bucket               text check (revision_bucket in ('relearn', 'review', 'practice')),
-  source                        text not null default 'trap_drill',
+  -- pinned, not just defaulted: this table is a distinct population by construction.
+  source                        text not null default 'trap_drill' check (source = 'trap_drill'),
   -- shadow-only by construction — never a live write from this table.
   flag_state                    text not null default 'shadow' check (flag_state = 'shadow'),
   trust_level                   text not null default 'platform_verified',

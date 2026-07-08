@@ -90,6 +90,28 @@ def test_idempotent_upsert(monkeypatch):
     assert len(sb.db["trap_drill_mastery_shadow"]) == n1  # (synthetic_attempt_id, topic_id) dedup
 
 
+class _MasteryReadFails(SBStub):
+    """SBStub whose user_topic_mastery read raises, to exercise fail-closed."""
+
+    def table(self, name):
+        q = super().table(name)
+        if name == "user_topic_mastery":
+            def _boom(*_a, **_k):
+                raise RuntimeError("user_topic_mastery read boom")
+            q.execute = _boom  # type: ignore[assignment]
+        return q
+
+
+def test_current_mastery_read_failure_fails_closed(monkeypatch):
+    # A read failure must NOT fall back to an invented baseline and write
+    # contaminated shadow rows — it must write nothing.
+    monkeypatch.setenv("FF_TRAP_DRILL_MASTERY_SHADOW", "shadow")
+    sb = _MasteryReadFails(_db().db)
+    out = tds.record_trap_drill_shadow(sb, user_id="u1", exam_id=EXAM, drill_seed="seed-1")
+    assert out["outcome"] == "read_failed" and out["rows"] == 0
+    assert sb.db["trap_drill_mastery_shadow"] == []
+
+
 def test_revision_bucket_bands():
     assert tds._revision_bucket(Decimal("40")) == "relearn"
     assert tds._revision_bucket(Decimal("60")) == "practice"
