@@ -43,9 +43,11 @@ const QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching"
 const DIFFICULTY_OPTIONS = ["easy", "medium", "hard", "very_hard"];
 const REJECT_REASONS = ["incomplete", "duplicate", "out_of_scope", "illegible", "other"];
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
-// Mirrors backend _STIMULUS_TYPES (admin_exam_intel_cms.py). Shared passages,
-// caselets, tables, charts etc. that back one or more questions.
-const STIMULUS_TYPES = ["passage", "caselet", "table", "chart", "image", "diagram", "other"];
+// Creatable stimulus types from this surface: text/shared-grouping only, matching
+// the backend create allowlist (admin_exam_intel_cms.py) and importer v2. Media
+// types (chart/image/diagram/other) exist in the DB enum but are deferred to PR-11
+// (no asset/locator/alt-text contract yet), so they are NOT creatable here.
+const STIMULUS_TYPES = ["passage", "caselet", "table"];
 
 // Review-status transitions for a stimulus's CONTENT and for a
 // question↔stimulus LINK go through the review-queue router, not CMS_BASE.

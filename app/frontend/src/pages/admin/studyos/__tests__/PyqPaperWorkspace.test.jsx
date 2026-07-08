@@ -936,6 +936,20 @@ describe("PyqPaperWorkspace PR-3 sections + stimuli", () => {
     );
   });
 
+  test("create-stimulus type dropdown offers only PR-3 text types (no PR-11 media types)", async () => {
+    renderPr3();
+    await waitFor(() => screen.getByTestId("pyq-stimuli-panel-toggle"));
+    fireEvent.click(screen.getByTestId("pyq-stimuli-panel-toggle"));
+    await waitFor(() => screen.getByTestId("stimulus-create-open"));
+    fireEvent.click(screen.getByTestId("stimulus-create-open"));
+    const select = screen.getByTestId("stimulus-create-type");
+    const values = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    expect(values).toEqual(["passage", "caselet", "table"]);
+    expect(values).not.toContain("image");
+    expect(values).not.toContain("chart");
+    expect(values).not.toContain("diagram");
+  });
+
   test("linked-stimuli list renders for the selected question", async () => {
     renderPr3();
     await waitFor(() => screen.getByTestId("question-list-item-q1"));

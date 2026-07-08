@@ -65,6 +65,33 @@ def test_cascades_to_question_stimuli_links_inside_guard():
     assert "where question_id = p_question_id" in sql
 
 
+def test_link_cascade_preserves_explicit_negative_link_decisions():
+    """Fix #2: the link cascade must NOT overwrite a link an operator has
+    explicitly set to rejected/needs_correction — those are independent
+    negative decisions on the question<->stimulus association (migration 223).
+    The guard lives on the link UPDATE only, never on the options cascade."""
+    sql = _sql_text().lower()
+    links_pos = sql.index("update public.pyq_question_stimuli")
+    # The negative-decision guard must appear within the link UPDATE statement,
+    # after the `where question_id = p_question_id` predicate that starts it.
+    link_where_pos = sql.index("where question_id = p_question_id", links_pos)
+    guard = "and reviewer_status not in ('rejected', 'needs_correction')"
+    guard_pos = sql.find(guard, link_where_pos)
+    assert guard_pos != -1, (
+        "link cascade must guard against overwriting explicit "
+        "rejected/needs_correction link decisions"
+    )
+
+    # The options cascade must stay unguarded — options are not independently
+    # governed, so the guard must NOT appear before the options UPDATE ends.
+    options_pos = sql.index("update public.pyq_options")
+    options_where_pos = sql.index("where question_id = p_question_id", options_pos)
+    assert options_where_pos < links_pos, "sanity: options cascade precedes link cascade"
+    assert guard not in sql[options_where_pos:links_pos], (
+        "the negative-decision guard must not be applied to the options cascade"
+    )
+
+
 def test_does_not_touch_shared_stimulus_content():
     """Shared passage CONTENT (pyq_stimuli) is reviewed independently — the
     question-review RPC must never update pyq_stimuli."""

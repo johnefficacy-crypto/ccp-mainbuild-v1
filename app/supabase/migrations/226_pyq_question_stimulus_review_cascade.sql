@@ -20,6 +20,18 @@
 -- does NOT cascade (resetting all children to pending is destructive and never
 -- needed in the normal workflow), matching migration 162.
 --
+-- Link-cascade guard (checkpost PR #899 fix #2): the question<->stimulus link is
+-- INDEPENDENTLY governed (migration 223 header). A reviewer who has already set a
+-- specific association to 'rejected' or 'needs_correction' has made an explicit
+-- negative decision about that link; a later question review must NOT silently
+-- flip it back to the question's status (e.g. 'verified'). The link UPDATE is
+-- therefore scoped to links that are NOT already in an explicit negative decision
+-- (`reviewer_status not in ('rejected','needs_correction')`), so pending/verified
+-- links follow the question while explicit reject/needs_correction is preserved.
+-- cascaded_link_count reflects only the rows actually updated. The pyq_options
+-- cascade is deliberately unguarded: options are NOT independently governed — they
+-- have no per-option review decision distinct from their parent question.
+--
 -- Called by PATCH /api/admin/exam-intelligence/items/pyq_question/{id}/review.
 --
 -- Wrapped in a single DO block so the migration runner can send it as one
@@ -67,11 +79,15 @@ begin
             -- Cascade to the question<->stimulus ASSOCIATION rows only. The
             -- shared stimulus CONTENT (pyq_stimuli) is deliberately untouched:
             -- it is reviewed independently (migration 223, checkpost P1b).
+            -- An explicit negative decision on a specific link
+            -- ('rejected'/'needs_correction') is preserved — the question's
+            -- review only carries pending/verified links along (fix #2).
             update public.pyq_question_stimuli
             set reviewer_status = p_reviewer_status,
                 reviewed_by     = p_reviewed_by,
                 reviewed_at     = p_reviewed_at
-            where question_id = p_question_id;
+            where question_id = p_question_id
+              and reviewer_status not in ('rejected', 'needs_correction');
 
             get diagnostics v_link_count = row_count;
         end if;

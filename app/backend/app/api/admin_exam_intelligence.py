@@ -664,8 +664,10 @@ def list_items(
         # syllabus mentions and pyq question topic tags have exam-side joins.
         if kind == "syllabus_topic_mention":
             q = q.eq("exam_id", exam_id)
-        elif kind in {"pyq_question_topic_tag", "pyq_option"}:
-            # Both are keyed via question → paper → exam.
+        elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus"}:
+            # All keyed via question → paper → exam. pyq_question_stimulus (the
+            # question↔stimulus LINK) filters on its own question_id, exactly
+            # like the topic-tag / option children.
             paper_rows = _safe(
                 lambda: (
                     sb.table("pyq_papers")
@@ -695,7 +697,10 @@ def list_items(
             if not question_ids:
                 return []
             q = q.in_("question_id", question_ids)
-        elif kind == "pyq_question":
+        elif kind in {"pyq_question", "pyq_stimulus"}:
+            # Both hang directly off the paper (pyq_paper_id → exam). A stimulus
+            # is shared passage/table CONTENT owned by a paper, so it scopes the
+            # same way a question does.
             paper_rows = _safe(
                 lambda: (
                     sb.table("pyq_papers")
