@@ -99,15 +99,18 @@ do $$ declare failed boolean := false; begin
   raise notice 'PASS 4: verify media stimulus without alt_text rejected';
 end $$;
 
--- ── Test 5: verify media stimulus with alt_text but no content/asset rejected ─
+-- ── Test 5: verify media stimulus with alt_text + content_text but NO asset ──
+-- content_text is not rendered for media, so it is not a substitute — a linked
+-- image asset is required for a media stimulus to be verified.
 do $$ declare failed boolean := false; begin
   begin
     update public.pyq_stimuli
-       set reviewer_status = 'verified', alt_text = 'chart', document_asset_id = null, content_text = null
+       set reviewer_status = 'verified', alt_text = 'chart', document_asset_id = null,
+           content_text = 'a caption that the media renderer never shows'
      where id = '33333333-3333-3333-3333-3333333330c1'::uuid;
   exception when others then failed := true; end;
-  if not failed then raise exception 'FAIL 5: verified media stimulus with no content/asset accepted'; end if;
-  raise notice 'PASS 5: verify media stimulus without content or asset rejected';
+  if not failed then raise exception 'FAIL 5: verified media stimulus with content_text but no asset accepted'; end if;
+  raise notice 'PASS 5: verify media stimulus without a linked asset rejected (content_text not a substitute)';
 end $$;
 
 -- ── Test 6: compliant media stimulus verifies ──────────────────────────────

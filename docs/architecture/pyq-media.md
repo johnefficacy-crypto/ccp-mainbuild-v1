@@ -23,9 +23,13 @@ and explicitly deferred first-class media storage to PR-11. This is that lane.
   stored as image binaries; non-media kinds are rejected), and `status` not in
   (`failed`, `archived`). Same posture as migration 186's provenance check for
   `pyq_papers.source_document_id`.
-- **Fail-closed accessibility**: a media stimulus (`image` / `chart` / `diagram`)
-  cannot be `reviewer_status='verified'` without `alt_text` **and** real content
-  (a linked asset or `content_text`). Enforced on INSERT and UPDATE.
+- **Fail-closed accessibility + renderability**: a media stimulus (`image` /
+  `chart` / `diagram`) cannot be `reviewer_status='verified'` without `alt_text`
+  **and** a linked image asset (`document_asset_id`). `content_text` is **not** a
+  substitute — the renderer shows the asset or the alt-text fallback and never
+  renders `content_text` for media, so a content_text-only "verified" media
+  stimulus would reach attempts with its content omitted. Enforced on INSERT and
+  UPDATE.
 - **Re-review on media edit**: the 223 verified-content downgrade is extended so
   editing `alt_text` / `document_asset_id` / `asset_locator` on a verified
   stimulus forces it back to `needs_correction`.

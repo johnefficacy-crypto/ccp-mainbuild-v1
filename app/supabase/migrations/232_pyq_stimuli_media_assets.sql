@@ -69,16 +69,19 @@ begin
     end if;
   end if;
 
-  -- 2. Fail-closed accessibility: a media stimulus cannot be verified without
-  --    alt-text and real content (text or a linked asset).
+  -- 2. Fail-closed accessibility + renderability: a media stimulus cannot be
+  --    verified without alt-text AND a linked image asset. content_text is NOT
+  --    a substitute — the media renderer (QuestionStimuli) shows the asset or
+  --    the alt-text fallback for image/chart/diagram and never renders
+  --    content_text, so a content_text-only "verified" media stimulus would
+  --    reach attempts with its actual content omitted (checkpost PR #910, P2).
   if new.reviewer_status = 'verified' and v_is_media then
     if new.alt_text is null or btrim(new.alt_text) = '' then
       raise exception 'media_stimulus_requires_alt_text: % stimulus % cannot be verified without alt_text',
         new.stimulus_type, new.id;
     end if;
-    if new.document_asset_id is null
-       and (new.content_text is null or btrim(new.content_text) = '') then
-      raise exception 'media_stimulus_requires_content: % stimulus % has neither a linked asset nor content_text',
+    if new.document_asset_id is null then
+      raise exception 'media_stimulus_requires_asset: % stimulus % cannot be verified without a linked image asset (content_text is not rendered for media)',
         new.stimulus_type, new.id;
     end if;
   end if;
