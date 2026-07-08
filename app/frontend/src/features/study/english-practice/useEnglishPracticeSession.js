@@ -22,6 +22,21 @@ export default function useEnglishPracticeSession() {
     [],
   );
 
+  // EWP-SP3 server-owned launch. The browser never picks a prompt — the server
+  // verifies task ownership, reads the pinned exam context, resolves + gates
+  // candidate prompts, and creates (or idempotently re-enters) the session,
+  // returning `{ session_id, practice_route }`. The endpoint lives under
+  // `/api/study/tasks/*` (the planner-task action namespace this surface already
+  // uses for task status), NOT under BASE, but it funnels into the same
+  // writing-session runtime this hook owns. Returned as a bare promise (not via
+  // `useApiAction`) so the caller can distinguish the EXPECTED 409
+  // `no_eligible_prompt` state from a hard error without an automatic error
+  // toast firing.
+  const launchWriting = useCallback(
+    (studyTaskId) => api.post(`/api/study/tasks/${studyTaskId}/launch-writing`, {}),
+    [],
+  );
+
   const fetchEvaluation = useCallback(
     (sessionId, evaluationId) =>
       api.get(`${BASE}/sessions/${sessionId}/evaluations/${evaluationId}`),
@@ -57,5 +72,5 @@ export default function useEnglishPracticeSession() {
     [run],
   );
 
-  return { fetchSession, fetchEvaluation, submitUnit, reopenUnit, busy };
+  return { fetchSession, fetchEvaluation, launchWriting, submitUnit, reopenUnit, busy };
 }
