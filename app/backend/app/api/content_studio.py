@@ -20,10 +20,13 @@ is carried by `writing_prompt_targets`. This router is the operator write path:
 Every write goes through an atomic SECURITY DEFINER RPC (migration 215); this
 layer is validation + permission + error mapping only.
 
-ACTIVATION is intentionally absent: migration 214's activation gate deactivated
-all prompts and blocks reactivation until the applicability resolver +
-session/planner enforcement + writing_prompts_public_read replacement land
-(separate PR). There is no activate endpoint here.
+  Activation lifecycle       → writing_prompts activate/deactivate. A SEPARATE,
+                               higher-trust authority (content_studio.activate) —
+                               neither author nor review may flip is_active. The
+                               RPC (migration 224) is the SOLE eligibility
+                               authority: a blocked activation is a NORMAL
+                               {eligible:false, blockers} 200 answer; this layer
+                               never computes eligibility.
 """
 from __future__ import annotations
 
@@ -49,6 +52,7 @@ from app.api.admin_exam_intel_cms import WriteEnvelope, _flag_enabled, _safe_sel
 from app.study_os.writing_practice.deterministic import tokenize_words as _tokenize_words
 from app.core.auth import get_current_user, require_permission
 from app.core.permissions import (
+    CONTENT_STUDIO_ACTIVATE,
     CONTENT_STUDIO_AUTHOR,
     CONTENT_STUDIO_REVIEW,
     EXAM_INTELLIGENCE_MANAGE,
@@ -67,6 +71,9 @@ PERM_REVIEW = CONTENT_STUDIO_REVIEW
 #   PERM_ASSIGN_REVIEW (review) — PROMOTE it to effective active|excluded + remove
 PERM_ASSIGN = EXAM_INTELLIGENCE_MANAGE
 PERM_ASSIGN_REVIEW = EXAM_INTELLIGENCE_REVIEW
+# Activation is a SEPARATE, higher-trust authority (migration 224): neither author
+# nor review may flip is_active. Eligibility is computed SOLELY by the RPC.
+PERM_ACTIVATE = CONTENT_STUDIO_ACTIVATE
 
 _EXERCISE_TYPES = Literal[
     "sentence_construction", "sentence_correction", "vocabulary_in_context",
@@ -281,6 +288,25 @@ class WritingPromptReviewBody(BaseModel):
     expected_updated_at: str = Field(..., description="updated_at the client last read (CAS token)")
     reason: str = Field(..., min_length=8, max_length=500)
     reviewer_notes: str | None = Field(default=None, max_length=2000)
+
+
+class WritingPromptActivateBody(BaseModel):
+    """content_studio.activate authority: request activation of a verified prompt.
+
+    Eligibility is NEVER computed here — the RPC (migration 224) verifies every
+    precondition under a row lock and returns a structured
+    ``{eligible, blockers}`` verdict. This body only carries the reason + the
+    client's optimistic-lock token (so a stale-browser activation loses with 409).
+    """
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(..., min_length=8, max_length=500)
+    expected_updated_at: str = Field(..., description="updated_at the client last read (CAS token)")
+
+
+class WritingPromptDeactivateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(..., min_length=8, max_length=500)
+    expected_updated_at: str = Field(..., description="updated_at the client last read (CAS token)")
 
 
 class WritingPromptTargetProposeBody(BaseModel):
@@ -503,6 +529,60 @@ def review_writing_prompt(
         }).execute()
     except Exception as exc:  # noqa: BLE001
         raise _map_rpc_error(exc, "review_writing_prompt") from exc
+    return {"ok": True, "result": _rpc_row(result)}
+
+
+# ── Activation lifecycle (is_active) — content_studio.activate authority ────
+#
+# Activation is a SEPARATE authority from authoring/review. The RPC is the SOLE
+# eligibility authority: a blocked activation is a NORMAL 200 answer carrying
+# {eligible:false, blockers:[...]} (not an error); CAS mismatch → 409; missing
+# prompt → 404; malformed body → 422. The router NEVER computes eligibility.
+
+
+@router.post("/writing-prompts/{prompt_id}/activate")
+def activate_writing_prompt(
+    prompt_id: UUID,
+    body: WritingPromptActivateBody,
+    admin: dict = Depends(require_permission(PERM_ACTIVATE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("cms_activate_writing_prompt", {
+            "p_prompt_id": str(prompt_id),
+            # CLIENT's token — never a server-minted fresh read — so a stale
+            # activation loses with 409.
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_reason": body.reason,
+            # Runtime-readiness allowlist stays SERVER-OWNED (migration 224); the
+            # API never widens it, so this optional narrowing param is omitted.
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "activate_writing_prompt") from exc
+    return {"ok": True, "result": _rpc_row(result)}
+
+
+@router.post("/writing-prompts/{prompt_id}/deactivate")
+def deactivate_writing_prompt(
+    prompt_id: UUID,
+    body: WritingPromptDeactivateBody,
+    admin: dict = Depends(require_permission(PERM_ACTIVATE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("cms_deactivate_writing_prompt", {
+            "p_prompt_id": str(prompt_id),
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_reason": body.reason,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "deactivate_writing_prompt") from exc
     return {"ok": True, "result": _rpc_row(result)}
 
 
