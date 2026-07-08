@@ -149,6 +149,12 @@ const refPaper = (filters) => ({ endpoint: "pyq-papers", labelKey: "paper_code",
 const refQuestion = (filters) => ({ endpoint: "pyq-questions", labelKey: "question_text", secondaryKey: "question_number", filters });
 const refSection = (filters) => ({ endpoint: "exam-phase-sections", labelKey: "section_label", secondaryKey: "subject_id", filters });
 
+// exams.cadence CHECK constraint (migration 172, widened by migration 236 to
+// add 'biannual' for exams that run twice a year).
+const EXAM_CADENCES = ["annual", "biannual", "recurring", "irregular", "one_off", "unknown"];
+const EXAM_TYPES = ["recruitment", "entrance", "certification", "opportunity", "other"];
+const EXAM_MGMT_MODES = ["core", "light", "index_only", "archive"];
+
 // Enum values mirror the CHECK constraints on public.exam_topic_coverage
 // (migration 030). Keep these in sync with the migration, not invented.
 const COVERAGE_DEPTHS = ["unknown", "none", "mentioned", "light", "normal", "deep", "core"];
@@ -216,6 +222,30 @@ const ENTITY_STATUS_CONFIG = {
   "pyq-sources":             { param: "trust_status",    label: "Trust status",    options: ["pending", "verified", "rejected"] },
 };
 
+// Additional per-entity filters beyond search/status/family. Options may be
+// plain strings (value === label) or {value, label} pairs. Each param must
+// have matching query-param support on the corresponding GET list endpoint
+// in admin_exam_intel_cms.py.
+const ACTIVE_OPTIONS = [{ value: "true", label: "Active" }, { value: "false", label: "Retired" }];
+const ENTITY_EXTRA_FILTERS = {
+  exams: [
+    { param: "is_active", label: "Active", options: ACTIVE_OPTIONS },
+    { param: "exam_type", label: "Exam type", options: EXAM_TYPES },
+    { param: "management_mode", label: "Business priority", options: EXAM_MGMT_MODES },
+    { param: "cadence", label: "Cadence", options: EXAM_CADENCES },
+  ],
+  "exam-families": [
+    { param: "is_active", label: "Active", options: ACTIVE_OPTIONS },
+  ],
+  subjects: [
+    { param: "is_active", label: "Active", options: ACTIVE_OPTIONS },
+  ],
+  topics: [
+    { param: "is_active", label: "Active", options: ACTIVE_OPTIONS },
+    { param: "level", label: "Level", options: TOPIC_LEVELS },
+  ],
+};
+
 // J1: entities that support backend text-search, keyed to the param name.
 // Only these 4 entities expose a `q` param; all others ignore unknown params.
 const ENTITY_SEARCH_PARAM = {
@@ -249,7 +279,8 @@ const ENTITY_CONFIG = {
       { key: "exam_type", label: "exam_type (recruitment|entrance|certification|opportunity|other)" },
       { key: "management_mode", label: "Business priority", rawName: "management_mode", type: "enum", options: ["core", "light", "index_only", "archive"], defaultValue: "light",
         optionLabels: { core: BUSINESS_PRIORITY_LABELS.core.label, light: BUSINESS_PRIORITY_LABELS.light.label, index_only: BUSINESS_PRIORITY_LABELS.index_only.label, archive: BUSINESS_PRIORITY_LABELS.archive.label } },
-      { key: "cadence", label: "cadence", type: "enum", options: ["annual", "recurring", "irregular", "one_off", "unknown"], defaultValue: "unknown" },
+      { key: "cadence", label: "cadence", type: "enum", options: EXAM_CADENCES, defaultValue: "unknown",
+        optionLabels: { biannual: "biannual (twice a year)" } },
       { key: "description", label: "description" },
       { key: "is_active", label: IS_ACTIVE_LABEL, rawName: "is_active", type: "bool", helperText: IS_ACTIVE_HELPER },
     ],
@@ -611,6 +642,29 @@ const EDIT_EXCLUDED_FIELDS = {
   "pyq-sources": new Set(["trust_status", "source_id"]),
 };
 
+// Fields excluded from the *bulk* edit field picker on top of
+// EDIT_EXCLUDED_FIELDS above. name/cycle_name/phase_name/slug are
+// identity-ish columns — setting the same value across a whole selected
+// batch is never the intent of a bulk edit, and for the unique/compound-key
+// ones (slug, cycle_name, phase_name) it would just fail past the first row.
+// Mirrors the backend's _BULK_EDIT_CONFIG allowed-field sets exactly.
+const BULK_EDIT_EXCLUDED_FIELDS = {
+  "exam-families": new Set(["slug", "name"]),
+  exams: new Set(["name"]),
+  "exam-cycles": new Set(["exam_id", "cycle_name"]),
+  "exam-phases": new Set(["exam_id", "phase_name", "phase_slug"]),
+  subjects: new Set(["slug", "name"]),
+  topics: new Set(["slug", "name"]),
+};
+
+function bulkEditableFields(entityKey, cfg) {
+  const editExcluded = EDIT_EXCLUDED_FIELDS[entityKey] || new Set();
+  const bulkExcluded = BULK_EDIT_EXCLUDED_FIELDS[entityKey] || new Set();
+  return cfg.fields.filter(
+    (f) => !f.uiOnly && f.type !== "readonly" && !editExcluded.has(f.key) && !bulkExcluded.has(f.key),
+  );
+}
+
 // Helper copy shown under specific date fields. exam_start is the Study OS
 // timeline anchor (see StudyPlan/timeline), so flag it in both create + edit.
 const DATE_FIELD_HELP = {
@@ -848,13 +902,39 @@ export default function AdminExamIntelCms() {
   // initial-render gap and the valid-A → resolving-B scope-change gap.
   const [resolvedExamId, setResolvedExamId] = useState(null);
   const [resolvedCycleId, setResolvedCycleId] = useState(null);
+  // Additional per-entity filters (exam_type, management_mode, cadence,
+  // is_active, level, ...) keyed by query param — see ENTITY_EXTRA_FILTERS.
+  const [extraFilters, setExtraFilters] = useState({});
+  // exams-only organization filter. Fetched lazily (same list the org-ref
+  // picker already uses) rather than folded into ENTITY_EXTRA_FILTERS since
+  // it needs its own async option list instead of a static enum.
+  const [orgOptions, setOrgOptions] = useState([]);
   const searchTimerRef = useRef(null);
   const PAGE_SIZE = 50;
+
+  // Bulk select / bulk action state (row checkboxes, "select all matching
+  // filter", and the bulk edit / bulk retire panels below the table).
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [selectAllBusy, setSelectAllBusy] = useState(false);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [bulkEditField, setBulkEditField] = useState("");
+  const [bulkEditValues, setBulkEditValues] = useState({});
+  const [bulkEditReason, setBulkEditReason] = useState("");
+  const [bulkEditError, setBulkEditError] = useState(null);
+  const [bulkActionResult, setBulkActionResult] = useState(null);
+  const [bulkRetireOpen, setBulkRetireOpen] = useState(false);
+  const [bulkRetireReason, setBulkRetireReason] = useState("");
+  const [bulkRetireError, setBulkRetireError] = useState(null);
+  const { run: runBulkUpdate, busy: busyBulkUpdate } = useApiAction();
+  const { run: runBulkDeactivate, busy: busyBulkDeactivate } = useApiAction();
 
   const isDocuments = entity === "documents";
   const cfg = ENTITY_CONFIG[entity];
   const isEditable = EDITABLE_ENTITIES.has(entity);
   const isDeactivatable = DEACTIVATABLE_ENTITIES.has(entity);
+  // Same entity set the backend's /bulk-update and /bulk-deactivate accept —
+  // see _BULK_EDIT_CONFIG / _BULK_DEACTIVATABLE_TABLES in admin_exam_intel_cms.py.
+  const supportsBulkSelect = isEditable;
   // Per-entity bulk caps — source of truth is the backend. UI copy only; the
   // backend enforces. Submit is never blocked client-side.
   const bulkCap = { "pyq-questions": 2000, "pyq-options": 4000, "pyq-question-topic-tags": 2000 }[entity] || 500;
@@ -868,7 +948,7 @@ export default function AdminExamIntelCms() {
     (scopeExamId && (examScopeState !== "valid" || resolvedExamId !== scopeExamId)) ||
     (scopeExamId && scopeCycleId && (cycleScopeState !== "valid" || resolvedCycleId !== scopeCycleId));
 
-  async function load({ searchVal, filterVal, pageVal, familyVal } = {}) {
+  async function load({ searchVal, filterVal, pageVal, familyVal, extraVal } = {}) {
     const gen = ++loadGenRef.current;
     if (!isAuthorized) return;
     // The Documents panel manages its own data via the upload/list endpoints.
@@ -881,10 +961,14 @@ export default function AdminExamIntelCms() {
     setErr(null);
     // F5: clear rows immediately so stale rows are not actionable during transitions
     setItems(null);
+    // A fresh load always invalidates any in-flight row selection — the ids
+    // it referred to may no longer be on the loaded page/result set.
+    setSelectedIds(new Set());
     const effectiveSearch = searchVal !== undefined ? searchVal : search;
     const effectiveFilter = filterVal !== undefined ? filterVal : statusFilter;
     const effectivePage = pageVal !== undefined ? pageVal : page;
     const effectiveFamily = familyVal !== undefined ? familyVal : familyFilter;
+    const effectiveExtra = extraVal !== undefined ? extraVal : extraFilters;
     const noOffset = ENTITY_NO_OFFSET.has(entity);
     const offset = noOffset ? 0 : (effectivePage - 1) * PAGE_SIZE;
     try {
@@ -910,6 +994,15 @@ export default function AdminExamIntelCms() {
       // M4: exam-family filter, independent of the URL exam/cycle scope.
       if (effectiveFamily && ENTITY_FAMILY_SCOPE.has(entity)) {
         params.set("exam_family_id", effectiveFamily);
+      }
+      // Extra per-entity filters (exam_type, management_mode, cadence, is_active, level, ...).
+      for (const fc of ENTITY_EXTRA_FILTERS[entity] || []) {
+        const v = effectiveExtra[fc.param];
+        if (v !== undefined && v !== "") params.set(fc.param, v);
+      }
+      // exams-only organization filter.
+      if (entity === "exams" && effectiveExtra.conducting_organization_id) {
+        params.set("conducting_organization_id", effectiveExtra.conducting_organization_id);
       }
       const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
       if (gen !== loadGenRef.current) return;
@@ -1187,10 +1280,21 @@ export default function AdminExamIntelCms() {
     setSearch("");
     setStatusFilter("");
     setFamilyFilter("");
+    setExtraFilters({});
+    setSelectedIds(new Set());
+    setShowBulkEdit(false);
+    setBulkEditField("");
+    setBulkEditValues({});
+    setBulkEditReason("");
+    setBulkEditError(null);
+    setBulkActionResult(null);
+    setBulkRetireOpen(false);
+    setBulkRetireReason("");
+    setBulkRetireError(null);
     setPage(1);
     setTotalCount(null);
     setHasMore(false);
-    load({ searchVal: "", filterVal: "", pageVal: 1, familyVal: "" });
+    load({ searchVal: "", filterVal: "", pageVal: 1, familyVal: "", extraVal: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isAuthorized, scopeExamId, scopeCycleId]);
 
@@ -1267,6 +1371,22 @@ export default function AdminExamIntelCms() {
     return () => { cancelled = true; };
   }, [isAuthorized, entity, examFamilies.length]);
 
+  // Organization filter options for the exams entity — same list the
+  // conducting_organization_id ref picker (OrgRefSelect) already fetches.
+  useEffect(() => {
+    if (!isAuthorized || entity !== "exams" || orgOptions.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get("/api/admin/organizations?limit=200");
+        if (!cancelled) setOrgOptions(Array.isArray(r?.items) ? r.items : []);
+      } catch {
+        if (!cancelled) setOrgOptions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthorized, entity, orgOptions.length]);
+
   function handleSearchChange(e) {
     const val = e.target.value;
     setSearch(val);
@@ -1275,6 +1395,153 @@ export default function AdminExamIntelCms() {
     searchTimerRef.current = setTimeout(() => {
       load({ searchVal: val, filterVal: statusFilter, pageVal: 1 });
     }, 300);
+  }
+
+  function handleExtraFilterChange(param, value) {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const next = { ...extraFilters, [param]: value };
+    setExtraFilters(next);
+    setPage(1);
+    load({ searchVal: search, filterVal: statusFilter, pageVal: 1, familyVal: familyFilter, extraVal: next });
+  }
+
+  function toggleRowSelected(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function togglePageSelected() {
+    const pageIds = (items?.items || []).map((r) => r.id);
+    setSelectedIds((prev) => {
+      const allSelected = pageIds.length > 0 && pageIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  // Gathers every row id matching the current filters (not just the loaded
+  // page) by walking the same list endpoint with the same query params,
+  // capped at the backend's per-bulk-call limit so one click can't fan out
+  // an unbounded request.
+  async function selectAllMatchingFilter() {
+    const cap = 500;
+    setSelectAllBusy(true);
+    setBulkActionResult(null);
+    try {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      if (scopeExamId && ENTITY_EXAM_SCOPE.has(entity)) params.set("exam_id", scopeExamId);
+      if (scopeExamId && scopeCycleId && ENTITY_CYCLE_SCOPE.has(entity)) params.set("exam_cycle_id", scopeCycleId);
+      const searchParam = ENTITY_SEARCH_PARAM[entity];
+      if (search && searchParam) params.set(searchParam, search);
+      const statusCfg = ENTITY_STATUS_CONFIG[entity];
+      if (statusFilter && statusCfg) params.set(statusCfg.param, statusFilter);
+      if (familyFilter && ENTITY_FAMILY_SCOPE.has(entity)) params.set("exam_family_id", familyFilter);
+      for (const fc of ENTITY_EXTRA_FILTERS[entity] || []) {
+        const v = extraFilters[fc.param];
+        if (v !== undefined && v !== "") params.set(fc.param, v);
+      }
+      if (entity === "exams" && extraFilters.conducting_organization_id) {
+        params.set("conducting_organization_id", extraFilters.conducting_organization_id);
+      }
+      const ids = new Set();
+      let offset = 0;
+      while (ids.size < cap) {
+        params.set("offset", String(offset));
+        const r = await api.get(`/api/admin/exam-intelligence-cms/${entity}?${params}`);
+        const pageItems = r?.items || [];
+        for (const row of pageItems) {
+          if (ids.size >= cap) break;
+          ids.add(row.id);
+        }
+        if (pageItems.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      setSelectedIds(ids);
+      setStatus({ ok: true, message: `Selected ${ids.size} row(s) matching the current filter${ids.size >= cap ? ` (capped at ${cap})` : ""}.` });
+    } catch (e) {
+      setStatus({ ok: false, message: getApiErrorMessage(e) });
+    } finally {
+      setSelectAllBusy(false);
+    }
+  }
+
+  function openBulkEdit() {
+    setShowBulkEdit((s) => !s);
+    setBulkEditField("");
+    setBulkEditValues({});
+    setBulkEditReason("");
+    setBulkEditError(null);
+    setBulkActionResult(null);
+  }
+
+  async function submitBulkEdit(e) {
+    e.preventDefault();
+    if (writesBlocked) { setBulkEditError("Write blocked: scope is unresolved or invalid."); return; }
+    if (!bulkEditField) { setBulkEditError("Choose a field to set."); return; }
+    if (bulkEditReason.trim().length < 8) { setBulkEditError("Reason must be ≥8 chars."); return; }
+    const field = cfg.fields.find((f) => f.key === bulkEditField);
+    let value;
+    try {
+      value = parseValue(field, bulkEditValues[field.key]);
+    } catch (err) {
+      setBulkEditError(`Invalid ${field.key}: ${err.message}`);
+      return;
+    }
+    if (value === undefined) { setBulkEditError(`${field.key} cannot be blank for a bulk set.`); return; }
+    await runBulkUpdate({
+      action: () =>
+        api.post("/api/admin/exam-intelligence-cms/bulk-update", {
+          reason: bulkEditReason.trim(),
+          entity,
+          ids: Array.from(selectedIds),
+          patch: { [field.key]: value },
+        }),
+      onSuccess: (r) => {
+        setBulkActionResult(r);
+        setStatus({ ok: r.ok, message: `Bulk update: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}` });
+        setShowBulkEdit(false);
+        setBulkEditField("");
+        setBulkEditValues({});
+        setBulkEditReason("");
+        clearSelection();
+        load();
+      },
+      errorMessage: "Bulk update failed.",
+    });
+  }
+
+  async function confirmBulkRetire() {
+    if (writesBlocked) { setBulkRetireError("Write blocked: scope is unresolved or invalid."); return; }
+    if (bulkRetireReason.trim().length < 8) { setBulkRetireError("Retire reason must be ≥8 chars."); return; }
+    await runBulkDeactivate({
+      action: () =>
+        api.post("/api/admin/exam-intelligence-cms/bulk-deactivate", {
+          reason: bulkRetireReason.trim(),
+          entity,
+          ids: Array.from(selectedIds),
+        }),
+      onSuccess: (r) => {
+        setBulkActionResult(r);
+        setStatus({ ok: r.ok, message: `Bulk retire: ${r.ok_count}/${r.total} ok, ${r.error_count} errors. audit_id=${r.audit_id}` });
+        setBulkRetireOpen(false);
+        setBulkRetireReason("");
+        clearSelection();
+        load();
+      },
+      errorMessage: "Bulk retire failed.",
+    });
   }
 
   function handleStatusChange(e) {
@@ -1442,7 +1709,7 @@ export default function AdminExamIntelCms() {
       </div>
 
       {/* J1: search + status filter; search only for entities with documented backend support */}
-      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity] || ENTITY_FAMILY_SCOPE.has(entity)) && (
+      {!isDocuments && (ENTITY_SEARCH_PARAM[entity] || ENTITY_STATUS_CONFIG[entity] || ENTITY_FAMILY_SCOPE.has(entity) || ENTITY_EXTRA_FILTERS[entity] || entity === "exams") && (
         <div className="flex gap-2 items-end flex-wrap">
           {ENTITY_SEARCH_PARAM[entity] && (
             <label>
@@ -1490,6 +1757,40 @@ export default function AdminExamIntelCms() {
                 <option value="">All families (unscoped)</option>
                 {examFamilies.map((f) => (
                   <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(ENTITY_EXTRA_FILTERS[entity] || []).map((fc) => (
+            <label key={fc.param}>
+              <span className="block text-xs text-muted-foreground mb-1">{fc.label}</span>
+              <select
+                value={extraFilters[fc.param] ?? ""}
+                onChange={(e) => handleExtraFilterChange(fc.param, e.target.value)}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid={`cms-filter-${fc.param}`}
+              >
+                <option value="">All</option>
+                {fc.options.map((o) => {
+                  const value = typeof o === "string" ? o : o.value;
+                  const label = typeof o === "string" ? o : o.label;
+                  return <option key={value} value={value}>{label}</option>;
+                })}
+              </select>
+            </label>
+          ))}
+          {entity === "exams" && (
+            <label>
+              <span className="block text-xs text-muted-foreground mb-1">Organization</span>
+              <select
+                value={extraFilters.conducting_organization_id ?? ""}
+                onChange={(e) => handleExtraFilterChange("conducting_organization_id", e.target.value)}
+                className="px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-filter-conducting_organization_id"
+              >
+                <option value="">All organizations</option>
+                {orgOptions.map((o) => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
                 ))}
               </select>
             </label>
@@ -1666,11 +1967,127 @@ export default function AdminExamIntelCms() {
         </form>
       ) : null}
 
+      {!isDocuments && supportsBulkSelect ? (
+        <section className="rounded border border-border/60 bg-card p-3 space-y-2" data-testid="cms-bulk-toolbar">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="font-semibold" data-testid="cms-bulk-selected-count">{selectedIds.size} selected</span>
+            <button
+              type="button"
+              className="btn small"
+              onClick={selectAllMatchingFilter}
+              disabled={selectAllBusy || busy}
+              data-testid="cms-bulk-select-all-filtered"
+            >
+              {selectAllBusy ? "Selecting…" : "Select all matching filter"}
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              onClick={clearSelection}
+              disabled={selectedIds.size === 0}
+              data-testid="cms-bulk-clear-selection"
+            >
+              Clear selection
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              onClick={openBulkEdit}
+              disabled={selectedIds.size === 0 || writesBlocked}
+              data-testid="cms-bulk-edit-toggle"
+            >
+              {showBulkEdit ? "Cancel bulk edit" : "Bulk edit selected"}
+            </button>
+            {isDeactivatable ? (
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => { setBulkRetireOpen(true); setBulkRetireReason(""); setBulkRetireError(null); }}
+                disabled={selectedIds.size === 0 || writesBlocked}
+                data-testid="cms-bulk-retire-toggle"
+              >
+                Retire selected
+              </button>
+            ) : null}
+          </div>
+          {showBulkEdit ? (
+            <form onSubmit={submitBulkEdit} className="rounded border border-sky-300/60 bg-background p-3 space-y-2" data-testid="cms-bulk-edit-form">
+              <p className="text-xs text-muted-foreground">
+                Set one field to one value across all {selectedIds.size} selected {cfg.label} row(s).
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block">
+                  <span className="block text-xs text-muted-foreground mb-1">Field</span>
+                  <select
+                    value={bulkEditField}
+                    onChange={(e) => { setBulkEditField(e.target.value); setBulkEditValues({}); }}
+                    className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                    data-testid="cms-bulk-edit-field-select"
+                  >
+                    <option value="">Choose a field…</option>
+                    {bulkEditableFields(entity, cfg).map((f) => (
+                      <option key={f.key} value={f.key}>{f.label}</option>
+                    ))}
+                  </select>
+                </label>
+                {bulkEditField ? (() => {
+                  const field = cfg.fields.find((f) => f.key === bulkEditField);
+                  return (
+                    <label className="block">
+                      <span className="block text-xs text-muted-foreground mb-1">New value</span>
+                      {renderFieldControl(field, bulkEditValues, setBulkEditValues, "cms-bulk-edit-", entity)}
+                      {renderFieldAnnotation(field, bulkEditValues)}
+                    </label>
+                  );
+                })() : null}
+              </div>
+              <label className="block">
+                <span className="block text-xs text-muted-foreground mb-1">Reason (≥8 chars, recorded in audit)</span>
+                <textarea
+                  value={bulkEditReason}
+                  onChange={(e) => setBulkEditReason(e.target.value)}
+                  rows={2}
+                  className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                  data-testid="cms-bulk-edit-reason"
+                />
+              </label>
+              {bulkEditError ? (
+                <div className="text-sm text-red-700" role="alert" data-testid="cms-bulk-edit-error">{bulkEditError}</div>
+              ) : null}
+              <button type="submit" className="btn small" disabled={busyBulkUpdate} data-testid="cms-bulk-edit-submit">
+                {busyBulkUpdate ? "Applying…" : `Apply to ${selectedIds.size} selected`}
+              </button>
+            </form>
+          ) : null}
+          {bulkActionResult ? (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                {bulkActionResult.ok_count}/{bulkActionResult.total} succeeded — click to see per-row results
+              </summary>
+              <pre className="mt-2 bg-muted p-2 rounded max-h-60 overflow-auto">
+                {JSON.stringify(bulkActionResult.results, null, 2)}
+              </pre>
+            </details>
+          ) : null}
+        </section>
+      ) : null}
+
       {!isDocuments ? (
       <section className="rounded border border-border/60 bg-card p-0 overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted/50">
             <tr>
+              {supportsBulkSelect ? (
+                <th className="text-left p-2">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all rows on this page"
+                    checked={(items?.items || []).length > 0 && (items.items || []).every((r) => selectedIds.has(r.id))}
+                    onChange={togglePageSelected}
+                    data-testid="cms-select-page"
+                  />
+                </th>
+              ) : null}
               <th className="text-left p-2"><FileText className="inline h-3 w-3 mr-1" />id</th>
               {cfg.columns.map((c) => (
                 <th key={c} className="text-left p-2">{c}</th>
@@ -1680,11 +2097,22 @@ export default function AdminExamIntelCms() {
           </thead>
           <tbody>
             {!items?.items?.length ? (
-              <tr><td colSpan={cfg.columns.length + 1 + (isEditable ? 1 : 0)} className="p-3 text-muted-foreground text-center">
+              <tr><td colSpan={cfg.columns.length + 1 + (isEditable ? 1 : 0) + (supportsBulkSelect ? 1 : 0)} className="p-3 text-muted-foreground text-center">
                 {busy ? "Loading…" : "No rows."}
               </td></tr>
             ) : items.items.map((r) => (
               <tr key={r.id} className="border-t border-border/40">
+                {supportsBulkSelect ? (
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select row ${r.id}`}
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleRowSelected(r.id)}
+                      data-testid={`cms-select-row-${r.id}`}
+                    />
+                  </td>
+                ) : null}
                 <td className="p-2 font-mono">{renderCellValue(r.id)}</td>
                 {cfg.columns.map((c) => (
                   <td key={c} className="p-2">
@@ -1815,6 +2243,65 @@ export default function AdminExamIntelCms() {
                 data-testid="cms-retire"
               >
                 {busyRetire ? "Retiring…" : "Confirm retire"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {bulkRetireOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-retire-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          data-testid="cms-bulk-retire-dialog"
+        >
+          <div className="bg-background rounded-lg border border-border shadow-lg w-full max-w-md p-6 space-y-4">
+            <h2 id="bulk-retire-dialog-title" className="font-semibold text-base">
+              Retire {selectedIds.size} {cfg.label} row(s)?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Retiring sets <code>is_active=false</code> on every selected row and hides them from
+              aspirants. This action is recorded in the audit log and is reversible only by an
+              admin edit.
+            </p>
+            <label className="block">
+              <span className="block text-xs text-muted-foreground mb-1">
+                Reason for retiring (≥8 chars, recorded in audit)
+              </span>
+              <textarea
+                value={bulkRetireReason}
+                onChange={(e) => setBulkRetireReason(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full px-2 py-1.5 text-sm border border-border/60 rounded bg-background"
+                data-testid="cms-bulk-retire-reason"
+              />
+            </label>
+            {bulkRetireError ? (
+              <div className="text-sm text-red-700" role="alert" data-testid="cms-bulk-retire-error">
+                {bulkRetireError}
+              </div>
+            ) : null}
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setBulkRetireOpen(false)}
+                disabled={busyBulkDeactivate}
+                data-testid="cms-bulk-retire-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn small"
+                onClick={confirmBulkRetire}
+                disabled={busyBulkDeactivate}
+                data-testid="cms-bulk-retire-confirm"
+              >
+                {busyBulkDeactivate ? "Retiring…" : "Confirm retire"}
               </button>
             </div>
           </div>

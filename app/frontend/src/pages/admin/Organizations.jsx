@@ -167,7 +167,7 @@ function OrganizationDrawer({ org, onClose, onVerify, onSave, onHistory, busyKey
         </section>
 
         <section className="mt-5 soft-card rounded-2xl p-4">
-          <h3 className="font-semibold">Edit website</h3>
+          <h3 className="font-semibold">Edit details</h3>
           <div className="mt-3">
             <OrganizationEditPanel org={org} onSave={(payload) => onSave(org.id, payload)} busy={busyKey === `save-${org.id}`} />
           </div>

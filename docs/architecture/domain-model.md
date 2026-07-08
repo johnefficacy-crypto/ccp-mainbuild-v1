@@ -52,7 +52,7 @@ exam-governance surfaces:
 | Column | Values | Meaning |
 |---|---|---|
 | `management_mode` | `core`, `light`, `index_only`, `archive` | Operator lane for how much ongoing attention a live exam receives. |
-| `cadence` | `annual`, `recurring`, `irregular`, `one_off`, `unknown` | Expected exam cadence. |
+| `cadence` | `annual`, `biannual`, `recurring`, `irregular`, `one_off`, `unknown` | Expected exam cadence. `biannual` (migration 236) covers exams that run twice a year. |
 | `is_active` | boolean | Aspirant visibility / retirement flag. |
 
 Retirement and archive are distinct states:

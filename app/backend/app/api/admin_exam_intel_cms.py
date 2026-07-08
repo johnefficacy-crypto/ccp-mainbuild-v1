@@ -297,7 +297,7 @@ _EXAM_FIELDS = {
 }
 _EXAM_TYPES = ("recruitment", "entrance", "certification", "opportunity", "other")
 _EXAM_MGMT_MODES = ("core", "light", "index_only", "archive")
-_EXAM_CADENCES = ("annual", "recurring", "irregular", "one_off", "unknown")
+_EXAM_CADENCES = ("annual", "biannual", "recurring", "irregular", "one_off", "unknown")
 
 
 def _exam_slug(name: str, org: dict | None) -> str:
@@ -311,6 +311,10 @@ def _exam_slug(name: str, org: dict | None) -> str:
 def list_exams(
     is_active: bool | None = Query(default=None),
     exam_family_id: str | None = Query(default=None),
+    exam_type: str | None = Query(default=None),
+    management_mode: str | None = Query(default=None),
+    cadence: str | None = Query(default=None),
+    conducting_organization_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
@@ -325,6 +329,14 @@ def list_exams(
         q = q.eq("is_active", is_active)
     if exam_family_id:
         q = q.eq("exam_family_id", exam_family_id)
+    if exam_type:
+        q = q.eq("exam_type", exam_type)
+    if management_mode:
+        q = q.eq("management_mode", management_mode)
+    if cadence:
+        q = q.eq("cadence", cadence)
+    if conducting_organization_id:
+        q = q.eq("conducting_organization_id", conducting_organization_id)
     res = q.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
@@ -4323,6 +4335,196 @@ def bulk_import(
         "results": results,
     }
 
+
+# ════════════════════════════════════════════════════════════════════════
+#  Bulk update / bulk retire — apply one patch to many selected rows
+# ════════════════════════════════════════════════════════════════════════
+#
+# Mirrors the single-row PATCH/DELETE endpoints above but fans a single
+# operator-supplied patch (or retire) out over a list of ids gathered from
+# the CMS table's filter + row-select UI. Scoped to the same entities the
+# UI already treats as editable/deactivatable (EDITABLE_ENTITIES /
+# DEACTIVATABLE_ENTITIES on the frontend) — lifecycle-owned entities
+# (pyq-papers, pyq-questions, ...) stay out of scope; those go through the
+# review queue, not a bulk field-set.
+#
+# Unique/identity columns (slug, the owning exam_id on a cycle/phase) are
+# excluded from the allowed set: setting the same value across many
+# selected rows is never the intent of a bulk edit and would just fail
+# past the first row on a unique constraint.
+_MAX_BULK_IDS = 500
+
+_BULK_EDIT_CONFIG: dict[str, dict[str, Any]] = {
+    # name/slug/cycle_name/phase_name are identity-ish columns — setting the
+    # same value across a whole selected batch is never the intent of a bulk
+    # edit (and, for slug/cycle_name/phase_name, would just fail past row 1
+    # on a unique/compound-key constraint). Kept out of the allowed set the
+    # same way the frontend keeps them out of the bulk-edit field picker.
+    "exam-families": {"table": "exam_families", "allowed": _FAMILY_FIELDS - {"slug", "name"}, "enums": {}},
+    "exams": {
+        "table": "exams",
+        "allowed": _EXAM_FIELDS - {"name"},
+        "enums": {"exam_type": _EXAM_TYPES, "management_mode": _EXAM_MGMT_MODES, "cadence": _EXAM_CADENCES},
+    },
+    "exam-cycles": {
+        "table": "exam_cycles",
+        "allowed": _CYCLE_FIELDS - {"exam_id", "cycle_name"},
+        "enums": {"status": _CYCLE_STATUSES},
+    },
+    "exam-phases": {
+        "table": "exam_phases",
+        "allowed": _PHASE_FIELDS - {"exam_id", "phase_name", "phase_slug"},
+        "enums": {"status": _PHASE_STATUSES, "phase_kind": _PHASE_KINDS},
+    },
+    "subjects": {"table": "subjects", "allowed": _SUBJECT_FIELDS - {"slug", "name"}, "enums": {}},
+    "topics": {"table": "topics", "allowed": _TOPIC_FIELDS - {"slug", "name"}, "enums": {"level": _TOPIC_LEVELS}},
+    "pyq-sources": {
+        "table": "pyq_sources",
+        # trust_status is pipeline-owned — same exclusion as the single-row edit form.
+        "allowed": _PYQ_SOURCE_FIELDS - {"trust_status"},
+        "enums": {"source_type": _PYQ_SOURCE_TYPES},
+    },
+}
+
+# Only these two entities have a soft-delete (is_active=false) lifecycle.
+_BULK_DEACTIVATABLE_TABLES: dict[str, str] = {
+    "exam-families": "exam_families",
+    "exams": "exams",
+}
+
+
+class BulkUpdateBody(BaseModel):
+    reason: str = Field(..., min_length=8, max_length=500)
+    entity: str = Field(..., min_length=4, max_length=50)
+    ids: list[str] = Field(..., min_length=1, max_length=_MAX_BULK_IDS)
+    patch: dict[str, Any] = Field(..., min_length=1)
+
+
+@router.post("/bulk-update")
+def bulk_update(
+    body: BulkUpdateBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Apply one patch to many rows of the same entity, by id.
+
+    Per-id result is returned (mirrors ``bulk_import``'s per-row shape) so a
+    row that 404s or trips a constraint doesn't block the rest of the batch.
+    One aggregate audit row is written for the whole call, same convention
+    as ``bulk_import``.
+    """
+    cfg = _BULK_EDIT_CONFIG.get(body.entity)
+    if not cfg:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Entity {body.entity!r} does not support bulk update; allowed: {sorted(_BULK_EDIT_CONFIG)}",
+        )
+    patch = {k: v for k, v in body.patch.items() if k in cfg["allowed"]}
+    if not patch:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No allowed fields in patch for {body.entity!r}; allowed: {sorted(cfg['allowed'])}",
+        )
+    for col, choices in cfg["enums"].items():
+        v = patch.get(col)
+        if v is not None and v not in choices:
+            raise HTTPException(status_code=422, detail=f"{col} must be one of {choices}")
+    if body.entity == "exam-phases":
+        _validate_phase_kind(patch)
+
+    supabase = get_supabase_admin()
+    patch_with_ts = {**patch, "updated_at": _now_iso()}
+    results: list[dict[str, Any]] = []
+    ok_count = 0
+    for row_id in body.ids:
+        try:
+            updated = supabase.table(cfg["table"]).update(patch_with_ts).eq("id", row_id).execute().data or []
+        except Exception as exc:  # noqa: BLE001
+            results.append({"id": row_id, "ok": False, "error": str(exc)[:200]})
+            continue
+        if not updated:
+            results.append({"id": row_id, "ok": False, "error": "not found"})
+            continue
+        results.append({"id": row_id, "ok": True})
+        ok_count += 1
+    if body.entity == "exams" and ok_count:
+        invalidate_exam_lookup_cache()
+    error_count = len(body.ids) - ok_count
+    audit_id = _audit(
+        supabase, admin, f"exam_intel.cms.{cfg['table']}.bulk_update",
+        entity_type=cfg["table"], entity_id=None,
+        new_value={"reason": body.reason, "ids": body.ids, "patch": patch, "ok_count": ok_count, "error_count": error_count},
+    )
+    return {
+        "ok": error_count == 0,
+        "audit_id": audit_id,
+        "entity": body.entity,
+        "total": len(body.ids),
+        "ok_count": ok_count,
+        "error_count": error_count,
+        "results": results,
+    }
+
+
+class BulkDeactivateBody(BaseModel):
+    reason: str = Field(..., min_length=8, max_length=500)
+    entity: str = Field(..., min_length=4, max_length=50)
+    ids: list[str] = Field(..., min_length=1, max_length=_MAX_BULK_IDS)
+
+
+@router.post("/bulk-deactivate")
+def bulk_deactivate(
+    body: BulkDeactivateBody,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Soft-delete many rows at once (is_active=false). Same restriction as
+    the single-row DELETE endpoints: only exam-families and exams have this
+    lifecycle; child rows keep their FK."""
+    table = _BULK_DEACTIVATABLE_TABLES.get(body.entity)
+    if not table:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Entity {body.entity!r} does not support bulk retire; allowed: {sorted(_BULK_DEACTIVATABLE_TABLES)}",
+        )
+    supabase = get_supabase_admin()
+    results: list[dict[str, Any]] = []
+    ok_count = 0
+    for row_id in body.ids:
+        try:
+            updated = (
+                supabase.table(table)
+                .update({"is_active": False, "updated_at": _now_iso()})
+                .eq("id", row_id)
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:  # noqa: BLE001
+            results.append({"id": row_id, "ok": False, "error": str(exc)[:200]})
+            continue
+        if not updated:
+            results.append({"id": row_id, "ok": False, "error": "not found"})
+            continue
+        results.append({"id": row_id, "ok": True})
+        ok_count += 1
+    if body.entity == "exams" and ok_count:
+        invalidate_exam_lookup_cache()
+    error_count = len(body.ids) - ok_count
+    audit_id = _audit(
+        supabase, admin, f"exam_intel.cms.{table}.bulk_deactivate",
+        entity_type=table, entity_id=None,
+        new_value={"reason": body.reason, "ids": body.ids, "ok_count": ok_count, "error_count": error_count},
+    )
+    return {
+        "ok": error_count == 0,
+        "audit_id": audit_id,
+        "entity": body.entity,
+        "total": len(body.ids),
+        "ok_count": ok_count,
+        "error_count": error_count,
+        "results": results,
+    }
 
 
 # ─── Source registry (picker list) ───────────────────────────────────────────
