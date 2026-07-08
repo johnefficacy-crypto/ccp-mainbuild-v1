@@ -18,8 +18,11 @@ and explicitly deferred first-class media storage to PR-11. This is that lane.
 ### Governance (mirrors the 223 posture)
 
 - **Asset integrity** (`pyq_stimuli_media_guard`): a linked `document_asset_id`
-  must be a live `admin_exam_intelligence` asset (not `archived`) — same shape
-  as migration 186's provenance check for `pyq_papers.source_document_id`.
+  must be a live `admin_exam_intelligence` **image** asset — `scope =
+  admin_exam_intelligence`, `document_kind = 'image'` (image/chart/diagram are
+  stored as image binaries; non-media kinds are rejected), and `status` not in
+  (`failed`, `archived`). Same posture as migration 186's provenance check for
+  `pyq_papers.source_document_id`.
 - **Fail-closed accessibility**: a media stimulus (`image` / `chart` / `diagram`)
   cannot be `reviewer_status='verified'` without `alt_text` **and** real content
   (a linked asset or `content_text`). Enforced on INSERT and UPDATE.

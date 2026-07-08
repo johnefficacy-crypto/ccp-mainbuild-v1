@@ -41,11 +41,17 @@ as $fn$
 declare
   v_scope text;
   v_status text;
+  v_kind text;
   v_is_media boolean := new.stimulus_type in ('image', 'chart', 'diagram');
 begin
-  -- 1. A linked asset must be a live admin_exam_intelligence document.
+  -- 1. A linked asset must be a live admin_exam_intelligence IMAGE document.
+  --    image/chart/diagram media are stored as image binaries, so the asset's
+  --    document_kind must be 'image'; a non-media kind (pyq_paper, syllabus,
+  --    answer_key, text_file, other, …) is rejected. Bad statuses (failed /
+  --    archived) are rejected too — matches the provenance posture used for
+  --    pyq_papers.source_document_id (migrations 186/187).
   if new.document_asset_id is not null then
-    select scope, status into v_scope, v_status
+    select scope, status, document_kind into v_scope, v_status, v_kind
       from public.document_assets where id = new.document_asset_id for share;
     if v_scope is null then
       raise exception 'pyq_stimuli.document_asset_id % not found', new.document_asset_id;
@@ -54,8 +60,12 @@ begin
       raise exception 'pyq_stimuli.document_asset_id % has scope % (expected admin_exam_intelligence)',
         new.document_asset_id, v_scope;
     end if;
-    if v_status = 'archived' then
-      raise exception 'pyq_stimuli.document_asset_id % is archived', new.document_asset_id;
+    if v_status in ('failed', 'archived') then
+      raise exception 'pyq_stimuli.document_asset_id % has unusable status %', new.document_asset_id, v_status;
+    end if;
+    if v_kind <> 'image' then
+      raise exception 'pyq_stimuli.document_asset_id % has document_kind % (media stimuli require an image asset)',
+        new.document_asset_id, v_kind;
     end if;
   end if;
 
