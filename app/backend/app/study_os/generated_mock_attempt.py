@@ -108,7 +108,37 @@ def _load_questions(sb, question_ids: list[str]) -> dict[str, dict]:
     opts_by_q: dict[str, list[dict]] = {}
     for o in opt_rows:
         opts_by_q.setdefault(o["question_id"], []).append(o)
-    return {r["id"]: {**r, "options": opts_by_q.get(r["id"], [])} for r in q_rows}
+    # PR-5/6 render fidelity: attach the projected shared-passage/stimulus
+    # snapshot (migration 229) so a generated attempt over a projected PYQ freezes
+    # its passage into question_snapshot alongside options.
+    stim_data = safe_required(
+        lambda: sb.table("mock_question_stimuli")
+        .select("*")
+        .in_("mock_question_id", question_ids)
+        .order("display_order")
+        .execute(),
+        op="generated_mock_attempt.load_stimuli",
+        log=logger,
+        allow_empty=True,
+    )
+    # Fail closed: safe_required returns None only on read failure (empty success
+    # is []). A projected comprehension PYQ must not freeze without its passage.
+    if stim_data is None and any(r.get("pyq_question_id") for r in q_rows):
+        raise RuntimeError(
+            "generated attempt: mock_question_stimuli read failed for a projected "
+            "PYQ; refusing to freeze an attempt without its passage snapshot"
+        )
+    stim_by_q: dict[str, list[dict]] = {}
+    for s in (stim_data or []):
+        stim_by_q.setdefault(s["mock_question_id"], []).append(s)
+    return {
+        r["id"]: {
+            **r,
+            "options": opts_by_q.get(r["id"], []),
+            "stimuli": stim_by_q.get(r["id"], []),
+        }
+        for r in q_rows
+    }
 
 
 def _build_attempt_payload(

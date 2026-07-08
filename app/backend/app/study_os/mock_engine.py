@@ -153,13 +153,81 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     for o in (opt_exec.data or []):
         opts_by_q.setdefault(o["question_id"], []).append(o)
 
+    # Fail closed: if any selected question is PYQ-derived, the passage read must
+    # succeed — a transient failure must not silently freeze a comprehension PYQ
+    # as a standalone question (passage gone) into the immutable snapshot.
+    require_stimuli = any(q.get("pyq_question_id") for q in questions.values())
+    stim_by_q = _load_stimuli_for_questions(supabase, question_ids, required=require_stimuli)
+
     out = []
     for qid in question_ids:
         q = questions.get(qid)
         if not q:
             continue
-        out.append({**q, "options": opts_by_q.get(qid, [])})
+        out.append({**q, "options": opts_by_q.get(qid, []), "stimuli": stim_by_q.get(qid, [])})
     return out
+
+
+def _load_stimuli_for_questions(
+    supabase: Any, question_ids: list[str], *, required: bool = False
+) -> dict[str, list[dict]]:
+    """Load the projected shared-passage/stimulus snapshots (migration 229's
+    ``mock_question_stimuli``) for the given ``mock_question_bank`` ids.
+
+    Ordered by ``display_order`` so a question with multiple passages renders
+    them in printed order. Returns ``{mock_question_id: [stimulus, ...]}`` — empty
+    for authored questions and any projected question with no verified stimuli.
+
+    ``required``: when True (the selected set contains a PYQ-derived question),
+    a read FAILURE fails closed with LookupError rather than returning an empty
+    map — a projected comprehension PYQ must never start (and freeze) without its
+    passage. An empty *successful* read is always fine (authored / no-stimulus).
+    """
+    if not question_ids:
+        return {}
+    try:
+        res = (
+            supabase.table("mock_question_stimuli")
+            .select("*")
+            .in_("mock_question_id", question_ids)
+            .order("display_order")
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+    except Exception as exc:  # noqa: BLE001 - distinguish read failure from empty
+        if required:
+            raise LookupError(
+                "cannot load projected passage snapshots (mock_question_stimuli): "
+                f"{exc!r}; refusing to start a projected-PYQ attempt without its passage"
+            ) from exc
+        logger.warning("db_op_failed op=mock_engine.load_stimuli err=%r", exc)
+        return {}
+    by_q: dict[str, list[dict]] = {}
+    for s in rows:
+        by_q.setdefault(s["mock_question_id"], []).append(s)
+    return by_q
+
+
+def _ordered_options(q: dict) -> list[dict]:
+    """Options in projected PRINTED order.
+
+    Migration 229 stores the printed ``display_order`` separately from
+    ``option_index`` (which the projection derives from the answer-key label
+    order), so the learner-facing order must follow ``display_order``, not
+    ``option_index``. Sort by ``display_order`` ascending with NULLs last, then
+    ``option_index``, then ``id`` as a stable tiebreak. Authored rows (all
+    ``display_order`` NULL) keep their existing ``option_index`` order.
+    """
+    def _key(o: dict) -> tuple:
+        do = o.get("display_order")
+        oi = o.get("option_index")
+        return (
+            do is None,
+            do if isinstance(do, (int, float)) else 0,
+            oi if isinstance(oi, (int, float)) else 0,
+            str(o.get("id") or ""),
+        )
+    return sorted((q.get("options") or []), key=_key)
 
 
 def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:
@@ -197,13 +265,36 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         "pyq_year": q.get("pyq_year"),
         "pyq_question_id": q.get("pyq_question_id"),
         "pyq_paper_id": q.get("pyq_paper_id"),
+        # PR-5/6 render fidelity: the projection (migration 229) carries the
+        # source section and the shared passage/stimulus snapshot into the bank;
+        # freeze them here so the attempt-taking, review, and result paths can
+        # render the passage and printed option labels straight from the frozen
+        # snapshot — never re-reading the live bank. Null/empty for authored rows.
+        "section_id": q.get("section_id"),
+        "stimuli": [
+            {
+                "id": s.get("id"),
+                "pyq_stimulus_id": s.get("pyq_stimulus_id"),
+                "stimulus_type": s.get("stimulus_type"),
+                "content_text": s.get("content_text"),
+                "language": s.get("language"),
+                "display_order": s.get("display_order"),
+            }
+            for s in (q.get("stimuli") or [])
+        ],
+        # Frozen in projected printed order (display_order), so the learner sees
+        # the PYQ's original option order, not the answer-key label order.
         "options": [
             {
                 "id": o["id"],
                 "option_text": o["option_text"],
                 "option_index": o["option_index"],
+                # Printed source label (e.g. "(a)") + printed order, projected by
+                # migration 229. Null for authored options.
+                "source_label": o.get("source_label"),
+                "display_order": o.get("display_order"),
             }
-            for o in (q.get("options") or [])
+            for o in _ordered_options(q)
         ],
     }
 
@@ -636,6 +727,10 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "marks": snap.get("marks"),
             "negative_marks": snap.get("negative_marks"),
             "options": snap.get("options") or [],
+            # PR-5/6: shared passage/stimulus + source section, frozen at start,
+            # so a projected PYQ renders its passage while the learner attempts it.
+            "stimuli": snap.get("stimuli") or [],
+            "section_id": snap.get("section_id"),
             "selected_option_id": (r or {}).get("selected_option_id"),
             "is_marked_for_review": bool((r or {}).get("is_marked_for_review")),
             "is_visited": bool((r or {}).get("is_visited")),
@@ -1114,13 +1209,17 @@ def _serialise_question_for_attempt(q: dict, *, marks_per_correct: float = 1.0, 
         "question_type": q["question_type"],
         "marks": float(q.get("marks") or marks_per_correct),
         "negative_marks": float(q.get("negative_marks") or marks_per_wrong),
+        "stimuli": q.get("stimuli") or [],
+        "section_id": q.get("section_id"),
         "options": [
             {
                 "id": o["id"],
                 "option_text": o["option_text"],
                 "option_index": o["option_index"],
+                "source_label": o.get("source_label"),
+                "display_order": o.get("display_order"),
             }
-            for o in (q.get("options") or [])
+            for o in _ordered_options(q)
         ],
     }
 
@@ -1158,6 +1257,8 @@ def _build_result(
             "is_correct": is_correct,
             "marks_awarded": marks_awarded,
             "options": snap.get("options") or [],
+            "stimuli": snap.get("stimuli") or [],
+            "section_id": snap.get("section_id"),
             "explanation": snap.get("explanation"),
         })
 

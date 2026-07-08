@@ -22,6 +22,14 @@ import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { contentStudioApi, EXERCISE_TYPES, isValidReason } from "./contentStudioApi";
 import { parseRequiredWordsField, validateInt } from "./validation";
+import {
+  SubjectSelect,
+  TopicSelect,
+  MicrotopicSelect,
+  RubricSelect,
+  SourceDocumentSelect,
+} from "./selectors";
+import CorrectionNote from "./CorrectionNote";
 
 // Optional fields that CAN be cleared to null on edit (not in the backend
 // _NOT_NULL guard). required_words clears to null (not []).
@@ -214,6 +222,20 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  // Dependent-selector setter: changing a parent invalidates its children so the
+  // form can never carry a topic that does not belong to the chosen subject (or a
+  // microtopic outside the chosen topic).
+  const setDependent = (key) => (value) =>
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (key === "subject_id") { next.topic_id = ""; next.microtopic_id = ""; }
+      if (key === "topic_id") { next.microtopic_id = ""; }
+      return next;
+    });
+
+  // In edit mode the subject is fixed (not shown); topics still filter to it.
+  const activeSubjectId = isCreate ? form.subject_id : (prompt && prompt.subject_id) || "";
+
   const save = async () => {
     const { payload, errors: validationErrors } = buildPayload(form, { isCreate, original: prompt });
     const all = [...validationErrors];
@@ -274,6 +296,10 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
           managed under Exam Assignments.
         </p>
 
+        {!isCreate && prompt && prompt.reviewer_status === "needs_correction" ? (
+          <CorrectionNote promptId={prompt.id} />
+        ) : null}
+
         {conflict ? (
           <div className="badge blocker" style={{ display: "block", padding: "0.6rem", marginBottom: 12, fontSize: 12 }} role="alert">
             This prompt changed while you were editing (409). Close and re-open it to
@@ -289,17 +315,17 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
         <div style={{ display: "grid", gap: 10 }}>
           {isCreate ? (
             <label style={{ fontSize: 12 }}>
-              Subject ID (required)
-              <input className="input" value={form.subject_id} onChange={set("subject_id")} placeholder="UUID of the English subject" data-testid="prompt-form-subject" />
+              Subject (required)
+              <SubjectSelect value={form.subject_id} onChange={setDependent("subject_id")} testId="prompt-form-subject" />
             </label>
           ) : null}
           <label style={{ fontSize: 12 }}>
-            Topic ID {isCreate ? "(required)" : ""}
-            <input className="input" value={form.topic_id} onChange={set("topic_id")} placeholder="UUID" data-testid="prompt-form-topic" />
+            Topic {isCreate ? "(required)" : ""}
+            <TopicSelect subjectId={activeSubjectId} value={form.topic_id} onChange={setDependent("topic_id")} testId="prompt-form-topic" />
           </label>
           <label style={{ fontSize: 12 }}>
-            Microtopic ID (optional)
-            <input className="input" value={form.microtopic_id} onChange={set("microtopic_id")} placeholder="UUID (level=microtopic)" data-testid="prompt-form-microtopic" />
+            Microtopic (optional)
+            <MicrotopicSelect topicId={form.topic_id} value={form.microtopic_id} onChange={setDependent("microtopic_id")} testId="prompt-form-microtopic" />
           </label>
           <label style={{ fontSize: 12 }}>
             Exercise type
@@ -342,12 +368,12 @@ export default function PromptEditor({ prompt, onClose, onSaved }) {
             </label>
           </div>
           <label style={{ fontSize: 12 }}>
-            Rubric ID (optional)
-            <input className="input" value={form.rubric_id} onChange={set("rubric_id")} placeholder="UUID" data-testid="prompt-form-rubric" />
+            Rubric (optional)
+            <RubricSelect value={form.rubric_id} onChange={setDependent("rubric_id")} testId="prompt-form-rubric" />
           </label>
           <label style={{ fontSize: 12 }}>
-            Source document ID (optional)
-            <input className="input" value={form.source_document_id} onChange={set("source_document_id")} placeholder="UUID (admin_exam_intelligence document)" data-testid="prompt-form-source-document" />
+            Source document (optional)
+            <SourceDocumentSelect value={form.source_document_id} onChange={setDependent("source_document_id")} testId="prompt-form-source-document" />
           </label>
           <label style={{ fontSize: 12 }}>
             Reason (required, 8–500 chars — recorded in the audit log)

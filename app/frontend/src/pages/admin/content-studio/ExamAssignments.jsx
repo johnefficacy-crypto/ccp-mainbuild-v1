@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { contentStudioApi, isValidReason } from "./contentStudioApi";
+import { ExamFamilySelect, ExamSelect, ExamPhaseSelect } from "./selectors";
 
 const SCOPES = [
   { id: "global", label: "Global (all exams)" },
@@ -19,25 +20,39 @@ const SCOPES = [
   { id: "exam_phase_id", label: "Exam phase" },
 ];
 
-function scopeLabel(t) {
-  if (t.is_global) return "global";
-  if (t.exam_phase_id) return `phase ${t.exam_phase_id}`;
-  if (t.exam_id) return `exam ${t.exam_id}`;
-  if (t.exam_family_id) return `family ${t.exam_family_id}`;
+// Readable scope label — prefers the enriched *_name the backend resolves, and
+// falls back to the raw id only if a name could not be resolved.
+export function scopeLabel(t) {
+  if (t.is_global) return "Global (all exams)";
+  if (t.exam_phase_id) return `Phase: ${t.exam_phase_name || t.exam_phase_id}`;
+  if (t.exam_id) return `Exam: ${t.exam_name || t.exam_id}`;
+  if (t.exam_family_id) return `Family: ${t.exam_family_name || t.exam_family_id}`;
   return "unknown scope";
 }
 
 function ProposeForm({ promptId, onDone }) {
   const [scope, setScope] = useState("exam_id");
+  // Intermediate family/exam picks are UI-only filters; only the LEAF id for the
+  // chosen scope is ever sent, preserving the migration-214 exactly-one contract.
+  const [familyId, setFamilyId] = useState("");
+  const [examId, setExamId] = useState("");
   const [scopeId, setScopeId] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const { run, busy } = useApiAction();
 
+  const resetScope = (nextScope) => {
+    setScope(nextScope);
+    setFamilyId("");
+    setExamId("");
+    setScopeId("");
+  };
+
   const submit = async () => {
     if (!isValidReason(reason)) { setError("Reason must be 8–500 characters."); return; }
-    if (scope !== "global" && !scopeId.trim()) { setError("Provide the scope UUID."); return; }
+    if (scope !== "global" && !scopeId.trim()) { setError("Select the exam scope."); return; }
     setError("");
+    // EXACTLY ONE scope key on the body: global OR exactly one of the id columns.
     const body = { reason: reason.trim() };
     if (scope === "global") body.is_global = true;
     else body[scope] = scopeId.trim();
@@ -63,16 +78,48 @@ function ProposeForm({ promptId, onDone }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
         <label style={{ fontSize: 12 }}>
           Scope (exactly one)
-          <select className="input" value={scope} onChange={(e) => { setScope(e.target.value); setScopeId(""); }} data-testid="assignment-scope">
+          <select className="input" value={scope} onChange={(e) => resetScope(e.target.value)} data-testid="assignment-scope">
             {SCOPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </label>
-        {scope !== "global" ? (
+
+        {scope === "exam_family_id" ? (
           <label style={{ fontSize: 12 }}>
-            Scope UUID
-            <input className="input" value={scopeId} onChange={(e) => setScopeId(e.target.value)} data-testid="assignment-scope-id" />
+            Exam family
+            <ExamFamilySelect value={scopeId} onChange={setScopeId} testId="assignment-scope-family" />
           </label>
         ) : null}
+
+        {scope === "exam_id" ? (
+          <>
+            <label style={{ fontSize: 12 }}>
+              Exam family (filter)
+              <ExamFamilySelect value={familyId} onChange={(v) => { setFamilyId(v); setScopeId(""); }} testId="assignment-filter-family" />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Exam
+              <ExamSelect familyId={familyId} value={scopeId} onChange={setScopeId} testId="assignment-scope-exam" />
+            </label>
+          </>
+        ) : null}
+
+        {scope === "exam_phase_id" ? (
+          <>
+            <label style={{ fontSize: 12 }}>
+              Exam family (filter)
+              <ExamFamilySelect value={familyId} onChange={(v) => { setFamilyId(v); setExamId(""); setScopeId(""); }} testId="assignment-filter-family" />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Exam (filter)
+              <ExamSelect familyId={familyId} value={examId} onChange={(v) => { setExamId(v); setScopeId(""); }} testId="assignment-filter-exam" />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Phase
+              <ExamPhaseSelect examId={examId} value={scopeId} onChange={setScopeId} testId="assignment-scope-phase" />
+            </label>
+          </>
+        ) : null}
+
         <label style={{ fontSize: 12, flex: 1, minWidth: 200 }}>
           Reason (8–500 chars)
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="assignment-reason" />
@@ -239,6 +286,11 @@ export default function ExamAssignments({ perms, promptIdParam = "" }) {
           <div style={{ opacity: 0.85 }}>
             {(summary.exercise_type || "").replaceAll("_", " ")} · difficulty {summary.difficulty_level}/10 · {summary.reviewer_status}
           </div>
+          {summary.subject_name || summary.topic_name ? (
+            <div style={{ opacity: 0.7, marginTop: 2 }} data-testid="assignments-prompt-taxonomy">
+              {[summary.subject_name, summary.topic_name, summary.microtopic_name].filter(Boolean).join(" › ")}
+            </div>
+          ) : null}
           <div style={{ opacity: 0.7, marginTop: 2, maxWidth: 640, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {summary.prompt_text}
           </div>
