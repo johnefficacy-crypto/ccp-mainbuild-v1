@@ -52,19 +52,33 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
     if (!rowId || pendingLoading || pendingError) return;
     setRowNotFound(!pendingItems.some((item) => item.id === rowId));
   }, [rowId, pendingItems, pendingLoading, pendingError]);
-  const [pageText, setPageText] = useState("");
+  const [pagesByNumber, setPagesByNumber] = useState({});
 
   const mapper = useSyllabusMapper(examId);
   const topicEdit = useTopicEdit();
 
-  // Fetch page text when page changes
+  // Fetch the document's extracted per-page text once per document, then index
+  // by page_number. The old code hit a non-existent
+  // `/exam-intelligence/workspace/{examId}/documents/{id}/pages/{n}` route (404);
+  // the real endpoint is the CMS documents pages listing, which returns
+  // `{ items: [{ page_number, text_content }] }`. Proposals' `source_page` are
+  // real page numbers, so the map must be keyed by page_number, not list offset.
   useEffect(() => {
-    if (!mapper.syllabusDocumentId || !mapper.currentPage) { setPageText(""); return; }
+    if (!mapper.syllabusDocumentId) { setPagesByNumber({}); return undefined; }
+    let cancelled = false;
     api
-      .get(`/api/admin/exam-intelligence/workspace/${examId}/documents/${mapper.syllabusDocumentId}/pages/${mapper.currentPage}`)
-      .then((d) => setPageText(d?.text_content || ""))
-      .catch(() => setPageText(""));
-  }, [examId, mapper.syllabusDocumentId, mapper.currentPage]);
+      .get(`/api/admin/exam-intelligence-cms/documents/${mapper.syllabusDocumentId}/pages`)
+      .then((d) => {
+        if (cancelled) return;
+        const map = {};
+        (d?.items || []).forEach((p) => { map[p.page_number] = p.text_content || ""; });
+        setPagesByNumber(map);
+      })
+      .catch(() => { if (!cancelled) setPagesByNumber({}); });
+    return () => { cancelled = true; };
+  }, [mapper.syllabusDocumentId]);
+
+  const pageText = pagesByNumber[mapper.currentPage] || "";
 
   const currentPageProposals = mapper.proposals.filter((p) => p.source_page === mapper.currentPage);
   const selectedProposals = mapper.proposals.filter((p) => mapper.selectedKeys.has(p.client_proposal_key));

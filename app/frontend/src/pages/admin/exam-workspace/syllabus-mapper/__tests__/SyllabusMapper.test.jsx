@@ -112,8 +112,8 @@ function mockContextApi({ contextOk = true, readinessOk = true } = {}) {
         ? Promise.resolve({ exam: EXAM, cycle: null, cycles: [], phases: [] })
         : Promise.reject(new Error("context err"));
     }
-    if (url.includes("/documents/doc-1/pages/")) {
-      return Promise.resolve({ text_content: "Arithmetic fundamentals and number theory." });
+    if (url.includes("/documents/doc-1/pages")) {
+      return Promise.resolve({ items: [{ page_number: 1, text_content: "Arithmetic fundamentals and number theory." }] });
     }
     if (url.includes("/syllabus-documents") || url.includes("/documents")) {
       return Promise.resolve({ items: DOCS });

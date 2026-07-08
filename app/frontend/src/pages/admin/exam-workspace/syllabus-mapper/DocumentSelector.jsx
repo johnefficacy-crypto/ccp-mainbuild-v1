@@ -56,7 +56,7 @@ export default function DocumentSelector({ examId, value, onChange }) {
         </option>
         {docs.map((d) => (
           <option key={d.id} value={d.id}>
-            {d.title || d.document_type || d.id}
+            {d.title || d.document_type || `Untitled document (…${String(d.id).slice(-6)})`}
           </option>
         ))}
       </select>

@@ -30,7 +30,7 @@ function truncateMiddle(text, max = MAX_FILENAME) {
 }
 
 export function documentOptionLabel(doc, qCount) {
-  const name = doc.original_filename || doc.id;
+  const name = doc.original_filename || `Untitled PDF (…${String(doc.id).slice(-6)})`;
   const pages = doc.page_count ? ` (${doc.page_count}pp)` : "";
   const extracted = doc.extracted_count
     ? ` · ${doc.extracted_count} extracted`

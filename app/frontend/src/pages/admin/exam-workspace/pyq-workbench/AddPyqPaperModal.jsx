@@ -370,11 +370,14 @@ export default function AddPyqPaperModal({
                 data-testid="add-pyq-existing-source-id"
               >
                 <option value="">— create new or none —</option>
-                {(pyqSources || []).map((s) => (
-                  <option key={s.id} value={s.id} title={s.title || s.source_url || s.id}>
-                    {s.title || s.source_url || s.id}
-                  </option>
-                ))}
+                {(pyqSources || []).map((s) => {
+                  const sourceLabel = s.title || s.source_url || `Source (…${String(s.id).slice(-6)})`;
+                  return (
+                    <option key={s.id} value={s.id} title={sourceLabel}>
+                      {sourceLabel}
+                    </option>
+                  );
+                })}
               </select>
             </label>
           )}
