@@ -8,16 +8,22 @@ generated-attempt blueprint path (``start_attempt_from_blueprint``, migrations
 practice attempt unchanged, and PR-5/6 slice A already makes that path render the
 projected passage + printed option labels from the frozen snapshot.
 
-Trust posture (mirrors the projection + generator gates):
+Trust / correctness posture:
   * only ``reviewer_status in (verified, published, live)`` bank rows,
-  * only rows whose PYQ projection is ``sync_status='active'`` (stale/blocked
-    projections are excluded — never silently dropped later),
+  * only rows whose PYQ projection is ``sync_status='active'`` (checked bounded
+    to the candidate ids, not the whole table),
+  * a practice attempt is single-exam — a set is never assembled across exams
+    (topic practice REQUIRES ``exam_id``; any pool that still spans exams is
+    rejected),
+  * paper / section practice preserves the source PYQ **printed order**
+    (``pyq_questions.display_order`` → ``question_number`` → ``source_question_ref``),
   * option/stimulus fidelity is frozen at start via ``_question_snapshot`` and
     the generated loader's fail-closed passage read.
 """
 from __future__ import annotations
 
 import logging
+import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 
 from app.study_os.generated_mock_attempt import _load_questions
@@ -40,23 +46,40 @@ _MODES: dict[str, tuple[str, str]] = {
     "section": ("pyq_practice_section", "section_id"),
     "topic": ("pyq_practice_topic", "topic_id"),
 }
+# modes whose learner experience must follow the source paper's printed order.
+_SOURCE_ORDERED_MODES = frozenset({"paper", "section"})
+
+
+class PracticeInputError(ValueError):
+    """Bad practice request — mapped to HTTP 422 by the endpoint."""
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _active_projection_ids(sb) -> frozenset[str]:
-    """mock_question_bank ids whose PYQ projection is currently active.
+def _require_uuid(value: str, field: str) -> None:
+    try:
+        _uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise PracticeInputError(f"{field} must be a valid UUID") from None
 
-    Raises on read failure (fail-closed): a practice set must never be assembled
-    from a bank whose active-projection guard could not be evaluated, which would
-    let a stale/blocked projection into a learner attempt.
+
+def _active_projection_ids(sb, candidate_ids: list[str]) -> frozenset[str]:
+    """The subset of ``candidate_ids`` whose PYQ projection is currently active.
+
+    Bounded to the candidate ids (``.in_``) rather than scanning every active
+    projection in the table — this is a learner-facing per-click path. Raises on
+    read failure (fail-closed): a practice set must never be assembled from a bank
+    whose active-projection guard could not be evaluated.
     """
+    if not candidate_ids:
+        return frozenset()
     rows = safe_required(
         lambda: sb.table("pyq_mock_question_projections")
         .select("mock_question_id")
         .eq("sync_status", "active")
+        .in_("mock_question_id", candidate_ids)
         .execute(),
         op="pyq_practice.active_projections",
         log=logger,
@@ -67,17 +90,52 @@ def _active_projection_ids(sb) -> frozenset[str]:
     return frozenset(r["mock_question_id"] for r in rows)
 
 
+def _printed_order_meta(sb, pyq_question_ids: list[str]) -> dict[str, dict]:
+    """Source-order metadata per ``pyq_questions.id`` for printed-order sorting.
+
+    PR-4 did not project the question-level printed order into
+    ``mock_question_bank`` (only option/section order), so paper/section practice
+    joins back to ``pyq_questions`` for ``display_order`` / ``question_number`` /
+    ``source_question_ref``. Fail-closed on read error (paper/section practice
+    must not silently fall back to arbitrary id order)."""
+    if not pyq_question_ids:
+        return {}
+    rows = safe_required(
+        lambda: sb.table("pyq_questions")
+        .select("id,display_order,question_number,source_question_ref")
+        .in_("id", pyq_question_ids)
+        .execute(),
+        op="pyq_practice.printed_order",
+        log=logger,
+        allow_empty=True,
+    )
+    if rows is None:
+        raise RuntimeError("pyq_practice: could not read source PYQ printed order")
+    return {r["id"]: r for r in rows}
+
+
+def _num(v) -> tuple[int, float]:
+    """Sort helper: numeric-first, NULLs/non-numeric last, deterministically."""
+    if isinstance(v, bool):  # bool is an int subclass — treat as non-numeric
+        return (1, 0.0)
+    if isinstance(v, (int, float)):
+        return (0, float(v))
+    try:
+        return (0, float(v))
+    except (TypeError, ValueError):
+        return (1, 0.0)
+
+
 def select_practice_rows(
     sb, *, mode: str, exam_id: str | None, target_id: str, limit: int
 ) -> list[dict]:
     """Resolve the projected-PYQ bank rows for a practice request.
 
-    Returns bank rows (not just ids) so the caller can resolve exam phase from
-    the selection. Deterministically ordered (newest year first, then id) and
-    capped to ``limit``.
+    Returns bank rows (not just ids), ordered by the source printed order for
+    paper/section modes and newest-year-first for topic mode, capped to ``limit``.
     """
     if mode not in _MODES:
-        raise ValueError(f"unknown practice mode: {mode!r}")
+        raise PracticeInputError(f"unknown practice mode: {mode!r}")
     _, filter_col = _MODES[mode]
     now_iso = _now_iso()
     q = (
@@ -99,25 +157,41 @@ def select_practice_rows(
     if res is None:
         raise RuntimeError("pyq_practice: could not read the practice question pool")
 
-    active = _active_projection_ids(sb)
-    pool = [
+    candidates = [
         r for r in res
         if r.get("pyq_question_id")
-        and r["id"] in active
         and (not r.get("valid_until") or str(r["valid_until"]) > now_iso)
     ]
-    # deterministic: newest PYQ year first, then id, so the same request is stable.
-    pool.sort(key=lambda r: (-(r.get("pyq_year") or 0), str(r.get("id"))))
+    if not candidates:
+        return []
+
+    active = _active_projection_ids(sb, [r["id"] for r in candidates])
+    pool = [r for r in candidates if r["id"] in active]
+    if not pool:
+        return []
+
+    if mode in _SOURCE_ORDERED_MODES:
+        meta = _printed_order_meta(sb, [r["pyq_question_id"] for r in pool if r.get("pyq_question_id")])
+
+        def _key(r: dict) -> tuple:
+            m = meta.get(r.get("pyq_question_id"), {})
+            do = m.get("display_order")
+            qn = m.get("question_number")
+            sr = m.get("source_question_ref")
+            return (
+                do is None, _num(do),
+                qn is None, _num(qn),
+                str(sr) if sr is not None else "",
+                str(r.get("id")),
+            )
+        pool.sort(key=_key)
+    else:  # topic: newest PYQ year first, then id
+        pool.sort(key=lambda r: (-(r.get("pyq_year") or 0), str(r.get("id"))))
     return pool[:limit]
 
 
 def _resolve_exam_phase(sb, mode: str, target_id: str, rows: list[dict]) -> str | None:
-    """Best-effort exam-phase for the blueprint (nullable on the attempt path).
-
-    * section mode → the section's own ``exam_phase_id``.
-    * paper/topic  → the single distinct phase among the selected rows' sections,
-      else NULL (topic practice legitimately spans phases).
-    """
+    """Best-effort exam-phase for the blueprint (nullable on the attempt path)."""
     if mode == "section":
         res = safe_required(
             lambda: sb.table("exam_phase_sections").select("exam_phase_id").eq("id", target_id).limit(1).execute(),
@@ -230,14 +304,23 @@ def start_pyq_practice(
     """Assemble and atomically start a PYQ practice attempt.
 
     Returns ``{outcome:'ready', attempt_id, blueprint_id, question_count,
-    expires_at, source}`` on success, or ``{outcome:'empty_pool', question_count:0}``
-    when no eligible projected PYQ matches (the endpoint maps this to 409 — zero
-    writes). Raises RuntimeError if the atomic RPC write fails (rolled back).
+    expires_at, source, exam_id}`` on success, or ``{outcome:'empty_pool'}`` when
+    no eligible projected PYQ matches (endpoint → 409, zero writes). Raises
+    ``PracticeInputError`` (→ 422) for bad input, or RuntimeError if the atomic
+    RPC write fails (rolled back).
     """
     if mode not in _MODES:
-        raise ValueError(f"unknown practice mode: {mode!r}")
+        raise PracticeInputError(f"unknown practice mode: {mode!r}")
     if not target_id:
-        raise ValueError("target_id is required")
+        raise PracticeInputError("target_id is required")
+    _require_uuid(target_id, "target_id")
+    if exam_id is not None:
+        _require_uuid(exam_id, "exam_id")
+    # topic ids are shared across exams — a topic practice set is only well-defined
+    # inside one exam, so exam_id is mandatory for topic mode.
+    if mode == "topic" and not exam_id:
+        raise PracticeInputError("exam_id is required for topic practice")
+
     source, _ = _MODES[mode]
     limit = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
 
@@ -245,8 +328,16 @@ def start_pyq_practice(
     if not rows:
         return {"outcome": "empty_pool", "question_count": 0}
 
+    # Single-exam invariant: never assemble an attempt spanning exams (would
+    # contaminate attempt/analytics/mastery metadata under one recorded exam_id).
+    pool_exams = {r.get("exam_id") for r in rows if r.get("exam_id")}
+    if len(pool_exams) > 1:
+        raise PracticeInputError(
+            "practice selection spans multiple exams; pass exam_id to disambiguate"
+        )
+    resolved_exam_id = exam_id or (next(iter(pool_exams)) if pool_exams else None)
+
     ids = [r["id"] for r in rows]
-    resolved_exam_id = exam_id or next((r.get("exam_id") for r in rows if r.get("exam_id")), None)
     exam_phase_id = _resolve_exam_phase(sb, mode, target_id, rows)
 
     # _load_questions fails closed if the projected passage read fails.
@@ -300,4 +391,5 @@ def start_pyq_practice(
         "question_count": len(ordered_ids),
         "expires_at": expires_at,
         "source": source,
+        "exam_id": resolved_exam_id,
     }
