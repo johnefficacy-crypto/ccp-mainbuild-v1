@@ -17,7 +17,10 @@ pass claims and runs at most one job.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import time
 from typing import Any
 
 from app.study_os.writing_practice import evidence_deriver as ev
@@ -36,6 +39,154 @@ _RUBRIC_EXERCISES = frozenset({
     "paragraph_writing", "summary_writing", "precis_practice",
     "essay_practice", "letter_practice",
 })
+
+
+def _semantic_shadow_input_hash(claim: dict[str, Any]) -> str:
+    """Hash the semantic evaluator input envelope without persisting raw text."""
+    envelope = {
+        "answer_text": claim.get("answer_text"),
+        "exercise_type": claim.get("exercise_type"),
+        "prompt_text": claim.get("prompt_text"),
+        "source_text": claim.get("source_text"),
+        "active_prior_issues": claim.get("active_prior_issues") or [],
+        "resolved_prior_lineages": claim.get("resolved_prior_lineages") or [],
+    }
+    payload = json.dumps(envelope, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _semantic_shadow_result_summary(
+    result: lang.LanguageResult | None,
+) -> tuple[dict[str, Any], int | None]:
+    """Return telemetry-safe semantic summary without issue snippets/raw spans."""
+    if result is None:
+        return {}, None
+
+    issue_count = len(result.issues)
+    return {
+        "evaluator_version": result.evaluator_version,
+        "source_comparison": result.source_comparison,
+        "needs_human_review": result.needs_human_review,
+        "issue_count": issue_count,
+    }, issue_count
+
+
+def _record_semantic_shadow_run(
+    sb: Any,
+    *,
+    claim: dict[str, Any],
+    deterministic_result: lang.LanguageResult,
+    deterministic_issues: list[dict[str, Any]],
+    adapter_version: str,
+    status: str,
+    latency_ms: int | None = None,
+    semantic_result: lang.LanguageResult | None = None,
+    error_code: str | None = None,
+    error_message: str | None = None,
+) -> None:
+    """Best-effort SHADOW telemetry. Never affects lifecycle/mastery completion."""
+    if not claim.get("evaluation_id") or not claim.get("unit_version_id"):
+        logger.warning(
+            "semantic shadow telemetry skipped for job %s: missing evaluation/version id",
+            claim.get("job_id"),
+        )
+        return
+
+    result_json, semantic_issue_count = _semantic_shadow_result_summary(semantic_result)
+
+    try:
+        sb.rpc("ewp_record_language_evaluator_run", {
+            "p_evaluation_id": claim["evaluation_id"],
+            "p_unit_version_id": claim["unit_version_id"],
+            "p_evaluation_revision": claim.get("evaluation_revision") or 1,
+            "p_input_hash": _semantic_shadow_input_hash(claim),
+            "p_deterministic_evaluator_version": deterministic_result.evaluator_version,
+            "p_deterministic_source_comparison": deterministic_result.source_comparison,
+            "p_deterministic_needs_human_review": deterministic_result.needs_human_review,
+            "p_deterministic_issue_count": len(deterministic_issues),
+            "p_adapter_version": adapter_version,
+            "p_status": status,
+            "p_provider": None,
+            "p_provider_model": None,
+            "p_prompt_version": None,
+            "p_semantic_source_comparison": (
+                semantic_result.source_comparison if semantic_result is not None else None
+            ),
+            "p_semantic_confidence": None,
+            "p_semantic_needs_human_review": (
+                semantic_result.needs_human_review if semantic_result is not None else None
+            ),
+            "p_semantic_issue_count": semantic_issue_count,
+            "p_result_json": result_json,
+            "p_error_code": error_code,
+            "p_error_message": error_message,
+            "p_latency_ms": latency_ms,
+            "p_input_tokens": None,
+            "p_output_tokens": None,
+            "p_total_tokens": None,
+            "p_estimated_cost_usd": None,
+            "p_metadata": {
+                "job_id": str(claim.get("job_id")),
+                "exercise_type": claim.get("exercise_type"),
+            },
+        }).execute()
+    except Exception:  # noqa: BLE001 - telemetry must not affect primary lifecycle
+        logger.exception(
+            "semantic shadow telemetry write failed for job %s",
+            claim.get("job_id"),
+        )
+
+
+def _run_semantic_shadow_probe(
+    sb: Any,
+    *,
+    claim: dict[str, Any],
+    deterministic_result: lang.LanguageResult,
+    deterministic_issues: list[dict[str, Any]],
+) -> None:
+    """Run semantic SHADOW and record telemetry without returning authority."""
+    shadow_evaluator = lang.get_semantic_shadow_evaluator()
+    if shadow_evaluator is None:
+        return
+
+    started = time.monotonic()
+    adapter_version = shadow_evaluator.__class__.__name__
+
+    try:
+        shadow_result = shadow_evaluator.evaluate(
+            claim["answer_text"],
+            exercise_type=claim["exercise_type"],
+            prompt_text=claim.get("prompt_text"),
+            source_text=claim.get("source_text"),
+            active_prior_issues=claim.get("active_prior_issues") or [],
+            resolved_prior_lineages=claim.get("resolved_prior_lineages") or [],
+        )
+        latency_ms = int((time.monotonic() - started) * 1000)
+        adapter_version = shadow_result.evaluator_version or adapter_version
+        _record_semantic_shadow_run(
+            sb,
+            claim=claim,
+            deterministic_result=deterministic_result,
+            deterministic_issues=deterministic_issues,
+            adapter_version=adapter_version,
+            status="succeeded",
+            latency_ms=latency_ms,
+            semantic_result=shadow_result,
+        )
+    except Exception as exc:  # noqa: BLE001 - shadow must not affect primary lifecycle
+        latency_ms = int((time.monotonic() - started) * 1000)
+        logger.exception("semantic shadow probe failed for job %s", claim.get("job_id"))
+        _record_semantic_shadow_run(
+            sb,
+            claim=claim,
+            deterministic_result=deterministic_result,
+            deterministic_issues=deterministic_issues,
+            adapter_version=adapter_version,
+            status="provider_error",
+            latency_ms=latency_ms,
+            error_code=exc.__class__.__name__,
+            error_message=str(exc)[:500],
+        )
 
 
 def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
@@ -88,6 +239,13 @@ def run_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
             resolved_prior_lineages=claim.get("resolved_prior_lineages") or [],
         )
         issues = result.to_issue_dicts()
+
+        _run_semantic_shadow_probe(
+            sb,
+            claim=claim,
+            deterministic_result=result,
+            deterministic_issues=issues,
+        )
 
         dimension_scores: dict | None = None
         # EWP-SP1: a deterministic source-comparison verdict (source_unchanged /

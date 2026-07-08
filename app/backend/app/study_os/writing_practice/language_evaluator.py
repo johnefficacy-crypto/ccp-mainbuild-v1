@@ -434,6 +434,19 @@ def _build_llm_evaluator() -> LanguageEvaluator:
     return LlmLanguageEvaluator()
 
 
+def get_semantic_shadow_evaluator() -> LanguageEvaluator | None:
+    """Return the shadow-only semantic evaluator when FF_WRITING_LLM_EVAL=shadow.
+
+    This is deliberately separate from get_language_evaluator(): the primary
+    evaluator remains deterministic because the worker persists its result
+    through ewp_complete_language_evaluation. Shadow output must be measured
+    separately and must not become authoritative lifecycle/mastery input.
+    """
+    if get_writing_llm_eval_flag() != "shadow":
+        return None
+    return _build_llm_evaluator()
+
+
 def get_language_evaluator() -> LanguageEvaluator:
     """Return the active language evaluator.
 

@@ -305,3 +305,26 @@ def test_non_off_flag_still_uses_mock_no_stub(monkeypatch):
     # and never touch the stub in this slice.
     monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
     assert isinstance(get_language_evaluator(), le.MockLanguageEvaluator)
+
+def test_shadow_semantic_probe_is_separate_from_primary_evaluator(monkeypatch):
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "shadow")
+
+    # Primary evaluator must stay deterministic because the worker persists this
+    # result through ewp_complete_language_evaluation.
+    primary = get_language_evaluator()
+    assert isinstance(primary, le.MockLanguageEvaluator)
+
+    # SP1a adds a separate shadow-only semantic probe. Its output must be
+    # measured/recorded separately, never returned as the primary evaluator.
+    shadow = le.get_semantic_shadow_evaluator()
+    assert isinstance(shadow, le.LlmLanguageEvaluator)
+
+def test_semantic_shadow_evaluator_none_when_off(monkeypatch):
+    monkeypatch.delenv("FF_WRITING_LLM_EVAL", raising=False)
+    assert le.get_semantic_shadow_evaluator() is None
+
+
+def test_semantic_shadow_evaluator_not_enabled_for_live(monkeypatch):
+    monkeypatch.setenv("FF_WRITING_LLM_EVAL", "live")
+    assert le.get_semantic_shadow_evaluator() is None
+    assert isinstance(get_language_evaluator(), le.MockLanguageEvaluator)
