@@ -24,6 +24,7 @@ from app.exam_intelligence.trap_drill import (
     drill_streak,
     log_drill_attempts,
 )
+from app.study_os.trap_drill_shadow import record_trap_drill_shadow
 
 logger = logging.getLogger("career_copilot.api.exam_intelligence")
 
@@ -543,6 +544,16 @@ def post_trap_drill_attempts(
         attempts=[a.model_dump() for a in body.attempts],
         drill_seed=body.drill_seed,
     )
+    # PR-8 (shadow only, gated behind FF_TRAP_DRILL_MASTERY_SHADOW): observe the
+    # would-be mastery/revision for this drill session. Best-effort — never breaks
+    # the drill-logging response, never writes live mastery.
+    if result.get("inserted"):
+        try:
+            record_trap_drill_shadow(
+                sb, user_id=user_id, exam_id=exam_row["id"], drill_seed=body.drill_seed
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("trap_drill shadow record failed: %s", exc)
     return {"exam_id": exam_row["id"], **result}
 
 
