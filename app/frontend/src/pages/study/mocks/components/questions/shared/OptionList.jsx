@@ -1,7 +1,18 @@
 import React from "react";
 import MathRenderer from "./MathRenderer";
 
+// Projected printed order: display_order asc (NULLs last). Array#sort is stable,
+// so equal/absent display_order preserves the incoming (option_index) order.
+function byDisplayOrder(a, b) {
+  const ad = a?.display_order, bd = b?.display_order;
+  if (ad == null && bd == null) return 0;
+  if (ad == null) return 1;
+  if (bd == null) return -1;
+  return ad - bd;
+}
+
 export default function OptionList({ options = [], selected = [], onSelect, multiple = false, disabled = false }) {
+  const ordered = [...options].sort(byDisplayOrder);
   const onKey = (e, idx, id) => {
     const parent = e.currentTarget.parentElement;
     if (e.key === "ArrowDown" || e.key === "ArrowRight") parent?.children[idx + 1]?.focus();
@@ -13,13 +24,13 @@ export default function OptionList({ options = [], selected = [], onSelect, mult
     if (/^[1-6]$/.test(e.key)) {
       const target = Number(e.key) - 1;
       parent?.children[target]?.focus();
-      if (options[target]) onSelect(options[target].id);
+      if (ordered[target]) onSelect(ordered[target].id);
     }
   };
 
   return (
     <div>
-      {options.map((o, i) => {
+      {ordered.map((o, i) => {
         const active = selected.includes(o.id);
         // Prefer the projected printed label (e.g. "(a)") so a PYQ shows its
         // original option labels; fall back to the numeric index / a-d letter.

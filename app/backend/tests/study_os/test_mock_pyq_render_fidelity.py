@@ -111,6 +111,85 @@ def test_snapshot_is_frozen_against_live_bank_edits():
     assert q["stimuli"][0]["content_text"] == "Read the following passage and answer."
 
 
+def test_options_frozen_in_display_order_not_option_index():
+    """Printed-order fidelity: when the projected display_order disagrees with
+    option_index, the frozen (and served) option order follows display_order."""
+    template, questions = _make_template("pyq-order-1")
+    q0 = questions[0]
+    q0["pyq_question_id"] = "pyqq-ord"
+    # option_index ascending 1..4 but display_order REVERSED, labels match printed order
+    for i, o in enumerate(q0["options"]):
+        o["option_index"] = i + 1
+        o["display_order"] = 4 - i          # -> [4, 3, 2, 1]
+        o["source_label"] = f"({chr(ord('d') - i)})"  # -> (d),(c),(b),(a)
+    db = {
+        "mock_templates": [template],
+        "mock_question_bank": questions,
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_question_stimuli": [],
+        "pyq_mock_question_projections": [
+            {"mock_question_id": q0["id"], "sync_status": "active"}
+        ],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+        "mock_tests": [],
+    }
+    sb = SBStub(db)
+    started = svc.start_attempt(sb, "user-1", "pyq-order-1")
+    q = _attempt_question(sb, started["attempt_id"], q0["id"])
+    # served in display_order 1..4 → labels (a),(b),(c),(d), option_index 4,3,2,1
+    assert [o["source_label"] for o in q["options"]] == ["(a)", "(b)", "(c)", "(d)"]
+    assert [o["display_order"] for o in q["options"]] == [1, 2, 3, 4]
+    assert [o["option_index"] for o in q["options"]] == [4, 3, 2, 1]
+
+
+class _StimuliReadFails(SBStub):
+    """SBStub whose mock_question_stimuli read raises, to exercise fail-closed."""
+
+    def table(self, name):
+        q = super().table(name)
+        if name == "mock_question_stimuli":
+            def _boom(*_a, **_k):
+                raise RuntimeError("mock_question_stimuli read boom")
+            q.execute = _boom  # type: ignore[assignment]
+        return q
+
+
+def test_projected_pyq_attempt_fails_closed_when_stimuli_read_fails():
+    """A projected PYQ must NOT start (and freeze stimuli:[]) if the passage read
+    fails — the fixed-template path must fail closed like the generated path."""
+    sb_db, _template, _pyq_qid = _seeded_pyq_db()
+    sb = _StimuliReadFails(sb_db.db)
+    try:
+        svc.start_attempt(sb, "user-1", "pyq-render-1")
+        raise AssertionError("expected start_attempt to fail closed on stimuli read failure")
+    except LookupError:
+        pass
+    # nothing should have been persisted
+    assert sb.db["mock_attempts"] == []
+    assert sb.db["mock_attempt_responses"] == []
+
+
+def test_authored_only_template_tolerates_empty_stimuli():
+    """An authored-only template (no PYQ questions) must start normally even
+    though its stimuli read returns nothing."""
+    template, questions = _make_template("authored-only-1")  # no pyq_question_id
+    db = {
+        "mock_templates": [template],
+        "mock_question_bank": questions,
+        "mock_question_options": [o for q in questions for o in q["options"]],
+        "mock_question_stimuli": [],
+        "mock_attempts": [],
+        "mock_attempt_responses": [],
+        "mock_tests": [],
+    }
+    sb = SBStub(db)
+    started = svc.start_attempt(sb, "user-1", "authored-only-1")
+    assert started["attempt_id"]
+    state = svc.get_attempt(sb, "user-1", started["attempt_id"])
+    assert all(q["stimuli"] == [] for q in state["questions"])
+
+
 def test_result_and_review_surface_stimuli_and_labels():
     sb, _template, pyq_qid = _seeded_pyq_db()
     started = svc.start_attempt(sb, "user-1", "pyq-render-1")

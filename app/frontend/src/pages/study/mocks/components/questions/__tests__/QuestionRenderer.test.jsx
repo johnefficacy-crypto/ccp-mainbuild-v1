@@ -29,3 +29,17 @@ test("prefers projected option source_label over the letter", ()=>{
   expect(screen.getByRole("button",{name:/\(a\)/})).toBeTruthy();
   expect(screen.getByRole("button",{name:/\(b\)/})).toBeTruthy();
 });
+
+test("renders options in display_order, not array/option_index order", ()=>{
+  // supplied out of printed order: (b) first in the array but display_order says (a) first
+  const pyq = { ...q, options:[
+    { id:"o2", option_index:2, display_order:2, source_label:"(b)", option_text:"Beta" },
+    { id:"o1", option_index:1, display_order:1, source_label:"(a)", option_text:"Alpha" },
+  ] };
+  render(<QuestionRenderer question={pyq} mode="attempt" value={{}} onChange={jest.fn()} />);
+  const labels = screen.getAllByRole("button").map((b)=>b.textContent);
+  const aIdx = labels.findIndex((t)=>/\(a\)/.test(t));
+  const bIdx = labels.findIndex((t)=>/\(b\)/.test(t));
+  expect(aIdx).toBeGreaterThanOrEqual(0);
+  expect(aIdx).toBeLessThan(bIdx); // (a) rendered before (b)
+});

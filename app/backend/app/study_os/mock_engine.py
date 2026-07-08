@@ -153,7 +153,11 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     for o in (opt_exec.data or []):
         opts_by_q.setdefault(o["question_id"], []).append(o)
 
-    stim_by_q = _load_stimuli_for_questions(supabase, question_ids)
+    # Fail closed: if any selected question is PYQ-derived, the passage read must
+    # succeed — a transient failure must not silently freeze a comprehension PYQ
+    # as a standalone question (passage gone) into the immutable snapshot.
+    require_stimuli = any(q.get("pyq_question_id") for q in questions.values())
+    stim_by_q = _load_stimuli_for_questions(supabase, question_ids, required=require_stimuli)
 
     out = []
     for qid in question_ids:
@@ -164,28 +168,66 @@ def _load_questions_for_template(supabase: Any, template: dict) -> list[dict]:
     return out
 
 
-def _load_stimuli_for_questions(supabase: Any, question_ids: list[str]) -> dict[str, list[dict]]:
+def _load_stimuli_for_questions(
+    supabase: Any, question_ids: list[str], *, required: bool = False
+) -> dict[str, list[dict]]:
     """Load the projected shared-passage/stimulus snapshots (migration 229's
     ``mock_question_stimuli``) for the given ``mock_question_bank`` ids.
 
     Ordered by ``display_order`` so a question with multiple passages renders
     them in printed order. Returns ``{mock_question_id: [stimulus, ...]}`` — empty
     for authored questions and any projected question with no verified stimuli.
+
+    ``required``: when True (the selected set contains a PYQ-derived question),
+    a read FAILURE fails closed with LookupError rather than returning an empty
+    map — a projected comprehension PYQ must never start (and freeze) without its
+    passage. An empty *successful* read is always fine (authored / no-stimulus).
     """
     if not question_ids:
         return {}
-    rows = _safe(
-        lambda: supabase.table("mock_question_stimuli")
-        .select("*")
-        .in_("mock_question_id", question_ids)
-        .order("display_order")
-        .execute(),
-        default=None,
-    )
+    try:
+        res = (
+            supabase.table("mock_question_stimuli")
+            .select("*")
+            .in_("mock_question_id", question_ids)
+            .order("display_order")
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+    except Exception as exc:  # noqa: BLE001 - distinguish read failure from empty
+        if required:
+            raise LookupError(
+                "cannot load projected passage snapshots (mock_question_stimuli): "
+                f"{exc!r}; refusing to start a projected-PYQ attempt without its passage"
+            ) from exc
+        logger.warning("db_op_failed op=mock_engine.load_stimuli err=%r", exc)
+        return {}
     by_q: dict[str, list[dict]] = {}
-    for s in (getattr(rows, "data", None) or []):
+    for s in rows:
         by_q.setdefault(s["mock_question_id"], []).append(s)
     return by_q
+
+
+def _ordered_options(q: dict) -> list[dict]:
+    """Options in projected PRINTED order.
+
+    Migration 229 stores the printed ``display_order`` separately from
+    ``option_index`` (which the projection derives from the answer-key label
+    order), so the learner-facing order must follow ``display_order``, not
+    ``option_index``. Sort by ``display_order`` ascending with NULLs last, then
+    ``option_index``, then ``id`` as a stable tiebreak. Authored rows (all
+    ``display_order`` NULL) keep their existing ``option_index`` order.
+    """
+    def _key(o: dict) -> tuple:
+        do = o.get("display_order")
+        oi = o.get("option_index")
+        return (
+            do is None,
+            do if isinstance(do, (int, float)) else 0,
+            oi if isinstance(oi, (int, float)) else 0,
+            str(o.get("id") or ""),
+        )
+    return sorted((q.get("options") or []), key=_key)
 
 
 def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:
@@ -240,6 +282,8 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
             }
             for s in (q.get("stimuli") or [])
         ],
+        # Frozen in projected printed order (display_order), so the learner sees
+        # the PYQ's original option order, not the answer-key label order.
         "options": [
             {
                 "id": o["id"],
@@ -250,7 +294,7 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
                 "source_label": o.get("source_label"),
                 "display_order": o.get("display_order"),
             }
-            for o in (q.get("options") or [])
+            for o in _ordered_options(q)
         ],
     }
 
@@ -1175,7 +1219,7 @@ def _serialise_question_for_attempt(q: dict, *, marks_per_correct: float = 1.0, 
                 "source_label": o.get("source_label"),
                 "display_order": o.get("display_order"),
             }
-            for o in (q.get("options") or [])
+            for o in _ordered_options(q)
         ],
     }
 
