@@ -56,8 +56,14 @@ export default function SyllabusMapperPanel({ status = null, rowId = null }) {
   // document_assets id backing the selected syllabus_documents row. The
   // extracted-page store (`document_pages`) is keyed by the asset id
   // (`source_document_id`), NOT the syllabus_documents id — see
-  // syllabus_mapper.py:119-122 and BUG-EI-3. Fall back to the syllabus id for
-  // legacy rows where `source_document_id` was never populated.
+  // syllabus_mapper.py:119-122 and BUG-EI-3.
+  //
+  // The `|| id` legacy fallback below is best-effort only: the CMS pages route
+  // validates the path id against `document_assets` (`_load_admin_asset`), so a
+  // legacy row with `source_document_id = null` (migration-198 ambiguous
+  // backfills) 404s here and the pane stays blank — even though the proposer
+  // still reads those rows' pages by syllabus id. Serving page text for those
+  // rows needs a backend change to the pages endpoint; deferred (BUG-EI-4).
   const [pageAssetId, setPageAssetId] = useState(null);
 
   const mapper = useSyllabusMapper(examId);
