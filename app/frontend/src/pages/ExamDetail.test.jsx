@@ -43,3 +43,33 @@ test("parent link copy is 'All exams', not 'All recruitments'", async () => {
   expect(link).toBeTruthy();
   expect(screen.queryByText("All recruitments")).toBeNull();
 });
+
+function renderExamDetailNoCycle(slug = "upsc-cse") {
+  const { api } = require("../lib/api");
+  // Exam resolves, but no recruitment maps to it — the exam-only render path.
+  api.get.mockImplementation((url) => {
+    if (url.includes("/api/exams/")) return Promise.resolve({ exam: { id: "e1", name: "UPSC CSE", slug } });
+    if (url === "/api/recruitments") return Promise.resolve({ items: [] });
+    return Promise.resolve({});
+  });
+
+  return render(
+    <MemoryRouter initialEntries={[`/app/eligibility/exams/${slug}`]}>
+      <Routes>
+        <Route path="/app/eligibility/exams/:slug" element={<ExamDetail />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+test("renders PYQ Explorer (exam intelligence) even when no recruitment cycle exists", async () => {
+  renderExamDetailNoCycle();
+  // Exam-level intelligence stays visible.
+  expect(await screen.findByTestId("pyq-explorer")).toBeTruthy();
+  // Neutral no-active-cycle panels render instead of recruitment data.
+  expect(screen.getByTestId("about-no-cycle")).toBeTruthy();
+  // Recruitment-only actions are hidden.
+  expect(screen.queryByTestId("detail-save-btn")).toBeNull();
+  expect(screen.queryByTestId("detail-track-btn")).toBeNull();
+  expect(screen.queryByTestId("detail-official-link")).toBeNull();
+});
