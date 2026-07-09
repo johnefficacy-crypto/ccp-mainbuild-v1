@@ -190,6 +190,42 @@ def select_practice_rows(
     return pool[:limit]
 
 
+def practiceable_topic_ids(sb, *, exam_id: str | None, topic_ids: list[str]) -> set[str]:
+    """Topic ids (subset of ``topic_ids``) with >=1 verified, actively-projected,
+    unexpired PYQ in ``mock_question_bank`` for ``exam_id`` — i.e. topic practice
+    would NOT 409 empty-pool. Batched availability probe for the subjects
+    readiness surface; mirrors ``select_practice_rows`` selection exactly.
+    Fail-closed: any read error yields no availability, never a false positive."""
+    ids = [str(t) for t in dict.fromkeys(topic_ids) if t]
+    if not ids or not exam_id:
+        return set()
+    now_iso = _now_iso()
+    res = safe_required(
+        lambda: sb.table("mock_question_bank")
+        .select("id,topic_id,valid_until")
+        .in_("reviewer_status", list(_SELECTABLE))
+        .in_("topic_id", ids)
+        .eq("exam_id", exam_id)
+        .not_.is_("pyq_question_id", "null")
+        .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+        .execute(),
+        op="pyq_practice.practiceable_topics",
+        log=logger,
+        allow_empty=True,
+    )
+    if not res:
+        return set()
+    candidates = [r for r in res if (not r.get("valid_until") or str(r["valid_until"]) > now_iso)]
+    if not candidates:
+        return set()
+    try:
+        active = _active_projection_ids(sb, [r["id"] for r in candidates])
+    except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
+        logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
+        return set()
+    return {str(r["topic_id"]) for r in candidates if r["id"] in active and r.get("topic_id")}
+
+
 def _resolve_exam_phase(sb, mode: str, target_id: str, rows: list[dict]) -> str | None:
     """Best-effort exam-phase for the blueprint (nullable on the attempt path)."""
     if mode == "section":
