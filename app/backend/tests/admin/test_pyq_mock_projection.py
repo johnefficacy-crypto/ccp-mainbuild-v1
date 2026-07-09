@@ -207,6 +207,47 @@ class TestComputeContentHash:
         h2 = compute_content_hash(_question(question_text="what is x?"), opts)
         assert h1 == h2
 
+    # ── Regression: NUL-separator crash (migration 239) ────────────────────────
+
+    def test_hashed_content_uses_no_null_byte_separator(self):
+        """The joined hash input must not contain a NUL byte.
+
+        The SQL mirror (project_pyq_question_to_mock_bank) hashes the identical
+        field set with the same separators; PostgreSQL text cannot hold chr(0),
+        so a NUL separator here would mean the RPC crashes the whole PYQ->mock
+        sync. Guard the Python side so the two mirrors can never drift back to a
+        null separator. Feed values through every list branch (options, primary
+        + extra verified tags, stimuli) so all separators are exercised.
+        """
+        import app.admin.pyq_mock_projection as mod
+
+        captured: dict[str, str] = {}
+        real_sha256 = mod.hashlib.sha256
+
+        def _spy(data: bytes):
+            captured["raw"] = data.decode("utf-8")
+            return real_sha256(data)
+
+        q = _question(question_text="What is X?", explanation_text="Because Y.")
+        opts = _options()
+        tags = _primary_tag() + [
+            {"topic_id": "t-extra", "tag_role": "secondary", "reviewer_status": "verified"},
+        ]
+        stimuli = [{
+            "stimulus_id": "s1", "stimulus_type": "passage",
+            "content_text": "A shared passage.", "language": "en",
+            "link_display_order": 0, "stimulus_display_order": 0,
+            "link_reviewer_status": "verified",
+            "stimulus_reviewer_status": "verified",
+        }]
+        with patch.object(mod.hashlib, "sha256", _spy):
+            compute_content_hash(q, opts, paper=_paper(), all_verified_tags=tags, stimuli=stimuli)
+
+        assert "raw" in captured, "sha256 was not called"
+        assert "\x00" not in captured["raw"], "NUL byte in hash input would crash the SQL projection RPC"
+        # top-level Group Separator is used; NUL is not.
+        assert "\x1d" in captured["raw"]
+
     # ── Regression: every projected field changes the hash ─────────────────────
 
     def test_changes_when_explanation_changes(self):
