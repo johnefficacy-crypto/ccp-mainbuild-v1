@@ -207,7 +207,7 @@ class TestComputeContentHash:
         h2 = compute_content_hash(_question(question_text="what is x?"), opts)
         assert h1 == h2
 
-    # ── Regression: NUL-separator crash (migration 238) ────────────────────────
+    # ── Regression: NUL-separator crash (migration 239) ────────────────────────
 
     def test_hashed_content_uses_no_null_byte_separator(self):
         """The joined hash input must not contain a NUL byte.

@@ -176,7 +176,7 @@ def compute_content_hash(
     """Stable SHA-256 hash of ALL fields projected to mock_question_bank.
 
     Mirrors the hash computed inside ``project_pyq_question_to_mock_bank``
-    (latest authoritative body: migration 238, which swapped the NUL top-level
+    (latest authoritative body: migration 239, which swapped the NUL top-level
     separator to GS/chr(29); base formula from migration 183 Section D + 229
     PR-4 additions).  Keep in sync when the RPC hash formula changes.
 
