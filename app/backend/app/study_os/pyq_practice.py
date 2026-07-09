@@ -190,19 +190,40 @@ def select_practice_rows(
     return pool[:limit]
 
 
-def practiceable_topic_ids(sb, *, exam_id: str | None, topic_ids: list[str]) -> set[str]:
-    """Topic ids (subset of ``topic_ids``) with >=1 verified, actively-projected,
-    unexpired PYQ in ``mock_question_bank`` for ``exam_id`` — i.e. topic practice
-    would NOT 409 empty-pool. Batched availability probe for the subjects
-    readiness surface; mirrors ``select_practice_rows`` selection exactly.
-    Fail-closed: any read error yields no availability, never a false positive."""
+def _snapshot_ready(q: dict | None) -> bool:
+    """A bank row is launch-ready iff its frozen MCQ snapshot carries options AND
+    a ``correct_option_id`` — the SAME predicate ``_build_practice_payload`` aborts
+    the whole attempt on. Reusing the real ``_question_snapshot`` builder keeps the
+    availability probe from drifting away from the freeze contract."""
+    if q is None:
+        return False
+    snap = _question_snapshot(q, marks_per_correct=_MARKS_PER_CORRECT, marks_per_wrong=_MARKS_PER_WRONG)
+    return bool(snap.get("options") and snap.get("correct_option_id"))
+
+
+def practiceable_topic_ids(
+    sb, *, exam_id: str | None, topic_ids: list[str], limit: int = _DEFAULT_LIMIT
+) -> set[str]:
+    """Topic ids (subset of ``topic_ids``) whose topic-mode practice would actually
+    START — not just avoid the empty-pool 409, but survive the freeze.
+
+    Batched availability probe for the subjects readiness surface. It mirrors the
+    topic-mode selection EXACTLY (verified/published/live + actively-projected +
+    unexpired ``mock_question_bank`` rows for ``exam_id``, newest PYQ year first,
+    capped at ``limit``) AND then applies the same per-row freeze readiness
+    (`_snapshot_ready`) that ``_build_practice_payload`` enforces. A topic is
+    returned only when EVERY selected row is snapshot-ready — because the launch
+    aborts (500) if any selected row lacks options/``correct_option_id``, a topic
+    with a malformed row must not advertise a ``topic_pyq`` mode (it would fail the
+    click instead of showing the calm "no verified practice set yet" state).
+    Fail-closed: any read/load error yields no availability, never a false positive."""
     ids = [str(t) for t in dict.fromkeys(topic_ids) if t]
     if not ids or not exam_id:
         return set()
     now_iso = _now_iso()
     res = safe_required(
         lambda: sb.table("mock_question_bank")
-        .select("id,topic_id,valid_until")
+        .select("id,topic_id,valid_until,pyq_year")
         .in_("reviewer_status", list(_SELECTABLE))
         .in_("topic_id", ids)
         .eq("exam_id", exam_id)
@@ -223,7 +244,36 @@ def practiceable_topic_ids(sb, *, exam_id: str | None, topic_ids: list[str]) -> 
     except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
         logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
         return set()
-    return {str(r["topic_id"]) for r in candidates if r["id"] in active and r.get("topic_id")}
+    pool = [r for r in candidates if r["id"] in active and r.get("topic_id")]
+    if not pool:
+        return set()
+
+    # Group by topic, then pick the SAME rows the launch would freeze: newest PYQ
+    # year first, then id, capped at `limit` (topic-mode ordering in
+    # select_practice_rows). Readiness is judged over exactly that selected slice.
+    limit = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
+    by_topic: dict[str, list[dict]] = {}
+    for r in pool:
+        by_topic.setdefault(str(r["topic_id"]), []).append(r)
+    selected_by_topic: dict[str, list[str]] = {}
+    selected_ids: list[str] = []
+    for tid, rows in by_topic.items():
+        rows.sort(key=lambda r: (-(r.get("pyq_year") or 0), str(r.get("id"))))
+        chosen = [str(r["id"]) for r in rows[:limit]]
+        selected_by_topic[tid] = chosen
+        selected_ids.extend(chosen)
+
+    try:
+        questions_by_id = _load_questions(sb, selected_ids)
+    except Exception:  # noqa: BLE001 — fail-closed: a load/passage failure => no availability
+        logger.warning("practiceable_topic_ids: question load failed", exc_info=True)
+        return set()
+    ready_ids = {qid for qid in selected_ids if _snapshot_ready(questions_by_id.get(qid))}
+    return {
+        tid
+        for tid, chosen in selected_by_topic.items()
+        if chosen and all(qid in ready_ids for qid in chosen)
+    }
 
 
 def _resolve_exam_phase(sb, mode: str, target_id: str, rows: list[dict]) -> str | None:

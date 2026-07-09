@@ -24,6 +24,7 @@ from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
 from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
+from app.study_os.subjects import locked_topic_ids_for_subject
 from app.study_os.writing_practice.subject_launch import resolve_launch_prompt_id
 
 logger = logging.getLogger("career_copilot.api.subject_practice")
@@ -57,7 +58,7 @@ def start_subject_practice(
         return {"kind": "english_writing", "route": f"/app/study/practice/english/{session_id}"}
     if body.mode == "topic_pyq":
         attempt_id = _launch_topic_pyq(
-            supabase, user_id=user_id,
+            supabase, user_id=user_id, subject_id=str(subject_id),
             topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
         )
         return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
@@ -77,11 +78,17 @@ def _launch_english(supabase, *, user_id, subject_id, topic_id, exam_id):
     return session.get("id")
 
 
-def _launch_topic_pyq(supabase, *, user_id, topic_id, exam_id):
+def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id):
     if not topic_id:
         raise HTTPException(status_code=422, detail="topic_id is required for topic practice")
     if not exam_id:
         raise HTTPException(status_code=409, detail="no target exam resolved for topic practice")
+    # Server-owned subject scope: the topic must belong to the PATH subject in the
+    # caller's resolved exam. Never trust the browser-supplied topic_id to match
+    # the path subject_id — reject a cross-subject topic (e.g. a Quant topic posted
+    # to the English subject's launch path).
+    if topic_id not in locked_topic_ids_for_subject(supabase, exam_id, subject_id):
+        raise HTTPException(status_code=422, detail="topic_id does not belong to this subject")
     try:
         result = start_pyq_practice(
             supabase, user_id=user_id, mode="topic", target_id=topic_id,

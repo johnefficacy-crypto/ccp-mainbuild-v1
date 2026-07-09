@@ -117,6 +117,27 @@ def _previous_review_mastery_by_subject(
     return {}
 
 
+def locked_topic_ids_for_subject(
+    supabase: Any, exam_id: str | None, subject_id: str | None
+) -> set[str]:
+    """Topic ids under ``subject_id`` in the exam's LOCKED coverage.
+
+    The server-side scope gate for subject topic-practice launches: a ``topic_pyq``
+    launch on ``/api/study/subjects/{subject_id}/practice/start`` must target a
+    topic that actually belongs to the PATH subject in the caller's resolved exam.
+    The browser-supplied ``topic_id`` is never trusted to match the path subject —
+    a caller could otherwise POST a Quant topic id to the English subject's launch
+    path. Mismatches are rejected upstream (422)."""
+    if not exam_id or not subject_id:
+        return set()
+    coverage = _load_locked_coverage(supabase, exam_id) or []
+    return {
+        str(c.get("topic_id"))
+        for c in coverage
+        if c.get("topic_id") and str(c.get("subject_id")) == str(subject_id)
+    }
+
+
 def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
     """Return per-subject progress for the user's target exam.
 

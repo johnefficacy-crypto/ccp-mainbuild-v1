@@ -121,14 +121,51 @@ def _seed_with_practice():
         {"prompt_id": "wp-1", "is_global": True, "exam_family_id": None,
          "exam_id": None, "exam_phase_id": None, "applicability_status": "active"},
     ]
+    # A launch-ready MCQ: options + a correct_option_id, so the freeze-readiness
+    # probe (matching start_pyq_practice) surfaces it.
     db["mock_question_bank"] = [
         {"id": "mqb-1", "topic_id": "t1", "exam_id": "exam-1",
-         "reviewer_status": "verified", "pyq_question_id": "pyq-1", "valid_until": None},
+         "reviewer_status": "verified", "pyq_question_id": "pyq-1", "valid_until": None,
+         "question_text": "2 + 2 = ?", "question_type": "mcq",
+         "correct_option_id": "o1", "pyq_year": 2023},
+    ]
+    db["mock_question_options"] = [
+        {"id": "o1", "question_id": "mqb-1", "option_text": "4", "option_index": 0},
+        {"id": "o2", "question_id": "mqb-1", "option_text": "5", "option_index": 1},
     ]
     db["pyq_mock_question_projections"] = [
         {"id": "proj-1", "mock_question_id": "mqb-1", "sync_status": "active"},
     ]
     return db
+
+
+def _seed_practice_unready_pyq():
+    """`_seed_with_practice` + a verified, actively-projected row on t2 that has
+    NO options and no correct answer — the launch would abort on it, so it must
+    NOT surface as practiceable."""
+    db = _seed_with_practice()
+    db["mock_question_bank"].append(
+        {"id": "mqb-2", "topic_id": "t2", "exam_id": "exam-1",
+         "reviewer_status": "verified", "pyq_question_id": "pyq-2", "valid_until": None,
+         "question_text": "?", "question_type": "mcq",
+         "correct_option_id": None, "pyq_year": 2022},
+    )
+    db["pyq_mock_question_projections"].append(
+        {"id": "proj-2", "mock_question_id": "mqb-2", "sync_status": "active"},
+    )
+    return db
+
+
+def test_practiceable_topic_excludes_unready_snapshot():
+    # A verified + actively-projected + unexpired row that is NOT snapshot-ready
+    # (no options / no correct_option_id) must not be advertised as practiceable —
+    # otherwise the launch button would 500 instead of showing the calm empty copy.
+    from app.study_os.pyq_practice import practiceable_topic_ids
+
+    sb = SBStub(_seed_practice_unready_pyq())
+    ready = practiceable_topic_ids(sb, exam_id="exam-1", topic_ids=["t1", "t2"])
+    assert "t1" in ready       # options + correct_option_id present
+    assert "t2" not in ready   # projected + verified but snapshot not launch-ready
 
 
 def test_subjects_each_item_carries_practice_object():
