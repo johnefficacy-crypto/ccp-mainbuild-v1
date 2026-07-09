@@ -16,12 +16,19 @@ write path.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from app.study_os.writing_practice import coverage_checker
 from app.study_os.writing_practice import session_state as st
 
 logger = logging.getLogger("career_copilot.study_os.writing_finalizer")
+
+
+def _now_iso() -> str:
+    """UTC completion stamp. Mirrors the SQL rollup's now() (migration 238);
+    the SQL RPC is the runtime write path, this reference is unit-tested only."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _latest_evaluation(supabase: Any, unit_version_id: str) -> dict | None:
@@ -145,7 +152,7 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
     """Recompute and persist session status + evaluation_outcome. Idempotent."""
     session = (
         supabase.table("writing_sessions")
-        .select("id,status,evaluation_outcome,prompt_id")
+        .select("id,status,evaluation_outcome,completed_at,prompt_id")
         .eq("id", session_id)
         .single()
         .execute()
@@ -166,11 +173,23 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
         session.get("evaluation_outcome"), st.aggregate_session_outcome(views)
     )
 
+    # Completion-timestamp invariant, mirrored byte-for-byte by the SQL rollup
+    # (migration 238): completed_at IS NOT NULL <=> status == 'completed'. Into
+    # completed -> stamp once (monotonic: keep an existing stamp on a re-roll);
+    # out of completed (e.g. a learning-mode reopen) -> clear back to None.
+    cur_completed_at = session.get("completed_at")
+    if new_status == st.SESSION_COMPLETED:
+        new_completed_at = cur_completed_at or _now_iso()
+    else:
+        new_completed_at = None
+
     patch: dict[str, Any] = {}
     if new_status != session.get("status"):
         patch["status"] = new_status
     if new_outcome != session.get("evaluation_outcome"):
         patch["evaluation_outcome"] = new_outcome
+    if new_completed_at != cur_completed_at:
+        patch["completed_at"] = new_completed_at
     if patch:
         supabase.table("writing_sessions").update(patch).eq("id", session_id).execute()
 
