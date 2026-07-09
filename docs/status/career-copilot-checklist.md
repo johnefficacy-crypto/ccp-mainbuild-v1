@@ -415,6 +415,15 @@ Release-safe order to make the sentence-practice slice launchable BEFORE paragra
 
 **Do NOT build until the sentence slice passes live E2E:** Paragraph Builder (EWP-6), descriptive exam mode (EWP-7), essay/précis/letter practice, live writing-mastery promotion, broad prompt activation.
 
+#### EWP `sentence_construction` live runtime validation (2026-07-09)
+
+| Item | Status | Notes |
+|---|---|---|
+| `sentence_construction` live runtime | **VALIDATED (live)** | Full live path exercised end-to-end: Content Studio seed → review verified → active global target → prompt activation → learner session creation → UI load → answer submit → evaluation → terminal `ready`/`completed`. Evidence: `prompt_id=82961b19-8d4e-41a6-b677-b94433a4389c`, `session_id=cb012028-6899-465b-ab2a-463f7b385ed1`; `session.status=completed`, `session.evaluation_outcome=fully_evaluated`, `unit.status=ready` (version 1), `overall/deterministic/language_status=completed`, `language_result.issues=[]`, `feedback_released=true`. The `unit.status=ready` + `session.status=completed` pairing is valid under the current rollup — `ewp_private.ewp_apply_session_rollup` (migration 207) treats every unit in `{ready,completed}` as terminal and marks the session `completed` once coverage passes and no unresolved `must_fix` issue remains (207:213, 253–259). |
+| Scope of this validation | — | `sentence_construction` (non-source-dependent) only. Paragraph / source-dependent EWP types remain gated (semantic-evaluator gate + EWP-6/§16). |
+| **Follow-up A — session completion timestamps never written** | CLEANUP PENDING | `writing_sessions.submitted_at` / `completed_at` (schema migration 205:206–207) stay `null` even after `session.status='completed'`. Root cause: the authoritative rollup `ewp_private.ewp_apply_session_rollup` writes only `status` + `evaluation_outcome` (migration 207:283–287); no RPC on the submit / reopen / finalize / complete-evaluation paths (all route through that rollup) ever sets these timestamps. Not blocking runtime validation, but any report/analytics depending on completion time will read `null`. Fix would be a NEW migration `CREATE OR REPLACE`-ing the rollup to set `completed_at` on the transition into `completed` (and clear it when a reopen moves the session out of `completed`), keeping the reference finalizer `session_finalizer.py` in parity. |
+| **Follow-up B — Study Home planner-launch not validated** | VALIDATION PENDING | This session created its writing session directly, NOT via a planner task, so the Study Home launch control was not exercised live. Next: locate/generate a `study_tasks` row with `launch_type='english_writing_session'`, confirm `/app/study` renders the "Start writing practice" control (`features/study/english-practice/LaunchWritingPracticeButton.jsx` on `pages/study/StudyHome.jsx`) and that it round-trips through `POST /api/study/tasks/{id}/launch-writing` (`app/backend/app/api/writing_practice.py`) into the practice shell. Blocked on the same activation-gate operator proof as EWP-SP3/SP3-UI (migration 218 applied live + prompt reactivation). |
+
 ### Operator validation still required (EWP)
 
 | Item | Gate |
