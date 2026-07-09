@@ -1,4 +1,4 @@
--- 238_pyq_projection_null_separator_fix.sql
+-- 239_pyq_projection_null_separator_fix.sql
 -- PYQ -> mock_question_bank projection: fix the NUL-byte content-hash separator.
 --
 -- BUG: the content hash in project_pyq_question_to_mock_bank (migrations 183/184,
@@ -27,10 +27,12 @@
 -- `create or replace`s only the projection RPC. The invalidation trigger fn
 -- fn_invalidate_pyq_projection() does not use chr(0) and is left untouched.
 --
--- SLOT NOTE (VERIFY DB): the live numeric slot (238) is provisional. Before
--- marking this MERGED, VERIFY DB that 238 is the applied slot (SELECT MAX(version)
--- FROM schema_migrations) or renumber to the next free slot — do not assume from
--- the filename alone.
+-- SLOT NOTE: originally authored as 238, but slot 238 collided with
+-- 238_ewp_rollup_completed_at.sql (which applied first and holds version 238 in
+-- schema_migrations). Renumbered 238 -> 239 to resolve the duplicate-key
+-- (SQLSTATE 23505) on apply. VERIFY DB that 239 is the next free slot for the
+-- target before rollout (SELECT MAX(version) FROM schema_migrations) — do not
+-- assume from the filename alone.
 
 -- ── Projection RPC (create or replace, 229 body verbatim; chr(0) → chr(29)) ────
 
