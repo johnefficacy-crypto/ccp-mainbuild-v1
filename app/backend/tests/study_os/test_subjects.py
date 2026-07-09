@@ -106,3 +106,95 @@ def test_subjects_orders_weak_first_then_alpha():
         return
     # When weak_count is equal, fall back to alphabetical order.
     assert items[0]["subject"] < items[1]["subject"]
+
+
+def _seed_with_practice():
+    """Base seed + a launchable English writing prompt (subject s2) and an
+    actively-projected topic PYQ (topic t1, subject s1)."""
+    db = _seed()
+    db["writing_prompts"] = [
+        {"id": "wp-1", "subject_id": "s2", "topic_id": None,
+         "exercise_type": "sentence_construction", "reviewer_status": "verified",
+         "is_active": True},
+    ]
+    db["writing_prompt_targets"] = [
+        {"prompt_id": "wp-1", "is_global": True, "exam_family_id": None,
+         "exam_id": None, "exam_phase_id": None, "applicability_status": "active"},
+    ]
+    # A launch-ready MCQ: options + a correct_option_id, so the freeze-readiness
+    # probe (matching start_pyq_practice) surfaces it.
+    db["mock_question_bank"] = [
+        {"id": "mqb-1", "topic_id": "t1", "exam_id": "exam-1",
+         "reviewer_status": "verified", "pyq_question_id": "pyq-1", "valid_until": None,
+         "question_text": "2 + 2 = ?", "question_type": "mcq",
+         "correct_option_id": "o1", "pyq_year": 2023},
+    ]
+    db["mock_question_options"] = [
+        {"id": "o1", "question_id": "mqb-1", "option_text": "4", "option_index": 0},
+        {"id": "o2", "question_id": "mqb-1", "option_text": "5", "option_index": 1},
+    ]
+    db["pyq_mock_question_projections"] = [
+        {"id": "proj-1", "mock_question_id": "mqb-1", "sync_status": "active"},
+    ]
+    return db
+
+
+def _seed_practice_unready_pyq():
+    """`_seed_with_practice` + a verified, actively-projected row on t2 that has
+    NO options and no correct answer — the launch would abort on it, so it must
+    NOT surface as practiceable."""
+    db = _seed_with_practice()
+    db["mock_question_bank"].append(
+        {"id": "mqb-2", "topic_id": "t2", "exam_id": "exam-1",
+         "reviewer_status": "verified", "pyq_question_id": "pyq-2", "valid_until": None,
+         "question_text": "?", "question_type": "mcq",
+         "correct_option_id": None, "pyq_year": 2022},
+    )
+    db["pyq_mock_question_projections"].append(
+        {"id": "proj-2", "mock_question_id": "mqb-2", "sync_status": "active"},
+    )
+    return db
+
+
+def test_practiceable_topic_excludes_unready_snapshot():
+    # A verified + actively-projected + unexpired row that is NOT snapshot-ready
+    # (no options / no correct_option_id) must not be advertised as practiceable —
+    # otherwise the launch button would 500 instead of showing the calm empty copy.
+    from app.study_os.pyq_practice import practiceable_topic_ids
+
+    sb = SBStub(_seed_practice_unready_pyq())
+    ready = practiceable_topic_ids(sb, exam_id="exam-1", topic_ids=["t1", "t2"])
+    assert "t1" in ready       # options + correct_option_id present
+    assert "t2" not in ready   # projected + verified but snapshot not launch-ready
+
+
+def test_subjects_each_item_carries_practice_object():
+    # With no launchable content, every card still exposes a practice object
+    # that is closed (no server_launch modes).
+    sb = SBStub(_seed())
+    items = subjects_service.list_subjects(sb, "u-1")
+    assert items
+    for it in items:
+        assert it["practice"] == {"available": False, "modes": []}
+
+
+def test_subjects_server_launch_modes_appear_when_content_launchable():
+    sb = SBStub(_seed_with_practice())
+    items = subjects_service.list_subjects(sb, "u-1")
+    english = next(it for it in items if it["subject"] == "English")
+    quant = next(it for it in items if it["subject"] == "Quant")
+
+    # English (s2) has a launchable writing prompt → english_writing (server) + error_lab (client).
+    assert english["practice"]["available"] is True
+    eng_modes = {m["type"]: m for m in english["practice"]["modes"]}
+    assert eng_modes["english_writing"]["route_type"] == "server_launch"
+    assert eng_modes["english_writing"]["launch_mode"] == "english_writing"
+    assert eng_modes["error_lab"]["route_type"] == "client_route"
+    assert eng_modes["error_lab"]["route"] == "/app/study/error-lab"
+
+    # Quant (s1) has an actively-projected PYQ on t1 → topic_pyq (server) + mock_section (client).
+    assert quant["practice"]["available"] is True
+    q_modes = {m["type"]: m for m in quant["practice"]["modes"]}
+    assert q_modes["topic_pyq"]["route_type"] == "server_launch"
+    assert q_modes["topic_pyq"]["target_topic_id"] == "t1"
+    assert q_modes["mock_section"]["route"] == "/app/study/mocks"

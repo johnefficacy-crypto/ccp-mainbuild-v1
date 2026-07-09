@@ -312,6 +312,13 @@ def _create_learning_session(
     ).data
 
 
+# Public alias for the single session-birth path. Reused by the subject-practice
+# orchestrator (app.api.subject_practice) so subject launches funnel through the
+# same verified/active + DEFAULT-DENY applicability gate. Do not add a second
+# session-creation path.
+create_learning_session = _create_learning_session
+
+
 @router.post("/sessions")
 def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)) -> dict:
     user_id = user.get("id")
