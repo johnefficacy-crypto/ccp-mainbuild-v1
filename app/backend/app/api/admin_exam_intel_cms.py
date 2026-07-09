@@ -315,29 +315,32 @@ def list_exams(
     management_mode: str | None = Query(default=None),
     cadence: str | None = Query(default=None),
     conducting_organization_id: str | None = Query(default=None),
+    q: str | None = Query(default=None, description="Case-insensitive substring match on exam name."),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: dict = Depends(require_permission(PERM_CMS)),
     __: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
-    q = supabase.table("exams").select(
+    query = supabase.table("exams").select(
         "id, exam_family_id, slug, name, exam_type, default_difficulty_level, description, is_active, metadata, conducting_organization_id, management_mode, cadence, created_at, updated_at",
         count="exact",
     ).order("created_at", desc=True)
     if is_active is not None:
-        q = q.eq("is_active", is_active)
+        query = query.eq("is_active", is_active)
     if exam_family_id:
-        q = q.eq("exam_family_id", exam_family_id)
+        query = query.eq("exam_family_id", exam_family_id)
     if exam_type:
-        q = q.eq("exam_type", exam_type)
+        query = query.eq("exam_type", exam_type)
     if management_mode:
-        q = q.eq("management_mode", management_mode)
+        query = query.eq("management_mode", management_mode)
     if cadence:
-        q = q.eq("cadence", cadence)
+        query = query.eq("cadence", cadence)
     if conducting_organization_id:
-        q = q.eq("conducting_organization_id", conducting_organization_id)
-    res = q.range(offset, offset + limit - 1).execute()
+        query = query.eq("conducting_organization_id", conducting_organization_id)
+    if q and q.strip():
+        query = query.ilike("name", f"%{q.strip()}%")
+    res = query.range(offset, offset + limit - 1).execute()
     return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
 
 

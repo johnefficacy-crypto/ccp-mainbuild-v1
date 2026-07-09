@@ -253,6 +253,8 @@ const ENTITY_SEARCH_PARAM = {
   "exam-phase-sections":     "q",
   "subjects":                "q",
   "topics":                  "q",
+  // exams: case-insensitive name substring (backend list_exams `q` → ilike on name).
+  "exams":                   "q",
 };
 
 // J1: entities whose list endpoint has no `offset` support.
