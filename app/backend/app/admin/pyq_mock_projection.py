@@ -176,21 +176,32 @@ def compute_content_hash(
     """Stable SHA-256 hash of ALL fields projected to mock_question_bank.
 
     Mirrors the hash computed inside ``project_pyq_question_to_mock_bank``
-    (migration 183, Section D).  Keep in sync when the RPC hash formula changes.
+    (latest authoritative body: migration 238, which swapped the NUL top-level
+    separator to GS/chr(29); base formula from migration 183 Section D + 229
+    PR-4 additions).  Keep in sync when the RPC hash formula changes.
 
-    Formula (NUL = \\x00, FS = \\x1f between items in a list, RS = \\x1e within item):
-        q_text NUL explanation NUL difficulty NUL language NUL expected_time_sec
-        NUL paper_id NUL paper_year
-        NUL verified_opt_label RS opt_text (joined by FS, sorted by label then id)
-        NUL correct_opt_text
-        NUL verified_tag_topic_id RS tag_role (joined by FS, sorted by topic_id then role)
+    Formula (GS = \\x1d between top-level fields, FS = \\x1f between items in a
+    list, RS = \\x1e within item):
+        q_text GS explanation GS difficulty GS language GS expected_time_sec
+        GS paper_id GS paper_year
+        GS verified_opt_label RS opt_text (joined by FS, sorted by label then id)
+        GS correct_opt_text
+        GS verified_tag_topic_id RS tag_role (joined by FS, sorted by topic_id then role)
 
     All projected fields are included so that changing explanation, difficulty,
     language, expected time, paper year, option ordering (label), or any verified
     topic tag all produce a different hash — causing preview to report "would_update"
     and sync to re-project the row.
+
+    Separator note: the top-level field separator is the ASCII Group Separator
+    (\\x1d / chr(29)), NOT NUL (\\x00 / chr(0)). PostgreSQL ``text`` cannot hold a
+    null byte — ``chr(0)`` raises "null character not permitted" — so the mirrored
+    SQL hash in ``project_pyq_question_to_mock_bank`` crashes the whole projection
+    RPC (and thus sync) if a NUL separator is used. The GS/FS/RS trio are all
+    non-null control characters that never occur in the projected text fields, so
+    they remain unambiguous separators while keeping the SQL hashable as bytea.
     """
-    NUL, FS, RS = "\x00", "\x1f", "\x1e"
+    GS, FS, RS = "\x1d", "\x1f", "\x1e"
 
     q_text       = (question.get("question_text") or "").strip().lower()
     expl         = (question.get("explanation_text") or "").strip().lower()
@@ -267,7 +278,7 @@ def compute_content_hash(
         for s in verified_stims
     )
 
-    raw = NUL.join([
+    raw = GS.join([
         q_text, expl, diff, language, exp_time, paper_id,
         paper_year, paper_exam, paper_src_url, paper_src_type, paper_src_doc_id,
         opt_parts, correct_opt, tag_parts,
