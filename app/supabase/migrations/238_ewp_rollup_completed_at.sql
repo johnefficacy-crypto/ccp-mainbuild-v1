@@ -25,6 +25,13 @@
 -- submit action in this design (units submit individually; the 'submitted'
 -- session status is never produced by the rollup), so a rollup-owned value for
 -- it would be arbitrary. Scoped out of this change.
+--
+-- NOT retroactive: this only affects rollup transitions AFTER it is applied (and
+-- any session re-finalized after apply). Already-`completed` rows written before
+-- migration 238 keep `completed_at = NULL` until they are re-finalized. If those
+-- historical rows must report a completion time immediately, run a one-off
+-- operator backfill (out of scope here) — e.g. stamp `completed_at` for
+-- `status='completed' AND completed_at IS NULL` from the latest terminal signal.
 
 CREATE OR REPLACE FUNCTION ewp_private.ewp_apply_session_rollup(p_session uuid)
 RETURNS jsonb
