@@ -64,10 +64,9 @@ function PaperRow({ p }) {
         <div className="text-sm font-medium truncate">
           {p.phase_name || "Paper"} · {p.year}
           {p.paper_code ? ` · ${p.paper_code}` : ""}
-          {p.shift ? ` · Shift ${p.shift}` : ""}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          {p.paper_date || "Date n/a"} · source: {p.source_type}
+          {p.paper_date || "Date n/a"}
         </div>
       </div>
       {p.source_url ? (
