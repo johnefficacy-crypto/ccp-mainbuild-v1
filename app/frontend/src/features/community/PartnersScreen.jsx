@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import CommunityModuleHeader from "./CommunityModuleHeader";
+import AccountabilityWizard from "./AccountabilityWizard";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { ACCOUNTABILITY, COMMUNITY_USERS } from "./data";
@@ -154,6 +155,13 @@ export default function PartnersScreen() {
           </FieldButton>
         }
       />
+
+      {/* Onboarding entry: find a new accountability partner. Prefills the
+          target exam from ?exam= when routed here from an exam page's CTA so
+          that CTA never dead-ends. */}
+      <div className="mt-6">
+        <AccountabilityWizard />
+      </div>
 
       <PartnerHero partner={state.partner} you={state.you} partnership={state.partnership} thisWeek={state.thisWeek} />
 

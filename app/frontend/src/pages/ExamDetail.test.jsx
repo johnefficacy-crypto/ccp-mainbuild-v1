@@ -44,6 +44,12 @@ test("parent link copy is 'All exams', not 'All recruitments'", async () => {
   expect(screen.queryByText("All recruitments")).toBeNull();
 });
 
+test("renders an Accountability Partner CTA linking to /app/accountability with the exam", async () => {
+  renderExamDetail();
+  const cta = await screen.findByTestId("accountability-cta");
+  expect(cta.getAttribute("href")).toContain("/app/accountability?exam=upsc-cse");
+});
+
 function renderExamDetailNoCycle(slug = "upsc-cse") {
   const { api } = require("../lib/api");
   // Exam resolves, but no recruitment maps to it — the exam-only render path.
