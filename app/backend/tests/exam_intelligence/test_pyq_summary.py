@@ -48,11 +48,20 @@ def _seed() -> dict[str, Any]:
         "pyq_options": [
             {"id": "o1", "question_id": "q1", "option_label": "A", "option_text": "one", "is_correct": True},
         ],
-        # Projected bank rows; practice-ready only when projection is active.
+        # Projected bank rows; practice-ready requires an ACTIVE projection AND a
+        # snapshot-ready row (options + correct_option_id).
         "mock_question_bank": [
-            {"id": "b1", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q1", "reviewer_status": "verified", "valid_until": None},
-            {"id": "b2", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q2", "reviewer_status": "verified", "valid_until": None},
-            {"id": "b3", "exam_id": "e1", "pyq_paper_id": "p2", "pyq_question_id": "q3", "reviewer_status": "verified", "valid_until": None},
+            {"id": "b1", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q1", "reviewer_status": "verified", "valid_until": None, "question_text": "Q1", "question_type": "mcq", "correct_option_id": "mo1a"},
+            {"id": "b2", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q2", "reviewer_status": "verified", "valid_until": None, "question_text": "Q2", "question_type": "mcq", "correct_option_id": "mo2a"},
+            {"id": "b3", "exam_id": "e1", "pyq_paper_id": "p2", "pyq_question_id": "q3", "reviewer_status": "verified", "valid_until": None, "question_text": "Q3", "question_type": "mcq", "correct_option_id": "mo3a"},
+        ],
+        "mock_question_options": [
+            {"id": "mo1a", "question_id": "b1", "option_index": 0, "option_text": "one", "is_correct": True},
+            {"id": "mo1b", "question_id": "b1", "option_index": 1, "option_text": "two", "is_correct": False},
+            {"id": "mo2a", "question_id": "b2", "option_index": 0, "option_text": "one", "is_correct": True},
+            {"id": "mo2b", "question_id": "b2", "option_index": 1, "option_text": "two", "is_correct": False},
+            {"id": "mo3a", "question_id": "b3", "option_index": 0, "option_text": "one", "is_correct": True},
+            {"id": "mo3b", "question_id": "b3", "option_index": 1, "option_text": "two", "is_correct": False},
         ],
         "pyq_mock_question_projections": [
             {"mock_question_id": "b1", "sync_status": "active"},
@@ -105,6 +114,56 @@ def test_pyq_summary_paper_practice_ready_count_uses_active_projection():
     assert papers["p2"]["practice_ready_count"] == 0
     assert papers["p2"]["practice_enabled"] is False
     assert body["totals"]["projected_practice_ready"] == 2
+
+
+def test_practice_ready_ignores_active_projection_on_unverified_paper():
+    """An active, snapshot-ready projected bank row on a PENDING paper must not
+    inflate the verified-only summary totals (checkpost #944 finding 1)."""
+    seed = _seed()
+    # b4 is fully launchable BUT its paper p3 is pending (excluded from summary).
+    seed["mock_question_bank"].append(
+        {"id": "b4", "exam_id": "e1", "pyq_paper_id": "p3", "pyq_question_id": "q5", "reviewer_status": "verified", "valid_until": None, "question_text": "Q5", "question_type": "mcq", "correct_option_id": "mo4a"}
+    )
+    seed["mock_question_options"] += [
+        {"id": "mo4a", "question_id": "b4", "option_index": 0, "option_text": "one", "is_correct": True},
+        {"id": "mo4b", "question_id": "b4", "option_index": 1, "option_text": "two", "is_correct": False},
+    ]
+    seed["pyq_mock_question_projections"].append({"mock_question_id": "b4", "sync_status": "active"})
+
+    body = _summary(SBStub(seed))
+    # Still only p1's two ready rows — p3 is not a verified paper.
+    assert body["totals"]["projected_practice_ready"] == 2
+    assert {p["paper_id"] for p in body["papers"]} == {"p1", "p2"}
+
+
+def test_practice_ready_excludes_snapshot_unready_row():
+    """An active projection whose frozen snapshot lacks options/correct answer
+    must not count as practice-ready (checkpost #944 finding 2)."""
+    seed = _seed()
+    # b5 on p1: active projection, but no options and no correct_option_id.
+    seed["mock_question_bank"].append(
+        {"id": "b5", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q1", "reviewer_status": "verified", "valid_until": None, "question_text": "broken", "question_type": "mcq", "correct_option_id": None}
+    )
+    seed["pyq_mock_question_projections"].append({"mock_question_id": "b5", "sync_status": "active"})
+
+    body = _summary(SBStub(seed))
+    papers = {p["paper_id"]: p for p in body["papers"]}
+    # p1 still only 2 ready (b1, b2) — the broken b5 does not count.
+    assert papers["p1"]["practice_ready_count"] == 2
+    assert body["totals"]["projected_practice_ready"] == 2
+
+
+def test_by_subject_untagged_bucket_sums_to_total():
+    """Verified questions with no primary-subject mapping fall into an explicit
+    'Untagged' bucket so by_subject sums to totals.questions (finding 3)."""
+    seed = _seed()
+    # q3 loses its primary subject tag → becomes untagged.
+    seed["pyq_question_topic_tags"] = [t for t in seed["pyq_question_topic_tags"] if t["question_id"] != "q3"]
+    body = _summary(SBStub(seed))
+    by_subject = {row["subject_name"]: row["questions"] for row in body["by_subject"]}
+    assert by_subject.get("General Studies") == 2
+    assert by_subject.get("Untagged") == 1
+    assert sum(row["questions"] for row in body["by_subject"]) == body["totals"]["questions"]
 
 
 def test_pyq_list_includes_phase_and_subject_metadata():

@@ -608,7 +608,9 @@ def get_exam_pyq_summary(
                     if qid not in primary_subject_by_qid:
                         primary_subject_by_qid[qid] = topic_subj[t["topic_id"]]
 
-        ready_by_paper = practice_ready_counts_by_paper(sb, exam_id)
+        # Constrain readiness to THIS summary's verified paper set so a stale
+        # active projection on a pending/unverified paper cannot inflate totals.
+        ready_by_paper = practice_ready_counts_by_paper(sb, exam_id, paper_ids=paper_ids)
 
         # Distributions.
         year_q: dict[Any, int] = {}
@@ -655,6 +657,13 @@ def get_exam_pyq_summary(
             {"subject_id": sid, "subject_name": subj_names.get(sid), "questions": c}
             for sid, c in subj_q.items()
         ]
+        # Verified questions with no primary-subject mapping go into an explicit
+        # "Untagged" bucket so by_subject always sums to totals.questions (it is a
+        # primary-tagged-only distribution otherwise, and would silently undercount
+        # during partial import/validation states).
+        untagged = len(questions) - sum(subj_q.values())
+        if untagged > 0:
+            by_subject.append({"subject_id": None, "subject_name": "Untagged", "questions": untagged})
 
         # Per-paper cards, with dominant subject (best-effort) + practice readiness.
         paper_subject = {pid: max(tally, key=tally.get) for pid, tally in paper_subj_tally.items()}

@@ -201,36 +201,52 @@ def _snapshot_ready(q: dict | None) -> bool:
     return bool(snap.get("options") and snap.get("correct_option_id"))
 
 
-def practice_ready_counts_by_paper(sb, exam_id: str) -> dict[str, int]:
+def practice_ready_counts_by_paper(
+    sb, exam_id: str, *, paper_ids: "list[str] | frozenset[str] | None" = None
+) -> dict[str, int]:
     """Per-paper count of practice-launch-ready projected PYQ rows for an exam.
 
-    Mirrors the launch predicate (``reviewer_status in (verified, published, live)``
-    + ``pyq_question_id`` present + unexpired + ``sync_status='active'`` projection)
-    so the learner PYQ summary's ``practice_ready_count`` reflects what
-    ``start_pyq_practice`` would actually assemble — not the raw verified-question
-    count. Best-effort: returns ``{}`` on any read failure so the summary degrades
-    to zero rather than erroring the learner surface."""
+    Mirrors the launch predicate END-TO-END so the learner PYQ summary's
+    ``practice_ready_count`` reflects what ``start_pyq_practice`` would actually
+    assemble: ``reviewer_status in (verified, published, live)`` + ``pyq_question_id``
+    present + unexpired + ``sync_status='active'`` projection **and** the same
+    ``_snapshot_ready`` freeze gate the launch aborts on (options + a
+    ``correct_option_id`` in the frozen snapshot) — so a paper is never advertised
+    ready if it would 500 at freeze.
+
+    ``paper_ids`` constrains the count to a caller-supplied verified paper set, so
+    a stale/active projected bank row on a pending/unverified paper cannot inflate
+    a verified-only summary. Best-effort: returns ``{}`` on any read failure so the
+    learner surface degrades to zero rather than erroring."""
     if not exam_id:
+        return {}
+    allowed = None if paper_ids is None else frozenset(paper_ids)
+    if allowed is not None and not allowed:
         return {}
     now_iso = _now_iso()
     try:
-        res = safe_required(
-            lambda: sb.table("mock_question_bank")
+        q = (
+            sb.table("mock_question_bank")
             .select("id,pyq_paper_id,valid_until")
             .eq("exam_id", exam_id)
             .in_("reviewer_status", list(_SELECTABLE))
             .not_.is_("pyq_question_id", "null")
             .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
             .limit(50000)
-            .execute(),
-            op="pyq_practice.ready_by_paper",
-            log=logger,
-            allow_empty=True,
+        )
+        if allowed is not None:
+            q = q.in_("pyq_paper_id", list(allowed))
+        res = safe_required(
+            lambda: q.execute(), op="pyq_practice.ready_by_paper", log=logger, allow_empty=True
         )
     except Exception:  # noqa: BLE001 — fail-closed to empty
         logger.warning("practice_ready_counts_by_paper: bank read failed", exc_info=True)
         return {}
-    candidates = [r for r in (res or []) if r.get("id") and r.get("pyq_paper_id")]
+    candidates = [
+        r
+        for r in (res or [])
+        if r.get("id") and r.get("pyq_paper_id") and (allowed is None or r["pyq_paper_id"] in allowed)
+    ]
     if not candidates:
         return {}
     try:
@@ -238,11 +254,23 @@ def practice_ready_counts_by_paper(sb, exam_id: str) -> dict[str, int]:
     except Exception:  # noqa: BLE001 — unresolved projection guard => no availability
         logger.warning("practice_ready_counts_by_paper: active-projection probe failed", exc_info=True)
         return {}
+    active_ids = [r["id"] for r in candidates if r["id"] in active]
+    if not active_ids:
+        return {}
+    # Apply the SAME freeze-readiness gate the launch enforces, so a bad snapshot
+    # (missing options / correct_option_id) is not counted as practice-ready.
+    try:
+        loaded = _load_questions(sb, active_ids)
+    except Exception:  # noqa: BLE001 — fail-closed: unresolved freeze => not ready
+        logger.warning("practice_ready_counts_by_paper: candidate load failed", exc_info=True)
+        return {}
     counts: dict[str, int] = {}
-    for r in candidates:
-        if r["id"] in active:
-            pid = r["pyq_paper_id"]
-            counts[pid] = counts.get(pid, 0) + 1
+    for qid in active_ids:
+        row = loaded.get(qid)
+        if row and _snapshot_ready(row):
+            pid = row.get("pyq_paper_id")
+            if pid and (allowed is None or pid in allowed):
+                counts[pid] = counts.get(pid, 0) + 1
     return counts
 
 
