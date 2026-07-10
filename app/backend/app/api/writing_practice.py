@@ -446,6 +446,33 @@ def _select_launch_prompt(
     return sorted(surviving)[0]
 
 
+def _mark_task_started(supabase: Any, study_task_id: str, user_id: str) -> None:
+    """Move a launched planner task off ``status='planned'`` -> ``in_progress``.
+
+    Once a launch creates (or reuses) a ``writing_sessions`` row, that row's
+    ``study_task_id`` FK references this task with **NO ACTION** on delete
+    (migration 205 — unlike the PYQ/mock backlink's ``ON DELETE SET NULL``). Plan
+    regeneration's `_persist` deletes today's ``status='planned'`` tasks, so a
+    launched task left ``planned`` would make that delete fail on the FK and abort
+    regeneration for the whole user. Transitioning it to ``in_progress`` takes it
+    out of the delete set (and marks it as an existing/open writing task for the
+    planner's dedup). Guarded to the ``planned -> in_progress`` edge only so a
+    terminal/other status is never clobbered. Best-effort: a failure here must not
+    fail the launch, but is logged.
+    """
+    try:
+        (
+            supabase.table("study_tasks")
+            .update({"status": "in_progress"})
+            .eq("id", study_task_id)
+            .eq("user_id", user_id)
+            .eq("status", "planned")
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("failed to mark launched writing task in_progress: %s", exc)
+
+
 @tasks_router.post("/{study_task_id}/launch-writing")
 def launch_writing(study_task_id: UUID, user: dict = Depends(get_current_user)) -> dict:
     """Server-owned planner task -> writing-session launch (EWP-SP3).
@@ -475,6 +502,7 @@ def launch_writing(study_task_id: UUID, user: dict = Depends(get_current_user)) 
     live = [s for s in existing if s.get("status") not in _TERMINAL_SESSION_STATUSES]
     if live:
         chosen = min(live, key=lambda s: str(s.get("id")))
+        _mark_task_started(supabase, str(study_task_id), user_id)
         return _launch_response(chosen.get("id"))
 
     prompt_id = _select_launch_prompt(
@@ -493,6 +521,7 @@ def launch_writing(study_task_id: UUID, user: dict = Depends(get_current_user)) 
         exam_id=exam_id,
         exam_phase_id=exam_phase_id,
     )
+    _mark_task_started(supabase, str(study_task_id), user_id)
     return _launch_response(session.get("id"))
 
 
