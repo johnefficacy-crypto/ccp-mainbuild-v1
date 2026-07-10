@@ -59,8 +59,9 @@ test.describe("Flow 2: submit → review navigation", () => {
     await page.getByTestId("review-next").click();
     await expect(page.getByTestId("review-question")).toBeVisible();
 
-    // Review mode shows the correct option + explanation (seed fixture text).
-    await expect(page.getByTestId("review-question")).toContainText("Correct:");
+    // Review mode shows the correct option (as a printed label + text, never a
+    // raw option UUID) + explanation (seed fixture text).
+    await expect(page.getByTestId("review-correct-answer")).toContainText("Correct answer:");
     await expect(page.getByTestId("review-question")).toContainText("E2E fixture explanation");
   });
 });

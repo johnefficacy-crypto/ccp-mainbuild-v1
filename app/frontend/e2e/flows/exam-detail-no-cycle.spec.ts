@@ -32,9 +32,11 @@ test.describe("Flow: exam-detail — no recruitment cycle", () => {
     // page did not short-circuit into the old no-cycle stub.
     await gotoProtectedPage(page, "/app/eligibility/exams/e2e-workspace-exam", "pyq-explorer");
 
-    // Neutral no-active-cycle panels replace recruitment-derived content.
-    await expect(page.getByTestId("about-no-cycle")).toBeVisible();
-    await expect(page.getByText("No active recruitment cycle")).toBeVisible();
+    // A single no-active-cycle banner replaces the repeated recruitment panels.
+    await expect(page.getByTestId("no-cycle-banner")).toBeVisible();
+    await expect(page.getByText("No active recruitment cycle right now.")).toBeVisible();
+    // Recruitment-only sections are hidden entirely in the no-cycle path.
+    await expect(page.getByTestId("eligibility-panel")).toHaveCount(0);
 
     // Recruitment-only actions must not render without a mapped recruitment.
     await expect(page.getByTestId("detail-save-btn")).toHaveCount(0);

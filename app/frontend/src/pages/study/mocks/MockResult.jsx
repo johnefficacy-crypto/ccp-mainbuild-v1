@@ -1,20 +1,26 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import AttemptSummaryCard from "../components/reports/AttemptSummaryCard";
 import SectionBreakdownBars from "../components/reports/SectionBreakdownBars";
+import { getAttemptReturnContext } from "./attemptReturnContext";
+import { errorTypeLabel } from "./errorTypeLabels";
 const AccuracyHeatmap = lazy(() => import("../components/reports/AccuracyHeatmap"));
 const TimeDistributionChart = lazy(() => import("../components/reports/TimeDistributionChart"));
 const ErrorTypeDonut = lazy(() => import("../components/reports/ErrorTypeDonut"));
 
 export default function MockResult() {
   const { attemptId } = useParams(); const navigate = useNavigate();
+  const returnCtx = useMemo(() => getAttemptReturnContext(attemptId), [attemptId]);
   const [result,setResult]=useState(null); const [analytics,setAnalytics]=useState(null); const [tab,setTab]=useState("overview");
   useEffect(()=>{ api.get(`/api/study/mocks/attempts/${attemptId}/result`).then(setResult); },[attemptId]);
   useEffect(()=>{ if(tab!=="overview") api.get(`/api/study/mocks/attempts/${attemptId}/analytics`).then(setAnalytics).catch(()=>setAnalytics({})); },[attemptId,tab]);
-  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>{a[r.error_type]=(a[r.error_type]||0)+1;return a;},{})).map(([label,value])=>({label,value})),[analytics]);
+  // Aggregate by raw classifier code, then map to a learner-friendly label for
+  // display — raw codes (silly_mistake, …) must never reach the chart/tooltip.
+  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>{a[r.error_type]=(a[r.error_type]||0)+1;return a;},{})).map(([code,value])=>({label:errorTypeLabel(code),code,value})),[analytics]);
   if(!result) return <div data-testid="result-loading">Loading…</div>;
   return <div className="p-4 space-y-4" data-testid="result-page">
+    {returnCtx ? <Link to={returnCtx.return_to} data-testid="result-back-source" className="inline-flex items-center gap-1 text-sm text-clay-700 hover:underline">← {returnCtx.source_label}</Link> : null}
     <div data-testid="result-summary" data-score={result.score_percentage ?? ""}>
       <AttemptSummaryCard scorePct={result.score_percentage} accuracyPct={(result.total_correct||0)/Math.max((result.total_correct||0)+(result.total_wrong||0),1)*100} timeUsed={`${Math.round((result.time_used_sec||0)/60)}m`} />
     </div>

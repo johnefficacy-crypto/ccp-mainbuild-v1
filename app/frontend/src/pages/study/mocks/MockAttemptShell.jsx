@@ -1,11 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import { supabase } from "../../../lib/supabase";
 import { BACKEND_URL } from "../../../shared/config/env";
 import { eventBus } from "./attemptEventBus";
 import useAnswerSync, { SYNC } from "./useAnswerSync";
 import AnswerSyncIndicator from "./AnswerSyncIndicator";
+import QuestionStem from "./components/questions/shared/QuestionStem";
+import QuestionStimuli from "./components/questions/shared/QuestionStimuli";
+import { getAttemptReturnContext } from "./attemptReturnContext";
 
 const DEBOUNCE_MS = 600;
 const MOCK_ATTEMPT_API_BASE = `${BACKEND_URL.replace(/\/+$/, "")}/api/study/mocks/attempts`;
@@ -31,6 +34,13 @@ export default function MockAttemptShell() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [failedModalOpen, setFailedModalOpen] = useState(false);
+  // Right-side question navigator is always visible on desktop; on small screens
+  // it collapses to a bottom sheet toggled by this flag.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Source-aware back link (e.g. "Back to UPSC CSE PYQs") when the attempt was
+  // launched from an exam's PYQ Explorer. Null for attempts with no stored source.
+  const returnCtx = useMemo(() => getAttemptReturnContext(attemptId), [attemptId]);
 
   const timerRef = useRef(null);
   const autoSubmitFired = useRef(false);
@@ -329,9 +339,53 @@ export default function MockAttemptShell() {
     setConfirmOpen(true);
   };
 
+  const paletteButtons = questions.map((qq, i) => {
+    const r = responses[qq.question_id] || {};
+    const isAnswered = Boolean(r.selected_option_id);
+    const isMarked = r.is_marked_for_review;
+    const isCurrent = i === currentIdx;
+    // With locks on, the palette only lets you move within the section you're
+    // currently in — earlier sections are sealed, later ones not yet entered.
+    const outOfSection = Number(qq.section_index || 0) !== currentSection;
+    const disabled = sectionLocked && outOfSection;
+    const syncState = answerSync.syncStates[qq.question_id]?.state;
+    const isFailed = syncState === SYNC.FAILED;
+    const isSyncing = syncState === SYNC.SAVING || syncState === SYNC.RETRYING;
+    let border = isMarked ? "2px solid #f59e0b" : "2px solid transparent";
+    if (isFailed) border = "2px solid #ef4444";
+    return (
+      <button
+        key={qq.question_id}
+        data-testid={`attempt-nav-${i}`}
+        data-section={Number(qq.section_index || 0)}
+        data-sync={syncState || "none"}
+        className={isSyncing ? "attempt-sync-pulse" : undefined}
+        disabled={disabled}
+        aria-disabled={disabled}
+        aria-label={`Question ${i + 1}`}
+        onClick={() => {
+          if (disabled) return;
+          setCurrentIdx(i);
+          setPaletteOpen(false);
+        }}
+        style={{
+          ...styles.navBtn,
+          position: "relative",
+          background: isCurrent ? "#1a56db" : isAnswered ? "#16a34a" : "#374151",
+          border,
+          opacity: disabled ? 0.4 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+        }}
+      >
+        {i + 1}
+        {isFailed && <span style={styles.navWarn} aria-hidden="true">!</span>}
+      </button>
+    );
+  });
+
   return (
     <div style={styles.shell}>
-      <style>{PULSE_KEYFRAMES}</style>
+      <style>{ATTEMPT_STYLES}</style>
       {/* Header */}
       <div style={styles.header} data-testid="attempt-shell">
         <span style={styles.title}>{attempt.template_name || "Mock Test"}</span>
@@ -356,122 +410,129 @@ export default function MockAttemptShell() {
         </button>
       </div>
 
-      {/* Question nav strip / palette */}
-      <div style={styles.navStrip} data-testid="attempt-palette">
-        {questions.map((qq, i) => {
-          const r = responses[qq.question_id] || {};
-          const isAnswered = Boolean(r.selected_option_id);
-          const isMarked = r.is_marked_for_review;
-          const isCurrent = i === currentIdx;
-          // With locks on, the palette only lets you move within the section
-          // you're currently in — earlier sections are sealed, later ones not
-          // yet entered.
-          const outOfSection = Number(qq.section_index || 0) !== currentSection;
-          const disabled = sectionLocked && outOfSection;
-          const syncState = answerSync.syncStates[qq.question_id]?.state;
-          const isFailed = syncState === SYNC.FAILED;
-          const isSyncing = syncState === SYNC.SAVING || syncState === SYNC.RETRYING;
-          let border = isMarked ? "2px solid #f59e0b" : "2px solid transparent";
-          if (isFailed) border = "2px solid #ef4444";
-          return (
-            <button
-              key={qq.question_id}
-              data-testid={`attempt-nav-${i}`}
-              data-section={Number(qq.section_index || 0)}
-              data-sync={syncState || "none"}
-              className={isSyncing ? "attempt-sync-pulse" : undefined}
-              disabled={disabled}
-              aria-disabled={disabled}
-              onClick={() => !disabled && setCurrentIdx(i)}
-              style={{
-                ...styles.navBtn,
-                position: "relative",
-                background: isCurrent ? "#1a56db" : isAnswered ? "#16a34a" : "#374151",
-                border,
-                opacity: disabled ? 0.4 : 1,
-                cursor: disabled ? "not-allowed" : "pointer",
-              }}
-            >
-              {i + 1}
-              {isFailed && <span style={styles.navWarn} aria-hidden="true">!</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Two-pane body: question on the left, sticky question navigator on the right */}
+      <div className="attempt-body">
+        <div className="attempt-main">
+          {returnCtx ? (
+            <Link to={returnCtx.return_to} data-testid="attempt-back-source" style={styles.backLink}>
+              ← {returnCtx.source_label}
+            </Link>
+          ) : null}
 
-      {/* Question body */}
-      {q && (
-        <div style={styles.questionCard}>
-          <div style={styles.qMetaRow}>
-            <div style={styles.qMeta}>
-              Q {currentIdx + 1} of {total} &nbsp;|&nbsp; {q.marks} mark
-              {q.negative_marks > 0 && ` | −${q.negative_marks} wrong`}
+          {/* Question body */}
+          {q && (
+            <div style={styles.questionCard}>
+              <div style={styles.qMetaRow}>
+                <div style={styles.qMeta}>
+                  Q {currentIdx + 1} of {total} &nbsp;|&nbsp; {q.marks} mark
+                  {q.negative_marks > 0 && ` | −${q.negative_marks} wrong`}
+                </div>
+                <AnswerSyncIndicator
+                  entry={answerSync.syncStates[q.question_id]}
+                  onRetry={() => answerSync.retryNow(q.question_id)}
+                />
+              </div>
+              {/* Structured stem + shared passage/table stimuli so statement,
+                  match-the-following, and list questions render legibly instead
+                  of collapsing into one flat paragraph. */}
+              <QuestionStimuli stimuli={q.stimuli} />
+              <div style={styles.qText} data-testid="attempt-question-body">
+                <QuestionStem text={q.question_text} images={q.images} />
+              </div>
+              <div style={styles.options}>
+                {(q.options || []).map((opt, optIdx) => {
+                  const selected = resp.selected_option_id === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      data-testid={`attempt-option-${optIdx}`}
+                      aria-pressed={selected}
+                      onClick={() => selectOption(q.question_id, opt.id)}
+                      style={{
+                        ...styles.optBtn,
+                        background: selected ? "#1e40af" : "#1f2937",
+                        border: selected ? "2px solid #60a5fa" : "2px solid #374151",
+                      }}
+                    >
+                      <span style={styles.optIndex}>{opt.source_label || `${opt.option_index}.`}</span>
+                      {opt.option_text}
+                    </button>
+                  );
+                })}
+              </div>
+              <label style={styles.reviewLabel}>
+                <input
+                  type="checkbox"
+                  data-testid="attempt-mark-review"
+                  checked={Boolean(resp.is_marked_for_review)}
+                  onChange={() => toggleReview(q.question_id)}
+                />
+                &nbsp; Mark for review
+              </label>
             </div>
-            <AnswerSyncIndicator
-              entry={answerSync.syncStates[q.question_id]}
-              onRetry={() => answerSync.retryNow(q.question_id)}
-            />
-          </div>
-          <p style={styles.qText}>{q.question_text}</p>
-          <div style={styles.options}>
-            {(q.options || []).map((opt, optIdx) => {
-              const selected = resp.selected_option_id === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  data-testid={`attempt-option-${optIdx}`}
-                  aria-pressed={selected}
-                  onClick={() => selectOption(q.question_id, opt.id)}
-                  style={{
-                    ...styles.optBtn,
-                    background: selected ? "#1e40af" : "#1f2937",
-                    border: selected ? "2px solid #60a5fa" : "2px solid #374151",
-                  }}
-                >
-                  <span style={styles.optIndex}>{opt.option_index}.</span>
-                  {opt.option_text}
-                </button>
-              );
-            })}
-          </div>
-          <label style={styles.reviewLabel}>
-            <input
-              type="checkbox"
-              data-testid="attempt-mark-review"
-              checked={Boolean(resp.is_marked_for_review)}
-              onChange={() => toggleReview(q.question_id)}
-            />
-            &nbsp; Mark for review
-          </label>
-        </div>
-      )}
+          )}
 
-      {/* Prev / Save & Next */}
-      <div style={styles.navRow}>
-        <button
-          style={styles.navArrow}
-          data-testid="attempt-prev"
-          disabled={
-            currentIdx === 0 ||
-            (sectionLocked &&
-              Number(questions[currentIdx - 1]?.section_index || 0) !== currentSection)
-          }
-          onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+          {/* Prev / Save & Next */}
+          <div style={styles.navRow}>
+            <button
+              style={styles.navArrow}
+              data-testid="attempt-prev"
+              disabled={
+                currentIdx === 0 ||
+                (sectionLocked &&
+                  Number(questions[currentIdx - 1]?.section_index || 0) !== currentSection)
+              }
+              onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+            >
+              ← Prev
+            </button>
+            <span style={styles.progress}>
+              {answered}/{total} answered
+            </span>
+            <button
+              style={styles.navArrow}
+              data-testid="attempt-save-next"
+              disabled={isLastQuestion}
+              onClick={saveAndNext}
+            >
+              Save &amp; Next →
+            </button>
+          </div>
+        </div>
+
+        {/* Right-side sticky question navigator (bottom sheet on mobile). */}
+        <aside
+          className={`attempt-aside${paletteOpen ? " open" : ""}`}
+          data-testid="attempt-palette"
+          aria-label="Question navigator"
         >
-          ← Prev
-        </button>
-        <span style={styles.progress}>
-          {answered}/{total} answered
-        </span>
-        <button
-          style={styles.navArrow}
-          data-testid="attempt-save-next"
-          disabled={isLastQuestion}
-          onClick={saveAndNext}
-        >
-          Save &amp; Next →
-        </button>
+          <div style={styles.asideHead}>
+            <span style={styles.asideTitle}>Questions · {answered}/{total}</span>
+            <button
+              type="button"
+              className="attempt-aside-close"
+              data-testid="attempt-palette-close"
+              onClick={() => setPaletteOpen(false)}
+              aria-label="Close question navigator"
+              style={styles.asideClose}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={styles.paletteGrid}>{paletteButtons}</div>
+        </aside>
       </div>
+
+      {/* Mobile-only floating toggle for the question navigator. */}
+      <button
+        type="button"
+        className="attempt-mobile-toggle"
+        data-testid="attempt-palette-toggle"
+        onClick={() => setPaletteOpen((v) => !v)}
+        style={styles.mobileToggle}
+      >
+        Questions {answered}/{total}
+      </button>
 
       {/* Confirm dialog */}
       {confirmOpen && (
@@ -535,7 +596,20 @@ export default function MockAttemptShell() {
   );
 }
 
-const PULSE_KEYFRAMES = `@keyframes attempt-pulse { 0% { opacity: 1; } 50% { opacity: 0.35; } 100% { opacity: 1; } } .attempt-sync-pulse { animation: attempt-pulse 1s ease-in-out infinite; }`;
+const ATTEMPT_STYLES = `
+@keyframes attempt-pulse { 0% { opacity: 1; } 50% { opacity: 0.35; } 100% { opacity: 1; } }
+.attempt-sync-pulse { animation: attempt-pulse 1s ease-in-out infinite; }
+.attempt-body { display: flex; flex: 1; align-items: stretch; min-height: 0; }
+.attempt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.attempt-aside { width: 236px; flex-shrink: 0; background: #1f2937; border-left: 1px solid #374151; padding: 14px; position: sticky; top: 0; align-self: flex-start; max-height: 100vh; overflow-y: auto; }
+.attempt-aside-close { display: none; }
+.attempt-mobile-toggle { display: none; }
+@media (max-width: 768px) {
+  .attempt-aside { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: 100%; max-height: 60vh; border-left: none; border-top: 1px solid #374151; z-index: 90; transform: translateY(105%); transition: transform 0.22s ease; }
+  .attempt-aside.open { transform: translateY(0); }
+  .attempt-aside-close { display: inline-flex; }
+  .attempt-mobile-toggle { display: inline-flex; position: fixed; right: 16px; bottom: 16px; z-index: 80; }
+}`;
 
 const styles = {
   shell: { minHeight: "100vh", background: "#111827", color: "#f9fafb", display: "flex", flexDirection: "column" },
@@ -546,7 +620,12 @@ const styles = {
   timer: { fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "#60a5fa" },
   timerWarn: { fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "#ef4444" },
   submitBtn: { padding: "6px 18px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 },
-  navStrip: { display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 16px", background: "#1f2937", borderBottom: "1px solid #374151" },
+  backLink: { display: "inline-flex", alignItems: "center", gap: 6, padding: "12px 24px 0", fontSize: 13, color: "#93c5fd", textDecoration: "none" },
+  asideHead: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  asideTitle: { fontSize: 12, fontWeight: 600, color: "#9ca3af", letterSpacing: "0.02em" },
+  asideClose: { background: "transparent", border: "none", color: "#9ca3af", fontSize: 16, cursor: "pointer" },
+  paletteGrid: { display: "flex", flexWrap: "wrap", gap: 6 },
+  mobileToggle: { padding: "10px 16px", background: "#1a56db", color: "#fff", border: "none", borderRadius: 999, cursor: "pointer", fontWeight: 600, fontSize: 13, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" },
   navBtn: { width: 34, height: 34, borderRadius: 4, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 },
   navWarn: { position: "absolute", top: -6, right: -6, width: 14, height: 14, lineHeight: "14px", textAlign: "center", borderRadius: "50%", background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 },
   questionCard: { flex: 1, padding: "24px 24px 8px", maxWidth: 760, margin: "0 auto", width: "100%" },

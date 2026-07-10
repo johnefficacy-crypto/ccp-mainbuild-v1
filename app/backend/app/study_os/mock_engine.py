@@ -1314,15 +1314,33 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
     resp_rows = _safe(lambda: supabase.table("mock_attempt_responses").select("*").eq("attempt_id", attempt_id).execute(), default=None)
     cls_rows = _safe(lambda: supabase.table("mock_attempt_response_classification").select("question_id,error_type").eq("attempt_id", attempt_id).execute(), default=None)
     cls = {r.get("question_id"): r.get("error_type") for r in (getattr(cls_rows, "data", None) or [])}
-    questions = []
+
+    # Response-row order from PostgREST is not guaranteed. Drive the review
+    # order — and the immutable 1-based `attempt_order` the UI numbers by — from
+    # the attempt order frozen at start in `template_snapshot.question_ids`
+    # (the same source `get_attempt` iterates). Any response row missing from
+    # the snapshot is appended in row order as a defensive fallback.
+    by_qid = {r.get("question_id"): r for r in (getattr(resp_rows, "data", None) or []) if r.get("question_id")}
+    snapshot = attempt.get("template_snapshot") or {}
+    ordered_ids = [qid for qid in (snapshot.get("question_ids") or []) if qid in by_qid]
+    seen = set(ordered_ids)
     for r in (getattr(resp_rows, "data", None) or []):
+        qid = r.get("question_id")
+        if qid and qid not in seen:
+            ordered_ids.append(qid)
+            seen.add(qid)
+
+    questions = []
+    for i, qid in enumerate(ordered_ids):
+        r = by_qid[qid]
         snap = r.get("question_snapshot") or {}
         questions.append({
-            "question_id": r.get("question_id"),
+            "question_id": qid,
+            "attempt_order": i + 1,
             "question_snapshot": snap,
             "selected_option_id": r.get("selected_option_id"),
             "is_correct": r.get("is_correct"),
-            "error_type": cls.get(r.get("question_id")),
+            "error_type": cls.get(qid),
             "explanation": snap.get("explanation"),
             "time_spent_sec": int(r.get("time_spent_sec") or 0),
         })

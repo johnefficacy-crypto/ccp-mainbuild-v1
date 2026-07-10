@@ -225,8 +225,17 @@ export default function ExamDetail() {
   // slug (and the URL slug) so the intelligence sections keep working when
   // `r` is null.
   const examSlug = r?.exam_slug || r?.exam?.slug || examMeta?.slug || slug;
+  const examName = r ? r.name : examMeta?.name;
   const { orgCode, elig, failReasons, isEligible, isConditional } = derived || {};
   const displayOrgCode = orgCode || (examMeta?.name || "—").slice(0, 4).toUpperCase();
+
+  // Recruitment-only sections (about, eligibility, docs & fees) are hidden when
+  // there's no active cycle — a single banner replaces the three repeated
+  // no-cycle panels, and the anchor nav drops the hidden sections.
+  const RECRUITMENT_ONLY_SECTIONS = ["about", "eligibility", "docs-fees"];
+  const visibleSections = r
+    ? SECTIONS
+    : SECTIONS.filter((s) => !RECRUITMENT_ONLY_SECTIONS.includes(s.id));
 
   return (
     <div className="space-y-6" data-testid={`exam-detail-${r?.id || examMeta?.id}`}>
@@ -313,24 +322,30 @@ export default function ExamDetail() {
         )}
       </div>
 
-      <ExamDetailAnchorNav sections={SECTIONS} ready={Boolean(r || examMeta)} />
+      {!r && (
+        <div
+          className="soft-card rounded-2xl p-5 border border-clay-100"
+          data-testid="no-cycle-banner"
+        >
+          <div className="font-heading text-base font-semibold">No active recruitment cycle right now.</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You can still study using verified PYQs, documents, and exam
+            intelligence. Eligibility, fees, dates, and application tracking will
+            appear here when a recruitment cycle is published.
+          </p>
+        </div>
+      )}
+
+      <ExamDetailAnchorNav sections={visibleSections} ready={Boolean(r || examMeta)} />
 
       <div className="space-y-12 pb-24">
-        {/* ─── About ─────────────────────────────────────────────── */}
+        {/* ─── About (recruitment-only) ──────────────────────────── */}
+        {r && (
         <Section
           id="about"
           eyebrow="About this recruitment"
           title="The cycle at a glance"
         >
-          {!r ? (
-            <div className="soft-card rounded-2xl p-6" data-testid="about-no-cycle">
-              <p className="text-sm text-muted-foreground">
-                No published recruitment cycle for this exam yet. The exam-level
-                intelligence below stays available; cycle details will list here
-                as soon as a cycle is verified.
-              </p>
-            </div>
-          ) : (
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="soft-card rounded-2xl p-5">
               <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
@@ -392,24 +407,16 @@ export default function ExamDetail() {
               )}
             </div>
           </div>
-          )}
         </Section>
+        )}
 
-        {/* ─── Eligibility ───────────────────────────────────────── */}
+        {/* ─── Eligibility (recruitment-only) ────────────────────── */}
+        {r && (
         <Section
           id="eligibility"
           eyebrow="About your eligibility"
           title="Verdict from the deterministic engine"
         >
-          {!r ? (
-            <div className="soft-card rounded-2xl p-6" data-testid="eligibility-panel">
-              <p className="text-sm text-muted-foreground">
-                Eligibility is computed per recruitment cycle. There's no active
-                cycle for this exam right now — your deterministic verdict will
-                appear here once a cycle is published.
-              </p>
-            </div>
-          ) : (
           <div className="soft-card rounded-2xl p-6" data-testid="eligibility-panel">
             <h3 className="font-heading text-xl font-semibold">
               Verdict:{" "}
@@ -459,22 +466,18 @@ export default function ExamDetail() {
               </div>
             )}
           </div>
-          )}
         </Section>
+        )}
 
-        {/* ─── Docs & Fees ───────────────────────────────────────── */}
+        {/* ─── Docs & Fees (recruitment-only) ────────────────────── */}
+        {r && (
         <Section
           id="docs-fees"
           eyebrow="Documents, fees, attempts"
           title="Criteria-based requirements"
         >
           <div className="soft-card rounded-2xl p-6">
-            {!r ? (
-              <p className="text-sm text-muted-foreground">
-                Per-post documents, fees, and attempt limits are tied to a
-                recruitment cycle. They'll appear here once a cycle is published.
-              </p>
-            ) : (r.posts || []).length === 0 ? (
+            {(r.posts || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Per-post documents, fees, and attempt limits will list here once
                 the recruitment is fully ingested.
@@ -517,6 +520,7 @@ export default function ExamDetail() {
             )}
           </div>
         </Section>
+        )}
 
         {/* ─── Important Documents ───────────────────────────────── */}
         <Section
@@ -542,7 +546,7 @@ export default function ExamDetail() {
           eyebrow="Previous year questions"
           title="PYQ Explorer"
         >
-          <PyqExplorerSection examSlug={examSlug} />
+          <PyqExplorerSection examSlug={examSlug} examName={examName} />
         </Section>
 
         {/* ─── Resources ─────────────────────────────────────────── */}

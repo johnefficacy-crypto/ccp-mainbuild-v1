@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
+import { setAttemptReturnContext } from "../../pages/study/mocks/attemptReturnContext";
 
 const DIFFICULTY_OPTIONS = [
   { value: "", label: "Any difficulty" },
@@ -140,7 +141,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-export default function PyqExplorerSection({ examSlug }) {
+export default function PyqExplorerSection({ examSlug, examName }) {
   const navigate = useNavigate();
   const { run, busy } = useApiAction();
   const [year, setYear] = useState("");
@@ -257,6 +258,12 @@ export default function PyqExplorerSection({ examSlug }) {
             return;
           }
           if (out?.attempt_id) {
+            // Stash a source-aware return descriptor so the attempt / result /
+            // review pages can offer a "Back to <exam> PYQs" link.
+            setAttemptReturnContext(out.attempt_id, {
+              return_to: `/app/eligibility/exams/${examSlug}#pyq-explorer`,
+              source_label: `Back to ${examName || "exam"} PYQs`,
+            });
             navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
             return;
           }
@@ -266,7 +273,7 @@ export default function PyqExplorerSection({ examSlug }) {
       });
       setPracticingPaperId(null);
     },
-    [run, busy, navigate, examId]
+    [run, busy, navigate, examId, examSlug, examName]
   );
 
   if (!examSlug) return null;
