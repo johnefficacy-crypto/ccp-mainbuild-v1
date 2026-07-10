@@ -29,8 +29,12 @@ Reconciled against `origin/main @ e739007`:
 - **Item 2's lifecycle is code-complete on `main`** — migrations 214/215/218/226,
   `content_studio` router, applicability resolver, `content_studio.activate` permission and
   the `cms_activate_writing_prompt` precondition machine. The runtime allowlist
-  `cms_writing_runtime_ready_types()` = `['sentence_construction']`. **Zero prompts exist in
-  any DB**; 270 seed rows (50 `sentence_construction`) are repo-authored JSON only.
+  `cms_writing_runtime_ready_types()` = `['sentence_construction']`. Live DB evidence already
+  exists — the checklist records a live `sentence_construction` runtime
+  (`prompt_id=82961b19-8d4e-41a6-b677-b94433a4389c`, Follow-up B). What remains is an
+  **expansion run**: the 270 repo-authored seed rows (50 `sentence_construction`) have not yet
+  gone through the live review/activation lifecycle at scale — prompt-bank expansion remains
+  **operator pending**.
 - **Item 4's column already exists** (`writing_sessions.submitted_at`, migration 205) and is
   **never written**; `completed_at` was wired by migration 238 / #936 and is live-validated.
 - **Item 1 is genuinely unstarted** on this branch (no half-implemented planner-writing path;
@@ -44,8 +48,20 @@ operator/evidence execution plus minor documentation corrections.
 
 ## PR-A — Planner generation of `english_writing_session` tasks (Item 1) · EWP-5
 
-**Status:** PLANNED — greenfield. This is the deferred EWP-5 "planner **generation**" slice
-(`career-copilot-pr-plan.md:386`, checklist EWP-5 "not started").
+**Status:** CODE-FIXED, VALIDATION PENDING — implemented in this PR. This was the deferred EWP-5
+"planner **generation**" slice (`career-copilot-pr-plan.md:386`). The deterministic planner now
+auto-generates `english_writing_session` `sentence_construction` tasks for writing-eligible
+English topics; operator staging validation (live prompt inventory + Study Home click-through
+from a planner-generated row) remains pending.
+
+**Implemented:** new module `app/backend/app/study_os/writing_practice/planner_tasks.py`
+(`resolve_writing_eligible_topic_ids` — the verified+active+English-subject+runtime-ready+applicability
+gate mirroring `_select_launch_prompt`; `build_writing_tasks` — the pure, capped, deduped builder)
+wired into `planner._compute_plan` via `_generate_writing_tasks` + `_open_writing_topic_ids`
+(dedup that excludes soon-to-be-cleared `planned` rows so regen never drops the task). Additive,
+bounded by `_MAX_WRITING_TASKS`, recorded as `writing_task_count` in the plan's `input_context`.
+Tests: `app/backend/tests/study_os/test_planner_writing_tasks.py` (13 — pure builder, DB gate, and
+three end-to-end through `_compute_plan`).
 
 **Goal:** the deterministic planner auto-creates real EWP writing `study_tasks` (rows) instead
 of those rows being operator-created. Consumes the already-shipped launch/render half.
@@ -194,8 +210,8 @@ status which is unimplemented (EWP ships learning-mode only).
 this):**
 - **Option A (minimal, learning-mode):** stamp `submitted_at = COALESCE(submitted_at, now())` in
   the rollup at the first transition where every unit has a submitted version (session first
-  leaves `active`). `CREATE OR REPLACE FUNCTION ewp_private.ewp_apply_session_rollup` (new
-  migration slot **240**) + parity in `session_finalizer.py`.
+  leaves `active`). `CREATE OR REPLACE FUNCTION ewp_private.ewp_apply_session_rollup` (a new
+  migration file) + parity in `session_finalizer.py`.
 - **Option B (correct long-term, larger):** implement the exam-mode session-submit RPC/endpoint
   (`→ submitted`, lock answers, stamp `submitted_at`) — blocked on unbuilt EWP exam-mode runtime.
 
@@ -205,13 +221,15 @@ unwritten.
 
 **Write scope (Option A):**
 ```
-app/supabase/migrations/240_ewp_rollup_submitted_at.sql   (CREATE OR REPLACE rollup)
+app/supabase/migrations/<next>_ewp_rollup_submitted_at.sql (CREATE OR REPLACE rollup)
 app/backend/app/study_os/writing_practice/session_finalizer.py  (Python parity)
 app/backend/tests/study_os/test_ewp_rollup_*_migration.py       (extend existing pattern)
 docs/status/career-copilot-checklist.md                         (Follow-up A row)
 ```
 
-**Migration discipline:** 240 is the next free slot (238/239 taken); rollup change is a
+**Migration discipline:** per `AGENTS.md`, the migration number must be `MAX(live schema_migrations)+1`
+— the repo filesystem currently ends at 239, so 240 is the *candidate* file slot, but the operator
+must verify the live `schema_migrations` max before implementation. The rollup change is a
 `CREATE OR REPLACE`, no schema/RLS change (column already exists). Mark `CODE-FIXED, VALIDATION
 PENDING` until staged and live-verified (`submitted_at` populates end-to-end).
 

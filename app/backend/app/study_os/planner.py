@@ -38,6 +38,8 @@ from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
 from app.study_os.update_context import policy_update_context
+from app.study_os.writing_practice import planner_tasks
+from app.study_os.writing_practice.launch import LAUNCH_ENGLISH_WRITING_SESSION
 from app.utils.safe import safe_required
 
 logger = logging.getLogger("career_copilot.study_os.planner")
@@ -51,6 +53,11 @@ LAUNCH_PYQ_PRACTICE = "pyq_practice"
 
 # task_type values whose plan tasks resolve to a PYQ topic-practice launch.
 _LAUNCH_STAMP_TASK_TYPES = {"retrieval_practice", "revision"}
+
+# EWP-5: max auto-generated english_writing_session tasks per plan generation.
+# Writing tasks are additive (a distinct modality) and bounded so they never
+# crowd out the topic-study plan.
+_MAX_WRITING_TASKS = 2
 
 # preferred_task_size -> minutes per task block.
 _SIZE_MINUTES = {"small": 25, "medium": 40, "large": 60}
@@ -811,6 +818,80 @@ def _active_plan(supabase: Any, user_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def _open_writing_topic_ids(supabase: Any, user_id: str) -> set[str]:
+    """Topics that already carry an ACTIVE (non-``planned``) writing task today.
+
+    Dedup source for EWP-5 generation. Deliberately excludes ``status='planned'``
+    rows: ``_persist`` clears today's planned tasks before re-inserting on every
+    regeneration, so counting them would suppress the writing task on the second
+    regen and it would vanish. Only started/completed writing tasks (which
+    ``_persist`` preserves) should block a duplicate for the same topic.
+    """
+    plan = _active_plan(supabase, user_id)
+    if not plan:
+        return set()
+    today = _today_iso()
+    rows = (
+        _safe(
+            lambda: (
+                supabase.table("study_tasks")
+                .select("topic_id, status")
+                .eq("plan_id", plan["id"])
+                .eq("scheduled_date", today)
+                .eq("launch_type", LAUNCH_ENGLISH_WRITING_SESSION)
+                .execute()
+                .data
+            ),
+            default=[],
+        )
+        or []
+    )
+    return {
+        r["topic_id"]
+        for r in rows
+        if r.get("topic_id") and r.get("status") != "planned"
+    }
+
+
+def _generate_writing_tasks(
+    supabase: Any,
+    user_id: str,
+    ordered: list[dict[str, Any]],
+    *,
+    exam_id: str,
+    exam_phase_id: str | None,
+    minutes: int,
+) -> list[dict[str, Any]]:
+    """Deterministically build english_writing_session tasks for this plan.
+
+    Never raises and never blocks plan generation: any read failure degrades to
+    an empty list (no writing tasks) via the fail-closed helpers in
+    ``writing_practice.planner_tasks``.
+    """
+    candidate_topic_ids = [c.get("topic_id") for c in ordered if c.get("topic_id")]
+    if not candidate_topic_ids:
+        return []
+    eligible = planner_tasks.resolve_writing_eligible_topic_ids(
+        supabase,
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+        candidate_topic_ids=candidate_topic_ids,
+    )
+    if not eligible:
+        return []
+    existing = _open_writing_topic_ids(supabase, user_id)
+    return planner_tasks.build_writing_tasks(
+        ordered,
+        exam_id=exam_id,
+        exam_phase_id=exam_phase_id,
+        minutes=minutes,
+        today=_today_iso(),
+        eligible_topic_ids=eligible,
+        existing_writing_topic_ids=existing,
+        max_writing_tasks=_MAX_WRITING_TASKS,
+    )
+
+
 def _next_version_number(supabase: Any, plan_id: str) -> int:
     rows = (
         _safe(
@@ -1261,12 +1342,29 @@ def _compute_plan(
         exam_id=exam_id,
     )
 
+    # EWP-5: auto-generate real english_writing_session sentence tasks for
+    # writing-eligible English topics (verified+active prompts only). Additive
+    # and bounded; deduped against active writing tasks so regen never
+    # duplicates. Uses the plan phase so launch-time prompt selection re-derives
+    # the same eligible set.
+    writing_tasks = _generate_writing_tasks(
+        supabase,
+        user_id,
+        ordered,
+        exam_id=exam_id,
+        exam_phase_id=plan_phase_id,
+        minutes=minutes,
+    )
+    if writing_tasks:
+        tasks.extend(writing_tasks)
+
     input_context = {
         "reason": reason,
         "generator_version": PLANNER_VERSION,
         "exam_id": exam_id,
         "exam_slug": exam.get("slug"),
         "locked_topic_count": len(coverage),
+        "writing_task_count": len(writing_tasks),
         "days_remaining": days_remaining,
         "competition_pressure": pressure_level,
         "policy_affects_syllabus": bool(policy_updates.get("affects_syllabus")),
