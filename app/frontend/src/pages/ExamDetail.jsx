@@ -215,32 +215,21 @@ export default function ExamDetail() {
     );
   }
 
-  // Exam validated but no published recruitment cycle for it yet — surface
-  // explicitly instead of looping the loading shell forever.
-  if (!r && examMeta) {
-    return (
-      <div className="soft-card rounded-2xl p-6" data-testid="exam-no-cycle">
-        <h1 className="font-heading text-2xl font-semibold">{examMeta.name}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          No published recruitment cycle for this exam yet. We'll list it here as
-          soon as a cycle is verified.
-        </p>
-        <Link
-          to="/app/eligibility/exams"
-          className="inline-flex items-center gap-1 mt-4 text-sm text-muted-foreground link-under"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to all exams
-        </Link>
-      </div>
-    );
-  }
+  // Still resolving: neither the recruitment detail nor the exam meta is in yet.
+  // Once examMeta lands we render the exam-only page even if no recruitment
+  // cycle is mapped, so exam-level intelligence (PYQ Explorer, Documents,
+  // Competition, Resources, Groups) stays visible for exams like upsc-cse.
+  if (!r && !examMeta) return <div data-testid="exam-loading">Loading…</div>;
 
-  if (!r) return <div data-testid="exam-loading">Loading…</div>;
-
-  const { orgCode, elig, failReasons, isEligible, isConditional, examSlug } = derived;
+  // examSlug must resolve without a recruitment — fall back to the exam meta
+  // slug (and the URL slug) so the intelligence sections keep working when
+  // `r` is null.
+  const examSlug = r?.exam_slug || r?.exam?.slug || examMeta?.slug || slug;
+  const { orgCode, elig, failReasons, isEligible, isConditional } = derived || {};
+  const displayOrgCode = orgCode || (examMeta?.name || "—").slice(0, 4).toUpperCase();
 
   return (
-    <div className="space-y-6" data-testid={`exam-detail-${r.id}`}>
+    <div className="space-y-6" data-testid={`exam-detail-${r?.id || examMeta?.id}`}>
       <Link
         to="/app/eligibility/exams"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground link-under"
@@ -252,67 +241,79 @@ export default function ExamDetail() {
         <div className="flex flex-wrap items-start gap-6 justify-between">
           <div className="flex items-start gap-4">
             <div className="h-14 w-14 rounded-2xl bg-clay-100 grid place-items-center font-heading font-semibold text-clay-700">
-              {orgCode}
+              {displayOrgCode}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-heading text-3xl md:text-4xl font-semibold tracking-tight">
-                  {r.name}
+                  {r ? r.name : examMeta?.name}
                 </h1>
-                <VerdictBadge verdict={elig.verdict} />
+                {r && <VerdictBadge verdict={elig.verdict} />}
               </div>
               <div className="text-muted-foreground text-sm">
-                {r.organization}
-                {r.year ? ` · ${r.year}` : ""}
-                {r.state ? ` · ${r.state}` : ""}
+                {r ? (
+                  <>
+                    {r.organization}
+                    {r.year ? ` · ${r.year}` : ""}
+                    {r.state ? ` · ${r.state}` : ""}
+                  </>
+                ) : (
+                  "No active recruitment cycle"
+                )}
               </div>
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={toggleSave}
-              disabled={busy}
-              data-testid="detail-save-btn"
-              className={`btn ${r.saved ? "btn-primary" : "btn-ghost"}`}
-            >
-              <Bookmark className="h-4 w-4" /> {r.saved ? "Saved" : "Save"}
-            </button>
-            <button
-              onClick={trackApplication}
-              disabled={busy}
-              className="btn btn-ghost"
-              data-testid="detail-track-btn"
-            >
-              <ListChecks className="h-4 w-4" /> Track application
-            </button>
-            {r.notification_url && (
+          {/* Save / Track / Official site are recruitment-only actions — hide
+              them entirely when there is no mapped recruitment cycle. */}
+          {r && (
+            <div className="flex gap-2 flex-wrap">
               <button
-                onClick={openOfficialApply}
-                className="btn btn-primary"
-                data-testid="detail-official-link"
+                onClick={toggleSave}
+                disabled={busy}
+                data-testid="detail-save-btn"
+                className={`btn ${r.saved ? "btn-primary" : "btn-ghost"}`}
               >
-                Official site <ExternalLink className="h-4 w-4" />
+                <Bookmark className="h-4 w-4" /> {r.saved ? "Saved" : "Save"}
               </button>
-            )}
-          </div>
+              <button
+                onClick={trackApplication}
+                disabled={busy}
+                className="btn btn-ghost"
+                data-testid="detail-track-btn"
+              >
+                <ListChecks className="h-4 w-4" /> Track application
+              </button>
+              {r.notification_url && (
+                <button
+                  onClick={openOfficialApply}
+                  className="btn btn-primary"
+                  data-testid="detail-official-link"
+                >
+                  Official site <ExternalLink className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="mt-8 grid md:grid-cols-4 gap-4">
-          {[
-            { label: "Vacancies", val: r.vacancies?.toLocaleString() || "—" },
-            { label: "Posts evaluated", val: `${elig.matched_posts || 0} / ${elig.total_posts || 0}` },
-            { label: "Apply opens", val: formatDate(r.apply_window?.open) },
-            { label: "Apply closes", val: formatDate(r.apply_window?.close) },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl bg-clay-50/70 border border-clay-100 p-4">
-              <div className="text-[10px] uppercase tracking-widest text-clay-700">{s.label}</div>
-              <div className="mt-2 font-heading text-2xl font-semibold">{s.val}</div>
-            </div>
-          ))}
-        </div>
+        {r && (
+          <div className="mt-8 grid md:grid-cols-4 gap-4">
+            {[
+              { label: "Vacancies", val: r.vacancies?.toLocaleString() || "—" },
+              { label: "Posts evaluated", val: `${elig.matched_posts || 0} / ${elig.total_posts || 0}` },
+              { label: "Apply opens", val: formatDate(r.apply_window?.open) },
+              { label: "Apply closes", val: formatDate(r.apply_window?.close) },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl bg-clay-50/70 border border-clay-100 p-4">
+                <div className="text-[10px] uppercase tracking-widest text-clay-700">{s.label}</div>
+                <div className="mt-2 font-heading text-2xl font-semibold">{s.val}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <ExamDetailAnchorNav sections={SECTIONS} ready={Boolean(r)} />
+      <ExamDetailAnchorNav sections={SECTIONS} ready={Boolean(r || examMeta)} />
 
       <div className="space-y-12 pb-24">
         {/* ─── About ─────────────────────────────────────────────── */}
@@ -321,6 +322,15 @@ export default function ExamDetail() {
           eyebrow="About this recruitment"
           title="The cycle at a glance"
         >
+          {!r ? (
+            <div className="soft-card rounded-2xl p-6" data-testid="about-no-cycle">
+              <p className="text-sm text-muted-foreground">
+                No published recruitment cycle for this exam yet. The exam-level
+                intelligence below stays available; cycle details will list here
+                as soon as a cycle is verified.
+              </p>
+            </div>
+          ) : (
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="soft-card rounded-2xl p-5">
               <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
@@ -382,6 +392,7 @@ export default function ExamDetail() {
               )}
             </div>
           </div>
+          )}
         </Section>
 
         {/* ─── Eligibility ───────────────────────────────────────── */}
@@ -390,6 +401,15 @@ export default function ExamDetail() {
           eyebrow="About your eligibility"
           title="Verdict from the deterministic engine"
         >
+          {!r ? (
+            <div className="soft-card rounded-2xl p-6" data-testid="eligibility-panel">
+              <p className="text-sm text-muted-foreground">
+                Eligibility is computed per recruitment cycle. There's no active
+                cycle for this exam right now — your deterministic verdict will
+                appear here once a cycle is published.
+              </p>
+            </div>
+          ) : (
           <div className="soft-card rounded-2xl p-6" data-testid="eligibility-panel">
             <h3 className="font-heading text-xl font-semibold">
               Verdict:{" "}
@@ -439,6 +459,7 @@ export default function ExamDetail() {
               </div>
             )}
           </div>
+          )}
         </Section>
 
         {/* ─── Docs & Fees ───────────────────────────────────────── */}
@@ -448,7 +469,12 @@ export default function ExamDetail() {
           title="Criteria-based requirements"
         >
           <div className="soft-card rounded-2xl p-6">
-            {(r.posts || []).length === 0 ? (
+            {!r ? (
+              <p className="text-sm text-muted-foreground">
+                Per-post documents, fees, and attempt limits are tied to a
+                recruitment cycle. They'll appear here once a cycle is published.
+              </p>
+            ) : (r.posts || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Per-post documents, fees, and attempt limits will list here once
                 the recruitment is fully ingested.
