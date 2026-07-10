@@ -245,7 +245,7 @@ Safe to run concurrently with PR-A.
 | **PR-A** planner generation | `planner.py` + planner tests | PR-C, PR-D |
 | **PR-B** prompt ops | seeds, audit doc, handoff/checklist docs | PR-C, PR-D (surfacing step depends on PR-A) |
 | **PR-C** SP1b shadow run | audit doc, checklist | PR-A, PR-B, PR-D |
-| **PR-D** `submitted_at` | rollup migration 240 + `session_finalizer.py` | PR-A, PR-C |
+| **PR-D** `submitted_at` | rollup migration `<next>` (candidate slot; verify live `MAX(schema_migrations)+1`) + `session_finalizer.py` | PR-A, PR-C |
 
 - None of these touch routing / AdminShell / `adminRoutes.jsx` — the serial-delivery rule does
   not bind this slice.

@@ -204,6 +204,47 @@ def test_resolve_empty_candidates_returns_empty():
     ) == set()
 
 
+class _ReadyTypesStub(SBStub):
+    """SBStub whose cms_writing_runtime_ready_types() returns a set list."""
+
+    def __init__(self, db, ready_types):
+        super().__init__(db)
+        self._ready_types = ready_types
+
+    def rpc(self, name, params=None):
+        if name == "cms_writing_runtime_ready_types":
+            from tests.persona_questions._stub import _RpcCall  # local import
+            return _RpcCall(list(self._ready_types))
+        return super().rpc(name, params)
+
+
+def test_resolve_pins_to_sentence_construction_when_allowlist_widens():
+    # runtime-ready widens to include vocabulary_in_context, but the topic's ONLY
+    # prompt is a vocabulary prompt -> no sentence_construction task is eligible.
+    db = {
+        "subjects": [{"id": "s-eng", "slug": "english-language", "name": "English"}],
+        "exams": [{"id": "exam-1", "exam_family_id": None}],
+        "writing_prompts": [_prompt("wp-vocab", "te1", exercise="vocabulary_in_context")],
+        "writing_prompt_targets": [_global_target("wp-vocab")],
+    }
+    sb = _ReadyTypesStub(db, ["sentence_construction", "vocabulary_in_context"])
+    got = planner_tasks.resolve_writing_eligible_topic_ids(
+        sb, exam_id="exam-1", exam_phase_id=None, candidate_topic_ids=["te1"]
+    )
+    assert got == set()
+
+
+def test_resolve_empty_when_sentence_construction_not_runtime_ready():
+    # If a future migration removes sentence_construction from the allowlist,
+    # generation stops entirely (no non-launchable tasks).
+    db = _db([_prompt("wp1", "te1")], [_global_target("wp1")]).db
+    sb = _ReadyTypesStub(db, ["vocabulary_in_context"])
+    got = planner_tasks.resolve_writing_eligible_topic_ids(
+        sb, exam_id="exam-1", exam_phase_id=None, candidate_topic_ids=["te1"]
+    )
+    assert got == set()
+
+
 # ── end-to-end through the real planner._compute_plan ───────────────────────
 
 def _seed_with_english_writing() -> dict:
@@ -251,6 +292,46 @@ def test_compute_plan_no_writing_task_when_no_english_prompt():
     assert [t for t in result["tasks"]
             if t.get("launch_type") == LAUNCH_ENGLISH_WRITING_SESSION] == []
     assert result["input_context"]["writing_task_count"] == 0
+
+
+class _RaisingQuery:
+    def select(self, *a, **k):
+        return self
+
+    def eq(self, *a, **k):
+        return self
+
+    def execute(self):
+        raise RuntimeError("study_tasks read boom")
+
+
+class _RaiseOnStudyTasks(SBStub):
+    """SBStub whose study_tasks reads raise, to exercise fail-closed dedup."""
+
+    def table(self, name):
+        if name == "study_tasks":
+            return _RaisingQuery()
+        return super().table(name)
+
+
+def test_compute_plan_fails_closed_when_dedup_read_raises():
+    db = _seed_with_english_writing()
+    db["study_plans"] = [
+        {"id": "plan-1", "user_id": "u-1", "status": "active",
+         "current_plan_version_id": "v-0"},
+    ]
+    result = planner._compute_plan(_RaiseOnStudyTasks(db), "u-1", reason="test")
+    assert result["generated"] is True
+    # dedup read failed -> NO writing task emitted (never risk a duplicate).
+    assert [t for t in result["tasks"]
+            if t.get("launch_type") == LAUNCH_ENGLISH_WRITING_SESSION] == []
+    assert result["input_context"]["writing_task_count"] == 0
+
+
+def test_open_writing_topic_ids_returns_sentinel_on_read_failure():
+    db = {"study_plans": [{"id": "plan-1", "user_id": "u-1", "status": "active"}]}
+    got = planner._open_writing_topic_ids(_RaiseOnStudyTasks(db), "u-1")
+    assert got is planner._READ_FAILED
 
 
 def test_compute_plan_dedups_against_active_writing_task():

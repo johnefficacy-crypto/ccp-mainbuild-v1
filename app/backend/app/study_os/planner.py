@@ -818,7 +818,7 @@ def _active_plan(supabase: Any, user_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def _open_writing_topic_ids(supabase: Any, user_id: str) -> set[str]:
+def _open_writing_topic_ids(supabase: Any, user_id: str) -> set[str] | object:
     """Topics that already carry an ACTIVE (non-``planned``) writing task today.
 
     Dedup source for EWP-5 generation. Deliberately excludes ``status='planned'``
@@ -826,29 +826,33 @@ def _open_writing_topic_ids(supabase: Any, user_id: str) -> set[str]:
     regeneration, so counting them would suppress the writing task on the second
     regen and it would vanish. Only started/completed writing tasks (which
     ``_persist`` preserves) should block a duplicate for the same topic.
+
+    Fails **closed**: if the ``study_tasks`` dedup read fails, returns the
+    ``_READ_FAILED`` sentinel so the caller skips writing generation entirely.
+    A transient read error must never look like "no existing writing task" and
+    let a duplicate `english_writing_session` task be emitted for the same topic.
     """
     plan = _active_plan(supabase, user_id)
     if not plan:
         return set()
     today = _today_iso()
-    rows = (
-        _safe(
-            lambda: (
-                supabase.table("study_tasks")
-                .select("topic_id, status")
-                .eq("plan_id", plan["id"])
-                .eq("scheduled_date", today)
-                .eq("launch_type", LAUNCH_ENGLISH_WRITING_SESSION)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("topic_id, status")
+            .eq("plan_id", plan["id"])
+            .eq("scheduled_date", today)
+            .eq("launch_type", LAUNCH_ENGLISH_WRITING_SESSION)
+            .execute()
+            .data
+        ),
+        default=_READ_FAILED,
     )
+    if rows is _READ_FAILED:
+        return _READ_FAILED
     return {
         r["topic_id"]
-        for r in rows
+        for r in (rows or [])
         if r.get("topic_id") and r.get("status") != "planned"
     }
 
@@ -880,6 +884,10 @@ def _generate_writing_tasks(
     if not eligible:
         return []
     existing = _open_writing_topic_ids(supabase, user_id)
+    if existing is _READ_FAILED:
+        # Dedup read failed — fail closed and generate no writing tasks rather
+        # than risk duplicating an open one for the same topic.
+        return []
     return planner_tasks.build_writing_tasks(
         ordered,
         exam_id=exam_id,

@@ -128,13 +128,23 @@ def resolve_writing_eligible_topic_ids(
             q = q.in_("topic_id", candidates)
         return q.limit(2000).execute().data
 
-    rows = _safe(_query, default=[]) or []
     ready_types = _runtime_ready_types(supabase)
-    # prompt_id -> topic_id for runtime-ready, topic-pinned prompts only.
+    # The planner stamps every generated task as WRITING_EXERCISE_TYPE
+    # (sentence_construction), so eligibility must be pinned to that exact type —
+    # NOT merely "any runtime-ready type". The runtime-ready allowlist is designed
+    # to widen (vocabulary_in_context, correction, ...) via future migrations; if
+    # we accepted any ready type, a topic whose only prompt is a future vocabulary
+    # prompt would wrongly make the planner emit a sentence_construction task.
+    # Also guards that our own type is still runtime-ready (a migration removing it
+    # from the allowlist must stop generation, not emit non-launchable tasks).
+    if WRITING_EXERCISE_TYPE not in ready_types:
+        return set()
+    rows = _safe(_query, default=[]) or []
+    # prompt_id -> topic_id for sentence_construction, topic-pinned prompts only.
     ready: list[tuple[str, str]] = [
         (str(r["id"]), str(r["topic_id"]))
         for r in rows
-        if r.get("exercise_type") in ready_types and r.get("topic_id")
+        if r.get("exercise_type") == WRITING_EXERCISE_TYPE and r.get("topic_id")
     ]
     if not ready:
         return set()

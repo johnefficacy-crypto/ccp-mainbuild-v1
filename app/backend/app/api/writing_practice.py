@@ -417,7 +417,23 @@ def _select_launch_prompt(
     rows = query.execute().data or []
 
     ready_types = set(_runtime_ready_types(supabase))
-    ready_ids = [str(r["id"]) for r in rows if r.get("exercise_type") in ready_types]
+    # Honor the task's pinned exercise type when present: a planner-generated task
+    # stamps ``launch_context.exercise_type`` (e.g. sentence_construction), and the
+    # launched prompt's type MUST match the stamped type — otherwise, once the
+    # runtime-ready allowlist widens, a topic carrying both a sentence and a (newly
+    # ready) vocabulary prompt could launch the vocabulary prompt for a task the
+    # learner sees as "sentence practice". No pin (legacy/None) preserves prior
+    # behaviour: any runtime-ready type is eligible.
+    launch_context = task.get("launch_context")
+    pinned_type = (
+        launch_context.get("exercise_type") if isinstance(launch_context, dict) else None
+    )
+    ready_ids = [
+        str(r["id"])
+        for r in rows
+        if r.get("exercise_type") in ready_types
+        and (pinned_type is None or r.get("exercise_type") == pinned_type)
+    ]
     if not ready_ids:
         return None
 

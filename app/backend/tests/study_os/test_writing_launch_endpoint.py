@@ -229,6 +229,31 @@ def test_deterministic_selection_smallest_id_and_shared_path(monkeypatch):
     }
 
 
+def test_pinned_exercise_type_selects_matching_prompt_over_smaller_id(monkeypatch):
+    # Runtime-ready allowlist has widened to include vocabulary_in_context, and
+    # the topic has BOTH a vocabulary prompt (smaller id) and a sentence prompt.
+    # The task pins launch_context.exercise_type=sentence_construction, so the
+    # launched prompt MUST be the sentence one — never the smaller-id vocabulary
+    # prompt — so the learner's "sentence practice" task launches a sentence prompt.
+    vocab_low = "00000000-0000-0000-0000-0000000000d0"  # smaller id than _P_LOW
+    fs = _build(
+        prompts=[
+            _prompt(vocab_low, exercise_type="vocabulary_in_context"),
+            _prompt(_P_LOW, exercise_type="sentence_construction"),
+        ],
+        targets=[_target(vocab_low), _target(_P_LOW)],
+        task=_task(launch_context={"exercise_type": "sentence_construction"}),
+        created_session={"id": "sess-scon", "status": "active"},
+    )
+    fs._rpc_results["cms_writing_runtime_ready_types"] = [
+        "sentence_construction", "vocabulary_in_context",
+    ]
+    _patch(monkeypatch, fs)
+    wp.launch_writing(_TASK, user={"id": _USER})
+    create = [c for c in fs.rpc_calls if c[0] == "ewp_create_writing_session"][0]
+    assert create[1]["p_prompt"] == _P_LOW  # sentence prompt, not smaller-id vocab
+
+
 def test_selection_is_stable_across_calls(monkeypatch):
     def run():
         fs = _build(
