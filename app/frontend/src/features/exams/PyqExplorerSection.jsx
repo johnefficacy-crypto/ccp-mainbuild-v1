@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { setAttemptReturnContext } from "../../pages/study/mocks/attemptReturnContext";
+import PyqSummaryCharts from "./PyqSummaryCharts";
+import PyqPaperPracticeCards from "./PyqPaperPracticeCards";
 
 const DIFFICULTY_OPTIONS = [
   { value: "", label: "Any difficulty" },
@@ -13,21 +15,10 @@ const DIFFICULTY_OPTIONS = [
   { value: "unknown", label: "Unknown" },
 ];
 
-const SOURCE_OPTIONS = [
-  { value: "", label: "Any source" },
-  { value: "official", label: "Official" },
-  { value: "memory_based", label: "Memory-based" },
-  { value: "coaching", label: "Coaching" },
-  { value: "community", label: "Community" },
-  { value: "aggregator", label: "Aggregator" },
-];
-
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-        {label}
-      </span>
+      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -45,25 +36,17 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function QuestionCard({ q, onPractice, practicing, practiceDisabled }) {
   const [expanded, setExpanded] = useState(false);
-
   return (
-    <div
-      className="rounded-xl border border-clay-100 bg-white p-4 space-y-2"
-      data-testid="pyq-question-card"
-    >
+    <div className="rounded-xl border border-clay-100 bg-white p-4 space-y-2" data-testid="pyq-question-card">
       <div className="flex items-start justify-between gap-2">
+        {/* Learner chips: Year · Phase · Subject · Difficulty · Q number.
+            Shift/Source/Official are intentionally NOT shown to learners. */}
         <div className="flex items-center gap-2 flex-wrap">
-          {q.paper_year ? (
-            <span className="pill pill-clay text-[11px]">{q.paper_year}</span>
-          ) : null}
-          {q.shift ? (
-            <span className="pill pill-clay text-[11px]">Shift {q.shift}</span>
-          ) : null}
+          {q.paper_year ? <span className="pill pill-clay text-[11px]">{q.paper_year}</span> : null}
+          {q.phase_name ? <span className="pill pill-dusk text-[11px]">{q.phase_name}</span> : null}
+          {q.subject_name ? <span className="pill pill-sage text-[11px]">{q.subject_name}</span> : null}
           {q.difficulty && q.difficulty !== "unknown" ? (
             <span className="pill pill-dusk text-[11px] capitalize">{q.difficulty}</span>
-          ) : null}
-          {q.source_type ? (
-            <span className="pill pill-sage text-[11px]">{q.source_type}</span>
           ) : null}
           {q.question_number != null ? (
             <span className="text-[11px] text-muted-foreground">Q{q.question_number}</span>
@@ -144,94 +127,132 @@ function useDebounce(value, delay) {
 export default function PyqExplorerSection({ examSlug, examName }) {
   const navigate = useNavigate();
   const { run, busy } = useApiAction();
+
+  // Intelligence overview + paper cards (default primary view).
+  const [summary, setSummary] = useState(null);
+
+  // Learner filters (Browse section). Source/Trust is intentionally gone.
   const [year, setYear] = useState("");
-  const [phase, setPhase] = useState("");
+  const [phase, setPhase] = useState(""); // phase_slug
+  const [subject, setSubject] = useState(""); // subject_id
+  const [topic, setTopic] = useState(""); // topic_id
   const [difficulty, setDifficulty] = useState("");
-  const [sourceType, setSourceType] = useState("");
+
+  const [browseOpen, setBrowseOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Practice launcher (PYQ v2 PR-5/6 slice C): start a practice attempt over a
-  // paper's verified, projected questions and hand off to the existing attempt
-  // shell. Not every listed paper is projected to the mock bank yet, so a 409
-  // (empty pool) is an expected, gracefully-handled state.
   const [practicingPaperId, setPracticingPaperId] = useState(null);
   const [practiceError, setPracticeError] = useState("");
 
-  // Available years derived from first load (no filter)
-  const [availableYears, setAvailableYears] = useState([]);
-  const yearsLoaded = useRef(false);
+  const [topicOptions, setTopicOptions] = useState([]); // {id, name, subject_id}
+  const auxLoaded = useRef(false);
 
   const debouncedYear = useDebounce(year, 300);
 
-  const buildUrl = useCallback(
-    (overrides = {}) => {
-      const p = new URLSearchParams();
-      const cfg = { page, page_size: 20, ...overrides };
-      p.set("page", cfg.page ?? page);
-      p.set("page_size", cfg.page_size ?? 20);
-      if (debouncedYear) p.set("year", debouncedYear);
-      if (phase) p.set("phase", phase);
-      if (difficulty) p.set("difficulty", difficulty);
-      if (sourceType) p.set("source_type", sourceType);
-      return `/api/exam-intelligence/exams/${examSlug}/pyqs?${p.toString()}`;
-    },
-    [examSlug, page, debouncedYear, phase, difficulty, sourceType]
-  );
-
+  // ── intelligence summary (totals, distributions, paper cards) ──────────────
   useEffect(() => {
-    if (!examSlug || yearsLoaded.current) return;
-    yearsLoaded.current = true;
+    if (!examSlug) return undefined;
+    let cancelled = false;
     api
-      .get(`/api/exam-intelligence/exams/${examSlug}/pyqs?page=1&page_size=100`)
-      .then((d) => {
-        const years = [...new Set((d?.items || []).map((q) => q.paper_year).filter(Boolean))].sort(
-          (a, b) => b - a
-        );
-        setAvailableYears(years);
-      })
-      .catch(() => {});
+      .get(`/api/exam-intelligence/exams/${examSlug}/pyq-summary`)
+      .then((d) => !cancelled && setSummary(d))
+      .catch(() => !cancelled && setSummary(null));
+    return () => {
+      cancelled = true;
+    };
   }, [examSlug]);
 
+  // ── Topic filter options — derived from /pyqs, but strictly opt-in ─────────
+  // Fetched only AFTER Browse is opened (never on initial render, so the hub
+  // default hits /pyq-summary alone), once per mount, and paginated to
+  // completeness so no topic that first appears after page 1 is silently
+  // dropped. Fails closed: on any page error we clear the (possibly partial)
+  // set and allow a retry on the next open rather than showing a misleading
+  // partial topic list.
   useEffect(() => {
-    if (!examSlug) return;
+    if (!examSlug || !browseOpen || auxLoaded.current) return undefined;
+    auxLoaded.current = true;
+    let cancelled = false;
+    const PAGE_SIZE = 100;
+    const MAX_PAGES = 50; // safety cap (≤ 5000 questions) so this can't run away
+    (async () => {
+      const map = new Map();
+      try {
+        for (let pg = 1; pg <= MAX_PAGES; pg += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          const d = await api.get(
+            `/api/exam-intelligence/exams/${examSlug}/pyqs?page=${pg}&page_size=${PAGE_SIZE}`
+          );
+          if (cancelled) return;
+          const rows = d?.items || [];
+          rows.forEach((q) => {
+            const tags = q.topic_tags || [];
+            const names = q.topic_names || [];
+            tags.forEach((t, i) => {
+              const name = names[i];
+              if (t?.topic_id && name && !map.has(t.topic_id)) {
+                map.set(t.topic_id, { id: t.topic_id, name, subject_id: q.subject_id || null });
+              }
+            });
+          });
+          const totalRows = Number.isFinite(d?.total) ? d.total : rows.length;
+          if (rows.length < PAGE_SIZE || pg * PAGE_SIZE >= totalRows) break;
+        }
+        if (!cancelled) setTopicOptions([...map.values()]);
+      } catch {
+        if (!cancelled) {
+          auxLoaded.current = false; // permit a retry next time Browse opens
+          setTopicOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [examSlug, browseOpen]);
+
+  const buildUrl = useCallback(() => {
+    const p = new URLSearchParams();
+    p.set("page", page);
+    p.set("page_size", 20);
+    if (debouncedYear) p.set("year", debouncedYear);
+    if (phase) p.set("phase", phase);
+    if (subject) p.set("subject_id", subject);
+    if (topic) p.set("topic_id", topic);
+    if (difficulty) p.set("difficulty", difficulty);
+    return `/api/exam-intelligence/exams/${examSlug}/pyqs?${p.toString()}`;
+  }, [examSlug, page, debouncedYear, phase, subject, topic, difficulty]);
+
+  // Browse list fetches only when the (collapsed-by-default) section is open.
+  useEffect(() => {
+    if (!examSlug || !browseOpen) return undefined;
     let cancelled = false;
     setLoading(true);
     setError("");
     api
       .get(buildUrl())
-      .then((d) => {
-        if (cancelled) return;
-        setData(d);
-      })
+      .then((d) => !cancelled && setData(d))
       .catch((e) => {
         if (cancelled) return;
         setError(e?.message || "Failed to load PYQs.");
         setData(null);
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [buildUrl, examSlug]);
+  }, [buildUrl, examSlug, browseOpen]);
 
-  // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedYear, phase, difficulty, sourceType]);
+  }, [debouncedYear, phase, subject, topic, difficulty]);
 
-  const examId = data?.exam_id || null;
+  const examId = summary?.exam_id || data?.exam_id || null;
 
-  // Route the mutation through the shared useApiAction runner (frontend
-  // governance). The expected 409 (paper not yet projected) is caught inside the
-  // action and surfaced as an inline notice — returned as a handled result so
-  // useApiAction's generic error toast does not also fire; any unexpected error
-  // is rethrown onto the standard action error path.
   const startPaperPractice = useCallback(
     async (paperId) => {
       if (!paperId || busy) return;
@@ -258,10 +279,8 @@ export default function PyqExplorerSection({ examSlug, examName }) {
             return;
           }
           if (out?.attempt_id) {
-            // Stash a source-aware return descriptor so the attempt / result /
-            // review pages can offer a "Back to <exam> PYQs" link.
             setAttemptReturnContext(out.attempt_id, {
-              return_to: `/app/eligibility/exams/${examSlug}#pyq-explorer`,
+              return_to: `/app/exam-intelligence/exams/${examSlug}#pyq-explorer`,
               source_label: `Back to ${examName || "exam"} PYQs`,
             });
             navigate(`/app/study/mocks/attempts/${out.attempt_id}`);
@@ -276,41 +295,55 @@ export default function PyqExplorerSection({ examSlug, examName }) {
     [run, busy, navigate, examId, examSlug, examName]
   );
 
+  const yearOptions = useMemo(
+    () => [
+      { value: "", label: "Any year" },
+      ...(summary?.by_year || []).map((r) => ({ value: String(r.year), label: String(r.year) })),
+    ],
+    [summary]
+  );
+  const phaseOptions = useMemo(
+    () => [
+      { value: "", label: "Any phase" },
+      ...(summary?.by_phase || [])
+        .filter((r) => r.phase_slug)
+        .map((r) => ({ value: r.phase_slug, label: r.phase_name || r.phase_slug })),
+    ],
+    [summary]
+  );
+  const subjectOptions = useMemo(
+    () => [
+      { value: "", label: "Any subject" },
+      ...(summary?.by_subject || [])
+        .filter((r) => r.subject_id)
+        .map((r) => ({ value: r.subject_id, label: r.subject_name || "Subject" })),
+    ],
+    [summary]
+  );
+  const topicSelectOptions = useMemo(() => {
+    const scoped = subject ? topicOptions.filter((t) => t.subject_id === subject) : topicOptions;
+    return [{ value: "", label: "Any topic" }, ...scoped.map((t) => ({ value: t.id, label: t.name }))];
+  }, [topicOptions, subject]);
+
   if (!examSlug) return null;
 
   const items = data?.items || [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20) || 1;
-
-  const yearOptions = [
-    { value: "", label: "Any year" },
-    ...availableYears.map((y) => ({ value: String(y), label: String(y) })),
-  ];
+  const hasFilters = year || phase || subject || topic || difficulty;
 
   return (
-    <div className="space-y-4" data-testid="pyq-explorer">
-      {/* Filters */}
-      <div className="soft-card rounded-2xl p-4 flex flex-wrap gap-3 items-end">
-        <FilterSelect label="Year" value={year} onChange={setYear} options={yearOptions} />
-        <FilterSelect label="Difficulty" value={difficulty} onChange={setDifficulty} options={DIFFICULTY_OPTIONS} />
-        <FilterSelect label="Source / Trust" value={sourceType} onChange={setSourceType} options={SOURCE_OPTIONS} />
-        {(year || phase || difficulty || sourceType) && (
-          <button
-            type="button"
-            onClick={() => {
-              setYear("");
-              setPhase("");
-              setDifficulty("");
-              setSourceType("");
-            }}
-            className="btn btn-ghost text-xs self-end"
-          >
-            Clear filters
-          </button>
+    <div className="space-y-6" data-testid="pyq-explorer">
+      {/* ── A. PYQ Intelligence overview ─────────────────────────────────── */}
+      <div>
+        <div className="font-heading text-lg font-semibold mb-3">PYQ intelligence</div>
+        {summary ? (
+          <PyqSummaryCharts summary={summary} />
+        ) : (
+          <div className="soft-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="pyq-summary-loading">
+            Loading PYQ intelligence…
+          </div>
         )}
-        <div className="ml-auto self-end text-xs text-muted-foreground">
-          {loading ? "Loading…" : `${total.toLocaleString()} verified question${total !== 1 ? "s" : ""}`}
-        </div>
       </div>
 
       {practiceError ? (
@@ -323,66 +356,118 @@ export default function PyqExplorerSection({ examSlug, examName }) {
         </div>
       ) : null}
 
-      {/* Results */}
-      {error ? (
-        <div className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
-          {error}
-        </div>
-      ) : loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-clay-100 bg-clay-50/60 h-20 animate-pulse" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div
-          className="rounded-2xl border border-dashed border-clay-200 bg-clay-50/50 p-8 text-center"
-          data-testid="pyq-explorer-empty"
-        >
-          <Search className="h-5 w-5 mx-auto text-clay-500" />
-          <div className="mt-2 font-heading text-base font-semibold">No questions found</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Try removing some filters, or check back once more questions are verified.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.map((q) => (
-            <QuestionCard
-              key={q.id}
-              q={q}
-              onPractice={startPaperPractice}
-              practicing={busy && practicingPaperId === q.paper_id}
-              practiceDisabled={busy}
-            />
-          ))}
-        </div>
-      )}
+      {/* ── B. Practice by paper (primary) ───────────────────────────────── */}
+      <div>
+        <div className="font-heading text-lg font-semibold mb-3">Practice by paper</div>
+        <PyqPaperPracticeCards
+          papers={summary?.papers}
+          onPractice={startPaperPractice}
+          practicingPaperId={practicingPaperId}
+          practiceDisabled={busy}
+          sr={busy}
+        />
+      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && !loading && !error && (
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="btn btn-ghost text-sm disabled:opacity-40"
-          >
-            ← Previous
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="btn btn-ghost text-sm disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
-      )}
+      {/* ── C. Browse questions (secondary, collapsible) ─────────────────── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setBrowseOpen((v) => !v)}
+          data-testid="pyq-browse-toggle"
+          aria-expanded={browseOpen}
+          className="w-full flex items-center justify-between soft-card rounded-2xl px-4 py-3"
+        >
+          <span className="font-heading text-lg font-semibold">Browse questions</span>
+          {browseOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+
+        {browseOpen && (
+          <div className="mt-3 space-y-4" data-testid="pyq-browse">
+            <div className="soft-card rounded-2xl p-4 flex flex-wrap gap-3 items-end">
+              <FilterSelect label="Year" value={year} onChange={setYear} options={yearOptions} />
+              <FilterSelect label="Phase" value={phase} onChange={setPhase} options={phaseOptions} />
+              <FilterSelect label="Subject" value={subject} onChange={setSubject} options={subjectOptions} />
+              <FilterSelect label="Topic" value={topic} onChange={setTopic} options={topicSelectOptions} />
+              <FilterSelect label="Difficulty" value={difficulty} onChange={setDifficulty} options={DIFFICULTY_OPTIONS} />
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setYear("");
+                    setPhase("");
+                    setSubject("");
+                    setTopic("");
+                    setDifficulty("");
+                  }}
+                  className="btn btn-ghost text-xs self-end"
+                >
+                  Clear filters
+                </button>
+              )}
+              <div className="ml-auto self-end text-xs text-muted-foreground">
+                {loading ? "Loading…" : `${total.toLocaleString()} verified question${total !== 1 ? "s" : ""}`}
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">{error}</div>
+            ) : loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-clay-100 bg-clay-50/60 h-20 animate-pulse" />
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div
+                className="rounded-2xl border border-dashed border-clay-200 bg-clay-50/50 p-8 text-center"
+                data-testid="pyq-explorer-empty"
+              >
+                <Search className="h-5 w-5 mx-auto text-clay-500" />
+                <div className="mt-2 font-heading text-base font-semibold">No questions found</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Try removing some filters, or check back once more questions are verified.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {items.map((q) => (
+                  <QuestionCard
+                    key={q.id}
+                    q={q}
+                    onPractice={startPaperPractice}
+                    practicing={busy && practicingPaperId === q.paper_id}
+                    practiceDisabled={busy}
+                  />
+                ))}
+              </div>
+            )}
+
+            {totalPages > 1 && !loading && !error && (
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="btn btn-ghost text-sm disabled:opacity-40"
+                >
+                  ← Previous
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="btn btn-ghost text-sm disabled:opacity-40"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

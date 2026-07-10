@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Activity, Bell, Bookmark, Bot, CalendarRange, Compass, FileText, GraduationCap, HandHeart, Layers, Library, LineChart, Menu, MessagesSquare, NotebookPen, RotateCw, Settings, Shield, ShoppingBag, Tag, Trophy, Users, XCircle, ShieldCheck } from "lucide-react";
+import { Activity, BarChart3, Bell, Bookmark, Bot, CalendarRange, Compass, FileText, GraduationCap, HandHeart, Layers, Library, LineChart, Menu, MessagesSquare, NotebookPen, RotateCw, Settings, Shield, ShoppingBag, Tag, Trophy, Users, XCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/authContext";
 import { api } from "../lib/api";
 import AppSidebar from "../shared/layouts/AppSidebar";
@@ -21,6 +21,11 @@ const SECTIONS = [
     items: [
       { to: "/app/today", label: "Today", icon: CalendarRange, testId: "sidebar-today" },
       { to: "/app/eligibility", label: "Eligibility", icon: ShieldCheck, testId: "sidebar-eligibility" },
+      // Top-level Exam Intelligence surface (PR #942 item 13). Deliberate
+      // override of the no-new-surface lock, approved by the repo owner — the
+      // exam intelligence page is promoted out of Eligibility to its own
+      // destination; Eligibility stays the recruitment/application funnel.
+      { to: "/app/exam-intelligence", label: "Exam Intelligence", icon: BarChart3, testId: "sidebar-exam-intelligence" },
       { to: "/app/study", label: "Study", icon: GraduationCap, testId: "sidebar-study" },
     ],
   },
