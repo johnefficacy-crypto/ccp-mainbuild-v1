@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import QuestionRenderer from "./components/questions/QuestionRenderer";
@@ -62,12 +62,49 @@ export default function MockReview() {
     setIdx((cur) => (cur >= questions.length ? 0 : cur));
   }, [questions.length, filter]);
 
+  // ── keyboard navigation (bound once; latest state via ref) ─────────────────
+  const navRef = useRef({});
+  navRef.current = { idx, count: questions.length };
+  useEffect(() => {
+    function onKey(e) {
+      const t = e.target;
+      const tag = (t?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable) return;
+      const { count } = navRef.current;
+      if (e.key === "Escape") {
+        if (document.activeElement && typeof document.activeElement.blur === "function") {
+          document.activeElement.blur();
+        }
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        setIdx((i) => Math.min(count - 1, i + 1));
+        return;
+      }
+      if (e.key === "ArrowLeft" || e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        setIdx((i) => Math.max(0, i - 1));
+        return;
+      }
+      if (/^[1-9]$/.test(e.key)) {
+        const target = Number(e.key) - 1;
+        if (target < count) {
+          e.preventDefault();
+          setIdx(target);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!data) return <div>Loading…</div>;
 
   const current = questions[idx] || null;
 
   return (
-    <div className="p-4 space-y-4" data-testid="review-page">
+    <div className="p-4 pb-20 space-y-4" data-testid="review-page">
       {returnCtx ? (
         <Link
           to={returnCtx.return_to}
@@ -142,32 +179,53 @@ export default function MockReview() {
               selected_option_id: current.selected_option_id,
             }}
           />
-          <div className="mt-3 flex justify-between">
-            <button
-              type="button"
-              data-testid="review-prev"
-              disabled={idx === 0}
-              onClick={() => setIdx((i) => Math.max(0, i - 1))}
-              className="rounded border px-3 py-1 disabled:opacity-40"
-            >
-              ← Prev
-            </button>
-            <button
-              type="button"
-              data-testid="review-next"
-              disabled={idx >= questions.length - 1}
-              onClick={() => setIdx((i) => Math.min(questions.length - 1, i + 1))}
-              className="rounded border px-3 py-1 disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
         </div>
       ) : (
         <div data-testid="review-empty" className="text-sm text-clay-700">
           No questions match this filter.
         </div>
       )}
+
+      {/* Sticky footer action bar — stays put regardless of stem length. */}
+      <div
+        data-testid="review-footer"
+        className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 flex items-center justify-between gap-3 border-t border-border bg-[#FBF6EF]/95 backdrop-blur px-4 py-3"
+      >
+        <button
+          type="button"
+          data-testid="review-prev"
+          disabled={idx === 0 || !current}
+          onClick={() => setIdx((i) => Math.max(0, i - 1))}
+          className="rounded border px-3 py-1 disabled:opacity-40"
+        >
+          ← Prev
+        </button>
+        {current ? (
+          <span className="text-xs text-muted-foreground">
+            Question {current._num}
+          </span>
+        ) : null}
+        <div className="flex items-center gap-2">
+          {returnCtx ? (
+            <Link
+              to={returnCtx.return_to}
+              data-testid="review-footer-back"
+              className="rounded border px-3 py-1 text-sm hover:bg-clay-100"
+            >
+              {returnCtx.source_label}
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            data-testid="review-next"
+            disabled={idx >= questions.length - 1 || !current}
+            onClick={() => setIdx((i) => Math.min(questions.length - 1, i + 1))}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

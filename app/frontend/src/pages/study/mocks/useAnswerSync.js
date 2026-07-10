@@ -206,6 +206,27 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     [flush],
   );
 
+  // Flush EVERY touched question and wait for all to reach a terminal state.
+  // Used before /submit so a debounced/in-flight save on any earlier question
+  // (not just the current one) lands before the attempt is finalized — the
+  // backend scores from persisted `mock_attempt_responses`, so a submit must
+  // never race an unresolved save. Reads the synchronous refs (not React state)
+  // so callers get an up-to-date picture after the awaited flush:
+  //   { failedIds, answeredCount } — answeredCount counts questions whose save
+  //   reached SAVED with a non-null selected_option_id.
+  const flushAll = useCallback(async () => {
+    const ids = Object.keys(syncStatesRef.current);
+    await Promise.all(ids.map((qid) => flush(qid)));
+    const snap = syncStatesRef.current;
+    const failedIds = Object.entries(snap)
+      .filter(([, e]) => e?.state === SYNC.FAILED)
+      .map(([qid]) => qid);
+    const answeredCount = Object.entries(snap).filter(
+      ([qid, e]) => e?.state === SYNC.SAVED && payloads.current[qid]?.selected_option_id != null,
+    ).length;
+    return { failedIds, answeredCount };
+  }, [flush]);
+
   // Manual retry from the failed banner — replays the same client_seq.
   const retryNow = useCallback(
     (qid) => {
@@ -235,6 +256,7 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     queueSave,
     flush,
     flushMany,
+    flushAll,
     retryNow,
     retryAllFailed,
     failedIds,

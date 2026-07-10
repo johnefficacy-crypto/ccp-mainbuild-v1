@@ -3,6 +3,7 @@ import QuestionStem from "../shared/QuestionStem";
 import OptionList from "../shared/OptionList";
 import MarkdownSafe from "../shared/MarkdownSafe";
 import MathRenderer from "../shared/MathRenderer";
+import { formatOptionLabel } from "../../../optionLabels";
 
 // Printed order mirrors OptionList: display_order asc (NULLs last), stable.
 function byDisplayOrder(a, b) {
@@ -24,8 +25,9 @@ function resolveCorrectOption(options, correctOptionId) {
   const pos = ordered.findIndex((o) => o.id === correctOptionId);
   if (pos === -1) return null;
   const o = ordered[pos];
-  const label = o.source_label || `${o.option_index || String.fromCharCode(65 + pos)}`;
-  return { label: String(label).replace(/\.$/, ""), text: o.option_text || "" };
+  // Fully-formatted label ("A." / "(a)") — no extra punctuation appended by the
+  // caller, so a printed "(a)" never renders as "(a).".
+  return { label: formatOptionLabel(o, pos), text: o.option_text || "" };
 }
 
 export default function MCQSingle({
@@ -50,7 +52,7 @@ export default function MCQSingle({
       {correct ? (
         <div className="mt-2 text-sm text-sage-800" data-testid="review-correct-answer">
           <span className="font-semibold">Correct answer: </span>
-          {correct.label}. <MathRenderer text={correct.text} />
+          {correct.label} <MathRenderer text={correct.text} />
         </div>
       ) : null}
       {showExplanation && question.explanation ? <MarkdownSafe text={question.explanation} /> : null}

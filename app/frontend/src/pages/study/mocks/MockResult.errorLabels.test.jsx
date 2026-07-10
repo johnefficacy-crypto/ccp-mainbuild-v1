@@ -19,6 +19,7 @@ const RESULT = {
   total_correct: 1,
   total_wrong: 2,
   time_used_sec: 120,
+  avg_time_per_q_sec: 24,
   section_breakdown: [],
 };
 
@@ -54,4 +55,45 @@ test("result Error tab renders mapped labels, never raw classifier codes", async
   expect(donut).toHaveTextContent("Time pressure / not attempted");
   expect(donut).not.toHaveTextContent("silly_mistake");
   expect(donut).not.toHaveTextContent("time_pressure_unattempted");
+});
+
+test("Time tab shows real timing metrics when time_used_sec > 0", async () => {
+  const { api } = require("../../../lib/api");
+  api.get.mockImplementation((url) => {
+    if (url.endsWith("/result")) return Promise.resolve(RESULT);
+    if (url.endsWith("/analytics")) return Promise.resolve({ topic_breakdown: [] });
+    return Promise.resolve({});
+  });
+  render(
+    <MemoryRouter initialEntries={["/app/study/mocks/attempts/att1/result"]}>
+      <Routes>
+        <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await screen.findByTestId("result-page");
+  fireEvent.click(screen.getByTestId("result-tab-time"));
+  expect(await screen.findByTestId("result-time-total")).toHaveTextContent("2m 0s");
+  expect(screen.getByTestId("result-time-avg")).toHaveTextContent("24s");
+  expect(screen.queryByTestId("result-time-unavailable")).toBeNull();
+});
+
+test("Time tab shows an unavailable state when there is no timing data", async () => {
+  const { api } = require("../../../lib/api");
+  api.get.mockImplementation((url) => {
+    if (url.endsWith("/result")) return Promise.resolve({ ...RESULT, time_used_sec: 0, avg_time_per_q_sec: 0 });
+    if (url.endsWith("/analytics")) return Promise.resolve({ topic_breakdown: [] });
+    return Promise.resolve({});
+  });
+  render(
+    <MemoryRouter initialEntries={["/app/study/mocks/attempts/att1/result"]}>
+      <Routes>
+        <Route path="/app/study/mocks/attempts/:attemptId/result" element={<MockResult />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await screen.findByTestId("result-page");
+  fireEvent.click(screen.getByTestId("result-tab-time"));
+  expect(await screen.findByTestId("result-time-unavailable")).toBeTruthy();
+  expect(screen.queryByTestId("result-time-total")).toBeNull();
 });

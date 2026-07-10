@@ -49,7 +49,9 @@ jest.mock("../useAnswerSync", () => ({
   SYNC: { UNSAVED: "unsaved", SAVING: "saving", SAVED: "saved", RETRYING: "retrying", FAILED: "failed" },
   default: () => ({
     queueSave: jest.fn(),
+    flush: jest.fn(() => Promise.resolve()),
     flushMany: jest.fn(() => Promise.resolve()),
+    flushAll: jest.fn(() => Promise.resolve({ failedIds: [], answeredCount: 0 })),
     retryNow: jest.fn(),
     retryAllFailed: jest.fn(),
     hasUnsynced: false,

@@ -9,6 +9,7 @@ import AnswerSyncIndicator from "./AnswerSyncIndicator";
 import QuestionStem from "./components/questions/shared/QuestionStem";
 import QuestionStimuli from "./components/questions/shared/QuestionStimuli";
 import { getAttemptReturnContext } from "./attemptReturnContext";
+import { formatOptionLabel } from "./optionLabels";
 
 const DEBOUNCE_MS = 600;
 const MOCK_ATTEMPT_API_BASE = `${BACKEND_URL.replace(/\/+$/, "")}/api/study/mocks/attempts`;
@@ -41,6 +42,14 @@ export default function MockAttemptShell() {
   // Source-aware back link (e.g. "Back to UPSC CSE PYQs") when the attempt was
   // launched from an exam's PYQ Explorer. Null for attempts with no stored source.
   const returnCtx = useMemo(() => getAttemptReturnContext(attemptId), [attemptId]);
+
+  // ── per-question dwell tracking ────────────────────────────────────────────
+  // Accumulated seconds spent on each question (survives revisits) + the wall
+  // clock at which the current question became visible. Flushed into the answer
+  // payload's `time_spent_sec` on every question change / select / mark / submit
+  // so the result's time analytics are real instead of a constant 0.
+  const dwellRef = useRef({});
+  const enteredAtRef = useRef(Date.now());
 
   const timerRef = useRef(null);
   const autoSubmitFired = useRef(false);
@@ -105,6 +114,8 @@ export default function MockAttemptShell() {
           };
         }
         setResponses(initial);
+        // Start the dwell clock for question 1 once the attempt is on screen.
+        enteredAtRef.current = Date.now();
       } catch (e) {
         if (!cancelled) setError(e?.message || "Could not load attempt.");
       } finally {
@@ -190,17 +201,45 @@ export default function MockAttemptShell() {
     [answerSync],
   );
 
+  // Accrue the time spent on the currently-visible question into dwellRef and
+  // reset the clock. Returns the running dwell total (seconds) for that question
+  // so the caller can send it on the answer payload.
+  const accrueDwell = useCallback(
+    (questionId) => {
+      if (!questionId) return 0;
+      const now = Date.now();
+      const elapsed = Math.max(0, Math.round((now - enteredAtRef.current) / 1000));
+      enteredAtRef.current = now;
+      dwellRef.current[questionId] = (dwellRef.current[questionId] || 0) + elapsed;
+      return dwellRef.current[questionId];
+    },
+    [],
+  );
+
+  // Persist the current question's accrued dwell (used on navigation / submit so
+  // read-time on a question is captured even when the answer itself is unchanged).
+  const flushDwellForCurrent = useCallback(() => {
+    const qs = attempt?.questions || [];
+    const cq = qs[currentIdx];
+    if (!cq) return;
+    const qid = cq.question_id;
+    const total = accrueDwell(qid);
+    const r = responses[qid] || {};
+    sendAnswer(qid, r.selected_option_id || null, r.is_marked_for_review || false, total);
+  }, [attempt, currentIdx, responses, accrueDwell, sendAnswer]);
+
   // ── handle option select ──────────────────────────────────────────────────
   function selectOption(questionId, optionId) {
+    const dwell = accrueDwell(questionId);
     setResponses((prev) => {
       const cur = prev[questionId] || {};
       const updated = { ...cur, selected_option_id: optionId };
-      sendAnswer(questionId, optionId, updated.is_marked_for_review || false);
+      sendAnswer(questionId, optionId, updated.is_marked_for_review || false, dwell);
       try {
         eventBus.enqueue("question.answered", {
           question_id: questionId,
           selected_option_id: optionId,
-          time_spent_sec: 0,
+          time_spent_sec: dwell,
         });
       } catch (e) { console.warn("[Shell] enqueue error:", e); }
       return { ...prev, [questionId]: updated };
@@ -208,11 +247,12 @@ export default function MockAttemptShell() {
   }
 
   function toggleReview(questionId) {
+    const dwell = accrueDwell(questionId);
     setResponses((prev) => {
       const cur = prev[questionId] || {};
       const flipped = !cur.is_marked_for_review;
       const updated = { ...cur, is_marked_for_review: flipped };
-      sendAnswer(questionId, cur.selected_option_id || null, flipped);
+      sendAnswer(questionId, cur.selected_option_id || null, flipped, dwell);
       try {
         const evType = flipped ? "question.marked" : "question.unmarked";
         eventBus.enqueue(evType, { question_id: questionId });
@@ -220,6 +260,94 @@ export default function MockAttemptShell() {
       return { ...prev, [questionId]: updated };
     });
   }
+
+  // Central "go to question index" — flushes the leaving question's dwell first,
+  // then moves. Every navigation path (palette, prev, keyboard) routes through
+  // this so dwell is captured on every question change.
+  const goToIdx = useCallback(
+    (i) => {
+      const qs = attempt?.questions || [];
+      if (i < 0 || i >= qs.length || i === currentIdx) return;
+      flushDwellForCurrent();
+      setCurrentIdx(i);
+      setPaletteOpen(false);
+    },
+    [attempt, currentIdx, flushDwellForCurrent],
+  );
+
+  // ── keyboard shortcuts ─────────────────────────────────────────────────────
+  // Bound once; reads the latest handlers/state through a ref so there are no
+  // stale closures and no per-render re-binding. Ignores keys while typing in a
+  // form field. See the shortcut map in the PR body.
+  const kbdRef = useRef({});
+  kbdRef.current = {
+    attempt, currentIdx, currentSection,
+    confirmOpen, failedModalOpen, paletteOpen,
+    failedCount: answerSync.failedCount,
+    pendingCount: answerSync.pendingCount,
+    submitting,
+    saveAndNext, goToIdx, toggleReview, selectOption,
+  };
+  useEffect(() => {
+    function onKey(e) {
+      const h = kbdRef.current;
+      const t = e.target;
+      const tag = (t?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable) return;
+      const a = h.attempt;
+      if (!a || a.status === "submitted") return;
+
+      if (e.key === "Escape") {
+        if (h.confirmOpen) setConfirmOpen(false);
+        else if (h.failedModalOpen) setFailedModalOpen(false);
+        else if (h.paletteOpen) setPaletteOpen(false);
+        return;
+      }
+      // Don't hijack shortcuts while a blocking dialog is open.
+      if (h.confirmOpen || h.failedModalOpen) return;
+
+      const qs = a.questions || [];
+      const cq = qs[h.currentIdx];
+      const locked = Boolean(a.section_locks_enabled) || a.template_config?.allow_switching === false;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        // Mirror the disabled Submit button: never open confirm while saves are
+        // pending or a submit is already in flight (guards the pending-save race).
+        if (h.submitting || h.pendingCount > 0) return;
+        if (h.failedCount > 0) setFailedModalOpen(true);
+        else setConfirmOpen(true);
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        if (h.currentIdx < qs.length - 1) h.saveAndNext();
+        return;
+      }
+      if (e.key === "ArrowLeft" || e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        const prevOk =
+          h.currentIdx > 0 &&
+          !(locked && Number(qs[h.currentIdx - 1]?.section_index || 0) !== h.currentSection);
+        if (prevOk) h.goToIdx(h.currentIdx - 1);
+        return;
+      }
+      if ((e.key === "m" || e.key === "M") && cq) {
+        e.preventDefault();
+        h.toggleReview(cq.question_id);
+        return;
+      }
+      if (/^[1-6]$/.test(e.key) && cq) {
+        const opt = (cq.options || [])[Number(e.key) - 1];
+        if (opt) {
+          e.preventDefault();
+          h.selectOption(cq.question_id, opt.id);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // ── section-aware advance ────────────────────────────────────────────────
   // "Save & Next" moves to the next question. When the next question lives in
@@ -230,6 +358,8 @@ export default function MockAttemptShell() {
     const all = attempt?.questions || [];
     const nextIdx = currentIdx + 1;
     if (nextIdx >= all.length) return;
+    // Capture dwell on the leaving question before any section flush/advance.
+    flushDwellForCurrent();
     const nextSection = Number(all[nextIdx]?.section_index || 0);
     if (nextSection !== currentSection) {
       // Drain every pending debounce in the current section before moving the
@@ -268,10 +398,19 @@ export default function MockAttemptShell() {
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      const { syncStates } = answerSync;
-      const answeredCount = Object.entries(syncStates).filter(
-        ([, e]) => e?.state === "saved" && responses[e?.question_id]?.selected_option_id != null
-      ).length;
+      // Capture the final question's dwell, then flush EVERY touched question
+      // (not just the current one) and wait for terminal states before /submit.
+      // The backend scores from persisted `mock_attempt_responses`, so a submit
+      // must never race a debounced/in-flight save on an earlier question.
+      flushDwellForCurrent();
+      const { failedIds, answeredCount } = await answerSync.flushAll();
+      // A save that failed after flushing means an answer is not durable — do
+      // not finalize; route the user to the failed-save modal to retry/remove.
+      if (failedIds.length > 0) {
+        setFailedModalOpen(true);
+        setSubmitting(false);
+        return;
+      }
       // Deliver buffered telemetry (the final question.visited / answered events)
       // and wait for the server ACK BEFORE /submit triggers compute_and_persist(),
       // so the persisted classifications/dwell reflect them. Time-bounded
@@ -365,8 +504,7 @@ export default function MockAttemptShell() {
         aria-label={`Question ${i + 1}`}
         onClick={() => {
           if (disabled) return;
-          setCurrentIdx(i);
-          setPaletteOpen(false);
+          goToIdx(i);
         }}
         style={{
           ...styles.navBtn,
@@ -413,6 +551,9 @@ export default function MockAttemptShell() {
       {/* Two-pane body: question on the left, sticky question navigator on the right */}
       <div className="attempt-body">
         <div className="attempt-main">
+          {/* Scrollable question canvas — the stem/options scroll here so the
+              footer action bar below stays fixed regardless of stem length. */}
+          <div className="attempt-scroll">
           {returnCtx ? (
             <Link to={returnCtx.return_to} data-testid="attempt-back-source" style={styles.backLink}>
               ← {returnCtx.source_label}
@@ -454,7 +595,7 @@ export default function MockAttemptShell() {
                         border: selected ? "2px solid #60a5fa" : "2px solid #374151",
                       }}
                     >
-                      <span style={styles.optIndex}>{opt.source_label || `${opt.option_index}.`}</span>
+                      <span style={styles.optIndex}>{formatOptionLabel(opt, optIdx)}</span>
                       {opt.option_text}
                     </button>
                   );
@@ -471,9 +612,11 @@ export default function MockAttemptShell() {
               </label>
             </div>
           )}
+          </div>
 
-          {/* Prev / Save & Next */}
-          <div style={styles.navRow}>
+          {/* Sticky footer action bar — fixed at the bottom of the question pane
+              so Prev / Save & Next never move with stem length. */}
+          <div style={styles.navRow} className="attempt-footer" data-testid="attempt-footer">
             <button
               style={styles.navArrow}
               data-testid="attempt-prev"
@@ -482,7 +625,7 @@ export default function MockAttemptShell() {
                 (sectionLocked &&
                   Number(questions[currentIdx - 1]?.section_index || 0) !== currentSection)
               }
-              onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+              onClick={() => goToIdx(currentIdx - 1)}
             >
               ← Prev
             </button>
@@ -555,9 +698,10 @@ export default function MockAttemptShell() {
                 style={styles.confirmBtn}
                 data-testid="attempt-confirm-submit"
                 onClick={() => { setConfirmOpen(false); doSubmit(); }}
-                disabled={submitting}
+                disabled={submitting || pendingCount > 0}
+                title={pendingCount > 0 ? `Waiting for ${pendingCount} answer${pendingCount === 1 ? "" : "s"} to save` : undefined}
               >
-                {submitting ? "Submitting…" : "Yes, submit"}
+                {submitting ? "Submitting…" : pendingCount > 0 ? "Saving…" : "Yes, submit"}
               </button>
             </div>
           </div>
@@ -600,7 +744,8 @@ const ATTEMPT_STYLES = `
 @keyframes attempt-pulse { 0% { opacity: 1; } 50% { opacity: 0.35; } 100% { opacity: 1; } }
 .attempt-sync-pulse { animation: attempt-pulse 1s ease-in-out infinite; }
 .attempt-body { display: flex; flex: 1; align-items: stretch; min-height: 0; }
-.attempt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.attempt-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.attempt-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .attempt-aside { width: 236px; flex-shrink: 0; background: #1f2937; border-left: 1px solid #374151; padding: 14px; position: sticky; top: 0; align-self: flex-start; max-height: 100vh; overflow-y: auto; }
 .attempt-aside-close { display: none; }
 .attempt-mobile-toggle { display: none; }
@@ -612,7 +757,7 @@ const ATTEMPT_STYLES = `
 }`;
 
 const styles = {
-  shell: { minHeight: "100vh", background: "#111827", color: "#f9fafb", display: "flex", flexDirection: "column" },
+  shell: { height: "100vh", overflow: "hidden", background: "#111827", color: "#f9fafb", display: "flex", flexDirection: "column" },
   center: { textAlign: "center", marginTop: 80, color: "#9ca3af" },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", background: "#1f2937", borderBottom: "1px solid #374151" },
   title: { fontWeight: 600, fontSize: 16, color: "#f9fafb" },
@@ -628,7 +773,9 @@ const styles = {
   mobileToggle: { padding: "10px 16px", background: "#1a56db", color: "#fff", border: "none", borderRadius: 999, cursor: "pointer", fontWeight: 600, fontSize: 13, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" },
   navBtn: { width: 34, height: 34, borderRadius: 4, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 },
   navWarn: { position: "absolute", top: -6, right: -6, width: 14, height: 14, lineHeight: "14px", textAlign: "center", borderRadius: "50%", background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 },
-  questionCard: { flex: 1, padding: "24px 24px 8px", maxWidth: 760, margin: "0 auto", width: "100%" },
+  // Exam canvas: stem top-left, comfortable measure, not floated in a narrow
+  // centered column (item 4).
+  questionCard: { padding: "20px 28px 12px", maxWidth: 900, margin: 0, width: "100%", textAlign: "left" },
   qMetaRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 },
   qMeta: { fontSize: 13, color: "#6b7280" },
   qText: { fontSize: 17, lineHeight: 1.6, marginBottom: 20, color: "#f3f4f6" },
