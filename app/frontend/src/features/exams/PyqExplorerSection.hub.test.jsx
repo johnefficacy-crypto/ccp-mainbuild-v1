@@ -79,6 +79,20 @@ test("shows one paper card per paper and offers practice only for practice-ready
   expect(screen.getByTestId("pyq-paper-not-ready")).toBeTruthy();
 });
 
+test("browse is opt-in: initial render hits /pyq-summary but never /pyqs until Browse opens", async () => {
+  render(<PyqExplorerSection examSlug="upsc-cse" examName="UPSC CSE" />);
+  await screen.findByTestId("pyq-summary-charts");
+  // The hub default must not fetch the raw question feed for any reason
+  // (topic options included) before the learner opens Browse.
+  const urls = () => api.get.mock.calls.map((c) => c[0]);
+  expect(urls().some((u) => u.includes("/pyq-summary"))).toBe(true);
+  expect(urls().some((u) => u.includes("/pyqs"))).toBe(false);
+
+  fireEvent.click(screen.getByTestId("pyq-browse-toggle"));
+  await screen.findByTestId("pyq-browse");
+  expect(api.get.mock.calls.some((c) => c[0].includes("/pyqs"))).toBe(true);
+});
+
 test("learner filters are Year/Phase/Subject/Topic/Difficulty — Source/Trust is gone", async () => {
   render(<PyqExplorerSection examSlug="upsc-cse" examName="UPSC CSE" />);
   await screen.findByTestId("pyq-summary-charts");

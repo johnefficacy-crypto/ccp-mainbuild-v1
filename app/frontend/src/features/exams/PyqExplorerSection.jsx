@@ -166,28 +166,54 @@ export default function PyqExplorerSection({ examSlug, examName }) {
     };
   }, [examSlug]);
 
-  // ── one broad fetch to derive the Topic filter options ─────────────────────
+  // ── Topic filter options — derived from /pyqs, but strictly opt-in ─────────
+  // Fetched only AFTER Browse is opened (never on initial render, so the hub
+  // default hits /pyq-summary alone), once per mount, and paginated to
+  // completeness so no topic that first appears after page 1 is silently
+  // dropped. Fails closed: on any page error we clear the (possibly partial)
+  // set and allow a retry on the next open rather than showing a misleading
+  // partial topic list.
   useEffect(() => {
-    if (!examSlug || auxLoaded.current) return;
+    if (!examSlug || !browseOpen || auxLoaded.current) return undefined;
     auxLoaded.current = true;
-    api
-      .get(`/api/exam-intelligence/exams/${examSlug}/pyqs?page=1&page_size=100`)
-      .then((d) => {
-        const map = new Map();
-        (d?.items || []).forEach((q) => {
-          const tags = q.topic_tags || [];
-          const names = q.topic_names || [];
-          tags.forEach((t, i) => {
-            const name = names[i];
-            if (t?.topic_id && name && !map.has(t.topic_id)) {
-              map.set(t.topic_id, { id: t.topic_id, name, subject_id: q.subject_id || null });
-            }
+    let cancelled = false;
+    const PAGE_SIZE = 100;
+    const MAX_PAGES = 50; // safety cap (≤ 5000 questions) so this can't run away
+    (async () => {
+      const map = new Map();
+      try {
+        for (let pg = 1; pg <= MAX_PAGES; pg += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          const d = await api.get(
+            `/api/exam-intelligence/exams/${examSlug}/pyqs?page=${pg}&page_size=${PAGE_SIZE}`
+          );
+          if (cancelled) return;
+          const rows = d?.items || [];
+          rows.forEach((q) => {
+            const tags = q.topic_tags || [];
+            const names = q.topic_names || [];
+            tags.forEach((t, i) => {
+              const name = names[i];
+              if (t?.topic_id && name && !map.has(t.topic_id)) {
+                map.set(t.topic_id, { id: t.topic_id, name, subject_id: q.subject_id || null });
+              }
+            });
           });
-        });
-        setTopicOptions([...map.values()]);
-      })
-      .catch(() => {});
-  }, [examSlug]);
+          const totalRows = Number.isFinite(d?.total) ? d.total : rows.length;
+          if (rows.length < PAGE_SIZE || pg * PAGE_SIZE >= totalRows) break;
+        }
+        if (!cancelled) setTopicOptions([...map.values()]);
+      } catch {
+        if (!cancelled) {
+          auxLoaded.current = false; // permit a retry next time Browse opens
+          setTopicOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [examSlug, browseOpen]);
 
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams();
