@@ -40,11 +40,18 @@ _P_PARA = "00000000-0000-0000-0000-0000000000da"
 # Fake Supabase                                                               #
 # --------------------------------------------------------------------------- #
 class _Query:
-    def __init__(self, rows):
+    def __init__(self, rows, name=None, fs=None):
         self._rows = [dict(r) for r in rows]
         self._single = False
+        self._name = name
+        self._fs = fs
 
     def select(self, *_a, **_k):
+        return self
+
+    def update(self, payload):
+        if self._fs is not None:
+            self._fs.updates.append((self._name, dict(payload)))
         return self
 
     def eq(self, col, val):
@@ -83,9 +90,10 @@ class FakeSupabase:
         self._tables = tables
         self._rpc_results = rpc_results or {}
         self.rpc_calls = []
+        self.updates = []
 
     def table(self, name):
-        return _Query(self._tables.get(name, []))
+        return _Query(self._tables.get(name, []), name=name, fs=self)
 
     def rpc(self, name, params):
         self.rpc_calls.append((name, params))
@@ -227,6 +235,62 @@ def test_deterministic_selection_smallest_id_and_shared_path(monkeypatch):
         "session_id": "sess-low",
         "practice_route": "/app/study/practice/english/sess-low",
     }
+
+
+def test_launch_marks_task_in_progress_new_session(monkeypatch):
+    # A generated task launched into a NEW session must be moved off 'planned' so
+    # plan regeneration's delete-of-planned cannot fail on the writing_sessions FK
+    # (NO ACTION, migration 205).
+    fs = _build(
+        prompts=[_prompt(_P_LOW)],
+        targets=[_target(_P_LOW)],
+        task=_task(status="planned"),
+        created_session={"id": "sess-new", "status": "active"},
+    )
+    _patch(monkeypatch, fs)
+    wp.launch_writing(_TASK, user={"id": _USER})
+    assert ("study_tasks", {"status": "in_progress"}) in fs.updates
+
+
+def test_launch_marks_task_in_progress_on_idempotent_reuse(monkeypatch):
+    # Re-launch into an existing live session must ALSO transition the task, so a
+    # task launched before this fix (still 'planned') is repaired on next launch.
+    fs = _build(
+        prompts=[_prompt(_P_LOW)],
+        targets=[_target(_P_LOW)],
+        task=_task(status="planned"),
+        sessions=[{"id": "sess-live", "status": "active",
+                   "study_task_id": _TASK, "user_id": _USER}],
+    )
+    _patch(monkeypatch, fs)
+    out = wp.launch_writing(_TASK, user={"id": _USER})
+    assert out["session_id"] == "sess-live"  # reused, not recreated
+    assert ("study_tasks", {"status": "in_progress"}) in fs.updates
+
+
+def test_pinned_exercise_type_selects_matching_prompt_over_smaller_id(monkeypatch):
+    # Runtime-ready allowlist has widened to include vocabulary_in_context, and
+    # the topic has BOTH a vocabulary prompt (smaller id) and a sentence prompt.
+    # The task pins launch_context.exercise_type=sentence_construction, so the
+    # launched prompt MUST be the sentence one — never the smaller-id vocabulary
+    # prompt — so the learner's "sentence practice" task launches a sentence prompt.
+    vocab_low = "00000000-0000-0000-0000-0000000000d0"  # smaller id than _P_LOW
+    fs = _build(
+        prompts=[
+            _prompt(vocab_low, exercise_type="vocabulary_in_context"),
+            _prompt(_P_LOW, exercise_type="sentence_construction"),
+        ],
+        targets=[_target(vocab_low), _target(_P_LOW)],
+        task=_task(launch_context={"exercise_type": "sentence_construction"}),
+        created_session={"id": "sess-scon", "status": "active"},
+    )
+    fs._rpc_results["cms_writing_runtime_ready_types"] = [
+        "sentence_construction", "vocabulary_in_context",
+    ]
+    _patch(monkeypatch, fs)
+    wp.launch_writing(_TASK, user={"id": _USER})
+    create = [c for c in fs.rpc_calls if c[0] == "ewp_create_writing_session"][0]
+    assert create[1]["p_prompt"] == _P_LOW  # sentence prompt, not smaller-id vocab
 
 
 def test_selection_is_stable_across_calls(monkeypatch):

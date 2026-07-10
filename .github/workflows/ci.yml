@@ -23,6 +23,16 @@ jobs:
       - run: npm run build
       - run: npm run check:bundle-budget
 
+  pr-gate-selftest:
+    name: PR-body gate self-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test scripts/__tests__/*.test.js
+
   supabase-gate-test:
     name: Supabase production gate self-test
     runs-on: ubuntu-latest
