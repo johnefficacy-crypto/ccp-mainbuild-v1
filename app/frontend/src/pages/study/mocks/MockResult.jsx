@@ -11,6 +11,14 @@ const ErrorTypeDonut = lazy(() => import("../components/reports/ErrorTypeDonut")
 
 const TABS = ["overview", "topic", "time", "error"];
 const TAB_LABELS = { overview: "Overview", topic: "Topic", time: "Time", error: "Error" };
+const DIFFICULTIES = ["easy", "medium", "hard"];
+const TIME_BUCKETS = [
+  { bucket: "0–30s", test: (s) => s < 30 },
+  { bucket: "30–60s", test: (s) => s < 60 },
+  { bucket: "1–2m", test: (s) => s < 120 },
+  { bucket: "2–3m", test: (s) => s < 180 },
+  { bucket: "3m+", test: () => true },
+];
 
 function fmtDuration(sec) {
   const s = Math.max(0, Math.round(Number(sec) || 0));
@@ -57,6 +65,49 @@ export default function MockResult() {
       ).map(([code, value]) => ({ label: errorTypeLabel(code), code, value })),
     [analytics],
   );
+
+  // Topic heatmap: real names (backend-enriched `topic_name`) + per-difficulty
+  // accuracy cells derived from each topic row's `difficulty_breakdown`
+  // ({easy|medium|hard}:{att,corr}). Only emit a cell where the learner
+  // actually attempted questions of that difficulty.
+  const topicRows = useMemo(() => analytics?.topic_breakdown || [], [analytics]);
+  const heatmapTopics = useMemo(
+    () =>
+      topicRows.map((t, i) => ({
+        topic_id: t.topic_id || `t${i}`,
+        topic_name: t.topic_name || "General",
+      })),
+    [topicRows],
+  );
+  const heatmapCells = useMemo(
+    () =>
+      topicRows.flatMap((t, i) => {
+        const tid = t.topic_id || `t${i}`;
+        const db = t.difficulty_breakdown || {};
+        return DIFFICULTIES.map((d) => {
+          const cell = db[d] || {};
+          const att = Number(cell.att || 0);
+          if (!att) return null;
+          return { topic_id: tid, difficulty: d, accuracy_pct: (Number(cell.corr || 0) / att) * 100 };
+        }).filter(Boolean);
+      }),
+    [topicRows],
+  );
+
+  // Per-question dwell histogram for the Time tab — bucketed from the result's
+  // per-question `time_spent_sec`. Skipped/never-dwelt questions (0s) are
+  // excluded so the first bucket isn't inflated by unattempted items.
+  const timeBuckets = useMemo(() => {
+    const counts = TIME_BUCKETS.map((b) => ({ bucket: b.bucket, count: 0 }));
+    (result?.per_question || []).forEach((q) => {
+      const s = Number(q.time_spent_sec || 0);
+      if (s <= 0) return;
+      const idx = TIME_BUCKETS.findIndex((b) => b.test(s));
+      if (idx >= 0) counts[idx].count += 1;
+    });
+    return counts;
+  }, [result]);
+  const hasDwellDistribution = timeBuckets.some((b) => b.count > 0);
 
   if (!result) return <div data-testid="result-loading">Loading…</div>;
 
@@ -123,13 +174,7 @@ export default function MockResult() {
       {tab === "topic" && (
         <Suspense fallback={<div data-testid="chart-loading">Loading chart…</div>}>
           <div data-testid="result-chart-topic">
-            <AccuracyHeatmap
-              topics={(analytics?.topic_breakdown || []).map((t, i) => ({
-                topic_id: t.topic_id || `t${i}`,
-                topic_name: t.topic_id || "General",
-              }))}
-              cells={[]}
-            />
+            <AccuracyHeatmap topics={heatmapTopics} cells={heatmapCells} />
           </div>
         </Suspense>
       )}
@@ -141,10 +186,10 @@ export default function MockResult() {
               <StatTile label="Total time used" value={fmtDuration(timeUsed)} testId="result-time-total" />
               <StatTile label="Avg per question" value={fmtDuration(avgPerQ)} testId="result-time-avg" />
             </div>
-            {(analytics?.topic_breakdown || []).length > 0 ? (
+            {hasDwellDistribution ? (
               <Suspense fallback={<div data-testid="chart-loading">Loading chart…</div>}>
                 <div data-testid="result-chart-time">
-                  <TimeDistributionChart data={[]} />
+                  <TimeDistributionChart data={timeBuckets} />
                 </div>
               </Suspense>
             ) : null}

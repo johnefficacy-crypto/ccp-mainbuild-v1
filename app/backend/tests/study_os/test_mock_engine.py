@@ -485,3 +485,64 @@ def test_get_review_orders_by_frozen_attempt_order():
     frozen_ids = template["config"]["question_ids"]
     assert [q["question_id"] for q in review["questions"]] == frozen_ids
     assert [q["attempt_order"] for q in review["questions"]] == list(range(1, len(frozen_ids) + 1))
+
+
+def test_result_per_question_exposes_time_spent_sec():
+    """Each result per_question row must carry its client dwell so the result
+    Time tab can render a real per-question dwell distribution."""
+    sb, _template, questions = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "test-mock-1")
+    attempt_id = start["attempt_id"]
+    q0, q1 = questions[0], questions[1]
+    svc.save_answer(sb, "user-1", attempt_id, q0["id"], q0["options"][1]["id"], False, 1, 20)
+    svc.save_answer(sb, "user-1", attempt_id, q1["id"], q1["options"][1]["id"], False, 2, 40)
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    result = svc.get_result(sb, "user-1", attempt_id)
+    times = {r["question_id"]: r["time_spent_sec"] for r in result["per_question"]}
+    assert times[q0["id"]] == 20
+    assert times[q1["id"]] == 40
+    # Untouched questions still expose an explicit 0 (never missing/None).
+    assert all(isinstance(r["time_spent_sec"], int) for r in result["per_question"])
+
+
+def test_get_analytics_enriches_topic_breakdown_with_topic_name():
+    """The analytics payload must attach a learner-friendly topic_name so the
+    result heatmap labels rows with real names instead of raw topic UUIDs."""
+    sb = SBStub(
+        {
+            "mock_attempts": [{"id": "att-x", "user_id": "user-1", "status": "submitted"}],
+            "mock_attempt_topic_breakdown": [
+                {
+                    "attempt_id": "att-x",
+                    "topic_id": "topic-a",
+                    "microtopic_id": None,
+                    "difficulty_breakdown": {"easy": {"att": 2, "corr": 2}},
+                    "accuracy_pct": 100,
+                }
+            ],
+            "mock_attempt_response_classification": [],
+            "mock_attempt_summary": [{"attempt_id": "att-x", "analytics_quality": {}}],
+            "topics": [{"id": "topic-a", "name": "Algebra"}],
+        }
+    )
+    out = svc.get_analytics(sb, "user-1", "att-x")
+    assert out["topic_breakdown"][0]["topic_name"] == "Algebra"
+
+
+def test_get_analytics_topic_name_fail_open_on_missing_topic():
+    """A topic row with no matching topics record keeps a null name (fail-open),
+    never raising — the UI falls back to a generic label."""
+    sb = SBStub(
+        {
+            "mock_attempts": [{"id": "att-y", "user_id": "user-1", "status": "submitted"}],
+            "mock_attempt_topic_breakdown": [
+                {"attempt_id": "att-y", "topic_id": "orphan", "microtopic_id": None}
+            ],
+            "mock_attempt_response_classification": [],
+            "mock_attempt_summary": [{"attempt_id": "att-y", "analytics_quality": {}}],
+            "topics": [],
+        }
+    )
+    out = svc.get_analytics(sb, "user-1", "att-y")
+    assert out["topic_breakdown"][0]["topic_name"] is None

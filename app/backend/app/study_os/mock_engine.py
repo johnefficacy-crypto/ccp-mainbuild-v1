@@ -1260,6 +1260,9 @@ def _build_result(
             "stimuli": snap.get("stimuli") or [],
             "section_id": snap.get("section_id"),
             "explanation": snap.get("explanation"),
+            # Per-question client dwell, so the result Time tab can render a real
+            # dwell distribution instead of an empty placeholder chart.
+            "time_spent_sec": int((r or {}).get("time_spent_sec") or 0),
         })
 
     summary_rows = _safe(lambda: supabase.table("mock_attempt_summary").select("*").eq("attempt_id", attempt["id"]).limit(1).execute(), default=None)
@@ -1319,9 +1322,22 @@ def get_analytics(supabase: Any, user_id: str, attempt_id: str) -> dict:
     topics = _safe(lambda: supabase.table("mock_attempt_topic_breakdown").select("*").eq("attempt_id", attempt_id).execute(), default=None)
     classes = _safe(lambda: supabase.table("mock_attempt_response_classification").select("*").eq("attempt_id", attempt_id).execute(), default=None)
     summary_rows = _safe(lambda: supabase.table("mock_attempt_summary").select("analytics_quality").eq("attempt_id", attempt_id).limit(1).execute(), default=None)
+    topic_breakdown = getattr(topics, "data", None) or []
+    # Attach a learner-friendly `topic_name` so the result Topic heatmap labels
+    # rows with real names instead of raw topic UUIDs. Fail-open: on a read miss
+    # the row keeps whatever name is absent and the UI falls back gracefully.
+    topic_ids = [t.get("topic_id") for t in topic_breakdown if t.get("topic_id")]
+    if topic_ids:
+        name_rows = _safe(
+            lambda: supabase.table("topics").select("id, name").in_("id", topic_ids).execute(),
+            default=None,
+        )
+        names = {r.get("id"): r.get("name") for r in (getattr(name_rows, "data", None) or [])}
+        for t in topic_breakdown:
+            t["topic_name"] = names.get(t.get("topic_id"))
     return {
         "attempt_id": attempt_id,
-        "topic_breakdown": getattr(topics, "data", None) or [],
+        "topic_breakdown": topic_breakdown,
         "response_classification": getattr(classes, "data", None) or [],
         "analytics_quality": ((getattr(summary_rows, "data", None) or [{}])[0]).get("analytics_quality") or {},
     }
