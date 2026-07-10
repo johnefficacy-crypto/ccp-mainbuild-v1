@@ -201,6 +201,51 @@ def _snapshot_ready(q: dict | None) -> bool:
     return bool(snap.get("options") and snap.get("correct_option_id"))
 
 
+def practice_ready_counts_by_paper(sb, exam_id: str) -> dict[str, int]:
+    """Per-paper count of practice-launch-ready projected PYQ rows for an exam.
+
+    Mirrors the launch predicate (``reviewer_status in (verified, published, live)``
+    + ``pyq_question_id`` present + unexpired + ``sync_status='active'`` projection)
+    so the learner PYQ summary's ``practice_ready_count`` reflects what
+    ``start_pyq_practice`` would actually assemble — not the raw verified-question
+    count. Best-effort: returns ``{}`` on any read failure so the summary degrades
+    to zero rather than erroring the learner surface."""
+    if not exam_id:
+        return {}
+    now_iso = _now_iso()
+    try:
+        res = safe_required(
+            lambda: sb.table("mock_question_bank")
+            .select("id,pyq_paper_id,valid_until")
+            .eq("exam_id", exam_id)
+            .in_("reviewer_status", list(_SELECTABLE))
+            .not_.is_("pyq_question_id", "null")
+            .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+            .limit(50000)
+            .execute(),
+            op="pyq_practice.ready_by_paper",
+            log=logger,
+            allow_empty=True,
+        )
+    except Exception:  # noqa: BLE001 — fail-closed to empty
+        logger.warning("practice_ready_counts_by_paper: bank read failed", exc_info=True)
+        return {}
+    candidates = [r for r in (res or []) if r.get("id") and r.get("pyq_paper_id")]
+    if not candidates:
+        return {}
+    try:
+        active = _active_projection_ids(sb, [r["id"] for r in candidates])
+    except Exception:  # noqa: BLE001 — unresolved projection guard => no availability
+        logger.warning("practice_ready_counts_by_paper: active-projection probe failed", exc_info=True)
+        return {}
+    counts: dict[str, int] = {}
+    for r in candidates:
+        if r["id"] in active:
+            pid = r["pyq_paper_id"]
+            counts[pid] = counts.get(pid, 0) + 1
+    return counts
+
+
 def practiceable_topic_ids(
     sb, *, exam_id: str | None, topic_ids: list[str], limit: int = _DEFAULT_LIMIT
 ) -> set[str]:

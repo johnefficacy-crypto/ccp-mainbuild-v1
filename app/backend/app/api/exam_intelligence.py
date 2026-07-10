@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.lookup import list_active_exams
+from app.study_os.pyq_practice import practice_ready_counts_by_paper
 from app.exam_intelligence.option_insights import option_insights
 from app.exam_intelligence.status import exam_intelligence_summary
 from app.exam_intelligence.trap_drill import (
@@ -289,6 +290,21 @@ def list_exam_pyqs(
         if not paper_ids:
             return {**empty, "exam_id": exam_id}
 
+        # Phase names for the papers on this page's exam (item 8 enrichment).
+        phase_ids = list({p.get("exam_phase_id") for p in paper_rows if p.get("exam_phase_id")})
+        phase_meta: dict[str, dict] = {}
+        if phase_ids:
+            ph_rows = (
+                sb.table("exam_phases")
+                .select("id, phase_slug, name")
+                .in_("id", phase_ids)
+                .limit(500)
+                .execute()
+                .data
+                or []
+            )
+            phase_meta = {p["id"]: p for p in ph_rows}
+
         # 2. Get verified questions
         q_query = (
             sb.table("pyq_questions")
@@ -392,10 +408,55 @@ def list_exam_pyqs(
                 {"topic_id": tag["topic_id"], "tag_role": tag["tag_role"]}
             )
 
+        # 5b. Resolve topic + subject names for this page (item 8 enrichment).
+        page_topic_ids = list({t["topic_id"] for t in tag_rows2 if t.get("topic_id")})
+        topic_meta: dict[str, dict] = {}
+        subject_meta: dict[str, dict] = {}
+        if page_topic_ids:
+            t_rows = (
+                sb.table("topics")
+                .select("id, name, subject_id")
+                .in_("id", page_topic_ids)
+                .limit(5000)
+                .execute()
+                .data
+                or []
+            )
+            topic_meta = {t["id"]: t for t in t_rows}
+            subj_ids = list({t.get("subject_id") for t in t_rows if t.get("subject_id")})
+            if subj_ids:
+                s_rows = (
+                    sb.table("subjects")
+                    .select("id, name")
+                    .in_("id", subj_ids)
+                    .limit(1000)
+                    .execute()
+                    .data
+                    or []
+                )
+                subject_meta = {s["id"]: s for s in s_rows}
+
         # 6. Shape output
         items = []
         for q in page_questions:
             paper = paper_meta.get(q.get("pyq_paper_id") or "", {})
+            phase = phase_meta.get(paper.get("exam_phase_id") or "", {})
+            qtags = tags_by_qid.get(q["id"], [])
+            qtopic_ids = [t["topic_id"] for t in qtags if t.get("topic_id")]
+            topic_names = [
+                topic_meta[tid]["name"]
+                for tid in qtopic_ids
+                if tid in topic_meta and topic_meta[tid].get("name")
+            ]
+            # Subject from the primary tag when present, else the first tag.
+            primary = next((t for t in qtags if t.get("tag_role") == "primary"), None) or (
+                qtags[0] if qtags else None
+            )
+            subj_id = None
+            subj_name = None
+            if primary and topic_meta.get(primary.get("topic_id")):
+                subj_id = topic_meta[primary["topic_id"]].get("subject_id")
+                subj_name = (subject_meta.get(subj_id) or {}).get("name")
             items.append(
                 {
                     "id": q["id"],
@@ -403,14 +464,22 @@ def list_exam_pyqs(
                     "paper_year": paper.get("year"),
                     "paper_date": paper.get("paper_date"),
                     "shift": paper.get("shift"),
+                    # source_type stays in the payload for admin/diagnostic use;
+                    # the learner UI intentionally does not surface it (item 11).
                     "source_type": paper.get("source_type"),
+                    "phase_id": paper.get("exam_phase_id"),
+                    "phase_slug": phase.get("phase_slug"),
+                    "phase_name": phase.get("name"),
+                    "subject_id": subj_id,
+                    "subject_name": subj_name,
+                    "topic_names": topic_names,
                     "question_number": q.get("question_number"),
                     "question_text": q.get("question_text"),
                     "question_type": q.get("question_type"),
                     "difficulty": q.get("observed_difficulty"),
                     "explanation": q.get("explanation_text"),
                     "options": options_by_qid.get(q["id"], []),
-                    "topic_tags": tags_by_qid.get(q["id"], []),
+                    "topic_tags": qtags,
                 }
             )
 
@@ -425,6 +494,207 @@ def list_exam_pyqs(
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("pyqs list failed for %s", slug)
+        return {**empty, "exam_id": exam_id, "error": str(exc)[:200]}
+
+
+@router.get("/exams/{slug}/pyq-summary")
+def get_exam_pyq_summary(
+    slug: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Verified-only PYQ distribution + per-paper practice availability.
+
+    The default PYQ-Explorer view for exams with many papers: totals and
+    year/phase/subject/difficulty splits, plus per-paper practice cards whose
+    ``practice_ready_count`` reflects the ACTIVE projection bridge (mirrors
+    ``start_pyq_practice``), not the raw verified-question count. Counts only
+    verified paper/question rows. Fails closed to empty arrays so a read error
+    never crashes the learner UI. ``source_type`` is intentionally not surfaced.
+    """
+    sb = get_supabase_admin()
+    empty = {
+        "exam_id": None,
+        "verified_only": True,
+        "totals": {"papers": 0, "questions": 0, "projected_practice_ready": 0},
+        "by_year": [],
+        "by_phase": [],
+        "by_subject": [],
+        "by_difficulty": [],
+        "papers": [],
+    }
+
+    try:
+        rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data or []
+        )
+        exam_row = rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("pyq-summary exam lookup failed for %s: %s", slug, exc)
+        return empty
+    if not exam_row or not exam_row.get("id"):
+        return empty
+    exam_id = exam_row["id"]
+
+    try:
+        papers = (
+            sb.table("pyq_papers")
+            .select("id, year, exam_phase_id")
+            .eq("exam_id", exam_id)
+            .eq("trust_status", "verified")
+            .limit(2000)
+            .execute()
+            .data
+            or []
+        )
+        paper_ids = [p["id"] for p in papers if p.get("id")]
+        if not paper_ids:
+            return {**empty, "exam_id": exam_id}
+
+        paper_by_id = {p["id"]: p for p in papers}
+
+        # Phase names.
+        phase_ids = list({p.get("exam_phase_id") for p in papers if p.get("exam_phase_id")})
+        phase_meta: dict[str, dict] = {}
+        if phase_ids:
+            ph_rows = (
+                sb.table("exam_phases").select("id, phase_slug, name").in_("id", phase_ids).limit(500).execute().data
+                or []
+            )
+            phase_meta = {p["id"]: p for p in ph_rows}
+
+        # Verified questions across the exam's verified papers.
+        questions = (
+            sb.table("pyq_questions")
+            .select("id, pyq_paper_id, observed_difficulty")
+            .in_("pyq_paper_id", paper_ids)
+            .eq("reviewer_status", "verified")
+            .limit(20000)
+            .execute()
+            .data
+            or []
+        )
+
+        # Primary-tag subject per question (defense: primary tags only).
+        primary_subject_by_qid: dict[str, str] = {}
+        subj_names: dict[str, str] = {}
+        qids = [q["id"] for q in questions]
+        if qids:
+            tags = (
+                sb.table("pyq_question_topic_tags")
+                .select("question_id, topic_id, tag_role")
+                .in_("question_id", qids)
+                .eq("reviewer_status", "verified")
+                .limit(100000)
+                .execute()
+                .data
+                or []
+            )
+            topic_ids = list({t["topic_id"] for t in tags if t.get("topic_id")})
+            topic_subj: dict[str, str] = {}
+            if topic_ids:
+                t_rows = (
+                    sb.table("topics").select("id, subject_id").in_("id", topic_ids).limit(20000).execute().data or []
+                )
+                topic_subj = {t["id"]: t.get("subject_id") for t in t_rows}
+                subj_ids = list({sid for sid in topic_subj.values() if sid})
+                if subj_ids:
+                    s_rows = (
+                        sb.table("subjects").select("id, name").in_("id", subj_ids).limit(2000).execute().data or []
+                    )
+                    subj_names = {s["id"]: s.get("name") for s in s_rows}
+            for t in tags:
+                if t.get("tag_role") == "primary" and topic_subj.get(t.get("topic_id")):
+                    qid = t["question_id"]
+                    if qid not in primary_subject_by_qid:
+                        primary_subject_by_qid[qid] = topic_subj[t["topic_id"]]
+
+        ready_by_paper = practice_ready_counts_by_paper(sb, exam_id)
+
+        # Distributions.
+        year_q: dict[Any, int] = {}
+        year_p: dict[Any, set] = {}
+        phase_q: dict[str, int] = {}
+        diff_q: dict[str, int] = {}
+        subj_q: dict[str, int] = {}
+        paper_qcount: dict[str, int] = {}
+        paper_subj_tally: dict[str, dict[str, int]] = {}
+        for q in questions:
+            pid = q.get("pyq_paper_id")
+            p = paper_by_id.get(pid)
+            if not p:
+                continue
+            y = p.get("year")
+            year_q[y] = year_q.get(y, 0) + 1
+            year_p.setdefault(y, set()).add(pid)
+            ph = p.get("exam_phase_id")
+            if ph:
+                phase_q[ph] = phase_q.get(ph, 0) + 1
+            d = q.get("observed_difficulty") or "unknown"
+            diff_q[d] = diff_q.get(d, 0) + 1
+            paper_qcount[pid] = paper_qcount.get(pid, 0) + 1
+            sid = primary_subject_by_qid.get(q["id"])
+            if sid:
+                subj_q[sid] = subj_q.get(sid, 0) + 1
+                paper_subj_tally.setdefault(pid, {})
+                paper_subj_tally[pid][sid] = paper_subj_tally[pid].get(sid, 0) + 1
+
+        by_year = [
+            {"year": y, "questions": year_q[y], "papers": len(year_p[y])}
+            for y in sorted(year_q, key=lambda x: (x is None, -(x or 0)))
+        ]
+        by_phase = [
+            {
+                "phase_slug": (phase_meta.get(ph) or {}).get("phase_slug"),
+                "phase_name": (phase_meta.get(ph) or {}).get("name"),
+                "questions": c,
+            }
+            for ph, c in phase_q.items()
+        ]
+        by_difficulty = [{"difficulty": d, "questions": diff_q[d]} for d in sorted(diff_q)]
+        by_subject = [
+            {"subject_id": sid, "subject_name": subj_names.get(sid), "questions": c}
+            for sid, c in subj_q.items()
+        ]
+
+        # Per-paper cards, with dominant subject (best-effort) + practice readiness.
+        paper_subject = {pid: max(tally, key=tally.get) for pid, tally in paper_subj_tally.items()}
+        papers_out = []
+        for p in papers:
+            pid = p["id"]
+            ph = p.get("exam_phase_id")
+            sid = paper_subject.get(pid)
+            ready = int(ready_by_paper.get(pid, 0))
+            papers_out.append(
+                {
+                    "paper_id": pid,
+                    "year": p.get("year"),
+                    "phase_slug": (phase_meta.get(ph) or {}).get("phase_slug"),
+                    "phase_name": (phase_meta.get(ph) or {}).get("name"),
+                    "subject_id": sid,
+                    "subject_name": subj_names.get(sid) if sid else None,
+                    "question_count": paper_qcount.get(pid, 0),
+                    "practice_ready_count": ready,
+                    "practice_enabled": ready > 0,
+                }
+            )
+        papers_out.sort(key=lambda r: (-(r["year"] or 0), r.get("phase_slug") or ""))
+
+        return {
+            "exam_id": exam_id,
+            "verified_only": True,
+            "totals": {
+                "papers": len(papers),
+                "questions": len(questions),
+                "projected_practice_ready": int(sum(ready_by_paper.values())),
+            },
+            "by_year": by_year,
+            "by_phase": by_phase,
+            "by_subject": by_subject,
+            "by_difficulty": by_difficulty,
+            "papers": papers_out,
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("pyq-summary failed for %s", slug)
         return {**empty, "exam_id": exam_id, "error": str(exc)[:200]}
 
 
