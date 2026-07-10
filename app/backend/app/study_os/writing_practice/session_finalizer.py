@@ -152,7 +152,7 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
     """Recompute and persist session status + evaluation_outcome. Idempotent."""
     session = (
         supabase.table("writing_sessions")
-        .select("id,status,evaluation_outcome,completed_at,prompt_id")
+        .select("id,status,evaluation_outcome,completed_at,submitted_at,prompt_id")
         .eq("id", session_id)
         .single()
         .execute()
@@ -183,6 +183,17 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
     else:
         new_completed_at = None
 
+    # Submission-timestamp invariant, mirrored byte-for-byte by the SQL rollup
+    # (migration 240, cleared-parallel): submitted_at IS NOT NULL <=> status has
+    # left drafting (status != 'active'). Into a past-drafting status -> stamp
+    # once (monotonic while past-drafting: keep an existing stamp on a re-roll);
+    # back to 'active' (a learning-mode reopen) -> clear back to None.
+    cur_submitted_at = session.get("submitted_at")
+    if new_status != st.SESSION_ACTIVE:
+        new_submitted_at = cur_submitted_at or _now_iso()
+    else:
+        new_submitted_at = None
+
     patch: dict[str, Any] = {}
     if new_status != session.get("status"):
         patch["status"] = new_status
@@ -190,6 +201,8 @@ def finalize_writing_session(supabase: Any, session_id: str) -> dict:
         patch["evaluation_outcome"] = new_outcome
     if new_completed_at != cur_completed_at:
         patch["completed_at"] = new_completed_at
+    if new_submitted_at != cur_submitted_at:
+        patch["submitted_at"] = new_submitted_at
     if patch:
         supabase.table("writing_sessions").update(patch).eq("id", session_id).execute()
 
