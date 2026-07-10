@@ -4,6 +4,7 @@ import { api } from "../../../lib/api";
 import AttemptSummaryCard from "../components/reports/AttemptSummaryCard";
 import SectionBreakdownBars from "../components/reports/SectionBreakdownBars";
 import { getAttemptReturnContext } from "./attemptReturnContext";
+import { errorTypeLabel } from "./errorTypeLabels";
 const AccuracyHeatmap = lazy(() => import("../components/reports/AccuracyHeatmap"));
 const TimeDistributionChart = lazy(() => import("../components/reports/TimeDistributionChart"));
 const ErrorTypeDonut = lazy(() => import("../components/reports/ErrorTypeDonut"));
@@ -14,7 +15,9 @@ export default function MockResult() {
   const [result,setResult]=useState(null); const [analytics,setAnalytics]=useState(null); const [tab,setTab]=useState("overview");
   useEffect(()=>{ api.get(`/api/study/mocks/attempts/${attemptId}/result`).then(setResult); },[attemptId]);
   useEffect(()=>{ if(tab!=="overview") api.get(`/api/study/mocks/attempts/${attemptId}/analytics`).then(setAnalytics).catch(()=>setAnalytics({})); },[attemptId,tab]);
-  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>{a[r.error_type]=(a[r.error_type]||0)+1;return a;},{})).map(([label,value])=>({label,value})),[analytics]);
+  // Aggregate by raw classifier code, then map to a learner-friendly label for
+  // display — raw codes (silly_mistake, …) must never reach the chart/tooltip.
+  const donut=useMemo(()=>Object.entries((analytics?.response_classification||[]).reduce((a,r)=>{a[r.error_type]=(a[r.error_type]||0)+1;return a;},{})).map(([code,value])=>({label:errorTypeLabel(code),code,value})),[analytics]);
   if(!result) return <div data-testid="result-loading">Loading…</div>;
   return <div className="p-4 space-y-4" data-testid="result-page">
     {returnCtx ? <Link to={returnCtx.return_to} data-testid="result-back-source" className="inline-flex items-center gap-1 text-sm text-clay-700 hover:underline">← {returnCtx.source_label}</Link> : null}

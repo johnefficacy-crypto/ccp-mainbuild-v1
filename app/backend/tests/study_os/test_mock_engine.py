@@ -446,3 +446,22 @@ def test_get_review_endpoint_shape():
     review = svc.get_review(sb, "user-1", attempt_id)
     assert review["attempt_id"] == attempt_id
     assert isinstance(review["questions"], list)
+
+
+def test_get_review_orders_by_frozen_attempt_order():
+    """Review numbering must follow the frozen attempt order, not PostgREST row
+    order. Shuffle the response rows and confirm the review still returns
+    questions in template_snapshot.question_ids order with a matching 1-based
+    attempt_order."""
+    sb, template, _ = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "test-mock-1")
+    attempt_id = start["attempt_id"]
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    # Simulate PostgREST returning the response rows out of attempt order.
+    sb.db["mock_attempt_responses"].reverse()
+
+    review = svc.get_review(sb, "user-1", attempt_id)
+    frozen_ids = template["config"]["question_ids"]
+    assert [q["question_id"] for q in review["questions"]] == frozen_ids
+    assert [q["attempt_order"] for q in review["questions"]] == list(range(1, len(frozen_ids) + 1))

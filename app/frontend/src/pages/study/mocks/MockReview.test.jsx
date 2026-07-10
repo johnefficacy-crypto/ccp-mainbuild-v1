@@ -7,51 +7,25 @@ jest.mock("../../../lib/api", () => ({
   api: { get: jest.fn() },
 }));
 
+const SNAP = {
+  question_type: "mcq_single",
+  question_text: "Q",
+  options: [{ id: "o1", option_index: "A", option_text: "Alpha" }],
+  correct_option_id: "o1",
+};
+
 const REVIEW = {
   attempt_id: "att1",
   questions: [
-    {
-      question_id: "q1",
-      is_correct: true,
-      selected_option_id: "o1",
-      error_type: "correct",
-      question_snapshot: {
-        question_type: "mcq_single",
-        question_text: "Q one",
-        options: [{ id: "o1", option_index: "A", option_text: "Alpha" }],
-        correct_option_id: "o1",
-      },
-    },
-    {
-      question_id: "q2",
-      is_correct: false,
-      selected_option_id: "o9",
-      error_type: "silly_mistake",
-      question_snapshot: {
-        question_type: "mcq_single",
-        question_text: "Q two",
-        options: [{ id: "o1", option_index: "A", option_text: "Alpha" }],
-        correct_option_id: "o1",
-      },
-    },
-    {
-      question_id: "q3",
-      is_correct: false,
-      selected_option_id: null,
-      error_type: "time_pressure_unattempted",
-      question_snapshot: {
-        question_type: "mcq_single",
-        question_text: "Q three",
-        options: [{ id: "o1", option_index: "A", option_text: "Alpha" }],
-        correct_option_id: "o1",
-      },
-    },
+    { question_id: "q1", attempt_order: 1, is_correct: true, selected_option_id: "o1", error_type: "correct", question_snapshot: SNAP },
+    { question_id: "q2", attempt_order: 2, is_correct: false, selected_option_id: "o9", error_type: "silly_mistake", question_snapshot: SNAP },
+    { question_id: "q3", attempt_order: 3, is_correct: false, selected_option_id: null, error_type: "time_pressure_unattempted", question_snapshot: SNAP },
   ],
 };
 
-function renderReview() {
+function renderReview(payload = REVIEW) {
   const { api } = require("../../../lib/api");
-  api.get.mockResolvedValue(REVIEW);
+  api.get.mockResolvedValue(payload);
   return render(
     <MemoryRouter initialEntries={["/app/study/mocks/attempts/att1/review"]}>
       <Routes>
@@ -80,6 +54,26 @@ test("filtered palette preserves the original question number", async () => {
     expect(screen.getByTestId("review-palette-item-0")).toHaveTextContent("2");
   });
   expect(screen.getByTestId("review-question")).toHaveTextContent("Q2 · Careless mistake");
+});
+
+test("uses backend attempt_order, not array/filter position, for the number", async () => {
+  // Payload deliberately arrives out of attempt order (the wrong question is
+  // first in the array but is attempt #3).
+  const shuffled = {
+    attempt_id: "att1",
+    questions: [
+      { question_id: "qb", attempt_order: 3, is_correct: false, selected_option_id: "o9", error_type: "concept_gap", question_snapshot: SNAP },
+      { question_id: "qa", attempt_order: 1, is_correct: true, selected_option_id: "o1", error_type: "correct", question_snapshot: SNAP },
+    ],
+  };
+  renderReview(shuffled);
+  await screen.findByTestId("review-palette");
+  fireEvent.click(screen.getByTestId("review-filter-wrong"));
+  await waitFor(() => {
+    // The only wrong question is attempt #3 — palette must show "3", not "1".
+    expect(screen.getByTestId("review-palette-item-0")).toHaveTextContent("3");
+  });
+  expect(screen.getByTestId("review-question")).toHaveTextContent("Q3 · Concept gap");
 });
 
 test("renders a source-aware back link when a return context is stored", async () => {

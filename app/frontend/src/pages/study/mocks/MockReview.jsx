@@ -13,11 +13,13 @@ const FILTERS = [
   { id: "option_trap", label: "Distractor trap" },
 ];
 
-// Attach the original attempt-order number (1-based) to every question BEFORE
-// filtering, so a filtered palette shows the real question number instead of a
-// re-based filtered index.
+// Attach the original attempt-order number to every question BEFORE filtering,
+// so a filtered palette shows the real question number instead of a re-based
+// filtered index. The number comes from the backend's immutable `attempt_order`
+// (frozen from `template_snapshot.question_ids`); the row index is only a
+// last-resort fallback for older payloads without the field.
 function withOriginalNumbers(all) {
-  return (all || []).map((q, i) => ({ ...q, _num: i + 1 }));
+  return (all || []).map((q, i) => ({ ...q, _num: q.attempt_order ?? i + 1 }));
 }
 
 function applyFilter(all, filter) {

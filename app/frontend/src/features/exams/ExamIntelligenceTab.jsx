@@ -218,17 +218,22 @@ export default function ExamIntelligenceTab({ examSlug }) {
         </span>
       </div>
 
-      {/* Aspirant action summary: what can I practice right now, and where to
-          start. Replaces the operator-facing "PYQ availability trend" chart —
-          readiness/ingestion trends belong in the admin exam workspace. */}
+      {/* Aspirant study summary: what verified PYQ coverage exists, and a jump
+          to the PYQ Explorer (which owns the actual practice-launch state).
+          Replaces the operator-facing "PYQ availability trend" chart —
+          readiness/ingestion trends belong in the admin exam workspace. These
+          are verified-corpus counts, NOT a practice-launch readiness check
+          (that predicate — active projection, non-expired, MCQ snapshot with
+          options + correct_option_id — lives in start_pyq_practice), so the
+          copy deliberately avoids claiming a paper can be practiced now. */}
       <div className="soft-card rounded-2xl p-5" data-testid="pyq-practice-summary">
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
-          Practice-ready from verified PYQs
+          Verified PYQ coverage
         </div>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
-            <div className="text-[10px] uppercase tracking-wider text-clay-700">Practice-ready questions</div>
-            <div className="font-heading text-2xl font-semibold mt-1" data-testid="practice-ready-count">
+            <div className="text-[10px] uppercase tracking-wider text-clay-700">Verified tagged questions</div>
+            <div className="font-heading text-2xl font-semibold mt-1" data-testid="verified-question-count">
               {(data.difficulty_heatmap?.verified_question_count || 0).toLocaleString("en-IN")}
             </div>
           </div>
@@ -250,7 +255,7 @@ export default function ExamIntelligenceTab({ examSlug }) {
           className="btn btn-primary inline-flex mt-4"
           data-testid="intel-start-pyq-cta"
         >
-          Start PYQ practice <ArrowRight className="h-4 w-4" />
+          Browse &amp; practice PYQs <ArrowRight className="h-4 w-4" />
         </a>
       </div>
 
