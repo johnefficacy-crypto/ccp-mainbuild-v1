@@ -635,6 +635,33 @@ def test_mission_control_serializes_english_launch_action():
     assert t["action_label"] == "Start correction practice"
 
 
+def test_mission_control_shapes_planner_launch_without_session():
+    # Planner-shaped writing task: launch_type set but no pre-existing session
+    # (launch_entity_id null). The shaped task must still carry launch_type +
+    # action_label so Study Home renders LaunchWritingPracticeButton, which
+    # launches through POST /api/study/tasks/{id}/launch-writing. action_url is
+    # null because there is no session route to link to yet.
+    sb = SBStub({
+        "study_tasks": [
+            {
+                "id": "task-eng", "plan_id": "plan-1", "scheduled_date": _today(),
+                "status": "planned", "title": "Sentence practice",
+                "task_type": "grammar_practice",
+                "launch_type": "english_writing_session",
+                "launch_entity_id": None,
+                "launch_context": {"exercise_type": "sentence_construction"},
+            },
+        ],
+    })
+    shaped = _load_today_tasks(sb, "plan-1")
+    assert len(shaped) == 1
+    t = shaped[0]
+    assert t["launch_type"] == "english_writing_session"
+    assert t["launch_entity_id"] is None
+    assert t["action_url"] is None
+    assert t["action_label"] == "Start sentence practice"
+
+
 def test_mission_control_leaves_non_english_task_untouched():
     sb = SBStub({
         "study_tasks": [

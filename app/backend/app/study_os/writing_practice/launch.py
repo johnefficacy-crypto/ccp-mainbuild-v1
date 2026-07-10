@@ -29,12 +29,23 @@ def compute_action(launch_type: str | None, launch_entity_id, launch_context) ->
 
     Only ``english_writing_session`` is handled here; unknown/None launch types
     return None so callers can fall back to their existing behaviour.
+
+    A planner-shaped writing task has NO pre-existing session, so
+    ``launch_entity_id`` is null: the learner's click resolves the prompt and
+    creates the session server-side via
+    ``POST /api/study/tasks/{id}/launch-writing``. In that case the action is
+    still returned (so the Study Home CTA renders the writing-practice button)
+    but ``action_url`` is null — there is no session route to link to yet. When
+    a session already exists, ``action_url`` deep-links to its practice shell.
     """
-    if launch_type != LAUNCH_ENGLISH_WRITING_SESSION or not launch_entity_id:
+    if launch_type != LAUNCH_ENGLISH_WRITING_SESSION:
         return None
     context = launch_context or {}
     exercise_type = context.get("exercise_type") if isinstance(context, dict) else None
+    action_url = (
+        f"/app/study/practice/english/{launch_entity_id}" if launch_entity_id else None
+    )
     return {
-        "action_url": f"/app/study/practice/english/{launch_entity_id}",
+        "action_url": action_url,
         "action_label": _EXERCISE_LABELS.get(exercise_type, _DEFAULT_LABEL),
     }
