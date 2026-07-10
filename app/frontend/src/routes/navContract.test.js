@@ -17,6 +17,7 @@
 const DASH_NAV_PATHS = [
   "/app/today",
   "/app/eligibility",
+  "/app/exam-intelligence",
   "/app/study",
   "/app/study/subjects",
   "/app/study/resources",
@@ -52,6 +53,8 @@ const APP_ROUTE_PATHS = new Set([
   "/app/eligibility",
   "/app/eligibility/exams",
   "/app/eligibility/exams/:slug",
+  "/app/exam-intelligence",
+  "/app/exam-intelligence/exams/:slug",
   "/app/eligibility/recruitments",
   "/app/eligibility/recruitments/:id",
   "/app/eligibility/tracker",

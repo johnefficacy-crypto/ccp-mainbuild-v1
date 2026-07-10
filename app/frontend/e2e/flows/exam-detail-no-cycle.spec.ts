@@ -12,7 +12,8 @@ import { ensureSeededUser, loginViaUi, gotoProtectedPage } from "../fixtures/see
  * path. Exam-level intelligence (PYQ Explorer et al.) must still render, and
  * recruitment-only actions must be absent.
  *
- * `/app/eligibility/exams/:slug` is a public aspirant route, so this drives a
+ * The exam intelligence page now lives at the top-level `/app/exam-intelligence`
+ * surface (item 13); `/app/eligibility/exams/:slug` redirects here. This drives a
  * normal seeded user, not the admin.
  */
 test.describe("Flow: exam-detail — no recruitment cycle", () => {
@@ -30,7 +31,7 @@ test.describe("Flow: exam-detail — no recruitment cycle", () => {
 
     // PYQ Explorer is the target regression surface — its presence proves the
     // page did not short-circuit into the old no-cycle stub.
-    await gotoProtectedPage(page, "/app/eligibility/exams/e2e-workspace-exam", "pyq-explorer");
+    await gotoProtectedPage(page, "/app/exam-intelligence/exams/e2e-workspace-exam", "pyq-explorer");
 
     // A single no-active-cycle banner replaces the repeated recruitment panels.
     await expect(page.getByTestId("no-cycle-banner")).toBeVisible();

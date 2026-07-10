@@ -13,6 +13,7 @@ const Today = lazy(() => import("../pages/Today"));
 const DashShell = lazy(() => import("../pages/DashShell"));
 const Profile = lazy(() => import("../pages/Profile"));
 const ExamDetail = lazy(() => import("../pages/ExamDetail"));
+const ExamDetailRedirect = lazy(() => import("../pages/ExamDetailRedirect"));
 const Saved = lazy(() => import("../pages/Saved"));
 const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
@@ -70,11 +71,18 @@ export const appRouteElements = (
       <Route path="/app/eligibility" element={<EligibilityShell />}>
         <Route index element={<Navigate to="/app/eligibility/exams" replace />} />
         <Route path="exams" element={<EligibleExamsPage />} />
-        <Route path="exams/:slug" element={<ExamDetail />} />
+        {/* Exam intelligence detail moved to the top-level Exam Intelligence
+            surface (item 13). Old link kept as a redirect so nothing breaks. */}
+        <Route path="exams/:slug" element={<ExamDetailRedirect />} />
         <Route path="recruitments" element={<EligibleRecruitmentsPage />} />
         <Route path="recruitments/:id" element={<EligibleRecruitmentsPage />} />
         <Route path="tracker" element={<EligibilityTrackerPage />} />
       </Route>
+
+      {/* Top-level Exam Intelligence surface (item 13). Landing = exam
+          catalogue; detail = the intelligence-focused exam page. */}
+      <Route path="/app/exam-intelligence" element={<EligibleExamsPage />} />
+      <Route path="/app/exam-intelligence/exams/:slug" element={<ExamDetail />} />
 
       <Route path="/app/study" element={<StudyShell />}>
         <Route index element={<StudyHome />} />

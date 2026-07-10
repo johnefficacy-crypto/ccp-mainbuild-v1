@@ -39,6 +39,8 @@ test("starts paper practice through useApiAction and navigates to the attempt sh
   api.post.mockResolvedValue({ outcome: "ready", attempt_id: "att-1" });
   renderExplorer();
 
+  // Practice-this-paper lives in the collapsible Browse section.
+  fireEvent.click(await screen.findByTestId("pyq-browse-toggle"));
   fireEvent.click(await screen.findByTestId("pyq-practice-paper-btn"));
 
   await waitFor(() =>
@@ -57,6 +59,8 @@ test("shows a graceful inline message on 409 without navigating", async () => {
   api.post.mockRejectedValue(err);
   renderExplorer();
 
+  // Practice-this-paper lives in the collapsible Browse section.
+  fireEvent.click(await screen.findByTestId("pyq-browse-toggle"));
   fireEvent.click(await screen.findByTestId("pyq-practice-paper-btn"));
 
   const banner = await screen.findByTestId("pyq-practice-error");
@@ -73,6 +77,7 @@ test("disables the practice button while the useApiAction run is in flight", asy
   );
   renderExplorer();
 
+  fireEvent.click(await screen.findByTestId("pyq-browse-toggle"));
   const btn = await screen.findByTestId("pyq-practice-paper-btn");
   fireEvent.click(btn);
 
@@ -89,6 +94,7 @@ test("no practice button when a row has no paper_id", async () => {
   api.get.mockResolvedValue({ exam_id: EXAM_ID, total: 1, items: [{ id: "q2", paper_year: 2024, question_text: "No paper", options: [] }] });
   renderExplorer();
 
+  fireEvent.click(await screen.findByTestId("pyq-browse-toggle"));
   await screen.findByTestId("pyq-question-card");
   expect(screen.queryByTestId("pyq-practice-paper-btn")).toBeNull();
 });
