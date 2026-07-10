@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ExternalLink,
   FileText,
+  HandHeart,
   Library,
   ListChecks,
   ShieldCheck,
@@ -577,7 +578,7 @@ export default function ExamDetail() {
           eyebrow="Study groups & mentors"
           title="Find people preparing alongside you"
         >
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <div className="soft-card rounded-2xl p-5">
               <div className="flex items-start gap-3">
                 <span
@@ -597,6 +598,33 @@ export default function ExamDetail() {
                     data-testid="groups-cta"
                   >
                     Browse groups
+                  </Link>
+                </div>
+              </div>
+            </div>
+            <div className="soft-card rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden="true"
+                  className="h-9 w-9 grid place-items-center rounded-lg bg-clay-100 text-clay-700 shrink-0"
+                >
+                  <HandHeart className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="font-heading text-base font-semibold">Accountability Partner</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find someone preparing for the same exam and commit to daily check-ins.
+                  </p>
+                  <Link
+                    to={
+                      examSlug
+                        ? `/app/accountability?exam=${encodeURIComponent(examSlug)}`
+                        : "/app/accountability"
+                    }
+                    className="btn btn-ghost mt-3 inline-flex"
+                    data-testid="accountability-cta"
+                  >
+                    Find accountability partner
                   </Link>
                 </div>
               </div>
