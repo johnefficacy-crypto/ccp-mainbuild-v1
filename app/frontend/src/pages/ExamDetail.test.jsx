@@ -66,8 +66,10 @@ test("renders PYQ Explorer (exam intelligence) even when no recruitment cycle ex
   renderExamDetailNoCycle();
   // Exam-level intelligence stays visible.
   expect(await screen.findByTestId("pyq-explorer")).toBeTruthy();
-  // Neutral no-active-cycle panels render instead of recruitment data.
-  expect(screen.getByTestId("about-no-cycle")).toBeTruthy();
+  // A single no-active-cycle banner replaces the repeated recruitment panels.
+  expect(screen.getByTestId("no-cycle-banner")).toBeTruthy();
+  // Recruitment-only sections are hidden entirely (not shown as empty panels).
+  expect(screen.queryByTestId("eligibility-panel")).toBeNull();
   // Recruitment-only actions are hidden.
   expect(screen.queryByTestId("detail-save-btn")).toBeNull();
   expect(screen.queryByTestId("detail-track-btn")).toBeNull();

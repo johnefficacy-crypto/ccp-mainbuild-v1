@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, ExternalLink, FileText, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import OptionInsightsCard from "./OptionInsightsCard";
 import TrapDrillLauncher from "./TrapDrillLauncher";
@@ -84,18 +84,6 @@ function PaperRow({ p }) {
   );
 }
 
-function pyqByYear(papers) {
-  const map = new Map();
-  for (const p of papers) {
-    const y = p.year;
-    if (y == null) continue;
-    map.set(y, (map.get(y) || 0) + 1);
-  }
-  return Array.from(map.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([year, count]) => ({ year, count }));
-}
-
 function cutoffChartData(cutoffSeries) {
   const years = new Set();
   Object.values(cutoffSeries || {}).forEach((points) =>
@@ -163,7 +151,6 @@ export default function ExamIntelligenceTab({ examSlug }) {
     };
   }, [examSlug]);
 
-  const pyqYearly = useMemo(() => pyqByYear(data?.pyq_papers || []), [data]);
   const cutoffData = useMemo(() => cutoffChartData(data?.cutoff_series || {}), [data]);
   const cutoffCategories = useMemo(
     () => Object.keys(data?.cutoff_series || {}),
@@ -231,34 +218,43 @@ export default function ExamIntelligenceTab({ examSlug }) {
         </span>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="soft-card rounded-2xl p-5" data-testid="pyq-trend-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
-                Past papers · verified count by year
-              </div>
-              <div className="font-heading text-lg font-semibold mt-0.5">PYQ availability trend</div>
-            </div>
-            <TrendingUp className="h-4 w-4 text-clay-500" />
-          </div>
-          {pyqYearly.length === 0 ? (
-            <div className="mt-4 text-sm text-muted-foreground">No verified papers ingested yet.</div>
-          ) : (
-            <div className="h-56 mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={pyqYearly}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD3" vertical={false} />
-                  <XAxis dataKey="year" stroke="#7A6A55" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#7A6A55" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="count" stroke="#54794E" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+      {/* Aspirant action summary: what can I practice right now, and where to
+          start. Replaces the operator-facing "PYQ availability trend" chart —
+          readiness/ingestion trends belong in the admin exam workspace. */}
+      <div className="soft-card rounded-2xl p-5" data-testid="pyq-practice-summary">
+        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
+          Practice-ready from verified PYQs
         </div>
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
+            <div className="text-[10px] uppercase tracking-wider text-clay-700">Practice-ready questions</div>
+            <div className="font-heading text-2xl font-semibold mt-1" data-testid="practice-ready-count">
+              {(data.difficulty_heatmap?.verified_question_count || 0).toLocaleString("en-IN")}
+            </div>
+          </div>
+          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
+            <div className="text-[10px] uppercase tracking-wider text-clay-700">Verified papers</div>
+            <div className="font-heading text-2xl font-semibold mt-1">
+              {(data.pyq_papers?.length || 0).toLocaleString("en-IN")}
+            </div>
+          </div>
+          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
+            <div className="text-[10px] uppercase tracking-wider text-clay-700">Covered subjects</div>
+            <div className="font-heading text-2xl font-semibold mt-1">
+              {(data.difficulty_heatmap?.rows || []).length.toLocaleString("en-IN")}
+            </div>
+          </div>
+        </div>
+        <a
+          href="#pyq-explorer"
+          className="btn btn-primary inline-flex mt-4"
+          data-testid="intel-start-pyq-cta"
+        >
+          Start PYQ practice <ArrowRight className="h-4 w-4" />
+        </a>
+      </div>
 
+      <div className="grid lg:grid-cols-2 gap-4">
         <div className="soft-card rounded-2xl p-5" data-testid="cutoff-trend-card">
           <div className="flex items-center justify-between">
             <div>
