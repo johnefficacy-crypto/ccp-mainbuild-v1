@@ -42,8 +42,22 @@ def test_non_english_launch_type_returns_none():
     assert L.compute_action(None, "s1", {}) is None
 
 
-def test_missing_entity_id_returns_none():
-    assert L.compute_action("english_writing_session", None, {}) is None
+def test_missing_entity_id_still_resolves_with_null_url():
+    # Planner-shaped writing task: no pre-existing session, so entity id is
+    # null. The action must still resolve (so the Study Home CTA renders) with
+    # a null action_url — the click creates the session server-side.
+    out = L.compute_action(
+        "english_writing_session", None, {"exercise_type": "sentence_construction"}
+    )
+    assert out == {
+        "action_url": None,
+        "action_label": "Start sentence practice",
+    }
+
+
+def test_missing_entity_id_falls_back_to_default_label():
+    out = L.compute_action("english_writing_session", None, {})
+    assert out == {"action_url": None, "action_label": "Start writing practice"}
 
 
 def test_context_none_is_safe():

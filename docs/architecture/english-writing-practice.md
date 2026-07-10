@@ -1499,11 +1499,13 @@ Do not compare writing deltas to mock-derived deltas "within 5%." These are diff
 ```sql
 -- new columns on study_tasks
 launch_type        text    -- 'english_writing_session' | null for non-english tasks
-launch_entity_id   uuid    -- writing_sessions.id
+launch_entity_id   uuid    -- writing_sessions.id, OR null for a planner-shaped
+                           -- task with no session yet (the launch endpoint
+                           -- creates the session on the learner's click)
 launch_context     jsonb   -- {exercise_type, ...}
 ```
 
-Mission-control response:
+Mission-control response — session already exists (deep-link):
 
 ```json
 {
@@ -1513,6 +1515,19 @@ Mission-control response:
   "action_label": "Start sentence practice"
 }
 ```
+
+Mission-control response — planner-shaped task, no session yet (`launch_entity_id` null):
+
+```json
+{
+  "launch_type": "english_writing_session",
+  "launch_entity_id": null,
+  "action_url": null,
+  "action_label": "Start sentence practice"
+}
+```
+
+`compute_action` resolves for **any** `english_writing_session` launch, not only ones carrying a session id: `action_label` always comes from `launch_context.exercise_type`, and `action_url` is `null` when there is no session to link to. The Study Home CTA gates on `launch_type` (not `action_url`) and launches through the server-owned `POST /api/study/tasks/{id}/launch-writing`, which resolves the prompt and creates the session — so a null `launch_entity_id`/`action_url` is the normal planner-launch shape, not a missing field.
 
 When the front-end routing changes, only the mission-control URL-builder changes — no migration required.
 

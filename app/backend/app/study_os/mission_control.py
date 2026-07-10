@@ -841,7 +841,11 @@ def _load_today_tasks(supabase: Any, plan_id: str) -> list[dict[str, Any]]:
         # §11.1: compute the launch target's frontend URL + label at response
         # time from the typed launch columns — never stored in the DB. Only
         # english_writing_session tasks resolve; everything else returns None
-        # and the task's existing shape is left untouched.
+        # and the task's existing shape is left untouched. Planner-shaped
+        # writing tasks have no pre-existing session, so launch_entity_id is
+        # null and action_url stays null — the Study Home button still renders
+        # off launch_type and launches through
+        # POST /api/study/tasks/{id}/launch-writing.
         action = writing_launch.compute_action(
             r.get("launch_type"), r.get("launch_entity_id"), r.get("launch_context")
         )
