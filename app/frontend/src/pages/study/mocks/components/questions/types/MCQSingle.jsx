@@ -3,6 +3,7 @@ import QuestionStem from "../shared/QuestionStem";
 import OptionList from "../shared/OptionList";
 import MarkdownSafe from "../shared/MarkdownSafe";
 import MathRenderer from "../shared/MathRenderer";
+import { resolveOptionLabel } from "../../../optionLabels";
 
 // Printed order mirrors OptionList: display_order asc (NULLs last), stable.
 function byDisplayOrder(a, b) {
@@ -24,8 +25,7 @@ function resolveCorrectOption(options, correctOptionId) {
   const pos = ordered.findIndex((o) => o.id === correctOptionId);
   if (pos === -1) return null;
   const o = ordered[pos];
-  const label = o.source_label || `${o.option_index || String.fromCharCode(65 + pos)}`;
-  return { label: String(label).replace(/\.$/, ""), text: o.option_text || "" };
+  return { label: resolveOptionLabel(o, pos), text: o.option_text || "" };
 }
 
 export default function MCQSingle({

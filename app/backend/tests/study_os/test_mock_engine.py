@@ -448,6 +448,26 @@ def test_get_review_endpoint_shape():
     assert isinstance(review["questions"], list)
 
 
+def test_result_payload_includes_time_used_sec():
+    """The result must expose real timing derived from per-response dwell:
+    time_used_sec (sum), avg_time_per_q_sec (per response row), and
+    time_remaining_sec (duration − used)."""
+    sb, template, questions = _seeded_db()
+    start = svc.start_attempt(sb, "user-1", "test-mock-1")
+    attempt_id = start["attempt_id"]
+    q0, q1 = questions[0], questions[1]
+    svc.save_answer(sb, "user-1", attempt_id, q0["id"], q0["options"][1]["id"], False, 1, 20)
+    svc.save_answer(sb, "user-1", attempt_id, q1["id"], q1["options"][1]["id"], False, 2, 40)
+    svc.submit_attempt(sb, "user-1", attempt_id)
+
+    result = svc.get_result(sb, "user-1", attempt_id)
+    assert result["time_used_sec"] == 60
+    # submit materializes a response row per question (5) → 60 / 5
+    assert result["avg_time_per_q_sec"] == 12.0
+    # template duration 300s − 60s used
+    assert result["time_remaining_sec"] == 240
+
+
 def test_get_review_orders_by_frozen_attempt_order():
     """Review numbering must follow the frozen attempt order, not PostgREST row
     order. Shuffle the response rows and confirm the review still returns

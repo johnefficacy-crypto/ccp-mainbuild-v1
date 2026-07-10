@@ -1,5 +1,6 @@
 import React from "react";
 import MathRenderer from "./MathRenderer";
+import { resolveOptionLabel } from "../../../optionLabels";
 
 // Projected printed order: display_order asc (NULLs last). Array#sort is stable,
 // so equal/absent display_order preserves the incoming (option_index) order.
@@ -32,9 +33,11 @@ export default function OptionList({ options = [], selected = [], onSelect, mult
     <div>
       {ordered.map((o, i) => {
         const active = selected.includes(o.id);
-        // Prefer the projected printed label (e.g. "(a)") so a PYQ shows its
-        // original option labels; fall back to the numeric index / a-d letter.
-        const label = o.source_label || `${o.option_index || String.fromCharCode(65 + i)}.`;
+        // Shared label helper: prefers the projected printed label (e.g. "(a)"),
+        // then an A/B/C-style index, then a positional letter — never a raw
+        // 0-based/numeric index. Append a "." only to a bare alphanumeric label.
+        const base = resolveOptionLabel(o, i);
+        const label = /^[A-Za-z0-9]+$/.test(base) ? `${base}.` : base;
         return (
           <button key={o.id} type="button" onClick={() => onSelect(o.id)} onKeyDown={(e) => onKey(e, i, o.id)} disabled={disabled} dir="auto">
             <strong>{label}</strong> <MathRenderer text={o.option_text || ""} />

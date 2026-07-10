@@ -1276,6 +1276,23 @@ def _build_result(
             except ValueError:
                 return v
         return v
+
+    # Timing analytics (PR #942 item 6). The durable source is the per-response
+    # `time_spent_sec` (client dwell, persisted by save_answer); prefer a stored
+    # summary total when present. `time_remaining_sec` is derived from the frozen
+    # template duration; `avg_time_per_q_sec` is dwell / question count.
+    question_count = len(per_question)
+    dwell_total = sum(int((r or {}).get("time_spent_sec") or 0) for r in responses)
+    summary_time = (summary or {}).get("time_used_sec")
+    try:
+        time_used_sec = int(summary_time) if summary_time is not None else dwell_total
+    except (TypeError, ValueError):
+        time_used_sec = dwell_total
+    snap = attempt.get("template_snapshot") or {}
+    duration_sec = int(snap.get("duration_sec") or 0)
+    time_remaining_sec = max(0, duration_sec - time_used_sec) if duration_sec else None
+    avg_time_per_q_sec = round(time_used_sec / question_count, 1) if question_count else 0
+
     return {
         "attempt_id": attempt["id"],
         "status": attempt.get("status"),
@@ -1285,6 +1302,9 @@ def _build_result(
         "total_correct": (summary or {}).get("total_correct", attempt.get("total_correct")),
         "total_wrong": (summary or {}).get("total_wrong", attempt.get("total_wrong")),
         "total_unattempted": (summary or {}).get("total_unattempted", attempt.get("total_unattempted")),
+        "time_used_sec": time_used_sec,
+        "time_remaining_sec": time_remaining_sec,
+        "avg_time_per_q_sec": avg_time_per_q_sec,
         "section_breakdown": getattr(section_rows, "data", None) or [],
         "per_question": per_question,
     }

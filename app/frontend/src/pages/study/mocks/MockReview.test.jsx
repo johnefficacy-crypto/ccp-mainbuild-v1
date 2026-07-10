@@ -76,6 +76,25 @@ test("uses backend attempt_order, not array/filter position, for the number", as
   expect(screen.getByTestId("review-question")).toHaveTextContent("Q3 · Concept gap");
 });
 
+test("has a sticky footer with prev/next actions", async () => {
+  renderReview();
+  const footer = await screen.findByTestId("review-footer");
+  expect(footer).toBeTruthy();
+  // Prev/Next live inside the footer.
+  expect(footer.contains(screen.getByTestId("review-prev"))).toBe(true);
+  expect(footer.contains(screen.getByTestId("review-next"))).toBe(true);
+});
+
+test("keyboard ArrowRight / ArrowLeft move between reviewed questions", async () => {
+  renderReview();
+  await screen.findByTestId("review-question");
+  expect(screen.getByTestId("review-error-label")).toHaveTextContent("Correct"); // q1
+  fireEvent.keyDown(window, { key: "ArrowRight" });
+  expect(screen.getByTestId("review-error-label")).toHaveTextContent("Careless mistake"); // q2
+  fireEvent.keyDown(window, { key: "ArrowLeft" });
+  expect(screen.getByTestId("review-error-label")).toHaveTextContent("Correct");
+});
+
 test("renders a source-aware back link when a return context is stored", async () => {
   window.sessionStorage.setItem(
     "cc.attempt.return.att1",
