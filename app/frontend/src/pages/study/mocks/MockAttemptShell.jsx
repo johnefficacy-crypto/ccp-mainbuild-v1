@@ -9,7 +9,7 @@ import AnswerSyncIndicator from "./AnswerSyncIndicator";
 import QuestionStem from "./components/questions/shared/QuestionStem";
 import QuestionStimuli from "./components/questions/shared/QuestionStimuli";
 import { getAttemptReturnContext } from "./attemptReturnContext";
-import { resolveOptionLabel } from "./optionLabels";
+import { formatOptionLabel } from "./optionLabels";
 
 const DEBOUNCE_MS = 600;
 const MOCK_ATTEMPT_API_BASE = `${BACKEND_URL.replace(/\/+$/, "")}/api/study/mocks/attempts`;
@@ -284,6 +284,8 @@ export default function MockAttemptShell() {
     attempt, currentIdx, currentSection,
     confirmOpen, failedModalOpen, paletteOpen,
     failedCount: answerSync.failedCount,
+    pendingCount: answerSync.pendingCount,
+    submitting,
     saveAndNext, goToIdx, toggleReview, selectOption,
   };
   useEffect(() => {
@@ -310,6 +312,9 @@ export default function MockAttemptShell() {
 
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
+        // Mirror the disabled Submit button: never open confirm while saves are
+        // pending or a submit is already in flight (guards the pending-save race).
+        if (h.submitting || h.pendingCount > 0) return;
         if (h.failedCount > 0) setFailedModalOpen(true);
         else setConfirmOpen(true);
         return;
@@ -393,17 +398,19 @@ export default function MockAttemptShell() {
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      // Capture the final question's dwell and let its save reach a terminal
-      // state before /submit computes analytics from the persisted responses.
-      const currentQid = (attempt?.questions || [])[currentIdx]?.question_id;
+      // Capture the final question's dwell, then flush EVERY touched question
+      // (not just the current one) and wait for terminal states before /submit.
+      // The backend scores from persisted `mock_attempt_responses`, so a submit
+      // must never race a debounced/in-flight save on an earlier question.
       flushDwellForCurrent();
-      if (currentQid) {
-        try { await answerSync.flush(currentQid); } catch { /* best-effort */ }
+      const { failedIds, answeredCount } = await answerSync.flushAll();
+      // A save that failed after flushing means an answer is not durable — do
+      // not finalize; route the user to the failed-save modal to retry/remove.
+      if (failedIds.length > 0) {
+        setFailedModalOpen(true);
+        setSubmitting(false);
+        return;
       }
-      const { syncStates } = answerSync;
-      const answeredCount = Object.entries(syncStates).filter(
-        ([, e]) => e?.state === "saved" && responses[e?.question_id]?.selected_option_id != null
-      ).length;
       // Deliver buffered telemetry (the final question.visited / answered events)
       // and wait for the server ACK BEFORE /submit triggers compute_and_persist(),
       // so the persisted classifications/dwell reflect them. Time-bounded
@@ -588,7 +595,7 @@ export default function MockAttemptShell() {
                         border: selected ? "2px solid #60a5fa" : "2px solid #374151",
                       }}
                     >
-                      <span style={styles.optIndex}>{resolveOptionLabel(opt, optIdx)}.</span>
+                      <span style={styles.optIndex}>{formatOptionLabel(opt, optIdx)}</span>
                       {opt.option_text}
                     </button>
                   );
@@ -691,9 +698,10 @@ export default function MockAttemptShell() {
                 style={styles.confirmBtn}
                 data-testid="attempt-confirm-submit"
                 onClick={() => { setConfirmOpen(false); doSubmit(); }}
-                disabled={submitting}
+                disabled={submitting || pendingCount > 0}
+                title={pendingCount > 0 ? `Waiting for ${pendingCount} answer${pendingCount === 1 ? "" : "s"} to save` : undefined}
               >
-                {submitting ? "Submitting…" : "Yes, submit"}
+                {submitting ? "Submitting…" : pendingCount > 0 ? "Saving…" : "Yes, submit"}
               </button>
             </div>
           </div>

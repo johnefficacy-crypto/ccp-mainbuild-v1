@@ -1,4 +1,4 @@
-import { resolveOptionLabel } from "./optionLabels";
+import { resolveOptionLabel, formatOptionLabel } from "./optionLabels";
 
 test("keeps an official printed source_label as-is", () => {
   expect(resolveOptionLabel({ source_label: "(a)" }, 0)).toBe("(a)");
@@ -33,4 +33,13 @@ test("never renders a raw UUID or a digit", () => {
   expect(label).toBe("C");
   expect(label).not.toMatch(/\d/);
   expect(label).not.toContain("deadbeef");
+});
+
+test("formatOptionLabel appends a dot to bare labels but not to printed labels", () => {
+  // bare alphanumeric → append "."
+  expect(formatOptionLabel({ option_index: "A" }, 0)).toBe("A.");
+  expect(formatOptionLabel({ option_index: 0 }, 1)).toBe("B.");
+  // already-punctuated printed label stays verbatim (no "(a).")
+  expect(formatOptionLabel({ source_label: "(a)" }, 0)).toBe("(a)");
+  expect(formatOptionLabel({ source_label: "(iv)" }, 3)).toBe("(iv)");
 });

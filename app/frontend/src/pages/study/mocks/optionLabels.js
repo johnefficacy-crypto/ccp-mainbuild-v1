@@ -33,3 +33,12 @@ export function resolveOptionLabel(option, index = 0) {
 
   return positionalLabel(index);
 }
+
+// Display form: append a trailing "." ONLY to a bare alphanumeric label (e.g.
+// "A" → "A."), never to an already-punctuated printed label ("(a)" stays "(a)",
+// not "(a)."). Use this everywhere an option label is rendered so attempt,
+// review, and the shared list renderer agree.
+export function formatOptionLabel(option, index = 0) {
+  const base = resolveOptionLabel(option, index);
+  return /^[A-Za-z0-9]+$/.test(base) ? `${base}.` : base;
+}

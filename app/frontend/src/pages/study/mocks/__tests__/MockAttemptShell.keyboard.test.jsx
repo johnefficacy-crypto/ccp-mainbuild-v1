@@ -39,21 +39,28 @@ jest.mock("react-router-dom", () => ({
   Link: ({ children }) => <a>{children}</a>,
 }));
 
+let mockSync;
 jest.mock("../useAnswerSync", () => ({
   __esModule: true,
   SYNC: { UNSAVED: "unsaved", SAVING: "saving", SAVED: "saved", RETRYING: "retrying", FAILED: "failed" },
-  default: () => ({
+  default: () => mockSync,
+}));
+
+function makeSync(overrides = {}) {
+  return {
     queueSave: jest.fn(),
     flush: jest.fn(() => Promise.resolve()),
     flushMany: jest.fn(() => Promise.resolve()),
+    flushAll: jest.fn(() => Promise.resolve({ failedIds: [], answeredCount: 0 })),
     retryNow: jest.fn(),
     retryAllFailed: jest.fn(),
     hasUnsynced: false,
     pendingCount: 0,
     failedCount: 0,
     syncStates: {},
-  }),
-}));
+    ...overrides,
+  };
+}
 
 jest.mock("../AnswerSyncIndicator", () => ({ __esModule: true, default: () => null }));
 
@@ -110,6 +117,9 @@ function primeApi() {
   mockPost.mockResolvedValue({});
 }
 
+beforeEach(() => {
+  mockSync = makeSync();
+});
 afterEach(() => jest.clearAllMocks());
 
 test("option labels never show a raw numeric index (0/1 → A/B) and the footer is present", async () => {
@@ -163,4 +173,64 @@ test("'m' marks the current question for review", async () => {
     fireEvent.keyDown(window, { key: "m" });
   });
   expect(getByTestId("attempt-mark-review").checked).toBe(true);
+});
+
+// ── submit-guard regressions (checkpost #942 P1) ────────────────────────────
+
+test("Ctrl+Enter does NOT open the confirm dialog while answer saves are pending", async () => {
+  mockSync = makeSync({ pendingCount: 1 }); // a Q1 save is still in flight
+  primeApi();
+  const { queryByTestId } = await act(async () => render(<MockAttemptShell />));
+
+  await act(async () => {
+    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+  });
+  expect(queryByTestId("attempt-confirm-dialog")).toBeNull();
+});
+
+test("Ctrl+Enter opens the confirm dialog once no saves are pending", async () => {
+  mockSync = makeSync({ pendingCount: 0 });
+  primeApi();
+  const { queryByTestId } = await act(async () => render(<MockAttemptShell />));
+
+  await act(async () => {
+    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+  });
+  expect(queryByTestId("attempt-confirm-dialog")).toBeTruthy();
+});
+
+test("submit flushes ALL touched saves and aborts (no /submit) if any failed", async () => {
+  mockSync = makeSync({ flushAll: jest.fn(() => Promise.resolve({ failedIds: ["q1"], answeredCount: 0 })) });
+  primeApi();
+  const { getByTestId, queryByTestId } = await act(async () => render(<MockAttemptShell />));
+
+  await act(async () => {
+    fireEvent.click(getByTestId("attempt-submit")); // opens confirm (failedCount 0)
+  });
+  await act(async () => {
+    fireEvent.click(getByTestId("attempt-confirm-submit")); // doSubmit()
+  });
+
+  expect(mockSync.flushAll).toHaveBeenCalled();
+  // A failed save must block finalization: no /submit POST, failed-modal shown.
+  const submitted = mockPost.mock.calls.some(([path]) => String(path).endsWith("/submit"));
+  expect(submitted).toBe(false);
+  expect(queryByTestId("attempt-failed-modal")).toBeTruthy();
+});
+
+test("submit posts claimed_answered_count from the flushed sync mirror", async () => {
+  mockSync = makeSync({ flushAll: jest.fn(() => Promise.resolve({ failedIds: [], answeredCount: 2 })) });
+  primeApi();
+  const { getByTestId } = await act(async () => render(<MockAttemptShell />));
+
+  await act(async () => {
+    fireEvent.click(getByTestId("attempt-submit"));
+  });
+  await act(async () => {
+    fireEvent.click(getByTestId("attempt-confirm-submit"));
+  });
+
+  const submitCall = mockPost.mock.calls.find(([path]) => String(path).endsWith("/submit"));
+  expect(submitCall).toBeTruthy();
+  expect(submitCall[1]).toEqual({ claimed_answered_count: 2 });
 });
