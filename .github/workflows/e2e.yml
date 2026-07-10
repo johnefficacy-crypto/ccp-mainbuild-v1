@@ -19,6 +19,12 @@ permissions:
   contents: read
   pull-requests: read
 
+# A superseded PR-branch run (up to 40 min of Chromium) is cancelled when a
+# newer commit lands; pushes to main are never cancelled.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
@@ -139,9 +145,16 @@ jobs:
           ADMIN_STUDY_OS_ENABLED: "true"
         run: |
           nohup uvicorn server:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          ready=
           for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8000/api/health && break || sleep 2
+            if curl -sf http://127.0.0.1:8000/api/health; then ready=1; break; fi
+            sleep 2
           done
+          if [ -z "$ready" ]; then
+            echo "::error::backend did not become healthy within 60s"
+            cat /tmp/backend.log || true
+            exit 1
+          fi
 
       - name: Build frontend
         if: steps.changes.outputs.run_e2e == 'true'

@@ -2,7 +2,15 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+# PR branches are validated once via the pull_request event; main gets one
+# post-merge run via push. Cancel superseded PR runs, but never cancel a main
+# run (each merged commit gets its own authoritative run).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:

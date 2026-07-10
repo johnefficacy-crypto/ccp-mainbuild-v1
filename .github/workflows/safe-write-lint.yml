@@ -2,7 +2,14 @@ name: Safe-Write Lint
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+# One run per PR (pull_request) plus one post-merge run on main (push); no
+# duplicate push run on PR branches. Cancel superseded PR runs only.
+concurrency:
+  group: safe-write-lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   safe-write-lint:

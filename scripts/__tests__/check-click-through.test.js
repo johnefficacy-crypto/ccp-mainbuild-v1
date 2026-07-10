@@ -46,6 +46,10 @@ test('checkboxStats counts total and checked items', () => {
   assert.deepEqual(checkboxStats('no boxes at all'), { total: 0, checked: 0 });
 });
 
+test('checkboxStats recognizes -, * and + bullet markers', () => {
+  assert.deepEqual(checkboxStats('* [x] star\n+ [ ] plus\n- [X] dash'), { total: 3, checked: 2 });
+});
+
 test('getLabels parses JSON arrays, object arrays and comma fallback', () => {
   process.env.PR_LABELS = JSON.stringify(['click-through-na', 'other']);
   assert.deepEqual(getLabels(), ['click-through-na', 'other']);

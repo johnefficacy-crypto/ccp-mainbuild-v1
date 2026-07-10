@@ -150,7 +150,7 @@ Read `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` before editing a
 
 ## CI behaviour
 
-- **backend (push-trigger run)**: fires before PR exists, frequently fails. The PR-triggered run is authoritative. Two `backend` entries = normal; ignore the first (push) failure.
+- **CI triggers**: `ci.yml` and `safe-write-lint.yml` run on `pull_request` for PR branches and on `push` only for `main`. A PR gets a single run per check — no duplicate push-triggered run — and `main` gets one authoritative post-merge run. Superseded PR runs are auto-cancelled via `concurrency`.
 - **validate-pr-body**: requires sections `Summary`, `Problem / Gap Addressed`, `Implemented in This PR` (≥1 checked item), `Remaining Work / Intentionally Deferred`, `Files Changed`, `API Contracts Touched`, `UI States Covered`, `Accessibility Checklist`, `E2E Impact`, `Manual Test Checklist`, `Commands Run`. Set the PR body in the same call that opens the PR.
 - **e2e**: treat failures as actionable unless they match a documented environment/secrets outage.
 
