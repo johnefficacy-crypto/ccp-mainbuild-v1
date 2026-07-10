@@ -160,4 +160,17 @@ function main() {
   return 0;
 }
 
-process.exit(main());
+module.exports = {
+  touchesUserFacing,
+  clickThroughSection,
+  checkboxStats,
+  getLabels,
+  main,
+  USER_FACING_PREFIXES,
+  NA_LABEL,
+  HOTFIX_LABEL,
+};
+
+if (require.main === module) {
+  process.exit(main());
+}
