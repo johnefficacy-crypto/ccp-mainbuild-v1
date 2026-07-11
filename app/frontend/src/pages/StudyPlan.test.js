@@ -113,6 +113,31 @@ test("selector drawer lists planner-ready exams first and hides not-ready under 
   ).toBeTruthy();
 });
 
+test("not-ready exams in the selector are informational and cannot be chosen", async () => {
+  setupApi({ selectedExam: null });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("open-exam-selector")).toBeTruthy();
+  });
+  fireEvent.click(screen.getByTestId("open-exam-selector"));
+  fireEvent.click(screen.getByTestId("toggle-other-exams"));
+
+  const notReady = screen.getByTestId(
+    "exam-option-22222222-2222-4222-8222-222222222222",
+  );
+  // The row is not a control (no button role) and clicking it does nothing.
+  expect(notReady.tagName).not.toBe("BUTTON");
+  fireEvent.click(notReady);
+
+  // No target mutation, and the drawer stays open.
+  expect(mockPut).not.toHaveBeenCalled();
+  expect(screen.getByTestId("exam-selector")).toBeTruthy();
+});
+
 test("searching the selector reveals a matching not-ready exam without expanding", async () => {
   setupApi({ selectedExam: null });
 

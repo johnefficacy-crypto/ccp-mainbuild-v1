@@ -240,13 +240,23 @@ export default function StudyPlan() {
     }
   }
 
-  // Pick an exam from the selector drawer, then close it on success. A failed
-  // choose (e.g. the user cancels the replace-plan confirm, or the PUT errors)
-  // keeps the drawer open so the selection isn't silently lost.
+  // Close the selector and reset its transient view state so a stale search or
+  // expanded "Other exams" section doesn't persist into the next open.
+  function closeSelector() {
+    setSelectorOpen(false);
+    setExamSearch("");
+    setShowOtherExams(false);
+  }
+
+  // Pick an exam from the selector drawer, then close it on success. Only
+  // planner-ready exams are selectable (not-ready exams render as informational
+  // rows), matching the tracked-strip rule. A failed choose (e.g. the user
+  // cancels the replace-plan confirm, or the PUT errors) keeps the drawer open
+  // so the selection isn't silently lost.
   async function chooseExamFromSelector(examId) {
     try {
       await chooseExam(examId);
-      setSelectorOpen(false);
+      closeSelector();
     } catch (e) {
       if (process.env.NODE_ENV !== "production") console.error(e);
     }
@@ -848,7 +858,7 @@ export default function StudyPlan() {
 
       <Drawer
         open={selectorOpen}
-        onClose={() => setSelectorOpen(false)}
+        onClose={closeSelector}
         title="Choose or add exam"
         width={460}
       >
@@ -914,20 +924,22 @@ export default function StudyPlan() {
               </button>
               {otherExamsExpanded && (
                 <div className="mt-2 flex flex-col gap-1.5" data-testid="other-exams-list">
+                  {/* Not-ready exams are informational only — they cannot be
+                      made the target (no locked topic coverage yet), matching
+                      the tracked-strip rule that disables non-ready switching.
+                      Rendered as static rows, never as a mutating control. */}
                   {otherExams.map((e) => (
-                    <button
+                    <div
                       key={e.id}
-                      type="button"
-                      onClick={() => chooseExamFromSelector(e.id)}
-                      className="flex items-center justify-between rounded-xl border border-[#E7DECB] bg-white/40 px-3 py-2 text-left text-sm text-clay-700 hover:bg-clay-50"
+                      className="flex items-center justify-between rounded-xl border border-[#E7DECB] bg-white/40 px-3 py-2 text-sm text-clay-600"
                       data-testid={`exam-option-${e.id}`}
                       title="Planner not ready for this exam yet"
                     >
                       <span>{e.name}</span>
                       <span className="num-mono text-[9px] uppercase tracking-[0.18em] text-clay-500">
-                        Not ready
+                        Not ready yet
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
