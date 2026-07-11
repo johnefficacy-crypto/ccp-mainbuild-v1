@@ -11,12 +11,21 @@ parallel to `completed_at`: stamped once when the session leaves 'active' (all
 units submitted; monotonic while past-drafting), cleared on a learning-mode
 reopen that returns the session to 'active'.
 
-Two layers (mirrors `test_ewp_rollup_completed_at_migration.py`):
+Two layers:
   * text assertions (no DB) — prove 240 is a CREATE OR REPLACE that sets
     submitted_at with the cleared-parallel rule, and that immutable migrations
     207/238 were NOT edited;
   * pg behaviour (gated on EWP_PG_DSN + psql) — drive real transitions and assert
     the stamp is set / cleared / preserved.
+
+The pg layer applies the **current** EWP chain that 240 actually lands after —
+205 → 207 → 209 → 214 → 222 → 238 → 240 — NOT the historical 205→207 shape:
+migration 214 drops the exam-scope columns from `writing_prompts` (so the fixture
+is subject-scoped, no `exam_id`) and 222 replaces `ewp_create_writing_session`
+(pinned `prompt_snapshot` + exam derivation). 209 is included because 222 also
+CREATE OR REPLACEs `ewp_claim_evaluation_job` / `ewp_claim_mastery_outbox`, whose
+bodies reference the evaluator/outbox tables 209 creates. This proves 240 works
+against the real runtime function + table shape, not the pre-214 historical one.
 """
 from __future__ import annotations
 
@@ -24,12 +33,16 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 
 _MIG_DIR = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
 _M205 = _MIG_DIR / "205_english_writing_practice_schema.sql"
 _M207 = _MIG_DIR / "207_english_writing_practice_rpcs.sql"
+_M209 = _MIG_DIR / "209_english_writing_practice_evaluator.sql"
+_M214 = _MIG_DIR / "214_writing_prompt_content_scoping.sql"
+_M222 = _MIG_DIR / "222_ewp_prompt_snapshot_and_exam_derivation.sql"
 _M238 = _MIG_DIR / "238_ewp_rollup_completed_at.sql"
 _M240 = _MIG_DIR / "240_ewp_rollup_submitted_at.sql"
 
@@ -86,6 +99,23 @@ pg = pytest.mark.skipif(
     reason="set EWP_PG_DSN to a disposable Postgres superuser DB (and have psql) to run",
 )
 
+
+def _swap_db(dsn: str, db: str) -> str:
+    p = urlsplit(dsn)
+    return urlunsplit((p.scheme, p.netloc, "/" + db, p.query, p.fragment))
+
+
+# This test applies migration 214, which DROPs `writing_prompts.exam_id`. The CI
+# backend job runs ALL pg tests in ONE pytest process against the shared `ewp_it`
+# db, and the sibling EWP pg tests still insert the pre-214 `writing_prompts`
+# shape — so mutating the shared db here would break them. We therefore run the
+# whole current-chain apply in a DEDICATED, freshly-created db and never touch
+# `ewp_it`. ``_RUN_DSN`` is what every psql helper targets; it points at the
+# isolated db once the module fixture provisions it.
+_OWN_DB = "ewp_submitted_at_it"
+_ADMIN_DSN = _swap_db(_DSN, "postgres") if _DSN else None
+_RUN_DSN = _DSN
+
 _A = "00000000-0000-0000-0000-0000000000aa"   # owner
 _PROMPT = "00000000-0000-0000-0000-0000000000d1"
 
@@ -98,20 +128,26 @@ CREATE SCHEMA IF NOT EXISTS auth;
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $fn$
   SELECT NULLIF(current_setting('ewp.uid', true), '')::uuid $fn$;
 CREATE TABLE IF NOT EXISTS public.profiles (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+CREATE TABLE IF NOT EXISTS public.exam_families (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE IF NOT EXISTS public.exams (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE IF NOT EXISTS public.exam_cycles (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE IF NOT EXISTS public.exam_phases (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE IF NOT EXISTS public.document_assets (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
-CREATE TABLE IF NOT EXISTS public.study_tasks (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, task_type text);
+CREATE TABLE IF NOT EXISTS public.study_tasks (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, task_type text, exam_id uuid, exam_phase_id uuid);
 CREATE TABLE IF NOT EXISTS public.subjects (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), slug text NOT NULL UNIQUE, name text NOT NULL, subject_group text, default_difficulty_level text, description text, is_active boolean NOT NULL DEFAULT true, metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.topics (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), subject_id uuid NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE, parent_topic_id uuid REFERENCES public.topics(id) ON DELETE CASCADE, slug text NOT NULL, name text NOT NULL, level text NOT NULL DEFAULT 'topic' CHECK (level IN ('topic','microtopic','concept')), default_difficulty_level text, description text, is_active boolean NOT NULL DEFAULT true, metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(subject_id, parent_topic_id, slug));
 """
 
+# Post-214 the prompt is SUBJECT-scoped — `writing_prompts` no longer has
+# `exam_id` (migration 214 dropped it). The behaviour test creates ad-hoc
+# sessions (`p_study_task = NULL`), so the post-222 `ewp_create_writing_session`
+# derives a NULL exam context and no applicability target is consulted; the
+# rollup under test reads none of the exam/applicability columns.
 _FIXTURES = f"""
 INSERT INTO exams(id) VALUES ('00000000-0000-0000-0000-0000000000e1') ON CONFLICT DO NOTHING;
 INSERT INTO profiles(id) VALUES ('{_A}') ON CONFLICT DO NOTHING;
-INSERT INTO writing_prompts(id,exam_id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level,reviewer_status,is_active,required_sentence_count)
-  SELECT '{_PROMPT}','00000000-0000-0000-0000-0000000000e1',
+INSERT INTO writing_prompts(id,subject_id,topic_id,exercise_type,prompt_text,difficulty_level,reviewer_status,is_active,required_sentence_count)
+  SELECT '{_PROMPT}',
          (SELECT id FROM subjects WHERE slug='english-language'),
          (SELECT id FROM topics WHERE slug='grammar'),'sentence_construction','write',1,'verified',true,2
   WHERE NOT EXISTS (SELECT 1 FROM writing_prompts WHERE id='{_PROMPT}');
@@ -120,7 +156,7 @@ INSERT INTO writing_prompts(id,exam_id,subject_id,topic_id,exercise_type,prompt_
 
 def _psql(sql: str, *, expect_ok: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run(
-        [_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
+        [_PSQL, _RUN_DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
         capture_output=True, text=True,
     )
     if expect_ok:
@@ -132,7 +168,7 @@ def _psql(sql: str, *, expect_ok: bool = True) -> subprocess.CompletedProcess:
 
 def _psql_file(path: Path) -> None:
     proc = subprocess.run(
-        [_PSQL, _DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-f", str(path)],
+        [_PSQL, _RUN_DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-f", str(path)],
         capture_output=True, text=True,
     )
     assert proc.returncode == 0, f"failed applying {path.name}:\n{proc.stderr}"
@@ -140,26 +176,55 @@ def _psql_file(path: Path) -> None:
 
 def _scalar(sql: str) -> str:
     proc = subprocess.run(
-        [_PSQL, _DSN, "-t", "-A", "-X", "-c", sql],
+        [_PSQL, _RUN_DSN, "-t", "-A", "-X", "-c", sql],
         capture_output=True, text=True,
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout.strip()
 
 
+def _admin(sql: str) -> None:
+    subprocess.run(
+        [_PSQL, _ADMIN_DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", sql],
+        capture_output=True, text=True,
+    )
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _apply():
+    global _RUN_DSN
     if not (_DSN and _PSQL):
         yield
         return
+    # Provision a dedicated db so applying 214 (drops writing_prompts.exam_id)
+    # never mutates the shared ewp_it db that sibling pre-214 pg tests reuse.
+    _admin(
+        f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{_OWN_DB}';"
+    )
+    _admin(f"DROP DATABASE IF EXISTS {_OWN_DB};")
+    _admin(f"CREATE DATABASE {_OWN_DB};")
+    _RUN_DSN = _swap_db(_DSN, _OWN_DB)
     _psql(_BOOTSTRAP)
+    # Current EWP chain that 240 lands after (not the historical 205->207 shape):
+    # 214 reshapes writing_prompts (drops exam_id); 222 replaces the create RPC
+    # (+ prompt_snapshot / exam derivation) and recreates the claim functions that
+    # reference 209's evaluator/outbox tables.
     _psql_file(_M205)
     _psql_file(_M207)
+    _psql_file(_M209)
+    _psql_file(_M214)
+    _psql_file(_M222)
     _psql_file(_M238)
     _psql_file(_M240)
     _psql_file(_M240)  # idempotent re-apply
     _psql(_FIXTURES)
     yield
+    # Drop the isolated db so it never lingers for a later run.
+    _RUN_DSN = _DSN
+    _admin(
+        f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{_OWN_DB}';"
+    )
+    _admin(f"DROP DATABASE IF EXISTS {_OWN_DB};")
 
 
 def _create(units: int = 1) -> str:
