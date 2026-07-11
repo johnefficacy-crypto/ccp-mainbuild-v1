@@ -45,7 +45,9 @@ const FALLBACK_PLACEHOLDERS = [
 function getBody() {
   const p = process.argv[2] || process.env.PR_BODY_FILE;
   if (p && fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
-  if (process.env.PR_BODY) return process.env.PR_BODY;
+  // Use `!== undefined` so a genuinely empty PR body ('') is validated as an
+  // empty body — reporting the missing sections — rather than throwing.
+  if (process.env.PR_BODY !== undefined) return process.env.PR_BODY;
   throw new Error('No PR body provided. Use argv[2], PR_BODY_FILE, or PR_BODY.');
 }
 

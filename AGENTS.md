@@ -77,14 +77,14 @@ Rules:
 These checks fail in predictable, non-code-related ways. Do not spend time
 diagnosing them unless the failure pattern changes.
 
-**backend (push-trigger run)**
-- The `ci.yml` workflow runs on both `push` and `pull_request` events.
-- The push-trigger run fires immediately on branch push, before a PR exists.
-- This run frequently fails against the pre-existing test suite (the same
-  tests pass on the PR-triggered run minutes later).
-- Pattern: two `backend` check entries appear — the first (push run) fails,
-  the second (PR run) passes. The PR run result is authoritative.
-- Observed on PR #480 and PR #481.
+**backend (single PR run)**
+- `ci.yml` runs on `pull_request` for PR branches and on `push` only for
+  `main` (scoped via `push.branches: [main]`).
+- A PR therefore produces a single `backend` check entry, not two. The old
+  "push run fails, PR run passes" duplicate (observed on PR #480/#481) no
+  longer occurs — a red `backend` on a PR is now always actionable.
+- Superseded runs on the same PR branch are cancelled by the workflow's
+  `concurrency` group when a newer commit is pushed.
 
 **e2e**
 - The `e2e` check is defined in `.github/workflows/e2e.yml` and exercises the

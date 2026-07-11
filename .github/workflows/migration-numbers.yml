@@ -20,6 +20,7 @@ jobs:
           MAX_ON_MAIN=$(echo "$ON_MAIN" | tail -1)
 
           ADDED=$(git diff --name-only --diff-filter=A "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' \
+            | grep -E '^app/supabase/migrations/[0-9]+_.*\.sql$' \
             | sed -E 's|.*/([0-9]+)_.*|\1|' | sort -n || true)
           DELETED=$(git diff --name-only --diff-filter=D "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' || true)
           RENAMED=$(git diff --name-only --diff-filter=R "$BASE"...HEAD -- 'app/supabase/migrations/*.sql' || true)
@@ -71,11 +72,13 @@ jobs:
             fi
           done
 
-          EXPECTED=$((MAX_ON_MAIN + 1))
+          # Force base-10: sed preserves leading zeros (001-099 exist), which
+          # bash would otherwise parse as octal (008/009 crash, 017 -> 15).
+          EXPECTED=$((10#$MAX_ON_MAIN + 1))
           for num in $ADDED; do
-            if [[ "$num" -ne "$EXPECTED" ]]; then
+            if (( 10#$num != EXPECTED )); then
               echo "ERROR: expected migration $EXPECTED, got $num"
-              echo "Migrations must be contiguous starting from $((MAX_ON_MAIN + 1))"
+              echo "Migrations must be contiguous starting from $((10#$MAX_ON_MAIN + 1))"
               exit 1
             fi
             EXPECTED=$((EXPECTED + 1))

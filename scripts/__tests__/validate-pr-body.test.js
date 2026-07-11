@@ -87,6 +87,12 @@ test('Commands Run rejects comment-only content but keeps inline comments', () =
   assert.deepEqual(inlineComment, []);
 });
 
+test('an empty body reports every section missing (no throw)', () => {
+  const errors = validate('', TEMPLATE);
+  assert.equal(errors.length, REQUIRED_SECTIONS.length);
+  assert.ok(errors.every((e) => e.startsWith('Missing required section:')));
+});
+
 test('fallback placeholder path works without a template', () => {
   const untouchedSummary = '- What changed at a high level?\n- Why this PR exists now?';
   assert.ok(isEmptyOrPlaceholder(untouchedSummary, 'Summary', null));
