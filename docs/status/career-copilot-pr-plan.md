@@ -42,6 +42,7 @@
 | Medium | P2 cognitive-demand classification (metadata-only) | Contract-first; independent of Track C — see note |
 | Blocked | A-PR4/A-PR5/Track C | Lane A clean gate (FF_MOCK_MASTERY_WRITES=live) |
 | Blocked | J3 schema/domain redesign | Contract-first; I8 gates cleared |
+| High | Lane GQR (GA/Quant/Reasoning expansion) | Contracts landed (`subject-practice-framework.md`, `current-affairs-pipeline.md`); GQR-1 runtime policy next. GQR-G3 gated on CA-pipeline doc approval; GQR-G0 template-path fix blocks GQR-G5; GQR-Q9 mastery/planner blocked on Lane A |
 
 **Score Snapshot lock-authority note:** Implemented via issue #822 (approved 2026-07-01) and PR on branch `claude/snapshot-lock-authority-s9k2mn`. Guard A (stale-model) and Guard B (superseded-current-model) are independent checks on the `reviewed→locked` transition only. `draft→reviewed` and `locked→reviewed` remain always allowed. Migration 206 replaces the 6-param RPC with a 7-param version; Guard B uses `>=` to reject equal-timestamp ties; Python layer extended with `p_current_model_version`; 38 backend tests pass (9 new). Operator validation pending: apply migration 206 to staging and validate the two guard error tokens before marking closed.
 
@@ -88,6 +89,7 @@ terms come from `docs/status/career-copilot-checklist.md`.
 | F. Live-DB tails | Yes, operator-led | Does not block code cleanup unless evidence changes status | Operator |
 | G. Track C / personalization expansion | No | Waits on Lane A clean gate | Backend+frontend feature agents later |
 | H. English Writing Practice | EWP-1 (schema/constraints/RLS) in review — PR #821; runtime state-machine/rollup tests are EWP-2, not EWP-1; EWP-5 mastery live blocked on Lane A gate | Architecture lock (#819) gates EWP-1; EWP-5 mastery live blocked on Lane A gate | Backend + frontend agents |
+| GQR. GA / Quant / Reasoning Expansion | Contracts landed (this PR); GQR-1 next. GQR-G3 gated on CA-pipeline doc approval; GQR-Q9 mastery/planner blocked on Lane A | Contracts gate all GQR PRs; GQR-G0 (template-path fix) blocks GQR-G5; Lane A gates GQR-Q9 | Backend + frontend agents (serial within a lane owner) |
 
 ## Lane H — English Writing Practice
 
@@ -398,6 +400,90 @@ Five-sentence paragraph editor. Scaffolded slots when `tier_rank(evidence_tier) 
 **Status:** PLANNED — blocked on EWP-6 stable and release gates §16 passed
 
 Extend mock `AnswerBody` with `answer_text`. Add `descriptive` interface mode to `AttemptShellRouter`. Wire existing `answer_text`, `word_count`, autosave, `evaluation_status`, and `rubric_score` columns from M176/M177. Add essay, précis, letter and report configurations in `exam_descriptive_requirements`.
+
+---
+
+## Lane GQR — GA / Quant / Reasoning Expansion
+
+Architecture contracts: `docs/architecture/subject-practice-framework.md` (runtime policy, Quant,
+Reasoning) + `docs/architecture/current-affairs-pipeline.md` (GA current-affairs).
+Checklist: `docs/status/career-copilot-checklist.md` § GA / Quant / Reasoning Expansion.
+
+### Parallelization within Lane GQR
+
+GQR-1 (subject runtime policy) must land first — it touches `StudyHome.jsx`/launch and, per the
+serial-delivery rule, is one owner's sequential work. After GQR-1, the three verticals fan out:
+GA (GQR-G*), Quant (GQR-Q*), Reasoning (GQR-R*) own disjoint write scopes and may proceed
+concurrently. Within GA, the order is strict: G0 → G2 → G3 → G4 → G5 → G6. GQR-G3 (LLM pipeline)
+must not start until `current-affairs-pipeline.md` is approved. GQR-Q9 (planner activation) and any
+mastery write stay blocked on the Lane A gate. Every implementation PR: forward-only migration
+(number from `select max(version)::int+1`), tests, checklist row update, graph refresh.
+
+### GQR-1 — Subject runtime policy
+Server-owned `SubjectRuntimePolicy` registry. Remove english/PYQ hard-coding from
+`subjects.py::_subject_practice`; route `subject_practice.py` launches through the registry; replace
+`StudyHome.jsx` `NextActionCard` writing branch with one typed generic launcher; planner resolves a
+runnable launch from policy instead of blanket `pyq_practice` stamping. Preserve English/PYQ behaviour
+via compatibility tests. **Write scope:** `subjects.py`, `subject_practice.py`, `planner.py`,
+`StudyHome.jsx`. No new subject behaviour ships here.
+
+### GQR-G0 — Template-path is_current leak fix (SHIP-BLOCKING PREREQUISITE)
+Align the legacy `mock_engine` template pool (`_select_criteria_question_ids` /
+`select_questions_for_template`) with `mock_blueprint_selection._exam_base_pool`'s is_current /
+`is_current_based` / expired exclusion, so a `current_event` question cannot leak into a template-path
+mock with a decaying answer. Latent mock-engine correctness bug; independent of the CA arc; **must
+land before GQR-G5**. **Write scope:** mock engine selection only.
+
+### GQR-G2 — CA source + evidence authority
+Forward migration for `current_affairs_sources / documents / events / claims / claim_evidence`. PIB +
+RBI adapters only. Conditional fetch (reuse `scraping/fetcher.py`), hashing, dedup, source health. Do
+**not** reuse `source_registry` or the recruitment runner. No LLM, no learner UI.
+
+### GQR-G3 — CA LLM shadow pipeline (GATED on doc approval)
+Claim extraction, MCQ generation, independent verification, deterministic validator, generation audit
++ cost telemetry. Reuse the EWP LLM-adapter runtime contract (no-open-txn, lease+fencing, atomic ack,
+idempotency, shadow/no-authority). No promotion/publication. Honors ADR 0006/0007.
+
+### GQR-G4 — Operator review + promotion
+Content Studio embedded review queue (approve/edit/reject/regenerate/merge/mark-unsuitable/send-back).
+Audited promotion RPC into the objective bank as `source_kind='current_event', is_current_based=true,
+valid_until=<relevance window>`. No autonomous publication.
+
+### GQR-G5 — Weekly bundle + learner runtime (needs GQR-G0)
+Bundle authoring/publish; server-owned bundle selection; own `current_affairs_attempts` +
+`_attempt_responses` tables (not `mock_attempts`); frozen attempts; source-backed review; explicit
+mastery/correction bypass; new `ca:ingest` + `ca:generate` APScheduler jobs. End-to-end weekly test.
+
+### GQR-G6 — Monthly consolidation + retry
+Editorial monthly core (not a weekly concatenation); capped personal retry tail at attempt creation;
+short-lived `current_affairs_retry_items`; supersession handling; monthly reporting.
+
+### GQR-Q7 — Quant heuristic authority
+`quant_heuristics` + `quant_question_heuristics` + review workflow; standard/shortcut/trap feedback;
+structured `applicability_rule`; no `expected_time_saving_pct` in v1. No performance-triggered planner
+change yet.
+
+### GQR-Q8 — Calculation Gym + shadow signals
+Deterministic seeded gym generator; frozen generated sessions; `quant_performance_signals` sibling
+(time_ratio) derivation; shadow dashboards + calibration data. Do **not** modify the existing
+`mastery_delta` time weighting in this PR.
+
+### GQR-Q9 — Quant planner activation (BLOCKED on Lane A)
+Versioned threshold policy; heuristic + Calculation Gym recommendations; canary rollout; separate
+governed decision on the existing mastery time weighting (two unreconciled writers).
+
+### GQR-R10 — Reasoning text sets
+Topic practice, timed practice, shared text/table puzzle/caselet sets over the existing objective
+runtime. No non-verbal or option-media work.
+
+### GQR-R2 — Reasoning non-verbal (DEFERRED — named coverage gap)
+Non-verbal reasoning, figure options, option media (image answer choices), mirror/water, paper-fold,
+embedded/completion figures, cubes & dice. Out of v1; tracked so "Reasoning shipped" is not read as
+full SSC coverage. Requires option-level media + an authored stimulus/media path — future arc.
+
+### GQR-11 — Integration + rollout
+Study Home, planner, reports (label GA as current-affairs practice performance, not mastery),
+correction routing, operator telemetry, E2E + accessibility verification, shadow/canary/prod gates.
 
 ---
 

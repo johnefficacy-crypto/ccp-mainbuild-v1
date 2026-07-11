@@ -482,6 +482,33 @@ Evidence-based gates — do not substitute elapsed time, session count, or devel
 | Writing shadow gate | OPERATOR PENDING | §10.3 shadow-to-live conditions; `FF_WRITING_MASTERY_WRITES` remains `shadow`, live blocked on Lane A gate + operator approval | — |
 | Operator approval | BLOCKED | Depends on all gates above; dated approval to be recorded here + `docs/audits/ewp/` | — |
 
+## GA / Quant / Reasoning Expansion — Lane GQR
+
+Architecture contracts: `docs/architecture/subject-practice-framework.md` (runtime policy, Quant, Reasoning) + `docs/architecture/current-affairs-pipeline.md` (GA current-affairs).
+PR plan: `docs/status/career-copilot-pr-plan.md` § Lane GQR.
+
+Current verdict: **CONTRACT-FIRST / PLANNED. Two architecture contracts landed (this PR); no runtime code shipped. GA v1 = current-affairs only and must NEVER write `user_topic_mastery`. Quant performance signals and any mastery activation stay shadow-only behind the Lane A gate (`FF_MOCK_MASTERY_WRITES=live` BLOCKED). The LLM current-affairs pipeline (GQR-G3) is GATED on approval of `current-affairs-pipeline.md`. Reasoning v1 is text-only; non-verbal is a named deferred gap (GQR-R2), not silent scope.**
+
+Migration numbers for every implementation PR must come from `select max(version)::int + 1 from schema_migrations` (VERIFY DB; current max in checkout is 239 — do not hardcode). All migrations forward-only.
+
+| Item | Current status | Repo evidence / notes |
+|---|---|---|
+| Architecture contracts (framework + CA pipeline) | CODE PRESENT (this PR) / REVIEW PENDING | `docs/architecture/subject-practice-framework.md`, `docs/architecture/current-affairs-pipeline.md`. Cross-examined against `main @ ec1f4a2`; corrections folded (runtime already generic, math already renders, two unreconciled mastery writers, no `attempt_kind`, no scraping scheduler, `source_kind='current_event'` isolation reuse, template-path leak). |
+| GQR-1 Subject runtime policy | PLANNED | Server-owned `SubjectRuntimePolicy` registry; remove `_subject_practice` english/PYQ hard-coding; generic `StudyHome` launcher; planner resolves launch from policy. Preserve English/PYQ via regression tests. |
+| GQR-G0 Template-path is_current leak fix | PLANNED — SHIP-BLOCKING PREREQUISITE | Align legacy `mock_engine` template pool with `mock_blueprint_selection._exam_base_pool` is_current/expired exclusion. Latent mock-engine correctness bug; must land before any CA question is promotable/attemptable (GQR-G5). |
+| GQR-G2 CA source + evidence authority | PLANNED | New `current_affairs_sources/documents/events/claims/claim_evidence`; PIB+RBI adapters; reuse `scraping/fetcher.py` conditional fetch; do NOT reuse `source_registry`/recruitment runner. No LLM, no learner UI. |
+| GQR-G3 CA LLM shadow pipeline | PLANNED — GATED on `current-affairs-pipeline.md` approval | Extraction + MCQ gen + independent verify + deterministic validator + generation audit. Reuse EWP LLM-adapter runtime contract (no-open-txn, lease+fencing, atomic ack, shadow/no-authority). No promotion/publication. Honors ADR 0006/0007. |
+| GQR-G4 Operator review + promotion | PLANNED | Content Studio embedded review queue; audited promotion into objective bank as `source_kind='current_event', is_current_based=true, valid_until=…`. No autonomous publication. |
+| GQR-G5 Weekly bundle + learner runtime | PLANNED (needs GQR-G0) | Bundle publish; server-owned selection; own `current_affairs_attempts` table (NOT `mock_attempts`); frozen attempts; explicit mastery/correction bypass; new `ca:ingest`/`ca:generate` scheduler jobs. |
+| GQR-G6 Monthly consolidation + retry | PLANNED | Editorial monthly core; capped personal retry tail at attempt creation; short-lived `current_affairs_retry_items`; supersession handling; monthly reporting. |
+| GQR-Q7 Quant heuristic authority | PLANNED | `quant_heuristics` + `quant_question_heuristics`; standard/shortcut/trap feedback; structured `applicability_rule`; no `expected_time_saving_pct` in v1. No planner change yet. |
+| GQR-Q8 Calculation Gym + shadow signals | PLANNED | Deterministic seeded gym generator (tables/squares/cubes/roots/…); frozen sessions; `quant_performance_signals` sibling (time_ratio) derivation; shadow dashboards/calibration. Do NOT alter existing `mastery_delta` time weighting here. |
+| GQR-Q9 Quant planner activation | PLANNED — BLOCKED on Lane A gate | Versioned threshold policy; heuristic + gym recommendations; canary. Separate governed decision on existing time weighting (two writers). |
+| GQR-R2 Reasoning non-verbal | PLANNED — DEFERRED (named coverage gap) | Non-verbal / figure options / option media. ~40–50% of SSC GI&Reasoning; out of v1 scope but tracked so "Reasoning shipped" is not overstated. |
+| GQR-R10 Reasoning text sets | PLANNED | Topic/timed/reasoning_set over existing objective runtime + shared text/table stimuli. No non-verbal/option-media. |
+| GQR-11 Integration + rollout | PLANNED | Study Home, planner, reports (label GA as current-affairs practice, not mastery), correction routing, operator telemetry, E2E + accessibility, shadow/canary/prod gates. |
+| SSC GA section seed | PLANNED — PREREQUISITE | SSC CGL demo seed currently has only 3 sections (Quant/English/Reasoning); the real Tier-1 has a 25Q GA section. Seed the SSC GA subject+section (GQR-1/GQR-G2) so GA bundles/attempts have a subject to attach to. |
+
 ## Prior arcs / live-DB-only tails
 
 Keep these separated from code-verifiable status.
@@ -503,5 +530,6 @@ Every PR that changes any of the following must update this checklist in the sam
 4. Backend CI ordering, dependency audit policy, or known flaky checks.
 5. Any operator decision that changes a `BLOCKED`, `OPERATOR PENDING`, `PLANNED`, or `CLEANUP PENDING` status.
 6. English Writing Practice schema, API, frontend, mastery flag, evaluation pipeline, or prompt bank.
+7. GA / Quant / Reasoning Expansion (Lane GQR): subject runtime policy, current-affairs pipeline/sources/bundles, Quant heuristics/Calculation Gym/performance signals, Reasoning text runtime, or the CA attempts/promotion/isolation path.
 
 When a task is live-DB or deployment-only, write **OPERATOR PENDING** or **VERIFY DB**; never mark it complete from code inspection alone.
