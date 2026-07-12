@@ -44,6 +44,17 @@ def test_state_psc_is_tier_a():
         "organization_name": "MPSC",
     })
     assert out["criticality_tier"] == "A_HIGH_STAKES"
+    # Assert the FAMILY too — the prior bug passed the tier check while
+    # classifying into the wrong ("regulatory") family via a "tra" false-match.
+    assert out["exam_family_key"] == "state_psc"
+
+
+def test_state_psc_acronym_forms_are_tier_a():
+    # Acronym at end-of-string / with punctuation, no expanded phrase present.
+    for title in ("MPSC", "MPSC:", "MPSC/Notification 2026", "UPPSC Recruitment"):
+        out = classify_recruitment({"title": title})
+        assert out["criticality_tier"] == "A_HIGH_STAKES", title
+        assert out["exam_family_key"] == "state_psc", title
 
 
 def test_railway_is_tier_a():
@@ -73,8 +84,14 @@ def test_ifsca_is_tier_a_regulatory():
     assert out["exam_family_key"] == "regulatory"
 
 
-def test_trai_is_tier_a_regulatory():
+def test_trai_acronym_is_tier_a_regulatory():
     out = classify_recruitment({"title": "TRAI Officer Recruitment 2026"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "regulatory"
+
+
+def test_regulator_full_org_name_is_tier_a_regulatory():
+    out = classify_recruitment({"title": "Securities and Exchange Board of India — Officer Grade A"})
     assert out["criticality_tier"] == "A_HIGH_STAKES"
     assert out["exam_family_key"] == "regulatory"
 
@@ -89,16 +106,43 @@ def test_bare_tra_substring_no_longer_false_matches():
     assert out["exam_family_key"] != "regulatory"
 
 
-def test_development_finance_institution_is_tier_a_banking():
+def test_trai_substring_in_training_trainee_is_not_regulatory():
+    # "training" / "trainee" contain "trai" — boundary matching must NOT
+    # promote these ordinary notices to Tier A regulatory.
+    for title in ("Training Officer Recruitment 2026", "Trainee Recruitment Notice"):
+        out = classify_recruitment({"title": title})
+        assert out["exam_family_key"] != "regulatory", title
+        assert out["criticality_tier"] != "A_HIGH_STAKES", title
+
+
+def test_nhb_acronym_is_tier_a_banking():
+    out = classify_recruitment({"title": "NHB Assistant Manager Recruitment"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "banking"
+
+
+def test_development_finance_full_name_is_tier_a_banking():
     out = classify_recruitment({"title": "National Housing Bank Assistant Manager Recruitment"})
     assert out["criticality_tier"] == "A_HIGH_STAKES"
     assert out["exam_family_key"] == "banking"
 
 
-def test_nabfid_is_tier_a_banking():
+def test_exim_acronym_is_tier_a_banking():
+    out = classify_recruitment({"title": "EXIM Management Trainee Recruitment 2026"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "banking"
+
+
+def test_nabfid_acronym_is_tier_a_banking():
     out = classify_recruitment({"title": "NaBFID Analyst Recruitment 2026"})
     assert out["criticality_tier"] == "A_HIGH_STAKES"
     assert out["exam_family_key"] == "banking"
+
+
+def test_nhb_substring_inside_word_is_not_banking():
+    # A boundary-safe token must not match inside an unrelated word.
+    out = classify_recruitment({"title": "Johnhburg Municipal Office Assistant"})
+    assert out["exam_family_key"] != "banking"
 
 
 # ── Tier B ─────────────────────────────────────────────────────────────
