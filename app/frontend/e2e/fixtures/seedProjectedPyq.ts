@@ -1,6 +1,6 @@
 import { readEnv } from "./env";
 import { createNodeSupabaseClient } from "./supabaseNodeClient";
-import { ensureWorkspaceSeed, WORKSPACE } from "./seedWorkspace";
+import { ensureWorkspaceSeed, ensureAdminUser, WORKSPACE } from "./seedWorkspace";
 
 /**
  * Projected-PYQ practice pool fixture.
@@ -8,25 +8,22 @@ import { ensureWorkspaceSeed, WORKSPACE } from "./seedWorkspace";
  * Closes the PR-5 exit gate's missing half: the workspace seed had no projected
  * verified-PYQ pool, so the full "aspirant completes and reviews a verified
  * previous-year paper" flow could never be exercised end-to-end (PR #946
- * Remaining Work). This seeds exactly what `start_pyq_practice(mode='paper')`
- * requires to assemble a launchable attempt, mirroring the real projection
- * bridge (migration 183/229) without invoking the CMS projection RPC:
+ * Remaining Work).
  *
- *   - a VERIFIED `pyq_papers` row on the E2E workspace exam (so `/pyq-summary`
- *     counts it and `ExamIntelligenceCatalogue`/`PyqExplorerSection` surface it),
- *   - VERIFIED `pyq_questions` on that paper (printed order via question_number),
- *   - a primary VERIFIED `pyq_question_topic_tags` row per question (drives the
- *     `by_subject` distribution),
- *   - `mock_question_bank` rows (reviewer_status='verified', pyq_question_id +
- *     pyq_paper_id set, a valid MCQ snapshot: 4 options + correct_option_id),
- *   - 4 `mock_question_options` per bank row with printed `source_label`/
- *     `display_order`, option_index 1 always correct,
- *   - an ACTIVE `pyq_mock_question_projections` row per bank row — the guard the
- *     launch predicate and `practice_ready_counts_by_paper` both require.
+ * The projection bridge table `pyq_mock_question_projections` is deliberately
+ * RPC-only — migration 183 revokes direct DML and grants only the SECURITY
+ * DEFINER `project_pyq_question_to_mock_bank(pyq_question_id, actor_id, reason)`
+ * to service_role. So this fixture seeds the CANONICAL side (verified paper +
+ * verified `pyq_questions` + verified `pyq_options` + one primary verified topic
+ * tag per question) and then calls the REAL projection RPC — the same path the
+ * admin CMS uses (`app/backend/app/admin/pyq_mock_projection.py`). That makes the
+ * E2E validate the genuine projection bridge (183/229) rather than a hand-forged
+ * `mock_question_bank`/projection, and the RPC's own trust gates (verified paper,
+ * verified question, exactly one verified correct option, one primary verified
+ * subject-bearing tag) are exercised for free.
  *
- * All rows use fixed UUIDs and service-role upserts so re-runs converge without
- * drift. `mock_reviewer_status` only admits draft/reviewed/locked/verified/live
- * (no 'published'), so bank rows are seeded 'verified'.
+ * Fixed UUIDs + service-role upserts on PK → idempotent; the RPC returns
+ * `unchanged` on re-run and leaves the projection `active`.
  */
 
 const PP = "e2e0e2e0-0000-4000-8000-";
@@ -34,6 +31,8 @@ const uid = (n: number): string => PP + n.toString(16).padStart(12, "0");
 
 const QUESTION_COUNT = 3;
 const OPTIONS_PER_Q = 4;
+const OPTION_LABELS = ["(a)", "(b)", "(c)", "(d)"];
+const PROJECTION_REASON = "e2e projected-PYQ practice pool seed";
 
 export const PYQ_PRACTICE = {
   // A verified paper distinct from seedWorkspace's pending `paperId`, so the
@@ -42,29 +41,33 @@ export const PYQ_PRACTICE = {
   year: 2023,
   questionCount: QUESTION_COUNT,
   pyqQuestionId: (q: number): string => uid(0x1a0 + q), // q in 1..3
-  bankId: (q: number): string => uid(0x1b0 + q),
   optionId: (q: number, o: number): string => uid(0x1c00 + q * 16 + o),
+  // The printed-order-first question (question_number 1) and its correct option
+  // as seeded below. The review E2E asserts these survive the projection snapshot
+  // into the shared review surface. Kept here so the spec can't drift from the seed.
+  firstQuestion: {
+    correctSourceLabel: OPTION_LABELS[0], // "(a)"
+    correctOptionText: "PYQ Q1 option 1 CORRECT",
+  },
+  // A generic UUID: the review must render the printed label + text, never a raw
+  // option id.
+  uuidPattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
 };
 
-const SOURCE_TYPE = "e2e_fixture";
-const PRACTICE_SOURCES = [
-  "pyq_practice_paper",
-  "pyq_practice_section",
-  "pyq_practice_topic",
-];
-const OPTION_LABELS = ["(a)", "(b)", "(c)", "(d)"];
+const ACCEPTED_OUTCOMES = new Set(["created", "updated", "unchanged"]);
 
 /**
- * Idempotently ensure the projected-PYQ practice pool exists. Depends on the
- * workspace exam/subject/topic, so it calls ensureWorkspaceSeed() first (also
- * idempotent). Uses the service-role client (bypasses RLS) and upserts on PK.
+ * Idempotently ensure the projected-PYQ practice pool exists. Seeds the canonical
+ * PYQ rows (via service-role upsert) then projects each question through the real
+ * bridge RPC. Depends on the workspace exam/subject/topic, so it ensures those
+ * first.
  */
 export async function ensureProjectedPyqPool(): Promise<void> {
   await ensureWorkspaceSeed();
+  const actor = await ensureAdminUser();
 
   const env = readEnv();
   const db = createNodeSupabaseClient(env.supabaseURL, env.supabaseServiceRoleKey);
-  const nowIso = new Date().toISOString();
 
   // 1) Verified PYQ paper on the workspace exam.
   const { error: paperErr } = await db.from("pyq_papers").upsert(
@@ -74,14 +77,14 @@ export async function ensureProjectedPyqPool(): Promise<void> {
       year: PYQ_PRACTICE.year,
       source_type: "community",
       trust_status: "verified",
-      metadata: { seed: SOURCE_TYPE },
+      metadata: { seed: "e2e_fixture" },
     },
     { onConflict: "id" },
   );
   if (paperErr) throw new Error(`pyq_papers upsert: ${paperErr.message}`);
 
   // 2) Verified canonical PYQ questions (printed order via question_number).
-  const pyqQuestions = Array.from({ length: QUESTION_COUNT }, (_, i) => {
+  const questions = Array.from({ length: QUESTION_COUNT }, (_, i) => {
     const q = i + 1;
     return {
       id: PYQ_PRACTICE.pyqQuestionId(q),
@@ -91,91 +94,73 @@ export async function ensureProjectedPyqPool(): Promise<void> {
       source_question_ref: `Q${q}`,
       question_text: `PYQ practice question ${q} — projected verified previous-year item.`,
       question_type: "mcq",
+      correct_option_id: PYQ_PRACTICE.optionId(q, 1), // option label "(a)" is correct
       observed_difficulty: "medium",
       reviewer_status: "verified",
       language: "en",
-      metadata: { seed: SOURCE_TYPE },
+      metadata: { seed: "e2e_fixture" },
     };
   });
-  const { error: pqErr } = await db
-    .from("pyq_questions")
-    .upsert(pyqQuestions, { onConflict: "id" });
+  const { error: pqErr } = await db.from("pyq_questions").upsert(questions, { onConflict: "id" });
   if (pqErr) throw new Error(`pyq_questions upsert: ${pqErr.message}`);
 
-  // 3) Primary verified topic tag per question → drives by_subject.
-  const tags = pyqQuestions.map((pq) => ({
-    question_id: pq.id,
+  // 3) Verified canonical options — 4 per question, printed source_label + order,
+  //    label "(a)" correct. option_text keeps the printed label OUT of the text so
+  //    the review assertion on the label proves the projected source_label survived.
+  const options = questions.flatMap((_, i) => {
+    const q = i + 1;
+    return Array.from({ length: OPTIONS_PER_Q }, (__, j) => {
+      const o = j + 1;
+      return {
+        id: PYQ_PRACTICE.optionId(q, o),
+        question_id: PYQ_PRACTICE.pyqQuestionId(q),
+        option_label: OPTION_LABELS[j],
+        source_label: OPTION_LABELS[j],
+        display_order: o,
+        option_text: `PYQ Q${q} option ${o}${o === 1 ? " CORRECT" : ""}`,
+        is_correct: o === 1,
+        reviewer_status: "verified",
+      };
+    });
+  });
+  const { error: optErr } = await db
+    .from("pyq_options")
+    .upsert(options, { onConflict: "question_id,option_label" });
+  if (optErr) throw new Error(`pyq_options upsert: ${optErr.message}`);
+
+  // 4) Exactly one primary verified topic tag per question (RPC requires it, and
+  //    the topic must resolve to a subject) → drives by_subject too.
+  const tags = questions.map((qn) => ({
+    question_id: qn.id,
     topic_id: WORKSPACE.topicId,
     tag_role: "primary",
     tagging_source: "manual",
     reviewer_status: "verified",
-    metadata: { seed: SOURCE_TYPE },
+    metadata: { seed: "e2e_fixture" },
   }));
   const { error: tagErr } = await db
     .from("pyq_question_topic_tags")
     .upsert(tags, { onConflict: "question_id,topic_id,tag_role" });
   if (tagErr) throw new Error(`pyq_question_topic_tags upsert: ${tagErr.message}`);
 
-  // 4) Mock bank rows — verified, PYQ-linked, with a launch-ready MCQ snapshot.
-  const bankRows = Array.from({ length: QUESTION_COUNT }, (_, i) => {
-    const q = i + 1;
-    return {
-      id: PYQ_PRACTICE.bankId(q),
-      exam_id: WORKSPACE.examId,
-      subject_id: WORKSPACE.subjectId,
-      topic_id: WORKSPACE.topicId,
-      question_text: `PYQ practice question ${q} — projected verified previous-year item.`,
-      question_type: "mcq",
-      difficulty: "medium",
-      correct_option_id: PYQ_PRACTICE.optionId(q, 1), // option_index 1 is correct
-      explanation: `E2E fixture explanation for projected PYQ Q${q}.`,
-      source_type: SOURCE_TYPE,
-      reviewer_status: "verified",
-      pyq_question_id: PYQ_PRACTICE.pyqQuestionId(q),
-      pyq_paper_id: PYQ_PRACTICE.paperId,
-      pyq_year: PYQ_PRACTICE.year,
-    };
-  });
-  const { error: bankErr } = await db
-    .from("mock_question_bank")
-    .upsert(bankRows, { onConflict: "id" });
-  if (bankErr) throw new Error(`mock_question_bank upsert: ${bankErr.message}`);
-
-  // 5) Options — 4 per bank row, printed source_label + display_order, index 1 correct.
-  const options = bankRows.flatMap((_, i) => {
-    const q = i + 1;
-    return Array.from({ length: OPTIONS_PER_Q }, (__, j) => {
-      const o = j + 1;
-      return {
-        id: PYQ_PRACTICE.optionId(q, o),
-        question_id: PYQ_PRACTICE.bankId(q),
-        option_text: `PYQ Q${q} option ${OPTION_LABELS[j]}${o === 1 ? " (correct)" : ""}`,
-        option_index: o,
-        is_correct: o === 1,
-        source_label: OPTION_LABELS[j],
-        display_order: o,
-      };
+  // 5) Project each question through the real bridge RPC (creates the mock bank
+  //    row + options + the ACTIVE projection). Fail loudly on a blocked/error
+  //    outcome so a seed misconfiguration never yields a silently empty pool.
+  for (const qn of questions) {
+    const { data, error } = await db.rpc("project_pyq_question_to_mock_bank", {
+      p_pyq_question_id: qn.id,
+      p_actor_id: actor.id,
+      p_audit_reason: PROJECTION_REASON,
     });
-  });
-  const { error: optErr } = await db
-    .from("mock_question_options")
-    .upsert(options, { onConflict: "question_id,option_index" });
-  if (optErr) throw new Error(`mock_question_options upsert: ${optErr.message}`);
-
-  // 6) Active projection bridge rows — the guard the launch predicate requires.
-  const projections = bankRows.map((row) => ({
-    pyq_question_id: row.pyq_question_id,
-    mock_question_id: row.id,
-    source_content_hash: `e2e-fixture-hash-${row.id}`,
-    sync_status: "active",
-    last_sync_result: { seed: SOURCE_TYPE },
-    projected_at: nowIso,
-    updated_at: nowIso,
-  }));
-  const { error: projErr } = await db
-    .from("pyq_mock_question_projections")
-    .upsert(projections, { onConflict: "pyq_question_id" });
-  if (projErr) throw new Error(`pyq_mock_question_projections upsert: ${projErr.message}`);
+    if (error) throw new Error(`project_pyq_question_to_mock_bank(${qn.id}): ${error.message}`);
+    const result = Array.isArray(data) ? data[0] : data;
+    const outcome = result?.outcome;
+    if (!ACCEPTED_OUTCOMES.has(outcome)) {
+      throw new Error(
+        `projection of ${qn.id} did not succeed: ${JSON.stringify(result)}`,
+      );
+    }
+  }
 }
 
 /**
@@ -192,7 +177,7 @@ export async function resetPyqPracticeAttempts(userId: string): Promise<void> {
     .from("mock_generated_blueprints")
     .select("id")
     .eq("user_id", userId)
-    .in("source", PRACTICE_SOURCES);
+    .in("source", ["pyq_practice_paper", "pyq_practice_section", "pyq_practice_topic"]);
   if (bpErr) throw new Error(`resetPyqPracticeAttempts: blueprint fetch: ${bpErr.message}`);
   const blueprintIds = (bps ?? []).map((b) => b.id);
   if (blueprintIds.length === 0) return;

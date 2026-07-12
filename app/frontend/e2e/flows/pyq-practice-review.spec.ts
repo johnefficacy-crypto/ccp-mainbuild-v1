@@ -99,11 +99,18 @@ test.describe("Flow: projected-PYQ practice → submit → review", () => {
     await expect(page.getByTestId("review-page")).toBeVisible();
     await expect(page.getByTestId("review-result-count")).toContainText(String(total));
 
-    // Review renders the projected PYQ's correct option as a printed label + text
-    // (never a raw option UUID) — proving the frozen projection snapshot flows
-    // through the shared review surface.
+    // Review renders the projected PYQ's correct option as its printed source
+    // label + text (never a raw option UUID) — proving the frozen projection
+    // snapshot flows through the shared review surface.
     await page.getByTestId("review-palette-item-1").click();
     await expect(page.getByTestId("review-question")).toBeVisible();
-    await expect(page.getByTestId("review-correct-answer")).toContainText("Correct answer:");
+    const correctAnswer = page.getByTestId("review-correct-answer");
+    await expect(correctAnswer).toContainText("Correct answer:");
+    // The projected printed source_label survived (a positional fallback would
+    // render "A", not "(a)"), and so did the projected option text.
+    await expect(correctAnswer).toContainText(PYQ_PRACTICE.firstQuestion.correctSourceLabel);
+    await expect(correctAnswer).toContainText(PYQ_PRACTICE.firstQuestion.correctOptionText);
+    // A raw option UUID must never reach the learner.
+    await expect(correctAnswer).not.toContainText(PYQ_PRACTICE.uuidPattern);
   });
 });
