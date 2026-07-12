@@ -1,4 +1,4 @@
--- 245_current_affairs_generation.sql
+-- 247_current_affairs_generation.sql
 -- GQR-G3 — Current-affairs LLM generation (SHADOW / no authority).
 --
 -- Adds the generation-audit table, the question-candidate staging table, and a

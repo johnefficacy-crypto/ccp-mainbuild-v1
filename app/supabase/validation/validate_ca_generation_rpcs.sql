@@ -1,6 +1,6 @@
 -- validate_ca_generation_rpcs.sql — GQR-G3 VERIFY DB (checkpost #966).
 --
--- Executes the migration 245 PL/pgSQL paths that the unit tests (fake Supabase)
+-- Executes the migration 247 PL/pgSQL paths that the unit tests (fake Supabase)
 -- cannot: candidate insert + audit lineage, partial-index ON CONFLICT dedup, the
 -- replay-after-ack no-op, and lease fencing. Run against a real Postgres with the
 -- migrations applied. Wrapped in a rollback-only transaction — leaves no data.

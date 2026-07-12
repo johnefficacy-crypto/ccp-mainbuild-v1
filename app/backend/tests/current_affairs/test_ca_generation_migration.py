@@ -1,4 +1,4 @@
-"""Migration 245 contract (GQR-G3) — text-assertion style (matches the repo's
+"""Migration 247 contract (GQR-G3) — text-assertion style (matches the repo's
 migration contracts, e.g. test_ewp_service_role_grants_migration.py). Behavioural
 validation of the plpgsql RPCs is VERIFY DB / operator apply.
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 _SQL = (
-    Path(__file__).parents[3] / "supabase/migrations/245_current_affairs_generation.sql"
+    Path(__file__).parents[3] / "supabase/migrations/247_current_affairs_generation.sql"
 ).read_text()
 _NORM = " ".join(_SQL.lower().split())
 
