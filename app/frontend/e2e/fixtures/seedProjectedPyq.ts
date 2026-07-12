@@ -94,7 +94,12 @@ export async function ensureProjectedPyqPool(): Promise<void> {
       source_question_ref: `Q${q}`,
       question_text: `PYQ practice question ${q} — projected verified previous-year item.`,
       question_type: "mcq",
-      correct_option_id: PYQ_PRACTICE.optionId(q, 1), // option label "(a)" is correct
+      // Left null: pyq_questions.correct_option_id FKs pyq_options(id), which FKs
+      // back to pyq_questions(id) — a circular insert order. The projection RPC
+      // only checks correct_option_id when set and otherwise derives the correct
+      // option from pyq_options.is_correct (exactly one verified correct, seeded
+      // as option "(a)" below), so leaving it null is sufficient and correct.
+      correct_option_id: null,
       observed_difficulty: "medium",
       reviewer_status: "verified",
       language: "en",
