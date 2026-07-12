@@ -13,7 +13,7 @@ def _row(topic="t1", *, correct=True, attempted=True, exp=10, act=10, micro=None
 
 
 def _one(analytics):
-    out = qs.derive_signals(analytics)
+    out = qs.derive_signals(analytics, attempt_trusted=True)
     assert len(out) == 1
     return out[0]
 
@@ -58,17 +58,29 @@ def test_stable_accurate_and_fast():
 
 # ── exclusions (§3.3) ─────────────────────────────────────────────────────────
 
-def test_excludes_unanswered_missing_time_and_outliers_from_ratio():
-    rows = [_row(correct=True, exp=10, act=10) for _ in range(5)]  # ratio 1.0
-    rows.append(_row(correct=True, exp=10, act=1000))   # extreme dwell (ratio 100) → excluded
-    rows.append(_row(correct=True, exp=0, act=10))      # missing expected time → excluded
-    rows.append(_row(correct=True, exp=10, act=0))      # zero-duration → excluded
+def test_excluded_rows_leave_the_evidence_set_entirely():
+    # One eligible set: excluded rows contribute to NOTHING (not sample_count,
+    # not accuracy, not the label) — a wrong-but-excluded row cannot pull accuracy
+    # down and an excluded row cannot inflate the count.
+    rows = [_row(correct=True, exp=10, act=10) for _ in range(5)]  # ratio 1.0, eligible
+    rows.append(_row(correct=False, exp=10, act=1000))  # extreme dwell → excluded
+    rows.append(_row(correct=False, exp=0, act=10))     # missing expected time → excluded
+    rows.append(_row(correct=False, exp=10, act=0))     # zero-duration → excluded
     sig = _one(rows)
-    # median ratio computed only from the 5 usable 1.0 rows
+    assert sig["sample_count"] == 5           # only the eligible rows
+    assert sig["accuracy_pct"] == 100.0       # excluded wrong rows did not count
     assert sig["median_time_ratio"] == 1.0
-    # the unanswered exclusion does not apply here; all are attempted so accuracy
-    # counts every answered row
-    assert sig["sample_count"] == 8
+    assert sig["signal_type"] == "stable"
+
+
+def test_all_timing_invalid_rows_yield_insufficient_evidence():
+    # A topic whose every row is excluded still surfaces (explicitly) with zero
+    # usable samples rather than vanishing silently.
+    rows = [_row(correct=True, exp=0, act=10) for _ in range(6)]   # all missing expected time
+    sig = _one(rows)
+    assert sig["sample_count"] == 0
+    assert sig["signal_type"] == "insufficient_evidence"
+    assert sig["median_time_ratio"] is None
 
 
 def test_unattempted_not_counted_in_accuracy():
@@ -78,13 +90,32 @@ def test_unattempted_not_counted_in_accuracy():
     assert sig["accuracy_pct"] == 100.0
 
 
+# ── attempt-level trust / completion gate (fail closed) ───────────────────────
+
+def test_untrusted_attempt_yields_no_signal():
+    rows = [_row(correct=True) for _ in range(6)]
+    assert qs.derive_signals(rows, attempt_trusted=False) == []           # default fail-closed
+    assert qs.derive_signals(rows, attempt_trusted=True, attempt_complete=False) == []
+    assert len(qs.derive_signals(rows, attempt_trusted=True)) == 1        # trusted+complete → signal
+
+
+# ── p75 nearest-rank, valid for small samples ─────────────────────────────────
+
+def test_p75_within_observed_range_for_small_samples():
+    assert qs._p75([1.0]) == 1.0
+    assert qs._p75([1.0, 2.0]) == 2.0          # not 2.25 (exclusive-method extrapolation)
+    assert qs._p75([1.0, 2.0, 3.0]) == 3.0
+    assert qs._p75([1.0, 2.0, 3.0, 4.0]) == 3.0
+    assert qs._p75([]) is None
+
+
 def test_groups_by_topic_and_microtopic():
     rows = (
         [_row(topic="t1", micro="m1") for _ in range(5)]
         + [_row(topic="t1", micro="m2") for _ in range(5)]
         + [_row(topic="t2") for _ in range(5)]
     )
-    out = qs.derive_signals(rows)
+    out = qs.derive_signals(rows, attempt_trusted=True)
     keys = {(s["topic_id"], s["microtopic_id"]) for s in out}
     assert keys == {("t1", "m1"), ("t1", "m2"), ("t2", None)}
 
@@ -93,7 +124,7 @@ def test_groups_by_topic_and_microtopic():
 
 def test_persist_upserts_and_touches_no_mastery():
     sb = SBStub({"quant_performance_signals": [], "user_topic_mastery": []})
-    signals = qs.derive_signals([_row() for _ in range(6)])
+    signals = qs.derive_signals([_row() for _ in range(6)], attempt_trusted=True)
     n = qs.persist_signals(sb, user_id="u1", signals=signals, exam_id="e1")
     assert n == 1
     assert len(sb.db["quant_performance_signals"]) == 1

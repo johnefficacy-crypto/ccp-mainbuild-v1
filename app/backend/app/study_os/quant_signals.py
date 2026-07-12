@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import math
 import statistics
 from typing import Any, Iterable
 
@@ -45,10 +46,15 @@ def _get(row: Any, key: str, default: Any = None) -> Any:
     return getattr(row, key, default)
 
 
-def _usable_ratio(row: Any, *, outlier_cap: float) -> float | None:
-    """Return actual/expected time ratio for a row, or None if it must be
-    excluded: unanswered, missing/zero expected time, zero-duration response, or
-    an extreme dwell outlier (§3.3 exclusions)."""
+def _eligible_ratio(row: Any, *, outlier_cap: float) -> float | None:
+    """Return the actual/expected time ratio for a row IFF the row belongs in the
+    single eligible evidence set (§3.3), else None.
+
+    A row is excluded — from every aggregate, not just the ratio — when it is
+    unanswered, has missing/zero expected time, a zero-duration response, or an
+    extreme dwell ratio above ``outlier_cap``. Excluded rows contribute to
+    neither ``sample_count`` nor ``accuracy`` nor the label.
+    """
     if not _get(row, "attempted", True):
         return None
     expected = _get(row, "expected_time_sec")
@@ -61,6 +67,17 @@ def _usable_ratio(row: Any, *, outlier_cap: float) -> float | None:
     if ratio > outlier_cap:
         return None
     return ratio
+
+
+def _p75(ratios: list[float]) -> float | None:
+    """Nearest-rank 75th percentile — always within the observed range, so small
+    shadow cohorts can't persist a p75 above the maximum sample (unlike
+    ``statistics.quantiles(..., n=4)`` exclusive, which extrapolates)."""
+    if not ratios:
+        return None
+    s = sorted(ratios)
+    rank = max(1, math.ceil(0.75 * len(s)))  # 1-based nearest rank
+    return s[rank - 1]
 
 
 def _label(*, sample_count: int, accuracy: float, median_ratio: float | None, policy: dict) -> str:
@@ -88,59 +105,71 @@ def _fingerprint(topic_id, microtopic_id, ratios, correct, total, policy_version
 def derive_signals(
     analytics: Iterable[Any],
     *,
+    attempt_trusted: bool = False,
+    attempt_complete: bool = True,
     policy: dict | None = None,
 ) -> list[dict[str, Any]]:
-    """Group attempt-analytics rows by (topic_id, microtopic_id) and derive one
-    shadow signal per group. Rows failing the §3.3 exclusions are dropped from
-    the time computation; a group with only-excluded rows still yields an
-    ``insufficient_evidence`` signal so the absence is explicit.
+    """Derive one shadow signal per (topic_id, microtopic_id) from a SINGLE
+    eligible evidence set (§3.3).
+
+    Attempt-level gate (fail closed): a signal is derived only from a TRUSTED and
+    COMPLETE attempt. ``attempt_trusted`` defaults to ``False`` so an untrusted or
+    incomplete attempt — or a caller that cannot assert provenance — yields no
+    signal at all. ``AttemptQuestionAnalytics`` carries no attempt status/trust,
+    so the caller must pass this envelope explicitly.
+
+    Row-level eligibility: a row must be attempted AND have usable timing
+    (``_eligible_ratio``). Excluded rows contribute to NOTHING — not
+    ``sample_count``, not ``accuracy``, not the label. A topic whose rows are all
+    excluded still surfaces an ``insufficient_evidence`` signal (sample_count 0)
+    so the absence is explicit rather than silent.
     """
     policy = policy or QUANT_SIGNAL_POLICY
+    if not (attempt_trusted and attempt_complete):
+        return []
     outlier_cap = policy["outlier_time_ratio"]
 
+    # Every topic that appears gets a group so an all-excluded topic still emits
+    # insufficient_evidence; only eligible rows accumulate into it.
     groups: dict[tuple, dict[str, Any]] = {}
     for row in analytics:
         topic_id = _get(row, "topic_id")
         if not topic_id:
             continue
-        micro = _get(row, "microtopic_id")
-        key = (topic_id, micro)
-        g = groups.setdefault(key, {"correct": 0, "answered": 0, "ratios": []})
-        if _get(row, "attempted", True):
-            g["answered"] += 1
-            if _get(row, "is_correct"):
-                g["correct"] += 1
-        ratio = _usable_ratio(row, outlier_cap=outlier_cap)
-        if ratio is not None:
-            g["ratios"].append(ratio)
+        key = (topic_id, _get(row, "microtopic_id"))
+        g = groups.setdefault(key, {"correct": 0, "count": 0, "ratios": []})
+        ratio = _eligible_ratio(row, outlier_cap=outlier_cap)
+        if ratio is None:
+            continue  # excluded from the eligible set entirely
+        g["count"] += 1
+        if _get(row, "is_correct"):
+            g["correct"] += 1
+        g["ratios"].append(ratio)
 
     out: list[dict[str, Any]] = []
     for (topic_id, micro), g in groups.items():
-        answered = g["answered"]
+        count = g["count"]
         ratios = g["ratios"]
-        accuracy = (g["correct"] / answered) if answered else 0.0
+        accuracy = (g["correct"] / count) if count else 0.0
         median_ratio = statistics.median(ratios) if ratios else None
-        p75_ratio = (
-            statistics.quantiles(ratios, n=4)[2] if len(ratios) >= 2
-            else (ratios[0] if ratios else None)
-        )
-        # Confidence saturates toward 1.0 as the answered sample grows.
-        confidence = min(1.0, answered / policy["confidence_target"]) if answered else 0.0
+        p75_ratio = _p75(ratios)
+        # Confidence saturates toward 1.0 as the eligible sample grows.
+        confidence = min(1.0, count / policy["confidence_target"]) if count else 0.0
         signal_type = _label(
-            sample_count=answered, accuracy=accuracy, median_ratio=median_ratio, policy=policy,
+            sample_count=count, accuracy=accuracy, median_ratio=median_ratio, policy=policy,
         )
         out.append({
             "topic_id": topic_id,
             "microtopic_id": micro,
             "signal_type": signal_type,
-            "sample_count": answered,
+            "sample_count": count,
             "accuracy_pct": round(accuracy * 100, 2),
             "median_time_ratio": round(median_ratio, 4) if median_ratio is not None else None,
             "p75_time_ratio": round(p75_ratio, 4) if p75_ratio is not None else None,
             "confidence": round(confidence, 4),
             "policy_version": policy["version"],
             "input_fingerprint": _fingerprint(
-                topic_id, micro, ratios, g["correct"], answered, policy["version"]
+                topic_id, micro, ratios, g["correct"], count, policy["version"]
             ),
         })
     return out

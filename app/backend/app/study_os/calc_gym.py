@@ -145,16 +145,28 @@ def create_session(
         raise RuntimeError("calc_gym.create_session: session insert returned no row")
     session_id = session["id"]
 
-    supabase.table(_ITEMS).insert([
-        {
-            "session_id": session_id,
-            "item_index": it["item_index"],
-            "prompt": it["prompt"],
-            "expected_answer": it["expected_answer"],
-            "operands": it["operands"],
-        }
-        for it in items
-    ]).execute()
+    # Atomic cascade (AGENTS.md "PR7-style"): a session must never survive with
+    # zero/partial frozen items. If the child insert fails, roll the parent back
+    # so no orphan in_progress session remains.
+    try:
+        item_rows = supabase.table(_ITEMS).insert([
+            {
+                "session_id": session_id,
+                "item_index": it["item_index"],
+                "prompt": it["prompt"],
+                "expected_answer": it["expected_answer"],
+                "operands": it["operands"],
+            }
+            for it in items
+        ]).execute()
+        inserted = getattr(item_rows, "data", None) or []
+        if len(inserted) != len(items):
+            raise RuntimeError(
+                f"calc_gym.create_session: froze {len(inserted)}/{len(items)} items"
+            )
+    except Exception:
+        _safe_delete_session(supabase, session_id)
+        raise
 
     return {
         "session_id": session_id,
@@ -168,39 +180,89 @@ def create_session(
     }
 
 
+def _safe_delete_session(supabase: Any, session_id: str) -> None:
+    try:
+        supabase.table(_SESSIONS).delete().eq("id", session_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("calc_gym rollback delete failed session=%s err=%r", session_id, exc)
+
+
+def _parse_ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _stored_result(session: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "session_id": session["id"],
+        "status": session.get("status"),
+        "score_correct": session.get("score_correct"),
+        "score_total": session.get("score_total"),
+        "total_time_sec": session.get("total_time_sec"),
+        "idempotent": True,
+    }
+
+
 def submit_session(
     supabase: Any,
     *,
     session_id: str,
+    user_id: str,
     answers: dict[int, dict[str, Any]],
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Score a session against its FROZEN expected answers and finalize it.
 
+    Server-enforced (the row's ``duration_sec`` / ``expires_at`` are authoritative,
+    not decorative):
+      - **ownership** — the fetch is scoped to ``user_id``; another user's session
+        is not found.
+      - **state** — only an ``in_progress`` session can be scored; ``submitted``
+        returns the stored result idempotently; any other state fails closed.
+      - **deadline** — a submission after ``expires_at`` is rejected and the
+        session is flipped to ``expired`` (never scored late).
+      - **concurrency** — the finalize is a CAS update guarded on
+        ``status='in_progress'``; a losing concurrent submit re-reads and returns
+        the winner's result rather than double-scoring.
+
     ``answers`` maps ``item_index -> {"user_answer": str, "time_spent_sec": int}``.
-    Idempotent: a second call on an already-submitted session returns the stored
-    result without rescoring.
     """
     now = now or datetime.now(timezone.utc)
-    sess_rows = supabase.table(_SESSIONS).select("*").eq("id", session_id).limit(1).execute()
+    sess_rows = (
+        supabase.table(_SESSIONS).select("*")
+        .eq("id", session_id).eq("user_id", user_id).limit(1).execute()
+    )
     session = (getattr(sess_rows, "data", None) or [None])[0]
     if not session:
-        raise LookupError(f"calc_gym session {session_id} not found")
-    if session.get("status") == "submitted":
-        return {
-            "session_id": session_id,
-            "status": "submitted",
-            "score_correct": session.get("score_correct"),
-            "score_total": session.get("score_total"),
-            "total_time_sec": session.get("total_time_sec"),
-            "idempotent": True,
-        }
+        # Covers both "no such session" and "not owned by this user".
+        raise LookupError(f"calc_gym session {session_id} not found for user")
+
+    status = session.get("status")
+    if status == "submitted":
+        return _stored_result(session)
+    if status != "in_progress":
+        raise ValueError(f"calc_gym session {session_id} is not in progress (status={status})")
+
+    expires = _parse_ts(session.get("expires_at"))
+    if expires is not None and now > expires:
+        # Reject late submission and flip in_progress → expired (CAS-guarded so a
+        # concurrent on-time submit that already won is not clobbered).
+        supabase.table(_SESSIONS).update({"status": "expired"}) \
+            .eq("id", session_id).eq("status", "in_progress").execute()
+        raise ValueError(f"calc_gym session {session_id} has expired")
 
     item_rows = supabase.table(_ITEMS).select("*").eq("session_id", session_id).execute()
     items = getattr(item_rows, "data", None) or []
 
+    # Scoring is read-only against the frozen expected answers, so it is safe to
+    # compute before claiming the session with the CAS flip below.
     correct = 0
     total_time = 0
+    scored: list[dict[str, Any]] = []
     for it in items:
         submitted = answers.get(it["item_index"]) or answers.get(str(it["item_index"])) or {}
         user_answer = submitted.get("user_answer")
@@ -209,21 +271,36 @@ def submit_session(
         if is_correct:
             correct += 1
         total_time += time_spent
-        supabase.table(_ITEMS).update({
-            "user_answer": user_answer,
-            "is_correct": is_correct,
-            "time_spent_sec": time_spent,
-            "answered_at": now.isoformat() if user_answer is not None else None,
-        }).eq("id", it["id"]).execute()
+        scored.append({"id": it["id"], "user_answer": user_answer,
+                       "is_correct": is_correct, "time_spent": time_spent})
 
     total = len(items)
-    supabase.table(_SESSIONS).update({
+    # CAS claim: only the submit that flips in_progress → submitted writes scores.
+    claim = supabase.table(_SESSIONS).update({
         "status": "submitted",
         "submitted_at": now.isoformat(),
         "score_correct": correct,
         "score_total": total,
         "total_time_sec": total_time,
-    }).eq("id", session_id).execute()
+    }).eq("id", session_id).eq("status", "in_progress").execute()
+    if not (getattr(claim, "data", None) or []):
+        # Lost the race (or state changed under us): return the winner's result.
+        latest = (
+            getattr(
+                supabase.table(_SESSIONS).select("*").eq("id", session_id).limit(1).execute(),
+                "data", None,
+            ) or [session]
+        )[0]
+        return _stored_result(latest)
+
+    # We own the finalize — persist the per-item results.
+    for s in scored:
+        supabase.table(_ITEMS).update({
+            "user_answer": s["user_answer"],
+            "is_correct": s["is_correct"],
+            "time_spent_sec": s["time_spent"],
+            "answered_at": now.isoformat() if s["user_answer"] is not None else None,
+        }).eq("id", s["id"]).execute()
 
     return {
         "session_id": session_id,
