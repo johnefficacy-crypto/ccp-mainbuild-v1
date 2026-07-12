@@ -1,4 +1,4 @@
--- 242_quant_heuristic_authority.sql
+-- 243_quant_heuristic_authority.sql
 --
 -- GQR-Q7 — Quant heuristic authority (Quant lane).
 --

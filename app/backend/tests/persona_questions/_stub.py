@@ -1018,7 +1018,7 @@ class SBStub:
         })
         return new_row
 
-    # Transition matrix mirrors cms_review_quant_heuristic (migration 242):
+    # Transition matrix mirrors cms_review_quant_heuristic (migration 243):
     # pending is intake; needs_correction routes back to the author; a verified
     # heuristic can be reopened for correction; a rejected one back to pending.
     _QH_TRANSITIONS = {
@@ -1029,7 +1029,7 @@ class SBStub:
     }
 
     def _cms_review_quant_heuristic(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_quant_heuristic (migration 242): actor required,
+        """Emulate cms_review_quant_heuristic (migration 243): actor required,
         target-status validation, CAS on expected_status, transition matrix,
         verified→needs_correction notes gate, and an audit row."""
         import uuid as _uuid

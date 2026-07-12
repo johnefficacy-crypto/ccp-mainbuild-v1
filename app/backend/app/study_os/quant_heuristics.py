@@ -1,6 +1,6 @@
 """Quant heuristic authority — verified-only reads + review wrapper (GQR-Q7).
 
-Content Studio authors and reviews ``quant_heuristics`` (migration 242). This
+Content Studio authors and reviews ``quant_heuristics`` (migration 243). This
 module is the read/selection authority the learner-feedback path uses, plus a
 thin wrapper over the ``cms_review_quant_heuristic`` lifecycle RPC.
 
@@ -114,7 +114,7 @@ def review_heuristic(
 ) -> dict:
     """Transition a heuristic's reviewer_status via the audited lifecycle RPC.
 
-    The RPC (migration 242) owns the transition matrix, optimistic-concurrency
+    The RPC (migration 243) owns the transition matrix, optimistic-concurrency
     (CAS on ``expected_status``), and the audit row. This wrapper only marshals
     params and returns the RPC's JSON result. Raises on RPC error (invalid
     transition, stale expected status, missing actor) — callers surface those as
