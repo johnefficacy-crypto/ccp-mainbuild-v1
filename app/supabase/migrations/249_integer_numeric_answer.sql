@@ -1,4 +1,4 @@
--- 245_integer_numeric_answer.sql
+-- 249_integer_numeric_answer.sql
 -- Integer / numerical answer runtime contract (PYQ checklist PR-11, gate G11:
 -- "Implement integer/numerical answer scoring before enabling integer
 -- questions"). Adds the canonical correct-numeric-answer store on the mock bank
