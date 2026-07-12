@@ -1,9 +1,9 @@
--- regression_242_financial_regulatory_identity_seed.sql
+-- regression_244_financial_regulatory_identity_seed.sql
 --
--- Behavioral PostgreSQL regression for migration 242 (Lane R §6 identity seed),
+-- Behavioral PostgreSQL regression for migration 244 (Lane R §6 identity seed),
 -- reworked per the PR #962 checkpost to pin the CANONICAL model.
 --
--- Proves (against a DB with migrations 110, 241, 242 applied):
+-- Proves (against a DB with migrations 110, 242, 244 applied):
 --   1. Exactly ONE umbrella family 'financial-regulatory'; every portfolio exam
 --      (incl. reparented RBI/SEBI from 110 and the 4 index-only bodies) links to
 --      it via exam_family_id — no per-body families.
@@ -18,7 +18,7 @@
 --      normalized by re-applying the upsert (not left incorrect), while is_active
 --      is preserved.
 --
--- Usage:  psql "$DATABASE_URL" -f regression_242_financial_regulatory_identity_seed.sql
+-- Usage:  psql "$DATABASE_URL" -f regression_244_financial_regulatory_identity_seed.sql
 -- Expected: PASS notices, no unexpected errors. Convergence sub-test rolls back.
 
 \set ON_ERROR_STOP on
@@ -101,7 +101,7 @@ begin
   if v_int <> 0 then raise exception 'FAIL: % streams are not draft/unverified (NULL-safe)', v_int; end if;
   raise notice 'PASS: SEBI electrical+civil present; all streams draft (NULL-safe)';
 
-  raise notice 'ALL RG242 STATE CHECKS COMPLETE';
+  raise notice 'ALL RG244 STATE CHECKS COMPLETE';
 end $$;
 
 -- 7. Convergence: a pre-existing malformed same-slug row is normalized by the

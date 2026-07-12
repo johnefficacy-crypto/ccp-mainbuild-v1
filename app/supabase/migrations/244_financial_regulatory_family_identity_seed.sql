@@ -1,4 +1,4 @@
--- 242_financial_regulatory_family_identity_seed.sql
+-- 244_financial_regulatory_family_identity_seed.sql
 --
 -- Lane R (Financial Regulatory & Development Institutions) — §6 core-tier
 -- IDENTITY seed. Contract: docs/architecture/financial-regulatory-development-family.md
@@ -97,7 +97,7 @@ on conflict (slug) do update
 -- NB: is_active is deliberately NOT in the DO UPDATE set — a pre-existing live
 -- row keeps its visibility; new draft rows insert as is_active=false.
 
--- ─── 4. Canonical stream vocabulary (241), as draft rows ─────────────────
+-- ─── 4. Canonical stream vocabulary (242), as draft rows ─────────────────
 -- Enumerated streams come from the contract §1/§6. Bodies whose specialist
 -- vocabulary is not yet verifiable (NABARD, SIDBI) get the generalist stream
 -- only; their exam metadata flags specialist_streams as blocked_on_notification.

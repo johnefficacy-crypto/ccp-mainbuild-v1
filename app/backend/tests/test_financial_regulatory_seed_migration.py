@@ -1,9 +1,9 @@
-"""Schema-contract tests for migration 242 (Lane R §6 identity seed).
+"""Schema-contract tests for migration 244 (Lane R §6 identity seed).
 
 Repo convention (see test_j3_applied_vs_appeared_migration.py): no live-DB
 migration harness in CI, so these assert against the migration SQL text. The
 behavioural apply / convergence / idempotency is pinned by the committed
-regression app/supabase/tests/regression_242_financial_regulatory_identity_seed.sql
+regression app/supabase/tests/regression_244_financial_regulatory_identity_seed.sql
 (validated on ephemeral PG16).
 
 Reworked per the PR #962 checkpost to encode the CANONICAL model, not the
@@ -13,7 +13,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
-    / ".." / "supabase" / "migrations" / "242_financial_regulatory_family_identity_seed.sql"
+    / ".." / "supabase" / "migrations" / "244_financial_regulatory_family_identity_seed.sql"
 ).read_text().lower()
 
 
@@ -81,7 +81,7 @@ def test_entity_canonicity_exam_not_recruitment():
 def test_committed_behavioral_regression_null_safe_and_convergent():
     reg = (
         Path(__file__).resolve().parents[1]
-        / ".." / "supabase" / "tests" / "regression_242_financial_regulatory_identity_seed.sql"
+        / ".." / "supabase" / "tests" / "regression_244_financial_regulatory_identity_seed.sql"
     )
     body = reg.read_text().lower()
     for marker in (
