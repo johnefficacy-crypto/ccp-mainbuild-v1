@@ -1,4 +1,4 @@
--- 248_current_affairs_promotion.sql
+-- 249_current_affairs_promotion.sql
 -- GQR-G4a — Operator review + audited promotion of CA question candidates.
 --
 -- The human gate (ADR 0006): a candidate reaches the objective bank ONLY via

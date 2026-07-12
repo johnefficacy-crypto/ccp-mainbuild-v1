@@ -1,6 +1,6 @@
 -- validate_ca_promotion_rpcs.sql — GQR-G4a VERIFY DB.
 --
--- Executes the migration 248 PL/pgSQL the unit tests (router-only) cannot: the
+-- Executes the migration 249 PL/pgSQL the unit tests (router-only) cannot: the
 -- review transition (CAS + audit), the audited promotion into mock_question_bank
 -- (current_event isolation + options + correct option + provenance link + candidate
 -- terminal state + audit), and the guards (CAS conflict, non-approved reject).

@@ -1,4 +1,4 @@
-"""Migration 248 contract (GQR-G4a) — text-assertion style. Behavioural validation
+"""Migration 249 contract (GQR-G4a) — text-assertion style. Behavioural validation
 of the review/promotion RPCs is VERIFY DB (validate_ca_promotion_rpcs.sql).
 
 Guards the human-gate + audited-promotion invariants at the schema layer.
@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 _SQL = (
-    Path(__file__).parents[3] / "supabase/migrations/248_current_affairs_promotion.sql"
+    Path(__file__).parents[3] / "supabase/migrations/249_current_affairs_promotion.sql"
 ).read_text()
 _NORM = " ".join(_SQL.lower().split())
 
