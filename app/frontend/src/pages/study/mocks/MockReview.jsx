@@ -26,7 +26,11 @@ function applyFilter(all, filter) {
   if (filter === "all") return all;
   if (filter === "correct") return all.filter((q) => q.is_correct === true);
   if (filter === "wrong") return all.filter((q) => q.is_correct === false);
-  if (filter === "unattempted") return all.filter((q) => !q.selected_option_id && q.numeric_answer == null);
+  // Unattempted keys off the authoritative post-submit grade (is_correct null),
+  // matching the backend/result totals and this PR's analytics — a typed-but-
+  // ungradeable integer answer is is_correct=null (unattempted) even though it
+  // carries a numeric_answer, so the answer field alone would misclassify it.
+  if (filter === "unattempted") return all.filter((q) => q.is_correct == null);
   return all.filter((q) => q.error_type === filter);
 }
 
