@@ -61,6 +61,9 @@ class EnterSectionBody(BaseModel):
 class AnswerBody(BaseModel):
     question_id: str
     selected_option_id: str | None = None
+    # Learner's typed value for integer/numerical questions (mutually exclusive
+    # with selected_option_id). None for MCQ.
+    numeric_answer: float | None = None
     is_marked_for_review: bool = False
     client_seq: int = Field(ge=0)
     time_spent_sec: int = Field(default=0, ge=0)
@@ -175,6 +178,7 @@ async def answer(
             body.is_marked_for_review,
             body.client_seq,
             body.time_spent_sec,
+            numeric_answer=body.numeric_answer,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

@@ -213,7 +213,8 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
   // never race an unresolved save. Reads the synchronous refs (not React state)
   // so callers get an up-to-date picture after the awaited flush:
   //   { failedIds, answeredCount } — answeredCount counts questions whose save
-  //   reached SAVED with a non-null selected_option_id.
+  //   reached SAVED with an answer in either modality (MCQ selected_option_id or
+  //   integer/numerical numeric_answer).
   const flushAll = useCallback(async () => {
     const ids = Object.keys(syncStatesRef.current);
     await Promise.all(ids.map((qid) => flush(qid)));
@@ -221,9 +222,11 @@ export default function useAnswerSync({ postAnswer, onEvent, debounceMs = 600 })
     const failedIds = Object.entries(snap)
       .filter(([, e]) => e?.state === SYNC.FAILED)
       .map(([qid]) => qid);
-    const answeredCount = Object.entries(snap).filter(
-      ([qid, e]) => e?.state === SYNC.SAVED && payloads.current[qid]?.selected_option_id != null,
-    ).length;
+    const answeredCount = Object.entries(snap).filter(([qid, e]) => {
+      if (e?.state !== SYNC.SAVED) return false;
+      const p = payloads.current[qid];
+      return p?.selected_option_id != null || p?.numeric_answer != null;
+    }).length;
     return { failedIds, answeredCount };
   }, [flush]);
 

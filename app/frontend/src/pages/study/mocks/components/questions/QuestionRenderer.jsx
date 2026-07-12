@@ -7,7 +7,10 @@ import MatchFollowing from "./types/MatchFollowing";
 import NumericalAnswer from "./types/NumericalAnswer";
 import QuestionStimuli from "./shared/QuestionStimuli";
 
-const MAP = { mcq_single: MCQSingle, mcq_multi: MCQMulti, statement_based: StatementBased, assertion_reason: AssertionReason, match_following: MatchFollowing, numerical_answer: NumericalAnswer };
+// Keys cover both the frontend renderer vocabulary (mcq_single, …) and the
+// backend question_type enum values (mcq, integer). An unknown type falls back
+// to MCQSingle. `integer` (backend) → the numeric renderer.
+const MAP = { mcq_single: MCQSingle, mcq: MCQSingle, mcq_multi: MCQMulti, msq: MCQMulti, statement_based: StatementBased, assertion_reason: AssertionReason, match_following: MatchFollowing, numerical_answer: NumericalAnswer, integer: NumericalAnswer, numerical: NumericalAnswer };
 
 export default function QuestionRenderer(props) {
   const C = MAP[props.question?.question_type] || MCQSingle;
