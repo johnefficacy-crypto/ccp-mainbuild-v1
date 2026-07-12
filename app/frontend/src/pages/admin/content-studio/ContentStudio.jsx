@@ -32,6 +32,7 @@ const PromptBulkImport = lazy(() => import("./PromptBulkImport"));
 const ExamAssignments = lazy(() => import("./ExamAssignments"));
 const QuantHeuristicLibrary = lazy(() => import("./QuantHeuristicLibrary"));
 const QuantHeuristicReviewQueue = lazy(() => import("./QuantHeuristicReviewQueue"));
+const CaQuestionReviewQueue = lazy(() => import("./CaQuestionReviewQueue"));
 
 const TABS = [
   { id: "library", label: "Library" },
@@ -44,6 +45,7 @@ const CONTENT_TYPES = [
   { id: "objective_question", label: "Objective questions" },
   { id: "writing_prompt", label: "Writing prompts" },
   { id: "quant_heuristic", label: "Quant heuristics" },
+  { id: "current_affairs_question", label: "Current affairs" },
 ];
 
 export default function ContentStudio() {
@@ -80,14 +82,23 @@ export default function ContentStudio() {
     typedTabs = TABS;
   } else if (type === "quant_heuristic") {
     typedTabs = TABS.filter((t) => t.id === "library" || t.id === "review-queue");
+  } else if (type === "current_affairs_question") {
+    // CA candidates are shadow-generated (GQR-G3) — no author/library/bulk path;
+    // the operator only reviews + promotes, so expose just the review queue.
+    typedTabs = TABS.filter((t) => t.id === "review-queue");
   } else {
     typedTabs = TABS.filter((t) => t.id !== "exam-assignments");
   }
-  const activeTab = typedTabs.some((t) => t.id === tab) ? tab : "library";
+  const activeTab = typedTabs.some((t) => t.id === tab)
+    ? tab
+    : (typedTabs[0]?.id || "library");
 
-  // Both writing prompts and quant heuristics are Content Studio content behind
-  // the same read gate — hide their bodies without content read permission.
-  const needsContentRead = type === "writing_prompt" || type === "quant_heuristic";
+  // Writing prompts, quant heuristics, and CA candidates are Content Studio content
+  // behind the same read gate — hide their bodies without content read permission.
+  const needsContentRead =
+    type === "writing_prompt" ||
+    type === "quant_heuristic" ||
+    type === "current_affairs_question";
 
   let body = null;
   if (type === "objective_question") {
@@ -98,6 +109,8 @@ export default function ContentStudio() {
     body = activeTab === "review-queue"
       ? <QuantHeuristicReviewQueue perms={perms} />
       : <QuantHeuristicLibrary perms={perms} />;
+  } else if (type === "current_affairs_question") {
+    body = <CaQuestionReviewQueue perms={perms} />;
   } else if (activeTab === "library") {
     body = <PromptLibrary perms={perms} onAssign={assignPrompt} />;
   } else if (activeTab === "review-queue") {
