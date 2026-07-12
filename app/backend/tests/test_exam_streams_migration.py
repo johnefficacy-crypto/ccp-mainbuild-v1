@@ -77,7 +77,7 @@ def test_replaces_030_uniqueness_additively():
 # ── Cross-parent integrity triggers (fail-closed, INSERT + UPDATE) ─────────
 
 
-def test_all_four_integrity_triggers_present_on_insert_and_update():
+def test_all_four_child_triggers_present_on_insert_and_update():
     fns = (
         "_exam_cycle_streams_check_parent",
         "_exam_phases_check_stream",
@@ -94,25 +94,64 @@ def test_all_four_integrity_triggers_present_on_insert_and_update():
     ):
         assert trg in MIGRATION
     # Parent reassignment (UPDATE) must be guarded, not only INSERT.
-    assert MIGRATION.count("before insert or update on public.exam_cycle_streams") == 1
+    assert "before insert or update on public.exam_cycle_streams" in MIGRATION
     assert "before insert or update on public.exam_phases" in MIGRATION
     assert "before insert or update on public.exam_phase_sections" in MIGRATION
     assert "before insert or update on public.exam_topic_coverage" in MIGRATION
 
 
-def test_cross_exam_and_cycle_pair_invariants_enforced():
+def test_bidirectional_parent_side_guards_present():
+    # The invariant must survive parent-side changes, not only child writes:
+    # cycle-stream DELETE / availability demotion, and exam reassignment on the
+    # canonical stream / cycle. Parent reads take FOR SHARE (223 race posture).
+    assert "for share" in MIGRATION
+    assert "create or replace function public._exam_cycle_streams_guard_delete()" in MIGRATION
+    assert "before delete on public.exam_cycle_streams" in MIGRATION
+    assert "create or replace function public._exam_streams_guard_exam_move()" in MIGRATION
+    assert "before update of exam_id on public.exam_streams" in MIGRATION
+    assert "create or replace function public._exam_cycles_guard_exam_move()" in MIGRATION
+    assert "before update of exam_id on public.exam_cycles" in MIGRATION
+    # Demotion / delete of a depended-on pair is rejected.
+    assert "cannot demote availability" in MIGRATION
+    assert "cannot delete the (cycle=%, stream=%) pair" in MIGRATION
+
+
+def test_cross_exam_cycle_and_availability_invariants_enforced():
     # Uses the repo's P0422 integrity errcode (as migration 219).
     assert "using errcode = 'p0422'" in MIGRATION
-    # Cycle and stream must share one exam.
     assert "belong to different exams" in MIGRATION
-    # A cycle-bound stream phase requires an offered/expected cycle-stream pair.
+    # Availability enforced for phases AND for the effective stream below the
+    # phase (stream-scoped section / cycle-scoped coverage).
     assert "availability in ('offered', 'expected')" in MIGRATION
     assert "cycle-bound stream phase requires an offered/expected" in MIGRATION
-    # Section may inherit (NULL) or match, never conflict with its phase stream.
+    assert "stream-scoped section requires an offered/expected" in MIGRATION
+    assert "cycle-scoped stream coverage requires an offered/expected" in MIGRATION
+    # Coverage validates its OWN cycle scope and resolves section through phase.
+    assert "cycle % (exam %) does not belong to coverage exam %" in MIGRATION
+    assert "section % (exam %) does not belong to coverage exam %" in MIGRATION
+    # Stream-conflict guards.
     assert "conflicts with stream-specific parent phase stream" in MIGRATION
-    # Coverage stream may not conflict with its phase/section stream.
     assert "conflicts with stream-specific phase stream" in MIGRATION
     assert "conflicts with stream-specific section stream" in MIGRATION
+
+
+def test_committed_behavioral_regression_exists():
+    reg = (
+        Path(__file__).resolve().parents[1]
+        / ".." / "supabase" / "tests" / "regression_241_exam_streams_integrity.sql"
+    )
+    body = reg.read_text().lower()
+    # The behavioral regression actually applies rows and exercises the paths
+    # the string test cannot (INSERT/UPDATE/DELETE, parent moves, availability).
+    for marker in (
+        "cross-exam",
+        "not_offered rejected",
+        "section-without-phase cross-exam",
+        "exam reassign with dependents",
+        "delete depended-on pair",
+        "phase update move cross-exam",
+    ):
+        assert marker in body
 
 
 # ── RLS / triggers / reload ────────────────────────────────────────────────

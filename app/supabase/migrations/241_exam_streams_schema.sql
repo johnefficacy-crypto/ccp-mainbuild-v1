@@ -147,10 +147,34 @@ create unique index if not exists exam_topic_coverage_exam_phase_stream_topic_ui
   nulls not distinct
   where exam_cycle_id is null and exam_phase_id is not null;
 
--- ─── 5. Cross-parent integrity triggers (fail-closed, INSERT + UPDATE) ───
+-- ─── 5. Cross-parent integrity (fail-closed, BOTH directions) ────────────
 -- FKs cannot express "same exam across two independent parents". These
--- triggers reject contradictory rows for every writer, including raw
--- service-role inserts, and re-run on parent reassignment (UPDATE).
+-- triggers reject contradictory rows for every writer (including raw
+-- service-role inserts). Parent reads take FOR SHARE locks so a concurrent
+-- parent move cannot slip between the check and the commit (223 posture).
+-- Child triggers guard INSERT/UPDATE of the child; parent-side triggers
+-- (§5f) guard the parent move / cycle-stream demotion / delete so the
+-- invariant cannot be broken from either side.
+
+-- Shared helper: is (cycle, stream) an offered/expected pair for that cycle?
+create or replace function public._exam_cycle_stream_available(p_cycle uuid, p_stream uuid)
+returns boolean language sql stable as $fn$
+  select exists (
+    select 1 from public.exam_cycle_streams ecs
+    where ecs.exam_cycle_id = p_cycle
+      and ecs.stream_id = p_stream
+      and ecs.availability in ('offered', 'expected')
+  );
+$fn$;
+
+-- Shared helper: does a cycle-bound stream phase depend on this (cycle, stream)?
+create or replace function public._exam_cycle_stream_has_dependents(p_cycle uuid, p_stream uuid)
+returns boolean language sql stable as $fn$
+  select exists (
+    select 1 from public.exam_phases p
+    where p.exam_cycle_id = p_cycle and p.stream_id = p_stream
+  );
+$fn$;
 
 -- 5a. exam_cycle_streams: the cycle and the stream must belong to one exam.
 create or replace function public._exam_cycle_streams_check_parent() returns trigger
@@ -159,12 +183,30 @@ declare
   v_cycle_exam uuid;
   v_stream_exam uuid;
 begin
-  select exam_id into v_cycle_exam from public.exam_cycles where id = new.exam_cycle_id;
-  select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id;
+  select exam_id into v_cycle_exam from public.exam_cycles where id = new.exam_cycle_id for share;
+  select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id for share;
   if v_cycle_exam is distinct from v_stream_exam then
     raise exception 'exam_cycle_streams: cycle % (exam %) and stream % (exam %) belong to different exams',
       new.exam_cycle_id, v_cycle_exam, new.stream_id, v_stream_exam using errcode = 'P0422';
   end if;
+
+  -- Demotion / pair-move guard: a cycle-bound stream phase must keep an
+  -- offered/expected pair. Reject demoting availability, or moving the pair
+  -- identity, out from under existing dependent phases.
+  if tg_op = 'UPDATE' then
+    if old.availability in ('offered', 'expected')
+       and new.availability not in ('offered', 'expected')
+       and public._exam_cycle_stream_has_dependents(old.exam_cycle_id, old.stream_id) then
+      raise exception 'exam_cycle_streams: cannot demote availability to % — cycle-bound stream phases depend on the offered/expected (cycle=%, stream=%) pair',
+        new.availability, old.exam_cycle_id, old.stream_id using errcode = 'P0422';
+    end if;
+    if (new.exam_cycle_id, new.stream_id) is distinct from (old.exam_cycle_id, old.stream_id)
+       and public._exam_cycle_stream_has_dependents(old.exam_cycle_id, old.stream_id) then
+      raise exception 'exam_cycle_streams: cannot move the (cycle=%, stream=%) pair — cycle-bound stream phases depend on it',
+        old.exam_cycle_id, old.stream_id using errcode = 'P0422';
+    end if;
+  end if;
+
   return new;
 end;
 $fn$;
@@ -173,6 +215,24 @@ drop trigger if exists trg_exam_cycle_streams_check_parent on public.exam_cycle_
 create trigger trg_exam_cycle_streams_check_parent
   before insert or update on public.exam_cycle_streams
   for each row execute function public._exam_cycle_streams_check_parent();
+
+-- 5a'. exam_cycle_streams DELETE guard: no FK protects the (cycle, stream)
+-- pairing that phases depend on, so block the delete explicitly.
+create or replace function public._exam_cycle_streams_guard_delete() returns trigger
+language plpgsql as $fn$
+begin
+  if public._exam_cycle_stream_has_dependents(old.exam_cycle_id, old.stream_id) then
+    raise exception 'exam_cycle_streams: cannot delete the (cycle=%, stream=%) pair — cycle-bound stream phases depend on it',
+      old.exam_cycle_id, old.stream_id using errcode = 'P0422';
+  end if;
+  return old;
+end;
+$fn$;
+
+drop trigger if exists trg_exam_cycle_streams_guard_delete on public.exam_cycle_streams;
+create trigger trg_exam_cycle_streams_guard_delete
+  before delete on public.exam_cycle_streams
+  for each row execute function public._exam_cycle_streams_guard_delete();
 
 -- 5b. exam_phases: a stream-scoped phase must reference a stream of the SAME
 -- exam; a cycle-bound phase must reference a cycle of the same exam; and a
@@ -184,7 +244,7 @@ declare
   v_cycle_exam uuid;
 begin
   if new.stream_id is not null then
-    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id;
+    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id for share;
     if v_stream_exam is distinct from new.exam_id then
       raise exception 'exam_phases: stream % (exam %) does not belong to phase exam %',
         new.stream_id, v_stream_exam, new.exam_id using errcode = 'P0422';
@@ -192,19 +252,14 @@ begin
   end if;
 
   if new.exam_cycle_id is not null then
-    select exam_id into v_cycle_exam from public.exam_cycles where id = new.exam_cycle_id;
+    select exam_id into v_cycle_exam from public.exam_cycles where id = new.exam_cycle_id for share;
     if v_cycle_exam is distinct from new.exam_id then
       raise exception 'exam_phases: cycle % (exam %) does not belong to phase exam %',
         new.exam_cycle_id, v_cycle_exam, new.exam_id using errcode = 'P0422';
     end if;
 
     if new.stream_id is not null
-       and not exists (
-         select 1 from public.exam_cycle_streams ecs
-         where ecs.exam_cycle_id = new.exam_cycle_id
-           and ecs.stream_id = new.stream_id
-           and ecs.availability in ('offered', 'expected')
-       ) then
+       and not public._exam_cycle_stream_available(new.exam_cycle_id, new.stream_id) then
       raise exception 'exam_phases: cycle-bound stream phase requires an offered/expected exam_cycle_streams(cycle=%, stream=%) row',
         new.exam_cycle_id, new.stream_id using errcode = 'P0422';
     end if;
@@ -220,20 +275,23 @@ create trigger trg_exam_phases_check_stream
   for each row execute function public._exam_phases_check_stream();
 
 -- 5c. exam_phase_sections: a stream-scoped section must reference a stream of
--- the SAME exam as its phase, and — when the parent phase is itself
--- stream-specific — must not name a DIFFERENT stream (NULL = inherit).
+-- the SAME exam as its phase, must not conflict with a stream-specific parent
+-- phase (NULL = inherit), and — when the parent phase is cycle-bound — the
+-- section's effective stream must itself be offered/expected for that cycle.
 create or replace function public._exam_phase_sections_check_stream() returns trigger
 language plpgsql as $fn$
 declare
   v_phase_exam uuid;
+  v_phase_cycle uuid;
   v_phase_stream uuid;
   v_stream_exam uuid;
 begin
   if new.stream_id is not null then
-    select p.exam_id, p.stream_id into v_phase_exam, v_phase_stream
-    from public.exam_phases p where p.id = new.exam_phase_id;
+    select p.exam_id, p.exam_cycle_id, p.stream_id
+      into v_phase_exam, v_phase_cycle, v_phase_stream
+    from public.exam_phases p where p.id = new.exam_phase_id for share;
 
-    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id;
+    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id for share;
     if v_stream_exam is distinct from v_phase_exam then
       raise exception 'exam_phase_sections: stream % (exam %) does not belong to the section phase exam %',
         new.stream_id, v_stream_exam, v_phase_exam using errcode = 'P0422';
@@ -242,6 +300,12 @@ begin
     if v_phase_stream is not null and new.stream_id <> v_phase_stream then
       raise exception 'exam_phase_sections: section stream % conflicts with stream-specific parent phase stream %',
         new.stream_id, v_phase_stream using errcode = 'P0422';
+    end if;
+
+    if v_phase_cycle is not null
+       and not public._exam_cycle_stream_available(v_phase_cycle, new.stream_id) then
+      raise exception 'exam_phase_sections: stream-scoped section requires an offered/expected exam_cycle_streams(cycle=%, stream=%) row for the phase cycle',
+        v_phase_cycle, new.stream_id using errcode = 'P0422';
     end if;
   end if;
 
@@ -254,31 +318,55 @@ create trigger trg_exam_phase_sections_check_stream
   before insert or update on public.exam_phase_sections
   for each row execute function public._exam_phase_sections_check_stream();
 
--- 5d. exam_topic_coverage: stream must match the coverage exam, and must not
--- conflict with the stream of its optional phase / section.
+-- 5d. exam_topic_coverage: full scope consistency — cycle↔exam, stream↔exam,
+-- phase↔exam, section (always resolved through its phase, even when the
+-- coverage phase is NULL), stream non-conflict, and cycle-bound availability.
 create or replace function public._exam_topic_coverage_check_stream() returns trigger
 language plpgsql as $fn$
 declare
   v_stream_exam uuid;
+  v_cycle_exam uuid;
   v_phase_exam uuid;
+  v_phase_cycle uuid;
   v_phase_stream uuid;
   v_sec_phase uuid;
   v_sec_stream uuid;
+  v_secphase_exam uuid;
+  v_secphase_cycle uuid;
 begin
+  if new.exam_cycle_id is not null then
+    select exam_id into v_cycle_exam from public.exam_cycles where id = new.exam_cycle_id for share;
+    if v_cycle_exam is distinct from new.exam_id then
+      raise exception 'exam_topic_coverage: cycle % (exam %) does not belong to coverage exam %',
+        new.exam_cycle_id, v_cycle_exam, new.exam_id using errcode = 'P0422';
+    end if;
+  end if;
+
   if new.stream_id is not null then
-    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id;
+    select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id for share;
     if v_stream_exam is distinct from new.exam_id then
       raise exception 'exam_topic_coverage: stream % (exam %) does not belong to coverage exam %',
         new.stream_id, v_stream_exam, new.exam_id using errcode = 'P0422';
     end if;
+    -- Cycle-scoped stream coverage must reference an offered/expected pair.
+    if new.exam_cycle_id is not null
+       and not public._exam_cycle_stream_available(new.exam_cycle_id, new.stream_id) then
+      raise exception 'exam_topic_coverage: cycle-scoped stream coverage requires an offered/expected exam_cycle_streams(cycle=%, stream=%) row',
+        new.exam_cycle_id, new.stream_id using errcode = 'P0422';
+    end if;
   end if;
 
   if new.exam_phase_id is not null then
-    select exam_id, stream_id into v_phase_exam, v_phase_stream
-    from public.exam_phases where id = new.exam_phase_id;
+    select exam_id, exam_cycle_id, stream_id into v_phase_exam, v_phase_cycle, v_phase_stream
+    from public.exam_phases where id = new.exam_phase_id for share;
     if v_phase_exam is distinct from new.exam_id then
       raise exception 'exam_topic_coverage: phase % (exam %) does not belong to coverage exam %',
         new.exam_phase_id, v_phase_exam, new.exam_id using errcode = 'P0422';
+    end if;
+    if v_phase_cycle is not null and new.exam_cycle_id is not null
+       and v_phase_cycle is distinct from new.exam_cycle_id then
+      raise exception 'exam_topic_coverage: phase % cycle % does not match coverage cycle %',
+        new.exam_phase_id, v_phase_cycle, new.exam_cycle_id using errcode = 'P0422';
     end if;
     if v_phase_stream is not null and new.stream_id is not null and new.stream_id <> v_phase_stream then
       raise exception 'exam_topic_coverage: stream % conflicts with stream-specific phase stream %',
@@ -286,12 +374,26 @@ begin
     end if;
   end if;
 
+  -- Section is ALWAYS resolved through its phase to the coverage exam/cycle,
+  -- even when new.exam_phase_id IS NULL (the check-bypass the review flagged).
   if new.section_id is not null then
     select exam_phase_id, stream_id into v_sec_phase, v_sec_stream
-    from public.exam_phase_sections where id = new.section_id;
+    from public.exam_phase_sections where id = new.section_id for share;
+    select exam_id, exam_cycle_id into v_secphase_exam, v_secphase_cycle
+    from public.exam_phases where id = v_sec_phase for share;
+
+    if v_secphase_exam is distinct from new.exam_id then
+      raise exception 'exam_topic_coverage: section % (exam %) does not belong to coverage exam %',
+        new.section_id, v_secphase_exam, new.exam_id using errcode = 'P0422';
+    end if;
     if new.exam_phase_id is not null and v_sec_phase is distinct from new.exam_phase_id then
       raise exception 'exam_topic_coverage: section % does not belong to coverage phase %',
         new.section_id, new.exam_phase_id using errcode = 'P0422';
+    end if;
+    if new.exam_cycle_id is not null and v_secphase_cycle is not null
+       and v_secphase_cycle is distinct from new.exam_cycle_id then
+      raise exception 'exam_topic_coverage: section % cycle % does not match coverage cycle %',
+        new.section_id, v_secphase_cycle, new.exam_cycle_id using errcode = 'P0422';
     end if;
     if v_sec_stream is not null and new.stream_id is not null and new.stream_id <> v_sec_stream then
       raise exception 'exam_topic_coverage: stream % conflicts with stream-specific section stream %',
@@ -307,6 +409,51 @@ drop trigger if exists trg_exam_topic_coverage_check_stream on public.exam_topic
 create trigger trg_exam_topic_coverage_check_stream
   before insert or update on public.exam_topic_coverage
   for each row execute function public._exam_topic_coverage_check_stream();
+
+-- 5f. Parent-side revalidation: the invariant must survive a parent move.
+-- Reassigning an exam_streams / exam_cycles parent to a different exam after
+-- dependents already reference it would strand cross-exam rows. FKs cannot
+-- express this, so reject the parent move while dependents exist.
+create or replace function public._exam_streams_guard_exam_move() returns trigger
+language plpgsql as $fn$
+begin
+  if new.exam_id is distinct from old.exam_id and exists (
+      select 1 from public.exam_cycle_streams cs where cs.stream_id = old.id
+      union all select 1 from public.exam_phases p where p.stream_id = old.id
+      union all select 1 from public.exam_phase_sections s where s.stream_id = old.id
+      union all select 1 from public.exam_topic_coverage c where c.stream_id = old.id
+  ) then
+    raise exception 'exam_streams: cannot reassign stream % to exam % — dependent cycle-streams/phases/sections/coverage exist',
+      old.id, new.exam_id using errcode = 'P0422';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_exam_streams_guard_exam_move on public.exam_streams;
+create trigger trg_exam_streams_guard_exam_move
+  before update of exam_id on public.exam_streams
+  for each row execute function public._exam_streams_guard_exam_move();
+
+create or replace function public._exam_cycles_guard_exam_move() returns trigger
+language plpgsql as $fn$
+begin
+  if new.exam_id is distinct from old.exam_id and exists (
+      select 1 from public.exam_cycle_streams cs where cs.exam_cycle_id = old.id
+      union all select 1 from public.exam_phases p where p.exam_cycle_id = old.id
+      union all select 1 from public.exam_topic_coverage c where c.exam_cycle_id = old.id
+  ) then
+    raise exception 'exam_cycles: cannot reassign cycle % to exam % — dependent cycle-streams/phases/coverage exist',
+      old.id, new.exam_id using errcode = 'P0422';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_exam_cycles_guard_exam_move on public.exam_cycles;
+create trigger trg_exam_cycles_guard_exam_move
+  before update of exam_id on public.exam_cycles
+  for each row execute function public._exam_cycles_guard_exam_move();
 
 -- ─── 6. RLS ──────────────────────────────────────────────────────────────
 -- Reference data: authenticated read; writes remain service-role only,
