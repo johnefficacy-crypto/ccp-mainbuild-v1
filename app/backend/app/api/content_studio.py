@@ -49,6 +49,7 @@ from pydantic import (
 )
 
 from app.api.admin_exam_intel_cms import WriteEnvelope, _flag_enabled, _safe_select
+from app.study_os.quant_heuristics import review_heuristic as _review_quant_heuristic
 from app.study_os.writing_practice.deterministic import tokenize_words as _tokenize_words
 from app.core.auth import get_current_user, require_permission
 from app.core.permissions import (
@@ -357,8 +358,8 @@ def _map_rpc_error(exc: Exception, ctx: str) -> HTTPException:
         return HTTPException(status_code=409, detail=str(exc))
     if any(tok in low for tok in (
         "transition_not_allowed", "invalid_target_status", "missing_actor_id",
-        "invalid_reason", "invalid_scope", "bulk_locked_row",
-        "target_effective_locked", "reserved_metadata_key",
+        "invalid_reason", "invalid_reviewer_notes", "invalid_scope",
+        "bulk_locked_row", "target_effective_locked", "reserved_metadata_key",
     )) or "violates check constraint" in low:
         return HTTPException(status_code=422, detail=str(exc))
     if "not_found" in low:
@@ -974,3 +975,137 @@ def get_writing_prompt_correction_note(
                 "created_at": row.get("created_at"),
             }}
     return {"note": None}
+
+
+# ── Quant heuristic authority (GQR-Q7) ──────────────────────────────────────
+#
+# quant_heuristics (migration 243) are subject/topic-scoped canonical content
+# governed here. The backend shipped read/selection + the review-lifecycle RPC
+# (`cms_review_quant_heuristic`) ahead of the UI; this section is the operator
+# API glue: a permission-gated Library read + the governance review transition.
+# There is NO create/edit/activate/assign path — migration 243 ships only the
+# review RPC (heuristics carry no publication/applicability lane), so authoring
+# is a later governed PR. Reads reuse the shared `_require_content_read` gate;
+# reviewing is content_studio.review, exactly like writing prompts.
+#
+# The heuristic transition matrix (mirrored from migration 243) DIFFERS from the
+# writing-prompt one: needs_correction routes back to pending (never straight to
+# verified), a verified heuristic can only be reopened for correction, and a
+# rejected heuristic can be reopened to pending for rework.
+_QH_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending": ("verified", "rejected", "needs_correction"),
+    "needs_correction": ("pending", "rejected"),
+    "verified": ("needs_correction",),
+    "rejected": ("pending",),
+}
+_QH_TARGET_STATUSES = frozenset(s for t in _QH_TRANSITIONS.values() for s in t)
+_QH_TYPES = frozenset({"shortcut", "standard_method", "trap", "estimation"})
+
+
+class QuantHeuristicReviewBody(BaseModel):
+    """Review-lifecycle body for a quant heuristic.
+
+    The RPC (`cms_review_quant_heuristic`) CAS-guards on ``expected_status`` (the
+    reviewer_status the client last saw) — there is no separate updated_at token
+    on this table's review path — and requires ``reviewer_notes`` when reopening
+    a verified heuristic for correction (enforced here AND in the RPC)."""
+    model_config = ConfigDict(extra="forbid")
+    status: str
+    expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
+    reviewer_notes: str | None = Field(default=None, max_length=2000)
+
+
+def _enrich_heuristic_labels_batch(supabase, items: list) -> list:
+    """Attach topic_name/microtopic_name to a PAGE of quant_heuristics rows in a
+    single batched query (both columns reference `topics`); ids are never mutated."""
+    rows = [h for h in (items or []) if isinstance(h, dict)]
+    if not rows:
+        return items
+    topics = _batch_name_map(
+        supabase, "topics",
+        [h.get("topic_id") for h in rows] + [h.get("microtopic_id") for h in rows])
+    for h in rows:
+        tid, mid = h.get("topic_id"), h.get("microtopic_id")
+        h["topic_name"] = topics.get(str(tid)) if tid else None
+        h["microtopic_name"] = topics.get(str(mid)) if mid else None
+    return items
+
+
+@router.get("/quant-heuristics")
+def list_quant_heuristics(
+    topic_id: UUID | None = Query(default=None),
+    microtopic_id: UUID | None = Query(default=None),
+    heuristic_type: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None, description="substring match on name"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("quant_heuristics").select("*", count="exact").order("created_at", desc=True)
+    for col, val in (
+        ("topic_id", topic_id), ("microtopic_id", microtopic_id),
+        ("heuristic_type", heuristic_type), ("reviewer_status", reviewer_status),
+    ):
+        if val is not None:
+            query = query.eq(col, str(val))
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    items = _enrich_heuristic_labels_batch(supabase, res.data or [])
+    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.get("/quant-heuristics/{heuristic_id}")
+def get_quant_heuristic(
+    heuristic_id: UUID,
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    heuristic = _safe_select(supabase, "quant_heuristics", id=str(heuristic_id))
+    if not heuristic:
+        raise HTTPException(status_code=404, detail="quant_heuristic not found")
+    return _enrich_heuristic_labels_batch(supabase, [heuristic])[0]
+
+
+@router.post("/quant-heuristics/{heuristic_id}/review")
+def review_quant_heuristic(
+    heuristic_id: UUID,
+    body: QuantHeuristicReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    if body.status not in _QH_TARGET_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_QH_TARGET_STATUSES)}")
+    # Guard the transition against the status the CLIENT actually saw; the RPC
+    # re-checks expected_status under the row lock (CAS) and owns the audit row.
+    if body.status not in _QH_TRANSITIONS.get(body.expected_status, ()):
+        raise HTTPException(status_code=422, detail=(
+            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
+            f"Allowed: {list(_QH_TRANSITIONS.get(body.expected_status, ()))}"))
+    # Reopening a verified heuristic for correction must carry a note (mirrors the RPC).
+    notes = (body.reviewer_notes or "").strip() or None
+    if body.expected_status == "verified" and body.status == "needs_correction" and notes is None:
+        raise HTTPException(
+            status_code=422,
+            detail="reviewer_notes required when reopening a verified heuristic")
+    supabase = get_supabase_admin()
+    try:
+        result = _review_quant_heuristic(
+            supabase,
+            heuristic_id=str(heuristic_id),
+            expected_status=body.expected_status,
+            new_status=body.status,
+            reviewer_notes=notes,
+            actor_user_id=admin.get("id"),
+            actor_email=admin.get("email"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "review_quant_heuristic") from exc
+    return {"ok": True, "result": result}

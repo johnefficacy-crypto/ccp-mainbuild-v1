@@ -6,7 +6,7 @@ import { parseCsv } from "../csv";
 import { normalizeRow, MAX_BULK_ROWS } from "../PromptBulkImport";
 import { buildPayload } from "../PromptEditor";
 import { validateRequiredWords, validateInt, isUuid } from "../validation";
-import { REVIEW_TRANSITIONS, isValidReason } from "../contentStudioApi";
+import { REVIEW_TRANSITIONS, isValidReason, HEURISTIC_REVIEW_TRANSITIONS, HEURISTIC_TYPES } from "../contentStudioApi";
 import { studioPerms } from "../permissions";
 
 const mockUser = { user: { role: "admin", permissions: ["content_studio.author", "content_studio.review"] } };
@@ -373,6 +373,96 @@ describe("PromptReviewQueue screen", () => {
     expect(cell).toHaveTextContent("English Language › Reading Comprehension");
     expect(cell).not.toHaveTextContent(SUBJ);
     expect(cell).not.toHaveTextContent(TOPIC);
+  });
+});
+
+// ---- Quant heuristic authority (GQR-Q7) ------------------------------------
+
+describe("quant heuristic transition matrix", () => {
+  test("differs from writing prompts: needs_correction never goes straight to verified", () => {
+    expect(HEURISTIC_REVIEW_TRANSITIONS.needs_correction).toEqual(["pending", "rejected"]);
+    expect(HEURISTIC_REVIEW_TRANSITIONS.needs_correction).not.toContain("verified");
+    // writing prompts DO allow that transition — proving the maps are distinct.
+    expect(REVIEW_TRANSITIONS.needs_correction).toContain("verified");
+  });
+
+  test("verified reopens only to needs_correction; rejected reopens to pending", () => {
+    expect(HEURISTIC_REVIEW_TRANSITIONS.verified).toEqual(["needs_correction"]);
+    expect(HEURISTIC_REVIEW_TRANSITIONS.rejected).toEqual(["pending"]);
+    expect(HEURISTIC_REVIEW_TRANSITIONS.pending).toEqual(["verified", "rejected", "needs_correction"]);
+  });
+
+  test("heuristic type facet matches the migration-243 CHECK", () => {
+    expect(HEURISTIC_TYPES).toEqual(["shortcut", "standard_method", "trap", "estimation"]);
+  });
+});
+
+describe("ContentStudio shell — quant heuristics", () => {
+  test("quant_heuristic type exposes only Library + Review Queue tabs", async () => {
+    renderStudio("/admin/content-studio?type=quant_heuristic");
+    expect(await screen.findByTestId("content-studio-tab-library")).toBeInTheDocument();
+    expect(screen.getByTestId("content-studio-tab-review-queue")).toBeInTheDocument();
+    // No bulk-import / exam-assignments for heuristics (no create/assign RPC).
+    expect(screen.queryByTestId("content-studio-tab-bulk-import")).toBeNull();
+    expect(screen.queryByTestId("content-studio-tab-exam-assignments")).toBeNull();
+  });
+
+  test("quant_heuristic facet without read permission shows the no-access state", async () => {
+    mockUser.user = { role: "admin", permissions: [] };
+    renderStudio("/admin/content-studio?type=quant_heuristic");
+    expect(await screen.findByTestId("content-studio-no-access")).toBeInTheDocument();
+    mockUser.user = { role: "admin", permissions: ["content_studio.author", "content_studio.review"] };
+  });
+});
+
+describe("QuantHeuristicReviewQueue screen", () => {
+  // eslint-disable-next-line global-require
+  const QuantHeuristicReviewQueue = require("../QuantHeuristicReviewQueue").default;
+
+  const row = (over) => ({
+    id: U1, name: "Percentage to fraction", heuristic_code: "QH-PCT-01",
+    heuristic_type: "shortcut", reviewer_status: "pending",
+    topic_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", topic_name: "Percentages", ...over,
+  });
+
+  test("queue renders topic NAME, not the UUID, and offers Review to reviewers", () => {
+    mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
+    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+    const cell = screen.getByTestId(`heuristic-review-taxonomy-${U1}`);
+    expect(cell).toHaveTextContent("Percentages");
+    expect(cell).not.toHaveTextContent("bbbbbbbb");
+    expect(screen.getByTestId(`heuristic-review-open-${U1}`)).toBeInTheDocument();
+  });
+
+  test("read-only reviewers get no Review button and see the gate hint", () => {
+    mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
+    render(<QuantHeuristicReviewQueue perms={{ canReview: false }} />);
+    expect(screen.queryByTestId(`heuristic-review-open-${U1}`)).toBeNull();
+    expect(screen.getByText(/requires content_studio\.review/i)).toBeInTheDocument();
+  });
+
+  test("a rejected heuristic (no legal onward decision) offers no Review button", () => {
+    mockCollection = { items: [row({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+    // rejected → pending IS legal, so Review IS offered; assert the matrix drives it.
+    expect(screen.getByTestId(`heuristic-review-open-${U1}`)).toBeInTheDocument();
+  });
+});
+
+describe("QuantHeuristicLibrary screen", () => {
+  // eslint-disable-next-line global-require
+  const QuantHeuristicLibrary = require("../QuantHeuristicLibrary").default;
+
+  test("renders heuristic rows with a View action and no author/assign affordance", () => {
+    mockCollection = {
+      items: [{ id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "shortcut", reviewer_status: "verified", is_active: true, topic_name: "Mixtures" }],
+      status: "live", total: 1, refresh: jest.fn(),
+    };
+    render(<QuantHeuristicLibrary />);
+    expect(screen.getByTestId(`heuristic-open-${U1}`)).toBeInTheDocument();
+    expect(screen.getByText("Alligation")).toBeInTheDocument();
+    // Governance-read surface only — no create/assign controls exist here.
+    expect(screen.queryByText(/new heuristic|create|assign/i)).toBeNull();
   });
 });
 

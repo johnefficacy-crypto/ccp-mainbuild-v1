@@ -78,6 +78,20 @@ export const contentStudioApi = {
   proposeTarget: (promptId, body) => api.post(`${BASE}/writing-prompts/${promptId}/targets`, body),
   reviewTarget: (targetId, body) => api.post(`${BASE}/writing-prompt-targets/${targetId}/review`, body),
   removeTarget: (targetId, body) => api.post(`${BASE}/writing-prompt-targets/${targetId}/remove`, body),
+
+  // Quant heuristic authority (GQR-Q7). Read = content_studio reads; review =
+  // content_studio.review. There is no create/edit/assign path — migration 243
+  // ships only the review RPC. The review path CAS-guards on `expected_status`
+  // alone (this table has no updated_at review token); a 409 means the heuristic
+  // changed under review — refetch and re-read before deciding.
+  listHeuristics: (params) => api.get(`${BASE}/quant-heuristics${qs(params)}`),
+  getHeuristic: (id) => api.get(`${BASE}/quant-heuristics/${id}`),
+  reviewHeuristic: (id, { status, expected_status, reviewer_notes }) =>
+    api.post(`${BASE}/quant-heuristics/${id}/review`, {
+      status,
+      expected_status,
+      ...(reviewer_notes ? { reviewer_notes } : {}),
+    }),
 };
 
 export const EXERCISE_TYPES = [
@@ -130,3 +144,16 @@ export const ACTIVATION_BLOCKER_LABELS = {
 export function describeActivationBlocker(code) {
   return ACTIVATION_BLOCKER_LABELS[code] || code;
 }
+
+// Quant heuristic authority (migration 243). heuristic_type facet + the review
+// transition matrix, which DIFFERS from writing prompts: needs_correction routes
+// back to pending (never straight to verified), a verified heuristic can only be
+// reopened for correction, and rejected can be reopened to pending for rework.
+export const HEURISTIC_TYPES = ["shortcut", "standard_method", "trap", "estimation"];
+
+export const HEURISTIC_REVIEW_TRANSITIONS = {
+  pending: ["verified", "rejected", "needs_correction"],
+  needs_correction: ["pending", "rejected"],
+  verified: ["needs_correction"],
+  rejected: ["pending"],
+};
