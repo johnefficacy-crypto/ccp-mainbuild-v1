@@ -533,7 +533,10 @@ export default function MockAttemptShell() {
             {sectionLocked ? " · locked" : ""}
           </span>
         )}
-        <span style={timeRemaining !== null && timeRemaining < 60 ? styles.timerWarn : styles.timer}>
+        <span
+          data-testid="attempt-timer"
+          style={timeRemaining !== null && timeRemaining < 60 ? styles.timerWarn : styles.timer}
+        >
           {timeRemaining !== null ? formatTime(timeRemaining) : "--"}
         </span>
         <button

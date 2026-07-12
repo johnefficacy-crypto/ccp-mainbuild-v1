@@ -130,6 +130,31 @@ def locked_topic_ids_for_subject(
     }
 
 
+def subject_family_for(
+    supabase: Any, exam_id: str | None, subject_id: str | None
+) -> str | None:
+    """Resolve the SubjectRuntimePolicy family for a PATH subject from the exam's
+    LOCKED coverage (canonical ``subject_group`` → ``slug``). Returns ``None`` for an
+    ungoverned/unknown subject, which the launch gate maps to the generic policy.
+
+    Used server-side to reject a launch ``mode`` that the subject's family does not
+    wire (e.g. ``timed_practice`` posted to a Quant subject) — the browser is never
+    trusted to only send modes the hub offered for that subject."""
+    from app.study_os.subject_runtime_policy import family_for_subject
+
+    if not exam_id or not subject_id:
+        return None
+    coverage = _load_locked_coverage(supabase, exam_id) or []
+    row = next(
+        (c for c in coverage if str(c.get("subject_id")) == str(subject_id)), None
+    )
+    if not row:
+        return None
+    return family_for_subject(
+        slug=row.get("subject_slug"), subject_group=row.get("subject_group")
+    )
+
+
 def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
     """Return per-subject progress for the user's target exam.
 

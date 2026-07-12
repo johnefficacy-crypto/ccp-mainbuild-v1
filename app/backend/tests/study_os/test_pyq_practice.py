@@ -158,12 +158,14 @@ def test_timed_practice_freezes_server_owned_countdown():
     assert 55 <= state.get("time_remaining_sec") <= 60
 
 
-def test_untimed_practice_keeps_long_learning_ttl():
+def test_untimed_practice_reports_no_countdown():
     sb = _db([_q("q1", exam=EXAM)], pyq_order={"q1": 1})
     res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
     state = engine.get_attempt(sb, "u1", res["attempt_id"])
-    # No countdown: the long abandonment TTL (24h), never a short timed window.
-    assert state.get("time_remaining_sec") > 3600
+    # Untimed practice must surface no learner clock — the shell renders "--" and never
+    # auto-submits. The long 24h abandonment TTL stays server-side on expires_at.
+    assert state.get("time_remaining_sec") is None
+    assert state.get("expires_at")
 
 
 def test_empty_pool_returns_no_writes():

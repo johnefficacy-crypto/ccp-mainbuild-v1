@@ -746,7 +746,7 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "section_index": _question_section_index(snapshot, qid),
         })
 
-    time_remaining = _time_remaining_sec(attempt)
+    time_remaining = _practice_aware_time_remaining_sec(attempt, snapshot)
 
     return {
         "attempt_id": attempt_id,
@@ -1201,6 +1201,32 @@ def _time_remaining_sec(attempt: dict) -> int:
         return max(0, int(delta))
     except Exception:  # noqa: BLE001
         return 0
+
+
+def _practice_aware_time_remaining_sec(attempt: dict, snapshot: dict) -> int | None:
+    """Countdown surfaced to the attempt shell.
+
+    Practice attempts use a long abandonment ``expires_at`` (24h) that must NOT read
+    as a learner clock. So:
+      * timed practice (``practice`` + frozen ``duration_sec``) → a real wall-clock
+        countdown from ``started_at`` over the frozen duration;
+      * untimed practice → ``None`` (the shell renders ``--`` and never auto-submits);
+      * every other attempt (real/generated mocks) → the unchanged ``expires_at`` clock.
+    """
+    if snapshot.get("practice"):
+        duration_sec = int(snapshot.get("duration_sec") or 0)
+        if duration_sec <= 0:
+            return None
+        started_str = attempt.get("started_at")
+        if not started_str:
+            return duration_sec
+        try:
+            started = datetime.fromisoformat(started_str.replace("Z", "+00:00"))
+            elapsed = (_now() - started).total_seconds()
+            return max(0, int(duration_sec - elapsed))
+        except Exception:  # noqa: BLE001
+            return duration_sec
+    return _time_remaining_sec(attempt)
 
 
 def _serialise_question_for_attempt(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:

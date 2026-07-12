@@ -29,8 +29,9 @@ from app.study_os.subject_runtime_policy import (
     MODE_TIMED_PRACTICE,
     MODE_TOPIC_PYQ,
     is_wired_mode,
+    policy_for_family,
 )
-from app.study_os.subjects import locked_topic_ids_for_subject
+from app.study_os.subjects import locked_topic_ids_for_subject, subject_family_for
 from app.study_os.writing_practice.subject_launch import resolve_launch_prompt_id
 
 logger = logging.getLogger("career_copilot.api.subject_practice")
@@ -69,6 +70,16 @@ def start_subject_practice(
     handler = _LAUNCH_HANDLERS.get(body.mode) if is_wired_mode(body.mode) else None
     if handler is None:
         raise HTTPException(status_code=422, detail=f"unknown practice mode: {body.mode}")
+    # Subject-family gate (checkpost #960): a wired mode must also be wired for THIS
+    # subject's family — the browser is never trusted to only send modes the hub
+    # offered. e.g. timed_practice is Reasoning-only in v1; posting it to a Quant
+    # subject is rejected here, before any handler runs.
+    family = subject_family_for(supabase, exam_id, str(subject_id))
+    if body.mode not in policy_for_family(family).wired_runtime_modes:
+        raise HTTPException(
+            status_code=422,
+            detail=f"practice mode {body.mode!r} is not available for this subject",
+        )
     return handler(
         supabase, user_id=user_id, subject_id=str(subject_id),
         topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
