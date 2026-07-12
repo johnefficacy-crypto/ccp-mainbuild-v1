@@ -339,8 +339,139 @@ class SBStub:
             return _RpcCall(self._cms_reopen_candidate_count_for_edit(params))
         if name == "cms_review_quant_heuristic":
             return _RpcCall(self._cms_review_quant_heuristic(params))
+        if name == "create_calc_gym_session":
+            return _RpcCall(self._create_calc_gym_session(params))
+        if name == "submit_calc_gym_session":
+            return _RpcCall(self._submit_calc_gym_session(params))
         return _RpcCall(None)
 
+
+    @staticmethod
+    def _norm_answer(value: Any) -> str:
+        import re as _re
+        return _re.sub(r"\s", "", str(value or "")).lower()
+
+    def _create_calc_gym_session(self, params: dict[str, Any]) -> str:
+        """Emulate create_calc_gym_session (migration 245): insert session + all
+        frozen items in ONE transaction. Set ``sb._force_calc_gym_create_failure``
+        to raise mid-build; because the emulation commits only at the very end,
+        NOTHING is persisted (models the transactional rollback — no orphan)."""
+        import uuid as _uuid
+        from datetime import datetime, timedelta
+
+        if not params.get("p_user_id"):
+            raise RuntimeError("missing_user: p_user_id must not be NULL")
+
+        sessions = self.db.setdefault("calc_gym_sessions", [])
+        items_store = self.db.setdefault("calc_gym_session_items", [])
+
+        now = datetime.fromisoformat(str(params["p_now"]).replace("Z", "+00:00"))
+        dur = int(params["p_duration_sec"])
+        sid = str(_uuid.uuid4())
+        session_row = {
+            "id": sid, "user_id": params.get("p_user_id"), "exam_id": params.get("p_exam_id"),
+            "skill": params.get("p_skill"), "question_count": params.get("p_question_count"),
+            "duration_sec": dur, "seed": params.get("p_seed"),
+            "policy_version": params.get("p_policy_version"), "status": "in_progress",
+            "started_at": now.isoformat(), "expires_at": (now + timedelta(seconds=dur)).isoformat(),
+            "submitted_at": None, "score_correct": None, "score_total": None, "total_time_sec": None,
+        }
+        new_items = [
+            {
+                "id": str(_uuid.uuid4()), "session_id": sid,
+                "item_index": it.get("item_index"), "prompt": it.get("prompt"),
+                "expected_answer": it.get("expected_answer"),
+                "operands": it.get("operands") or {},
+                "user_answer": None, "is_correct": None, "time_spent_sec": 0, "answered_at": None,
+            }
+            for it in (params.get("p_items") or [])
+        ]
+
+        # Atomic rollback hook — raise BEFORE committing anything.
+        if getattr(self, "_force_calc_gym_create_failure", False):
+            raise RuntimeError("forced calc-gym create failure (atomicity test)")
+
+        sessions.append(session_row)
+        items_store.extend(new_items)
+        return sid
+
+    def _submit_calc_gym_session(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate submit_calc_gym_session (migration 245): owner-scoped lock,
+        state + deadline enforcement, timing clamp, frozen-answer scoring, and an
+        all-or-nothing finalize. Set ``sb._force_calc_gym_submit_failure`` to
+        raise after scoring but before any write, modelling the transactional
+        rollback (session stays in_progress, items untouched)."""
+        from datetime import datetime
+
+        session_id = params.get("p_session_id")
+        user_id = params.get("p_user_id")
+        answers = params.get("p_answers") or {}
+        if not user_id:
+            raise RuntimeError("missing_user: p_user_id must not be NULL")
+
+        sess = next(
+            (r for r in self.db.get("calc_gym_sessions", [])
+             if r.get("id") == session_id and r.get("user_id") == user_id),
+            None,
+        )
+        if sess is None:
+            raise RuntimeError(f"not_found: calc gym session {session_id} not found for user")
+        if sess.get("status") == "submitted":
+            return {
+                "session_id": session_id, "status": "submitted",
+                "score_correct": sess.get("score_correct"), "score_total": sess.get("score_total"),
+                "total_time_sec": sess.get("total_time_sec"), "idempotent": True,
+            }
+        if sess.get("status") != "in_progress":
+            raise RuntimeError(f"not_in_progress: session {session_id} has status {sess.get('status')}")
+
+        now = datetime.fromisoformat(str(params["p_now"]).replace("Z", "+00:00"))
+        expires = datetime.fromisoformat(str(sess["expires_at"]).replace("Z", "+00:00"))
+        if now > expires:
+            sess["status"] = "expired"
+            raise RuntimeError(f"expired: session {session_id} is past its deadline")
+
+        dur = int(sess.get("duration_sec") or 0)
+        items = sorted(
+            [r for r in self.db.get("calc_gym_session_items", []) if r.get("session_id") == session_id],
+            key=lambda r: r.get("item_index") or 0,
+        )
+        correct = 0
+        total = 0
+        total_time = 0
+        scored = []
+        for it in items:
+            total += 1
+            ans = answers.get(str(it.get("item_index"))) or answers.get(it.get("item_index")) or {}
+            user_answer = ans.get("user_answer") or None
+            t = int(ans.get("time_spent_sec") or 0)
+            t = max(0, min(t, dur))  # clamp: non-negative, bounded by session duration
+            is_correct = user_answer is not None and \
+                self._norm_answer(user_answer) == self._norm_answer(it.get("expected_answer"))
+            if is_correct:
+                correct += 1
+            total_time += t
+            scored.append((it, ans.get("user_answer"), is_correct, t))
+        total_time = min(total_time, dur)
+
+        # Atomic finalize hook — raise before any write is applied.
+        if getattr(self, "_force_calc_gym_submit_failure", False):
+            raise RuntimeError("forced calc-gym submit failure (atomicity test)")
+
+        for it, raw_answer, is_correct, t in scored:
+            it["user_answer"] = raw_answer
+            it["is_correct"] = is_correct
+            it["time_spent_sec"] = t
+            it["answered_at"] = now.isoformat() if (raw_answer or "") != "" else None
+        sess.update({
+            "status": "submitted", "submitted_at": now.isoformat(),
+            "score_correct": correct, "score_total": total, "total_time_sec": total_time,
+        })
+        return {
+            "session_id": session_id, "status": "submitted",
+            "score_correct": correct, "score_total": total, "total_time_sec": total_time,
+            "idempotent": False,
+        }
 
     def _claim_mock_mastery_retry(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         import uuid as _uuid
@@ -1029,7 +1160,7 @@ class SBStub:
     }
 
     def _cms_review_quant_heuristic(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_quant_heuristic (migration 245, replacing 243):
+        """Emulate cms_review_quant_heuristic (migration 246, replacing 243):
         actor required, mandatory 8–500 char reason, dual CAS on expected_status
         AND expected_updated_at (content-revision token), target-status validation,
         transition matrix, verified→needs_correction notes gate, and an audit row

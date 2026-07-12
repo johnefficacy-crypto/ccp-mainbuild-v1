@@ -1,4 +1,4 @@
--- 245_quant_heuristic_review_cas_reason.sql
+-- 246_quant_heuristic_review_cas_reason.sql
 --
 -- Checkpost #965 follow-up (GQR-Q7). Brings the quant-heuristic review path up to
 -- the Content Studio review invariant already enforced for writing prompts

@@ -1006,7 +1006,7 @@ _QH_TYPES = frozenset({"shortcut", "standard_method", "trap", "estimation"})
 class QuantHeuristicReviewBody(BaseModel):
     """Review-lifecycle body for a quant heuristic.
 
-    The RPC (`cms_review_quant_heuristic`, migration 245) CAS-guards on BOTH
+    The RPC (`cms_review_quant_heuristic`, migration 246) CAS-guards on BOTH
     ``expected_status`` (the reviewer_status the client last saw) AND
     ``expected_updated_at`` (the content-revision token — so a reviewer can never
     verify a revision they did not read), requires an 8–500 char audit ``reason``

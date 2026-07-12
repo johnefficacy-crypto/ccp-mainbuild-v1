@@ -116,7 +116,7 @@ def review_heuristic(
 ) -> dict:
     """Transition a heuristic's reviewer_status via the audited lifecycle RPC.
 
-    The RPC (migration 245, replacing 243) owns the transition matrix, dual
+    The RPC (migration 246, replacing 243) owns the transition matrix, dual
     optimistic-concurrency (CAS on BOTH ``expected_status`` and
     ``expected_updated_at`` — the content-revision token, so a reviewer can never
     verify a revision they did not read), the mandatory 8–500 char audit
