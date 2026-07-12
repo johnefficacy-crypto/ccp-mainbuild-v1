@@ -19,6 +19,7 @@ from app.study_os.planner import (  # type: ignore  # private helpers reused int
     _resolve_target_exam,
 )
 from app.study_os.pyq_practice import practiceable_topic_ids
+from app.study_os.subject_runtime_policy import InventoryContext, resolve_subject_modes
 from app.study_os.writing_practice.subject_launch import available_writing_subject_ids
 
 logger = logging.getLogger("career_copilot.study_os.subjects")
@@ -34,36 +35,27 @@ def _subject_practice(
 ) -> dict[str, Any]:
     """Practice readiness for one subject card (Subject Practice Hub). server_launch
     modes go through POST /api/study/subjects/{id}/practice/start; client_route
-    modes are existing surfaces the hub links to."""
-    modes: list[dict[str, Any]] = []
-    if eng_available:
-        modes.append({
-            "type": "english_writing", "label": "Sentence practice",
-            "target_topic_id": None, "route_type": "server_launch",
-            "launch_mode": "english_writing",
-        })
-        modes.append({
-            "type": "error_lab", "label": "Error Lab", "target_topic_id": None,
-            "route_type": "client_route", "route": "/app/study/error-lab",
-        })
-    available_topics = [t for t in bucket["topic_ids"] if t and str(t) in pyq_topic_ids]
-    if available_topics:
-        # weakest available topic first (lowest mastery, then error-flagged), stable tiebreak.
-        chosen = sorted(
-            available_topics,
-            key=lambda t: (mastery.get(t) if mastery.get(t) is not None else 999.0,
-                           0 if t in error_topics else 1, str(t)),
-        )[0]
-        modes.append({
-            "type": "topic_pyq", "label": "Topic PYQ practice",
-            "target_topic_id": str(chosen), "route_type": "server_launch",
-            "launch_mode": "topic_pyq",
-        })
-        modes.append({
-            "type": "mock_section", "label": "Mock section practice",
-            "target_topic_id": None, "route_type": "client_route",
-            "route": "/app/study/mocks",
-        })
+    modes are existing surfaces the hub links to.
+
+    The runtime modes are resolved by the server-owned ``SubjectRuntimePolicy``
+    registry: the subject's family (from canonical ``subject_group``/``slug``) selects a
+    policy whose inventory resolver emits the eligible modes from the signal context.
+    There is no English/PYQ branching here — a vertical adds a mode by registering it
+    in the policy, not by editing this function."""
+    available_topics = tuple(
+        t for t in bucket["topic_ids"] if t and str(t) in pyq_topic_ids
+    )
+    ctx = InventoryContext(
+        eng_available=eng_available,
+        available_topic_ids=available_topics,
+        mastery=mastery,
+        error_topics=frozenset(error_topics),
+    )
+    modes = resolve_subject_modes(
+        slug=bucket.get("subject_slug"),
+        subject_group=bucket.get("subject_group"),
+        ctx=ctx,
+    )
     available = any(m["route_type"] == "server_launch" for m in modes)
     return {"available": available, "modes": modes if available else []}
 
@@ -178,6 +170,9 @@ def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
             {
                 "subject_id": c.get("subject_id"),
                 "subject": c.get("subject_name") or c.get("subject") or "Other",
+                # Canonical governed identity → SubjectRuntimePolicy family resolution.
+                "subject_slug": c.get("subject_slug"),
+                "subject_group": c.get("subject_group"),
                 "topic_ids": [],
                 "weak_count": 0,
             },
