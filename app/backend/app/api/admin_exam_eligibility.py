@@ -71,7 +71,7 @@ router = APIRouter(prefix="/admin/exam-eligibility", tags=["admin-exam-eligibili
 
 
 _ALLOWED_SCOPES = {"all", "general", "obc", "sc", "st", "ews", "pwd", "ex_serviceman", "women"}
-# Baseline rule_types mirror migration 245's CHECK. experience_min_years is
+# Baseline rule_types mirror migration 246's CHECK. experience_min_years is
 # cycle-specific (§4) and is NOT a baseline type. stream_id / value_json let a
 # rule be stream-scoped and carry a machine-evaluable qualification_combination.
 _ALLOWED_RULE_TYPES = {
@@ -81,7 +81,7 @@ _ALLOWED_RULE_TYPES = {
 }
 # The evaluator implements only these branches today. A rule of any OTHER type
 # must not reach reviewer_status='verified' (it would be silently ignored),
-# mirroring the DB fail-closed CHECK in migration 245.
+# mirroring the DB fail-closed CHECK in migration 246.
 _EVALUATOR_SUPPORTED_RULE_TYPES = {
     "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max",
 }
@@ -97,7 +97,7 @@ _QC_NUM_TYPES = {"min_percentage", "experience_min_years"}
 
 
 def _valid_qualification_combination(node: Any) -> bool:
-    """Mirror of migration 245's is_valid_qualification_combination()."""
+    """Mirror of migration 246's is_valid_qualification_combination()."""
     if not isinstance(node, dict):
         return False
     if "op" in node:
@@ -309,7 +309,7 @@ def create_rule(
         raise HTTPException(status_code=404, detail="exam_not_found")
 
     # Pre-empt the unique constraint to give a clean 409. The identity is
-    # (exam_id, stream_id, scope, rule_type) per migration 245 — a common rule
+    # (exam_id, stream_id, scope, rule_type) per migration 246 — a common rule
     # (stream_id NULL) and a stream-specific rule for the same scope/type
     # legitimately coexist, so the stream_id must be part of this check.
     # Filtered in Python (not `.is_`) so NULL matching is driver-agnostic.

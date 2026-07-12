@@ -1,4 +1,4 @@
--- 245_exam_stream_eligibility.sql
+-- 246_exam_stream_eligibility.sql
 --
 -- Lane R §4 — baseline-vs-cycle eligibility, stream dimension + full value
 -- model. Contract: docs/architecture/financial-regulatory-development-family.md §4.
