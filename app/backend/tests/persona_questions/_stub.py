@@ -1160,20 +1160,28 @@ class SBStub:
     }
 
     def _cms_review_quant_heuristic(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_quant_heuristic (migration 243): actor required,
-        target-status validation, CAS on expected_status, transition matrix,
-        verified→needs_correction notes gate, and an audit row."""
+        """Emulate cms_review_quant_heuristic (migration 246, replacing 243):
+        actor required, mandatory 8–500 char reason, dual CAS on expected_status
+        AND expected_updated_at (content-revision token), target-status validation,
+        transition matrix, verified→needs_correction notes gate, and an audit row
+        carrying the reason."""
         import uuid as _uuid
 
         heuristic_id = params.get("p_heuristic_id")
         expected_status = params.get("p_expected_status")
+        expected_updated_at = params.get("p_expected_updated_at")
         new_status = params.get("p_new_status")
         reviewer_notes = params.get("p_reviewer_notes")
+        reason = params.get("p_reason")
         actor_id = params.get("p_actor_user_id")
         actor_email = params.get("p_actor_email")
 
         if not actor_id:
             raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if not (reason or "").strip() or not (8 <= len((reason or "").strip()) <= 500):
+            raise RuntimeError("invalid_reason: p_reason must be 8–500 characters")
+        if expected_updated_at is None:
+            raise RuntimeError("concurrent_modification: p_expected_updated_at (CAS token) is required")
         if new_status not in ("pending", "verified", "rejected", "needs_correction"):
             raise RuntimeError(f"invalid_target_status: {new_status} is not a recognised status")
 
@@ -1186,6 +1194,8 @@ class SBStub:
             raise RuntimeError(
                 f"concurrent_modification: expected status={expected_status} but found {current_status}"
             )
+        if row.get("updated_at") != expected_updated_at:
+            raise RuntimeError("concurrent_modification: heuristic content changed since read")
         if new_status not in self._QH_TRANSITIONS.get(current_status, set()):
             raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
         if current_status == "verified" and new_status == "needs_correction" and not (reviewer_notes or "").strip():
@@ -1194,6 +1204,7 @@ class SBStub:
         row["reviewer_status"] = new_status
         row["reviewed_by"] = actor_id
         row["reviewed_at"] = "2026-07-12T00:00:00Z"
+        row["updated_at"] = "2026-07-12T00:00:01Z"  # bump so a re-CAS with the old token fails
         if reviewer_notes is not None:
             row["reviewer_notes"] = reviewer_notes
 
@@ -1202,8 +1213,9 @@ class SBStub:
             "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
             "admin_user_id": actor_id, "action": "quant_heuristic_status_transition",
             "entity_type": "quant_heuristic", "entity_id": heuristic_id,
-            "old_value": {"status": expected_status}, "new_value": {"status": new_status},
-            "notes": reviewer_notes,
+            "old_value": {"status": expected_status},
+            "new_value": {"status": new_status, "reviewer_notes": reviewer_notes, "reason": reason.strip()},
+            "notes": reason.strip(),
         })
         return {
             "ok": True, "audit_id": audit_id, "heuristic_id": heuristic_id,
