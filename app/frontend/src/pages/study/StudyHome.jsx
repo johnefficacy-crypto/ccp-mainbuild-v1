@@ -8,14 +8,19 @@ import PlanChangeLogCard from "../../features/study/components/PlanChangeLogCard
 import HowItWorksHeaderButton from "../../shared/components/HowItWorksHeaderButton";
 import LaunchWritingPracticeButton from "../../features/study/english-practice/LaunchWritingPracticeButton";
 
-// A planner task whose typed launch target is an English writing session
-// (mission_control stamps launch_type === "english_writing_session"). Such a
-// task launches through the server-owned launch endpoint, not the generic
-// "open plan" CTA.
+// Typed launcher registry (GQR-1): a planner task carries a server-stamped
+// `launch_type`. Instead of hard-coding the single English-writing branch, map the
+// launch_type to its dedicated launcher component. A launch_type with no registered
+// launcher (e.g. pyq_practice today) falls back to the generic "open plan" CTA.
+// mission_control owns the stamping; the client never computes eligibility.
 const LAUNCH_ENGLISH_WRITING_SESSION = "english_writing_session";
 
-function isWritingTask(task) {
-  return task?.launch_type === LAUNCH_ENGLISH_WRITING_SESSION;
+const LAUNCH_TYPE_LAUNCHERS = {
+  [LAUNCH_ENGLISH_WRITING_SESSION]: LaunchWritingPracticeButton,
+};
+
+function launcherForTask(task) {
+  return LAUNCH_TYPE_LAUNCHERS[task?.launch_type] || null;
 }
 
 const NUDGE_SEVERITY_CLASS = {
@@ -270,6 +275,7 @@ function ActivePlanCard({ plan, tasks, loading, error, onRetry }) {
 
 function NextActionCard({ task, plan, loading, error, onRetry }) {
   const due = task ? formatDueRelative(task.due_date || task.scheduled_date) : null;
+  const TypedLauncher = task ? launcherForTask(task) : null;
   return (
     <CardShell
       testId="study-home-next-action"
@@ -277,10 +283,10 @@ function NextActionCard({ task, plan, loading, error, onRetry }) {
       title={task ? task.title || task.topic || "Untitled task" : "Nothing queued"}
       right={
         task ? (
-          isWritingTask(task) ? (
-            // Writing/English planner task: launch through the server-owned
-            // endpoint and navigate to the returned practice route.
-            <LaunchWritingPracticeButton task={task} />
+          TypedLauncher ? (
+            // Typed launch: launch through the server-owned endpoint for this
+            // launch_type and navigate to the returned practice route.
+            <TypedLauncher task={task} />
           ) : (
             <Link
               to="/app/study/plan"

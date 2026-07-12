@@ -19,6 +19,11 @@ from app.study_os.planner import (  # type: ignore  # private helpers reused int
     _resolve_target_exam,
 )
 from app.study_os.pyq_practice import practiceable_topic_ids
+from app.study_os.subject_runtime_policy import (
+    MODE_ENGLISH_WRITING,
+    MODE_TOPIC_PYQ,
+    WIRED_RUNTIME_MODES,
+)
 from app.study_os.writing_practice.subject_launch import available_writing_subject_ids
 
 logger = logging.getLogger("career_copilot.study_os.subjects")
@@ -34,18 +39,18 @@ def _subject_practice(
 ) -> dict[str, Any]:
     """Practice readiness for one subject card (Subject Practice Hub). server_launch
     modes go through POST /api/study/subjects/{id}/practice/start; client_route
-    modes are existing surfaces the hub links to."""
+    modes are existing surfaces the hub links to.
+
+    Descriptors come from the server-owned ``SubjectRuntimePolicy`` registry
+    (``subject_runtime_policy.WIRED_RUNTIME_MODES``) rather than inline literals —
+    availability is still gated by the inventory signals (writing availability, PYQ
+    topic projection) resolved server-side upstream. Adding a runtime mode is a
+    registry entry, not an edit to this branch ladder."""
     modes: list[dict[str, Any]] = []
     if eng_available:
-        modes.append({
-            "type": "english_writing", "label": "Sentence practice",
-            "target_topic_id": None, "route_type": "server_launch",
-            "launch_mode": "english_writing",
-        })
-        modes.append({
-            "type": "error_lab", "label": "Error Lab", "target_topic_id": None,
-            "route_type": "client_route", "route": "/app/study/error-lab",
-        })
+        adapter = WIRED_RUNTIME_MODES[MODE_ENGLISH_WRITING]
+        modes.append(adapter.hub_mode())
+        modes.extend(dict(m) for m in adapter.companion_modes)
     available_topics = [t for t in bucket["topic_ids"] if t and str(t) in pyq_topic_ids]
     if available_topics:
         # weakest available topic first (lowest mastery, then error-flagged), stable tiebreak.
@@ -54,16 +59,9 @@ def _subject_practice(
             key=lambda t: (mastery.get(t) if mastery.get(t) is not None else 999.0,
                            0 if t in error_topics else 1, str(t)),
         )[0]
-        modes.append({
-            "type": "topic_pyq", "label": "Topic PYQ practice",
-            "target_topic_id": str(chosen), "route_type": "server_launch",
-            "launch_mode": "topic_pyq",
-        })
-        modes.append({
-            "type": "mock_section", "label": "Mock section practice",
-            "target_topic_id": None, "route_type": "client_route",
-            "route": "/app/study/mocks",
-        })
+        adapter = WIRED_RUNTIME_MODES[MODE_TOPIC_PYQ]
+        modes.append(adapter.hub_mode(target_topic_id=str(chosen)))
+        modes.extend(dict(m) for m in adapter.companion_modes)
     available = any(m["route_type"] == "server_launch" for m in modes)
     return {"available": available, "modes": modes if available else []}
 

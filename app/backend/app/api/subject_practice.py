@@ -24,6 +24,11 @@ from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
 from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
+from app.study_os.subject_runtime_policy import (
+    MODE_ENGLISH_WRITING,
+    MODE_TOPIC_PYQ,
+    is_wired_mode,
+)
 from app.study_os.subjects import locked_topic_ids_for_subject
 from app.study_os.writing_practice.subject_launch import resolve_launch_prompt_id
 
@@ -50,19 +55,39 @@ def start_subject_practice(
     target = _resolve_target_exam(supabase, user_id)
     exam_id = target.get("id") if target else None
 
-    if body.mode == "english_writing":
-        session_id = _launch_english(
-            supabase, user_id=user_id, subject_id=str(subject_id),
-            topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
-        )
-        return {"kind": "english_writing", "route": f"/app/study/practice/english/{session_id}"}
-    if body.mode == "topic_pyq":
-        attempt_id = _launch_topic_pyq(
-            supabase, user_id=user_id, subject_id=str(subject_id),
-            topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
-        )
-        return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
-    raise HTTPException(status_code=422, detail=f"unknown practice mode: {body.mode}")
+    # Registry-driven dispatch (GQR-1): the mode must be a wired runtime mode in the
+    # server-owned SubjectRuntimePolicy registry, and it routes through the handler
+    # registered here — no ``if mode ==`` ladder. The browser submits only the mode;
+    # the server still owns exam, prompt, bundle and question selection.
+    handler = _LAUNCH_HANDLERS.get(body.mode) if is_wired_mode(body.mode) else None
+    if handler is None:
+        raise HTTPException(status_code=422, detail=f"unknown practice mode: {body.mode}")
+    return handler(
+        supabase, user_id=user_id, subject_id=str(subject_id),
+        topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
+    )
+
+
+def _handle_english_writing(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+    session_id = _launch_english(
+        supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
+    )
+    return {"kind": "english_writing", "route": f"/app/study/practice/english/{session_id}"}
+
+
+def _handle_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+    attempt_id = _launch_topic_pyq(
+        supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
+    )
+    return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
+
+
+# Launch-handler dispatch table, keyed by wired runtime mode. Registering a new
+# runtime = one entry here + one policy in subject_runtime_policy, not an if-ladder.
+_LAUNCH_HANDLERS = {
+    MODE_ENGLISH_WRITING: _handle_english_writing,
+    MODE_TOPIC_PYQ: _handle_topic_pyq,
+}
 
 
 def _launch_english(supabase, *, user_id, subject_id, topic_id, exam_id):

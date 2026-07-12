@@ -37,6 +37,7 @@ from app.study_os import calibration
 from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
+from app.study_os.subject_runtime_policy import resolve_planner_launch
 from app.study_os.update_context import policy_update_context
 from app.study_os.writing_practice import planner_tasks
 from app.study_os.writing_practice.launch import LAUNCH_ENGLISH_WRITING_SESSION
@@ -51,8 +52,9 @@ PLANNER_VERSION = "planner_v1"
 # to avoid a cross-lane import dependency; a shared constant can be unified later.
 LAUNCH_PYQ_PRACTICE = "pyq_practice"
 
-# task_type values whose plan tasks resolve to a PYQ topic-practice launch.
-_LAUNCH_STAMP_TASK_TYPES = {"retrieval_practice", "revision"}
+# task_type -> runnable launch resolution now lives in the server-owned
+# SubjectRuntimePolicy registry (GQR-1); the planner consults it instead of an
+# inline task-type set + stamp block. Behaviour is unchanged for existing tasks.
 
 # EWP-5: max auto-generated english_writing_session tasks per plan generation.
 # Writing tasks are additive (a distinct modality) and bounded so they never
@@ -779,21 +781,20 @@ def _build_tasks(
             "priority_score": cov["_priority_score"],
             "why_this_task": why,
         }
-        # PYQ v2 PR-9: a practice/revision task on a real topic+exam resolves to
-        # a typed PYQ topic-practice launch. Stamp the launch columns
-        # (migration 205) so the client can open the right target deterministically.
-        # Other task types (e.g. concept_learning) or tasks missing topic/exam are
-        # left unstamped — launch columns stay absent, preserving prior behaviour.
-        topic_id = cov.get("topic_id")
-        if task_type in _LAUNCH_STAMP_TASK_TYPES and topic_id and exam_id:
-            task["launch_type"] = LAUNCH_PYQ_PRACTICE
-            task["launch_entity_id"] = topic_id
-            task["launch_context"] = {
-                "mode": "topic",
-                "target_id": topic_id,
-                "exam_id": exam_id,
-            }
-            why["launch_target"] = LAUNCH_PYQ_PRACTICE
+        # PYQ v2 PR-9 / GQR-1: a practice/revision task on a real topic+exam resolves
+        # to a typed PYQ topic-practice launch. Resolution is delegated to the
+        # server-owned SubjectRuntimePolicy registry so the launch column stamp
+        # (migration 205) has a single source. Other task types (e.g. concept_learning)
+        # or tasks missing topic/exam resolve to None — launch columns stay absent,
+        # preserving prior behaviour.
+        launch = resolve_planner_launch(
+            task_type, topic_id=cov.get("topic_id"), exam_id=exam_id
+        )
+        if launch is not None:
+            task["launch_type"] = launch["launch_type"]
+            task["launch_entity_id"] = launch["launch_entity_id"]
+            task["launch_context"] = launch["launch_context"]
+            why["launch_target"] = launch["launch_type"]
         tasks.append(task)
     return tasks
 
