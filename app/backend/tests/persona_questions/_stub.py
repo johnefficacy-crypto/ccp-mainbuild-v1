@@ -337,6 +337,8 @@ class SBStub:
             return _RpcCall(self._cms_review_candidate_count(params))
         if name == "cms_reopen_candidate_count_for_edit":
             return _RpcCall(self._cms_reopen_candidate_count_for_edit(params))
+        if name == "cms_review_quant_heuristic":
+            return _RpcCall(self._cms_review_quant_heuristic(params))
         return _RpcCall(None)
 
 
@@ -1015,6 +1017,67 @@ class SBStub:
             "notes": reviewer_notes,
         })
         return new_row
+
+    # Transition matrix mirrors cms_review_quant_heuristic (migration 243):
+    # pending is intake; needs_correction routes back to the author; a verified
+    # heuristic can be reopened for correction; a rejected one back to pending.
+    _QH_TRANSITIONS = {
+        "pending": {"verified", "rejected", "needs_correction"},
+        "needs_correction": {"pending", "rejected"},
+        "verified": {"needs_correction"},
+        "rejected": {"pending"},
+    }
+
+    def _cms_review_quant_heuristic(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_review_quant_heuristic (migration 243): actor required,
+        target-status validation, CAS on expected_status, transition matrix,
+        verified→needs_correction notes gate, and an audit row."""
+        import uuid as _uuid
+
+        heuristic_id = params.get("p_heuristic_id")
+        expected_status = params.get("p_expected_status")
+        new_status = params.get("p_new_status")
+        reviewer_notes = params.get("p_reviewer_notes")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if new_status not in ("pending", "verified", "rejected", "needs_correction"):
+            raise RuntimeError(f"invalid_target_status: {new_status} is not a recognised status")
+
+        row = next((r for r in self.db.get("quant_heuristics", []) if r.get("id") == heuristic_id), None)
+        if row is None:
+            raise RuntimeError(f"not_found: heuristic {heuristic_id} does not exist")
+
+        current_status = row.get("reviewer_status")
+        if current_status != expected_status:
+            raise RuntimeError(
+                f"concurrent_modification: expected status={expected_status} but found {current_status}"
+            )
+        if new_status not in self._QH_TRANSITIONS.get(current_status, set()):
+            raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
+        if current_status == "verified" and new_status == "needs_correction" and not (reviewer_notes or "").strip():
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a verified heuristic")
+
+        row["reviewer_status"] = new_status
+        row["reviewed_by"] = actor_id
+        row["reviewed_at"] = "2026-07-12T00:00:00Z"
+        if reviewer_notes is not None:
+            row["reviewer_notes"] = reviewer_notes
+
+        audit_id = str(_uuid.uuid4())
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id, "action": "quant_heuristic_status_transition",
+            "entity_type": "quant_heuristic", "entity_id": heuristic_id,
+            "old_value": {"status": expected_status}, "new_value": {"status": new_status},
+            "notes": reviewer_notes,
+        })
+        return {
+            "ok": True, "audit_id": audit_id, "heuristic_id": heuristic_id,
+            "prev_status": expected_status, "new_status": new_status,
+        }
 
     def _apply_mock_mastery_delta(self, params: dict[str, Any]) -> dict[str, Any]:
         """Emulate the atomic, idempotent mastery-apply function (migration 145).
