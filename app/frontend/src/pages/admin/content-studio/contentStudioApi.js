@@ -81,15 +81,19 @@ export const contentStudioApi = {
 
   // Quant heuristic authority (GQR-Q7). Read = content_studio reads; review =
   // content_studio.review. There is no create/edit/assign path — migration 243
-  // ships only the review RPC. The review path CAS-guards on `expected_status`
-  // alone (this table has no updated_at review token); a 409 means the heuristic
-  // changed under review — refetch and re-read before deciding.
+  // ships only the review RPC (CAS + reason hardened in 245). Every review
+  // decision carries an 8–500 char `reason` and is dual-CAS-guarded on BOTH the
+  // `expected_status` and the content `expected_updated_at` the client last read
+  // (so a reviewer can never verify a revision they did not see); a 409 means the
+  // heuristic changed under review — refetch and re-read before deciding.
   listHeuristics: (params) => api.get(`${BASE}/quant-heuristics${qs(params)}`),
   getHeuristic: (id) => api.get(`${BASE}/quant-heuristics/${id}`),
-  reviewHeuristic: (id, { status, expected_status, reviewer_notes }) =>
+  reviewHeuristic: (id, { status, expected_status, expected_updated_at, reason, reviewer_notes }) =>
     api.post(`${BASE}/quant-heuristics/${id}/review`, {
       status,
       expected_status,
+      expected_updated_at,
+      reason,
       ...(reviewer_notes ? { reviewer_notes } : {}),
     }),
 };

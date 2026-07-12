@@ -6,7 +6,8 @@ import { parseCsv } from "../csv";
 import { normalizeRow, MAX_BULK_ROWS } from "../PromptBulkImport";
 import { buildPayload } from "../PromptEditor";
 import { validateRequiredWords, validateInt, isUuid } from "../validation";
-import { REVIEW_TRANSITIONS, isValidReason, HEURISTIC_REVIEW_TRANSITIONS, HEURISTIC_TYPES } from "../contentStudioApi";
+import { REVIEW_TRANSITIONS, isValidReason, HEURISTIC_REVIEW_TRANSITIONS, HEURISTIC_TYPES, contentStudioApi } from "../contentStudioApi";
+import { buildListParams } from "../QuantHeuristicLibrary";
 import { studioPerms } from "../permissions";
 
 const mockUser = { user: { role: "admin", permissions: ["content_studio.author", "content_studio.review"] } };
@@ -441,11 +442,111 @@ describe("QuantHeuristicReviewQueue screen", () => {
     expect(screen.getByText(/requires content_studio\.review/i)).toBeInTheDocument();
   });
 
-  test("a rejected heuristic (no legal onward decision) offers no Review button", () => {
+  test("the queue exposes a rejected filter so rejected→pending is reachable", () => {
     mockCollection = { items: [row({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
     render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
-    // rejected → pending IS legal, so Review IS offered; assert the matrix drives it.
+    // The requested-filter surface must include 'rejected' (not just an injected row).
+    const filter = screen.getByTestId("heuristic-review-queue-filter");
+    const options = Array.from(filter.querySelectorAll("option")).map((o) => o.value);
+    expect(options).toContain("rejected");
+    // rejected → pending IS legal, so Review IS offered on the row.
     expect(screen.getByTestId(`heuristic-review-open-${U1}`)).toBeInTheDocument();
+  });
+});
+
+describe("QuantHeuristicReviewQueue dialog — full snapshot + reason gate", () => {
+  // eslint-disable-next-line global-require
+  const QuantHeuristicReviewQueue = require("../QuantHeuristicReviewQueue").default;
+  const apiMock = require("../../../../lib/api").api;
+
+  const fullSnapshot = (over = {}) => ({
+    id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "trap",
+    reviewer_status: "pending", is_active: false, updated_at: "2026-07-10T00:00:00Z",
+    topic_id: U2, topic_name: "Mixtures", applicability_rule: { op: "ratio_mix" },
+    standard_method: "cross-multiplication method", shortcut_method: "swap the differences",
+    worked_example: "40% & 10% blended to 30%", common_traps: "mislabel cheaper vs dearer",
+    reviewer_notes: "a prior reviewer note", ...over,
+  });
+  const queueRow = (over = {}) => ({
+    id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "trap",
+    reviewer_status: "pending", topic_name: "Mixtures", ...over,
+  });
+
+  test("renders EVERY canonical field and gates verify on a valid reason", async () => {
+    apiMock.get.mockResolvedValueOnce(fullSnapshot());
+    mockCollection = { items: [queueRow()], status: "live", total: 1, refresh: jest.fn() };
+    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+    fireEvent.click(screen.getByTestId(`heuristic-review-open-${U1}`));
+
+    // Every review-bearing canonical field is visible before a verify is possible.
+    expect(await screen.findByTestId("review-heuristic-standard_method")).toHaveTextContent("cross-multiplication method");
+    expect(screen.getByTestId("review-heuristic-worked_example")).toHaveTextContent("40% & 10% blended to 30%");
+    expect(screen.getByTestId("review-heuristic-common_traps")).toHaveTextContent("mislabel cheaper vs dearer");
+    expect(screen.getByTestId("review-heuristic-reviewer_notes")).toHaveTextContent("a prior reviewer note");
+    expect(screen.getByTestId("review-heuristic-applicability_rule")).toHaveTextContent("ratio_mix");
+
+    // Verify is gated on a valid audit reason — no request fires without one.
+    fireEvent.click(screen.getByTestId("heuristic-review-submit"));
+    expect(await screen.findByText(/Reason must be 8/)).toBeInTheDocument();
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  test("selecting the rejected queue and opening a rejected row submits pending with CAS + reason", async () => {
+    apiMock.get.mockResolvedValueOnce(fullSnapshot({ reviewer_status: "rejected" }));
+    mockRun = jest.fn(async ({ action }) => { await action(); return { ok: true, data: { ok: true, result: {} } }; });
+    mockCollection = { items: [queueRow({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+
+    // The rejected queue is selectable (not just an injected row).
+    fireEvent.change(screen.getByTestId("heuristic-review-queue-filter"), { target: { value: "rejected" } });
+    fireEvent.click(screen.getByTestId(`heuristic-review-open-${U1}`));
+
+    // Only rejected→pending is offered.
+    const decision = await screen.findByTestId("heuristic-review-status");
+    const options = Array.from(decision.querySelectorAll("option")).map((o) => o.value);
+    expect(options).toEqual(["pending"]);
+
+    fireEvent.change(screen.getByTestId("heuristic-review-reason"), { target: { value: "reopening for rework" } });
+    fireEvent.click(screen.getByTestId("heuristic-review-submit"));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        `/api/admin/content-studio/quant-heuristics/${U1}/review`,
+        expect.objectContaining({
+          status: "pending", expected_status: "rejected",
+          expected_updated_at: "2026-07-10T00:00:00Z", reason: "reopening for rework",
+        }),
+      ),
+    );
+  });
+});
+
+describe("QuantHeuristicLibrary default request (undefined-param regression)", () => {
+  test("buildListParams emits ONLY limit+offset when no filters are set", () => {
+    // useApiCollection serializes via URLSearchParams; `undefined` would become the
+    // literal string "undefined" and the backend would filter everything out.
+    expect(buildListParams({ heuristic_type: "", reviewer_status: "", q: "" }, 0)).toEqual({ limit: 50, offset: 0 });
+    expect(buildListParams({ heuristic_type: undefined, reviewer_status: undefined, q: undefined }, 50))
+      .toEqual({ limit: 50, offset: 50 });
+  });
+
+  test("buildListParams includes only the set filters (trimmed)", () => {
+    expect(buildListParams({ heuristic_type: "trap", reviewer_status: "pending", q: "  alligation  " }, 0))
+      .toEqual({ limit: 50, offset: 0, heuristic_type: "trap", reviewer_status: "pending", q: "alligation" });
+  });
+});
+
+describe("quant heuristic review write contract", () => {
+  test("reviewHeuristic carries the content CAS token + audit reason", () => {
+    const apiMock = require("../../../../lib/api").api;
+    contentStudioApi.reviewHeuristic(U1, {
+      status: "verified", expected_status: "pending",
+      expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear shortcut, verified",
+    });
+    expect(apiMock.post).toHaveBeenCalledWith(
+      `/api/admin/content-studio/quant-heuristics/${U1}/review`,
+      { status: "verified", expected_status: "pending",
+        expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear shortcut, verified" },
+    );
   });
 });
 

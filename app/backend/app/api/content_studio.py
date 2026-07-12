@@ -979,10 +979,11 @@ def get_writing_prompt_correction_note(
 
 # ── Quant heuristic authority (GQR-Q7) ──────────────────────────────────────
 #
-# quant_heuristics (migration 243) are subject/topic-scoped canonical content
-# governed here. The backend shipped read/selection + the review-lifecycle RPC
-# (`cms_review_quant_heuristic`) ahead of the UI; this section is the operator
-# API glue: a permission-gated Library read + the governance review transition.
+# quant_heuristics (migration 243; review RPC hardened in 245) are subject/topic-
+# scoped canonical content governed here. The backend shipped read/selection + the
+# review-lifecycle RPC (`cms_review_quant_heuristic`) ahead of the UI; this section
+# is the operator API glue: a permission-gated Library read + the governance review
+# transition (dual CAS on status + content updated_at, mandatory audit reason).
 # There is NO create/edit/activate/assign path — migration 243 ships only the
 # review RPC (heuristics carry no publication/applicability lane), so authoring
 # is a later governed PR. Reads reuse the shared `_require_content_read` gate;
@@ -1005,13 +1006,17 @@ _QH_TYPES = frozenset({"shortcut", "standard_method", "trap", "estimation"})
 class QuantHeuristicReviewBody(BaseModel):
     """Review-lifecycle body for a quant heuristic.
 
-    The RPC (`cms_review_quant_heuristic`) CAS-guards on ``expected_status`` (the
-    reviewer_status the client last saw) — there is no separate updated_at token
-    on this table's review path — and requires ``reviewer_notes`` when reopening
-    a verified heuristic for correction (enforced here AND in the RPC)."""
+    The RPC (`cms_review_quant_heuristic`, migration 245) CAS-guards on BOTH
+    ``expected_status`` (the reviewer_status the client last saw) AND
+    ``expected_updated_at`` (the content-revision token — so a reviewer can never
+    verify a revision they did not read), requires an 8–500 char audit ``reason``
+    on every decision, and requires ``reviewer_notes`` when reopening a verified
+    heuristic for correction (enforced here AND in the RPC)."""
     model_config = ConfigDict(extra="forbid")
     status: str
     expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
+    expected_updated_at: str = Field(..., description="updated_at the client last read (content CAS token)")
+    reason: str = Field(..., min_length=8, max_length=500)
     reviewer_notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -1101,8 +1106,12 @@ def review_quant_heuristic(
             supabase,
             heuristic_id=str(heuristic_id),
             expected_status=body.expected_status,
+            # CLIENT's content token — never a server-minted fresh read — so a
+            # content edit after the reviewer's read loses with 409.
+            expected_updated_at=body.expected_updated_at,
             new_status=body.status,
             reviewer_notes=notes,
+            reason=body.reason,
             actor_user_id=admin.get("id"),
             actor_email=admin.get("email"),
         )

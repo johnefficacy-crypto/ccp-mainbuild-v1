@@ -26,6 +26,14 @@ _TOPIC = "00000000-0000-0000-0000-0000000000b1"
 _MICRO = "00000000-0000-0000-0000-0000000000c1"
 _HEUR = "00000000-0000-0000-0000-0000000000d1"
 _ABSENT = "00000000-0000-0000-0000-0000000000ff"
+_TOKEN = "2026-07-10T00:00:00Z"  # matches the seeded heuristic's updated_at (content CAS)
+
+
+def _review_body(**over) -> dict:
+    body = {"status": "verified", "expected_status": "pending",
+            "expected_updated_at": _TOKEN, "reason": "a valid audit reason"}
+    body.update(over)
+    return body
 
 
 class _CSQuery(_Query):
@@ -194,32 +202,45 @@ def test_get_returns_enriched_row():
 def test_review_requires_review_permission():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[AUTHOR]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body())
     assert r.status_code == 403
 
 
 def test_review_happy_path_calls_rpc_with_marshalled_params():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body())
     assert r.status_code == 200, r.text
     assert r.json()["ok"] is True
     fn, params = sb.rpc_calls[-1]
     assert fn == "cms_review_quant_heuristic"
     assert params["p_heuristic_id"] == _HEUR
     assert params["p_expected_status"] == "pending"
+    assert params["p_expected_updated_at"] == _TOKEN
     assert params["p_new_status"] == "verified"
+    assert params["p_reason"] == "a valid audit reason"
     assert params["p_actor_user_id"] == "op-1"
 
 
 def test_review_rejects_unknown_target_status():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "bogus", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body(status="bogus"))
     assert r.status_code == 422
+    assert not sb.rpc_calls
+
+
+def test_review_requires_content_cas_token_and_reason():
+    sb = CSSBStub(_seed())
+    # Missing content CAS token → 422 (pydantic), no RPC fired.
+    body = _review_body()
+    body.pop("expected_updated_at")
+    r = _client(sb, permissions=[REVIEW]).post(f"{_BASE}/quant-heuristics/{_HEUR}/review", json=body)
+    assert r.status_code == 422
+    # Missing / too-short reason → 422, no RPC fired.
+    r2 = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body(reason="short"))
+    assert r2.status_code == 422
     assert not sb.rpc_calls
 
 
@@ -229,7 +250,7 @@ def test_review_blocks_illegal_transition_needscorrection_to_verified():
     sb = CSSBStub(_seed(reviewer_status="needs_correction"))
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "needs_correction"})
+        json=_review_body(status="verified", expected_status="needs_correction"))
     assert r.status_code == 422, r.text
     assert not sb.rpc_calls
 
@@ -238,7 +259,16 @@ def test_review_allows_needscorrection_to_pending():
     sb = CSSBStub(_seed(reviewer_status="needs_correction"))
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "pending", "expected_status": "needs_correction"})
+        json=_review_body(status="pending", expected_status="needs_correction"))
+    assert r.status_code == 200, r.text
+
+
+def test_review_allows_rejected_to_pending():
+    # rejected → pending must be reachable (the review queue exposes a rejected filter).
+    sb = CSSBStub(_seed(reviewer_status="rejected"))
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/quant-heuristics/{_HEUR}/review",
+        json=_review_body(status="pending", expected_status="rejected"))
     assert r.status_code == 200, r.text
 
 
@@ -246,13 +276,13 @@ def test_reopen_verified_requires_reviewer_notes():
     sb = CSSBStub(_seed(reviewer_status="verified"))
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "needs_correction", "expected_status": "verified"})
+        json=_review_body(status="needs_correction", expected_status="verified"))
     assert r.status_code == 422, r.text
     assert not sb.rpc_calls
     r2 = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "needs_correction", "expected_status": "verified",
-              "reviewer_notes": "shortcut is wrong for x<0"})
+        json=_review_body(status="needs_correction", expected_status="verified",
+                          reviewer_notes="shortcut is wrong for x<0"))
     assert r2.status_code == 200, r2.text
 
 
@@ -261,10 +291,9 @@ def test_reopen_verified_requires_reviewer_notes():
 
 def test_review_maps_concurrent_modification_to_409():
     sb = CSSBStub(_seed())
-    sb.rpc_error = "concurrent_modification: expected status=pending but found verified"
+    sb.rpc_error = "concurrent_modification: heuristic content changed since read"
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body())
     assert r.status_code == 409
 
 
@@ -272,8 +301,7 @@ def test_review_maps_not_found_to_404():
     sb = CSSBStub(_seed())
     sb.rpc_error = "not_found: heuristic does not exist"
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body())
     assert r.status_code == 404
 
 
@@ -281,14 +309,12 @@ def test_review_maps_transition_not_allowed_to_422():
     sb = CSSBStub(_seed())
     sb.rpc_error = "transition_not_allowed: pending -> pending is not permitted"
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body())
     assert r.status_code == 422
 
 
 def test_review_rejects_extra_body_fields():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
-        f"{_BASE}/quant-heuristics/{_HEUR}/review",
-        json={"status": "verified", "expected_status": "pending", "reason": "x"})
+        f"{_BASE}/quant-heuristics/{_HEUR}/review", json=_review_body(bogus_field="x"))
     assert r.status_code == 422

@@ -19,6 +19,20 @@ import { HEURISTIC_TYPES } from "./contentStudioApi";
 const REVIEWER_STATUSES = ["", "pending", "needs_correction", "verified", "rejected"];
 const PAGE_SIZE = 50;
 
+// useApiCollection serializes params through `new URLSearchParams(params)`, which
+// stringifies `undefined` as the literal "undefined" — the backend would then
+// filter on heuristic_type='undefined' etc. and return nothing. Mirror
+// PromptLibrary's cleanParams: emit ONLY set filters plus limit/offset, so the
+// default (unfiltered) request carries no stray keys. Exported for regression test.
+export function buildListParams(filters, offset) {
+  const params = { limit: PAGE_SIZE, offset };
+  if (filters.heuristic_type) params.heuristic_type = filters.heuristic_type;
+  if (filters.reviewer_status) params.reviewer_status = filters.reviewer_status;
+  const q = (filters.q || "").trim();
+  if (q) params.q = q;
+  return params;
+}
+
 // formula_latex is stored as raw LaTeX (no delimiters); MathRenderer keys off
 // `$…$`/`$$…$$`. Wrap a bare formula in block delimiters so it renders, but pass
 // an already-delimited string through untouched so an author can author inline.
@@ -121,13 +135,7 @@ export default function QuantHeuristicLibrary() {
   const [selected, setSelected] = useState(null);
 
   const params = useMemo(
-    () => ({
-      heuristic_type: typeFilter || undefined,
-      reviewer_status: statusFilter || undefined,
-      q: query.trim() || undefined,
-      limit: PAGE_SIZE,
-      offset,
-    }),
+    () => buildListParams({ heuristic_type: typeFilter, reviewer_status: statusFilter, q: query }, offset),
     [typeFilter, statusFilter, query, offset],
   );
   const { items, status, total, refresh } = useApiCollection(

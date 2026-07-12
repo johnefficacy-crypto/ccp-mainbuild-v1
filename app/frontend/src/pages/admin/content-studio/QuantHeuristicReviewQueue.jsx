@@ -19,9 +19,12 @@ import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { ErrorState, EmptyState } from "../../../shared/ui/core";
 import MathRenderer from "../../study/mocks/components/questions/shared/MathRenderer";
-import { contentStudioApi, HEURISTIC_REVIEW_TRANSITIONS } from "./contentStudioApi";
+import { contentStudioApi, HEURISTIC_REVIEW_TRANSITIONS, isValidReason } from "./contentStudioApi";
 
-const QUEUE_STATUSES = ["pending", "needs_correction", "verified"];
+// `rejected` is included so a rejected heuristic can be fetched and reopened to
+// pending (HEURISTIC_REVIEW_TRANSITIONS.rejected === ["pending"]); without it the
+// advertised rejected→pending lifecycle would be unreachable from the UI.
+const QUEUE_STATUSES = ["pending", "needs_correction", "verified", "rejected"];
 const PAGE_SIZE = 50;
 
 function asMath(latex) {
@@ -36,6 +39,15 @@ const SNAPSHOT_ROWS = [
   ["Microtopic", "microtopic_name", "microtopic_id"],
 ];
 
+// Every canonical review-bearing field (migration 243). A reviewer must see the
+// full method/trap/rule content before verifying — not just name + shortcut.
+const SNAPSHOT_TEXT_ROWS = [
+  ["Standard method", "standard_method"],
+  ["Worked example", "worked_example"],
+  ["Common traps", "common_traps"],
+  ["Existing reviewer notes", "reviewer_notes"],
+];
+
 function fmt(v) {
   if (v === null || v === undefined || v === "") return "—";
   return String(v).replaceAll("_", " ");
@@ -46,6 +58,7 @@ function ReviewDialog({ heuristicRow, onClose, onDone }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [status, setStatus] = useState("");
+  const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
@@ -92,6 +105,10 @@ function ReviewDialog({ heuristicRow, onClose, onDone }) {
 
   const submit = async () => {
     if (!snapshot || !status) return;
+    if (!isValidReason(reason)) {
+      setError("Reason must be 8–500 characters.");
+      return;
+    }
     if (notesRequired && !notes.trim()) {
       setError("Reviewer notes are required when reopening a verified heuristic.");
       return;
@@ -103,6 +120,10 @@ function ReviewDialog({ heuristicRow, onClose, onDone }) {
         contentStudioApi.reviewHeuristic(snapshot.id, {
           status,
           expected_status: snapshot.reviewer_status,
+          // Content CAS bound to the exact revision the reviewer read; a 409 means
+          // the heuristic changed under review.
+          expected_updated_at: snapshot.updated_at,
+          reason: reason.trim(),
           reviewer_notes: notes.trim() || undefined,
         }),
       successMessage: `Heuristic marked ${status}.`,
@@ -178,6 +199,22 @@ function ReviewDialog({ heuristicRow, onClose, onDone }) {
               </tbody>
             </table>
 
+            {SNAPSHOT_TEXT_ROWS.map(([label, key]) =>
+              snapshot[key] ? (
+                <div key={key} style={{ marginBottom: 10 }} data-testid={`review-heuristic-${key}`}>
+                  <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{label}</div>
+                  <p style={{ fontSize: 12, whiteSpace: "pre-wrap", margin: "2px 0 0" }}>{snapshot[key]}</p>
+                </div>
+              ) : null,
+            )}
+
+            <div style={{ marginBottom: 12 }} data-testid="review-heuristic-applicability_rule">
+              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>Applicability rule</div>
+              <pre style={{ fontSize: 11, background: "var(--paper-dim, #f5f6f7)", padding: "0.6rem", borderRadius: 4, overflowX: "auto", margin: 0 }}>
+                {JSON.stringify(snapshot.applicability_rule ?? {}, null, 2)}
+              </pre>
+            </div>
+
             {conflict ? (
               <div className="badge blocker" style={{ display: "block", padding: "0.6rem", marginBottom: 10, fontSize: 12 }} role="alert">
                 The heuristic changed since you loaded it (409). Refresh the queue and
@@ -195,6 +232,10 @@ function ReviewDialog({ heuristicRow, onClose, onDone }) {
                   <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} data-testid="heuristic-review-status">
                     {transitions.map((t) => <option key={t} value={t}>{t.replaceAll("_", " ")}</option>)}
                   </select>
+                </label>
+                <label style={{ fontSize: 12, display: "block", marginBottom: 10 }}>
+                  Reason (required, 8–500 chars — recorded in the audit log)
+                  <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="heuristic-review-reason" />
                 </label>
                 <label style={{ fontSize: 12, display: "block", marginBottom: 14 }}>
                   Reviewer notes{notesRequired ? " (required)" : " (optional — recorded in the audit log)"}
