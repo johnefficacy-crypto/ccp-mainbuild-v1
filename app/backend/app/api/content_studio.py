@@ -58,6 +58,7 @@ from app.core.permissions import (
     CONTENT_STUDIO_REVIEW,
     EXAM_INTELLIGENCE_MANAGE,
     EXAM_INTELLIGENCE_REVIEW,
+    MOCK_QUESTIONS_PUBLISH,
 )
 from app.db.supabase_client import get_supabase_admin
 
@@ -75,6 +76,9 @@ PERM_ASSIGN_REVIEW = EXAM_INTELLIGENCE_REVIEW
 # Activation is a SEPARATE, higher-trust authority (migration 224): neither author
 # nor review may flip is_active. Eligibility is computed SOLELY by the RPC.
 PERM_ACTIVATE = CONTENT_STUDIO_ACTIVATE
+# Promotion of a CA candidate INTO the objective bank is a publish action — a
+# higher-trust gate than the candidate approve/reject review step (content_studio.review).
+PERM_PUBLISH = MOCK_QUESTIONS_PUBLISH
 
 _EXERCISE_TYPES = Literal[
     "sentence_construction", "sentence_correction", "vocabulary_in_context",
@@ -1117,4 +1121,139 @@ def review_quant_heuristic(
         )
     except Exception as exc:  # noqa: BLE001
         raise _map_rpc_error(exc, "review_quant_heuristic") from exc
+    return {"ok": True, "result": result}
+
+
+# ── Current-affairs question candidates (GQR-G4a: operator review + promotion) ──
+# The human gate (ADR 0006): a shadow-generated candidate becomes a bank question
+# ONLY via an operator decision here. Reviewing (approve/reject/send-back) is
+# `content_studio.review`; PROMOTION into the objective bank is the higher-trust
+# `mock_questions:publish`. Both run through audited SECURITY DEFINER RPCs
+# (`ca_review_candidate` / `ca_promote_candidate`, migration 248) that CAS-guard on
+# the status the reviewer saw and own the admin_audit_logs entry. No new sidebar
+# surface — this is a Content Studio content type (no-new-surface rule).
+_CA_REVIEW_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "review_ready": ("approved", "rejected"),
+    "approved": ("rejected", "review_ready"),  # reject, or send back for rework
+    "rejected": ("review_ready",),             # reopen
+}
+_CA_REVIEW_TARGETS = frozenset(s for t in _CA_REVIEW_TRANSITIONS.values() for s in t)
+
+
+class CaCandidateReviewBody(BaseModel):
+    """Approve / reject / send-back a CA question candidate. The RPC re-checks
+    ``expected_status`` under the row lock (CAS) and owns the audit row."""
+    model_config = ConfigDict(extra="forbid")
+    status: str
+    expected_status: str = Field(..., description="candidate status the client last saw (CAS)")
+    reviewer_notes: str | None = Field(default=None, max_length=2000)
+
+
+class CaCandidatePromoteBody(BaseModel):
+    """Promote an APPROVED candidate into the objective bank as a current_event
+    question. CAS-guarded on ``expected_status`` (must be ``approved``)."""
+    model_config = ConfigDict(extra="forbid")
+    expected_status: str = Field(default="approved", description="must be 'approved' (CAS)")
+
+
+@router.get("/ca-question-candidates")
+def list_ca_candidates(
+    status: str | None = Query(default=None),
+    event_id: UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = (
+        supabase.table("current_affairs_question_candidates")
+        .select("*", count="exact").order("created_at", desc=True)
+    )
+    if status is not None:
+        query = query.eq("status", status)
+    if event_id is not None:
+        query = query.eq("event_id", str(event_id))
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None),
+            "limit": limit, "offset": offset}
+
+
+@router.get("/ca-question-candidates/{candidate_id}")
+def get_ca_candidate(
+    candidate_id: UUID,
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    candidate = _safe_select(supabase, "current_affairs_question_candidates", id=str(candidate_id))
+    if not candidate:
+        raise HTTPException(status_code=404, detail="ca_question_candidate not found")
+    # Operator review context (§5 Stage E): event, its claims + evidence, and the
+    # generation audit lineage for this candidate.
+    event = _safe_select(supabase, "current_affairs_events", id=str(candidate.get("event_id")))
+    claims = (
+        supabase.table("current_affairs_claims").select("*")
+        .eq("event_id", candidate.get("event_id")).execute().data
+        if candidate.get("event_id") else []
+    ) or []
+    runs = (
+        supabase.table("current_affairs_generation_runs").select("*")
+        .eq("candidate_id", str(candidate_id)).execute().data
+    ) or []
+    return {"candidate": candidate, "event": event, "claims": claims, "generation_runs": runs}
+
+
+@router.post("/ca-question-candidates/{candidate_id}/review")
+def review_ca_candidate(
+    candidate_id: UUID,
+    body: CaCandidateReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    if body.status not in _CA_REVIEW_TARGETS:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_CA_REVIEW_TARGETS)}")
+    if body.status not in _CA_REVIEW_TRANSITIONS.get(body.expected_status, ()):
+        raise HTTPException(status_code=422, detail=(
+            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
+            f"Allowed: {list(_CA_REVIEW_TRANSITIONS.get(body.expected_status, ()))}"))
+    notes = (body.reviewer_notes or "").strip() or None
+    if body.expected_status == "approved" and body.status == "review_ready" and notes is None:
+        raise HTTPException(status_code=422,
+                            detail="reviewer_notes required when sending an approved candidate back")
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("ca_review_candidate", {
+            "p_candidate_id": str(candidate_id),
+            "p_expected_status": body.expected_status,
+            "p_new_status": body.status,
+            "p_reviewer_notes": notes,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute().data
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "review_ca_candidate") from exc
+    return {"ok": True, "result": result}
+
+
+@router.post("/ca-question-candidates/{candidate_id}/promote")
+def promote_ca_candidate(
+    candidate_id: UUID,
+    body: CaCandidatePromoteBody,
+    admin: dict = Depends(require_permission(PERM_PUBLISH)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    # Publish-gated human action: the RPC requires an approved candidate + a live,
+    # unexpired event and writes the bank row as source_kind='current_event'. The
+    # model/worker can never reach this path.
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("ca_promote_candidate", {
+            "p_candidate_id": str(candidate_id),
+            "p_expected_status": body.expected_status,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute().data
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "promote_ca_candidate") from exc
     return {"ok": True, "result": result}
