@@ -86,3 +86,32 @@ def test_topic_pyq_starts_for_in_subject_topic(monkeypatch):
         "kind": "pyq_practice",
         "route": "/app/study/mocks/attempts/att-9",
     }
+
+
+def test_timed_practice_forwards_server_owned_rate(monkeypatch):
+    # GQR-R10: timed_practice lands in the same objective attempt shell as topic_pyq
+    # but forwards a server-owned per-question rate (browser never sets the timer).
+    seen = {}
+
+    def _capture(*a, **k):
+        seen.update(k)
+        return {"outcome": "ready", "attempt_id": "att-timed"}
+
+    monkeypatch.setattr(subject_practice, "start_pyq_practice", _capture)
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_QUANT}/practice/start",
+        json={"mode": "timed_practice", "topic_id": _T_QUANT},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"kind": "pyq_practice", "route": "/app/study/mocks/attempts/att-timed"}
+    assert seen.get("seconds_per_question") == subject_practice._TIMED_SECONDS_PER_QUESTION
+
+
+def test_timed_practice_rejects_cross_subject_topic():
+    # The same server-owned subject-scope gate as topic_pyq applies to timed practice.
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_ENGLISH}/practice/start",
+        json={"mode": "timed_practice", "topic_id": _T_QUANT},
+    )
+    assert resp.status_code == 422
+    assert "subject" in resp.json()["detail"].lower()

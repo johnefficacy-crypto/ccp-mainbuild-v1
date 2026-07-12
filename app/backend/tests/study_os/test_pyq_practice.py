@@ -143,6 +143,29 @@ def test_topic_practice_does_not_mix_exams():
     assert [q["question_id"] for q in state["questions"]] == ["q1"]
 
 
+def test_timed_practice_freezes_server_owned_countdown():
+    # GQR-R10: seconds_per_question × frozen count becomes the attempt's expiry window,
+    # so the shared objective attempt shell surfaces a short countdown (not the long
+    # learning-mode TTL). duration_sec is also frozen on the template for reports.
+    sb = _db([_q("q1", exam=EXAM), _q("q2", exam=EXAM)], pyq_order={"q1": 1, "q2": 2})
+    res = svc.start_pyq_practice(
+        sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM,
+        seconds_per_question=30,
+    )
+    assert res["outcome"] == "ready" and res["question_count"] == 2
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    # 30s × 2 questions → ~60s countdown (a second or two may have elapsed).
+    assert 55 <= state.get("time_remaining_sec") <= 60
+
+
+def test_untimed_practice_keeps_long_learning_ttl():
+    sb = _db([_q("q1", exam=EXAM)], pyq_order={"q1": 1})
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    # No countdown: the long abandonment TTL (24h), never a short timed window.
+    assert state.get("time_remaining_sec") > 3600
+
+
 def test_empty_pool_returns_no_writes():
     sb = _db([_q("q1", paper="66666666-6666-6666-6666-666666666666")])
     res = svc.start_pyq_practice(sb, user_id="u1", mode="paper", target_id=PAPER, exam_id=EXAM)
