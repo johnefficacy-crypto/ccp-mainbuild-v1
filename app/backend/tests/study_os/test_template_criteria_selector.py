@@ -170,6 +170,33 @@ def test_fixed_selector_still_loads_e2e_fixtures():
     assert all(q["source_type"] == "e2e_fixture" for q in selected)
 
 
+def test_criteria_excludes_current_affairs_items():
+    """GQR-G0: time-bound current-affairs items (is_current / is_current_based)
+    must be segmented OUT of the template criteria pool, mirroring the generated
+    selector's _exam_base_pool. A promoted current_event question must never leak
+    into a template-path mock with a decaying answer.
+
+    Pool: 3 evergreen + 1 is_current + 1 is_current_based. Section wants 3, so
+    if the CA items were eligible they could displace an evergreen question; the
+    fail-closed under-count guard would still surface any leak. Assert exactly
+    the 3 evergreen questions are returned and neither CA item appears.
+    """
+    evergreen = [_q("easy") for _ in range(3)]
+    current_flag = {**_q("easy"), "is_current": True}
+    current_based = {**_q("easy"), "is_current_based": True}
+    sb, template_id = _db_with_section(
+        {"mode": "criteria", "filters": {}},
+        3,  # request exactly the 3 evergreen; fail-closed rejects under-count
+        evergreen + [current_flag, current_based],
+    )
+    selected = svc.select_questions_for_template(sb, template_id, "user-1")
+    ids = {q["id"] for q in selected}
+    assert len(selected) == 3
+    assert ids == {q["id"] for q in evergreen}
+    assert current_flag["id"] not in ids       # is_current excluded
+    assert current_based["id"] not in ids       # is_current_based excluded
+
+
 def test_criteria_stale_pyq_excluded_and_backfilled():
     """Regression: stale/inactive PYQ-derived rows are filtered from the criteria
     pool BEFORE allocation so they cannot displace authored questions and silently

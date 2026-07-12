@@ -327,10 +327,13 @@ def _select_criteria_question_ids(
 
     Honours the bank filters the admin UI can configure (exam_family, subject_id,
     topic_ids) and, when present, the ``difficulty_mix`` distribution. Only
-    published, non-expired questions are eligible — same gate as ``fixed`` and
-    the legacy ``config.question_ids`` path. If a difficulty bucket is short, the
-    deficit is backfilled from the rest of the eligible pool so a thin bucket
-    can't silently shrink the section below ``question_count``.
+    published, non-expired questions are eligible, and time-bound current-affairs
+    items (``is_current`` / ``is_current_based``) are excluded — the same base
+    predicate as the generated selector's ``_exam_base_pool``, so a promoted
+    ``current_event`` question can never leak into a template-path mock with a
+    decaying answer. If a difficulty bucket is short, the deficit is backfilled
+    from the rest of the eligible pool so a thin bucket can't silently shrink the
+    section below ``question_count``.
 
     ``active_pyq_mock_ids``: when supplied, PYQ-derived rows (pyq_question_id IS
     NOT NULL) that are NOT in the set are excluded from the pool before
@@ -369,7 +372,12 @@ def _select_criteria_question_ids(
     rows = _safe(lambda: q.execute(), default=None)
     pool = [
         r for r in (getattr(rows, "data", None) or [])
-        if not r.get("valid_until") or str(r["valid_until"]) > now_iso
+        if (not r.get("valid_until") or str(r["valid_until"]) > now_iso)
+        # Time-bound current-affairs items are segmented OUT of the template pool,
+        # mirroring mock_blueprint_selection._exam_base_pool term-for-term: a
+        # promoted current_event question (is_current / is_current_based) must
+        # never leak into a template-path mock with a decaying answer (GQR-G0).
+        and not (bool(r.get("is_current")) or bool(r.get("is_current_based")))
     ]
     # Active-lineage guard applied inside the pool (before allocation/backfill)
     # so that stale PYQ rows cannot be drawn and then silently dropped later.
