@@ -1,4 +1,7 @@
--- 241_exam_streams_schema.sql
+-- 242_exam_streams_schema.sql
+-- (renumbered from 241 → 242 to resolve a duplicate-version collision on main:
+--  241_current_affairs_source_evidence.sql already claimed 241. Content is
+--  unchanged from the original 241 file.)
 --
 -- Lane R (Financial Regulatory & Development Institutions) — stream schema
 -- contract, P0. Contract: docs/architecture/financial-regulatory-development-family.md §3.
