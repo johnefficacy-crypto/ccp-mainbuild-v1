@@ -1,70 +1,77 @@
 -- 245_exam_stream_eligibility.sql
 --
--- Lane R §4 — baseline-vs-cycle eligibility, stream dimension. Contract:
--- docs/architecture/financial-regulatory-development-family.md §4.
+-- Lane R §4 — baseline-vs-cycle eligibility, stream dimension + full value
+-- model. Contract: docs/architecture/financial-regulatory-development-family.md §4.
+-- Reworked per the PR #967 checkpost.
 --
 -- Two clearly separated scopes (the Compass "provenance bands"):
---   * BASELINE (stable) eligibility  -> public.exam_eligibility_rules (110).
---     Extended here with an optional stream_id for stream-STABLE facts
---     (e.g. SEBI Legal always needs LLB; IRDAI Law always LLB 60%) and new
---     rule_types. Evergreen — NO cycle column.
---   * CYCLE / notification-specific eligibility -> new
---     public.exam_cycle_stream_eligibility, keyed on (exam_cycle_id, stream_id).
---     Percentages / experience / professional-qual cut-offs that change per
---     advertisement live here, NEVER in the baseline rows.
+--   * BASELINE (stable) -> public.exam_eligibility_rules (110). Optional
+--     stream_id for stream-STABLE facts. Evergreen — no cycle column.
+--   * CYCLE / notification-specific -> public.exam_cycle_stream_eligibility,
+--     keyed on (exam_cycle_id, stream_id). Percentages / experience / cut-off
+--     dates that change per advertisement live here, never in baseline rows.
 --
--- Behaviour-neutral to the current evaluator (app/exam_eligibility/evaluator.py):
--- it reads only exam_id + scope + the six original rule_types and ignores
--- unknown types and the new stream_id column. Stream-aware evaluation (picking
--- stream-specific rules against a user's target stream) + the new rule_type
--- branches are a deliberate FOLLOW-UP PR with its own eligibility regression —
--- this migration only lays the schema so nothing user-facing changes yet.
+-- Value model (checkpost P0): rule_types now include discipline, min_percentage,
+-- certification, qualification_combination, stream_availability AND
+-- experience_min_years. Age rules on the cycle table carry cutoff_date_basis /
+-- cutoff_date (the date age is measured on). qualification_combination is
+-- machine-evaluable via a structured value_json:
+--     {"op":"and"|"or","clauses":[<clause|group>, ...]}
+--   clause = {"rule_type":"discipline"|"min_percentage"|"certification"
+--                          |"experience_min_years", "value_text":.. | "value_num":..}
+-- A CHECK requires value_json for qualification_combination rows; deeper
+-- structural validation is enforced by the evaluator wiring (follow-up).
 --
--- The new rule_types (contract §4): discipline, min_percentage, certification,
--- qualification_combination, stream_availability. Category `scope` is NOT
--- overloaded — the stream axis is a separate column.
+-- Runtime safety (checkpost P0): the current exam-wide evaluator is made
+-- leak-proof in the same PR — app/exam_eligibility/evaluator.py now drops
+-- stream-scoped rows (stream_id IS NOT NULL) before evaluation, and
+-- app/api/admin_exam_eligibility.py is the audited writer for the new
+-- rule_types / stream_id / value_json.
 
--- ─── 1. exam_eligibility_rules: optional stream dimension + rule_types ────
+-- ─── 1. exam_eligibility_rules: stream dimension + rule_types + value_json ─
 alter table public.exam_eligibility_rules
   add column if not exists stream_id uuid references public.exam_streams(id) on delete restrict;
+alter table public.exam_eligibility_rules
+  add column if not exists value_json jsonb;
 
 create index if not exists idx_eer_stream
   on public.exam_eligibility_rules(stream_id);
 
--- Extend the rule_type CHECK (inline/auto-named in 110). Drop by definition
--- lookup so the migration is name-agnostic across environments.
+-- Match the ENUM check specifically (`rule_type in (...)`) — NOT the
+-- qualification_combination check, whose body also contains "rule_type".
 do $$
-declare
-  cname text;
+declare cname text;
 begin
-  select conname into cname
-  from pg_constraint
-  where conrelid = 'public.exam_eligibility_rules'::regclass
-    and contype = 'c'
-    and pg_get_constraintdef(oid) ilike '%rule_type%';
+  select conname into cname from pg_constraint
+  where conrelid = 'public.exam_eligibility_rules'::regclass and contype = 'c'
+    and pg_get_constraintdef(oid) ilike '%rule_type in (%';
   if cname is not null then
     execute format('alter table public.exam_eligibility_rules drop constraint %I', cname);
   end if;
 end $$;
 
 alter table public.exam_eligibility_rules
+  drop constraint if exists exam_eligibility_rules_rule_type_check;
+alter table public.exam_eligibility_rules
   add constraint exam_eligibility_rules_rule_type_check
   check (rule_type in (
     'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max',
-    'discipline', 'min_percentage', 'certification', 'qualification_combination', 'stream_availability'
+    'discipline', 'min_percentage', 'certification', 'qualification_combination',
+    'stream_availability', 'experience_min_years'
   ));
 
--- Replace unique(exam_id, scope, rule_type) with a stream-aware key. NULLS NOT
--- DISTINCT (PG15+, as 219/242) lets a common rule (stream_id NULL) and one rule
--- per stream coexist for the same (scope, rule_type) without a sentinel.
+alter table public.exam_eligibility_rules
+  drop constraint if exists exam_eligibility_rules_qual_combo_json_check;
+alter table public.exam_eligibility_rules
+  add constraint exam_eligibility_rules_qual_combo_json_check
+  check (rule_type <> 'qualification_combination' or value_json is not null);
+
+-- Stream-aware uniqueness (NULLS NOT DISTINCT), replacing the 110 key.
 do $$
-declare
-  cname text;
+declare cname text;
 begin
-  select conname into cname
-  from pg_constraint
-  where conrelid = 'public.exam_eligibility_rules'::regclass
-    and contype = 'u'
+  select conname into cname from pg_constraint
+  where conrelid = 'public.exam_eligibility_rules'::regclass and contype = 'u'
     and pg_get_constraintdef(oid) ilike '%(exam_id, scope, rule_type)%';
   if cname is not null then
     execute format('alter table public.exam_eligibility_rules drop constraint %I', cname);
@@ -76,12 +83,10 @@ create unique index if not exists exam_eligibility_rules_exam_stream_scope_type_
   nulls not distinct;
 
 -- Cross-parent integrity: a stream-scoped baseline rule's stream must belong to
--- the rule's exam (FKs alone allow a stream from another exam). Fail-closed,
--- INSERT + UPDATE, FOR SHARE parent read (242 posture).
+-- the rule's exam. Fail-closed, INSERT + UPDATE, FOR SHARE (242 posture).
 create or replace function public._exam_eligibility_rules_check_stream() returns trigger
 language plpgsql as $fn$
-declare
-  v_stream_exam uuid;
+declare v_stream_exam uuid;
 begin
   if new.stream_id is not null then
     select exam_id into v_stream_exam from public.exam_streams where id = new.stream_id for share;
@@ -99,11 +104,33 @@ create trigger trg_exam_eligibility_rules_check_stream
   before insert or update on public.exam_eligibility_rules
   for each row execute function public._exam_eligibility_rules_check_stream();
 
--- ─── 2. Cycle / notification-specific eligibility ────────────────────────
--- Keyed on (exam_cycle_id, stream_id). The composite FK to exam_cycle_streams
--- guarantees the pair exists AND (via that table's own cross-exam trigger from
--- 242) that the cycle and stream share one exam — so cycle eligibility can
--- never contradict its parents.
+-- ─── 2. Parent-side guard: include baseline rules in the stream-move guard ──
+-- 242's _exam_streams_guard_exam_move() checked cycle-streams/phases/sections/
+-- coverage but NOT exam_eligibility_rules, so a stream referenced only by a
+-- baseline rule could be reassigned to another exam. Replace the function body
+-- to also block that (the 242 trigger stays bound to it).
+create or replace function public._exam_streams_guard_exam_move() returns trigger
+language plpgsql as $fn$
+begin
+  if new.exam_id is distinct from old.exam_id and exists (
+      select 1 from public.exam_cycle_streams cs where cs.stream_id = old.id
+      union all select 1 from public.exam_phases p where p.stream_id = old.id
+      union all select 1 from public.exam_phase_sections s where s.stream_id = old.id
+      union all select 1 from public.exam_topic_coverage c where c.stream_id = old.id
+      union all select 1 from public.exam_eligibility_rules r where r.stream_id = old.id
+  ) then
+    raise exception 'exam_streams: cannot reassign stream % to exam % — dependent cycle-streams/phases/sections/coverage/eligibility-rules exist',
+      old.id, new.exam_id using errcode = 'P0422';
+  end if;
+  return new;
+end;
+$fn$;
+
+-- ─── 3. Cycle / notification-specific eligibility ────────────────────────
+-- Composite FK to exam_cycle_streams so a rule can only attach to a real
+-- (cycle, stream) pair (single-exam by 242). ON DELETE RESTRICT preserves the
+-- reviewer/verifier/source audit trail — retire via reviewer_status, never a
+-- destructive pair delete.
 create table if not exists public.exam_cycle_stream_eligibility (
   id uuid primary key default gen_random_uuid(),
   exam_cycle_id uuid not null,
@@ -113,10 +140,15 @@ create table if not exists public.exam_cycle_stream_eligibility (
   rule_type text not null
     check (rule_type in (
       'age_min','age_max','education_min_level','nationality','gender','attempts_max',
-      'discipline','min_percentage','certification','qualification_combination','stream_availability'
+      'discipline','min_percentage','certification','qualification_combination',
+      'stream_availability','experience_min_years'
     )),
   value_num numeric,
   value_text text,
+  value_json jsonb,
+  cutoff_date_basis text
+    check (cutoff_date_basis is null or cutoff_date_basis in ('cycle_notification','fixed_date')),
+  cutoff_date date,
   is_knockout boolean not null default true,
   source_url text,
   source_notes text,
@@ -128,7 +160,9 @@ create table if not exists public.exam_cycle_stream_eligibility (
   updated_at timestamptz not null default now(),
   constraint exam_cycle_stream_eligibility_pair_fkey
     foreign key (exam_cycle_id, stream_id)
-    references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete cascade,
+    references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete restrict,
+  constraint exam_cycle_stream_eligibility_qual_combo_json_check
+    check (rule_type <> 'qualification_combination' or value_json is not null),
   unique (exam_cycle_id, stream_id, scope, rule_type)
 );
 
@@ -137,8 +171,7 @@ create index if not exists idx_ecse_cycle_stream
 create index if not exists idx_ecse_status
   on public.exam_cycle_stream_eligibility(reviewer_status);
 
--- Service-role only, mirroring exam_eligibility_rules (110): RLS enabled with
--- no policies. The evaluator/admin tool reads/writes via the service role.
+-- Service-role only, mirroring exam_eligibility_rules (110).
 alter table public.exam_cycle_stream_eligibility enable row level security;
 
 drop trigger if exists exam_cycle_stream_eligibility_updated_at on public.exam_cycle_stream_eligibility;

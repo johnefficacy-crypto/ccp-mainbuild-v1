@@ -15,11 +15,21 @@ MIGRATION = (
 
 def test_baseline_gains_stream_dimension_and_rule_types():
     assert "add column if not exists stream_id uuid references public.exam_streams(id) on delete restrict" in MIGRATION
+    assert "add column if not exists value_json jsonb" in MIGRATION
     for rt in ("'discipline'", "'min_percentage'", "'certification'",
-               "'qualification_combination'", "'stream_availability'"):
+               "'qualification_combination'", "'stream_availability'", "'experience_min_years'"):
         assert rt in MIGRATION
     # Category scope is NOT overloaded — the axis is a separate stream_id column.
     assert "'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max'" in MIGRATION
+    # qualification_combination is machine-evaluable via value_json (CHECK-enforced).
+    assert "rule_type <> 'qualification_combination' or value_json is not null" in MIGRATION
+
+
+def test_parent_side_stream_move_guard_includes_eligibility_rules():
+    # 242's guard omitted exam_eligibility_rules; 245 replaces the function so a
+    # stream referenced only by a baseline rule can't be reassigned cross-exam.
+    assert "create or replace function public._exam_streams_guard_exam_move()" in MIGRATION
+    assert "from public.exam_eligibility_rules r where r.stream_id = old.id" in MIGRATION
 
 
 def test_stream_aware_uniqueness_null_safe():
@@ -37,13 +47,20 @@ def test_baseline_cross_parent_trigger():
     assert "using errcode = 'p0422'" in MIGRATION
 
 
-def test_cycle_eligibility_table_separated_and_pair_bound():
+def test_cycle_eligibility_table_full_value_contract_and_restrict():
     assert "create table if not exists public.exam_cycle_stream_eligibility" in MIGRATION
-    # Composite FK to the canonical (cycle, stream) pair — cannot attach to a
-    # pair that isn't an actual cycle-stream (and that pair is single-exam by 242).
+    # Composite FK to the canonical (cycle, stream) pair — RESTRICT preserves the
+    # reviewer/source audit trail (P1: no destructive cascade of reviewed rows).
     assert "foreign key (exam_cycle_id, stream_id)" in MIGRATION
-    assert "references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete cascade" in MIGRATION
+    assert "references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete restrict" in MIGRATION
+    assert "on delete cascade" not in MIGRATION
     assert "unique (exam_cycle_id, stream_id, scope, rule_type)" in MIGRATION
+    # Full value contract: age cut-off date semantics, experience, structured combo.
+    assert "cutoff_date_basis" in MIGRATION
+    assert "in ('cycle_notification','fixed_date')" in MIGRATION
+    assert "cutoff_date date" in MIGRATION
+    assert "'experience_min_years'" in MIGRATION
+    assert "value_json jsonb" in MIGRATION
     assert "alter table public.exam_cycle_stream_eligibility enable row level security" in MIGRATION
     assert "exam_cycle_stream_eligibility_updated_at" in MIGRATION
 
@@ -62,9 +79,12 @@ def test_committed_behavioral_regression_exists():
     body = reg.read_text().lower()
     for marker in (
         "common + stream-specific rule coexist",
-        "cross-exam stream",
+        "all new rule_types incl qualification_combination accepted",
+        "qualification_combination requires value_json",
         "update move cross-exam stream",
+        "exam reassign with dependent baseline rule",
+        "cutoff + experience on a real pair",
         "cycle eligibility on a non-existent pair",
-        "cascades on pair delete",
+        "audit preserved",
     ):
         assert marker in body
