@@ -509,6 +509,51 @@ Migration numbers for every implementation PR must come from `select max(version
 | GQR-11 Integration + rollout | PLANNED | Study Home, planner, reports (label GA as current-affairs practice, not mastery), correction routing, operator telemetry, E2E + accessibility, shadow/canary/prod gates. |
 | SSC GA section seed | PLANNED — PREREQUISITE | SSC CGL demo seed currently has only 3 sections (Quant/English/Reasoning); the real Tier-1 has a 25Q GA section. Seed the SSC GA subject+section (GQR-1/GQR-G2) so GA bundles/attempts have a subject to attach to. |
 
+## Financial Regulatory & Development Institutions — Lane R
+
+Architecture contract: `docs/architecture/financial-regulatory-development-family.md`
+
+Current verdict: **PLANNING — no code landed.** Family model spanning
+regulators (RBI, SEBI, IRDAI, PFRDA, IFSCA, IBBI) **and** development-finance
+institutions (NABARD, SIDBI, NHB, EXIM, NaBFID) — renamed from "Regulatory
+Officers" because development-finance bodies are not regulators. Core exams:
+RBI Grade B, SEBI Grade A, NABARD Grade A/B, IRDAI AM, PFRDA Grade A, IFSCA
+Grade A, SIDBI Grade A; NHB/EXIM/NaBFID = light; NPS Trust/EPFO/ECGC/IBBI =
+index-only (portfolio matrix §1). **Scope boundary (owner-locked):** Lane R owns
+regulatory/development **domain knowledge + domain rubrics only** — generic
+aptitude (Lane GQR), the English evaluator (Lane H), and the Phase-I aptitude
+mock path stay with their workstreams and are external dependencies here.
+
+Folds in the corrections that (a) the descriptive-answer subsystem already exists
+via EWP-1/2/2B (Lane H) — new work is the domain (non-English) rubric path; and
+(b) media assets already landed via migration 233 (only later PR-11 slices
+deferred).
+
+Serial-delivery note: R1 stream/eligibility migrations and any router/nav changes
+are single-owner sequential work (no fan-out) per the CLAUDE.md serial-delivery
+rule. IFSCA rows stay `draft`/unverified until the official advertisement PDF is
+ingested and reviewed.
+
+| Item | Current status | Repo evidence / notes |
+|---|---|---|
+| Family scope + portfolio matrix | PLANNED (P0) | Rename to Financial Regulatory & Development Institutions; core = RBI/SEBI/NABARD/IRDAI/PFRDA/IFSCA/SIDBI; light = NHB/EXIM/NaBFID; index-only = NPS Trust/EPFO/ECGC/IBBI (light/index split proposed, pending owner confirm). Contract §1. |
+| Classifier `"tra"` fix + IFSCA | PLANNED (P0, ship first) | `recruitment_classifier.py:60` — `"tra"` is an unsafe substring (matches `extra`/`registration`/`arbitration`/`administration`/`central`), replace with explicit `"trai"`; add `"ifsca"`. RBI/NABARD/SIDBI already present (`:52-53`) — do not re-add. Add NHB/EXIM/NaBFID aliases for tiering. Self-contained, no schema change. |
+| Stream schema (full contract) | PLANNED (P0) | `stream_id` on sections alone is insufficient — `exam_phases` owns duration/marks/negative-marking (029:50-67) and section uniqueness `(exam_phase_id, subject_id, section_label)` (029:92) rejects same subject/label across streams. Full contract (§3): canonical `exam_streams`, `exam_cycle_streams` (availability/activation), `stream_id` on `exam_phases` + `exam_phase_sections` (+ optional coverage) with stream-aware uniqueness/indexes; migrate loose `stream_key` (205:136) → FK. |
+| Eligibility: baseline vs cycle (full contract) | PLANNED (P0) | Migration 110 is exam-level **baseline** eligibility, separate from recruitment/vacancy truth (110:5-14). §4: baseline rows get optional `stream_id` + new rule types (discipline/min_percentage/certification/qualification_combination/stream_availability) via new migration; cycle/notification-specific quals live at the recruitment layer (`eligibility_runner`) and/or new `exam_cycle_stream_eligibility` — never in baseline rows. Compass shows two provenance bands. SEBI baseline collapses to graduation (110:171-178). |
+| Regulator identities & official data | PLANNED (P1) | Only `sebi-grade-a`/`rbi-grade-b` seeded (110:72-95). Add PFRDA/IFSCA/IRDAI + NABARD/SIDBI (core) families/exams/cycles/streams/phases/sections/sources/syllabus; light/index tiers get identity + notifications only. Per-exam evidence matrix (§6): official source/cycle/retrieval-date/locator/reviewer_status; all `draft` until official docs ingested (IFSCA blocked on PDF). |
+| Domain (non-English) descriptive scoring | PLANNED (P1) | English descriptive exists (205 + EWP-2/2B, Lane H). New work = domain rubric path — grammar-centric issue-type taxonomy (205:308-312) does not fit IRDAI ESI / Insurance & Management or SEBI Legal. Must stay in `shadow → live` mastery lifecycle (205:715-769); no new AI writes. Reuse EWP evaluator; do not fork. |
+| Media assets — corrected | INFORMED (not a gap) | Media linkage/alt-text/integrity/CMS/renderer already landed via migration 233 + `docs/architecture/pyq-media.md` slice 1. Genuinely deferred (that doc §Deferred): asset upload flow, bulk-importer media, projection/snapshot wiring, advanced answer runtimes/scorers. Off Lane R critical path. |
+| Aspirant surfaces (Compass, feed, tracker, interview) | PLANNED (R2/R4) | No-new-surface rule (locked 2026-06-21): Compass lives inside the Eligibility area; feed/tracker/interview must reuse existing surfaces or remove ≥2 destinations. Regulatory-domain feed only (generic GA external, Lane GQR); flows through the review lifecycle + Tier-A verification. |
+
+### Delivery track
+
+| Track | Current state | Entry gate | Exit gate |
+|---|---|---|---|
+| R1 truth & eligibility | PLANNED | Architecture contract reviewed | Classifier fix merged; full stream contract + baseline/cycle eligibility migrations OPERATOR VALIDATED; core-tier identities seeded with evidence-matrix provenance |
+| R2 aspirant utility | BLOCKED | R1 exit | Compass (two provenance bands) + domain planner delta + regulatory feed + tracker on reused surfaces, verified data only |
+| R3 preparation | BLOCKED | R1 exit + PYQ/mock reuse confirmed | Domain PYQ + stream Paper-2 domain mocks; domain descriptive rubric path validated |
+| R4 adaptive | BLOCKED | R3 stable | Domain mock corrections + multi-exam overlap + interview readiness validated |
+
 ## Prior arcs / live-DB-only tails
 
 Keep these separated from code-verifiable status.
@@ -531,5 +576,6 @@ Every PR that changes any of the following must update this checklist in the sam
 5. Any operator decision that changes a `BLOCKED`, `OPERATOR PENDING`, `PLANNED`, or `CLEANUP PENDING` status.
 6. English Writing Practice schema, API, frontend, mastery flag, evaluation pipeline, or prompt bank.
 7. GA / Quant / Reasoning Expansion (Lane GQR): subject runtime policy, current-affairs pipeline/sources/bundles, Quant heuristics/Calculation Gym/performance signals, Reasoning text runtime, or the CA attempts/promotion/isolation path.
+8. Financial Regulatory & Development Institutions (Lane R): recruitment classifier regulator/development-institution aliases, stream schema, baseline/cycle eligibility extension, institution identities/cycles/streams/phases, or domain descriptive scoring.
 
 When a task is live-DB or deployment-only, write **OPERATOR PENDING** or **VERIFY DB**; never mark it complete from code inspection alone.
