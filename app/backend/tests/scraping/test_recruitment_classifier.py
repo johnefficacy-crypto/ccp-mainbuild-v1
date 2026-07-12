@@ -64,6 +64,43 @@ def test_source_registry_hint_promotes_to_tier_a_when_payload_is_sparse():
     assert out["exam_family_key"] == "ssc"
 
 
+# ── Financial Regulatory & Development Institutions family (Lane R) ─────
+
+
+def test_ifsca_is_tier_a_regulatory():
+    out = classify_recruitment({"title": "IFSCA Grade A Officer Recruitment 2026"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "regulatory"
+
+
+def test_trai_is_tier_a_regulatory():
+    out = classify_recruitment({"title": "TRAI Officer Recruitment 2026"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "regulatory"
+
+
+def test_bare_tra_substring_no_longer_false_matches():
+    # "Registration" / "administration" / "extra" contain "tra"; the old
+    # bare "tra" needle wrongly promoted these to Tier A regulatory.
+    out = classify_recruitment({
+        "title": "Office Assistant — registration of extra staff, administration wing",
+    })
+    assert out["criticality_tier"] != "A_HIGH_STAKES"
+    assert out["exam_family_key"] != "regulatory"
+
+
+def test_development_finance_institution_is_tier_a_banking():
+    out = classify_recruitment({"title": "National Housing Bank Assistant Manager Recruitment"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "banking"
+
+
+def test_nabfid_is_tier_a_banking():
+    out = classify_recruitment({"title": "NaBFID Analyst Recruitment 2026"})
+    assert out["criticality_tier"] == "A_HIGH_STAKES"
+    assert out["exam_family_key"] == "banking"
+
+
 # ── Tier B ─────────────────────────────────────────────────────────────
 
 

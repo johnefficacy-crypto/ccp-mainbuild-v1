@@ -50,15 +50,27 @@ _TIER_A_FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("ibps",          ("ibps", "institute of banking personnel selection")),
     ("sbi",           ("sbi po", "sbi clerk", "state bank of india")),
     ("rbi",           ("rbi grade", "reserve bank of india")),
-    ("banking",       ("nabard", "sidbi")),
+    ("banking",       (
+        "nabard", "sidbi",
+        # Development-finance institutions in the Financial Regulatory &
+        # Development Institutions family (light tier). Full phrases only —
+        # bare tokens like "nhb" are unsafe substrings.
+        "national housing bank", "export-import bank of india", "exim bank",
+        "nabfid", "national bank for financing infrastructure",
+    )),
     ("railways",      ("rrb", "railway recruitment board", "indian railways")),
     ("defence",       (
         "indian army", "indian navy", "indian air force", "iaf",
         "afcat", "nda recruitment", "cds", "agniveer", "drdo recruitment",
         "coast guard", "bsf", "crpf", "cisf", "itbp", "ssb recruitment",
     )),
-    ("regulatory",    ("sebi", "irdai", "pfrda", "tra")),
-    ("state_psc",     ("state public service commission", "psc ")),
+    # "trai" (telecom regulator), not the bare "tra" — "tra" is an unsafe
+    # substring that false-matches extra / registration / arbitration /
+    # administration / central. "ifsca" added (IFSC Authority).
+    ("regulatory",    ("sebi", "irdai", "pfrda", "ifsca", "trai")),
+    # "public service commission" catches "<State> Public Service Commission"
+    # notices. UPSC is matched earlier in this tuple, so it is never demoted.
+    ("state_psc",     ("public service commission", "state public service commission", "psc ")),
     ("state_police",  ("state police recruitment", "police constable", "police sub-inspector", "police si")),
     ("state_teacher", ("tet ", "ctet", "teacher eligibility", "teacher recruitment")),
     ("state_clerical", ("junior assistant recruitment", "clerk recruitment")),
