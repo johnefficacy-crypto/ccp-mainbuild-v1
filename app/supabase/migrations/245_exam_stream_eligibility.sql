@@ -50,6 +50,8 @@ begin
   end if;
 end $$;
 
+-- experience_min_years is NOT a baseline rule_type — experience is cycle /
+-- recruitment-specific truth (§4), so it lives only on exam_cycle_stream_eligibility.
 alter table public.exam_eligibility_rules
   drop constraint if exists exam_eligibility_rules_rule_type_check;
 alter table public.exam_eligibility_rules
@@ -57,14 +59,66 @@ alter table public.exam_eligibility_rules
   check (rule_type in (
     'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max',
     'discipline', 'min_percentage', 'certification', 'qualification_combination',
-    'stream_availability', 'experience_min_years'
+    'stream_availability'
   ));
+
+-- Structural validator for qualification_combination value_json. Grammar:
+--   node   = group | clause
+--   group  = {"op":"and"|"or", "clauses":[node, ...]}   (clauses non-empty)
+--   clause = {"rule_type":<atomic>, "value_text":<str> | "value_num":<num>}
+--   atomic text  : discipline | certification | education_min_level | nationality
+--   atomic number: min_percentage | experience_min_years
+-- Top-level value_json must be a group. Nesting is supported.
+create or replace function public.is_valid_qualification_combination(j jsonb)
+returns boolean language plpgsql immutable as $fn$
+declare el jsonb; rt text;
+begin
+  if j is null or jsonb_typeof(j) <> 'object' then return false; end if;
+  if j ? 'op' then
+    if (j->>'op') not in ('and','or') then return false; end if;
+    -- `j ? 'clauses'` guards the missing-key case: jsonb_typeof(NULL) is NULL,
+    -- so `NULL <> 'array'` would be NULL (not TRUE) and slip through.
+    if not (j ? 'clauses')
+       or jsonb_typeof(j->'clauses') <> 'array'
+       or jsonb_array_length(j->'clauses') = 0 then
+      return false;
+    end if;
+    for el in select value from jsonb_array_elements(j->'clauses') loop
+      if not public.is_valid_qualification_combination(el) then return false; end if;
+    end loop;
+    return true;
+  end if;
+  rt := j->>'rule_type';
+  if rt in ('min_percentage','experience_min_years') then
+    return (j ? 'value_num') and jsonb_typeof(j->'value_num') = 'number';
+  elsif rt in ('discipline','certification','education_min_level','nationality') then
+    return (j ? 'value_text') and jsonb_typeof(j->'value_text') = 'string';
+  else
+    return false;
+  end if;
+end;
+$fn$;
 
 alter table public.exam_eligibility_rules
   drop constraint if exists exam_eligibility_rules_qual_combo_json_check;
 alter table public.exam_eligibility_rules
   add constraint exam_eligibility_rules_qual_combo_json_check
-  check (rule_type <> 'qualification_combination' or value_json is not null);
+  check (rule_type <> 'qualification_combination'
+         or public.is_valid_qualification_combination(value_json));
+
+-- Fail-closed (checkpost P0): a rule_type the evaluator does not yet interpret
+-- cannot be promoted to reviewer_status='verified' — otherwise a verified
+-- knockout rule would be silently ignored and the aspirant told "eligible".
+-- Only the six branches implemented in evaluate_exam_for_user() may verify;
+-- the new rule_types stay draft until stream-aware/typed evaluation lands (a
+-- follow-up migration relaxes this CHECK when those branches ship).
+alter table public.exam_eligibility_rules
+  drop constraint if exists exam_eligibility_rules_verified_supported_check;
+alter table public.exam_eligibility_rules
+  add constraint exam_eligibility_rules_verified_supported_check
+  check (reviewer_status <> 'verified' or rule_type in (
+    'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max'
+  ));
 
 -- Stream-aware uniqueness (NULLS NOT DISTINCT), replacing the 110 key.
 do $$
@@ -162,7 +216,8 @@ create table if not exists public.exam_cycle_stream_eligibility (
     foreign key (exam_cycle_id, stream_id)
     references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete restrict,
   constraint exam_cycle_stream_eligibility_qual_combo_json_check
-    check (rule_type <> 'qualification_combination' or value_json is not null),
+    check (rule_type <> 'qualification_combination'
+           or public.is_valid_qualification_combination(value_json)),
   unique (exam_cycle_id, stream_id, scope, rule_type)
 );
 

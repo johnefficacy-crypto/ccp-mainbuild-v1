@@ -67,7 +67,7 @@ select pg_temp._rg245_expect_fail(
      select id, 'all', 'education_min_level', 'graduation' from public.exams where slug='rg245-exam-a'$q$,
   'duplicate common baseline rule');
 
--- 2. All new rule_types.
+-- 2. New baseline rule_types (experience is NOT baseline — cycle-only).
 insert into public.exam_eligibility_rules (exam_id, stream_id, scope, rule_type, value_text, value_num, value_json)
   select e.id, s.id, 'all', v.rt, v.vt, v.vn, v.vj
   from public.exams e join public.exam_streams s on s.exam_id=e.id and s.stream_key='legal'
@@ -76,17 +76,49 @@ insert into public.exam_eligibility_rules (exam_id, stream_id, scope, rule_type,
     ('certification','Bar Council',null,null),
     ('stream_availability','offered',null,null),
     ('min_percentage',null,60,null),
-    ('experience_min_years',null,3,null),
     ('qualification_combination',null,null,'{"op":"and","clauses":[{"rule_type":"discipline","value_text":"LLB"},{"rule_type":"min_percentage","value_num":60}]}'::jsonb)
   ) as v(rt, vt, vn, vj)
   where e.slug='rg245-exam-a';
-do $$ begin raise notice 'PASS[all new rule_types incl qualification_combination accepted]'; end $$;
+do $$ begin raise notice 'PASS[new baseline rule_types incl qualification_combination accepted]'; end $$;
 
--- qualification_combination without value_json -> CHECK reject.
+-- experience_min_years is NOT a baseline rule_type.
 select pg_temp._rg245_expect_fail(
-  $q$insert into public.exam_eligibility_rules (exam_id, scope, rule_type, value_text)
-     select id, 'obc', 'qualification_combination', 'no json' from public.exams where slug='rg245-exam-a'$q$,
-  'qualification_combination requires value_json');
+  $q$insert into public.exam_eligibility_rules (exam_id, scope, rule_type, value_num)
+     select id, 'sc', 'experience_min_years', 3 from public.exams where slug='rg245-exam-a'$q$,
+  'experience_min_years rejected on baseline');
+
+-- Fail-closed: a new-type rule cannot be promoted to verified.
+select pg_temp._rg245_expect_fail(
+  $q$insert into public.exam_eligibility_rules (exam_id, scope, rule_type, value_text, reviewer_status)
+     select id, 'st', 'discipline', 'LLB', 'verified' from public.exams where slug='rg245-exam-a'$q$,
+  'new rule_type cannot be verified (fail-closed)');
+
+-- qualification_combination structural validation (CHECK) — negatives.
+do $$
+declare v_exam uuid; v_stream uuid; bad jsonb;
+begin
+  select id into v_exam from public.exams where slug='rg245-exam-a';
+  select id into v_stream from public.exam_streams where exam_id=v_exam and stream_key='legal';
+  for bad in select value from jsonb_array_elements($j$[
+      null,
+      {},
+      {"op":"xor","clauses":[{"rule_type":"discipline","value_text":"LLB"}]},
+      {"op":"and","clauses":[]},
+      {"op":"and"},
+      {"op":"and","clauses":[{"rule_type":"unknown","value_text":"x"}]},
+      {"op":"and","clauses":[{"rule_type":"min_percentage","value_text":"sixty"}]},
+      {"op":"and","clauses":[{"op":"or","clauses":[]}]}
+    ]$j$::jsonb)
+  loop
+    begin
+      insert into public.exam_eligibility_rules (exam_id, scope, rule_type, value_json)
+        values (v_exam, 'ews', 'qualification_combination', bad);
+      raise exception 'FAIL: malformed qualification_combination accepted: %', coalesce(bad::text,'null');
+    exception when check_violation then null;  -- expected
+    end;
+  end loop;
+  raise notice 'PASS[qualification_combination structural CHECK rejects malformed op/clauses/rule_type/value/nesting]';
+end $$;
 
 -- 3. Cross-parent stream (INSERT + UPDATE).
 select pg_temp._rg245_expect_fail(

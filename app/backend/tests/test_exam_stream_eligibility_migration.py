@@ -17,12 +17,23 @@ def test_baseline_gains_stream_dimension_and_rule_types():
     assert "add column if not exists stream_id uuid references public.exam_streams(id) on delete restrict" in MIGRATION
     assert "add column if not exists value_json jsonb" in MIGRATION
     for rt in ("'discipline'", "'min_percentage'", "'certification'",
-               "'qualification_combination'", "'stream_availability'", "'experience_min_years'"):
+               "'qualification_combination'", "'stream_availability'"):
         assert rt in MIGRATION
     # Category scope is NOT overloaded — the axis is a separate stream_id column.
     assert "'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max'" in MIGRATION
-    # qualification_combination is machine-evaluable via value_json (CHECK-enforced).
-    assert "rule_type <> 'qualification_combination' or value_json is not null" in MIGRATION
+    # experience_min_years is cycle-only — NOT in the baseline enum, but IS on cycle.
+    assert "'stream_availability'\n  ));" in MIGRATION            # baseline enum ends here
+    assert "'stream_availability','experience_min_years'" in MIGRATION  # cycle enum
+
+
+def test_qualification_combination_structurally_validated_and_fail_closed():
+    # Structural validator (not just NOT NULL) enforced by a CHECK on both tables.
+    assert "create or replace function public.is_valid_qualification_combination" in MIGRATION
+    assert "rule_type <> 'qualification_combination'\n         or public.is_valid_qualification_combination(value_json)" in MIGRATION
+    assert "value_json is not null)" not in MIGRATION  # the weak check is gone
+    # Fail-closed: unsupported rule_types cannot be verified.
+    assert "exam_eligibility_rules_verified_supported_check" in MIGRATION
+    assert "reviewer_status <> 'verified' or rule_type in (" in MIGRATION
 
 
 def test_parent_side_stream_move_guard_includes_eligibility_rules():
@@ -79,8 +90,10 @@ def test_committed_behavioral_regression_exists():
     body = reg.read_text().lower()
     for marker in (
         "common + stream-specific rule coexist",
-        "all new rule_types incl qualification_combination accepted",
-        "qualification_combination requires value_json",
+        "new baseline rule_types incl qualification_combination accepted",
+        "experience_min_years rejected on baseline",
+        "new rule_type cannot be verified (fail-closed)",
+        "structural check rejects malformed",
         "update move cross-exam stream",
         "exam reassign with dependent baseline rule",
         "cutoff + experience on a real pair",
