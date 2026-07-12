@@ -7,6 +7,9 @@ existing /attempts/{id} routes) and carries the PR-4/slice-A render fidelity.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -166,6 +169,46 @@ def test_untimed_practice_reports_no_countdown():
     # auto-submits. The long 24h abandonment TTL stays server-side on expires_at.
     assert state.get("time_remaining_sec") is None
     assert state.get("expires_at")
+
+
+def _attempt_row(sb, attempt_id):
+    return next(a for a in sb.db["mock_attempts"] if a["id"] == attempt_id)
+
+
+def test_timed_deadline_is_the_single_enforced_window():
+    # F1 (checkpost #960): the timed countdown is not display-only. The persisted
+    # expires_at IS the short timed window (not the 24h abandonment TTL), so the shared
+    # runtime paths (save/submit/auto-submit/sweeper) enforce it — untimed practice
+    # keeps the long TTL.
+    sb = _db([_q("q1", exam=EXAM), _q("q2", exam=EXAM)], pyq_order={"q1": 1, "q2": 2})
+    timed = svc.start_pyq_practice(
+        sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM, seconds_per_question=30,
+    )
+    assert 0 < engine._time_remaining_sec(_attempt_row(sb, timed["attempt_id"])) <= 60
+
+    sb2 = _db([_q("q1", exam=EXAM)], pyq_order={"q1": 1})
+    untimed = svc.start_pyq_practice(sb2, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
+    assert engine._time_remaining_sec(_attempt_row(sb2, untimed["attempt_id"])) > 3600
+
+
+def test_late_save_rejected_after_timed_deadline():
+    # Advancing beyond the timed deadline: a save is rejected server-side by the shared
+    # expires_at guard — the browser auto-submit is convenience, not enforcement.
+    sb = _db([_q("q1", exam=EXAM)], pyq_order={"q1": 1})
+    res = svc.start_pyq_practice(
+        sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM, seconds_per_question=30,
+    )
+    aid = res["attempt_id"]
+    q0 = engine.get_attempt(sb, "u1", aid)["questions"][0]
+    # simulate the timed window elapsing
+    _attempt_row(sb, aid)["expires_at"] = (
+        datetime.now(timezone.utc) - timedelta(seconds=5)
+    ).isoformat()
+    with pytest.raises(ValueError, match="expired"):
+        engine.save_answer(
+            sb, "u1", aid, q0["question_id"], (q0["options"][0] or {}).get("id"),
+            is_marked_for_review=False, client_seq=1, time_spent_sec=5,
+        )
 
 
 def test_empty_pool_returns_no_writes():

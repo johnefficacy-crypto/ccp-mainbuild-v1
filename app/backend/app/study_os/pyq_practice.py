@@ -545,11 +545,13 @@ def start_pyq_practice(
     if blueprint_id:
         # Deterministic id → RPC reuses the in-progress attempt on retry (idempotent).
         blueprint_for_rpc["id"] = blueprint_id
-    # ``expires_at`` is the long ABANDONMENT TTL for every practice attempt, timed or
-    # not (a learning session, not a proctored window). The timed-practice countdown is
-    # a separate concept driven by the frozen ``duration_sec`` and surfaced by
-    # ``get_attempt`` — untimed practice reports no countdown at all.
-    expires_at = (datetime.now(timezone.utc) + _ATTEMPT_TTL).isoformat()
+    # ``expires_at`` is the ONE effective attempt deadline, enforced consistently by
+    # every runtime path (get_attempt, save_answer, submit, auto-submit/sweeper) via
+    # ``_time_remaining_sec``. Timed practice (GQR-R10) makes it the countdown window;
+    # untimed practice keeps the long abandonment TTL and hides the clock in the read
+    # layer. There is no second, display-only deadline.
+    ttl = timedelta(seconds=duration_sec) if duration_sec and duration_sec > 0 else _ATTEMPT_TTL
+    expires_at = (datetime.now(timezone.utc) + ttl).isoformat()
 
     rows_out = safe_required(
         lambda: sb.rpc(

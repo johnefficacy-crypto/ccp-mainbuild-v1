@@ -130,29 +130,34 @@ def locked_topic_ids_for_subject(
     }
 
 
-def subject_family_for(
+def resolve_subject_family(
     supabase: Any, exam_id: str | None, subject_id: str | None
-) -> str | None:
+) -> tuple[str | None, bool]:
     """Resolve the SubjectRuntimePolicy family for a PATH subject from the exam's
-    LOCKED coverage (canonical ``subject_group`` → ``slug``). Returns ``None`` for an
-    ungoverned/unknown subject, which the launch gate maps to the generic policy.
+    LOCKED coverage (canonical ``subject_group`` → ``slug``).
 
-    Used server-side to reject a launch ``mode`` that the subject's family does not
-    wire (e.g. ``timed_practice`` posted to a Quant subject) — the browser is never
-    trusted to only send modes the hub offered for that subject."""
+    Returns ``(family, known)``:
+      * ``known=True``  → the subject is a real, locked subject of the caller's exam;
+        ``family`` is its family (``None`` = a legitimately ungoverned/generic subject).
+      * ``known=False`` → no target exam, no subject_id, the subject is not in the
+        exam's locked coverage, OR the coverage read failed. The launch gate must FAIL
+        CLOSED here — a ``None`` family must never be conflated with "generic subject",
+        or a mode could be forced onto an unresolved/non-covered subject.
+    """
     from app.study_os.subject_runtime_policy import family_for_subject
 
     if not exam_id or not subject_id:
-        return None
+        return None, False
     coverage = _load_locked_coverage(supabase, exam_id) or []
     row = next(
         (c for c in coverage if str(c.get("subject_id")) == str(subject_id)), None
     )
     if not row:
-        return None
-    return family_for_subject(
+        return None, False
+    family = family_for_subject(
         slug=row.get("subject_slug"), subject_group=row.get("subject_group")
     )
+    return family, True
 
 
 def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:

@@ -21,6 +21,7 @@ _S_ENGLISH = "11111111-1111-1111-1111-111111111111"
 _S_REASONING = "55555555-5555-5555-5555-555555555555"
 _T_QUANT = "33333333-3333-3333-3333-333333333333"
 _T_REASONING = "66666666-6666-6666-6666-666666666666"
+_T_ENGLISH = "77777777-7777-7777-7777-777777777777"
 
 
 def _seed():
@@ -33,12 +34,16 @@ def _seed():
              "reviewer_status": "locked"},
             {"id": "cov-r", "exam_id": _EXAM, "topic_id": _T_REASONING,
              "reviewer_status": "locked"},
+            {"id": "cov-e", "exam_id": _EXAM, "topic_id": _T_ENGLISH,
+             "reviewer_status": "locked"},
         ],
         "topics": [
             {"id": _T_QUANT, "name": "Percentage", "slug": "pct",
              "subject_id": _S_QUANT, "is_active": True},
             {"id": _T_REASONING, "name": "Syllogism", "slug": "syllogism",
              "subject_id": _S_REASONING, "is_active": True},
+            {"id": _T_ENGLISH, "name": "Vocabulary", "slug": "vocab",
+             "subject_id": _S_ENGLISH, "is_active": True},
         ],
         "subjects": [
             {"id": _S_QUANT, "slug": "quant", "name": "Quant",
@@ -122,12 +127,12 @@ def test_timed_practice_rejected_for_non_reasoning_families():
     # Family gate: timed_practice is not wired for Quant or English in v1, so the
     # launch is rejected even with an in-subject topic — the browser can't force a
     # mode the subject's family policy doesn't offer.
-    for subject_id, topic_id in [(_S_QUANT, _T_QUANT)]:
+    for subject_id, topic_id in [(_S_QUANT, _T_QUANT), (_S_ENGLISH, _T_ENGLISH)]:
         resp = _client(SBStub(_seed())).post(
             f"/api/study/subjects/{subject_id}/practice/start",
             json={"mode": "timed_practice", "topic_id": topic_id},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 422, (subject_id, resp.json())
         assert "not available for this subject" in resp.json()["detail"].lower()
 
 
@@ -139,3 +144,17 @@ def test_english_writing_rejected_for_quant_family():
     )
     assert resp.status_code == 422
     assert "not available for this subject" in resp.json()["detail"].lower()
+
+
+def test_launch_fails_closed_for_subject_outside_exam_scope():
+    # F2: a path subject that is not in the caller's locked coverage (or a coverage
+    # read failure) must fail closed BEFORE handler dispatch — the generic policy must
+    # never be applied to an unresolved subject, or english_writing (no later scope
+    # check) could proceed for a non-covered subject.
+    unknown_subject = "99999999-9999-9999-9999-999999999999"
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{unknown_subject}/practice/start",
+        json={"mode": "english_writing"},
+    )
+    assert resp.status_code == 422
+    assert "practice scope" in resp.json()["detail"].lower()

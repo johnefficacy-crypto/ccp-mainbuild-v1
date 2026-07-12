@@ -1206,26 +1206,15 @@ def _time_remaining_sec(attempt: dict) -> int:
 def _practice_aware_time_remaining_sec(attempt: dict, snapshot: dict) -> int | None:
     """Countdown surfaced to the attempt shell.
 
-    Practice attempts use a long abandonment ``expires_at`` (24h) that must NOT read
-    as a learner clock. So:
-      * timed practice (``practice`` + frozen ``duration_sec``) → a real wall-clock
-        countdown from ``started_at`` over the frozen duration;
-      * untimed practice → ``None`` (the shell renders ``--`` and never auto-submits);
-      * every other attempt (real/generated mocks) → the unchanged ``expires_at`` clock.
+    The countdown reads the SAME ``expires_at`` deadline that save/submit/auto-submit
+    enforce — never a second, display-only clock. The only special case is UNTIMED
+    practice: its ``expires_at`` is the long abandonment TTL, which must not read as a
+    learner clock, so it surfaces ``None`` (the shell renders ``--`` and never
+    auto-submits). Timed practice and real/generated mocks fall through to the shared
+    ``expires_at`` remaining.
     """
-    if snapshot.get("practice"):
-        duration_sec = int(snapshot.get("duration_sec") or 0)
-        if duration_sec <= 0:
-            return None
-        started_str = attempt.get("started_at")
-        if not started_str:
-            return duration_sec
-        try:
-            started = datetime.fromisoformat(started_str.replace("Z", "+00:00"))
-            elapsed = (_now() - started).total_seconds()
-            return max(0, int(duration_sec - elapsed))
-        except Exception:  # noqa: BLE001
-            return duration_sec
+    if snapshot.get("practice") and int(snapshot.get("duration_sec") or 0) <= 0:
+        return None
     return _time_remaining_sec(attempt)
 
 

@@ -31,7 +31,7 @@ from app.study_os.subject_runtime_policy import (
     is_wired_mode,
     policy_for_family,
 )
-from app.study_os.subjects import locked_topic_ids_for_subject, subject_family_for
+from app.study_os.subjects import locked_topic_ids_for_subject, resolve_subject_family
 from app.study_os.writing_practice.subject_launch import resolve_launch_prompt_id
 
 logger = logging.getLogger("career_copilot.api.subject_practice")
@@ -73,8 +73,14 @@ def start_subject_practice(
     # Subject-family gate (checkpost #960): a wired mode must also be wired for THIS
     # subject's family — the browser is never trusted to only send modes the hub
     # offered. e.g. timed_practice is Reasoning-only in v1; posting it to a Quant
-    # subject is rejected here, before any handler runs.
-    family = subject_family_for(supabase, exam_id, str(subject_id))
+    # subject is rejected here, before any handler runs. Fail CLOSED when the path
+    # subject cannot be resolved (missing / not in the exam's locked coverage / read
+    # failed): a mode must never proceed for an unresolved subject.
+    family, subject_known = resolve_subject_family(supabase, exam_id, str(subject_id))
+    if not subject_known:
+        raise HTTPException(
+            status_code=422, detail="subject not found in your exam's practice scope",
+        )
     if body.mode not in policy_for_family(family).wired_runtime_modes:
         raise HTTPException(
             status_code=422,
