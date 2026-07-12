@@ -322,7 +322,7 @@ def _load_rules_by_exam(
         lambda: (
             supabase.table("exam_eligibility_rules")
             .select(
-                "exam_id, scope, rule_type, value_num, value_text, "
+                "exam_id, stream_id, scope, rule_type, value_num, value_text, "
                 "is_knockout, source_url, reviewer_status"
             )
             .in_("exam_id", exam_ids)
@@ -335,6 +335,13 @@ def _load_rules_by_exam(
     ) or []
     out: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
+        # Exam-wide baseline evaluation uses ONLY common (stream_id IS NULL)
+        # rules. Stream-scoped rows (migration 245) must never be applied to
+        # every aspirant — they require target-stream evaluation, which is a
+        # separate PR. Filtering here (not just in the query) keeps this
+        # leak-proof regardless of the DB driver. See PR #967 checkpost P0.
+        if r.get("stream_id") is not None:
+            continue
         out.setdefault(r["exam_id"], []).append(r)
     _RULES_CACHE[cache_key] = {k: list(v) for k, v in out.items()}
     return out
