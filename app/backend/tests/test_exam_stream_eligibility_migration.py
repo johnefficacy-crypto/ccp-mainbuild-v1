@@ -1,0 +1,70 @@
+"""Schema-contract tests for migration 245 (Lane R §4 stream eligibility).
+
+Repo convention (test_j3_applied_vs_appeared_migration.py): no live-DB migration
+harness in CI, so these assert against the SQL text. Behaviour is pinned by the
+committed regression app/supabase/tests/regression_245_exam_stream_eligibility.sql
+(validated on ephemeral PG16).
+"""
+from pathlib import Path
+
+MIGRATION = (
+    Path(__file__).resolve().parents[1]
+    / ".." / "supabase" / "migrations" / "245_exam_stream_eligibility.sql"
+).read_text().lower()
+
+
+def test_baseline_gains_stream_dimension_and_rule_types():
+    assert "add column if not exists stream_id uuid references public.exam_streams(id) on delete restrict" in MIGRATION
+    for rt in ("'discipline'", "'min_percentage'", "'certification'",
+               "'qualification_combination'", "'stream_availability'"):
+        assert rt in MIGRATION
+    # Category scope is NOT overloaded — the axis is a separate stream_id column.
+    assert "'age_min', 'age_max', 'education_min_level', 'nationality', 'gender', 'attempts_max'" in MIGRATION
+
+
+def test_stream_aware_uniqueness_null_safe():
+    # Old key dropped by definition lookup; new one is stream-aware + NULLS NOT DISTINCT.
+    assert "pg_get_constraintdef(oid) ilike '%(exam_id, scope, rule_type)%'" in MIGRATION
+    assert "exam_eligibility_rules_exam_stream_scope_type_uidx" in MIGRATION
+    assert "on public.exam_eligibility_rules(exam_id, stream_id, scope, rule_type)" in MIGRATION
+    assert "nulls not distinct" in MIGRATION
+
+
+def test_baseline_cross_parent_trigger():
+    assert "create or replace function public._exam_eligibility_rules_check_stream()" in MIGRATION
+    assert "before insert or update on public.exam_eligibility_rules" in MIGRATION
+    assert "for share" in MIGRATION
+    assert "using errcode = 'p0422'" in MIGRATION
+
+
+def test_cycle_eligibility_table_separated_and_pair_bound():
+    assert "create table if not exists public.exam_cycle_stream_eligibility" in MIGRATION
+    # Composite FK to the canonical (cycle, stream) pair — cannot attach to a
+    # pair that isn't an actual cycle-stream (and that pair is single-exam by 242).
+    assert "foreign key (exam_cycle_id, stream_id)" in MIGRATION
+    assert "references public.exam_cycle_streams(exam_cycle_id, stream_id) on delete cascade" in MIGRATION
+    assert "unique (exam_cycle_id, stream_id, scope, rule_type)" in MIGRATION
+    assert "alter table public.exam_cycle_stream_eligibility enable row level security" in MIGRATION
+    assert "exam_cycle_stream_eligibility_updated_at" in MIGRATION
+
+
+def test_baseline_vs_cycle_separation_is_evergreen():
+    # Baseline stays evergreen — no cycle column added to exam_eligibility_rules.
+    assert "add column if not exists exam_cycle_id" not in MIGRATION
+    assert "notify pgrst, 'reload schema';" in MIGRATION
+
+
+def test_committed_behavioral_regression_exists():
+    reg = (
+        Path(__file__).resolve().parents[1]
+        / ".." / "supabase" / "tests" / "regression_245_exam_stream_eligibility.sql"
+    )
+    body = reg.read_text().lower()
+    for marker in (
+        "common + stream-specific rule coexist",
+        "cross-exam stream",
+        "update move cross-exam stream",
+        "cycle eligibility on a non-existent pair",
+        "cascades on pair delete",
+    ):
+        assert marker in body
