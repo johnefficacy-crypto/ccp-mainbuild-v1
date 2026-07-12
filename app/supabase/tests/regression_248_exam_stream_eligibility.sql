@@ -1,7 +1,7 @@
--- regression_247_exam_stream_eligibility.sql
+-- regression_248_exam_stream_eligibility.sql
 --
--- Behavioral PostgreSQL regression for migration 247 (Lane R §4 stream
--- eligibility). Assumes migrations 110, 242, 247 applied. Reworked per the
+-- Behavioral PostgreSQL regression for migration 248 (Lane R §4 stream
+-- eligibility). Assumes migrations 110, 242, 248 applied. Reworked per the
 -- PR #967 checkpost.
 --
 -- Proves:
@@ -19,7 +19,7 @@
 --   6. Deleting a cycle-stream pair that has reviewed cycle-eligibility rows is
 --      REJECTED (RESTRICT — audit trail preserved), not cascaded.
 --
--- Usage:  psql "$DATABASE_URL" -f regression_247_exam_stream_eligibility.sql
+-- Usage:  psql "$DATABASE_URL" -f regression_248_exam_stream_eligibility.sql
 -- Expected: PASS notices, no unexpected errors. Runs in a rolled-back txn.
 
 \set ON_ERROR_STOP on

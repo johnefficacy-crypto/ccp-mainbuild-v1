@@ -1,15 +1,15 @@
-"""Schema-contract tests for migration 247 (Lane R §4 stream eligibility).
+"""Schema-contract tests for migration 248 (Lane R §4 stream eligibility).
 
 Repo convention (test_j3_applied_vs_appeared_migration.py): no live-DB migration
 harness in CI, so these assert against the SQL text. Behaviour is pinned by the
-committed regression app/supabase/tests/regression_247_exam_stream_eligibility.sql
+committed regression app/supabase/tests/regression_248_exam_stream_eligibility.sql
 (validated on ephemeral PG16).
 """
 from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
-    / ".." / "supabase" / "migrations" / "247_exam_stream_eligibility.sql"
+    / ".." / "supabase" / "migrations" / "248_exam_stream_eligibility.sql"
 ).read_text().lower()
 
 
@@ -85,7 +85,7 @@ def test_baseline_vs_cycle_separation_is_evergreen():
 def test_committed_behavioral_regression_exists():
     reg = (
         Path(__file__).resolve().parents[1]
-        / ".." / "supabase" / "tests" / "regression_247_exam_stream_eligibility.sql"
+        / ".." / "supabase" / "tests" / "regression_248_exam_stream_eligibility.sql"
     )
     body = reg.read_text().lower()
     for marker in (
