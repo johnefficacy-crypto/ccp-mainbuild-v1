@@ -1,4 +1,4 @@
-"""Schema-contract tests for migration 241 (Lane R exam stream schema).
+"""Schema-contract tests for migration 242 (Lane R exam stream schema).
 
 Following the repo's documented convention (see
 test_j3_applied_vs_appeared_migration.py): "The repo has no live-DB migration
@@ -17,7 +17,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
-    / ".." / "supabase" / "migrations" / "241_exam_streams_schema.sql"
+    / ".." / "supabase" / "migrations" / "242_exam_streams_schema.sql"
 ).read_text().lower()
 
 
@@ -138,7 +138,7 @@ def test_cross_exam_cycle_and_availability_invariants_enforced():
 def test_committed_behavioral_regression_exists():
     reg = (
         Path(__file__).resolve().parents[1]
-        / ".." / "supabase" / "tests" / "regression_241_exam_streams_integrity.sql"
+        / ".." / "supabase" / "tests" / "regression_242_exam_streams_integrity.sql"
     )
     body = reg.read_text().lower()
     # The behavioral regression actually applies rows and exercises the paths

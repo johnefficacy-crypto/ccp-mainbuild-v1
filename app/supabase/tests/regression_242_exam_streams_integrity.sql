@@ -1,6 +1,6 @@
--- regression_241_exam_streams_integrity.sql
+-- regression_242_exam_streams_integrity.sql
 --
--- Behavioral PostgreSQL regression for migration 241's exam-stream cross-parent
+-- Behavioral PostgreSQL regression for migration 242's exam-stream cross-parent
 -- integrity (PR #958 checkpost, follow-up P0s). Unlike the string-presence
 -- contract test (tests/test_exam_streams_migration.py), this actually applies
 -- rows and exercises INSERT / UPDATE / DELETE trigger paths.
@@ -27,8 +27,8 @@
 --       or deleting it, fails.
 --   13. Child UPDATE parent-move: repointing a phase.stream_id cross-exam fails.
 --
--- Prerequisites: migration 241 (and its 030 prerequisites) applied.
--- Usage:  psql "$DATABASE_URL" -f regression_241_exam_streams_integrity.sql
+-- Prerequisites: migration 242 (and its 030 prerequisites) applied.
+-- Usage:  psql "$DATABASE_URL" -f regression_242_exam_streams_integrity.sql
 -- Expected: PASS notices, no unexpected errors. Runs inside a rolled-back txn.
 
 \set ON_ERROR_STOP on
