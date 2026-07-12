@@ -306,7 +306,7 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
             _safe(
                 lambda: (
                     supabase.table("subjects")
-                    .select("id, name")
+                    .select("id, name, slug, subject_group")
                     .in_("id", subject_ids)
                     .limit(500)
                     .execute()
@@ -336,6 +336,11 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
                 "topic_level": topic.get("level"),
                 "subject_id": topic.get("subject_id"),
                 "subject_name": subject.get("name"),
+                # Canonical subject identity — the governed keys the
+                # SubjectRuntimePolicy registry resolves a subject family from
+                # (never the display name). subject_group is the primary key.
+                "subject_slug": subject.get("slug"),
+                "subject_group": subject.get("subject_group"),
                 "exam_cycle_id": r.get("exam_cycle_id"),
                 "exam_phase_id": r.get("exam_phase_id"),
                 "coverage_priority": _num(r.get("exam_priority_score")),
@@ -781,14 +786,18 @@ def _build_tasks(
             "priority_score": cov["_priority_score"],
             "why_this_task": why,
         }
-        # PYQ v2 PR-9 / GQR-1: a practice/revision task on a real topic+exam resolves
-        # to a typed PYQ topic-practice launch. Resolution is delegated to the
-        # server-owned SubjectRuntimePolicy registry so the launch column stamp
-        # (migration 205) has a single source. Other task types (e.g. concept_learning)
-        # or tasks missing topic/exam resolve to None — launch columns stay absent,
-        # preserving prior behaviour.
+        # PYQ v2 PR-9 / GQR-1: launch stamping is resolved through the server-owned
+        # SubjectRuntimePolicy registry, keyed by the task's canonical subject family.
+        # A PYQ-backed subject's practice/revision task on a real topic+exam stamps a
+        # typed PYQ launch (migration 205); a General-Awareness task never does (GA is
+        # calendar-driven current-affairs); other task types or tasks missing
+        # topic/exam resolve to None (launch columns absent), preserving prior behaviour.
         launch = resolve_planner_launch(
-            task_type, topic_id=cov.get("topic_id"), exam_id=exam_id
+            task_type,
+            subject_slug=cov.get("subject_slug"),
+            subject_group=cov.get("subject_group"),
+            topic_id=cov.get("topic_id"),
+            exam_id=exam_id,
         )
         if launch is not None:
             task["launch_type"] = launch["launch_type"]

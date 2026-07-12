@@ -4,26 +4,35 @@ The subject surface historically hard-coded exactly two runtimes: English writin
 and PYQ topic practice. ``subjects.py`` appended ``english_writing`` when writing
 was available and ``topic_pyq`` when projected PYQ topics existed; ``subject_practice.py``
 dispatched launches through an ``if mode ==`` ladder; ``planner.py`` stamped
-``pyq_practice`` for a fixed set of task types. Nothing else was expressible, so GA
-current-affairs and specialised Quant/Reasoning modes fit neither branch.
+``pyq_practice`` for a fixed set of task types regardless of subject. Nothing else
+was expressible, so GA current-affairs and specialised Quant/Reasoning modes fit
+neither branch, and — critically — a General-Awareness retrieval/revision task would
+be stamped as a PYQ launch.
 
-This module is the single **server-owned** source of truth for subject runtime
-config — code-governed, not a table (mirroring ``planner._LAUNCH_STAMP_TASK_TYPES``).
-It is deliberately import-light (no writing/pyq/mock imports) so it can be consulted
-from ``subjects.py`` (hub descriptors), ``subject_practice.py`` (launch dispatch) and
-``planner.py`` (launch stamping) without an import cycle. Handlers that need those
-heavy modules stay where they are and register themselves against these mode keys.
+This module is the single **server-owned** authority for subject runtime config —
+code-governed, not a table (mirroring ``planner._LAUNCH_STAMP_TASK_TYPES``). It is
+deliberately import-light (no writing/pyq/mock imports) so it can be consumed from
+``subjects.py`` (hub descriptors, via ``policy.inventory_resolver``), ``planner.py``
+(launch stamping, via ``policy.planner_resolver``) and ``subject_practice.py`` (launch
+dispatch, via ``is_wired_mode``) without an import cycle.
 
-GQR-1 ships **no behavioural change** for existing subjects: the two wired runtime
-modes below (``english_writing`` / ``topic_pyq``) reproduce the prior hub output and
-launch behaviour exactly. The declared per-family ``supported_modes`` carry the
-contract vocabulary (docs/architecture/subject-practice-framework.md §2.2) as the seam
-the GA / Quant / Reasoning verticals light up next.
+Family resolution is off **canonical governed metadata** — ``subject_group`` first,
+then ``slug`` — never the display name. The resolvers ARE the runtime authority:
+``_subject_practice`` iterates ``policy.inventory_resolver(ctx)`` with no English/PYQ
+branch, and ``planner`` delegates to ``policy.planner_resolver``. Adding a mode to a
+vertical (GA/Quant/Reasoning) is a registry edit, not an edit to ``subjects.py`` or
+``planner.py``.
+
+Compatibility: English and PYQ output/behaviour for the seeded families
+(numerical/verbal/reasoning + ungoverned ``gs``/unknown) is preserved byte-for-byte;
+only ``general_awareness`` — which has no seeded subject yet (SSC GA seed is a tracked
+prerequisite) — is fenced off from the generic PYQ path, per the domain rule that GA
+current-affairs must never behave as enduring subject mastery/PYQ.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 # ── Runtime launch modes actually wired in v1 ──────────────────────────────
 # These strings are part of the browser/runtime contract: the hub emits them as
@@ -42,86 +51,88 @@ FAMILY_GENERAL_AWARENESS = "general_awareness"
 # local literal avoids a cross-module import cycle, same rationale as planner's).
 LAUNCH_PYQ_PRACTICE = "pyq_practice"
 
-
-@dataclass(frozen=True)
-class SubjectRuntimePolicy:
-    """Declared runtime policy for one subject family (contract §2.2).
-
-    ``supported_modes`` is the ordered, hub-exposed mode vocabulary for the family.
-    In v1 only the two wired adapters (see ``WIRED_RUNTIME_MODES``) are runnable; the
-    remaining declared modes are the seam the GA/Quant/Reasoning PRs implement. The
-    behavioural flags are consumed by the planner/attempt layers as those land — GA
-    is always ``mastery_enabled=False`` / ``correction_enabled=False`` per the domain
-    rule that current-affairs performance must never write ``user_topic_mastery``.
-    """
-
-    subject_family: str
-    supported_modes: tuple[str, ...]
-    attempt_kind: str
-    mastery_enabled: bool
-    correction_enabled: bool
-    retry_policy: str  # none | ephemeral_ca | normal_srs
-    # Server-side seams (contract §2.2). Populated by the owning vertical PR; a
-    # ``None`` resolver means the family has no runnable inventory/planner path yet.
-    inventory_resolver: Callable[..., Any] | None = None
-    planner_resolver: Callable[..., Any] | None = None
+# task_type values whose plan tasks resolve to a PYQ topic-practice launch.
+_PLANNER_PYQ_TASK_TYPES: frozenset[str] = frozenset({"retrieval_practice", "revision"})
 
 
-# Initial policies — verbatim from contract §2.2. Ordered; the hub renders
-# ``supported_modes`` in declaration order.
-SUBJECT_RUNTIME_POLICIES: dict[str, SubjectRuntimePolicy] = {
-    FAMILY_ENGLISH: SubjectRuntimePolicy(
-        subject_family=FAMILY_ENGLISH,
-        supported_modes=("objective_practice", "english_writing_session"),
-        attempt_kind="learning_session",
-        mastery_enabled=True,
-        correction_enabled=True,
-        retry_policy="normal_srs",
-    ),
-    FAMILY_QUANT: SubjectRuntimePolicy(
-        subject_family=FAMILY_QUANT,
-        supported_modes=("topic_practice", "timed_practice", "heuristic_drill", "calculation_gym"),
-        attempt_kind="mock_attempt",
-        mastery_enabled=True,
-        correction_enabled=True,
-        retry_policy="normal_srs",
-    ),
-    FAMILY_REASONING: SubjectRuntimePolicy(
-        subject_family=FAMILY_REASONING,
-        supported_modes=("topic_practice", "timed_practice", "reasoning_set"),
-        attempt_kind="mock_attempt",
-        mastery_enabled=True,
-        correction_enabled=True,
-        retry_policy="normal_srs",
-    ),
-    FAMILY_GENERAL_AWARENESS: SubjectRuntimePolicy(
-        subject_family=FAMILY_GENERAL_AWARENESS,
-        # GA v1 excludes permanent mastery/SRS; current-affairs retries are ephemeral.
-        supported_modes=("weekly_current_affairs", "monthly_current_affairs"),
-        attempt_kind="current_affairs_attempt",
-        mastery_enabled=False,
-        correction_enabled=False,
-        retry_policy="ephemeral_ca",
-    ),
+# ── Family resolution from canonical governed metadata ─────────────────────
+# Governed subject-group -> family (primary key; stable across exams that share the
+# SSC/RRB taxonomy). ``gs`` (UPSC General Studies) is intentionally NOT mapped to
+# general_awareness — those are PYQ-backed subjects and must keep the generic PYQ
+# runtime; only the dedicated SSC General-Awareness group maps to the GA family.
+_GROUP_FAMILY: dict[str, str] = {
+    "numerical": FAMILY_QUANT,
+    "quantitative": FAMILY_QUANT,
+    "verbal": FAMILY_ENGLISH,
+    "english": FAMILY_ENGLISH,
+    "reasoning": FAMILY_REASONING,
+    "general-awareness": FAMILY_GENERAL_AWARENESS,
+    "general_awareness": FAMILY_GENERAL_AWARENESS,
+    "current-affairs": FAMILY_GENERAL_AWARENESS,
+}
+
+# Canonical slug -> family (secondary key, used when subject_group is absent/unknown).
+_SLUG_FAMILY: dict[str, str] = {
+    "quantitative-aptitude": FAMILY_QUANT,
+    "quant": FAMILY_QUANT,
+    "maths": FAMILY_QUANT,
+    "english-language": FAMILY_ENGLISH,
+    "english": FAMILY_ENGLISH,
+    "general-intelligence-reasoning": FAMILY_REASONING,
+    "reasoning": FAMILY_REASONING,
+    "general-awareness": FAMILY_GENERAL_AWARENESS,
+    "general-awareness-current-affairs": FAMILY_GENERAL_AWARENESS,
+    "current-affairs": FAMILY_GENERAL_AWARENESS,
 }
 
 
-# ── Wired runtime-mode adapters (v1) ───────────────────────────────────────
+def family_for_subject(*, slug: str | None = None, subject_group: str | None = None) -> str | None:
+    """Resolve a subject family from canonical governed metadata.
+
+    ``subject_group`` (the governed taxonomy column) is authoritative; ``slug`` is a
+    fallback. Returns ``None`` for an ungoverned/unknown subject (e.g. UPSC ``gs``),
+    which the caller maps to the generic PYQ-capable policy — never to GA.
+    """
+    if subject_group:
+        fam = _GROUP_FAMILY.get(subject_group.strip().lower())
+        if fam:
+            return fam
+    if slug:
+        fam = _SLUG_FAMILY.get(slug.strip().lower())
+        if fam:
+            return fam
+    return None
+
+
+# ── Inventory context + wired runtime-mode adapters (v1) ───────────────────
+@dataclass(frozen=True)
+class InventoryContext:
+    """Server-resolved eligibility signals for one subject card.
+
+    Passed to a policy's ``inventory_resolver``. Topic ids stay in their original
+    type (never str-coerced) so mastery/error lookups match ``subjects.py`` exactly;
+    only the emitted ``target_topic_id`` is stringified.
+    """
+
+    eng_available: bool = False
+    available_topic_ids: tuple[Any, ...] = ()
+    mastery: Mapping[Any, float] = field(default_factory=dict)
+    error_topics: frozenset[Any] = frozenset()
+
+
 @dataclass(frozen=True)
 class RuntimeModeAdapter:
     """A runtime mode that is actually runnable in v1.
 
-    Couples the hub descriptor (what ``subjects.py`` emits) with the dispatch key
-    the launch endpoint routes on. Replaces the two inline ``if`` branches in
-    ``subjects._subject_practice`` and the ``if mode ==`` ladder in
-    ``subject_practice.start_subject_practice`` with one registry both consult.
+    Couples the hub descriptor (what ``subjects.py`` emits) with the dispatch key the
+    launch endpoint routes on. ``topic_pyq`` is deliberately family-agnostic (offered
+    to every non-GA family via each policy's wired-mode list) — the adapter carries no
+    single owning family, so activating family gating cannot silently drop PYQ for
+    English/Reasoning.
     """
 
     mode: str
     label: str
-    subject_family: str
-    # Extra static descriptor fields merged into the hub mode entry (e.g. the
-    # companion client_route modes rendered alongside a server_launch mode).
     companion_modes: tuple[dict[str, Any], ...] = field(default_factory=tuple)
 
     def hub_mode(self, *, target_topic_id: str | None = None) -> dict[str, Any]:
@@ -134,12 +145,16 @@ class RuntimeModeAdapter:
             "launch_mode": self.mode,
         }
 
+    def hub_entries(self, *, target_topic_id: str | None = None) -> list[dict[str, Any]]:
+        """Primary descriptor + its client-route companions (fresh dicts)."""
+        return [self.hub_mode(target_topic_id=target_topic_id),
+                *[dict(m) for m in self.companion_modes]]
+
 
 WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
     MODE_ENGLISH_WRITING: RuntimeModeAdapter(
         mode=MODE_ENGLISH_WRITING,
         label="Sentence practice",
-        subject_family=FAMILY_ENGLISH,
         companion_modes=(
             {
                 "type": "error_lab", "label": "Error Lab", "target_topic_id": None,
@@ -150,7 +165,6 @@ WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
     MODE_TOPIC_PYQ: RuntimeModeAdapter(
         mode=MODE_TOPIC_PYQ,
         label="Topic PYQ practice",
-        subject_family=FAMILY_QUANT,  # generic PYQ topic runtime; not family-gated in v1
         companion_modes=(
             {
                 "type": "mock_section", "label": "Mock section practice",
@@ -167,24 +181,61 @@ def is_wired_mode(mode: str) -> bool:
     return mode in WIRED_RUNTIME_MODES
 
 
-# ── Planner launch resolution (generalises _LAUNCH_STAMP_TASK_TYPES) ────────
-# task_type values whose plan tasks resolve to a PYQ topic-practice launch. Kept
-# as the single source the planner consults; adding a subject runtime here is a
-# registry edit, not an if-ladder edit.
-_PLANNER_PYQ_TASK_TYPES: frozenset[str] = frozenset({"retrieval_practice", "revision"})
+def _weakest_available_topic(ctx: InventoryContext) -> Any:
+    """Weakest projected topic first: lowest mastery, then error-flagged, stable
+    tiebreak. Identical ordering to the prior ``subjects._subject_practice``."""
+    return sorted(
+        ctx.available_topic_ids,
+        key=lambda t: (
+            ctx.mastery.get(t) if ctx.mastery.get(t) is not None else 999.0,
+            0 if t in ctx.error_topics else 1,
+            str(t),
+        ),
+    )[0]
 
 
-def resolve_planner_launch(
-    task_type: str, *, topic_id: str | None, exam_id: str | None
+def _emit_english_writing(ctx: InventoryContext) -> list[dict[str, Any]]:
+    if not ctx.eng_available:
+        return []
+    return WIRED_RUNTIME_MODES[MODE_ENGLISH_WRITING].hub_entries()
+
+
+def _emit_topic_pyq(ctx: InventoryContext) -> list[dict[str, Any]]:
+    if not ctx.available_topic_ids:
+        return []
+    chosen = _weakest_available_topic(ctx)
+    return WIRED_RUNTIME_MODES[MODE_TOPIC_PYQ].hub_entries(target_topic_id=str(chosen))
+
+
+# Per wired-mode signal resolver. Registering a runtime = adding an entry here + to a
+# policy's ``wired_runtime_modes``; no branch is added to ``subjects.py``.
+_MODE_EMITTERS: dict[str, Callable[[InventoryContext], list[dict[str, Any]]]] = {
+    MODE_ENGLISH_WRITING: _emit_english_writing,
+    MODE_TOPIC_PYQ: _emit_topic_pyq,
+}
+
+
+def _make_inventory_resolver(
+    wired_modes: tuple[str, ...]
+) -> Callable[[InventoryContext], list[dict[str, Any]]]:
+    """Build an inventory resolver that emits, in order, the eligible hub entries for
+    this family's wired modes given the signal context."""
+
+    def resolver(ctx: InventoryContext) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        for mode in wired_modes:
+            entries.extend(_MODE_EMITTERS[mode](ctx))
+        return entries
+
+    return resolver
+
+
+# ── Planner launch resolvers ───────────────────────────────────────────────
+def _pyq_planner_resolver(
+    task_type: str, *, topic_id: Any | None, exam_id: Any | None
 ) -> dict[str, Any] | None:
-    """Resolve a runnable launch stamp for a planner task, or ``None``.
-
-    Generalises the inline ``_LAUNCH_STAMP_TASK_TYPES`` stamping in ``planner.py``.
-    v1 behaviour is preserved exactly: ``retrieval_practice`` / ``revision`` tasks on
-    a real topic+exam resolve to a typed PYQ topic-practice launch; every other
-    task_type (or a task missing topic/exam) resolves to ``None`` (left unstamped).
-    Returns the launch column payload the planner merges onto the task.
-    """
+    """PYQ topic-practice stamp for retrieval/revision tasks on a real topic+exam.
+    Byte-identical to the prior inline planner stamp."""
     if task_type in _PLANNER_PYQ_TASK_TYPES and topic_id and exam_id:
         return {
             "launch_type": LAUNCH_PYQ_PRACTICE,
@@ -192,3 +243,137 @@ def resolve_planner_launch(
             "launch_context": {"mode": "topic", "target_id": topic_id, "exam_id": exam_id},
         }
     return None
+
+
+def _no_launch_planner_resolver(
+    task_type: str, *, topic_id: Any | None, exam_id: Any | None
+) -> dict[str, Any] | None:
+    """GA is calendar-driven: a General-Awareness retrieval/revision task must NEVER
+    be stamped as a PYQ launch (domain rule — GA is current-affairs only)."""
+    return None
+
+
+# ── Policy dataclass + registry ────────────────────────────────────────────
+@dataclass(frozen=True)
+class SubjectRuntimePolicy:
+    """Runtime authority for one subject family (contract §2.2).
+
+    ``supported_modes`` is the ordered, hub-exposed product vocabulary. ``wired_runtime_modes``
+    are the v1 runnable adapters (subset actually launchable now). ``inventory_resolver``
+    and ``planner_resolver`` are the live callables consumed by ``subjects.py`` and
+    ``planner.py`` respectively. The behavioural flags (``mastery_enabled`` etc.) are
+    read by the attempt/mastery layers as the vertical PRs land — GA is always
+    ``mastery_enabled=False`` / ``correction_enabled=False`` per the domain rule that
+    current-affairs performance must never write ``user_topic_mastery``.
+    """
+
+    subject_family: str
+    supported_modes: tuple[str, ...]
+    wired_runtime_modes: tuple[str, ...]
+    attempt_kind: str
+    mastery_enabled: bool
+    correction_enabled: bool
+    retry_policy: str  # none | ephemeral_ca | normal_srs
+    inventory_resolver: Callable[[InventoryContext], list[dict[str, Any]]]
+    planner_resolver: Callable[..., dict[str, Any] | None]
+
+
+def _policy(
+    *, family: str, supported_modes: tuple[str, ...], wired_runtime_modes: tuple[str, ...],
+    attempt_kind: str, mastery_enabled: bool, correction_enabled: bool, retry_policy: str,
+    planner_resolver: Callable[..., dict[str, Any] | None],
+) -> SubjectRuntimePolicy:
+    return SubjectRuntimePolicy(
+        subject_family=family,
+        supported_modes=supported_modes,
+        wired_runtime_modes=wired_runtime_modes,
+        attempt_kind=attempt_kind,
+        mastery_enabled=mastery_enabled,
+        correction_enabled=correction_enabled,
+        retry_policy=retry_policy,
+        inventory_resolver=_make_inventory_resolver(wired_runtime_modes),
+        planner_resolver=planner_resolver,
+    )
+
+
+SUBJECT_RUNTIME_POLICIES: dict[str, SubjectRuntimePolicy] = {
+    FAMILY_ENGLISH: _policy(
+        family=FAMILY_ENGLISH,
+        supported_modes=("objective_practice", "english_writing_session"),
+        wired_runtime_modes=(MODE_ENGLISH_WRITING, MODE_TOPIC_PYQ),
+        attempt_kind="learning_session",
+        mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
+        planner_resolver=_pyq_planner_resolver,
+    ),
+    FAMILY_QUANT: _policy(
+        family=FAMILY_QUANT,
+        supported_modes=("topic_practice", "timed_practice", "heuristic_drill", "calculation_gym"),
+        wired_runtime_modes=(MODE_TOPIC_PYQ,),
+        attempt_kind="mock_attempt",
+        mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
+        planner_resolver=_pyq_planner_resolver,
+    ),
+    FAMILY_REASONING: _policy(
+        family=FAMILY_REASONING,
+        supported_modes=("topic_practice", "timed_practice", "reasoning_set"),
+        wired_runtime_modes=(MODE_TOPIC_PYQ,),
+        attempt_kind="mock_attempt",
+        mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
+        planner_resolver=_pyq_planner_resolver,
+    ),
+    FAMILY_GENERAL_AWARENESS: _policy(
+        family=FAMILY_GENERAL_AWARENESS,
+        # GA v1 excludes permanent mastery/SRS; current-affairs retries are ephemeral.
+        # No wired runtime yet (weekly/monthly land in GQR-G5); no PYQ stamp ever.
+        supported_modes=("weekly_current_affairs", "monthly_current_affairs"),
+        wired_runtime_modes=(),
+        attempt_kind="current_affairs_attempt",
+        mastery_enabled=False, correction_enabled=False, retry_policy="ephemeral_ca",
+        planner_resolver=_no_launch_planner_resolver,
+    ),
+}
+
+# Fallback for an ungoverned/unknown subject (e.g. UPSC ``gs``): the generic
+# PYQ-capable runtime, preserving prior behaviour. NOT registered as a family — it is
+# the default when ``family_for_subject`` returns None.
+_GENERIC_POLICY = _policy(
+    family="generic",
+    supported_modes=("objective_practice",),
+    wired_runtime_modes=(MODE_ENGLISH_WRITING, MODE_TOPIC_PYQ),
+    attempt_kind="mock_attempt",
+    mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
+    planner_resolver=_pyq_planner_resolver,
+)
+
+
+def policy_for_family(family: str | None) -> SubjectRuntimePolicy:
+    """Resolve the runtime policy for a family, falling back to the generic
+    PYQ-capable policy for an ungoverned/unknown subject."""
+    if family is None:
+        return _GENERIC_POLICY
+    return SUBJECT_RUNTIME_POLICIES.get(family, _GENERIC_POLICY)
+
+
+def resolve_subject_modes(
+    *, slug: str | None, subject_group: str | None, ctx: InventoryContext
+) -> list[dict[str, Any]]:
+    """Hub practice modes for a subject: resolve family from canonical metadata, then
+    let that policy's inventory resolver emit the eligible runtime modes. The single
+    entry point ``subjects._subject_practice`` calls — no per-mode branching there."""
+    family = family_for_subject(slug=slug, subject_group=subject_group)
+    return policy_for_family(family).inventory_resolver(ctx)
+
+
+def resolve_planner_launch(
+    task_type: str, *, subject_slug: str | None = None, subject_group: str | None = None,
+    topic_id: Any | None, exam_id: Any | None,
+) -> dict[str, Any] | None:
+    """Resolve a runnable launch stamp for a planner task, or ``None``.
+
+    Delegates to the family policy's ``planner_resolver`` — so a General-Awareness task
+    can never be stamped ``pyq_practice`` — while preserving byte-stable PYQ output for
+    existing (numerical/verbal/reasoning + ungoverned) subjects.
+    """
+    family = family_for_subject(slug=subject_slug, subject_group=subject_group)
+    resolver = policy_for_family(family).planner_resolver
+    return resolver(task_type, topic_id=topic_id, exam_id=exam_id)
