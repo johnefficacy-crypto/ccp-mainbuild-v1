@@ -106,17 +106,17 @@ def derive_signals(
     analytics: Iterable[Any],
     *,
     attempt_trusted: bool = False,
-    attempt_complete: bool = True,
+    attempt_complete: bool = False,
     policy: dict | None = None,
 ) -> list[dict[str, Any]]:
     """Derive one shadow signal per (topic_id, microtopic_id) from a SINGLE
     eligible evidence set (§3.3).
 
     Attempt-level gate (fail closed): a signal is derived only from a TRUSTED and
-    COMPLETE attempt. ``attempt_trusted`` defaults to ``False`` so an untrusted or
-    incomplete attempt — or a caller that cannot assert provenance — yields no
-    signal at all. ``AttemptQuestionAnalytics`` carries no attempt status/trust,
-    so the caller must pass this envelope explicitly.
+    COMPLETE attempt. BOTH ``attempt_trusted`` and ``attempt_complete`` default to
+    ``False``, so asserting trust alone (or nothing) yields no signal — the caller
+    must prove both. ``AttemptQuestionAnalytics`` carries no attempt status/trust,
+    so the caller passes this envelope explicitly.
 
     Row-level eligibility: a row must be attempted AND have usable timing
     (``_eligible_ratio``). Excluded rows contribute to NOTHING — not

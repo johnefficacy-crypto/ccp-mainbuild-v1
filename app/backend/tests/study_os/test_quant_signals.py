@@ -13,7 +13,7 @@ def _row(topic="t1", *, correct=True, attempted=True, exp=10, act=10, micro=None
 
 
 def _one(analytics):
-    out = qs.derive_signals(analytics, attempt_trusted=True)
+    out = qs.derive_signals(analytics, attempt_trusted=True, attempt_complete=True)
     assert len(out) == 1
     return out[0]
 
@@ -92,11 +92,13 @@ def test_unattempted_not_counted_in_accuracy():
 
 # ── attempt-level trust / completion gate (fail closed) ───────────────────────
 
-def test_untrusted_attempt_yields_no_signal():
+def test_untrusted_or_incomplete_attempt_yields_no_signal():
     rows = [_row(correct=True) for _ in range(6)]
-    assert qs.derive_signals(rows, attempt_trusted=False) == []           # default fail-closed
+    assert qs.derive_signals(rows) == []                                   # nothing asserted → fail closed
+    assert qs.derive_signals(rows, attempt_trusted=True) == []             # trust alone → still no signal
+    assert qs.derive_signals(rows, attempt_complete=True) == []            # completeness alone → no signal
     assert qs.derive_signals(rows, attempt_trusted=True, attempt_complete=False) == []
-    assert len(qs.derive_signals(rows, attempt_trusted=True)) == 1        # trusted+complete → signal
+    assert len(qs.derive_signals(rows, attempt_trusted=True, attempt_complete=True)) == 1  # both → signal
 
 
 # ── p75 nearest-rank, valid for small samples ─────────────────────────────────
@@ -115,7 +117,7 @@ def test_groups_by_topic_and_microtopic():
         + [_row(topic="t1", micro="m2") for _ in range(5)]
         + [_row(topic="t2") for _ in range(5)]
     )
-    out = qs.derive_signals(rows, attempt_trusted=True)
+    out = qs.derive_signals(rows, attempt_trusted=True, attempt_complete=True)
     keys = {(s["topic_id"], s["microtopic_id"]) for s in out}
     assert keys == {("t1", "m1"), ("t1", "m2"), ("t2", None)}
 
@@ -124,7 +126,7 @@ def test_groups_by_topic_and_microtopic():
 
 def test_persist_upserts_and_touches_no_mastery():
     sb = SBStub({"quant_performance_signals": [], "user_topic_mastery": []})
-    signals = qs.derive_signals([_row() for _ in range(6)], attempt_trusted=True)
+    signals = qs.derive_signals([_row() for _ in range(6)], attempt_trusted=True, attempt_complete=True)
     n = qs.persist_signals(sb, user_id="u1", signals=signals, exam_id="e1")
     assert n == 1
     assert len(sb.db["quant_performance_signals"]) == 1

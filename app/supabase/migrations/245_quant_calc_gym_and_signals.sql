@@ -52,9 +52,9 @@ create table if not exists public.calc_gym_sessions (
   started_at timestamptz not null default now(),
   expires_at timestamptz not null,
   submitted_at timestamptz,
-  score_correct integer,
-  score_total integer,
-  total_time_sec integer,
+  score_correct integer check (score_correct is null or score_correct >= 0),
+  score_total integer check (score_total is null or score_total >= 0),
+  total_time_sec integer check (total_time_sec is null or total_time_sec >= 0),
   created_at timestamptz not null default now()
 );
 
@@ -76,7 +76,10 @@ create table if not exists public.calc_gym_session_items (
   operands jsonb not null default '{}'::jsonb,
   user_answer text,
   is_correct boolean,
-  time_spent_sec integer not null default 0,
+  -- Timing is authoritative evidence for future Quant speed/calc signals, so it
+  -- must never go negative; the submit RPC additionally clamps to the frozen
+  -- session duration (a per-item value cannot exceed the whole session length).
+  time_spent_sec integer not null default 0 check (time_spent_sec >= 0),
   answered_at timestamptz,
   unique (session_id, item_index)
 );
@@ -149,5 +152,160 @@ begin
     -- until the learner-runtime slice (GQR-11) wires it.
   end loop;
 end $$;
+
+-- ═════════════════════════════════════════════════════════════════════════
+-- D. Atomic session lifecycle RPCs (single-transaction — no orphan/partial rows)
+-- ═════════════════════════════════════════════════════════════════════════
+-- The gym's session + its frozen items, and the finalize (item results +
+-- aggregate), must each be all-or-nothing. A PL/pgSQL function runs in ONE
+-- transaction, so any raised exception rolls the whole thing back — there is no
+-- window where a parent commits without its children (AGENTS.md atomic cascade).
+
+-- Create: insert the session and ALL frozen items atomically.
+create or replace function public.create_calc_gym_session(
+    p_user_id        uuid,
+    p_exam_id        uuid,
+    p_skill          text,
+    p_question_count integer,
+    p_duration_sec   integer,
+    p_seed           bigint,
+    p_policy_version text,
+    p_items          jsonb,
+    p_now            timestamptz
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_id   uuid;
+    v_item jsonb;
+begin
+    if p_user_id is null then
+        raise exception 'missing_user: p_user_id must not be NULL' using errcode = 'P0422';
+    end if;
+    insert into public.calc_gym_sessions
+        (user_id, exam_id, skill, question_count, duration_sec, seed,
+         policy_version, status, started_at, expires_at)
+    values
+        (p_user_id, p_exam_id, p_skill, p_question_count, p_duration_sec, p_seed,
+         p_policy_version, 'in_progress', p_now, p_now + make_interval(secs => p_duration_sec))
+    returning id into v_id;
+
+    for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
+        insert into public.calc_gym_session_items
+            (session_id, item_index, prompt, expected_answer, operands)
+        values
+            (v_id,
+             (v_item ->> 'item_index')::int,
+             v_item ->> 'prompt',
+             v_item ->> 'expected_answer',
+             coalesce(v_item -> 'operands', '{}'::jsonb));
+    end loop;
+    return v_id;
+end;
+$$;
+
+-- Submit: lock the OWNED session, enforce state + deadline, score against the
+-- FROZEN expected answers, clamp client timing, and write every item result plus
+-- the aggregate — all in one transaction. A failure at any item rolls back the
+-- whole finalize (the session stays in_progress and can be retried cleanly).
+create or replace function public.submit_calc_gym_session(
+    p_session_id uuid,
+    p_user_id    uuid,
+    p_answers    jsonb,
+    p_now        timestamptz
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_sess       public.calc_gym_sessions%rowtype;
+    v_item       public.calc_gym_session_items%rowtype;
+    v_ans        jsonb;
+    v_user_ans   text;
+    v_time       integer;
+    v_is_correct boolean;
+    v_correct    integer := 0;
+    v_total      integer := 0;
+    v_total_time integer := 0;
+begin
+    if p_user_id is null then
+        raise exception 'missing_user: p_user_id must not be NULL' using errcode = 'P0422';
+    end if;
+    -- Ownership-scoped row lock: another user's session is simply not found.
+    select * into v_sess from public.calc_gym_sessions
+        where id = p_session_id and user_id = p_user_id
+        for update;
+    if not found then
+        raise exception 'not_found: calc gym session % not found for user', p_session_id
+            using errcode = 'P0404';
+    end if;
+    if v_sess.status = 'submitted' then
+        return jsonb_build_object(
+            'session_id', p_session_id, 'status', 'submitted',
+            'score_correct', v_sess.score_correct, 'score_total', v_sess.score_total,
+            'total_time_sec', v_sess.total_time_sec, 'idempotent', true);
+    end if;
+    if v_sess.status <> 'in_progress' then
+        raise exception 'not_in_progress: session % has status %', p_session_id, v_sess.status
+            using errcode = 'P0422';
+    end if;
+    if p_now > v_sess.expires_at then
+        update public.calc_gym_sessions set status = 'expired' where id = p_session_id;
+        raise exception 'expired: session % is past its deadline', p_session_id
+            using errcode = 'P0422';
+    end if;
+
+    for v_item in
+        select * from public.calc_gym_session_items
+        where session_id = p_session_id order by item_index
+    loop
+        v_total := v_total + 1;
+        v_ans := p_answers -> (v_item.item_index::text);
+        v_user_ans := nullif(v_ans ->> 'user_answer', '');
+        -- Clamp client-supplied timing: non-negative, bounded by the frozen
+        -- session duration (a single item cannot exceed the whole session).
+        v_time := coalesce((v_ans ->> 'time_spent_sec')::int, 0);
+        v_time := greatest(0, least(v_time, v_sess.duration_sec));
+        v_is_correct := v_user_ans is not null
+            and lower(regexp_replace(btrim(v_user_ans), '\s', '', 'g'))
+              = lower(regexp_replace(btrim(v_item.expected_answer), '\s', '', 'g'));
+        if v_is_correct then v_correct := v_correct + 1; end if;
+        v_total_time := v_total_time + v_time;
+        update public.calc_gym_session_items
+            set user_answer   = v_ans ->> 'user_answer',
+                is_correct     = v_is_correct,
+                time_spent_sec = v_time,
+                answered_at    = case when v_user_ans is not null then p_now else null end
+            where id = v_item.id;
+    end loop;
+
+    -- Aggregate is also bounded by the frozen limit.
+    v_total_time := least(v_total_time, v_sess.duration_sec);
+    update public.calc_gym_sessions
+        set status = 'submitted', submitted_at = p_now,
+            score_correct = v_correct, score_total = v_total, total_time_sec = v_total_time
+        where id = p_session_id;
+
+    return jsonb_build_object(
+        'session_id', p_session_id, 'status', 'submitted',
+        'score_correct', v_correct, 'score_total', v_total,
+        'total_time_sec', v_total_time, 'idempotent', false);
+end;
+$$;
+
+revoke execute on function public.create_calc_gym_session(uuid, uuid, text, integer, integer, bigint, text, jsonb, timestamptz) from public;
+revoke execute on function public.create_calc_gym_session(uuid, uuid, text, integer, integer, bigint, text, jsonb, timestamptz) from anon;
+revoke execute on function public.create_calc_gym_session(uuid, uuid, text, integer, integer, bigint, text, jsonb, timestamptz) from authenticated;
+grant  execute on function public.create_calc_gym_session(uuid, uuid, text, integer, integer, bigint, text, jsonb, timestamptz) to service_role;
+
+revoke execute on function public.submit_calc_gym_session(uuid, uuid, jsonb, timestamptz) from public;
+revoke execute on function public.submit_calc_gym_session(uuid, uuid, jsonb, timestamptz) from anon;
+revoke execute on function public.submit_calc_gym_session(uuid, uuid, jsonb, timestamptz) from authenticated;
+grant  execute on function public.submit_calc_gym_session(uuid, uuid, jsonb, timestamptz) to service_role;
 
 commit;
