@@ -205,6 +205,35 @@ begin
   );
 end $$;
 
+-- ── 6b. Generation-run insert helper (append-only audit row) ───────────────
+create or replace function public._ca_insert_generation_run(
+  p_document_id uuid,
+  p_event_id uuid,
+  p_candidate_id uuid,
+  p_action text,
+  p_run jsonb,
+  p_adapter_version text
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  insert into public.current_affairs_generation_runs(
+    document_id, event_id, candidate_id, action, status, provider, model,
+    prompt_version, adapter_version, input_hash, output_hash, input_tokens,
+    output_tokens, total_tokens, estimated_cost_usd, latency_ms, error)
+  values (
+    p_document_id, p_event_id, p_candidate_id,
+    coalesce(p_run->>'action', p_action),
+    coalesce(p_run->>'status', 'succeeded'),
+    p_run->>'provider', p_run->>'model', p_run->>'prompt_version', p_adapter_version,
+    p_run->>'input_hash', p_run->>'output_hash',
+    nullif(p_run->>'input_tokens', '')::int, nullif(p_run->>'output_tokens', '')::int,
+    nullif(p_run->>'total_tokens', '')::int, nullif(p_run->>'estimated_cost_usd', '')::numeric,
+    nullif(p_run->>'latency_ms', '')::int, p_run->>'error')
+  returning id into v_id;
+  return v_id;
+end $$;
+
 -- ── 7. Complete (fencing re-check + replay guard + atomic persist + ack) ────
 create or replace function public.ca_complete_generation(
   p_job_id uuid,
@@ -224,6 +253,9 @@ declare
   v_run jsonb;
   v_event_id uuid;
   v_claim_id uuid;
+  v_cand_id uuid;
+  v_gen_run_id uuid;
+  v_ver_run_id uuid;
   v_claim_map jsonb := '{}'::jsonb;   -- temp_id -> claim uuid
   v_linked uuid[];
   v_tid text;
@@ -235,13 +267,15 @@ begin
   if not found then
     raise exception 'ca_job_not_found: %', p_job_id;
   end if;
-  -- Fencing re-check (§8.3): only the current lease holder may complete.
-  if v_job.status <> 'running' or v_job.claim_token is distinct from p_claim_token then
-    raise exception 'ca_job_fencing_failed: job=% status=%', p_job_id, v_job.status;
-  end if;
-  -- Replay guard: an already-acked job is a no-op.
+  -- Replay guard FIRST (idempotent ack): a successful completion clears claim_token
+  -- and marks the job 'done', so a retry with the original token would otherwise trip
+  -- the fencing branch below. An already-acked job is a side-effect-free no-op.
   if v_job.status = 'done' then
     return jsonb_build_object('status', 'replayed', 'job_id', p_job_id);
+  end if;
+  -- Fencing re-check (§8.3): only the current lease holder may complete a live job.
+  if v_job.status <> 'running' or v_job.claim_token is distinct from p_claim_token then
+    raise exception 'ca_job_fencing_failed: job=% status=%', p_job_id, v_job.status;
   end if;
 
   for v_event in select * from jsonb_array_elements(coalesce(p_events, '[]'::jsonb)) loop
@@ -292,7 +326,9 @@ begin
       end loop;
     end loop;
 
-    -- Candidates: resolve temp claim ids → uuids; dedup on fingerprint.
+    -- Candidates: resolve temp claim ids → uuids; dedup on fingerprint; persist the
+    -- Stage-B (generator) + Stage-C (verifier) audit rows with candidate lineage in
+    -- the SAME transaction, so every candidate is fully traceable (§6).
     for v_cand in select * from jsonb_array_elements(coalesce(v_event->'candidates', '[]'::jsonb)) loop
       v_linked := array[]::uuid[];
       for v_tid in select jsonb_array_elements_text(coalesce(v_cand->'linked_temp_claim_ids', '[]'::jsonb)) loop
@@ -301,6 +337,9 @@ begin
         end if;
       end loop;
 
+      v_cand_id := null;
+      -- Conflict target MUST carry the partial index predicate (uq_caqc_fingerprint is
+      -- partial WHERE question_fingerprint IS NOT NULL), else Postgres cannot infer it.
       insert into public.current_affairs_question_candidates(
         event_id, question_payload, question_fingerprint,
         validation_result, verifier_verdict, status)
@@ -312,26 +351,36 @@ begin
         coalesce(v_cand->'validation_result', '{}'::jsonb),
         coalesce(v_cand->'verifier_verdict', '{}'::jsonb),
         coalesce(v_cand->>'status', 'generated'))
-      on conflict (question_fingerprint) do nothing;
-      if found then
+      on conflict (question_fingerprint) where question_fingerprint is not null do nothing
+      returning id into v_cand_id;
+
+      if v_cand_id is not null then
+        v_gen_run_id := null;
+        v_ver_run_id := null;
+        if v_cand->'generator_run' is not null and v_cand->'generator_run' <> 'null'::jsonb then
+          v_gen_run_id := public._ca_insert_generation_run(
+            p_document_id, v_event_id, v_cand_id, 'mcq_generation',
+            v_cand->'generator_run', p_adapter_version);
+        end if;
+        if v_cand->'verifier_run' is not null and v_cand->'verifier_run' <> 'null'::jsonb then
+          v_ver_run_id := public._ca_insert_generation_run(
+            p_document_id, v_event_id, v_cand_id, 'verification',
+            v_cand->'verifier_run', p_adapter_version);
+        end if;
+        update public.current_affairs_question_candidates
+        set generator_run_id = v_gen_run_id, verifier_run_id = v_ver_run_id, updated_at = now()
+        where id = v_cand_id;
         v_candidates_written := v_candidates_written + 1;
       end if;
     end loop;
   end loop;
 
-  -- Generation audit (append-only).
+  -- Document-level generation audit (Stage-A extraction runs; candidate-scoped
+  -- generator/verifier runs are persisted inline above with lineage).
   for v_run in select * from jsonb_array_elements(coalesce(p_generation_runs, '[]'::jsonb)) loop
-    insert into public.current_affairs_generation_runs(
-      document_id, action, status, provider, model, prompt_version, adapter_version,
-      input_hash, output_hash, input_tokens, output_tokens, total_tokens,
-      estimated_cost_usd, latency_ms, error)
-    values (
-      p_document_id, v_run->>'action', coalesce(v_run->>'status', 'succeeded'),
-      v_run->>'provider', v_run->>'model', v_run->>'prompt_version', p_adapter_version,
-      v_run->>'input_hash', v_run->>'output_hash',
-      nullif(v_run->>'input_tokens', '')::int, nullif(v_run->>'output_tokens', '')::int,
-      nullif(v_run->>'total_tokens', '')::int, nullif(v_run->>'estimated_cost_usd', '')::numeric,
-      nullif(v_run->>'latency_ms', '')::int, v_run->>'error');
+    perform public._ca_insert_generation_run(
+      p_document_id, null, null, coalesce(v_run->>'action', 'extraction'),
+      v_run, p_adapter_version);
   end loop;
 
   -- Atomic ack.
@@ -413,6 +462,10 @@ begin
 end $$;
 
 -- ── 10. Grants: service_role only (SECURITY DEFINER RPCs) ──────────────────
+-- Internal helper: owner-only (called within the SECURITY DEFINER complete RPC);
+-- never externally callable.
+revoke all on function public._ca_insert_generation_run(uuid, uuid, uuid, text, jsonb, text) from public, anon, authenticated;
+
 revoke all on function public.ca_enqueue_generation_job(uuid) from public, anon, authenticated;
 revoke all on function public.ca_claim_generation_job(integer, text[]) from public, anon, authenticated;
 revoke all on function public.ca_complete_generation(uuid, uuid, uuid, jsonb, jsonb, text) from public, anon, authenticated;

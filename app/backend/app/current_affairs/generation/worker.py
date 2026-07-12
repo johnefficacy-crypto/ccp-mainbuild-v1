@@ -73,8 +73,9 @@ def _build_persist_payload(
             })
 
         gen = adapter.generate(event, pipeline_claims)
-        if gen.run:
-            runs.append(gen.run.to_dict())
+        # The Stage-B (generator) run is shared across this event's candidates and is
+        # persisted per-candidate with candidate lineage by the complete RPC (§6).
+        generator_run = gen.run.to_dict() if gen.run else None
 
         persist_candidates: list[dict[str, Any]] = []
         for payload in gen.candidates:
@@ -82,8 +83,6 @@ def _build_persist_payload(
                 payload, pipeline_claims,
                 [e for c in (payload.get("linked_claim_ids") or []) for e in evidence_by_claim.get(str(c), [])],
             )
-            if verification.run:
-                runs.append(verification.run.to_dict())
             result = validate_candidate(
                 payload,
                 claims_by_id=claims_by_id,
@@ -99,6 +98,9 @@ def _build_persist_payload(
                 "status": "review_ready" if result.ok else "validation_failed",
                 "validation_result": result.to_dict(),
                 "verifier_verdict": verification.verdict,
+                # Audit lineage: persisted with candidate_id + FK back onto the candidate.
+                "generator_run": generator_run,
+                "verifier_run": verification.run.to_dict() if verification.run else None,
             })
 
         out_events.append({

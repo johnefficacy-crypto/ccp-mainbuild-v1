@@ -76,3 +76,28 @@ def test_service_role_only_grants():
 
 def test_security_definer_search_path():
     assert _NORM.count("security definer set search_path = public") >= 5
+
+
+def test_candidate_conflict_target_matches_partial_index():
+    # checkpost #966 F2: ON CONFLICT must carry the partial-index predicate, or Postgres
+    # cannot infer uq_caqc_fingerprint (partial WHERE question_fingerprint IS NOT NULL).
+    assert "on conflict (question_fingerprint) where question_fingerprint is not null do nothing" in _NORM
+    assert "on conflict (question_fingerprint) do nothing" not in _NORM
+
+
+def test_replay_guard_precedes_fencing():
+    # checkpost #966 F3: an already-'done' job must return 'replayed' BEFORE the running
+    # lease/token fencing branch (completion clears the token).
+    complete = _NORM.split("function public.ca_complete_generation")[1]
+    replay_at = complete.find("'replayed'")
+    fencing_at = complete.find("ca_job_fencing_failed")
+    assert 0 <= replay_at < fencing_at
+
+
+def test_candidate_audit_lineage_is_persisted():
+    # checkpost #966 F1: every candidate is linked to its generator + verifier run.
+    assert "_ca_insert_generation_run" in _NORM
+    assert "generator_run_id = v_gen_run_id" in _NORM
+    assert "verifier_run_id = v_ver_run_id" in _NORM
+    # runs are inserted with candidate_id lineage (mcq_generation / verification).
+    assert "'mcq_generation'" in _NORM and "'verification'" in _NORM

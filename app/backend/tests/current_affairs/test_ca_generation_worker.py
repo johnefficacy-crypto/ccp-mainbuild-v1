@@ -93,9 +93,13 @@ def test_full_pass_produces_review_ready_candidate_and_audit():
     cand = ev["candidates"][0]
     assert cand["status"] == "review_ready", cand["validation_result"]
     assert cand["linked_temp_claim_ids"] == ["e0c0"]
-    # Full generation audit: one run per LLM stage (A/B/C).
-    actions = sorted(r["action"] for r in p["p_generation_runs"])
-    assert actions == ["extraction", "mcq_generation", "verification"]
+    # Audit lineage (checkpost #966 F1): the candidate carries its own generator +
+    # verifier run so the complete RPC can persist candidate-scoped audit rows.
+    assert cand["generator_run"]["action"] == "mcq_generation"
+    assert cand["verifier_run"]["action"] == "verification"
+    # Document-level runs are the Stage-A extraction only (candidate-scoped runs travel
+    # on the candidate, not this flat list).
+    assert [r["action"] for r in p["p_generation_runs"]] == ["extraction"]
 
 
 def test_shadow_no_authority_no_promotion():
