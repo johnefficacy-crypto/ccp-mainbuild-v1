@@ -59,6 +59,25 @@ def test_english_family_emits_writing_and_pyq():
     assert next(m for m in modes if m["type"] == "topic_pyq")["target_topic_id"] == "t-1"
 
 
+def test_reasoning_family_emits_topic_and_timed_practice():
+    # GQR-R10: reasoning surfaces topic PYQ + timed practice, both server_launch, both
+    # targeting the weakest projected topic. Added via policy wiring, no subjects.py branch.
+    modes = srp.resolve_subject_modes(
+        slug="general-intelligence-reasoning", subject_group="reasoning",
+        ctx=_ctx(topics=["t-7"]),
+    )
+    server_modes = [m for m in modes if m["route_type"] == "server_launch"]
+    assert [m["type"] for m in server_modes] == ["topic_pyq", "timed_practice"]
+    assert all(m["target_topic_id"] == "t-7" for m in server_modes)
+    assert srp.is_wired_mode("timed_practice") is True
+
+
+def test_reasoning_timed_practice_hidden_without_projected_topics():
+    assert srp.resolve_subject_modes(
+        slug="general-intelligence-reasoning", subject_group="reasoning", ctx=_ctx(),
+    ) == []
+
+
 def test_quant_family_emits_only_pyq_no_branch_needed():
     modes = srp.resolve_subject_modes(
         slug="quantitative-aptitude", subject_group="numerical",

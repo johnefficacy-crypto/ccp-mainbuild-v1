@@ -746,7 +746,7 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "section_index": _question_section_index(snapshot, qid),
         })
 
-    time_remaining = _time_remaining_sec(attempt)
+    time_remaining = _practice_aware_time_remaining_sec(attempt, snapshot)
 
     return {
         "attempt_id": attempt_id,
@@ -1201,6 +1201,21 @@ def _time_remaining_sec(attempt: dict) -> int:
         return max(0, int(delta))
     except Exception:  # noqa: BLE001
         return 0
+
+
+def _practice_aware_time_remaining_sec(attempt: dict, snapshot: dict) -> int | None:
+    """Countdown surfaced to the attempt shell.
+
+    The countdown reads the SAME ``expires_at`` deadline that save/submit/auto-submit
+    enforce — never a second, display-only clock. The only special case is UNTIMED
+    practice: its ``expires_at`` is the long abandonment TTL, which must not read as a
+    learner clock, so it surfaces ``None`` (the shell renders ``--`` and never
+    auto-submits). Timed practice and real/generated mocks fall through to the shared
+    ``expires_at`` remaining.
+    """
+    if snapshot.get("practice") and int(snapshot.get("duration_sec") or 0) <= 0:
+        return None
+    return _time_remaining_sec(attempt)
 
 
 def _serialise_question_for_attempt(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:

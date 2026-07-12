@@ -26,10 +26,12 @@ from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
 from app.study_os.subject_runtime_policy import (
     MODE_ENGLISH_WRITING,
+    MODE_TIMED_PRACTICE,
     MODE_TOPIC_PYQ,
     is_wired_mode,
+    policy_for_family,
 )
-from app.study_os.subjects import locked_topic_ids_for_subject
+from app.study_os.subjects import locked_topic_ids_for_subject, resolve_subject_family
 from app.study_os.writing_practice.subject_launch import resolve_launch_prompt_id
 
 logger = logging.getLogger("career_copilot.api.subject_practice")
@@ -37,6 +39,12 @@ logger = logging.getLogger("career_copilot.api.subject_practice")
 router = APIRouter(prefix="/study/subjects", tags=["study"])
 
 _PRACTICE_LIMIT = 100
+
+# Server-owned timed-practice countdown rate (GQR-R10). The attempt freezes
+# ``seconds_per_question × frozen_question_count`` as its duration; the browser
+# never sets the timer. A reviewed, per-topic target time may replace this flat
+# rate later from real attempt data (mirrors the Quant target-time deferral).
+_TIMED_SECONDS_PER_QUESTION = 60
 
 
 class StartSubjectPracticeRequest(BaseModel):
@@ -62,6 +70,22 @@ def start_subject_practice(
     handler = _LAUNCH_HANDLERS.get(body.mode) if is_wired_mode(body.mode) else None
     if handler is None:
         raise HTTPException(status_code=422, detail=f"unknown practice mode: {body.mode}")
+    # Subject-family gate (checkpost #960): a wired mode must also be wired for THIS
+    # subject's family — the browser is never trusted to only send modes the hub
+    # offered. e.g. timed_practice is Reasoning-only in v1; posting it to a Quant
+    # subject is rejected here, before any handler runs. Fail CLOSED when the path
+    # subject cannot be resolved (missing / not in the exam's locked coverage / read
+    # failed): a mode must never proceed for an unresolved subject.
+    family, subject_known = resolve_subject_family(supabase, exam_id, str(subject_id))
+    if not subject_known:
+        raise HTTPException(
+            status_code=422, detail="subject not found in your exam's practice scope",
+        )
+    if body.mode not in policy_for_family(family).wired_runtime_modes:
+        raise HTTPException(
+            status_code=422,
+            detail=f"practice mode {body.mode!r} is not available for this subject",
+        )
     return handler(
         supabase, user_id=user_id, subject_id=str(subject_id),
         topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
@@ -82,11 +106,23 @@ def _handle_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id) -> di
     return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
 
 
+def _handle_timed_practice(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+    # GQR-R10: identical server-owned topic assembly + scope gate as topic_pyq, plus a
+    # server-owned countdown. Lands in the same objective attempt shell (which already
+    # renders a timer when the frozen template carries duration_sec).
+    attempt_id = _launch_topic_pyq(
+        supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
+        seconds_per_question=_TIMED_SECONDS_PER_QUESTION,
+    )
+    return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
+
+
 # Launch-handler dispatch table, keyed by wired runtime mode. Registering a new
 # runtime = one entry here + one policy in subject_runtime_policy, not an if-ladder.
 _LAUNCH_HANDLERS = {
     MODE_ENGLISH_WRITING: _handle_english_writing,
     MODE_TOPIC_PYQ: _handle_topic_pyq,
+    MODE_TIMED_PRACTICE: _handle_timed_practice,
 }
 
 
@@ -103,7 +139,7 @@ def _launch_english(supabase, *, user_id, subject_id, topic_id, exam_id):
     return session.get("id")
 
 
-def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id):
+def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, seconds_per_question=None):
     if not topic_id:
         raise HTTPException(status_code=422, detail="topic_id is required for topic practice")
     if not exam_id:
@@ -118,6 +154,7 @@ def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id):
         result = start_pyq_practice(
             supabase, user_id=user_id, mode="topic", target_id=topic_id,
             exam_id=exam_id, limit=_PRACTICE_LIMIT,
+            seconds_per_question=seconds_per_question,
         )
     except PracticeInputError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

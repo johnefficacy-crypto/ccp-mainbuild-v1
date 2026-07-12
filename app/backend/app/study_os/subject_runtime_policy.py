@@ -40,6 +40,7 @@ from typing import Any, Callable, Mapping
 # byte-stable — regression tests pin them.
 MODE_ENGLISH_WRITING = "english_writing"
 MODE_TOPIC_PYQ = "topic_pyq"
+MODE_TIMED_PRACTICE = "timed_practice"
 
 # Subject families (contract §2.2 vocabulary).
 FAMILY_ENGLISH = "english"
@@ -173,6 +174,13 @@ WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
             },
         ),
     ),
+    # GQR-R10: same server-owned topic-PYQ assembly as topic_pyq, but the launch
+    # freezes a server-owned countdown (duration_sec) onto the attempt. Reuses the
+    # existing objective attempt shell + timer — no new attempt engine, no migration.
+    MODE_TIMED_PRACTICE: RuntimeModeAdapter(
+        mode=MODE_TIMED_PRACTICE,
+        label="Timed practice",
+    ),
 }
 
 
@@ -207,11 +215,21 @@ def _emit_topic_pyq(ctx: InventoryContext) -> list[dict[str, Any]]:
     return WIRED_RUNTIME_MODES[MODE_TOPIC_PYQ].hub_entries(target_topic_id=str(chosen))
 
 
+def _emit_timed_practice(ctx: InventoryContext) -> list[dict[str, Any]]:
+    # Same eligibility + target as topic_pyq (a projected topic pool); differs only by
+    # the server-owned timer applied at launch.
+    if not ctx.available_topic_ids:
+        return []
+    chosen = _weakest_available_topic(ctx)
+    return WIRED_RUNTIME_MODES[MODE_TIMED_PRACTICE].hub_entries(target_topic_id=str(chosen))
+
+
 # Per wired-mode signal resolver. Registering a runtime = adding an entry here + to a
 # policy's ``wired_runtime_modes``; no branch is added to ``subjects.py``.
 _MODE_EMITTERS: dict[str, Callable[[InventoryContext], list[dict[str, Any]]]] = {
     MODE_ENGLISH_WRITING: _emit_english_writing,
     MODE_TOPIC_PYQ: _emit_topic_pyq,
+    MODE_TIMED_PRACTICE: _emit_timed_practice,
 }
 
 
@@ -316,7 +334,10 @@ SUBJECT_RUNTIME_POLICIES: dict[str, SubjectRuntimePolicy] = {
     FAMILY_REASONING: _policy(
         family=FAMILY_REASONING,
         supported_modes=("topic_practice", "timed_practice", "reasoning_set"),
-        wired_runtime_modes=(MODE_TOPIC_PYQ,),
+        # v1 wired: topic PYQ (topic_practice) + timed_practice over the objective
+        # runtime. reasoning_set (shared text/table stimulus sets) is the deferred
+        # slice — it needs a stimulus-grouped selector, tracked as GQR-R10 set-runtime.
+        wired_runtime_modes=(MODE_TOPIC_PYQ, MODE_TIMED_PRACTICE),
         attempt_kind="mock_attempt",
         mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
         planner_resolver=_pyq_planner_resolver,
