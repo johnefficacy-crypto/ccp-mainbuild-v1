@@ -42,7 +42,7 @@ def test_bundle_authority_reuses_strict_question_predicate():
 
 def test_retry_selector_is_exact_exam_scoped():
     assert "drop function public.ca_eligible_retry_tail(uuid)" in _NORM
-    fn = _NORM.split("function public.ca_eligible_retry_tail(")[1]
+    fn = _NORM.split("create function public.ca_eligible_retry_tail(")[1]
     assert "p_user uuid, p_exam uuid" in fn
     assert "ri.exam_id is not distinct from p_exam" in fn
     assert (
