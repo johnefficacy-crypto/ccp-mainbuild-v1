@@ -119,8 +119,24 @@ def _build_persist_payload(
     return {"events": out_events}, runs
 
 
-def run_generation_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str, Any]:
-    """Claim and process at most one pending CA generation job."""
+def run_generation_worker_pass(
+    sb: Any,
+    *,
+    lease_seconds: int = 900,
+    adapter: Any = None,
+    require_real_provider: bool = False,
+) -> dict[str, Any]:
+    """Claim and process at most one pending CA generation job.
+
+    ``require_real_provider`` (set by the scheduled cron) refuses to CLAIM a job unless a
+    real provider adapter is active — the deterministic mock must not consume a production
+    document and mark its generation ``done`` (generation is fixed at 1, so it could never
+    be reprocessed by the real provider). Tests inject a mock adapter explicitly, which is
+    honoured. Provider-off/unavailable returns ``idle`` WITHOUT acknowledging any job."""
+    resolved = adapter or ad.get_generation_adapter()
+    if require_real_provider and isinstance(resolved, ad.MockGenerationAdapter):
+        return {"processed": 0, "status": "idle", "reason": "provider_unavailable"}
+
     claim = sb.rpc("ca_claim_generation_job", {
         "p_lease_seconds": lease_seconds, "p_job_kinds": [_JOB_KIND],
     }).execute().data
@@ -131,7 +147,7 @@ def run_generation_worker_pass(sb: Any, *, lease_seconds: int = 900) -> dict[str
     token = claim["claim_token"]
     try:
         document = claim["document"]
-        adapter = ad.get_generation_adapter()
+        adapter = resolved
         existing = frozenset(str(f) for f in (claim.get("existing_fingerprints") or []))
         persist, runs = _build_persist_payload(
             document, adapter=adapter,

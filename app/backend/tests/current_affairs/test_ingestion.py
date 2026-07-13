@@ -49,6 +49,43 @@ def _db(documents=None) -> SBStub:
     })
 
 
+class _DocInsertRaises(SBStub):
+    """SBStub whose document-insert raises a given exception (dedup select still works)."""
+    def __init__(self, db, exc):
+        super().__init__(db)
+        self._exc = exc
+
+    def table(self, name):
+        q = super().table(name)
+        if name == "current_affairs_documents":
+            orig = q.execute
+            def _execute():
+                if q._pending_insert is not None:
+                    raise self._exc
+                return orig()
+            q.execute = _execute
+        return q
+
+
+def test_unique_violation_is_a_benign_duplicate():
+    # A concurrent run won the content-hash race (23505) → duplicate, health stays green.
+    sb = _DocInsertRaises({"current_affairs_documents": []},
+                          Exception("duplicate key value violates unique constraint (23505)"))
+    res = ingestion.ingest_source(sb, _source(consecutive_failures=1), fetch=lambda u, **k: _ok())
+    assert res["status"] == "duplicate" and res["document_id"] is None
+    assert sb.db["current_affairs_sources"] == []  # (no sources seeded) — health write is best-effort
+
+
+def test_infra_write_failure_is_a_real_error_not_a_duplicate():
+    # Any NON-unique exception is a genuine write failure — must NOT be masked as duplicate.
+    db = {"current_affairs_sources": [_source(consecutive_failures=2)], "current_affairs_documents": []}
+    sb = _DocInsertRaises(db, Exception("connection reset by peer"))
+    res = ingestion.ingest_source(sb, _source(consecutive_failures=2), fetch=lambda u, **k: _ok())
+    assert res["status"] == "error" and res["reason"] == "write_failed"
+    src = sb.db["current_affairs_sources"][0]
+    assert src["last_status"] == "error" and src["consecutive_failures"] == 3  # streak bumped
+
+
 def test_snapshots_new_document():
     sb = _db()
     fetch = lambda url, **kw: _ok()
