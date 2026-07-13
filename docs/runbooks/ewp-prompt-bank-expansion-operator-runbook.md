@@ -123,11 +123,20 @@ curl -sS -X POST "$API/api/admin/content-studio/writing-prompt-targets/$TARGET_I
 
 ## 5. Activate the prompt (`content_studio.activate`)
 
-The activate RPC is the **sole** eligibility authority — it checks every precondition under a row lock and returns a **normal 200** verdict `{eligible, blockers}` (a blocked activation is NOT an error).
+**5.0 Re-read the prompt for a FRESH CAS token.** Verification in §3.2 ran `cms_review_writing_prompt`, which set `writing_prompts.updated_at = now()`. The activate RPC hard-checks the *current* `updated_at` against `p_expected_updated_at` under the row lock, so the pre-review `$UPDATED_AT` is now stale and would fail with `409 concurrent_modification`. Re-read the prompt and capture its post-verification token:
+```bash
+PROMPT_UPDATED_AT=$(curl -sS "$API/api/admin/content-studio/writing-prompts/$PROMPT_ID" \
+    -H "Authorization: Bearer $TOKEN" | jq -r '.updated_at')
+# sanity-check: should show reviewer_status=verified, is_active=false
+curl -sS "$API/api/admin/content-studio/writing-prompts/$PROMPT_ID" \
+    -H "Authorization: Bearer $TOKEN" | jq '{id, reviewer_status, is_active, updated_at}'
+```
+
+**5.1 Activate.** The activate RPC is the **sole** eligibility authority — it checks every precondition under a row lock and returns a **normal 200** verdict `{eligible, blockers}` (a blocked activation is NOT an error). Use the FRESH `$PROMPT_UPDATED_AT`, never the pre-review `$UPDATED_AT`:
 ```bash
 curl -sS -X POST "$API/api/admin/content-studio/writing-prompts/$PROMPT_ID/activate" \
     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"reason":"Expansion: activate verified sentence_construction prompt","expected_updated_at":"'"$UPDATED_AT"'"}' | jq
+    -d '{"reason":"Expansion: activate verified sentence_construction prompt","expected_updated_at":"'"$PROMPT_UPDATED_AT"'"}' | jq
 ```
 - `{"eligible": true, ...}` → prompt is now `is_active=true` (live).
 - `{"eligible": false, "blockers": [...]}` → resolve the listed blockers and retry. Blocker codes:

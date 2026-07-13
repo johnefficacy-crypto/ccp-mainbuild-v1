@@ -5,7 +5,9 @@
 
 The adapter is code-complete on `main` (`app/backend/app/study_os/writing_practice/semantic_evaluator.py`). This runbook is **operational only** — no code changes.
 
-> **Constraint:** SP1b is for source-dependent types — `sentence_correction`, grammar, `vocabulary_in_context`. It is **NOT** for `sentence_construction` (construction stays on the deterministic mock; `_is_source_dependent()` enforces this). Shadow output never affects a learner: it is written to an append-only telemetry table and discarded for authority.
+> **Scope — SP1b's *evidence* is for source-dependent types** (`sentence_correction`, grammar, `vocabulary_in_context`); the §5.2 gates and any eventual LIVE promotion apply per-type to those. **But the shadow probe as currently coded is FLAG-WIDE, not type-scoped** — see the ⚠️ warning below. Shadow output never affects a learner: it is written to an append-only telemetry table and discarded for authority.
+>
+> ⚠️ **The worker does NOT gate the shadow provider call by exercise type.** `run_worker_pass` calls `_run_semantic_shadow_probe(...)` **unconditionally** after every deterministic evaluation; `get_semantic_shadow_evaluator()` gates only on `FF_WRITING_LLM_EVAL=shadow`; and `SemanticLanguageEvaluator.evaluate()` makes the provider call for **any** `exercise_type` (no construction skip). `_is_source_dependent()` only controls the **deterministic source-comparison**, not whether the shadow provider runs. **Consequence:** enabling the flag on a live worker with active `sentence_construction` traffic will send those construction submissions to the provider too — counting toward cost and sending answer text to the provider. Plan for this (see §3) or land a code gate first (see §6).
 
 ---
 
@@ -37,10 +39,10 @@ Notes:
 
 ## 3. Generate shadow telemetry
 
-The shadow probe fires from the async evaluator pass (`evaluation_worker.run_worker_pass`) whenever it processes a source-dependent unit while the flag is `shadow`. To accumulate evidence:
-1. Ensure the eval worker/scheduler is running with the §2 env (it is single-instance: `max_instances=1`, `coalesce=True`).
-2. Drive correction / grammar / vocabulary **learning-mode** submissions through the normal EWP flow (these types can be imported+verified for authoring even though they are not learner-activatable — see the prompt-bank runbook — or use a controlled internal cohort / replay set).
-3. Each processed source-dependent unit appends one row to `writing_language_evaluator_runs`.
+The shadow probe fires from the async evaluator pass (`evaluation_worker.run_worker_pass`) after **every** processed evaluation job while the flag is `shadow` — for **all** exercise types, not just source-dependent ones (see the ⚠️ warning above). To accumulate the *evidence you care about* (correction / grammar / vocabulary) without incidentally sending unrelated `sentence_construction` traffic to the provider, **isolate the workload** rather than flipping the flag on general live traffic:
+1. Run the eval worker/scheduler with the §2 env on an **isolated instance / environment** that only processes a controlled job set (it is single-instance: `max_instances=1`, `coalesce=True`). Do NOT enable the flag on a worker draining live `sentence_construction` traffic unless you accept those submissions hitting the provider (cost + answer text sent out).
+2. Feed it correction / grammar / vocabulary **learning-mode** submissions (these types can be imported+verified for authoring even though they are not learner-activatable — see the prompt-bank runbook), or a curated **replay set** of source-dependent jobs.
+3. Each processed job appends one row to `writing_language_evaluator_runs`; filter to the source-dependent types when computing the §5.2 gates (`WHERE exercise_type IN ('sentence_correction','vocabulary_in_context', …)`). Any `sentence_construction` rows that appear are incidental and are excluded from the evidence set.
 
 Inspect accumulation:
 ```sql
@@ -83,7 +85,13 @@ Latency (G5-d), cost (G5-e), token counts, and confidence come straight from `wr
 | Env | Effect |
 |---|---|
 | `FF_WRITING_LLM_EVAL=off` (default) | adapter never constructed; deterministic mock only |
-| `FF_WRITING_LLM_EVAL=shadow` | adapter runs, telemetry recorded, **zero learner-facing / authority effect** |
+| `FF_WRITING_LLM_EVAL=shadow` | adapter runs for **every** processed job (all exercise types), telemetry recorded, **zero learner-facing / authority effect** — but answer text for all types is sent to the provider (see §6) |
 | `FF_WRITING_LLM_EVAL=live` | returns `None` from the shadow seam — LIVE is blocked by design |
 | `ANTHROPIC_API_KEY` | provider key (env/secret only) |
 | `EWP_SEMANTIC_MODEL` | pin the benchmark model for the window (swap resets evidence) |
+
+---
+
+## 6. Recommended code follow-up (optional, separate PR)
+
+The shadow probe is currently **flag-wide** (no exercise-type gate — verified in `evaluation_worker._run_semantic_shadow_probe` / `semantic_evaluator.SemanticLanguageEvaluator.evaluate`). If the team wants to run shadow directly on general live traffic **without** sending `sentence_construction` (and other non-source-dependent) answers to the provider, gate the probe in code — e.g. skip `_run_semantic_shadow_probe` (or short-circuit `evaluate()` to a `status='skipped'` telemetry row with no provider call) when `_is_source_dependent(exercise_type)` is false. That is a code change with behaviour tests, out of scope for this docs PR; until it lands, use the isolation approach in §3.
