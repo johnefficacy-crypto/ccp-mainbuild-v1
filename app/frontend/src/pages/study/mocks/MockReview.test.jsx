@@ -44,6 +44,30 @@ test("shows learner-friendly error labels, never raw codes", async () => {
   expect(screen.queryByText("silly_mistake")).toBeNull();
 });
 
+test("Unattempted filter follows is_correct (null), not raw answer presence", async () => {
+  const payload = {
+    attempt_id: "att1",
+    questions: [
+      // Wrong MCQ — is_correct false → NOT unattempted (even with a null option).
+      { question_id: "qA", attempt_order: 1, is_correct: false, selected_option_id: null, error_type: "concept_gap", question_snapshot: SNAP },
+      // Integer typed-but-ungradeable: carries a numeric_answer yet is_correct is
+      // null → must still count as unattempted (the raw-answer filter would drop it).
+      { question_id: "qB", attempt_order: 2, is_correct: null, numeric_answer: 42, error_type: null, question_snapshot: { ...SNAP, question_type: "integer" } },
+      // Genuinely blank MCQ — is_correct null → unattempted.
+      { question_id: "qC", attempt_order: 3, is_correct: null, selected_option_id: null, error_type: null, question_snapshot: SNAP },
+    ],
+  };
+  renderReview(payload);
+  await screen.findByTestId("review-palette");
+  fireEvent.click(screen.getByTestId("review-filter-unattempted"));
+  await waitFor(() => {
+    // qB (order 2) + qC (order 3) are unattempted; the wrong qA is excluded.
+    expect(screen.getByTestId("review-palette-item-0")).toHaveTextContent("2");
+    expect(screen.getByTestId("review-palette-item-1")).toHaveTextContent("3");
+    expect(screen.queryByTestId("review-palette-item-2")).toBeNull();
+  });
+});
+
 test("filtered palette preserves the original question number", async () => {
   renderReview();
   await screen.findByTestId("review-palette");

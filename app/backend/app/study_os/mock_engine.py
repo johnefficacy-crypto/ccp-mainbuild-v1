@@ -230,6 +230,35 @@ def _ordered_options(q: dict) -> list[dict]:
     return sorted((q.get("options") or []), key=_key)
 
 
+def _numeric_answer_spec(q: dict) -> dict | None:
+    """Frozen correct numeric-answer spec ``{value, tolerance}`` for an
+    integer/numerical question, read from the bank row's ``numeric_answer``
+    column (jsonb ``{"value": …, "tolerance": …}`` or a bare number).
+
+    Returns ``None`` when absent or non-numeric — the deterministic scorer then
+    fails closed (treats the response as ungradeable → unattempted, never a
+    false-positive ``correct``). Frozen into the immutable snapshot so submit
+    scores from the value captured at attempt start, never the live bank.
+    """
+    raw = q.get("numeric_answer")
+    if isinstance(raw, bool):  # guard: bool is an int subclass
+        return None
+    if isinstance(raw, (int, float)):
+        return {"value": float(raw), "tolerance": 0.0}
+    if not isinstance(raw, dict):
+        return None
+    try:
+        value = float(raw.get("value"))
+    except (TypeError, ValueError):
+        return None
+    tol_raw = raw.get("tolerance")
+    try:
+        tol = abs(float(tol_raw)) if tol_raw is not None else 0.0
+    except (TypeError, ValueError):
+        tol = 0.0
+    return {"value": value, "tolerance": tol}
+
+
 def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wrong: float = 0.25) -> dict:
     """Frozen copy of a question + its options, stored in mock_attempt_responses.
 
@@ -249,6 +278,10 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         "marks": marks_per_correct,
         "negative_marks": marks_per_wrong,
         "correct_option_id": q.get("correct_option_id"),
+        # Integer/numerical questions carry no options — the correct answer is a
+        # value + tolerance, frozen here for integer type only (NULL otherwise)
+        # so the scorer grades from the immutable snapshot, never the live bank.
+        "numeric_answer": _numeric_answer_spec(q) if q.get("question_type") == "integer" else None,
         "explanation": q.get("explanation"),
         # Mastery write-back (PR5) derives deltas straight from the frozen
         # snapshot, so the topic/difficulty/source signals it weights on must be
@@ -740,6 +773,10 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "stimuli": snap.get("stimuli") or [],
             "section_id": snap.get("section_id"),
             "selected_option_id": (r or {}).get("selected_option_id"),
+            # Learner's saved numeric answer, so an integer question restores on
+            # resume. The correct value/tolerance is NEVER surfaced here — it
+            # stays inside the frozen snapshot until review.
+            "numeric_answer": (r or {}).get("numeric_answer"),
             "is_marked_for_review": bool((r or {}).get("is_marked_for_review")),
             "is_visited": bool((r or {}).get("is_visited")),
             "time_spent_sec": int((r or {}).get("time_spent_sec") or 0),
@@ -802,8 +839,14 @@ def save_answer(
     is_marked_for_review: bool,
     client_seq: int,
     time_spent_sec: int,
+    numeric_answer: float | None = None,
 ) -> dict:
     """Idempotent upsert for a single answer.
+
+    ``numeric_answer`` carries the learner's typed value for integer/numerical
+    questions; it is mutually exclusive with ``selected_option_id`` (MCQ). Both
+    are written every save so switching a question's answer clears the other
+    modality.
 
     Rejected (raises ValueError) when:
       - attempt is not in_progress
@@ -842,6 +885,7 @@ def save_answer(
 
     payload = {
         "selected_option_id": selected_option_id,
+        "numeric_answer": numeric_answer,
         "is_marked_for_review": is_marked_for_review,
         "is_visited": True,
         "time_spent_sec": time_spent_sec,
@@ -876,12 +920,68 @@ def save_answer(
         payload={
             "question_id": question_id,
             "selected_option_id": selected_option_id,
+            "numeric_answer": numeric_answer,
             "is_marked_for_review": is_marked_for_review,
             "time_spent_sec": time_spent_sec,
         },
     )
 
     return {"ok": True, "idempotent": False}
+
+
+def _grade_numeric_response(snap: dict, r: dict) -> tuple[str, bool | None]:
+    """Grade one integer/numerical response against its frozen ``numeric_answer``
+    spec. Returns ``(bucket, is_correct)`` with bucket ∈ {correct, wrong,
+    unattempted}. Fail-closed: a missing answer, an absent/invalid frozen spec,
+    or a non-numeric submission all resolve to ``unattempted`` — never a
+    false-positive ``correct``."""
+    submitted = r.get("numeric_answer")
+    if submitted is None:
+        return "unattempted", None
+    spec = snap.get("numeric_answer")
+    if not isinstance(spec, dict):
+        logger.warning(
+            "mock_engine.grade integer response %s has no frozen numeric_answer spec — scored unattempted",
+            r.get("id"),
+        )
+        return "unattempted", None
+    try:
+        val = float(submitted)
+        target = float(spec.get("value"))
+    except (TypeError, ValueError):
+        return "unattempted", None
+    tol_raw = spec.get("tolerance")
+    try:
+        tol = abs(float(tol_raw)) if tol_raw is not None else 0.0
+    except (TypeError, ValueError):
+        tol = 0.0
+    return ("correct", True) if abs(val - target) <= tol else ("wrong", False)
+
+
+def _grade_response(snap: dict, r: dict) -> tuple[str, bool | None]:
+    """Deterministic grade for one response → ``(bucket, is_correct)``.
+
+    Branches on the frozen ``question_type``. Fail-closed by construction: any
+    type without an implemented deterministic scorer returns
+    ``("unattempted", None)`` so it can never be silently mis-scored as correct
+    (unsupported types are additionally blocked upstream at projection/selection;
+    this is the last-line guard at the scorer itself)."""
+    qtype = (snap.get("question_type") or "mcq").lower()
+    if qtype == "integer":
+        return _grade_numeric_response(snap, r)
+    if qtype == "mcq":
+        selected = r.get("selected_option_id")
+        if not selected:
+            return "unattempted", None
+        if selected == snap.get("correct_option_id"):
+            return "correct", True
+        return "wrong", False
+    logger.warning(
+        "mock_engine.grade unsupported question_type=%s (response %s) — scored unattempted (fail-closed)",
+        qtype,
+        r.get("id"),
+    )
+    return "unattempted", None
 
 
 def _finalize_submission(
@@ -920,28 +1020,24 @@ def _finalize_submission(
 
     for r in responses:
         snap = r.get("question_snapshot") or {}
-        correct_opt = snap.get("correct_option_id")
-        selected = r.get("selected_option_id")
         marks = float(snap.get("marks") or 1)
         neg = float(snap.get("negative_marks") or 0)
 
-        if not selected:
-            total_unattempted += 1
-            is_correct = None
-            awarded = 0.0
-        elif selected == correct_opt:
+        bucket, is_correct = _grade_response(snap, r)
+        if bucket == "correct":
             total_correct += 1
-            is_correct = True
             awarded = marks
             score_raw += marks
-        else:
+        elif bucket == "wrong":
             total_wrong += 1
-            is_correct = False
             if neg_marking:
                 awarded = -neg
                 score_raw -= neg
             else:
                 awarded = 0.0
+        else:  # unattempted (incl. fail-closed for ungradeable/unsupported types)
+            total_unattempted += 1
+            awarded = 0.0
 
         updates.append({
             "id": r["id"],
@@ -1272,11 +1368,18 @@ def _build_result(
         is_correct = upd.get("is_correct", r.get("is_correct"))
         marks_awarded = upd.get("marks_awarded", r.get("marks_awarded"))
         correct_opt = snap.get("correct_option_id")
+        num_spec = snap.get("numeric_answer") if isinstance(snap.get("numeric_answer"), dict) else None
         per_question.append({
             "question_id": r["question_id"],
             "question_text": snap.get("question_text"),
+            "question_type": snap.get("question_type"),
             "selected_option_id": r.get("selected_option_id"),
             "correct_option_id": correct_opt,
+            # Numeric review (integer/numerical): the learner's typed value and,
+            # post-submit, the correct value + tolerance from the frozen snapshot.
+            "numeric_answer": r.get("numeric_answer"),
+            "correct_numeric_answer": num_spec.get("value") if num_spec else None,
+            "numeric_tolerance": num_spec.get("tolerance") if num_spec else None,
             "is_correct": is_correct,
             "marks_awarded": marks_awarded,
             "options": snap.get("options") or [],
@@ -1398,6 +1501,9 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "attempt_order": i + 1,
             "question_snapshot": snap,
             "selected_option_id": r.get("selected_option_id"),
+            # Learner's numeric answer for integer/numerical review; the correct
+            # value + tolerance are available to the UI from question_snapshot.numeric_answer.
+            "numeric_answer": r.get("numeric_answer"),
             "is_correct": r.get("is_correct"),
             "error_type": cls.get(qid),
             "explanation": snap.get("explanation"),
