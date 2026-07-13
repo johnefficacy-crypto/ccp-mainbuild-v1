@@ -45,14 +45,25 @@ def test_retry_selector_is_exact_exam_scoped():
     fn = _NORM.split("function public.ca_eligible_retry_tail(")[1]
     assert "p_user uuid, p_exam uuid" in fn
     assert "ri.exam_id is not distinct from p_exam" in fn
-    assert "grant execute on function public.ca_eligible_retry_tail(uuid, uuid) to service_role" in _NORM
+    assert (
+        "grant execute on function public.ca_eligible_retry_tail(uuid, uuid) to service_role"
+        in _NORM
+    )
 
 
-def test_scoped_start_locks_and_rechecks_retry_exam():
+def test_scoped_start_validates_bundle_before_reuse_and_rechecks_retry_exam():
     fn = _NORM.split(
         "function public.ca_start_monthly_current_affairs_attempt_scoped"
     )[1]
     assert "pg_advisory_xact_lock" in fn
+    bundle_at = fn.index("from public.current_affairs_bundles")
+    publish_at = fn.index("bundle_not_published")
+    existing_at = fn.index("from public.current_affairs_attempts")
+    assert bundle_at < publish_at < existing_at
+    assert "bundle_not_verified" in fn
+    assert "bundle_not_yet_published" in fn
+    assert "bundle_unavailable" in fn
+    assert "bundle_scope_mismatch: exam" in fn
     assert "v_existing.exam_id is distinct from p_exam" in fn
     assert "ri.exam_id is not distinct from p_exam" in fn
     assert "for update" in fn
