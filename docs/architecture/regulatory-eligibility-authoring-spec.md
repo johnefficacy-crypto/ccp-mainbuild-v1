@@ -36,9 +36,17 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
      exam (and cycle when set), and the reviewer is **not** the uploader.
    - `review_exam_eligibility_rule()` — atomic SECURITY DEFINER RPC: promotes
      `draft → verified` only with a page locator into a **verified**
-     `syllabus_documents` row backed by an authoritative same-exam processed asset
-     whose referenced pages are all extracted, and only when the reviewer differs
-     from `created_by`. **No URL-only and no waiver-based verification remain.**
+     `syllabus_documents` row (**locked** `FOR UPDATE`, no TOCTOU) backed by an
+     authoritative same-exam processed asset whose referenced pages are all
+     extracted, and only when the reviewer differs from `created_by`. Reviewer
+     separation **fails closed** when `created_by`/`uploaded_by` is absent. **No
+     URL-only and no waiver-based verification remain.**
+   - **Authority-dependency guard:** an `AFTER UPDATE` trigger on
+     `syllabus_documents` cascade-demotes every dependent verified rule to `draft`
+     when its supporting authority is demoted (`verified → pending/rejected/
+     superseded`) or its `source_document_id`/exam is reassigned
+     (`documents/{id}/link-to-syllabus`) and no other verified syllabus still backs
+     it — so a verified rule can never outlive its authority, on any write path.
    - The admin API create path always lands `draft` (create-as-verified is
      rejected), the generic update path cannot promote to `verified`, a material
      edit demotes a verified rule (a DB trigger enforces this too), and a dedicated

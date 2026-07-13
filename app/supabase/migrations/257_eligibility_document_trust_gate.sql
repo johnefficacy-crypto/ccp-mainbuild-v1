@@ -590,4 +590,86 @@ REVOKE EXECUTE ON FUNCTION public.review_exam_eligibility_rule(text, text, text,
 GRANT  EXECUTE ON FUNCTION public.review_exam_eligibility_rule(text, text, text, text, text, text) TO service_role;
 
 
+-- ── E. Authority-dependency guard — cascade-demote orphaned verified rules ───
+--
+-- The rule-verification RPC locks the supporting syllabus row only during
+-- promotion. AFTER a rule commits as verified, the syllabus authority can still
+-- be demoted (verified → pending/rejected/superseded via the review RPC) or have
+-- its source_document_id/exam reassigned (documents/{id}/link-to-syllabus), which
+-- would leave the eligibility rule verified and aspirant-visible with no matching
+-- verified syllabus authority.
+--
+-- This AFTER UPDATE trigger closes that gap for ALL write paths (review RPC,
+-- link-to-syllabus, any direct update) by atomically cascade-demoting every
+-- dependent verified rule that would be left orphaned — but only when NO other
+-- verified syllabus row still backs the same (source_document_id, exam_id). The
+-- demotion is fail-safe: a verified rule can never outlive its authority.
+create or replace function public._syllabus_documents_cascade_demote_dependent_rules()
+returns trigger
+language plpgsql as $fn$
+declare
+  v_rule record;
+begin
+  -- Act only when a row that WAS a verified authority stops backing its old
+  -- (source_document_id, exam_id): demoted away from verified, or source/exam
+  -- reassigned.
+  IF OLD.trust_status = 'verified'
+     AND OLD.source_document_id IS NOT NULL
+     AND (
+          NEW.trust_status       IS DISTINCT FROM 'verified'
+       OR NEW.source_document_id IS DISTINCT FROM OLD.source_document_id
+       OR NEW.exam_id            IS DISTINCT FROM OLD.exam_id
+     ) THEN
+    FOR v_rule IN
+      SELECT r.id, r.exam_id, r.source_document_id
+      FROM public.exam_eligibility_rules r
+      WHERE r.reviewer_status    = 'verified'
+        AND r.source_document_id = OLD.source_document_id
+        AND r.exam_id            = OLD.exam_id
+    LOOP
+      -- Demote only if NO verified syllabus authority remains for this rule
+      -- (another verified row for the same source+exam keeps it valid).
+      IF NOT EXISTS (
+        SELECT 1 FROM public.syllabus_documents sd
+        WHERE sd.source_document_id = v_rule.source_document_id
+          AND sd.exam_id            = v_rule.exam_id
+          AND sd.trust_status       = 'verified'
+          AND sd.id <> NEW.id
+      ) THEN
+        UPDATE public.exam_eligibility_rules
+        SET    reviewer_status = 'draft',
+               verified_by      = NULL,
+               verified_at      = NULL,
+               updated_at       = now()
+        WHERE  id = v_rule.id;
+
+        INSERT INTO public.admin_audit_logs (
+          actor_id, actor_email, action, entity_type, entity_id, new_value, notes
+        )
+        VALUES (
+          NULL, NULL,
+          'eligibility_rule.auto_demote',
+          'exam_eligibility_rule',
+          v_rule.id::text,
+          jsonb_build_object(
+            'reason',               'supporting_syllabus_document_no_longer_verified',
+            'syllabus_document_id', NEW.id::text,
+            'from_status',          'verified',
+            'to_status',            'draft'
+          ),
+          'system_cascade'
+        );
+      END IF;
+    END LOOP;
+  END IF;
+  RETURN NEW;
+end;
+$fn$;
+
+drop trigger if exists trg_syllabus_documents_cascade_demote_rules on public.syllabus_documents;
+create trigger trg_syllabus_documents_cascade_demote_rules
+  after update on public.syllabus_documents
+  for each row execute function public._syllabus_documents_cascade_demote_dependent_rules();
+
+
 notify pgrst, 'reload schema';

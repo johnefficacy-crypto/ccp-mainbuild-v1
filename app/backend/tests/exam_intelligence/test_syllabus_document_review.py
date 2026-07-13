@@ -102,6 +102,9 @@ class _SylRpc:
             "entity_type": "syllabus_document", "entity_id": p["p_document_id"],
             "new_value": {"from_status": p["p_expected_status"], "to_status": tgt}, "notes": "admin_exam_intel_cms",
         })
+        old_status = doc["trust_status"]
+        old_source = doc.get("source_document_id")
+        old_exam = doc.get("exam_id")
         doc["trust_status"] = tgt
         if tgt == "verified":
             doc["reviewed_by"] = p["p_actor_id"]
@@ -111,6 +114,32 @@ class _SylRpc:
             doc["reviewed_by"] = None
             doc["reviewed_at"] = None
             doc["reviewer_notes"] = None
+
+        # Emulate migration 257's AFTER-UPDATE cascade-demotion trigger: when a
+        # verified authority stops backing (source_document_id, exam_id), demote
+        # every dependent verified eligibility rule that would be left orphaned.
+        if old_status == "verified" and old_source is not None and tgt != "verified":
+            for rule in db.get("exam_eligibility_rules", []):
+                if (rule.get("reviewer_status") == "verified"
+                        and rule.get("source_document_id") == old_source
+                        and rule.get("exam_id") == old_exam):
+                    still_backed = any(
+                        sd.get("source_document_id") == old_source
+                        and sd.get("exam_id") == old_exam
+                        and sd.get("trust_status") == "verified"
+                        and sd.get("id") != doc.get("id")
+                        for sd in db.get("syllabus_documents", [])
+                    )
+                    if not still_backed:
+                        rule["reviewer_status"] = "draft"
+                        rule["verified_by"] = None
+                        rule["verified_at"] = None
+                        db.setdefault("admin_audit_logs", []).append({
+                            "id": str(_uuid.uuid4()), "actor_id": None,
+                            "action": "eligibility_rule.auto_demote",
+                            "entity_type": "exam_eligibility_rule",
+                            "entity_id": rule.get("id"), "notes": "system_cascade",
+                        })
         return _Exec({"ok": True, "audit_id": audit_id, "row": dict(doc)})
 
 
@@ -286,3 +315,51 @@ def test_short_reason_is_422():
     sb = _SylReviewSBStub(_world())
     r = _review(_client(sb), reason="short")
     assert r.status_code == 422, r.text
+
+
+# ── Authority-dependency cascade demotion (migration 257 §E) ─────────────────
+
+RULE = "77777777-7777-4777-8777-777777777777"
+
+
+def _dependent_rule(**extra):
+    rule = {"id": RULE, "exam_id": EXAM, "source_document_id": DOC,
+            "reviewer_status": "verified", "verified_by": "rev-9",
+            "verified_at": "now"}
+    rule.update(extra)
+    return rule
+
+
+def test_demoting_syllabus_cascade_demotes_dependent_verified_rule():
+    # A verified rule depends on the verified syllabus authority; demoting the
+    # syllabus (verified → pending) must cascade-demote the rule to draft so a
+    # verified rule never outlives its authority.
+    world = _world(status="verified")
+    world["exam_eligibility_rules"] = [_dependent_rule()]
+    sb = _SylReviewSBStub(world)
+    r = _review(_client(sb), status="pending", reason="reopening syllabus for re-review")
+    assert r.status_code == 200, r.text
+    rule = sb.db["exam_eligibility_rules"][0]
+    assert rule["reviewer_status"] == "draft"
+    assert rule["verified_by"] is None
+    assert any(a.get("action") == "eligibility_rule.auto_demote"
+               for a in sb.db["admin_audit_logs"])
+
+
+def test_rejecting_syllabus_cascade_demotes_dependent_rule():
+    world = _world(status="verified")
+    world["exam_eligibility_rules"] = [_dependent_rule()]
+    sb = _SylReviewSBStub(world)
+    r = _review(_client(sb), status="rejected", reason="superseded by corrigendum")
+    assert r.status_code == 200, r.text
+    assert sb.db["exam_eligibility_rules"][0]["reviewer_status"] == "draft"
+
+
+def test_cascade_leaves_independent_rule_untouched():
+    # A verified rule backed by a DIFFERENT document is not affected.
+    world = _world(status="verified")
+    world["exam_eligibility_rules"] = [_dependent_rule(source_document_id="other-doc")]
+    sb = _SylReviewSBStub(world)
+    r = _review(_client(sb), status="pending", reason="reopening this syllabus only")
+    assert r.status_code == 200, r.text
+    assert sb.db["exam_eligibility_rules"][0]["reviewer_status"] == "verified"

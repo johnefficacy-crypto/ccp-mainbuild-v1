@@ -139,6 +139,23 @@ def test_rule_rpc_grants():
     assert "grant  execute on function public.review_exam_eligibility_rule(text, text, text, text, text, text) to service_role" in MIGRATION
 
 
+# ── E. authority-dependency cascade-demotion trigger ────────────────────────
+
+
+def test_cascade_demote_trigger_present():
+    assert "_syllabus_documents_cascade_demote_dependent_rules" in MIGRATION
+    assert "after update on public.syllabus_documents" in MIGRATION
+    # fires when the authority is demoted OR its source/exam is reassigned
+    assert "new.trust_status       is distinct from 'verified'" in MIGRATION
+    assert "new.source_document_id is distinct from old.source_document_id" in MIGRATION
+    # demotes dependent verified rules to draft, clearing the stamp
+    assert "set    reviewer_status = 'draft'," in MIGRATION
+    # only when no OTHER verified syllabus authority remains
+    assert "and sd.id <> new.id" in MIGRATION
+    # leaves a system audit trail
+    assert "eligibility_rule.auto_demote" in MIGRATION
+
+
 # ── Legacy safety ───────────────────────────────────────────────────────────
 
 
