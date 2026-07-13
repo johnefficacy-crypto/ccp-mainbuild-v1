@@ -296,7 +296,7 @@ def list_exam_pyqs(
         if phase_ids:
             ph_rows = (
                 sb.table("exam_phases")
-                .select("id, phase_slug, name")
+                .select("id, phase_slug, phase_name")
                 .in_("id", phase_ids)
                 .limit(500)
                 .execute()
@@ -469,7 +469,7 @@ def list_exam_pyqs(
                     "source_type": paper.get("source_type"),
                     "phase_id": paper.get("exam_phase_id"),
                     "phase_slug": phase.get("phase_slug"),
-                    "phase_name": phase.get("name"),
+                    "phase_name": phase.get("phase_name"),
                     "subject_id": subj_id,
                     "subject_name": subj_name,
                     "topic_names": topic_names,
@@ -557,7 +557,7 @@ def get_exam_pyq_summary(
         phase_meta: dict[str, dict] = {}
         if phase_ids:
             ph_rows = (
-                sb.table("exam_phases").select("id, phase_slug, name").in_("id", phase_ids).limit(500).execute().data
+                sb.table("exam_phases").select("id, phase_slug, phase_name").in_("id", phase_ids).limit(500).execute().data
                 or []
             )
             phase_meta = {p["id"]: p for p in ph_rows}
@@ -647,7 +647,7 @@ def get_exam_pyq_summary(
         by_phase = [
             {
                 "phase_slug": (phase_meta.get(ph) or {}).get("phase_slug"),
-                "phase_name": (phase_meta.get(ph) or {}).get("name"),
+                "phase_name": (phase_meta.get(ph) or {}).get("phase_name"),
                 "questions": c,
             }
             for ph, c in phase_q.items()
@@ -678,7 +678,7 @@ def get_exam_pyq_summary(
                     "paper_id": pid,
                     "year": p.get("year"),
                     "phase_slug": (phase_meta.get(ph) or {}).get("phase_slug"),
-                    "phase_name": (phase_meta.get(ph) or {}).get("name"),
+                    "phase_name": (phase_meta.get(ph) or {}).get("phase_name"),
                     "subject_id": sid,
                     "subject_name": subj_names.get(sid) if sid else None,
                     "question_count": paper_qcount.get(pid, 0),
