@@ -1,4 +1,4 @@
--- 251_exam_eligibility_stream_aware_activation.sql
+-- 252_exam_eligibility_stream_aware_activation.sql
 --
 -- Lane R §4 follow-up — activate stream-AWARE evaluation.
 --
