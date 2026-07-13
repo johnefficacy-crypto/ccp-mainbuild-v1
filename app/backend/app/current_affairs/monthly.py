@@ -25,7 +25,7 @@ from app.study_os.mock_engine import _question_snapshot
 logger = logging.getLogger("career_copilot.current_affairs.monthly")
 
 _RETRY_TAIL_CAP = 10  # capped personalised tail (pipeline §10); mirrors the RPC's v_cap.
-_MONTHLY_START_RPC = "ca_start_monthly_current_affairs_attempt_scoped"
+_MONTHLY_START_RPC = "ca_start_monthly_current_affairs_attempt_guarded"
 
 
 def enqueue_weekly_retry_items(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
@@ -102,9 +102,9 @@ def start_monthly_current_affairs_attempt(
     """Resolve the monthly editorial bundle, freeze its core + capped retry tail, and start.
 
     Returns ``{outcome, attempt_id, core_count, retry_tail_count, ...}`` or a non-runnable
-    ``no_bundle`` / ``empty_bundle`` / ``bundle_degraded`` outcome. The scoped SQL entry
-    point serialises starts, binds retries to the exact exam, returns a previously frozen
-    in-progress attempt before stale-tail validation, and canonicalises frozen list metadata.
+    ``no_bundle`` / ``empty_bundle`` / ``bundle_degraded`` outcome. The guarded SQL entry
+    point serialises starts, binds retries to the exact exam, validates bundle authority
+    before reuse, and canonicalises frozen list metadata.
     """
     bundle = resolve_eligible_bundle(supabase, exam_id=exam_id, cadence="monthly")
     if not bundle:
