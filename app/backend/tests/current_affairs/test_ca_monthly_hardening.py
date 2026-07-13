@@ -34,7 +34,7 @@ def test_retry_selector_is_bound_to_exact_exam():
     }
 
 
-def test_start_uses_scoped_rpc_and_passes_frozen_rows(monkeypatch):
+def test_start_uses_guarded_rpc_and_passes_frozen_rows(monkeypatch):
     monkeypatch.setattr(
         monthly,
         "resolve_eligible_bundle",
@@ -81,7 +81,7 @@ def test_start_uses_scoped_rpc_and_passes_frozen_rows(monkeypatch):
     )
 
     assert out["outcome"] == "ready"
-    assert captured["name"] == "ca_start_monthly_current_affairs_attempt_scoped"
+    assert captured["name"] == "ca_start_monthly_current_affairs_attempt_guarded"
     assert captured["params"]["p_exam"] == "exam-1"
     assert [row["question_id"] for row in captured["params"]["p_core_rows"]] == [
         "core-1"
