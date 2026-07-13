@@ -1,9 +1,9 @@
-"""Contract test for migration 249 (stream-aware evaluation activation)."""
+"""Contract test for migration 251 (stream-aware evaluation activation)."""
 from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
-    / ".." / "supabase" / "migrations" / "249_exam_eligibility_stream_aware_activation.sql"
+    / ".." / "supabase" / "migrations" / "251_exam_eligibility_stream_aware_activation.sql"
 ).read_text().lower()
 
 

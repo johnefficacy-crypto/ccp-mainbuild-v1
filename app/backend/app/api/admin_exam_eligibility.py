@@ -79,7 +79,7 @@ _ALLOWED_RULE_TYPES = {
     "discipline", "min_percentage", "certification", "qualification_combination",
     "stream_availability",
 }
-# As of migration 249 the evaluator interprets every baseline rule_type
+# As of migration 251 the evaluator interprets every baseline rule_type
 # (stream-aware evaluation activated), so the fail-closed verify guard is lifted.
 _ALLOWED_REVIEWER_STATUS = {"draft", "verified", "archived"}
 _NUMERIC_RULE_TYPES = {"age_min", "age_max", "attempts_max", "min_percentage"}
