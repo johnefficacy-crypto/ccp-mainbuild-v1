@@ -232,22 +232,75 @@ def test_list_rules_returns_every_status():
 # ── Create ────────────────────────────────────────────────────────────────
 
 
-def test_create_rule_happy_path_stamps_verified_metadata():
+def test_create_rule_lands_draft_and_stamps_created_by():
+    # Migration 256: create ALWAYS lands draft (verification is a separate,
+    # document-gated review transition) and stamps the author for reviewer
+    # separation.
     sb = SBStub(_world())
     payload = {
         "scope": "general",
         "rule_type": "age_max",
         "value_num": 32,
         "source_url": "https://ssc.gov.in/",
-        "reviewer_status": "verified",
     }
     r = TestClient(_build_app(sb)).post(
         f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules", json=payload
     )
     assert r.status_code == 200
     rule = r.json()["rule"]
-    assert rule["verified_by"] == "admin-1"
-    assert rule["verified_at"] is not None
+    assert rule["reviewer_status"] == "draft"
+    assert rule["created_by"] == "admin-1"
+    assert rule.get("verified_by") is None
+
+
+def test_create_rule_as_verified_is_rejected():
+    # A rule can never be born verified — the attempt is a hard 422.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 32,
+              "source_url": "https://ssc.gov.in/", "reviewer_status": "verified"},
+    )
+    assert r.status_code == 422
+    assert "must be created as 'draft'" in r.json()["detail"]
+
+
+def test_create_rule_as_archived_is_rejected():
+    # Create is draft-only: 'archived' is a lifecycle action, not a birth state.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 32,
+              "reviewer_status": "archived"},
+    )
+    assert r.status_code == 422
+    assert "must be created as 'draft'" in r.json()["detail"]
+    assert sb.db["exam_eligibility_rules"] == _world()["exam_eligibility_rules"]
+
+
+def test_create_rule_persists_page_locator():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 32,
+              "source_document_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+              "source_page_start": 3, "source_page_end": 5},
+    )
+    assert r.status_code == 200
+    rule = r.json()["rule"]
+    assert rule["source_page_start"] == 3
+    assert rule["source_page_end"] == 5
+
+
+def test_create_rule_rejects_half_page_locator():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 32,
+              "source_page_start": 3},
+    )
+    assert r.status_code == 422
+    assert "together" in r.json()["detail"]
 
 
 def test_create_rule_rejects_unknown_scope():
@@ -296,17 +349,16 @@ def test_create_rule_conflict_when_scope_rule_type_pair_exists():
 _STREAM = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
 
-def test_create_verified_new_rule_type_is_allowed_after_activation():
-    # Migration 249 activates evaluator support for the new rule_types, so the
-    # fail-closed verify guard is lifted — a discipline rule may now be verified.
+def test_create_new_rule_type_lands_draft():
+    # New rule_types are creatable, but (migration 257) always as draft — the
+    # verified stamp only comes from the document-gated review path.
     sb = SBStub(_world())
     r = TestClient(_build_app(sb)).post(
         f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
-        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
-              "reviewer_status": "verified", "source_url": "https://x"},
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB"},
     )
     assert r.status_code == 200
-    assert r.json()["rule"]["verified_by"] == "admin-1"
+    assert r.json()["rule"]["reviewer_status"] == "draft"
 
 
 def test_create_new_rule_type_as_draft_is_allowed():
@@ -352,9 +404,10 @@ def test_create_qualification_combination_rejects_experience_clause():
     assert r.status_code == 400
 
 
-def test_verified_discipline_and_percentage_pair_is_rejected():
-    # A verified min_percentage already exists → verifying a sibling discipline
-    # for the same (exam, stream, scope) is the ambiguous two-row representation.
+def test_create_draft_discipline_with_verified_percentage_sibling_is_allowed():
+    # Creating a DRAFT discipline alongside a verified min_percentage is fine —
+    # the ambiguous two-row protection fires only at verify time (in the review
+    # RPC), not on draft authoring.
     world = _world()
     world["exam_eligibility_rules"].append({
         "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "exam_id": EXAM_A, "stream_id": None,
@@ -363,11 +416,9 @@ def test_verified_discipline_and_percentage_pair_is_rejected():
     sb = SBStub(world)
     r = TestClient(_build_app(sb)).post(
         f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
-        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
-              "reviewer_status": "verified", "source_url": "https://x"},
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB"},
     )
-    assert r.status_code == 422
-    assert "qualification_combination" in r.json()["detail"]
+    assert r.status_code == 200
 
 
 def test_create_stream_availability_rejects_unknown_value():
@@ -412,7 +463,9 @@ def test_create_rule_on_unknown_exam_is_404():
 # ── Update ────────────────────────────────────────────────────────────────
 
 
-def test_update_rule_promote_draft_to_verified_stamps_metadata():
+def test_update_rule_cannot_promote_to_verified():
+    # Generic update may not promote to verified — that transition is
+    # document-gated and belongs to POST /rules/{id}/review (migration 257).
     sb = SBStub(_world())
     sb.db["exam_eligibility_rules"].append(
         {
@@ -431,11 +484,26 @@ def test_update_rule_promote_draft_to_verified_stamps_metadata():
         "/api/admin/exam-eligibility/rules/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         json={"reviewer_status": "verified"},
     )
-    assert r.status_code == 200
+    assert r.status_code == 422
+    assert "not allowed via update" in r.json()["detail"]
     updated = next(r for r in sb.db["exam_eligibility_rules"] if r["id"] == "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
-    assert updated["reviewer_status"] == "verified"
-    assert updated["verified_by"] == "admin-1"
-    assert updated["verified_at"] is not None
+    assert updated["reviewer_status"] == "draft"
+
+
+def test_material_edit_demotes_verified_rule():
+    # Editing a material field on a verified rule silently demotes it to draft
+    # and clears the verification stamp.
+    sb = SBStub(_world())  # RULE_A is verified (value_num=18)
+    r = TestClient(_build_app(sb)).put(
+        f"/api/admin/exam-eligibility/rules/{RULE_A}",
+        json={"value_num": 19},
+    )
+    assert r.status_code == 200
+    row = next(x for x in sb.db["exam_eligibility_rules"] if x["id"] == RULE_A)
+    assert row["reviewer_status"] == "draft"
+    assert row["verified_by"] is None
+    assert row["verified_at"] is None
+    assert row["value_num"] == 19
 
 
 def test_update_rule_demote_clears_verified_metadata():
@@ -497,44 +565,21 @@ def test_delete_unknown_rule_is_404():
 # ── Trust-transition provenance validation ────────────────────────────────
 
 
-def test_create_rule_verified_without_source_or_waiver_is_422():
+def test_create_rule_verified_is_always_422_regardless_of_source():
+    # Neither a source_url nor a waiver can create a verified rule now — the
+    # honour-system verification path is closed (migration 257).
     sb = SBStub(_world())
-    r = TestClient(_build_app(sb)).post(
-        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
-        json={"scope": "general", "rule_type": "age_max", "value_num": 35, "reviewer_status": "verified"},
-    )
-    assert r.status_code == 422
-    assert "source_url" in r.json()["detail"] or "waiver_reason" in r.json()["detail"]
-
-
-def test_create_rule_verified_with_source_url_passes():
-    sb = SBStub(_world())
-    r = TestClient(_build_app(sb)).post(
-        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
-        json={
-            "scope": "general",
-            "rule_type": "age_max",
-            "value_num": 35,
-            "source_url": "https://ssc.gov.in/notice",
-            "reviewer_status": "verified",
-        },
-    )
-    assert r.status_code == 200
-
-
-def test_create_rule_verified_with_waiver_reason_passes():
-    sb = SBStub(_world())
-    r = TestClient(_build_app(sb)).post(
-        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
-        json={
-            "scope": "general",
-            "rule_type": "age_max",
-            "value_num": 35,
-            "waiver_reason": "Official PDF not yet published; sourced from official press release.",
-            "reviewer_status": "verified",
-        },
-    )
-    assert r.status_code == 200
+    for extra in (
+        {},
+        {"source_url": "https://ssc.gov.in/notice"},
+        {"waiver_reason": "sourced from official press release"},
+    ):
+        r = TestClient(_build_app(sb)).post(
+            f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+            json={"scope": "general", "rule_type": "age_max", "value_num": 35,
+                  "reviewer_status": "verified", **extra},
+        )
+        assert r.status_code == 422, extra
 
 
 def test_create_rule_draft_without_source_url_is_allowed():
@@ -569,7 +614,9 @@ def test_update_rule_verify_without_source_or_waiver_is_422():
     assert r.status_code == 422
 
 
-def test_update_rule_verify_with_waiver_reason_passes():
+def test_update_rule_verify_with_waiver_reason_is_still_blocked():
+    # Waiver-based verification is gone: even with a waiver_reason, generic
+    # update cannot promote to verified (migration 257).
     sb = SBStub(_world())
     sb.db["exam_eligibility_rules"].append(
         {
@@ -588,7 +635,7 @@ def test_update_rule_verify_with_waiver_reason_passes():
         "/api/admin/exam-eligibility/rules/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         json={"reviewer_status": "verified", "waiver_reason": "Verified via direct SSC inquiry"},
     )
-    assert r.status_code == 200
+    assert r.status_code == 422
 
 
 def test_soft_delete_without_source_or_waiver_is_422():
@@ -651,39 +698,33 @@ def test_create_rule_writes_audit_log():
 
 def test_update_rule_non_verify_writes_update_audit_log():
     sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+            "exam_id": EXAM_A, "scope": "st", "rule_type": "age_max",
+            "value_num": 37, "reviewer_status": "draft",
+        }
+    )
     TestClient(_build_app(sb)).put(
-        f"/api/admin/exam-eligibility/rules/{RULE_A}",
+        "/api/admin/exam-eligibility/rules/ffffffff-ffff-4fff-8fff-ffffffffffff",
         json={"value_num": 19},
     )
     logs = sb.db.get("admin_audit_logs", [])
     assert len(logs) == 1
     assert logs[0]["action"] == "eligibility_rule.update"
-    assert logs[0]["entity_id"] == RULE_A
+    assert logs[0]["entity_id"] == "ffffffff-ffff-4fff-8fff-ffffffffffff"
     assert logs[0]["old_value"] is not None
 
 
-def test_update_rule_verify_transition_writes_verify_audit_log():
-    sb = SBStub(_world())
-    sb.db["exam_eligibility_rules"].append(
-        {
-            "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-            "exam_id": EXAM_A,
-            "scope": "ews",
-            "rule_type": "age_max",
-            "value_num": 32,
-            "source_url": "https://ssc.gov.in/",
-            "reviewer_status": "draft",
-            "verified_by": None,
-            "verified_at": None,
-        }
-    )
+def test_update_rule_material_edit_demote_writes_demote_audit_log():
+    sb = SBStub(_world())  # RULE_A is verified
     TestClient(_build_app(sb)).put(
-        "/api/admin/exam-eligibility/rules/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-        json={"reviewer_status": "verified"},
+        f"/api/admin/exam-eligibility/rules/{RULE_A}",
+        json={"value_num": 20},
     )
     logs = sb.db.get("admin_audit_logs", [])
     assert len(logs) == 1
-    assert logs[0]["action"] == "eligibility_rule.verify"
+    assert logs[0]["action"] == "eligibility_rule.demote"
 
 
 def test_soft_delete_writes_archive_audit_log():
@@ -714,7 +755,6 @@ def test_audit_log_captures_waiver_reason_in_notes():
             "rule_type": "age_max",
             "value_num": 35,
             "waiver_reason": "sourced from official press release",
-            "reviewer_status": "verified",
         },
     )
     logs = sb.db.get("admin_audit_logs", [])

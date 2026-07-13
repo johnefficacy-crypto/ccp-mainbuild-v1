@@ -15,15 +15,47 @@ writer does not perform.
 These are real code gaps confirmed on `main`. Until each is closed, authoring is
 manual-SOP only and every `verified` promotion is an operator-risk action.
 
-1. **No document/review trust gate in the writer.**
-   `admin_exam_eligibility.py._require_trust_provenance()` accepts **any** non-empty
-   `source_url` *or* an arbitrary `waiver_reason`; the POST create path allows
-   `reviewer_status='verified'` immediately, stamped by the **same** actor; there
-   is **no** `document_asset_id` FK on `exam_eligibility_rules` and no check of
-   document review state. → A rule can be "verified" with `source_url="https://x"`.
-   **Prereq:** add a reviewed-`document_assets` linkage (`document_asset_id` FK +
-   direct-locator + reviewer-separation transition) before treating verification
-   as gated. Until then, direct official evidence is an honour-system field.
+1. **No document/review trust gate in the writer.** — **CODE-FIXED, VALIDATION PENDING**
+   (migration 257; not yet applied to any linked Supabase / no operator validation).
+   Previously `admin_exam_eligibility.py._require_trust_provenance()` accepted **any**
+   non-empty `source_url` *or* an arbitrary `waiver_reason`; the POST create path
+   allowed `reviewer_status='verified'` immediately, stamped by the **same** actor;
+   there was **no** document linkage on `exam_eligibility_rules` and no check of
+   document review state. → A rule could be "verified" with `source_url="https://x"`.
+
+   **Closed by migration 257 + the document-gated review endpoints:**
+   - `exam_eligibility_rules` gains `source_document_id` (FK → `document_assets`,
+     `ON DELETE RESTRICT`, repo convention name), `source_page_start` /
+     `source_page_end` (paired, positive, ordered CHECKs), and `created_by`
+     (FK → `auth.users`) for reviewer separation.
+   - `syllabus_documents` gains `reviewed_by` / `reviewed_at` / `reviewer_notes`.
+   - `review_syllabus_document()` — atomic SECURITY DEFINER RPC: promotes
+     `pending → verified` only when the linked `document_assets` row is a locked,
+     `processed`, authoritative (`official_archive`/`official_scan`)
+     notification/corrigendum with populated storage, ≥1 extracted page, matching
+     exam (and cycle when set), and the reviewer is **not** the uploader.
+   - `review_exam_eligibility_rule()` — atomic SECURITY DEFINER RPC: promotes
+     `draft → verified` only with a page locator into a **verified**
+     `syllabus_documents` row (**locked** `FOR UPDATE`, no TOCTOU) backed by an
+     authoritative same-exam processed asset whose referenced pages are all
+     extracted, and only when the reviewer differs from `created_by`. Reviewer
+     separation **fails closed** when `created_by`/`uploaded_by` is absent. **No
+     URL-only and no waiver-based verification remain.**
+   - **Authority-dependency guard:** an `AFTER UPDATE` trigger on
+     `syllabus_documents` cascade-demotes every dependent verified rule to `draft`
+     when its supporting authority is demoted (`verified → pending/rejected/
+     superseded`) or its `source_document_id`/exam is reassigned
+     (`documents/{id}/link-to-syllabus`) and no other verified syllabus still backs
+     it — so a verified rule can never outlive its authority, on any write path.
+   - The admin API create path always lands `draft` (create-as-verified is
+     rejected), the generic update path cannot promote to `verified`, a material
+     edit demotes a verified rule (a DB trigger enforces this too), and a dedicated
+     `POST /rules/{id}/review` endpoint is the only promotion path.
+
+   The remaining work is operator/live validation (apply 257 to the linked
+   Supabase, capture RLS/behavioural proof) before any rule is promoted `verified`
+   in production. Until that validation lands, treat verification as code-gated but
+   not operationally proven.
 2. **No trust gate on `exam_cycles`.** It has no review column,
    `exam_cycles_read_authenticated` (035) grants authenticated read, and
    `study_os/exam_target_window.py` consumes every non-`cancelled` cycle. → Any
@@ -176,7 +208,7 @@ Baseline age: defer to the cycle layer (§Prereq 3).
    after §1's linkage/reviewer-separation exists.
 
 ## Follow-ups to file
-- `exam_eligibility_rules.document_asset_id` FK + reviewed-document verify transition + reviewer separation.
+- ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 257, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
 - `exam_cycles` trust/review column + gate every consumer & RLS.
 - Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.
 - ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.
