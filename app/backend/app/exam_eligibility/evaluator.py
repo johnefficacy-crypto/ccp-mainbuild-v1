@@ -177,22 +177,31 @@ _DISCIPLINE_ALIASES: dict[str, set[str]] = {
 }
 
 
-def _alias_set(token: str) -> set[str]:
-    return _DISCIPLINE_ALIASES.get(token, {token})
+_CERT_ALIASES: dict[str, set[str]] = {
+    "ca": {"ca", "chartered accountant", "chartered accountancy"},
+    "cma": {"cma", "cost accountant", "cost and management accountant"},
+    "cs": {"cs", "company secretary"},
+    "cfa": {"cfa", "chartered financial analyst"},
+    "frm": {"frm", "financial risk manager"},
+}
 
 
 def _boundary_match(needle: str, field: str) -> bool:
     return re.search(r"(?<![a-z0-9])" + re.escape(needle) + r"(?![a-z0-9])", field) is not None
 
 
-def _discipline_matches(required: str, field: str) -> bool:
+def _alias_expanded_match(required: str, field: str, amap: dict[str, set[str]]) -> bool:
     """Boundary-aware, alias-expanded match. `required` and `field` are
-    already normalized (lowercase, stripped)."""
-    for alias in _alias_set(required):
+    already normalized (lowercase, stripped) — no substring false positives."""
+    for alias in amap.get(required, {required}):
         if _boundary_match(alias, field):
             return True
-    # Symmetric: the field may itself be the acronym whose alias set holds req.
-    return required in _alias_set(field)
+    # Symmetric: the field may itself be an acronym whose alias set holds req.
+    return required in amap.get(field, set())
+
+
+def _discipline_matches(required: str, field: str) -> bool:
+    return _alias_expanded_match(required, field, _DISCIPLINE_ALIASES)
 
 
 def _eval_discipline(required: str | None, profile: dict[str, Any]) -> str:
@@ -227,10 +236,12 @@ def _eval_certification(required: str | None, profile: dict[str, Any]) -> str:
     certs = profile.get("certifications")
     if certs is None:
         return "missing"
-    have = _tokens(certs)
+    have = [c for c in (_normalize_text(x) for x in certs) if c]
     if not have:
         return "fail"
-    return "pass" if any(req in c or c in req for c in have) else "fail"
+    # Boundary-aware (checkpost P0): required "CA" must NOT match
+    # "First Aid Certification" via substring.
+    return "pass" if any(_alias_expanded_match(req, c, _CERT_ALIASES) for c in have) else "fail"
 
 
 def _eval_atomic(rule_type: str, value_num: Any, value_text: Any, profile: dict[str, Any]) -> str:
@@ -587,6 +598,18 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
     return profile
 
 
+# Exams are queried in bounded batches so a single unordered `.limit(...)` can
+# never silently drop verified rules/streams once the fan-out (up to 500 exams ×
+# common+stream rules) crosses a global cap (checkpost P0). Batch size keeps each
+# query's row count well under the per-batch limit.
+_EXAM_BATCH = 50
+_PER_BATCH_LIMIT = 10000
+
+
+def _chunks(items: list[str], size: int) -> list[list[str]]:
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
 def _load_rules_by_exam(
     supabase: Any, exam_ids: list[str]
 ) -> dict[str, list[dict[str, Any]]]:
@@ -597,21 +620,26 @@ def _load_rules_by_exam(
     if cached is not None:
         # Return a shallow copy so callers can't mutate the cache.
         return {k: list(v) for k, v in cached.items()}
-    rows = _safe(
-        lambda: (
-            supabase.table("exam_eligibility_rules")
-            .select(
-                "exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
-                "is_knockout, source_url, reviewer_status"
+    rows: list[dict[str, Any]] = []
+    for batch in _chunks(exam_ids, _EXAM_BATCH):
+        rows.extend(
+            _safe(
+                lambda b=batch: (
+                    supabase.table("exam_eligibility_rules")
+                    .select(
+                        "exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
+                        "is_knockout, source_url, reviewer_status"
+                    )
+                    .in_("exam_id", b)
+                    .eq("reviewer_status", "verified")
+                    .limit(_PER_BATCH_LIMIT)
+                    .execute()
+                    .data
+                ),
+                default=[],
             )
-            .in_("exam_id", exam_ids)
-            .eq("reviewer_status", "verified")
-            .limit(2000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+            or []
+        )
     out: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         # Both common (stream_id NULL) and stream-scoped rows are loaded. The
@@ -628,17 +656,22 @@ def _load_streams_by_exam(
 ) -> dict[str, list[dict[str, Any]]]:
     if not exam_ids:
         return {}
-    rows = _safe(
-        lambda: (
-            supabase.table("exam_streams")
-            .select("id, exam_id, stream_key, name, is_active")
-            .in_("exam_id", exam_ids)
-            .limit(2000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    rows: list[dict[str, Any]] = []
+    for batch in _chunks(exam_ids, _EXAM_BATCH):
+        rows.extend(
+            _safe(
+                lambda b=batch: (
+                    supabase.table("exam_streams")
+                    .select("id, exam_id, stream_key, name, is_active")
+                    .in_("exam_id", b)
+                    .limit(_PER_BATCH_LIMIT)
+                    .execute()
+                    .data
+                ),
+                default=[],
+            )
+            or []
+        )
     out: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         if r.get("is_active") is False:

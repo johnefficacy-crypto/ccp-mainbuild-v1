@@ -8,10 +8,53 @@ from __future__ import annotations
 from app.exam_eligibility.evaluator import (
     evaluate_exam_for_user,
     _eval_qualification_combination,
+    _load_rules_by_exam,
     summarize_user_eligibility,
     invalidate_eligibility_rules_cache,
 )
 from tests.persona_questions._stub import SBStub
+
+
+# ── loader: batched (no silent 2000-row cap) + value_json projection ───────
+
+
+def test_loader_batches_and_includes_rows_beyond_2000():
+    invalidate_eligibility_rules_cache()
+    # 120 exams × 20 verified rules = 2400 rows > the old single-query 2000 cap.
+    exams = [f"{i:08d}-0000-4000-8000-000000000000" for i in range(120)]
+    rows = []
+    for e in exams:
+        for k in range(20):
+            rows.append({"exam_id": e, "stream_id": None, "scope": "all",
+                         "rule_type": "age_min", "value_num": 18 + k, "value_text": None,
+                         "value_json": None, "is_knockout": True, "reviewer_status": "verified"})
+    loaded = _load_rules_by_exam(SBStub({"exam_eligibility_rules": rows}), exams)
+    assert len(loaded) == 120
+    assert sum(len(v) for v in loaded.values()) == 2400
+    invalidate_eligibility_rules_cache()
+
+
+def test_loader_projection_requests_value_json():
+    # Projection-aware contract: SBStub.select is a no-op, so pin value_json in
+    # the actual .select(...) the loader issues (checkpost test-gap).
+    captured: dict[str, str] = {}
+
+    class _Q:
+        def select(self, cols):
+            captured["cols"] = cols
+            return self
+        def in_(self, *a, **k): return self
+        def eq(self, *a, **k): return self
+        def limit(self, *a, **k): return self
+        def execute(self): return type("R", (), {"data": []})()
+
+    class _SB:
+        def table(self, name): return _Q()
+
+    invalidate_eligibility_rules_cache()
+    _load_rules_by_exam(_SB(), ["00000000-0000-4000-8000-000000000000"])
+    invalidate_eligibility_rules_cache()
+    assert "value_json" in captured.get("cols", "")
 
 
 def _r(rule_type, **kw):
@@ -67,6 +110,15 @@ def test_certification_pass_and_fail():
     assert evaluate_exam_for_user(rule, {"certifications": ["Bar Council of India"]})["status"] == "eligible"
     assert evaluate_exam_for_user(rule, {"certifications": ["First Aid"]})["status"] == "not_eligible"
     assert evaluate_exam_for_user(rule, {})["status"] == "conditional"
+
+
+def test_certification_matching_is_boundary_safe():
+    # "CA" must NOT substring-match "First Aid Certification" (checkpost P0).
+    assert evaluate_exam_for_user([_r("certification", value_text="CA")],
+                                  {"certifications": ["First Aid Certification"]})["status"] == "not_eligible"
+    # …but the alias resolves the real credential.
+    assert evaluate_exam_for_user([_r("certification", value_text="CA")],
+                                  {"certifications": ["Chartered Accountant"]})["status"] == "eligible"
 
 
 # ── stream_availability ────────────────────────────────────────────────────

@@ -239,6 +239,24 @@ def test_create_qualification_combination_rejects_experience_clause():
     assert r.status_code == 400
 
 
+def test_verified_discipline_and_percentage_pair_is_rejected():
+    # A verified min_percentage already exists → verifying a sibling discipline
+    # for the same (exam, stream, scope) is the ambiguous two-row representation.
+    world = _world()
+    world["exam_eligibility_rules"].append({
+        "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "exam_id": EXAM_A, "stream_id": None,
+        "scope": "all", "rule_type": "min_percentage", "value_num": 60, "reviewer_status": "verified",
+    })
+    sb = SBStub(world)
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
+              "reviewer_status": "verified", "source_url": "https://x"},
+    )
+    assert r.status_code == 422
+    assert "qualification_combination" in r.json()["detail"]
+
+
 def test_create_stream_availability_rejects_unknown_value():
     sb = SBStub(_world())
     r = TestClient(_build_app(sb)).post(

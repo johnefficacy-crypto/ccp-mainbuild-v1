@@ -189,6 +189,43 @@ def _validate_rule_shape(
                 ),
             )
 
+def _reject_ambiguous_linked_qualification(
+    supabase, exam_id, stream_id, scope: str, rule_type: str, reviewer_status: str
+) -> None:
+    """Forbid the ambiguous two-row representation of a linked qualification
+    fact (checkpost P0). A verified `discipline` AND a verified `min_percentage`
+    for the same (exam, stream, scope) would let the evaluator satisfy them from
+    two UNRELATED education records (LLB@50% + B.Com@75%). Linked facts must be
+    authored as a single record-correlated `qualification_combination`.
+    """
+    if reviewer_status != "verified" or rule_type not in ("discipline", "min_percentage"):
+        return
+    sibling = "min_percentage" if rule_type == "discipline" else "discipline"
+    cands = (
+        supabase.table("exam_eligibility_rules")
+        .select("id, stream_id")
+        .eq("exam_id", str(exam_id))
+        .eq("scope", scope)
+        .eq("rule_type", sibling)
+        .eq("reviewer_status", "verified")
+        .limit(50)
+        .execute()
+        .data
+        or []
+    )
+    target = str(stream_id) if stream_id is not None else None
+    if any((c.get("stream_id") or None) == target for c in cands):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "A verified '" + sibling + "' rule already exists for this "
+                "(exam, stream, scope). Linked discipline+percentage requirements "
+                "must be one record-correlated 'qualification_combination', not two "
+                "separate verified rules (they would be satisfiable by unrelated qualifications)."
+            ),
+        )
+
+
 def _require_trust_provenance(source_url: str | None, waiver_reason: str | None) -> None:
     """Setting reviewer_status='verified' or archiving requires a source URL or an explicit waiver."""
     if source_url and str(source_url).strip():
@@ -302,6 +339,10 @@ def create_rule(
     ):
         raise HTTPException(status_code=404, detail="exam_not_found")
 
+    _reject_ambiguous_linked_qualification(
+        supabase, exam_id, body.stream_id, body.scope, body.rule_type, body.reviewer_status
+    )
+
     # Pre-empt the unique constraint to give a clean 409. The identity is
     # (exam_id, stream_id, scope, rule_type) per migration 248 — a common rule
     # (stream_id NULL) and a stream-specific rule for the same scope/type
@@ -411,6 +452,12 @@ def update_rule(
         value_text=merged_value_text,
         reviewer_status=merged_status,
         value_json=merged_value_json,
+    )
+    merged_stream = (
+        body.stream_id if "stream_id" in body.model_fields_set else current.get("stream_id")
+    )
+    _reject_ambiguous_linked_qualification(
+        supabase, current["exam_id"], merged_stream, merged_scope, merged_type, merged_status
     )
 
     patch: dict[str, Any] = {}
