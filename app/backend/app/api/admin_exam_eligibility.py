@@ -79,12 +79,8 @@ _ALLOWED_RULE_TYPES = {
     "discipline", "min_percentage", "certification", "qualification_combination",
     "stream_availability",
 }
-# The evaluator implements only these branches today. A rule of any OTHER type
-# must not reach reviewer_status='verified' (it would be silently ignored),
-# mirroring the DB fail-closed CHECK in migration 248.
-_EVALUATOR_SUPPORTED_RULE_TYPES = {
-    "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max",
-}
+# As of migration 253 the evaluator interprets every baseline rule_type
+# (stream-aware evaluation activated), so the fail-closed verify guard is lifted.
 _ALLOWED_REVIEWER_STATUS = {"draft", "verified", "archived"}
 _NUMERIC_RULE_TYPES = {"age_min", "age_max", "attempts_max", "min_percentage"}
 _TEXT_RULE_TYPES = {
@@ -93,7 +89,9 @@ _TEXT_RULE_TYPES = {
 _JSON_RULE_TYPES = {"qualification_combination"}
 
 _QC_TEXT_TYPES = {"discipline", "certification", "education_min_level", "nationality"}
-_QC_NUM_TYPES = {"min_percentage", "experience_min_years"}
+# experience_min_years is cycle-only (§4) and is NOT allowed in a baseline combo.
+_QC_NUM_TYPES = {"min_percentage"}
+_STREAM_AVAILABILITY_VALUES = {"offered", "not_offered", "expected"}
 
 
 def _valid_qualification_combination(node: Any) -> bool:
@@ -170,6 +168,12 @@ def _validate_rule_shape(
                 status_code=400,
                 detail=f"{rule_type} requires value_text",
             )
+    if rule_type == "stream_availability" and value_text is not None:
+        if str(value_text).strip().lower() not in _STREAM_AVAILABILITY_VALUES:
+            raise HTTPException(
+                status_code=400,
+                detail="stream_availability value_text must be one of: offered, not_offered, expected",
+            )
     if rule_type in _JSON_RULE_TYPES:
         if value_json is None:
             raise HTTPException(
@@ -184,13 +188,40 @@ def _validate_rule_shape(
                     '{"op":"and"|"or","clauses":[{"rule_type":...,"value_text"|"value_num":...}, ...]}'
                 ),
             )
-    # Fail closed: a rule the evaluator does not interpret cannot be verified.
-    if reviewer_status == "verified" and rule_type not in _EVALUATOR_SUPPORTED_RULE_TYPES:
+
+def _reject_ambiguous_linked_qualification(
+    supabase, exam_id, stream_id, scope: str, rule_type: str, reviewer_status: str
+) -> None:
+    """Forbid the ambiguous two-row representation of a linked qualification
+    fact (checkpost P0). A verified `discipline` AND a verified `min_percentage`
+    for the same (exam, stream, scope) would let the evaluator satisfy them from
+    two UNRELATED education records (LLB@50% + B.Com@75%). Linked facts must be
+    authored as a single record-correlated `qualification_combination`.
+    """
+    if reviewer_status != "verified" or rule_type not in ("discipline", "min_percentage"):
+        return
+    sibling = "min_percentage" if rule_type == "discipline" else "discipline"
+    cands = (
+        supabase.table("exam_eligibility_rules")
+        .select("id, stream_id")
+        .eq("exam_id", str(exam_id))
+        .eq("scope", scope)
+        .eq("rule_type", sibling)
+        .eq("reviewer_status", "verified")
+        .limit(50)
+        .execute()
+        .data
+        or []
+    )
+    target = str(stream_id) if stream_id is not None else None
+    if any((c.get("stream_id") or None) == target for c in cands):
         raise HTTPException(
             status_code=422,
             detail=(
-                f"rule_type '{rule_type}' is not yet evaluated; keep it draft until "
-                "stream-aware/typed evaluation lands. Verifying it would make it silently non-operative."
+                "A verified '" + sibling + "' rule already exists for this "
+                "(exam, stream, scope). Linked discipline+percentage requirements "
+                "must be one record-correlated 'qualification_combination', not two "
+                "separate verified rules (they would be satisfiable by unrelated qualifications)."
             ),
         )
 
@@ -308,6 +339,10 @@ def create_rule(
     ):
         raise HTTPException(status_code=404, detail="exam_not_found")
 
+    _reject_ambiguous_linked_qualification(
+        supabase, exam_id, body.stream_id, body.scope, body.rule_type, body.reviewer_status
+    )
+
     # Pre-empt the unique constraint to give a clean 409. The identity is
     # (exam_id, stream_id, scope, rule_type) per migration 248 — a common rule
     # (stream_id NULL) and a stream-specific rule for the same scope/type
@@ -417,6 +452,12 @@ def update_rule(
         value_text=merged_value_text,
         reviewer_status=merged_status,
         value_json=merged_value_json,
+    )
+    merged_stream = (
+        body.stream_id if "stream_id" in body.model_fields_set else current.get("stream_id")
+    )
+    _reject_ambiguous_linked_qualification(
+        supabase, current["exam_id"], merged_stream, merged_scope, merged_type, merged_status
     )
 
     patch: dict[str, Any] = {}

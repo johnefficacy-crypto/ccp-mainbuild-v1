@@ -183,16 +183,17 @@ def test_create_rule_conflict_when_scope_rule_type_pair_exists():
 _STREAM = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
 
-def test_create_verified_new_rule_type_is_rejected_fail_closed():
-    # A rule_type the evaluator doesn't interpret must not reach 'verified'.
+def test_create_verified_new_rule_type_is_allowed_after_activation():
+    # Migration 249 activates evaluator support for the new rule_types, so the
+    # fail-closed verify guard is lifted — a discipline rule may now be verified.
     sb = SBStub(_world())
     r = TestClient(_build_app(sb)).post(
         f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
         json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
               "reviewer_status": "verified", "source_url": "https://x"},
     )
-    assert r.status_code == 422
-    assert "not yet evaluated" in r.json()["detail"]
+    assert r.status_code == 200
+    assert r.json()["rule"]["verified_by"] == "admin-1"
 
 
 def test_create_new_rule_type_as_draft_is_allowed():
@@ -225,6 +226,45 @@ def test_create_qualification_combination_rejects_malformed_json():
     )
     assert r.status_code == 400
     assert "valid combination" in r.json()["detail"]
+
+
+def test_create_qualification_combination_rejects_experience_clause():
+    # experience_min_years is cycle-only — not allowed in a baseline combo.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "qualification_combination",
+              "value_json": {"op": "and", "clauses": [{"rule_type": "experience_min_years", "value_num": 3}]}},
+    )
+    assert r.status_code == 400
+
+
+def test_verified_discipline_and_percentage_pair_is_rejected():
+    # A verified min_percentage already exists → verifying a sibling discipline
+    # for the same (exam, stream, scope) is the ambiguous two-row representation.
+    world = _world()
+    world["exam_eligibility_rules"].append({
+        "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "exam_id": EXAM_A, "stream_id": None,
+        "scope": "all", "rule_type": "min_percentage", "value_num": 60, "reviewer_status": "verified",
+    })
+    sb = SBStub(world)
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
+              "reviewer_status": "verified", "source_url": "https://x"},
+    )
+    assert r.status_code == 422
+    assert "qualification_combination" in r.json()["detail"]
+
+
+def test_create_stream_availability_rejects_unknown_value():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "stream_availability", "value_text": "maybe"},
+    )
+    assert r.status_code == 400
+    assert "offered" in r.json()["detail"]
 
 
 def test_update_can_clear_stream_id_back_to_common():
