@@ -1,7 +1,7 @@
 -- validate_ca_monthly_retry.sql — GQR-G6 migrations 258 + 259 + 260 VERIFY DB.
 --
 -- Rollback-only proof of the real PL/pgSQL authority:
---   * exact-exam retry selection and scoped monthly start;
+--   * exact-exam retry selection and guarded monthly start;
 --   * every linked claim must remain verified/current/officially grounded;
 --   * monthly core+tail freeze, consume, and stale-tail reuse;
 --   * weekly submit atomically enqueues mistakes;
@@ -215,13 +215,13 @@ begin
     raise exception 'FAIL: question did not recover after removing bad link';
   end if;
 
-  -- 3. Scoped monthly start freezes core+tail and consumes the exact-exam queue row.
-  v_res := public.ca_start_monthly_current_affairs_attempt_scoped(
+  -- 3. Guarded monthly start freezes core+tail and consumes the exact-exam queue row.
+  v_res := public.ca_start_monthly_current_affairs_attempt_guarded(
     v_monthly_user, v_bundle, v_exam, '{}'::jsonb, v_core, v_tail);
   if v_res->>'outcome' <> 'ready'
      or (v_res->>'core_count')::int <> 1
      or (v_res->>'retry_tail_count')::int <> 1 then
-    raise exception 'FAIL: scoped monthly start wrong: %', v_res;
+    raise exception 'FAIL: guarded monthly start wrong: %', v_res;
   end if;
   v_att := (v_res->>'attempt_id')::uuid;
   if (
@@ -238,12 +238,12 @@ begin
   end if;
 
   -- 4. Reusing with the now-stale original tail returns the same frozen attempt.
-  v_res := public.ca_start_monthly_current_affairs_attempt_scoped(
+  v_res := public.ca_start_monthly_current_affairs_attempt_guarded(
     v_monthly_user, v_bundle, v_exam, '{}'::jsonb, v_core, v_tail);
   if v_res->>'outcome' <> 'reused'
      or (v_res->>'attempt_id')::uuid <> v_att
      or (v_res->>'retry_tail_count')::int <> 1 then
-    raise exception 'FAIL: stale-tail scoped reuse failed: %', v_res;
+    raise exception 'FAIL: stale-tail guarded reuse failed: %', v_res;
   end if;
 
   -- 5. A foreign-exam retry row cannot be consumed into the exam-1 monthly bundle.
@@ -253,9 +253,9 @@ begin
     (v_foreign_user, v_qt, v_other_exam, 'pending',
      now() - interval '1 day', now() + interval '30 days');
   begin
-    perform public.ca_start_monthly_current_affairs_attempt_scoped(
+    perform public.ca_start_monthly_current_affairs_attempt_guarded(
       v_foreign_user, v_bundle, v_exam, '{}'::jsonb, v_core, v_tail);
-    raise exception 'FAIL: scoped start accepted a foreign-exam retry item';
+    raise exception 'FAIL: guarded start accepted a foreign-exam retry item';
   exception when others then
     if sqlerrm not like '%retry_tail_not_eligible%' then raise; end if;
   end;
