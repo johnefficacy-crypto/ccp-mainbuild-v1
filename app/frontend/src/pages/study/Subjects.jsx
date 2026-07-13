@@ -21,7 +21,6 @@ const CA_STATE_COPY = {
   empty_bundle: "This week's current-affairs set has no questions yet.",
   bundle_degraded: "This week's current-affairs set is being refreshed. Check back soon.",
   already_submitted: "You've already completed this week's current-affairs practice.",
-  unavailable: "Current-affairs practice is unavailable right now. Please try again.",
 };
 
 // A subject card: keeps the mastery summary line (progress / weak / topics +

@@ -130,10 +130,15 @@ def _handle_weekly_current_affairs(supabase, *, user_id, subject_id, topic_id, e
     try:
         result = start_weekly_current_affairs_attempt(supabase, user_id=user_id, exam_id=exam_id)
     except ValueError as exc:
-        # A known domain state (e.g. attempt_already_submitted for this cycle's bundle).
-        # Surface as an outcome, not a 500 — the learner has finished this bundle.
-        outcome = "already_submitted" if "already_submitted" in str(exc) else "unavailable"
-        return {"kind": "current_affairs", "outcome": outcome}
+        # ONLY the expected completed-cycle state is a calm learner availability outcome.
+        # Every other domain ValueError — bundle_set_mismatch, snapshot_answer_mismatch,
+        # snapshot_options_mismatch, etc. — signals an authority race or a corrupted
+        # freeze; it must stay observable as a 409 conflict, never be masked as a 200
+        # "unavailable" success. (LookupError / PermissionError / infra RuntimeError from
+        # the service layer propagate unchanged → 404 / 500, also observable.)
+        if "already_submitted" in str(exc):
+            return {"kind": "current_affairs", "outcome": "already_submitted"}
+        raise HTTPException(status_code=409, detail=str(exc))
     outcome = (result or {}).get("outcome")
     if outcome in ("ready", "reused"):
         attempt_id = result.get("attempt_id")

@@ -220,6 +220,23 @@ def test_weekly_current_affairs_already_submitted_is_outcome(monkeypatch):
     assert resp.json() == {"kind": "current_affairs", "outcome": "already_submitted"}
 
 
+def test_weekly_current_affairs_integrity_error_is_409_not_masked(monkeypatch):
+    # An authority race / corrupted freeze (bundle_set_mismatch, snapshot_*_mismatch)
+    # surfaces from the service as a ValueError. It must NOT be masked as a 200
+    # "unavailable" success — it stays observable as a 409 conflict.
+    for token in ("bundle_set_mismatch", "snapshot_answer_mismatch", "snapshot_options_mismatch"):
+        def _raise(*a, _t=token, **k):
+            raise ValueError(_t)
+
+        monkeypatch.setattr(subject_practice, "start_weekly_current_affairs_attempt", _raise)
+        resp = _client(SBStub(_seed())).post(
+            f"/api/study/subjects/{_S_GA}/practice/start",
+            json={"mode": "weekly_current_affairs"},
+        )
+        assert resp.status_code == 409, (token, resp.json())
+        assert token in resp.json()["detail"]
+
+
 def test_weekly_current_affairs_rejected_for_non_ga_family():
     # Family gate: weekly_current_affairs is GA-only. Posting it to a Quant subject is
     # rejected before any handler runs.

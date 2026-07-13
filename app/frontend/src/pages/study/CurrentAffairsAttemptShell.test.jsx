@@ -84,12 +84,12 @@ describe("CurrentAffairsAttemptShell", () => {
     expect(screen.queryByTestId("ca-result-summary")).not.toBeInTheDocument();
   });
 
-  test("selecting an option persists a monotonic client_seq above the stored value", async () => {
-    const saveAnswer = jest.fn().mockResolvedValue({ ok: true });
+  test("selecting an option persists a monotonic client_seq above the stored value and resumes time", async () => {
+    const saveAnswer = jest.fn().mockResolvedValue({ ok: true, data: { status: "recorded" } });
     useCurrentAffairsAttempt.mockReturnValue({
-      // Resume: stored client_seq=3, so the next save must be >3.
+      // Resume: stored client_seq=3 (next save >3) and stored time=30s (never reset to 0).
       fetchAttempt: jest.fn().mockResolvedValue(
-        inProgress([question({ client_seq: 3 })]),
+        inProgress([question({ client_seq: 3, time_spent_sec: 30 })]),
       ),
       saveAnswer,
       submitAttempt: jest.fn(),
@@ -99,11 +99,38 @@ describe("CurrentAffairsAttemptShell", () => {
     await screen.findByTestId("current-affairs-attempt-shell");
     fireEvent.click(screen.getByTestId("ca-option-1-1")); // pick SEBI
     await waitFor(() => expect(saveAnswer).toHaveBeenCalled());
-    expect(saveAnswer).toHaveBeenCalledWith("A1", expect.objectContaining({
-      questionId: "q1",
-      selectedOptionId: "o2",
-      clientSeq: 4,
-    }));
+    const [, payload] = saveAnswer.mock.calls[0];
+    expect(payload).toMatchObject({ questionId: "q1", selectedOptionId: "o2", clientSeq: 4 });
+    // Cumulative time carries the resumed base forward (never resets to zero).
+    expect(payload.timeSpentSec).toBeGreaterThanOrEqual(30);
+  });
+
+  test("a stale/idempotent save reconciles against the authoritative stored answer", async () => {
+    // The server no-ops an equal/lower sequence and reports already_recorded WITHOUT
+    // storing our selection — the shell must refetch, not leave a false optimistic pick.
+    const fetchAttempt = jest
+      .fn()
+      .mockResolvedValueOnce(inProgress([question({ client_seq: 0 })]))
+      // Authoritative state after the race: another device already recorded "o1".
+      .mockResolvedValueOnce(inProgress([question({ selected_option_id: "o1", client_seq: 5 })]));
+    const saveAnswer = jest
+      .fn()
+      .mockResolvedValue({ ok: true, data: { status: "already_recorded", idempotent: true } });
+    useCurrentAffairsAttempt.mockReturnValue({
+      fetchAttempt,
+      saveAnswer,
+      submitAttempt: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    await screen.findByTestId("current-affairs-attempt-shell");
+    fireEvent.click(screen.getByTestId("ca-option-1-1")); // optimistically pick SEBI (o2)
+    // Reconcile refetch fires; the authoritative RBI (o1) wins over the optimistic pick.
+    await waitFor(() => expect(fetchAttempt).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByTestId("ca-option-1-0").querySelector("input").checked).toBe(true),
+    );
+    expect(screen.getByTestId("ca-option-1-1").querySelector("input").checked).toBe(false);
   });
 
   test("submit reveals the answer, explanation and §10 provenance envelope", async () => {

@@ -101,6 +101,12 @@ export default function CurrentAffairsAttemptShell() {
   // Per-question monotonic client_seq, seeded ABOVE the stored value on load so a
   // resumed edit is never swallowed as an idempotent no-op (F4).
   const seqRef = useRef({});
+  // Per-question cumulative dwell (seconds), seeded from the resumed attempt so the
+  // stored time-spent authority is never reset to zero, plus the wall clock of the
+  // last interaction. Elapsed since the last save is attributed to the question just
+  // answered — mirrors the mock shell's dwell accounting for a list interface.
+  const dwellRef = useRef({});
+  const lastTickRef = useRef(Date.now());
 
   const submitted = attempt?.status === "submitted";
 
@@ -115,13 +121,18 @@ export default function CurrentAffairsAttemptShell() {
         setAttempt(data);
         const seeded = {};
         const seqs = {};
+        const dwell = {};
         (data.questions || []).forEach((q) => {
           seeded[q.question_id] = q.selected_option_id || null;
           // Seed the counter one above the stored value — the next save wins the guard.
           seqs[q.question_id] = Number(q.client_seq || 0);
+          // Resume the stored per-question time so the authority is never reset to 0.
+          dwell[q.question_id] = Number(q.time_spent_sec || 0);
         });
         setSelections(seeded);
         seqRef.current = seqs;
+        dwellRef.current = dwell;
+        lastTickRef.current = Date.now();
         setStatus("ready");
         return data;
       } catch (e) {
@@ -145,17 +156,33 @@ export default function CurrentAffairsAttemptShell() {
       setSelections((prev) => ({ ...prev, [qid]: optionId })); // optimistic
       const nextSeq = (seqRef.current[qid] || 0) + 1;
       seqRef.current[qid] = nextSeq;
+      // Attribute the seconds elapsed since the last save to this question, and send
+      // the cumulative (monotonic) total so the server-side time authority is real.
+      const now = Date.now();
+      const elapsed = Math.max(0, Math.round((now - lastTickRef.current) / 1000));
+      lastTickRef.current = now;
+      const cumulative = (dwellRef.current[qid] || 0) + elapsed;
+      dwellRef.current[qid] = cumulative;
       const res = await saveAnswer(attemptId, {
         questionId: qid,
         selectedOptionId: optionId,
         isMarkedForReview: Boolean(question.is_marked_for_review),
+        timeSpentSec: cumulative,
         clientSeq: nextSeq,
       });
       if (!res?.ok) {
         setSelections((prev) => ({ ...prev, [qid]: previous })); // rollback
+        return;
+      }
+      // A stale/duplicate sequence is an idempotent server no-op: the server did NOT
+      // store our selection (a newer sequence from another tab/device already won).
+      // Keeping the optimistic answer would show a value that was never recorded — so
+      // reconcile against the authoritative stored state instead of trusting the UI.
+      if (res.data?.status === "already_recorded" || res.data?.idempotent === true) {
+        await load({ showLoading: false });
       }
     },
-    [attemptId, saveAnswer, selections, submitted, busy],
+    [attemptId, saveAnswer, selections, submitted, busy, load],
   );
 
   const onSubmit = useCallback(async () => {
