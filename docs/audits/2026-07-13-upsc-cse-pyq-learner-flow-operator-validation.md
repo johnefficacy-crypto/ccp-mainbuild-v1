@@ -22,8 +22,9 @@ with empty data and an embedded PostgreSQL error `42703: column exam_phases.name
 exist`. The learner endpoints selected `exam_phases.name`; the canonical column is
 `exam_phases.phase_name`. The backend failed closed, so the learner UI showed zero papers
 and zero questions despite valid verified data. PR #980 corrected both endpoint queries and
-response mappings and updated the regression fixture. This branch corrects the same column
-reference in the query/fixture carried on the docs branch.
+response mappings and updated the regression fixture, and was deployed. This
+documentation-only PR records the deployed correction and the post-deploy operator evidence;
+it does not modify runtime code or tests.
 
 ## Post-deploy API evidence
 
