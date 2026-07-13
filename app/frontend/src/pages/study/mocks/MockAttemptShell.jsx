@@ -110,6 +110,9 @@ export default function MockAttemptShell() {
         for (const q of data.questions || []) {
           initial[q.question_id] = {
             selected_option_id: q.selected_option_id || null,
+            // Integer/numerical: restore the saved value + a raw display string.
+            numeric_answer: q.numeric_answer ?? null,
+            numeric_input: q.numeric_answer == null ? "" : String(q.numeric_answer),
             is_marked_for_review: q.is_marked_for_review || false,
           };
         }
@@ -190,10 +193,11 @@ export default function MockAttemptShell() {
 
   // ── send answer to server (debounced, with visible sync state) ────────────
   const sendAnswer = useCallback(
-    (questionId, selected_option_id, is_marked_for_review, time_spent_sec = 0) => {
+    (questionId, selected_option_id, is_marked_for_review, time_spent_sec = 0, numeric_answer = null) => {
       answerSync.queueSave(questionId, {
         question_id: questionId,
         selected_option_id: selected_option_id || null,
+        numeric_answer: numeric_answer ?? null,
         is_marked_for_review,
         time_spent_sec,
       });
@@ -225,7 +229,7 @@ export default function MockAttemptShell() {
     const qid = cq.question_id;
     const total = accrueDwell(qid);
     const r = responses[qid] || {};
-    sendAnswer(qid, r.selected_option_id || null, r.is_marked_for_review || false, total);
+    sendAnswer(qid, r.selected_option_id || null, r.is_marked_for_review || false, total, r.numeric_answer ?? null);
   }, [attempt, currentIdx, responses, accrueDwell, sendAnswer]);
 
   // ── handle option select ──────────────────────────────────────────────────
@@ -233,12 +237,36 @@ export default function MockAttemptShell() {
     const dwell = accrueDwell(questionId);
     setResponses((prev) => {
       const cur = prev[questionId] || {};
-      const updated = { ...cur, selected_option_id: optionId };
-      sendAnswer(questionId, optionId, updated.is_marked_for_review || false, dwell);
+      // Selecting an option clears any numeric answer — the two modalities are
+      // mutually exclusive per question.
+      const updated = { ...cur, selected_option_id: optionId, numeric_answer: null, numeric_input: "" };
+      sendAnswer(questionId, optionId, updated.is_marked_for_review || false, dwell, null);
       try {
         eventBus.enqueue("question.answered", {
           question_id: questionId,
           selected_option_id: optionId,
+          time_spent_sec: dwell,
+        });
+      } catch (e) { console.warn("[Shell] enqueue error:", e); }
+      return { ...prev, [questionId]: updated };
+    });
+  }
+
+  // ── handle numeric answer (integer/numerical questions) ─────────────────────
+  function setNumericAnswer(questionId, rawValue) {
+    const dwell = accrueDwell(questionId);
+    // Empty or non-numeric input → null (unattempted / fail-closed); the raw
+    // string is kept for display so intermediate typing ("3.") isn't lost.
+    const parsed = rawValue === "" || rawValue == null ? null : Number(rawValue);
+    const numeric = parsed == null || Number.isNaN(parsed) ? null : parsed;
+    setResponses((prev) => {
+      const cur = prev[questionId] || {};
+      const updated = { ...cur, numeric_answer: numeric, numeric_input: rawValue, selected_option_id: null };
+      sendAnswer(questionId, null, updated.is_marked_for_review || false, dwell, numeric);
+      try {
+        eventBus.enqueue("question.answered", {
+          question_id: questionId,
+          numeric_answer: numeric,
           time_spent_sec: dwell,
         });
       } catch (e) { console.warn("[Shell] enqueue error:", e); }
@@ -252,7 +280,7 @@ export default function MockAttemptShell() {
       const cur = prev[questionId] || {};
       const flipped = !cur.is_marked_for_review;
       const updated = { ...cur, is_marked_for_review: flipped };
-      sendAnswer(questionId, cur.selected_option_id || null, flipped, dwell);
+      sendAnswer(questionId, cur.selected_option_id || null, flipped, dwell, cur.numeric_answer ?? null);
       try {
         const evType = flipped ? "question.marked" : "question.unmarked";
         eventBus.enqueue(evType, { question_id: questionId });
@@ -456,7 +484,8 @@ export default function MockAttemptShell() {
   const questions = attempt.questions || [];
   const q = questions[currentIdx];
   const resp = responses[q?.question_id] || {};
-  const answered = Object.values(responses).filter((r) => r.selected_option_id).length;
+  const isAnswered = (r) => Boolean(r.selected_option_id) || r.numeric_answer != null;
+  const answered = Object.values(responses).filter(isAnswered).length;
   const total = questions.length;
 
   const sectionLocked =
@@ -480,7 +509,7 @@ export default function MockAttemptShell() {
 
   const paletteButtons = questions.map((qq, i) => {
     const r = responses[qq.question_id] || {};
-    const isAnswered = Boolean(r.selected_option_id);
+    const answeredQ = isAnswered(r);
     const isMarked = r.is_marked_for_review;
     const isCurrent = i === currentIdx;
     // With locks on, the palette only lets you move within the section you're
@@ -509,7 +538,7 @@ export default function MockAttemptShell() {
         style={{
           ...styles.navBtn,
           position: "relative",
-          background: isCurrent ? "#1a56db" : isAnswered ? "#16a34a" : "#374151",
+          background: isCurrent ? "#1a56db" : answeredQ ? "#16a34a" : "#374151",
           border,
           opacity: disabled ? 0.4 : 1,
           cursor: disabled ? "not-allowed" : "pointer",
@@ -533,7 +562,10 @@ export default function MockAttemptShell() {
             {sectionLocked ? " · locked" : ""}
           </span>
         )}
-        <span style={timeRemaining !== null && timeRemaining < 60 ? styles.timerWarn : styles.timer}>
+        <span
+          data-testid="attempt-timer"
+          style={timeRemaining !== null && timeRemaining < 60 ? styles.timerWarn : styles.timer}
+        >
           {timeRemaining !== null ? formatTime(timeRemaining) : "--"}
         </span>
         <button
@@ -580,27 +612,45 @@ export default function MockAttemptShell() {
               <div style={styles.qText} data-testid="attempt-question-body">
                 <QuestionStem text={q.question_text} images={q.images} />
               </div>
-              <div style={styles.options}>
-                {(q.options || []).map((opt, optIdx) => {
-                  const selected = resp.selected_option_id === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      data-testid={`attempt-option-${optIdx}`}
-                      aria-pressed={selected}
-                      onClick={() => selectOption(q.question_id, opt.id)}
-                      style={{
-                        ...styles.optBtn,
-                        background: selected ? "#1e40af" : "#1f2937",
-                        border: selected ? "2px solid #60a5fa" : "2px solid #374151",
-                      }}
-                    >
-                      <span style={styles.optIndex}>{formatOptionLabel(opt, optIdx)}</span>
-                      {opt.option_text}
-                    </button>
-                  );
-                })}
-              </div>
+              {q.question_type === "integer" ? (
+                <div style={styles.options}>
+                  <label htmlFor="attempt-numeric-input" style={styles.numericLabel}>
+                    Enter your answer
+                  </label>
+                  <input
+                    id="attempt-numeric-input"
+                    type="text"
+                    inputMode="decimal"
+                    data-testid="attempt-numeric-input"
+                    value={resp.numeric_input ?? (resp.numeric_answer == null ? "" : String(resp.numeric_answer))}
+                    onChange={(e) => setNumericAnswer(q.question_id, e.target.value)}
+                    placeholder="e.g. 42"
+                    style={styles.numericInput}
+                  />
+                </div>
+              ) : (
+                <div style={styles.options}>
+                  {(q.options || []).map((opt, optIdx) => {
+                    const selected = resp.selected_option_id === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        data-testid={`attempt-option-${optIdx}`}
+                        aria-pressed={selected}
+                        onClick={() => selectOption(q.question_id, opt.id)}
+                        style={{
+                          ...styles.optBtn,
+                          background: selected ? "#1e40af" : "#1f2937",
+                          border: selected ? "2px solid #60a5fa" : "2px solid #374151",
+                        }}
+                      >
+                        <span style={styles.optIndex}>{formatOptionLabel(opt, optIdx)}</span>
+                        {opt.option_text}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <label style={styles.reviewLabel}>
                 <input
                   type="checkbox"
@@ -782,6 +832,8 @@ const styles = {
   options: { display: "flex", flexDirection: "column", gap: 10 },
   optBtn: { padding: "12px 16px", borderRadius: 8, color: "#f9fafb", cursor: "pointer", textAlign: "left", fontSize: 15, display: "flex", gap: 10, alignItems: "flex-start" },
   optIndex: { fontWeight: 700, minWidth: 20, color: "#9ca3af" },
+  numericLabel: { fontSize: 13, color: "#9ca3af", marginBottom: 4 },
+  numericInput: { padding: "12px 16px", borderRadius: 8, background: "#1f2937", border: "2px solid #374151", color: "#f9fafb", fontSize: 16, maxWidth: 260 },
   reviewLabel: { marginTop: 16, fontSize: 14, color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center" },
   navRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", borderTop: "1px solid #374151", background: "#1f2937" },
   navArrow: { padding: "8px 18px", background: "#374151", color: "#f9fafb", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 },

@@ -383,6 +383,7 @@ def _build_practice_payload(
     source: str,
     mode: str,
     target_id: str,
+    duration_sec: int | None = None,
 ) -> tuple[dict, list[dict], list[str]]:
     """Freeze the attempt payload. Fail-closed (mirrors generated attempts): every
     selected id must resolve to a usable MCQ snapshot and the frozen set must
@@ -448,6 +449,11 @@ def _build_practice_payload(
         "total_questions": len(ordered_ids),
         "section_locks_enabled": False,
     }
+    # Timed practice (GQR-R10): a server-owned countdown. mock_engine already honors
+    # ``duration_sec`` on the frozen template — it drives attempt expiry and the
+    # client-facing ``time_remaining_sec``. Absent/zero → untimed (prior behaviour).
+    if duration_sec and duration_sec > 0:
+        template_snapshot["duration_sec"] = int(duration_sec)
     return template_snapshot, response_rows, ordered_ids
 
 
@@ -460,6 +466,8 @@ def start_pyq_practice(
     exam_id: str | None = None,
     limit: int = _DEFAULT_LIMIT,
     blueprint_id: str | None = None,
+    duration_sec: int | None = None,
+    seconds_per_question: int | None = None,
 ) -> dict:
     """Assemble and atomically start a PYQ practice attempt.
 
@@ -505,6 +513,12 @@ def start_pyq_practice(
     resolved_exam_id = exam_id or (next(iter(pool_exams)) if pool_exams else None)
 
     ids = [r["id"] for r in rows]
+    # Timed practice (GQR-R10): derive the server-owned countdown from the ACTUAL
+    # frozen count × a per-question rate, so the timer matches the assembled set
+    # (the projected pool may be smaller than ``limit``). An explicit ``duration_sec``
+    # wins if both are passed.
+    if duration_sec is None and seconds_per_question and seconds_per_question > 0:
+        duration_sec = int(seconds_per_question) * len(ids)
     exam_phase_id = _resolve_exam_phase(sb, mode, target_id, rows)
 
     # _load_questions fails closed if the projected passage read fails.
@@ -517,6 +531,7 @@ def start_pyq_practice(
         source=source,
         mode=mode,
         target_id=target_id,
+        duration_sec=duration_sec,
     )
 
     blueprint_for_rpc = {
@@ -530,7 +545,13 @@ def start_pyq_practice(
     if blueprint_id:
         # Deterministic id → RPC reuses the in-progress attempt on retry (idempotent).
         blueprint_for_rpc["id"] = blueprint_id
-    expires_at = (datetime.now(timezone.utc) + _ATTEMPT_TTL).isoformat()
+    # ``expires_at`` is the ONE effective attempt deadline, enforced consistently by
+    # every runtime path (get_attempt, save_answer, submit, auto-submit/sweeper) via
+    # ``_time_remaining_sec``. Timed practice (GQR-R10) makes it the countdown window;
+    # untimed practice keeps the long abandonment TTL and hides the clock in the read
+    # layer. There is no second, display-only deadline.
+    ttl = timedelta(seconds=duration_sec) if duration_sec and duration_sec > 0 else _ATTEMPT_TTL
+    expires_at = (datetime.now(timezone.utc) + ttl).isoformat()
 
     rows_out = safe_required(
         lambda: sb.rpc(

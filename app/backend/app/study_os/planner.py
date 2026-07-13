@@ -37,6 +37,7 @@ from app.study_os import calibration
 from app.study_os.competition_context import competition_context
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.plan_preferences import focus_weights, get_plan_preferences
+from app.study_os.subject_runtime_policy import resolve_planner_launch
 from app.study_os.update_context import policy_update_context
 from app.study_os.writing_practice import planner_tasks
 from app.study_os.writing_practice.launch import LAUNCH_ENGLISH_WRITING_SESSION
@@ -51,8 +52,9 @@ PLANNER_VERSION = "planner_v1"
 # to avoid a cross-lane import dependency; a shared constant can be unified later.
 LAUNCH_PYQ_PRACTICE = "pyq_practice"
 
-# task_type values whose plan tasks resolve to a PYQ topic-practice launch.
-_LAUNCH_STAMP_TASK_TYPES = {"retrieval_practice", "revision"}
+# task_type -> runnable launch resolution now lives in the server-owned
+# SubjectRuntimePolicy registry (GQR-1); the planner consults it instead of an
+# inline task-type set + stamp block. Behaviour is unchanged for existing tasks.
 
 # EWP-5: max auto-generated english_writing_session tasks per plan generation.
 # Writing tasks are additive (a distinct modality) and bounded so they never
@@ -304,7 +306,7 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
             _safe(
                 lambda: (
                     supabase.table("subjects")
-                    .select("id, name")
+                    .select("id, name, slug, subject_group")
                     .in_("id", subject_ids)
                     .limit(500)
                     .execute()
@@ -334,6 +336,11 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
                 "topic_level": topic.get("level"),
                 "subject_id": topic.get("subject_id"),
                 "subject_name": subject.get("name"),
+                # Canonical subject identity — the governed keys the
+                # SubjectRuntimePolicy registry resolves a subject family from
+                # (never the display name). subject_group is the primary key.
+                "subject_slug": subject.get("slug"),
+                "subject_group": subject.get("subject_group"),
                 "exam_cycle_id": r.get("exam_cycle_id"),
                 "exam_phase_id": r.get("exam_phase_id"),
                 "coverage_priority": _num(r.get("exam_priority_score")),
@@ -779,21 +786,24 @@ def _build_tasks(
             "priority_score": cov["_priority_score"],
             "why_this_task": why,
         }
-        # PYQ v2 PR-9: a practice/revision task on a real topic+exam resolves to
-        # a typed PYQ topic-practice launch. Stamp the launch columns
-        # (migration 205) so the client can open the right target deterministically.
-        # Other task types (e.g. concept_learning) or tasks missing topic/exam are
-        # left unstamped — launch columns stay absent, preserving prior behaviour.
-        topic_id = cov.get("topic_id")
-        if task_type in _LAUNCH_STAMP_TASK_TYPES and topic_id and exam_id:
-            task["launch_type"] = LAUNCH_PYQ_PRACTICE
-            task["launch_entity_id"] = topic_id
-            task["launch_context"] = {
-                "mode": "topic",
-                "target_id": topic_id,
-                "exam_id": exam_id,
-            }
-            why["launch_target"] = LAUNCH_PYQ_PRACTICE
+        # PYQ v2 PR-9 / GQR-1: launch stamping is resolved through the server-owned
+        # SubjectRuntimePolicy registry, keyed by the task's canonical subject family.
+        # A PYQ-backed subject's practice/revision task on a real topic+exam stamps a
+        # typed PYQ launch (migration 205); a General-Awareness task never does (GA is
+        # calendar-driven current-affairs); other task types or tasks missing
+        # topic/exam resolve to None (launch columns absent), preserving prior behaviour.
+        launch = resolve_planner_launch(
+            task_type,
+            subject_slug=cov.get("subject_slug"),
+            subject_group=cov.get("subject_group"),
+            topic_id=cov.get("topic_id"),
+            exam_id=exam_id,
+        )
+        if launch is not None:
+            task["launch_type"] = launch["launch_type"]
+            task["launch_entity_id"] = launch["launch_entity_id"]
+            task["launch_context"] = launch["launch_context"]
+            why["launch_target"] = launch["launch_type"]
         tasks.append(task)
     return tasks
 

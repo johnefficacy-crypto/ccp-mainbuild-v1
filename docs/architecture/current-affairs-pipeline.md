@@ -1,6 +1,6 @@
 ---
 owner: exam-intelligence / study-os
-status: architecture decision (contract-first; PLANNED) — GATES the LLM pipeline PR
+status: architecture decision — APPROVED 2026-07-12 (johnefficacy-crypto); GATES the LLM pipeline PR (gate CLEARED)
 last_verified_against_code: 2026-07-11
 source_of_truth: code
 related_code:
@@ -29,11 +29,11 @@ review_cadence: per-sprint
 
 # General Awareness — Current-Affairs Pipeline
 
-**Status:** CONTRACT-FIRST / PLANNED. This document is a **required gate** for the LLM pipeline PR
-(GQR-G3). Per the locked invariant "No new AI writes … add an LLM adapter only when explicitly
-justified in an architecture doc," no current-affairs generation code may land until this contract
-is approved. Precedent: the EWP real semantic evaluator is still gated/unapproved for the same
-reason (`ewp-semantic-evaluator-adapter.md`).
+**Status:** APPROVED 2026-07-12 (johnefficacy-crypto). This document was a **required gate** for the
+LLM pipeline PR (GQR-G3); the gate is now CLEARED, so GQR-G3 generation code may land per this
+contract (shadow / no-authority; no promotion or publication until GQR-G4/G5). Per the locked
+invariant "No new AI writes … add an LLM adapter only when explicitly justified in an architecture
+doc," this approved contract is that justification, scoped to current-affairs generation only.
 
 GA v1 = **current-affairs practice only** (`weekly_current_affairs`, `monthly_current_affairs`).
 Cross-subject scope and product locks live in `docs/architecture/subject-practice-framework.md` §1.1.

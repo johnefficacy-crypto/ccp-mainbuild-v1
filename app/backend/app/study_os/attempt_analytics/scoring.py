@@ -21,13 +21,18 @@ def compute_scoring(attempt: dict, responses: list[dict], dwell_by_q: dict[str, 
         neg = D(q.get("negative_marks") or snap.get("marks_per_wrong") or 0)
         sid = section_index
         sec = sec_map.setdefault(sid, {"section_index": sid, "section_name": section_name, "correct": 0, "wrong": 0, "unattempted": 0, "marks": Decimal("0"), "time_used_sec": 0})
-        sel = r.get("selected_option_id")
-        if sel is None:
-            u += 1; sec["unattempted"] += 1
-        elif r.get("is_correct"):
+        # Key off the authoritative per-response grade set by the deterministic
+        # scorer (_finalize_submission): True=correct, False=wrong, None=
+        # unattempted/ungradeable. This spans MCQ and integer/numerical uniformly
+        # and, critically, keeps a typed-but-ungradeable answer OUT of the wrong
+        # bucket so negative marking never penalizes a fail-closed response.
+        ic = r.get("is_correct")
+        if ic is True:
             c += 1; sec["correct"] += 1; score += marks; sec["marks"] += marks
-        else:
+        elif ic is False:
             w += 1; sec["wrong"] += 1; score -= neg; sec["marks"] -= neg
+        else:
+            u += 1; sec["unattempted"] += 1
         if r.get("is_marked_for_review"):
             m += 1
         sec["time_used_sec"] += int(dwell_by_q.get(r["question_id"], 0))
