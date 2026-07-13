@@ -43,6 +43,14 @@ MODE_TOPIC_PYQ = "topic_pyq"
 MODE_TIMED_PRACTICE = "timed_practice"
 MODE_WEEKLY_CURRENT_AFFAIRS = "weekly_current_affairs"
 
+# Reserved identifier for the bundle-driven GA current-affairs "subject". GA is NOT a
+# topic-coverage subject — current-affairs is bundle-driven, not topic-driven — so it has
+# no real ``subjects`` row and never appears via locked ``exam_topic_coverage``. This
+# stable sentinel (a valid UUID for the ``/subjects/{id}/practice/start`` path param) lets
+# the hub emit a GA card and the launch gate resolve the GA family WITHOUT a fake locked
+# topic. Reachability is gated on a servable weekly bundle, not on coverage.
+CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID = "00000000-0000-0000-0000-0000000000ca"
+
 # Subject families (contract §2.2 vocabulary).
 FAMILY_ENGLISH = "english"
 FAMILY_QUANT = "quant"

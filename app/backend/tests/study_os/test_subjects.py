@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.api import study_os as study_os_api
 from app.core.auth import get_current_user
 from app.study_os import subjects as subjects_service
+from app.study_os.subject_runtime_policy import CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID
 from tests.persona_questions._stub import SBStub
 
 
@@ -176,6 +177,55 @@ def test_subjects_each_item_carries_practice_object():
     assert items
     for it in items:
         assert it["practice"] == {"available": False, "modes": []}
+
+
+# ── GQR-G5: bundle-driven GA current-affairs card ──────────────────────────
+def _seed_with_ca_bundle():
+    """Base seed + a servable published+verified GLOBAL weekly current-affairs bundle."""
+    db = _seed()
+    db["current_affairs_bundles"] = [
+        {
+            "id": "cab-1", "cadence": "weekly", "status": "published",
+            "reviewer_status": "verified", "exam_id": None, "exam_family_id": None,
+            "period_start": "2099-01-01", "period_end": "2099-01-07",
+            "publish_at": "2000-01-01T00:00:00Z", "available_until": "2099-12-31T00:00:00Z",
+        }
+    ]
+    return db
+
+
+def test_subjects_omits_ca_card_without_servable_weekly_bundle():
+    # GA is bundle-driven — with no servable weekly bundle the virtual card must NOT
+    # appear (no dead launch), and no fake locked GA topic is needed to prove it.
+    sb = SBStub(_seed())
+    items = subjects_service.list_subjects(sb, "u-1")
+    assert all(it["subject_id"] != CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID for it in items)
+
+
+def test_subjects_appends_ca_card_when_weekly_bundle_servable():
+    # When the exam has a servable weekly bundle, a governed GA current-affairs card
+    # surfaces via the reserved virtual subject id — no topic coverage required.
+    sb = SBStub(_seed_with_ca_bundle())
+    items = subjects_service.list_subjects(sb, "u-1")
+    ca = next((it for it in items if it["subject_id"] == CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID), None)
+    assert ca is not None, [it["subject_id"] for it in items]
+    assert ca["practice"]["available"] is True
+    modes = {m["type"]: m for m in ca["practice"]["modes"]}
+    assert modes["weekly_current_affairs"]["route_type"] == "server_launch"
+    assert modes["weekly_current_affairs"]["launch_mode"] == "weekly_current_affairs"
+    assert modes["weekly_current_affairs"]["target_topic_id"] is None
+    # No PYQ/topic mode leaks onto the GA card.
+    assert "topic_pyq" not in modes
+
+
+def test_resolve_subject_family_resolves_virtual_ca_id_without_coverage():
+    # The launch gate resolves the reserved id to GA (known=True) even though it has no
+    # locked coverage — the bundle resolution in the handler is the real authority.
+    sb = SBStub(_seed())
+    family, known = subjects_service.resolve_subject_family(
+        sb, "exam-1", CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID
+    )
+    assert (family, known) == ("general_awareness", True)
 
 
 def test_subjects_server_launch_modes_appear_when_content_launchable():

@@ -39,6 +39,9 @@ function SubjectPracticeCard({ subject }) {
   const subjectId = subject.subject_id || subject.subject;
   const practice = subject.practice || {};
   const modes = practice.available && Array.isArray(practice.modes) ? practice.modes : [];
+  // GA current-affairs is bundle-driven and has NO mastery (domain rule) — render a
+  // cadence subline instead of the mastery/weak/topics summary.
+  const isCurrentAffairs = subject.kind === "current_affairs";
 
   const launch = async (mode) => {
     if (busy) return;
@@ -82,12 +85,16 @@ function SubjectPracticeCard({ subject }) {
     <div className="rounded border p-3 text-left" data-testid={`subject-card-${subjectId}`}>
       <div className="flex items-center justify-between">
         <span className="font-medium">{subject.subject}</span>
-        <span className="text-xs text-slate-500">
-          {TREND_LABEL[subject.trend] || subject.trend}
-        </span>
+        {isCurrentAffairs ? null : (
+          <span className="text-xs text-slate-500">
+            {TREND_LABEL[subject.trend] || subject.trend}
+          </span>
+        )}
       </div>
       <div className="text-sm text-slate-600">
-        {subject.progress}% mastery · {subject.weak_count} weak · {subject.locked_topics} topics
+        {isCurrentAffairs
+          ? "Weekly practice · current-affairs only, no mastery"
+          : `${subject.progress}% mastery · ${subject.weak_count} weak · ${subject.locked_topics} topics`}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -143,6 +150,7 @@ SubjectPracticeCard.propTypes = {
   subject: PropTypes.shape({
     subject_id: PropTypes.string,
     subject: PropTypes.string,
+    kind: PropTypes.string,
     progress: PropTypes.number,
     trend: PropTypes.string,
     weak_count: PropTypes.number,

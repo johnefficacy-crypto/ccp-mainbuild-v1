@@ -84,12 +84,13 @@ const SUBJECTS = [
     practice: { available: false, modes: [] },
   },
   {
-    subject_id: "sub-ga",
-    subject: "General Awareness",
+    subject_id: "00000000-0000-0000-0000-0000000000ca",
+    subject: "Current Affairs",
+    kind: "current_affairs",
     progress: 0,
     trend: "flat",
     weak_count: 0,
-    locked_topics: 4,
+    locked_topics: 0,
     practice: {
       available: true,
       modes: [
@@ -160,6 +161,18 @@ test("a subject with practice.available=false shows the calm no-practice copy", 
   );
 });
 
+const CA_ID = "00000000-0000-0000-0000-0000000000ca";
+
+test("current-affairs card shows a cadence subline, not a mastery line", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  renderPage();
+
+  await screen.findByTestId(`subject-card-${CA_ID}`);
+  const card = screen.getByTestId(`subject-card-${CA_ID}`);
+  expect(card.textContent).toMatch(/current-affairs only, no mastery/);
+  expect(card.textContent).not.toMatch(/% mastery/);
+});
+
 test("weekly current-affairs launch navigates to the returned CA attempt route", async () => {
   mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
   mockPost.mockResolvedValue({
@@ -169,12 +182,12 @@ test("weekly current-affairs launch navigates to the returned CA attempt route",
   });
   renderPage();
 
-  const btn = await screen.findByTestId("practice-sub-ga-weekly_current_affairs");
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
   fireEvent.click(btn);
 
   await waitFor(() =>
     expect(mockPost).toHaveBeenCalledWith(
-      "/api/study/subjects/sub-ga/practice/start",
+      `/api/study/subjects/${CA_ID}/practice/start`,
       { mode: "weekly_current_affairs", topic_id: null },
     ),
   );
@@ -189,11 +202,11 @@ test("weekly current-affairs no_bundle outcome shows a calm note and does not na
   mockPost.mockResolvedValue({ kind: "current_affairs", outcome: "no_bundle" });
   renderPage();
 
-  const btn = await screen.findByTestId("practice-sub-ga-weekly_current_affairs");
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
   fireEvent.click(btn);
 
   await waitFor(() =>
-    expect(screen.getByTestId("practice-sub-ga-notice").textContent).toMatch(
+    expect(screen.getByTestId(`practice-${CA_ID}-notice`).textContent).toMatch(
       /No current-affairs set is published/,
     ),
   );

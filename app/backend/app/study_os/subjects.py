@@ -18,8 +18,13 @@ from app.study_os.planner import (  # type: ignore  # private helpers reused int
     _load_user_signals,
     _resolve_target_exam,
 )
+from app.current_affairs.bundles import resolve_eligible_bundle
 from app.study_os.pyq_practice import practiceable_topic_ids
-from app.study_os.subject_runtime_policy import InventoryContext, resolve_subject_modes
+from app.study_os.subject_runtime_policy import (
+    CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID,
+    InventoryContext,
+    resolve_subject_modes,
+)
 from app.study_os.writing_practice.subject_launch import available_writing_subject_ids
 
 logger = logging.getLogger("career_copilot.study_os.subjects")
@@ -144,10 +149,18 @@ def resolve_subject_family(
         CLOSED here — a ``None`` family must never be conflated with "generic subject",
         or a mode could be forced onto an unresolved/non-covered subject.
     """
-    from app.study_os.subject_runtime_policy import family_for_subject
+    from app.study_os.subject_runtime_policy import (
+        FAMILY_GENERAL_AWARENESS,
+        family_for_subject,
+    )
 
     if not exam_id or not subject_id:
         return None, False
+    # The reserved GA current-affairs subject is bundle-driven — it has no locked
+    # coverage row. Resolve it to the GA family directly so the launch gate passes; the
+    # weekly-bundle resolution inside the handler is the real availability authority.
+    if str(subject_id) == CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID:
+        return FAMILY_GENERAL_AWARENESS, True
     coverage = _load_locked_coverage(supabase, exam_id) or []
     row = next(
         (c for c in coverage if str(c.get("subject_id")) == str(subject_id)), None
@@ -250,6 +263,41 @@ def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
                 ),
             }
         )
+    # Bundle-driven GA current-affairs card. GA is never a topic-coverage subject (CA is
+    # bundle-driven, not topic-driven), so it can't surface through the coverage buckets
+    # above. Emit it as a governed virtual subject WHENEVER the exam has a servable weekly
+    # bundle — the launch gate resolves the reserved id to the GA family without coverage,
+    # and the policy emitter (not a branch here) supplies the runnable mode.
+    ca_bundle = _safe(
+        lambda: resolve_eligible_bundle(supabase, exam_id=exam_id, cadence="weekly"),
+        default=None,
+    )
+    if ca_bundle:
+        items.append(
+            {
+                "subject_id": CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID,
+                # Marker so the hub renders a current-affairs card WITHOUT a mastery line
+                # (GA never writes user_topic_mastery — a 0% mastery label would be wrong).
+                "kind": "current_affairs",
+                "subject": "Current Affairs",
+                "progress": 0,
+                "trend": "flat",
+                "weak_count": 0,
+                "locked_topics": 0,
+                "practice": _subject_practice(
+                    {
+                        "topic_ids": [],
+                        "subject_slug": "general-awareness",
+                        "subject_group": "general-awareness",
+                    },
+                    eng_available=False,
+                    pyq_topic_ids=set(),
+                    mastery={},
+                    error_topics=set(),
+                ),
+            }
+        )
+
     # Stable order: highest weak_count first, then alphabetical.
     items.sort(key=lambda r: (-r["weak_count"], r["subject"].lower()))
     return items
