@@ -23,7 +23,7 @@ def _build_app(sb: SBStub):
 def _seed() -> dict[str, Any]:
     return {
         "exams": [{"id": "e1", "slug": "upsc-cse"}],
-        "exam_phases": [{"id": "ph1", "phase_slug": "prelims", "name": "Prelims"}],
+        "exam_phases": [{"id": "ph1", "phase_slug": "prelims", "phase_name": "Prelims"}],
         "subjects": [{"id": "s1", "name": "General Studies"}],
         "topics": [{"id": "t1", "subject_id": "s1", "name": "Polity"}],
         "pyq_papers": [
