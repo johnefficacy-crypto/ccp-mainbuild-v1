@@ -70,6 +70,13 @@ export default function StudyPlan() {
   const [examsError, setExamsError] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
   const [trackedExams, setTrackedExams] = useState([]);
+  // Exam selector is drawer-driven now: the page shows the current selection as
+  // chips plus one "Change or add exam" control, and the full searchable list —
+  // planner-ready first, not-ready collapsed under "Other exams" — lives in the
+  // drawer instead of rendering every exam inline.
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [examSearch, setExamSearch] = useState("");
+  const [showOtherExams, setShowOtherExams] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [tab, setTab] = useState("plan");
   const { run: runTaskAction } = useApiAction();
@@ -230,6 +237,28 @@ export default function StudyPlan() {
         if (ok) return chooseExam(examId, true);
       }
       throw e;
+    }
+  }
+
+  // Close the selector and reset its transient view state so a stale search or
+  // expanded "Other exams" section doesn't persist into the next open.
+  function closeSelector() {
+    setSelectorOpen(false);
+    setExamSearch("");
+    setShowOtherExams(false);
+  }
+
+  // Pick an exam from the selector drawer, then close it on success. Only
+  // planner-ready exams are selectable (not-ready exams render as informational
+  // rows), matching the tracked-strip rule. A failed choose (e.g. the user
+  // cancels the replace-plan confirm, or the PUT errors) keeps the drawer open
+  // so the selection isn't silently lost.
+  async function chooseExamFromSelector(examId) {
+    try {
+      await chooseExam(examId);
+      closeSelector();
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") console.error(e);
     }
   }
 
@@ -394,6 +423,16 @@ export default function StudyPlan() {
   const done = tasks.filter((t) => t.done || t.status === "completed").length;
   const selectedExam = examItems.find((e) => e.id === selectedExamId);
 
+  // Selector drawer lists: planner-ready exams first, not-ready exams collapsed
+  // under "Other exams". Both honour the search box. When the user is actively
+  // searching we auto-reveal the not-ready group so a matching exam isn't hidden
+  // behind a collapsed section.
+  const examQuery = examSearch.trim().toLowerCase();
+  const examMatches = (e) => !examQuery || (e.name || "").toLowerCase().includes(examQuery);
+  const readyExams = examItems.filter((e) => e.planner_ready && examMatches(e));
+  const otherExams = examItems.filter((e) => !e.planner_ready && examMatches(e));
+  const otherExamsExpanded = showOtherExams || Boolean(examQuery);
+
   // Calibration gating, derived from the authoritative hook state.
   // - Unresolved: an exam is selected but calibration has not resolved yet
   //   (still loading OR calibrated === null). We must NOT render plan action
@@ -509,12 +548,30 @@ export default function StudyPlan() {
             No active exams configured. Contact admin.
           </p>
         ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {examItems.map((e) => (
-              <button key={e.id} type="button" onClick={() => chooseExam(e.id)} className={`btn ${selectedExamId === e.id ? "btn-primary" : "btn-secondary"}`}>
-                {e.name} {e.planner_ready ? "• ready" : "• not ready"}
-              </button>
-            ))}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* Keep the current selection visible even while the selector is
+                closed AND before it lands in the tracked strip (fresh hydration
+                from /api/study/target-exam returns the id before the tracked
+                list has it). The strip above covers the tracked case. */}
+            {selectedExam && trackedExams.length === 0 && (
+              <span
+                className="inline-flex items-center gap-2 rounded-full border border-[#2E2218] bg-[#FBF6EF] px-3 py-1.5 text-xs text-[#2E2218]"
+                data-testid="selected-exam-chip"
+              >
+                <span className="font-semibold">{selectedExam.name}</span>
+                <span className="num-mono text-[9px] uppercase tracking-[0.18em] rounded-full border border-sage-400 bg-sage-50 text-sage-700 px-1.5 py-0.5">
+                  Primary
+                </span>
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setSelectorOpen(true)}
+              data-testid="open-exam-selector"
+            >
+              {selectedExamId || trackedExams.length ? "Change or add exam" : "Choose your exam"}
+            </button>
           </div>
         )}
         {!examsLoading && !examsError && examItems.length > 0 && !selectedExamId && (
@@ -798,6 +855,98 @@ export default function StudyPlan() {
       </div>
         </>
       )}
+
+      <Drawer
+        open={selectorOpen}
+        onClose={closeSelector}
+        title="Choose or add exam"
+        width={460}
+      >
+        <div className="space-y-4" data-testid="exam-selector">
+          <input
+            type="text"
+            value={examSearch}
+            onChange={(e) => setExamSearch(e.target.value)}
+            placeholder="Search exams…"
+            aria-label="Search exams"
+            className="w-full rounded-xl border border-[#E7DECB] bg-white/70 px-3 py-2 text-sm text-clay-900 outline-none focus:border-[#2E2218]"
+            data-testid="exam-search-input"
+          />
+
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-clay-700 mb-2">
+              Planner-ready
+            </div>
+            {readyExams.length ? (
+              <div className="flex flex-col gap-1.5">
+                {readyExams.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => chooseExamFromSelector(e.id)}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-sm ${
+                      selectedExamId === e.id
+                        ? "border-[#2E2218] bg-[#FBF6EF] text-[#2E2218]"
+                        : "border-[#E7DECB] bg-white/60 text-clay-800 hover:bg-clay-50"
+                    }`}
+                    data-testid={`exam-option-${e.id}`}
+                  >
+                    <span className="font-medium">{e.name}</span>
+                    <span className="num-mono text-[9px] uppercase tracking-[0.18em] text-sage-700">
+                      {selectedExamId === e.id ? "Selected" : "Ready"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[12px] text-clay-700" data-testid="exam-selector-no-ready">
+                {examQuery
+                  ? "No planner-ready exams match your search."
+                  : "No planner-ready exams yet."}
+              </p>
+            )}
+          </div>
+
+          {otherExams.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowOtherExams((v) => !v)}
+                aria-expanded={otherExamsExpanded}
+                className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-clay-700 hover:text-clay-900"
+                data-testid="toggle-other-exams"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 transition-transform ${otherExamsExpanded ? "rotate-90" : ""}`}
+                  aria-hidden="true"
+                />
+                Other exams ({otherExams.length})
+              </button>
+              {otherExamsExpanded && (
+                <div className="mt-2 flex flex-col gap-1.5" data-testid="other-exams-list">
+                  {/* Not-ready exams are informational only — they cannot be
+                      made the target (no locked topic coverage yet), matching
+                      the tracked-strip rule that disables non-ready switching.
+                      Rendered as static rows, never as a mutating control. */}
+                  {otherExams.map((e) => (
+                    <div
+                      key={e.id}
+                      className="flex items-center justify-between rounded-xl border border-[#E7DECB] bg-white/40 px-3 py-2 text-sm text-clay-600"
+                      data-testid={`exam-option-${e.id}`}
+                      title="Planner not ready for this exam yet"
+                    >
+                      <span>{e.name}</span>
+                      <span className="num-mono text-[9px] uppercase tracking-[0.18em] text-clay-500">
+                        Not ready yet
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Drawer>
 
       <Drawer
         open={draftOpen}

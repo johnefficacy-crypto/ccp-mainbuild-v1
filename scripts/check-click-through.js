@@ -88,7 +88,7 @@ function checkboxStats(sectionBody) {
   let total = 0;
   let checked = 0;
   for (const line of lines) {
-    const m = line.match(/^\s*-\s*\[( |x|X)\]/);
+    const m = line.match(/^\s*[-*+]\s*\[( |x|X)\]/);
     if (!m) continue;
     total += 1;
     if (m[1].toLowerCase() === 'x') checked += 1;

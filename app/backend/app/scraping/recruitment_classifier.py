@@ -31,6 +31,7 @@ keyword in the same payload.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .verification_policy import (
@@ -44,25 +45,72 @@ from .verification_policy import (
 #
 # Exam-family key is exposed so the report row carries a stable identifier
 # the admin UI can use to bucket "all UPSC reports" / "all SSC reports".
-_TIER_A_FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("upsc",          ("upsc", "union public service commission")),
-    ("ssc",           ("ssc", "staff selection commission")),
-    ("ibps",          ("ibps", "institute of banking personnel selection")),
-    ("sbi",           ("sbi po", "sbi clerk", "state bank of india")),
-    ("rbi",           ("rbi grade", "reserve bank of india")),
-    ("banking",       ("nabard", "sidbi")),
-    ("railways",      ("rrb", "railway recruitment board", "indian railways")),
+#
+# Each family carries two needle kinds:
+#   * PHRASES  — matched as plain substrings. Safe for multi-word org names.
+#   * ACRONYMS — matched on non-alphanumeric boundaries (see ``_acronym_re``),
+#                so a short token like ``trai`` / ``nhb`` / ``psc`` matches the
+#                standalone acronym but NOT the middle of a longer word
+#                (``training`` / ``national housing`` / ``campscene``). Raw
+#                substring membership on acronyms is the bug class this fixes:
+#                the old bare ``tra`` false-matched extra/registration/
+#                maharashtra, and ``trai`` alone would still catch training/trainee.
+_TIER_A_FAMILIES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
+    ("upsc",          ("upsc", "union public service commission"), ()),
+    ("ssc",           ("ssc", "staff selection commission"), ()),
+    ("ibps",          ("ibps", "institute of banking personnel selection"), ()),
+    ("sbi",           ("sbi po", "sbi clerk", "state bank of india"), ()),
+    ("rbi",           ("rbi grade", "reserve bank of india"), ()),
+    # Financial Regulatory & Development Institutions family (Lane R):
+    # development-finance institutions. Full org names as phrases; NHB / EXIM /
+    # NaBFID acronyms matched on boundaries.
+    ("banking",       (
+        "nabard", "sidbi",
+        "national housing bank", "export-import bank of india",
+        "national bank for financing infrastructure",
+    ), ("nhb", "exim", "nabfid")),
+    ("railways",      ("rrb", "railway recruitment board", "indian railways"), ()),
     ("defence",       (
         "indian army", "indian navy", "indian air force", "iaf",
         "afcat", "nda recruitment", "cds", "agniveer", "drdo recruitment",
         "coast guard", "bsf", "crpf", "cisf", "itbp", "ssb recruitment",
-    )),
-    ("regulatory",    ("sebi", "irdai", "pfrda", "tra")),
-    ("state_psc",     ("state public service commission", "psc ")),
-    ("state_police",  ("state police recruitment", "police constable", "police sub-inspector", "police si")),
-    ("state_teacher", ("tet ", "ctet", "teacher eligibility", "teacher recruitment")),
-    ("state_clerical", ("junior assistant recruitment", "clerk recruitment")),
+    ), ()),
+    # Financial-sector regulators (Lane R). Full org names as phrases; the
+    # SEBI/IRDAI/PFRDA/IFSCA/TRAI acronyms matched on boundaries.
+    ("regulatory",    (
+        "securities and exchange board of india",
+        "insurance regulatory and development authority",
+        "pension fund regulatory and development authority",
+        "international financial services centres authority",
+    ), ("sebi", "irdai", "pfrda", "ifsca", "trai")),
+    # "<State> Public Service Commission" — matched by phrase, and by the
+    # <letters>PSC acronym shape (MPSC/UPPSC/TNPSC…) via a boundary regex
+    # below. UPSC is matched earlier in this tuple, so it is never demoted.
+    ("state_psc",     ("public service commission", "state public service commission"), ()),
+    ("state_police",  ("state police recruitment", "police constable", "police sub-inspector", "police si"), ()),
+    ("state_teacher", ("tet ", "ctet", "teacher eligibility", "teacher recruitment"), ()),
+    ("state_clerical", ("junior assistant recruitment", "clerk recruitment"), ()),
 )
+
+
+def _acronym_re(tokens: tuple[str, ...]) -> re.Pattern[str] | None:
+    """Compile an alternation that matches any token on non-alphanumeric
+    boundaries — the fix for short acronyms false-matching inside words."""
+    if not tokens:
+        return None
+    alts = "|".join(re.escape(t) for t in tokens)
+    return re.compile(r"(?<![a-z0-9])(?:" + alts + r")(?![a-z0-9])")
+
+
+# Precompiled per-family acronym matchers (boundary-aware).
+_TIER_A_ACRONYM_RE: dict[str, re.Pattern[str]] = {
+    key: rx
+    for key, _phrases, acronyms in _TIER_A_FAMILIES
+    if (rx := _acronym_re(acronyms)) is not None
+}
+# State-PSC acronyms follow the <letters>PSC shape: PSC, MPSC, UPPSC, TNPSC,
+# WBPSC, APPSC… "upsc" also fits, but the upsc family is matched earlier.
+_TIER_A_ACRONYM_RE["state_psc"] = re.compile(r"(?<![a-z0-9])[a-z]{0,4}psc(?![a-z0-9])")
 
 
 # ── Tier B signals ──────────────────────────────────────────────────────
@@ -126,6 +174,18 @@ def _match_family(haystack: str, families: tuple[tuple[str, tuple[str, ...]], ..
     return None
 
 
+def _match_tier_a(haystack: str) -> str | None:
+    """Tier-A family match: substring phrases OR boundary-aware acronyms,
+    scanned in priority order (UPSC before generic state PSC, etc.)."""
+    for key, phrases, _acronyms in _TIER_A_FAMILIES:
+        if phrases and _has_any(haystack, phrases):
+            return key
+        rx = _TIER_A_ACRONYM_RE.get(key)
+        if rx is not None and rx.search(haystack):
+            return key
+    return None
+
+
 def classify_recruitment(
     extracted_data: dict[str, Any] | None = None,
     queue_item: dict[str, Any] | None = None,
@@ -145,7 +205,7 @@ def classify_recruitment(
     text = _gather_text(extracted, queue_item)
 
     # ── 1. Tier A — strongest signal. Win first, never demoted. ─────────
-    a_family = _match_family(text, _TIER_A_FAMILIES)
+    a_family = _match_tier_a(text)
     if a_family:
         return _bundle("A_HIGH_STAKES", a_family)
 

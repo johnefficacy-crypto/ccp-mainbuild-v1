@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mockGet = jest.fn();
 const mockPut = jest.fn();
@@ -70,14 +70,95 @@ test("hydrates selectedExamId from GET /api/study/target-exam on mount", async (
   });
 
   // Once hydration resolves, the "Choose your exam" empty-state copy must
-  // disappear and the hydrated exam button must render as the primary one.
+  // disappear and the current selection must stay visible as a chip even with
+  // the selector drawer closed and no tracked-exams strip present.
   await waitFor(() => {
     expect(screen.queryByText(/Choose the exam you are preparing for\./i)).toBeNull();
   });
-  const sscButton = screen.getByRole("button", { name: /SSC CGL/i });
-  expect(sscButton.className).toMatch(/btn-primary/);
+  const chip = screen.getByTestId("selected-exam-chip");
+  expect(chip.textContent).toMatch(/SSC CGL/);
+  expect(chip.textContent).toMatch(/Primary/);
+  // With a selection present, the control invites a change rather than a first
+  // choice.
+  expect(screen.getByTestId("open-exam-selector").textContent).toMatch(/Change or add exam/i);
   // Confirm the hydration call actually fired.
   expect(mockGet).toHaveBeenCalledWith("/api/study/target-exam");
+});
+
+test("selector drawer lists planner-ready exams first and hides not-ready under Other exams", async () => {
+  setupApi({ selectedExam: null });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("open-exam-selector")).toBeTruthy();
+  });
+  // The full exam list is not rendered inline — it only appears in the drawer.
+  expect(screen.queryByTestId("exam-selector")).toBeNull();
+
+  fireEvent.click(screen.getByTestId("open-exam-selector"));
+
+  // Planner-ready exam is visible immediately; the not-ready exam is collapsed.
+  expect(screen.getByTestId(`exam-option-${EXAM_ID}`)).toBeTruthy();
+  expect(
+    screen.queryByTestId("exam-option-22222222-2222-4222-8222-222222222222"),
+  ).toBeNull();
+
+  // Expanding "Other exams" reveals the not-ready exam.
+  fireEvent.click(screen.getByTestId("toggle-other-exams"));
+  expect(
+    screen.getByTestId("exam-option-22222222-2222-4222-8222-222222222222"),
+  ).toBeTruthy();
+});
+
+test("not-ready exams in the selector are informational and cannot be chosen", async () => {
+  setupApi({ selectedExam: null });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("open-exam-selector")).toBeTruthy();
+  });
+  fireEvent.click(screen.getByTestId("open-exam-selector"));
+  fireEvent.click(screen.getByTestId("toggle-other-exams"));
+
+  const notReady = screen.getByTestId(
+    "exam-option-22222222-2222-4222-8222-222222222222",
+  );
+  // The row is not a control (no button role) and clicking it does nothing.
+  expect(notReady.tagName).not.toBe("BUTTON");
+  fireEvent.click(notReady);
+
+  // No target mutation, and the drawer stays open.
+  expect(mockPut).not.toHaveBeenCalled();
+  expect(screen.getByTestId("exam-selector")).toBeTruthy();
+});
+
+test("searching the selector reveals a matching not-ready exam without expanding", async () => {
+  setupApi({ selectedExam: null });
+
+  await act(async () => {
+    render(<StudyPlan />);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("open-exam-selector")).toBeTruthy();
+  });
+  fireEvent.click(screen.getByTestId("open-exam-selector"));
+
+  fireEvent.change(screen.getByTestId("exam-search-input"), {
+    target: { value: "upsc" },
+  });
+
+  // The ready exam is filtered out; the matching not-ready exam auto-reveals.
+  expect(screen.queryByTestId(`exam-option-${EXAM_ID}`)).toBeNull();
+  expect(
+    screen.getByTestId("exam-option-22222222-2222-4222-8222-222222222222"),
+  ).toBeTruthy();
 });
 
 test("keeps empty state when no target exam is stored", async () => {

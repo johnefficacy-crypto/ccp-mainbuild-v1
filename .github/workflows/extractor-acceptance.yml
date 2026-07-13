@@ -8,6 +8,10 @@ on:
       - "app/backend/scripts/eval_extractor.py"
       - "app/backend/scripts/run_extractor_dry.py"
 
+concurrency:
+  group: extractor-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   acceptance:
     runs-on: ubuntu-latest
@@ -31,23 +35,37 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL set:  $( [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo YES || echo NO )"
           echo "SUPABASE_SERVICE_ROLE_KEY set: $( [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo YES || echo NO )"
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            # Fork PRs never receive repo secrets — skip the integration
+            # acceptance instead of failing a required check for external
+            # contributors. Same-repo PRs with missing secrets are a real
+            # misconfiguration and still hard-fail.
+            if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+              echo "::notice::Supabase secrets are unavailable for fork PRs — skipping integration acceptance."
+              exit 0
+            fi
             echo "::error::Repo secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (Settings → Secrets → Actions)."
             exit 1
           fi
 
       - name: Install system dependencies (Tesseract OCR)
+        if: ${{ env.SUPABASE_URL != '' }}
         run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
 
       - uses: actions/setup-python@v5
+        if: ${{ env.SUPABASE_URL != '' }}
         with:
           python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: app/backend/requirements.txt
 
       - name: Install Python dependencies
+        if: ${{ env.SUPABASE_URL != '' }}
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run acceptance test (integration, recall ≥ 0.80)
+        if: ${{ env.SUPABASE_URL != '' }}
         run: |
           pytest tests/exam_intelligence/extraction/test_pipeline_against_fixture.py \
             -m integration --strict-markers -v -s

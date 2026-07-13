@@ -35,13 +35,17 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          if git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt 2>/dev/null && [ -s changed-files.txt ]; then
-            :
+          # A successful diff that is legitimately empty must be kept as empty —
+          # only fall back when the diff COMMAND fails (missing SHAs on a shallow
+          # clone). Never fall back to `git ls-files`: treating the whole tree as
+          # "changed" made every PR trip the user-facing advisory.
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt 2>/dev/null; then
+            echo "Computed changed files from $BASE_SHA...$HEAD_SHA"
           else
             git fetch --no-tags origin "$BASE_REF" 2>/dev/null || true
             git diff --name-only "origin/$BASE_REF...HEAD" > changed-files.txt 2>/dev/null \
               || git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt 2>/dev/null \
-              || git ls-files > changed-files.txt
+              || : > changed-files.txt
           fi
           echo "Changed files:"
           cat changed-files.txt

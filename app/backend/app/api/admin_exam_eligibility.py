@@ -71,19 +71,57 @@ router = APIRouter(prefix="/admin/exam-eligibility", tags=["admin-exam-eligibili
 
 
 _ALLOWED_SCOPES = {"all", "general", "obc", "sc", "st", "ews", "pwd", "ex_serviceman", "women"}
+# Baseline rule_types mirror migration 248's CHECK. experience_min_years is
+# cycle-specific (§4) and is NOT a baseline type. stream_id / value_json let a
+# rule be stream-scoped and carry a machine-evaluable qualification_combination.
 _ALLOWED_RULE_TYPES = {
-    "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max"
+    "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max",
+    "discipline", "min_percentage", "certification", "qualification_combination",
+    "stream_availability",
+}
+# The evaluator implements only these branches today. A rule of any OTHER type
+# must not reach reviewer_status='verified' (it would be silently ignored),
+# mirroring the DB fail-closed CHECK in migration 248.
+_EVALUATOR_SUPPORTED_RULE_TYPES = {
+    "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max",
 }
 _ALLOWED_REVIEWER_STATUS = {"draft", "verified", "archived"}
-_NUMERIC_RULE_TYPES = {"age_min", "age_max", "attempts_max"}
-_TEXT_RULE_TYPES = {"education_min_level", "nationality", "gender"}
+_NUMERIC_RULE_TYPES = {"age_min", "age_max", "attempts_max", "min_percentage"}
+_TEXT_RULE_TYPES = {
+    "education_min_level", "nationality", "gender", "discipline", "certification", "stream_availability"
+}
+_JSON_RULE_TYPES = {"qualification_combination"}
+
+_QC_TEXT_TYPES = {"discipline", "certification", "education_min_level", "nationality"}
+_QC_NUM_TYPES = {"min_percentage", "experience_min_years"}
+
+
+def _valid_qualification_combination(node: Any) -> bool:
+    """Mirror of migration 248's is_valid_qualification_combination()."""
+    if not isinstance(node, dict):
+        return False
+    if "op" in node:
+        if node.get("op") not in ("and", "or"):
+            return False
+        clauses = node.get("clauses")
+        if not isinstance(clauses, list) or not clauses:
+            return False
+        return all(_valid_qualification_combination(c) for c in clauses)
+    rt = node.get("rule_type")
+    if rt in _QC_NUM_TYPES:
+        return isinstance(node.get("value_num"), (int, float)) and not isinstance(node.get("value_num"), bool)
+    if rt in _QC_TEXT_TYPES:
+        return isinstance(node.get("value_text"), str) and bool(node.get("value_text").strip())
+    return False
 
 
 class RuleCreate(BaseModel):
     scope: str = Field(default="all")
     rule_type: str
+    stream_id: UUID | None = None
     value_num: float | None = None
     value_text: str | None = None
+    value_json: dict | list | None = None
     is_knockout: bool = True
     source_url: str | None = None
     source_notes: str | None = None
@@ -94,8 +132,10 @@ class RuleCreate(BaseModel):
 class RuleUpdate(BaseModel):
     scope: str | None = None
     rule_type: str | None = None
+    stream_id: UUID | None = None
     value_num: float | None = None
     value_text: str | None = None
+    value_json: dict | list | None = None
     is_knockout: bool | None = None
     source_url: str | None = None
     source_notes: str | None = None
@@ -110,6 +150,7 @@ def _validate_rule_shape(
     value_num: float | None,
     value_text: str | None,
     reviewer_status: str,
+    value_json: Any = None,
 ) -> None:
     if scope not in _ALLOWED_SCOPES:
         raise HTTPException(status_code=400, detail=f"invalid_scope: {scope}")
@@ -129,6 +170,29 @@ def _validate_rule_shape(
                 status_code=400,
                 detail=f"{rule_type} requires value_text",
             )
+    if rule_type in _JSON_RULE_TYPES:
+        if value_json is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{rule_type} requires value_json",
+            )
+        if not _valid_qualification_combination(value_json):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"{rule_type} value_json must be a valid combination: "
+                    '{"op":"and"|"or","clauses":[{"rule_type":...,"value_text"|"value_num":...}, ...]}'
+                ),
+            )
+    # Fail closed: a rule the evaluator does not interpret cannot be verified.
+    if reviewer_status == "verified" and rule_type not in _EVALUATOR_SUPPORTED_RULE_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"rule_type '{rule_type}' is not yet evaluated; keep it draft until "
+                "stream-aware/typed evaluation lands. Verifying it would make it silently non-operative."
+            ),
+        )
 
 
 def _require_trust_provenance(source_url: str | None, waiver_reason: str | None) -> None:
@@ -206,8 +270,8 @@ def list_rules_for_exam(
     rules = (
         supabase.table("exam_eligibility_rules")
         .select(
-            "id, exam_id, scope, rule_type, value_num, value_text, is_knockout, "
-            "source_url, source_notes, reviewer_status, verified_by, verified_at, "
+            "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
+            "is_knockout, source_url, source_notes, reviewer_status, verified_by, verified_at, "
             "created_at, updated_at"
         )
         .eq("exam_id", str(exam_id))
@@ -236,6 +300,7 @@ def create_rule(
         value_num=body.value_num,
         value_text=body.value_text,
         reviewer_status=body.reviewer_status,
+        value_json=body.value_json,
     )
     supabase = get_supabase_admin()
     if not (
@@ -243,34 +308,42 @@ def create_rule(
     ):
         raise HTTPException(status_code=404, detail="exam_not_found")
 
-    # Pre-empt the unique constraint to give a clean 409.
-    existing = (
+    # Pre-empt the unique constraint to give a clean 409. The identity is
+    # (exam_id, stream_id, scope, rule_type) per migration 248 — a common rule
+    # (stream_id NULL) and a stream-specific rule for the same scope/type
+    # legitimately coexist, so the stream_id must be part of this check.
+    # Filtered in Python (not `.is_`) so NULL matching is driver-agnostic.
+    candidates = (
         supabase.table("exam_eligibility_rules")
-        .select("id")
+        .select("id, stream_id")
         .eq("exam_id", str(exam_id))
         .eq("scope", body.scope)
         .eq("rule_type", body.rule_type)
-        .limit(1)
+        .limit(50)
         .execute()
         .data
         or []
     )
+    target_stream = str(body.stream_id) if body.stream_id is not None else None
+    existing = [c for c in candidates if (c.get("stream_id") or None) == target_stream]
     if existing:
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "RULE_ALREADY_EXISTS",
                 "rule_id": existing[0]["id"],
-                "message": "A rule with this (scope, rule_type) already exists. Edit the existing row.",
+                "message": "A rule with this (stream, scope, rule_type) already exists. Edit the existing row.",
             },
         )
 
     payload: dict[str, Any] = {
         "exam_id": str(exam_id),
+        "stream_id": str(body.stream_id) if body.stream_id is not None else None,
         "scope": body.scope,
         "rule_type": body.rule_type,
         "value_num": body.value_num,
         "value_text": body.value_text,
+        "value_json": body.value_json,
         "is_knockout": body.is_knockout,
         "source_url": body.source_url,
         "source_notes": body.source_notes,
@@ -311,7 +384,7 @@ def update_rule(
     existing = (
         supabase.table("exam_eligibility_rules")
         .select(
-            "id, exam_id, scope, rule_type, value_num, value_text, "
+            "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
             "is_knockout, source_url, source_notes, reviewer_status, "
             "verified_by, verified_at, created_at, updated_at"
         )
@@ -331,6 +404,9 @@ def update_rule(
     merged_value_text = (
         body.value_text if body.value_text is not None else current.get("value_text")
     )
+    merged_value_json = (
+        body.value_json if body.value_json is not None else current.get("value_json")
+    )
     merged_status = (
         body.reviewer_status if body.reviewer_status is not None else current["reviewer_status"]
     )
@@ -340,6 +416,7 @@ def update_rule(
         value_num=merged_value_num,
         value_text=merged_value_text,
         reviewer_status=merged_status,
+        value_json=merged_value_json,
     )
 
     patch: dict[str, Any] = {}
@@ -347,10 +424,16 @@ def update_rule(
         patch["scope"] = body.scope
     if body.rule_type is not None:
         patch["rule_type"] = body.rule_type
+    # stream_id uses presence-in-payload (not non-null) so an operator can CLEAR
+    # a stream assignment (set null) to return a rule to common scope.
+    if "stream_id" in body.model_fields_set:
+        patch["stream_id"] = str(body.stream_id) if body.stream_id is not None else None
     if body.value_num is not None:
         patch["value_num"] = body.value_num
     if body.value_text is not None:
         patch["value_text"] = body.value_text
+    if body.value_json is not None:
+        patch["value_json"] = body.value_json
     if body.is_knockout is not None:
         patch["is_knockout"] = body.is_knockout
     if body.source_url is not None:

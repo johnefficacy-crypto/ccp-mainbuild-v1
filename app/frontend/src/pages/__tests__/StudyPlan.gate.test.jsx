@@ -236,8 +236,11 @@ test("a stale self-assessment response for the previous exam does not unlock the
     expect(screen.getByTestId("plan-controls-checking")).toBeTruthy();
   });
 
-  // Switch to exam B by clicking its picker button.
-  const examBBtn = screen.getByRole("button", { name: /IBPS PO/i });
+  // Switch to exam B: open the selector drawer, then pick B from the list.
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("open-exam-selector"));
+  });
+  const examBBtn = screen.getByTestId(`exam-option-${EXAM_B}`);
   await act(async () => {
     fireEvent.click(examBBtn);
   });
