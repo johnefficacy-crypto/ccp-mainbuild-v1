@@ -1,20 +1,30 @@
 """Regulatory shared-core overlap — the substrate for the combined multi-exam
 Study OS plan (Lane R R2, increment 1).
 
-The planner (`planner._compute_plan`) is single-target-exam today. Before it can
-produce ONE combined plan across a user's several regulatory target exams
-(≈70% shared foundation / 20% target-regulator delta / 10% current affairs) and
-avoid re-planning a common topic already mastered, it needs a deterministic model
-of *what is shared vs. regulator-specific* across those exams. That model lives
-here as pure, side-effect-free functions plus one defensive DB wrapper.
+Read-only: introduces no plan mutation and does not touch ``_compute_plan``.
+Applying the allocation + cross-exam dedup inside the plan loop is increment 2.
 
-This increment is read-only: it introduces no plan mutation and does not touch
-`_compute_plan`. Applying the allocation + cross-exam dedup inside the plan loop
-is increment 2 (a separate, focused PR).
+Correctness invariants (checkpost PR #981):
+  * Canonical target-exam sources — ``aspirant_preferences.target_exams`` (slug
+    list) + ``profiles.target_exam`` (primary UUID); there is no
+    ``user_study_plan_preferences.target_exams``.
+  * Mastery is on the **0–100** scale (``user_topic_mastery.mastery_score``,
+    numeric(5,2)); the reuse threshold is 70.
+  * Cross-exam reuse is FAIL-CLOSED: only a **global** mastery row (``exam_id IS
+    NULL``) counts, so mastery earned for one regulator never suppresses a topic
+    for another.
+  * Shared core is computed from **common** coverage only (``exam_topic_coverage
+    .stream_id IS NULL``); stream-specific (Legal/Actuarial/…) topics are never
+    misclassified as shared — they are reported separately.
+  * Reads distinguish failure from emptiness (``_READ_FAILED`` sentinel): any
+    required-input read failure yields an ``unavailable`` diagnostic, never a
+    summary recomputed from a partial snapshot.
+  * Deterministic: exams sorted by slug; every list sorted.
 
-Determinism: every function is a pure map over sorted inputs — no `Date.now`,
-no randomness — so the same inputs always yield byte-identical output, matching
-the planner's deterministic contract.
+The 70/20/10 allocation is the DOCUMENTED DEFAULT from
+``docs/architecture/financial-regulatory-development-family.md`` §8 — not an
+owner-locked policy; it is returned with a basis note and a per-band shortfall
+flag, and is all-zero whenever the summary is not ``ok``.
 """
 from __future__ import annotations
 
@@ -23,13 +33,17 @@ from typing import Any, Callable, Iterable, Mapping
 
 logger = logging.getLogger("career_copilot.study_os.shared_core")
 
-# Default 70/20/10 split (shared foundation / target-regulator delta / current
-# affairs). Weights are a named default so the planner and tests share one
-# source of truth; the split is applied by ``allocation_targets`` with a
-# largest-remainder rounding so the parts always sum to the requested total.
-DEFAULT_ALLOCATION: tuple[float, float, float] = (0.70, 0.20, 0.10)
-
 FINANCIAL_REGULATORY_FAMILY_SLUG = "financial-regulatory"
+MASTERY_SCALE = "0-100"
+DEFAULT_MASTERY_THRESHOLD = 70.0  # 0–100 scale
+DEFAULT_ALLOCATION: tuple[float, float, float] = (0.70, 0.20, 0.10)
+ALLOCATION_BASIS = (
+    "financial-regulatory-development-family.md §8 (documented default; "
+    "not owner-locked)"
+)
+
+# Distinguishes a read *failure* from a legitimately empty result.
+_READ_FAILED = object()
 
 
 # ── Pure functions ───────────────────────────────────────────────────────────
@@ -38,20 +52,10 @@ def _clean_set(topics: Iterable[Any]) -> set[str]:
     return {str(t) for t in topics if t}
 
 
-def partition_topics(
-    coverage_by_exam: Mapping[str, Iterable[Any]],
-) -> dict[str, Any]:
-    """Split the union of the exams' locked topics into shared-core vs per-exam
-    delta.
-
-    ``coverage_by_exam`` maps exam_id → the topic_ids locked for that exam. A
-    topic covered by TWO OR MORE of the exams is shared core (author/study once,
-    counts for all that cover it); a topic covered by exactly one is that exam's
-    delta.
-
-    Returns ``{"shared_core": [topic_id, …],
-               "delta_by_exam": {exam_id: [topic_id, …]}}`` — all lists sorted.
-    """
+def partition_topics(coverage_by_exam: Mapping[str, Iterable[Any]]) -> dict[str, Any]:
+    """Split the union of the exams' COMMON locked topics into shared-core vs
+    per-exam delta. A topic covered by ≥2 exams is shared core; a topic in
+    exactly one is that exam's delta. Lists sorted."""
     sets: dict[str, set[str]] = {
         str(exam_id): _clean_set(topics) for exam_id, topics in coverage_by_exam.items()
     }
@@ -68,22 +72,17 @@ def partition_topics(
 
 def mastery_reuse(
     coverage_by_exam: Mapping[str, Iterable[Any]],
-    mastered: Iterable[Any],
+    mastered_global: Iterable[Any],
 ) -> list[dict[str, Any]]:
-    """Shared-core topics the user has already mastered — so the combined plan
-    reuses them instead of re-planning the same foundation per exam.
-
-    A topic qualifies only if it is (a) mastered and (b) covered by ≥2 of the
-    exams (i.e. genuinely shared). Returns
-    ``[{"topic_id": t, "exams": [exam_id, …]}, …]`` sorted by topic_id, with each
-    ``exams`` list sorted.
-    """
+    """Shared-core topics the user has mastered GLOBALLY — reuse instead of
+    re-planning per exam. ``mastered_global`` must already be restricted to
+    global (exam_id IS NULL) mastery rows ≥ threshold. A topic qualifies only if
+    it is covered by ≥2 exams. Returns ``[{topic_id, exams:[…]}]`` sorted."""
     sets: dict[str, set[str]] = {
         str(exam_id): _clean_set(topics) for exam_id, topics in coverage_by_exam.items()
     }
-    mastered_set = _clean_set(mastered)
     out: list[dict[str, Any]] = []
-    for t in sorted(mastered_set):
+    for t in sorted(_clean_set(mastered_global)):
         exams = sorted(exam_id for exam_id, topics in sets.items() if t in topics)
         if len(exams) >= 2:
             out.append({"topic_id": t, "exams": exams})
@@ -91,26 +90,18 @@ def mastery_reuse(
 
 
 def allocation_targets(
-    total: int,
-    weights: tuple[float, float, float] = DEFAULT_ALLOCATION,
+    total: int, weights: tuple[float, float, float] = DEFAULT_ALLOCATION
 ) -> dict[str, int]:
-    """Split ``total`` task slots into shared-core / target-delta / current-affairs
-    integer counts that sum EXACTLY to ``total`` (largest-remainder rounding).
-
-    Deterministic: ties in the remainder are broken by fixed band order
-    (shared_core, target_delta, current_affairs), so the output never depends on
-    dict/iteration order.
-    """
+    """Split ``total`` task slots into shared_core / target_delta / current_affairs
+    integer counts summing EXACTLY to ``total`` (largest-remainder, fixed band
+    order breaks ties)."""
     bands = ("shared_core", "target_delta", "current_affairs")
     if total <= 0:
         return {b: 0 for b in bands}
-    w = list(weights)
-    wsum = sum(w) or 1.0
-    raw = [total * (x / wsum) for x in w]
+    wsum = sum(weights) or 1.0
+    raw = [total * (x / wsum) for x in weights]
     floors = [int(r) for r in raw]
     remainder = total - sum(floors)
-    # Distribute the remainder to the largest fractional parts; fixed band order
-    # breaks exact ties deterministically.
     order = sorted(range(len(bands)), key=lambda i: (raw[i] - floors[i], -i), reverse=True)
     for i in order[:remainder]:
         floors[i] += 1
@@ -119,130 +110,13 @@ def allocation_targets(
 
 # ── DB-aware wrapper ─────────────────────────────────────────────────────────
 
-def _safe(call: Callable[[], Any], default: Any = None) -> Any:
+def _try(call: Callable[[], Any]) -> Any:
+    """Return the call result, or ``_READ_FAILED`` on any exception."""
     try:
         return call()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("shared_core supabase call failed: %s", exc)
-        return default
-
-
-def _resolve_regulatory_target_exams(supabase: Any, user_id: str) -> list[dict[str, Any]]:
-    """The user's target exams that belong to the financial-regulatory family and
-    are active. Returns ``[{id, slug, name}, …]`` (possibly empty)."""
-    fam = _safe(
-        lambda: (
-            supabase.table("exam_families")
-            .select("id")
-            .eq("slug", FINANCIAL_REGULATORY_FAMILY_SLUG)
-            .limit(1)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    if not fam:
-        return []
-    family_id = fam[0]["id"]
-
-    prefs = _safe(
-        lambda: (
-            supabase.table("user_study_plan_preferences")
-            .select("target_exams")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    target_ids = (prefs[0] if prefs else {}).get("target_exams") or []
-    target_ids = [str(t) for t in target_ids if t]
-    if not target_ids:
-        return []
-
-    rows = _safe(
-        lambda: (
-            supabase.table("exams")
-            .select("id, slug, name, exam_family_id, is_active")
-            .in_("id", target_ids)
-            .eq("exam_family_id", family_id)
-            .eq("is_active", True)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    return [{"id": r["id"], "slug": r.get("slug"), "name": r.get("name")} for r in rows]
-
-
-def summarize_regulatory_overlap(
-    supabase: Any,
-    user_id: str,
-    *,
-    total_tasks: int = 10,
-    mastery_threshold: float = 0.7,
-) -> dict[str, Any]:
-    """Read-only shared-core overlap for the user's active regulatory target exams.
-
-    Deterministic given the DB state. ``mastery_threshold`` defines "mastered"
-    for reuse (provisional — the planner scores mastery continuously; this binary
-    cut is a review knob, not a verdict). Never raises: any read failure yields an
-    empty, honest summary rather than a wrong one.
-
-    Shape::
-
-        {
-          "exams": [{id, slug, name}, …],
-          "shared_core": [topic_id, …],
-          "delta_by_exam": {exam_id: [topic_id, …]},
-          "mastery_reuse": [{topic_id, exams:[…]}, …],
-          "allocation": {"shared_core": n, "target_delta": n, "current_affairs": n},
-        }
-    """
-    from app.exam_intelligence.coverage import locked_topic_coverage
-
-    exams = _resolve_regulatory_target_exams(supabase, user_id)
-    if len(exams) < 2:
-        # Overlap is only meaningful across ≥2 regulatory exams.
-        return {
-            "exams": exams,
-            "shared_core": [],
-            "delta_by_exam": {e["id"]: [] for e in exams},
-            "mastery_reuse": [],
-            "allocation": allocation_targets(total_tasks),
-        }
-
-    coverage_by_exam: dict[str, list[str]] = {}
-    for e in exams:
-        rows = _safe(lambda e=e: locked_topic_coverage(supabase, e["id"]), default=[]) or []
-        coverage_by_exam[e["id"]] = [r.get("topic_id") for r in rows if r.get("topic_id")]
-
-    mastery_rows = _safe(
-        lambda: (
-            supabase.table("user_topic_mastery")
-            .select("topic_id, mastery_score")
-            .eq("user_id", user_id)
-            .limit(5000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
-    mastered = {
-        r.get("topic_id")
-        for r in mastery_rows
-        if r.get("topic_id") and _num(r.get("mastery_score")) >= mastery_threshold
-    }
-
-    part = partition_topics(coverage_by_exam)
-    return {
-        "exams": exams,
-        "shared_core": part["shared_core"],
-        "delta_by_exam": part["delta_by_exam"],
-        "mastery_reuse": mastery_reuse(coverage_by_exam, mastered),
-        "allocation": allocation_targets(total_tasks),
-    }
+        logger.warning("shared_core supabase read failed: %s", exc)
+        return _READ_FAILED
 
 
 def _num(value: Any, default: float = 0.0) -> float:
@@ -250,3 +124,166 @@ def _num(value: Any, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _resolve_regulatory_target_exams(supabase: Any, user_id: str) -> Any:
+    """The user's tracked exams that belong to the financial-regulatory family
+    and are active, sorted by slug. Returns ``[{id, slug, name}, …]``, or
+    ``_READ_FAILED`` if a required read failed. An empty family (not seeded) or an
+    empty tracked list yields ``[]`` (a legitimate empty, not a failure)."""
+    fam = _try(lambda: (
+        supabase.table("exam_families").select("id")
+        .eq("slug", FINANCIAL_REGULATORY_FAMILY_SLUG).limit(1).execute().data
+    ))
+    if fam is _READ_FAILED:
+        return _READ_FAILED
+    fam = fam or []
+    if not fam:
+        return []
+    family_id = fam[0]["id"]
+
+    prefs = _try(lambda: (
+        supabase.table("aspirant_preferences").select("target_exams")
+        .eq("user_id", user_id).limit(1).execute().data
+    ))
+    profile = _try(lambda: (
+        supabase.table("profiles").select("target_exam").eq("id", user_id).limit(1).execute().data
+    ))
+    if prefs is _READ_FAILED or profile is _READ_FAILED:
+        return _READ_FAILED
+    slugs = [str(s) for s in ((prefs or [{}])[0].get("target_exams") or []) if s]
+    primary_id = (profile or [{}])[0].get("target_exam")
+
+    by_slug: list[dict[str, Any]] = []
+    if slugs:
+        rows = _try(lambda: (
+            supabase.table("exams").select("id, slug, name, exam_family_id, is_active")
+            .in_("slug", slugs).eq("exam_family_id", family_id).eq("is_active", True)
+            .execute().data
+        ))
+        if rows is _READ_FAILED:
+            return _READ_FAILED
+        by_slug = rows or []
+    by_id: list[dict[str, Any]] = []
+    if primary_id:
+        rows = _try(lambda: (
+            supabase.table("exams").select("id, slug, name, exam_family_id, is_active")
+            .eq("id", primary_id).eq("exam_family_id", family_id).eq("is_active", True)
+            .execute().data
+        ))
+        if rows is _READ_FAILED:
+            return _READ_FAILED
+        by_id = rows or []
+
+    merged: dict[str, dict[str, Any]] = {}
+    for r in list(by_slug) + list(by_id):
+        merged[r["id"]] = {"id": r["id"], "slug": r.get("slug"), "name": r.get("name")}
+    return sorted(merged.values(), key=lambda e: (e.get("slug") or "", e["id"]))
+
+
+def _read_common_coverage(supabase: Any, exam_id: str) -> Any:
+    """Locked COMMON (stream_id IS NULL) topic_ids for one exam + a count of
+    stream-specific topics (excluded from shared core). ``_READ_FAILED`` on
+    failure — never an empty set that would masquerade as 'no coverage'."""
+    rows = _try(lambda: (
+        supabase.table("exam_topic_coverage").select("topic_id, stream_id")
+        .eq("exam_id", exam_id).eq("reviewer_status", "locked").limit(5000).execute().data
+    ))
+    if rows is _READ_FAILED:
+        return _READ_FAILED
+    rows = rows or []
+    common = sorted({r["topic_id"] for r in rows if r.get("topic_id") and r.get("stream_id") is None})
+    stream_specific = len({r["topic_id"] for r in rows if r.get("topic_id") and r.get("stream_id") is not None})
+    return {"common": common, "stream_specific_count": stream_specific}
+
+
+def _read_global_mastery(supabase: Any, user_id: str, threshold: float) -> Any:
+    """Topic_ids the user has mastered GLOBALLY (``exam_id IS NULL`` row ≥
+    threshold on the 0–100 scale). ``_READ_FAILED`` on failure."""
+    rows = _try(lambda: (
+        supabase.table("user_topic_mastery").select("topic_id, exam_id, mastery_score")
+        .eq("user_id", user_id).limit(5000).execute().data
+    ))
+    if rows is _READ_FAILED:
+        return _READ_FAILED
+    return {
+        r["topic_id"]
+        for r in (rows or [])
+        if r.get("topic_id") and r.get("exam_id") is None and _num(r.get("mastery_score")) >= threshold
+    }
+
+
+def _base(exams: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "exams": exams,
+        "shared_core": [],
+        "delta_by_exam": {e["id"]: [] for e in exams},
+        "stream_specific_by_exam": {e["id"]: 0 for e in exams},
+        "mastery_reuse": [],
+        "mastery_scale": MASTERY_SCALE,
+        "allocation": {"shared_core": 0, "target_delta": 0, "current_affairs": 0},
+        "allocation_basis": ALLOCATION_BASIS,
+        "shortfall": [],
+    }
+
+
+def summarize_regulatory_overlap(
+    supabase: Any,
+    user_id: str,
+    *,
+    total_tasks: int = 10,
+    mastery_threshold: float = DEFAULT_MASTERY_THRESHOLD,
+) -> dict[str, Any]:
+    """Read-only shared-core overlap for the user's active regulatory target
+    exams. Never raises. On any required-input read failure returns
+    ``{"status":"unavailable", "reason": …}`` rather than a summary computed from
+    a partial snapshot."""
+    exams = _resolve_regulatory_target_exams(supabase, user_id)
+    if exams is _READ_FAILED:
+        return {**_base([]), "status": "unavailable", "reason": "target_exams_read_failed"}
+    if len(exams) < 2:
+        return {**_base(exams), "status": "insufficient_regulatory_exams"}
+
+    common_by_exam: dict[str, list[str]] = {}
+    stream_specific_by_exam: dict[str, int] = {}
+    for e in exams:
+        cov = _read_common_coverage(supabase, e["id"])
+        if cov is _READ_FAILED:
+            return {**_base(exams), "status": "unavailable", "reason": f"coverage_read_failed:{e['id']}"}
+        common_by_exam[e["id"]] = cov["common"]
+        stream_specific_by_exam[e["id"]] = cov["stream_specific_count"]
+
+    mastered = _read_global_mastery(supabase, user_id, mastery_threshold)
+    if mastered is _READ_FAILED:
+        return {**_base(exams), "status": "unavailable", "reason": "mastery_read_failed"}
+
+    part = partition_topics(common_by_exam)
+    delta_total = sum(len(v) for v in part["delta_by_exam"].values())
+
+    # Allocation is all-zero unless there is a shared-core basis; per-band
+    # shortfall names any band whose default target exceeds its candidate count.
+    if part["shared_core"]:
+        alloc = allocation_targets(total_tasks)
+    else:
+        alloc = {"shared_core": 0, "target_delta": 0, "current_affairs": 0}
+    shortfall: list[str] = []
+    if alloc["shared_core"] > len(part["shared_core"]):
+        shortfall.append("shared_core")
+    if alloc["target_delta"] > delta_total:
+        shortfall.append("target_delta")
+    if alloc["current_affairs"] > 0:
+        shortfall.append("current_affairs:external(Lane GQR)")
+
+    return {
+        "status": "ok",
+        "exams": exams,
+        "shared_core": part["shared_core"],
+        "delta_by_exam": part["delta_by_exam"],
+        "stream_specific_by_exam": stream_specific_by_exam,
+        "mastery_reuse": mastery_reuse(common_by_exam, mastered),
+        "mastery_scale": MASTERY_SCALE,
+        "mastery_threshold": mastery_threshold,
+        "allocation": alloc,
+        "allocation_basis": ALLOCATION_BASIS,
+        "shortfall": shortfall,
+    }
