@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
 import { api } from "../../lib/api";
 import { Eyebrow, Pill, StudyCard } from "../../shared/ui/studyos";
+import { humanFieldList } from "./eligibilityFields";
+import ExamStreamBreakdown, {
+  hasStreamLevelOpportunity,
+  streamOpportunity,
+} from "./ExamStreamBreakdown";
 
 /* Honesty rules baked in (per the product brief):
  * - Never invent counts. A "0 / 0" response renders the explicit empty state
@@ -16,29 +21,39 @@ import { Eyebrow, Pill, StudyCard } from "../../shared/ui/studyos";
  *   ``eligible.length > 0``.
  */
 
-const FIELD_LABELS = {
-  date_of_birth: "date of birth",
-  education_level: "highest qualification",
-  nationality: "nationality",
-  gender: "gender",
-  category: "reservation category",
+const EXAM_STATUS_LABEL = {
+  eligible: "eligible",
+  conditional: "conditional",
+  not_eligible: "not eligible",
+  unknown: "not evaluated",
 };
-
-function humanField(key) {
-  return FIELD_LABELS[key] || key.replace(/_/g, " ");
-}
-
-function humanFieldList(fields) {
-  if (!fields || fields.length === 0) return "";
-  const labels = fields.map(humanField);
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
-}
 
 function ExamRow({ item, tone, expanded, onToggle }) {
   const isConditional = tone === "conditional";
-  const pillTone = isConditional ? "amber" : "sage";
+  // `stream_only` rows are exams whose EXAM-WIDE verdict is unknown/not-eligible
+  // but which carry a stream-specific eligible/conditional verdict (finding 1).
+  // They must never be presented as exam-wide eligible.
+  const isStreamOnly = tone === "stream_only";
+  // The exam-wide verdict, used both to detect stream divergence and to state
+  // the exam-wide status honestly on stream-only rows.
+  const examStatus = isStreamOnly ? item.exam_status : tone === "conditional" ? "conditional" : "eligible";
+  // For a stream-only row, label by the BEST stream outcome — an eligible stream
+  // and a conditional stream are not the same claim (finding 2 / P0#2).
+  const opp = isStreamOnly ? streamOpportunity(item, examStatus) : { eligible: [], conditional: [] };
+  const streamOnlyEligible = opp.eligible.length > 0;
+  const pillTone = isStreamOnly
+    ? streamOnlyEligible
+      ? "sage"
+      : "amber"
+    : isConditional
+    ? "amber"
+    : "sage";
+  const pillLabel = isStreamOnly ? "Stream-level" : isConditional ? "Likely" : "Eligible";
+  const iconColor = isStreamOnly
+    ? "text-clay-600"
+    : isConditional
+    ? "text-amber-700"
+    : "text-sage-700";
   return (
     <li
       data-testid={`exam-row-${item.slug}`}
@@ -51,13 +66,17 @@ function ExamRow({ item, tone, expanded, onToggle }) {
         aria-expanded={expanded}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/85 transition-colors"
       >
-        <GraduationCap
-          className={`h-4 w-4 ${isConditional ? "text-amber-700" : "text-sage-700"}`}
-          aria-hidden="true"
-        />
+        <GraduationCap className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <div className="font-heading text-[15px] text-clay-900 truncate">{item.name}</div>
-          {isConditional && item.missing_fields?.length ? (
+          {isStreamOnly ? (
+            <div className="text-[11.5px] text-clay-700 mt-0.5">
+              Exam-wide {EXAM_STATUS_LABEL[item.exam_status] || "not evaluated"} —{" "}
+              {streamOnlyEligible
+                ? "eligible in specific streams."
+                : "conditional in specific streams; complete your profile."}
+            </div>
+          ) : isConditional && item.missing_fields?.length ? (
             <div className="text-[11.5px] text-amber-800 mt-0.5">
               Add your {humanFieldList(item.missing_fields)} to confirm.
             </div>
@@ -69,7 +88,7 @@ function ExamRow({ item, tone, expanded, onToggle }) {
             )
           )}
         </div>
-        <Pill tone={pillTone}>{isConditional ? "Likely" : "Eligible"}</Pill>
+        <Pill tone={pillTone}>{pillLabel}</Pill>
         <ChevronDown
           className={`h-3.5 w-3.5 text-clay-700 transition-transform ${
             expanded ? "rotate-180" : ""
@@ -85,7 +104,15 @@ function ExamRow({ item, tone, expanded, onToggle }) {
         <div className="overflow-hidden border-t border-[#E7DECB] bg-[#FBF6EF]">
           {expanded && (
             <div className="px-4 py-3 text-[12.5px] text-clay-800 space-y-2">
-              {isConditional ? (
+              {isStreamOnly ? (
+                <div>
+                  The exam-wide baseline is{" "}
+                  {EXAM_STATUS_LABEL[item.exam_status] || "not evaluated"} on your profile.
+                  {streamOnlyEligible
+                    ? " One or more streams have their own rules you meet — see the breakdown below."
+                    : " One or more streams could open up once you complete your profile — see the breakdown below."}
+                </div>
+              ) : isConditional ? (
                 <>
                   <div>
                     <span className="num-mono uppercase text-[9.5px] tracking-[0.18em] text-amber-800">
@@ -114,6 +141,11 @@ function ExamRow({ item, tone, expanded, onToggle }) {
                   </Link>
                 </>
               )}
+              <ExamStreamBreakdown
+                streams={item.streams}
+                examName={item.name}
+                examStatus={examStatus}
+              />
             </div>
           )}
         </div>
@@ -275,7 +307,23 @@ export default function EligibleExamsCard({ variant = "card", initialData } = {}
   const conditional = Array.isArray(data.conditional) ? data.conditional : [];
   const hasRules = Number(data.rule_count || 0) > 0;
 
-  if (eligible.length === 0 && conditional.length === 0) {
+  // Finding 1 — an exam whose EXAM-WIDE verdict is unknown/not_eligible can still
+  // carry a stream-specific eligible/conditional verdict (PR #973 attaches
+  // streams[] to every bucket). Surface those so the Compass never drops a real
+  // per-stream outcome. Tagged with exam_status so the row states the exam-wide
+  // verdict honestly rather than implying broad eligibility.
+  const streamOnly = [
+    ...(Array.isArray(data.not_eligible) ? data.not_eligible : []).map((item) => ({
+      ...item,
+      exam_status: "not_eligible",
+    })),
+    ...(Array.isArray(data.unknown) ? data.unknown : []).map((item) => ({
+      ...item,
+      exam_status: "unknown",
+    })),
+  ].filter((item) => hasStreamLevelOpportunity(item, item.exam_status));
+
+  if (eligible.length === 0 && conditional.length === 0 && streamOnly.length === 0) {
     return (
       <EmptyStateView
         variant={variant}
@@ -364,17 +412,40 @@ export default function EligibleExamsCard({ variant = "card", initialData } = {}
         ))}
       </div>
 
-      <ul className="mt-4 space-y-2" data-testid="eligible-exams-rows">
-        {rows.map(({ item, tone }) => (
-          <ExamRow
-            key={`${tone}:${item.exam_id}`}
-            item={item}
-            tone={tone}
-            expanded={expandedId === item.exam_id}
-            onToggle={() => toggleRow(item.exam_id)}
-          />
-        ))}
-      </ul>
+      {rows.length > 0 && (
+        <ul className="mt-4 space-y-2" data-testid="eligible-exams-rows">
+          {rows.map(({ item, tone }) => (
+            <ExamRow
+              key={`${tone}:${item.exam_id}`}
+              item={item}
+              tone={tone}
+              expanded={expandedId === item.exam_id}
+              onToggle={() => toggleRow(item.exam_id)}
+            />
+          ))}
+        </ul>
+      )}
+
+      {streamOnly.length > 0 && (
+        <div className="mt-5" data-testid="stream-only-section">
+          <Eyebrow>Stream-level opportunities</Eyebrow>
+          <p className="text-[11.5px] text-clay-700 mt-1 max-w-[60ch]">
+            The exam-wide baseline doesn't clear on your profile, but these have a stream whose own
+            rules you meet or could meet.
+          </p>
+          <ul className="mt-2 space-y-2" data-testid="stream-only-rows">
+            {streamOnly.map((item) => (
+              <ExamRow
+                key={`stream_only:${item.exam_id}`}
+                item={item}
+                tone="stream_only"
+                expanded={expandedId === item.exam_id}
+                onToggle={() => toggleRow(item.exam_id)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
     </CardShell>
   );
 }
