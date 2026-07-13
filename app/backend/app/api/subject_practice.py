@@ -138,7 +138,13 @@ def _handle_weekly_current_affairs(supabase, *, user_id, subject_id, topic_id, e
         # the service layer propagate unchanged → 404 / 500, also observable.)
         if "already_submitted" in str(exc):
             return {"kind": "current_affairs", "outcome": "already_submitted"}
-        raise HTTPException(status_code=409, detail=str(exc))
+        # A STRUCTURED code so the hub can tell an integrity/authority conflict apart from
+        # an expected empty-pool 409 (which it renders as a calm "no practice" note) and
+        # surface it as a real error instead of masking it as availability.
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "ca_integrity_conflict", "message": str(exc)},
+        )
     outcome = (result or {}).get("outcome")
     if outcome in ("ready", "reused"):
         attempt_id = result.get("attempt_id")

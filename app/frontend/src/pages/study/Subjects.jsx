@@ -55,7 +55,13 @@ function SubjectPracticeCard({ subject }) {
             topic_id: mode.target_topic_id ?? null,
           });
         } catch (e) {
-          if (e?.status === 409) return { noPractice: true };
+          // An expected empty-pool 409 (no eligible prompt / no verified PYQ set) is a
+          // calm "no practice" note. An integrity/authority conflict (CA bundle race or
+          // corrupted freeze) is NOT — let it surface as a real error toast, not
+          // availability copy.
+          if (e?.status === 409 && e?.code !== "ca_integrity_conflict") {
+            return { noPractice: true };
+          }
           throw e;
         }
       },
@@ -175,6 +181,9 @@ export default function Subjects() {
   const { items, status, refresh } = useApiCollection("/api/study/subjects");
 
   const radar = items
+    // GA current-affairs has no mastery (domain rule) — never plot it on the mastery
+    // radar, where progress:0 would misread as a 0%-mastery subject.
+    .filter((i) => i.kind !== "current_affairs")
     .slice(0, 10)
     .map((i) => ({ topic: i.subject || i.subject_id, mastery: i.progress || 0 }));
 

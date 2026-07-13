@@ -27,10 +27,16 @@ jest.mock("react-router-dom", () => {
   return { __esModule: true, ...actual, useNavigate: () => mockNavigate };
 });
 
-// Radar chart is heavy (recharts) and irrelevant to this page's behavior.
+// Radar chart is heavy (recharts) and irrelevant to this page's behavior. Capture its
+// `data` prop so we can assert what the mastery radar is (and is not) fed.
+const radarData = [];
 jest.mock("./components/reports", () => ({
   __esModule: true,
-  TopicRadarChart: () => null,
+  TopicRadarChart: ({ data }) => {
+    radarData.length = 0;
+    (data || []).forEach((d) => radarData.push(d));
+    return null;
+  },
 }));
 
 import ToastProvider from "../../shared/ui/ToastProvider";
@@ -211,6 +217,34 @@ test("weekly current-affairs no_bundle outcome shows a calm note and does not na
     ),
   );
   expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+test("a CA integrity-conflict 409 surfaces an error, not the calm no-practice note", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  const err = new Error("bundle_set_mismatch");
+  err.status = 409;
+  err.code = "ca_integrity_conflict";
+  mockPost.mockRejectedValue(err);
+  renderPage();
+
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
+  fireEvent.click(btn);
+
+  // Error toast fires (not the calm availability copy); no navigation, no calm note.
+  expect(await screen.findByText(/Couldn't start practice/i)).toBeTruthy();
+  expect(screen.queryByTestId(`practice-${CA_ID}-notice`)).toBeNull();
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+test("the mastery radar excludes the current-affairs card", async () => {
+  // The virtual CA card (progress:0) must never plot as a 0%-mastery subject.
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  renderPage();
+  await screen.findByTestId(`subject-card-${CA_ID}`);
+  await waitFor(() => expect(radarData.length).toBeGreaterThan(0));
+  expect(radarData.some((d) => d.topic === "Current Affairs")).toBe(false);
+  // Real mastery subjects still plot.
+  expect(radarData.some((d) => d.topic === "English")).toBe(true);
 });
 
 test("a 409 on launch shows an inline notice and does not navigate", async () => {

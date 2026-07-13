@@ -227,7 +227,11 @@ def test_weekly_current_affairs_integrity_error_is_409_not_masked(monkeypatch):
             json={"mode": "weekly_current_affairs"},
         )
         assert resp.status_code == 409, (token, resp.json())
-        assert token in resp.json()["detail"]
+        # Structured code so the hub can tell integrity conflicts apart from an expected
+        # empty-pool 409 and surface them as a real error, not calm availability.
+        detail = resp.json()["detail"]
+        assert detail["code"] == "ca_integrity_conflict"
+        assert token in detail["message"]
 
 
 def test_weekly_current_affairs_rejected_for_non_ga_family():
