@@ -180,6 +180,72 @@ def test_create_rule_conflict_when_scope_rule_type_pair_exists():
     assert detail["rule_id"] == RULE_A
 
 
+_STREAM = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+
+
+def test_create_verified_new_rule_type_is_rejected_fail_closed():
+    # A rule_type the evaluator doesn't interpret must not reach 'verified'.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
+              "reviewer_status": "verified", "source_url": "https://x"},
+    )
+    assert r.status_code == 422
+    assert "not yet evaluated" in r.json()["detail"]
+
+
+def test_create_new_rule_type_as_draft_is_allowed():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
+              "stream_id": _STREAM, "reviewer_status": "draft"},
+    )
+    assert r.status_code == 200
+    assert r.json()["rule"]["stream_id"] == _STREAM
+
+
+def test_stream_scoped_rule_coexists_with_common():
+    # The fixture has common (all, age_min); a stream-scoped one for the same
+    # (scope, rule_type) must NOT be treated as a duplicate.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "age_min", "value_num": 21, "stream_id": _STREAM},
+    )
+    assert r.status_code == 200
+
+
+def test_create_qualification_combination_rejects_malformed_json():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "qualification_combination", "value_json": {}},
+    )
+    assert r.status_code == 400
+    assert "valid combination" in r.json()["detail"]
+
+
+def test_update_can_clear_stream_id_back_to_common():
+    sb = SBStub(_world())
+    sb.db["exam_eligibility_rules"].append(
+        {
+            "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "exam_id": EXAM_A, "stream_id": _STREAM, "scope": "obc",
+            "rule_type": "age_max", "value_num": 33, "value_text": None,
+            "reviewer_status": "draft",
+        }
+    )
+    r = TestClient(_build_app(sb)).put(
+        "/api/admin/exam-eligibility/rules/dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        json={"stream_id": None},
+    )
+    assert r.status_code == 200
+    row = next(x for x in sb.db["exam_eligibility_rules"] if x["id"] == "dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+    assert row["stream_id"] is None
+
+
 def test_create_rule_on_unknown_exam_is_404():
     sb = SBStub(_world())
     missing = "99999999-9999-4999-8999-999999999999"
