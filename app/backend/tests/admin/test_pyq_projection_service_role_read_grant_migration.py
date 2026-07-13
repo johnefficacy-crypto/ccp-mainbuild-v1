@@ -20,7 +20,7 @@ from pathlib import Path
 _MIGRATIONS = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
 
 MIGRATION = (
-    _MIGRATIONS / "251_pyq_projection_service_role_read_grant.sql"
+    _MIGRATIONS / "252_pyq_projection_service_role_read_grant.sql"
 ).read_text()
 
 
