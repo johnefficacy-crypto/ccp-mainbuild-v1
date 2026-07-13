@@ -154,6 +154,161 @@ test("expanding an eligible row reveals the source-of-truth detail", async () =>
   );
 });
 
+test("expanding an exam with streams[] reveals the stream breakdown and both provenance bands", async () => {
+  mockGet.mockResolvedValue({
+    eligible: [
+      {
+        exam_id: EXAM_A,
+        slug: "sebi-grade-a",
+        name: "SEBI Grade A",
+        reasons: [],
+        missing_fields: [],
+        streams: [
+          { stream_id: "s1", stream_key: "general", name: "General", status: "eligible", reasons: [], missing_fields: [], has_stream_specific_rules: true },
+          {
+            stream_id: "s3",
+            stream_key: "legal",
+            name: "Legal",
+            status: "not_eligible",
+            reasons: ["Requires a law degree."],
+            missing_fields: [],
+            has_stream_specific_rules: true,
+          },
+        ],
+      },
+    ],
+    conditional: [],
+    not_eligible: [],
+    unknown: [],
+    rule_count: 6,
+  });
+  await act(async () => {
+    renderCard();
+  });
+  await waitFor(() => expect(screen.getByTestId("exam-row-sebi-grade-a")).toBeTruthy());
+  const toggle = screen.getByTestId("exam-row-sebi-grade-a").querySelector("button");
+  await act(async () => {
+    fireEvent.click(toggle);
+  });
+  await waitFor(() => expect(screen.getByTestId("exam-stream-breakdown")).toBeTruthy());
+  expect(screen.getByTestId("stream-group-eligible").textContent).toMatch(/General/);
+  expect(screen.getByTestId("stream-group-not_eligible").textContent).toMatch(/law degree/i);
+  expect(screen.getByTestId("provenance-band-baseline")).toBeTruthy();
+  expect(screen.getByTestId("provenance-band-cycle")).toBeTruthy();
+});
+
+test("finding 1 — an exam that is exam-wide unknown but has a stream-specific verdict is surfaced", async () => {
+  mockGet.mockResolvedValue({
+    eligible: [],
+    conditional: [],
+    not_eligible: [],
+    unknown: [
+      {
+        exam_id: EXAM_B,
+        slug: "sebi-grade-a",
+        name: "SEBI Grade A",
+        reasons: [],
+        missing_fields: [],
+        streams: [
+          { stream_id: "s1", stream_key: "general", name: "General", status: "eligible", reasons: [], missing_fields: [], has_stream_specific_rules: true },
+        ],
+      },
+    ],
+    rule_count: 6,
+  });
+  await act(async () => {
+    renderCard();
+  });
+  // Not the empty state — the stream-level opportunity keeps the card populated.
+  await waitFor(() => expect(screen.getByTestId("stream-only-section")).toBeTruthy());
+  const row = screen.getByTestId("exam-row-sebi-grade-a");
+  expect(row.getAttribute("data-tone")).toBe("stream_only");
+  // Never claims exam-wide eligibility.
+  expect(row.textContent).toMatch(/Stream-level/);
+  expect(row.textContent).not.toMatch(/\bEligible\b/);
+  expect(screen.queryByTestId("tile-eligible")).toBeNull();
+});
+
+test("finding 1 — a not-eligible exam whose streams all match the exam verdict is NOT surfaced (no false positive)", async () => {
+  mockGet.mockResolvedValue({
+    eligible: [],
+    conditional: [],
+    not_eligible: [
+      {
+        exam_id: EXAM_B,
+        slug: "rbi-grade-b",
+        name: "RBI Grade B",
+        reasons: ["Age above the limit."],
+        missing_fields: [],
+        streams: [
+          // Matches the exam-wide (not_eligible) verdict — no divergence, even
+          // without the flag → not a stream-specific opportunity.
+          { stream_id: "s1", stream_key: "general", name: "General", status: "not_eligible", reasons: [], missing_fields: [] },
+        ],
+      },
+    ],
+    unknown: [],
+    rule_count: 6,
+  });
+  await act(async () => {
+    renderCard();
+  });
+  // No eligible/conditional and no stream-level opportunity → honest empty state.
+  await waitFor(() => expect(screen.getByTestId("eligible-exams-empty-cta")).toBeTruthy());
+  expect(screen.queryByTestId("stream-only-section")).toBeNull();
+});
+
+test("P0#2 — a stream-only exam with only a CONDITIONAL stream is labelled conditional, never eligible", async () => {
+  mockGet.mockResolvedValue({
+    eligible: [],
+    conditional: [],
+    not_eligible: [],
+    unknown: [
+      {
+        exam_id: EXAM_B,
+        slug: "pfrda-grade-a",
+        name: "PFRDA Grade A",
+        reasons: [],
+        missing_fields: [],
+        streams: [
+          // No flag; diverges from exam-wide unknown → stream-specific, but only conditional.
+          { stream_id: "s2", stream_key: "research", name: "Research", status: "conditional", reasons: [], missing_fields: ["education_percentage"] },
+        ],
+      },
+    ],
+    rule_count: 6,
+  });
+  await act(async () => {
+    renderCard();
+  });
+  await waitFor(() => expect(screen.getByTestId("stream-only-section")).toBeTruthy());
+  const row = screen.getByTestId("exam-row-pfrda-grade-a");
+  expect(row.textContent).toMatch(/conditional in specific streams/i);
+  expect(row.textContent).not.toMatch(/eligible in specific streams/i);
+});
+
+test("expanding an exam without streams[] behaves exactly as before (no breakdown)", async () => {
+  mockGet.mockResolvedValue({
+    eligible: [
+      { exam_id: EXAM_A, slug: "ssc-cgl", name: "SSC CGL", reasons: [], missing_fields: [] },
+    ],
+    conditional: [],
+    not_eligible: [],
+    unknown: [],
+    rule_count: 6,
+  });
+  await act(async () => {
+    renderCard();
+  });
+  await waitFor(() => expect(screen.getByTestId("exam-row-ssc-cgl")).toBeTruthy());
+  const toggle = screen.getByTestId("exam-row-ssc-cgl").querySelector("button");
+  await act(async () => {
+    fireEvent.click(toggle);
+  });
+  await waitFor(() => expect(screen.getByText(/All baseline rules/i)).toBeTruthy());
+  expect(screen.queryByTestId("exam-stream-breakdown")).toBeNull();
+});
+
 test("error response surfaces honestly with a retry, never a silent zero", async () => {
   mockGet.mockRejectedValue(new Error("boom"));
   await act(async () => {
