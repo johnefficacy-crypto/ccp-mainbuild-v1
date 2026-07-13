@@ -34,12 +34,12 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    `cutoff_date` and the evaluator never applies them. → Notification age bands are
    unfaithful near the cut-off. **Prereq:** implement cutoff-aware evaluation, or
    keep notification age in the cycle layer, before authoring precise age rows.
-4. **No include-inactive discovery for draft identities.**
-   `GET /api/admin/exam-eligibility/exams` filters `is_active=true`, but migration
-   244 seeds PFRDA Grade A and IRDAI AM as **inactive** draft identities. → The
-   audited path cannot list them; a POST needs a pre-known UUID. **Prereq:** add an
-   admin-only include-inactive listing/detail, or document a canonical audited
-   lookup, before this SOP is executable for those two exams.
+4. **~~No include-inactive discovery for draft identities.~~ RESOLVED.**
+   `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) now
+   lists inactive seeded identities (PFRDA Grade A / IRDAI AM, migration 244), each
+   with its `is_active` flag so the caller distinguishes draft from active. Default
+   (`include_inactive=false`) is unchanged (active-only). The audited authoring flow
+   can now resolve those exam ids.
 
 ## What the evaluator actually matches (source of truth)
 
@@ -118,7 +118,7 @@ migration 244. Every degree-gated recipe folds the level into the combination
 | `research` | **Deferred** — PG economics/statistics/finance set + level from the advertisement |
 | `general` | **Deferred** — full PG/professional set (record-correlated) from the advertisement; must be authored so General stops inheriting the bare-baseline pass |
 
-### PFRDA Grade A (identity inactive — §Prereq 4 blocks discovery)
+### PFRDA Grade A (identity inactive — discover via admin `include_inactive=true`, §Prereq 4 resolved)
 Canonical keys from 244.
 
 | stream | rule |
@@ -132,7 +132,7 @@ Canonical keys from 244.
 
 Baseline age: **do not author** as baseline (§Prereq 3) — defer to the cycle layer.
 
-### IRDAI Assistant Manager (identity inactive — §Prereq 4 blocks discovery)
+### IRDAI Assistant Manager (identity inactive — discover via admin `include_inactive=true`, §Prereq 4 resolved)
 Canonical keys from 244. **Registry gap:** 244 seeds only five IRDAI streams
 (`generalist`, `actuarial`, `finance`, `information-technology`, `research`) — the
 notification's **Law** stream is missing; file a follow-up to add `irdai-am/law`
@@ -172,5 +172,5 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 - `exam_eligibility_rules.document_asset_id` FK + reviewed-document verify transition + reviewer separation.
 - `exam_cycles` trust/review column + gate every consumer & RLS.
 - Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.
-- Admin include-inactive exam listing/detail for draft identities.
+- ~~Admin include-inactive exam listing for draft identities.~~ **RESOLVED** — `GET /api/admin/exam-eligibility/exams?include_inactive=true` lists inactive seeded identities with their `is_active` flag.
 - Registry gap: add the missing `irdai-am/law` stream to `exam_streams` (244 seeds only five of IRDAI's six streams).

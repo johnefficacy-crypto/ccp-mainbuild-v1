@@ -4,6 +4,9 @@ Endpoint group (all require ``exam_eligibility.manage`` permission):
 
   GET    /api/admin/exam-eligibility/exams
          List active exams with verified/draft/archived rule counts.
+         Pass ``?include_inactive=true`` to also surface inactive
+         seeded identities (draft regulator exams) with their
+         ``is_active`` flag, so the authoring flow can resolve them.
 
   GET    /api/admin/exam-eligibility/exams/{exam_id}/rules
          All rules (every status) for one exam.
@@ -246,13 +249,24 @@ def _require_trust_provenance(source_url: str | None, waiver_reason: str | None)
 
 @router.get("/exams")
 def list_exams_with_rule_counts(
+    include_inactive: bool = Query(
+        default=False,
+        description=(
+            "Admin-only: also list exams with is_active=false. Seeded regulator "
+            "identities (e.g. PFRDA Grade A / IRDAI AM, migration 244) land inactive "
+            "as draft, so the eligibility-authoring flow needs this to discover and "
+            "resolve their exam ids. The response's per-item is_active flag lets the "
+            "caller tell active from draft."
+        ),
+    ),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    query = supabase.table("exams").select("id, slug, name, is_active, exam_family_id")
+    if not include_inactive:
+        query = query.eq("is_active", True)
     exams = (
-        supabase.table("exams")
-        .select("id, slug, name, is_active, exam_family_id")
-        .eq("is_active", True)
+        query
         .order("name")
         .limit(500)
         .execute()

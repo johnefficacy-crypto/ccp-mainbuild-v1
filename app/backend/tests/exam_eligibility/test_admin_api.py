@@ -88,6 +88,42 @@ def test_list_exams_reports_rule_counts_per_status():
     assert items["upsc-cse"]["total_rules"] == 0
 
 
+def _world_with_inactive():
+    world = _world()
+    # A seeded-but-inactive draft regulator identity (e.g. PFRDA/IRDAI per migration 244).
+    world["exams"].append(
+        {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "slug": "irdai-am",
+            "name": "IRDAI Assistant Manager",
+            "is_active": False,
+            "exam_family_id": None,
+        }
+    )
+    return world
+
+
+def test_list_exams_hides_inactive_by_default():
+    sb = SBStub(_world_with_inactive())
+    body = TestClient(_build_app(sb)).get("/api/admin/exam-eligibility/exams").json()
+    slugs = {e["slug"] for e in body["items"]}
+    assert "irdai-am" not in slugs  # inactive draft identity not discoverable by default
+    assert {"ssc-cgl", "upsc-cse"} <= slugs
+
+
+def test_list_exams_include_inactive_surfaces_draft_identities():
+    sb = SBStub(_world_with_inactive())
+    body = (
+        TestClient(_build_app(sb))
+        .get("/api/admin/exam-eligibility/exams", params={"include_inactive": "true"})
+        .json()
+    )
+    items = {e["slug"]: e for e in body["items"]}
+    assert "irdai-am" in items
+    assert items["irdai-am"]["is_active"] is False  # caller can distinguish draft from active
+    assert items["ssc-cgl"]["is_active"] is True
+
+
 def test_list_rules_for_unknown_exam_is_404():
     sb = SBStub(_world())
     missing = "99999999-9999-4999-8999-999999999999"
