@@ -5,7 +5,7 @@
 -- 2. Replaying an older weekly submission cannot overwrite/re-arm a newer retry item.
 -- 3. A question is current-relevant only when EVERY promoted claim link remains
 --    event-consistent, verified, current, and grounded by active official evidence.
--- 4. Only the scoped monthly-start wrapper remains executable by service_role.
+-- 4. The existing guarded monthly-start contract gains the stronger authority checks.
 
 begin;
 
@@ -181,10 +181,10 @@ begin
   return v_count;
 end $$;
 
--- Scoped service entry point. It validates the bundle authority before reusing an
--- existing attempt, then proves that every supplied retry item belongs to the exact
--- attempt exam before the guarded/authoritative implementation may consume it.
-create or replace function public.ca_start_monthly_current_affairs_attempt_scoped(
+-- Stable service entry point. It validates bundle authority before reuse, serializes
+-- identical starts, and proves every supplied retry item belongs to the exact attempt
+-- exam before the internal authoritative start may consume it.
+create or replace function public.ca_start_monthly_current_affairs_attempt_guarded(
   p_user uuid,
   p_bundle uuid,
   p_exam uuid,
@@ -197,6 +197,10 @@ declare
   v_bundle public.current_affairs_bundles%rowtype;
   v_existing public.current_affairs_attempts%rowtype;
   v_family uuid;
+  v_core uuid[];
+  v_tail uuid[];
+  v_all uuid[];
+  v_template jsonb;
   v_qid uuid;
 begin
   if p_user is null then raise exception 'user_required' using errcode = 'P0422'; end if;
@@ -275,8 +279,31 @@ begin
     end if;
   end loop;
 
-  return public.ca_start_monthly_current_affairs_attempt_guarded(
-    p_user, p_bundle, p_exam, p_template_snapshot, p_core_rows, p_retry_rows);
+  select array_agg((elem->>'question_id')::uuid order by ord) into v_core
+  from jsonb_array_elements(coalesce(p_core_rows, '[]'::jsonb))
+    with ordinality as t(elem, ord);
+  select array_agg((elem->>'question_id')::uuid order by ord) into v_tail
+  from jsonb_array_elements(coalesce(p_retry_rows, '[]'::jsonb))
+    with ordinality as t(elem, ord);
+  v_core := coalesce(v_core, array[]::uuid[]);
+  v_tail := coalesce(v_tail, array[]::uuid[]);
+  v_all := v_core || v_tail;
+
+  v_template := coalesce(p_template_snapshot, '{}'::jsonb) || jsonb_build_object(
+    'source', 'current_affairs_bundle',
+    'practice', true,
+    'practice_mode', 'monthly_current_affairs',
+    'bundle_id', p_bundle,
+    'cadence', v_bundle.cadence,
+    'period_start', v_bundle.period_start,
+    'period_end', v_bundle.period_end,
+    'question_ids', to_jsonb(v_all),
+    'core_question_ids', to_jsonb(v_core),
+    'retry_tail_question_ids', to_jsonb(v_tail),
+    'total_questions', cardinality(v_all));
+
+  return public.ca_start_monthly_current_affairs_attempt(
+    p_user, p_bundle, p_exam, v_template, p_core_rows, p_retry_rows);
 end $$;
 
 revoke all on function public.ca_question_current_relevant(uuid)
@@ -287,18 +314,18 @@ revoke all on function public.ca_eligible_retry_tail(uuid, uuid)
   from public, anon, authenticated;
 revoke all on function public.ca_enqueue_weekly_retry_items(uuid, uuid)
   from public, anon, authenticated;
-revoke all on function public.ca_start_monthly_current_affairs_attempt_scoped(
+revoke all on function public.ca_start_monthly_current_affairs_attempt_guarded(
   uuid, uuid, uuid, jsonb, jsonb, jsonb) from public, anon, authenticated;
 
 grant execute on function public.ca_question_current_relevant(uuid) to service_role;
 grant execute on function public.ca_eligible_bundle_question_ids(uuid) to service_role;
 grant execute on function public.ca_eligible_retry_tail(uuid, uuid) to service_role;
 grant execute on function public.ca_enqueue_weekly_retry_items(uuid, uuid) to service_role;
-grant execute on function public.ca_start_monthly_current_affairs_attempt_scoped(
+grant execute on function public.ca_start_monthly_current_affairs_attempt_guarded(
   uuid, uuid, uuid, jsonb, jsonb, jsonb) to service_role;
 
--- Migration 259's wrapper remains an internal implementation detail.
-revoke execute on function public.ca_start_monthly_current_affairs_attempt_guarded(
+-- The original monthly-start implementation remains internal.
+revoke execute on function public.ca_start_monthly_current_affairs_attempt(
   uuid, uuid, uuid, jsonb, jsonb, jsonb) from service_role;
 
 commit;
