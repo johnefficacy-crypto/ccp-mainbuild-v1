@@ -13,6 +13,17 @@ const TREND_LABEL = { up: "↑ improving", down: "↓ declining", flat: "→ ste
 
 const NO_PRACTICE_COPY = "No verified practice set yet";
 
+// GA weekly current-affairs launch outcomes that have no runnable attempt this cycle.
+// The backend returns 200 with an `outcome` (and no `route`) rather than a hard error,
+// so the card shows a calm inline note instead of the generic error toast.
+const CA_STATE_COPY = {
+  no_bundle: "No current-affairs set is published for your exam yet. Check back soon.",
+  empty_bundle: "This week's current-affairs set has no questions yet.",
+  bundle_degraded: "This week's current-affairs set is being refreshed. Check back soon.",
+  already_submitted: "You've already completed this week's current-affairs practice.",
+  unavailable: "Current-affairs practice is unavailable right now. Please try again.",
+};
+
 // A subject card: keeps the mastery summary line (progress / weak / topics +
 // trend) and, below it, renders the subject's practice modes. Server-launch
 // modes POST the launch endpoint through useApiAction and navigate to the
@@ -53,6 +64,12 @@ function SubjectPracticeCard({ subject }) {
         }
         if (out?.route) {
           navigate(out.route);
+          return;
+        }
+        // GA current-affairs: a non-route outcome (no_bundle/empty/degraded/…) maps to
+        // a specific calm note; any other routeless response falls back to the default.
+        if (out?.outcome && CA_STATE_COPY[out.outcome]) {
+          setPracticeError(CA_STATE_COPY[out.outcome]);
           return;
         }
         setPracticeError(`${NO_PRACTICE_COPY}.`);

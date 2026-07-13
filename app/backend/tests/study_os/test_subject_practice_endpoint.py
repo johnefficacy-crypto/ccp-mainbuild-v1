@@ -19,9 +19,11 @@ _EXAM = "44444444-4444-4444-4444-444444444444"
 _S_QUANT = "22222222-2222-2222-2222-222222222222"
 _S_ENGLISH = "11111111-1111-1111-1111-111111111111"
 _S_REASONING = "55555555-5555-5555-5555-555555555555"
+_S_GA = "88888888-8888-8888-8888-888888888888"
 _T_QUANT = "33333333-3333-3333-3333-333333333333"
 _T_REASONING = "66666666-6666-6666-6666-666666666666"
 _T_ENGLISH = "77777777-7777-7777-7777-777777777777"
+_T_GA = "99999999-9999-9999-9999-999999999990"
 
 
 def _seed():
@@ -36,6 +38,8 @@ def _seed():
              "reviewer_status": "locked"},
             {"id": "cov-e", "exam_id": _EXAM, "topic_id": _T_ENGLISH,
              "reviewer_status": "locked"},
+            {"id": "cov-ga", "exam_id": _EXAM, "topic_id": _T_GA,
+             "reviewer_status": "locked"},
         ],
         "topics": [
             {"id": _T_QUANT, "name": "Percentage", "slug": "pct",
@@ -44,6 +48,8 @@ def _seed():
              "subject_id": _S_REASONING, "is_active": True},
             {"id": _T_ENGLISH, "name": "Vocabulary", "slug": "vocab",
              "subject_id": _S_ENGLISH, "is_active": True},
+            {"id": _T_GA, "name": "Weekly current affairs", "slug": "ca",
+             "subject_id": _S_GA, "is_active": True},
         ],
         "subjects": [
             {"id": _S_QUANT, "slug": "quant", "name": "Quant",
@@ -52,6 +58,8 @@ def _seed():
              "subject_group": "verbal", "is_active": True},
             {"id": _S_REASONING, "slug": "general-intelligence-reasoning",
              "name": "Reasoning", "subject_group": "reasoning", "is_active": True},
+            {"id": _S_GA, "slug": "general-awareness", "name": "General Awareness",
+             "subject_group": "general-awareness", "is_active": True},
         ],
     }
 
@@ -141,6 +149,83 @@ def test_english_writing_rejected_for_quant_family():
     resp = _client(SBStub(_seed())).post(
         f"/api/study/subjects/{_S_QUANT}/practice/start",
         json={"mode": "english_writing"},
+    )
+    assert resp.status_code == 422
+    assert "not available for this subject" in resp.json()["detail"].lower()
+
+
+def test_weekly_current_affairs_launch_routes_to_ca_attempt(monkeypatch):
+    # GQR-G5: a GA subject's weekly_current_affairs launch is bundle-driven (no
+    # topic_id, no PYQ engine). ``ready``/``reused`` navigate into the CA attempt shell.
+    monkeypatch.setattr(
+        subject_practice, "start_weekly_current_affairs_attempt",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "ca-att-1", "question_count": 5},
+    )
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_GA}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "kind": "current_affairs",
+        "outcome": "ready",
+        "route": "/app/study/current-affairs/attempts/ca-att-1",
+    }
+
+
+def test_weekly_current_affairs_resume_routes_to_same_attempt(monkeypatch):
+    monkeypatch.setattr(
+        subject_practice, "start_weekly_current_affairs_attempt",
+        lambda *a, **k: {"outcome": "reused", "attempt_id": "ca-att-1"},
+    )
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_GA}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["outcome"] == "reused"
+    assert resp.json()["route"] == "/app/study/current-affairs/attempts/ca-att-1"
+
+
+def test_weekly_current_affairs_no_bundle_returns_outcome_not_route(monkeypatch):
+    # no_bundle / empty_bundle / bundle_degraded surface as an outcome (no route) so the
+    # hub renders a calm inline note rather than a hard error/toast.
+    for state in ("no_bundle", "empty_bundle", "bundle_degraded"):
+        monkeypatch.setattr(
+            subject_practice, "start_weekly_current_affairs_attempt",
+            lambda *a, _s=state, **k: {"outcome": _s},
+        )
+        resp = _client(SBStub(_seed())).post(
+            f"/api/study/subjects/{_S_GA}/practice/start",
+            json={"mode": "weekly_current_affairs"},
+        )
+        assert resp.status_code == 200, (state, resp.json())
+        body = resp.json()
+        assert body == {"kind": "current_affairs", "outcome": state}
+        assert "route" not in body
+
+
+def test_weekly_current_affairs_already_submitted_is_outcome(monkeypatch):
+    # A finished cycle raises attempt_already_submitted (ValueError) — surfaced as an
+    # outcome, never a 500.
+    def _raise(*a, **k):
+        raise ValueError("attempt_already_submitted")
+
+    monkeypatch.setattr(subject_practice, "start_weekly_current_affairs_attempt", _raise)
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_GA}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"kind": "current_affairs", "outcome": "already_submitted"}
+
+
+def test_weekly_current_affairs_rejected_for_non_ga_family():
+    # Family gate: weekly_current_affairs is GA-only. Posting it to a Quant subject is
+    # rejected before any handler runs.
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_QUANT}/practice/start",
+        json={"mode": "weekly_current_affairs"},
     )
     assert resp.status_code == 422
     assert "not available for this subject" in resp.json()["detail"].lower()

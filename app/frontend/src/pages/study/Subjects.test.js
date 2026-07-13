@@ -83,6 +83,26 @@ const SUBJECTS = [
     locked_topics: 12,
     practice: { available: false, modes: [] },
   },
+  {
+    subject_id: "sub-ga",
+    subject: "General Awareness",
+    progress: 0,
+    trend: "flat",
+    weak_count: 0,
+    locked_topics: 4,
+    practice: {
+      available: true,
+      modes: [
+        {
+          type: "weekly_current_affairs",
+          label: "Weekly current affairs",
+          target_topic_id: null,
+          route_type: "server_launch",
+          launch_mode: "weekly_current_affairs",
+        },
+      ],
+    },
+  },
 ];
 
 beforeEach(() => {
@@ -138,6 +158,46 @@ test("a subject with practice.available=false shows the calm no-practice copy", 
   expect(screen.getByTestId("practice-sub-quant-none").textContent).toMatch(
     /No verified practice set yet/,
   );
+});
+
+test("weekly current-affairs launch navigates to the returned CA attempt route", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  mockPost.mockResolvedValue({
+    kind: "current_affairs",
+    outcome: "ready",
+    route: "/app/study/current-affairs/attempts/ca-1",
+  });
+  renderPage();
+
+  const btn = await screen.findByTestId("practice-sub-ga-weekly_current_affairs");
+  fireEvent.click(btn);
+
+  await waitFor(() =>
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/study/subjects/sub-ga/practice/start",
+      { mode: "weekly_current_affairs", topic_id: null },
+    ),
+  );
+  await waitFor(() =>
+    expect(mockNavigate).toHaveBeenCalledWith("/app/study/current-affairs/attempts/ca-1"),
+  );
+});
+
+test("weekly current-affairs no_bundle outcome shows a calm note and does not navigate", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  // no_bundle is returned as a 200 body with an outcome and NO route.
+  mockPost.mockResolvedValue({ kind: "current_affairs", outcome: "no_bundle" });
+  renderPage();
+
+  const btn = await screen.findByTestId("practice-sub-ga-weekly_current_affairs");
+  fireEvent.click(btn);
+
+  await waitFor(() =>
+    expect(screen.getByTestId("practice-sub-ga-notice").textContent).toMatch(
+      /No current-affairs set is published/,
+    ),
+  );
+  expect(mockNavigate).not.toHaveBeenCalled();
 });
 
 test("a 409 on launch shows an inline notice and does not navigate", async () => {

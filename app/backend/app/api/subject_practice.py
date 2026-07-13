@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from app.api.writing_practice import create_learning_session
 from app.core.auth import get_current_user
+from app.current_affairs.attempts import start_weekly_current_affairs_attempt
 from app.db.supabase_client import get_supabase_admin
 from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
@@ -28,6 +29,7 @@ from app.study_os.subject_runtime_policy import (
     MODE_ENGLISH_WRITING,
     MODE_TIMED_PRACTICE,
     MODE_TOPIC_PYQ,
+    MODE_WEEKLY_CURRENT_AFFAIRS,
     is_wired_mode,
     policy_for_family,
 )
@@ -117,12 +119,40 @@ def _handle_timed_practice(supabase, *, user_id, subject_id, topic_id, exam_id) 
     return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
 
 
+def _handle_weekly_current_affairs(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+    # GQR-G5: GA current-affairs is bundle-driven — no topic_id, no PYQ engine. The
+    # server resolves the eligible weekly bundle and freezes its still-eligible
+    # questions (mock_engine snapshot + §10 provenance envelope) on its OWN tables;
+    # the browser only later submits answers. no_bundle / empty_bundle / bundle_degraded
+    # are surfaced to the hub as an outcome (no route) rather than a hard error, so the
+    # card shows a calm inline note instead of a toast. ``ready``/``reused`` (resume)
+    # both navigate into the attempt shell.
+    try:
+        result = start_weekly_current_affairs_attempt(supabase, user_id=user_id, exam_id=exam_id)
+    except ValueError as exc:
+        # A known domain state (e.g. attempt_already_submitted for this cycle's bundle).
+        # Surface as an outcome, not a 500 — the learner has finished this bundle.
+        outcome = "already_submitted" if "already_submitted" in str(exc) else "unavailable"
+        return {"kind": "current_affairs", "outcome": outcome}
+    outcome = (result or {}).get("outcome")
+    if outcome in ("ready", "reused"):
+        attempt_id = result.get("attempt_id")
+        return {
+            "kind": "current_affairs",
+            "outcome": outcome,
+            "route": f"/app/study/current-affairs/attempts/{attempt_id}",
+        }
+    # no_bundle / empty_bundle / bundle_degraded — nothing runnable this cycle.
+    return {"kind": "current_affairs", "outcome": outcome or "no_bundle"}
+
+
 # Launch-handler dispatch table, keyed by wired runtime mode. Registering a new
 # runtime = one entry here + one policy in subject_runtime_policy, not an if-ladder.
 _LAUNCH_HANDLERS = {
     MODE_ENGLISH_WRITING: _handle_english_writing,
     MODE_TOPIC_PYQ: _handle_topic_pyq,
     MODE_TIMED_PRACTICE: _handle_timed_practice,
+    MODE_WEEKLY_CURRENT_AFFAIRS: _handle_weekly_current_affairs,
 }
 
 

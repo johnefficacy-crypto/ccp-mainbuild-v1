@@ -41,6 +41,7 @@ from typing import Any, Callable, Mapping
 MODE_ENGLISH_WRITING = "english_writing"
 MODE_TOPIC_PYQ = "topic_pyq"
 MODE_TIMED_PRACTICE = "timed_practice"
+MODE_WEEKLY_CURRENT_AFFAIRS = "weekly_current_affairs"
 
 # Subject families (contract §2.2 vocabulary).
 FAMILY_ENGLISH = "english"
@@ -181,6 +182,15 @@ WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
         mode=MODE_TIMED_PRACTICE,
         label="Timed practice",
     ),
+    # GQR-G5: GA current-affairs. Unlike the topic-PYQ modes this is bundle-driven,
+    # not topic-driven — the learner never picks a topic, and there is no
+    # ``target_topic_id``. The server resolves the eligible weekly bundle and freezes
+    # its still-eligible questions at launch (no_bundle / empty_bundle / bundle_degraded
+    # are handled there, not gated in the hub descriptor).
+    MODE_WEEKLY_CURRENT_AFFAIRS: RuntimeModeAdapter(
+        mode=MODE_WEEKLY_CURRENT_AFFAIRS,
+        label="Weekly current affairs",
+    ),
 }
 
 
@@ -224,12 +234,22 @@ def _emit_timed_practice(ctx: InventoryContext) -> list[dict[str, Any]]:
     return WIRED_RUNTIME_MODES[MODE_TIMED_PRACTICE].hub_entries(target_topic_id=str(chosen))
 
 
+def _emit_weekly_current_affairs(ctx: InventoryContext) -> list[dict[str, Any]]:
+    # Bundle-driven, not topic-driven: current-affairs eligibility is a published
+    # weekly bundle resolved at launch, never a projected PYQ topic pool. The mode is
+    # always offered for a GA subject; the launch handler owns the no_bundle /
+    # empty_bundle / bundle_degraded outcomes (a decaying answer must never be gated
+    # by stale hub inventory signals — GA is calendar-driven).
+    return WIRED_RUNTIME_MODES[MODE_WEEKLY_CURRENT_AFFAIRS].hub_entries()
+
+
 # Per wired-mode signal resolver. Registering a runtime = adding an entry here + to a
 # policy's ``wired_runtime_modes``; no branch is added to ``subjects.py``.
 _MODE_EMITTERS: dict[str, Callable[[InventoryContext], list[dict[str, Any]]]] = {
     MODE_ENGLISH_WRITING: _emit_english_writing,
     MODE_TOPIC_PYQ: _emit_topic_pyq,
     MODE_TIMED_PRACTICE: _emit_timed_practice,
+    MODE_WEEKLY_CURRENT_AFFAIRS: _emit_weekly_current_affairs,
 }
 
 
@@ -345,9 +365,10 @@ SUBJECT_RUNTIME_POLICIES: dict[str, SubjectRuntimePolicy] = {
     FAMILY_GENERAL_AWARENESS: _policy(
         family=FAMILY_GENERAL_AWARENESS,
         # GA v1 excludes permanent mastery/SRS; current-affairs retries are ephemeral.
-        # No wired runtime yet (weekly/monthly land in GQR-G5); no PYQ stamp ever.
+        # weekly_current_affairs is wired (GQR-G5 learner runtime); monthly stays a
+        # declared-but-unwired product mode. No PYQ stamp ever.
         supported_modes=("weekly_current_affairs", "monthly_current_affairs"),
-        wired_runtime_modes=(),
+        wired_runtime_modes=(MODE_WEEKLY_CURRENT_AFFAIRS,),
         attempt_kind="current_affairs_attempt",
         mastery_enabled=False, correction_enabled=False, retry_policy="ephemeral_ca",
         planner_resolver=_no_launch_planner_resolver,
