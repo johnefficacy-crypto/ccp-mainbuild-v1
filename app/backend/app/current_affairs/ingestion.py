@@ -25,6 +25,9 @@ _SOURCES = "current_affairs_sources"
 _DOCUMENTS = "current_affairs_documents"
 
 
+_DEFAULT_INTERVAL_HOURS = 24
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -199,3 +202,70 @@ def ingest_source(
         "document_id": rows[0].get("id"),
         "reason": reason,
     }
+
+
+def _is_due(source: dict[str, Any], now: datetime) -> bool:
+    """Whether a source is due to crawl. Cadence comes from ``crawl_schedule.interval_hours``
+    (jsonb config, default 24h) measured against ``last_fetch_at`` — there is no
+    ``next_crawl_at`` column, so due-ness is derived here. A source never fetched
+    (``last_fetch_at`` null) is always due."""
+    sched = source.get("crawl_schedule") or {}
+    try:
+        interval_h = float(sched.get("interval_hours") or _DEFAULT_INTERVAL_HOURS)
+    except (TypeError, ValueError):
+        interval_h = _DEFAULT_INTERVAL_HOURS
+    if interval_h <= 0:
+        interval_h = _DEFAULT_INTERVAL_HOURS
+    last = source.get("last_fetch_at")
+    if not last:
+        return True
+    try:
+        last_dt = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return (now - last_dt).total_seconds() >= interval_h * 3600
+
+
+def run_ingest_pass(
+    supabase: Any,
+    *,
+    now: datetime | None = None,
+    fetch: Callable[..., Any] = fetcher.fetch,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """One ``ca:ingest`` pass: crawl every ACTIVE source that is due, then enqueue a
+    generation job for each freshly-snapshotted document.
+
+    ``ingest_source`` is the pure per-source unit; this owns the source loop, the
+    cadence gate (``_is_due``), and the hand-off to the generation queue
+    (``ca_enqueue_generation_job``). Never raises — per-source failures are captured by
+    ``ingest_source`` and surface as ``error`` counts, and the enqueue is best-effort."""
+    now = now or datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    rows = _safe(
+        lambda: supabase.table(_SOURCES).select("*").eq("is_active", True).limit(limit).execute(),
+        default=None,
+    )
+    sources = getattr(rows, "data", None) or []
+    counts: dict[str, Any] = {
+        "checked": 0, "snapshotted": 0, "duplicate": 0, "not_modified": 0,
+        "error": 0, "deprioritised": 0, "skipped": 0, "enqueued": 0,
+    }
+    for source in sources:
+        if not _is_due(source, now):
+            continue
+        counts["checked"] += 1
+        result = ingest_source(supabase, source, fetch=fetch, now_iso=now_iso)
+        status = result.get("status") or "error"
+        counts[status] = counts.get(status, 0) + 1
+        document_id = result.get("document_id")
+        if status == "snapshotted" and document_id:
+            enq = _safe(
+                lambda doc=document_id: supabase.rpc(
+                    "ca_enqueue_generation_job", {"p_document_id": doc}
+                ).execute(),
+                default=None,
+            )
+            if enq is not None:
+                counts["enqueued"] += 1
+    return counts

@@ -142,3 +142,38 @@ def test_job_permissions_notif_dispatch_not_restricted():
     """Standard notification jobs must not be in the restricted map."""
     from app.notifications.scheduler import JOB_PERMISSIONS
     assert "notif:dispatch" not in JOB_PERMISSIONS
+
+
+# ── GQR-G5b CA pipeline crons ────────────────────────────────────────────────
+
+
+def test_ca_jobs_registered():
+    from app.notifications.scheduler import JOBS
+    for job_id in ("ca:ingest", "ca:generate", "ca:promote-sweep"):
+        assert job_id in JOBS and callable(JOBS[job_id])
+
+
+def test_ca_generate_noop_and_failure():
+    from app.notifications.scheduler import _is_noop_result, _is_failure_result
+    assert _is_noop_result("ca:generate", {"processed": 0, "status": "idle"}) is True
+    assert _is_noop_result("ca:generate", {"processed": 0, "status": "idle", "swept": 2}) is False
+    assert _is_noop_result("ca:generate", {"processed": 1, "status": "succeeded"}) is False
+    assert _is_failure_result("ca:generate", {"processed": 1, "status": "failed"}) is True
+    assert _is_failure_result("ca:generate", {"processed": 1, "status": "succeeded"}) is False
+
+
+def test_ca_ingest_noop_classification():
+    from app.notifications.scheduler import _is_noop_result, _is_failure_result
+    # not-modified / duplicate ticks are routine → noop.
+    assert _is_noop_result("ca:ingest", {"checked": 2, "not_modified": 2, "snapshotted": 0}) is True
+    # a fresh snapshot (or an enqueue / error) is material → not noop.
+    assert _is_noop_result("ca:ingest", {"checked": 1, "snapshotted": 1, "enqueued": 1}) is False
+    assert _is_noop_result("ca:ingest", {"checked": 1, "error": 1}) is False
+    # ingest has no operational-failure result shape (per-source errors are counted).
+    assert _is_failure_result("ca:ingest", {"error": 5}) is False
+
+
+def test_ca_promote_sweep_noop():
+    from app.notifications.scheduler import _is_noop_result
+    assert _is_noop_result("ca:promote-sweep", {"archived": 0}) is True
+    assert _is_noop_result("ca:promote-sweep", {"archived": 3}) is False
