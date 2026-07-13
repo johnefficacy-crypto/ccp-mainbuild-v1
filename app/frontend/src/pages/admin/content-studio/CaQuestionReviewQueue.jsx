@@ -4,77 +4,91 @@
  * The operator human gate (ADR 0006) over shadow-generated candidates. Lists
  * candidates by status and opens a drill-in showing the question, options, the
  * deterministic validation verdict, the (advisory) verifier verdict, the parent
- * event, and its claims. Actions: approve / reject / send-back (review) and, for an
- * approved candidate, Promote into the objective bank (a separate, higher-trust
- * `mock_questions:publish` action). All decisions CAS-guard on `expected_status`
- * server-side — a 409 means the candidate changed under review; refetch first.
+ * event with its editorial/relevance fields, and — per current-affairs-pipeline.md
+ * §5 Stage E — each candidate-linked claim with its exact evidence spans, document
+ * source, and source authority level, plus ADR-0007 warnings and the generation
+ * audit. Actions: approve / reject / send-back (review) and, for an approved
+ * candidate, Promote (a separate `mock_questions:publish` action).
  *
- * Affordance-hiding only; the backend RPCs are authoritative. No new sidebar surface
- * — this renders inside ContentStudio as a content type (no-new-surface rule).
+ * Every decision carries the candidate's exact `updated_at` content token (dual CAS
+ * with status) and an 8-500 char audit reason, so an operator can never approve or
+ * publish a revision they did not read; a 409 surfaces a refetch banner. Affordance-
+ * hiding only; the backend RPCs are authoritative. No new sidebar surface.
  */
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 
 import useApiCollection from "../../../lib/hooks/useApiCollection";
 import useApiAction from "../../../lib/hooks/useApiAction";
-import { contentStudioApi, CA_REVIEW_TRANSITIONS } from "./contentStudioApi";
+import { contentStudioApi, CA_REVIEW_TRANSITIONS, isValidReason } from "./contentStudioApi";
 
+const BASE = "/api/admin/content-studio";
+const LIST_URL = `${BASE}/ca-question-candidates`;
 const PAGE_SIZE = 25;
 const STATUSES = ["review_ready", "approved", "rejected", "promoted"];
 
 function ReviewDialog({ candidateId, perms, onClose, onDone }) {
-  const [snapshot, setSnapshot] = useState(null);
-  const [status, setStatus] = useState("");
+  const [envelope, setEnvelope] = useState(null);
+  const [decision, setDecision] = useState("");
+  const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [conflict, setConflict] = useState(false);
   const { run, busy } = useApiAction();
 
-  // Full snapshot on open (candidate + event + claims + generation runs).
   React.useEffect(() => {
     let alive = true;
     contentStudioApi.getCaCandidate(candidateId).then((res) => {
-      if (alive && res && !res.error) setSnapshot(res);
+      if (alive && res && !res.error) setEnvelope(res);
     });
     return () => {
       alive = false;
     };
   }, [candidateId]);
 
-  if (!snapshot) return null;
-  const cand = snapshot.candidate || {};
+  if (!envelope) return null;
+  const cand = envelope.candidate || {};
   const payload = cand.question_payload || {};
   const current = cand.status;
+  const token = cand.updated_at;
   const transitions = CA_REVIEW_TRANSITIONS[current] || [];
   const canPromote = current === "approved" && perms.canPublish;
+  const reasonOk = isValidReason(reason);
+
+  const handle409 = (res) => {
+    if (!res.ok && res.error?.status === 409) setConflict(true);
+    return res.ok;
+  };
 
   const submitReview = async () => {
-    if (!status) return;
+    if (!decision || !reasonOk) return;
     const notesTrimmed = notes.trim();
-    // Sending an approved candidate back requires a reason (mirrors the RPC).
-    if (current === "approved" && status === "review_ready" && !notesTrimmed) return;
-    const res = await run(() =>
-      contentStudioApi.reviewCaCandidate(cand.id, {
-        status,
-        expected_status: current,
-        reviewer_notes: notesTrimmed || undefined,
-      })
-    );
-    if (res.error) {
-      if (res.error.status === 409) setConflict(true);
-      return;
-    }
-    onDone();
+    if (current === "approved" && decision === "review_ready" && !notesTrimmed) return;
+    const res = await run({
+      action: () =>
+        contentStudioApi.reviewCaCandidate(cand.id, {
+          status: decision,
+          expected_status: current,
+          expected_updated_at: token,
+          reason: reason.trim(),
+          reviewer_notes: notesTrimmed || undefined,
+        }),
+      errorMessage: "Could not record the decision.",
+    });
+    if (handle409(res)) onDone();
   };
 
   const promote = async () => {
-    const res = await run(() =>
-      contentStudioApi.promoteCaCandidate(cand.id, { expected_status: "approved" })
-    );
-    if (res.error) {
-      if (res.error.status === 409) setConflict(true);
-      return;
-    }
-    onDone();
+    if (!reasonOk) return;
+    const res = await run({
+      action: () =>
+        contentStudioApi.promoteCaCandidate(cand.id, {
+          expected_status: "approved",
+          expected_updated_at: token,
+          reason: reason.trim(),
+        }),
+      errorMessage: "Could not promote the candidate.",
+    });
+    if (handle409(res)) onDone();
   };
 
   return (
@@ -86,11 +100,17 @@ function ReviewDialog({ candidateId, perms, onClose, onDone }) {
     >
       <div
         className="soft-card"
-        style={{ maxWidth: 640, width: "90%", maxHeight: "85vh", overflow: "auto", padding: 20 }}
+        style={{ maxWidth: 720, width: "92%", maxHeight: "88vh", overflow: "auto", padding: 20 }}
         data-testid="ca-review-dialog"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ marginTop: 0 }}>Current-affairs question — review</h3>
+
+        {(envelope.warnings || []).length > 0 ? (
+          <ul style={{ color: "#8a5a00" }} data-testid="ca-review-warnings">
+            {envelope.warnings.map((w) => <li key={w}>{w.replaceAll("_", " ")}</li>)}
+          </ul>
+        ) : null}
 
         <div data-testid="ca-review-stem" style={{ fontWeight: 600, marginBottom: 8 }}>
           {payload.stem || "(no stem)"}
@@ -98,8 +118,7 @@ function ReviewDialog({ candidateId, perms, onClose, onDone }) {
         <ol type="a" data-testid="ca-review-options" style={{ marginBottom: 10 }}>
           {(payload.options || []).map((o) => (
             <li key={o.id} style={{ fontWeight: o.id === payload.correct_option_id ? 700 : 400 }}>
-              {o.text}
-              {o.id === payload.correct_option_id ? " ✓" : ""}
+              {o.text}{o.id === payload.correct_option_id ? " ✓" : ""}
             </li>
           ))}
         </ol>
@@ -111,11 +130,40 @@ function ReviewDialog({ candidateId, perms, onClose, onDone }) {
           <tbody>
             <tr><th>Validation</th><td>{cand.validation_result?.ok ? "passed" : "failed"}</td></tr>
             <tr><th>Verifier</th><td>{JSON.stringify(cand.verifier_verdict || {})}</td></tr>
-            <tr><th>Event</th><td>{snapshot.event?.canonical_title || "—"}</td></tr>
-            <tr><th>Claims</th><td>{(snapshot.claims || []).length}</td></tr>
+            <tr><th>Event</th><td>{envelope.event?.canonical_title || "—"}</td></tr>
+            <tr><th>Relevance</th>
+              <td>{envelope.event?.relevance_from || "—"} → {envelope.event?.relevance_until || "—"}</td></tr>
+            <tr><th>Importance</th><td>{envelope.event?.editorial_importance || "—"}</td></tr>
             <tr><th>Status</th><td data-testid="ca-review-status-current">{current}</td></tr>
           </tbody>
         </table>
+
+        <h4 style={{ margin: "8px 0" }}>Evidence</h4>
+        <div data-testid="ca-review-claims">
+          {(envelope.claims || []).length === 0 ? (
+            <p style={{ color: "#8a5a00" }}>No linked claims.</p>
+          ) : (
+            (envelope.claims || []).map((c) => (
+              <div key={c.id} style={{ marginBottom: 8, fontSize: 12 }} data-testid={`ca-review-claim-${c.id}`}>
+                <div style={{ fontWeight: 600 }}>
+                  {c.claim_text || "(missing claim)"}{" "}
+                  <span style={{ opacity: 0.7 }}>[{c.factual_status || "?"}]</span>
+                </div>
+                {(c.evidence || []).map((e, i) => (
+                  <div key={i} style={{ marginLeft: 12, opacity: 0.9 }}>
+                    “{e.evidence_text}” —{" "}
+                    <span data-testid="ca-review-source-authority">
+                      {e.source?.name || "unknown source"} ({e.source?.authority_level || "?"})
+                    </span>
+                    {e.document?.source_url ? (
+                      <> · <a href={e.document.source_url} target="_blank" rel="noreferrer">source</a></>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
 
         {conflict ? (
           <p style={{ color: "#b00" }} data-testid="ca-review-conflict">
@@ -124,53 +172,57 @@ function ReviewDialog({ candidateId, perms, onClose, onDone }) {
           </p>
         ) : (
           <>
-            {transitions.length > 0 ? (
-              <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                <label>
-                  Decision
-                  <select
-                    className="input" value={status} onChange={(e) => setStatus(e.target.value)}
-                    data-testid="ca-review-decision"
+            <div style={{ display: "grid", gap: 8, margin: "12px 0" }}>
+              <label>
+                Audit reason (8-500 chars, required)
+                <input
+                  className="input" value={reason} onChange={(e) => setReason(e.target.value)}
+                  data-testid="ca-review-reason"
+                />
+              </label>
+              {transitions.length > 0 ? (
+                <>
+                  <label>
+                    Decision
+                    <select
+                      className="input" value={decision} onChange={(e) => setDecision(e.target.value)}
+                      data-testid="ca-review-decision"
+                    >
+                      <option value="">Select…</option>
+                      {transitions.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Notes {current === "approved" ? "(required to send back)" : "(optional)"}
+                    <textarea
+                      className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                      data-testid="ca-review-notes"
+                    />
+                  </label>
+                  <button
+                    type="button" className="btn primary" onClick={submitReview}
+                    disabled={busy || !decision || !reasonOk || !perms.canReview}
+                    data-testid="ca-review-submit"
                   >
-                    <option value="">Select…</option>
-                    {transitions.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Notes {current === "approved" ? "(required to send back)" : "(optional)"}
-                  <textarea
-                    className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-                    data-testid="ca-review-notes"
-                  />
-                </label>
+                    Submit decision
+                  </button>
+                </>
+              ) : null}
+              {canPromote ? (
                 <button
-                  type="button" className="btn primary" onClick={submitReview}
-                  disabled={busy || !status || !perms.canReview}
-                  data-testid="ca-review-submit"
+                  type="button" className="btn" onClick={promote} disabled={busy || !reasonOk}
+                  data-testid="ca-review-promote"
                 >
-                  Submit decision
+                  Promote to question bank
                 </button>
-              </div>
-            ) : null}
-
-            {canPromote ? (
-              <button
-                type="button" className="btn" onClick={promote} disabled={busy}
-                data-testid="ca-review-promote"
-              >
-                Promote to question bank
-              </button>
-            ) : null}
+              ) : null}
+            </div>
           </>
         )}
 
-        <div style={{ marginTop: 12 }}>
-          <button type="button" className="btn small" onClick={onClose} data-testid="ca-review-close">
-            Close
-          </button>
-        </div>
+        <button type="button" className="btn small" onClick={onClose} data-testid="ca-review-close">
+          Close
+        </button>
       </div>
     </div>
   );
@@ -192,10 +244,7 @@ export default function CaQuestionReviewQueue({ perms }) {
     () => ({ status: statusFilter, limit: PAGE_SIZE, offset }),
     [statusFilter, offset]
   );
-  const { items, status, total, refresh } = useApiCollection(
-    contentStudioApi.listCaCandidates,
-    params
-  );
+  const { items, status, total, refresh } = useApiCollection(LIST_URL, [], { params });
 
   const setQueue = (s) => {
     setOffset(0);
@@ -211,9 +260,7 @@ export default function CaQuestionReviewQueue({ perms }) {
             className="input" value={statusFilter} onChange={(e) => setQueue(e.target.value)}
             data-testid="ca-review-queue-filter"
           >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replaceAll("_", " ")}</option>
-            ))}
+            {STATUSES.map((s) => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}
           </select>
         </label>
         {!perms.canReview ? (

@@ -364,6 +364,13 @@ def _map_rpc_error(exc: Exception, ctx: str) -> HTTPException:
         "transition_not_allowed", "invalid_target_status", "missing_actor_id",
         "invalid_reason", "invalid_reviewer_notes", "invalid_scope",
         "bulk_locked_row", "target_effective_locked", "reserved_metadata_key",
+        # CA review/promotion RPC tokens (GQR-G4, migration 249).
+        "actor_required", "illegal_target_status", "illegal_transition",
+        "reason_required_on_reopen", "candidate_not_approved", "event_not_active",
+        "event_relevance_expired", "correct_option_not_resolved", "validation_not_passed",
+        "empty_stem", "empty_explanation", "must_have_exactly_four_options",
+        "duplicate_options", "no_linked_claim", "noncurrent_or_missing_claim",
+        "no_resolvable_evidence", "sole_evidence_discovery_only",
     )) or "violates check constraint" in low:
         return HTTPException(status_code=422, detail=str(exc))
     if "not_found" in low:
@@ -1141,19 +1148,27 @@ _CA_REVIEW_TARGETS = frozenset(s for t in _CA_REVIEW_TRANSITIONS.values() for s 
 
 
 class CaCandidateReviewBody(BaseModel):
-    """Approve / reject / send-back a CA question candidate. The RPC re-checks
-    ``expected_status`` under the row lock (CAS) and owns the audit row."""
+    """Approve / reject / send-back a CA question candidate. The RPC dual-CAS-guards
+    on BOTH ``expected_status`` and ``expected_updated_at`` (the content-revision token
+    the reviewer read — so a decision can never land on an unseen revision) and requires
+    an 8-500 char audit ``reason`` (mirrors the quant-heuristic review contract)."""
     model_config = ConfigDict(extra="forbid")
     status: str
     expected_status: str = Field(..., description="candidate status the client last saw (CAS)")
+    expected_updated_at: str = Field(..., description="candidate updated_at the client read (content CAS)")
+    reason: str = Field(..., min_length=8, max_length=500)
     reviewer_notes: str | None = Field(default=None, max_length=2000)
 
 
 class CaCandidatePromoteBody(BaseModel):
     """Promote an APPROVED candidate into the objective bank as a current_event
-    question. CAS-guarded on ``expected_status`` (must be ``approved``)."""
+    question. Dual-CAS on ``expected_status`` (must be ``approved``) + ``expected_updated_at``,
+    with a mandatory audit ``reason``. The RPC revalidates the persisted Stage-D verdict +
+    evidence integrity before writing the bank row."""
     model_config = ConfigDict(extra="forbid")
     expected_status: str = Field(default="approved", description="must be 'approved' (CAS)")
+    expected_updated_at: str = Field(..., description="candidate updated_at the client read (content CAS)")
+    reason: str = Field(..., min_length=8, max_length=500)
 
 
 @router.get("/ca-question-candidates")
@@ -1189,19 +1204,70 @@ def get_ca_candidate(
     candidate = _safe_select(supabase, "current_affairs_question_candidates", id=str(candidate_id))
     if not candidate:
         raise HTTPException(status_code=404, detail="ca_question_candidate not found")
-    # Operator review context (§5 Stage E): event, its claims + evidence, and the
-    # generation audit lineage for this candidate.
+    return _build_ca_review_envelope(supabase, candidate)
+
+
+def _build_ca_review_envelope(supabase, candidate: dict[str, Any]) -> dict[str, Any]:
+    """Full Stage-E review context (checkpost #970 F2): the candidate, its event with
+    editorial/relevance fields, the candidate-linked claims (from the payload's
+    ``resolved_claim_ids``) each with its exact evidence spans + document/source
+    metadata and authority level (ADR 0007), and the full generation audit lineage.
+    CA evidence tables are service-role only, so the client cannot fetch this itself."""
+    payload = candidate.get("question_payload") or {}
     event = _safe_select(supabase, "current_affairs_events", id=str(candidate.get("event_id")))
-    claims = (
-        supabase.table("current_affairs_claims").select("*")
-        .eq("event_id", candidate.get("event_id")).execute().data
-        if candidate.get("event_id") else []
-    ) or []
+
+    resolved_ids = [str(c) for c in (payload.get("resolved_claim_ids") or []) if c]
+    claims_out: list[dict[str, Any]] = []
+    for cid in resolved_ids:
+        claim = _safe_select(supabase, "current_affairs_claims", id=cid)
+        if not claim:
+            claims_out.append({"id": cid, "missing": True, "evidence": []})
+            continue
+        ev_rows = (
+            supabase.table("current_affairs_claim_evidence").select("*").eq("claim_id", cid).execute().data
+        ) or []
+        evidence = []
+        for ev in ev_rows:
+            doc = _safe_select(supabase, "current_affairs_documents", id=str(ev.get("document_id")))
+            src = _safe_select(supabase, "current_affairs_sources", id=str(doc.get("source_id"))) if doc else None
+            evidence.append({
+                "evidence_text": ev.get("evidence_text"),
+                "start_offset": ev.get("start_offset"), "end_offset": ev.get("end_offset"),
+                "evidence_role": ev.get("evidence_role"),
+                "document": {"id": (doc or {}).get("id"), "title": (doc or {}).get("title"),
+                             "source_url": (doc or {}).get("source_url"),
+                             "published_at": (doc or {}).get("published_at")} if doc else None,
+                "source": {"name": (src or {}).get("name"),
+                           "authority_level": (src or {}).get("authority_level"),
+                           "is_active": (src or {}).get("is_active")} if src else None,
+            })
+        claims_out.append({
+            "id": claim.get("id"), "claim_text": claim.get("claim_text"),
+            "factual_status": claim.get("factual_status"),
+            "reviewer_status": claim.get("reviewer_status"), "evidence": evidence,
+        })
+
     runs = (
         supabase.table("current_affairs_generation_runs").select("*")
-        .eq("candidate_id", str(candidate_id)).execute().data
+        .eq("candidate_id", str(candidate.get("id"))).execute().data
     ) or []
-    return {"candidate": candidate, "event": event, "claims": claims, "generation_runs": runs}
+    # ADR 0007 warning surfaced for the operator: no non-discovery_only active source.
+    all_auth = [
+        (e.get("source") or {}).get("authority_level")
+        for c in claims_out for e in c.get("evidence", [])
+    ]
+    warnings: list[str] = []
+    if resolved_ids and not any(a and a != "discovery_only" for a in all_auth):
+        warnings.append("sole_evidence_discovery_only")
+    if not resolved_ids:
+        warnings.append("no_linked_claim")
+    if not candidate.get("validation_result", {}).get("ok"):
+        warnings.append("validation_failed")
+
+    return {
+        "candidate": candidate, "event": event, "claims": claims_out,
+        "generation_runs": runs, "warnings": warnings,
+    }
 
 
 @router.post("/ca-question-candidates/{candidate_id}/review")
@@ -1226,7 +1292,9 @@ def review_ca_candidate(
         result = supabase.rpc("ca_review_candidate", {
             "p_candidate_id": str(candidate_id),
             "p_expected_status": body.expected_status,
+            "p_expected_updated_at": body.expected_updated_at,
             "p_new_status": body.status,
+            "p_reason": body.reason,
             "p_reviewer_notes": notes,
             "p_actor_user_id": admin.get("id"),
             "p_actor_email": admin.get("email"),
@@ -1251,6 +1319,8 @@ def promote_ca_candidate(
         result = supabase.rpc("ca_promote_candidate", {
             "p_candidate_id": str(candidate_id),
             "p_expected_status": body.expected_status,
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_reason": body.reason,
             "p_actor_user_id": admin.get("id"),
             "p_actor_email": admin.get("email"),
         }).execute().data
