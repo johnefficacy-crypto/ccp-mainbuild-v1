@@ -124,6 +124,134 @@ def _pick_rule(
     return None
 
 
+def _rules_for_stream(
+    rules: list[dict[str, Any]], stream_id: str | None
+) -> list[dict[str, Any]]:
+    """Merge common (stream_id NULL) rules with one stream's rules.
+
+    A stream-specific rule OVERRIDES the common rule for the same
+    (rule_type, scope). ``stream_id=None`` returns only the common rules
+    (the exam-wide baseline, unchanged behaviour).
+    """
+    common = [r for r in rules if r.get("stream_id") is None]
+    if stream_id is None:
+        return common
+    stream_rules = [r for r in rules if r.get("stream_id") == stream_id]
+    if not stream_rules:
+        return common
+    override = {(r.get("rule_type"), r.get("scope")) for r in stream_rules}
+    merged = [r for r in common if (r.get("rule_type"), r.get("scope")) not in override]
+    merged.extend(stream_rules)
+    return merged
+
+
+# ── Atomic requirement evaluation (used by the new rule_types and by the
+#    qualification_combination clauses). Each returns a tri-state so the
+#    four-state contract (eligible/conditional/not_eligible/unknown) holds:
+#      'pass'    — the requirement is satisfied on data we have.
+#      'fail'    — the requirement is contradicted on data we have.
+#      'missing' — we lack the field needed to decide.
+
+def _tokens(values: Iterable[Any]) -> set[str]:
+    out: set[str] = set()
+    for v in values:
+        t = _normalize_text(v)
+        if t:
+            out.add(t)
+    return out
+
+
+def _eval_discipline(required: str | None, profile: dict[str, Any]) -> str:
+    req = _normalize_text(required)
+    if not req:
+        return "pass"  # mis-seeded rule — don't punish the user
+    disciplines = profile.get("disciplines")
+    if disciplines is None:
+        return "missing"
+    hay = " ".join(sorted(_tokens(disciplines)))
+    if not hay:
+        return "missing"
+    # Deterministic containment either way (a "law" rule matches "b.a. llb, law").
+    return "pass" if (req in hay or any(req in d or d in req for d in _tokens(disciplines))) else "fail"
+
+
+def _eval_min_percentage(required: Any, profile: dict[str, Any]) -> str:
+    if required is None:
+        return "pass"
+    pct = profile.get("best_percentage")
+    if pct is None:
+        return "missing"
+    try:
+        return "pass" if float(pct) >= float(required) else "fail"
+    except (TypeError, ValueError):
+        return "missing"
+
+
+def _eval_certification(required: str | None, profile: dict[str, Any]) -> str:
+    req = _normalize_text(required)
+    if not req:
+        return "pass"
+    certs = profile.get("certifications")
+    if certs is None:
+        return "missing"
+    have = _tokens(certs)
+    if not have:
+        return "fail"
+    return "pass" if any(req in c or c in req for c in have) else "fail"
+
+
+def _eval_atomic(rule_type: str, value_num: Any, value_text: Any, profile: dict[str, Any]) -> str:
+    if rule_type == "discipline":
+        return _eval_discipline(value_text, profile)
+    if rule_type == "min_percentage":
+        return _eval_min_percentage(value_num, profile)
+    if rule_type == "certification":
+        return _eval_certification(value_text, profile)
+    if rule_type == "education_min_level":
+        req_rank = _education_rank(_normalize_text(value_text))
+        user_rank = _education_rank(profile.get("education_level"))
+        if req_rank is None:
+            return "pass"
+        if user_rank is None:
+            return "missing"
+        return "pass" if user_rank >= req_rank else "fail"
+    if rule_type == "nationality":
+        req = _normalize_text(value_text)
+        have = _normalize_text(profile.get("nationality"))
+        if not req:
+            return "pass"
+        if not have:
+            return "missing"
+        return "pass" if have == req else "fail"
+    # Unknown atomic type inside a combination — treat as unsatisfiable so a
+    # mis-authored clause fails closed rather than silently passing.
+    return "fail"
+
+
+def _eval_qualification_combination(node: Any, profile: dict[str, Any]) -> str:
+    """Tri-state evaluation of a {op, clauses} tree (see migration 248)."""
+    if not isinstance(node, dict):
+        return "fail"
+    op = node.get("op")
+    if op in ("and", "or"):
+        results = [_eval_qualification_combination(c, profile) for c in node.get("clauses") or []]
+        if not results:
+            return "fail"
+        if op == "and":
+            if "fail" in results:
+                return "fail"
+            if "missing" in results:
+                return "missing"
+            return "pass"
+        # or
+        if "pass" in results:
+            return "pass"
+        if "missing" in results:
+            return "missing"
+        return "fail"
+    return _eval_atomic(node.get("rule_type"), node.get("value_num"), node.get("value_text"), profile)
+
+
 def evaluate_exam_for_user(
     rules: list[dict[str, Any]],
     profile: dict[str, Any],
@@ -235,6 +363,45 @@ def evaluate_exam_for_user(
             )
             return _decision("not_eligible", reasons, missing)
 
+    # ── discipline / min_percentage / certification (stream-stable facts) ──
+    for rule_type, field, fail_msg in (
+        ("discipline", "disciplines", "Requires a matching academic discipline"),
+        ("min_percentage", "education_percentage", "Marks below the required minimum"),
+        ("certification", "certifications", "Requires a specific certification"),
+    ):
+        rule = _pick_rule(rules, rule_type, scopes)
+        if not rule:
+            continue
+        res = _eval_atomic(rule_type, rule.get("value_num"), rule.get("value_text"), profile)
+        if res == "missing":
+            missing.append(field)
+        elif res == "fail" and rule.get("is_knockout", True):
+            detail = rule.get("value_text") or rule.get("value_num")
+            reasons.append(f"{fail_msg} ({detail}).")
+            return _decision("not_eligible", reasons, missing)
+        elif res == "pass":
+            any_rule_checked = True
+
+    # ── stream_availability (a not_offered stream knocks itself out) ──
+    rule = _pick_rule(rules, "stream_availability", scopes)
+    if rule:
+        any_rule_checked = True
+        if _normalize_text(rule.get("value_text")) == "not_offered" and rule.get("is_knockout", True):
+            reasons.append("This stream is not offered.")
+            return _decision("not_eligible", reasons, missing)
+
+    # ── qualification_combination (structured AND/OR of the atomics) ──
+    rule = _pick_rule(rules, "qualification_combination", scopes)
+    if rule:
+        res = _eval_qualification_combination(rule.get("value_json"), profile)
+        if res == "missing":
+            missing.append("qualification_details")
+        elif res == "fail" and rule.get("is_knockout", True):
+            reasons.append("Does not meet the required qualification combination.")
+            return _decision("not_eligible", reasons, missing)
+        elif res == "pass":
+            any_rule_checked = True
+
     # All known checks passed.
     if missing:
         return _decision("conditional", reasons, missing)
@@ -285,7 +452,7 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
     edu_rows = _safe(
         lambda: (
             supabase.table("aspirant_education")
-            .select("level, is_completed")
+            .select("level, degree, stream, percentage, is_completed")
             .eq("user_id", user_id)
             .limit(20)
             .execute()
@@ -295,6 +462,8 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
     ) or []
     best_rank = -1
     best_level = None
+    disciplines: list[str] = []
+    best_percentage: float | None = None
     for row in edu_rows:
         if row.get("is_completed") is False:
             continue
@@ -302,8 +471,42 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
         if rank is not None and rank > best_rank:
             best_rank = rank
             best_level = row.get("level")
+        for key in ("degree", "stream"):
+            val = row.get(key)
+            if isinstance(val, str) and val.strip():
+                disciplines.append(val)
+        pct = row.get("percentage")
+        if pct is not None:
+            try:
+                best_percentage = max(best_percentage or float("-inf"), float(pct))
+            except (TypeError, ValueError):
+                pass
     if best_level:
         profile["education_level"] = best_level
+    # Keyed presence (empty list, not absent) so the evaluator distinguishes
+    # "no discipline on file → missing" from "has discipline that doesn't match".
+    if edu_rows:
+        profile["disciplines"] = disciplines
+    if best_percentage is not None:
+        profile["best_percentage"] = best_percentage
+
+    cert_rows = _safe(
+        lambda: (
+            supabase.table("aspirant_certifications")
+            .select("certification_name, is_active")
+            .eq("user_id", user_id)
+            .limit(50)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if cert_rows is not None:
+        profile["certifications"] = [
+            c.get("certification_name")
+            for c in cert_rows
+            if c.get("is_active") is not False and c.get("certification_name")
+        ]
 
     return profile
 
@@ -335,15 +538,36 @@ def _load_rules_by_exam(
     ) or []
     out: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
-        # Exam-wide baseline evaluation uses ONLY common (stream_id IS NULL)
-        # rules. Stream-scoped rows (migration 245) must never be applied to
-        # every aspirant — they require target-stream evaluation, which is a
-        # separate PR. Filtering here (not just in the query) keeps this
-        # leak-proof regardless of the DB driver. See PR #967 checkpost P0.
-        if r.get("stream_id") is not None:
-            continue
+        # Both common (stream_id NULL) and stream-scoped rows are loaded. The
+        # exam-WIDE verdict uses only common rules (via _rules_for_stream(.,None));
+        # stream-scoped rows drive the per-stream breakdown. A stream rule is
+        # never applied exam-wide — see summarize_user_eligibility.
         out.setdefault(r["exam_id"], []).append(r)
     _RULES_CACHE[cache_key] = {k: list(v) for k, v in out.items()}
+    return out
+
+
+def _load_streams_by_exam(
+    supabase: Any, exam_ids: list[str]
+) -> dict[str, list[dict[str, Any]]]:
+    if not exam_ids:
+        return {}
+    rows = _safe(
+        lambda: (
+            supabase.table("exam_streams")
+            .select("id, exam_id, stream_key, name, is_active")
+            .in_("exam_id", exam_ids)
+            .limit(2000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        if r.get("is_active") is False:
+            continue
+        out.setdefault(r["exam_id"], []).append(r)
     return out
 
 
@@ -373,7 +597,9 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
 
     exam_rows = list_active_exams(supabase, limit=500)
 
-    rules_by_exam = _load_rules_by_exam(supabase, [e["id"] for e in exam_rows])
+    exam_ids = [e["id"] for e in exam_rows]
+    rules_by_exam = _load_rules_by_exam(supabase, exam_ids)
+    streams_by_exam = _load_streams_by_exam(supabase, exam_ids)
     profile = _load_user_profile(supabase, user_id)
 
     buckets: dict[str, list[dict[str, Any]]] = {
@@ -390,7 +616,28 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
         # ``unknown`` — they carry no signal to admins yet either.
         if not rules:
             continue
-        result = evaluate_exam_for_user(rules, profile)
+        # Exam-WIDE verdict uses only common (stream_id NULL) rules — unchanged
+        # bucket semantics, so existing consumers are backward-compatible.
+        common_rules = _rules_for_stream(rules, None)
+        result = evaluate_exam_for_user(common_rules, profile)
+
+        # Additive per-stream breakdown: each stream evaluated against common +
+        # its own stream-specific rules (stream rules override). Streams with no
+        # stream-specific rule simply mirror the common verdict.
+        streams_out: list[dict[str, Any]] = []
+        for st in streams_by_exam.get(exam["id"], []):
+            st_result = evaluate_exam_for_user(_rules_for_stream(rules, st["id"]), profile)
+            streams_out.append(
+                {
+                    "stream_id": st["id"],
+                    "stream_key": st.get("stream_key"),
+                    "name": st.get("name"),
+                    "status": st_result["status"],
+                    "reasons": st_result["reasons"],
+                    "missing_fields": st_result["missing_fields"],
+                }
+            )
+
         buckets[result["status"]].append(
             {
                 "exam_id": exam["id"],
@@ -398,6 +645,7 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
                 "name": exam.get("name"),
                 "reasons": result["reasons"],
                 "missing_fields": result["missing_fields"],
+                "streams": streams_out,
             }
         )
 

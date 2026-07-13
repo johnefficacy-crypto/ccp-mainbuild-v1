@@ -183,16 +183,17 @@ def test_create_rule_conflict_when_scope_rule_type_pair_exists():
 _STREAM = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
 
-def test_create_verified_new_rule_type_is_rejected_fail_closed():
-    # A rule_type the evaluator doesn't interpret must not reach 'verified'.
+def test_create_verified_new_rule_type_is_allowed_after_activation():
+    # Migration 249 activates evaluator support for the new rule_types, so the
+    # fail-closed verify guard is lifted — a discipline rule may now be verified.
     sb = SBStub(_world())
     r = TestClient(_build_app(sb)).post(
         f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
         json={"scope": "all", "rule_type": "discipline", "value_text": "LLB",
               "reviewer_status": "verified", "source_url": "https://x"},
     )
-    assert r.status_code == 422
-    assert "not yet evaluated" in r.json()["detail"]
+    assert r.status_code == 200
+    assert r.json()["rule"]["verified_by"] == "admin-1"
 
 
 def test_create_new_rule_type_as_draft_is_allowed():

@@ -79,12 +79,8 @@ _ALLOWED_RULE_TYPES = {
     "discipline", "min_percentage", "certification", "qualification_combination",
     "stream_availability",
 }
-# The evaluator implements only these branches today. A rule of any OTHER type
-# must not reach reviewer_status='verified' (it would be silently ignored),
-# mirroring the DB fail-closed CHECK in migration 248.
-_EVALUATOR_SUPPORTED_RULE_TYPES = {
-    "age_min", "age_max", "education_min_level", "nationality", "gender", "attempts_max",
-}
+# As of migration 249 the evaluator interprets every baseline rule_type
+# (stream-aware evaluation activated), so the fail-closed verify guard is lifted.
 _ALLOWED_REVIEWER_STATUS = {"draft", "verified", "archived"}
 _NUMERIC_RULE_TYPES = {"age_min", "age_max", "attempts_max", "min_percentage"}
 _TEXT_RULE_TYPES = {
@@ -184,16 +180,6 @@ def _validate_rule_shape(
                     '{"op":"and"|"or","clauses":[{"rule_type":...,"value_text"|"value_num":...}, ...]}'
                 ),
             )
-    # Fail closed: a rule the evaluator does not interpret cannot be verified.
-    if reviewer_status == "verified" and rule_type not in _EVALUATOR_SUPPORTED_RULE_TYPES:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"rule_type '{rule_type}' is not yet evaluated; keep it draft until "
-                "stream-aware/typed evaluation lands. Verifying it would make it silently non-operative."
-            ),
-        )
-
 
 def _require_trust_provenance(source_url: str | None, waiver_reason: str | None) -> None:
     """Setting reviewer_status='verified' or archiving requires a source URL or an explicit waiver."""
