@@ -75,6 +75,16 @@ def test_idle_when_no_job():
     assert sb.names() == ["ca_claim_generation_job"]
 
 
+def test_require_real_provider_refuses_to_claim_with_mock():
+    # The scheduled cron sets require_real_provider=True. With FF_CA_LLM off (mock adapter),
+    # it must NOT claim a real queued document — else the mock would consume it and mark
+    # generation done, blocking any real-provider reprocess (generation is fixed at 1).
+    sb = FakeSB(responses={"ca_claim_generation_job": dict(_CLAIM)})
+    out = worker.run_generation_worker_pass(sb, require_real_provider=True)
+    assert out == {"processed": 0, "status": "idle", "reason": "provider_unavailable"}
+    assert sb.names() == []  # never touched the queue
+
+
 def test_full_pass_produces_review_ready_candidate_and_audit():
     sb = FakeSB(responses={
         "ca_claim_generation_job": dict(_CLAIM),

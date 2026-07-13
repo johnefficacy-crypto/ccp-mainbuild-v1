@@ -69,10 +69,14 @@ def _is_noop_result(name: str, result: Any) -> bool:
     if name == "ca:generate":
         return result.get("processed", 0) == 0 and not result.get("swept")
     if name == "ca:ingest":
-        # Routine when nothing material moved (not-modified/duplicate ticks are noise).
+        # Routine ONLY on a clean pass where nothing material moved (not-modified/duplicate
+        # ticks are noise). A failed/partial pass is never a noop — it must reach the
+        # failure classifier so /admin/jobs reflects it.
+        if result.get("status") != "ok":
+            return False
         return not any(
             (result.get(k) or 0)
-            for k in ("snapshotted", "enqueued", "error", "deprioritised")
+            for k in ("snapshotted", "enqueued", "deprioritised")
         )
     if name == "ca:promote-sweep":
         return (result.get("archived") or 0) == 0
@@ -97,6 +101,10 @@ def _is_failure_result(name: str, result: Any) -> bool:
     if name == "ca:generate":
         # A generation pass that attempted a job and failed it (mirrors the EWP evaluator).
         return result.get("status") == "failed"
+    if name == "ca:ingest":
+        # Honest classification: a source-query failure (total) or per-source/enqueue
+        # errors (partial) are operational failures, not silent successes.
+        return result.get("status") in ("failed", "partial")
     return False
 
 
@@ -206,7 +214,9 @@ def _job_ca_generate() -> dict[str, Any]:
 
     sb = get_supabase_admin()
     swept = sweep_stale_generation_jobs(sb).get("swept", 0)
-    result = run_generation_worker_pass(sb)
+    # require_real_provider: the scheduled cron only processes a job when a real provider
+    # adapter is active — the deterministic mock never consumes a production document.
+    result = run_generation_worker_pass(sb, require_real_provider=True)
     if swept:
         result = {**result, "swept": swept}
     return result

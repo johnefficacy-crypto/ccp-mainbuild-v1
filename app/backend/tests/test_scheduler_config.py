@@ -164,13 +164,18 @@ def test_ca_generate_noop_and_failure():
 
 def test_ca_ingest_noop_classification():
     from app.notifications.scheduler import _is_noop_result, _is_failure_result
-    # not-modified / duplicate ticks are routine → noop.
-    assert _is_noop_result("ca:ingest", {"checked": 2, "not_modified": 2, "snapshotted": 0}) is True
-    # a fresh snapshot (or an enqueue / error) is material → not noop.
-    assert _is_noop_result("ca:ingest", {"checked": 1, "snapshotted": 1, "enqueued": 1}) is False
-    assert _is_noop_result("ca:ingest", {"checked": 1, "error": 1}) is False
-    # ingest has no operational-failure result shape (per-source errors are counted).
-    assert _is_failure_result("ca:ingest", {"error": 5}) is False
+    # A clean pass (status ok) where nothing material moved is routine → noop.
+    assert _is_noop_result("ca:ingest", {"status": "ok", "checked": 2, "not_modified": 2, "snapshotted": 0}) is True
+    # a fresh snapshot / enqueue is material → not noop.
+    assert _is_noop_result("ca:ingest", {"status": "ok", "checked": 1, "snapshotted": 1, "enqueued": 1}) is False
+    # a failed/partial pass is NEVER a noop — it must reach the failure classifier.
+    assert _is_noop_result("ca:ingest", {"status": "partial", "error": 1}) is False
+    assert _is_noop_result("ca:ingest", {"status": "failed", "source_query_failed": 1}) is False
+    # Honest classification: source-query failure (total) and per-source/enqueue errors
+    # (partial) are operational failures, not silent successes.
+    assert _is_failure_result("ca:ingest", {"status": "failed", "source_query_failed": 1}) is True
+    assert _is_failure_result("ca:ingest", {"status": "partial", "error": 5}) is True
+    assert _is_failure_result("ca:ingest", {"status": "ok", "snapshotted": 3}) is False
 
 
 def test_ca_promote_sweep_noop():
