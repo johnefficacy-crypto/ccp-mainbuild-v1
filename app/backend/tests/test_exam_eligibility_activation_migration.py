@@ -3,7 +3,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
-    / ".." / "supabase" / "migrations" / "253_exam_eligibility_stream_aware_activation.sql"
+    / ".." / "supabase" / "migrations" / "254_exam_eligibility_stream_aware_activation.sql"
 ).read_text().lower()
 
 
