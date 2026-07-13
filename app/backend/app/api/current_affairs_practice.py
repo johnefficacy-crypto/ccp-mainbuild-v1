@@ -12,7 +12,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.current_affairs.attempts import (
@@ -31,8 +31,10 @@ class CaAnswerBody(BaseModel):
     question_id: UUID
     selected_option_id: UUID | None = None
     is_marked_for_review: bool = False
-    time_spent_sec: int = 0
-    client_seq: int = 0
+    # Bounded so garbage/overflow can't pollute the time-spent authority or the seq guard
+    # (checkpost #976 F5). time cap = 24h; seq cap = Postgres int4 max.
+    time_spent_sec: int = Field(0, ge=0, le=86_400)
+    client_seq: int = Field(0, ge=0, le=2_147_483_647)
 
 
 @router.get("/attempts/{attempt_id}")

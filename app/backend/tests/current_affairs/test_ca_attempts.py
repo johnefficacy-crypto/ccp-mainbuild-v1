@@ -42,12 +42,40 @@ class CaSB(SBStub):
             raise RuntimeError("bundle_not_published")
         if bundle.get("reviewer_status") != "verified":
             raise RuntimeError("bundle_not_verified")
-        eligible = set(bundles.eligible_bundle_question_ids(self, p["p_bundle"], now=_NOW))
-        if not eligible:
+        # Scope gate (F1): exact must match p_exam, family the learner's family, global any.
+        exam = next((e for e in self.db.get("exams", []) if e.get("id") == p.get("p_exam")), None)
+        family = exam.get("exam_family_id") if exam else None
+        if bundle.get("exam_id") is not None:
+            if bundle.get("exam_id") != p.get("p_exam"):
+                raise RuntimeError("bundle_scope_mismatch")
+        elif bundle.get("exam_family_id") is not None:
+            if family is None or bundle.get("exam_family_id") != family:
+                raise RuntimeError("bundle_scope_mismatch")
+        # Fail closed on degradation (F2): raw membership must all still be eligible.
+        raw = bundles.bundle_question_ids(self, p["p_bundle"])
+        if not raw:
             raise RuntimeError("empty_bundle")
-        caller = {r["question_id"] for r in (p.get("p_response_rows") or [])}
-        if caller != eligible:
+        eligible = bundles.eligible_bundle_question_ids(self, p["p_bundle"], now=_NOW)
+        if eligible != raw:
+            raise RuntimeError("bundle_degraded")
+        caller = [r["question_id"] for r in (p.get("p_response_rows") or [])]
+        if caller != eligible:  # ordered exact-set (F2)
             raise RuntimeError("bundle_set_mismatch")
+        # Snapshot verification against the bank — text/explanation/answer/options (F2).
+        for r in p.get("p_response_rows") or []:
+            q = next((b for b in self.db.get("mock_question_bank", []) if b.get("id") == r["question_id"]), None)
+            snap = r["question_snapshot"]
+            if str(snap.get("question_text")) != str(q.get("question_text")) \
+                    or str(snap.get("explanation")) != str(q.get("explanation")):
+                raise RuntimeError("snapshot_text_mismatch")
+            if str(snap.get("correct_option_id")) != str(q.get("correct_option_id")):
+                raise RuntimeError("snapshot_answer_mismatch")
+            bank_opts = {str(o["id"]): o.get("option_text") for o in self.db.get("mock_question_options", [])
+                         if o.get("question_id") == r["question_id"]}
+            snap_opts = {str(o["id"]): o.get("option_text") for o in (snap.get("options") or [])}
+            if bank_opts != snap_opts:  # ids AND per-option text must match
+                raise RuntimeError("snapshot_options_mismatch")
+        eligible = set(eligible)
         attempts_store = self.db.setdefault("current_affairs_attempts", [])
         existing = next((a for a in attempts_store
                          if a.get("user_id") == p["p_user"] and a.get("bundle_id") == p["p_bundle"]), None)
@@ -152,13 +180,18 @@ def _start_seed():
             {"id": "o2", "question_id": "q1", "option_text": "SEBI", "option_index": 1, "is_correct": False},
         ],
         "mock_question_stimuli": [],
-        "current_affairs_events": [{"id": "ev1", "event_date": "2026-07-09"}],
-        "current_affairs_question_links": [{"mock_question_id": "q1", "claim_id": "c1"}],
-        "current_affairs_claims": [{"id": "c1", "factual_status": "current", "superseded_at": None}],
+        "current_affairs_events": [{"id": "ev1", "event_date": "2026-07-09",
+                                    "status": "active", "relevance_until": None}],
+        "current_affairs_question_links": [
+            {"mock_question_id": "q1", "claim_id": "c1", "event_id": "ev1"}],
+        "current_affairs_claims": [{"id": "c1", "event_id": "ev1", "reviewer_status": "verified",
+                                    "factual_status": "current", "superseded_at": None}],
         "current_affairs_claim_evidence": [
             {"claim_id": "c1", "document_id": "d1", "evidence_role": "primary"}],
         "current_affairs_documents": [
-            {"id": "d1", "published_at": "2026-07-08T00:00:00Z", "final_url": "https://pib.gov.in/x"}],
+            {"id": "d1", "source_id": "s1", "published_at": "2026-07-08T00:00:00Z",
+             "final_url": "https://pib.gov.in/x"}],
+        "current_affairs_sources": [{"id": "s1", "is_active": True, "authority_level": "primary_official"}],
     }
 
 
@@ -182,12 +215,29 @@ def test_start_returns_no_bundle_when_none_published():
     assert attempts.start_weekly_current_affairs_attempt(sb, user_id="u1", exam_id="e1") == {"outcome": "no_bundle"}
 
 
-def test_start_returns_empty_when_no_eligible_member(monkeypatch):
+def test_start_fails_closed_when_bundle_degraded(monkeypatch):
+    # A published member that has gone stale means raw membership != eligible membership.
+    # The bundle has degraded and must be re-published — fail closed, never serve a
+    # silently shortened attempt (F2).
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
     seed = _start_seed()
-    seed["mock_question_bank"][0]["valid_until"] = _PAST  # the only member expired
+    seed["current_affairs_bundle_questions"].append(
+        {"bundle_id": "b1", "mock_question_id": "q2", "display_order": 1})
+    seed["mock_question_bank"].append({
+        "id": "q2", "question_text": "Q2", "question_type": "mcq", "correct_option_id": "o3",
+        "source_kind": "current_event", "is_current_based": True, "reviewer_status": "verified",
+        "valid_until": _PAST, "current_affairs_item_id": "ev1"})  # expired → not eligible
     out = attempts.start_weekly_current_affairs_attempt(CaSB(seed), user_id="u1", exam_id="e1")
-    assert out["outcome"] == "empty_bundle"
+    assert out["outcome"] == "bundle_degraded"
+
+
+def test_start_freezes_auditable_provenance_ids(monkeypatch):
+    monkeypatch.setattr(bundles, "_now", lambda: _NOW)
+    sb = CaSB(_start_seed())
+    attempts.start_weekly_current_affairs_attempt(sb, user_id="u1", exam_id="e1")
+    prov = sb.db["current_affairs_attempt_responses"][0]["question_snapshot"]["current_affairs"]
+    assert prov["event_id"] == "ev1" and prov["claim_ids"] == ["c1"]
+    assert prov["evidence"] and prov["evidence"][0]["document_id"] == "d1"
 
 
 def test_start_is_idempotent_on_reuse(monkeypatch):
@@ -226,6 +276,15 @@ def test_learner_view_hides_answer_until_submitted():
     for hidden in ("correct_option_id", "explanation", "event_date", "source_url", "supersession_note"):
         assert hidden not in q
     assert [o["id"] for o in q["options"]] == ["o1", "o2"]
+
+
+def test_learner_view_exposes_resume_state(monkeypatch):
+    # Resume state (stored seq + time) is exposed even while in-progress so a reloaded
+    # client can seed its per-question counter above the stored value (F4).
+    seed = _attempt_seed("in_progress")
+    seed["current_affairs_attempt_responses"][0].update({"client_seq": 3, "time_spent_sec": 12})
+    q = attempts.get_current_affairs_attempt(CaSB(seed), "u1", "att-1")["questions"][0]
+    assert q["client_seq"] == 3 and q["time_spent_sec"] == 12
 
 
 def test_learner_view_reveals_envelope_after_submit():

@@ -98,24 +98,78 @@ def test_bundle_question_ids_ordered():
     assert bundles.bundle_question_ids(SBStub(db), "b1") == ["q1", "q2"]
 
 
-def test_eligible_membership_drops_stale_members_without_shortening_silently():
-    # Raw membership has 3, but one is expired and one unreviewed → only the eligible
-    # one survives; the RPC re-derives the same set so the attempt is never silently
-    # padded with stale rows.
+def _prov(qid):
+    """Complete, integrity-passing promoted provenance chain for a bank question id."""
+    return {
+        "current_affairs_events": [{"id": f"ev-{qid}", "event_date": "2026-07-09",
+                                    "status": "active", "relevance_until": None}],
+        "current_affairs_question_links": [
+            {"mock_question_id": qid, "claim_id": f"c-{qid}", "event_id": f"ev-{qid}"}],
+        "current_affairs_claims": [{"id": f"c-{qid}", "event_id": f"ev-{qid}",
+                                    "reviewer_status": "verified", "factual_status": "current",
+                                    "superseded_at": None}],
+        "current_affairs_claim_evidence": [
+            {"claim_id": f"c-{qid}", "document_id": f"d-{qid}", "evidence_role": "primary"}],
+        "current_affairs_documents": [{"id": f"d-{qid}", "source_id": f"s-{qid}",
+                                       "published_at": "2026-07-08T00:00:00Z",
+                                       "final_url": f"https://pib.gov.in/{qid}"}],
+        "current_affairs_sources": [{"id": f"s-{qid}", "is_active": True,
+                                     "authority_level": "primary_official"}],
+    }
+
+
+def _bank_prov(qid, **over):
+    b = _bank(qid, **over)
+    b["current_affairs_item_id"] = f"ev-{qid}"
+    return b
+
+
+def test_eligible_membership_requires_window_review_and_complete_provenance():
+    # Raw membership has 4: one eligible, one expired, one unreviewed, one lacking a
+    # promoted-provenance chain — only the fully eligible + provenance-complete one counts.
     db = {
         "current_affairs_bundle_questions": [
-            {"bundle_id": "b1", "mock_question_id": "q1", "display_order": 0},
-            {"bundle_id": "b1", "mock_question_id": "q2", "display_order": 1},
-            {"bundle_id": "b1", "mock_question_id": "q3", "display_order": 2},
+            {"bundle_id": "b1", "mock_question_id": q, "display_order": i}
+            for i, q in enumerate(["q1", "q2", "q3", "q4"])
         ],
         "mock_question_bank": [
-            _bank("q1"), _bank("q2", valid_until=_PAST), _bank("q3", status="draft"),
+            _bank_prov("q1"), _bank_prov("q2", valid_until=_PAST),
+            _bank_prov("q3", status="draft"), _bank_prov("q4"),  # q4 in-window but no provenance
         ],
     }
+    # Complete provenance chains for q1/q2/q3 only (q4 intentionally has none).
+    for qid in ("q1", "q2", "q3"):
+        for tbl, rows in _prov(qid).items():
+            db.setdefault(tbl, []).extend(rows)
     assert bundles.eligible_bundle_question_ids(SBStub(db), "b1", now=_NOW) == ["q1"]
 
 
-def test_load_question_provenance_builds_envelope_and_flags_supersession():
+def test_eligibility_rejects_provenance_integrity_failures():
+    # Existence is not enough: a superseded claim, a demoted event, a mismatched link
+    # event, and a discovery-only source each disqualify the member (integrity, not just
+    # a row's presence).
+    base = {
+        "current_affairs_bundle_questions": [
+            {"bundle_id": "b1", "mock_question_id": q, "display_order": i}
+            for i, q in enumerate(["qc", "qe", "ql", "qs"])
+        ],
+        "mock_question_bank": [_bank_prov(q) for q in ("qc", "qe", "ql", "qs")],
+    }
+    for q in ("qc", "qe", "ql", "qs"):
+        for tbl, rows in _prov(q).items():
+            base.setdefault(tbl, []).extend(rows)
+    # qc: claim no longer current
+    next(c for c in base["current_affairs_claims"] if c["id"] == "c-qc")["factual_status"] = "superseded"
+    # qe: event demoted
+    next(e for e in base["current_affairs_events"] if e["id"] == "ev-qe")["status"] = "demoted"
+    # ql: link points at a different event than the bank
+    next(l for l in base["current_affairs_question_links"] if l["mock_question_id"] == "ql")["event_id"] = "ev-OTHER"
+    # qs: source is discovery-only
+    next(s for s in base["current_affairs_sources"] if s["id"] == "s-qs")["authority_level"] = "discovery_only"
+    assert bundles.eligible_bundle_question_ids(SBStub(base), "b1", now=_NOW) == []
+
+
+def test_load_question_provenance_builds_auditable_envelope_and_flags_supersession():
     db = {
         "mock_question_bank": [{"id": "q1", "current_affairs_item_id": "ev-1"}],
         "current_affairs_events": [{"id": "ev-1", "event_date": "2026-07-09"}],
@@ -123,15 +177,20 @@ def test_load_question_provenance_builds_envelope_and_flags_supersession():
         "current_affairs_claims": [
             {"id": "c-1", "factual_status": "superseded", "superseded_at": _PAST}],
         "current_affairs_claim_evidence": [
-            {"claim_id": "c-1", "document_id": "d-1", "evidence_role": "primary"}],
+            {"claim_id": "c-1", "document_id": "d-1", "evidence_role": "primary",
+             "start_offset": 0, "end_offset": 38}],
         "current_affairs_documents": [
-            {"id": "d-1", "published_at": "2026-07-08T00:00:00Z",
+            {"id": "d-1", "published_at": "2026-07-08T00:00:00Z", "content_hash": "sha-1",
              "final_url": "https://pib.gov.in/x", "source_url": "https://pib.gov.in/x-raw"}],
     }
     env = bundles.load_question_provenance(SBStub(db), ["q1"], now=_NOW)["q1"]
-    assert env["event_date"] == "2026-07-09"
+    assert env["event_id"] == "ev-1" and env["event_date"] == "2026-07-09"
+    assert env["claim_ids"] == ["c-1"]
     assert env["source_published_at"] == "2026-07-08T00:00:00Z"
     assert env["source_url"] == "https://pib.gov.in/x"
+    ev = env["evidence"][0]
+    assert ev["document_id"] == "d-1" and ev["content_hash"] == "sha-1"
+    assert ev["start_offset"] == 0 and ev["end_offset"] == 38
     assert env["superseded"] is True and env["supersession_note"]
 
 
@@ -149,3 +208,12 @@ def test_load_question_provenance_no_supersession_for_current_claim():
     env = bundles.load_question_provenance(SBStub(db), ["q1"], now=_NOW)["q1"]
     assert env["superseded"] is False and env.get("supersession_note") is None
     assert env["source_url"] == "https://rbi.org.in/y"
+
+
+def test_load_question_provenance_fails_closed_on_incomplete():
+    # A question that resolves to no event / no grounding claim must raise (fail closed),
+    # never yield an empty envelope (F3).
+    db = {"mock_question_bank": [{"id": "q1", "current_affairs_item_id": None}]}
+    import pytest
+    with pytest.raises(RuntimeError):
+        bundles.load_question_provenance(SBStub(db), ["q1"], now=_NOW)

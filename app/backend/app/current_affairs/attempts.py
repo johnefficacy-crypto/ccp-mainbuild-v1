@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 from app.current_affairs.bundles import (
+    bundle_question_ids,
     eligible_bundle_question_ids,
     load_question_provenance,
     resolve_eligible_bundle,
@@ -26,20 +27,36 @@ logger = logging.getLogger("career_copilot.current_affairs.attempts")
 _MARKS_PER_CORRECT = 1.0
 _MARKS_PER_WRONG = 0.0  # current-affairs practice: no negative marking
 
-# RPC error tokens → Python exception classes (mapped to HTTP at the router).
+# KNOWN RPC domain error tokens → Python exception class (mapped to HTTP at the router).
+# Anything NOT in these sets is an infrastructure fault (transport/timeout/unexpected DB
+# error) and is re-raised unchanged so it surfaces as a 500 — never mislabelled a learner
+# 4xx (checkpost #976 F5).
 _LOOKUP_TOKENS = ("attempt_not_found", "bundle_not_found")
-_PERMISSION_TOKENS = ("not_attempt_owner",)
+_PERMISSION_TOKENS = ("not_attempt_owner", "bundle_scope_mismatch")
+_VALUE_TOKENS = (
+    "user_required", "attempt_not_in_progress", "question_not_in_attempt",
+    "option_not_in_question", "attempt_already_submitted",
+    "bundle_not_published", "bundle_not_verified", "bundle_not_yet_published",
+    "bundle_unavailable", "empty_bundle", "bundle_set_mismatch", "bundle_degraded",
+    "snapshot_answer_mismatch", "snapshot_options_mismatch",
+)
 
 
 def _raise_mapped(exc: Exception) -> None:
-    """Translate a raised CA RPC error into a typed Python exception for the router."""
+    """Translate a KNOWN CA RPC domain error into a typed exception; re-raise the rest.
+
+    Only recognised domain tokens become 4xx. An unrecognised failure (Supabase transport
+    error, timeout, malformed response, unexpected DB fault) is re-raised as-is so the
+    router returns 500/503 rather than blaming the learner with a 422."""
     msg = str(getattr(exc, "message", None) or exc)
     low = msg.lower()
     if any(tok in low for tok in _LOOKUP_TOKENS):
         raise LookupError(msg) from exc
     if any(tok in low for tok in _PERMISSION_TOKENS):
         raise PermissionError(msg) from exc
-    raise ValueError(msg) from exc
+    if any(tok in low for tok in _VALUE_TOKENS):
+        raise ValueError(msg) from exc
+    raise exc  # unknown → infrastructure fault, surfaces as 500
 
 
 def _rpc(supabase: Any, name: str, params: dict[str, Any]) -> Any:
@@ -62,10 +79,15 @@ def start_weekly_current_affairs_attempt(
     bundle = resolve_eligible_bundle(supabase, exam_id=exam_id, cadence="weekly")
     if not bundle:
         return {"outcome": "no_bundle"}
-    # Freeze the STILL-ELIGIBLE membership only (the RPC re-derives + exact-set checks it).
-    qids = eligible_bundle_question_ids(supabase, str(bundle["id"]))
-    if not qids:
+    raw = bundle_question_ids(supabase, str(bundle["id"]))
+    if not raw:
         return {"outcome": "empty_bundle", "bundle_id": bundle["id"]}
+    # Freeze the AUTHORITATIVE set. A published bundle whose raw members are not ALL
+    # still-eligible + provenance-complete has degraded — fail closed (re-publish needed)
+    # rather than serve a silently shortened attempt. The RPC re-checks this under lock.
+    qids = eligible_bundle_question_ids(supabase, str(bundle["id"]))
+    if qids != raw:
+        return {"outcome": "bundle_degraded", "bundle_id": bundle["id"]}
 
     questions_by_id = _load_questions(supabase, qids)
     provenance = load_question_provenance(supabase, qids)
@@ -125,6 +147,11 @@ def _learner_question_view(resp: dict[str, Any], *, submitted: bool) -> dict[str
         "selected_option_id": resp.get("selected_option_id"),
         "is_marked_for_review": bool(resp.get("is_marked_for_review")),
         "is_visited": bool(resp.get("is_visited")),
+        # Persisted save state so a reloaded client can seed its per-question monotonic
+        # counter ABOVE the stored value (else a legitimate later edit would be swallowed
+        # as `already_recorded` by the client_seq guard) — checkpost #976 F4.
+        "client_seq": int(resp.get("client_seq") or 0),
+        "time_spent_sec": int(resp.get("time_spent_sec") or 0),
     }
     if submitted:
         # Post-submission feedback (§10): correct answer, explanation, event date,
