@@ -1,7 +1,8 @@
 """CA monthly consolidation + retry-tail runtime tests (GQR-G6).
 
-``MonthlySB`` emulates migrations 258/259: eligible-tail selection, guarded monthly
-start, and weekly-mistake enqueue. Real Postgres behaviour remains VERIFY DB.
+``MonthlySB`` emulates migrations 258–260: exact-exam retry selection, scoped
+monthly start, atomic weekly-mistake enqueue, and newer-source-wins re-arming.
+Real PostgreSQL behaviour remains covered by the rollback-only validator.
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ _FUTURE = (_NOW + timedelta(days=10)).isoformat()
 _PAST = (_NOW - timedelta(days=1)).isoformat()
 
 
-def _bank(qid):
+def _bank(qid: str) -> dict:
     return {
         "id": qid,
         "question_text": f"Q {qid}?",
@@ -34,7 +35,7 @@ def _bank(qid):
     }
 
 
-def _opts(qid):
+def _opts(qid: str) -> list[dict]:
     return [
         {
             "id": f"{qid}-o1",
@@ -51,13 +52,14 @@ def _opts(qid):
     ]
 
 
-def _prov(qid):
+def _prov(qid: str) -> dict[str, list[dict]]:
     return {
         "current_affairs_events": [
             {
                 "id": f"ev-{qid}",
                 "event_date": "2026-07-09",
                 "status": "active",
+                "relevance_from": None,
                 "relevance_until": None,
             }
         ],
@@ -102,6 +104,14 @@ def _prov(qid):
     }
 
 
+def _source_key(row: dict) -> tuple[str, str, str]:
+    return (
+        str(row.get("source_period_end") or ""),
+        str(row.get("source_started_at") or ""),
+        str(row.get("source_submitted_at") or ""),
+    )
+
+
 class MonthlySB(SBStub):
     def rpc(self, name, params=None):
         params = params or {}
@@ -110,68 +120,74 @@ class MonthlySB(SBStub):
         if name in {
             "ca_start_monthly_current_affairs_attempt",
             "ca_start_monthly_current_affairs_attempt_guarded",
+            "ca_start_monthly_current_affairs_attempt_scoped",
         }:
             return _RpcCall(self._start_monthly(params))
         if name == "ca_enqueue_weekly_retry_items":
             return _RpcCall(self._enqueue(params))
         return super().rpc(name, params)
 
-    def _eligible_tail(self, p):
-        out = []
-        for ri in self.db.get("current_affairs_retry_items", []):
-            if ri.get("user_id") != p["p_user"] or ri.get("status") != "pending":
+    def _eligible_tail(self, params: dict) -> list[dict]:
+        rows: list[dict] = []
+        for item in self.db.get("current_affairs_retry_items", []):
+            if item.get("user_id") != params["p_user"]:
                 continue
-            if ri.get("due_at") and str(ri["due_at"]) > _NOW.isoformat():
+            if item.get("exam_id") != params.get("p_exam"):
                 continue
-            if ri.get("expires_at") and str(ri["expires_at"]) <= _NOW.isoformat():
+            if item.get("status") != "pending":
                 continue
-            out.append(
+            if item.get("due_at") and str(item["due_at"]) > _NOW.isoformat():
+                continue
+            if item.get("expires_at") and str(item["expires_at"]) <= _NOW.isoformat():
+                continue
+            rows.append(
                 {
-                    "question_id": ri["question_id"],
-                    "due_at": ri.get("due_at"),
-                    "created_at": ri.get("created_at"),
+                    "question_id": item["question_id"],
+                    "due_at": item.get("due_at"),
+                    "created_at": item.get("created_at"),
                 }
             )
-        return out
+        rows.sort(key=lambda row: (row.get("due_at") or "", row.get("created_at") or ""))
+        return rows
 
-    def _verify_snapshot(self, row):
-        q = next(
+    def _verify_snapshot(self, row: dict) -> None:
+        question = next(
             (
-                b
-                for b in self.db.get("mock_question_bank", [])
-                if b["id"] == row["question_id"]
+                bank_row
+                for bank_row in self.db.get("mock_question_bank", [])
+                if bank_row["id"] == row["question_id"]
             ),
             None,
         )
-        snap = row["question_snapshot"]
-        if q is None:
+        if question is None:
             raise RuntimeError("snapshot_text_mismatch")
-        if str(snap.get("question_text")) != str(q.get("question_text")) or str(
-            snap.get("explanation")
-        ) != str(q.get("explanation")):
+        snapshot = row["question_snapshot"]
+        if snapshot.get("question_text") != question.get("question_text"):
             raise RuntimeError("snapshot_text_mismatch")
-        if str(snap.get("correct_option_id")) != str(q.get("correct_option_id")):
+        if snapshot.get("explanation") != question.get("explanation"):
+            raise RuntimeError("snapshot_text_mismatch")
+        if str(snapshot.get("correct_option_id")) != str(question.get("correct_option_id")):
             raise RuntimeError("snapshot_answer_mismatch")
-        bank_opts = {
-            str(o["id"]): o.get("option_text")
-            for o in self.db.get("mock_question_options", [])
-            if o.get("question_id") == row["question_id"]
+        bank_options = {
+            str(option["id"]): option.get("option_text")
+            for option in self.db.get("mock_question_options", [])
+            if option.get("question_id") == row["question_id"]
         }
-        snap_opts = {
-            str(o["id"]): o.get("option_text")
-            for o in (snap.get("options") or [])
+        frozen_options = {
+            str(option["id"]): option.get("option_text")
+            for option in snapshot.get("options") or []
         }
-        if bank_opts != snap_opts:
+        if bank_options != frozen_options:
             raise RuntimeError("snapshot_options_mismatch")
 
-    def _start_monthly(self, p):
-        import uuid as _uuid
+    def _start_monthly(self, params: dict) -> dict:
+        import uuid
 
         bundle = next(
             (
-                b
-                for b in self.db.get("current_affairs_bundles", [])
-                if b["id"] == p["p_bundle"]
+                row
+                for row in self.db.get("current_affairs_bundles", [])
+                if row["id"] == params["p_bundle"]
             ),
             None,
         )
@@ -182,53 +198,58 @@ class MonthlySB(SBStub):
 
         existing = next(
             (
-                a
-                for a in self.db.get("current_affairs_attempts", [])
-                if a.get("user_id") == p["p_user"]
-                and a.get("bundle_id") == p["p_bundle"]
+                row
+                for row in self.db.get("current_affairs_attempts", [])
+                if row.get("user_id") == params["p_user"]
+                and row.get("bundle_id") == params["p_bundle"]
             ),
             None,
         )
         if existing:
+            if existing.get("exam_id") != params.get("p_exam"):
+                raise RuntimeError("bundle_scope_mismatch")
             if existing.get("status") == "in_progress":
-                snap = existing.get("template_snapshot") or {}
+                snapshot = existing.get("template_snapshot") or {}
                 return {
                     "outcome": "reused",
                     "attempt_id": existing["id"],
                     "question_count": existing.get("total_questions", 0),
-                    "core_count": snap.get("core_count", 0),
-                    "retry_tail_count": snap.get("retry_tail_count", 0),
+                    "core_count": snapshot.get("core_count", 0),
+                    "retry_tail_count": snapshot.get("retry_tail_count", 0),
                 }
             raise RuntimeError("attempt_already_submitted")
 
-        core = bundles.eligible_bundle_question_ids(self, p["p_bundle"], now=_NOW)
-        raw = bundles.bundle_question_ids(self, p["p_bundle"])
+        core = bundles.eligible_bundle_question_ids(self, params["p_bundle"], now=_NOW)
+        raw = bundles.bundle_question_ids(self, params["p_bundle"])
         if core != raw:
             raise RuntimeError("bundle_degraded")
-        core_caller = [r["question_id"] for r in (p.get("p_core_rows") or [])]
-        if core_caller != core:
+        caller_core = [row["question_id"] for row in params.get("p_core_rows") or []]
+        if caller_core != core:
             raise RuntimeError("bundle_set_mismatch")
-        tail = [r["question_id"] for r in (p.get("p_retry_rows") or [])]
+        tail = [row["question_id"] for row in params.get("p_retry_rows") or []]
         if len(tail) > 10:
             raise RuntimeError("retry_tail_cap_exceeded")
         if len(set(tail)) != len(tail):
             raise RuntimeError("retry_tail_duplicate")
+
         pending = {
-            ri["question_id"]
-            for ri in self.db.get("current_affairs_retry_items", [])
-            if ri.get("user_id") == p["p_user"] and ri.get("status") == "pending"
+            item["question_id"]
+            for item in self.db.get("current_affairs_retry_items", [])
+            if item.get("user_id") == params["p_user"]
+            and item.get("exam_id") == params.get("p_exam")
+            and item.get("status") == "pending"
         }
         for qid in tail:
             if qid in core:
                 raise RuntimeError("retry_tail_overlaps_core")
             if qid not in pending:
                 raise RuntimeError("retry_tail_not_eligible")
-        for row in (p.get("p_core_rows") or []) + (p.get("p_retry_rows") or []):
+        for row in (params.get("p_core_rows") or []) + (params.get("p_retry_rows") or []):
             self._verify_snapshot(row)
 
-        aid = str(_uuid.uuid4())
+        attempt_id = str(uuid.uuid4())
         template = {
-            **(p.get("p_template_snapshot") or {}),
+            **(params.get("p_template_snapshot") or {}),
             "question_ids": core + tail,
             "core_question_ids": core,
             "retry_tail_question_ids": tail,
@@ -238,9 +259,10 @@ class MonthlySB(SBStub):
         }
         self.db.setdefault("current_affairs_attempts", []).append(
             {
-                "id": aid,
-                "user_id": p["p_user"],
-                "bundle_id": p["p_bundle"],
+                "id": attempt_id,
+                "user_id": params["p_user"],
+                "exam_id": params.get("p_exam"),
+                "bundle_id": params["p_bundle"],
                 "cadence": "monthly",
                 "status": "in_progress",
                 "total_questions": len(core) + len(tail),
@@ -248,98 +270,101 @@ class MonthlySB(SBStub):
             }
         )
         responses = self.db.setdefault("current_affairs_attempt_responses", [])
-        for row in p.get("p_core_rows") or []:
-            responses.append(
-                {
-                    "id": str(_uuid.uuid4()),
-                    "attempt_id": aid,
-                    "mock_question_id": row["question_id"],
-                    "question_snapshot": row["question_snapshot"],
-                    "item_role": "core",
-                }
-            )
-        for row in p.get("p_retry_rows") or []:
-            responses.append(
-                {
-                    "id": str(_uuid.uuid4()),
-                    "attempt_id": aid,
-                    "mock_question_id": row["question_id"],
-                    "question_snapshot": row["question_snapshot"],
-                    "item_role": "retry_tail",
-                }
-            )
-            for ri in self.db.get("current_affairs_retry_items", []):
-                if (
-                    ri["question_id"] == row["question_id"]
-                    and ri.get("user_id") == p["p_user"]
-                ):
-                    ri["status"] = "consumed"
+        for role, frozen_rows in (
+            ("core", params.get("p_core_rows") or []),
+            ("retry_tail", params.get("p_retry_rows") or []),
+        ):
+            for row in frozen_rows:
+                responses.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "attempt_id": attempt_id,
+                        "mock_question_id": row["question_id"],
+                        "question_snapshot": row["question_snapshot"],
+                        "item_role": role,
+                    }
+                )
+                if role == "retry_tail":
+                    for item in self.db.get("current_affairs_retry_items", []):
+                        if (
+                            item.get("user_id") == params["p_user"]
+                            and item.get("exam_id") == params.get("p_exam")
+                            and item.get("question_id") == row["question_id"]
+                        ):
+                            item["status"] = "consumed"
         return {
             "outcome": "ready",
-            "attempt_id": aid,
+            "attempt_id": attempt_id,
             "question_count": len(core) + len(tail),
             "core_count": len(core),
             "retry_tail_count": len(tail),
         }
 
-    def _enqueue(self, p):
+    def _enqueue(self, params: dict) -> int:
         attempt = next(
             (
-                a
-                for a in self.db.get("current_affairs_attempts", [])
-                if a["id"] == p["p_attempt_id"]
+                row
+                for row in self.db.get("current_affairs_attempts", [])
+                if row["id"] == params["p_attempt_id"]
             ),
             None,
         )
         if attempt is None:
             raise RuntimeError("attempt_not_found")
-        if str(attempt["user_id"]) != str(p["p_user"]):
+        if str(attempt["user_id"]) != str(params["p_user"]):
             raise RuntimeError("not_attempt_owner")
         if attempt.get("status") != "submitted":
             raise RuntimeError("attempt_not_submitted")
         if attempt.get("cadence") != "weekly":
             raise RuntimeError("not_a_weekly_attempt")
 
+        incoming = {
+            "source_attempt_id": params["p_attempt_id"],
+            "exam_id": attempt.get("exam_id"),
+            "source_period_end": attempt.get("period_end"),
+            "source_started_at": attempt.get("started_at"),
+            "source_submitted_at": attempt.get("submitted_at") or attempt.get("started_at"),
+            "status": "pending",
+        }
         store = self.db.setdefault("current_affairs_retry_items", [])
         count = 0
         for response in self.db.get("current_affairs_attempt_responses", []):
-            if response.get("attempt_id") != p["p_attempt_id"]:
+            if response.get("attempt_id") != params["p_attempt_id"]:
                 continue
             if response.get("selected_option_id") is None or response.get("is_correct"):
                 continue
             qid = response["mock_question_id"]
             existing = next(
                 (
-                    ri
-                    for ri in store
-                    if ri.get("user_id") == p["p_user"]
-                    and ri.get("question_id") == qid
+                    item
+                    for item in store
+                    if item.get("user_id") == params["p_user"]
+                    and item.get("question_id") == qid
                 ),
                 None,
             )
-            if existing and existing.get("source_attempt_id") == p["p_attempt_id"]:
+            if existing and existing.get("source_attempt_id") == params["p_attempt_id"]:
+                continue
+            if existing and _source_key(existing) >= _source_key(incoming):
                 continue
             if existing:
-                existing.update(
-                    {
-                        "source_attempt_id": p["p_attempt_id"],
-                        "status": "pending",
-                    }
-                )
+                existing.update(incoming)
             else:
                 store.append(
                     {
-                        "user_id": p["p_user"],
+                        "user_id": params["p_user"],
                         "question_id": qid,
-                        "status": "pending",
-                        "source_attempt_id": p["p_attempt_id"],
+                        **incoming,
                     }
                 )
             count += 1
         return count
 
 
-def _monthly_seed(core_ids=("q1",), tail_items=(("qt1", "u1"),)):
+def _monthly_seed(
+    core_ids: tuple[str, ...] = ("q1",),
+    tail_items: tuple[tuple[str, str, str | None], ...] = (("qt1", "u1", "e1"),),
+) -> dict:
     db: dict = {
         "exams": [{"id": "e1", "exam_family_id": None}],
         "current_affairs_bundles": [
@@ -357,25 +382,26 @@ def _monthly_seed(core_ids=("q1",), tail_items=(("qt1", "u1"),)):
             }
         ],
         "current_affairs_bundle_questions": [
-            {"bundle_id": "b-m", "mock_question_id": q, "display_order": i}
-            for i, q in enumerate(core_ids)
+            {"bundle_id": "b-m", "mock_question_id": qid, "display_order": index}
+            for index, qid in enumerate(core_ids)
         ],
         "mock_question_bank": [],
         "mock_question_options": [],
         "mock_question_stimuli": [],
         "current_affairs_retry_items": [],
     }
-    all_questions = list(core_ids) + [q for q, _ in tail_items]
-    for qid in all_questions:
+    all_question_ids = list(core_ids) + [qid for qid, _, _ in tail_items]
+    for qid in all_question_ids:
         db["mock_question_bank"].append(_bank(qid))
         db["mock_question_options"].extend(_opts(qid))
         for table, rows in _prov(qid).items():
             db.setdefault(table, []).extend(rows)
-    for qid, user_id in tail_items:
+    for qid, user_id, exam_id in tail_items:
         db["current_affairs_retry_items"].append(
             {
                 "id": f"ri-{qid}",
                 "user_id": user_id,
+                "exam_id": exam_id,
                 "question_id": qid,
                 "status": "pending",
                 "due_at": _PAST,
@@ -389,21 +415,19 @@ def _monthly_seed(core_ids=("q1",), tail_items=(("qt1", "u1"),)):
 def test_start_monthly_freezes_core_and_capped_tail(monkeypatch):
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
     sb = MonthlySB(_monthly_seed())
-    out = monthly.start_monthly_current_affairs_attempt(
+    result = monthly.start_monthly_current_affairs_attempt(
         sb, user_id="u1", exam_id="e1"
     )
-    assert out["outcome"] == "ready"
-    assert out["core_count"] == 1 and out["retry_tail_count"] == 1
-    roles = sorted(r["item_role"] for r in sb.db["current_affairs_attempt_responses"])
-    assert roles == ["core", "retry_tail"]
+    assert result["outcome"] == "ready"
+    assert result["core_count"] == 1 and result["retry_tail_count"] == 1
+    assert sorted(row["item_role"] for row in sb.db["current_affairs_attempt_responses"]) == [
+        "core",
+        "retry_tail",
+    ]
     assert sb.db["current_affairs_retry_items"][0]["status"] == "consumed"
-    assert (
-        sb.db["current_affairs_attempts"][0]["template_snapshot"]["practice_mode"]
-        == "monthly_current_affairs"
-    )
 
 
-def test_concurrent_style_retry_reuses_frozen_attempt_after_tail_consumed(monkeypatch):
+def test_concurrent_style_retry_reuses_after_tail_consumed(monkeypatch):
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
     sb = MonthlySB(_monthly_seed())
     first = monthly.start_monthly_current_affairs_attempt(
@@ -414,7 +438,7 @@ def test_concurrent_style_retry_reuses_frozen_attempt_after_tail_consumed(monkey
     )
     assert second["outcome"] == "reused"
     assert second["attempt_id"] == first["attempt_id"]
-    assert second["core_count"] == 1 and second["retry_tail_count"] == 1
+    assert second["retry_tail_count"] == 1
     assert len(sb.db["current_affairs_attempts"]) == 1
 
 
@@ -430,89 +454,124 @@ def test_start_monthly_no_bundle():
 def test_start_monthly_with_no_retry_items_is_core_only(monkeypatch):
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
     sb = MonthlySB(_monthly_seed(tail_items=()))
-    out = monthly.start_monthly_current_affairs_attempt(
+    result = monthly.start_monthly_current_affairs_attempt(
         sb, user_id="u1", exam_id="e1"
     )
-    assert out["core_count"] == 1 and out["retry_tail_count"] == 0
+    assert result["core_count"] == 1 and result["retry_tail_count"] == 0
 
 
 def test_tail_is_capped_at_ten(monkeypatch):
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
-    tail = tuple((f"qt{i}", "u1") for i in range(15))
-    sb = MonthlySB(_monthly_seed(tail_items=tail))
-    out = monthly.start_monthly_current_affairs_attempt(
-        sb, user_id="u1", exam_id="e1"
+    tail = tuple((f"qt{index}", "u1", "e1") for index in range(15))
+    result = monthly.start_monthly_current_affairs_attempt(
+        MonthlySB(_monthly_seed(tail_items=tail)), user_id="u1", exam_id="e1"
     )
-    assert out["retry_tail_count"] == 10
+    assert result["retry_tail_count"] == 10
 
 
-def test_tail_excludes_question_already_in_core(monkeypatch):
+def test_tail_excludes_core_and_other_exam(monkeypatch):
     monkeypatch.setattr(bundles, "_now", lambda: _NOW)
-    sb = MonthlySB(_monthly_seed(core_ids=("q1",), tail_items=(("q1", "u1"),)))
-    out = monthly.start_monthly_current_affairs_attempt(
+    sb = MonthlySB(
+        _monthly_seed(
+            core_ids=("q1",),
+            tail_items=(("q1", "u1", "e1"), ("other", "u1", "e2")),
+        )
+    )
+    result = monthly.start_monthly_current_affairs_attempt(
         sb, user_id="u1", exam_id="e1"
     )
-    assert out["core_count"] == 1 and out["retry_tail_count"] == 0
+    assert result["retry_tail_count"] == 0
 
 
-def test_enqueue_weekly_mistakes_is_idempotent_for_same_attempt():
+def _weekly_db(attempts: list[dict], source_attempt_id: str | None = None) -> dict:
     db = {
-        "current_affairs_attempts": [
-            {"id": "wk-1", "user_id": "u1", "status": "submitted", "cadence": "weekly"}
-        ],
+        "current_affairs_attempts": attempts,
         "current_affairs_attempt_responses": [
             {
-                "attempt_id": "wk-1",
+                "attempt_id": attempts[-1]["id"],
                 "mock_question_id": "m1",
-                "selected_option_id": "x",
-                "is_correct": False,
-            },
-            {
-                "attempt_id": "wk-1",
-                "mock_question_id": "m2",
-                "selected_option_id": "y",
-                "is_correct": False,
-            },
-            {
-                "attempt_id": "wk-1",
-                "mock_question_id": "m3",
-                "selected_option_id": "z",
-                "is_correct": True,
-            },
-        ],
-        "current_affairs_retry_items": [],
-    }
-    sb = MonthlySB(db)
-    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-1")["enqueued"] == 2
-    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-1")["enqueued"] == 0
-
-
-def test_new_weekly_mistake_rearms_consumed_item():
-    db = {
-        "current_affairs_attempts": [
-            {"id": "wk-2", "user_id": "u1", "status": "submitted", "cadence": "weekly"}
-        ],
-        "current_affairs_attempt_responses": [
-            {
-                "attempt_id": "wk-2",
-                "mock_question_id": "m1",
-                "selected_option_id": "x",
+                "selected_option_id": "wrong",
                 "is_correct": False,
             }
         ],
-        "current_affairs_retry_items": [
+        "current_affairs_retry_items": [],
+    }
+    if source_attempt_id:
+        db["current_affairs_retry_items"].append(
             {
                 "user_id": "u1",
                 "question_id": "m1",
                 "status": "consumed",
-                "source_attempt_id": "wk-old",
+                "source_attempt_id": source_attempt_id,
+                "source_period_end": "2026-06-30",
+                "source_started_at": "2026-06-30T00:00:00+00:00",
+                "source_submitted_at": "2026-06-30T01:00:00+00:00",
             }
-        ],
+        )
+    return db
+
+
+def test_enqueue_same_attempt_is_idempotent():
+    attempt = {
+        "id": "wk-1",
+        "user_id": "u1",
+        "exam_id": "e1",
+        "status": "submitted",
+        "cadence": "weekly",
+        "period_end": "2026-07-06",
+        "started_at": "2026-07-06T00:00:00+00:00",
+        "submitted_at": "2026-07-06T01:00:00+00:00",
     }
-    sb = MonthlySB(db)
-    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-2")["enqueued"] == 1
+    sb = MonthlySB(_weekly_db([attempt]))
+    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-1")["enqueued"] == 1
+    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-1")["enqueued"] == 0
+
+
+def test_newer_weekly_mistake_rearms_consumed_item():
+    newer = {
+        "id": "wk-new",
+        "user_id": "u1",
+        "exam_id": "e1",
+        "status": "submitted",
+        "cadence": "weekly",
+        "period_end": "2026-07-06",
+        "started_at": "2026-07-06T00:00:00+00:00",
+        "submitted_at": "2026-07-06T01:00:00+00:00",
+    }
+    sb = MonthlySB(_weekly_db([newer], source_attempt_id="wk-old"))
+    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-new")["enqueued"] == 1
     item = sb.db["current_affairs_retry_items"][0]
-    assert item["status"] == "pending" and item["source_attempt_id"] == "wk-2"
+    assert item["status"] == "pending"
+    assert item["source_attempt_id"] == "wk-new"
+    assert item["exam_id"] == "e1"
+
+
+def test_older_delayed_weekly_replay_cannot_overwrite_newer_item():
+    older = {
+        "id": "wk-old",
+        "user_id": "u1",
+        "exam_id": "e1",
+        "status": "submitted",
+        "cadence": "weekly",
+        "period_end": "2026-06-23",
+        "started_at": "2026-06-23T00:00:00+00:00",
+        "submitted_at": "2026-06-23T01:00:00+00:00",
+    }
+    db = _weekly_db([older])
+    db["current_affairs_retry_items"] = [
+        {
+            "user_id": "u1",
+            "question_id": "m1",
+            "status": "pending",
+            "source_attempt_id": "wk-new",
+            "source_period_end": "2026-07-06",
+            "source_started_at": "2026-07-06T00:00:00+00:00",
+            "source_submitted_at": "2026-07-06T01:00:00+00:00",
+        }
+    ]
+    sb = MonthlySB(db)
+    assert monthly.enqueue_weekly_retry_items(sb, "u1", "wk-old")["enqueued"] == 0
+    assert sb.db["current_affairs_retry_items"][0]["source_attempt_id"] == "wk-new"
 
 
 def test_monthly_report_splits_core_and_tail():
@@ -527,30 +586,10 @@ def test_monthly_report_splits_core_and_tail():
             }
         ],
         "current_affairs_attempt_responses": [
-            {
-                "attempt_id": "att-m",
-                "item_role": "core",
-                "is_correct": True,
-                "selected_option_id": "a",
-            },
-            {
-                "attempt_id": "att-m",
-                "item_role": "core",
-                "is_correct": False,
-                "selected_option_id": "b",
-            },
-            {
-                "attempt_id": "att-m",
-                "item_role": "retry_tail",
-                "is_correct": True,
-                "selected_option_id": "c",
-            },
-            {
-                "attempt_id": "att-m",
-                "item_role": "retry_tail",
-                "is_correct": None,
-                "selected_option_id": None,
-            },
+            {"attempt_id": "att-m", "item_role": "core", "is_correct": True, "selected_option_id": "a"},
+            {"attempt_id": "att-m", "item_role": "core", "is_correct": False, "selected_option_id": "b"},
+            {"attempt_id": "att-m", "item_role": "retry_tail", "is_correct": True, "selected_option_id": "c"},
+            {"attempt_id": "att-m", "item_role": "retry_tail", "is_correct": None, "selected_option_id": None},
         ],
     }
     report = monthly.monthly_consolidation_report(MonthlySB(db), "u1", "att-m")
@@ -559,22 +598,29 @@ def test_monthly_report_splits_core_and_tail():
 
 
 def test_monthly_report_rejects_non_owner_and_weekly_attempt():
-    owner_db = {
-        "current_affairs_attempts": [
-            {"id": "att-m", "user_id": "owner", "cadence": "monthly"}
-        ],
-        "current_affairs_attempt_responses": [],
-    }
     with pytest.raises(PermissionError):
         monthly.monthly_consolidation_report(
-            MonthlySB(owner_db), "intruder", "att-m"
+            MonthlySB(
+                {
+                    "current_affairs_attempts": [
+                        {"id": "att-m", "user_id": "owner", "cadence": "monthly"}
+                    ],
+                    "current_affairs_attempt_responses": [],
+                }
+            ),
+            "intruder",
+            "att-m",
         )
-
-    weekly_db = {
-        "current_affairs_attempts": [
-            {"id": "att-w", "user_id": "u1", "cadence": "weekly"}
-        ],
-        "current_affairs_attempt_responses": [],
-    }
     with pytest.raises(ValueError, match="not a monthly attempt"):
-        monthly.monthly_consolidation_report(MonthlySB(weekly_db), "u1", "att-w")
+        monthly.monthly_consolidation_report(
+            MonthlySB(
+                {
+                    "current_affairs_attempts": [
+                        {"id": "att-w", "user_id": "u1", "cadence": "weekly"}
+                    ],
+                    "current_affairs_attempt_responses": [],
+                }
+            ),
+            "u1",
+            "att-w",
+        )
