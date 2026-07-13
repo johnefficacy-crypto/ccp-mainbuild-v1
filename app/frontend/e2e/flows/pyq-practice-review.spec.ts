@@ -29,6 +29,14 @@ test.describe("Flow: projected-PYQ practice → submit → review", () => {
     await resetPyqPracticeAttempts(user.id);
   });
 
+  // Clean up the submitted practice attempt so it does not leak into the shared
+  // seeded user's progress trend — report-attempt-drill.spec.ts asserts an exact
+  // 5-point trend and would otherwise see 6. (workers:1 → this runs before it.)
+  test.afterAll(async () => {
+    const user = await ensureSeededUser();
+    await resetPyqPracticeAttempts(user.id);
+  });
+
   test("verified paper card → practice attempt → submit → review", async ({ page }) => {
     await loginViaUi(page);
     await expect(page.getByTestId("auth-checking")).toBeHidden({ timeout: 90_000 });
