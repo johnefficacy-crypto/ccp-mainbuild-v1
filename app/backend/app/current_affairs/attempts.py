@@ -38,7 +38,11 @@ _VALUE_TOKENS = (
     "option_not_in_question", "attempt_already_submitted",
     "bundle_not_published", "bundle_not_verified", "bundle_not_yet_published",
     "bundle_unavailable", "empty_bundle", "bundle_set_mismatch", "bundle_degraded",
-    "snapshot_answer_mismatch", "snapshot_options_mismatch",
+    "snapshot_answer_mismatch", "snapshot_options_mismatch", "snapshot_text_mismatch",
+    # GQR-G6 monthly + retry tail.
+    "not_a_monthly_bundle", "not_a_weekly_attempt", "attempt_not_submitted",
+    "retry_tail_cap_exceeded", "retry_tail_duplicate", "retry_tail_overlaps_core",
+    "retry_tail_not_eligible", "retry_tail_not_relevant",
 )
 
 

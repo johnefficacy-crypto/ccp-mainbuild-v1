@@ -16,12 +16,22 @@ from typing import Any
 logger = logging.getLogger("career_copilot.current_affairs.retirement")
 
 
+def _as_int(data: Any) -> int:
+    n = data if isinstance(data, int) else (data or 0)
+    try:
+        return int(n or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def sweep_expired_current_events(supabase: Any) -> dict[str, Any]:
     """Archive active current-affairs events past their relevance window. Returns
     ``{"archived": <int>}`` (0 on a quiet tick)."""
-    data = supabase.rpc("ca_sweep_expired_current_events", {}).execute().data
-    archived = data if isinstance(data, int) else (data or 0)
-    try:
-        return {"archived": int(archived or 0)}
-    except (TypeError, ValueError):
-        return {"archived": 0}
+    return {"archived": _as_int(supabase.rpc("ca_sweep_expired_current_events", {}).execute().data)}
+
+
+def sweep_expired_retry_items(supabase: Any) -> dict[str, Any]:
+    """Expire pending personalised retry items past their relevance window / no-longer-
+    relevant (GQR-G6). Expiry only STOPS future scheduling — it never deletes historical
+    attempt analytics (the frozen attempt rows are untouched). Returns ``{"retry_expired": <int>}``."""
+    return {"retry_expired": _as_int(supabase.rpc("ca_sweep_expired_retry_items", {}).execute().data)}
