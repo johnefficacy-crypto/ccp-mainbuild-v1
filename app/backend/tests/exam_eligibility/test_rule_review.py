@@ -1,4 +1,4 @@
-"""Tests for the document-gated eligibility-rule review endpoint (migration 256).
+"""Tests for the document-gated eligibility-rule review endpoint (migration 257).
 
 POST /api/admin/exam-eligibility/rules/{rule_id}/review
 
@@ -60,7 +60,10 @@ class _RuleRpc:
             raise Exception(f"transition_not_allowed: {cur} -> {tgt}")
 
         if cur == "draft" and tgt == "verified":
-            if rule.get("created_by") is not None and str(rule["created_by"]) == str(p["p_actor_id"]):
+            # Fail closed on missing authorship (migration 257).
+            if rule.get("created_by") is None:
+                raise Exception("creator_missing")
+            if str(rule["created_by"]) == str(p["p_actor_id"]):
                 raise Exception("reviewer_is_creator")
             if rule.get("rule_type") in ("discipline", "min_percentage"):
                 sibling = "min_percentage" if rule["rule_type"] == "discipline" else "discipline"
@@ -206,6 +209,17 @@ def test_verify_fails_for_same_creator():
     r = _review(_client(sb, {**REVIEWER, "id": AUTHOR}))
     assert r.status_code == 422, r.text
     assert "reviewer_is_creator" in r.text
+    assert len(sb.db["admin_audit_logs"]) == 0
+    assert sb.db["exam_eligibility_rules"][0]["reviewer_status"] == "draft"
+
+
+def test_verify_fails_closed_when_creator_missing():
+    # Legacy/manual rows carry a NULL created_by — verification must fail closed
+    # (a second actor cannot be proven).
+    sb = _ReviewSBStub(_world(rule_extra={"created_by": None}))
+    r = _review(_client(sb))
+    assert r.status_code == 422, r.text
+    assert "creator_missing" in r.text
     assert len(sb.db["admin_audit_logs"]) == 0
     assert sb.db["exam_eligibility_rules"][0]["reviewer_status"] == "draft"
 

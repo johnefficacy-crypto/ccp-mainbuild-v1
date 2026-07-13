@@ -262,7 +262,20 @@ def test_create_rule_as_verified_is_rejected():
               "source_url": "https://ssc.gov.in/", "reviewer_status": "verified"},
     )
     assert r.status_code == 422
-    assert "cannot be created as 'verified'" in r.json()["detail"]
+    assert "must be created as 'draft'" in r.json()["detail"]
+
+
+def test_create_rule_as_archived_is_rejected():
+    # Create is draft-only: 'archived' is a lifecycle action, not a birth state.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "general", "rule_type": "age_max", "value_num": 32,
+              "reviewer_status": "archived"},
+    )
+    assert r.status_code == 422
+    assert "must be created as 'draft'" in r.json()["detail"]
+    assert sb.db["exam_eligibility_rules"] == _world()["exam_eligibility_rules"]
 
 
 def test_create_rule_persists_page_locator():
@@ -337,7 +350,7 @@ _STREAM = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
 
 def test_create_new_rule_type_lands_draft():
-    # New rule_types are creatable, but (migration 256) always as draft — the
+    # New rule_types are creatable, but (migration 257) always as draft — the
     # verified stamp only comes from the document-gated review path.
     sb = SBStub(_world())
     r = TestClient(_build_app(sb)).post(
@@ -452,7 +465,7 @@ def test_create_rule_on_unknown_exam_is_404():
 
 def test_update_rule_cannot_promote_to_verified():
     # Generic update may not promote to verified — that transition is
-    # document-gated and belongs to POST /rules/{id}/review (migration 256).
+    # document-gated and belongs to POST /rules/{id}/review (migration 257).
     sb = SBStub(_world())
     sb.db["exam_eligibility_rules"].append(
         {
@@ -554,7 +567,7 @@ def test_delete_unknown_rule_is_404():
 
 def test_create_rule_verified_is_always_422_regardless_of_source():
     # Neither a source_url nor a waiver can create a verified rule now — the
-    # honour-system verification path is closed (migration 256).
+    # honour-system verification path is closed (migration 257).
     sb = SBStub(_world())
     for extra in (
         {},
@@ -603,7 +616,7 @@ def test_update_rule_verify_without_source_or_waiver_is_422():
 
 def test_update_rule_verify_with_waiver_reason_is_still_blocked():
     # Waiver-based verification is gone: even with a waiver_reason, generic
-    # update cannot promote to verified (migration 256).
+    # update cannot promote to verified (migration 257).
     sb = SBStub(_world())
     sb.db["exam_eligibility_rules"].append(
         {

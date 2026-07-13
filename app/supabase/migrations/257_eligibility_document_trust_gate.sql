@@ -1,4 +1,7 @@
--- 256_eligibility_document_trust_gate.sql
+-- 257_eligibility_document_trust_gate.sql
+--
+-- (Renumbered from 256 → 257 to resolve a contiguous-migration collision with
+-- PR #983's 256_ca_relevance_window_sweep.sql, which opened first.)
 --
 -- Enforcement prerequisite 1 of docs/architecture/regulatory-eligibility-authoring-spec.md
 -- ("No document/review trust gate in the writer"). Until this lands, an
@@ -252,9 +255,13 @@ BEGIN
                     v_blocking := v_blocking || ARRAY['source_document_id_no_extracted_pages'];
                 END IF;
 
-                -- Reviewer separation: the actor cannot verify a document they uploaded.
-                IF v_asset.uploaded_by IS NOT NULL
-                   AND v_asset.uploaded_by::text = p_actor_id THEN
+                -- Reviewer separation: the actor cannot verify a document they
+                -- uploaded, and it FAILS CLOSED when uploader attribution is
+                -- absent — a legacy/manual asset with no uploaded_by cannot prove
+                -- a second actor, so it must not be promotable.
+                IF v_asset.uploaded_by IS NULL THEN
+                    v_blocking := v_blocking || ARRAY['uploader_missing'];
+                ELSIF v_asset.uploaded_by::text = p_actor_id THEN
                     v_blocking := v_blocking || ARRAY['reviewer_is_uploader'];
                 END IF;
             END IF;
@@ -373,7 +380,7 @@ DECLARE
     v_reason_trimmed text;
     v_blocking       text[];
     v_sibling        text;
-    v_verified_syl   boolean;
+    v_syl_id         uuid;
     v_extracted_ct   integer;
     v_want_pages     integer;
 BEGIN
@@ -422,8 +429,14 @@ BEGIN
 
     -- 6. Verification gate for draft → verified.
     IF v_rule.reviewer_status = 'draft' AND p_target_status = 'verified' THEN
-        -- Reviewer separation (independent of provenance completeness).
-        IF v_rule.created_by IS NOT NULL AND v_rule.created_by::text = p_actor_id THEN
+        -- Reviewer separation (independent of provenance completeness). FAILS
+        -- CLOSED when creator attribution is absent — a legacy/manual draft with
+        -- no created_by cannot prove a second reviewer, so it is not promotable.
+        IF v_rule.created_by IS NULL THEN
+            RAISE EXCEPTION 'creator_missing: rule has no created_by; cannot establish reviewer separation'
+                USING ERRCODE = 'P0422';
+        END IF;
+        IF v_rule.created_by::text = p_actor_id THEN
             RAISE EXCEPTION 'reviewer_is_creator: the rule author cannot verify their own rule'
                 USING ERRCODE = 'P0422';
         END IF;
@@ -460,6 +473,25 @@ BEGIN
         END IF;
 
         IF v_rule.source_document_id IS NOT NULL THEN
+            -- Lock the supporting VERIFIED syllabus_documents authority row FIRST
+            -- (syllabus → asset lock ordering, consistent with
+            -- review_syllabus_document). A bare EXISTS would let a concurrent
+            -- verified → pending/rejected document review commit between the read
+            -- and the rule UPDATE, leaving a verified rule backed by a
+            -- non-verified document (TOCTOU). FOR UPDATE holds the exact row so
+            -- the demotion serialises behind this transaction.
+            SELECT sd.id INTO v_syl_id
+            FROM public.syllabus_documents sd
+            WHERE sd.source_document_id = v_rule.source_document_id
+              AND sd.exam_id            = v_rule.exam_id
+              AND sd.trust_status       = 'verified'
+            ORDER BY sd.id
+            LIMIT 1
+            FOR UPDATE;
+            IF v_syl_id IS NULL THEN
+                v_blocking := v_blocking || ARRAY['no_verified_syllabus_document'];
+            END IF;
+
             SELECT * INTO v_asset
             FROM public.document_assets
             WHERE id = v_rule.source_document_id
@@ -476,18 +508,6 @@ BEGIN
                 END IF;
                 IF (v_asset.metadata->>'exam_id') IS DISTINCT FROM v_rule.exam_id::text THEN
                     v_blocking := v_blocking || ARRAY['source_document_id_exam_mismatch'];
-                END IF;
-
-                -- A matching VERIFIED syllabus_documents row must back the same
-                -- document + exam.
-                SELECT EXISTS (
-                    SELECT 1 FROM public.syllabus_documents sd
-                    WHERE sd.source_document_id = v_rule.source_document_id
-                      AND sd.exam_id            = v_rule.exam_id
-                      AND sd.trust_status       = 'verified'
-                ) INTO v_verified_syl;
-                IF NOT v_verified_syl THEN
-                    v_blocking := v_blocking || ARRAY['no_verified_syllabus_document'];
                 END IF;
 
                 -- Every referenced page must exist + be extracted for the document.

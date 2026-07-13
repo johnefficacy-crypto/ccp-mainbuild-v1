@@ -1,4 +1,4 @@
-"""Tests for the syllabus-document trust-gate review endpoint (migration 256).
+"""Tests for the syllabus-document trust-gate review endpoint (migration 257).
 
 POST /api/admin/exam-intelligence-cms/syllabus-documents/{id}/review
 
@@ -88,7 +88,9 @@ class _SylRpc:
                     )
                     if not extracted:
                         blocking.append("source_document_id_no_extracted_pages")
-                    if asset.get("uploaded_by") is not None and str(asset["uploaded_by"]) == str(p["p_actor_id"]):
+                    if asset.get("uploaded_by") is None:
+                        blocking.append("uploader_missing")
+                    elif str(asset["uploaded_by"]) == str(p["p_actor_id"]):
                         blocking.append("reviewer_is_uploader")
             if blocking:
                 raise Exception(f"provenance_incomplete: blocking_fields={','.join(blocking)}")
@@ -176,6 +178,15 @@ def test_verification_fails_for_same_uploader():
     assert "reviewer_is_uploader" in r.json()["detail"]["blocking_fields"]
     assert len(sb.db["admin_audit_logs"]) == 0
     assert sb.db["syllabus_documents"][0]["trust_status"] == "pending"
+
+
+def test_verification_fails_closed_when_uploader_missing():
+    # A legacy/manual asset with NULL uploaded_by cannot establish reviewer
+    # separation → fail closed (migration 257).
+    sb = _SylReviewSBStub(_world(doc_extra={"uploaded_by": None}))
+    r = _review(_client(sb))
+    assert r.status_code == 422, r.text
+    assert "uploader_missing" in r.json()["detail"]["blocking_fields"]
 
 
 def test_verification_fails_for_unprocessed_asset():

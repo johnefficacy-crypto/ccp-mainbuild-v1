@@ -16,14 +16,14 @@ These are real code gaps confirmed on `main`. Until each is closed, authoring is
 manual-SOP only and every `verified` promotion is an operator-risk action.
 
 1. **No document/review trust gate in the writer.** — **CODE-FIXED, VALIDATION PENDING**
-   (migration 256; not yet applied to any linked Supabase / no operator validation).
+   (migration 257; not yet applied to any linked Supabase / no operator validation).
    Previously `admin_exam_eligibility.py._require_trust_provenance()` accepted **any**
    non-empty `source_url` *or* an arbitrary `waiver_reason`; the POST create path
    allowed `reviewer_status='verified'` immediately, stamped by the **same** actor;
    there was **no** document linkage on `exam_eligibility_rules` and no check of
    document review state. → A rule could be "verified" with `source_url="https://x"`.
 
-   **Closed by migration 256 + the document-gated review endpoints:**
+   **Closed by migration 257 + the document-gated review endpoints:**
    - `exam_eligibility_rules` gains `source_document_id` (FK → `document_assets`,
      `ON DELETE RESTRICT`, repo convention name), `source_page_start` /
      `source_page_end` (paired, positive, ordered CHECKs), and `created_by`
@@ -44,7 +44,7 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
      edit demotes a verified rule (a DB trigger enforces this too), and a dedicated
      `POST /rules/{id}/review` endpoint is the only promotion path.
 
-   The remaining work is operator/live validation (apply 256 to the linked
+   The remaining work is operator/live validation (apply 257 to the linked
    Supabase, capture RLS/behavioural proof) before any rule is promoted `verified`
    in production. Until that validation lands, treat verification as code-gated but
    not operationally proven.
@@ -200,7 +200,7 @@ Baseline age: defer to the cycle layer (§Prereq 3).
    after §1's linkage/reviewer-separation exists.
 
 ## Follow-ups to file
-- ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 256, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
+- ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 257, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
 - `exam_cycles` trust/review column + gate every consumer & RLS.
 - Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.
 - ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.

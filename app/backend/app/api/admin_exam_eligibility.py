@@ -131,7 +131,7 @@ class RuleCreate(BaseModel):
     is_knockout: bool = True
     source_url: str | None = None
     source_notes: str | None = None
-    # Reviewed-document provenance (migration 256). Verification is gated on
+    # Reviewed-document provenance (migration 257). Verification is gated on
     # these via the dedicated review endpoint; create always lands ``draft``.
     source_document_id: UUID | None = None
     source_page_start: int | None = None
@@ -157,7 +157,7 @@ class RuleUpdate(BaseModel):
     waiver_reason: str | None = None
 
 
-# Provenance columns surfaced in list/detail responses (migration 256).
+# Provenance columns surfaced in list/detail responses (migration 257).
 _RULE_SELECT = (
     "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
     "is_knockout, source_url, source_notes, source_document_id, source_page_start, "
@@ -166,7 +166,7 @@ _RULE_SELECT = (
 )
 
 # Material fields whose mutation on a verified rule must demote it back to draft
-# (mirrors migration 256's DB-level block trigger).
+# (mirrors migration 257's DB-level block trigger).
 _MATERIAL_FIELDS = {
     "scope", "rule_type", "stream_id", "value_num", "value_text", "value_json",
     "is_knockout", "source_document_id", "source_page_start", "source_page_end",
@@ -438,16 +438,17 @@ def create_rule(
     body: RuleCreate,
     admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
-    # Create always lands as a draft. Verification is a separate, reviewer-gated
-    # transition (migration 256) — a rule can never be born verified, so an
-    # attempt to do so is rejected rather than silently downgraded.
-    if body.reviewer_status == "verified":
+    # Create is draft-only. Verification is a separate, reviewer-gated transition
+    # (migration 257) and archiving is a lifecycle action on an existing row —
+    # neither is a legitimate birth state, so any non-draft create status is
+    # rejected rather than silently persisted.
+    if body.reviewer_status != "draft":
         raise HTTPException(
             status_code=422,
             detail=(
-                "Rules cannot be created as 'verified'. Create the rule (it lands "
-                "'draft'), attach the reviewed source document + page locator, then "
-                "promote it via POST /rules/{rule_id}/review."
+                f"Rules must be created as 'draft' (got '{body.reviewer_status}'). "
+                "Attach the reviewed source document + page locator, then promote "
+                "via POST /rules/{rule_id}/review; archive an existing rule via DELETE."
             ),
         )
     _validate_rule_shape(
@@ -555,7 +556,7 @@ def update_rule(
 
     # The generic update path can never PROMOTE a rule to verified — that
     # transition is document-gated and reviewer-separated, so it must go through
-    # POST /rules/{rule_id}/review (migration 256). Demotion away from verified
+    # POST /rules/{rule_id}/review (migration 257). Demotion away from verified
     # is still allowed here (and also happens implicitly on a material edit).
     if body.reviewer_status == "verified" and current.get("reviewer_status") != "verified":
         raise HTTPException(
@@ -635,7 +636,7 @@ def update_rule(
 
     # A material edit to a currently-verified rule silently demotes it to draft
     # and clears the verification stamp: trusted content may not drift while the
-    # row still claims to be verified (migration 256 enforces this at the DB too).
+    # row still claims to be verified (migration 257 enforces this at the DB too).
     def _is_material_change() -> bool:
         for f in _MATERIAL_FIELDS:
             if f in patch and patch[f] != current.get(f):
@@ -689,7 +690,7 @@ def update_rule(
 # ── Review endpoint (document-gated trust transition) ─────────────────────
 
 
-# Allowed reviewer_status transitions for exam_eligibility_rules (migration 256).
+# Allowed reviewer_status transitions for exam_eligibility_rules (migration 257).
 _RULE_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "draft": ("verified", "archived"),
     "verified": ("draft", "archived"),
@@ -714,7 +715,7 @@ def review_rule(
     """Document-gated trust transition for an eligibility rule.
 
     Promotion to ``verified`` is authoritative inside the
-    ``review_exam_eligibility_rule`` RPC (migration 256): it runs under a row
+    ``review_exam_eligibility_rule`` RPC (migration 257): it runs under a row
     lock and requires a direct page locator into a VERIFIED syllabus document
     backed by an authoritative, processed, page-extracted ``document_assets``
     row, with the reviewer distinct from the rule's ``created_by``. There is no
@@ -790,7 +791,7 @@ def _map_rpc_error(exc: Exception) -> HTTPException:
         )
     if any(tok in low for tok in (
         "transition_not_allowed", "invalid_reason", "invalid_target_status",
-        "reviewer_is_creator", "ambiguous_linked_qualification",
+        "reviewer_is_creator", "creator_missing", "ambiguous_linked_qualification",
     )):
         return HTTPException(status_code=422, detail=msg)
     logger.exception("review_exam_eligibility_rule RPC failed; no status change recorded")

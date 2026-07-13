@@ -798,7 +798,7 @@ def create_syllabus_document(
     return {"ok": True, "audit_id": audit_id, "row": new}
 
 
-# Allowed trust_status transitions for syllabus_documents (migration 256).
+# Allowed trust_status transitions for syllabus_documents (migration 257).
 _SYLLABUS_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "pending": ("verified", "rejected"),
     "verified": ("rejected", "superseded", "pending"),
@@ -825,7 +825,7 @@ def review_syllabus_document(
     """Transition a syllabus document's trust_status (document trust gate).
 
     Promotion to ``verified`` is authoritative inside the
-    ``review_syllabus_document`` RPC (migration 256): under a row lock it
+    ``review_syllabus_document`` RPC (migration 257): under a row lock it
     requires the linked ``document_assets`` row to be an authoritative
     (official_archive/official_scan), processed notification/corrigendum with
     populated storage, at least one extracted page, and matching exam (and

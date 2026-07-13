@@ -1,4 +1,7 @@
-"""Schema-contract tests for migration 256 (eligibility document trust gate).
+"""Schema-contract tests for migration 257 (eligibility document trust gate).
+
+(Renumbered from 256 → 257 to avoid a collision with PR #983's
+256_ca_relevance_window_sweep.sql.)
 
 Repo convention (test_exam_stream_eligibility_migration.py): CI has no live-DB
 migration harness, so these assert against the committed SQL text — schema
@@ -9,7 +12,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[2]
-    / ".." / "supabase" / "migrations" / "256_eligibility_document_trust_gate.sql"
+    / ".." / "supabase" / "migrations" / "257_eligibility_document_trust_gate.sql"
 ).read_text().lower()
 
 
@@ -82,6 +85,7 @@ def test_syllabus_rpc_is_security_definer_locked_and_gated():
         "source_document_id_untrusted_source_kind", "source_document_id_no_storage",
         "source_document_id_exam_mismatch", "source_document_id_cycle_mismatch",
         "source_document_id_no_extracted_pages", "reviewer_is_uploader",
+        "uploader_missing",  # fail-closed on missing uploader attribution
     ):
         assert tok in MIGRATION
     # authoritative source kinds
@@ -106,8 +110,9 @@ def test_syllabus_rpc_grants():
 def test_rule_rpc_is_security_definer_locked_and_gated():
     assert "create or replace function public.review_exam_eligibility_rule" in MIGRATION
     assert "from public.exam_eligibility_rules\n    where id = p_rule_id::uuid\n    for update" in MIGRATION
-    # reviewer separation
+    # reviewer separation — fail closed on missing authorship
     assert "reviewer_is_creator" in MIGRATION
+    assert "creator_missing" in MIGRATION
     assert "v_rule.created_by::text = p_actor_id" in MIGRATION
     # page locator + verified syllabus + extracted pages
     assert "source_page_locator_missing" in MIGRATION
@@ -115,6 +120,10 @@ def test_rule_rpc_is_security_definer_locked_and_gated():
     assert "referenced_page_not_extracted" in MIGRATION
     assert "extraction_status = 'extracted'" in MIGRATION
     assert "trust_status       = 'verified'" in MIGRATION
+    # the supporting syllabus authority row is LOCKED (no TOCTOU), ordered
+    # syllabus → asset to match review_syllabus_document.
+    assert "from public.syllabus_documents sd\n            where sd.source_document_id = v_rule.source_document_id" in MIGRATION
+    assert "for update;\n            if v_syl_id is null then" in MIGRATION
     # ambiguity guard retained
     assert "ambiguous_linked_qualification" in MIGRATION
 
