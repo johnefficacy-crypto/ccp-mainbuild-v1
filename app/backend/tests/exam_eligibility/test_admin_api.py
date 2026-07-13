@@ -228,6 +228,27 @@ def test_create_qualification_combination_rejects_malformed_json():
     assert "valid combination" in r.json()["detail"]
 
 
+def test_create_qualification_combination_rejects_experience_clause():
+    # experience_min_years is cycle-only — not allowed in a baseline combo.
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "qualification_combination",
+              "value_json": {"op": "and", "clauses": [{"rule_type": "experience_min_years", "value_num": 3}]}},
+    )
+    assert r.status_code == 400
+
+
+def test_create_stream_availability_rejects_unknown_value():
+    sb = SBStub(_world())
+    r = TestClient(_build_app(sb)).post(
+        f"/api/admin/exam-eligibility/exams/{EXAM_A}/rules",
+        json={"scope": "all", "rule_type": "stream_availability", "value_text": "maybe"},
+    )
+    assert r.status_code == 400
+    assert "offered" in r.json()["detail"]
+
+
 def test_update_can_clear_stream_id_back_to_common():
     sb = SBStub(_world())
     sb.db["exam_eligibility_rules"].append(

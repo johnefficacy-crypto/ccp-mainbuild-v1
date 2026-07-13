@@ -21,6 +21,7 @@ level, and never raises into a request — its caller wraps any DB error.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from typing import Any, Iterable
 
@@ -161,6 +162,39 @@ def _tokens(values: Iterable[Any]) -> set[str]:
     return out
 
 
+# Alias sets for short discipline acronyms so boundary matching still resolves
+# "IT" ↔ "information technology" without the substring false-positives the
+# checkpost flagged (required "it" must NOT match "statistics").
+_DISCIPLINE_ALIASES: dict[str, set[str]] = {
+    "it": {"it", "information technology"},
+    "cs": {"cs", "computer science"},
+    "ca": {"ca", "chartered accountant", "chartered accountancy"},
+    "cma": {"cma", "cost accountant", "cost and management accountant"},
+    "llb": {"llb", "ll.b", "law", "bachelor of law", "bachelor of laws"},
+    "law": {"law", "llb", "ll.b", "bachelor of law", "bachelor of laws"},
+    "cfa": {"cfa", "chartered financial analyst"},
+    "eng": {"engineering", "b.e", "b.tech", "be", "btech"},
+}
+
+
+def _alias_set(token: str) -> set[str]:
+    return _DISCIPLINE_ALIASES.get(token, {token})
+
+
+def _boundary_match(needle: str, field: str) -> bool:
+    return re.search(r"(?<![a-z0-9])" + re.escape(needle) + r"(?![a-z0-9])", field) is not None
+
+
+def _discipline_matches(required: str, field: str) -> bool:
+    """Boundary-aware, alias-expanded match. `required` and `field` are
+    already normalized (lowercase, stripped)."""
+    for alias in _alias_set(required):
+        if _boundary_match(alias, field):
+            return True
+    # Symmetric: the field may itself be the acronym whose alias set holds req.
+    return required in _alias_set(field)
+
+
 def _eval_discipline(required: str | None, profile: dict[str, Any]) -> str:
     req = _normalize_text(required)
     if not req:
@@ -168,11 +202,10 @@ def _eval_discipline(required: str | None, profile: dict[str, Any]) -> str:
     disciplines = profile.get("disciplines")
     if disciplines is None:
         return "missing"
-    hay = " ".join(sorted(_tokens(disciplines)))
-    if not hay:
+    fields = [d for d in (_normalize_text(x) for x in disciplines) if d]
+    if not fields:
         return "missing"
-    # Deterministic containment either way (a "law" rule matches "b.a. llb, law").
-    return "pass" if (req in hay or any(req in d or d in req for d in _tokens(disciplines))) else "fail"
+    return "pass" if any(_discipline_matches(req, f) for f in fields) else "fail"
 
 
 def _eval_min_percentage(required: Any, profile: dict[str, Any]) -> str:
@@ -228,13 +261,13 @@ def _eval_atomic(rule_type: str, value_num: Any, value_text: Any, profile: dict[
     return "fail"
 
 
-def _eval_qualification_combination(node: Any, profile: dict[str, Any]) -> str:
-    """Tri-state evaluation of a {op, clauses} tree (see migration 248)."""
+def _eval_qc_tree(node: Any, view: dict[str, Any]) -> str:
+    """Tri-state evaluation of a {op, clauses} tree against ONE profile view."""
     if not isinstance(node, dict):
         return "fail"
     op = node.get("op")
     if op in ("and", "or"):
-        results = [_eval_qualification_combination(c, profile) for c in node.get("clauses") or []]
+        results = [_eval_qc_tree(c, view) for c in node.get("clauses") or []]
         if not results:
             return "fail"
         if op == "and":
@@ -249,7 +282,39 @@ def _eval_qualification_combination(node: Any, profile: dict[str, Any]) -> str:
         if "missing" in results:
             return "missing"
         return "fail"
-    return _eval_atomic(node.get("rule_type"), node.get("value_num"), node.get("value_text"), profile)
+    return _eval_atomic(node.get("rule_type"), node.get("value_num"), node.get("value_text"), view)
+
+
+def _eval_qualification_combination(node: Any, profile: dict[str, Any]) -> str:
+    """Record-correlated evaluation. Discipline / min_percentage / education
+    clauses that appear together in a combination must be satisfied by the SAME
+    education record — so "LLB AND 60%" needs one qualification that is BOTH,
+    not an LLB at 50% plus an unrelated degree at 75% (checkpost P0).
+
+    Evaluated existentially over the user's education records: a record-scoped
+    view (disciplines/percentage/level from that record) is combined with the
+    global profile (nationality, certifications). Passes if any record passes;
+    missing if none pass but some are undecidable; else fails.
+    """
+    records = profile.get("education_records")
+    if not records:
+        # No per-record data — evaluate once with whatever the profile has, so a
+        # record-bound clause resolves to 'missing' rather than a false verdict.
+        return _eval_qc_tree(node, profile)
+    outcomes: list[str] = []
+    for rec in records:
+        view = {
+            **profile,
+            "disciplines": rec.get("disciplines"),
+            "best_percentage": rec.get("percentage"),
+            "education_level": rec.get("level"),
+        }
+        outcomes.append(_eval_qc_tree(node, view))
+    if "pass" in outcomes:
+        return "pass"
+    if "missing" in outcomes:
+        return "missing"
+    return "fail"
 
 
 def evaluate_exam_for_user(
@@ -382,11 +447,13 @@ def evaluate_exam_for_user(
         elif res == "pass":
             any_rule_checked = True
 
-    # ── stream_availability (a not_offered stream knocks itself out) ──
+    # ── stream_availability — fail closed: only offered/expected pass; a
+    #    not_offered OR any unknown/typo'd value knocks the stream out. ──
     rule = _pick_rule(rules, "stream_availability", scopes)
     if rule:
         any_rule_checked = True
-        if _normalize_text(rule.get("value_text")) == "not_offered" and rule.get("is_knockout", True):
+        avail = _normalize_text(rule.get("value_text"))
+        if avail not in ("offered", "expected") and rule.get("is_knockout", True):
             reasons.append("This stream is not offered.")
             return _decision("not_eligible", reasons, missing)
 
@@ -464,6 +531,7 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
     best_level = None
     disciplines: list[str] = []
     best_percentage: float | None = None
+    records: list[dict[str, Any]] = []
     for row in edu_rows:
         if row.get("is_completed") is False:
             continue
@@ -471,22 +539,30 @@ def _load_user_profile(supabase: Any, user_id: str) -> dict[str, Any]:
         if rank is not None and rank > best_rank:
             best_rank = rank
             best_level = row.get("level")
+        rec_disc: list[str] = []
         for key in ("degree", "stream"):
             val = row.get(key)
             if isinstance(val, str) and val.strip():
                 disciplines.append(val)
+                rec_disc.append(val)
+        rec_pct: float | None = None
         pct = row.get("percentage")
         if pct is not None:
             try:
-                best_percentage = max(best_percentage or float("-inf"), float(pct))
+                rec_pct = float(pct)
+                best_percentage = max(best_percentage or float("-inf"), rec_pct)
             except (TypeError, ValueError):
                 pass
+        # One normalized record: discipline + percentage + level stay CORRELATED
+        # so a combination like "LLB AND 60%" must be satisfied by ONE qualification.
+        records.append({"disciplines": rec_disc, "percentage": rec_pct, "level": row.get("level")})
     if best_level:
         profile["education_level"] = best_level
     # Keyed presence (empty list, not absent) so the evaluator distinguishes
     # "no discipline on file → missing" from "has discipline that doesn't match".
     if edu_rows:
         profile["disciplines"] = disciplines
+        profile["education_records"] = records
     if best_percentage is not None:
         profile["best_percentage"] = best_percentage
 
@@ -525,7 +601,7 @@ def _load_rules_by_exam(
         lambda: (
             supabase.table("exam_eligibility_rules")
             .select(
-                "exam_id, stream_id, scope, rule_type, value_num, value_text, "
+                "exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
                 "is_knockout, source_url, reviewer_status"
             )
             .in_("exam_id", exam_ids)

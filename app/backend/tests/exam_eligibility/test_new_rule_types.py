@@ -40,6 +40,15 @@ def test_discipline_missing_is_conditional():
     assert "disciplines" in out["missing_fields"]
 
 
+def test_discipline_matching_is_boundary_safe_not_substring():
+    # Short acronyms must NOT substring-match unrelated fields (checkpost P0).
+    assert evaluate_exam_for_user([_r("discipline", value_text="IT")], {"disciplines": ["Statistics"]})["status"] == "not_eligible"
+    assert evaluate_exam_for_user([_r("discipline", value_text="CA")], {"disciplines": ["Vocational Training"]})["status"] == "not_eligible"
+    assert evaluate_exam_for_user([_r("discipline", value_text="Law")], {"disciplines": ["Flawless Studies"]})["status"] == "not_eligible"
+    # …but the alias still resolves the real qualification.
+    assert evaluate_exam_for_user([_r("discipline", value_text="IT")], {"disciplines": ["Information Technology"]})["status"] == "eligible"
+
+
 # ── min_percentage ─────────────────────────────────────────────────────────
 
 
@@ -63,9 +72,28 @@ def test_certification_pass_and_fail():
 # ── stream_availability ────────────────────────────────────────────────────
 
 
-def test_stream_not_offered_is_not_eligible():
-    out = evaluate_exam_for_user([_r("stream_availability", value_text="not_offered")], {})
-    assert out["status"] == "not_eligible"
+def test_stream_availability_fails_closed_on_unknown_value():
+    assert evaluate_exam_for_user([_r("stream_availability", value_text="not_offered")], {})["status"] == "not_eligible"
+    # A typo / unsupported value must NOT pass (fail closed, checkpost P1).
+    assert evaluate_exam_for_user([_r("stream_availability", value_text="maybe")], {})["status"] == "not_eligible"
+    assert evaluate_exam_for_user([_r("stream_availability", value_text="offered")], {})["status"] == "eligible"
+
+
+# ── record correlation ─────────────────────────────────────────────────────
+
+
+def test_combination_requires_one_record_to_satisfy_all_bound_clauses():
+    rule = [_r("qualification_combination", value_json=_QC)]  # LLB AND >=60%
+    # LLB at 50% + unrelated B.Com at 75% must NOT satisfy "LLB AND 60%".
+    mixed = {"education_records": [
+        {"disciplines": ["LLB"], "percentage": 50, "level": "graduation"},
+        {"disciplines": ["B.Com"], "percentage": 75, "level": "graduation"},
+    ], "disciplines": ["LLB", "B.Com"], "best_percentage": 75}
+    assert evaluate_exam_for_user(rule, mixed)["status"] == "not_eligible"
+    # One record that is BOTH LLB and >=60% satisfies it.
+    good = {"education_records": [{"disciplines": ["LLB"], "percentage": 65, "level": "graduation"}],
+            "disciplines": ["LLB"], "best_percentage": 65}
+    assert evaluate_exam_for_user(rule, good)["status"] == "eligible"
 
 
 # ── qualification_combination ──────────────────────────────────────────────
@@ -97,6 +125,29 @@ def test_qualification_combination_or_semantics():
 
 
 # ── per-stream breakdown in summarize ──────────────────────────────────────
+
+
+def test_summarize_loads_value_json_for_combination_rules():
+    # Regression for the checkpost P0: the DB loader must SELECT value_json, or a
+    # verified qualification_combination is always None -> not_eligible.
+    exam = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    invalidate_eligibility_rules_cache()
+    sb = SBStub({
+        "exams": [{"id": exam, "slug": "sebi-grade-a", "name": "SEBI Grade A", "is_active": True, "exam_family_id": None}],
+        "exam_streams": [],
+        "exam_eligibility_rules": [
+            {"exam_id": exam, "stream_id": None, "scope": "all", "rule_type": "qualification_combination",
+             "value_num": None, "value_text": None, "value_json": _QC, "is_knockout": True, "reviewer_status": "verified"},
+        ],
+        "profiles": [{"id": "u1", "nationality": "Indian"}],
+        "aspirant_education": [{"user_id": "u1", "level": "graduation", "degree": "LLB",
+                                "stream": "law", "percentage": 70, "is_completed": True}],
+    })
+    out = summarize_user_eligibility(sb, "u1")
+    invalidate_eligibility_rules_cache()
+    # LLB at 70% satisfies "LLB AND 60%" -> eligible (would be not_eligible if
+    # value_json were dropped by the projection).
+    assert any(i["slug"] == "sebi-grade-a" for i in out["eligible"])
 
 
 def test_summarize_includes_per_stream_breakdown():

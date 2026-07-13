@@ -89,7 +89,9 @@ _TEXT_RULE_TYPES = {
 _JSON_RULE_TYPES = {"qualification_combination"}
 
 _QC_TEXT_TYPES = {"discipline", "certification", "education_min_level", "nationality"}
-_QC_NUM_TYPES = {"min_percentage", "experience_min_years"}
+# experience_min_years is cycle-only (§4) and is NOT allowed in a baseline combo.
+_QC_NUM_TYPES = {"min_percentage"}
+_STREAM_AVAILABILITY_VALUES = {"offered", "not_offered", "expected"}
 
 
 def _valid_qualification_combination(node: Any) -> bool:
@@ -165,6 +167,12 @@ def _validate_rule_shape(
             raise HTTPException(
                 status_code=400,
                 detail=f"{rule_type} requires value_text",
+            )
+    if rule_type == "stream_availability" and value_text is not None:
+        if str(value_text).strip().lower() not in _STREAM_AVAILABILITY_VALUES:
+            raise HTTPException(
+                status_code=400,
+                detail="stream_availability value_text must be one of: offered, not_offered, expected",
             )
     if rule_type in _JSON_RULE_TYPES:
         if value_json is None:
