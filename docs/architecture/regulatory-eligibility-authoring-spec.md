@@ -35,11 +35,17 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    unfaithful near the cut-off. **Prereq:** implement cutoff-aware evaluation, or
    keep notification age in the cycle layer, before authoring precise age rows.
 4. **~~No include-inactive discovery for draft identities.~~ RESOLVED.**
-   `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) now
-   lists inactive seeded identities (PFRDA Grade A / IRDAI AM, migration 244), each
-   with its `is_active` flag so the caller distinguishes draft from active. Default
-   (`include_inactive=false`) is unchanged (active-only). The audited authoring flow
-   can now resolve those exam ids.
+   `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) lists
+   inactive identities (PFRDA Grade A / IRDAI AM, migration 244); default
+   (`include_inactive=false`) is unchanged (active-only). `is_active=false` alone is
+   ambiguous — it cannot tell a **seeded draft** from a **retired** exam — so each
+   item also carries `provenance` (from `exams.metadata.provenance`, e.g. `"draft"`);
+   author only against `provenance="draft"` regulator identities.
+   `GET /api/admin/exam-eligibility/exams/{exam_id}/streams` returns each canonical
+   stream's generated `id` + `stream_key` + `provenance`, which `RuleCreate.stream_id`
+   needs to author a stream-scoped rule (the 244 `exam_streams` UUIDs are
+   non-deterministic). Exam id **and** stream ids now both resolve without a direct
+   DB lookup.
 
 ## What the evaluator actually matches (source of truth)
 
@@ -133,10 +139,10 @@ Canonical keys from 244.
 Baseline age: **do not author** as baseline (§Prereq 3) — defer to the cycle layer.
 
 ### IRDAI Assistant Manager (identity inactive — discover via admin `include_inactive=true`, §Prereq 4 resolved)
-Canonical keys from 244. **Registry gap:** 244 seeds only five IRDAI streams
-(`generalist`, `actuarial`, `finance`, `information-technology`, `research`) — the
-notification's **Law** stream is missing; file a follow-up to add `irdai-am/law`
-before authoring for it.
+Canonical keys from 244, which seeds all **six** IRDAI streams — `generalist`,
+`actuarial`, `finance`, `information-technology`, `research`, and **`law`** (the
+`irdai-am` exam is described as "six streams" and `law` is an existing canonical
+`exam_streams` row). No registry gap.
 
 | stream | rule |
 |---|---|
@@ -145,7 +151,7 @@ before authoring for it.
 | `information-technology` | `qualification_combination {and:[education_min_level graduation, {or:[discipline it, discipline cs, discipline eng]}, min_percentage 60]}` |
 | `research` | `qualification_combination {and:[education_min_level post_graduation, {or:[discipline economics, discipline statistics]}, min_percentage 60]}` |
 | `actuarial` | **Keep the whole stream `unknown`.** "graduation 60% + seven IAI papers": the paper count is not representable, and a lone `min_percentage 60` would resolve `eligible` — a false positive violating the fail-closed rule. No partial floor; keep it a research/manual-review note until a count model or machine-enforced blocker exists. |
-| `law` *(missing from 244)* | after the registry gap is filed: `qualification_combination {and:[discipline law, education_min_level graduation, min_percentage 60]}` |
+| `law` | `qualification_combination {and:[discipline law, education_min_level graduation, min_percentage 60]}` |
 
 Baseline age: defer to the cycle layer (§Prereq 3).
 
@@ -158,7 +164,8 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 0. **Close the relevant §Enforcement gaps first** — otherwise every `verified`
    promotion is honour-system and cycles/age are unsafe.
 1. Ingest the advertisement/handout as a `document_assets` row (direct locator).
-2. Resolve the exam id via the admin include-inactive path (§Prereq 4).
+2. Resolve the exam id via the admin include-inactive path (`provenance="draft"`
+   only), then its stream ids via `GET …/exams/{exam_id}/streams` (§Prereq 4).
 3. Author the rows above via `admin_exam_eligibility.py` (`draft`), folding
    degree level + discipline + percentage into single record-correlated
    combinations (respect `_reject_ambiguous_linked_qualification`; never
@@ -172,5 +179,5 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 - `exam_eligibility_rules.document_asset_id` FK + reviewed-document verify transition + reviewer separation.
 - `exam_cycles` trust/review column + gate every consumer & RLS.
 - Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.
-- ~~Admin include-inactive exam listing for draft identities.~~ **RESOLVED** — `GET /api/admin/exam-eligibility/exams?include_inactive=true` lists inactive seeded identities with their `is_active` flag.
-- Registry gap: add the missing `irdai-am/law` stream to `exam_streams` (244 seeds only five of IRDAI's six streams).
+- ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.
+- ~~Registry gap: add the missing `irdai-am/law` stream.~~ **NOT A GAP** — migration 244 already seeds all six IRDAI streams, including `law`.

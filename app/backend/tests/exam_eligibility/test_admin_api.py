@@ -88,18 +88,54 @@ def test_list_exams_reports_rule_counts_per_status():
     assert items["upsc-cse"]["total_rules"] == 0
 
 
+IRDAI_ID = "33333333-3333-4333-8333-333333333333"
+RETIRED_ID = "44444444-4444-4444-8444-444444444444"
+
+
 def _world_with_inactive():
     world = _world()
-    # A seeded-but-inactive draft regulator identity (e.g. PFRDA/IRDAI per migration 244).
+    # A seeded-but-inactive draft regulator identity (e.g. PFRDA/IRDAI per migration 244):
+    # inactive AND carrying the governed provenance='draft' marker in metadata.
     world["exams"].append(
         {
-            "id": "33333333-3333-4333-8333-333333333333",
+            "id": IRDAI_ID,
             "slug": "irdai-am",
             "name": "IRDAI Assistant Manager",
             "is_active": False,
             "exam_family_id": None,
+            "metadata": {"provenance": "draft", "verified": False},
         }
     )
+    # A second inactive exam that is NOT a draft — proves is_active=false alone
+    # cannot distinguish a seeded draft from a retired identity.
+    world["exams"].append(
+        {
+            "id": RETIRED_ID,
+            "slug": "legacy-retired",
+            "name": "Legacy Retired Exam",
+            "is_active": False,
+            "exam_family_id": None,
+            "metadata": {"disposition": "retired"},
+        }
+    )
+    # Canonical stream identities for the draft regulator exam (migration 244):
+    # non-deterministic UUIDs, which is why an admin listing path is needed.
+    world["exam_streams"] = [
+        {
+            "id": "55555555-5555-4555-8555-555555555555",
+            "exam_id": IRDAI_ID,
+            "stream_key": "law",
+            "name": "Law",
+            "metadata": {"provenance": "draft", "verified": False},
+        },
+        {
+            "id": "66666666-6666-4666-8666-666666666666",
+            "exam_id": IRDAI_ID,
+            "stream_key": "actuarial",
+            "name": "Actuarial",
+            "metadata": {"provenance": "draft", "verified": False},
+        },
+    ]
     return world
 
 
@@ -120,8 +156,49 @@ def test_list_exams_include_inactive_surfaces_draft_identities():
     )
     items = {e["slug"]: e for e in body["items"]}
     assert "irdai-am" in items
-    assert items["irdai-am"]["is_active"] is False  # caller can distinguish draft from active
+    assert items["irdai-am"]["is_active"] is False
     assert items["ssc-cgl"]["is_active"] is True
+
+
+def test_list_exams_provenance_distinguishes_draft_from_retired():
+    # is_active=false is ambiguous; provenance tells a seeded draft from a retired exam.
+    sb = SBStub(_world_with_inactive())
+    body = (
+        TestClient(_build_app(sb))
+        .get("/api/admin/exam-eligibility/exams", params={"include_inactive": "true"})
+        .json()
+    )
+    items = {e["slug"]: e for e in body["items"]}
+    assert items["irdai-am"]["provenance"] == "draft"
+    assert items["legacy-retired"]["provenance"] is None  # not a draft — do not author here
+    assert items["ssc-cgl"]["provenance"] is None
+    # metadata itself is not leaked into the item shape.
+    assert "metadata" not in items["irdai-am"]
+
+
+def test_list_streams_returns_canonical_stream_ids():
+    sb = SBStub(_world_with_inactive())
+    body = (
+        TestClient(_build_app(sb))
+        .get(f"/api/admin/exam-eligibility/exams/{IRDAI_ID}/streams")
+        .json()
+    )
+    assert body["exam"]["slug"] == "irdai-am"
+    streams = {s["stream_key"]: s for s in body["streams"]}
+    # migration 244 seeds six IRDAI streams incl. law — the id is what RuleCreate needs.
+    assert {"law", "actuarial"} <= set(streams)
+    assert streams["law"]["id"] == "55555555-5555-4555-8555-555555555555"
+    assert streams["law"]["provenance"] == "draft"
+    assert "metadata" not in streams["law"]
+
+
+def test_list_streams_for_unknown_exam_is_404():
+    sb = SBStub(_world_with_inactive())
+    missing = "99999999-9999-4999-8999-999999999999"
+    r = TestClient(_build_app(sb)).get(
+        f"/api/admin/exam-eligibility/exams/{missing}/streams"
+    )
+    assert r.status_code == 404
 
 
 def test_list_rules_for_unknown_exam_is_404():
