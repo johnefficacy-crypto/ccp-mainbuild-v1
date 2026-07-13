@@ -181,9 +181,9 @@ begin
   return v_count;
 end $$;
 
--- Scoped service entry point. It keeps migration 259's serialized reuse behavior, but
--- also locks and proves that every supplied retry item belongs to the exact attempt exam
--- before the internal guarded/authoritative start is allowed to consume it.
+-- Scoped service entry point. It validates the bundle authority before reusing an
+-- existing attempt, then proves that every supplied retry item belongs to the exact
+-- attempt exam before the guarded/authoritative implementation may consume it.
 create or replace function public.ca_start_monthly_current_affairs_attempt_scoped(
   p_user uuid,
   p_bundle uuid,
@@ -194,13 +194,49 @@ create or replace function public.ca_start_monthly_current_affairs_attempt_scope
 ) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
+  v_bundle public.current_affairs_bundles%rowtype;
   v_existing public.current_affairs_attempts%rowtype;
+  v_family uuid;
   v_qid uuid;
 begin
   if p_user is null then raise exception 'user_required' using errcode = 'P0422'; end if;
   if p_bundle is null then raise exception 'bundle_not_found' using errcode = 'P0404'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_user::text || ':' || p_bundle::text, 0));
+
+  select * into v_bundle
+  from public.current_affairs_bundles
+  where id = p_bundle
+  for update;
+  if not found then raise exception 'bundle_not_found' using errcode = 'P0404'; end if;
+  if v_bundle.cadence <> 'monthly' then
+    raise exception 'not_a_monthly_bundle' using errcode = 'P0422';
+  end if;
+  if v_bundle.status <> 'published' then
+    raise exception 'bundle_not_published: %', v_bundle.status using errcode = 'P0422';
+  end if;
+  if v_bundle.reviewer_status <> 'verified' then
+    raise exception 'bundle_not_verified: %', v_bundle.reviewer_status using errcode = 'P0422';
+  end if;
+  if v_bundle.publish_at is not null and v_bundle.publish_at > now() then
+    raise exception 'bundle_not_yet_published' using errcode = 'P0422';
+  end if;
+  if v_bundle.available_until is not null and v_bundle.available_until <= now() then
+    raise exception 'bundle_unavailable' using errcode = 'P0422';
+  end if;
+
+  select exam_family_id into v_family
+  from public.exams
+  where id = p_exam;
+  if v_bundle.exam_id is not null then
+    if v_bundle.exam_id is distinct from p_exam then
+      raise exception 'bundle_scope_mismatch: exam' using errcode = 'P0403';
+    end if;
+  elsif v_bundle.exam_family_id is not null then
+    if v_family is null or v_bundle.exam_family_id is distinct from v_family then
+      raise exception 'bundle_scope_mismatch: family' using errcode = 'P0403';
+    end if;
+  end if;
 
   select * into v_existing
   from public.current_affairs_attempts
