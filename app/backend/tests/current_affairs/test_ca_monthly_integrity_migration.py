@@ -51,9 +51,9 @@ def test_retry_selector_is_exact_exam_scoped():
     )
 
 
-def test_scoped_start_validates_bundle_before_reuse_and_rechecks_retry_exam():
+def test_guarded_start_validates_bundle_before_reuse_and_rechecks_retry_exam():
     fn = _NORM.split(
-        "function public.ca_start_monthly_current_affairs_attempt_scoped"
+        "function public.ca_start_monthly_current_affairs_attempt_guarded"
     )[1]
     assert "pg_advisory_xact_lock" in fn
     bundle_at = fn.index("from public.current_affairs_bundles")
@@ -67,9 +67,13 @@ def test_scoped_start_validates_bundle_before_reuse_and_rechecks_retry_exam():
     assert "v_existing.exam_id is distinct from p_exam" in fn
     assert "ri.exam_id is not distinct from p_exam" in fn
     assert "for update" in fn
-    assert "ca_start_monthly_current_affairs_attempt_guarded" in fn
+    assert "return public.ca_start_monthly_current_affairs_attempt(" in fn
     assert (
-        "revoke execute on function public.ca_start_monthly_current_affairs_attempt_guarded"
+        "grant execute on function public.ca_start_monthly_current_affairs_attempt_guarded"
+        in _NORM
+    )
+    assert (
+        "revoke execute on function public.ca_start_monthly_current_affairs_attempt("
         in _NORM
     )
 
