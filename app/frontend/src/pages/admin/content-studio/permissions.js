@@ -25,5 +25,8 @@ export function studioPerms(user) {
     // Activation is a SEPARATE, higher-trust authority (EWP-SP2). Neither author
     // nor review may flip is_active — only content_studio.activate (or super_admin).
     canActivate: has("content_studio.activate"),
+    // Promoting a CA candidate INTO the objective bank is a publish action — a
+    // higher gate than review (GQR-G4). Affordance-hiding only; backend authoritative.
+    canPublish: has("mock_questions:publish"),
   };
 }

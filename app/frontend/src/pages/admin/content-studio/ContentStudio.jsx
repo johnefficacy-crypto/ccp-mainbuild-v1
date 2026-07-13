@@ -30,6 +30,9 @@ const PromptLibrary = lazy(() => import("./PromptLibrary"));
 const PromptReviewQueue = lazy(() => import("./PromptReviewQueue"));
 const PromptBulkImport = lazy(() => import("./PromptBulkImport"));
 const ExamAssignments = lazy(() => import("./ExamAssignments"));
+const QuantHeuristicLibrary = lazy(() => import("./QuantHeuristicLibrary"));
+const QuantHeuristicReviewQueue = lazy(() => import("./QuantHeuristicReviewQueue"));
+const CaQuestionReviewQueue = lazy(() => import("./CaQuestionReviewQueue"));
 
 const TABS = [
   { id: "library", label: "Library" },
@@ -41,6 +44,8 @@ const TABS = [
 const CONTENT_TYPES = [
   { id: "objective_question", label: "Objective questions" },
   { id: "writing_prompt", label: "Writing prompts" },
+  { id: "quant_heuristic", label: "Quant heuristics" },
+  { id: "current_affairs_question", label: "Current affairs" },
 ];
 
 export default function ContentStudio() {
@@ -69,15 +74,43 @@ export default function ContentStudio() {
     setParams(next);
   };
 
-  // Exam Assignments only exists for writing prompts today.
-  const typedTabs = type === "writing_prompt" ? TABS : TABS.filter((t) => t.id !== "exam-assignments");
-  const activeTab = typedTabs.some((t) => t.id === tab) ? tab : "library";
+  // Tab availability per content type. Exam Assignments only exists for writing
+  // prompts. Quant heuristics ship read + review only (migration 243 has no
+  // create/bulk/assign RPC), so they expose just Library + Review Queue.
+  let typedTabs;
+  if (type === "writing_prompt") {
+    typedTabs = TABS;
+  } else if (type === "quant_heuristic") {
+    typedTabs = TABS.filter((t) => t.id === "library" || t.id === "review-queue");
+  } else if (type === "current_affairs_question") {
+    // CA candidates are shadow-generated (GQR-G3) — no author/library/bulk path;
+    // the operator only reviews + promotes, so expose just the review queue.
+    typedTabs = TABS.filter((t) => t.id === "review-queue");
+  } else {
+    typedTabs = TABS.filter((t) => t.id !== "exam-assignments");
+  }
+  const activeTab = typedTabs.some((t) => t.id === tab)
+    ? tab
+    : (typedTabs[0]?.id || "library");
+
+  // Writing prompts, quant heuristics, and CA candidates are Content Studio content
+  // behind the same read gate — hide their bodies without content read permission.
+  const needsContentRead =
+    type === "writing_prompt" ||
+    type === "quant_heuristic" ||
+    type === "current_affairs_question";
 
   let body = null;
   if (type === "objective_question") {
     if (activeTab === "library") body = <MockQuestionList />;
     else if (activeTab === "review-queue") body = <MockReviewQueue />;
     else body = <MockImportWizard />;
+  } else if (type === "quant_heuristic") {
+    body = activeTab === "review-queue"
+      ? <QuantHeuristicReviewQueue perms={perms} />
+      : <QuantHeuristicLibrary perms={perms} />;
+  } else if (type === "current_affairs_question") {
+    body = <CaQuestionReviewQueue perms={perms} />;
   } else if (activeTab === "library") {
     body = <PromptLibrary perms={perms} onAssign={assignPrompt} />;
   } else if (activeTab === "review-queue") {
@@ -121,9 +154,9 @@ export default function ContentStudio() {
           </select>
         </label>
       </div>
-      {type === "writing_prompt" && !perms.canRead ? (
+      {needsContentRead && !perms.canRead ? (
         <div style={{ padding: "2rem", opacity: 0.7 }} data-testid="content-studio-no-access">
-          You do not have access to writing-prompt content. Ask an admin for
+          You do not have access to this content. Ask an admin for
           content_studio.author or content_studio.review.
         </div>
       ) : (
