@@ -102,7 +102,10 @@ test.describe("Flow: projected-PYQ practice → submit → review", () => {
     // Review renders the projected PYQ's correct option as its printed source
     // label + text (never a raw option UUID) — proving the frozen projection
     // snapshot flows through the shared review surface.
-    await page.getByTestId("review-palette-item-1").click();
+    // review-palette-item-{i} is 0-indexed (MockReview.jsx map index), so item
+    // 0 is question_number 1 — the printed-order-first question this fixture's
+    // `firstQuestion` data describes (item 1 would be the SECOND question).
+    await page.getByTestId("review-palette-item-0").click();
     await expect(page.getByTestId("review-question")).toBeVisible();
     const correctAnswer = page.getByTestId("review-correct-answer");
     await expect(correctAnswer).toContainText("Correct answer:");

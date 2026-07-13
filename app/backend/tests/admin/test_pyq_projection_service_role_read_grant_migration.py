@@ -1,4 +1,4 @@
-"""Schema-contract tests for migration 249
+"""Schema-contract tests for migration 251
 (service_role SELECT grant on pyq_mock_question_projections).
 
 Migration 183 created the projection-bridge table and granted service_role
@@ -20,7 +20,7 @@ from pathlib import Path
 _MIGRATIONS = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
 
 MIGRATION = (
-    _MIGRATIONS / "249_pyq_projection_service_role_read_grant.sql"
+    _MIGRATIONS / "251_pyq_projection_service_role_read_grant.sql"
 ).read_text()
 
 
