@@ -4,10 +4,37 @@ from __future__ import annotations
 import pytest
 
 from app.current_affairs import monthly
-from tests.persona_questions._stub import SBStub
+from tests.persona_questions._stub import SBStub, _RpcCall
 
 
-def test_start_uses_guarded_rpc_and_passes_frozen_rows(monkeypatch):
+def test_retry_selector_is_bound_to_exact_exam():
+    captured = {}
+
+    class _SB:
+        def rpc(self, name, params):
+            captured["name"] = name
+            captured["params"] = params
+            return _RpcCall([
+                {"question_id": "retry-1"},
+                {"question_id": "core-1"},
+            ])
+
+    out = monthly._eligible_retry_tail_ids(
+        _SB(),
+        "user-1",
+        exam_id="exam-1",
+        exclude=["core-1"],
+        cap=10,
+    )
+
+    assert out == ["retry-1"]
+    assert captured == {
+        "name": "ca_eligible_retry_tail",
+        "params": {"p_user": "user-1", "p_exam": "exam-1"},
+    }
+
+
+def test_start_uses_scoped_rpc_and_passes_frozen_rows(monkeypatch):
     monkeypatch.setattr(
         monthly,
         "resolve_eligible_bundle",
@@ -25,7 +52,7 @@ def test_start_uses_guarded_rpc_and_passes_frozen_rows(monkeypatch):
     monkeypatch.setattr(
         monthly,
         "_eligible_retry_tail_ids",
-        lambda _sb, _uid, *, exclude, cap: ["retry-1"],
+        lambda _sb, _uid, *, exam_id, exclude, cap: ["retry-1"],
     )
     monkeypatch.setattr(
         monthly,
@@ -54,11 +81,12 @@ def test_start_uses_guarded_rpc_and_passes_frozen_rows(monkeypatch):
     )
 
     assert out["outcome"] == "ready"
-    assert captured["name"] == "ca_start_monthly_current_affairs_attempt_guarded"
-    assert [r["question_id"] for r in captured["params"]["p_core_rows"]] == [
+    assert captured["name"] == "ca_start_monthly_current_affairs_attempt_scoped"
+    assert captured["params"]["p_exam"] == "exam-1"
+    assert [row["question_id"] for row in captured["params"]["p_core_rows"]] == [
         "core-1"
     ]
-    assert [r["question_id"] for r in captured["params"]["p_retry_rows"]] == [
+    assert [row["question_id"] for row in captured["params"]["p_retry_rows"]] == [
         "retry-1"
     ]
 
