@@ -479,6 +479,22 @@ async def remove_tracked_exam(
     return {"ok": True, "removed_exam_id": str(exam_id), "primary_cleared": removing_primary}
 
 
+@router.get("/regulatory-overlap")
+async def get_regulatory_overlap(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Read-only shared-core overlap across the user's active regulatory target
+    exams (Lane R R2, increment 1): shared foundation vs per-exam delta, the
+    already-mastered shared topics to reuse, and the 70/20/10 allocation targets.
+
+    Reuses no new surface — a read the Compass / combined planner consume. Returns
+    an empty (but well-shaped) summary when the user has fewer than two regulatory
+    target exams, or on any read failure.
+    """
+    from app.study_os.shared_core import summarize_regulatory_overlap
+
+    supabase = get_supabase_admin()
+    return summarize_regulatory_overlap(supabase, user.get("id"))
+
+
 @router.get("/mission-control")
 async def mission_control(user: dict = Depends(get_current_user)) -> dict[str, Any]:
     user_id = user.get("id")
