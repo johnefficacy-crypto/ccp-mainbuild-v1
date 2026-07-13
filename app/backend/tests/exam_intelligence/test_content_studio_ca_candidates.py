@@ -120,16 +120,18 @@ def test_review_rejects_illegal_transition():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/ca-question-candidates/{_CAND}/review",
-        json={"status": "promoted", "expected_status": "review_ready"})
+        json={"status": "promoted", "expected_status": "review_ready",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "a valid audit reason"})
     assert r.status_code == 422
-    assert not sb.rpc_calls  # never reaches the RPC
+    assert not sb.rpc_calls  # transition guard rejects before the RPC
 
 
 def test_review_approve_calls_rpc_with_params():
     sb = CSSBStub(_seed())
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/ca-question-candidates/{_CAND}/review",
-        json={"status": "approved", "expected_status": "review_ready"})
+        json={"status": "approved", "expected_status": "review_ready",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "accurate and current"})
     assert r.status_code == 200
     fn, params = sb.rpc_calls[0]
     assert fn == "ca_review_candidate"
@@ -138,18 +140,31 @@ def test_review_approve_calls_rpc_with_params():
     assert params["p_actor_user_id"] == "op-1"
 
 
-def test_send_back_requires_reason():
+def test_send_back_requires_reviewer_notes():
+    # approved → review_ready needs a send-back note (distinct from the audit reason).
     sb = CSSBStub(_seed(status="approved"))
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/ca-question-candidates/{_CAND}/review",
-        json={"status": "review_ready", "expected_status": "approved"})
+        json={"status": "review_ready", "expected_status": "approved",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "sending back for a fix"})
+    assert r.status_code == 422 and not sb.rpc_calls
+
+
+def test_review_requires_audit_reason():
+    # Every decision must carry an 8-500 char reason (checkpost #970 F3).
+    sb = CSSBStub(_seed())
+    r = _client(sb, permissions=[REVIEW]).post(
+        f"{_BASE}/ca-question-candidates/{_CAND}/review",
+        json={"status": "approved", "expected_status": "review_ready",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "short"})
     assert r.status_code == 422 and not sb.rpc_calls
 
 
 def test_review_denied_for_author_only():
     r = _client(CSSBStub(_seed()), permissions=[AUTHOR]).post(
         f"{_BASE}/ca-question-candidates/{_CAND}/review",
-        json={"status": "approved", "expected_status": "review_ready"})
+        json={"status": "approved", "expected_status": "review_ready",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "accurate and current"})
     assert r.status_code == 403
 
 
@@ -158,14 +173,19 @@ def test_review_conflict_maps_to_409():
     sb.rpc_error = "concurrent_modification: expected review_ready but found approved (P0409)"
     r = _client(sb, permissions=[REVIEW]).post(
         f"{_BASE}/ca-question-candidates/{_CAND}/review",
-        json={"status": "approved", "expected_status": "review_ready"})
+        json={"status": "approved", "expected_status": "review_ready",
+              "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "accurate and current"})
     assert r.status_code == 409
 
 
 # ── promotion requires the higher publish gate ──────────────────────────────
+_PROMOTE_BODY = {"expected_status": "approved",
+                 "expected_updated_at": "2026-07-12T00:00:00Z", "reason": "evidence checks out"}
+
+
 def test_promote_denied_without_publish_permission():
     r = _client(CSSBStub(_seed(status="approved")), permissions=[REVIEW]).post(
-        f"{_BASE}/ca-question-candidates/{_CAND}/promote", json={})
+        f"{_BASE}/ca-question-candidates/{_CAND}/promote", json=_PROMOTE_BODY)
     assert r.status_code == 403
 
 
@@ -173,9 +193,11 @@ def test_promote_calls_rpc_when_publish_permitted():
     sb = CSSBStub(_seed(status="approved"))
     sb.rpc_result = {"ok": True, "mock_question_id": "mq-1", "candidate_id": _CAND}
     r = _client(sb, permissions=[PUBLISH]).post(
-        f"{_BASE}/ca-question-candidates/{_CAND}/promote", json={"expected_status": "approved"})
+        f"{_BASE}/ca-question-candidates/{_CAND}/promote", json=_PROMOTE_BODY)
     assert r.status_code == 200
     fn, params = sb.rpc_calls[0]
     assert fn == "ca_promote_candidate"
+    assert params["p_expected_updated_at"] == "2026-07-12T00:00:00Z"
+    assert params["p_reason"] == "evidence checks out"
     assert params["p_candidate_id"] == _CAND and params["p_expected_status"] == "approved"
     assert params["p_actor_user_id"] == "op-1"
