@@ -25,12 +25,15 @@ from app.study_os.mock_engine import _question_snapshot
 logger = logging.getLogger("career_copilot.current_affairs.monthly")
 
 _RETRY_TAIL_CAP = 10  # capped personalised tail (pipeline §10); mirrors the RPC's v_cap.
+_MONTHLY_START_RPC = "ca_start_monthly_current_affairs_attempt_guarded"
 
 
 def enqueue_weekly_retry_items(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
-    """After a weekly attempt submits, enqueue its still-relevant mistakes for monthly review.
+    """Enqueue a submitted weekly attempt's still-relevant mistakes for monthly review.
 
-    Idempotent per learner+question (the RPC upserts ``ON CONFLICT DO NOTHING``)."""
+    Normal submission now invokes this atomically inside the submit RPC. This explicit wrapper
+    remains useful for operator repair/backfill and is idempotent for the same source attempt.
+    """
     count = _rpc(supabase, "ca_enqueue_weekly_retry_items", {
         "p_attempt_id": attempt_id, "p_user": user_id,
     })
@@ -70,7 +73,11 @@ def _freeze_rows(supabase: Any, qids: list[str]) -> list[dict[str, Any]]:
         q = questions_by_id.get(qid)
         if q is None:
             raise RuntimeError(f"monthly freeze aborted: missing bank row for {qid}")
-        snap = _question_snapshot(q, marks_per_correct=_MARKS_PER_CORRECT, marks_per_wrong=_MARKS_PER_WRONG)
+        snap = _question_snapshot(
+            q,
+            marks_per_correct=_MARKS_PER_CORRECT,
+            marks_per_wrong=_MARKS_PER_WRONG,
+        )
         if not snap.get("options") or not snap.get("correct_option_id"):
             raise RuntimeError(f"monthly freeze aborted: bad snapshot for {qid}")
         snap["current_affairs"] = provenance.get(qid, {})
@@ -83,7 +90,11 @@ def start_monthly_current_affairs_attempt(
 ) -> dict[str, Any]:
     """Resolve the monthly editorial bundle, freeze its core + a capped personalised retry
     tail, and start the monthly attempt. Returns ``{outcome, attempt_id, core_count,
-    retry_tail_count, ...}`` or ``{outcome:'no_bundle'|'empty_bundle'|'bundle_degraded'}``."""
+    retry_tail_count, ...}`` or ``{outcome:'no_bundle'|'empty_bundle'|'bundle_degraded'}``.
+
+    The guarded SQL entry point serialises starts per learner+bundle, returns a previously
+    frozen in-progress attempt before touching a stale tail, and canonicalises list metadata.
+    """
     bundle = resolve_eligible_bundle(supabase, exam_id=exam_id, cadence="monthly")
     if not bundle:
         return {"outcome": "no_bundle"}
@@ -114,7 +125,7 @@ def start_monthly_current_affairs_attempt(
         "marks_per_wrong": _MARKS_PER_WRONG,
         "interface_mode": "simple",
     }
-    result = _rpc(supabase, "ca_start_monthly_current_affairs_attempt", {
+    result = _rpc(supabase, _MONTHLY_START_RPC, {
         "p_user": user_id,
         "p_bundle": str(bundle["id"]),
         "p_exam": exam_id,
@@ -127,7 +138,7 @@ def start_monthly_current_affairs_attempt(
 
 def monthly_consolidation_report(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
     """Composition + score report for a monthly attempt, split editorial core vs retry tail
-    (ownership-checked). The learner-facing monthly reporting surface reads from here."""
+    (ownership- and cadence-checked). The learner-facing monthly reporting surface reads here."""
     rows = (
         supabase.table("current_affairs_attempts").select("*")
         .eq("id", attempt_id).limit(1).execute().data
@@ -137,6 +148,8 @@ def monthly_consolidation_report(supabase: Any, user_id: str, attempt_id: str) -
     att = rows[0]
     if str(att.get("user_id")) != str(user_id):
         raise PermissionError("not attempt owner")
+    if att.get("cadence") != "monthly":
+        raise ValueError("not a monthly attempt")
     resp = (
         supabase.table("current_affairs_attempt_responses")
         .select("item_role,is_correct,selected_option_id")
@@ -152,7 +165,11 @@ def monthly_consolidation_report(supabase: Any, user_id: str, attempt_id: str) -
         }
 
     return {
-        "attempt_id": attempt_id, "cadence": att.get("cadence"), "status": att.get("status"),
-        "score_raw": att.get("score_raw"), "submitted_at": att.get("submitted_at"),
-        "core": _bucket("core"), "retry_tail": _bucket("retry_tail"),
+        "attempt_id": attempt_id,
+        "cadence": att.get("cadence"),
+        "status": att.get("status"),
+        "score_raw": att.get("score_raw"),
+        "submitted_at": att.get("submitted_at"),
+        "core": _bucket("core"),
+        "retry_tail": _bucket("retry_tail"),
     }
