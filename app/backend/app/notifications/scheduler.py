@@ -66,6 +66,20 @@ def _is_noop_result(name: str, result: Any) -> bool:
         return result.get("processed", 0) == 0 and result.get("status") == "idle"
     if name in ("writing:evaluate", "writing:mastery_outbox"):
         return result.get("processed", 0) == 0 and not result.get("swept")
+    if name == "ca:generate":
+        return result.get("processed", 0) == 0 and not result.get("swept")
+    if name == "ca:ingest":
+        # Routine ONLY on a clean pass where nothing material moved (not-modified/duplicate
+        # ticks are noise). A failed/partial pass is never a noop — it must reach the
+        # failure classifier so /admin/jobs reflects it.
+        if result.get("status") != "ok":
+            return False
+        return not any(
+            (result.get(k) or 0)
+            for k in ("snapshotted", "enqueued", "deprioritised")
+        )
+    if name == "ca:promote-sweep":
+        return (result.get("archived") or 0) == 0
     return False
 
 
@@ -84,6 +98,13 @@ def _is_failure_result(name: str, result: Any) -> bool:
         return result.get("processed", 0) == 1 and result.get("status") == "failed"
     if name in ("writing:evaluate", "writing:mastery_outbox"):
         return result.get("status") == "failed"
+    if name == "ca:generate":
+        # A generation pass that attempted a job and failed it (mirrors the EWP evaluator).
+        return result.get("status") == "failed"
+    if name == "ca:ingest":
+        # Honest classification: a source-query failure (total) or per-source/enqueue
+        # errors (partial) are operational failures, not silent successes.
+        return result.get("status") in ("failed", "partial")
     return False
 
 
@@ -175,6 +196,39 @@ def _job_writing_mastery_outbox() -> dict[str, Any]:
     return result
 
 
+def _job_ca_ingest() -> dict[str, Any]:
+    # GQR-G5b — crawl due current-affairs sources + enqueue generation per new document.
+    from app.current_affairs.ingestion import run_ingest_pass
+
+    return run_ingest_pass(get_supabase_admin())
+
+
+def _job_ca_generate() -> dict[str, Any]:
+    # GQR-G5b — sweep stale leases + run one shadow generation job (mirrors the EWP
+    # evaluator). Generation is shadow/mock unless FF_CA_LLM is enabled; nothing is
+    # promoted here (promotion stays the human gate).
+    from app.current_affairs.generation.worker import (
+        run_generation_worker_pass,
+        sweep_stale_generation_jobs,
+    )
+
+    sb = get_supabase_admin()
+    swept = sweep_stale_generation_jobs(sb).get("swept", 0)
+    # require_real_provider: the scheduled cron only processes a job when a real provider
+    # adapter is active — the deterministic mock never consumes a production document.
+    result = run_generation_worker_pass(sb, require_real_provider=True)
+    if swept:
+        result = {**result, "swept": swept}
+    return result
+
+
+def _job_ca_promote_sweep() -> dict[str, Any]:
+    # GQR-G5b — archive current-affairs events past their relevance window.
+    from app.current_affairs.retirement import sweep_expired_current_events
+
+    return sweep_expired_current_events(get_supabase_admin())
+
+
 # Per-job permission overrides for the manual-trigger admin endpoint.
 # Jobs not listed here fall back to the endpoint's default (require_admin).
 # The value is the permission string checked by require_permission().
@@ -193,6 +247,9 @@ JOBS: dict[str, callable] = {  # type: ignore[type-arg]
     "doc:text_extract": _job_text_extract_worker,
     "writing:evaluate": _job_writing_evaluator,
     "writing:mastery_outbox": _job_writing_mastery_outbox,
+    "ca:ingest": _job_ca_ingest,
+    "ca:generate": _job_ca_generate,
+    "ca:promote-sweep": _job_ca_promote_sweep,
 }
 
 
@@ -318,6 +375,37 @@ def start_scheduler() -> BackgroundScheduler | None:
         _wrap("writing:mastery_outbox", _job_writing_mastery_outbox),
         IntervalTrigger(seconds=20),
         id="writing:mastery_outbox",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # GQR-G5b — CA pipeline crons.
+    # Every 30 min — crawl due current-affairs sources (per-source cadence from
+    # crawl_schedule) + enqueue generation for each new document. Frequent ticks are
+    # cheap: non-due sources are skipped in-pass.
+    sched.add_job(
+        _wrap("ca:ingest", _job_ca_ingest),
+        IntervalTrigger(minutes=30),
+        id="ca:ingest",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # Every 30s — claim + run one shadow generation job (also sweeps expired leases).
+    sched.add_job(
+        _wrap("ca:generate", _job_ca_generate),
+        IntervalTrigger(seconds=30),
+        id="ca:generate",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # Daily 02:30 UTC — archive current-affairs events past their relevance window.
+    sched.add_job(
+        _wrap("ca:promote-sweep", _job_ca_promote_sweep),
+        CronTrigger(hour=2, minute=30, timezone="UTC"),
+        id="ca:promote-sweep",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

@@ -4,6 +4,14 @@ Endpoint group (all require ``exam_eligibility.manage`` permission):
 
   GET    /api/admin/exam-eligibility/exams
          List active exams with verified/draft/archived rule counts.
+         Pass ``?include_inactive=true`` to also surface inactive
+         identities; each item carries ``is_active`` + ``provenance``
+         so the authoring flow can target seeded drafts (vs retired).
+
+  GET    /api/admin/exam-eligibility/exams/{exam_id}/streams
+         Canonical stream identities (id + stream_key + provenance)
+         for one exam, so a stream-scoped rule can be authored without
+         a direct DB lookup for the generated stream UUID.
 
   GET    /api/admin/exam-eligibility/exams/{exam_id}/rules
          All rules (every status) for one exam.
@@ -123,6 +131,11 @@ class RuleCreate(BaseModel):
     is_knockout: bool = True
     source_url: str | None = None
     source_notes: str | None = None
+    # Reviewed-document provenance (migration 257). Verification is gated on
+    # these via the dedicated review endpoint; create always lands ``draft``.
+    source_document_id: UUID | None = None
+    source_page_start: int | None = None
+    source_page_end: int | None = None
     reviewer_status: str = Field(default="draft")
     waiver_reason: str | None = None
 
@@ -137,8 +150,43 @@ class RuleUpdate(BaseModel):
     is_knockout: bool | None = None
     source_url: str | None = None
     source_notes: str | None = None
+    source_document_id: UUID | None = None
+    source_page_start: int | None = None
+    source_page_end: int | None = None
     reviewer_status: str | None = None
     waiver_reason: str | None = None
+
+
+# Provenance columns surfaced in list/detail responses (migration 257).
+_RULE_SELECT = (
+    "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
+    "is_knockout, source_url, source_notes, source_document_id, source_page_start, "
+    "source_page_end, created_by, reviewer_status, verified_by, verified_at, "
+    "created_at, updated_at"
+)
+
+# Material fields whose mutation on a verified rule must demote it back to draft
+# (mirrors migration 257's DB-level block trigger).
+_MATERIAL_FIELDS = {
+    "scope", "rule_type", "stream_id", "value_num", "value_text", "value_json",
+    "is_knockout", "source_document_id", "source_page_start", "source_page_end",
+}
+
+
+def _validate_page_locator(page_start: int | None, page_end: int | None) -> None:
+    """Early-signal validation of the direct page locator (mirrors migration
+    256's CHECK constraints). Both fields present together or absent together;
+    positive; end >= start."""
+    if (page_start is None) != (page_end is None):
+        raise HTTPException(
+            status_code=422,
+            detail="source_page_start and source_page_end must be provided together or both omitted",
+        )
+    if page_start is not None:
+        if page_start < 1 or page_end < 1:
+            raise HTTPException(status_code=422, detail="source page numbers must be positive")
+        if page_end < page_start:
+            raise HTTPException(status_code=422, detail="source_page_end must be >= source_page_start")
 
 
 def _validate_rule_shape(
@@ -246,13 +294,28 @@ def _require_trust_provenance(source_url: str | None, waiver_reason: str | None)
 
 @router.get("/exams")
 def list_exams_with_rule_counts(
+    include_inactive: bool = Query(
+        default=False,
+        description=(
+            "Admin-only: also list exams with is_active=false. Seeded regulator "
+            "identities (e.g. PFRDA Grade A / IRDAI AM, migration 244) land inactive, "
+            "so the eligibility-authoring flow needs this to discover and resolve their "
+            "exam ids. `is_active` alone only tells active from inactive — an inactive "
+            "row may be a seeded draft OR an intentionally retired exam — so each item "
+            "also carries `provenance` (from `exams.metadata.provenance`, e.g. 'draft') "
+            "so the caller can target draft identities without a direct DB lookup."
+        ),
+    ),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    query = supabase.table("exams").select(
+        "id, slug, name, is_active, exam_family_id, metadata"
+    )
+    if not include_inactive:
+        query = query.eq("is_active", True)
     exams = (
-        supabase.table("exams")
-        .select("id, slug, name, is_active, exam_family_id")
-        .eq("is_active", True)
+        query
         .order("name")
         .limit(500)
         .execute()
@@ -277,8 +340,62 @@ def list_exams_with_rule_counts(
     items = []
     for e in exams:
         c = counts.get(e["id"], {"draft": 0, "verified": 0, "archived": 0})
-        items.append({**e, "rule_counts": c, "total_rules": sum(c.values())})
+        meta = e.get("metadata") or {}
+        # Surface the governed lifecycle marker so callers distinguish a seeded
+        # draft from a retired identity — `is_active=false` cannot tell them apart.
+        provenance = meta.get("provenance") if isinstance(meta, dict) else None
+        item = {k: v for k, v in e.items() if k != "metadata"}
+        items.append({
+            **item,
+            "provenance": provenance,
+            "rule_counts": c,
+            "total_rules": sum(c.values()),
+        })
     return {"items": items}
+
+
+@router.get("/exams/{exam_id}/streams")
+def list_streams_for_exam(
+    exam_id: UUID,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Canonical stream identities for one exam.
+
+    ``exam_streams`` (migration 242/244) generate non-deterministic UUIDs, but
+    ``RuleCreate.stream_id`` needs the exact stream UUID to author a
+    stream-scoped rule. This returns each stream's ``id`` + ``stream_key`` (and
+    its governed ``provenance``) so the audited authoring flow can resolve a
+    stream-scoped rule target without a direct DB lookup.
+    """
+    supabase = get_supabase_admin()
+    exam_row = (
+        supabase.table("exams")
+        .select("id, slug, name, is_active")
+        .eq("id", str(exam_id))
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not exam_row:
+        raise HTTPException(status_code=404, detail="exam_not_found")
+    streams = (
+        supabase.table("exam_streams")
+        .select("id, exam_id, stream_key, name, metadata")
+        .eq("exam_id", str(exam_id))
+        .order("stream_key")
+        .limit(500)
+        .execute()
+        .data
+        or []
+    )
+    items = []
+    for s in streams:
+        meta = s.get("metadata") or {}
+        provenance = meta.get("provenance") if isinstance(meta, dict) else None
+        item = {k: v for k, v in s.items() if k != "metadata"}
+        items.append({**item, "provenance": provenance})
+    return {"exam": exam_row[0], "streams": items}
 
 
 @router.get("/exams/{exam_id}/rules")
@@ -300,11 +417,7 @@ def list_rules_for_exam(
         raise HTTPException(status_code=404, detail="exam_not_found")
     rules = (
         supabase.table("exam_eligibility_rules")
-        .select(
-            "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
-            "is_knockout, source_url, source_notes, reviewer_status, verified_by, verified_at, "
-            "created_at, updated_at"
-        )
+        .select(_RULE_SELECT)
         .eq("exam_id", str(exam_id))
         .order("rule_type")
         .order("scope")
@@ -325,6 +438,19 @@ def create_rule(
     body: RuleCreate,
     admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
+    # Create is draft-only. Verification is a separate, reviewer-gated transition
+    # (migration 257) and archiving is a lifecycle action on an existing row —
+    # neither is a legitimate birth state, so any non-draft create status is
+    # rejected rather than silently persisted.
+    if body.reviewer_status != "draft":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Rules must be created as 'draft' (got '{body.reviewer_status}'). "
+                "Attach the reviewed source document + page locator, then promote "
+                "via POST /rules/{rule_id}/review; archive an existing rule via DELETE."
+            ),
+        )
     _validate_rule_shape(
         scope=body.scope,
         rule_type=body.rule_type,
@@ -333,15 +459,12 @@ def create_rule(
         reviewer_status=body.reviewer_status,
         value_json=body.value_json,
     )
+    _validate_page_locator(body.source_page_start, body.source_page_end)
     supabase = get_supabase_admin()
     if not (
         supabase.table("exams").select("id").eq("id", str(exam_id)).limit(1).execute().data
     ):
         raise HTTPException(status_code=404, detail="exam_not_found")
-
-    _reject_ambiguous_linked_qualification(
-        supabase, exam_id, body.stream_id, body.scope, body.rule_type, body.reviewer_status
-    )
 
     # Pre-empt the unique constraint to give a clean 409. The identity is
     # (exam_id, stream_id, scope, rule_type) per migration 248 — a common rule
@@ -382,12 +505,14 @@ def create_rule(
         "is_knockout": body.is_knockout,
         "source_url": body.source_url,
         "source_notes": body.source_notes,
+        "source_document_id": str(body.source_document_id) if body.source_document_id is not None else None,
+        "source_page_start": body.source_page_start,
+        "source_page_end": body.source_page_end,
+        # Provenance ledger: the author is stamped at create time so the reviewer
+        # separation (created_by != verifier) can be enforced at verify time.
+        "created_by": admin.get("id"),
         "reviewer_status": body.reviewer_status,
     }
-    if body.reviewer_status == "verified":
-        _require_trust_provenance(body.source_url, body.waiver_reason)
-        payload["verified_by"] = admin.get("id")
-        payload["verified_at"] = datetime.now(timezone.utc).isoformat()
     inserted = (
         supabase.table("exam_eligibility_rules")
         .insert(payload)
@@ -418,11 +543,7 @@ def update_rule(
     supabase = get_supabase_admin()
     existing = (
         supabase.table("exam_eligibility_rules")
-        .select(
-            "id, exam_id, stream_id, scope, rule_type, value_num, value_text, value_json, "
-            "is_knockout, source_url, source_notes, reviewer_status, "
-            "verified_by, verified_at, created_at, updated_at"
-        )
+        .select(_RULE_SELECT)
         .eq("id", str(rule_id))
         .limit(1)
         .execute()
@@ -432,6 +553,20 @@ def update_rule(
     if not existing:
         raise HTTPException(status_code=404, detail="rule_not_found")
     current = existing[0]
+
+    # The generic update path can never PROMOTE a rule to verified — that
+    # transition is document-gated and reviewer-separated, so it must go through
+    # POST /rules/{rule_id}/review (migration 257). Demotion away from verified
+    # is still allowed here (and also happens implicitly on a material edit).
+    if body.reviewer_status == "verified" and current.get("reviewer_status") != "verified":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Promotion to 'verified' is not allowed via update. Use "
+                "POST /rules/{rule_id}/review, which enforces the reviewed-document "
+                "trust gate and reviewer separation."
+            ),
+        )
 
     merged_scope = body.scope if body.scope is not None else current["scope"]
     merged_type = body.rule_type if body.rule_type is not None else current["rule_type"]
@@ -456,6 +591,15 @@ def update_rule(
     merged_stream = (
         body.stream_id if "stream_id" in body.model_fields_set else current.get("stream_id")
     )
+    merged_page_start = (
+        body.source_page_start if "source_page_start" in body.model_fields_set
+        else current.get("source_page_start")
+    )
+    merged_page_end = (
+        body.source_page_end if "source_page_end" in body.model_fields_set
+        else current.get("source_page_end")
+    )
+    _validate_page_locator(merged_page_start, merged_page_end)
     _reject_ambiguous_linked_qualification(
         supabase, current["exam_id"], merged_stream, merged_scope, merged_type, merged_status
     )
@@ -481,21 +625,41 @@ def update_rule(
         patch["source_url"] = body.source_url
     if body.source_notes is not None:
         patch["source_notes"] = body.source_notes
-    transitioning_to_verified = (
-        body.reviewer_status == "verified"
-        and current.get("reviewer_status") != "verified"
-    )
-    if body.reviewer_status is not None:
+    if "source_document_id" in body.model_fields_set:
+        patch["source_document_id"] = (
+            str(body.source_document_id) if body.source_document_id is not None else None
+        )
+    if "source_page_start" in body.model_fields_set:
+        patch["source_page_start"] = body.source_page_start
+    if "source_page_end" in body.model_fields_set:
+        patch["source_page_end"] = body.source_page_end
+
+    # A material edit to a currently-verified rule silently demotes it to draft
+    # and clears the verification stamp: trusted content may not drift while the
+    # row still claims to be verified (migration 257 enforces this at the DB too).
+    def _is_material_change() -> bool:
+        for f in _MATERIAL_FIELDS:
+            if f in patch and patch[f] != current.get(f):
+                return True
+        return False
+
+    demoted_by_material_edit = False
+    currently_verified = current.get("reviewer_status") == "verified"
+    if currently_verified and _is_material_change():
+        # A material edit to a verified rule ALWAYS demotes it to draft and clears
+        # the stamp — even if the body re-asserts reviewer_status='verified' (a
+        # no-op that would otherwise leave trusted content drifting). Migration
+        # 256's DB trigger is the backstop for this rule.
+        patch["reviewer_status"] = "draft"
+        patch["verified_by"] = None
+        patch["verified_at"] = None
+        demoted_by_material_edit = True
+    elif body.reviewer_status is not None:
+        # Explicit status change on the generic path is only ever a demotion
+        # (promotion to verified was rejected above). Clear the stamp when
+        # leaving verified.
         patch["reviewer_status"] = body.reviewer_status
-        # Promotion to ``verified`` stamps the reviewer + timestamp; any
-        # transition AWAY from verified clears them so we never claim a
-        # draft row was verified by someone.
-        if body.reviewer_status == "verified":
-            effective_source_url = body.source_url if body.source_url is not None else current.get("source_url")
-            _require_trust_provenance(effective_source_url, body.waiver_reason)
-            patch["verified_by"] = admin.get("id")
-            patch["verified_at"] = datetime.now(timezone.utc).isoformat()
-        else:
+        if body.reviewer_status != "verified":
             patch["verified_by"] = None
             patch["verified_at"] = None
     patch["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -508,7 +672,7 @@ def update_rule(
         .data
         or []
     )
-    audit_action = "eligibility_rule.verify" if transitioning_to_verified else "eligibility_rule.update"
+    audit_action = "eligibility_rule.demote" if demoted_by_material_edit else "eligibility_rule.update"
     _audit(
         supabase,
         admin,
@@ -521,6 +685,117 @@ def update_rule(
     )
     invalidate_eligibility_rules_cache()
     return {"rule": updated[0] if updated else None}
+
+
+# ── Review endpoint (document-gated trust transition) ─────────────────────
+
+
+# Allowed reviewer_status transitions for exam_eligibility_rules (migration 257).
+_RULE_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "draft": ("verified", "archived"),
+    "verified": ("draft", "archived"),
+    "archived": ("draft",),
+}
+_RULE_ALL_TARGET_STATUSES = frozenset(
+    s for targets in _RULE_ALLOWED_TRANSITIONS.values() for s in targets
+)
+
+
+class RuleReview(BaseModel):
+    status: str = Field(..., description="Target reviewer_status: 'verified', 'draft', or 'archived'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/rules/{rule_id}/review")
+def review_rule(
+    rule_id: UUID,
+    body: RuleReview,
+    admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Document-gated trust transition for an eligibility rule.
+
+    Promotion to ``verified`` is authoritative inside the
+    ``review_exam_eligibility_rule`` RPC (migration 257): it runs under a row
+    lock and requires a direct page locator into a VERIFIED syllabus document
+    backed by an authoritative, processed, page-extracted ``document_assets``
+    row, with the reviewer distinct from the rule's ``created_by``. There is no
+    URL-only or waiver-based verification through this path.
+    """
+    if body.status not in _RULE_ALL_TARGET_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {sorted(_RULE_ALL_TARGET_STATUSES)}",
+        )
+    supabase = get_supabase_admin()
+    existing = (
+        supabase.table("exam_eligibility_rules")
+        .select(_RULE_SELECT)
+        .eq("id", str(rule_id))
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="rule_not_found")
+    from_status = existing[0].get("reviewer_status", "draft")
+    allowed = _RULE_ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    try:
+        result = supabase.rpc(
+            "review_exam_eligibility_rule",
+            {
+                "p_rule_id": str(rule_id),
+                "p_expected_status": from_status,
+                "p_target_status": body.status,
+                "p_reason": body.reason,
+                "p_actor_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc) from exc
+
+    invalidate_eligibility_rules_cache()
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "rule": data["row"]}
+
+
+def _map_rpc_error(exc: Exception) -> HTTPException:
+    """Map a review RPC failure to a stable HTTP status."""
+    msg = str(exc)
+    low = msg.lower()
+    if "concurrent_modification" in low:
+        return HTTPException(
+            status_code=409,
+            detail="Concurrent modification: rule status changed since read. Re-fetch and retry.",
+        )
+    if "not_found" in low:
+        return HTTPException(status_code=404, detail="rule_not_found")
+    if "provenance_incomplete" in low:
+        blocking: list[str] = []
+        if "blocking_fields=" in low:
+            fields_raw = low.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+            blocking = [f for f in fields_raw.split(",") if f]
+        return HTTPException(
+            status_code=422,
+            detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+        )
+    if any(tok in low for tok in (
+        "transition_not_allowed", "invalid_reason", "invalid_target_status",
+        "reviewer_is_creator", "creator_missing", "ambiguous_linked_qualification",
+    )):
+        return HTTPException(status_code=422, detail=msg)
+    logger.exception("review_exam_eligibility_rule RPC failed; no status change recorded")
+    return HTTPException(status_code=500, detail="Review transaction failed; no status change recorded.")
 
 
 @router.delete("/rules/{rule_id}")

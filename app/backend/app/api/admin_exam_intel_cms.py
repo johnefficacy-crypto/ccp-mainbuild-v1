@@ -798,6 +798,107 @@ def create_syllabus_document(
     return {"ok": True, "audit_id": audit_id, "row": new}
 
 
+# Allowed trust_status transitions for syllabus_documents (migration 257).
+_SYLLABUS_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending": ("verified", "rejected"),
+    "verified": ("rejected", "superseded", "pending"),
+    "rejected": ("pending",),
+    "superseded": ("pending",),
+}
+_SYLLABUS_ALL_TARGET_STATUSES = frozenset(
+    s for targets in _SYLLABUS_ALLOWED_TRANSITIONS.values() for s in targets
+)
+
+
+class SyllabusReviewBody(BaseModel):
+    status: str = Field(..., description="Target trust_status: 'verified', 'rejected', 'pending', or 'superseded'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/syllabus-documents/{document_id}/review")
+def review_syllabus_document(
+    document_id: str,
+    body: SyllabusReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition a syllabus document's trust_status (document trust gate).
+
+    Promotion to ``verified`` is authoritative inside the
+    ``review_syllabus_document`` RPC (migration 257): under a row lock it
+    requires the linked ``document_assets`` row to be an authoritative
+    (official_archive/official_scan), processed notification/corrigendum with
+    populated storage, at least one extracted page, and matching exam (and
+    cycle, when set); the reviewer must not be the document's uploader. Moving
+    away from verified clears the reviewer attribution. Generic CMS create/link
+    paths never set trust_status directly — this is the only promotion path.
+    """
+    if body.status not in _SYLLABUS_ALL_TARGET_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {sorted(_SYLLABUS_ALL_TARGET_STATUSES)}",
+        )
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "syllabus_documents", id=document_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="syllabus_document not found")
+
+    from_status = existing.get("trust_status", "pending")
+    allowed = _SYLLABUS_ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    try:
+        result = supabase.rpc(
+            "review_syllabus_document",
+            {
+                "p_document_id": document_id,
+                "p_expected_status": from_status,
+                "p_target_status": body.status,
+                "p_reason": body.reason,
+                "p_actor_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        low = msg.lower()
+        if "concurrent_modification" in low:
+            raise HTTPException(
+                status_code=409,
+                detail="Concurrent modification: document trust_status changed since read. Re-fetch and retry.",
+            ) from exc
+        if "not_found" in low:
+            raise HTTPException(status_code=404, detail="syllabus_document not found") from exc
+        if "provenance_incomplete" in low:
+            blocking: list[str] = []
+            if "blocking_fields=" in low:
+                fields_raw = low.split("blocking_fields=", 1)[1].split()[0].rstrip(".,")
+                blocking = [f for f in fields_raw.split(",") if f]
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "provenance_incomplete", "blocking_fields": blocking},
+            ) from exc
+        if any(tok in low for tok in (
+            "transition_not_allowed", "invalid_reason", "invalid_target_status",
+        )):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        logger.exception("review_syllabus_document RPC failed; no status change recorded")
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "row": data["row"]}
+
+
 # ════════════════════════════════════════════════════════════════════════
 #  PYQ papers — created at trust_status='pending'
 # ════════════════════════════════════════════════════════════════════════
