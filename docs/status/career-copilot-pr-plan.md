@@ -34,6 +34,7 @@
 |---|---|---|
 | **Immediate** | Score Snapshot lock-authority correctness | CODE-FIXED, OPERATOR VALIDATION PENDING — issue #822 approved; migration 206 + Python layer + 9 new tests on branch `claude/snapshot-lock-authority-s9k2mn` |
 | **Immediate** | Operator validation wave: PYQ onboarding (#812), Score Snapshots (#810), text extraction (#811) | Deploy exact main SHA first |
+| High | PYQ learner UX follow-ups (Slice I) | OPEN — from 2026-07-13 UPSC CSE operator validation (learner API/flow now VALIDATED via PR #980). Focused frontend PR + 1 e2e: (1) attempt-header timer `--` → bind to launch-payload duration / `Untimed` fallback; (2) navigator clips Q96–97 behind fixed footer + no keyboard-nav auto-scroll/active-sync; (3) review options concatenated without separation; (4) ≥97-question practice→review e2e guarding viewport clipping. Detail: `docs/status/PYQ-Unified-Practice-Implementation-Checklist-2026-07-07.md` (PR-5 Slice I); evidence `docs/audits/2026-07-13-upsc-cse-pyq-learner-flow-operator-validation.md` |
 | High | J1 Advanced Repair scoping contract | `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` DRAFT — OPERATOR APPROVAL PENDING |
 | High | J1 Advanced Repair scoping implementation | J1 contract operator approval |
 | High | J2 Manage Exam operational editors | Contract-first; I8-B and I6 gates cleared |
