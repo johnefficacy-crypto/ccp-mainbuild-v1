@@ -96,6 +96,30 @@ export const contentStudioApi = {
       reason,
       ...(reviewer_notes ? { reviewer_notes } : {}),
     }),
+
+  // Current-affairs question candidates (GQR-G4). The reviewer approves/rejects/
+  // sends-back a shadow-generated candidate; PROMOTION into the objective bank is a
+  // separate, higher-trust (`mock_questions:publish`) action. Both CAS-guard on the
+  // status the reviewer last saw (`expected_status`) server-side — a 409 means the
+  // candidate changed under review; refetch before deciding.
+  listCaCandidates: (params) => api.get(`${BASE}/ca-question-candidates${qs(params)}`),
+  getCaCandidate: (id) => api.get(`${BASE}/ca-question-candidates/${id}`),
+  reviewCaCandidate: (id, { status, expected_status, reviewer_notes }) =>
+    api.post(`${BASE}/ca-question-candidates/${id}/review`, {
+      status,
+      expected_status,
+      ...(reviewer_notes ? { reviewer_notes } : {}),
+    }),
+  promoteCaCandidate: (id, { expected_status = "approved" } = {}) =>
+    api.post(`${BASE}/ca-question-candidates/${id}/promote`, { expected_status }),
+};
+
+// Legal candidate review transitions (mirror of the backend `_CA_REVIEW_TRANSITIONS`).
+// Promotion (approved → promoted) is NOT here — it is the separate publish action.
+export const CA_REVIEW_TRANSITIONS = {
+  review_ready: ["approved", "rejected"],
+  approved: ["rejected", "review_ready"],
+  rejected: ["review_ready"],
 };
 
 export const EXERCISE_TYPES = [
