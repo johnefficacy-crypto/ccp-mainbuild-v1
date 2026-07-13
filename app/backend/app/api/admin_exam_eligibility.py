@@ -4,6 +4,14 @@ Endpoint group (all require ``exam_eligibility.manage`` permission):
 
   GET    /api/admin/exam-eligibility/exams
          List active exams with verified/draft/archived rule counts.
+         Pass ``?include_inactive=true`` to also surface inactive
+         identities; each item carries ``is_active`` + ``provenance``
+         so the authoring flow can target seeded drafts (vs retired).
+
+  GET    /api/admin/exam-eligibility/exams/{exam_id}/streams
+         Canonical stream identities (id + stream_key + provenance)
+         for one exam, so a stream-scoped rule can be authored without
+         a direct DB lookup for the generated stream UUID.
 
   GET    /api/admin/exam-eligibility/exams/{exam_id}/rules
          All rules (every status) for one exam.
@@ -246,13 +254,28 @@ def _require_trust_provenance(source_url: str | None, waiver_reason: str | None)
 
 @router.get("/exams")
 def list_exams_with_rule_counts(
+    include_inactive: bool = Query(
+        default=False,
+        description=(
+            "Admin-only: also list exams with is_active=false. Seeded regulator "
+            "identities (e.g. PFRDA Grade A / IRDAI AM, migration 244) land inactive, "
+            "so the eligibility-authoring flow needs this to discover and resolve their "
+            "exam ids. `is_active` alone only tells active from inactive — an inactive "
+            "row may be a seeded draft OR an intentionally retired exam — so each item "
+            "also carries `provenance` (from `exams.metadata.provenance`, e.g. 'draft') "
+            "so the caller can target draft identities without a direct DB lookup."
+        ),
+    ),
     _admin: dict = Depends(require_permission(ADMIN_PERM)),
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
+    query = supabase.table("exams").select(
+        "id, slug, name, is_active, exam_family_id, metadata"
+    )
+    if not include_inactive:
+        query = query.eq("is_active", True)
     exams = (
-        supabase.table("exams")
-        .select("id, slug, name, is_active, exam_family_id")
-        .eq("is_active", True)
+        query
         .order("name")
         .limit(500)
         .execute()
@@ -277,8 +300,62 @@ def list_exams_with_rule_counts(
     items = []
     for e in exams:
         c = counts.get(e["id"], {"draft": 0, "verified": 0, "archived": 0})
-        items.append({**e, "rule_counts": c, "total_rules": sum(c.values())})
+        meta = e.get("metadata") or {}
+        # Surface the governed lifecycle marker so callers distinguish a seeded
+        # draft from a retired identity — `is_active=false` cannot tell them apart.
+        provenance = meta.get("provenance") if isinstance(meta, dict) else None
+        item = {k: v for k, v in e.items() if k != "metadata"}
+        items.append({
+            **item,
+            "provenance": provenance,
+            "rule_counts": c,
+            "total_rules": sum(c.values()),
+        })
     return {"items": items}
+
+
+@router.get("/exams/{exam_id}/streams")
+def list_streams_for_exam(
+    exam_id: UUID,
+    _admin: dict = Depends(require_permission(ADMIN_PERM)),
+) -> dict[str, Any]:
+    """Canonical stream identities for one exam.
+
+    ``exam_streams`` (migration 242/244) generate non-deterministic UUIDs, but
+    ``RuleCreate.stream_id`` needs the exact stream UUID to author a
+    stream-scoped rule. This returns each stream's ``id`` + ``stream_key`` (and
+    its governed ``provenance``) so the audited authoring flow can resolve a
+    stream-scoped rule target without a direct DB lookup.
+    """
+    supabase = get_supabase_admin()
+    exam_row = (
+        supabase.table("exams")
+        .select("id, slug, name, is_active")
+        .eq("id", str(exam_id))
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not exam_row:
+        raise HTTPException(status_code=404, detail="exam_not_found")
+    streams = (
+        supabase.table("exam_streams")
+        .select("id, exam_id, stream_key, name, metadata")
+        .eq("exam_id", str(exam_id))
+        .order("stream_key")
+        .limit(500)
+        .execute()
+        .data
+        or []
+    )
+    items = []
+    for s in streams:
+        meta = s.get("metadata") or {}
+        provenance = meta.get("provenance") if isinstance(meta, dict) else None
+        item = {k: v for k, v in s.items() if k != "metadata"}
+        items.append({**item, "provenance": provenance})
+    return {"exam": exam_row[0], "streams": items}
 
 
 @router.get("/exams/{exam_id}/rules")
