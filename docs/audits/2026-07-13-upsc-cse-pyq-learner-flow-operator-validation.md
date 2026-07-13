@@ -39,11 +39,20 @@ it does not modify runtime code or tests.
 First item carried correct paper metadata, `phase_name: "Prelims"`, subject + primary-topic
 metadata, four options and the correct option id.
 
-## Data state confirmed
+## Data state confirmed (aggregate learner-API scope)
 
 - 4 verified papers; 177 verified questions, each with exactly one verified primary tag.
 - 177 active, practice-ready projections (2 stale projections refreshed before validation).
 - Reconciles: General Studies 97 + CSAT 80 = 177.
+
+> **Scope caveat — this does NOT close the EI-DATA-01 data gate.** The counts above are the
+> aggregate learner-API totals over the whole verified UPSC CSE corpus (177/4). They are a
+> different scope from EI-DATA-01's frozen **98**-target / **2**-reject identity set, and this
+> validation did **not** capture the runbook's stop-condition evidence pair — the frozen 98-ID
+> count + `target_digest`, the Phase 0.3 pre / Phase 2.3 post projection-preview reason
+> distributions, and proof the 2 rejects stayed unchanged (`docs/runbooks/
+> EI-DATA-01_upsc_2026_primary_topic_tags.md` § Closeout). EI-DATA-01 therefore remains
+> `OPERATOR / DATA PENDING`; this record validates the learner read path, not the data gate.
 
 ## Learner flow confirmed
 
