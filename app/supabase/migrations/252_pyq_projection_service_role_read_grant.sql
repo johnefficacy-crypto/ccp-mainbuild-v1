@@ -1,4 +1,4 @@
--- 251_pyq_projection_service_role_read_grant.sql
+-- 252_pyq_projection_service_role_read_grant.sql
 --
 -- Grant service_role SELECT on public.pyq_mock_question_projections.
 --
