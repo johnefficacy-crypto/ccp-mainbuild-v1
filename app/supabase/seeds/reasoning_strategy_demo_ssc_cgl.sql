@@ -8,6 +8,20 @@
 -- (the link carries its own reviewer_status; migration 262 ships only the
 -- strategy review RPC, mirroring the Quant lane).
 --
+-- SCOPE-AWARE (checkpost #996 P1): the demo question is seeded with the canonical
+-- Reasoning subject_id + Coding-Decoding topic_id that MATCH the strategy scope,
+-- so it satisfies the same conjunctive scope gate the GQR-S4 read authority will
+-- enforce (mirrors quant_heuristics._scope_matches: every populated strategy
+-- scope dimension resolves to the canonical Reasoning family AND equals the
+-- question's topic/microtopic; missing scope fails closed). A null-scoped or
+-- cross-subject question would NOT be learner-ready and is not seeded.
+--
+-- POSTCONDITION-GUARDED (checkpost #996 P2): the question is reconciled to the
+-- admitted+scoped state deterministically, and a final assertion block raises
+-- (aborting the transaction) unless the promised end state — 2 verified active
+-- strategies + exactly 1 verified, scope-matched link — actually exists. The seed
+-- can therefore never commit a silent no-op.
+--
 -- Depends on:
 --   exam_intelligence_demo_ssc_cgl.sql  (Reasoning subject + Coding-Decoding topic)
 --   migration 262
@@ -46,23 +60,39 @@ begin
   ) then
     raise exception 'seed_actor_not_found: actor_user_id must reference auth.users';
   end if;
+  -- The Coding-Decoding topic (under the Reasoning subject) is the canonical scope
+  -- the strategies and demo question share; it must be canonical Reasoning family.
   if not exists (
-    select 1 from public.topics where id = '66666666-6666-6666-6666-666666666667'::uuid
+    select 1
+    from public.topics t
+    join public.subjects s on s.id = t.subject_id
+    where t.id = '66666666-6666-6666-6666-666666666667'::uuid
+      and (lower(s.subject_group) = 'reasoning'
+           or lower(s.slug) in ('general-intelligence-reasoning', 'reasoning'))
   ) then
-    raise exception 'seed_topic_not_found: run exam_intelligence_demo_ssc_cgl.sql first (Coding-Decoding topic)';
+    raise exception 'seed_scope_not_found: run exam_intelligence_demo_ssc_cgl.sql first (canonical Reasoning Coding-Decoding topic)';
   end if;
 end $$;
 
--- A learner-reachable demo Reasoning bank question (verified) for the link. The
--- pilot bank ships Quant rows only, so the Reasoning surface needs its own
--- reachable question; keep it minimal and idempotent.
-insert into public.mock_question_bank (id, question_text, question_type, reviewer_status)
+-- A learner-reachable demo Reasoning bank question (verified) SCOPED to the same
+-- canonical Reasoning subject/topic as the strategies. The pilot bank ships Quant
+-- rows only, so the Reasoning surface needs its own reachable, correctly-scoped
+-- question. Reconcile scope + admitted status deterministically so a pre-existing
+-- row with the same demo id cannot leave the link ungated (checkpost P2).
+insert into public.mock_question_bank (id, subject_id, topic_id, question_text, question_type, reviewer_status)
 values ('b2000001-0000-0000-0000-0000000d5301'::uuid,
+        '55555555-5555-5555-5555-555555555553'::uuid,
+        '66666666-6666-6666-6666-666666666667'::uuid,
         'In a code, CAT is written as DBU. How is DOG written?', 'mcq', 'verified')
-on conflict (id) do nothing;
+on conflict (id) do update
+set subject_id = excluded.subject_id,
+    topic_id = excluded.topic_id,
+    reviewer_status = 'verified';
 
 -- Author pending content. Existing rows are reset to pending only when their
--- governed content changes; unchanged verified rows remain untouched.
+-- governed content changes; unchanged verified rows remain untouched. Both
+-- strategies are scoped to the Coding-Decoding topic (topic-only scope) so the
+-- linked question's topic_id must equal it to be learner-ready.
 insert into public.reasoning_strategies as existing
   (id, topic_id, strategy_code, name, strategy_type, applicability_rule,
    formula_latex, standard_method, faster_method, key_observation,
@@ -172,8 +202,8 @@ begin
   end loop;
 end $$;
 
--- Assign the letter-shift strategy to the reachable demo question. Resolve by
--- strategy_code to survive UUID conflicts.
+-- Assign the letter-shift strategy to the reachable, scope-matched demo question.
+-- Resolve by strategy_code to survive UUID conflicts.
 insert into public.reasoning_question_strategies as existing
   (id, question_id, strategy_id, relevance, reviewer_status)
 select '11110000-0000-0000-0000-0000000d5301'::uuid,
@@ -200,5 +230,42 @@ where l.strategy_id = s.id
   and s.strategy_code = 'RS-SSC-CODING-LETTERSHIFT'
   and l.question_id = 'b2000001-0000-0000-0000-0000000d5301'::uuid
   and l.reviewer_status <> 'verified';
+
+-- Postcondition (checkpost #996 P2): fail loudly rather than commit a no-op. The
+-- link check applies the SAME conjunctive + scope gate GQR-S4 will consume, so a
+-- committed seed provably produced learner-ready content.
+do $$
+declare
+  v_strats int;
+  v_ready_link int;
+begin
+  select count(*) into v_strats
+  from public.reasoning_strategies
+  where strategy_code in ('RS-SSC-CODING-LETTERSHIFT', 'RS-SSC-CODING-PATTERNSCAN')
+    and reviewer_status = 'verified' and is_active = true;
+  if v_strats <> 2 then
+    raise exception 'seed_postcondition_failed: expected 2 verified active strategies, found %', v_strats;
+  end if;
+
+  select count(*) into v_ready_link
+  from public.reasoning_question_strategies l
+  join public.reasoning_strategies s on s.id = l.strategy_id
+  join public.mock_question_bank q on q.id = l.question_id
+  where s.strategy_code = 'RS-SSC-CODING-LETTERSHIFT'
+    and l.question_id = 'b2000001-0000-0000-0000-0000000d5301'::uuid
+    and l.reviewer_status = 'verified'
+    and s.reviewer_status = 'verified'
+    and s.is_active = true
+    and q.reviewer_status in ('verified', 'live', 'published')
+    -- scope gate: topic-scoped strategy ⇒ question topic must equal it.
+    and s.topic_id is not null
+    and q.topic_id = s.topic_id
+    and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id);
+  if v_ready_link <> 1 then
+    raise exception 'seed_postcondition_failed: expected 1 verified scope-matched link, found %', v_ready_link;
+  end if;
+
+  raise notice 'SEED OK — 2 verified strategies + 1 verified scope-matched learner-ready link';
+end $$;
 
 commit;

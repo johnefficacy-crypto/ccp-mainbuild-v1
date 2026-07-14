@@ -296,9 +296,11 @@ service-role UPDATE (v1 has no link RPC).
 
 ### Data/operator gate
 
-- [x] Seed at least one reviewed Reasoning strategy + verified link for a supported question. — `app/supabase/seeds/reasoning_strategy_demo_ssc_cgl.sql` (idempotent; authors pending rows, verifies 2 Coding-Decoding strategies through the audited RPC, 1 verified link on a reachable demo question).
+- [x] Seed at least one reviewed Reasoning strategy + verified link for a **scope-matched** supported question. — `app/supabase/seeds/reasoning_strategy_demo_ssc_cgl.sql` (idempotent; authors pending rows, verifies 2 Coding-Decoding strategies through the audited RPC, 1 verified link on a reachable demo question seeded with the canonical Reasoning `subject_id` + Coding-Decoding `topic_id`; a final postcondition block aborts unless the promised 2 verified strategies + 1 verified scope-matched link exist — checkpost #996 P1/P2).
 - [ ] Verify it appears in submitted review. — **BLOCKED on GQR-S4:** the batched `strategies_for_questions()` reader/projection is not landed yet, so submitted-review evidence belongs to the GQR-S4 branch.
-- [x] Move the strategy or link out of verified and prove it disappears on the next read. — `app/supabase/validation/validate_reasoning_strategy_readiness.sql` (rollback-only; asserts pending-gate, reason gate, audit row, conjunctive link gate, link-rejected, is_active retire, needs_correction).
+- [x] Move the strategy or link out of verified and prove it disappears on the next read. — `app/supabase/validation/validate_reasoning_strategy_readiness.sql` (rollback-only; asserts pending-gate, reason gate, audit row, conjunctive link gate, **scope gate: mismatched-topic / null-scope / cross-subject all fail closed**, link-rejected, is_active retire, needs_correction).
+
+**Proof run:** all three scripts executed against a scratch Postgres loaded with migration 262's real tables + `cms_review_reasoning_strategy` RPC — validation prints `ALL PASS` (11 assertions incl. 3 scope negatives); seed prints `SEED OK` and is idempotent across re-runs and reconciles a pre-existing non-admitted question; preflight reports `READINESS: PRESENT — 1`.
 
 **VERIFY DB:** run, in order, `checks/reasoning_content_readiness_preflight.sql` → `seeds/reasoning_strategy_demo_ssc_cgl.sql` (with an existing operator `actor_user_id` / `actor_email`) → `validation/validate_reasoning_strategy_readiness.sql` against staging.
 

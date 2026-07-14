@@ -1,18 +1,23 @@
 -- GQR-S3b — Reasoning content-readiness VERIFY-DB proof (rollback-only, self-contained).
 --
--- The Reasoning mirror of validate_quant_heuristic_readiness.sql (GQR-S2).
--- Proves the end-to-end governed readiness path WITHOUT a migration, using only
--- existing paths: service-role INSERT into the authority tables + the existing
--- cms_review_reasoning_strategy lifecycle RPC (migration 262) to reach verified.
+-- The Reasoning mirror of validate_quant_heuristic_readiness.sql (GQR-S2), hardened
+-- per checkpost #996 to prove the SCOPE gate the GQR-S4 read authority will enforce
+-- (mirrors quant_heuristics._scope_matches). Uses only existing paths: service-role
+-- INSERT into the authority tables + the existing cms_review_reasoning_strategy
+-- lifecycle RPC (migration 262) to reach verified.
 --
 -- Asserted invariants (the GQR-S3b data/operator gate — what unblocks GQR-S4):
---   1. A reviewed (verified+active) strategy with a verified link appears in the
---      conjunctive learner-ready read.
---   2. Moving the LINK out of verified makes it disappear on the next read.
+--   1. A reviewed (verified+active) strategy with a verified, SCOPE-MATCHED link on
+--      a canonical-Reasoning-scoped question appears in the learner-ready read.
+--   2. Moving the LINK out of verified makes it disappear.
 --   3. Retiring the STRATEGY (is_active=false via edit, then needs_correction via
 --      the review RPC) each make it disappear.
 --   4. The review RPC enforces its guards (bad reason rejected) and audits the
 --      transition.
+--   5. SCOPE fails closed: a verified+active strategy with a verified link is NOT
+--      learner-ready when the question's scope is MISSING (null topic), MISMATCHED
+--      (different topic), or CROSS-SUBJECT (strategy scoped to a non-Reasoning
+--      family topic). These are the false positives checkpost #996 flagged.
 --
 -- Rollback-only; leaves no data. Requires service_role / superuser (the tables
 -- are service-role-only and the RPC is SECURITY DEFINER granted to service_role).
@@ -30,48 +35,76 @@ values ('eeeeeeee-0000-0000-0000-000000000503'::uuid,
         'reasoning-verify@example.com')
 on conflict (id) do nothing;
 
--- Self-contained Reasoning fixtures (subject → topic → bank question).
-insert into public.subjects (id, slug, name, subject_group)
-values ('55550000-0000-0000-0000-000000000503'::uuid, 'reasoning-verify', 'Reasoning (verify)', 'reasoning')
+-- Self-contained fixtures. Canonical Reasoning subject (subject_group='reasoning')
+-- with two topics, plus a Quant subject for the cross-subject negative.
+insert into public.subjects (id, slug, name, subject_group) values
+  ('55550000-0000-0000-0000-000000000503'::uuid, 'reasoning-verify', 'Reasoning (verify)', 'reasoning'),
+  ('55550000-0000-0000-0000-0000000005f0'::uuid, 'quant-verify-xsub', 'Quant (verify xsub)', 'numerical')
 on conflict (id) do nothing;
 
-insert into public.topics (id, subject_id, slug, name, level)
-values ('66660000-0000-0000-0000-000000000503'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
-        'coding-decoding-verify', 'Coding-Decoding (verify)', 'topic')
+insert into public.topics (id, subject_id, slug, name, level) values
+  ('66660000-0000-0000-0000-000000000503'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   'coding-decoding-verify', 'Coding-Decoding (verify)', 'topic'),
+  ('66660000-0000-0000-0000-0000000005b0'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   'series-verify', 'Series (verify)', 'topic'),
+  ('66660000-0000-0000-0000-0000000005f0'::uuid, '55550000-0000-0000-0000-0000000005f0'::uuid,
+   'percentage-verify-xsub', 'Percentage (verify xsub)', 'topic')
 on conflict (id) do nothing;
 
-insert into public.mock_question_bank (id, question_text, question_type, reviewer_status)
-values ('b2220000-0000-0000-0000-000000000503'::uuid,
-        'In a code, CAT is written as DBU. How is DOG written?', 'mcq', 'verified')
+-- Bank questions. Scope varies to exercise the gate; all admitted (verified).
+--   v_q  : correct Coding-Decoding scope  → should be ready
+--   v_q2 : different Reasoning topic       → mismatched scope, not ready
+--   v_q3 : NULL topic                      → missing scope, not ready
+--   v_qx : Quant topic                     → cross-subject, not ready
+insert into public.mock_question_bank (id, subject_id, topic_id, question_text, question_type, reviewer_status) values
+  ('b2220000-0000-0000-0000-000000000503'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   '66660000-0000-0000-0000-000000000503'::uuid, 'CAT→DBU, DOG→?', 'mcq', 'verified'),
+  ('b2220000-0000-0000-0000-0000000005b0'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   '66660000-0000-0000-0000-0000000005b0'::uuid, 'Next in 2,4,8,16,?', 'mcq', 'verified'),
+  ('b2220000-0000-0000-0000-0000000005c0'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   null, 'Unscoped reasoning question', 'mcq', 'verified'),
+  ('b2220000-0000-0000-0000-0000000005f0'::uuid, '55550000-0000-0000-0000-0000000005f0'::uuid,
+   '66660000-0000-0000-0000-0000000005f0'::uuid, '+20% then -20% net?', 'mcq', 'verified')
 on conflict (id) do nothing;
 
--- Author a strategy (pending) + assign it to the question (link pending) — the
--- governed intake path is a service-role INSERT; verification is the RPC below.
+-- Strategies: a Reasoning one (Coding-Decoding scope) and a Quant one (cross-subject).
 insert into public.reasoning_strategies
   (id, topic_id, strategy_code, name, strategy_type, applicability_rule,
    standard_method, faster_method, key_observation, worked_example, common_traps,
-   reviewer_status, is_active, created_by)
-values ('a0000000-0000-0000-0000-000000000503'::uuid,
-        '66660000-0000-0000-0000-000000000503'::uuid,
-        'RS-VERIFY-CODING-LETTERSHIFT', 'Letter-shift coding',
-        'approach', '{"pattern": "coding_decoding", "method": "positional_shift"}'::jsonb,
-        'Find the constant shift between plain and coded letters, then apply it.',
-        'Read the gap from the first letter pair and reuse it.',
-        'A constant shift means every letter moves by the same gap.',
-        'CAT→DBU is +1, so DOG→EPH.',
-        'Forgetting Z→A wrap-around.',
-        'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid)
+   reviewer_status, is_active, created_by) values
+  ('a0000000-0000-0000-0000-000000000503'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+   'RS-VERIFY-CODING-LETTERSHIFT', 'Letter-shift coding', 'approach',
+   '{"pattern": "coding_decoding", "method": "positional_shift"}'::jsonb,
+   'Find the constant shift between plain and coded letters, then apply it.',
+   'Read the gap from the first letter pair and reuse it.',
+   'A constant shift means every letter moves by the same gap.',
+   'CAT→DBU is +1, so DOG→EPH.', 'Forgetting Z→A wrap-around.',
+   'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
+  ('a0000000-0000-0000-0000-0000000005f0'::uuid, '66660000-0000-0000-0000-0000000005f0'::uuid,
+   'RS-VERIFY-XSUB-QUANT', 'Cross-subject (Quant-scoped) strategy', 'approach',
+   '{"pattern": "successive_percentage"}'::jsonb,
+   'net% = a + b + a*b/100 (signed).', 'Reuse the signed formula.',
+   'The ab/100 term is the trap.', '+20% then -20% → -4%.', 'Dropping the ab/100 term.',
+   'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid)
 on conflict (id) do nothing;
 
-insert into public.reasoning_question_strategies
-  (id, question_id, strategy_id, relevance, reviewer_status)
-values ('11110000-0000-0000-0000-000000000503'::uuid,
-        'b2220000-0000-0000-0000-000000000503'::uuid,
-        'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending')
+-- Links (author pending; verified below). Each question links to a strategy.
+insert into public.reasoning_question_strategies (id, question_id, strategy_id, relevance, reviewer_status) values
+  ('11110000-0000-0000-0000-000000000503'::uuid, 'b2220000-0000-0000-0000-000000000503'::uuid,
+   'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending'),
+  ('11110000-0000-0000-0000-0000000005b0'::uuid, 'b2220000-0000-0000-0000-0000000005b0'::uuid,
+   'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending'),
+  ('11110000-0000-0000-0000-0000000005c0'::uuid, 'b2220000-0000-0000-0000-0000000005c0'::uuid,
+   'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending'),
+  ('11110000-0000-0000-0000-0000000005f0'::uuid, 'b2220000-0000-0000-0000-0000000005f0'::uuid,
+   'a0000000-0000-0000-0000-0000000005f0'::uuid, 'primary', 'pending')
 on conflict (id) do nothing;
 
--- ── The conjunctive learner-ready read, expressed once as a reusable check. ──
--- Mirrors the gate GQR-S4's strategies_for_questions() will apply.
+-- ── The conjunctive + SCOPE learner-ready read, expressed once. ──
+-- Mirrors the exact gate GQR-S4's strategies_for_questions() will apply:
+-- link verified AND strategy verified AND active AND question admitted AND every
+-- populated strategy scope dimension resolves to canonical Reasoning family AND
+-- equals the question's topic/microtopic (missing/mismatched scope fails closed).
 create function pg_temp._rs_ready(p_question uuid) returns int
 language sql as $$
   select count(*)::int
@@ -82,14 +115,31 @@ language sql as $$
     and l.reviewer_status = 'verified'
     and s.reviewer_status = 'verified'
     and s.is_active = true
-    and q.reviewer_status in ('verified', 'live', 'published');
+    and q.reviewer_status in ('verified', 'live', 'published')
+    and (s.topic_id is not null or s.microtopic_id is not null)
+    and (s.topic_id is null or q.topic_id = s.topic_id)
+    and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id)
+    and (s.topic_id is null or exists (
+          select 1 from public.topics t join public.subjects sub on sub.id = t.subject_id
+          where t.id = s.topic_id
+            and (lower(sub.subject_group) = 'reasoning'
+                 or lower(sub.slug) in ('general-intelligence-reasoning', 'reasoning'))))
+    and (s.microtopic_id is null or exists (
+          select 1 from public.topics t join public.subjects sub on sub.id = t.subject_id
+          where t.id = s.microtopic_id
+            and (lower(sub.subject_group) = 'reasoning'
+                 or lower(sub.slug) in ('general-intelligence-reasoning', 'reasoning'))));
 $$;
 
 do $$
 declare
-  v_q   constant uuid := 'b2220000-0000-0000-0000-000000000503'::uuid;
-  v_s   constant uuid := 'a0000000-0000-0000-0000-000000000503'::uuid;
-  v_l   constant uuid := '11110000-0000-0000-0000-000000000503'::uuid;
+  v_q   constant uuid := 'b2220000-0000-0000-0000-000000000503'::uuid;  -- correct scope
+  v_q2  constant uuid := 'b2220000-0000-0000-0000-0000000005b0'::uuid;  -- mismatched topic
+  v_q3  constant uuid := 'b2220000-0000-0000-0000-0000000005c0'::uuid;  -- null scope
+  v_qx  constant uuid := 'b2220000-0000-0000-0000-0000000005f0'::uuid;  -- cross-subject
+  v_s   constant uuid := 'a0000000-0000-0000-0000-000000000503'::uuid;  -- reasoning strategy
+  v_sx  constant uuid := 'a0000000-0000-0000-0000-0000000005f0'::uuid;  -- quant-scoped strategy
+  v_l   constant uuid := '11110000-0000-0000-0000-000000000503'::uuid;  -- correct-scope link
   v_act constant uuid := 'eeeeeeee-0000-0000-0000-000000000503'::uuid;
   v_tok timestamptz;
 begin
@@ -107,10 +157,13 @@ begin
     raise notice 'PASS review reason gate';
   end;
 
-  -- Verify the strategy via the governed RPC (pending → verified).
+  -- Verify BOTH strategies via the governed RPC (pending → verified).
   select updated_at into v_tok from public.reasoning_strategies where id = v_s;
   perform public.cms_review_reasoning_strategy(
     v_s, 'pending', v_tok, 'verified', null, 'clear, correct letter-shift approach', v_act, 'op@example.com');
+  select updated_at into v_tok from public.reasoning_strategies where id = v_sx;
+  perform public.cms_review_reasoning_strategy(
+    v_sx, 'pending', v_tok, 'verified', null, 'cross-subject fixture verified for the negative test', v_act, 'op@example.com');
   if (select count(*) from public.admin_audit_logs
       where action = 'reasoning_strategy_status_transition'
         and entity_type = 'reasoning_strategy'
@@ -123,17 +176,27 @@ begin
   if pg_temp._rs_ready(v_q) <> 0 then raise exception 'FAIL: unverified link must gate a verified strategy'; end if;
   raise notice 'PASS verified strategy + pending link is not learner-ready';
 
-  -- Verify the link (governed assignment path = service-role UPDATE; links carry
+  -- Verify every link (governed assignment path = service-role UPDATE; links carry
   -- their own reviewer_status but have no separate RPC in v1).
-  update public.reasoning_question_strategies
-    set reviewer_status = 'verified', reviewed_by = v_act, reviewed_at = now()
-    where id = v_l;
+  update public.reasoning_question_strategies set reviewer_status = 'verified', reviewed_by = v_act, reviewed_at = now()
+    where id in ('11110000-0000-0000-0000-000000000503'::uuid,
+                 '11110000-0000-0000-0000-0000000005b0'::uuid,
+                 '11110000-0000-0000-0000-0000000005c0'::uuid,
+                 '11110000-0000-0000-0000-0000000005f0'::uuid);
 
-  -- Now fully verified + active → appears.
-  if pg_temp._rs_ready(v_q) <> 1 then raise exception 'FAIL: double-verified active strategy must be learner-ready'; end if;
-  raise notice 'PASS double-verified active strategy IS learner-ready';
+  -- Correct scope + fully verified + active → appears.
+  if pg_temp._rs_ready(v_q) <> 1 then raise exception 'FAIL: double-verified, scope-matched strategy must be learner-ready'; end if;
+  raise notice 'PASS double-verified scope-matched strategy IS learner-ready';
 
-  -- Move the LINK out of verified → disappears.
+  -- ── Scope gate negatives (checkpost #996 P1) ──
+  if pg_temp._rs_ready(v_q2) <> 0 then raise exception 'FAIL: mismatched topic must NOT be learner-ready'; end if;
+  raise notice 'PASS mismatched-topic question is not learner-ready';
+  if pg_temp._rs_ready(v_q3) <> 0 then raise exception 'FAIL: missing (null) scope must fail closed'; end if;
+  raise notice 'PASS null-scope question fails closed';
+  if pg_temp._rs_ready(v_qx) <> 0 then raise exception 'FAIL: cross-subject (non-Reasoning family) scope must NOT be learner-ready'; end if;
+  raise notice 'PASS cross-subject strategy is not learner-ready';
+
+  -- Move the correct-scope LINK out of verified → disappears.
   update public.reasoning_question_strategies set reviewer_status = 'rejected' where id = v_l;
   if pg_temp._rs_ready(v_q) <> 0 then raise exception 'FAIL: rejecting the link must remove the surface'; end if;
   raise notice 'PASS rejecting the link removes the surface';
@@ -154,6 +217,6 @@ begin
   raise notice 'PASS needs_correction removes the surface';
 end $$;
 
-do $$ begin raise notice 'ALL PASS — Reasoning content readiness proven'; end $$;
+do $$ begin raise notice 'ALL PASS — Reasoning content readiness proven (scope-aware)'; end $$;
 
 rollback;
