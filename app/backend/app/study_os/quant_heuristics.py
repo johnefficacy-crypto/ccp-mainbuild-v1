@@ -65,22 +65,28 @@ def _learner_row(row: dict) -> dict:
 
 
 def _scope_matches(heuristic: dict, question: Any) -> bool:
-    """Fail closed unless the linked question matches the heuristic scope.
+    """Fail closed unless every populated heuristic scope dimension matches.
 
-    A microtopic-scoped heuristic is intentionally narrower than its parent topic:
-    when ``microtopic_id`` is present it must match exactly. Otherwise the topic
-    must match. Topic IDs are canonical, subject-owned rows, so this also blocks a
-    reviewed Quant link accidentally attached to a Reasoning/English question.
+    When both topic and microtopic are stored, both must match. This avoids
+    trusting that historical or operator-authored rows always carry a consistent
+    parent/child pair, while still supporting topic-only and microtopic-only
+    strategies. Topic IDs are canonical, subject-owned rows, so a mismatch also
+    blocks a Quant strategy linked to a Reasoning/English question.
     """
     if not isinstance(question, dict):
         return False
-    heuristic_microtopic = heuristic.get("microtopic_id")
-    if heuristic_microtopic:
-        return str(question.get("microtopic_id") or "") == str(heuristic_microtopic)
     heuristic_topic = heuristic.get("topic_id")
-    if heuristic_topic:
-        return str(question.get("topic_id") or "") == str(heuristic_topic)
-    return False
+    heuristic_microtopic = heuristic.get("microtopic_id")
+    if not heuristic_topic and not heuristic_microtopic:
+        return False
+    if heuristic_topic and str(question.get("topic_id") or "") != str(heuristic_topic):
+        return False
+    if (
+        heuristic_microtopic
+        and str(question.get("microtopic_id") or "") != str(heuristic_microtopic)
+    ):
+        return False
+    return True
 
 
 def heuristics_for_questions(
