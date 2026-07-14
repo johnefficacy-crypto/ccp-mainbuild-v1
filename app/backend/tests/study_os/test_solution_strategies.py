@@ -11,9 +11,35 @@ from app.study_os import mock_engine, quant_heuristics, solution_strategies as s
 from tests.persona_questions._stub import SBStub
 
 
-def _heur(hid, *, status="verified", active=True, name="H", htype="shortcut", **extra):
+def _heur(
+    hid,
+    *,
+    status="verified",
+    active=True,
+    name="H",
+    htype="shortcut",
+    topic_id="t1",
+    microtopic_id=None,
+    topic_family="quant",
+    microtopic_family="quant",
+    microtopic_parent=None,
+    **extra,
+):
+    def _subject(family):
+        return {
+            "slug": "quantitative-aptitude" if family == "quant" else "reasoning",
+            "subject_group": "numerical" if family == "quant" else "reasoning",
+        }
+
     row = {
-        "id": hid, "topic_id": "t1", "microtopic_id": None,
+        "id": hid, "topic_id": topic_id, "microtopic_id": microtopic_id,
+        "topic": {"subject": _subject(topic_family)} if topic_id else None,
+        "microtopic": {
+            "parent_topic_id": (
+                topic_id if microtopic_parent is None else microtopic_parent
+            ),
+            "subject": _subject(microtopic_family),
+        } if microtopic_id else None,
         "heuristic_code": f"code-{hid}", "name": name, "heuristic_type": htype,
         "applicability_rule": {"op": "secret"}, "formula_latex": r"\frac{a}{b}",
         "standard_method": "long way", "shortcut_method": "fast way",
