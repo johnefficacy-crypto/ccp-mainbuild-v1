@@ -31,6 +31,8 @@ def _cycle(id=CYCLE_2026_ID, status="active", exam_start=None, year=2026, cycle_
         "year": year,
         "cycle_name": cycle_name,
         "created_at": f"{year}-01-01T00:00:00Z",
+        # Trust gate (migration 261): Study OS only reads verified cycles.
+        "reviewer_status": "verified",
     }
 
 

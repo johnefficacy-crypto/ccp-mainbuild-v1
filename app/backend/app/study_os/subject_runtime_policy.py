@@ -167,8 +167,8 @@ WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
         label="Sentence practice",
         companion_modes=(
             {
-                "type": "error_lab", "label": "Error Lab", "target_topic_id": None,
-                "route_type": "client_route", "route": "/app/study/error-lab",
+                "type": "error_lab", "label": "Improvement Lab", "target_topic_id": None,
+                "route_type": "client_route", "route": "/app/study/improvement-lab",
             },
         ),
     ),

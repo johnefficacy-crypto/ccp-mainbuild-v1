@@ -451,6 +451,27 @@ _CYCLE_FIELDS = {
 }
 _CYCLE_STATUSES = ("expected", "open", "active", "closed", "completed", "cancelled")
 
+# Reviewed content of a reviewed/verified cycle (migration 261). Editing any of
+# these demotes it to draft. Source provenance and metadata are review-bearing;
+# operational `status` and `planner_activation_enabled` are deliberately
+# excluded — legitimate lifecycle/exposure controls, not reviewed content.
+_CYCLE_MATERIAL_FIELDS = frozenset({
+    "exam_id", "year", "cycle_name", "notification_date",
+    "application_start", "application_end", "exam_start", "exam_end",
+    "source_url", "metadata",
+})
+
+# Trust-gate lifecycle for exam_cycles (migration 261): draft -> reviewed ->
+# verified; reviewed/verified -> draft demotes. No draft -> verified jump.
+_CYCLE_ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "draft": ("reviewed",),
+    "reviewed": ("verified", "draft"),
+    "verified": ("reviewed", "draft"),
+}
+_CYCLE_ALL_REVIEW_STATUSES = frozenset(
+    s for targets in _CYCLE_ALLOWED_TRANSITIONS.values() for s in targets
+)
+
 
 @router.get("/exam-cycles")
 def list_cycles(
@@ -488,6 +509,10 @@ def create_cycle(
         raise HTTPException(status_code=422, detail=f"status must be one of {_CYCLE_STATUSES}")
     if not _safe_select(supabase, "exams", id=row["exam_id"]):
         raise HTTPException(status_code=422, detail="exam_id does not resolve")
+    # Trust gate (migration 261): every created cycle lands reviewer_status='draft'
+    # (the DB column default; reviewer_status is not a client-writable field) and
+    # records its author for reviewer separation at verify time.
+    row["created_by"] = admin.get("id")
     try:
         inserted = supabase.table("exam_cycles").insert(row).execute().data or []
     except Exception as exc:  # noqa: BLE001
@@ -517,6 +542,17 @@ def update_cycle(
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     if patch.get("status") and patch["status"] not in _CYCLE_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {_CYCLE_STATUSES}")
+    # Trust gate (migration 261): editing reviewed content of a reviewed or
+    # verified cycle demotes it to draft (clearing the reviewer stamp), so a
+    # re-review is required
+    # before it is live again. The generic update path can NEVER promote to a
+    # higher trust state — that is only reachable through review_exam_cycle().
+    if existing.get("reviewer_status") in {"reviewed", "verified"} and any(
+        f in patch and patch[f] != existing.get(f) for f in _CYCLE_MATERIAL_FIELDS
+    ):
+        patch["reviewer_status"] = "draft"
+        patch["reviewed_by"] = None
+        patch["reviewed_at"] = None
     patch["updated_at"] = _now_iso()
     updated = supabase.table("exam_cycles").update(patch).eq("id", cycle_id).execute().data or []
     audit_id = _audit(
@@ -525,6 +561,86 @@ def update_cycle(
         new_value={"reason": body.reason, "patch": patch, "previous": existing},
     )
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+class CycleReviewBody(BaseModel):
+    status: str = Field(..., description="Target reviewer_status: 'reviewed', 'verified', or 'draft'")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/exam-cycles/{cycle_id}/review")
+def review_cycle(
+    cycle_id: str,
+    body: CycleReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition an exam cycle's reviewer_status (exam-cycle trust gate).
+
+    Promotion is authoritative inside the ``review_exam_cycle`` RPC (migration
+    261): under a row lock it CAS-checks the expected status, enforces the
+    draft -> reviewed -> verified matrix, and — for promotion to ``verified`` —
+    requires reviewer separation (the actor must not be the cycle's
+    ``created_by``, failing closed when authorship is absent). Moving to draft
+    clears the reviewer stamp. Generic CMS create/update paths never promote —
+    this is the only path to ``reviewed``/``verified``.
+    """
+    if body.status not in _CYCLE_ALL_REVIEW_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"status must be one of {sorted(_CYCLE_ALL_REVIEW_STATUSES)}",
+        )
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "exam_cycles", id=cycle_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="exam_cycle not found")
+
+    from_status = existing.get("reviewer_status", "draft")
+    allowed = _CYCLE_ALLOWED_TRANSITIONS.get(from_status, ())
+    if body.status not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Transition '{from_status}' → '{body.status}' is not allowed. "
+                f"Allowed targets from '{from_status}': {list(allowed)}"
+            ),
+        )
+
+    try:
+        result = supabase.rpc(
+            "review_exam_cycle",
+            {
+                "p_cycle_id": cycle_id,
+                "p_expected_status": from_status,
+                "p_target_status": body.status,
+                "p_reason": body.reason,
+                "p_actor_id": admin.get("id"),
+                "p_actor_email": admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        low = msg.lower()
+        if "concurrent_modification" in low:
+            raise HTTPException(
+                status_code=409,
+                detail="Concurrent modification: cycle reviewer_status changed since read. Re-fetch and retry.",
+            ) from exc
+        if "not_found" in low:
+            raise HTTPException(status_code=404, detail="exam_cycle not found") from exc
+        if any(tok in low for tok in (
+            "reviewer_is_creator", "creator_missing", "transition_not_allowed",
+            "invalid_reason", "invalid_target_status",
+        )):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        logger.exception("review_exam_cycle RPC failed; no status change recorded")
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data
+    return {"ok": True, "audit_id": data["audit_id"], "row": data["row"]}
 
 
 # ════════════════════════════════════════════════════════════════════════

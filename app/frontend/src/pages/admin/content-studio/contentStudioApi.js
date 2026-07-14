@@ -97,6 +97,24 @@ export const contentStudioApi = {
       ...(reviewer_notes ? { reviewer_notes } : {}),
     }),
 
+  // Reasoning strategy authority (GQR-S3). Read = content_studio reads; review =
+  // content_studio.review. There is no create/edit/assign path — migration 262
+  // ships only the review RPC. Every review decision carries an 8–500 char
+  // `reason` and is dual-CAS-guarded on BOTH the `expected_status` and the content
+  // `expected_updated_at` the client last read (so a reviewer can never verify a
+  // revision they did not see); a 409 means the strategy changed under review —
+  // refetch and re-read before deciding. Mirrors the quant-heuristic surface.
+  listStrategies: (params) => api.get(`${BASE}/reasoning-strategies${qs(params)}`),
+  getStrategy: (id) => api.get(`${BASE}/reasoning-strategies/${id}`),
+  reviewStrategy: (id, { status, expected_status, expected_updated_at, reason, reviewer_notes }) =>
+    api.post(`${BASE}/reasoning-strategies/${id}/review`, {
+      status,
+      expected_status,
+      expected_updated_at,
+      reason,
+      ...(reviewer_notes ? { reviewer_notes } : {}),
+    }),
+
   // Current-affairs question candidates (GQR-G4). The reviewer approves/rejects/
   // sends-back a shadow-generated candidate; PROMOTION into the objective bank is a
   // separate, higher-trust (`mock_questions:publish`) action. Both CAS-guard on the
@@ -180,6 +198,21 @@ export function describeActivationBlocker(code) {
 export const HEURISTIC_TYPES = ["shortcut", "standard_method", "trap", "estimation"];
 
 export const HEURISTIC_REVIEW_TRANSITIONS = {
+  pending: ["verified", "rejected", "needs_correction"],
+  needs_correction: ["pending", "rejected"],
+  verified: ["needs_correction"],
+  rejected: ["pending"],
+};
+
+// Reasoning strategy authority (migration 262, GQR-S3). strategy_type facet + the
+// review transition matrix, which MATCHES the quant-heuristic one: needs_correction
+// routes back to pending (never straight to verified), a verified strategy can only
+// be reopened for correction, and rejected can be reopened to pending for rework.
+export const REASONING_STRATEGY_TYPES = [
+  "approach", "pattern", "elimination", "diagram_method", "set_method", "trap",
+];
+
+export const REASONING_REVIEW_TRANSITIONS = {
   pending: ["verified", "rejected", "needs_correction"],
   needs_correction: ["pending", "rejected"],
   verified: ["needs_correction"],

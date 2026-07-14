@@ -454,7 +454,7 @@ describe("EnglishPracticeShell", () => {
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
 
-  test("offers a contextual Error Lab entry that navigates to /app/study/error-lab", async () => {
+  test("offers a contextual entry that navigates to /app/study/improvement-lab", async () => {
     useEnglishPracticeSession.mockReturnValue({
       fetchSession: jest.fn().mockResolvedValue(
         payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }]),
@@ -467,15 +467,15 @@ describe("EnglishPracticeShell", () => {
         <Routes>
           <Route path="/app/study/practice/english/:sessionId" element={<EnglishPracticeShell />} />
           <Route
-            path="/app/study/error-lab"
-            element={<div data-testid="error-lab-landing">Error Lab</div>}
+            path="/app/study/improvement-lab"
+            element={<div data-testid="improvement-lab-landing">Improvement Lab</div>}
           />
         </Routes>
       </MemoryRouter>,
     );
     const link = await screen.findByTestId("error-lab-link");
-    expect(link).toHaveAttribute("href", "/app/study/error-lab");
+    expect(link).toHaveAttribute("href", "/app/study/improvement-lab");
     fireEvent.click(link);
-    expect(await screen.findByTestId("error-lab-landing")).toBeInTheDocument();
+    expect(await screen.findByTestId("improvement-lab-landing")).toBeInTheDocument();
   });
 });

@@ -17,9 +17,12 @@ def resolve_exam_target_window(sb, *, exam_id, manual_phase_id=None, today=None)
     today_str = today.isoformat()
 
     # --- Cycle selection ---
+    # Trust gate (migration 261): Study OS targets only verified cycles. An
+    # unreviewed (draft/reviewed) cycle is never a live target.
     cycles = execute_or_default(
         "exam_cycles.select",
-        lambda: sb.table("exam_cycles").select("*").eq("exam_id", exam_id).execute().data or [],
+        lambda: sb.table("exam_cycles").select("*")
+        .eq("exam_id", exam_id).eq("reviewer_status", "verified").execute().data or [],
         [],
     )
     non_cancelled = [c for c in cycles if c.get("status") != "cancelled"]

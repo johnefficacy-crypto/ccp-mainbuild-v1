@@ -32,6 +32,8 @@ const PromptBulkImport = lazy(() => import("./PromptBulkImport"));
 const ExamAssignments = lazy(() => import("./ExamAssignments"));
 const QuantHeuristicLibrary = lazy(() => import("./QuantHeuristicLibrary"));
 const QuantHeuristicReviewQueue = lazy(() => import("./QuantHeuristicReviewQueue"));
+const ReasoningStrategyLibrary = lazy(() => import("./ReasoningStrategyLibrary"));
+const ReasoningStrategyReviewQueue = lazy(() => import("./ReasoningStrategyReviewQueue"));
 const CaQuestionReviewQueue = lazy(() => import("./CaQuestionReviewQueue"));
 
 const TABS = [
@@ -45,6 +47,7 @@ const CONTENT_TYPES = [
   { id: "objective_question", label: "Objective questions" },
   { id: "writing_prompt", label: "Writing prompts" },
   { id: "quant_heuristic", label: "Quant heuristics" },
+  { id: "reasoning_strategy", label: "Reasoning strategies" },
   { id: "current_affairs_question", label: "Current affairs" },
 ];
 
@@ -80,7 +83,9 @@ export default function ContentStudio() {
   let typedTabs;
   if (type === "writing_prompt") {
     typedTabs = TABS;
-  } else if (type === "quant_heuristic") {
+  } else if (type === "quant_heuristic" || type === "reasoning_strategy") {
+    // Reasoning strategies mirror quant heuristics — migration 262 ships only the
+    // review RPC (no create/bulk/assign), so they expose just Library + Review Queue.
     typedTabs = TABS.filter((t) => t.id === "library" || t.id === "review-queue");
   } else if (type === "current_affairs_question") {
     // CA candidates are shadow-generated (GQR-G3) — no author/library/bulk path;
@@ -98,6 +103,7 @@ export default function ContentStudio() {
   const needsContentRead =
     type === "writing_prompt" ||
     type === "quant_heuristic" ||
+    type === "reasoning_strategy" ||
     type === "current_affairs_question";
 
   let body = null;
@@ -109,6 +115,10 @@ export default function ContentStudio() {
     body = activeTab === "review-queue"
       ? <QuantHeuristicReviewQueue perms={perms} />
       : <QuantHeuristicLibrary perms={perms} />;
+  } else if (type === "reasoning_strategy") {
+    body = activeTab === "review-queue"
+      ? <ReasoningStrategyReviewQueue perms={perms} />
+      : <ReasoningStrategyLibrary perms={perms} />;
   } else if (type === "current_affairs_question") {
     body = <CaQuestionReviewQueue perms={perms} />;
   } else if (activeTab === "library") {
