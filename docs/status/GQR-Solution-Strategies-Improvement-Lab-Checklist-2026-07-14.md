@@ -61,7 +61,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | GQR-S2 | Quant content-readiness completion | CODE-FIXED, VERIFY DB (this PR) | GQR-S1 code present; live submitted-review proof depends on seeded content | Seed verified linked Quant content via pending INSERT + audited `cms_review_quant_heuristic` RPC — no migration. Preflight/seed/proof scripts + read-layer regression. Full Content Studio authoring UI deferred (needs new create/edit/activate/link-review RPCs = migration). |
 | GQR-S3 | Reasoning strategy authority and Content Studio | CODE-FIXED, VALIDATION PENDING | GQR-S0 | Governed schema, RLS, lifecycle/audit RPC, and the Content Studio Reasoning tab (Library + Review Queue) landed (migration 262). Mirrors the Quant heuristic authority: review-only. Authoring/editing/activation/assignment/link-review + learner-safe preview + seeded content are deferred to GQR-S3b, exactly as GQR-Q7 deferred Quant authoring to GQR-S2. |
 | GQR-S3b | Reasoning authoring, assignment, and seeded content | PLANNED | GQR-S3 | Draft creation/editing, activation/retirement, question assignment, question-link review, learner-safe projection preview, and at least one verified strategy + verified link produced through the governed workflow. Required before GQR-S4 learner delivery can validate. |
-| GQR-S4 | Reasoning independent-question learner delivery | BLOCKED on GQR-S3 | GQR-S3 validated | Reuse normalized DTO and Solution Strategy panel for text Reasoning questions. |
+| GQR-S4 | Reasoning independent-question learner delivery | CODE-FIXED, VALIDATION PENDING | GQR-S3 authority (migration 262) present; live proof needs GQR-S3b content | `reasoning_strategies.strategies_for_questions` (batched, conjunctive verified+active+scope gate, mirrors Quant) + registered in `solution_strategies` aggregator (`_project_reasoning`, `subject_family='reasoning'`); `get_review` already batches it; shared `SolutionStrategyPanel` reused (renders `key_observation`). No migration. |
 | GQR-S5 | Rename Error Lab learner page to Improvement Lab | CODE-FIXED, VALIDATION PENDING | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
 | GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | BLOCKED on learner delivery | GQR-S1 and GQR-S4 | Bounded owner-scoped attempt-history aggregation; live verified-only projection; independent section states. |
 | GQR-S7 | Reasoning set/stimulus-aware strategies | BLOCKED on GQR-S3/GQR-S4 | Reasoning authority + independent delivery | Set-level authority and one-time grouped rendering; no duplication per question. |
@@ -273,17 +273,20 @@ independent-question family below; the strategy CONTENT for each is seeded throu
 
 ## GQR-S4 — Reasoning independent-question delivery
 
-**Status:** BLOCKED on GQR-S3
+**Status:** CODE-FIXED, VALIDATION PENDING (live proof needs GQR-S3b verified content)
 
-- [ ] Create `app/backend/app/study_os/reasoning_strategies.py`.
-- [ ] Implement batched verified-only `strategies_for_questions()`.
-- [ ] Project into the shared learner DTO.
-- [ ] Add Reasoning as a source in `solution_strategies.py`.
-- [ ] Do not modify the mock review response loop again beyond source registration.
-- [ ] Reuse `SolutionStrategyPanel` without a Reasoning-specific fork.
-- [ ] Verify `key_observation`, elimination, diagram, and trap content render.
-- [ ] Verify Quant and Reasoning strategies cannot cross-leak.
-- [ ] Keep non-verbal Reasoning out of scope.
+- [x] `app/backend/app/study_os/reasoning_strategies.py` gains the batched reader (existed for review; now read-authority too).
+- [x] Implement batched verified-only `strategies_for_questions()` (one link + one strategy query; conjunctive verified+active+scope gate; embedded bank-question scope; fail-soft).
+- [x] Project into the shared learner DTO (`_project_reasoning`, `subject_family='reasoning'`, explicit allowlist).
+- [x] Add Reasoning as a source in `solution_strategies.py`.
+- [x] Do not modify the mock review response loop again beyond source registration (`get_review` already batches the aggregator — untouched).
+- [x] Reuse `SolutionStrategyPanel` without a Reasoning-specific fork.
+- [x] Verify `key_observation` and elimination/trap content render (FE test).
+- [x] Verify Quant and Reasoning strategies cannot cross-leak (scope gate blocks a Reasoning-scoped strategy on a Quant question and vice-versa; aggregator per-subject isolation test). A single canonical question has ONE topic scope, so mixed-family content on one real question is impossible by construction — the contract requires cross-source ISOLATION, not co-appearance.
+- [x] Keep non-verbal Reasoning out of scope.
+- [ ] Live/operator proof that a verified Reasoning strategy + verified link renders in submitted review — **blocked on GQR-S3b** (no governed authoring/seed for Reasoning yet, exactly as GQR-S1 waited on GQR-S2).
+
+Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (11 — batched one-query, gate, scope/cross-subject block, isolation, projection-strip, aggregator multi-source composition with per-subject isolation, fail-soft, `get_review` attach); FE `SolutionStrategyPanel.test.jsx` (+1 reasoning case).
 
 ---
 

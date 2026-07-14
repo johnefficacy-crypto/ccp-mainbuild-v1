@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.study_os import quant_heuristics
+from app.study_os import quant_heuristics, reasoning_strategies
 
 logger = logging.getLogger("career_copilot.study_os.solution_strategies")
 
@@ -70,6 +70,28 @@ def _project_quant(h: dict) -> dict:
     }
 
 
+def _project_reasoning(s: dict) -> dict:
+    """Map a governed ``reasoning_strategies`` row → the normalized learner DTO.
+
+    Migration 262 named the Reasoning content columns to match the shared DTO, so
+    this is a near-straight copy tagged ``subject_family='reasoning'``. Still an
+    explicit allowlist, so a governance column can never leak into the projection.
+    """
+    return {
+        "id": s.get("id"),
+        "subject_family": "reasoning",
+        "name": s.get("name"),
+        "strategy_type": s.get("strategy_type"),
+        "formula_latex": s.get("formula_latex"),
+        "standard_method": s.get("standard_method"),
+        "faster_method": s.get("faster_method"),
+        "worked_example": s.get("worked_example"),
+        "key_observation": s.get("key_observation"),
+        "common_traps": s.get("common_traps"),
+        "relevance": s.get("relevance") or "related",
+    }
+
+
 def _sort_key(s: dict) -> tuple:
     return (
         _RELEVANCE_RANK.get(s.get("relevance"), 99),
@@ -103,7 +125,15 @@ def strategies_for_questions(
         if qid in out:
             out[qid].extend(_project_quant(h) for h in rows)
 
-    # Reasoning source registers here in a later slice (GQR-S4) — same shape.
+    # ── Reasoning source (batched, verified-only) — GQR-S4 ───────────────────
+    try:
+        reasoning = reasoning_strategies.strategies_for_questions(supabase, ids)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("solution_strategies reasoning source failed err=%r", exc)
+        reasoning = {}
+    for qid, rows in (reasoning or {}).items():
+        if qid in out:
+            out[qid].extend(_project_reasoning(s) for s in rows)
 
     for qid in out:
         out[qid].sort(key=_sort_key)
