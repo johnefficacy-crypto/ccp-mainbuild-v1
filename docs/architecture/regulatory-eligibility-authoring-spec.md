@@ -61,11 +61,22 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    `study_os/exam_target_window.py` consumes every non-`cancelled` cycle. → Any
    cycle row is immediately live. **Prereq:** add a review/trust column + gate
    every consumer/RLS before authoring cycles. **Do not author cycles until then.**
-3. **No cutoff-aware age evaluation.** The evaluator computes age against
-   `date.today()`; the verified-rule loader does not select `cutoff_date_basis` /
-   `cutoff_date` and the evaluator never applies them. → Notification age bands are
-   unfaithful near the cut-off. **Prereq:** implement cutoff-aware evaluation, or
-   keep notification age in the cycle layer, before authoring precise age rows.
+3. **~~No cutoff-aware age evaluation.~~ CODE-FIXED.** The baseline evaluator
+   still measures age against `date.today()` (correct for stable baseline), but a
+   cutoff-aware **cycle layer** now lands: `evaluator._resolve_cutoff_date`
+   (`fixed_date`→the rule's own `cutoff_date`; `cycle_notification`→the
+   authoritative cycle's `notification_date`), a `cutoff_context` mode on
+   `evaluate_exam_for_user` that measures each age rule on its official cut-off,
+   and a public `evaluate_cycle_eligibility`. The cycle loader
+   (`_load_cycle_rules_by_stream`) selects `cutoff_date_basis` / `cutoff_date`
+   from verified `exam_cycle_stream_eligibility` rows, and
+   `summarize_user_eligibility` exposes an additive `cycle` provenance band. When
+   the cut-off — or the authoritative cycle source — is unavailable the age rule
+   is left unevaluated so the verdict **preserves `unknown`** (never a today-based
+   guess). **Notification age still belongs in the cycle layer, not baseline
+   rows.** Precise age rows may now be authored on `exam_cycle_stream_eligibility`
+   with an explicit `fixed_date` cut-off; `cycle_notification` age stays `unknown`
+   until prereq 2 (cycle trust) closes.
 4. **~~No include-inactive discovery for draft identities.~~ RESOLVED.**
    `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) lists
    inactive identities (PFRDA Grade A / IRDAI AM, migration 244); default
@@ -88,7 +99,7 @@ verdict** — the root of the SEBI-General hazard below.
 
 | rule_type | field | semantics |
 |---|---|---|
-| `age_min`/`age_max` | DOB → age | integer compare, **against `date.today()` (no cutoff)** |
+| `age_min`/`age_max` | DOB → age | integer compare; **baseline: against `date.today()`**; **cycle layer (`evaluate_cycle_eligibility`): against the official cut-off** (`fixed_date`→row `cutoff_date`; `cycle_notification`→authoritative cycle `notification_date`; unresolved⇒`unknown`) |
 | `education_min_level` | highest `aspirant_education.level` | ranked 10th<12th<diploma<graduation<post_graduation<phd |
 | `min_percentage` | `aspirant_education.percentage` | **standalone: best across ALL records**; **inside a `qualification_combination`: record-correlated** (the SAME education record must satisfy every leaf in that AND-group) |
 | `discipline` | `aspirant_education.degree` + `.stream` | alias-expanded, boundary-aware (`_DISCIPLINE_ALIASES`), else literal boundary match |
@@ -210,6 +221,6 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 ## Follow-ups to file
 - ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 257, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
 - `exam_cycles` trust/review column + gate every consumer & RLS.
-- Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.
+- ~~Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.~~ **DONE** — cycle-layer cutoff-aware age (`evaluate_cycle_eligibility` + `cycle` provenance band); `cycle_notification` age stays `unknown` until the `exam_cycles` trust gate closes.
 - ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.
 - ~~Registry gap: add the missing `irdai-am/law` stream.~~ **NOT A GAP** — migration 244 already seeds all six IRDAI streams, including `law`.

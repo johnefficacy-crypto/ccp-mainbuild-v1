@@ -77,6 +77,41 @@ def _age_in_years(dob: str | None, reference: date | None = None) -> int | None:
     return years
 
 
+def _as_date(value: Any) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def _resolve_cutoff_date(rule: dict[str, Any], cycle: dict[str, Any] | None) -> date | None:
+    """The official date age is measured on for a cycle-scoped age rule.
+
+    * ``fixed_date``         → the rule's own ``cutoff_date`` (self-contained and
+                               authoritative; no cycle source needed).
+    * ``cycle_notification`` → the authoritative cycle's ``notification_date``.
+
+    Returns ``None`` when the basis is absent/unrecognised, a ``fixed_date`` rule
+    carries no date, or a ``cycle_notification`` rule has no authoritative cycle
+    source (``exam_cycles`` has no trust gate yet — see the Lane R §4 spec, so a
+    cycle is only used when the caller passes one it vouches for). A ``None`` here
+    tells the evaluator to leave the age rule unevaluated so the cycle verdict
+    preserves ``unknown`` rather than measuring against ``date.today()``.
+    """
+    basis = _normalize_text(rule.get("cutoff_date_basis"))
+    if basis == "fixed_date":
+        return _as_date(rule.get("cutoff_date"))
+    if basis == "cycle_notification":
+        if not cycle:
+            return None
+        return _as_date(cycle.get("notification_date"))
+    return None
+
+
 def _normalize_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -251,6 +286,18 @@ def _eval_atomic(rule_type: str, value_num: Any, value_text: Any, profile: dict[
         return _eval_min_percentage(value_num, profile)
     if rule_type == "certification":
         return _eval_certification(value_text, profile)
+    if rule_type == "experience_min_years":
+        # Cycle-only fact (baseline forbids it). No experience on file ⇒ missing
+        # (conditional), never a silent pass — a knockout must not fail open.
+        if value_num is None:
+            return "pass"
+        have = profile.get("experience_years")
+        if have is None:
+            return "missing"
+        try:
+            return "pass" if float(have) >= float(value_num) else "fail"
+        except (TypeError, ValueError):
+            return "missing"
     if rule_type == "education_min_level":
         req_rank = _education_rank(_normalize_text(value_text))
         user_rank = _education_rank(profile.get("education_level"))
@@ -333,12 +380,22 @@ def evaluate_exam_for_user(
     profile: dict[str, Any],
     *,
     reference_date: date | None = None,
+    cutoff_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Decide one exam against one user profile. Pure function.
 
     ``rules`` is the list of verified rows for one exam. ``profile`` is the
     slimmed-down dict ``summarize_user_eligibility`` builds — we never
     touch the DB here.
+
+    ``cutoff_context`` switches the age branches into cutoff-aware
+    (cycle-scoped) mode. When it is ``None`` (the baseline path) age is measured
+    against ``reference_date`` — or ``date.today()`` — exactly as before. When it
+    is a dict, each age rule is measured on the official cut-off date resolved
+    from its ``cutoff_date_basis`` / ``cutoff_date`` (and the authoritative
+    ``cutoff_context['cycle']`` for a ``cycle_notification`` basis); an age rule
+    whose cut-off cannot be resolved is left unevaluated so the verdict preserves
+    ``unknown`` rather than guessing against today.
     """
     if not rules:
         return {
@@ -348,11 +405,23 @@ def evaluate_exam_for_user(
         }
 
     scopes = _user_scopes(profile)
-    user_age = _age_in_years(profile.get("date_of_birth") or profile.get("dob"), reference_date)
+    dob = profile.get("date_of_birth") or profile.get("dob")
+    cutoff_cycle = cutoff_context.get("cycle") if cutoff_context is not None else None
     user_education_rank = _education_rank(profile.get("education_level"))
     user_nationality = _normalize_text(profile.get("nationality"))
     user_gender = _normalize_text(profile.get("gender"))
     user_attempts_used = profile.get("attempts_used")
+
+    def _age_for_rule(rule: dict[str, Any]) -> tuple[int | None, bool]:
+        """``(age, checkable)`` for one age rule. In cutoff mode a rule whose
+        official cut-off date can't be resolved is NOT checkable — its age
+        verdict stays ``unknown`` instead of silently measuring against today."""
+        if cutoff_context is None:
+            return _age_in_years(dob, reference_date), True
+        ref = _resolve_cutoff_date(rule, cutoff_cycle)
+        if ref is None:
+            return None, False
+        return _age_in_years(dob, ref), True
 
     reasons: list[str] = []
     missing: list[str] = []
@@ -361,29 +430,33 @@ def evaluate_exam_for_user(
     # ── age_min ──
     rule = _pick_rule(rules, "age_min", scopes)
     if rule:
-        if user_age is None:
-            missing.append("date_of_birth")
-        else:
-            any_rule_checked = True
-            if user_age < int(rule["value_num"]):
-                reasons.append(
-                    f"Age must be at least {int(rule['value_num'])} (you are {user_age})."
-                )
-                return _decision("not_eligible", reasons, missing)
+        user_age, checkable = _age_for_rule(rule)
+        if checkable:
+            if user_age is None:
+                missing.append("date_of_birth")
+            else:
+                any_rule_checked = True
+                if user_age < int(rule["value_num"]):
+                    reasons.append(
+                        f"Age must be at least {int(rule['value_num'])} (you are {user_age})."
+                    )
+                    return _decision("not_eligible", reasons, missing)
 
     # ── age_max ──
     rule = _pick_rule(rules, "age_max", scopes)
     if rule:
-        if user_age is None:
-            missing.append("date_of_birth")
-        else:
-            any_rule_checked = True
-            if user_age > int(rule["value_num"]):
-                reasons.append(
-                    f"Age must be at most {int(rule['value_num'])} for scope "
-                    f"{rule.get('scope')} (you are {user_age})."
-                )
-                return _decision("not_eligible", reasons, missing)
+        user_age, checkable = _age_for_rule(rule)
+        if checkable:
+            if user_age is None:
+                missing.append("date_of_birth")
+            else:
+                any_rule_checked = True
+                if user_age > int(rule["value_num"]):
+                    reasons.append(
+                        f"Age must be at most {int(rule['value_num'])} for scope "
+                        f"{rule.get('scope')} (you are {user_age})."
+                    )
+                    return _decision("not_eligible", reasons, missing)
 
     # ── education_min_level ──
     rule = _pick_rule(rules, "education_min_level", scopes)
@@ -444,6 +517,9 @@ def evaluate_exam_for_user(
         ("discipline", "disciplines", "Requires a matching academic discipline"),
         ("min_percentage", "education_percentage", "Marks below the required minimum"),
         ("certification", "certifications", "Requires a specific certification"),
+        # Cycle-only fact — never present on baseline rows (DB CHECK forbids it),
+        # so this branch is a no-op for the baseline path.
+        ("experience_min_years", "experience_years", "Requires more work experience"),
     ):
         rule = _pick_rule(rules, rule_type, scopes)
         if not rule:
@@ -494,6 +570,47 @@ def _decision(status: str, reasons: list[str], missing: list[str]) -> dict[str, 
         "reasons": reasons,
         "missing_fields": sorted(set(missing)),
     }
+
+
+def evaluate_cycle_eligibility(
+    cycle_rules: list[dict[str, Any]],
+    profile: dict[str, Any],
+    *,
+    cycle: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Cutoff-aware, cycle-scoped verdict for one (cycle, stream) rule set.
+
+    Kept separate from the baseline verdict (Lane R §4): age is measured on the
+    official cut-off date each rule declares, not ``date.today()``. A rule with a
+    ``fixed_date`` basis carries its own authoritative date; a
+    ``cycle_notification`` basis needs an authoritative ``cycle``. When neither is
+    available the age rule is left unevaluated and the verdict preserves
+    ``unknown`` (never a today-based guess). Same four-state contract as the
+    baseline evaluator.
+    """
+    if not cycle_rules:
+        return {"status": "unknown", "reasons": [], "missing_fields": []}
+    return evaluate_exam_for_user(cycle_rules, profile, cutoff_context={"cycle": cycle})
+
+
+# Best-of fold for an exam's cycle-stream verdicts: a cycle is worth surfacing if
+# ANY stream is open to the user. ``unknown`` outranks ``not_eligible`` — an
+# undecidable stream (e.g. a cut-off we couldn't resolve) must not be buried
+# under a decisive "no" on a different stream.
+_CYCLE_STATUS_PRECEDENCE: tuple[str, ...] = (
+    "eligible",
+    "conditional",
+    "unknown",
+    "not_eligible",
+)
+
+
+def _aggregate_cycle_status(stream_verdicts: list[dict[str, Any]]) -> str:
+    statuses = {s.get("status") for s in stream_verdicts}
+    for status in _CYCLE_STATUS_PRECEDENCE:
+        if status in statuses:
+            return status
+    return "unknown"
 
 
 # ── DB-aware wrapper ─────────────────────────────────────────────────────
@@ -680,19 +797,109 @@ def _load_streams_by_exam(
     return out
 
 
+def _load_cycle_rules_by_stream(
+    supabase: Any, stream_ids: list[str]
+) -> dict[str, list[dict[str, Any]]]:
+    """Verified cycle-scoped eligibility rows, keyed by ``stream_id``.
+
+    ``exam_cycle_stream_eligibility`` (migration 248) is keyed on
+    ``(exam_cycle_id, stream_id)`` and every row is stream-scoped. We batch by
+    stream so the dashboard fan-out never trips an unordered per-query cap, and
+    pull the cut-off columns (``cutoff_date_basis`` / ``cutoff_date``) the
+    cutoff-aware evaluator needs. Only ``verified`` rows are read — pending/
+    rejected cycle rules never reach an aspirant.
+    """
+    if not stream_ids:
+        return {}
+    rows: list[dict[str, Any]] = []
+    for batch in _chunks(stream_ids, _EXAM_BATCH):
+        rows.extend(
+            _safe(
+                lambda b=batch: (
+                    supabase.table("exam_cycle_stream_eligibility")
+                    .select(
+                        "exam_cycle_id, stream_id, scope, rule_type, value_num, value_text, "
+                        "value_json, cutoff_date_basis, cutoff_date, is_knockout, reviewer_status"
+                    )
+                    .in_("stream_id", b)
+                    .eq("reviewer_status", "verified")
+                    .limit(_PER_BATCH_LIMIT)
+                    .execute()
+                    .data
+                ),
+                default=[],
+            )
+            or []
+        )
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        out.setdefault(r["stream_id"], []).append(r)
+    return out
+
+
+def _cycle_band_for_exam(
+    streams: list[dict[str, Any]],
+    cycle_rules_by_stream: dict[str, list[dict[str, Any]]],
+    profile: dict[str, Any],
+) -> dict[str, Any] | None:
+    """The cycle provenance band for one exam, or ``None`` when it carries no
+    verified cycle rules (no cycle signal — mirrors how exams with no baseline
+    rules are omitted from the buckets).
+
+    Each verdict is per ``(cycle, stream)`` because cycle rules are inherently
+    stream-scoped. The authoritative-cycle source (``exam_cycles``) has no trust
+    gate yet (Lane R §4 prereq 2), so we do not vouch for a cycle here: any
+    ``cycle_notification`` age rule resolves to ``unknown`` while a self-contained
+    ``fixed_date`` cut-off is still evaluated on its official date.
+    """
+    stream_verdicts: list[dict[str, Any]] = []
+    for st in streams:
+        st_rules = cycle_rules_by_stream.get(st["id"], [])
+        if not st_rules:
+            continue
+        by_cycle: dict[Any, list[dict[str, Any]]] = {}
+        for r in st_rules:
+            by_cycle.setdefault(r.get("exam_cycle_id"), []).append(r)
+        for cycle_id, crules in by_cycle.items():
+            verdict = evaluate_cycle_eligibility(crules, profile, cycle=None)
+            stream_verdicts.append(
+                {
+                    "cycle_id": cycle_id,
+                    "stream_id": st["id"],
+                    "stream_key": st.get("stream_key"),
+                    "name": st.get("name"),
+                    "status": verdict["status"],
+                    "reasons": verdict["reasons"],
+                    "missing_fields": verdict["missing_fields"],
+                }
+            )
+    if not stream_verdicts:
+        return None
+    return {
+        "status": _aggregate_cycle_status(stream_verdicts),
+        "streams": stream_verdicts,
+    }
+
+
 def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
     """Return the four-bucket summary for the dashboard / onboarding card.
 
     Output shape::
 
         {
-            "eligible":      [{exam_id, slug, name, reasons, missing_fields}, ...],
+            "eligible":      [{exam_id, slug, name, reasons, missing_fields,
+                               streams, cycle}, ...],
             "conditional":   [...],
             "not_eligible":  [...],
             "unknown":       [...],
             "evaluated_at":  "<iso>",
             "rule_count":    int
         }
+
+    Each item's baseline verdict places it in a bucket; ``streams`` is the
+    additive per-stream *baseline* breakdown, and ``cycle`` is the additive
+    cutoff-aware *cycle* provenance band (``None`` when the exam has no verified
+    cycle rules) — the two provenance bands the Compass renders (Lane R §4).
 
     Only ``eligible`` and ``conditional`` are intended for the user-facing
     onboarding/dashboard surfaces (PR-D3). ``not_eligible`` and ``unknown``
@@ -709,6 +916,8 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
     exam_ids = [e["id"] for e in exam_rows]
     rules_by_exam = _load_rules_by_exam(supabase, exam_ids)
     streams_by_exam = _load_streams_by_exam(supabase, exam_ids)
+    all_stream_ids = [st["id"] for sts in streams_by_exam.values() for st in sts]
+    cycle_rules_by_stream = _load_cycle_rules_by_stream(supabase, all_stream_ids)
     profile = _load_user_profile(supabase, user_id)
 
     buckets: dict[str, list[dict[str, Any]]] = {
@@ -747,6 +956,13 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
                 }
             )
 
+        # Additive cycle provenance band (Lane R §4): cutoff-aware, cycle-scoped
+        # verdicts kept SEPARATE from the baseline verdict above. ``None`` when
+        # the exam carries no verified cycle rules.
+        cycle_band = _cycle_band_for_exam(
+            streams_by_exam.get(exam["id"], []), cycle_rules_by_stream, profile
+        )
+
         buckets[result["status"]].append(
             {
                 "exam_id": exam["id"],
@@ -755,6 +971,7 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
                 "reasons": result["reasons"],
                 "missing_fields": result["missing_fields"],
                 "streams": streams_out,
+                "cycle": cycle_band,
             }
         )
 
