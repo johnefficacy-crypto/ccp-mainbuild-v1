@@ -30,6 +30,21 @@ describe("SolutionStrategyPanel", () => {
     expect(screen.queryByTestId("solution-strategy-s1-key_observation")).toBeNull();
   });
 
+  test("renders a Reasoning strategy's key observation (GQR-S4, same panel)", () => {
+    const reasoning = strat({
+      id: "r1", subject_family: "reasoning", name: "Fixed-pivot elimination",
+      strategy_type: "elimination", formula_latex: null,
+      key_observation: "anchor the person who never moves", faster_method: "eliminate impossible seats",
+    });
+    render(<SolutionStrategyPanel mode="review" strategies={[reasoning]} />);
+    expect(screen.getByText("Fixed-pivot elimination")).toBeInTheDocument();
+    expect(screen.getByText("Key observation")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-strategy-r1-key_observation"))
+      .toHaveTextContent("anchor the person who never moves");
+    // No formula row when formula_latex is null.
+    expect(screen.queryByTestId("solution-strategy-r1-formula")).toBeNull();
+  });
+
   test("is absent during an active attempt", () => {
     render(<SolutionStrategyPanel mode="attempt" strategies={[strat()]} />);
     expect(screen.queryByTestId("solution-strategy-panel")).toBeNull();
