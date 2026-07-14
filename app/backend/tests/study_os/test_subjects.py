@@ -240,7 +240,8 @@ def test_subjects_server_launch_modes_appear_when_content_launchable():
     assert eng_modes["english_writing"]["route_type"] == "server_launch"
     assert eng_modes["english_writing"]["launch_mode"] == "english_writing"
     assert eng_modes["error_lab"]["route_type"] == "client_route"
-    assert eng_modes["error_lab"]["route"] == "/app/study/error-lab"
+    assert eng_modes["error_lab"]["label"] == "Improvement Lab"
+    assert eng_modes["error_lab"]["route"] == "/app/study/improvement-lab"
 
     # Quant (s1) has an actively-projected PYQ on t1 → topic_pyq (server) + mock_section (client).
     assert quant["practice"]["available"] is True

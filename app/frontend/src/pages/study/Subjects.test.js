@@ -72,10 +72,10 @@ const SUBJECTS = [
         },
         {
           type: "error_lab",
-          label: "Error Lab",
+          label: "Improvement Lab",
           target_topic_id: null,
           route_type: "client_route",
-          route: "/app/study/error-lab",
+          route: "/app/study/improvement-lab",
         },
       ],
     },
@@ -154,7 +154,7 @@ test("client_route mode renders a link (no POST)", async () => {
 
   const link = await screen.findByTestId("practice-sub-english-error_lab");
   expect(link.tagName.toLowerCase()).toBe("a");
-  expect(link.getAttribute("href")).toBe("/app/study/error-lab");
+  expect(link.getAttribute("href")).toBe("/app/study/improvement-lab");
 });
 
 test("a subject with practice.available=false shows the calm no-practice copy", async () => {

@@ -48,7 +48,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | Existing English Error Lab read model | MERGED / CODE PRESENT | `ewp_error_lab`, English endpoint, hook, and `ErrorLab.jsx`; preserve as English-specific authority. |
 | Quant learner strategy delivery | PLANNED | GQR-S1 below. |
 | Reasoning strategy authority | PLANNED | GQR-S3 below. |
-| Improvement Lab composition | PLANNED | GQR-S5 below. |
+| Improvement Lab composition | CODE-FIXED, VALIDATION PENDING | GQR-S5 below — rename + shell landed; personalized feeds are GQR-S6. |
 
 ---
 
@@ -61,7 +61,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | GQR-S2 | Quant content-readiness completion | PLANNED — CONDITIONAL | GQR-S1 or preflight | Add authoring/editing/activation/question assignment only when verified linked content cannot already be produced through an existing governed path. |
 | GQR-S3 | Reasoning strategy authority and Content Studio | PLANNED | GQR-S0 | New governed schema, RLS, lifecycle/audit RPCs, library, authoring, assignment, and review queue. |
 | GQR-S4 | Reasoning independent-question learner delivery | BLOCKED on GQR-S3 | GQR-S3 validated | Reuse normalized DTO and Solution Strategy panel for text Reasoning questions. |
-| GQR-S5 | Rename Error Lab learner page to Improvement Lab | PLANNED | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
+| GQR-S5 | Rename Error Lab learner page to Improvement Lab | CODE-FIXED, VALIDATION PENDING | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
 | GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | BLOCKED on learner delivery | GQR-S1 and GQR-S4 | Bounded owner-scoped attempt-history aggregation; live verified-only projection; independent section states. |
 | GQR-S7 | Reasoning set/stimulus-aware strategies | BLOCKED on GQR-S3/GQR-S4 | Reasoning authority + independent delivery | Set-level authority and one-time grouped rendering; no duplication per question. |
 | GQR-S8 | Planner/Calculation Gym recommendations | DEFERRED | GQR-Q8/Q9 and Lane A gates | Keep speed/calculation evidence and planner activation outside the strategy-delivery PRs. |
@@ -270,31 +270,33 @@ This checklist records the implementation sequence for learner-facing Quant and 
 
 ## GQR-S5 — Improvement Lab rename and shell
 
-**Status:** PLANNED
+**Status:** CODE-FIXED, VALIDATION PENDING
 
 ### Routing
 
-- [ ] Create canonical `/app/study/improvement-lab` route under `StudyShell`.
-- [ ] Preserve `RouteErrorBoundary` placement.
-- [ ] Redirect or alias `/app/study/error-lab`.
-- [ ] Update internal links and route tests.
-- [ ] Keep the surface absent from the primary sidebar unless separately approved.
+- [x] Create canonical `/app/study/improvement-lab` route under `StudyShell`. (`appRoutes.jsx`)
+- [x] Preserve `RouteErrorBoundary` placement. (route stays under the same `StudyShell`/`RouteErrorBoundary` nesting)
+- [x] Redirect or alias `/app/study/error-lab`. (`<Navigate>` redirect to the canonical route)
+- [x] Update internal links and route tests. (`EnglishPracticeShell.jsx` link, `subject_runtime_policy.py` companion mode, `navContract.test.js`, `Subjects.test.js`, `EnglishPracticeShell.test.jsx`)
+- [x] Keep the surface absent from the primary sidebar unless separately approved. (no `DashShell` nav entry added; nav contract unchanged)
 
 ### Page
 
-- [ ] Rename learner title to Improvement Lab.
-- [ ] Use learner copy covering recurring errors and useful solving strategies.
-- [ ] Render My Writing Errors.
-- [ ] Render Methods & Shortcuts.
-- [ ] Render Approaches & Patterns.
-- [ ] Give each section an independent loading, empty, and error state.
-- [ ] One section failure must not hide the others.
+- [x] Rename learner title to Improvement Lab. (`ImprovementLab.jsx`)
+- [x] Use learner copy covering recurring errors and useful solving strategies.
+- [x] Render My Writing Errors. (`features/study/improvement-lab/MyWritingErrors.jsx`)
+- [x] Render Methods & Shortcuts. (Quant `PlannedSection`; personalized feed deferred to GQR-S6)
+- [x] Render Approaches & Patterns. (Reasoning `PlannedSection`; personalized feed deferred to GQR-S6)
+- [x] Give each section an independent loading, empty, and error state.
+- [x] One section failure must not hide the others. (`SectionBoundary` per section)
 
 ### English preservation
 
-- [ ] Continue using `GET /api/study/practice/english/error-lab`.
-- [ ] Do not rename or repurpose `ewp_error_lab`.
-- [ ] Preserve owner scope, feedback-release gate, invalidation handling, and reclassification behavior.
+- [x] Continue using `GET /api/study/practice/english/error-lab`. (`useErrorLab` unchanged)
+- [x] Do not rename or repurpose `ewp_error_lab`. (read model untouched)
+- [x] Preserve owner scope, feedback-release gate, invalidation handling, and reclassification behavior. (no backend read-model change; only the learner-facing framing moved)
+
+**Validation pending:** live browser walk of the canonical route, the `error-lab` → `improvement-lab` redirect, and independent per-section states.
 
 ---
 
