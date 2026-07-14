@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.db.utils import maybe_single
 from app.study_os import pyq_practice
 from app.study_os.pyq_practice import start_pyq_practice
 from app.study_os.pyq_practice_launch import resolve_practice_payload
@@ -41,13 +42,12 @@ def _owned_task(supabase: Any, user_id: str, study_task_id: str) -> dict:
     everything downstream reads the pinned columns here. A missing row or a row
     owned by another user is a 404 (never leak existence).
     """
-    task = (
+    task = maybe_single(
         supabase.table("study_tasks")
         .select("id,user_id,exam_id,exam_phase_id,subject_id,topic_id,launch_context")
         .eq("id", str(study_task_id))
         .maybe_single()
-        .execute()
-    ).data
+    )
     if not task or task.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="study task not found")
     return task

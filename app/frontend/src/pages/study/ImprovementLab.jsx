@@ -13,8 +13,8 @@
  *
  *   Improvement Lab
  *   ├── My Writing Errors   → GET /api/study/practice/english/error-lab (EWP-4)
- *   ├── Methods & Shortcuts → Quant learner feed (GQR-S6, not yet wired)
- *   └── Approaches & Patterns → Reasoning learner feed (GQR-S6, not yet wired)
+ *   ├── Methods & Shortcuts → GET /api/study/improvement-lab/quant (GQR-S6)
+ *   └── Approaches & Patterns → GET /api/study/improvement-lab/reasoning (GQR-S6)
  *
  * English preservation: the `ewp_error_lab` read model and its endpoint are
  * unchanged; only the learner-facing framing moved under this parent surface.
@@ -24,7 +24,7 @@ import React from "react";
 import { PageHeader } from "../../shared/ui/studyos";
 import SectionBoundary from "../../features/study/improvement-lab/SectionBoundary";
 import MyWritingErrors from "../../features/study/improvement-lab/MyWritingErrors";
-import PlannedSection from "../../features/study/improvement-lab/PlannedSection";
+import StrategyFeedSection from "../../features/study/improvement-lab/StrategyFeedSection";
 
 export default function ImprovementLab() {
   return (
@@ -40,22 +40,24 @@ export default function ImprovementLab() {
       </SectionBoundary>
 
       <SectionBoundary title="Methods & Shortcuts">
-        <PlannedSection
+        <StrategyFeedSection
+          subject="quant"
           testId="improvement-lab-quant"
           eyebrow="Quantitative Aptitude"
           title="Methods & Shortcuts"
           sub="Faster methods and shortcuts drawn from your practice"
-          description="As you attempt more Quant questions, the methods and shortcuts worth revisiting will appear here."
+          emptyDescription="As you attempt more Quant questions, the methods and shortcuts worth revisiting will appear here."
         />
       </SectionBoundary>
 
       <SectionBoundary title="Approaches & Patterns">
-        <PlannedSection
+        <StrategyFeedSection
+          subject="reasoning"
           testId="improvement-lab-reasoning"
           eyebrow="Reasoning"
           title="Approaches & Patterns"
           sub="Recommended approaches and recurring patterns from your practice"
-          description="As you attempt more Reasoning questions, the approaches and patterns worth revisiting will appear here."
+          emptyDescription="As you attempt more Reasoning questions, the approaches and patterns worth revisiting will appear here."
         />
       </SectionBoundary>
     </div>

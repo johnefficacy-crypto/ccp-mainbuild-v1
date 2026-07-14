@@ -64,6 +64,12 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
         return default
 
 
+def _read(call: Callable[[], Any], strict: bool) -> Any:
+    """Fail-soft (default, mock-review consumer) or strict (Improvement Lab feed —
+    a read failure PROPAGATES so an outage is not disguised as an empty result)."""
+    return call() if strict else _safe(call, default=None)
+
+
 def _display_key(s: dict) -> tuple:
     """Stable learner display order: relevance, normalized name, then id."""
     return (
@@ -140,7 +146,7 @@ def _scope_matches(strategy: dict, question: Any) -> bool:
 
 
 def strategies_for_questions(
-    supabase: Any, question_ids: list[str]
+    supabase: Any, question_ids: list[str], *, strict: bool = False
 ) -> dict[str, list[dict]]:
     """Return verified active reasoning strategies for every requested question id.
 
@@ -161,7 +167,7 @@ def strategies_for_questions(
     if not ids:
         return out
 
-    link_rows = _safe(
+    link_rows = _read(
         lambda: supabase.table(_LINKS)
         .select(
             "question_id,strategy_id,relevance,"
@@ -170,7 +176,7 @@ def strategies_for_questions(
         .in_("question_id", ids)
         .eq("reviewer_status", "verified")
         .execute(),
-        default=None,
+        strict,
     )
     links = getattr(link_rows, "data", None) or []
     if not links:
@@ -186,14 +192,14 @@ def strategies_for_questions(
     if not strategy_ids:
         return out
 
-    strat_rows = _safe(
+    strat_rows = _read(
         lambda: supabase.table(_STRATEGIES)
         .select(_STRATEGY_FIELDS)
         .in_("id", strategy_ids)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
-        default=None,
+        strict,
     )
     strat_by_id = {
         row["id"]: row

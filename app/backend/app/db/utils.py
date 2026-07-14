@@ -12,6 +12,21 @@ from app.core.errors import DatabaseError
 logger = logging.getLogger("career_copilot.db")
 
 
+def maybe_single(query: Any) -> dict | None:
+    """Run a ``.maybe_single()`` query, tolerating a zero-row match.
+
+    postgrest-py's ``SyncMaybeSingleRequestBuilder.execute()`` (pinned
+    ``postgrest==2.29.0``) returns bare ``None`` — not a response object with
+    ``.data=None`` — when the query matches zero rows, so ``.execute().data``
+    chained directly on a ``.maybe_single()`` query raises
+    ``AttributeError: 'NoneType' object has no attribute 'data'`` on the
+    legitimate "not found" case instead of returning ``None``. Every
+    ``.maybe_single()`` call site must go through this shared helper.
+    """
+    resp = query.execute()
+    return resp.data if resp is not None else None
+
+
 def safe_select(supabase: Client, table: str, columns: str, **filters: Any) -> list[dict[str, Any]]:
     """Execute a select query and return rows, or [] if the query fails."""
     try:

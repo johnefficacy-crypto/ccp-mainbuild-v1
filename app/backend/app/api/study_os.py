@@ -32,6 +32,7 @@ from app.study_os import plan_timeline as plan_timeline_service
 from app.study_os import subjects as subjects_service
 from app.study_os import weekly_review as weekly_review_service
 from app.study_os import report_cards as report_cards_service
+from app.study_os.improvement_lab import build_feed as _build_improvement_lab_feed
 
 logger = logging.getLogger("career_copilot.api.study_os")
 
@@ -811,6 +812,32 @@ async def get_plan_changelog(user: dict = Depends(get_current_user)) -> dict[str
         return {"items": [], "count": 0}
 
 
+
+
+def _improvement_lab_feed(user_id: str | None, subject_family: str) -> dict[str, Any]:
+    """Owner-scoped, bounded, verified-only strategy feed for one subject (GQR-S6).
+
+    A genuinely empty history is a normal ``{"items": []}`` (200). A feed READ
+    FAILURE surfaces as HTTP 502 so the client renders its error state rather than
+    a misleading "no history" — the builder does NOT swallow its own read errors
+    (checkpost #999 F1)."""
+    try:
+        return {"items": _build_improvement_lab_feed(get_supabase_admin(), user_id, subject_family)}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("improvement_lab feed read failed subject=%s", subject_family)
+        raise HTTPException(status_code=502, detail="improvement lab feed unavailable") from exc
+
+
+@router.get("/improvement-lab/quant")
+async def improvement_lab_quant(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Methods & Shortcuts — personalized, verified-only Quant strategy feed (GQR-S6)."""
+    return _improvement_lab_feed(user.get("id"), "quant")
+
+
+@router.get("/improvement-lab/reasoning")
+async def improvement_lab_reasoning(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Approaches & Patterns — personalized, verified-only Reasoning strategy feed (GQR-S6)."""
+    return _improvement_lab_feed(user.get("id"), "reasoning")
 
 
 @router.get("/reports/mock-trend")
