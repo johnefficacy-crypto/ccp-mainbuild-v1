@@ -23,6 +23,14 @@ _LINKS = "quant_question_heuristics"
 # Learner-facing display order for a question's heuristics.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
 
+# Fetch only fields required by the learner projection. Governance fields such as
+# applicability_rule, reviewer notes/actors, timestamps, and audit/CAS metadata
+# never need to cross this authority boundary.
+_LEARNER_HEURISTIC_FIELDS = (
+    "id,name,heuristic_type,formula_latex,standard_method,"
+    "shortcut_method,worked_example,common_traps"
+)
+
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
     try:
@@ -32,63 +40,29 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
         return default
 
 
-def heuristics_for_question(supabase: Any, question_id: str) -> list[dict]:
-    """Return the VERIFIED heuristics linked to ``question_id``, in display order.
-
-    Two-stage verified gate:
-      1. verified links for the question (link.reviewer_status='verified'),
-      2. of those, the heuristics that are themselves verified AND active.
-    A heuristic missing from stage 2 (pending/rejected/needs_correction or
-    inactive) is dropped even if its link says verified — never leaked.
-    Ordered by link relevance (primary → secondary → related) then name.
-    """
-    link_rows = _safe(
-        lambda: supabase.table(_LINKS)
-        .select("heuristic_id,relevance,reviewer_status")
-        .eq("question_id", question_id)
-        .eq("reviewer_status", "verified")
-        .execute(),
-        default=None,
+def _display_key(h: dict) -> tuple:
+    """Stable learner display order: relevance, normalized name, then id."""
+    return (
+        _RELEVANCE_RANK.get(h.get("relevance"), 99),
+        (h.get("name") or "").lower(),
+        str(h.get("id") or ""),
     )
-    links = getattr(link_rows, "data", None) or []
-    if not links:
-        return []
-    relevance_by_id = {l["heuristic_id"]: l.get("relevance") or "related" for l in links}
-    heuristic_ids = list(relevance_by_id.keys())
-
-    heur_rows = _safe(
-        lambda: supabase.table(_HEURISTICS)
-        .select("*")
-        .in_("id", heuristic_ids)
-        .eq("reviewer_status", "verified")
-        .eq("is_active", True)
-        .execute(),
-        default=None,
-    )
-    heuristics = getattr(heur_rows, "data", None) or []
-
-    def _key(h: dict) -> tuple:
-        rel = relevance_by_id.get(h["id"], "related")
-        return (_RELEVANCE_RANK.get(rel, 99), (h.get("name") or "").lower())
-
-    out = []
-    for h in sorted(heuristics, key=_key):
-        out.append({**h, "relevance": relevance_by_id.get(h["id"], "related")})
-    return out
 
 
 def heuristics_for_questions(
     supabase: Any, question_ids: list[str]
 ) -> dict[str, list[dict]]:
-    """Batched form of :func:`heuristics_for_question` — ``{question_id: [rows]}``.
+    """Return verified active heuristics for every requested question id.
 
     Uses at most ONE link query and ONE heuristic query regardless of how many
-    question ids are passed (no N+1). Same conjunctive verified gate: link
-    verified AND heuristic verified AND heuristic active. Every requested id is
-    present in the result with at least ``[]``; ids never cross-leak (a heuristic
-    is attached only to the questions whose verified link references it). Order
-    per question is deterministic: relevance (primary → secondary → related) then
-    name. Fails soft to the initialized empty map on a read error.
+    question ids are passed (no N+1). The gate is conjunctive: link verified AND
+    heuristic verified AND heuristic active. Every requested id is present with
+    at least ``[]``; rows never cross-leak between questions. The authority
+    returns only fields needed by the learner projection plus per-link relevance,
+    and ordering is deterministic by relevance, name, then id.
+
+    Optional strategy content is fail-soft: a database read failure returns the
+    initialized empty mapping so the primary review response remains available.
     """
     ids = [q for q in dict.fromkeys(question_ids or []) if q]
     out: dict[str, list[dict]] = {q: [] for q in ids}
@@ -97,7 +71,7 @@ def heuristics_for_questions(
 
     link_rows = _safe(
         lambda: supabase.table(_LINKS)
-        .select("question_id,heuristic_id,relevance,reviewer_status")
+        .select("question_id,heuristic_id,relevance")
         .in_("question_id", ids)
         .eq("reviewer_status", "verified")
         .execute(),
@@ -107,35 +81,49 @@ def heuristics_for_questions(
     if not links:
         return out
 
-    heuristic_ids = sorted({l["heuristic_id"] for l in links if l.get("heuristic_id")})
+    heuristic_ids = sorted(
+        {link.get("heuristic_id") for link in links if link.get("heuristic_id")}
+    )
     if not heuristic_ids:
         return out
 
     heur_rows = _safe(
         lambda: supabase.table(_HEURISTICS)
-        .select("*")
+        .select(_LEARNER_HEURISTIC_FIELDS)
         .in_("id", heuristic_ids)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
         default=None,
     )
-    heur_by_id = {h["id"]: h for h in (getattr(heur_rows, "data", None) or []) if h.get("id")}
+    heur_by_id = {
+        row["id"]: row
+        for row in (getattr(heur_rows, "data", None) or [])
+        if isinstance(row, dict) and row.get("id")
+    }
 
-    for l in links:
-        qid = l.get("question_id")
-        h = heur_by_id.get(l.get("heuristic_id"))
-        if qid in out and h is not None:
-            # Spread per (question, heuristic) so a heuristic linked to several
-            # questions carries each link's own relevance without shared mutation.
-            out[qid].append({**h, "relevance": l.get("relevance") or "related"})
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        question_id = link.get("question_id")
+        heuristic = heur_by_id.get(link.get("heuristic_id"))
+        if question_id in out and heuristic is not None:
+            # Copy per question so the same heuristic may carry different reviewed
+            # relevance without shared mutation across output lists.
+            out[question_id].append(
+                {**heuristic, "relevance": link.get("relevance") or "related"}
+            )
 
-    def _key(h: dict) -> tuple:
-        return (_RELEVANCE_RANK.get(h.get("relevance"), 99), (h.get("name") or "").lower())
-
-    for qid in out:
-        out[qid].sort(key=_key)
+    for question_id in out:
+        out[question_id].sort(key=_display_key)
     return out
+
+
+def heuristics_for_question(supabase: Any, question_id: str) -> list[dict]:
+    """Compatibility wrapper over the batched verified-only authority."""
+    if not question_id:
+        return []
+    return heuristics_for_questions(supabase, [question_id]).get(question_id, [])
 
 
 def list_verified_heuristics_for_topic(
@@ -160,7 +148,10 @@ def list_verified_heuristics_for_topic(
         q = q.eq("topic_id", topic_id)
     rows = _safe(lambda: q.execute(), default=None)
     heuristics = getattr(rows, "data", None) or []
-    return sorted(heuristics, key=lambda h: (h.get("name") or "").lower())
+    return sorted(
+        heuristics,
+        key=lambda h: ((h.get("name") or "").lower(), str(h.get("id") or "")),
+    )
 
 
 def review_heuristic(
