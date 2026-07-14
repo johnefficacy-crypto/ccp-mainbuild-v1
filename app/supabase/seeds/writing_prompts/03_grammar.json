@@ -222,7 +222,7 @@
     "prompt_text": "Correct the tense error in the sentence below and rewrite it. Change only what is necessary; keep the meaning the same.",
     "difficulty_level": 5,
     "microtopic_id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
-    "source_text": "Water boils at 100 degrees, everyone knew that even before it was discovered."
+    "source_text": "The teacher told us that water boiled at 100 degrees."
   },
   {
     "external_key": "ewp-seed-gram-026",

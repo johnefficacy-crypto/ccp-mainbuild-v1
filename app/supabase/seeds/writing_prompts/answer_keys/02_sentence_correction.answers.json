@@ -1,0 +1,548 @@
+{
+  "_meta": {
+    "purpose": "Editorial reference answer keys and rationales for correction-type English writing prompts. Human-authored gold data for Content Studio reviewers and for a future evaluator gold-set. NOT runtime data and NOT imported to any database — the seed batches next door are the importable content; these files are documentation/fixtures only.",
+    "keyed_by": "external_key (matches the corresponding NN_*.json seed batch)",
+    "coverage": "one entry per source-bearing (correction) prompt; production prompts that carry no source_text are excluded by design",
+    "entry_fields": {
+      "source_text": "the faulty sentence from the seed row (echoed for reviewer cross-check)",
+      "exercise_type": "the seed row's exercise_type",
+      "error_type": "specific error class in this sentence",
+      "reference_answer": "one model correction (minimal, meaning-preserving)",
+      "acceptable_variants": "other equally-correct rewrites; [] when one natural fix",
+      "rationale": "why the source is wrong and why the fix is correct (names the rule)"
+    },
+    "not_authoritative": "reference_answer/acceptable_variants are illustrative gold answers, not an exhaustive accept-list; correction prompts admit many valid rewrites. Reviewers judge learner answers on the rule, not string-match.",
+    "batch": "02_sentence_correction.json",
+    "scope": "Sentence-correction prompts (batch 02): fix the structural error named in the prompt (fragment, run-on, comma splice, faulty parallelism, dangling modifier, etc.) while preserving meaning.",
+    "count": 50
+  },
+  "keys": {
+    "ewp-seed-scor-001": {
+      "source_text": "Because the train was late.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "Because the train was late, we missed the meeting.",
+      "acceptable_variants": [
+        "The train was late.",
+        "We were delayed because the train was late."
+      ],
+      "rationale": "The subordinate clause beginning with 'Because' cannot stand alone; attaching an independent main clause (or removing the subordinator) gives it a complete subject-verb thought."
+    },
+    "ewp-seed-scor-002": {
+      "source_text": "Running across the busy platform with a heavy bag.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "She was running across the busy platform with a heavy bag.",
+      "acceptable_variants": [
+        "Running across the busy platform with a heavy bag, he nearly fell.",
+        "He ran across the busy platform with a heavy bag."
+      ],
+      "rationale": "The participial phrase lacks a subject and finite verb; supplying a subject and a finite verb turns the dangling phrase into a complete sentence."
+    },
+    "ewp-seed-scor-003": {
+      "source_text": "Which is the reason we cancelled the trip.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "That is the reason we cancelled the trip.",
+      "acceptable_variants": [
+        "This is the reason we cancelled the trip.",
+        "The bad weather was the reason we cancelled the trip."
+      ],
+      "rationale": "A relative clause opening with 'Which' cannot begin an independent sentence; replacing the relative pronoun with a subject and linking verb creates a complete main clause."
+    },
+    "ewp-seed-scor-004": {
+      "source_text": "The old library near the river, a place full of quiet corners.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "The old library near the river was a place full of quiet corners.",
+      "acceptable_variants": [
+        "The old library near the river, a place full of quiet corners, was my favourite retreat.",
+        "Near the river stood the old library, a place full of quiet corners."
+      ],
+      "rationale": "The string is only a noun phrase in apposition with no main verb; adding a finite verb ('was') gives the subject a predicate and completes the sentence."
+    },
+    "ewp-seed-scor-005": {
+      "source_text": "After she had finished her homework and cleared the table.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "After she had finished her homework and cleared the table, she went to bed.",
+      "acceptable_variants": [
+        "She had finished her homework and cleared the table.",
+        "She went to bed after she had finished her homework and cleared the table."
+      ],
+      "rationale": "The 'After' clause is subordinate and needs an independent main clause; adding one supplies the missing complete thought."
+    },
+    "ewp-seed-scor-006": {
+      "source_text": "To improve his marks in the final examination.",
+      "exercise_type": "sentence_correction",
+      "error_type": "sentence fragment",
+      "reference_answer": "He worked hard to improve his marks in the final examination.",
+      "acceptable_variants": [
+        "To improve his marks in the final examination, he studied every evening.",
+        "She wanted to improve her marks in the final examination."
+      ],
+      "rationale": "An infinitive phrase alone has no subject or finite verb; attaching a subject and main verb makes it a complete sentence."
+    },
+    "ewp-seed-scor-007": {
+      "source_text": "The results were declared yesterday everyone was thrilled.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "The results were declared yesterday, and everyone was thrilled.",
+      "acceptable_variants": [
+        "The results were declared yesterday; everyone was thrilled.",
+        "When the results were declared yesterday, everyone was thrilled."
+      ],
+      "rationale": "Two independent clauses were fused with no punctuation or conjunction; joining them with a comma plus coordinating conjunction (or a semicolon) fixes the run-on."
+    },
+    "ewp-seed-scor-008": {
+      "source_text": "I woke up early I still missed the bus.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "I woke up early, but I still missed the bus.",
+      "acceptable_variants": [
+        "I woke up early; I still missed the bus.",
+        "Although I woke up early, I still missed the bus."
+      ],
+      "rationale": "Two independent clauses run together without a connector; a comma plus the contrastive conjunction 'but' correctly separates them and preserves the contrast."
+    },
+    "ewp-seed-scor-009": {
+      "source_text": "The rain stopped the children rushed outside to play.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "The rain stopped, and the children rushed outside to play.",
+      "acceptable_variants": [
+        "When the rain stopped, the children rushed outside to play.",
+        "The rain stopped; the children rushed outside to play."
+      ],
+      "rationale": "Two independent clauses were fused; a comma plus coordinating conjunction (or subordination) properly joins them."
+    },
+    "ewp-seed-scor-010": {
+      "source_text": "She loves painting she has never taken a formal class.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "She loves painting, but she has never taken a formal class.",
+      "acceptable_variants": [
+        "She loves painting, yet she has never taken a formal class.",
+        "Although she loves painting, she has never taken a formal class."
+      ],
+      "rationale": "Two independent clauses run together without punctuation; a comma plus a contrastive conjunction resolves the run-on and keeps the concessive meaning."
+    },
+    "ewp-seed-scor-011": {
+      "source_text": "He studied all night therefore he was too tired to write the test.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "He studied all night; therefore, he was too tired to write the test.",
+      "acceptable_variants": [
+        "He studied all night, so he was too tired to write the test.",
+        "Because he studied all night, he was too tired to write the test."
+      ],
+      "rationale": "The conjunctive adverb 'therefore' cannot join two independent clauses with no punctuation; a semicolon before and comma after it (or a coordinating conjunction) is required."
+    },
+    "ewp-seed-scor-012": {
+      "source_text": "The shop was closed, we went home disappointed.",
+      "exercise_type": "sentence_correction",
+      "error_type": "comma splice",
+      "reference_answer": "The shop was closed, so we went home disappointed.",
+      "acceptable_variants": [
+        "The shop was closed; we went home disappointed.",
+        "Because the shop was closed, we went home disappointed."
+      ],
+      "rationale": "A comma alone cannot join two independent clauses; adding a coordinating conjunction (or replacing the comma with a semicolon) fixes the splice."
+    },
+    "ewp-seed-scor-013": {
+      "source_text": "It was raining heavily, the match was postponed.",
+      "exercise_type": "sentence_correction",
+      "error_type": "comma splice",
+      "reference_answer": "It was raining heavily, so the match was postponed.",
+      "acceptable_variants": [
+        "Because it was raining heavily, the match was postponed.",
+        "It was raining heavily; the match was postponed."
+      ],
+      "rationale": "Two independent clauses were joined by only a comma; a coordinating conjunction or subordination correctly links cause and result."
+    },
+    "ewp-seed-scor-014": {
+      "source_text": "The plan sounded simple, it turned out to be difficult.",
+      "exercise_type": "sentence_correction",
+      "error_type": "comma splice",
+      "reference_answer": "The plan sounded simple, but it turned out to be difficult.",
+      "acceptable_variants": [
+        "The plan sounded simple; however, it turned out to be difficult.",
+        "Although the plan sounded simple, it turned out to be difficult."
+      ],
+      "rationale": "A comma cannot separate two independent clauses; the contrastive conjunction 'but' properly coordinates them and keeps the intended contrast."
+    },
+    "ewp-seed-scor-015": {
+      "source_text": "She is talented, she works harder than anyone else.",
+      "exercise_type": "sentence_correction",
+      "error_type": "comma splice",
+      "reference_answer": "She is talented, and she works harder than anyone else.",
+      "acceptable_variants": [
+        "She is talented; she works harder than anyone else.",
+        "Not only is she talented, but she also works harder than anyone else."
+      ],
+      "rationale": "Two independent clauses joined by a bare comma form a splice; adding a coordinating conjunction (or a semicolon) corrects it."
+    },
+    "ewp-seed-scor-016": {
+      "source_text": "The manager likes reading, to travel, and painting.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "The manager likes reading, travelling, and painting.",
+      "acceptable_variants": [
+        "The manager likes to read, to travel, and to paint.",
+        "The manager likes to read, travel, and paint."
+      ],
+      "rationale": "Items in a series must share the same grammatical form; converting the odd infinitive 'to travel' to the gerund 'travelling' makes all three list items parallel."
+    },
+    "ewp-seed-scor-017": {
+      "source_text": "He is not only clever but also works hard.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "He is not only clever but also hardworking.",
+      "acceptable_variants": [
+        "He not only is clever but also works hard.",
+        "He is not only clever but also diligent."
+      ],
+      "rationale": "The correlative pair 'not only ... but also' must link grammatically equal elements; balancing adjective with adjective ('clever'/'hardworking') restores parallelism."
+    },
+    "ewp-seed-scor-018": {
+      "source_text": "The course teaches you to plan, organising, and to lead.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "The course teaches you to plan, to organise, and to lead.",
+      "acceptable_variants": [
+        "The course teaches you to plan, organise, and lead.",
+        "The course teaches you planning, organising, and leading."
+      ],
+      "rationale": "Series items must be parallel; making all three infinitives ('to plan, to organise, to lead') aligns the mismatched gerund 'organising' with the others."
+    },
+    "ewp-seed-scor-019": {
+      "source_text": "She would rather write than speaking in public.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "She would rather write than speak in public.",
+      "acceptable_variants": [
+        "She would rather write than talk in public.",
+        "She prefers writing to speaking in public."
+      ],
+      "rationale": "The 'would rather ... than' construction requires matching bare infinitives; changing 'speaking' to 'speak' makes both verbs parallel."
+    },
+    "ewp-seed-scor-020": {
+      "source_text": "The report was clear, detailed, and it had accuracy.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "The report was clear, detailed, and accurate.",
+      "acceptable_variants": [
+        "The report was clear, detailed, and precise.",
+        "The report was clear, detailed, and it was accurate as well."
+      ],
+      "rationale": "A list of predicate adjectives must stay parallel; replacing the clause 'it had accuracy' with the adjective 'accurate' matches 'clear' and 'detailed'."
+    },
+    "ewp-seed-scor-021": {
+      "source_text": "There is many people waiting outside the office.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "There are many people waiting outside the office.",
+      "acceptable_variants": [
+        "Many people are waiting outside the office.",
+        "There are a lot of people waiting outside the office."
+      ],
+      "rationale": "In an existential 'there' sentence the verb agrees with the postponed plural subject 'people', so 'is' must become 'are'."
+    },
+    "ewp-seed-scor-022": {
+      "source_text": "The reason he failed is because he did not revise.",
+      "exercise_type": "sentence_correction",
+      "error_type": "redundant structure",
+      "reference_answer": "The reason he failed is that he did not revise.",
+      "acceptable_variants": [
+        "He failed because he did not revise.",
+        "The reason for his failure is that he did not revise."
+      ],
+      "rationale": "'The reason ... is because' doubles the causal idea; replacing 'because' with 'that' (or restructuring with 'because' alone) removes the redundancy."
+    },
+    "ewp-seed-scor-023": {
+      "source_text": "Being a hot afternoon, the workers took a long break.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Because it was a hot afternoon, the workers took a long break.",
+      "acceptable_variants": [
+        "As it was a hot afternoon, the workers took a long break.",
+        "It being a hot afternoon, the workers took a long break."
+      ],
+      "rationale": "The participle 'Being' has no logical subject to modify ('the workers' were not the hot afternoon); rewriting it as a full adverbial clause supplies the missing subject."
+    },
+    "ewp-seed-scor-024": {
+      "source_text": "The more you practise, you become more confident.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty correlative",
+      "reference_answer": "The more you practise, the more confident you become.",
+      "acceptable_variants": [
+        "The more you practise, the more confident you grow.",
+        "The more you practise, the greater your confidence becomes."
+      ],
+      "rationale": "The correlative comparative 'the more ... the more' requires both clauses to begin with 'the more'; the second clause must mirror the first to complete the construction."
+    },
+    "ewp-seed-scor-025": {
+      "source_text": "Hardly had I sat down when the phone rang, and then it stopped and rang again continuously without any pause.",
+      "exercise_type": "sentence_correction",
+      "error_type": "run-on sentence",
+      "reference_answer": "Hardly had I sat down when the phone rang; it stopped and then rang again continuously.",
+      "acceptable_variants": [
+        "Hardly had I sat down when the phone rang, stopped, and then rang again without pause.",
+        "No sooner had I sat down than the phone rang; it stopped and then rang again continuously."
+      ],
+      "rationale": "The chain of clauses is loosely fused and padded with the redundant 'continuously without any pause'; a semicolon separates the independent statements and trimming the tautology tightens the sentence."
+    },
+    "ewp-seed-scor-026": {
+      "source_text": "My brother he is studying to be an engineer.",
+      "exercise_type": "sentence_correction",
+      "error_type": "double subject",
+      "reference_answer": "My brother is studying to be an engineer.",
+      "acceptable_variants": [],
+      "rationale": "The noun 'My brother' and the pronoun 'he' both fill the subject slot; deleting the redundant pronoun leaves a single, correct subject."
+    },
+    "ewp-seed-scor-027": {
+      "source_text": "The book what I borrowed was very useful.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty relative pronoun",
+      "reference_answer": "The book that I borrowed was very useful.",
+      "acceptable_variants": [
+        "The book which I borrowed was very useful.",
+        "The book I borrowed was very useful."
+      ],
+      "rationale": "'What' cannot introduce a relative clause modifying an antecedent noun; the correct relative pronoun is 'that' (or 'which'), or it may be omitted."
+    },
+    "ewp-seed-scor-028": {
+      "source_text": "This is one of those problems that has no easy answer, and which many people they struggle with.",
+      "exercise_type": "sentence_correction",
+      "error_type": "double subject",
+      "reference_answer": "This is one of those problems that has no easy answer and that many people struggle with.",
+      "acceptable_variants": [
+        "This is one of those problems that has no easy answer and with which many people struggle.",
+        "This is one of those problems that have no easy answer and that many people struggle with."
+      ],
+      "rationale": "The relative clause repeats its subject with the pronoun 'they'; removing 'they' after 'which/that' eliminates the double subject, and the two relative clauses are made parallel."
+    },
+    "ewp-seed-scor-029": {
+      "source_text": "Walking to school, the rain soaked my uniform.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Walking to school, I got my uniform soaked by the rain.",
+      "acceptable_variants": [
+        "While I was walking to school, the rain soaked my uniform.",
+        "As I walked to school, the rain soaked my uniform."
+      ],
+      "rationale": "The opening participle 'Walking' illogically modifies 'the rain'; making the walker ('I') the subject of the main clause, or expanding the phrase into a clause, attaches the modifier correctly."
+    },
+    "ewp-seed-scor-030": {
+      "source_text": "The teacher explained the lesson very clear.",
+      "exercise_type": "sentence_correction",
+      "error_type": "adjective-adverb confusion",
+      "reference_answer": "The teacher explained the lesson very clearly.",
+      "acceptable_variants": [],
+      "rationale": "An adverb, not the adjective 'clear', must modify the verb 'explained'; 'clearly' is the correct adverbial form."
+    },
+    "ewp-seed-scor-031": {
+      "source_text": "Neither the coach nor the players was happy with the result.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Neither the coach nor the players were happy with the result.",
+      "acceptable_variants": [
+        "Neither the players nor the coach was happy with the result."
+      ],
+      "rationale": "With 'neither ... nor', the verb agrees with the nearer subject; since 'players' is plural and nearest, the verb must be 'were'."
+    },
+    "ewp-seed-scor-032": {
+      "source_text": "He asked me that where I was going.",
+      "exercise_type": "sentence_correction",
+      "error_type": "reported-speech error",
+      "reference_answer": "He asked me where I was going.",
+      "acceptable_variants": [
+        "He asked me where I had been going.",
+        "He wanted to know where I was going."
+      ],
+      "rationale": "Reported questions do not take the conjunction 'that'; the interrogative word 'where' alone introduces the embedded question in indirect speech."
+    },
+    "ewp-seed-scor-033": {
+      "source_text": "I did not knew the answer to the question.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty negative",
+      "reference_answer": "I did not know the answer to the question.",
+      "acceptable_variants": [],
+      "rationale": "After the auxiliary 'did', the main verb must be the base form; 'did not knew' becomes 'did not know'."
+    },
+    "ewp-seed-scor-034": {
+      "source_text": "Despite of the traffic, we reached on time.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty preposition",
+      "reference_answer": "Despite the traffic, we reached on time.",
+      "acceptable_variants": [
+        "In spite of the traffic, we reached on time.",
+        "Despite the traffic, we arrived on time."
+      ],
+      "rationale": "'Despite' already means 'in spite of' and takes no 'of'; deleting 'of' corrects the redundant preposition."
+    },
+    "ewp-seed-scor-035": {
+      "source_text": "The committee were divided over the new rule.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The committee was divided over the new rule.",
+      "acceptable_variants": [
+        "The committee members were divided over the new rule.",
+        "The committee were divided among themselves over the new rule."
+      ],
+      "rationale": "In standard usage a collective noun acting as a single body takes a singular verb, so 'were' becomes 'was' (unless the members are treated as individuals)."
+    },
+    "ewp-seed-scor-036": {
+      "source_text": "The list of names have been posted on the board.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The list of names has been posted on the board.",
+      "acceptable_variants": [],
+      "rationale": "The head noun of the subject is the singular 'list', not the plural object of the preposition 'names', so the verb must be 'has been'."
+    },
+    "ewp-seed-scor-037": {
+      "source_text": "Having finished the report, the printer broke down.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Having finished the report, I found that the printer had broken down.",
+      "acceptable_variants": [
+        "After I had finished the report, the printer broke down.",
+        "Having finished the report, she discovered that the printer had broken down."
+      ],
+      "rationale": "The perfect participle 'Having finished' wrongly attaches to 'the printer'; supplying the real agent as the main-clause subject (or using a full clause) removes the dangling modifier."
+    },
+    "ewp-seed-scor-038": {
+      "source_text": "The scenery of the hills were breathtaking.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The scenery of the hills was breathtaking.",
+      "acceptable_variants": [],
+      "rationale": "The singular head noun 'scenery' governs the verb, not the plural 'hills' in the prepositional phrase, so 'were' becomes 'was'."
+    },
+    "ewp-seed-scor-039": {
+      "source_text": "Each of the volunteers were given a badge.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Each of the volunteers was given a badge.",
+      "acceptable_variants": [],
+      "rationale": "The pronoun 'Each' is singular and controls the verb regardless of the plural 'volunteers', so the verb must be 'was'."
+    },
+    "ewp-seed-scor-040": {
+      "source_text": "Not only she sings well but she also dances.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty inversion",
+      "reference_answer": "Not only does she sing well, but she also dances.",
+      "acceptable_variants": [
+        "Not only does she sing well, but she dances as well.",
+        "She not only sings well but also dances."
+      ],
+      "rationale": "When a clause opens with 'Not only', subject-auxiliary inversion is required ('does she sing'); without a fronted negative the plain word order 'She not only sings' is also correct."
+    },
+    "ewp-seed-scor-041": {
+      "source_text": "Seldom I have seen such a beautiful sunrise.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty inversion",
+      "reference_answer": "Seldom have I seen such a beautiful sunrise.",
+      "acceptable_variants": [
+        "Rarely have I seen such a beautiful sunrise.",
+        "I have seldom seen such a beautiful sunrise."
+      ],
+      "rationale": "A fronted negative adverb like 'Seldom' triggers subject-auxiliary inversion ('have I seen'); alternatively the adverb can sit in mid-position with normal order."
+    },
+    "ewp-seed-scor-042": {
+      "source_text": "The teacher along with her students are attending the fair.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The teacher, along with her students, is attending the fair.",
+      "acceptable_variants": [
+        "The teacher and her students are attending the fair.",
+        "The teacher, together with her students, is attending the fair."
+      ],
+      "rationale": "A phrase introduced by 'along with' does not change the number of the subject; the singular subject 'teacher' requires the singular verb 'is'."
+    },
+    "ewp-seed-scor-043": {
+      "source_text": "No sooner the bell rang than the students left.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty inversion",
+      "reference_answer": "No sooner had the bell rung than the students left.",
+      "acceptable_variants": [
+        "No sooner did the bell ring than the students left.",
+        "The students left as soon as the bell rang."
+      ],
+      "rationale": "The fronted 'No sooner' requires subject-auxiliary inversion ('had the bell rung'), correlated with 'than'; the past participle 'rung' also replaces the missing verb form."
+    },
+    "ewp-seed-scor-044": {
+      "source_text": "He is senior than me by three years.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty comparative",
+      "reference_answer": "He is senior to me by three years.",
+      "acceptable_variants": [
+        "He is three years senior to me.",
+        "He is my senior by three years."
+      ],
+      "rationale": "Latin comparatives such as 'senior' take the preposition 'to', not 'than'; replacing 'than' with 'to' corrects the comparison."
+    },
+    "ewp-seed-scor-045": {
+      "source_text": "She helped to carry the boxes and arranging the chairs.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty parallelism",
+      "reference_answer": "She helped to carry the boxes and to arrange the chairs.",
+      "acceptable_variants": [
+        "She helped carry the boxes and arrange the chairs.",
+        "She helped to carry the boxes and arrange the chairs."
+      ],
+      "rationale": "Coordinated verb phrases must share form; matching 'to carry' with 'to arrange' (or using two bare infinitives) makes the pair parallel instead of mixing infinitive with gerund."
+    },
+    "ewp-seed-scor-046": {
+      "source_text": "Hardly ever he visits his old village now.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty inversion",
+      "reference_answer": "Hardly ever does he visit his old village now.",
+      "acceptable_variants": [
+        "He hardly ever visits his old village now.",
+        "Rarely does he visit his old village now."
+      ],
+      "rationale": "The fronted negative adverbial 'Hardly ever' demands subject-auxiliary inversion ('does he visit'); alternatively the adverb can stay in mid-position with normal order."
+    },
+    "ewp-seed-scor-047": {
+      "source_text": "She cannot able to attend the meeting today.",
+      "exercise_type": "sentence_correction",
+      "error_type": "redundant structure",
+      "reference_answer": "She is not able to attend the meeting today.",
+      "acceptable_variants": [
+        "She cannot attend the meeting today.",
+        "She is unable to attend the meeting today."
+      ],
+      "rationale": "'Cannot' and 'able to' both express ability and cannot combine; using either 'cannot attend' or 'is not able to attend' removes the redundant double modal."
+    },
+    "ewp-seed-scor-048": {
+      "source_text": "The scissors is kept in the top drawer.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The scissors are kept in the top drawer.",
+      "acceptable_variants": [
+        "The pair of scissors is kept in the top drawer."
+      ],
+      "rationale": "'Scissors' is a plural-only (bipartite) noun and takes a plural verb, so 'is' becomes 'are' unless preceded by 'pair of'."
+    },
+    "ewp-seed-scor-049": {
+      "source_text": "Whoever finishes first, they may leave the hall.",
+      "exercise_type": "sentence_correction",
+      "error_type": "faulty pronoun agreement",
+      "reference_answer": "Whoever finishes first may leave the hall.",
+      "acceptable_variants": [
+        "Whoever finishes first is allowed to leave the hall.",
+        "Anyone who finishes first may leave the hall."
+      ],
+      "rationale": "The singular relative subject 'Whoever' already serves as the subject, so the resumptive plural pronoun 'they' is both redundant and mismatched; removing it fixes the agreement."
+    },
+    "ewp-seed-scor-050": {
+      "source_text": "The instructions was printed on the back of the sheet.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The instructions were printed on the back of the sheet.",
+      "acceptable_variants": [],
+      "rationale": "The plural subject 'instructions' requires a plural verb, so 'was' becomes 'were'."
+    }
+  }
+}

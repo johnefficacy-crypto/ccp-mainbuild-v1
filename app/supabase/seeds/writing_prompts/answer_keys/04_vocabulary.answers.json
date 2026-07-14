@@ -1,0 +1,369 @@
+{
+  "_meta": {
+    "purpose": "Editorial reference answer keys and rationales for correction-type English writing prompts. Human-authored gold data for Content Studio reviewers and for a future evaluator gold-set. NOT runtime data and NOT imported to any database — the seed batches next door are the importable content; these files are documentation/fixtures only.",
+    "keyed_by": "external_key (matches the corresponding NN_*.json seed batch)",
+    "coverage": "one entry per source-bearing (correction) prompt; production prompts that carry no source_text are excluded by design",
+    "entry_fields": {
+      "source_text": "the faulty sentence from the seed row (echoed for reviewer cross-check)",
+      "exercise_type": "the seed row's exercise_type",
+      "error_type": "specific error class in this sentence",
+      "reference_answer": "one model correction (minimal, meaning-preserving)",
+      "acceptable_variants": "other equally-correct rewrites; [] when one natural fix",
+      "rationale": "why the source is wrong and why the fix is correct (names the rule)"
+    },
+    "not_authoritative": "reference_answer/acceptable_variants are illustrative gold answers, not an exhaustive accept-list; correction prompts admit many valid rewrites. Reviewers judge learner answers on the rule, not string-match.",
+    "batch": "04_vocabulary.json",
+    "scope": "Vocabulary-in-context CORRECTION prompts (batch 04, source-bearing rows only): word-choice/confusables, verb collocations, informal->formal register, and redundancy. The 15 open-ended \"use the word\" production rows in 04 carry no source_text and have no single canonical answer, so they are intentionally excluded.",
+    "count": 36
+  },
+  "keys": {
+    "ewp-seed-vocab-001": {
+      "source_text": "The medicine had an adverse affect on his health.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: affect/effect",
+      "reference_answer": "The medicine had an adverse effect on his health.",
+      "acceptable_variants": [],
+      "rationale": "After 'an adverse' a noun is required; 'effect' is the noun meaning 'result/influence', whereas 'affect' is normally a verb."
+    },
+    "ewp-seed-vocab-002": {
+      "source_text": "The lawyer will council her client before the trial.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: council/counsel",
+      "reference_answer": "The lawyer will counsel her client before the trial.",
+      "acceptable_variants": [],
+      "rationale": "The sentence needs the verb 'counsel' (to advise); 'council' is a noun meaning an assembly or governing body."
+    },
+    "ewp-seed-vocab-003": {
+      "source_text": "Please accept my apology; I did not mean to loose your book.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: loose/lose",
+      "reference_answer": "Please accept my apology; I did not mean to lose your book.",
+      "acceptable_variants": [],
+      "rationale": "The verb meaning 'to misplace' is 'lose'; 'loose' is an adjective meaning 'not tight'."
+    },
+    "ewp-seed-vocab-004": {
+      "source_text": "The two countries signed a peace treaty to avoid further conflict, which had a profound principle on the region.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: principle/effect (principle vs effect)",
+      "reference_answer": "The two countries signed a peace treaty to avoid further conflict, which had a profound effect on the region.",
+      "acceptable_variants": [
+        "The two countries signed a peace treaty to avoid further conflict, which had a profound impact on the region."
+      ],
+      "rationale": "'a profound principle on the region' is nonsensical; the intended noun is 'effect' (result/influence). 'Principle' means a fundamental rule or belief."
+    },
+    "ewp-seed-vocab-005": {
+      "source_text": "He gave me a complement on my new haircut.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: complement/compliment",
+      "reference_answer": "He gave me a compliment on my new haircut.",
+      "acceptable_variants": [],
+      "rationale": "A 'compliment' is an expression of praise; 'complement' means something that completes or goes well with another thing."
+    },
+    "ewp-seed-vocab-006": {
+      "source_text": "The weather had a bad effect on the crops, so farmers had to adopt to the change.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "word choice: adopt/adapt",
+      "reference_answer": "The weather had a bad effect on the crops, so farmers had to adapt to the change.",
+      "acceptable_variants": [],
+      "rationale": "'adapt to' means to adjust to new conditions, which fits the change; 'adopt' means to take up or take on (e.g., a practice or a child)."
+    },
+    "ewp-seed-vocab-014": {
+      "source_text": "She made a big mistake by ignoring the warning signs.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "no error (collocation correct)",
+      "reference_answer": "She made a big mistake by ignoring the warning signs.",
+      "acceptable_variants": [],
+      "rationale": "'make a mistake' is the natural collocation, so the sentence is already correct and is kept unchanged."
+    },
+    "ewp-seed-vocab-015": {
+      "source_text": "He did a strong effort to finish the project on time.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "collocation",
+      "reference_answer": "He made a strong effort to finish the project on time.",
+      "acceptable_variants": [
+        "He put in a strong effort to finish the project on time."
+      ],
+      "rationale": "The natural collocation is 'make an effort' (or 'put in an effort'), not 'do an effort'."
+    },
+    "ewp-seed-vocab-016": {
+      "source_text": "He did a mistake while copying the figures.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "collocation",
+      "reference_answer": "He made a mistake while copying the figures.",
+      "acceptable_variants": [],
+      "rationale": "The correct collocation is 'make a mistake', not 'do a mistake'."
+    },
+    "ewp-seed-vocab-017": {
+      "source_text": "Please do me a favour and pass the salt.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "no error (collocation correct)",
+      "reference_answer": "Please do me a favour and pass the salt. I will make a decision about the menu after I have tasted it.",
+      "acceptable_variants": [
+        "Please do me a favour and pass the salt. We need to make a decision quickly."
+      ],
+      "rationale": "'do someone a favour' is the correct collocation and is kept; a second sentence is appended using 'make a decision' correctly as the prompt requires."
+    },
+    "ewp-seed-vocab-018": {
+      "source_text": "The scientist made an important discovery about the virus.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "no error (collocation correct)",
+      "reference_answer": "The scientist made an important discovery about the virus.",
+      "acceptable_variants": [],
+      "rationale": "'make a discovery' is the standard collocation, so the sentence is already correct and is kept unchanged."
+    },
+    "ewp-seed-vocab-026": {
+      "source_text": "The manager wants to get rid of the old rules.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The manager wants to eliminate the old rules.",
+      "acceptable_variants": [
+        "The manager wants to abolish the old rules.",
+        "The manager wants to remove the old rules."
+      ],
+      "rationale": "The informal phrasal verb 'get rid of' is replaced with the formal verb 'eliminate' (or 'abolish'/'remove')."
+    },
+    "ewp-seed-vocab-027": {
+      "source_text": "The report says the plan is a big deal for the company.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The report states that the plan is highly significant for the company.",
+      "acceptable_variants": [
+        "The report states that the plan is of great importance to the company.",
+        "The report indicates that the plan is crucial for the company."
+      ],
+      "rationale": "The informal idiom 'a big deal' is replaced with the formal 'highly significant'; 'says' is also raised to 'states'."
+    },
+    "ewp-seed-vocab-028": {
+      "source_text": "We need to figure out what went wrong.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "We need to determine what went wrong.",
+      "acceptable_variants": [
+        "We need to ascertain what went wrong.",
+        "We need to establish what went wrong."
+      ],
+      "rationale": "The informal phrasal verb 'figure out' is replaced with the formal verb 'determine'."
+    },
+    "ewp-seed-vocab-029": {
+      "source_text": "The kids were told to shut up during the exam.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The children were told to remain silent during the exam.",
+      "acceptable_variants": [
+        "The children were instructed to remain silent during the exam.",
+        "The children were told to be quiet during the exam."
+      ],
+      "rationale": "The rude informal 'shut up' is replaced with the formal 'remain silent'; 'kids' is also raised to 'children'."
+    },
+    "ewp-seed-vocab-030": {
+      "source_text": "The boss was okay with the new timings.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The manager approved of the new timings.",
+      "acceptable_variants": [
+        "The manager accepted the new timings.",
+        "The manager consented to the new timings."
+      ],
+      "rationale": "The informal 'was okay with' is replaced with the formal 'approved of'; 'boss' is also raised to 'manager'."
+    },
+    "ewp-seed-vocab-031": {
+      "source_text": "They put off the meeting because of the rain.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "They postponed the meeting because of the rain.",
+      "acceptable_variants": [
+        "They deferred the meeting because of the rain.",
+        "The meeting was postponed owing to the rain."
+      ],
+      "rationale": "The informal phrasal verb 'put off' is replaced with the formal verb 'postponed'."
+    },
+    "ewp-seed-vocab-032": {
+      "source_text": "A lot of people showed up for the event.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "A large number of people attended the event.",
+      "acceptable_variants": [
+        "Many people attended the event.",
+        "A great many people were present at the event."
+      ],
+      "rationale": "The informal phrasal verb 'showed up' is replaced with the formal 'attended'; 'a lot of' is also raised to 'a large number of'."
+    },
+    "ewp-seed-vocab-033": {
+      "source_text": "The company is going to look into the complaint.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The company is going to investigate the complaint.",
+      "acceptable_variants": [
+        "The company will investigate the complaint.",
+        "The company intends to examine the complaint."
+      ],
+      "rationale": "The informal phrasal verb 'look into' is replaced with the formal verb 'investigate'."
+    },
+    "ewp-seed-vocab-034": {
+      "source_text": "The plan fell through.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The plan did not materialise.",
+      "acceptable_variants": [
+        "The plan fell through and had to be abandoned.",
+        "The plan was unsuccessful.",
+        "The plan collapsed."
+      ],
+      "rationale": "The informal phrasal verb 'fall through' (meaning 'to fail to happen') is replaced with a formal equivalent such as 'did not materialise' or 'was unsuccessful'."
+    },
+    "ewp-seed-vocab-035": {
+      "source_text": "He wants to get the job done quickly.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "He wants to complete the task quickly.",
+      "acceptable_variants": [
+        "He wishes to finish the task promptly.",
+        "He intends to accomplish the task quickly."
+      ],
+      "rationale": "The informal idiom 'get the job done' is replaced with the formal 'complete the task'."
+    },
+    "ewp-seed-vocab-036": {
+      "source_text": "The staff were fed up with the constant changes.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The staff were frustrated by the constant changes.",
+      "acceptable_variants": [
+        "The staff were exasperated by the constant changes.",
+        "The staff were dissatisfied with the constant changes."
+      ],
+      "rationale": "The informal idiom 'fed up with' is replaced with the formal 'frustrated by'."
+    },
+    "ewp-seed-vocab-037": {
+      "source_text": "Let's touch base after lunch.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "Let us confer after lunch.",
+      "acceptable_variants": [
+        "Let us reconvene after lunch.",
+        "We shall discuss the matter further after lunch."
+      ],
+      "rationale": "The informal business idiom 'touch base' is replaced with the formal 'confer' (or 'reconvene')."
+    },
+    "ewp-seed-vocab-038": {
+      "source_text": "She returned back the book to the library.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: returned back",
+      "reference_answer": "She returned the book to the library.",
+      "acceptable_variants": [],
+      "rationale": "'return' already means to give or go back, so 'back' is redundant and is removed."
+    },
+    "ewp-seed-vocab-039": {
+      "source_text": "The two twins looked exactly alike in every way.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: two twins / in every way",
+      "reference_answer": "The twins looked exactly alike.",
+      "acceptable_variants": [
+        "The twins looked identical."
+      ],
+      "rationale": "'twins' already implies two people, so 'two' is redundant; 'exactly alike in every way' is also tautological and trimmed."
+    },
+    "ewp-seed-vocab-040": {
+      "source_text": "Please repeat that again for the class.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: repeat again",
+      "reference_answer": "Please repeat that for the class.",
+      "acceptable_variants": [],
+      "rationale": "'repeat' already means to say again, so 'again' is redundant and is removed."
+    },
+    "ewp-seed-vocab-041": {
+      "source_text": "We must plan ahead for the future carefully.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: plan ahead for the future",
+      "reference_answer": "We must plan carefully.",
+      "acceptable_variants": [
+        "We must plan ahead carefully."
+      ],
+      "rationale": "Planning is inherently for the future and 'ahead' repeats that sense, so 'ahead for the future' is redundant and trimmed to 'plan carefully'."
+    },
+    "ewp-seed-vocab-042": {
+      "source_text": "At this moment in time, the office is closed.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: at this moment in time",
+      "reference_answer": "The office is currently closed.",
+      "acceptable_variants": [
+        "At present, the office is closed.",
+        "The office is now closed."
+      ],
+      "rationale": "'at this moment in time' is a wordy filler that simply means 'now/currently' and is replaced with a single word."
+    },
+    "ewp-seed-vocab-043": {
+      "source_text": "He is a new beginner who just started last week.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: new beginner",
+      "reference_answer": "He is a beginner who just started last week.",
+      "acceptable_variants": [
+        "He is a beginner who started last week."
+      ],
+      "rationale": "A 'beginner' is by definition new, so 'new' is redundant and is removed."
+    },
+    "ewp-seed-vocab-044": {
+      "source_text": "The final outcome of the match was a draw.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: final outcome",
+      "reference_answer": "The outcome of the match was a draw.",
+      "acceptable_variants": [],
+      "rationale": "An 'outcome' is already the final result, so 'final' is redundant and is removed."
+    },
+    "ewp-seed-vocab-045": {
+      "source_text": "She combined together all the ingredients in the bowl.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: combined together",
+      "reference_answer": "She combined all the ingredients in the bowl.",
+      "acceptable_variants": [],
+      "rationale": "'combine' already means to bring together, so 'together' is redundant and is removed."
+    },
+    "ewp-seed-vocab-046": {
+      "source_text": "In my personal opinion, I think the plan is good.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: in my personal opinion / I think",
+      "reference_answer": "In my opinion, the plan is good.",
+      "acceptable_variants": [
+        "I think the plan is good.",
+        "In my view, the plan is good."
+      ],
+      "rationale": "An opinion is inherently personal, so 'personal' is redundant, and 'in my opinion' with 'I think' doubles the same idea; one hedge is kept."
+    },
+    "ewp-seed-vocab-047": {
+      "source_text": "They gathered together in the hall for the meeting.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: gathered together",
+      "reference_answer": "They gathered in the hall for the meeting.",
+      "acceptable_variants": [],
+      "rationale": "'gather' already means to come together, so 'together' is redundant and is removed."
+    },
+    "ewp-seed-vocab-048": {
+      "source_text": "The reason why he left is because he was unwell.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: the reason why ... is because",
+      "reference_answer": "He left because he was unwell.",
+      "acceptable_variants": [
+        "The reason he left was that he was unwell."
+      ],
+      "rationale": "'The reason why ... is because' triples the same causal idea; it is reduced to a single 'because' (or 'the reason ... was that')."
+    },
+    "ewp-seed-vocab-049": {
+      "source_text": "Each and every one of the students passed the test.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: each and every",
+      "reference_answer": "Every one of the students passed the test.",
+      "acceptable_variants": [
+        "Each of the students passed the test.",
+        "Every student passed the test."
+      ],
+      "rationale": "'each' and 'every' convey the same meaning, so the paired phrase is redundant and reduced to one word."
+    },
+    "ewp-seed-vocab-050": {
+      "source_text": "It is a true fact that the earth orbits the sun.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "redundancy: true fact",
+      "reference_answer": "It is a fact that the earth orbits the sun.",
+      "acceptable_variants": [],
+      "rationale": "A 'fact' is by definition true, so 'true' is redundant and is removed."
+    }
+  }
+}
