@@ -11,15 +11,21 @@ const strat = (over = {}) => ({
   relevance: "primary", ...over,
 });
 
+const mcq = {
+  id: "q1", question_type: "mcq_single", question_text: "Pick one",
+  options: [{ id: "o1", option_index: "A", option_text: "One" }],
+  correct_option_id: "o1", explanation: "ok",
+};
+
 describe("SolutionStrategyPanel", () => {
-  test("renders in review mode with learner labels and the formula", () => {
+  test("renders in review mode with learner labels and the formula through MathRenderer", () => {
     render(<SolutionStrategyPanel mode="review" strategies={[strat()]} />);
     expect(screen.getByTestId("solution-strategy-panel")).toBeInTheDocument();
     expect(screen.getByText("Base-100 percentage method")).toBeInTheDocument();
     expect(screen.getByText("Standard method")).toBeInTheDocument();
     expect(screen.getByText("Faster method")).toBeInTheDocument();
     expect(screen.getByText("Watch out for")).toBeInTheDocument();
-    expect(screen.getByTestId("solution-strategy-s1-formula")).toBeInTheDocument();
+    expect(screen.getByTestId("solution-strategy-s1-formula")).toHaveTextContent("x =");
     // A null field renders no row.
     expect(screen.queryByTestId("solution-strategy-s1-key_observation")).toBeNull();
   });
@@ -38,30 +44,50 @@ describe("SolutionStrategyPanel", () => {
 });
 
 describe("QuestionRenderer solution-strategy wiring", () => {
-  const q = {
-    id: "q1", question_type: "mcq_single", question_text: "Pick one",
-    options: [{ id: "o1", option_index: "A", option_text: "One" }],
-    correct_option_id: "o1", explanation: "ok",
-  };
-
   test("mounts the panel once after the type renderer in review mode", () => {
     render(
       <QuestionRenderer
         mode="review"
         showCorrect
         showExplanation
-        question={{ ...q, solution_strategies: [strat()] }}
+        question={{ ...mcq, solution_strategies: [strat()] }}
       />,
     );
     expect(screen.getAllByTestId("solution-strategy-panel")).toHaveLength(1);
     expect(screen.getByText("Base-100 percentage method")).toBeInTheDocument();
   });
 
+  test.each([
+    ["statement_based", { ...mcq, question_type: "statement_based" }],
+    [
+      "numerical_answer",
+      {
+        id: "q-num",
+        question_type: "numerical_answer",
+        question_text: "Enter a number",
+        numeric_answer: 10,
+        correct_numeric_answer: 10,
+        numeric_tolerance: 0,
+        explanation: "numeric explanation",
+      },
+    ],
+  ])("uses the shared panel for %s review questions", (_type, question) => {
+    render(
+      <QuestionRenderer
+        mode="review"
+        showCorrect
+        showExplanation
+        question={{ ...question, solution_strategies: [strat()] }}
+      />,
+    );
+    expect(screen.getAllByTestId("solution-strategy-panel")).toHaveLength(1);
+  });
+
   test("no panel during an attempt even when strategies are present", () => {
     render(
       <QuestionRenderer
         mode="attempt"
-        question={{ ...q, solution_strategies: [strat()] }}
+        question={{ ...mcq, solution_strategies: [strat()] }}
         value={{}}
         onChange={jest.fn()}
       />,
