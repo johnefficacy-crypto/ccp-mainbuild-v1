@@ -89,10 +89,50 @@ def test_batched_no_cross_question_leakage_and_ordering():
     assert out["q2"][0]["relevance"] == "primary"
 
 
+def test_batched_same_name_order_is_stable_by_id():
+    sb = SBStub({
+        "quant_question_heuristics": [
+            _link("q1", "h-z", relevance="primary"),
+            _link("q1", "h-a", relevance="primary"),
+        ],
+        "quant_heuristics": [
+            _heur("h-z", name="Same name"),
+            _heur("h-a", name="Same name"),
+        ],
+    })
+    out = quant_heuristics.heuristics_for_questions(sb, ["q1"])
+    assert [h["id"] for h in out["q1"]] == ["h-a", "h-z"]
+
+
+def test_batched_authority_does_not_return_governance_fields():
+    sb = SBStub({
+        "quant_question_heuristics": [_link("q1", "h1")],
+        "quant_heuristics": [_heur("h1")],
+    })
+    raw = quant_heuristics.heuristics_for_questions(sb, ["q1"])["q1"][0]
+    for forbidden in (
+        "applicability_rule", "reviewer_status", "reviewer_notes", "reviewed_by",
+        "created_by", "updated_at", "is_active", "heuristic_code", "topic_id",
+        "microtopic_id",
+    ):
+        assert forbidden not in raw
+
+
+def test_single_question_helper_delegates_to_batched_contract():
+    sb = SBStub({
+        "quant_question_heuristics": [_link("q1", "h1")],
+        "quant_heuristics": [_heur("h1")],
+    })
+    assert quant_heuristics.heuristics_for_question(sb, "q1") == (
+        quant_heuristics.heuristics_for_questions(sb, ["q1"])["q1"]
+    )
+
+
 def test_batched_empty_input_performs_no_reads():
     sb = SBStub({"quant_question_heuristics": [], "quant_heuristics": []})
     sb.table = lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no query on empty input"))
     assert quant_heuristics.heuristics_for_questions(sb, []) == {}
+    assert quant_heuristics.heuristics_for_question(sb, "") == []
 
 
 # ── normalized projection ────────────────────────────────────────────────────
