@@ -135,6 +135,7 @@ def _load_active_cycle(supabase: Any, exam_id: str) -> dict[str, Any] | None:
                 "application_end, exam_start, exam_end, year"
             )
             .eq("exam_id", exam_id)
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
             .gte("exam_start", today)
             .order("exam_start")
             .limit(1)
@@ -152,6 +153,7 @@ def _load_active_cycle(supabase: Any, exam_id: str) -> dict[str, Any] | None:
             supabase.table("exam_cycles")
             .select("id, cycle_name, status, year")
             .eq("exam_id", exam_id)
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
             .order("exam_start", desc=True)
             .limit(1)
             .execute()
@@ -171,6 +173,7 @@ def _load_cycle_by_id(supabase: Any, cycle_id: str) -> dict[str, Any] | None:
                 "application_end, exam_start, exam_end, year"
             )
             .eq("id", cycle_id)
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
             .limit(1)
             .execute()
             .data
