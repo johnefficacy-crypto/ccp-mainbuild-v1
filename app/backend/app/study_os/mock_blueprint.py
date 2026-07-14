@@ -37,6 +37,14 @@ reported the authored count either way without flagging the gap — the point is
 the service never self-reports official completeness.) The payload marks this
 scope explicitly (``authored_structure_scope`` / ``scope_note``).
 
+BUNDLE-DRIVEN GA EXEMPTION: a General Awareness section (the ``general_awareness``
+SubjectRuntimePolicy family) is content-EXEMPT in readiness — its questions are
+sourced from current-affairs bundles, not the durable ``mock_question_bank`` /
+locked ``exam_topic_coverage`` this path gates on. ``readiness_verdict`` emits
+``structural_only`` for it (tracked in ``summary.structural_only``), so an
+authored-but-unfilled GA section neither blocks nor thins the phase; bundle
+availability is judged on the current-affairs path, not here.
+
 DESIGN INTENT: the verdict is data-driven off the diagnostic. When the missing
 section is authored and content is populated, the SAME code flips a phase from
 thin_bank to ready with NO code change.
@@ -148,7 +156,10 @@ def _overall_outcome(summary: dict) -> str:
     """Collapse the per-section summary into a single phase outcome.
 
     Vocabulary mirrors the diagnostic's: any blocked section blocks the phase;
-    else any thin_bank section makes it thin_bank; else ready.
+    else any thin_bank section makes it thin_bank; else ready. ``structural_only``
+    sections (bundle-driven GA) are content-exempt — they neither block nor thin
+    the phase, so a phase whose only non-ready sections are structural_only reads
+    ``ready``.
     """
     if summary.get("blocked", 0) > 0:
         return "blocked"
@@ -284,10 +295,12 @@ def build_blueprint_payload(
                     "locked_coverage": 0,
                 }
             ],
-            "summary": {"ready": 0, "thin_bank": 0, "blocked": 1},
+            "summary": {"ready": 0, "thin_bank": 0, "blocked": 1, "structural_only": 0},
         }
 
-    summary = verdict.get("summary") or {"ready": 0, "thin_bank": 0, "blocked": 0}
+    summary = verdict.get("summary") or {
+        "ready": 0, "thin_bank": 0, "blocked": 0, "structural_only": 0,
+    }
     outcome = _overall_outcome(summary)
 
     thresholds = {

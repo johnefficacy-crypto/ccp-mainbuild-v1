@@ -114,9 +114,12 @@ def test_returns_documented_shape_and_aggregated_summary():
     for key in ("exam_phase_id", "phase_slug", "phase_name", "section_structure",
                 "locked_coverage", "verified_pyq_tag_depth", "readiness_verdict"):
         assert key in phase, f"missing phase key {key!r}"
-    assert phase["readiness_verdict"]["summary"] == {"ready": 1, "thin_bank": 0, "blocked": 0}
+    assert phase["readiness_verdict"]["summary"] == {
+        "ready": 1, "thin_bank": 0, "blocked": 0, "structural_only": 0,
+    }
 
-    # Top-level summary is exactly the element-wise sum of per-phase verdicts.
+    # Top-level summary is exactly the element-wise sum of per-phase verdicts
+    # (the endpoint aggregates the content-gated ready/thin/blocked buckets).
     agg = {"ready": 0, "thin_bank": 0, "blocked": 0}
     for ph in body["phases"]:
         for k in agg:

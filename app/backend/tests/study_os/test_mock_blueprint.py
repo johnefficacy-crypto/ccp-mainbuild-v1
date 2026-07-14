@@ -124,7 +124,7 @@ def test_canary_thin_bank_with_per_section_shortfall():
 
     summary = payload["readiness_snapshot"]["summary"]
     # Every authored section is thin (base MCQ pool ~0), none ready/blocked.
-    assert summary == {"ready": 0, "thin_bank": 3, "blocked": 0}
+    assert summary == {"ready": 0, "thin_bank": 3, "blocked": 0, "structural_only": 0}
 
     # Verdict is the diagnostic's vocabulary, surfaced verbatim.
     verdict_sections = payload["readiness_snapshot"]["verdict"]["sections"]
@@ -164,7 +164,7 @@ def test_canary_flips_to_ready_when_pool_filled_no_code_change():
     )
     assert payload["outcome"] == "ready"
     assert payload["readiness_snapshot"]["summary"] == {
-        "ready": 3, "thin_bank": 0, "blocked": 0,
+        "ready": 3, "thin_bank": 0, "blocked": 0, "structural_only": 0,
     }
     assert payload["section_shortfall"] == []  # no shortfall when ready
     assert payload["structural_envelope"] is not None
@@ -172,15 +172,26 @@ def test_canary_flips_to_ready_when_pool_filled_no_code_change():
 
 # ── SSC CGL Tier 1 four-section envelope (matches the demo seed) ───────────────
 
+# Subject taxonomy for the seed shape: GA carries the general_awareness group
+# (→ GA SubjectRuntimePolicy family → content-exempt in readiness); the others
+# are ordinary content-gated subjects.
+SEED_SUBJECTS = [
+    {"id": "subj-quant", "slug": "quantitative-aptitude", "subject_group": "numerical"},
+    {"id": "subj-eng", "slug": "english-language", "subject_group": "verbal"},
+    {"id": "subj-reason", "slug": "general-intelligence-reasoning", "subject_group": "reasoning"},
+    {"id": "subj-ga", "slug": "general-awareness", "subject_group": "general_awareness"},
+]
+
+
 def _cgl_four_section_sb(*, bank):
     """SSC CGL Tier 1 as the demo seed now authors it: FOUR sections + phase-level
-    locked coverage.
+    locked coverage + subject taxonomy.
 
     The seed's ``exam_topic_coverage`` rows are phase-scoped (``section_id`` NULL),
-    so locked coverage applies to every section INCLUDING General Awareness — GA
-    is never blocked for ``no_locked_coverage`` here. GA carries no question bank
-    of its own, which is the honest reason it stays ``thin_bank`` until a GA bank
-    is authored.
+    so locked coverage applies to every section. General Awareness resolves to the
+    bundle-driven ``general_awareness`` family, so it is content-EXEMPT: it is
+    reported ``structural_only`` (never blocked/thin) even though it has no
+    durable question bank of its own.
     """
     return _sb(
         exam_phases=[
@@ -197,6 +208,7 @@ def _cgl_four_section_sb(*, bank):
             }
             for sid, subj, label, order in SEED_SECTIONS
         ],
+        subjects=SEED_SUBJECTS,
         mock_question_bank=list(bank),
         # Phase-level (section_id NULL) locked coverage — mirrors the seed.
         exam_topic_coverage=[
@@ -206,7 +218,7 @@ def _cgl_four_section_sb(*, bank):
     )
 
 
-def test_seeded_four_section_envelope_ga_thin_until_filled():
+def test_seeded_four_section_envelope_ga_structural_only():
     # Stock the three non-GA subjects above min_per_section (30); GA gets none.
     bank, n = [], 0
     for _sid, subj, _label, _order in SEED_SECTIONS[:3]:
@@ -222,31 +234,53 @@ def test_seeded_four_section_envelope_ga_thin_until_filled():
     )
     # All FOUR authored SSC sections are reported — no fabricated completeness,
     # and the four-section envelope is present (proves the missing GA section is
-    # now authored). This is the mock_blueprint "author the section, then the
-    # SAME code flips it" design intent, exercised end-to-end.
+    # now authored).
     assert payload["authored_structure_scope"] is True
     assert payload["template_snapshot"]["authored_section_count"] == 4
     assert len(payload["section_snapshot"]) == 4
     labels = {s["section_label"] for s in payload["section_snapshot"]}
     assert "General Awareness" in labels
 
-    # Honest GA readiness: the three content-backed sections are ready, GA alone
-    # is thin_bank (authored + coverage inherited, but no GA question bank yet).
+    # GA is content-EXEMPT: the three content-backed sections are ready, GA is
+    # structural_only (bundle-sourced) — NOT blocked, NOT thin. The phase is
+    # therefore ready; authoring the GA section did not regress the phase.
     assert payload["readiness_snapshot"]["summary"] == {
-        "ready": 3, "thin_bank": 1, "blocked": 0,
+        "ready": 3, "thin_bank": 0, "blocked": 0, "structural_only": 1,
     }
-    assert payload["outcome"] == "thin_bank"
+    assert payload["outcome"] == "ready"
     ga_verdict = next(
         s for s in payload["readiness_snapshot"]["verdict"]["sections"]
         if s["section_label"] == "General Awareness"
     )
-    assert ga_verdict["verdict"] == "thin_bank"
-    assert ga_verdict["reasons"] == ["thin_mcq_pool"]  # NOT no_locked_coverage
-    # The GA shortfall is the whole section (30 - 0) — honest, not hidden.
-    ga_shortfall = next(
-        s for s in payload["section_shortfall"] if s["section_id"] == "sec-ga"
+    assert ga_verdict["verdict"] == "structural_only"
+    assert ga_verdict["reasons"] == ["content_bundle_sourced"]
+    # Exempt from both durable gates — never blocked, never thin.
+    all_sections = payload["readiness_snapshot"]["verdict"]["sections"]
+    assert all("no_locked_coverage" not in s["reasons"] for s in all_sections)
+    assert all("thin_mcq_pool" not in (s["reasons"]) for s in all_sections)
+    assert all(s["verdict"] != "blocked" for s in all_sections)
+    # GA is content-exempt, so it is NOT listed as a thin-bank shortfall.
+    assert all(s["section_id"] != "sec-ga" for s in payload["section_shortfall"])
+
+
+def test_seeded_four_section_ga_still_blocks_on_missing_structure():
+    # A GA section that is structurally incomplete (no question_count/marks) is
+    # still blocked — the exemption covers CONTENT, never structure.
+    sb = _cgl_four_section_sb(bank=[])
+    for row in sb.db["exam_phase_sections"]:
+        if row["id"] == "sec-ga":
+            row["question_count"] = None
+            row["marks"] = None
+    payload = build_blueprint_payload(
+        sb, exam_id=EXAM, exam_phase_id=PHASE, user_id="user-1",
+        **_CANARY_THRESHOLDS,
     )
-    assert ga_shortfall["shortfall"] == 30
+    ga_verdict = next(
+        s for s in payload["readiness_snapshot"]["verdict"]["sections"]
+        if s["section_label"] == "General Awareness"
+    )
+    assert ga_verdict["verdict"] == "blocked"
+    assert "missing_structure" in ga_verdict["reasons"]
 
 
 # ── blocked / no_sections ─────────────────────────────────────────────────────
