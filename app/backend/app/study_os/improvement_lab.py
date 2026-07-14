@@ -110,11 +110,19 @@ def build_feed(supabase: Any, user_id: str | None, subject_family: str) -> list[
             qid = r.get("question_id")
             if not qid:
                 continue
+            # Skip UNATTEMPTED rows (is_correct IS NULL): a submitted mock keeps a
+            # response row for every skipped question, but the learner never
+            # engaged with it — counting it as "Seen" would recommend methods for
+            # untouched questions and crowd out real history (Codex #999). Mirrors
+            # the mastery/analytics "exclude unanswered" convention (§3.3).
+            is_correct = r.get("is_correct")
+            if is_correct is None:
+                continue
             ev = q_ev.setdefault(qid, {"seen": 0, "wrong": 0, "correct": 0, "last_seen_at": None})
             ev["seen"] += 1
-            if r.get("is_correct") is True:
+            if is_correct:
                 ev["correct"] += 1
-            elif r.get("is_correct") is False:
+            else:
                 ev["wrong"] += 1
             if seen_at and (ev["last_seen_at"] is None or seen_at > ev["last_seen_at"]):
                 ev["last_seen_at"] = seen_at
@@ -131,8 +139,12 @@ def build_feed(supabase: Any, user_id: str | None, subject_family: str) -> list[
     # 3. Verified-only LIVE strategies for that window, via the shared aggregator
     #    in STRICT mode (checkpost #999 F1): a strategy/link read failure propagates
     #    so an outage surfaces as an error, not a silently-empty feed. Governance is
-    #    still stripped by construction in the projector.
-    by_q = solution_strategies.strategies_for_questions(supabase, question_ids, strict=True)
+    #    still stripped by construction in the projector. `subjects` restricts the
+    #    read to THIS feed's own source, so an unrelated subject's outage can never
+    #    502 a healthy feed (Codex #999 — independent-section contract).
+    by_q = solution_strategies.strategies_for_questions(
+        supabase, question_ids, strict=True, subjects=(subject_family,)
+    )
 
     # 4/5. Aggregate evidence per strategy of the requested subject.
     acc: dict[str, dict] = {}

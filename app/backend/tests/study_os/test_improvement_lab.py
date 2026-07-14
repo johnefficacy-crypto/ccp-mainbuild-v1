@@ -108,6 +108,40 @@ def test_feed_aggregates_evidence_across_attempts():
     assert item["source_question_ids"] == ["q1"]
 
 
+def test_feed_excludes_skipped_unanswered_questions():
+    # A submitted mock keeps a response row for skipped questions (is_correct=None);
+    # those must NOT create strategy evidence (Codex #999) — only q-done appears.
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        mock_attempt_responses=[_resp("a1", "q-skip", None), _resp("a1", "q-done", False)],
+        quant_question_heuristics=[_qlink("q-skip", "h-skip"), _qlink("q-done", "h-done")],
+        quant_heuristics=[_qheur("h-skip", name="Skipped"), _qheur("h-done", name="Attempted")],
+    ))
+    out = il.build_feed(sb, "u-1", "quant")
+    assert [s["id"] for s in out] == ["h-done"]
+    assert out[0]["times_seen"] == 1 and out[0]["wrong_count"] == 1
+
+
+def test_feed_unrelated_subject_outage_does_not_break_this_feed():
+    # A Reasoning strategy-table outage must NOT 502 the Quant feed — the aggregator
+    # reads only the requested subject in strict mode (Codex #999 isolation).
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        mock_attempt_responses=[_resp("a1", "q1", False)],
+        quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
+    ))
+    orig = sb.table
+
+    def _reasoning_down(name):
+        if name in ("reasoning_question_strategies", "reasoning_strategies"):
+            raise RuntimeError("reasoning table down")
+        return orig(name)
+
+    sb.table = _reasoning_down  # type: ignore[assignment]
+    assert [s["id"] for s in il.build_feed(sb, "u-1", "quant")] == ["h1"]  # healthy, no raise
+    assert _client(sb).get("/api/study/improvement-lab/quant").status_code == 200
+
+
 def test_feed_excludes_unverified_strategy():
     sb = SBStub(_empty_sources(
         mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
