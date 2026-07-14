@@ -433,6 +433,28 @@ describe("EnglishPracticeShell", () => {
     expect(screen.queryByTestId("source-context")).not.toBeInTheDocument();
   });
 
+  // EWP-6 scaffold: a paragraph-level drill composes via ParagraphBuilder (with
+  // the outline scratchpad), not the SentenceBuilder. Inert in production (no
+  // paragraph prompt is launchable) but wired and testable.
+  test("routes a paragraph exercise to the ParagraphBuilder with an outline scratchpad", async () => {
+    useEnglishPracticeSession.mockReturnValue({
+      fetchSession: jest.fn().mockResolvedValue(
+        payload([{ id: "u1", unit_number: 1, status: "not_started", unit_constraints: {} }],
+          { prompt: { prompt_text: "Write a paragraph about your city.", exercise_type: "paragraph_writing", required_words: [] } }),
+      ),
+      submitUnit: jest.fn(),
+      busy: false,
+    });
+    renderShell();
+    expect(await screen.findByTestId("english-practice-shell")).toBeInTheDocument();
+    expect(screen.getByTestId("paragraph-builder")).toBeInTheDocument();
+    expect(screen.getByTestId("paragraph-outline")).toBeInTheDocument();
+    // The sentence composer is NOT used for paragraph drills.
+    expect(screen.queryByTestId("sentence-builder")).not.toBeInTheDocument();
+    // Unit label reflects the paragraph noun.
+    expect(screen.getByText("Paragraph 1")).toBeInTheDocument();
+  });
+
   test("renders an empty state when the session has no units", async () => {
     useEnglishPracticeSession.mockReturnValue({
       fetchSession: jest.fn().mockResolvedValue(payload([])),
