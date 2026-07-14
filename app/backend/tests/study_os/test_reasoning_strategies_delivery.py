@@ -239,3 +239,145 @@ def test_get_review_attaches_reasoning_strategies():
     assert got[0]["subject_family"] == "reasoning"
     assert "reviewer_status" not in got[0]
     assert by_qid["q2"]["solution_strategies"] == []
+
+
+
+# ── GQR-S7 set/stimulus-aware delivery ───────────────────────────────────────
+
+def _stimulus_link(stimulus_id, strategy_id, *, status="verified", relevance="primary"):
+    return {
+        "id": f"sl-{stimulus_id}-{strategy_id}",
+        "stimulus_id": stimulus_id,
+        "strategy_id": strategy_id,
+        "reviewer_status": status,
+        "relevance": relevance,
+    }
+
+
+def test_stimulus_read_is_batched_gated_and_matches_every_question_scope():
+    calls = {"n": 0}
+    sb = SBStub({
+        "reasoning_stimulus_strategies": [
+            _stimulus_link("stim-1", "s-set"),
+            _stimulus_link("stim-1", "s-pending-link", status="pending"),
+            _stimulus_link("stim-2", "s-micro"),
+        ],
+        "reasoning_strategies": [
+            _strat("s-set", name="Fix the reference frame"),
+            _strat("s-pending-link"),
+            _strat("s-micro", topic_id="rt1", microtopic_id="rm1"),
+        ],
+    })
+    orig = sb.table
+
+    def _counting(name):
+        if name in ("reasoning_stimulus_strategies", "reasoning_strategies"):
+            calls["n"] += 1
+        return orig(name)
+
+    sb.table = _counting  # type: ignore[assignment]
+    out = rs.strategies_for_stimuli(
+        sb,
+        {
+            "stim-1": [
+                {"topic_id": "rt1", "microtopic_id": "rm1"},
+                {"topic_id": "rt1", "microtopic_id": "rm2"},
+            ],
+            # Microtopic-scoped strategy must fail closed because the second
+            # question in this set has a different microtopic.
+            "stim-2": [
+                {"topic_id": "rt1", "microtopic_id": "rm1"},
+                {"topic_id": "rt1", "microtopic_id": "rm2"},
+            ],
+        },
+    )
+    assert calls["n"] == 2
+    assert [row["id"] for row in out["stim-1"]] == ["s-set"]
+    assert out["stim-2"] == []
+    assert "reviewer_status" not in out["stim-1"][0]
+
+
+def test_stimulus_aggregator_is_fail_soft_and_projects_shared_dto(monkeypatch):
+    sb = SBStub({
+        "reasoning_stimulus_strategies": [_stimulus_link("stim-1", "s1")],
+        "reasoning_strategies": [_strat("s1", name="Build the arrangement grid")],
+    })
+    dto = ss.strategies_for_stimuli(
+        sb, {"stim-1": [{"topic_id": "rt1", "microtopic_id": None}]}
+    )["stim-1"][0]
+    assert set(dto) == set(ss.ALLOWED_FIELDS)
+    assert dto["subject_family"] == "reasoning"
+
+    monkeypatch.setattr(
+        ss.reasoning_strategies,
+        "strategies_for_stimuli",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    assert ss.strategies_for_stimuli(
+        sb, {"stim-1": [{"topic_id": "rt1"}]}
+    ) == {"stim-1": []}
+
+
+def test_get_review_emits_one_shared_stimulus_group_and_preserves_question_strategy():
+    shared_stimulus = {
+        "id": "frozen-row",
+        "pyq_stimulus_id": "stim-1",
+        "stimulus_type": "passage",
+        "content_text": "Five people sit in a row.",
+        "language": "en",
+        "display_order": 0,
+    }
+    sb = SBStub({
+        "mock_attempts": [{
+            "id": "att-set", "user_id": "u-1", "status": "submitted",
+            "template_snapshot": {"question_ids": ["q1", "q2", "q3"]},
+        }],
+        "mock_attempt_responses": [
+            {
+                "attempt_id": "att-set", "question_id": "q1",
+                "question_snapshot": {
+                    "question_text": "Q1", "topic_id": "rt1", "microtopic_id": "rm1",
+                    "stimuli": [shared_stimulus],
+                },
+                "is_correct": True,
+            },
+            {
+                "attempt_id": "att-set", "question_id": "q2",
+                "question_snapshot": {
+                    "question_text": "Q2", "topic_id": "rt1", "microtopic_id": "rm2",
+                    "stimuli": [shared_stimulus],
+                },
+                "is_correct": False,
+            },
+            {
+                "attempt_id": "att-set", "question_id": "q3",
+                "question_snapshot": {
+                    "question_text": "Q3", "topic_id": "rt1", "microtopic_id": "rm1",
+                    "stimuli": [],
+                },
+                "is_correct": False,
+            },
+        ],
+        "mock_attempt_response_classification": [],
+        "quant_question_heuristics": [],
+        "quant_heuristics": [],
+        "reasoning_question_strategies": [_link("q1", "s-question")],
+        "reasoning_stimulus_strategies": [_stimulus_link("stim-1", "s-set")],
+        "reasoning_strategies": [
+            _strat("s-question", name="Question-specific elimination"),
+            _strat("s-set", name="Build one arrangement grid"),
+        ],
+    })
+
+    payload = mock_engine.get_review(sb, "u-1", "att-set")
+    assert len(payload["stimulus_solution_strategies"]) == 1
+    group = payload["stimulus_solution_strategies"][0]
+    assert group["pyq_stimulus_id"] == "stim-1"
+    assert group["question_ids"] == ["q1", "q2"]
+    assert group["first_attempt_order"] == 1
+    assert [row["name"] for row in group["strategies"]] == ["Build one arrangement grid"]
+    by_qid = {row["question_id"]: row for row in payload["questions"]}
+    assert by_qid["q1"]["solution_strategies"][0]["name"] == "Question-specific elimination"
+    assert "stimulus_solution_strategies" not in by_qid["q1"]
+    assert by_qid["q2"]["solution_strategies"] == []
+    assert by_qid["q3"]["solution_strategies"] == []

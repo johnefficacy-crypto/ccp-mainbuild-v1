@@ -31,18 +31,24 @@ function asMath(latex) {
   return /\$[^$]+\$/.test(s) ? s : `$$${s}$$`;
 }
 
-export default function SolutionStrategyPanel({ mode, strategies }) {
+export default function SolutionStrategyPanel({
+  mode,
+  strategies,
+  title = "Solution Strategy",
+  ariaLabel = "Solution strategies",
+  testId = "solution-strategy-panel",
+}) {
   if (mode !== "review") return null;
   const list = Array.isArray(strategies) ? strategies : [];
   if (list.length === 0) return null;
 
   return (
     <section
-      aria-label="Solution strategies"
-      data-testid="solution-strategy-panel"
+      aria-label={ariaLabel}
+      data-testid={testId}
       className="mt-4 rounded border border-clay-200 bg-clay-50 p-3"
     >
-      <h4 className="font-heading text-sm text-clay-900">Solution Strategy</h4>
+      <h4 className="font-heading text-sm text-clay-900">{title}</h4>
       <div className="mt-2 space-y-3">
         {list.map((s) => (
           <div
@@ -81,4 +87,7 @@ export default function SolutionStrategyPanel({ mode, strategies }) {
 SolutionStrategyPanel.propTypes = {
   mode: PropTypes.string,
   strategies: PropTypes.arrayOf(PropTypes.object),
+  title: PropTypes.string,
+  ariaLabel: PropTypes.string,
+  testId: PropTypes.string,
 };

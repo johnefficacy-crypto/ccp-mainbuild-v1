@@ -153,3 +153,36 @@ def strategies_for_questions(
     for qid in out:
         out[qid].sort(key=_sort_key)
     return out
+
+
+
+def strategies_for_stimuli(
+    supabase: Any,
+    stimulus_scopes: dict[str, list[dict]],
+    *,
+    strict: bool = False,
+) -> dict[str, list[dict]]:
+    """Project verified Reasoning set strategies into the shared learner DTO."""
+    ids = [stimulus_id for stimulus_id in dict.fromkeys(stimulus_scopes or {}) if stimulus_id]
+    out: dict[str, list[dict]] = {stimulus_id: [] for stimulus_id in ids}
+    if not ids:
+        return out
+    try:
+        data = reasoning_strategies.strategies_for_stimuli(
+            supabase,
+            {stimulus_id: stimulus_scopes[stimulus_id] for stimulus_id in ids},
+            strict=strict,
+        )
+    except Exception as exc:  # noqa: BLE001
+        if strict:
+            raise
+        logger.warning("solution_strategies reasoning stimulus source failed err=%r", exc)
+        return out
+
+    for stimulus_id, rows in (data or {}).items():
+        if stimulus_id in out:
+            out[stimulus_id] = sorted(
+                (_project_reasoning(row) for row in rows),
+                key=_sort_key,
+            )
+    return out

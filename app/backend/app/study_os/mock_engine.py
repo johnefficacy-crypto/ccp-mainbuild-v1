@@ -16,7 +16,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.study_os.attempt_events import record_server_event
-from app.study_os.solution_strategies import strategies_for_questions
+from app.study_os.solution_strategies import strategies_for_questions, strategies_for_stimuli
 from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
     ATTEMPT_AUTO_SUBMITTED,
@@ -1500,6 +1500,39 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
     # error yields [] and never breaks the review response.
     strategies = strategies_for_questions(supabase, ordered_ids)
 
+    # Set-aware strategies are keyed by canonical pyq_stimuli.id retained in each
+    # frozen question snapshot. Keep one payload entry per shared stimulus instead
+    # of copying the same strategy onto every question.
+    stimulus_groups: dict[str, dict] = {}
+    for i, qid in enumerate(ordered_ids):
+        snap = by_qid[qid].get("question_snapshot") or {}
+        for stimulus in (snap.get("stimuli") or []):
+            stimulus_id = stimulus.get("pyq_stimulus_id") if isinstance(stimulus, dict) else None
+            if not stimulus_id:
+                continue
+            group = stimulus_groups.setdefault(
+                stimulus_id,
+                {
+                    "pyq_stimulus_id": stimulus_id,
+                    "question_ids": [],
+                    "first_attempt_order": i + 1,
+                    "scopes": [],
+                },
+            )
+            if qid not in group["question_ids"]:
+                group["question_ids"].append(qid)
+                group["scopes"].append(
+                    {
+                        "topic_id": snap.get("topic_id"),
+                        "microtopic_id": snap.get("microtopic_id"),
+                    }
+                )
+
+    stimulus_strategies = strategies_for_stimuli(
+        supabase,
+        {stimulus_id: group["scopes"] for stimulus_id, group in stimulus_groups.items()},
+    )
+
     questions = []
     for i, qid in enumerate(ordered_ids):
         r = by_qid[qid]
@@ -1519,7 +1552,22 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "solution_strategies": strategies.get(qid, []),
             "time_spent_sec": int(r.get("time_spent_sec") or 0),
         })
-    return {"attempt_id": attempt_id, "questions": questions}
+    strategy_groups = [
+        {
+            "pyq_stimulus_id": group["pyq_stimulus_id"],
+            "question_ids": group["question_ids"],
+            "first_attempt_order": group["first_attempt_order"],
+            "strategies": stimulus_strategies.get(stimulus_id, []),
+        }
+        for stimulus_id, group in stimulus_groups.items()
+        if stimulus_strategies.get(stimulus_id)
+    ]
+    strategy_groups.sort(key=lambda group: group["first_attempt_order"])
+    return {
+        "attempt_id": attempt_id,
+        "questions": questions,
+        "stimulus_solution_strategies": strategy_groups,
+    }
 
 def _emit_mock_tests_row(
     supabase: Any,

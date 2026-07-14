@@ -24,6 +24,7 @@ logger = logging.getLogger("career_copilot.study_os.reasoning_strategies")
 
 _STRATEGIES = "reasoning_strategies"
 _LINKS = "reasoning_question_strategies"
+_STIMULUS_LINKS = "reasoning_stimulus_strategies"
 
 # Learner-facing display order for a question's strategies.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
@@ -226,6 +227,89 @@ def strategies_for_questions(
 
     for question_id in out:
         out[question_id].sort(key=_display_key)
+    return out
+
+
+
+def strategies_for_stimuli(
+    supabase: Any,
+    stimulus_scopes: dict[str, list[dict]],
+    *,
+    strict: bool = False,
+) -> dict[str, list[dict]]:
+    """Return verified active strategies for canonical PYQ stimuli.
+
+    stimulus_scopes maps each pyq_stimuli.id to the frozen topic scopes of
+    every question displayed with that stimulus. A set strategy is admitted only
+    when its governed scope matches EVERY question in the set. The reader performs
+    one link query and one strategy query for the whole review payload.
+    """
+    scopes = {
+        stimulus_id: [scope for scope in (question_scopes or []) if isinstance(scope, dict)]
+        for stimulus_id, question_scopes in (stimulus_scopes or {}).items()
+        if stimulus_id
+    }
+    out: dict[str, list[dict]] = {stimulus_id: [] for stimulus_id in scopes}
+    if not scopes:
+        return out
+
+    link_rows = _read(
+        lambda: supabase.table(_STIMULUS_LINKS)
+        .select("stimulus_id,strategy_id,relevance")
+        .in_("stimulus_id", list(scopes))
+        .eq("reviewer_status", "verified")
+        .execute(),
+        strict,
+    )
+    links = getattr(link_rows, "data", None) or []
+    if not links:
+        return out
+
+    strategy_ids = sorted(
+        {
+            link.get("strategy_id")
+            for link in links
+            if isinstance(link, dict) and link.get("strategy_id")
+        }
+    )
+    if not strategy_ids:
+        return out
+
+    strat_rows = _read(
+        lambda: supabase.table(_STRATEGIES)
+        .select(_STRATEGY_FIELDS)
+        .in_("id", strategy_ids)
+        .eq("reviewer_status", "verified")
+        .eq("is_active", True)
+        .execute(),
+        strict,
+    )
+    strat_by_id = {
+        row["id"]: row
+        for row in (getattr(strat_rows, "data", None) or [])
+        if isinstance(row, dict) and row.get("id")
+    }
+
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        stimulus_id = link.get("stimulus_id")
+        strategy = strat_by_id.get(link.get("strategy_id"))
+        question_scopes = scopes.get(stimulus_id)
+        if (
+            question_scopes
+            and strategy is not None
+            and all(_scope_matches(strategy, scope) for scope in question_scopes)
+        ):
+            out[stimulus_id].append(
+                {
+                    **_learner_row(strategy),
+                    "relevance": link.get("relevance") or "related",
+                }
+            )
+
+    for stimulus_id in out:
+        out[stimulus_id].sort(key=_display_key)
     return out
 
 

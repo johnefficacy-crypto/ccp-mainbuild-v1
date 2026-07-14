@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import QuestionRenderer from "./components/questions/QuestionRenderer";
+import SolutionStrategyPanel from "./components/questions/shared/SolutionStrategyPanel";
 import { errorTypeLabel } from "./errorTypeLabels";
 import { getAttemptReturnContext } from "./attemptReturnContext";
 
@@ -106,6 +107,19 @@ export default function MockReview() {
   if (!data) return <div>Loading…</div>;
 
   const current = questions[idx] || null;
+  const currentStimulusStrategies = current
+    ? (data.stimulus_solution_strategies || [])
+        .filter((group) => (group.question_ids || []).includes(current.question_id))
+        .flatMap((group) => group.strategies || [])
+        .filter(
+          (strategy, index, all) =>
+            all.findIndex(
+              (candidate) =>
+                candidate.id === strategy.id &&
+                candidate.subject_family === strategy.subject_family,
+            ) === index,
+        )
+    : [];
 
   return (
     <div className="p-4 pb-20 space-y-4" data-testid="review-page">
@@ -174,6 +188,13 @@ export default function MockReview() {
           <h3 className="font-heading text-lg">
             Q{current._num} · <span data-testid="review-error-label">{errorTypeLabel(current.error_type)}</span>
           </h3>
+          <SolutionStrategyPanel
+            mode="review"
+            strategies={currentStimulusStrategies}
+            title="Set-solving approach"
+            ariaLabel="Stimulus solution strategies"
+            testId="stimulus-solution-strategy-panel"
+          />
           <QuestionRenderer
             mode="review"
             showCorrect
