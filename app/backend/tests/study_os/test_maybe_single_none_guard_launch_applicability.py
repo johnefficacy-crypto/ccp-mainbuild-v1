@@ -14,6 +14,10 @@ intended 404 / ``None``:
   * ``applicability._resolve_exam_family`` — a missing exam row must resolve to
     ``None`` (no family), never 500.
 
+Both sites now route through the single shared ``app.db.utils.maybe_single``
+guard (no per-module duplicate); the tests assert the shared helper directly
+and via the two public call sites.
+
 The shared unit test harness's fake Supabase client masked this: its
 ``execute()`` always returned an object, never bare ``None``. The fake here
 DOES return bare ``None`` on an empty ``.maybe_single()`` match — matching the
@@ -26,6 +30,7 @@ import pytest
 pytest.importorskip("fastapi")
 
 from app.api import pyq_practice_launch as launch  # noqa: E402
+from app.db.utils import maybe_single  # noqa: E402
 from app.study_os.writing_practice import applicability  # noqa: E402
 
 _USER = "u1"
@@ -68,7 +73,8 @@ class FakeSupabase:
 
 
 # --------------------------------------------------------------------------- #
-# _maybe_single() helper direct coverage (both modules).                      #
+# Shared helper direct coverage (single implementation in app.db.utils; both  #
+# call sites below route through it).                                          #
 # --------------------------------------------------------------------------- #
 class _RawMaybeSingle:
     def __init__(self, row):
@@ -80,15 +86,13 @@ class _RawMaybeSingle:
         return type("R", (), {"data": self._row})()
 
 
-@pytest.mark.parametrize("module", [launch, applicability])
-def test_maybe_single_helper_returns_none_on_zero_rows(module):
-    assert module._maybe_single(_RawMaybeSingle(None)) is None
+def test_shared_maybe_single_returns_none_on_zero_rows():
+    assert maybe_single(_RawMaybeSingle(None)) is None
 
 
-@pytest.mark.parametrize("module", [launch, applicability])
-def test_maybe_single_helper_returns_data_on_match(module):
+def test_shared_maybe_single_returns_data_on_match():
     row = {"id": "x"}
-    assert module._maybe_single(_RawMaybeSingle(row)) == row
+    assert maybe_single(_RawMaybeSingle(row)) == row
 
 
 # --------------------------------------------------------------------------- #

@@ -18,25 +18,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.db.utils import maybe_single
 from app.study_os import pyq_practice
 from app.study_os.pyq_practice import start_pyq_practice
 from app.study_os.pyq_practice_launch import resolve_practice_payload
 
 router = APIRouter(prefix="/study/tasks", tags=["pyq-practice-launch"])
-
-
-def _maybe_single(query: Any) -> dict | None:
-    """Run a ``.maybe_single()`` query, tolerating a zero-row match.
-
-    postgrest-py's ``SyncMaybeSingleRequestBuilder.execute()`` returns bare
-    ``None`` (not a response object with ``.data=None``) when the query matches
-    zero rows, so ``.execute().data`` chained directly on a ``.maybe_single()``
-    query raises ``AttributeError: 'NoneType' object has no attribute 'data'``
-    on the legitimate "not found" case instead of returning ``None``. Every
-    ``.maybe_single()`` call must go through this helper.
-    """
-    resp = query.execute()
-    return resp.data if resp is not None else None
 
 
 def _launch_blueprint_id(user_id: str, study_task_id: str) -> str:
@@ -55,7 +42,7 @@ def _owned_task(supabase: Any, user_id: str, study_task_id: str) -> dict:
     everything downstream reads the pinned columns here. A missing row or a row
     owned by another user is a 404 (never leak existence).
     """
-    task = _maybe_single(
+    task = maybe_single(
         supabase.table("study_tasks")
         .select("id,user_id,exam_id,exam_phase_id,subject_id,topic_id,launch_context")
         .eq("id", str(study_task_id))
