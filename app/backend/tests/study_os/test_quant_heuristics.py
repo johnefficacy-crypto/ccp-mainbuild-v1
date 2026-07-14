@@ -1,9 +1,10 @@
 """GQR-Q7 — quant heuristic authority: verified-only reads + review lifecycle.
 
 The learner-feedback read must expose a heuristic only when BOTH its question
-link and the heuristic row are verified (and the heuristic is active) — defense
-in depth. The review RPC wrapper must honour the transition matrix, CAS, and the
-verified→needs_correction notes gate.
+link and the heuristic row are verified (and the heuristic is active), and the
+linked question scope matches the heuristic scope — defense in depth. The review
+RPC wrapper must honour the transition matrix, CAS, and the verified→needs_correction
+notes gate.
 """
 from __future__ import annotations
 
@@ -25,10 +26,19 @@ def _heuristic(hid, *, status="verified", active=True, name="H", topic="t1", mic
     }
 
 
-def _link(qid, hid, *, status="verified", relevance="primary"):
+def _link(
+    qid,
+    hid,
+    *,
+    status="verified",
+    relevance="primary",
+    topic="t1",
+    micro=None,
+):
     return {
         "id": f"lnk-{hid}", "question_id": qid, "heuristic_id": hid,
         "relevance": relevance, "reviewer_status": status,
+        "question": {"topic_id": topic, "microtopic_id": micro},
     }
 
 
@@ -43,8 +53,8 @@ def test_returns_only_double_verified_active():
         ],
         "quant_question_heuristics": [
             _link("q1", "h-ok", status="verified", relevance="primary"),
-            _link("q1", "h-pending", status="verified", relevance="primary"),   # link ok, heuristic pending
-            _link("q1", "h-inactive", status="verified", relevance="primary"),  # link ok, heuristic inactive
+            _link("q1", "h-pending", status="verified", relevance="primary"),
+            _link("q1", "h-inactive", status="verified", relevance="primary"),
         ],
     })
     out = qh.heuristics_for_question(sb, "q1")
@@ -54,7 +64,17 @@ def test_returns_only_double_verified_active():
 def test_unverified_link_excluded_even_if_heuristic_verified():
     sb = SBStub({
         "quant_heuristics": [_heuristic("h-ok", status="verified")],
-        "quant_question_heuristics": [_link("q1", "h-ok", status="pending")],  # link not verified
+        "quant_question_heuristics": [_link("q1", "h-ok", status="pending")],
+    })
+    assert qh.heuristics_for_question(sb, "q1") == []
+
+
+def test_scope_mismatch_excluded_even_if_both_rows_verified():
+    sb = SBStub({
+        "quant_heuristics": [_heuristic("h-ok", status="verified", topic="quant-topic")],
+        "quant_question_heuristics": [
+            _link("q1", "h-ok", status="verified", topic="reasoning-topic")
+        ],
     })
     assert qh.heuristics_for_question(sb, "q1") == []
 
@@ -90,12 +110,12 @@ def test_list_topic_verified_active_only():
             _heuristic("h1", status="verified", active=True, topic="t1", name="Z"),
             _heuristic("h2", status="pending", active=True, topic="t1"),
             _heuristic("h3", status="verified", active=False, topic="t1"),
-            _heuristic("h4", status="verified", active=True, topic="t2"),  # other topic
+            _heuristic("h4", status="verified", active=True, topic="t2"),
             _heuristic("h5", status="verified", active=True, topic="t1", name="A"),
         ],
     })
     out = qh.list_verified_heuristics_for_topic(sb, topic_id="t1")
-    assert [h["id"] for h in out] == ["h5", "h1"]  # verified+active in t1, name-sorted
+    assert [h["id"] for h in out] == ["h5", "h1"]
 
 
 def test_list_requires_a_scope():
@@ -122,7 +142,6 @@ def test_review_pending_to_verified_ok():
     assert res["ok"] is True and res["new_status"] == "verified"
     assert sb.db["quant_heuristics"][0]["reviewer_status"] == "verified"
     assert len(sb.db["admin_audit_logs"]) == 1
-    # The audit row persists the mandatory reason.
     assert sb.db["admin_audit_logs"][0]["notes"] == "clear shortcut, verified"
 
 
@@ -147,8 +166,6 @@ def test_review_stale_expected_status_raises():
 
 
 def test_review_stale_content_token_raises():
-    # Status matches but the content-revision token is stale → 409 (reviewer must
-    # not verify a revision they did not read).
     sb = _review_db("pending")
     with pytest.raises(RuntimeError, match="concurrent_modification"):
         qh.review_heuristic(
@@ -176,7 +193,6 @@ def test_review_reopen_verified_requires_notes():
             new_status="needs_correction", reviewer_notes="  ", reason="reopening for correction",
             actor_user_id="admin-1", actor_email="a@x",
         )
-    # with a real note it succeeds
     res = qh.review_heuristic(
         sb, heuristic_id="h1", expected_status="verified", expected_updated_at=_TOKEN,
         new_status="needs_correction", reviewer_notes="ambiguous applicability rule",
