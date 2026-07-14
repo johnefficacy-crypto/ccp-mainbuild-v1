@@ -101,14 +101,19 @@ def _sort_key(s: dict) -> tuple:
 
 
 def strategies_for_questions(
-    supabase: Any, question_ids: list[str]
+    supabase: Any, question_ids: list[str], *, strict: bool = False
 ) -> dict[str, list[dict]]:
     """Return ``{question_id: [normalized strategy DTO, …]}`` for every requested
     question, aggregated across all subject sources.
 
     Every requested id is present with at least ``[]``. Deterministic ordering
-    (relevance → name → id). Each subject source is read fail-soft: an error in
-    one source contributes nothing rather than breaking the review response.
+    (relevance → name → id).
+
+    ``strict=False`` (default, the mock-review consumer, contract §11.7): each
+    subject source is fail-soft — an error in one source contributes nothing
+    rather than breaking the review response. ``strict=True`` (the standalone
+    Improvement Lab feed): a subject-source read failure PROPAGATES so a
+    strategy-table outage surfaces as an error, not a silently-empty feed.
     """
     ids = [q for q in dict.fromkeys(question_ids or []) if q]
     out: dict[str, list[dict]] = {q: [] for q in ids}
@@ -116,21 +121,27 @@ def strategies_for_questions(
         return out
 
     # ── Quant source (batched, verified-only) ───────────────────────────────
-    try:
-        quant = quant_heuristics.heuristics_for_questions(supabase, ids)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("solution_strategies quant source failed err=%r", exc)
-        quant = {}
+    if strict:
+        quant = quant_heuristics.heuristics_for_questions(supabase, ids, strict=True)
+    else:
+        try:
+            quant = quant_heuristics.heuristics_for_questions(supabase, ids)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("solution_strategies quant source failed err=%r", exc)
+            quant = {}
     for qid, rows in (quant or {}).items():
         if qid in out:
             out[qid].extend(_project_quant(h) for h in rows)
 
     # ── Reasoning source (batched, verified-only) — GQR-S4 ───────────────────
-    try:
-        reasoning = reasoning_strategies.strategies_for_questions(supabase, ids)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("solution_strategies reasoning source failed err=%r", exc)
-        reasoning = {}
+    if strict:
+        reasoning = reasoning_strategies.strategies_for_questions(supabase, ids, strict=True)
+    else:
+        try:
+            reasoning = reasoning_strategies.strategies_for_questions(supabase, ids)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("solution_strategies reasoning source failed err=%r", exc)
+            reasoning = {}
     for qid, rows in (reasoning or {}).items():
         if qid in out:
             out[qid].extend(_project_reasoning(s) for s in rows)

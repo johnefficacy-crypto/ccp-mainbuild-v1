@@ -39,7 +39,7 @@ logger = logging.getLogger("career_copilot.study_os.improvement_lab")
 
 # Bounded reads (contract §10.3 step 1-2, §11.3) — no unbounded scan, no full dump.
 _MAX_ATTEMPTS = 30
-_MAX_RESPONSES = 8000
+_PER_ATTEMPT_RESPONSES = 1000
 _MAX_QUESTIONS = 500
 _MAX_ITEMS = 50
 _MAX_SOURCE_QUESTIONS = 5
@@ -58,7 +58,9 @@ def build_feed(supabase: Any, user_id: str | None, subject_family: str) -> list[
         return []
 
     # 1. Recent SUBMITTED attempts owned by the caller — newest first, bounded.
-    #    A read failure propagates (see module docstring / checkpost #999 F1).
+    #    A read failure propagates (see module docstring / checkpost #999 F1). The
+    #    order is stabilized with an id tie-break so equal submitted_at is
+    #    deterministic (checkpost #999 F2).
     attempts = (
         supabase.table("mock_attempts")
         .select("id,submitted_at")
@@ -70,58 +72,67 @@ def build_feed(supabase: Any, user_id: str | None, subject_family: str) -> list[
         .data
         or []
     )
-    submitted_by_attempt = {
-        a["id"]: a.get("submitted_at") for a in attempts if isinstance(a, dict) and a.get("id")
-    }
-    if not submitted_by_attempt:
+    ordered_attempts = sorted(
+        (a for a in attempts if isinstance(a, dict) and a.get("id")),
+        key=lambda a: ((a.get("submitted_at") or ""), str(a.get("id"))),
+        reverse=True,
+    )
+    if not ordered_attempts:
         return []
 
-    # 2. Responses across those attempts (bounded), for per-question evidence.
-    responses = (
-        supabase.table("mock_attempt_responses")
-        .select("attempt_id,question_id,is_correct")
-        .in_("attempt_id", list(submitted_by_attempt))
-        .limit(_MAX_RESPONSES)
-        .execute()
-        .data
-        or []
-    )
-    if len(responses) >= _MAX_RESPONSES:
-        # No silent cap: if the response window is saturated, say so.
-        logger.warning(
-            "improvement_lab response cap hit user=%s cap=%s — window may be partial",
-            user_id, _MAX_RESPONSES,
-        )
-
+    # 2. Responses fetched PER ATTEMPT, walking the ordered recent attempts — so the
+    #    bounded question window is genuinely the most-recent questions, not an
+    #    arbitrary slice a single unordered `.in_(...).limit()` would truncate
+    #    (checkpost #999 F2). Bounded: ≤ _MAX_ATTEMPTS reads, each capped. Evidence
+    #    aggregates across every attempt a question appears in; the recency window
+    #    is selected afterwards. A read failure propagates (F1).
     q_ev: dict[str, dict] = {}
-    for r in responses:
-        if not isinstance(r, dict):
-            continue
-        qid = r.get("question_id")
-        if not qid:
-            continue
-        ev = q_ev.setdefault(qid, {"seen": 0, "wrong": 0, "correct": 0, "last_seen_at": None})
-        ev["seen"] += 1
-        if r.get("is_correct") is True:
-            ev["correct"] += 1
-        elif r.get("is_correct") is False:
-            ev["wrong"] += 1
-        seen_at = submitted_by_attempt.get(r.get("attempt_id"))
-        if seen_at and (ev["last_seen_at"] is None or seen_at > ev["last_seen_at"]):
-            ev["last_seen_at"] = seen_at
+    for att in ordered_attempts:
+        aid = att["id"]
+        seen_at = att.get("submitted_at")
+        rows = (
+            supabase.table("mock_attempt_responses")
+            .select("question_id,is_correct")
+            .eq("attempt_id", aid)
+            .limit(_PER_ATTEMPT_RESPONSES)
+            .execute()
+            .data
+            or []
+        )
+        if len(rows) >= _PER_ATTEMPT_RESPONSES:
+            logger.warning(
+                "improvement_lab per-attempt response cap hit user=%s attempt=%s cap=%s",
+                user_id, aid, _PER_ATTEMPT_RESPONSES,
+            )
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            qid = r.get("question_id")
+            if not qid:
+                continue
+            ev = q_ev.setdefault(qid, {"seen": 0, "wrong": 0, "correct": 0, "last_seen_at": None})
+            ev["seen"] += 1
+            if r.get("is_correct") is True:
+                ev["correct"] += 1
+            elif r.get("is_correct") is False:
+                ev["wrong"] += 1
+            if seen_at and (ev["last_seen_at"] is None or seen_at > ev["last_seen_at"]):
+                ev["last_seen_at"] = seen_at
     if not q_ev:
         return []
 
     # DETERMINISTIC recent-first question window (checkpost #999 F2): the bounded
-    # set is the most-recently-seen questions, tie-broken by id — never an
-    # arbitrary database row order.
+    # set is the most-recently-seen questions, tie-broken by id — never arbitrary
+    # database row order, and stable regardless of attempt storage/input order.
     ordered_q = sorted(q_ev)  # id asc (stable tie-break)
     ordered_q.sort(key=lambda qid: q_ev[qid]["last_seen_at"] or "", reverse=True)  # recent first
     question_ids = ordered_q[:_MAX_QUESTIONS]
 
     # 3. Verified-only LIVE strategies for that window, via the shared aggregator
-    #    (governance stripped by construction; the aggregator is per-source fail-soft).
-    by_q = solution_strategies.strategies_for_questions(supabase, question_ids)
+    #    in STRICT mode (checkpost #999 F1): a strategy/link read failure propagates
+    #    so an outage surfaces as an error, not a silently-empty feed. Governance is
+    #    still stripped by construction in the projector.
+    by_q = solution_strategies.strategies_for_questions(supabase, question_ids, strict=True)
 
     # 4/5. Aggregate evidence per strategy of the requested subject.
     acc: dict[str, dict] = {}

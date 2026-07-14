@@ -239,6 +239,46 @@ def test_feed_is_deterministic_under_reordered_responses():
     assert [s["id"] for s in a] == [s["id"] for s in b]
 
 
+def test_feed_window_is_recency_bounded_older_excluded(monkeypatch):
+    # Saturated window keeps the NEWEST-seen questions and drops older ones,
+    # regardless of attempt storage/input order (checkpost #999 F2 overflow).
+    monkeypatch.setattr(il, "_MAX_QUESTIONS", 1)
+
+    def _sb(attempt_rows):
+        return SBStub(_empty_sources(
+            mock_attempts=attempt_rows,
+            mock_attempt_responses=[_resp("a-old", "q-old", False), _resp("a-new", "q-new", False)],
+            quant_question_heuristics=[_qlink("q-old", "h-old"), _qlink("q-new", "h-new")],
+            quant_heuristics=[_qheur("h-old", name="Old"), _qheur("h-new", name="New")],
+        ))
+
+    newest = [_att("a-old", "2026-07-01T00:00:00Z"), _att("a-new", "2026-07-20T00:00:00Z")]
+    assert [s["id"] for s in il.build_feed(_sb(newest), "u-1", "quant")] == ["h-new"]
+    # Reversed attempt input order → same recency-selected window.
+    assert [s["id"] for s in il.build_feed(_sb(list(reversed(newest))), "u-1", "quant")] == ["h-new"]
+
+
+def test_feed_strategy_read_failure_propagates_not_disguised_as_empty():
+    # A strategy/link table outage must surface (checkpost #999 F1 follow-up), NOT
+    # be masked as an empty feed — the aggregator is called in strict mode.
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        mock_attempt_responses=[_resp("a1", "q1", False)],
+        quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
+    ))
+    orig = sb.table
+
+    def _boom(name):
+        if name == "quant_question_heuristics":
+            raise RuntimeError("strategy table down")
+        return orig(name)
+
+    sb.table = _boom  # type: ignore[assignment]
+    import pytest
+    with pytest.raises(RuntimeError):
+        il.build_feed(sb, "u-1", "quant")
+
+
 # ── endpoint wiring ───────────────────────────────────────────────────────────
 
 def _client(sb, *, user_id="u-1"):
@@ -286,3 +326,20 @@ def test_endpoint_maps_a_feed_read_failure_to_non_2xx():
     sb.table = _boom  # type: ignore[assignment]
     r = _client(sb).get("/api/study/improvement-lab/quant")
     assert r.status_code == 502, r.text
+
+
+def test_endpoint_maps_a_strategy_read_failure_to_non_2xx():
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        mock_attempt_responses=[_resp("a1", "q1", False)],
+        quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
+    ))
+    orig = sb.table
+
+    def _boom(name):
+        if name == "quant_heuristics":
+            raise RuntimeError("strategy table down")
+        return orig(name)
+
+    sb.table = _boom  # type: ignore[assignment]
+    assert _client(sb).get("/api/study/improvement-lab/quant").status_code == 502
