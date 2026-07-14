@@ -97,10 +97,10 @@ def _resolve_cutoff_date(rule: dict[str, Any], cycle: dict[str, Any] | None) -> 
 
     Returns ``None`` when the basis is absent/unrecognised, a ``fixed_date`` rule
     carries no date, or a ``cycle_notification`` rule has no authoritative cycle
-    source (``exam_cycles`` has no trust gate yet — see the Lane R §4 spec, so a
-    cycle is only used when the caller passes one it vouches for). A ``None`` here
-    tells the evaluator to leave the age rule unevaluated so the cycle verdict
-    preserves ``unknown`` rather than measuring against ``date.today()``.
+    (the caller passes only migration-261 ``verified``, current ``exam_cycles`` it
+    vouches for). A ``None`` here tells the evaluator to leave the age rule
+    unevaluated so the cycle verdict preserves ``unknown`` rather than measuring
+    against ``date.today()``.
     """
     basis = _normalize_text(rule.get("cutoff_date_basis"))
     if basis == "fixed_date":

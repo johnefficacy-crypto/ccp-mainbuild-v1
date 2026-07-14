@@ -374,3 +374,35 @@ def test_summarize_cycle_band_is_none_without_cycle_rules():
     invalidate_eligibility_rules_cache()
     item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
     assert item["cycle"] is None
+
+
+def _sebi_band(sb):
+    out = summarize_user_eligibility(sb, "u1")
+    item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+    return item["cycle"]
+
+
+def test_summarize_reads_cycles_fresh_no_stale_trust():
+    # Trust-freshness (P0, migration-261 fail-closed): verified cycles are read
+    # FRESH on every summary and never cached, so demoting or retiring a cycle is
+    # reflected on the very next call — a demoted/cancelled cycle can never stay
+    # aspirant-trusted for a TTL window. Guards against re-introducing a cache
+    # that would keep a stale verified cycle in the Compass current-cycle band.
+    world = _world_with_cycle()  # verified + open → band present
+    sb = SBStub(world)
+
+    invalidate_eligibility_rules_cache()
+    band = _sebi_band(sb)
+    assert band is not None and band["cycles"], "verified current cycle should surface"
+
+    # Demote the SAME exam_cycles row (as a CMS/registry writer would) — WITHOUT
+    # clearing any cache. A fresh read must drop it immediately.
+    world["exam_cycles"][0]["reviewer_status"] = "draft"
+    assert _sebi_band(sb) is None, "demoted cycle must not stay trusted"
+
+    # Re-verify but retire to a terminal operational status → still dropped
+    # (verified-but-historical is not current-cycle eligibility).
+    world["exam_cycles"][0]["reviewer_status"] = "verified"
+    world["exam_cycles"][0]["status"] = "cancelled"
+    assert _sebi_band(sb) is None, "retired cycle must not stay trusted"
+    invalidate_eligibility_rules_cache()
