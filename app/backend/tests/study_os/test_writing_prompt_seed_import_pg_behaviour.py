@@ -175,6 +175,15 @@ def _count(where: str = "TRUE") -> int:
         f"SELECT count(*) FROM writing_prompts WHERE subject_id='{_ENGLISH_ID}' AND {where};"))
 
 
+@pytest.fixture(scope="module")
+def first_import(_apply) -> dict:
+    """Perform the FIRST import of every batch exactly once and return the
+    per-file (created, updated, unchanged) result. Both the first-import and the
+    idempotency test depend on this, so neither relies on pytest function order:
+    whichever runs first triggers the single import against the module DB."""
+    return {fname: _import(_load(fname)) for fname, _ in _BATCHES}
+
+
 def test_seed_files_are_committed_and_sized_as_contracted():
     # Guards the round-trip below against a silently truncated batch file.
     for fname, want in _BATCHES:
@@ -183,11 +192,11 @@ def test_seed_files_are_committed_and_sized_as_contracted():
     assert sum(w for _, w in _BATCHES) == _TOTAL
 
 
-def test_full_import_lands_270_pending_inactive():
+def test_full_import_lands_270_pending_inactive(first_import):
     # First import of every batch: all created, per the contracted counts.
     created_total = 0
     for fname, want in _BATCHES:
-        c, u, n = _import(_load(fname))
+        c, u, n = first_import[fname]
         assert (c, u, n) == (want, 0, 0), f"{fname}: expected {want} created, got {(c, u, n)}"
         created_total += c
     assert created_total == _TOTAL
@@ -204,10 +213,10 @@ def test_full_import_lands_270_pending_inactive():
         f"WHERE subject_id='{_ENGLISH_ID}';")) == _TOTAL, "external_key must be unique per row"
 
 
-def test_reimport_is_idempotent():
-    # Depends on the first import above (module-scoped DB, ordered file). Re-running
-    # the identical files resolves every row to `unchanged`: no create, no update,
-    # no duplicate — still 270 pending/inactive.
+def test_reimport_is_idempotent(first_import):
+    # `first_import` guarantees the first import ran (fixture, not function order).
+    # Re-running the identical files resolves every row to `unchanged`: no create,
+    # no update, no duplicate — still 270 pending/inactive.
     for fname, want in _BATCHES:
         c, u, n = _import(_load(fname))
         assert (c, u, n) == (0, 0, want), f"{fname}: re-import must be all-unchanged, got {(c, u, n)}"
