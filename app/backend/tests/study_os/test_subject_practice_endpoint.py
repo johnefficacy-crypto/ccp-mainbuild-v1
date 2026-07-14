@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app.api import subject_practice
 from app.core.auth import get_current_user
+from app.study_os.subject_runtime_policy import CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID
 from tests.persona_questions._stub import SBStub
 
 _EXAM = "44444444-4444-4444-4444-444444444444"
@@ -141,6 +142,104 @@ def test_english_writing_rejected_for_quant_family():
     resp = _client(SBStub(_seed())).post(
         f"/api/study/subjects/{_S_QUANT}/practice/start",
         json={"mode": "english_writing"},
+    )
+    assert resp.status_code == 422
+    assert "not available for this subject" in resp.json()["detail"].lower()
+
+
+def test_weekly_current_affairs_launch_routes_to_ca_attempt(monkeypatch):
+    # GQR-G5: a GA subject's weekly_current_affairs launch is bundle-driven (no
+    # topic_id, no PYQ engine). ``ready``/``reused`` navigate into the CA attempt shell.
+    monkeypatch.setattr(
+        subject_practice, "start_weekly_current_affairs_attempt",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "ca-att-1", "question_count": 5},
+    )
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "kind": "current_affairs",
+        "outcome": "ready",
+        "route": "/app/study/current-affairs/attempts/ca-att-1",
+    }
+
+
+def test_weekly_current_affairs_resume_routes_to_same_attempt(monkeypatch):
+    monkeypatch.setattr(
+        subject_practice, "start_weekly_current_affairs_attempt",
+        lambda *a, **k: {"outcome": "reused", "attempt_id": "ca-att-1"},
+    )
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["outcome"] == "reused"
+    assert resp.json()["route"] == "/app/study/current-affairs/attempts/ca-att-1"
+
+
+def test_weekly_current_affairs_no_bundle_returns_outcome_not_route(monkeypatch):
+    # no_bundle / empty_bundle / bundle_degraded surface as an outcome (no route) so the
+    # hub renders a calm inline note rather than a hard error/toast.
+    for state in ("no_bundle", "empty_bundle", "bundle_degraded"):
+        monkeypatch.setattr(
+            subject_practice, "start_weekly_current_affairs_attempt",
+            lambda *a, _s=state, **k: {"outcome": _s},
+        )
+        resp = _client(SBStub(_seed())).post(
+            f"/api/study/subjects/{CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID}/practice/start",
+            json={"mode": "weekly_current_affairs"},
+        )
+        assert resp.status_code == 200, (state, resp.json())
+        body = resp.json()
+        assert body == {"kind": "current_affairs", "outcome": state}
+        assert "route" not in body
+
+
+def test_weekly_current_affairs_already_submitted_is_outcome(monkeypatch):
+    # A finished cycle raises attempt_already_submitted (ValueError) — surfaced as an
+    # outcome, never a 500.
+    def _raise(*a, **k):
+        raise ValueError("attempt_already_submitted")
+
+    monkeypatch.setattr(subject_practice, "start_weekly_current_affairs_attempt", _raise)
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID}/practice/start",
+        json={"mode": "weekly_current_affairs"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"kind": "current_affairs", "outcome": "already_submitted"}
+
+
+def test_weekly_current_affairs_integrity_error_is_409_not_masked(monkeypatch):
+    # An authority race / corrupted freeze (bundle_set_mismatch, snapshot_*_mismatch)
+    # surfaces from the service as a ValueError. It must NOT be masked as a 200
+    # "unavailable" success — it stays observable as a 409 conflict.
+    for token in ("bundle_set_mismatch", "snapshot_answer_mismatch", "snapshot_options_mismatch"):
+        def _raise(*a, _t=token, **k):
+            raise ValueError(_t)
+
+        monkeypatch.setattr(subject_practice, "start_weekly_current_affairs_attempt", _raise)
+        resp = _client(SBStub(_seed())).post(
+            f"/api/study/subjects/{CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID}/practice/start",
+            json={"mode": "weekly_current_affairs"},
+        )
+        assert resp.status_code == 409, (token, resp.json())
+        # Structured code so the hub can tell integrity conflicts apart from an expected
+        # empty-pool 409 and surface them as a real error, not calm availability.
+        detail = resp.json()["detail"]
+        assert detail["code"] == "ca_integrity_conflict"
+        assert token in detail["message"]
+
+
+def test_weekly_current_affairs_rejected_for_non_ga_family():
+    # Family gate: weekly_current_affairs is GA-only. Posting it to a Quant subject is
+    # rejected before any handler runs.
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_QUANT}/practice/start",
+        json={"mode": "weekly_current_affairs"},
     )
     assert resp.status_code == 422
     assert "not available for this subject" in resp.json()["detail"].lower()

@@ -20,6 +20,7 @@ const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
 const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
+const CurrentAffairsAttemptShell = lazy(() => import("../pages/study/CurrentAffairsAttemptShell"));
 const ErrorLab = lazy(() => import("../pages/study/ErrorLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
@@ -97,6 +98,15 @@ export const appRouteElements = (
             RouteErrorBoundary per the design lock. Entered via planner tasks; not
             an attempt-shell route; absent from the sidebar (no-new-surface rule). */}
         <Route path="practice/english/:sessionId" element={<EnglishPracticeShell />} />
+        {/* GA weekly current-affairs learner attempt (GQR-G5): mounted UNDER StudyShell
+            + inside RouteErrorBoundary like the EWP-3 route. Entered via the Subject
+            Practice Hub weekly_current_affairs launch; absent from the sidebar
+            (no-new-surface rule). Uses its OWN current_affairs_attempts tables, never
+            mock_attempts, so it is NOT an AttemptShellRouter route. */}
+        <Route
+          path="current-affairs/attempts/:attemptId"
+          element={<CurrentAffairsAttemptShell />}
+        />
         {/* Error Lab (EWP-4): recurring writing issues grouped by microtopic.
             Mounted UNDER StudyShell + inside RouteErrorBoundary like the EWP-3
             route; absent from the sidebar (no-new-surface rule). */}

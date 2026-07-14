@@ -41,7 +41,9 @@ def test_general_awareness_policy_fences():
     assert ga.mastery_enabled is False
     assert ga.correction_enabled is False
     assert ga.retry_policy == "ephemeral_ca"
-    assert ga.wired_runtime_modes == ()  # nothing runnable yet; no PYQ leak
+    # GQR-G5: weekly current-affairs is the only wired GA runtime — no PYQ leak, no
+    # topic-driven mode; monthly stays declared-but-unwired.
+    assert ga.wired_runtime_modes == ("weekly_current_affairs",)
 
 
 # ── Inventory resolver is the authority (finding 1) ────────────────────────
@@ -89,11 +91,18 @@ def test_quant_family_emits_only_pyq_no_branch_needed():
 def test_general_awareness_subject_gets_no_pyq_mode_even_with_topics():
     # Proves the policy gates the runtime — GA is fenced off from the generic PYQ path
     # although topics are projected. No English/PYQ branch in subjects.py could do this.
+    # GQR-G5: GA surfaces the bundle-driven weekly current-affairs launch, and ONLY that
+    # — never a topic_pyq/english_writing mode, even with eng + topics present.
     modes = srp.resolve_subject_modes(
         slug="general-awareness", subject_group="general-awareness",
         ctx=_ctx(eng=True, topics=["t-1", "t-2"]),
     )
-    assert modes == []
+    assert [m["type"] for m in modes] == ["weekly_current_affairs"]
+    ca = modes[0]
+    assert ca["route_type"] == "server_launch"
+    assert ca["launch_mode"] == "weekly_current_affairs"
+    assert ca["target_topic_id"] is None  # bundle-driven, never a projected topic
+    assert srp.is_wired_mode("weekly_current_affairs") is True
 
 
 def test_unknown_subject_falls_back_to_generic_pyq():

@@ -27,10 +27,16 @@ jest.mock("react-router-dom", () => {
   return { __esModule: true, ...actual, useNavigate: () => mockNavigate };
 });
 
-// Radar chart is heavy (recharts) and irrelevant to this page's behavior.
+// Radar chart is heavy (recharts) and irrelevant to this page's behavior. Capture its
+// `data` prop so we can assert what the mastery radar is (and is not) fed.
+const radarData = [];
 jest.mock("./components/reports", () => ({
   __esModule: true,
-  TopicRadarChart: () => null,
+  TopicRadarChart: ({ data }) => {
+    radarData.length = 0;
+    (data || []).forEach((d) => radarData.push(d));
+    return null;
+  },
 }));
 
 import ToastProvider from "../../shared/ui/ToastProvider";
@@ -82,6 +88,27 @@ const SUBJECTS = [
     weak_count: 5,
     locked_topics: 12,
     practice: { available: false, modes: [] },
+  },
+  {
+    subject_id: "00000000-0000-0000-0000-0000000000ca",
+    subject: "Current Affairs",
+    kind: "current_affairs",
+    progress: 0,
+    trend: "flat",
+    weak_count: 0,
+    locked_topics: 0,
+    practice: {
+      available: true,
+      modes: [
+        {
+          type: "weekly_current_affairs",
+          label: "Weekly current affairs",
+          target_topic_id: null,
+          route_type: "server_launch",
+          launch_mode: "weekly_current_affairs",
+        },
+      ],
+    },
   },
 ];
 
@@ -138,6 +165,86 @@ test("a subject with practice.available=false shows the calm no-practice copy", 
   expect(screen.getByTestId("practice-sub-quant-none").textContent).toMatch(
     /No verified practice set yet/,
   );
+});
+
+const CA_ID = "00000000-0000-0000-0000-0000000000ca";
+
+test("current-affairs card shows a cadence subline, not a mastery line", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  renderPage();
+
+  await screen.findByTestId(`subject-card-${CA_ID}`);
+  const card = screen.getByTestId(`subject-card-${CA_ID}`);
+  expect(card.textContent).toMatch(/current-affairs only, no mastery/);
+  expect(card.textContent).not.toMatch(/% mastery/);
+});
+
+test("weekly current-affairs launch navigates to the returned CA attempt route", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  mockPost.mockResolvedValue({
+    kind: "current_affairs",
+    outcome: "ready",
+    route: "/app/study/current-affairs/attempts/ca-1",
+  });
+  renderPage();
+
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
+  fireEvent.click(btn);
+
+  await waitFor(() =>
+    expect(mockPost).toHaveBeenCalledWith(
+      `/api/study/subjects/${CA_ID}/practice/start`,
+      { mode: "weekly_current_affairs", topic_id: null },
+    ),
+  );
+  await waitFor(() =>
+    expect(mockNavigate).toHaveBeenCalledWith("/app/study/current-affairs/attempts/ca-1"),
+  );
+});
+
+test("weekly current-affairs no_bundle outcome shows a calm note and does not navigate", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  // no_bundle is returned as a 200 body with an outcome and NO route.
+  mockPost.mockResolvedValue({ kind: "current_affairs", outcome: "no_bundle" });
+  renderPage();
+
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
+  fireEvent.click(btn);
+
+  await waitFor(() =>
+    expect(screen.getByTestId(`practice-${CA_ID}-notice`).textContent).toMatch(
+      /No current-affairs set is published/,
+    ),
+  );
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+test("a CA integrity-conflict 409 surfaces an error, not the calm no-practice note", async () => {
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  const err = new Error("bundle_set_mismatch");
+  err.status = 409;
+  err.code = "ca_integrity_conflict";
+  mockPost.mockRejectedValue(err);
+  renderPage();
+
+  const btn = await screen.findByTestId(`practice-${CA_ID}-weekly_current_affairs`);
+  fireEvent.click(btn);
+
+  // Error toast fires (not the calm availability copy); no navigation, no calm note.
+  expect(await screen.findByText(/Couldn't start practice/i)).toBeTruthy();
+  expect(screen.queryByTestId(`practice-${CA_ID}-notice`)).toBeNull();
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+test("the mastery radar excludes the current-affairs card", async () => {
+  // The virtual CA card (progress:0) must never plot as a 0%-mastery subject.
+  mockGet.mockResolvedValue({ items: SUBJECTS, count: SUBJECTS.length });
+  renderPage();
+  await screen.findByTestId(`subject-card-${CA_ID}`);
+  await waitFor(() => expect(radarData.length).toBeGreaterThan(0));
+  expect(radarData.some((d) => d.topic === "Current Affairs")).toBe(false);
+  // Real mastery subjects still plot.
+  expect(radarData.some((d) => d.topic === "English")).toBe(true);
 });
 
 test("a 409 on launch shows an inline notice and does not navigate", async () => {

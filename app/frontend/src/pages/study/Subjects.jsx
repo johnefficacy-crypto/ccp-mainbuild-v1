@@ -13,6 +13,16 @@ const TREND_LABEL = { up: "↑ improving", down: "↓ declining", flat: "→ ste
 
 const NO_PRACTICE_COPY = "No verified practice set yet";
 
+// GA weekly current-affairs launch outcomes that have no runnable attempt this cycle.
+// The backend returns 200 with an `outcome` (and no `route`) rather than a hard error,
+// so the card shows a calm inline note instead of the generic error toast.
+const CA_STATE_COPY = {
+  no_bundle: "No current-affairs set is published for your exam yet. Check back soon.",
+  empty_bundle: "This week's current-affairs set has no questions yet.",
+  bundle_degraded: "This week's current-affairs set is being refreshed. Check back soon.",
+  already_submitted: "You've already completed this week's current-affairs practice.",
+};
+
 // A subject card: keeps the mastery summary line (progress / weak / topics +
 // trend) and, below it, renders the subject's practice modes. Server-launch
 // modes POST the launch endpoint through useApiAction and navigate to the
@@ -29,6 +39,9 @@ function SubjectPracticeCard({ subject }) {
   const subjectId = subject.subject_id || subject.subject;
   const practice = subject.practice || {};
   const modes = practice.available && Array.isArray(practice.modes) ? practice.modes : [];
+  // GA current-affairs is bundle-driven and has NO mastery (domain rule) — render a
+  // cadence subline instead of the mastery/weak/topics summary.
+  const isCurrentAffairs = subject.kind === "current_affairs";
 
   const launch = async (mode) => {
     if (busy) return;
@@ -42,7 +55,13 @@ function SubjectPracticeCard({ subject }) {
             topic_id: mode.target_topic_id ?? null,
           });
         } catch (e) {
-          if (e?.status === 409) return { noPractice: true };
+          // An expected empty-pool 409 (no eligible prompt / no verified PYQ set) is a
+          // calm "no practice" note. An integrity/authority conflict (CA bundle race or
+          // corrupted freeze) is NOT — let it surface as a real error toast, not
+          // availability copy.
+          if (e?.status === 409 && e?.code !== "ca_integrity_conflict") {
+            return { noPractice: true };
+          }
           throw e;
         }
       },
@@ -53,6 +72,12 @@ function SubjectPracticeCard({ subject }) {
         }
         if (out?.route) {
           navigate(out.route);
+          return;
+        }
+        // GA current-affairs: a non-route outcome (no_bundle/empty/degraded/…) maps to
+        // a specific calm note; any other routeless response falls back to the default.
+        if (out?.outcome && CA_STATE_COPY[out.outcome]) {
+          setPracticeError(CA_STATE_COPY[out.outcome]);
           return;
         }
         setPracticeError(`${NO_PRACTICE_COPY}.`);
@@ -66,12 +91,16 @@ function SubjectPracticeCard({ subject }) {
     <div className="rounded border p-3 text-left" data-testid={`subject-card-${subjectId}`}>
       <div className="flex items-center justify-between">
         <span className="font-medium">{subject.subject}</span>
-        <span className="text-xs text-slate-500">
-          {TREND_LABEL[subject.trend] || subject.trend}
-        </span>
+        {isCurrentAffairs ? null : (
+          <span className="text-xs text-slate-500">
+            {TREND_LABEL[subject.trend] || subject.trend}
+          </span>
+        )}
       </div>
       <div className="text-sm text-slate-600">
-        {subject.progress}% mastery · {subject.weak_count} weak · {subject.locked_topics} topics
+        {isCurrentAffairs
+          ? "Weekly practice · current-affairs only, no mastery"
+          : `${subject.progress}% mastery · ${subject.weak_count} weak · ${subject.locked_topics} topics`}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -127,6 +156,7 @@ SubjectPracticeCard.propTypes = {
   subject: PropTypes.shape({
     subject_id: PropTypes.string,
     subject: PropTypes.string,
+    kind: PropTypes.string,
     progress: PropTypes.number,
     trend: PropTypes.string,
     weak_count: PropTypes.number,
@@ -151,6 +181,9 @@ export default function Subjects() {
   const { items, status, refresh } = useApiCollection("/api/study/subjects");
 
   const radar = items
+    // GA current-affairs has no mastery (domain rule) — never plot it on the mastery
+    // radar, where progress:0 would misread as a 0%-mastery subject.
+    .filter((i) => i.kind !== "current_affairs")
     .slice(0, 10)
     .map((i) => ({ topic: i.subject || i.subject_id, mastery: i.progress || 0 }));
 
