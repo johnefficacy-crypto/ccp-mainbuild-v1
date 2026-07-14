@@ -271,7 +271,7 @@ _GRAMMAR = {
         ("She was used to walk to school every morning.", 4),
         ("I have seen that film yesterday.", 3),
         ("While he cooked, the phone was ringing twice.", 4),
-        ("Water boils at 100 degrees, everyone knew that even before it was discovered.", 5),
+        ("The teacher told us that water boiled at 100 degrees.", 5),
         ("He is having a car and a motorbike.", 3),
         ("No sooner had I left than it starts to rain.", 5),
         ("They were playing cricket since morning.", 4),

@@ -210,14 +210,12 @@
       "rationale": "The ongoing background action takes the past continuous 'was cooking', while the completed interrupting action takes the simple past 'rang'."
     },
     "ewp-seed-gram-025": {
-      "source_text": "Water boils at 100 degrees, everyone knew that even before it was discovered.",
+      "source_text": "The teacher told us that water boiled at 100 degrees.",
       "exercise_type": "sentence_correction",
       "error_type": "tense",
-      "reference_answer": "Water boils at 100 degrees, and everyone knew that even before it was discovered.",
-      "acceptable_variants": [
-        "Water boils at 100 degrees, something everyone knew even before it was discovered."
-      ],
-      "rationale": "A general scientific fact stays in the simple present 'boils' even in a past context; the original mismatch is resolved by keeping the fact in the present."
+      "reference_answer": "The teacher told us that water boils at 100 degrees.",
+      "acceptable_variants": [],
+      "rationale": "A universal/scientific truth stays in the simple present even after a past reporting verb, so the back-shifted 'boiled' must remain 'boils'."
     },
     "ewp-seed-gram-026": {
       "source_text": "He is having a car and a motorbike.",
