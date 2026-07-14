@@ -95,16 +95,23 @@ export function hasStreamLevelOpportunity(exam, examStatus) {
   return eligible.length > 0 || conditional.length > 0;
 }
 
-function streamNote(stream, status) {
+// `context` distinguishes the baseline band from the cycle band: an `unknown`
+// baseline stream genuinely lacks verified rules, but an `unknown` CYCLE stream
+// usually has verified rules whose cut-off couldn't be resolved — so it must not
+// claim "verified rules missing". A backend-supplied reason always wins.
+function streamNote(stream, status, context) {
   const missing = Array.isArray(stream.missing_fields) ? stream.missing_fields : [];
   const reason = Array.isArray(stream.reasons) && stream.reasons.length ? stream.reasons[0] : null;
   if (status === "conditional" && missing.length) return `add ${humanFieldList(missing)}`;
   if (status === "not_eligible" && reason) return reason;
-  if (status === "unknown") return "verified rules missing";
+  if (status === "unknown") {
+    if (reason) return reason;
+    return context === "cycle" ? "Unable to evaluate for this cycle" : "verified rules missing";
+  }
   return null;
 }
 
-function StreamGroup({ label, status, streams }) {
+function StreamGroup({ label, status, streams, context }) {
   if (!streams.length) return null;
   const tone = STATUS_TONE[status] || "outline";
   return (
@@ -112,7 +119,7 @@ function StreamGroup({ label, status, streams }) {
       <div className="num-mono uppercase text-[9.5px] tracking-[0.18em] text-clay-700">{label}</div>
       <ul className="space-y-1">
         {streams.map((s) => {
-          const note = streamNote(s, status);
+          const note = streamNote(s, status, context);
           return (
             <li
               key={streamKey(s)}
@@ -133,7 +140,11 @@ StreamGroup.propTypes = {
   label: PropTypes.string.isRequired,
   status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]).isRequired,
   streams: PropTypes.arrayOf(PropTypes.object).isRequired,
+  // "cycle" adjusts the unknown copy for the current-cycle band; omit for baseline.
+  context: PropTypes.oneOf(["cycle"]),
 };
+
+StreamGroup.defaultProps = { context: undefined };
 
 // A single verified current-cycle entry. Reads ONLY from the cycle payload —
 // never from the baseline streams/examStatus — and groups THIS cycle's streams
@@ -171,6 +182,9 @@ function CycleEntry({ cycle }) {
         )}
       </div>
 
+      {/* Rule-level provenance (from exam_cycle_stream_eligibility): attests the
+          displayed eligibility verdicts, distinct from the cycle notification
+          metadata above. Shown only when all displayed streams agree. */}
       <div className="text-[11.5px] text-clay-700 flex flex-wrap gap-x-3 gap-y-0.5">
         {cycle.source_url && (
           <a
@@ -180,10 +194,10 @@ function CycleEntry({ cycle }) {
             className="link-under text-clay-900 font-semibold"
             data-testid="cycle-source-link"
           >
-            Official notification
+            Official source
           </a>
         )}
-        {verified && <span data-testid="cycle-verified">Verified {verified}</span>}
+        {verified && <span data-testid="cycle-verified">Rules verified {verified}</span>}
       </div>
 
       {streams.length ? (
@@ -194,6 +208,7 @@ function CycleEntry({ cycle }) {
               label={g.label}
               status={g.status}
               streams={streams.filter((s) => s.status === g.status)}
+              context="cycle"
             />
           ))}
         </div>
@@ -351,7 +366,12 @@ ExamStreamBreakdown.propTypes = {
         cycle_id: PropTypes.string,
         cycle_name: PropTypes.string,
         year: PropTypes.number,
+        // Operational lifecycle state (expected/open/active); cycle metadata,
+        // distinct from the verdict `status` below.
+        cycle_status: PropTypes.string,
         notification_date: PropTypes.string,
+        // cutoff/source/verified are lifted to cycle level only when every
+        // displayed stream agrees (else null); per-stream values always carried.
         cutoff_date: PropTypes.string,
         source_url: PropTypes.string,
         verified_at: PropTypes.string,
@@ -364,6 +384,9 @@ ExamStreamBreakdown.propTypes = {
             status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]),
             reasons: PropTypes.arrayOf(PropTypes.string),
             missing_fields: PropTypes.arrayOf(PropTypes.string),
+            cutoff_date: PropTypes.string,
+            source_url: PropTypes.string,
+            verified_at: PropTypes.string,
           }),
         ),
       }),

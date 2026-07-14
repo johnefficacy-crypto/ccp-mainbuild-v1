@@ -169,28 +169,38 @@ def test_aggregate_cycle_status_prefers_best_then_unknown_over_not_eligible():
 
 _EXAM = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 _STREAM = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+_STREAM2 = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2"
 _CYCLE = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+
+# Rule-level provenance lives on exam_cycle_stream_eligibility (migration 248),
+# NOT on the exam_cycles row — the displayed "verified from source on date" claim
+# must attest the eligibility RULES, not the cycle metadata.
+_RULE_SOURCE = "https://sebi.gov.in/legal-eligibility.pdf"
+_RULE_VERIFIED_AT = "2025-02-10T00:00:00Z"
 
 
 def _world_with_cycle(
     cutoff_basis="fixed_date",
     cutoff_date="2025-01-01",
     *,
-    cycle_status="verified",
+    reviewer_status="verified",
+    operational_status="open",
     notification_date="2025-01-01",
+    rule_source_url=_RULE_SOURCE,
+    rule_verified_at=_RULE_VERIFIED_AT,
 ):
     return {
         "exams": [{"id": _EXAM, "slug": "sebi-grade-a", "name": "SEBI Grade A",
                    "is_active": True, "exam_family_id": None}],
         "exam_streams": [{"id": _STREAM, "exam_id": _EXAM, "stream_key": "legal",
                           "name": "Legal", "is_active": True}],
-        # The authoritative cycle: only reviewer_status='verified' feeds the band
-        # (migration 261 trust gate).
+        # The authoritative cycle: only reviewer_status='verified' AND an
+        # operational status (expected/open/active) feeds the band (migration 261).
         "exam_cycles": [{"id": _CYCLE, "exam_id": _EXAM, "cycle_name": "2025 Cycle",
                          "year": 2025, "notification_date": notification_date,
                          "source_url": "https://sebi.gov.in/notif.pdf",
                          "reviewed_at": "2025-02-01T00:00:00Z",
-                         "reviewer_status": cycle_status, "status": "open"}],
+                         "reviewer_status": reviewer_status, "status": operational_status}],
         "exam_eligibility_rules": [
             {"exam_id": _EXAM, "stream_id": None, "scope": "all",
              "rule_type": "education_min_level", "value_num": None,
@@ -200,11 +210,34 @@ def _world_with_cycle(
             {"exam_cycle_id": _CYCLE, "stream_id": _STREAM, "scope": "all",
              "rule_type": "age_max", "value_num": 30, "value_text": None, "value_json": None,
              "cutoff_date_basis": cutoff_basis, "cutoff_date": cutoff_date,
-             "is_knockout": True, "reviewer_status": "verified"},
+             "is_knockout": True, "reviewer_status": "verified",
+             "source_url": rule_source_url, "verified_at": rule_verified_at},
         ],
         "profiles": [{"id": "u1", "date_of_birth": _DOB, "nationality": "Indian"}],
         "aspirant_education": [{"user_id": "u1", "level": "graduation", "is_completed": True}],
     }
+
+
+def _world_two_streams(*, cutoffs, sources):
+    """Two streams under the same verified cycle, each with its OWN fixed-date age
+    rule and source — for the cycle-level unanimity checks (P1-2 / P1-3)."""
+    world = _world_with_cycle()
+    world["exam_streams"].append(
+        {"id": _STREAM2, "exam_id": _EXAM, "stream_key": "research",
+         "name": "Research", "is_active": True}
+    )
+    world["exam_cycle_stream_eligibility"] = [
+        {"exam_cycle_id": _CYCLE, "stream_id": sid, "scope": "all",
+         "rule_type": "age_max", "value_num": 60, "value_text": None, "value_json": None,
+         "cutoff_date_basis": "fixed_date", "cutoff_date": cd,
+         "is_knockout": True, "reviewer_status": "verified",
+         "source_url": src, "verified_at": _RULE_VERIFIED_AT}
+        for sid, cd, src in (
+            (_STREAM, cutoffs[0], sources[0]),
+            (_STREAM2, cutoffs[1], sources[1]),
+        )
+    ]
+    return world
 
 
 def test_summarize_attaches_cutoff_aware_cycle_band():
@@ -222,14 +255,19 @@ def test_summarize_attaches_cutoff_aware_cycle_band():
     cyc = band["cycles"][0]
     assert cyc["cycle_id"] == _CYCLE
     assert cyc["cycle_name"] == "2025 Cycle"
+    assert cyc["cycle_status"] == "open"  # operational status surfaced
     assert cyc["notification_date"] == "2025-01-01"
     assert cyc["cutoff_date"] == "2025-01-01"  # fixed_date cut-off
-    assert cyc["source_url"] == "https://sebi.gov.in/notif.pdf"
-    assert cyc["verified_at"] == "2025-02-01T00:00:00Z"
+    # Provenance attests the eligibility RULE, not the cycle metadata row.
+    assert cyc["source_url"] == _RULE_SOURCE
+    assert cyc["verified_at"] == _RULE_VERIFIED_AT
     assert cyc["status"] == "eligible"
     st = cyc["streams"][0]
     assert st["stream_id"] == _STREAM
     assert st["status"] == "eligible"
+    assert st["cutoff_date"] == "2025-01-01"
+    assert st["source_url"] == _RULE_SOURCE
+    assert st["verified_at"] == _RULE_VERIFIED_AT
 
 
 def test_summarize_cycle_notification_resolves_on_verified_cycle():
@@ -260,16 +298,72 @@ def test_summarize_cycle_notification_unknown_when_notification_missing():
     cyc = item["cycle"]["cycles"][0]
     assert cyc["status"] == "unknown"
     assert cyc["cutoff_date"] is None
+    # P2: the unknown carries a concrete unresolved-cut-off reason (never a false
+    # "verified rules missing").
+    st = cyc["streams"][0]
+    assert any("cut-off" in r.lower() for r in st["reasons"])
 
 
 def test_summarize_cycle_band_is_none_for_unverified_cycle():
     # Trust gate: a cycle rule whose exam_cycles row is NOT verified is dropped —
     # an unreviewed cycle is never shown, and baseline is never substituted.
     invalidate_eligibility_rules_cache()
-    out = summarize_user_eligibility(SBStub(_world_with_cycle(cycle_status="draft")), "u1")
+    out = summarize_user_eligibility(SBStub(_world_with_cycle(reviewer_status="draft")), "u1")
     invalidate_eligibility_rules_cache()
     item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
     assert item["cycle"] is None
+
+
+def test_summarize_cycle_band_excludes_non_current_cycle():
+    # P1: a verified but cancelled/closed/completed cycle is history, NOT
+    # current-cycle eligibility — it must not appear in the band.
+    for terminal in ("cancelled", "closed", "completed"):
+        invalidate_eligibility_rules_cache()
+        out = summarize_user_eligibility(
+            SBStub(_world_with_cycle(operational_status=terminal)), "u1"
+        )
+        invalidate_eligibility_rules_cache()
+        item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+        assert item["cycle"] is None, f"{terminal} cycle must be excluded"
+
+
+def test_summarize_cycle_cutoff_and_source_none_when_streams_disagree():
+    # P1: cycle-level cutoff/source are emitted ONLY when every displayed stream
+    # agrees; divergent per-stream provenance must NOT collapse to one value.
+    invalidate_eligibility_rules_cache()
+    out = summarize_user_eligibility(
+        SBStub(_world_two_streams(
+            cutoffs=("2025-01-01", "2025-06-01"),
+            sources=("https://sebi.gov.in/legal.pdf", "https://sebi.gov.in/research.pdf"),
+        )),
+        "u1",
+    )
+    invalidate_eligibility_rules_cache()
+    item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+    cyc = item["cycle"]["cycles"][0]
+    assert cyc["cutoff_date"] is None
+    assert cyc["source_url"] is None
+    per = {s["stream_id"]: s for s in cyc["streams"]}
+    assert per[_STREAM]["cutoff_date"] == "2025-01-01"
+    assert per[_STREAM2]["cutoff_date"] == "2025-06-01"
+    assert per[_STREAM]["source_url"] == "https://sebi.gov.in/legal.pdf"
+    assert per[_STREAM2]["source_url"] == "https://sebi.gov.in/research.pdf"
+
+
+def test_summarize_cycle_cutoff_and_source_unanimous_when_streams_agree():
+    invalidate_eligibility_rules_cache()
+    out = summarize_user_eligibility(
+        SBStub(_world_two_streams(
+            cutoffs=("2025-01-01", "2025-01-01"),
+            sources=("https://sebi.gov.in/one.pdf", "https://sebi.gov.in/one.pdf"),
+        )),
+        "u1",
+    )
+    invalidate_eligibility_rules_cache()
+    item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+    cyc = item["cycle"]["cycles"][0]
+    assert cyc["cutoff_date"] == "2025-01-01"
+    assert cyc["source_url"] == "https://sebi.gov.in/one.pdf"
 
 
 def test_summarize_cycle_band_is_none_without_cycle_rules():

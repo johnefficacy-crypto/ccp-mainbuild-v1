@@ -105,8 +105,10 @@ test("A2 — the cycle band renders name+year, notification/cut-off dates, sourc
   expect(link.getAttribute("href")).toBe("https://sebi.gov.in/notification.pdf");
   expect(link.getAttribute("rel")).toBe("noopener noreferrer");
   expect(link.getAttribute("target")).toBe("_blank");
-  expect(link.textContent).toMatch(/Official notification/i);
-  expect(scoped.getByTestId("cycle-verified").textContent).toMatch(/Verified 15 Mar 2026/);
+  // Provenance attests the eligibility RULES (from exam_cycle_stream_eligibility),
+  // labelled distinctly from the cycle notification metadata.
+  expect(link.textContent).toMatch(/Official source/i);
+  expect(scoped.getByTestId("cycle-verified").textContent).toMatch(/Rules verified 15 Mar 2026/);
 });
 
 test("A2 — each cycle's streams are grouped by all four statuses, independently of baseline", () => {
@@ -122,6 +124,46 @@ test("A2 — each cycle's streams are grouped by all four statuses, independentl
   expect(notEligible.textContent).toMatch(/Legal/);
   expect(notEligible.textContent).toMatch(/law degree/i); // reason surfaced
   expect(scoped.getByTestId("stream-group-unknown").textContent).toMatch(/IT/);
+});
+
+test("A2 — an unknown CYCLE stream never claims 'verified rules missing' (P2)", () => {
+  // The backend produces `unknown` for a verified cycle+rule whose cut-off can't
+  // be resolved (e.g. no notification_date) — verified rules ARE present, so the
+  // baseline copy would be factually wrong.
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cyclePayload()} />);
+  const unknownGroup = within(screen.getByTestId("cycle-entry-c1")).getByTestId("stream-group-unknown");
+  expect(unknownGroup.textContent).toMatch(/IT/);
+  expect(unknownGroup.textContent).not.toMatch(/verified rules missing/i);
+  expect(unknownGroup.textContent).toMatch(/Unable to evaluate for this cycle/i);
+});
+
+test("A2 — a cycle stream surfaces a backend-supplied unresolved-cut-off reason", () => {
+  const cycle = {
+    status: "unknown",
+    cycles: [
+      {
+        cycle_id: "cr",
+        cycle_name: "2026 Cycle",
+        year: 2026,
+        notification_date: null,
+        cutoff_date: null,
+        source_url: null,
+        verified_at: null,
+        status: "unknown",
+        streams: [
+          {
+            stream_id: "u1", stream_key: "general", name: "General", status: "unknown",
+            reasons: ["This cycle's cut-off date isn't published yet, so age can't be verified."],
+            missing_fields: [],
+          },
+        ],
+      },
+    ],
+  };
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cycle} />);
+  const unknownGroup = within(screen.getByTestId("cycle-entry-cr")).getByTestId("stream-group-unknown");
+  expect(unknownGroup.textContent).toMatch(/cut-off date isn't published/i);
+  expect(unknownGroup.textContent).not.toMatch(/verified rules missing/i);
 });
 
 test("A2 — cycle band never substitutes baseline eligibility for current-cycle eligibility", () => {

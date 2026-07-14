@@ -819,7 +819,8 @@ def _load_cycle_rules_by_stream(
                     supabase.table("exam_cycle_stream_eligibility")
                     .select(
                         "exam_cycle_id, stream_id, scope, rule_type, value_num, value_text, "
-                        "value_json, cutoff_date_basis, cutoff_date, is_knockout, reviewer_status"
+                        "value_json, cutoff_date_basis, cutoff_date, is_knockout, reviewer_status, "
+                        "source_url, verified_at"
                     )
                     .in_("stream_id", b)
                     .eq("reviewer_status", "verified")
@@ -837,16 +838,35 @@ def _load_cycle_rules_by_stream(
     return out
 
 
+def _unique_or_none(values: Any) -> Any:
+    """The single distinct value in ``values`` (an iterable), or ``None`` when it
+    is empty or the values disagree. Used to lift per-rule/per-stream provenance
+    to a cycle-level field only when unanimous — never a lossy first-wins pick."""
+    distinct = {v for v in values}
+    return next(iter(distinct)) if len(distinct) == 1 else None
+
+
+# A cycle is "current" only in an operational lifecycle state — matches the
+# planner / exam_target_window operational set (migration 210). A verified but
+# cancelled/closed/completed cycle is history, not current-cycle eligibility, so
+# it is excluded from the Compass current-cycle band.
+_CURRENT_CYCLE_STATUSES: tuple[str, ...] = ("expected", "open", "active")
+
+
 def _load_verified_cycles(
     supabase: Any, cycle_ids: list[Any]
 ) -> dict[str, dict[str, Any]]:
-    """Verified ``exam_cycles`` metadata keyed by id — the trust gate (migration
-    261) for the Compass cycle band.
+    """Verified, CURRENT ``exam_cycles`` metadata keyed by id — the trust gate
+    (migration 261) for the Compass current-cycle band.
 
-    Only ``reviewer_status='verified'`` cycles are surfaced to aspirants. A cycle
-    rule whose authoritative ``exam_cycles`` row is draft/reviewed/absent is
-    dropped by ``_cycle_band_for_exam`` so an unreviewed cycle is never shown as
-    current-cycle eligibility (and baseline is never substituted for it).
+    Two independent gates (migration 261 keeps them separate):
+      * ``reviewer_status='verified'`` — an unreviewed cycle is never surfaced;
+      * operational ``status`` in ``_CURRENT_CYCLE_STATUSES`` — a cancelled /
+        closed / completed cycle is history, not *current*-cycle eligibility.
+
+    A cycle rule whose authoritative ``exam_cycles`` row fails either gate (or is
+    absent) is dropped by ``_cycle_band_for_exam`` — an unreviewed or historical
+    cycle is never shown, and baseline is never substituted for it.
     """
     ids = list({cid for cid in cycle_ids if cid})
     if not ids:
@@ -858,11 +878,12 @@ def _load_verified_cycles(
                 lambda b=batch: (
                     supabase.table("exam_cycles")
                     .select(
-                        "id, cycle_name, year, notification_date, source_url, "
+                        "id, cycle_name, year, status, notification_date, source_url, "
                         "reviewed_at, reviewer_status"
                     )
                     .in_("id", b)
                     .eq("reviewer_status", "verified")
+                    .in_("status", list(_CURRENT_CYCLE_STATUSES))
                     .limit(_PER_BATCH_LIMIT)
                     .execute()
                     .data
@@ -893,15 +914,23 @@ def _cycle_band_for_exam(
     cycle is now vouched for, ``cycle_notification`` age rules resolve on the
     cycle's ``notification_date`` (``fixed_date`` cut-offs already self-resolve).
 
-    Shape (per verified cycle, streams nested so the Compass can head each cycle
-    with its own name/date/source/verification and group its streams by verdict)::
+    Provenance is carried PER STREAM (``exam_cycle_stream_eligibility`` owns
+    ``source_url`` / ``verified_at`` / ``cutoff_date`` per rule) and only lifted to
+    a cycle-level field when every displayed stream AGREES — otherwise the
+    cycle-level field is ``None`` (a single displayed value would misattribute one
+    stream's provenance to the whole cycle). ``notification_date`` and
+    ``cycle_status`` come from the ``exam_cycles`` row and are labelled as cycle
+    metadata, distinct from the eligibility-rule provenance above.
+
+    Shape (per verified current cycle, streams nested)::
 
         {
           "status": "<aggregate across every cycle's streams>",
           "cycles": [
-            {"cycle_id", "cycle_name", "year", "notification_date", "cutoff_date",
-             "source_url", "verified_at", "status",
-             "streams": [{"stream_id","stream_key","name","status","reasons","missing_fields"}]},
+            {"cycle_id", "cycle_name", "year", "cycle_status", "notification_date",
+             "cutoff_date", "source_url", "verified_at", "status",
+             "streams": [{"stream_id","stream_key","name","status","reasons",
+                          "missing_fields","cutoff_date","source_url","verified_at"}]},
             ...
           ]
         }
@@ -923,12 +952,20 @@ def _cycle_band_for_exam(
     for cycle_id, stream_rulesets in per_cycle.items():
         cycle_row = cycles_by_id.get(cycle_id)
         if cycle_row is None:
-            # Trust gate: unverified/absent cycle → never a current-cycle verdict.
+            # Trust gate: unverified / non-current / absent cycle → never a
+            # current-cycle verdict.
             continue
         stream_verdicts: list[dict[str, Any]] = []
-        cutoff_date: str | None = None
         for st, crules in stream_rulesets:
             verdict = evaluate_cycle_eligibility(crules, profile, cycle=cycle_row)
+            # Per-stream resolved cut-off (the date age was actually measured on)
+            # + per-stream rule provenance — unanimous across THIS stream's rules
+            # or None, so a divergent rule never lends its source to the stream.
+            st_cutoff = _unique_or_none(
+                d.isoformat()
+                for d in (_resolve_cutoff_date(r, cycle_row) for r in crules)
+                if d is not None
+            )
             stream_verdicts.append(
                 {
                     "stream_id": st["id"],
@@ -937,24 +974,34 @@ def _cycle_band_for_exam(
                     "status": verdict["status"],
                     "reasons": verdict["reasons"],
                     "missing_fields": verdict["missing_fields"],
+                    "cutoff_date": st_cutoff,
+                    "source_url": _unique_or_none(
+                        r.get("source_url") for r in crules if r.get("source_url")
+                    ),
+                    "verified_at": _unique_or_none(
+                        r.get("verified_at") for r in crules if r.get("verified_at")
+                    ),
                 }
             )
-            if cutoff_date is None:
-                for r in crules:
-                    d = _resolve_cutoff_date(r, cycle_row)
-                    if d is not None:
-                        cutoff_date = d.isoformat()
-                        break
         all_stream_verdicts.extend(stream_verdicts)
+        # Cycle-level provenance is emitted ONLY when every displayed stream
+        # agrees (else None) — never a lossy first-wins pick.
         cycle_entries.append(
             {
                 "cycle_id": cycle_id,
                 "cycle_name": cycle_row.get("cycle_name"),
                 "year": cycle_row.get("year"),
+                "cycle_status": cycle_row.get("status"),
                 "notification_date": cycle_row.get("notification_date"),
-                "cutoff_date": cutoff_date,
-                "source_url": cycle_row.get("source_url"),
-                "verified_at": cycle_row.get("reviewed_at"),
+                "cutoff_date": _unique_or_none(
+                    s["cutoff_date"] for s in stream_verdicts if s["cutoff_date"]
+                ),
+                "source_url": _unique_or_none(
+                    s["source_url"] for s in stream_verdicts if s["source_url"]
+                ),
+                "verified_at": _unique_or_none(
+                    s["verified_at"] for s in stream_verdicts if s["verified_at"]
+                ),
                 "status": _aggregate_cycle_status(stream_verdicts),
                 "streams": stream_verdicts,
             }

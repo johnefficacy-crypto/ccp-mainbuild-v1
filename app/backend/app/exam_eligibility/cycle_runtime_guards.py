@@ -19,10 +19,22 @@ from math import isfinite
 from typing import Any
 
 
-def _unknown(evaluator: Any, result: dict[str, Any]) -> dict[str, Any]:
+_UNRESOLVED_CUTOFF_REASON = (
+    "This cycle's cut-off date isn't published yet, so age can't be verified."
+)
+
+
+def _unknown(
+    evaluator: Any, result: dict[str, Any], *, cutoff_unresolved: bool = False
+) -> dict[str, Any]:
+    # Surface a concrete cause for an unresolved-cut-off unknown so the UI never
+    # mislabels it "verified rules missing" (verified rules ARE present here).
+    reasons = list(result.get("reasons") or [])
+    if cutoff_unresolved and not reasons:
+        reasons.append(_UNRESOLVED_CUTOFF_REASON)
     return evaluator._decision(  # noqa: SLF001 - package-internal adapter
         "unknown",
-        list(result.get("reasons") or []),
+        reasons,
         list(result.get("missing_fields") or []),
     )
 
@@ -49,6 +61,9 @@ def install_cycle_runtime_guards(evaluator: Any) -> None:
         scopes = evaluator._user_scopes(profile)  # noqa: SLF001
         cycle = cutoff_context.get("cycle") if isinstance(cutoff_context, dict) else None
         unresolved_types: set[str] = set()
+        # Distinguish an unresolved authoritative cut-off (a real, explainable
+        # cause) from a malformed threshold, so the unknown can carry a reason.
+        cutoff_unresolved = False
 
         for rule_type in ("age_min", "age_max"):
             rule = evaluator._pick_rule(rules, rule_type, scopes)  # noqa: SLF001
@@ -61,6 +76,7 @@ def install_cycle_runtime_guards(evaluator: Any) -> None:
                 continue
             if evaluator._resolve_cutoff_date(rule, cycle) is None:  # noqa: SLF001
                 unresolved_types.add(rule_type)
+                cutoff_unresolved = True
 
         experience_rule = evaluator._pick_rule(  # noqa: SLF001
             rules, "experience_min_years", scopes
@@ -91,7 +107,7 @@ def install_cycle_runtime_guards(evaluator: Any) -> None:
         # system-side prerequisite keeps the cycle claim unknown, even when a
         # different rule passed or only user fields are missing.
         if unresolved_types and result.get("status") != "not_eligible":
-            return _unknown(evaluator, result)
+            return _unknown(evaluator, result, cutoff_unresolved=cutoff_unresolved)
         return result
 
     @wraps(original_load_profile)
