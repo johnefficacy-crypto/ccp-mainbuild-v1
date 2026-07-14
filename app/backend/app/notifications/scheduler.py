@@ -79,7 +79,7 @@ def _is_noop_result(name: str, result: Any) -> bool:
             for k in ("snapshotted", "enqueued", "deprioritised")
         )
     if name == "ca:promote-sweep":
-        return (result.get("archived") or 0) == 0
+        return (result.get("archived") or 0) == 0 and (result.get("retry_expired") or 0) == 0
     return False
 
 
@@ -223,10 +223,15 @@ def _job_ca_generate() -> dict[str, Any]:
 
 
 def _job_ca_promote_sweep() -> dict[str, Any]:
-    # GQR-G5b — archive current-affairs events past their relevance window.
-    from app.current_affairs.retirement import sweep_expired_current_events
+    # GQR-G5b/G6 — housekeeping: archive events past their relevance window AND expire
+    # stale personalised retry items. Neither deletes historical attempt analytics.
+    from app.current_affairs.retirement import (
+        sweep_expired_current_events,
+        sweep_expired_retry_items,
+    )
 
-    return sweep_expired_current_events(get_supabase_admin())
+    sb = get_supabase_admin()
+    return {**sweep_expired_current_events(sb), **sweep_expired_retry_items(sb)}
 
 
 # Per-job permission overrides for the manual-trigger admin endpoint.

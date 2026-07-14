@@ -180,5 +180,7 @@ def test_ca_ingest_noop_classification():
 
 def test_ca_promote_sweep_noop():
     from app.notifications.scheduler import _is_noop_result
-    assert _is_noop_result("ca:promote-sweep", {"archived": 0}) is True
-    assert _is_noop_result("ca:promote-sweep", {"archived": 3}) is False
+    # noop only when BOTH the event-archive and the retry-expiry sweeps moved nothing.
+    assert _is_noop_result("ca:promote-sweep", {"archived": 0, "retry_expired": 0}) is True
+    assert _is_noop_result("ca:promote-sweep", {"archived": 3, "retry_expired": 0}) is False
+    assert _is_noop_result("ca:promote-sweep", {"archived": 0, "retry_expired": 2}) is False
