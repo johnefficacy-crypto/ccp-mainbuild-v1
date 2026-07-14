@@ -1,0 +1,126 @@
+name: PR 989 blocker fix
+
+on:
+  push:
+    branches:
+      - claude/cutoff-aware-cycle-eligibility-av929h
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/cutoff-aware-cycle-eligibility-av929h
+          fetch-depth: 0
+
+      - name: Apply focused blocker fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          evaluator_path = Path("app/backend/app/exam_eligibility/evaluator.py")
+          evaluator = evaluator_path.read_text()
+
+          evaluator = replace_once(
+              evaluator,
+              """    reasons: list[str] = []\n    missing: list[str] = []\n    any_rule_checked = False\n\n    # ── age_min ──\n""",
+              """    reasons: list[str] = []\n    missing: list[str] = []\n    any_rule_checked = False\n    unresolved_rule = False\n\n    # ── age_min ──\n""",
+              "add unresolved rule state",
+          )
+
+          evaluator = replace_once(
+              evaluator,
+              """    rule = _pick_rule(rules, \"age_min\", scopes)\n    if rule:\n        user_age, checkable = _age_for_rule(rule)\n        if checkable:\n            if user_age is None:\n                missing.append(\"date_of_birth\")\n            else:\n                any_rule_checked = True\n                if user_age < int(rule[\"value_num\"]):\n                    reasons.append(\n                        f\"Age must be at least {int(rule['value_num'])} (you are {user_age}).\"\n                    )\n                    return _decision(\"not_eligible\", reasons, missing)\n""",
+              """    rule = _pick_rule(rules, \"age_min\", scopes)\n    if rule:\n        try:\n            required_age = int(rule[\"value_num\"])\n        except (KeyError, TypeError, ValueError):\n            unresolved_rule = True\n        else:\n            user_age, checkable = _age_for_rule(rule)\n            if not checkable:\n                unresolved_rule = True\n            elif user_age is None:\n                missing.append(\"date_of_birth\")\n            else:\n                any_rule_checked = True\n                if user_age < required_age:\n                    reasons.append(\n                        f\"Age must be at least {required_age} (you are {user_age}).\"\n                    )\n                    return _decision(\"not_eligible\", reasons, missing)\n""",
+              "make age_min fail closed",
+          )
+
+          evaluator = replace_once(
+              evaluator,
+              """    rule = _pick_rule(rules, \"age_max\", scopes)\n    if rule:\n        user_age, checkable = _age_for_rule(rule)\n        if checkable:\n            if user_age is None:\n                missing.append(\"date_of_birth\")\n            else:\n                any_rule_checked = True\n                if user_age > int(rule[\"value_num\"]):\n                    reasons.append(\n                        f\"Age must be at most {int(rule['value_num'])} for scope \"\n                        f\"{rule.get('scope')} (you are {user_age}).\"\n                    )\n                    return _decision(\"not_eligible\", reasons, missing)\n""",
+              """    rule = _pick_rule(rules, \"age_max\", scopes)\n    if rule:\n        try:\n            required_age = int(rule[\"value_num\"])\n        except (KeyError, TypeError, ValueError):\n            unresolved_rule = True\n        else:\n            user_age, checkable = _age_for_rule(rule)\n            if not checkable:\n                unresolved_rule = True\n            elif user_age is None:\n                missing.append(\"date_of_birth\")\n            else:\n                any_rule_checked = True\n                if user_age > required_age:\n                    reasons.append(\n                        f\"Age must be at most {required_age} for scope \"\n                        f\"{rule.get('scope')} (you are {user_age}).\"\n                    )\n                    return _decision(\"not_eligible\", reasons, missing)\n""",
+              "make age_max fail closed",
+          )
+
+          evaluator = replace_once(
+              evaluator,
+              """        if not rule:\n            continue\n        res = _eval_atomic(rule_type, rule.get(\"value_num\"), rule.get(\"value_text\"), profile)\n""",
+              """        if not rule:\n            continue\n        if rule_type == \"experience_min_years\" and rule.get(\"value_num\") is None:\n            unresolved_rule = True\n            continue\n        res = _eval_atomic(rule_type, rule.get(\"value_num\"), rule.get(\"value_text\"), profile)\n""",
+              "guard malformed experience rule",
+          )
+
+          evaluator = replace_once(
+              evaluator,
+              """    # All known checks passed.\n    if missing:\n""",
+              """    # A system-side prerequisite (for example a missing authoritative cut-off)\n    # must not be converted into an eligible/conditional claim merely because a\n    # different rule passed. Concrete knockout failures still return earlier.\n    if unresolved_rule:\n        return _decision(\"unknown\", reasons, missing)\n\n    # All known checks passed.\n    if missing:\n""",
+              "preserve unknown for unresolved rules",
+          )
+
+          evaluator = replace_once(
+              evaluator,
+              """\n    return profile\n\n\n# Exams are queried in bounded batches so a single unordered `.limit(...)` can\n""",
+              """\n    exp_rows = _safe(\n        lambda: (\n            supabase.table(\"aspirant_experience\")\n            .select(\"years_experience\")\n            .eq(\"user_id\", user_id)\n            .limit(50)\n            .execute()\n            .data\n        ),\n        default=None,\n    )\n    if exp_rows is not None:\n        total_experience = 0.0\n        has_experience = False\n        for row in exp_rows:\n            try:\n                years = float(row.get(\"years_experience\"))\n            except (AttributeError, TypeError, ValueError):\n                continue\n            if years < 0:\n                continue\n            total_experience += years\n            has_experience = True\n        if has_experience:\n            profile[\"experience_years\"] = total_experience\n\n    return profile\n\n\n# Exams are queried in bounded batches so a single unordered `.limit(...)` can\n""",
+              "load cycle experience profile data",
+          )
+
+          evaluator_path.write_text(evaluator)
+
+          test_path = Path("app/backend/tests/exam_eligibility/test_cycle_eligibility.py")
+          tests = test_path.read_text()
+
+          tests = replace_once(
+              tests,
+              """def test_unknown_when_basis_missing():\n    rule = [_age_rule(\"age_max\", 30)]  # no basis at all\n    assert evaluate_cycle_eligibility(rule, {\"date_of_birth\": _DOB})[\"status\"] == \"unknown\"\n\n\ndef test_missing_dob_is_conditional_when_cutoff_is_resolvable():\n""",
+              """def test_unknown_when_basis_missing():\n    rule = [_age_rule(\"age_max\", 30)]  # no basis at all\n    assert evaluate_cycle_eligibility(rule, {\"date_of_birth\": _DOB})[\"status\"] == \"unknown\"\n\n\ndef test_unknown_when_age_threshold_is_malformed():\n    rule = [_age_rule(\"age_max\", None, basis=\"fixed_date\", cutoff_date=\"2025-01-01\")]\n    assert evaluate_cycle_eligibility(rule, {\"date_of_birth\": _DOB})[\"status\"] == \"unknown\"\n\n\ndef test_missing_dob_is_conditional_when_cutoff_is_resolvable():\n""",
+              "add malformed age regression",
+          )
+
+          tests = replace_once(
+              tests,
+              """def test_unresolved_age_does_not_mask_a_decidable_knockout():\n    # An unresolved cycle_notification age rule + a decidable experience knockout:\n    # the concrete knockout still fires (unknown age must not swallow a real fail).\n    rules = [\n        _age_rule(\"age_max\", 30, basis=\"cycle_notification\"),\n        {\"scope\": \"all\", \"rule_type\": \"experience_min_years\", \"value_num\": 3,\n         \"value_text\": None, \"value_json\": None, \"is_knockout\": True},\n    ]\n    out = evaluate_cycle_eligibility(rules, {\"date_of_birth\": _DOB, \"experience_years\": 1})\n    assert out[\"status\"] == \"not_eligible\"\n\n\n# ── experience_min_years (cycle-only fact) ──────────────────────────────────\n""",
+              """def test_unresolved_age_does_not_mask_a_decidable_knockout():\n    # An unresolved cycle_notification age rule + a decidable experience knockout:\n    # the concrete knockout still fires (unknown age must not swallow a real fail).\n    rules = [\n        _age_rule(\"age_max\", 30, basis=\"cycle_notification\"),\n        {\"scope\": \"all\", \"rule_type\": \"experience_min_years\", \"value_num\": 3,\n         \"value_text\": None, \"value_json\": None, \"is_knockout\": True},\n    ]\n    out = evaluate_cycle_eligibility(rules, {\"date_of_birth\": _DOB, \"experience_years\": 1})\n    assert out[\"status\"] == \"not_eligible\"\n\n\ndef test_unresolved_age_is_not_hidden_by_another_passing_rule():\n    rules = [\n        _age_rule(\"age_max\", 30, basis=\"cycle_notification\"),\n        {\"scope\": \"all\", \"rule_type\": \"experience_min_years\", \"value_num\": 3,\n         \"value_text\": None, \"value_json\": None, \"is_knockout\": True},\n    ]\n    out = evaluate_cycle_eligibility(rules, {\"date_of_birth\": _DOB, \"experience_years\": 5})\n    assert out[\"status\"] == \"unknown\"\n\n\n# ── experience_min_years (cycle-only fact) ──────────────────────────────────\n""",
+              "add unresolved cutoff precedence regression",
+          )
+
+          tests = replace_once(
+              tests,
+              """def test_summarize_cycle_band_unknown_without_authoritative_cycle():\n    # A cycle_notification age rule with no trusted cycle source stays unknown.\n    invalidate_eligibility_rules_cache()\n    out = summarize_user_eligibility(\n        SBStub(_world_with_cycle(cutoff_basis=\"cycle_notification\", cutoff_date=None)), \"u1\"\n    )\n    invalidate_eligibility_rules_cache()\n    item = next(i for i in out[\"eligible\"] if i[\"slug\"] == \"sebi-grade-a\")\n    assert item[\"cycle\"][\"status\"] == \"unknown\"\n\n\ndef test_summarize_cycle_band_is_none_without_cycle_rules():\n""",
+              """def test_summarize_cycle_band_unknown_without_authoritative_cycle():\n    # A cycle_notification age rule with no trusted cycle source stays unknown.\n    invalidate_eligibility_rules_cache()\n    out = summarize_user_eligibility(\n        SBStub(_world_with_cycle(cutoff_basis=\"cycle_notification\", cutoff_date=None)), \"u1\"\n    )\n    invalidate_eligibility_rules_cache()\n    item = next(i for i in out[\"eligible\"] if i[\"slug\"] == \"sebi-grade-a\")\n    assert item[\"cycle\"][\"status\"] == \"unknown\"\n\n\ndef test_summarize_loads_and_aggregates_experience_rows():\n    world = _world_with_cycle()\n    world[\"exam_cycle_stream_eligibility\"] = [\n        {\"exam_cycle_id\": _CYCLE, \"stream_id\": _STREAM, \"scope\": \"all\",\n         \"rule_type\": \"experience_min_years\", \"value_num\": 3, \"value_text\": None,\n         \"value_json\": None, \"cutoff_date_basis\": None, \"cutoff_date\": None,\n         \"is_knockout\": True, \"reviewer_status\": \"verified\"},\n    ]\n    world[\"aspirant_experience\"] = [\n        {\"user_id\": \"u1\", \"years_experience\": 1.5},\n        {\"user_id\": \"u1\", \"years_experience\": 2.0},\n    ]\n    invalidate_eligibility_rules_cache()\n    out = summarize_user_eligibility(SBStub(world), \"u1\")\n    invalidate_eligibility_rules_cache()\n    item = next(i for i in out[\"eligible\"] if i[\"slug\"] == \"sebi-grade-a\")\n    assert item[\"cycle\"][\"status\"] == \"eligible\"\n\n\ndef test_summarize_cycle_band_is_none_without_cycle_rules():\n""",
+              "add experience loader regression",
+          )
+
+          test_path.write_text(tests)
+          PY
+
+      - name: Run focused verification
+        working-directory: app/backend
+        run: |
+          python -m pytest \
+            tests/exam_eligibility/test_cycle_eligibility.py \
+            tests/exam_eligibility/test_evaluator.py \
+            tests/exam_eligibility/test_new_rule_types.py \
+            tests/exam_eligibility/test_stream_isolation.py -q
+          python -m py_compile app/exam_eligibility/evaluator.py app/exam_eligibility/__init__.py
+
+      - name: Commit fixes and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pr989-blocker-fix.yml
+          git add app/backend/app/exam_eligibility/evaluator.py \
+                  app/backend/tests/exam_eligibility/test_cycle_eligibility.py
+          git commit -m "fix(eligibility): close cycle evaluation blockers"
+          git push origin HEAD:claude/cutoff-aware-cycle-eligibility-av929h
