@@ -356,9 +356,10 @@
     "external_key": "ewp-seed-vocab-034",
     "exercise_type": "vocabulary_in_context",
     "topic_id": "2d01294e-271f-b462-e356-ff588b90c040",
-    "prompt_text": "Rewrite \"The plan fell through\" in formal English.",
+    "prompt_text": "Rewrite in formal English.",
     "difficulty_level": 5,
-    "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8"
+    "microtopic_id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+    "source_text": "The plan fell through."
   },
   {
     "external_key": "ewp-seed-vocab-035",

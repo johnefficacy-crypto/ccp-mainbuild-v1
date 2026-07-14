@@ -14,7 +14,7 @@
     "not_authoritative": "reference_answer/acceptable_variants are illustrative gold answers, not an exhaustive accept-list; correction prompts admit many valid rewrites. Reviewers judge learner answers on the rule, not string-match.",
     "batch": "04_vocabulary.json",
     "scope": "Vocabulary-in-context CORRECTION prompts (batch 04, source-bearing rows only): word-choice/confusables, verb collocations, informal->formal register, and redundancy. The 15 open-ended \"use the word\" production rows in 04 carry no source_text and have no single canonical answer, so they are intentionally excluded.",
-    "count": 35
+    "count": 36
   },
   "keys": {
     "ewp-seed-vocab-001": {
@@ -198,6 +198,18 @@
         "The company intends to examine the complaint."
       ],
       "rationale": "The informal phrasal verb 'look into' is replaced with the formal verb 'investigate'."
+    },
+    "ewp-seed-vocab-034": {
+      "source_text": "The plan fell through.",
+      "exercise_type": "vocabulary_in_context",
+      "error_type": "informal register",
+      "reference_answer": "The plan did not materialise.",
+      "acceptable_variants": [
+        "The plan fell through and had to be abandoned.",
+        "The plan was unsuccessful.",
+        "The plan collapsed."
+      ],
+      "rationale": "The informal phrasal verb 'fall through' (meaning 'to fail to happen') is replaced with a formal equivalent such as 'did not materialise' or 'was unsuccessful'."
     },
     "ewp-seed-vocab-035": {
       "source_text": "He wants to get the job done quickly.",

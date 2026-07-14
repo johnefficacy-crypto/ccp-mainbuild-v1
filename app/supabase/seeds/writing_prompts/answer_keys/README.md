@@ -18,17 +18,26 @@ like, and why" reference for each prompt.
 |---|---|---|
 | `02_sentence_correction.answers.json` | `02_sentence_correction.json` | 50 |
 | `03_grammar.answers.json` | `03_grammar.json` | 100 |
-| `04_vocabulary.answers.json` | `04_vocabulary.json` (source-bearing rows only) | 35 |
-| **Total** | | **185** |
+| `04_vocabulary.answers.json` | `04_vocabulary.json` (source-bearing rows only) | 36 |
+| **Total** | | **186** |
 
 **Scope = one entry per source-bearing (correction) prompt.** Every row that
 carries a `source_text` (a sentence to fix/replace/rewrite) has an answer key.
-The 15 open-ended *production* rows in `04_vocabulary.json` (the
-`Use the word "…" correctly in a sentence` prompts) carry no `source_text` and
-have no single canonical answer, so they are intentionally excluded — there is
-no answer *key* for an open composition. Sentence-construction (`01`) and
-paragraph (`05`) are likewise production tasks, not corrections, and are out of
-scope.
+The 14 open-ended *production* rows in `04_vocabulary.json` (the
+`Use the word "…" correctly in a sentence` and `Write one sentence using …`
+prompts) carry no `source_text` and have no single canonical answer, so they are
+intentionally excluded — there is no answer *key* for an open composition.
+Sentence-construction (`01`) and paragraph (`05`) are likewise production tasks,
+not corrections, and are out of scope.
+
+> The exclusion rule is exactly **"no `source_text` ⟺ open-ended production."**
+> One formal-rewrite row (`ewp-seed-vocab-034`) originally embedded its source
+> inside `prompt_text` (`Rewrite "The plan fell through" in formal English.`) and
+> so carried no `source_text` — a correction prompt hiding in the excluded set.
+> It has been normalised in the seed to match its 11 formal-rewrite siblings
+> (`source_text` = `"The plan fell through."`, `prompt_text` =
+> `"Rewrite in formal English."`) and now has an answer key. No correction prompt
+> is excluded.
 
 ## Shape
 

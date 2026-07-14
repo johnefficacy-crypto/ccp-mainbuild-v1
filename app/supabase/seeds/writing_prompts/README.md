@@ -85,14 +85,14 @@ blocked on runtime work that does not exist yet** (tracked as CODE blockers in
 
 `answer_keys/` holds human-authored **reference answers + rationales** for every
 *correction-type* prompt (one entry per source-bearing row: all 50
-sentence-correction, 100 grammar, and the 35 source-bearing vocabulary rows —
-185 total). These are **editorial documentation, not runtime data** — a
+sentence-correction, 100 grammar, and the 36 source-bearing vocabulary rows —
+186 total). These are **editorial documentation, not runtime data** — a
 reviewer/evaluator reference for "what a good answer looks like, and why". They
 are keyed by `external_key` and the echoed `source_text` byte-matches the seed
 row. See `answer_keys/README.md` (scope, shape, and the sync check). The
 open-ended production prompts (`01` sentence-construction, `05` paragraph, and
-the 15 `Use the word "…"` vocabulary rows) have no single canonical answer and
-are intentionally excluded.
+the 14 `Use the word "…"` / `Write one sentence using …` vocabulary rows) have no
+single canonical answer and are intentionally excluded.
 
 ## Migration-history note
 

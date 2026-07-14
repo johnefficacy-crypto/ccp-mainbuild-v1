@@ -433,7 +433,7 @@ _VOCAB = {
         ("They put off the meeting because of the rain.", "Rewrite in formal English.", 4, None),
         ("A lot of people showed up for the event.", "Rewrite in formal English.", 3, None),
         ("The company is going to look into the complaint.", "Rewrite in formal English.", 4, None),
-        (None, 'Rewrite "The plan fell through" in formal English.', 5, None),
+        ("The plan fell through.", "Rewrite in formal English.", 5, None),
         ("He wants to get the job done quickly.", "Rewrite in formal English.", 3, None),
         ("The staff were fed up with the constant changes.", "Rewrite in formal English.", 4, None),
         ("Let's touch base after lunch.", "Rewrite in formal English.", 4, None),
