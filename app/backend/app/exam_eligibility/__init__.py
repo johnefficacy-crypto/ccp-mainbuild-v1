@@ -1,4 +1,4 @@
-"""Exam-level baseline eligibility (PR-D1).
+"""Exam-level baseline and cycle eligibility.
 
 Surface:
   * :func:`evaluator.evaluate_exam_for_user` — pure per-exam decision.
@@ -10,3 +10,13 @@ Surface:
     not_eligible / unknown, each carrying an additive per-stream breakdown and
     a cutoff-aware ``cycle`` provenance band.
 """
+
+# Package-level installation is intentional: existing callers import directly
+# from ``app.exam_eligibility.evaluator``. Installing before that import returns
+# preserves the public surface while applying the cycle-only fail-closed guards.
+from . import evaluator as evaluator
+from .cycle_runtime_guards import install_cycle_runtime_guards
+
+install_cycle_runtime_guards(evaluator)
+
+__all__ = ["evaluator"]
