@@ -42,13 +42,20 @@ insert into public.subjects (id, slug, name, subject_group) values
   ('55550000-0000-0000-0000-0000000005f0'::uuid, 'quant-verify-xsub', 'Quant (verify xsub)', 'numerical')
 on conflict (id) do nothing;
 
-insert into public.topics (id, subject_id, slug, name, level) values
+insert into public.topics (id, subject_id, slug, name, level, parent_topic_id) values
   ('66660000-0000-0000-0000-000000000503'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
-   'coding-decoding-verify', 'Coding-Decoding (verify)', 'topic'),
+   'coding-decoding-verify', 'Coding-Decoding (verify)', 'topic', null),
   ('66660000-0000-0000-0000-0000000005b0'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
-   'series-verify', 'Series (verify)', 'topic'),
+   'series-verify', 'Series (verify)', 'topic', null),
   ('66660000-0000-0000-0000-0000000005f0'::uuid, '55550000-0000-0000-0000-0000000005f0'::uuid,
-   'percentage-verify-xsub', 'Percentage (verify xsub)', 'topic')
+   'percentage-verify-xsub', 'Percentage (verify xsub)', 'topic', null),
+  -- Microtopics for the parent-consistency check (checkpost #996 follow-up):
+  --   m_ok  is a child of the Coding-Decoding topic (…503) → consistent pair
+  --   m_bad is a child of the Series topic (…5b0), NOT …503 → inconsistent pair
+  ('66660000-0000-0000-0000-0000000005a1'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   'cd-letter-shift-verify', 'CD: letter shift (verify)', 'microtopic', '66660000-0000-0000-0000-000000000503'::uuid),
+  ('66660000-0000-0000-0000-0000000005a2'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   'series-geometric-verify', 'Series: geometric (verify)', 'microtopic', '66660000-0000-0000-0000-0000000005b0'::uuid)
 on conflict (id) do nothing;
 
 -- Bank questions. Scope varies to exercise the gate; all admitted (verified).
@@ -64,8 +71,19 @@ insert into public.mock_question_bank (id, subject_id, topic_id, question_text, 
   ('b2220000-0000-0000-0000-0000000005c0'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
    null, 'Unscoped reasoning question', 'mcq', 'verified'),
   ('b2220000-0000-0000-0000-0000000005f0'::uuid, '55550000-0000-0000-0000-0000000005f0'::uuid,
-   '66660000-0000-0000-0000-0000000005f0'::uuid, '+20% then -20% net?', 'mcq', 'verified')
+   '66660000-0000-0000-0000-0000000005f0'::uuid, '+20% then -20% net?', 'mcq', 'verified'),
+  -- Both-dimension questions for the parent-consistency check.
+  --   v_qb_ok : topic …503 + microtopic …5a1 (child of …503)  → consistent
+  --   v_qb_bad: topic …503 + microtopic …5a2 (child of …5b0)  → inconsistent parent
+  ('b2220000-0000-0000-0000-0000000005a1'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   '66660000-0000-0000-0000-000000000503'::uuid, 'CAT→DBU (micro), DOG→?', 'mcq', 'verified'),
+  ('b2220000-0000-0000-0000-0000000005a2'::uuid, '55550000-0000-0000-0000-000000000503'::uuid,
+   '66660000-0000-0000-0000-000000000503'::uuid, 'CAT→DBU (bad micro), DOG→?', 'mcq', 'verified')
 on conflict (id) do nothing;
+update public.mock_question_bank set microtopic_id = '66660000-0000-0000-0000-0000000005a1'::uuid
+  where id = 'b2220000-0000-0000-0000-0000000005a1'::uuid;
+update public.mock_question_bank set microtopic_id = '66660000-0000-0000-0000-0000000005a2'::uuid
+  where id = 'b2220000-0000-0000-0000-0000000005a2'::uuid;
 
 -- Strategies: a Reasoning one (Coding-Decoding scope) and a Quant one (cross-subject).
 insert into public.reasoning_strategies
@@ -85,8 +103,24 @@ insert into public.reasoning_strategies
    '{"pattern": "successive_percentage"}'::jsonb,
    'net% = a + b + a*b/100 (signed).', 'Reuse the signed formula.',
    'The ab/100 term is the trap.', '+20% then -20% → -4%.', 'Dropping the ab/100 term.',
-   'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid)
+   'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
+  -- Both-dimension strategies for the parent-consistency check.
+  ('a0000000-0000-0000-0000-0000000005a1'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+   'RS-VERIFY-CD-MICRO-OK', 'Letter-shift (topic+micro, consistent)', 'approach',
+   '{"pattern": "coding_decoding"}'::jsonb,
+   'Apply the constant shift.', 'Reuse the first-pair gap.', 'Constant gap.',
+   'CAT→DBU is +1.', 'Wrap-around.', 'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
+  ('a0000000-0000-0000-0000-0000000005a2'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+   'RS-VERIFY-CD-MICRO-BAD', 'Letter-shift (topic+micro, INCONSISTENT parent)', 'approach',
+   '{"pattern": "coding_decoding"}'::jsonb,
+   'Apply the constant shift.', 'Reuse the first-pair gap.', 'Constant gap.',
+   'CAT→DBU is +1.', 'Wrap-around.', 'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid)
 on conflict (id) do nothing;
+-- The micro dimensions are set post-insert so the strategy column list stays lean.
+update public.reasoning_strategies set microtopic_id = '66660000-0000-0000-0000-0000000005a1'::uuid
+  where id = 'a0000000-0000-0000-0000-0000000005a1'::uuid;   -- child of …503 → consistent
+update public.reasoning_strategies set microtopic_id = '66660000-0000-0000-0000-0000000005a2'::uuid
+  where id = 'a0000000-0000-0000-0000-0000000005a2'::uuid;   -- child of …5b0 → inconsistent
 
 -- Links (author pending; verified below). Each question links to a strategy.
 insert into public.reasoning_question_strategies (id, question_id, strategy_id, relevance, reviewer_status) values
@@ -97,7 +131,11 @@ insert into public.reasoning_question_strategies (id, question_id, strategy_id, 
   ('11110000-0000-0000-0000-0000000005c0'::uuid, 'b2220000-0000-0000-0000-0000000005c0'::uuid,
    'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending'),
   ('11110000-0000-0000-0000-0000000005f0'::uuid, 'b2220000-0000-0000-0000-0000000005f0'::uuid,
-   'a0000000-0000-0000-0000-0000000005f0'::uuid, 'primary', 'pending')
+   'a0000000-0000-0000-0000-0000000005f0'::uuid, 'primary', 'pending'),
+  ('11110000-0000-0000-0000-0000000005a1'::uuid, 'b2220000-0000-0000-0000-0000000005a1'::uuid,
+   'a0000000-0000-0000-0000-0000000005a1'::uuid, 'primary', 'pending'),
+  ('11110000-0000-0000-0000-0000000005a2'::uuid, 'b2220000-0000-0000-0000-0000000005a2'::uuid,
+   'a0000000-0000-0000-0000-0000000005a2'::uuid, 'primary', 'pending')
 on conflict (id) do nothing;
 
 -- ── The conjunctive + SCOPE learner-ready read, expressed once. ──
@@ -119,6 +157,10 @@ language sql as $$
     and (s.topic_id is not null or s.microtopic_id is not null)
     and (s.topic_id is null or q.topic_id = s.topic_id)
     and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id)
+    -- both dimensions populated ⇒ microtopic must be a child of the topic
+    and (s.topic_id is null or s.microtopic_id is null or exists (
+          select 1 from public.topics mt
+          where mt.id = s.microtopic_id and mt.parent_topic_id = s.topic_id))
     and (s.topic_id is null or exists (
           select 1 from public.topics t join public.subjects sub on sub.id = t.subject_id
           where t.id = s.topic_id
@@ -137,8 +179,12 @@ declare
   v_q2  constant uuid := 'b2220000-0000-0000-0000-0000000005b0'::uuid;  -- mismatched topic
   v_q3  constant uuid := 'b2220000-0000-0000-0000-0000000005c0'::uuid;  -- null scope
   v_qx  constant uuid := 'b2220000-0000-0000-0000-0000000005f0'::uuid;  -- cross-subject
+  v_qb_ok  constant uuid := 'b2220000-0000-0000-0000-0000000005a1'::uuid; -- topic+micro consistent
+  v_qb_bad constant uuid := 'b2220000-0000-0000-0000-0000000005a2'::uuid; -- topic+micro inconsistent
   v_s   constant uuid := 'a0000000-0000-0000-0000-000000000503'::uuid;  -- reasoning strategy
   v_sx  constant uuid := 'a0000000-0000-0000-0000-0000000005f0'::uuid;  -- quant-scoped strategy
+  v_sb_ok  constant uuid := 'a0000000-0000-0000-0000-0000000005a1'::uuid; -- both dims, consistent
+  v_sb_bad constant uuid := 'a0000000-0000-0000-0000-0000000005a2'::uuid; -- both dims, inconsistent
   v_l   constant uuid := '11110000-0000-0000-0000-000000000503'::uuid;  -- correct-scope link
   v_act constant uuid := 'eeeeeeee-0000-0000-0000-000000000503'::uuid;
   v_tok timestamptz;
@@ -164,6 +210,12 @@ begin
   select updated_at into v_tok from public.reasoning_strategies where id = v_sx;
   perform public.cms_review_reasoning_strategy(
     v_sx, 'pending', v_tok, 'verified', null, 'cross-subject fixture verified for the negative test', v_act, 'op@example.com');
+  select updated_at into v_tok from public.reasoning_strategies where id = v_sb_ok;
+  perform public.cms_review_reasoning_strategy(
+    v_sb_ok, 'pending', v_tok, 'verified', null, 'consistent topic+microtopic pair fixture', v_act, 'op@example.com');
+  select updated_at into v_tok from public.reasoning_strategies where id = v_sb_bad;
+  perform public.cms_review_reasoning_strategy(
+    v_sb_bad, 'pending', v_tok, 'verified', null, 'inconsistent parent pair fixture for the negative test', v_act, 'op@example.com');
   if (select count(*) from public.admin_audit_logs
       where action = 'reasoning_strategy_status_transition'
         and entity_type = 'reasoning_strategy'
@@ -182,7 +234,9 @@ begin
     where id in ('11110000-0000-0000-0000-000000000503'::uuid,
                  '11110000-0000-0000-0000-0000000005b0'::uuid,
                  '11110000-0000-0000-0000-0000000005c0'::uuid,
-                 '11110000-0000-0000-0000-0000000005f0'::uuid);
+                 '11110000-0000-0000-0000-0000000005f0'::uuid,
+                 '11110000-0000-0000-0000-0000000005a1'::uuid,
+                 '11110000-0000-0000-0000-0000000005a2'::uuid);
 
   -- Correct scope + fully verified + active → appears.
   if pg_temp._rs_ready(v_q) <> 1 then raise exception 'FAIL: double-verified, scope-matched strategy must be learner-ready'; end if;
@@ -195,6 +249,14 @@ begin
   raise notice 'PASS null-scope question fails closed';
   if pg_temp._rs_ready(v_qx) <> 0 then raise exception 'FAIL: cross-subject (non-Reasoning family) scope must NOT be learner-ready'; end if;
   raise notice 'PASS cross-subject strategy is not learner-ready';
+
+  -- Parent-consistency (checkpost #996 follow-up): both dims populated ⇒ the
+  -- microtopic must be a child of the topic. A consistent pair is ready; an
+  -- inconsistent parent (microtopic under a different topic) fails closed.
+  if pg_temp._rs_ready(v_qb_ok) <> 1 then raise exception 'FAIL: consistent topic+microtopic pair must be learner-ready'; end if;
+  raise notice 'PASS consistent topic+microtopic pair IS learner-ready';
+  if pg_temp._rs_ready(v_qb_bad) <> 0 then raise exception 'FAIL: inconsistent microtopic parent must fail closed'; end if;
+  raise notice 'PASS inconsistent topic/microtopic parent fails closed';
 
   -- Move the correct-scope LINK out of verified → disappears.
   update public.reasoning_question_strategies set reviewer_status = 'rejected' where id = v_l;

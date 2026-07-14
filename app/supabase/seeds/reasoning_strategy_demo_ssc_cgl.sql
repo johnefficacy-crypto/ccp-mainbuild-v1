@@ -257,10 +257,14 @@ begin
     and s.reviewer_status = 'verified'
     and s.is_active = true
     and q.reviewer_status in ('verified', 'live', 'published')
-    -- scope gate: topic-scoped strategy ⇒ question topic must equal it.
+    -- scope gate: topic-scoped strategy ⇒ question topic must equal it; a
+    -- populated microtopic must match the question and be a child of the topic.
     and s.topic_id is not null
     and q.topic_id = s.topic_id
-    and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id);
+    and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id)
+    and (s.microtopic_id is null or exists (
+          select 1 from public.topics mt
+          where mt.id = s.microtopic_id and mt.parent_topic_id = s.topic_id));
   if v_ready_link <> 1 then
     raise exception 'seed_postcondition_failed: expected 1 verified scope-matched link, found %', v_ready_link;
   end if;

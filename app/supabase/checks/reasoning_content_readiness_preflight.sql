@@ -60,6 +60,11 @@ begin
       -- every populated scope dimension equals the question's scope
       and (s.topic_id is null or q.topic_id = s.topic_id)
       and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id)
+      -- when both dimensions are populated the microtopic must be a child of the
+      -- topic (parent consistency — mirrors quant_heuristics._canonical_scope_is_quant)
+      and (s.topic_id is null or s.microtopic_id is null or exists (
+            select 1 from public.topics mt
+            where mt.id = s.microtopic_id and mt.parent_topic_id = s.topic_id))
       -- every populated scope dimension resolves to canonical Reasoning family
       and (s.topic_id is null or exists (
             select 1 from public.topics t join public.subjects sub on sub.id = t.subject_id
@@ -86,6 +91,9 @@ begin
       and (s.topic_id is not null or s.microtopic_id is not null)
       and (s.topic_id is null or q.topic_id = s.topic_id)
       and (s.microtopic_id is null or q.microtopic_id = s.microtopic_id)
+      and (s.topic_id is null or s.microtopic_id is null or exists (
+            select 1 from public.topics mt
+            where mt.id = s.microtopic_id and mt.parent_topic_id = s.topic_id))
       and (s.topic_id is null or exists (
             select 1 from public.topics t join public.subjects sub on sub.id = t.subject_id
             where t.id = s.topic_id
