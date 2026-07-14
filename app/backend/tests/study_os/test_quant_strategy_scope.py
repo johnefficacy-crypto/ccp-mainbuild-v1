@@ -40,6 +40,36 @@ def _read(heuristic, link):
     return qh.heuristics_for_questions(sb, ["q1"])["q1"]
 
 
+def test_link_read_embeds_question_scope_without_extra_query():
+    sb = SBStub({
+        "quant_heuristics": [_heuristic()],
+        "quant_question_heuristics": [_link()],
+    })
+    selects = []
+    original_table = sb.table
+
+    def _table(name):
+        query = original_table(name)
+        original_select = query.select
+
+        def _select(columns, *args, **kwargs):
+            selects.append((name, columns))
+            return original_select(columns, *args, **kwargs)
+
+        query.select = _select
+        return query
+
+    sb.table = _table  # type: ignore[assignment]
+    qh.heuristics_for_questions(sb, ["q1"])
+
+    link_select = next(columns for table, columns in selects if table == "quant_question_heuristics")
+    assert "question:mock_question_bank!inner(topic_id,microtopic_id)" in link_select
+    assert [table for table, _columns in selects] == [
+        "quant_question_heuristics",
+        "quant_heuristics",
+    ]
+
+
 def test_topic_only_scope_requires_exact_topic_match():
     assert _read(_heuristic(), _link(topic="reasoning-topic")) == []
 
