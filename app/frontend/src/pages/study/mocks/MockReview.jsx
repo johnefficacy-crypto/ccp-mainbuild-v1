@@ -107,18 +107,17 @@ export default function MockReview() {
   if (!data) return <div>Loading…</div>;
 
   const current = questions[idx] || null;
-  const currentStimulusStrategies = current
-    ? (data.stimulus_solution_strategies || [])
-        .filter((group) => (group.question_ids || []).includes(current.question_id))
-        .flatMap((group) => group.strategies || [])
-        .filter(
-          (strategy, index, all) =>
-            all.findIndex(
-              (candidate) =>
-                candidate.id === strategy.id &&
-                candidate.subject_family === strategy.subject_family,
-            ) === index,
-        )
+  // Keep the backend's one-entry-per-stimulus grouping intact. A question can
+  // legally carry more than one frozen stimulus; flattening all strategies into
+  // one panel loses which set/passage each approach belongs to and can collapse
+  // the same strategy used by two different stimuli. Render one panel per group.
+  const currentStimulusStrategyGroups = current
+    ? (data.stimulus_solution_strategies || []).filter(
+        (group) =>
+          (group.question_ids || []).includes(current.question_id) &&
+          Array.isArray(group.strategies) &&
+          group.strategies.length > 0,
+      )
     : [];
 
   return (
@@ -188,13 +187,16 @@ export default function MockReview() {
           <h3 className="font-heading text-lg">
             Q{current._num} · <span data-testid="review-error-label">{errorTypeLabel(current.error_type)}</span>
           </h3>
-          <SolutionStrategyPanel
-            mode="review"
-            strategies={currentStimulusStrategies}
-            title="Set-solving approach"
-            ariaLabel="Stimulus solution strategies"
-            testId="stimulus-solution-strategy-panel"
-          />
+          {currentStimulusStrategyGroups.map((group) => (
+            <SolutionStrategyPanel
+              key={group.pyq_stimulus_id}
+              mode="review"
+              strategies={group.strategies}
+              title="Set-solving approach"
+              ariaLabel="Stimulus solution strategies"
+              testId="stimulus-solution-strategy-panel"
+            />
+          ))}
           <QuestionRenderer
             mode="review"
             showCorrect
