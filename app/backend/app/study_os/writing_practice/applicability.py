@@ -53,6 +53,20 @@ def _as_str(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
+def _maybe_single(query: Any) -> dict | None:
+    """Run a ``.maybe_single()`` query, tolerating a zero-row match.
+
+    postgrest-py's ``SyncMaybeSingleRequestBuilder.execute()`` returns bare
+    ``None`` (not a response object with ``.data=None``) when the query matches
+    zero rows, so ``.execute().data`` chained directly on a ``.maybe_single()``
+    query raises ``AttributeError: 'NoneType' object has no attribute 'data'``
+    on the legitimate "not found" case instead of returning ``None``. Every
+    ``.maybe_single()`` call must go through this helper.
+    """
+    resp = query.execute()
+    return resp.data if resp is not None else None
+
+
 def _match_band(
     target: dict,
     *,
@@ -132,13 +146,12 @@ def _resolve_exam_family(supabase: Any, exam_id: str | None) -> str | None:
     """The exam's family id, or None when there is no exam / no family."""
     if not exam_id:
         return None
-    row = (
+    row = _maybe_single(
         supabase.table("exams")
         .select("exam_family_id")
         .eq("id", str(exam_id))
         .maybe_single()
-        .execute()
-    ).data
+    )
     return (row or {}).get("exam_family_id")
 
 
