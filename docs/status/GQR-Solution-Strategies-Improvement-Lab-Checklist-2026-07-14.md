@@ -282,11 +282,11 @@ independent-question family below; the strategy CONTENT for each is seeded throu
 - [x] Do not modify the mock review response loop again beyond source registration (`get_review` already batches the aggregator — untouched).
 - [x] Reuse `SolutionStrategyPanel` without a Reasoning-specific fork.
 - [x] Verify `key_observation` and elimination/trap content render (FE test).
-- [x] Verify Quant and Reasoning strategies cannot cross-leak (scope gate blocks a Reasoning-scoped strategy on a Quant question and vice-versa; aggregator merge test).
+- [x] Verify Quant and Reasoning strategies cannot cross-leak (scope gate blocks a Reasoning-scoped strategy on a Quant question and vice-versa; aggregator per-subject isolation test). A single canonical question has ONE topic scope, so mixed-family content on one real question is impossible by construction — the contract requires cross-source ISOLATION, not co-appearance.
 - [x] Keep non-verbal Reasoning out of scope.
 - [ ] Live/operator proof that a verified Reasoning strategy + verified link renders in submitted review — **blocked on GQR-S3b** (no governed authoring/seed for Reasoning yet, exactly as GQR-S1 waited on GQR-S2).
 
-Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (16 — batched one-query, gate, scope/cross-subject, isolation, projection-strip, aggregator merge, fail-soft, `get_review` attach); FE `SolutionStrategyPanel.test.jsx` (+1 reasoning case).
+Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (11 — batched one-query, gate, scope/cross-subject block, isolation, projection-strip, aggregator multi-source composition with per-subject isolation, fail-soft, `get_review` attach); FE `SolutionStrategyPanel.test.jsx` (+1 reasoning case).
 
 ---
 

@@ -176,12 +176,15 @@ def test_aggregator_projects_reasoning_with_key_observation_and_subject_tag():
         assert forbidden not in dto
 
 
-def test_aggregator_merges_quant_and_reasoning_on_the_same_question():
-    # A bank question linked to both a Quant heuristic and a Reasoning strategy
-    # (each scoped to its own subject) surfaces both, tagged by subject_family.
+def test_aggregator_composes_sources_with_per_subject_isolation():
+    # A single canonical question has ONE topic scope, so it can never match both
+    # a Quant heuristic and a Reasoning strategy (a topic belongs to one subject).
+    # The aggregator composes sources ACROSS an attempt while keeping each
+    # question's strategies to its own subject — proven with two questions, each
+    # scoped to its own family; neither source leaks onto the other's question.
     sb = SBStub({
         "quant_question_heuristics": [{
-            "id": "ql", "question_id": "q1", "heuristic_id": "h1",
+            "id": "ql", "question_id": "q-quant", "heuristic_id": "h1",
             "relevance": "primary", "reviewer_status": "verified",
             "question": {"topic_id": "qt1", "microtopic_id": None},
         }],
@@ -191,11 +194,12 @@ def test_aggregator_merges_quant_and_reasoning_on_the_same_question():
             "name": "Quant one", "heuristic_type": "shortcut",
             "shortcut_method": "fast", "reviewer_status": "verified", "is_active": True,
         }],
-        "reasoning_question_strategies": [_link("q1", "s1", topic="rt1")],
+        "reasoning_question_strategies": [_link("q-reason", "s1", topic="rt1")],
         "reasoning_strategies": [_strat("s1", name="Reasoning one", topic_id="rt1")],
     })
-    fams = sorted(d["subject_family"] for d in ss.strategies_for_questions(sb, ["q1"])["q1"])
-    assert fams == ["quant", "reasoning"]
+    out = ss.strategies_for_questions(sb, ["q-quant", "q-reason"])
+    assert [d["subject_family"] for d in out["q-quant"]] == ["quant"]
+    assert [d["subject_family"] for d in out["q-reason"]] == ["reasoning"]
 
 
 def test_aggregator_reasoning_source_fails_soft(monkeypatch):
