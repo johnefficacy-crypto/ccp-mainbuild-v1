@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
+from app.study_os.subject_runtime_policy import FAMILY_QUANT, family_for_subject
+
 logger = logging.getLogger("career_copilot.study_os.quant_heuristics")
 
 _HEURISTICS = "quant_heuristics"
@@ -39,7 +41,16 @@ _CONTENT_KEYS = (
     "common_traps",
 )
 _INTERNAL_SCOPE_KEYS = ("topic_id", "microtopic_id")
-_HEURISTIC_FIELDS = ",".join((*_CONTENT_KEYS, *_INTERNAL_SCOPE_KEYS))
+_HEURISTIC_FIELDS = ",".join(
+    (
+        *_CONTENT_KEYS,
+        *_INTERNAL_SCOPE_KEYS,
+        "topic:topics!quant_heuristics_topic_id_fkey("
+        "subject:subjects(slug,subject_group))",
+        "microtopic:topics!quant_heuristics_microtopic_id_fkey("
+        "parent_topic_id,subject:subjects(slug,subject_group))",
+    )
+)
 
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
@@ -64,6 +75,44 @@ def _learner_row(row: dict) -> dict:
     return {key: row.get(key) for key in _CONTENT_KEYS}
 
 
+def _canonical_scope_is_quant(heuristic: dict) -> bool:
+    """Require every populated scope to resolve to canonical Quant taxonomy.
+
+    Migration 243 guarantees only that at least one scope ID is populated; it does
+    not constrain that topic to Quant or ensure a microtopic belongs to the paired
+    topic. The embedded topic rows keep this validation inside the one heuristic
+    query required by the learner contract.
+    """
+    scopes: list[dict] = []
+
+    topic_id = heuristic.get("topic_id")
+    if topic_id:
+        topic = heuristic.get("topic")
+        if not isinstance(topic, dict):
+            return False
+        scopes.append(topic)
+
+    microtopic_id = heuristic.get("microtopic_id")
+    if microtopic_id:
+        microtopic = heuristic.get("microtopic")
+        if not isinstance(microtopic, dict):
+            return False
+        if topic_id and str(microtopic.get("parent_topic_id") or "") != str(topic_id):
+            return False
+        scopes.append(microtopic)
+
+    for scope in scopes:
+        subject = scope.get("subject")
+        if not isinstance(subject, dict):
+            return False
+        if family_for_subject(
+            slug=subject.get("slug"),
+            subject_group=subject.get("subject_group"),
+        ) != FAMILY_QUANT:
+            return False
+    return bool(scopes)
+
+
 def _scope_matches(heuristic: dict, question: Any) -> bool:
     """Fail closed unless every populated heuristic scope dimension matches.
 
@@ -73,7 +122,7 @@ def _scope_matches(heuristic: dict, question: Any) -> bool:
     strategies. Topic IDs are canonical, subject-owned rows, so a mismatch also
     blocks a Quant strategy linked to a Reasoning/English question.
     """
-    if not isinstance(question, dict):
+    if not isinstance(question, dict) or not _canonical_scope_is_quant(heuristic):
         return False
     heuristic_topic = heuristic.get("topic_id")
     heuristic_microtopic = heuristic.get("microtopic_id")
