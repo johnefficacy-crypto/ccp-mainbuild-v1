@@ -7,7 +7,7 @@
 --     (link verified AND heuristic verified AND active) — i.e. are learner-ready
 --     under the conjunctive gate the read authority enforces?
 --   * How many of those questions are reachable through mock/generated-mock
---     review (a non-archived bank row)?
+--     review (a bank row admitted by the mock-pipeline status gate)?
 --
 -- Read-only: emits NOTICEs, mutates nothing. If every count is zero the lane has
 -- no production-ready verified linked content and GQR-S2 must seed/author some
@@ -46,14 +46,17 @@ begin
       and h.reviewer_status = 'verified'
       and h.is_active = true;
 
-  -- Of those, reachable through mock/generated-mock review (a live bank row).
+  -- Of those, reachable through mock/generated-mock review. The selector/RLS
+  -- gate admits only verified/live/published bank rows; mere existence is not
+  -- sufficient (reviewed/draft/archived rows are not learner-reachable).
   select count(distinct l.question_id) into v_ready_reachable
     from public.quant_question_heuristics l
     join public.quant_heuristics h on h.id = l.heuristic_id
     join public.mock_question_bank q on q.id = l.question_id
     where l.reviewer_status = 'verified'
       and h.reviewer_status = 'verified'
-      and h.is_active = true;
+      and h.is_active = true
+      and q.reviewer_status in ('verified', 'live', 'published');
 
   raise notice 'quant heuristics: % verified+active / % total', v_heuristics_verified, v_heuristics_total;
   raise notice 'quant question links: % verified / % total', v_links_verified, v_links_total;

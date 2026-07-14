@@ -40,7 +40,7 @@ on conflict (id) do nothing;
 
 insert into public.mock_question_bank (id, question_text, question_type, reviewer_status)
 values ('b1110000-0000-0000-0000-000000000502'::uuid,
-        'A number increased by 20% then decreased by 20% — net change?', 'mcq', 'reviewed')
+        'A number increased by 20% then decreased by 20% — net change?', 'mcq', 'verified')
 on conflict (id) do nothing;
 
 -- Author a heuristic (pending) + assign it to the question (link pending) — the
@@ -69,10 +69,12 @@ language sql as $$
   select count(*)::int
   from public.quant_question_heuristics l
   join public.quant_heuristics h on h.id = l.heuristic_id
+  join public.mock_question_bank q on q.id = l.question_id
   where l.question_id = p_question
     and l.reviewer_status = 'verified'
     and h.reviewer_status = 'verified'
-    and h.is_active = true;
+    and h.is_active = true
+    and q.reviewer_status in ('verified', 'live', 'published');
 $$;
 
 do $$
@@ -101,6 +103,13 @@ begin
   select updated_at into v_tok from public.quant_heuristics where id = v_h;
   perform public.cms_review_quant_heuristic(
     v_h, 'pending', v_tok, 'verified', null, 'clear, correct successive-% shortcut', v_act, 'op@example.com');
+  if (select count(*) from public.admin_audit_logs
+      where action = 'quant_heuristic_status_transition'
+        and entity_type = 'quant_heuristic'
+        and entity_id = v_h::text) <> 1 then
+    raise exception 'FAIL: governed verification must create exactly one audit row';
+  end if;
+  raise notice 'PASS governed verification creates an audit row';
 
   -- Heuristic verified but link still pending → still not ready (defense in depth).
   if pg_temp._qh_ready(v_q) <> 0 then raise exception 'FAIL: unverified link must gate a verified heuristic'; end if;
