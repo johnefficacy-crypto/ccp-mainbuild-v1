@@ -6,14 +6,17 @@ thin wrapper over the ``cms_review_quant_heuristic`` lifecycle RPC.
 
 Domain rule (CLAUDE.md): user-facing reads filter ``reviewer_status='verified'``
 CONJUNCTIVELY. A heuristic reaches a learner only when BOTH the heuristic row and
-its question link are verified — and the heuristic is active. This is defense in
-depth: the link's own reviewer_status cannot leak a pending/rejected heuristic,
-and the heuristic's status cannot leak through an over-eager link.
+its question link are verified — and the heuristic is active. The reviewed link
+must also connect a question whose topic/microtopic is compatible with the
+heuristic's governed scope; this prevents a misassigned Quant link from leaking
+onto a different subject's question.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any, Callable
+
+from app.study_os.subject_runtime_policy import FAMILY_QUANT, family_for_subject
 
 logger = logging.getLogger("career_copilot.study_os.quant_heuristics")
 
@@ -22,6 +25,32 @@ _LINKS = "quant_question_heuristics"
 
 # Learner-facing display order for a question's heuristics.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
+
+# Fetch the content fields used by the learner projection plus the internal scope
+# fields needed to validate that the reviewed link targets a compatible question.
+# Governance fields such as applicability_rule, reviewer notes/actors, timestamps,
+# and audit/CAS metadata never cross this authority boundary.
+_CONTENT_KEYS = (
+    "id",
+    "name",
+    "heuristic_type",
+    "formula_latex",
+    "standard_method",
+    "shortcut_method",
+    "worked_example",
+    "common_traps",
+)
+_INTERNAL_SCOPE_KEYS = ("topic_id", "microtopic_id")
+_HEURISTIC_FIELDS = ",".join(
+    (
+        *_CONTENT_KEYS,
+        *_INTERNAL_SCOPE_KEYS,
+        "topic:topics!quant_heuristics_topic_id_fkey("
+        "subject:subjects(slug,subject_group))",
+        "microtopic:topics!quant_heuristics_microtopic_id_fkey("
+        "parent_topic_id,subject:subjects(slug,subject_group))",
+    )
+)
 
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
@@ -32,49 +61,176 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
         return default
 
 
-def heuristics_for_question(supabase: Any, question_id: str) -> list[dict]:
-    """Return the VERIFIED heuristics linked to ``question_id``, in display order.
+def _display_key(h: dict) -> tuple:
+    """Stable learner display order: relevance, normalized name, then id."""
+    return (
+        _RELEVANCE_RANK.get(h.get("relevance"), 99),
+        (h.get("name") or "").lower(),
+        str(h.get("id") or ""),
+    )
 
-    Two-stage verified gate:
-      1. verified links for the question (link.reviewer_status='verified'),
-      2. of those, the heuristics that are themselves verified AND active.
-    A heuristic missing from stage 2 (pending/rejected/needs_correction or
-    inactive) is dropped even if its link says verified — never leaked.
-    Ordered by link relevance (primary → secondary → related) then name.
+
+def _learner_row(row: dict) -> dict:
+    """Defense-in-depth allowlist for the batched learner authority."""
+    return {key: row.get(key) for key in _CONTENT_KEYS}
+
+
+def _canonical_scope_is_quant(heuristic: dict) -> bool:
+    """Require every populated scope to resolve to canonical Quant taxonomy.
+
+    Migration 243 guarantees only that at least one scope ID is populated; it does
+    not constrain that topic to Quant or ensure a microtopic belongs to the paired
+    topic. The embedded topic rows keep this validation inside the one heuristic
+    query required by the learner contract.
     """
+    scopes: list[dict] = []
+
+    topic_id = heuristic.get("topic_id")
+    if topic_id:
+        topic = heuristic.get("topic")
+        if not isinstance(topic, dict):
+            return False
+        scopes.append(topic)
+
+    microtopic_id = heuristic.get("microtopic_id")
+    if microtopic_id:
+        microtopic = heuristic.get("microtopic")
+        if not isinstance(microtopic, dict):
+            return False
+        if topic_id and str(microtopic.get("parent_topic_id") or "") != str(topic_id):
+            return False
+        scopes.append(microtopic)
+
+    for scope in scopes:
+        subject = scope.get("subject")
+        if not isinstance(subject, dict):
+            return False
+        if family_for_subject(
+            slug=subject.get("slug"),
+            subject_group=subject.get("subject_group"),
+        ) != FAMILY_QUANT:
+            return False
+    return bool(scopes)
+
+
+def _scope_matches(heuristic: dict, question: Any) -> bool:
+    """Fail closed unless every populated heuristic scope dimension matches.
+
+    When both topic and microtopic are stored, both must match. This avoids
+    trusting that historical or operator-authored rows always carry a consistent
+    parent/child pair, while still supporting topic-only and microtopic-only
+    strategies. Topic IDs are canonical, subject-owned rows, so a mismatch also
+    blocks a Quant strategy linked to a Reasoning/English question.
+    """
+    if not isinstance(question, dict) or not _canonical_scope_is_quant(heuristic):
+        return False
+    heuristic_topic = heuristic.get("topic_id")
+    heuristic_microtopic = heuristic.get("microtopic_id")
+    if not heuristic_topic and not heuristic_microtopic:
+        return False
+    if heuristic_topic and str(question.get("topic_id") or "") != str(heuristic_topic):
+        return False
+    if (
+        heuristic_microtopic
+        and str(question.get("microtopic_id") or "") != str(heuristic_microtopic)
+    ):
+        return False
+    return True
+
+
+def heuristics_for_questions(
+    supabase: Any, question_ids: list[str]
+) -> dict[str, list[dict]]:
+    """Return verified active heuristics for every requested question id.
+
+    Uses at most ONE link query and ONE heuristic query regardless of how many
+    question ids are passed (no N+1). The link query embeds the referenced bank
+    question's topic scope, so the gate is conjunctive:
+
+      link verified AND heuristic verified AND heuristic active AND scope match.
+
+    Every requested id is present with at least ``[]``; rows never cross-leak
+    between questions or subjects. Only learner content fields plus per-link
+    relevance leave this authority, ordered deterministically by relevance, name,
+    then id.
+
+    Optional strategy content is fail-soft: a database read failure returns the
+    initialized empty mapping so the primary review response remains available.
+    """
+    ids = [q for q in dict.fromkeys(question_ids or []) if q]
+    out: dict[str, list[dict]] = {q: [] for q in ids}
+    if not ids:
+        return out
+
     link_rows = _safe(
         lambda: supabase.table(_LINKS)
-        .select("heuristic_id,relevance,reviewer_status")
-        .eq("question_id", question_id)
+        .select(
+            "question_id,heuristic_id,relevance,"
+            "question:mock_question_bank!inner(topic_id,microtopic_id)"
+        )
+        .in_("question_id", ids)
         .eq("reviewer_status", "verified")
         .execute(),
         default=None,
     )
     links = getattr(link_rows, "data", None) or []
     if not links:
-        return []
-    relevance_by_id = {l["heuristic_id"]: l.get("relevance") or "related" for l in links}
-    heuristic_ids = list(relevance_by_id.keys())
+        return out
+
+    heuristic_ids = sorted(
+        {
+            link.get("heuristic_id")
+            for link in links
+            if isinstance(link, dict) and link.get("heuristic_id")
+        }
+    )
+    if not heuristic_ids:
+        return out
 
     heur_rows = _safe(
         lambda: supabase.table(_HEURISTICS)
-        .select("*")
+        .select(_HEURISTIC_FIELDS)
         .in_("id", heuristic_ids)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
         default=None,
     )
-    heuristics = getattr(heur_rows, "data", None) or []
+    heur_by_id = {
+        row["id"]: row
+        for row in (getattr(heur_rows, "data", None) or [])
+        if isinstance(row, dict) and row.get("id")
+    }
 
-    def _key(h: dict) -> tuple:
-        rel = relevance_by_id.get(h["id"], "related")
-        return (_RELEVANCE_RANK.get(rel, 99), (h.get("name") or "").lower())
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        question_id = link.get("question_id")
+        heuristic = heur_by_id.get(link.get("heuristic_id"))
+        if (
+            question_id in out
+            and heuristic is not None
+            and _scope_matches(heuristic, link.get("question"))
+        ):
+            # Copy per question so the same heuristic may carry different reviewed
+            # relevance without shared mutation across output lists.
+            out[question_id].append(
+                {
+                    **_learner_row(heuristic),
+                    "relevance": link.get("relevance") or "related",
+                }
+            )
 
-    out = []
-    for h in sorted(heuristics, key=_key):
-        out.append({**h, "relevance": relevance_by_id.get(h["id"], "related")})
+    for question_id in out:
+        out[question_id].sort(key=_display_key)
     return out
+
+
+def heuristics_for_question(supabase: Any, question_id: str) -> list[dict]:
+    """Compatibility wrapper over the batched verified-only authority."""
+    if not question_id:
+        return []
+    return heuristics_for_questions(supabase, [question_id]).get(question_id, [])
 
 
 def list_verified_heuristics_for_topic(
@@ -99,7 +255,10 @@ def list_verified_heuristics_for_topic(
         q = q.eq("topic_id", topic_id)
     rows = _safe(lambda: q.execute(), default=None)
     heuristics = getattr(rows, "data", None) or []
-    return sorted(heuristics, key=lambda h: (h.get("name") or "").lower())
+    return sorted(
+        heuristics,
+        key=lambda h: ((h.get("name") or "").lower(), str(h.get("id") or "")),
+    )
 
 
 def review_heuristic(

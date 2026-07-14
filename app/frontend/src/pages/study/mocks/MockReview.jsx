@@ -187,6 +187,8 @@ export default function MockReview() {
               numeric_answer: current.numeric_answer,
               correct_numeric_answer: current.question_snapshot?.numeric_answer?.value ?? null,
               numeric_tolerance: current.question_snapshot?.numeric_answer?.tolerance ?? null,
+              // Live verified-only Solution Strategy list (GQR-S1); missing → [].
+              solution_strategies: current.solution_strategies ?? [],
             }}
           />
         </div>

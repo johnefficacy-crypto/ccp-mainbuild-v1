@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.study_os.attempt_events import record_server_event
+from app.study_os.solution_strategies import strategies_for_questions
 from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
     ATTEMPT_AUTO_SUBMITTED,
@@ -1492,6 +1493,13 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             ordered_ids.append(qid)
             seen.add(qid)
 
+    # Verified-only "Solution Strategy" projection (GQR-S1), read ONCE for the
+    # whole attempt (batched, no N+1). A LIVE read — deliberately NOT frozen into
+    # question_snapshot — so a strategy later unverified/inactive disappears from
+    # subsequent review reads. Fail-soft inside strategies_for_questions: a source
+    # error yields [] and never breaks the review response.
+    strategies = strategies_for_questions(supabase, ordered_ids)
+
     questions = []
     for i, qid in enumerate(ordered_ids):
         r = by_qid[qid]
@@ -1507,6 +1515,8 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "is_correct": r.get("is_correct"),
             "error_type": cls.get(qid),
             "explanation": snap.get("explanation"),
+            # Sibling of question_snapshot (never merged into it — it's a live read).
+            "solution_strategies": strategies.get(qid, []),
             "time_spent_sec": int(r.get("time_spent_sec") or 0),
         })
     return {"attempt_id": attempt_id, "questions": questions}
