@@ -48,7 +48,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | Existing English Error Lab read model | MERGED / CODE PRESENT | `ewp_error_lab`, English endpoint, hook, and `ErrorLab.jsx`; preserve as English-specific authority. |
 | Quant learner strategy delivery | CODE-FIXED, VALIDATION PENDING | GQR-S1 below — `solution_strategies.py` + batched and scope-compatible `heuristics_for_questions` + `get_review` attach + `SolutionStrategyPanel`; automated tests green; live/operator proof pending. |
 | Reasoning strategy authority | CODE-FIXED, VALIDATION PENDING | `app/supabase/migrations/262_reasoning_strategy_authority.sql`, `app/backend/app/study_os/reasoning_strategies.py`, Content Studio Reasoning tab (Library + Review Queue). Authoring/assignment UI still deferred; governed seeded content path landed (GQR-S3b — preflight/seed/proof SQL). |
-| Improvement Lab composition | CODE-FIXED, VALIDATION PENDING | GQR-S5 below — rename + shell landed; personalized feeds are GQR-S6. |
+| Improvement Lab composition | CODE-FIXED, VALIDATION PENDING | GQR-S5 rename + shell landed; personalized Quant/Reasoning feeds wired in GQR-S6 (this slice). |
 
 ---
 
@@ -63,7 +63,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | GQR-S3b | Reasoning authoring, assignment, and seeded content | CODE-FIXED, VERIFY DB | GQR-S3 | Governed verified strategy + verified link produced through the existing service-role INSERT + `cms_review_reasoning_strategy` RPC path (preflight/seed/proof SQL; no migration), mirroring GQR-S2. Full Content Studio authoring UI (new create/edit/activate/link-review RPCs = migration) remains a tracked follow-up. |
 | GQR-S4 | Reasoning independent-question learner delivery | CODE-FIXED, VALIDATION PENDING | GQR-S3 authority (migration 262) present; live proof needs GQR-S3b content | `reasoning_strategies.strategies_for_questions` (batched, conjunctive verified+active+scope gate, mirrors Quant) + registered in `solution_strategies` aggregator (`_project_reasoning`, `subject_family='reasoning'`); `get_review` already batches it; shared `SolutionStrategyPanel` reused (renders `key_observation`). No migration. |
 | GQR-S5 | Rename Error Lab learner page to Improvement Lab | CODE-FIXED, VALIDATION PENDING | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
-| GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | BLOCKED on learner delivery | GQR-S1 and GQR-S4 | Bounded owner-scoped attempt-history aggregation; live verified-only projection; independent section states. |
+| GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | CODE-FIXED, VALIDATION PENDING | GQR-S1 + GQR-S4 (both merged) | `study_os/improvement_lab.py::build_feed` (bounded owner-scoped submitted-attempt history → verified-only live aggregator projection → per-strategy evidence → wrong-and-recent ranking) + `/api/study/improvement-lab/{quant,reasoning}`; FE `StrategyFeedSection`/`StrategyFeedCard`/`useStrategyFeed` replace the S5 `PlannedSection` placeholders. No migration. Live proof needs seeded verified content (GQR-S2 quant present; GQR-S3b reasoning in flight, PR #996). |
 | GQR-S7 | Reasoning set/stimulus-aware strategies | BLOCKED on GQR-S3/GQR-S4 | Reasoning authority + independent delivery | Set-level authority and one-time grouped rendering; no duplication per question. |
 | GQR-S8 | Planner/Calculation Gym recommendations | DEFERRED | GQR-Q8/Q9 and Lane A gates | Keep speed/calculation evidence and planner activation outside the strategy-delivery PRs. |
 | GQR-S9 | Non-verbal Reasoning | DEFERRED | Media-aware contract required | No image-dependent Reasoning content in the active sequence. |
@@ -342,8 +342,8 @@ Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (11 �
 - [x] Rename learner title to Improvement Lab. (`ImprovementLab.jsx`)
 - [x] Use learner copy covering recurring errors and useful solving strategies.
 - [x] Render My Writing Errors. (`features/study/improvement-lab/MyWritingErrors.jsx`)
-- [x] Render Methods & Shortcuts. (Quant `PlannedSection`; personalized feed deferred to GQR-S6)
-- [x] Render Approaches & Patterns. (Reasoning `PlannedSection`; personalized feed deferred to GQR-S6)
+- [x] Render Methods & Shortcuts. (GQR-S6: real Quant `StrategyFeedSection`)
+- [x] Render Approaches & Patterns. (GQR-S6: real Reasoning `StrategyFeedSection`)
 - [x] Give each section an independent loading, empty, and error state.
 - [x] One section failure must not hide the others. (`SectionBoundary` per section)
 
@@ -359,41 +359,49 @@ Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (11 �
 
 ## GQR-S6 — Personalized Improvement Lab feeds
 
-**Status:** BLOCKED on GQR-S1 and GQR-S4
+**Status:** CODE-FIXED, VALIDATION PENDING (backend `study_os/improvement_lab.py` + `/api/study/improvement-lab/{quant,reasoning}`; FE `StrategyFeedSection`/`StrategyFeedCard`/`useStrategyFeed`; no migration)
 
 ### API
 
-- [ ] Add server-owned Quant learner feed.
-- [ ] Add server-owned Reasoning learner feed.
-- [ ] Authenticate and owner-scope every read.
-- [ ] Bound recent attempt and response reads.
-- [ ] Consider only submitted/trusted attempts allowed by the chosen contract.
-- [ ] Batch strategy reads.
-- [ ] Deduplicate by strategy ID.
-- [ ] Keep verification and active-state checks live.
+- [x] Add server-owned Quant learner feed (`GET /api/study/improvement-lab/quant`).
+- [x] Add server-owned Reasoning learner feed (`GET /api/study/improvement-lab/reasoning`).
+- [x] Authenticate and owner-scope every read (`get_current_user`; `.eq("user_id", …)`).
+- [x] Bound recent attempt and response reads (`_MAX_ATTEMPTS=30`, `_MAX_RESPONSES=2000`, `_MAX_QUESTIONS=500`, `_MAX_ITEMS=50`).
+- [x] Consider only submitted attempts (`.eq("status","submitted")`).
+- [x] Batch strategy reads (single aggregator call over the deduped question set).
+- [x] Deduplicate by strategy ID (per-strategy accumulator).
+- [x] Keep verification and active-state checks live (via the verified-only aggregator — no frozen copy).
 
 ### Evidence summary
 
-- [ ] `times_seen`.
-- [ ] `wrong_count`.
-- [ ] `correct_count`.
-- [ ] `last_seen_at`.
-- [ ] bounded recent source question IDs.
+- [x] `times_seen`.
+- [x] `wrong_count`.
+- [x] `correct_count`.
+- [x] `last_seen_at`.
+- [x] bounded recent source question IDs (`_MAX_SOURCE_QUESTIONS=5`).
 
 ### Ranking
 
-- [ ] Wrong-associated strategies before correct-only strategies.
-- [ ] Recent before stale.
-- [ ] Relevance before stable name/ID tie-break.
-- [ ] Deterministic results for identical evidence.
+- [x] Wrong-associated strategies before correct-only strategies.
+- [x] Recent before stale.
+- [x] Relevance before stable name/ID tie-break.
+- [x] Deterministic results for identical evidence (staged stable sorts; final tie-break on id).
 
 ### Boundaries
 
-- [ ] Do not dump the full canonical library.
-- [ ] Do not add a saved-strategy table in v1.
-- [ ] Do not write planner tasks.
-- [ ] Do not infer target solve time.
-- [ ] Withdrawn content disappears on the next read.
+- [x] Do not dump the full canonical library (only strategies for attempted questions).
+- [x] Do not add a saved-strategy table in v1.
+- [x] Do not write planner tasks.
+- [x] Do not infer target solve time.
+- [x] Withdrawn content disappears on the next read (live aggregator; never frozen).
+
+**Checkpost #999 hardening (2 rounds):** (F1) feed reads no longer swallow errors. Attempts/responses reads propagate; the shared strategy readers + aggregator gained a `strict=` mode (default fail-soft preserved for the mock-review consumer per §11.7; the standalone feed calls `strategies_for_questions(..., strict=True)` so a strategy/link-table outage also propagates). The endpoints map any propagated failure to **HTTP 502** so the client shows its error state; genuine empty stays 200. (F2) the bounded window is now a genuinely recent one: responses are fetched **per attempt** walking the stable recency-ordered attempts (`submitted_at` desc, id tie-break) — not a single unordered `.in_().limit()` that truncates arbitrarily — then the question window is `last_seen_at` desc / id tie-break; `source_question_ids` recent-first; per-attempt cap logs when saturated. (F3) per-strategy `relevance` aggregates the STRONGEST across links (min rank), order-independent. (F4) card renders `worked_example`.
+
+**Codex #999 review (P2×2):** unattempted rows (`is_correct IS NULL`, skipped questions) are excluded from evidence (mirrors the §3.3 exclude-unanswered convention — no recommendations for untouched questions); and the aggregator gained a `subjects=` restriction so a subject-scoped feed reads ONLY its own source — an unrelated subject's outage can no longer 502 a healthy feed (independent-section contract).
+
+Tests: `app/backend/tests/study_os/test_improvement_lab.py` (19 — scope, evidence, verified-only, not-a-library-dump, subject filter, wrong-first ranking, governance strip, empty, owner/response + strategy read-failure propagates, strongest-relevance both orders, recent-first sources, determinism, recency-bounded-window overflow both orders, skip-unanswered, unrelated-source-outage isolation, endpoint wiring + owner/strategy 502), FE `StrategyFeedSection.test.jsx` (4, incl. worked_example) + `ImprovementLab.test.jsx` updated.
+
+- [ ] Live/operator proof that a real seeded strategy appears in a learner's feed — pending seeded verified content (Quant seed = GQR-S2; Reasoning seed = GQR-S3b, PR #996).
 
 ---
 

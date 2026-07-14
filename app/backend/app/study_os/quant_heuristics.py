@@ -61,6 +61,13 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
         return default
 
 
+def _read(call: Callable[[], Any], strict: bool) -> Any:
+    """Run a read either fail-soft (default, mock-review consumer) or strict (the
+    standalone Improvement Lab feed, which must distinguish a real read failure
+    from a legitimately empty result). Strict lets the exception propagate."""
+    return call() if strict else _safe(call, default=None)
+
+
 def _display_key(h: dict) -> tuple:
     """Stable learner display order: relevance, normalized name, then id."""
     return (
@@ -139,7 +146,7 @@ def _scope_matches(heuristic: dict, question: Any) -> bool:
 
 
 def heuristics_for_questions(
-    supabase: Any, question_ids: list[str]
+    supabase: Any, question_ids: list[str], *, strict: bool = False
 ) -> dict[str, list[dict]]:
     """Return verified active heuristics for every requested question id.
 
@@ -154,15 +161,18 @@ def heuristics_for_questions(
     relevance leave this authority, ordered deterministically by relevance, name,
     then id.
 
-    Optional strategy content is fail-soft: a database read failure returns the
-    initialized empty mapping so the primary review response remains available.
+    ``strict=False`` (default, the mock-review consumer) is fail-soft: a database
+    read failure returns the initialized empty mapping so the primary review
+    response stays available. ``strict=True`` (the standalone Improvement Lab
+    feed) lets a read failure PROPAGATE, so a strategy-table outage surfaces as an
+    error instead of masquerading as "no strategies".
     """
     ids = [q for q in dict.fromkeys(question_ids or []) if q]
     out: dict[str, list[dict]] = {q: [] for q in ids}
     if not ids:
         return out
 
-    link_rows = _safe(
+    link_rows = _read(
         lambda: supabase.table(_LINKS)
         .select(
             "question_id,heuristic_id,relevance,"
@@ -171,7 +181,7 @@ def heuristics_for_questions(
         .in_("question_id", ids)
         .eq("reviewer_status", "verified")
         .execute(),
-        default=None,
+        strict,
     )
     links = getattr(link_rows, "data", None) or []
     if not links:
@@ -187,14 +197,14 @@ def heuristics_for_questions(
     if not heuristic_ids:
         return out
 
-    heur_rows = _safe(
+    heur_rows = _read(
         lambda: supabase.table(_HEURISTICS)
         .select(_HEURISTIC_FIELDS)
         .in_("id", heuristic_ids)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
-        default=None,
+        strict,
     )
     heur_by_id = {
         row["id"]: row

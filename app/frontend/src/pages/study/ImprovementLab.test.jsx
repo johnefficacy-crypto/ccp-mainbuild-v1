@@ -4,12 +4,22 @@ import "@testing-library/jest-dom";
 
 import ImprovementLab from "./ImprovementLab";
 import useErrorLab from "../../features/study/english-practice/useErrorLab";
+import useStrategyFeed from "../../features/study/improvement-lab/useStrategyFeed";
 
-// Factory mock so the real hook (which imports lib/api → env) is never loaded.
+// Factory mocks so the real hooks (which import lib/api → env) are never loaded.
 jest.mock("../../features/study/english-practice/useErrorLab", () => ({
   __esModule: true,
   default: jest.fn(),
 }));
+jest.mock("../../features/study/improvement-lab/useStrategyFeed", () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+beforeEach(() => {
+  // Quant/Reasoning feeds default to empty so the shell assertions stay stable.
+  useStrategyFeed.mockReturnValue({ items: [], status: "empty", refresh: jest.fn() });
+});
 
 afterEach(() => jest.clearAllMocks());
 
