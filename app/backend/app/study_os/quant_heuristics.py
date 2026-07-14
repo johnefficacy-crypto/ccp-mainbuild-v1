@@ -23,13 +23,21 @@ _LINKS = "quant_question_heuristics"
 # Learner-facing display order for a question's heuristics.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
 
-# Fetch only fields required by the learner projection. Governance fields such as
-# applicability_rule, reviewer notes/actors, timestamps, and audit/CAS metadata
-# never need to cross this authority boundary.
-_LEARNER_HEURISTIC_FIELDS = (
-    "id,name,heuristic_type,formula_latex,standard_method,"
-    "shortcut_method,worked_example,common_traps"
+# Fetch and retain only fields required by the learner projection. Governance
+# fields such as applicability_rule, reviewer notes/actors, timestamps, and
+# audit/CAS metadata never cross this authority boundary even if a test double or
+# client library ignores the select projection.
+_LEARNER_HEURISTIC_KEYS = (
+    "id",
+    "name",
+    "heuristic_type",
+    "formula_latex",
+    "standard_method",
+    "shortcut_method",
+    "worked_example",
+    "common_traps",
 )
+_LEARNER_HEURISTIC_FIELDS = ",".join(_LEARNER_HEURISTIC_KEYS)
 
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
@@ -47,6 +55,11 @@ def _display_key(h: dict) -> tuple:
         (h.get("name") or "").lower(),
         str(h.get("id") or ""),
     )
+
+
+def _learner_row(row: dict) -> dict:
+    """Defense-in-depth allowlist for the batched learner authority."""
+    return {key: row.get(key) for key in _LEARNER_HEURISTIC_KEYS}
 
 
 def heuristics_for_questions(
@@ -82,7 +95,7 @@ def heuristics_for_questions(
         return out
 
     heuristic_ids = sorted(
-        {link.get("heuristic_id") for link in links if link.get("heuristic_id")}
+        {link.get("heuristic_id") for link in links if isinstance(link, dict) and link.get("heuristic_id")}
     )
     if not heuristic_ids:
         return out
@@ -97,7 +110,7 @@ def heuristics_for_questions(
         default=None,
     )
     heur_by_id = {
-        row["id"]: row
+        row["id"]: _learner_row(row)
         for row in (getattr(heur_rows, "data", None) or [])
         if isinstance(row, dict) and row.get("id")
     }
