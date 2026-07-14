@@ -36,6 +36,7 @@ _CYCLE_DATE_FIELDS = {
     "notification_date", "application_start", "application_end",
     "exam_start", "exam_end", "status",
 }
+_CYCLE_REVIEWED_DATE_FIELDS = _CYCLE_DATE_FIELDS - {"status"}
 _CYCLE_ALL_FIELDS = {
     "exam_id", "year", "cycle_name", "status",
     "notification_date", "application_start", "application_end",
@@ -138,6 +139,15 @@ def apply_cycle_date_update(
         raise HTTPException(status_code=422, detail="No allowed cycle fields in patch")
     if cleaned.get("status") and cleaned["status"] not in _CYCLE_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {_CYCLE_STATUSES}")
+    # Corrigendum application is another cycle authoring path. Any reviewed date
+    # change invalidates the earned review state just like the CMS PATCH path.
+    if existing.get("reviewer_status") in {"reviewed", "verified"} and any(
+        field in cleaned and cleaned[field] != existing.get(field)
+        for field in _CYCLE_REVIEWED_DATE_FIELDS
+    ):
+        cleaned["reviewer_status"] = "draft"
+        cleaned["reviewed_by"] = None
+        cleaned["reviewed_at"] = None
     cleaned["updated_at"] = _now_iso()
     updated = supabase.table("exam_cycles").update(cleaned).eq("id", cycle_id).execute().data or []
     row = updated[0] if updated else existing | cleaned

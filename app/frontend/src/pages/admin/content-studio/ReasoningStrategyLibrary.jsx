@@ -1,10 +1,10 @@
 /**
  * Reasoning Strategy Library — read-only governance browse over reasoning_strategies
- * (migration 261, GQR-S3). Content Studio is where reasoning strategies are governed
+ * (migration 262, GQR-S3). Content Studio is where reasoning strategies are governed
  * (solution-strategies-improvement-lab.md §8.2/§8.5); this Library lets an operator
  * filter by type / reviewer status / name and open a full detail drawer.
  *
- * There is NO create/edit/activate/assign affordance here — migration 261 ships
+ * There is NO create/edit/activate/assign affordance here — migration 262 ships
  * only the review-lifecycle RPC, so authoring is a later governed slice (exactly as
  * the Quant heuristic Library deferred it). The lifecycle transition itself lives in
  * the Review Queue tab. formula_latex is rendered through the existing KaTeX path

@@ -1,4 +1,4 @@
--- 261_reasoning_strategy_authority.sql
+-- 262_reasoning_strategy_authority.sql
 --
 -- GQR-S3 — Reasoning strategy authority (Reasoning lane).
 --
@@ -11,8 +11,8 @@
 -- statement-conclusion, statement-assumption, logical sequence). Set/stimulus-
 -- aware delivery is a later slice (GQR-S7) and is deliberately absent here.
 --
--- Applied version = MAX(filesystem)+1 at authoring (261, after
--- 260_ca_monthly_retry_integrity.sql). Reconcile against the deployed state with:
+-- Applied version = MAX(filesystem)+1 at merge-conflict resolution (262, after
+-- 261_exam_cycles_trust_gate.sql). Reconcile against the deployed state with:
 --   SELECT MAX(version) FROM schema_migrations;
 -- before applying to any environment.
 --

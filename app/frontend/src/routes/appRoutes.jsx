@@ -21,7 +21,7 @@ const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
 const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
 const CurrentAffairsAttemptShell = lazy(() => import("../pages/study/CurrentAffairsAttemptShell"));
-const ErrorLab = lazy(() => import("../pages/study/ErrorLab"));
+const ImprovementLab = lazy(() => import("../pages/study/ImprovementLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
@@ -107,10 +107,15 @@ export const appRouteElements = (
           path="current-affairs/attempts/:attemptId"
           element={<CurrentAffairsAttemptShell />}
         />
-        {/* Error Lab (EWP-4): recurring writing issues grouped by microtopic.
-            Mounted UNDER StudyShell + inside RouteErrorBoundary like the EWP-3
-            route; absent from the sidebar (no-new-surface rule). */}
-        <Route path="error-lab" element={<ErrorLab />} />
+        {/* Improvement Lab (GQR-S5): the renamed learner surface composing My
+            Writing Errors (EWP-4 English authority), Methods & Shortcuts (Quant)
+            and Approaches & Patterns (Reasoning). Mounted UNDER StudyShell +
+            inside RouteErrorBoundary like the EWP-3 route; absent from the
+            sidebar (no-new-surface rule). */}
+        <Route path="improvement-lab" element={<ImprovementLab />} />
+        {/* Backward-compatible alias: the former Error Lab route redirects to
+            the canonical Improvement Lab route so existing links keep working. */}
+        <Route path="error-lab" element={<Navigate to="/app/study/improvement-lab" replace />} />
       </Route>
       <Route path="/app/study/focus" element={<Focus />} />
       <Route path="/app/study/mocks" element={<Mocks />} />

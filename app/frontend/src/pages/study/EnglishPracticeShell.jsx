@@ -259,17 +259,18 @@ export default function EnglishPracticeShell() {
         sub={session?.mode === "exam" ? "Exam mode" : "Learning mode"}
       />
 
-      {/* Contextual entry to the Error Lab (EWP-4): the caller's recurring
-          writing issues grouped by microtopic. This is the ONLY entry point —
-          Error Lab is absent from the sidebar (no-new-surface rule). */}
+      {/* Contextual entry to the Improvement Lab (GQR-S5): the caller's
+          recurring writing issues surface as My Writing Errors. This is the ONLY
+          entry point — Improvement Lab is absent from the sidebar
+          (no-new-surface rule). */}
       <div className="mt-2">
         <Link
-          to="/app/study/error-lab"
+          to="/app/study/improvement-lab"
           data-testid="error-lab-link"
-          aria-label="View your recurring writing issues in the Error Lab"
+          aria-label="View your recurring writing issues in the Improvement Lab"
           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
         >
-          Review recurring issues in Error Lab
+          Review recurring issues in Improvement Lab
         </Link>
       </div>
 

@@ -1,4 +1,4 @@
-"""Static contract for migration 261's Reasoning strategy authority.
+"""Static contract for migration 262's Reasoning strategy authority.
 
 Live apply/RLS proof remains an operator gate.  These assertions pin the
 security, lifecycle, and content-CAS DDL so a later edit cannot silently weaken
@@ -9,7 +9,7 @@ from pathlib import Path
 
 MIGRATION = (
     Path(__file__).resolve().parents[3]
-    / "supabase/migrations/261_reasoning_strategy_authority.sql"
+    / "supabase/migrations/262_reasoning_strategy_authority.sql"
 ).read_text(encoding="utf-8").lower()
 SQL = " ".join(MIGRATION.split())
 

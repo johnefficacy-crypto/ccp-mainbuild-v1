@@ -98,7 +98,7 @@ export const contentStudioApi = {
     }),
 
   // Reasoning strategy authority (GQR-S3). Read = content_studio reads; review =
-  // content_studio.review. There is no create/edit/assign path — migration 261
+  // content_studio.review. There is no create/edit/assign path — migration 262
   // ships only the review RPC. Every review decision carries an 8–500 char
   // `reason` and is dual-CAS-guarded on BOTH the `expected_status` and the content
   // `expected_updated_at` the client last read (so a reviewer can never verify a
@@ -204,7 +204,7 @@ export const HEURISTIC_REVIEW_TRANSITIONS = {
   rejected: ["pending"],
 };
 
-// Reasoning strategy authority (migration 261, GQR-S3). strategy_type facet + the
+// Reasoning strategy authority (migration 262, GQR-S3). strategy_type facet + the
 // review transition matrix, which MATCHES the quant-heuristic one: needs_correction
 // routes back to pending (never straight to verified), a verified strategy can only
 // be reopened for correction, and rejected can be reopened to pending for rework.

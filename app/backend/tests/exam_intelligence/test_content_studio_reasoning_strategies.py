@@ -1,12 +1,12 @@
 """Router-layer tests for Content Studio reasoning-strategy operations (GQR-S3).
 
 Covers the `/api/admin/content-studio/reasoning-strategies` surface added over
-migration 261 (`app/api/content_studio.py`) at the FastAPI boundary: the shared
+migration 262 (`app/api/content_studio.py`) at the FastAPI boundary: the shared
 read gate, list filters + pagination, the strategy reviewer-transition guard
 (which matches quant heuristics and DIFFERS from writing prompts), the reopen-
 verified note rule, dual-CAS body requirements, and RPC error-code → HTTP mapping.
 The atomic RPC *behaviour* (audit rows, CAS, transition matrix) is owned by the
-migration-261 RPC; here we only prove the router contract. Mirrors
+migration-262 RPC; here we only prove the router contract. Mirrors
 test_content_studio_quant_heuristics.py.
 """
 from __future__ import annotations

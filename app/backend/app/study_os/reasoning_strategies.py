@@ -1,6 +1,6 @@
 """Reasoning strategy authority — governance review wrapper (GQR-S3).
 
-Content Studio authors and reviews ``reasoning_strategies`` (migration 261). This
+Content Studio authors and reviews ``reasoning_strategies`` (migration 262). This
 module is the thin wrapper over the ``cms_review_reasoning_strategy`` lifecycle
 RPC, mirroring ``study_os.quant_heuristics.review_heuristic``.
 
@@ -33,7 +33,7 @@ def review_strategy(
 ) -> dict:
     """Transition a strategy's reviewer_status via the audited lifecycle RPC.
 
-    The RPC (migration 261) owns the transition matrix, dual optimistic-
+    The RPC (migration 262) owns the transition matrix, dual optimistic-
     concurrency (CAS on BOTH ``expected_status`` and ``expected_updated_at`` — the
     content-revision token, so a reviewer can never verify a revision they did not
     read), the mandatory 8–500 char audit ``reason``, and the audit row. This

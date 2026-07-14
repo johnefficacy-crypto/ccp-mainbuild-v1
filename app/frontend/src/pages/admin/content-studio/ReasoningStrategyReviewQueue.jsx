@@ -1,6 +1,6 @@
 /**
  * Reasoning Strategy Review Queue — the pending → verified|rejected|needs_correction
- * lifecycle for reasoning_strategies (migration 261, GQR-S3).
+ * lifecycle for reasoning_strategies (migration 262, GQR-S3).
  *
  * The transition matrix matches quant heuristics (REASONING_REVIEW_TRANSITIONS):
  * needs_correction routes back to pending (never straight to verified), a verified
@@ -39,7 +39,7 @@ const SNAPSHOT_ROWS = [
   ["Microtopic", "microtopic_name", "microtopic_id"],
 ];
 
-// Every canonical review-bearing field (migration 261). A reviewer must see the
+// Every canonical review-bearing field (migration 262). A reviewer must see the
 // full method/observation/trap content before verifying — not just name + faster.
 const SNAPSHOT_TEXT_ROWS = [
   ["Standard method", "standard_method"],

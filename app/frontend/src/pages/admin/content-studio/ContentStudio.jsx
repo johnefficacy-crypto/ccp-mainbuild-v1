@@ -84,7 +84,7 @@ export default function ContentStudio() {
   if (type === "writing_prompt") {
     typedTabs = TABS;
   } else if (type === "quant_heuristic" || type === "reasoning_strategy") {
-    // Reasoning strategies mirror quant heuristics — migration 261 ships only the
+    // Reasoning strategies mirror quant heuristics — migration 262 ships only the
     // review RPC (no create/bulk/assign), so they expose just Library + Review Queue.
     typedTabs = TABS.filter((t) => t.id === "library" || t.id === "review-queue");
   } else if (type === "current_affairs_question") {

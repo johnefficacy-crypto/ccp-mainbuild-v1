@@ -83,6 +83,9 @@ def test_exam_activation_empty_to_planner_ready(monkeypatch):
     sb.db["pyq_question_topic_tags"][0]["reviewer_status"] = "verified"
     sb.db["exam_topic_coverage"][0]["reviewer_status"] = "locked"
     coverage_id = sb.db["exam_topic_coverage"][0]["id"]
+    # Trust gate (migration 261): a cycle is a Study OS / planner target only once
+    # verified — the reviewer step the CMS create path (which lands draft) defers.
+    sb.db["exam_cycles"][0]["reviewer_status"] = "verified"
 
     # D12 v1 (PR-3): new exams default to management_mode='light' (CMS create-only default).
     # A `light` cycle is not a Study OS / planner target until an operator opts it in via the

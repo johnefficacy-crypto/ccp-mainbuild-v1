@@ -162,6 +162,32 @@ def test_operator_apply_cycle_date_update_writes_action_row():
     assert audits[0]["entity_id"] == _CYCLE_ID
 
 
+def test_cycle_date_update_demotes_reviewed_cycle_to_draft():
+    db = _seeded_db()
+    db["exam_cycles"][0].update({
+        "reviewer_status": "reviewed",
+        "reviewed_by": "reviewer-1",
+        "reviewed_at": "2026-07-14T00:00:00Z",
+    })
+    sb = SBStub(db)
+    client = _build_app(sb)
+
+    r = client.post(
+        f"/api/admin/verification-reports/{_REPORT_ID}/apply-registry-action",
+        json={
+            "action_type": "cycle_date_update",
+            "exam_cycle_id": _CYCLE_ID,
+            "patch": {"exam_start": "2025-06-01"},
+            "reason": "Official corrigendum invalidates the reviewed cycle date",
+        },
+    )
+    assert r.status_code == 200, r.text
+    cycle = sb.db["exam_cycles"][0]
+    assert cycle["reviewer_status"] == "draft"
+    assert cycle["reviewed_by"] is None
+    assert cycle["reviewed_at"] is None
+
+
 def test_operator_apply_phase_date_update_writes_action_row():
     sb = SBStub(_seeded_db())
     client = _build_app(sb)

@@ -1134,18 +1134,18 @@ def review_quant_heuristic(
 
 # ── Reasoning strategy authority (GQR-S3) ───────────────────────────────────
 #
-# reasoning_strategies (migration 261) are the Reasoning-lane equivalent of quant
+# reasoning_strategies (migration 262) are the Reasoning-lane equivalent of quant
 # heuristics: subject/topic-scoped canonical solving strategies governed here. This
 # section is the operator API glue — a permission-gated Library read + the
 # governance review transition (dual CAS on status + content updated_at, mandatory
 # audit reason), mirroring the quant-heuristic surface exactly. There is NO
-# create/edit/activate/assign path in this PR (migration 261 ships only the review
+# create/edit/activate/assign path in this PR (migration 262 ships only the review
 # RPC — authoring is a later governed slice, exactly as GQR-Q7 deferred quant
 # authoring). Reads reuse the shared `_require_content_read` gate; reviewing is
 # content_studio.review. GQR-S3 stops before learner delivery; the batched
 # projection is GQR-S4.
 #
-# The transition matrix (mirrored from migration 261) matches the heuristic one:
+# The transition matrix (mirrored from migration 262) matches the heuristic one:
 # needs_correction routes back to pending (never straight to verified), a verified
 # strategy can only be reopened for correction, and a rejected strategy can be
 # reopened to pending for rework.
@@ -1162,7 +1162,7 @@ _RS_TYPES = frozenset({"approach", "pattern", "elimination", "diagram_method", "
 class ReasoningStrategyReviewBody(BaseModel):
     """Review-lifecycle body for a reasoning strategy.
 
-    The RPC (`cms_review_reasoning_strategy`, migration 261) CAS-guards on BOTH
+    The RPC (`cms_review_reasoning_strategy`, migration 262) CAS-guards on BOTH
     ``expected_status`` (the reviewer_status the client last saw) AND
     ``expected_updated_at`` (the content-revision token — so a reviewer can never
     verify a revision they did not read), requires an 8–500 char audit ``reason``
