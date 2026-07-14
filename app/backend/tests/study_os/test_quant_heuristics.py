@@ -17,9 +17,32 @@ from tests.persona_questions._stub import SBStub
 _TOKEN = "2026-07-10T00:00:00Z"  # matches the seeded heuristic's updated_at (content CAS)
 
 
-def _heuristic(hid, *, status="verified", active=True, name="H", topic="t1", micro=None):
+def _subject(family="quant"):
+    return {
+        "slug": "quantitative-aptitude" if family == "quant" else "reasoning",
+        "subject_group": "numerical" if family == "quant" else "reasoning",
+    }
+
+
+def _heuristic(
+    hid,
+    *,
+    status="verified",
+    active=True,
+    name="H",
+    topic="t1",
+    micro=None,
+    topic_family="quant",
+    micro_family="quant",
+    micro_parent=None,
+):
     return {
         "id": hid, "topic_id": topic, "microtopic_id": micro,
+        "topic": {"subject": _subject(topic_family)} if topic else None,
+        "microtopic": {
+            "parent_topic_id": topic if micro_parent is None else micro_parent,
+            "subject": _subject(micro_family),
+        } if micro else None,
         "heuristic_code": f"code-{hid}", "name": name,
         "heuristic_type": "shortcut", "applicability_rule": {},
         "reviewer_status": status, "is_active": active, "updated_at": _TOKEN,
@@ -74,6 +97,30 @@ def test_scope_mismatch_excluded_even_if_both_rows_verified():
         "quant_heuristics": [_heuristic("h-ok", status="verified", topic="quant-topic")],
         "quant_question_heuristics": [
             _link("q1", "h-ok", status="verified", topic="reasoning-topic")
+        ],
+    })
+    assert qh.heuristics_for_question(sb, "q1") == []
+
+
+def test_non_quant_canonical_scope_excluded_even_when_ids_match():
+    sb = SBStub({
+        "quant_heuristics": [
+            _heuristic("h-bad", topic="reasoning-topic", topic_family="reasoning")
+        ],
+        "quant_question_heuristics": [
+            _link("q1", "h-bad", topic="reasoning-topic")
+        ],
+    })
+    assert qh.heuristics_for_question(sb, "q1") == []
+
+
+def test_inconsistent_topic_microtopic_parent_excluded():
+    sb = SBStub({
+        "quant_heuristics": [
+            _heuristic("h-bad", topic="t1", micro="m1", micro_parent="other-topic")
+        ],
+        "quant_question_heuristics": [
+            _link("q1", "h-bad", topic="t1", micro="m1")
         ],
     })
     assert qh.heuristics_for_question(sb, "q1") == []
