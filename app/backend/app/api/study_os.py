@@ -32,6 +32,7 @@ from app.study_os import plan_timeline as plan_timeline_service
 from app.study_os import subjects as subjects_service
 from app.study_os import weekly_review as weekly_review_service
 from app.study_os import report_cards as report_cards_service
+from app.study_os.improvement_lab import build_feed as _build_improvement_lab_feed
 
 logger = logging.getLogger("career_copilot.api.study_os")
 
@@ -811,6 +812,22 @@ async def get_plan_changelog(user: dict = Depends(get_current_user)) -> dict[str
         return {"items": [], "count": 0}
 
 
+
+
+@router.get("/improvement-lab/quant")
+async def improvement_lab_quant(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Methods & Shortcuts — personalized, verified-only Quant strategy feed (GQR-S6).
+
+    Owner-scoped, bounded projection over the caller's submitted mock history.
+    The builder is internally fail-soft (any read failure → []), so this never 500s.
+    """
+    return {"items": _build_improvement_lab_feed(get_supabase_admin(), user.get("id"), "quant")}
+
+
+@router.get("/improvement-lab/reasoning")
+async def improvement_lab_reasoning(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Approaches & Patterns — personalized, verified-only Reasoning strategy feed (GQR-S6)."""
+    return {"items": _build_improvement_lab_feed(get_supabase_admin(), user.get("id"), "reasoning")}
 
 
 @router.get("/reports/mock-trend")
