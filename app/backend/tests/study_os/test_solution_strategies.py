@@ -26,9 +26,25 @@ def _heur(hid, *, status="verified", active=True, name="H", htype="shortcut", **
     return row
 
 
-def _link(qid, hid, *, status="verified", relevance="primary"):
-    return {"id": f"lnk-{qid}-{hid}", "question_id": qid, "heuristic_id": hid,
-            "relevance": relevance, "reviewer_status": status}
+def _link(
+    qid,
+    hid,
+    *,
+    status="verified",
+    relevance="primary",
+    topic="t1",
+    micro=None,
+):
+    return {
+        "id": f"lnk-{qid}-{hid}",
+        "question_id": qid,
+        "heuristic_id": hid,
+        "relevance": relevance,
+        "reviewer_status": status,
+        # SBStub deliberately ignores PostgREST select projections, so fixtures
+        # carry the embedded bank-question scope returned by the real link query.
+        "question": {"topic_id": topic, "microtopic_id": micro},
+    }
 
 
 # ── batched quant read ───────────────────────────────────────────────────────
@@ -71,6 +87,27 @@ def test_batched_gate_excludes_unverified_link_and_unverified_or_inactive_heuris
     })
     out = quant_heuristics.heuristics_for_questions(sb, ["q1"])
     assert [h["id"] for h in out["q1"]] == ["h-ok"]
+
+
+def test_batched_rejects_wrong_topic_or_microtopic_link():
+    sb = SBStub({
+        "quant_question_heuristics": [
+            _link("q-topic-mismatch", "h-topic", topic="reasoning-topic"),
+            _link("q-micro-mismatch", "h-micro", topic="t1", micro="other-micro"),
+            _link("q-micro-match", "h-micro", topic="t1", micro="m1"),
+        ],
+        "quant_heuristics": [
+            _heur("h-topic", topic_id="t1", microtopic_id=None),
+            _heur("h-micro", topic_id="t1", microtopic_id="m1"),
+        ],
+    })
+    out = quant_heuristics.heuristics_for_questions(
+        sb,
+        ["q-topic-mismatch", "q-micro-mismatch", "q-micro-match"],
+    )
+    assert out["q-topic-mismatch"] == []
+    assert out["q-micro-mismatch"] == []
+    assert [h["id"] for h in out["q-micro-match"]] == ["h-micro"]
 
 
 def test_batched_no_cross_question_leakage_and_ordering():
@@ -185,15 +222,19 @@ def _review_sb():
         }],
         "mock_attempt_responses": [
             {"id": "r1", "attempt_id": "att-1", "question_id": "q1",
-             "question_snapshot": {"question_text": "Q1", "question_type": "mcq"},
+             "question_snapshot": {
+                 "question_text": "Q1", "question_type": "mcq", "topic_id": "t1"
+             },
              "selected_option_id": "o1", "is_correct": True, "time_spent_sec": 5},
             {"id": "r2", "attempt_id": "att-1", "question_id": "q2",
-             "question_snapshot": {"question_text": "Q2", "question_type": "mcq"},
+             "question_snapshot": {
+                 "question_text": "Q2", "question_type": "mcq", "topic_id": "t2"
+             },
              "selected_option_id": "o2", "is_correct": False, "time_spent_sec": 9},
         ],
         "mock_attempt_response_classification": [],
-        "quant_question_heuristics": [_link("q1", "h1")],
-        "quant_heuristics": [_heur("h1", name="Base-100")],
+        "quant_question_heuristics": [_link("q1", "h1", topic="t1")],
+        "quant_heuristics": [_heur("h1", name="Base-100", topic_id="t1")],
     })
 
 
