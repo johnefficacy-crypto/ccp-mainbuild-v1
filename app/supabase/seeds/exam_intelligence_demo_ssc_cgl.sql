@@ -78,7 +78,15 @@ on conflict (id) do nothing;
 insert into public.subjects (id, slug, name, subject_group, default_difficulty_level) values
   ('55555555-5555-5555-5555-555555555551', 'quantitative-aptitude', 'Quantitative Aptitude', 'numerical', 'medium_high'),
   ('55555555-5555-5555-5555-555555555552', 'english-language', 'English Language', 'verbal', 'medium'),
-  ('55555555-5555-5555-5555-555555555553', 'general-intelligence-reasoning', 'General Intelligence & Reasoning', 'reasoning', 'medium')
+  ('55555555-5555-5555-5555-555555555553', 'general-intelligence-reasoning', 'General Intelligence & Reasoning', 'reasoning', 'medium'),
+  -- General Awareness — the real Tier-1 fourth section. GA is a bundle-driven
+  -- current-affairs subject (subject_group 'general_awareness' → the GA
+  -- SubjectRuntimePolicy family), NOT a topic-coverage subject: it seeds NO
+  -- topics, NO exam_topic_coverage, NO PYQ, and never writes user_topic_mastery.
+  -- Its runtime availability is driven by servable weekly current-affairs
+  -- bundles, not by locked coverage. This row exists so the authored Tier-1
+  -- structure has a real subject to anchor the GA exam_phase_section below.
+  ('55555555-5555-5555-5555-555555555554', 'general-awareness', 'General Awareness', 'general_awareness', 'medium')
 on conflict (id) do nothing;
 
 insert into public.topics (id, subject_id, slug, name, level, default_difficulty_level) values
@@ -103,6 +111,11 @@ insert into public.topic_prerequisites
 on conflict (id) do nothing;
 
 -- ── Phase sections (Tier 1 weightage) ────────────────────────────────────
+-- SSC CGL Tier 1 has FOUR real sections of 25 questions / 50 marks each
+-- (100 questions, 200 marks total — matching the exam_phases row above). All
+-- four are authored here so the mock-blueprint structural envelope reflects the
+-- official structure. GA carries no PYQ/coverage of its own (current-affairs is
+-- bundle-driven); it is authored for structural completeness only.
 insert into public.exam_phase_sections
   (id, exam_phase_id, subject_id, section_label, question_count, marks, weightage_percent, sort_order) values
   ('88888888-8888-8888-8888-888888888881', '44444444-4444-4444-4444-444444444441',
@@ -110,7 +123,9 @@ insert into public.exam_phase_sections
   ('88888888-8888-8888-8888-888888888882', '44444444-4444-4444-4444-444444444441',
    '55555555-5555-5555-5555-555555555552', 'English Comprehension', 25, 50, 25, 2),
   ('88888888-8888-8888-8888-888888888883', '44444444-4444-4444-4444-444444444441',
-   '55555555-5555-5555-5555-555555555553', 'General Intelligence & Reasoning', 25, 50, 25, 3)
+   '55555555-5555-5555-5555-555555555553', 'General Intelligence & Reasoning', 25, 50, 25, 3),
+  ('88888888-8888-8888-8888-888888888884', '44444444-4444-4444-4444-444444444441',
+   '55555555-5555-5555-5555-555555555554', 'General Awareness', 25, 50, 25, 4)
 on conflict (id) do nothing;
 
 -- ── Locked topic coverage (planner-ready exam intelligence) ──────────────
