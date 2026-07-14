@@ -193,3 +193,55 @@ def test_review_missing_actor_raises():
             new_status="verified", reviewer_notes=None, reason="a valid audit reason",
             actor_user_id=None, actor_email="a@x",
         )
+
+
+# ── GQR-S2 readiness lifecycle (mirrors validate_quant_heuristic_readiness.sql) ─
+
+def test_readiness_lifecycle_appears_then_disappears():
+    """End-to-end readiness invariant via the governed path: author (pending) →
+    verify heuristic (RPC) → verify link → the surface APPEARS; then each of
+    rejecting the link, retiring the heuristic, and reopening it for correction
+    makes it DISAPPEAR on the next conjunctive read."""
+    sb = SBStub({
+        "quant_heuristics": [_heuristic("h1", status="pending", active=True)],
+        "quant_question_heuristics": [_link("q1", "h1", status="pending")],
+        "admin_audit_logs": [],
+    })
+    link = sb.db["quant_question_heuristics"][0]
+    heur = sb.db["quant_heuristics"][0]
+
+    # Pending heuristic + pending link → not learner-ready.
+    assert qh.heuristics_for_question(sb, "q1") == []
+
+    # Verify the heuristic via the audited lifecycle RPC.
+    tok = heur["updated_at"]
+    qh.review_heuristic(
+        sb, heuristic_id="h1", expected_status="pending", expected_updated_at=tok,
+        new_status="verified", reviewer_notes=None, reason="clear successive-% shortcut",
+        actor_user_id="op-1", actor_email="op@x",
+    )
+    # Verified heuristic but pending link → still gated (defense in depth).
+    assert qh.heuristics_for_question(sb, "q1") == []
+
+    # Verify the link (governed assignment path) → now the surface appears.
+    link["reviewer_status"] = "verified"
+    assert [h["id"] for h in qh.heuristics_for_question(sb, "q1")] == ["h1"]
+
+    # Reject the link → disappears; restore.
+    link["reviewer_status"] = "rejected"
+    assert qh.heuristics_for_question(sb, "q1") == []
+    link["reviewer_status"] = "verified"
+
+    # Retire the heuristic (is_active=false) → disappears; restore.
+    heur["is_active"] = False
+    assert qh.heuristics_for_question(sb, "q1") == []
+    heur["is_active"] = True
+
+    # Reopen the heuristic for correction via the RPC → disappears.
+    tok = heur["updated_at"]
+    qh.review_heuristic(
+        sb, heuristic_id="h1", expected_status="verified", expected_updated_at=tok,
+        new_status="needs_correction", reviewer_notes="applicability rule under review",
+        reason="reopening to re-verify the rule", actor_user_id="op-1", actor_email="op@x",
+    )
+    assert qh.heuristics_for_question(sb, "q1") == []

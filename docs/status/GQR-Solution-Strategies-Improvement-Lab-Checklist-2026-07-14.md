@@ -58,7 +58,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 |---|---|---|---|---|
 | GQR-S0 | Product/architecture decision and checklist | DESIGN LOCKED | None | This document and `solution-strategies-improvement-lab.md` are the source for scope and sequencing. |
 | GQR-S1 | Quant Solution Strategy delivery in mock review | PLANNED | Existing GQR-Q7 authority | Batched verified-only read, learner projection, review payload field, shared panel, regular/generated-mock tests. No migration. |
-| GQR-S2 | Quant content-readiness completion | PLANNED — CONDITIONAL | GQR-S1 or preflight | Add authoring/editing/activation/question assignment only when verified linked content cannot already be produced through an existing governed path. |
+| GQR-S2 | Quant content-readiness completion | CODE-FIXED, VERIFY DB (this PR) | Preflight | Seed verified linked Quant content via existing paths (service-role INSERT + `cms_review_quant_heuristic` RPC) — no migration. Preflight/seed/proof scripts + read-layer regression. Full Content Studio authoring UI deferred (needs new create/edit/activate/link-review RPCs = migration). |
 | GQR-S3 | Reasoning strategy authority and Content Studio | PLANNED | GQR-S0 | New governed schema, RLS, lifecycle/audit RPCs, library, authoring, assignment, and review queue. |
 | GQR-S4 | Reasoning independent-question learner delivery | BLOCKED on GQR-S3 | GQR-S3 validated | Reuse normalized DTO and Solution Strategy panel for text Reasoning questions. |
 | GQR-S5 | Rename Error Lab learner page to Improvement Lab | PLANNED | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
@@ -164,28 +164,29 @@ This checklist records the implementation sequence for learner-facing Quant and 
 
 ## GQR-S2 — Quant content readiness
 
-**Status:** PLANNED — CONDITIONAL
+**Status:** CODE-FIXED, VERIFY DB (this PR)
 
-### Preflight
+### Preflight — `app/supabase/checks/quant_content_readiness_preflight.sql` (read-only)
 
-- [ ] Count verified active Quant heuristics.
-- [ ] Count verified Quant question links.
-- [ ] Confirm linked questions are reachable through mock/generated-mock review.
-- [ ] Confirm Content Studio can create/edit/activate heuristics or document the governed intake path that does.
-- [ ] Confirm Content Studio can create and review question links or document the governed assignment path that does.
+- [x] Count verified active Quant heuristics. (Greenfield: 0 before seed — migration 243 shipped tables + review RPC only, no content.)
+- [x] Count verified Quant question links. (0 before seed.)
+- [x] Confirm linked questions are reachable through mock/generated-mock review. (Preflight joins `mock_question_bank`; the demo seed links to a live bank question.)
+- [x] Confirm Content Studio can create/edit/activate heuristics or document the governed intake path that does. **Documented:** Content Studio ships review + read only (`/quant-heuristics`, `/{id}`, `/{id}/review`); there is NO create/edit/activate RPC/endpoint. The governed intake path is a **service-role INSERT** into `quant_heuristics` + the existing `cms_review_quant_heuristic` lifecycle RPC to reach verified.
+- [x] Confirm Content Studio can create and review question links or document the governed assignment path that does. **Documented:** service-role INSERT into `quant_question_heuristics` + service-role UPDATE of `reviewer_status` (links carry their own status; no separate link RPC in v1).
 
 ### Decision
 
-- [ ] Skip GQR-S2 when production-ready verified linked content already exists and can be maintained.
-- [ ] Otherwise implement draft authoring, editing, activation/retirement, assignment, and link review inside Content Studio.
-- [ ] Do not create a new AdminShell/sidebar destination.
-- [ ] Keep heuristic and link reviews separate and conjunctive.
+- [x] Skip full Content Studio authoring UI — production-ready verified linked content is producible through the existing governed service-role path; adding create/edit/activate/link-review the governed (RPC-owned-audit) way would require **new RPCs = a migration**, which this readiness/seed PR deliberately avoids. Authoring UI is a tracked follow-up.
+- [x] Do not create a new AdminShell/sidebar destination. (No frontend change.)
+- [x] Keep heuristic and link reviews separate and conjunctive. (Read authority `heuristics_for_question` already enforces link-verified AND heuristic-verified+active; proven below.)
 
 ### Data/operator gate
 
-- [ ] Seed or author at least one reviewed Quant strategy for a supported question.
-- [ ] Verify it appears in submitted review.
-- [ ] Move the heuristic or link out of verified state and prove it disappears on the next read.
+- [x] Seed or author at least one reviewed Quant strategy for a supported question. — `app/supabase/seeds/quant_heuristic_demo_ssc_cgl.sql` (idempotent; 2 verified heuristics + 1 verified link on the SSC-CGL Quant demo taxonomy).
+- [x] Verify it appears in submitted review. — proven by the conjunctive read in the proof + `test_quant_heuristics.py::test_readiness_lifecycle_appears_then_disappears` (learner-facing consumer wiring is GQR-S1; the read authority is exercised directly).
+- [x] Move the heuristic or link out of verified state and prove it disappears on the next read. — `app/supabase/validation/validate_quant_heuristic_readiness.sql` (rollback-only; 7 assertions incl. link-rejected, is_active retire, needs_correction).
+
+**VERIFY DB:** run, in order, `checks/quant_content_readiness_preflight.sql` → `seeds/quant_heuristic_demo_ssc_cgl.sql` → `validation/validate_quant_heuristic_readiness.sql` against staging. All three executed green on ephemeral PG16 against real migrations 243+246 (preflight NONE→PRESENT after seed; validation ALL PASS).
 
 ---
 
