@@ -77,6 +77,67 @@ def heuristics_for_question(supabase: Any, question_id: str) -> list[dict]:
     return out
 
 
+def heuristics_for_questions(
+    supabase: Any, question_ids: list[str]
+) -> dict[str, list[dict]]:
+    """Batched form of :func:`heuristics_for_question` — ``{question_id: [rows]}``.
+
+    Uses at most ONE link query and ONE heuristic query regardless of how many
+    question ids are passed (no N+1). Same conjunctive verified gate: link
+    verified AND heuristic verified AND heuristic active. Every requested id is
+    present in the result with at least ``[]``; ids never cross-leak (a heuristic
+    is attached only to the questions whose verified link references it). Order
+    per question is deterministic: relevance (primary → secondary → related) then
+    name. Fails soft to the initialized empty map on a read error.
+    """
+    ids = [q for q in dict.fromkeys(question_ids or []) if q]
+    out: dict[str, list[dict]] = {q: [] for q in ids}
+    if not ids:
+        return out
+
+    link_rows = _safe(
+        lambda: supabase.table(_LINKS)
+        .select("question_id,heuristic_id,relevance,reviewer_status")
+        .in_("question_id", ids)
+        .eq("reviewer_status", "verified")
+        .execute(),
+        default=None,
+    )
+    links = getattr(link_rows, "data", None) or []
+    if not links:
+        return out
+
+    heuristic_ids = sorted({l["heuristic_id"] for l in links if l.get("heuristic_id")})
+    if not heuristic_ids:
+        return out
+
+    heur_rows = _safe(
+        lambda: supabase.table(_HEURISTICS)
+        .select("*")
+        .in_("id", heuristic_ids)
+        .eq("reviewer_status", "verified")
+        .eq("is_active", True)
+        .execute(),
+        default=None,
+    )
+    heur_by_id = {h["id"]: h for h in (getattr(heur_rows, "data", None) or []) if h.get("id")}
+
+    for l in links:
+        qid = l.get("question_id")
+        h = heur_by_id.get(l.get("heuristic_id"))
+        if qid in out and h is not None:
+            # Spread per (question, heuristic) so a heuristic linked to several
+            # questions carries each link's own relevance without shared mutation.
+            out[qid].append({**h, "relevance": l.get("relevance") or "related"})
+
+    def _key(h: dict) -> tuple:
+        return (_RELEVANCE_RANK.get(h.get("relevance"), 99), (h.get("name") or "").lower())
+
+    for qid in out:
+        out[qid].sort(key=_key)
+    return out
+
+
 def list_verified_heuristics_for_topic(
     supabase: Any, *, topic_id: str | None = None, microtopic_id: str | None = None
 ) -> list[dict]:

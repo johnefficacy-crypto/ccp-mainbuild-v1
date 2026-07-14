@@ -46,7 +46,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | Shared mock review endpoint | MERGED / CODE PRESENT | `mock_engine.py::get_review()` and `GET /api/study/mocks/attempts/{id}/review`. |
 | Shared question renderer | MERGED / CODE PRESENT | `QuestionRenderer.jsx` owns shared stimulus + type renderer composition. |
 | Existing English Error Lab read model | MERGED / CODE PRESENT | `ewp_error_lab`, English endpoint, hook, and `ErrorLab.jsx`; preserve as English-specific authority. |
-| Quant learner strategy delivery | PLANNED | GQR-S1 below. |
+| Quant learner strategy delivery | CODE-FIXED, VALIDATION PENDING | GQR-S1 below — `solution_strategies.py` + batched `heuristics_for_questions` + `get_review` attach + `SolutionStrategyPanel`; tests green; live/operator proof pending. |
 | Reasoning strategy authority | PLANNED | GQR-S3 below. |
 | Improvement Lab composition | PLANNED | GQR-S5 below. |
 
@@ -57,7 +57,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | ID | Slice | Status | Dependency | Required outcome |
 |---|---|---|---|---|
 | GQR-S0 | Product/architecture decision and checklist | DESIGN LOCKED | None | This document and `solution-strategies-improvement-lab.md` are the source for scope and sequencing. |
-| GQR-S1 | Quant Solution Strategy delivery in mock review | PLANNED | Existing GQR-Q7 authority | Batched verified-only read, learner projection, review payload field, shared panel, regular/generated-mock tests. No migration. |
+| GQR-S1 | Quant Solution Strategy delivery in mock review | CODE-FIXED, VALIDATION PENDING | Existing GQR-Q7 authority | Batched verified-only read, learner projection, review payload field, shared panel, regular/generated-mock tests. No migration. |
 | GQR-S2 | Quant content-readiness completion | PLANNED — CONDITIONAL | GQR-S1 or preflight | Add authoring/editing/activation/question assignment only when verified linked content cannot already be produced through an existing governed path. |
 | GQR-S3 | Reasoning strategy authority and Content Studio | PLANNED | GQR-S0 | New governed schema, RLS, lifecycle/audit RPCs, library, authoring, assignment, and review queue. |
 | GQR-S4 | Reasoning independent-question learner delivery | BLOCKED on GQR-S3 | GQR-S3 validated | Reuse normalized DTO and Solution Strategy panel for text Reasoning questions. |

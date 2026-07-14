@@ -6,6 +6,7 @@ import AssertionReason from "./types/AssertionReason";
 import MatchFollowing from "./types/MatchFollowing";
 import NumericalAnswer from "./types/NumericalAnswer";
 import QuestionStimuli from "./shared/QuestionStimuli";
+import SolutionStrategyPanel from "./shared/SolutionStrategyPanel";
 
 // Keys cover both the frontend renderer vocabulary (mcq_single, …) and the
 // backend question_type enum values (mcq, integer). An unknown type falls back
@@ -20,6 +21,9 @@ export default function QuestionRenderer(props) {
     <>
       <QuestionStimuli stimuli={props.question?.stimuli} />
       <C {...props} />
+      {/* Solution Strategy renders once here for every question type (review-only,
+          null when empty), so no per-type renderer needs to know about it. */}
+      <SolutionStrategyPanel mode={props.mode} strategies={props.question?.solution_strategies} />
     </>
   );
 }
