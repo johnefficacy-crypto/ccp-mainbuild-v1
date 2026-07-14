@@ -88,6 +88,14 @@ create index if not exists idx_rs_microtopic on public.reasoning_strategies(micr
 create index if not exists idx_rs_reviewer_status on public.reasoning_strategies(reviewer_status);
 create index if not exists idx_rs_type on public.reasoning_strategies(strategy_type);
 
+-- ``updated_at`` is the content-revision token consumed by the review RPC.
+-- Maintain it in the database so every service-role content edit invalidates a
+-- reviewer's stale snapshot even when the writer does not explicitly include an
+-- updated_at value (the authoring RPC lands in GQR-S3b).
+create trigger reasoning_strategies_updated_at
+before update on public.reasoning_strategies
+for each row execute function public.tg_set_updated_at();
+
 -- ═════════════════════════════════════════════════════════════════════════
 -- B. Question ↔ strategy link (own reviewer_status — defense in depth)
 -- ═════════════════════════════════════════════════════════════════════════

@@ -92,10 +92,30 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
     const node = dialogRef.current;
     const first = node && node.querySelector("input, textarea, select, button");
     if (first) first.focus();
-    const onKey = (e) => { if (e.key === "Escape") closeRef.current(); };
-    document.addEventListener("keydown", onKey);
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !node) return;
+      const focusables = node.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       if (prevFocus && typeof prevFocus.focus === "function") prevFocus.focus();
     };
   }, []);

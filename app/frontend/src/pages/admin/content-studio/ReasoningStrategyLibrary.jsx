@@ -10,7 +10,7 @@
  * the Review Queue tab. formula_latex is rendered through the existing KaTeX path
  * (MathRenderer), matching how question math already renders — no new rendering work.
  */
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import useApiCollection from "../../../lib/hooks/useApiCollection";
 import { ErrorState, EmptyState } from "../../../shared/ui/core";
 import MathRenderer from "../../study/mocks/components/questions/shared/MathRenderer";
@@ -62,6 +62,9 @@ const DETAIL_TEXT_ROWS = [
 
 function DetailDrawer({ strategy, onClose }) {
   const s = strategy;
+  const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const rule = useMemo(() => {
     try {
       return JSON.stringify(s.applicability_rule ?? {}, null, 2);
@@ -70,6 +73,40 @@ function DetailDrawer({ strategy, onClose }) {
     }
   }, [s.applicability_rule]);
 
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const root = dialogRef.current;
+    root?.querySelector("button")?.focus();
+
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !root) return;
+      const focusables = root.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      previousFocus?.focus?.();
+    };
+  }, []);
+
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "flex-end" }}
@@ -77,6 +114,7 @@ function DetailDrawer({ strategy, onClose }) {
       data-testid="strategy-detail-overlay"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Strategy ${s.name}`}
