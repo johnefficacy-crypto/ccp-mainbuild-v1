@@ -1,594 +1,4272 @@
-# Career Copilot checklist â€” repo source of record
-
-Last repo verification: 2026-07-03 at `main @ 42a0e2d` (Exam Intelligence workspace cleanup source recheck â€” D10/#765 status corrected, D3 regression re-flagged, EI-CLEAN track added; earlier full verification 2026-07-01 at `main @ b9bd9d7b`) (post PRs #810 Score Snapshot Workbench UI, #811 text-extract background worker, #812 cycle/phase label fix, #814 cross-platform fingerprint verifier, #815 distance-to-release tracker, #816 docs reconciliation, #818 CLAUDE.md; `graphify-out/GRAPH_REPORT.md` refreshed at `01f593c2` 2026-07-01). PR #798, #800, #803 merged; PR #805 closed as superseded by #803. PR #817 is the pending reconciliation delta represented by the current branch and is not yet part of this base verification.
-
-This checklist replaces chat-only / UI-only status snippets. Keep it current in the same PR as any code change or decision that changes one of these statuses.
-
-Execution plan for parallel PRs: `docs/status/career-copilot-pr-plan.md`.
-
-## Status vocabulary
-
-- **MERGED / CODE PRESENT** â€” verified from files in this repository checkout.
-- **CODE-FIXED, VALIDATION PENDING** â€” remediation is present in code, but live/operator proof is still required.
-- **OPERATOR PENDING** â€” cannot be proven from repo code alone; requires deployment, token, Render, Supabase, or other live evidence.
-- **BLOCKED** â€” do not start downstream work until the stated gate passes.
-- **PLANNED** â€” not yet implemented in this checkout.
-- **CLEANUP PENDING** â€” no longer on the critical runtime path, but old code or UX debt remains.
-
-## Mock Engine v2 â†” Study OS â€” active gate
-
-**P8 ENDED BY OWNER DIRECTION (2026-07-08):** the in-flight P8 shadow window (T0 `2026-07-06T19:18:15Z`) was terminated early by the repo owner; a fresh T0 will be started later before any live progression. The 36-file fingerprint freeze from that T0 no longer constrains edits. `FF_MOCK_MASTERY_WRITES=live` stays **BLOCKED** regardless â€” a new P8 window + P9 canary must complete against the next T0 before live. (PYQ v2 PR-8's trap-drill shadow path is fully isolated and does not depend on this window.) Historical record of the ended window follows.
-
-Current verdict: **DO NOT PROCEED TO LIVE**. `FF_MOCK_MASTERY_WRITES=live` remains blocked until (a) a fresh 14-day shadow window (P8, re-T0) completes and (b) a bounded live canary (P9) is approved. **P8 T0 status update (2026-07-07 reconciliation): T0 is STARTED, not "not set"** â€” see `docs/audits/2026-07-06-p8-t0-start.md`: `window_start_utc = 2026-07-06T19:18:15Z`, `window_end_utc = 2026-07-20T19:18:15Z`, frozen deployment SHA `15db4873f30df9da4565a8226a69a535f65c93da`, `FF_MOCK_MASTERY_WRITES=shadow` active, fingerprint verifier `EXIT_CODE=0` against the approved 36-file/`51cd6928â€¦` digest. Current disposition: `P8: IN PROGRESS â€” T0 RECORDED`; `FF_MOCK_MASTERY_WRITES=live` remains **BLOCKED** until the window ends and the PR-7 shadow analysis passes. Pre-T0 gates were **CLEAR**: **P5 36-file boundary OPERATOR PASS + freeze control record MERGED (PR #864, 2026-07-03; source SHA `6171027aâ€¦`, freeze-candidate digest `51cd6928â€¦`)**; **F3 archive-race OPERATOR PASS (2026-07-02, SHA `920024c4`)**; **P6 scheduler OPERATOR PASS (2026-07-01)**; **P7 PR-6 revalidation OPERATOR PASS (2026-07-02, SHA `6ecfbed9`)**; migration 182 OPERATOR VALIDATED. See `docs/audits/2026-07-06-p8-t0-start.md`, `docs/audits/2026-06-30-migration-182-operator-validation.md`, `docs/audits/2026-07-01-scheduler-drain-validation.md`, `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`, and `docs/audits/2026-07-02-f3-extraction-archive-race-validation.md`.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| #695 decision / plan doc | MERGED / CODE PRESENT | `docs/study_os/mock-engine-v2-study-os-integration.md` remains the source of truth for sequencing and decisions. |
-| #697 MCQ-only safety pool | MERGED / CODE PRESENT | Already treated as merged in the planning doc; no Track C expansion yet. |
-| #698 A-PR3 generated mock signal producer | MERGED / CODE PRESENT | Generated attempt path remains a signal producer, not personalization. |
-| #702 Â§4b correction schema compatibility | MERGED / CODE PRESENT | Historical schema incompatibility is recorded as code-remediated pending validation. |
-| #704 shared correction categorizer | MERGED / CODE PRESENT | Shared policy design remains closed; runtime propagation was historically defective but code-fixed by later remediation. |
-| review_mock writer authority | OPERATOR PASS (2026-07-02; Gate A PASS at SHA `6ecfbed9`) | `canonical.py::review_mock` hardened (PR #718): (1) allowlist `_PLATFORM_REVIEW_ALLOWED` replaces denylist â€” new fields are rejected by default for platform mocks; (2) empty body â†’ 422; patch built only from `model_fields_set` so omitted fields (including `review_status`) are never silently overwritten; (3) ownership lookup logs via `logger.exception` on failure; (4) scoped UPDATE (`id + user_id + source_type`) closes the TOCTOU race; zero-row result triggers 4-case diagnostic (deletedâ†’404, owner-changedâ†’404, source-changedâ†’409, unexplainedâ†’503); (5) platform code path fully isolated â€” `aggregated_error_types` and breakdown/mastery/regen never execute for `platform_attempt`. Correction-task drafting for platform attempts remains blocked at service layer (PR #716, already on main). 18/18 test_mock_review.py passing (9 new tests + 2 updated assertions). |
-| DEFECT-001 attempted semantics | CODE-FIXED, VALIDATION PENDING | `MasteryWriter._load_analytics` now treats `selected_option_id is not None` as the attempted source of truth; `derive_mastery_deltas` skips unattempted questions. |
-| DEFECT-003 classification propagation | CODE-FIXED, VALIDATION PENDING | `MasteryWriter._load_analytics` now reads `mock_attempt_response_classification` and feeds `error_type` into analytics. |
-| DEFECT-002 shadow idempotency | CODE-FIXED, VALIDATION PENDING | Migration `180_mock_mastery_shadow_idempotency.sql` dedupes/adds unique shadow keys; `_write_shadow` uses conflict-ignore upsert. |
-| DEFECT-005A `total_marks` coercion | CODE-FIXED, VALIDATION PENDING | `_to_integral_marks` is used in both initial mock compat-row insert and retry emission. |
-| DEFECT-006 manual weak-topic fallback | CODE-FIXED, VALIDATION PENDING | Manual mock correction drafting delegates weak-topic fallback to `correction_policy`. |
-| Classification readiness / mastery recovery (D1-D4) | CODE-FIXED, VALIDATION PENDING | PR #719: (D1) `submit_attempt` analytics failure no longer silently skips mastery â€” `MasteryClassificationNotReady` is raised and the mastery_retry job is rescheduled. (D2, revised by PR #753) `auto_submit_attempt` enqueues ONLY `analytics_retry`; eager mastery enqueue removed to eliminate the race where flag is resolved before analytics runs. Mastery is now deferred to D4. (D3) `process_attempt_sync` gates on `check_classification_readiness` before any writes â€” missing classifications raise `MasteryClassificationNotReady` and re-enqueue `analytics_retry`; mastery never runs with None error_types from absent classification rows. (D4) `_run_job JOB_ANALYTICS_RETRY` enqueues `mastery_retry` after `compute_and_persist` succeeds when FFâ‰ off, using `get_or_resolve_pinned_mastery_flag` â€” this is now the single resolution point for all mastery mode decisions. New module: `study_os/attempt_classification_readiness.py`. 20 new tests (PR #719) + D2/D4 pin tests (PR #753). |
-| Correction idempotency guard (23505) / atomic persistence | CODE-FIXED, MIGRATION OPERATOR VALIDATED | The atomic RPC implementation remains code-fixed. Migration 182 was dry-run, applied, signature-checked, ownership/search_path-checked, and privilege-validated against anon/authenticated/service_role. See `docs/audits/2026-06-30-migration-182-operator-validation.md`. |
-| Platform-attempt correction gate | CODE-FIXED, VALIDATION PENDING | PR #716: `POST /api/study/mocks/{mock_id}/correction-tasks` now raises HTTP 409 with `PLATFORM_ATTEMPT_MANUAL_CORRECTION_FORBIDDEN` for `source_type=platform_attempt` mocks. MasteryWriter pipeline owns that path; manual drafting is forbidden. |
-| Mastery preview / exact replay (`derive_preview`) | CODE PRESENT, OPERATOR VALIDATION PENDING | `refactor/mastery-preview-exact-replay`: `derive_preview()` refactored to delegate to new `attempt_derivation.py` module. New shape: 4-bucket `response_counts` (selected/marked_unanswered/visited_unanswered/untouched), `classification_coverage`, `persisted_shadow_decision` (rows+duplicate_keys), `replay_consistency` with exact Decimal MATCH/MISMATCH/NO_BASELINE (no mutable mastery in replay path), deterministic `attempt_evidence_corrections` (no user state), labeled `current_state_preview`. Admin route fix: DB error â†’ 503 (not silent 404), structured 422 codes for non-platform and missing attempt-link cases. 31 new tests. |
-| Shadow analysis tool redesign | CODE-FIXED, VALIDATION PENDING | PR #723: `shadow-replay` calls real `attempt_derivation` API (load_attempt_inputs â†’ load_persisted_shadow_decisions â†’ replay_from_persisted_baseline) with correct signatures; reads canonical mismatch keys (persisted_delta_db/replay_delta_db); classification_not_ready structured records include missing/duplicate question IDs. `correction-parity` queries submitted mock_attempts (not shadow rows) to include unanswered-only attempts. `live-audit-compare` emits FAIL when data is sufficient but conditions fail (sign_agreement < 95, missing_audit > 0, duplicate_audit > 0, outliers > 0, delta_mismatch > 0); adds delta_mismatch_count/delta_mismatches fields. Tests use real attempt_derivation module (patching only DB layer). CLI validates: --attempt-id+--days mutual exclusion, --to-utc without --from-utc, days <= 0, invalid UUID, invalid ISO-8601, from-utc >= to-utc. NULL invariant fields â†’ CORRUPT (not silent zero). Removed invalid 80%/60% thresholds. Operator shadow-run validation still required before live flip. |
-| Live canary user allowlist | CODE-FIXED, VALIDATION PENDING | `resolve_effective_mastery_flag(requested_flag, user_id)` implemented in `mastery_writer.py` (PR #746). Reads `FF_MOCK_MASTERY_LIVE_USER_IDS` (comma-separated UUIDs); downgrades `live` â†’ `shadow` for non-allowlisted users; fails closed on empty/malformed allowlist. **A4 sync-submit fix (PR #753):** `POST /api/study/mocks/attempts/{id}/submit` previously called `get_mastery_write_flag()` but NOT `resolve_effective_mastery_flag()`, so a global `FF=live` value bypassed the per-user allowlist in the sync path. Fixed: endpoint now calls `get_or_resolve_pinned_mastery_flag(sb, attempt_id, user_id)`. **Pinned-mode fix (PR #753):** `get_or_resolve_pinned_mastery_flag` queries existing non-cancelled mastery_retry jobs first; returns the pinned mode if found (preventing a FF or allowlist change between submit and analytics_retry from producing conflicting live+shadow mastery jobs). Falls back to `resolve_effective_mastery_flag` only on first resolve (no job exists). Applied at sync submit, `JOB_ANALYTICS_RETRY` D4 handoff, and `_recover_corrections_after_mock_tests`. Eager mastery enqueue removed from `auto_submit_attempt` (D2 revised). `SBStub` extended with `not_.in_()` support (`_NotProxy` class). 5 new regression test classes in `test_mastery_pinned_mode.py`; `test_mastery_allowlist_submit.py` updated; `test_mastery_allowlist.py` D2 tests revised; `test_classification_readiness.py` D2 test revised; `test_generated_mock_attempt.py` pinned-mode resubmit test revised; `test_masterywriter_correction_schema.py` recovery tests updated to seed pinned mastery job. Blocking prerequisites for live canary: (a) **PR-6 OPERATOR PASS (2026-07-02, SHA `6ecfbed9`)**; (b) **PR-7 14-day shadow window IN PROGRESS â€” T0 RECORDED 2026-07-06T19:18:15Z** (see `14-day shadow gate` row and `docs/audits/2026-07-06-p8-t0-start.md`; window ends 2026-07-20T19:18:15Z); (c) migration 182 OPERATOR VALIDATED (2026-06-30; see `docs/audits/2026-06-30-migration-182-operator-validation.md`); (d) `FF_MOCK_MASTERY_LIVE_USER_IDS` confirmed populated (2026-07-02). Scheduler proof: OPERATOR PASS (2026-07-01; see `Scheduler verification` row). |
-| `_apply_error_patterns` schema fix | CODE-FIXED, VALIDATION PENDING | PR #745: column renamed `error_count` â†’ `frequency_count`; `microtopic_id` removed from top-level columns and stored inside `evidence` JSONB alongside `signal_strength` and `evidence_question_ids`. 9 new schema-regression tests in `test_mastery_error_pattern_schema.py`. |
-| P5 attempt telemetry backend origin | OPERATOR PASS (2026-07-03; source SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`) | Staging check 3A confirmed authenticated `question.visited` telemetry reached the configured Render backend with HTTP 200. Check 3B confirmed forced-500 retention followed by HTTP 200 resend and an empty durable queue. Check 3C confirmed persisted partial-coverage analytics (`fallback_question_count=12`, `events_used=5`, `event_covered_questions=3`, `events_malformed=0`). The operator explicitly approved the 36-file boundary. Freeze-candidate digest: `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`. |
-| Scheduler verification | OPERATOR PASS (2026-07-01; candidate SHA `b9bd9d7b6b66e7ee84031d508fce6d3532e73bff`) | Watcher-based capture confirmed: controlled `analytics_retry` job `cf2a8f44-0baa-4850-8340-aec6a55627ae` claimed and completed in **19.67 s** (â‰¤ 30 s); contemporaneous `/api/admin/jobs` tick shows `manual: absent`, `derivations: 1`, `errors: 0`; final state `done / attempts=1 / last_error=null`. All `pr1_scheduler_drain_verification.md` requirements met. Full evidence in `docs/audits/2026-07-01-scheduler-drain-validation.md`. |
-| `doc:text_extract` background worker (issue #540) | CODE-FIXED, OPERATOR VALIDATION PENDING | PR #811: `text_extract_worker.py` + `doc:text_extract` APScheduler job (60 s interval, configurable via `TEXT_EXTRACT_WORKER_INTERVAL_SECONDS`). Scope filtered via PostgREST `document_assets!inner(scope)` join â€” only `admin_exam_intelligence` documents processed. `_fallback_fail_job` conditionally updates `document_assets` only when the job CAS UPDATE matched (prevents phantom failure writes). `run_worker_pass` fails-closed on missing/unrecognised final status. `run_job_now` honours `_is_failure_result` for `ok` classification. Manual-trigger permission for `doc:text_extract` raised to `exam_intelligence.cms` (enforced in `POST /api/admin/jobs/run/{job_id}`). 23 unit tests (worker + scheduler config). **Transient retry/backoff (issue #813, PR #833):** `claim_next_retry_job` selects failed jobs where `error_code âˆˆ {download_failed, storage_object_missing, page_write_failed}`, `attempt_count < 3` (server-side `.lt` filter), and `now âˆ’ finished_at â‰¥ attempt_count Ã— 60 s` (Python backoff, fail-closed on null/naive/malformed `finished_at`). `run_worker_pass` checks both queued and retry candidates every pass and picks whichever has the earlier effective due time (fair combined ordering â€” prevents retry starvation). **No pre-claim mutation**: `_claim_job` already accepts `status IN ('queued','failed')`; the worker calls `run_text_extract_job` directly without touching the job row first. Terminal codes (`unsupported_mime`, `ownership_mismatch`, `scope_mismatch`, `archived`, `file_too_large_for_extract`, `extract_timeout`) are never retried. 36 tests total (13 new retry/tz-naive/coverage cases; `test_claim_job_accepts_failed_status` in `test_library_text_extract.py` guards the `_claim_job` predicate end-to-end). OPERATOR PENDING: deploy and verify via `/api/admin/jobs`, manual trigger with `exam_intelligence.cms` permission, confirm `admin_exam_intelligence` document queuedâ†’succeeded end-to-end. |
-| Extraction archive-race terminalization (release F3) | OPERATOR PASS (2026-07-02; deployed SHA `920024c48cba7613bc456ffa65d8b805114f9b63`) | PR #834 terminalizes a claimed `text_extract` job before raising when `finalize_document_extraction` reports `document_archived`. Staging validation used disposable document `96e1c1cd-c461-49a3-9785-773d783f4f06` and job `c57170f9-c0aa-4af6-bbb5-b0596efefdf7`: job/document were observed `running`/`processing`; document was archived mid-extraction; API returned HTTP 400 `document_archived`; final job was `failed` with `error_code=document_archived`; document remained `archived`; zero pages were committed. Full evidence: `docs/audits/2026-07-02-f3-extraction-archive-race-validation.md`. |
-| Stuck-processing diagnostics (issue #542) | CODE-FIXED, OPERATOR VALIDATION PENDING | `GET /admin/exam-intelligence-cms/diagnostics` (age-threshold configurable, default **30 min**), `POST .../diagnostics/stuck-document/{id}/reset` (status-guarded `processingâ†’uploaded`; 409 if not `processing`), `POST .../diagnostics/stuck-job/{id}/reset` (status-guarded `runningâ†’failed` with `error_code='manual_reset'`; 409 if not `running`). All three endpoints implemented in `admin_exam_intel_cms.py` lines 3466â€“3576; scope-guarded to `admin_exam_intelligence`. `find_stuck_documents()` and `find_stuck_text_extract_jobs()` in `exam_intelligence/diagnostics.py`. OPERATOR PENDING: deploy and invoke `GET /diagnostics` on staging; verify stuck-document detection; trigger a reset and confirm document transitions to `uploaded` (re-queued by next upload-complete) and stuck job transitions to `failed`. |
-| Repeat off/shadow validation | OPERATOR PASS (2026-07-02; candidate SHA `6ecfbed956cc467c70ad50c4f7dce3b1a2443d25`) | **2026-06-19 static preflight** (no live HTTP/DB/FF actions): run stopped at Gate 9 (allowlist absent); Gate 4 fingerprint (`6ddce48câ€¦`) computed over old 18-file v1 manifest at stale SHA (superseded by 36-file v2 manifest, reference `f2ee2c40â€¦`). Allowlist + pinned-mode code-fixed in PR #753. **2026-07-02 partial live run** at candidate SHA `9b0c96ed` (Render deployed, SHA A == B confirmed): 12 start gates PASS; **Gate A BLOCKED** â€” `canonical.py::review_mock` wrote to wrong column; code fix merged PR #840. **2026-07-02 OPERATOR PASS** at deployed SHA `6ecfbed956cc467c70ad50c4f7dce3b1a2443d25` (confirmed B == A): all 12 start gates PASS including Gate 4 fresh fingerprint `b3cec4accf3bdf729d3f68d9694dcbb5fc69e96bfbc165f5739973de7738da8b` (36 files; one file differs from reference `f2ee2c40â€¦`: `canonical.py`, the Gate A fix); **Gate A PASS** â€” `review_state` changed `unreviewedâ†’reviewed`; notes-only â†’ 200 `review_state` unchanged; explicit `review_status: null` did not write null; 409 on `topic_breakdowns`; **Gates Bâ€“E, Hâ€“J PASS**; **Gates F/G: INSUFFICIENT_DATA (exit 3, permitted)** â€” F: `distinct_attempt_count=1`, `topic_decision_count=2` (thresholds: `min_distinct_attempts=20`, `min_topic_decisions=50`); G: `decision_count=3` (threshold: `min_correction_decisions=10`). T0 recorded 2026-07-06T19:18:15Z; 14-day clock running, ends 2026-07-20T19:18:15Z (see `docs/audits/2026-07-06-p8-t0-start.md`). Full evidence: `docs/audits/2026-07-02-p7-final-candidate-revalidation-6ecfbed9.md`. |
-| 14-day shadow gate (PR-7) | IN PROGRESS â€” T0 RECORDED 2026-07-06T19:18:15Z | **T0 RECORDED** at `window_start_utc = 2026-07-06T19:18:15Z`, deployed SHA `15db4873f30df9da4565a8226a69a535f65c93da`, `FF_MOCK_MASTERY_WRITES=shadow`, fingerprint verifier `EXIT_CODE=0` against the approved 36-file digest â€” see `docs/audits/2026-07-06-p8-t0-start.md`. `window_end_utc = 2026-07-20T19:18:15Z`. The pre-T0 sequence below is retained for historical record: P5 staging checks 3A/3B/3C, explicit 36-file boundary approval, and the freeze control record were **MERGED** (PR #864, 2026-07-03; approved source SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`, freeze-candidate digest `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`). Because `main` had advanced past the freeze-candidate SHA, the completed pre-T0 sequence was: finish selected pre-T0 development â†’ complete required live/E2E operator validation â†’ choose the final release SHA â†’ deploy that exact SHA (frontend + backend) â†’ confirm `FF_MOCK_MASTERY_WRITES=shadow` â†’ re-run the 36-file fingerprint verifier at that SHA â†’ record exact UTC `window_start` â†’ start P8. That sequence is now complete; do not re-run it. Remaining: hold `shadow` mode for the full 14-day window and pass the required PR-7 shadow-gate thresholds at `window_end`. |
-| `FF_MOCK_MASTERY_WRITES=live` | BLOCKED | P5 + 36-file boundary approval + freeze control record are complete and **MERGED (PR #864)**. T0 is recorded (2026-07-06T19:18:15Z; see `docs/audits/2026-07-06-p8-t0-start.md`) â€” remaining blockers are: complete the 14-day shadow window (ends 2026-07-20T19:18:15Z), satisfy all shadow-gate thresholds, obtain bounded live-canary approval (P9), AND complete the parallel P1/P2/P4 live-migration application (ledger head is now **220**, not 212) + RLS/RPC real-JWT verification + migration-204 snapshot-review RPC live validation. |
-| Mock attempt telemetry delivery hardening (PR #800) | OPERATOR PASS (2026-07-03) | Backend-origin delivery, forced-rejection durable retry, and partial-coverage analytics were validated on staging at source SHA `6171027a42fce011ea295cf9e07609bf3f25ac3a`. The operator approved the 36-file fingerprint boundary. Freeze-candidate digest: `51cd69281302813d6254673ec6829deaeb8c24e2ece96d117035d5a71ffe74f4`. |
-| Mock semantics label fix (Â§17 frontend) | CODE-FIXED, VALIDATION PENDING | `Mocks.jsx`: (1) "Error patterns" eyebrow â†’ "Self-reported error patterns" for `trust_level=self_reported`/`source_type=manual_log` mocks; (2) `MockAnalysis` `SectionHeader` subtitle is now conditional â€” self-reported shows "based on the values you entered", platform shows "derived from your platform-scored attempt" (removes the false "extracted from your logged answer sheet" copy); (3) `ErrorPatternPanel` footer â†’ "counts entered by you Â· user-entered, not system-inferred" for self-logged, unchanged for platform-attempt; (4) Average stat relabeled "Average across N logged mocks". No derived-label logic changed (Â§17.5 pending product approval). Regression tests in `pages/__tests__/Mocks.labels.test.jsx` (15 tests, all passing). |
-| PYQ â†’ Mock Bank projection bridge (PR #756) | MERGED / CODE PRESENT â€” OPERATOR VALIDATED â€” PR #756 (`cbf0d7fb`) | Migration 183: `pyq_mock_question_projections`, `mock_source_mix_policies`, `project_pyq_question_to_mock_bank(uuid,uuid,text)` RPC, invalidation triggers, `fn_block_projection_for_question(uuid,text)`, unique partial index `uq_mock_qbank_pyq_question_id`. `select_questions_for_template` and `_load_questions_for_template` both fail-closed for fixed-section IDs (LookupError if any configured ID unavailable after status/expiry/lineage filtering). `_specificity()` sign-inversion fixed. `_resolve_source_mix_policy` returns 3-tuple; fail-open only on SQLSTATE 42P01/does-not-exist (removed overly-broad "relation" keyword). `_select_section` max_ratio uses actual selected count (not target); recomputes ratio after backfill; reports `enforced_max_ratio_partial` when backfill insufficient. `multi_exam_coverage` resolves via both template and generated-blueprint paths; paginates responses. `PyqMockProjectionPanel` audit reason UI. 8 fail-closed regression tests + 2 max_ratio constraint tests added. **Migration 184 (staging repair):** `184_repair_pyq_mock_projection_bridge.sql` re-installs `fn_invalidate_projection_for_question(uuid)`, `fn_block_projection_for_question(uuid,text)`, and `uq_mock_qbank_pyq_question_id` which were absent from staging despite migration 183 being recorded. Also reinstalls the RPC, `fn_invalidate_pyq_projection`, and all 8 invalidation triggers via CREATE OR REPLACE / DROP+CREATE. Aborts with explicit error if duplicate `pyq_question_id` values exist (no auto-delete). Validation assertions block commit on any missing object or wrong grant. **Migration 185 (atomic review RPC):** `185_pyq_paper_review_transaction.sql` adds `review_pyq_paper(p_paper_id, p_expected_status, p_target_status, p_reason, p_actor_id, p_actor_email)` SECURITY DEFINER function (service_role only). Replaces the two-step PostgREST write (separate audit INSERT + paper UPDATE) with a single transaction: (1) explicit NULL + trimmed-length check on reason (8â€“500 chars); (2) target status validation; (3) `SELECT â€¦ FOR UPDATE` row lock; (4) concurrent-modification guard; (5) transition matrix on locked row; (6) provenance re-check on locked row (catches race where concurrent CMS edit clears `source_url` while `trust_status` stays `pending`); (7) audit INSERT + paper UPDATE in one atomic block â€” any failure rolls back both. `admin_exam_intel_cms.py` calls this RPC and maps error tokens to HTTP 422/409/404. 28 backend tests, 3 692 total. Deferred to PR-7: track-level coverage, difficulty-in-bucket, real PG migration tests, topic-context policies. **Migration 186 (source-document linkage):** `186_pyq_paper_source_document.sql` adds `source_document_id uuid FK â†’ document_assets` on `pyq_papers` and `mock_question_sources`; replaces migration 185's `review_pyq_paper()` with an expanded provenance gate that requires valid `source_type` AND either non-empty `source_url` OR a valid attached document (validated under the same FOR UPDATE lock: scope, document_kind, status, storage, exam_id); extends `fn_invalidate_pyq_projection()` to watch `source_document_id` changes on `pyq_papers`; extends `project_pyq_question_to_mock_bank()` to include `source_document_id` in the content-hash formula and `mock_question_sources` INSERT. Python layer: `source_document_id` added to `_PAPER_FIELDS`; provenance precheck updated; `pyq_paper_signed_pdf` endpoint now verifies the requested document is the paper's attached document (403 otherwise); `compute_content_hash()` formula updated to match. Frontend (PYQ Workbench, no new route): Attach Doc / Replace Doc modal and View PDF button added to paper table action column. 19 new tests (total 45 review-endpoint tests + 3 signed-PDF tests + 1 hash-formula test). OPERATOR PENDING: apply migrations 183 â†’ 184 â†’ 185 â†’ 186 to staging in order (186 is idempotent via `ADD COLUMN IF NOT EXISTS` + `CREATE OR REPLACE`); verify `review_pyq_paper` and `project_pyq_question_to_mock_bank` grants (`anon`/`authenticated` must not EXECUTE, `service_role` must); confirm `pyq_papers.source_document_id` column and `idx_pyq_papers_source_document_id` index present; confirm `mock_question_sources.source_document_id` column present; run E2E validation checklist. Do NOT apply to production without operator sign-off. |
-| PYQ paper provenance UX and backend contract fixes (migration 191) | OPERATOR VALIDATED (2026-06-25) | **Migration 191** (`191_pyq_provenance_include_source.sql`): `CREATE OR REPLACE cms_set_pyq_paper_provenance` extended to accept `pyq_source_id` in `p_patch`; validates existence and exam_id match against `pyq_sources`; applies in UPDATE; full REVOKE/GRANT security pattern from migration 190 applied. **Backend** (`admin_exam_intel_cms.py`): `_PROVENANCE_FIELDS` extended with `"pyq_source_id"`. **Frontend**: `PaperProvenanceModal` (picker + source registry) replaced the raw-UUID modal; `isPaperProvenanceComplete()`; `usePyqWorkbench` fetchers. **OPERATOR VALIDATED on staging 2026-06-25:** migration 191 applied; `cms_set_pyq_paper_provenance` exists with correct signature + SECURITY DEFINER; grant matrix confirmed (`anon` denied, `authenticated` denied, `service_role` allowed); same-exam `pyq_source_id` accepted; verified paper demoted to pending; audit + previous-provenance recorded; missing source rejected; cross-exam source rejected; transaction rollback preserved original data; document picker shows readable records with question counts. (Minor non-blocking UX: long-filename picker label clips â€” addressed by the onboarding PR's shared `PyqProvenanceFields` truncate+tooltip.) |
-| A-PR4 exposure cooldown + A-PR5 mastery-informed mock selection | BLOCKED / PLANNED | Start only after clean shadow/live-readiness gate. |
-| UPSC CSE 2025 Prelims CSAT canonical paper (migration 228) | CODE-FIXED, VALIDATION PENDING | `228_pyq_upsc_cse_2025_prelims_csat_canonical.sql` injects the UPSC CSE 2025 Prelims Paper II (CSAT) official question paper as a **canonical** PYQ source (`source_type='official'`). Resolves `exams.slug='upsc-cse'`; **reuses the existing 2025 cycle** by `(exam_id, year)` (the demo seed creates it as `CSE 2025`), only creating one when absent using the seed's deterministic id so a later seed run no-ops â€” a runtime guard asserts exactly one 2025 cycle. Adds a cycle-scoped `exam_phases` row (`prelims-csat`, 80 items / 200 marks / 120 min), then inserts one `pyq_sources` + one `pyq_papers` row + **80** `pyq_questions` + **320** `pyq_options` (4 each) + **14** verbatim `pyq_stimuli` reading passages linked via **25** `pyq_question_stimuli` rows. `normalized_question_hash`/`normalized_option_hash` use the same canonical form as `option_normalize.py` (importer-consistent). Fully idempotent â€” every insert keyed on a deterministic `uuid5` with `ON CONFLICT (id) DO NOTHING`. **Trust stays `pending`** on both source and paper: the source doc has no exact paper-source URL / `source_document_id` and no answer key, and `verified_pyq_papers()` lists on `pyq_papers.trust_status='verified'` alone â€” promoting now would surface a verified paper backed only by the UPSC homepage. Paper `source_url` is left null (operator attaches exact `source_url`/`source_document_id` at verification). All content rows are `reviewer_status='pending'` with `correct_option_id=null`/`is_correct=false`; the mock projection gate (`pyq_mock_projection.py`) needs `verified` + exactly one correct option, so the paper stays out of learner surfaces until operator review. Verdicts are operator-only, never fabricated. Q3/Q4 (food) and Q11/Q12 (agriculture) reference RC passages absent from the source doc â†’ those four items carry `metadata.missing_stimulus=true` + `source_passage_absent=true` + `missing_stimulus_reason` (machine-filterable) and no stimulus link; a guard asserts exactly 4 such rows. Renumbered 224â†’**228** after `main` advanced (a duplicate 224 + a 225 landed); the RC items that share a generic stem (e.g. "central idea conveyed by the passage" for items 1/61/71) are passage-scoped in `normalized_question_hash` so they satisfy migration 224's new partial unique index `pyq_questions_paper_hash_uidx` on `(pyq_paper_id, normalized_question_hash)` â€” all 80 hashes distinct, none null. Validated on a disposable PG16 cluster with migrations 030/032/186-col/223 + main's **224/225** (the new pyq unique-index + stimuli grant) + seed 110 + the demo `CSE 2025` cycle in **both orderings** (migration-before-seed and seed-before-migration â†’ exactly 1 cycle each): 228 applies clean under the new indexes, source+paper `pending`, 80/320, 80 distinct hashes, 4 flagged items (3,4,11,12), idempotent re-run (80/320, 1 cycle); provenance guard rejects a verified paper lacking exact `source_url`/`source_document_id`. OPERATOR PENDING: apply migration 228 to stagingâ†’prod (after 225); attach the exact official CSAT 2025 paper source + answer key and run the review lifecycle to `verified` before mock/learner exposure. |
-| PYQ structured explanation layer (migration 230) | CODE-FIXED, VALIDATION PENDING | `230_pyq_question_explanations.sql` lands a first-class, source-aware, independently-reviewed explanation layer â€” **schema + governance only; NO third-party corpus committed** (checkpost PR #904 required splitting schema from data ingestion). **Schema:** `public.pyq_question_explanations` (FKâ†’`pyq_questions`, PYQ-scoped so it stays clear of the PR-4 mock/projection surface) with `short_explanation`, `explanation_text`, `solution_steps`/`option_rationales`/`formula_used`/`common_traps` (jsonb), **structured** `final_answer_option_id`/`alternate_answer_option_id` (FKâ†’`pyq_options`, not a free-text A/B/C/D label), `ambiguity_status`, `explanation_source_type`, `source_url` (real explanation source only), `source_document_id` (FKâ†’`document_assets`)/`source_hash`, `license_status`, and its **own** `reviewer_status`/`reviewed_by`/`reviewed_at` (independent of the question's), `metadata`, timestamps; `unique(question_id, explanation_source_type)`. **One deterministic BEFORE trigger** enforces: (a) same-question integrity â€” each answer option FK must belong to `question_id`; (b) content-edit downgrade of a verified row â†’ `needs_correction`; (c) **fail-closed verification** â€” `reviewer_status='verified'` is rejected on INSERT *and* UPDATE unless licence is cleared (`owned`/`licensed`/`public_domain`), ambiguity is `none`, `final_answer_option_id` is set, and reviewer identity/timestamp are present. **RLS admin/service-role only.** **Fenced review RPC** `cms_review_pyq_question_explanation(id, expected, target, notes, actor_id, actor_email)` (SECURITY DEFINER, `service_role` only; REVOKE public/anon/authenticated) locks the row, enforces the transition matrix + verify preconditions, stamps reviewer identity, and writes one `admin_audit_logs` row per transition. Model + import governance documented in `docs/architecture/pyq-explanations.md`. **Coaching CSAT explanation corpus deliberately NOT committed** â€” it is ingested out-of-band as operator reference (document asset + `source_hash` + recorded permission basis) per the doc; only platform-owned/cleared text may be committed, and answer keys stay operator-verified (no `pyq_options.is_correct` writes). Regression test `app/supabase/tests/regression_230_pyq_question_explanations.sql` (10 cases): same-question integrity, each fail-closed precondition, content downgrade, uniqueness, and RPC verify + audit + uncleared-licence refusal â€” all pass on a disposable PG16 cluster (030/032/223 + stubs); migration idempotent on re-apply. OPERATOR PENDING: apply migration 230 (after 229); ingest coaching reference via the operator path with recorded permission; author platform-original reviewed explanations (structured `final_answer_option_id`, ambiguity resolved) and verify via the RPC before any learner exposure. PR1 of the explanation program â€” importer/admin-UI/runtime/scoring lanes deferred and overlap the PR-4 projection owner's surface. |
-| PYQ media & advanced question types â€” media storage (PR-11 slice 1, migration 233) | CODE-FIXED, VALIDATION PENDING | `233_pyq_stimuli_media_assets.sql` lands the first-class media storage migration 223 deferred to PR-11. Adds to `public.pyq_stimuli`: `document_asset_id` (FKâ†’`document_assets`), `asset_locator` jsonb (page/bbox locator), and `alt_text`. **Governance** (mirrors 223): (a) asset-integrity trigger â€” a linked asset must be a live `admin_exam_intelligence` **image** document (`document_kind='image'`; status not in `failed`/`archived`), same posture as 186's `pyq_papers.source_document_id` check; (b) **fail-closed accessibility + renderability** â€” a media stimulus (`image`/`chart`/`diagram`) cannot be `reviewer_status='verified'` without `alt_text` **and** a linked image asset; `content_text` is not a substitute (the renderer never shows it for media), enforced on INSERT and UPDATE; (c) the 223 verified-content downgrade is extended so editing `alt_text`/`document_asset_id`/`asset_locator` on a verified stimulus forces `needs_correction`. Additive + idempotent; no importer/projection contract changed. **Frontend:** `QuestionStimuli` (inside the existing mock attempt shell â€” **no new surface**, per the no-new-surface rule) now renders `image`/`chart`/`diagram` stimuli as an `<img>` with `alt`=`alt_text` (lazy), with an accessible `role="img"`/`aria-label` text fallback when no `asset_url` is present; text stimuli unchanged; backward-compatible. Docs: `docs/architecture/pyq-media.md`. Validated: regression `app/supabase/tests/regression_233_pyq_stimuli_media_assets.sql` (10 cases incl. wrong-scope/archived/failed/non-image asset rejection, media-requires-asset verify, media-edit downgrade, non-media verify) passes on a disposable PG16 cluster (030/032/223 + 233); migration idempotent; `QuestionRenderer.test.jsx` 9/9 pass; ESLint clean. Runs on its **own** PR/branch. Authored at 240, renumbered as main advanced â€” **now 233** (PR-8 merged first and took 232; the renumber-at-merge pattern). OPERATOR PENDING: apply migration 233 (after latest). Deferred later PR-11 slices: importer media-type support + asset upload flow, wiring `asset_url`/`alt_text` through the PR-4-owned mock projection/snapshot, and advanced answer runtimes (MSQ/integer/descriptive) + scorers. |
-| PYQ media authoring â€” CMS stimulus write path (PR-11 slice 2) | CODE-FIXED, VALIDATION PENDING | Backend-only follow-up to migration 233: the exam-intelligence CMS (`admin_exam_intel_cms.py`, `POST`/`PATCH /pyq-stimuli`) can now author **media** stimuli. `_STIMULUS_TYPES_CREATABLE` extended from text-only to include `image`/`chart`/`diagram` (`other` stays deferred â€” no authoring contract); the write allowlist accepts `document_asset_id`, `asset_locator`, `alt_text`. The endpoints pass fields straight through â€” migration 233's `pyq_stimuli_media_guard()` enforces asset integrity (live `admin_exam_intelligence` `image` asset, not `failed`/`archived`) and the verify-time accessibility contract; those guard raises are mapped to HTTP 422 (create + patch). `reviewer_status` is still never settable here (promotion stays with the review router; new rows land `pending`). No new migration, no new surface. Tests: `test_pyq_stimulus_review_api.py` â€” image-create persists media fields, patch-to-media allowed, `other` still 422, DB guard rejection â†’ 422; full file **40/40 pass**. Docs updated (`docs/architecture/pyq-media.md`). Still-deferred PR-11 lanes: asset upload flow (admin surface), bulk-importer media support, PR-4-owned projection/snapshot wiring, and MSQ/integer/descriptive runtimes + scorers. |
-| PYQ advanced types â€” integer/numerical answer runtime (PR-11 slice 3, gate G11) | CODE-FIXED, VALIDATION PENDING (VERIFY DB: migration 250) | The deterministic scoring runtime for `integer`/`numerical` questions â€” the Â§G11 prerequisite ("implement integer/numerical answer scoring **before** enabling integer questions"). **Scope:** runtime + scoring plumbing only, fail-closed; CMS authoring of the correct value, PYQâ†’mock projection widening (`numerical`â†’`integer`), and the `_SELECTABLE_QUESTION_TYPES` mcq-only lock (safety decision D1) all stay **deferred/intact** â€” no real integer question can reach an attempt until authoring+projection land, so the D1 lock is untouched. **Migration 250** (renumbered from 245/249 as main advanced) (`250_integer_numeric_answer.sql`, additive/nullable, no RLS change): `mock_question_bank.numeric_answer jsonb` (canonical `{value, tolerance}`) + `mock_attempt_responses.numeric_answer numeric` (learner's typed value). **Backend** (`mock_engine.py`): `_question_snapshot` freezes the `{value, tolerance}` spec for integer type only (NULL otherwise) so submit scores from the immutable snapshot, never the live bank, and the correct value never leaks to the attempt view (`get_attempt`/`_serialise_question_for_attempt` expose only the learner's saved value); `save_answer` accepts `numeric_answer` (mutually exclusive with `selected_option_id`); scoring refactored into `_grade_response`/`_grade_numeric_response` â€” integer grades `|submitted âˆ’ value| â‰¤ tolerance`, MCQ unchanged, and **any type without a deterministic scorer, or an ungradeable answer, returns unattempted â€” never a false-positive `correct`** (last-line fail-closed guard). `_build_result`/`get_review` surface learner value + correct value+tolerance for review. Analytics `compute_scoring`/`topic_breakdown` now key attempted/correct/wrong off the authoritative `is_correct` (spans both modalities; a typed-but-ungradeable answer never lands in the wrong bucket under negative marking). API `AnswerBody.numeric_answer`. **Frontend:** `MockAttemptShell` renders a numeric input for integer questions (option-select/keyboard-number safely inert; answered-count + palette + submit-flush count both modalities), `NumericalAnswer` rewritten (attempt input emits `{numeric_answer}`; review shows learner + correct value Â± tolerance), `QuestionRenderer` maps `integer`â†’numeric, `MockReview` unattempted filter + review passthrough. Tests: backend `test_mock_integer_scoring.py` (10 â€” exact/tolerance/outside/unattempted, snapshot freeze + no-leak, resume, fail-closed no-spec, MCQ-null-spec, API); full `study_os` suite **1295 passed**. Frontend `MockAttemptShell.integer.test.jsx` (3) + `NumericalAnswer.test.jsx` (4); mocks suite **99 passed**; `CI=true react-scripts build` clean (194.56 kB gz). **VERIFY DB:** apply migration 250 (confirm slot vs live `schema_migrations`). **Deferred:** CMS numeric-answer authoring, projection widening + `_SELECTABLE_QUESTION_TYPES` flip (both needed to exercise end-to-end), MSQ/matching/descriptive runtimes, integer error-classification nuance. |
-| Track C question-model v2 / PYQ weighting | BLOCKED / PLANNED | Track C remains downstream of the clean text-MCQ feedback-loop gate. |
-| Onboarding knowledge calibration (Lane O) | IN REVIEW â€” PR #778 (`claude/onboarding-priors-spec`), owner-review HARDENED | All three slices in one PR, then hardened against an owner checkpost review. **Data:** migration 198 (`user_topic_self_assessment` evidence) + migration 199 (`user_exam_calibration` gate record). **Security:** both tables are owner-`SELECT`-only RLS with NO client write policy â€” writes are service-role-only, so clients submit only a band and the server owns bandâ†’prior_mastery + attemptsâ†’report_confidence (clients cannot forge numeric priors). Never touches `user_topic_mastery`/`MasteryWriter`. **API:** `GET/PUT/POST-skip /api/study/self-assessment` â€” server resolves the required subject set (locked-coverage subjects minus those already covered by validated mastery), validates exam-scope/duplicates/completeness (422), and `calibrated` derives from the gate record (NOT "any row exists"). **Planner:** fail-closed on `user_topic_mastery` read failure (priors not consumed; `mastery_read_failed` recorded) so validated evidence always wins; honest provenance (no "recent accuracy" label on a prior; explicit `new` self-report; `self_assessment_prior` reasoning-trace row); expanded `self_assessment_summary` audit payload. **Frontend:** interstitial truly gates plan generation (no `plan.tasks` escape hatch; exam-switch reset); persisted skip; non-blocking "Update your starting point" edit affordance. D1/D2/D3 all approved. **Round 2 hardening** (shared `app/study_os/calibration.py` module): backend plan precondition (gate enforced on `/plan/generate|draft|apply` + `regen.py`, not frontend-only); prior consumption gated on a COMPLETED calibration (skipped/partial â†’ cold-start); existing-plan grandfather/rollout (no retroactive block); non-partial upsert conflict indexes (PostgREST `on_conflict` works on real PG); evidence-confidence normalization across multi-call completion; frontend loading-fail-closed + stale cross-exam guard + hydration-race fix; attempts explicitly required; `by_band` counts subjects; stable reasoning-trace status token. **Tests:** full `tests/study_os/` 747 green (new `test_plan_calibration_gate.py` 20 + `test_self_assessment_api.py` 23 + `test_planner_priors.py` 16) + 19 frontend across 5 suites, ESLint clean. OPERATOR PENDING: apply migrations 198 â†’ 199 to staging in order; confirm owner-`SELECT`-only RLS and that `authenticated`/`anon` cannot write either table; validate the gate-record `calibrated` flow + backend plan precondition end to end. NON-CODE: Graphify code-map artifact needs an external-tooling re-run against this head. |
-| PYQ Intelligence v2 â€” Score Snapshot Workbench UI (PR #810) | CODE-FIXED, OPERATOR/BROWSER VALIDATION PENDING | Admin workbench embedded as `?view=snapshots` inside PYQ Workbench tab (NOT a peer tab â€” IA constraint preserved). **Frontend** (`ScoreSnapshotPanel.jsx`): scope selector (exam-wide + phases from context); phase URL param validated against context with `invalid-scope-error` banner on unknown values; `effectivePhase` derived post-validation; generation-counter race guard (`loadGenRef`) â€” stale responses discarded, list cleared on each load; compute posts `exam_phase_id` in the JSON body (NOT query string â€” matches `ComputeSnapshotBody` contract); disclosure `<button aria-expanded>` for evidence drawer (keyboard operable); focus restored to `panelHeadingRef` (`<h2 tabIndex=-1>`) after successful lockedâ†’reviewed reversal (invoker ref may be detached after reload); `_enrich_snapshot_topics` in `admin_exam_intelligence.py` batch-fetches `topic_name`/`topic_path` from the `topics` table and attaches them to list rows; evidence drawer shows real backend field names (`topic_primary_count`, `corpus_total_primary`, `frequency_component`, `coverage_component`, `evidence_quality`, `fingerprint`); lock action disabled without `topic_name`. **Permission gate:** compute and lock endpoints enforce `exam_intelligence.review` permission; non-admin 403 tested. **Pagination:** API response is offset-paginated (Python-side slice after full DB read and enrichment â€” `all_rows[offset: offset + limit]`); DB-level pagination and count are deferred scalability follow-ups. Frontend clears and reloads the list on each scope change via `loadGenRef`. **Tests:** 54 total across the two primary test files â€” 25 frontend cases in `ScoreSnapshotPanel.test.jsx` (scope selector, phase validation, API isolation, compute body contract, notes modal error/success, evidence drawer fields, permission gate); 29 backend cases in `test_score_snapshot_admin_api.py` (enrichment happy/graceful, compute body `exam_phase_id`, transition paths, 404/422/403, atomicity, actor forwarding, concurrent modification). **Validation required:** (a) open exam workspace â†’ PYQ tab â†’ Snapshots pill â†’ confirm scope buttons + snapshot table render; (b) select a phase scope â†’ confirm list scoped + URL updated; (c) enter unknown `?phase=` value â†’ confirm error banner + exam-wide fallback; (d) click expand button â†’ confirm drawer shows topic_primary_count/corpus_total_primary/score components; (e) compute â†’ confirm POST body contains `exam_phase_id` (not query string); (f) lockedâ†’reviewed reversal with notes â†’ confirm modal closes + focus lands on panel heading. |
-| PYQ Intelligence v2 â€” Score Snapshot lock-authority correctness | CODE-FIXED, OPERATOR VALIDATION PENDING | Scoped, approved, and implemented via issue #822 and PR on branch `claude/snapshot-lock-authority-s9k2mn`. **Guard A (stale-model):** migration 206 adds `p_current_model_version` parameter to `cms_review_exam_topic_snapshot`; RPC raises `stale_model_version` (P0422) when `row.model_version â‰  p_current_model_version` on `reviewedâ†’locked`. `draftâ†’reviewed` and `lockedâ†’reviewed` remain always allowed regardless of model version. **Guard B (superseded-current-model):** RPC raises `superseded_snapshot` (P0422) when a locked row with `computed_at >= candidate.computed_at` already exists for the same scope `(exam_id, exam_phase_id, topic_id)` at the current model version. The `>=` contract ensures equal-timestamp rows are rejected to give the planner one deterministic winner. **Race safety:** `pg_advisory_xact_lock(hashtext(exam_idâ€–exam_phase_idâ€–topic_idâ€–model_version))` acquired before `SELECT FOR UPDATE` to serialise concurrent `reviewedâ†’locked` attempts for the same scope. **Python layer** (`admin_exam_intelligence.py`): RPC call extended with `"p_current_model_version": _SNAPSHOT_MODEL_VERSION`; error token mapping extended with `stale_model_version` and `superseded_snapshot`. **Tests:** 9 new cases in `test_score_snapshot_admin_api.py` (Guard A rejects stale model; Guard A allows draftâ†’reviewed with stale model; Guard B rejects superseded; Guard B rejects equal computed_at; Guard B allows lock when only older locked exists; Guard B different scope does not block; lockedâ†’reviewed reversal allowed for superseded row; re-lock after reversal blocked by Guard B; `p_current_model_version` forwarded). Total 38 backend tests pass. OPERATOR VALIDATION PENDING: apply migration 206 to staging (after migration 205 English Writing Practice); verify 7-param `cms_review_exam_topic_snapshot` exists with `service_role`-only EXECUTE; test `reviewedâ†’locked` with a stale-model row â†’ confirm 422 `stale_model_version`; test `reviewedâ†’locked` when a newer or equal-timestamp locked row exists for same scope â†’ confirm 422 `superseded_snapshot`; confirm `draftâ†’reviewed` and `lockedâ†’reviewed` reversal are unblocked. Defer final `reviewedâ†’locked` validation until migration 206 is deployed. |
-| PYQ Intelligence v2 â€” planner consumption of locked snapshots (slice 2) | MERGED (PR #773) | Second slice of `docs/architecture/pyq-intelligence-v2.md`. `locked_score_snapshots()` wired into `planner.py` as a bounded additive priority signal (0â€“15 pts, confidence-weighted). **(1) Cycle-independence:** snapshots are cycle-independent by design â€” writer never sets `exam_cycle_id`; corpus is all-time verified PYQs. **(2) Confidence modulation:** `snapshot_component = min(15, score/100 Ã— 15 Ã— confidence)`; absent confidence defaults to 1.0; `confidence=0.0` yields 0 pts. **(3) Complete lineage:** `why_this_task` persists 6 nullable snapshot fields (`snapshot_id`, `snapshot_priority_score`, `snapshot_confidence`, `snapshot_model_version`, `snapshot_computed_at`, `snapshot_evidence_count`); plans without snapshots are NOT byte-identical to pre-slice-2 (null keys always present). **(4) Silent-failure guard:** `locked_score_snapshots()` returns `None` on DB read failure; caller records `snapshot_read_failed=True` in `input_context`; plan still generates without snapshot component. **(5) Reasoning trace:** `build_task_reasoning_detail()` adds a `locked_score_snapshot` trace row from persisted lineage â€” no re-query. **(6) User-visible summary:** `_why_summary()` appends `analysis confidence X%` to the one-liner when a snapshot is present; confidence modulates the boost so the text is accurate. **Tests:** 16 total (9 pre-existing + 7 new). All 3898 tests pass. OPERATOR PENDING: confirm planner consumes locked snapshots after operator validation of slice 1 (migrations 033 + 035). |
-| PYQ Intelligence v2 â€” snapshot review atomicity (migration 204) | CODE-FIXED, OPERATOR VALIDATION PENDING | Closes the known atomicity gap in `PATCH /score-snapshots/{id}/review`: the previous implementation performed a best-effort `admin_audit_logs` INSERT followed by a separate `exam_topic_score_snapshots` UPDATE, leaving two failure modes (orphan audit row if UPDATE failed; silent status change without audit if INSERT was swallowed by `_safe`). **Migration 204** (`204_atomic_snapshot_review_transition.sql`) adds `cms_review_exam_topic_snapshot(p_snapshot_id, p_expected_status, p_new_status, p_reviewer_notes, p_actor_user_id, p_actor_email)` â€” a `SECURITY DEFINER` RPC (service_role only; REVOKE from PUBLIC/anon/authenticated) that: (1) validates `p_new_status` is a known status; (2) `SELECT ... FOR UPDATE` the snapshot row; (3) not-found guard (P0404); (4) concurrent-modification guard against `p_expected_status` (P0409); (5) enforces the full transition matrix (P0422); (6) audit `INSERT` + snapshot `UPDATE` in one transaction â€” any failure rolls back both. Returns `{ok, audit_id, snapshot_id, prev_status, new_status}`. **Python layer** (`admin_exam_intelligence.py`): pre-SELECT for `p_expected_status` retained; Python transition check and lockedâ†’reviewed notes guard remain as fast-path UX; the best-effort two-step writes are replaced by the single RPC call; error tokens (concurrent_modification â†’ 409, transition_not_allowed/invalid_target_status â†’ 422, not_found â†’ 404) mapped from RPC exception message. **Tests** (`test_score_snapshot_admin_api.py`): new `_SnapshotSBStub` mirrors RPC contract; 9 new/updated tests: draftâ†’reviewed, reviewedâ†’locked, lockedâ†’reviewed, invalid transition (no orphan row), locked reversal notes guard, atomicity (single log + single mutation), actor/notes forwarding, no-fallback-on-RPC-failure (500, row untouched), concurrent modification (409, no audit row). OPERATOR PENDING: apply migration 204 to staging; verify EXECUTE grant matrix (`anon`/`authenticated` denied, `service_role` allowed); run a compute â†’ review â†’ lock cycle and confirm exactly one `admin_audit_logs` row per transition with `action = 'snapshot_status_transition'`, `admin_user_id` set, `old_value/new_value = {status: ...}`, and `notes` = the human reviewer text; confirm no direct `exam_topic_score_snapshots` UPDATE path exists in the service_role flow. |
-| Subject Practice Hub (`/app/study/subjects`) | CODE-FIXED, VALIDATION PENDING | Turns the read-only subject-mastery page into a learner "choose what to practice" hub on the EXISTING `/app/study/subjects` surface (no new sidebar destination). **PR-B (readiness):** `GET /api/study/subjects` now returns a `practice: {available, modes[]}` object per subject, computed server-side from the same verified/active gates the launch path uses â€” English-writing availability via `writing_practice/subject_launch.available_writing_subject_ids` (verified+active+runtime-ready+DEFAULT-DENY-applicable prompts, batched), PYQ-topic availability via `pyq_practice.practiceable_topic_ids` (verified, actively-projected, unexpired `mock_question_bank` rows for the user's target exam, batched, fail-closed). server_launch modes: `english_writing` (+ `error_lab` client link), `topic_pyq` targeting the weakest available topic (+ `mock_section` client link). **PR-C/PR-D (launch):** new server-owned orchestrator `POST /api/study/subjects/{subject_id}/practice/start` (`app/api/subject_practice.py`, registered before canonical) resolves exam context from the caller's target exam (never client-trusted) and dispatches: `english_writing` â†’ resolve one prompt server-side + funnel through the EWP single-birth path (`writing_practice.create_learning_session`, public alias added; browser never picks `prompt_id`) â†’ `{kind, route:/app/study/practice/english/<session_id>}`; `topic_pyq` â†’ existing `start_pyq_practice(mode='topic', exam_id required)` â†’ `{kind, route:/app/study/mocks/attempts/<attempt_id>}`. 409 `no_eligible_prompt` / empty-pool "No verified practice set yet" surfaced as a calm inline card note (not a hard toast). **Frontend:** `Subjects.jsx` rewritten to a practice hub via `useApiCollection` (loading/empty/error states) + per-card `SubjectPracticeCard` using `useApiAction` â†’ navigate to the returned route; radar + mastery summary + `data-testid="subjects-page"` + `learning-card-subjects` link preserved. No routing/nav/AdminShell edits. Tests: backend `tests/study_os/test_subject_launch.py` (4) + extended `test_subjects.py`; route-collision guard green; `tests/ -k "writing_launch or subjects"` 47, `-k pyq_practice` 25. Frontend `Subjects.test.js` (5) + `StudyHubs`/`navContract` 64 unchanged. **Checkpost #937 hardening:** (1) the `topic_pyq` launch validates server-side that `topic_id` belongs to the path `subject_id` in the caller's locked-coverage scope (`subjects.locked_topic_ids_for_subject`) â†’ 422 on cross-subject mismatch (browser topic never trusted); (2) `practiceable_topic_ids` now mirrors the launch **freeze readiness** (reuses `_load_questions`+`_question_snapshot`, the same options+`correct_option_id` predicate `_build_practice_payload` aborts on, same topic-mode ordering+limit) so a projected-but-unready pool no longer advertises a `topic_pyq` mode that would 500 on click; added `test_subject_practice_endpoint.py` (cross-subject 422 + in-subject start) and an unready-snapshot exclusion test. Reuses the mock attempt shell + EWP session shell (no new attempt/session tables; EWP-1 practiceâ‰ mock-attempt contract respected). OPERATOR/DB PENDING: end-to-end with a seeded verified+active+global-target `sentence_construction` prompt and an actively-projected topic PYQ pool; today a fresh DB has zero launchable writing prompts (migration 214 fail-closed), so English modes stay hidden until content is seeded. |
-| PYQ Intelligence v2 â€” frequency semantics + score snapshots (slice 1) | CODE PRESENT, OPERATOR VALIDATION PENDING | First implementation slice of `docs/architecture/pyq-intelligence-v2.md`. **(1) Primary-only frequency:** `coverage.py::verified_pyq_topic_counts` now filters `tag_role='primary'` at the DB query AND guards the count loop (defense-in-depth) so one verified question can no longer inflate multiple topics' frequency through secondary/trap/calculation_layer tags. Paper `trust_status='verified'` + question `reviewer_status='verified'` + tag `reviewer_status='verified'` gates remain conjunctive. **(2) Versioned snapshot writer:** new `exam_intelligence/score_snapshots.py` computes draft `exam_topic_score_snapshots` from verified PYQ evidence + locked `exam_topic_coverage`. Deterministic + idempotent via SHA-256 input fingerprint (re-running with the same corpus skips unchanged topics). Each snapshot records `model_version` (`v1.0`), `evidence_count`, `score_components` (frequency/coverage/evidence_quality, each normalized 0â€“1), `input_summary.fingerprint`, and `confidence_score`. `locked_score_snapshots()` returns ONLY `status='locked'` rows â€” drafts/reviewed never reach planner or user surfaces. **(3) Admin review surface:** three endpoints added to the existing `/admin/exam-intelligence` router (NO new top-level route): `GET .../exams/{id}/score-snapshots` (optional status filter), `PATCH .../score-snapshots/{id}/review` (enforces draftâ†’reviewedâ†’locked transitions; `lockedâ†’reviewed` reversal requires `reviewer_notes`; stamps `reviewed_by`/`reviewed_at`), `POST .../exams/{id}/score-snapshots/compute`. Snapshots are insert-only (old locked snapshots remain auditable); no AI writes into locked rows. **Tests:** 7 frequency-semantics tests (`test_pyq_frequency_semantics.py`), 9 writer/reader tests (`test_score_snapshots.py` â€” incomplete corpus, multi-role tags, zero evidence, idempotency, status filter, sort order, broken table), 11 admin-endpoint tests (`test_score_snapshot_admin_api.py` â€” list, status filter, all transition paths, 404, 422, non-admin 403). Full `tests/exam_intelligence/` suite green. OPERATOR PENDING: confirm migration 033 (`exam_topic_score_snapshots`) + migration 035 RLS applied to target env; verify authenticated users see only `reviewed`/`locked` rows; run a real compute â†’ review â†’ lock cycle. (Planner consumption of locked snapshots is implemented in slice-2 / PR #773 â€” validate planner output after slice-1 operator validation passes.) |
-
-### Operator validation still required
-
-The repository can prove code remediation only. It cannot prove live scheduler behavior, token reachability in another agent harness, Render state, or Supabase row-drain evidence. Do not mark the operator gates complete from code inspection alone.
-
-## Schema & RPC permissions â€” v1 release gates (PR #790)
-
-Two v1 release-readiness gates introduced by PR #790. Both are deliberately **not** signed off in-repo: the live verification is operator-only.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| RPC EXECUTE grant hardening (migration 203) | CODE-FIXED, VALIDATION PENDING | `203_rpc_grant_hardening_v1.sql` revokes EXECUTE from **PUBLIC, anon, AND authenticated** (per the migration-190 lesson that `REVOKE FROM PUBLIC` alone leaves explicit per-role grants) and re-grants only `service_role` for **sixteen** backend-only RPCs â€” Group A (4) explicitly granted `authenticated`; Group B (4) no explicit grant â†’ default PUBLIC (incl. legacy `fn_fanout_alert_event`); Group C (4) granted service_role but never revoked default PUBLIC (`claim_eligibility_queue` 010, `enqueue_eligibility_recompute` 041, `upsert_field_review` 127, `consume_profile_merge_claim` 128); Group D (4) revoked PUBLIC only, not anon/authenticated (`update_pyq_question_review_atomic` 162, `start_attempt_from_blueprint` 179, `fn_invalidate_projection_for_question` + `fn_block_projection_for_question` 184). Four were explicitly granted to `authenticated`: `promote_recruitment(jsonb)` (def 043â†’059), `create_verification_report(jsonb)` + `supersede_and_create_verification_report(uuid,jsonb)` (def 076), `claim_source_for_scrape(uuid,integer)` (def 054). Three had **no explicit grant** so held the PostgreSQL default `PUBLIC` (no `ALTER DEFAULT PRIVILEGES` exists in the repo): `apply_mock_mastery_delta(uuid,uuid,uuid,numeric,text)` (def 145, INVOKER), `claim_mock_mastery_retry(uuid,text,timestamptz)` + `complete_mock_mastery_retry(uuid)` (def 180, both SECURITY DEFINER). No application impact â€” all callers use the service-role client. Full audit in `docs/schema/rpc-grant-audit-v1.md` (PYQ/CMS admin RPCs 185â€“201 verified already-hardened, effective defs corrected to 187; `is_admin` left authenticated by design for RLS; `refresh_*` are trigger helpers). **OPERATOR PENDING:** apply migration 203 to stagingâ†’prod; run the grantee query (renders PUBLIC, flags NULL acl) and run the enumerate-ALL-non-trigger-functions query (not a curated list) and confirm no backend RPC leaves PUBLIC/anon/authenticated EXECUTE (only is_admin + community_inc_* should appear); smoke-test the service-role flows. |
-| RLS zero-policy coverage reconciliation | CODE-FIXED, VALIDATION PENDING â€” OPERATOR PENDING | `docs/schema/rls-coverage-reconciliation-v1.md` classifies the (stale 2026-05-21) snapshot of ~100 RLS-on/zero-policy tables: 56 SERVICE_ROLE_ONLY (20 catalog + 30 service-role + 6 admin), 31 DEFERRED owner-scoped (safe only while reads are service-role-mediated), 13 PRODUCT_DEFERRED (blog/community/forum gating). Source of truth is the **live introspection query, not the file** â€” the snapshot is known stale (e.g. `support_content_access`, RLS-enabled zero-policy by migration 195/197, is absent from it). **NOT a GREEN sign-off.** **OPERATOR PENDING:** regenerate the live inventory on stagingâ†’prod, diff the exact table-name set against the snapshot, classify every addition/removal, then mark GREEN. Product decision still owed on the 13 blog/community/forum tables (v1.x). |
-
-| Placeholder endpoints isolated (deferred to v2) | DONE (CODE PRESENT) | `app/api/placeholders.py` reduced to its live surface: the dead seed constants (RECRUITMENTS/COMMUNITY_*/RESOURCES/PROVIDERS/AFFILIATES) and all in-memory per-user state dicts were removed (only `MENTORS`, consumed by the real accountability router, is retained). The remaining demo-only endpoints (`/admin/sources-static`, `/admin/scraper/runs-static`, `/admin/eligibility-queue-static`, `/admin/notifications/toggle`) have no real equivalent and are **off by default** â€” `server.py` mounts the router only when `FF_ENABLE_PLACEHOLDER_ENDPOINTS` is truthy. Frontend calls none of them (verified). No production route now depends on placeholder/in-memory responses; these four are explicit v2 scope. |
-| v1 go-live runbook | CODE PRESENT, OPERATOR VALIDATION PENDING | `docs/ops/v1-go-live-runbook.md` â€” single ordered operator checklist stitching the remaining v1 gates (schema/permission migrations applied via the remote-history-driven runner + verification queries; RLS sign-off with real-JWT proof; Mock Engine scheduler â†’ PR-6 â†’ PR-7 14-day shadow â†’ PR-8 canary â†’ PR-9 live flip with drain-based rollback; production-surface config; pilot). Defines order/owner/pass-condition/rollback per phase and defers to the authoritative gate docs. No live evidence is asserted complete; the migration-202 extraction archive-race gate (202_atomic_extraction_finalize.sql) is CODE-FIXED, VALIDATION PENDING (`text_extract.py` caller now terminates the job before raising on `document_archived`; mid-flight regression test added). |
-
-## Exam Governance Console â€” wave 4.6
-
-Current verdict: **core arc complete; cleanup tier remains**.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| #694 UX audit / decisions | MERGED / CODE PRESENT | Audit docs remain in `docs/exam-governance/`. |
-| #699 console primary door | MERGED / CODE PRESENT | AdminShell exposes Exam Governance Console and Registry as primary entries; Create exam and Advanced Import / Repair are advanced entries. |
-| #700 console list shell | MERGED / CODE PRESENT | `ExamListShell` still exists as generic list shell. |
-| #701 backend capability preflight | MERGED / CODE PRESENT | Backend docs remain available. |
-| #703 backend work-queue reads | MERGED / CODE PRESENT | `/console/exams` and `/console/summary` routes exist and use work-queue classification. |
-| #705 frontend work-queue wiring | MERGED / CODE PRESENT | `/console` renders `ConsoleWorkQueue`. |
-| #707 per-exam backend read | MERGED / CODE PRESENT | `/console/exams/{exam_id}` delegates to `console_detail.build_console_detail`. |
-| #709 per-exam action console | MERGED / CODE PRESENT | Selected-exam console renders `ExamActionConsole`, not embedded `ExamWorkspace variant="console"`. |
-| CL-1 identifier hygiene | CODE PRESENT IN THIS CHECKOUT | `operatorChrome` helpers and tests are present. Confirm remote PR state separately if needed. |
-| CL-1b de-leak `ExamActionConsole` | CODE PRESENT IN THIS CHECKOUT | `operatorChrome.humanizeToken` extended to truncate UUID-shaped strings (first 8 chars + "â€¦") â€” closes the vector where a UUID-valued token reaching any `humanizeToken` fallback would render verbatim. `formatOperatorActor` now shares the same `UUID_TOKEN_RE` constant. `ExamActionConsole` already imports and uses `humanizeToken` for all reason/area/gate fallbacks; no new raw-UUID render sites found. Targeted CL-1b regression test added: plants a UUID as `verdict.status` and asserts the raw UUID does not appear while the 8-char truncation does. |
-| CL-2 registry row expansion / column cleanup | CODE PRESENT IN THIS CHECKOUT | Registry rows now lead with the exam name and expose keyboard-accessible details. Lane, cadence, exam key, and secondary metrics moved out of the dense primary table. Existing filters, pagination, console/workspace actions, identifier hygiene, and the /exams API contract remain unchanged. |
-| CL-3 remove CMS `+ New guided exam` CTA | CODE PRESENT IN THIS CHECKOUT | Advanced Import / Repair no longer renders the redundant guided-exam CTA. Entity selection, Reload, New row, Bulk import, and their existing forms remain unchanged. The guided-exam route remains available outside the CMS. |
-| CL-4 collapsible lifecycle banner | CODE PRESENT IN THIS CHECKOUT | The Exam Registry lifecycle contract now renders as a keyboard-accessible, collapsed-by-default disclosure. Its full reviewed/locked/verified guidance remains available on demand, while other AdminSafetyBanner callers retain their existing expanded behavior. |
-| CL-5 one-primary-per-screen buttons | CODE PRESENT IN THIS CHECKOUT | B3d-close six-surface audit passed in this checkout. Registry, Console Work Queue, Action Console, Guided Wizard, Workspace Smart Header, and Advanced Import / Repair were inspected: Registry has one primary header action, Open console; Work Queue has no screen-level primary CTA because workflow filters are pressed selectors and repeated row actions are contextual; Action Console header navigation is secondary and queue actions are contextual; Guided Wizard keeps one forward/create primary per active step while Organization mode controls are pressed selectors; Workspace Smart Header has Go to next action as its sole screen-level primary; Advanced Import / Repair has no header-level primary CTA and its Reload, New row, and Bulk import controls are local neutral repair controls. Rule: a screen may expose at most one screen-level primary CTA; pressed filters/selectors are not primary actions; repeated row actions are contextual; local form submission buttons are scoped to their form/card and are not automatically competing screen-level CTAs. `SetupPanel` local transaction controls remain owned by Lane C and must not be absorbed into B3d. Audit evidence is in `docs/reviews/exam-governance-primary-action-audit.md`. |
-| CL-6 remove orphaned root console layout + `ExamTaskRail` | CODE PRESENT IN THIS CHECKOUT | `ExamWorkspace` no longer accepts or branches on `variant="console"` and `ExamTaskRail` is deleted. The standalone eight-tab workspace is unchanged. |
-| CL-6b retire dormant console presentation plumbing | CODE PRESENT IN THIS CHECKOUT | Provider variant was removed from `ExamWorkspaceContext`; `OverviewPanel` and `ReviewActivatePanel` now contain workspace-only behavior with readiness percentages preserved for the standalone workspace; orphaned `ExamPublishImpact` and its isolated test were deleted; active standalone workspace and `ExamActionConsole` routes remain unchanged; `SetupPanel` remains unchanged. |
-
-## PYQ Intelligence v2 â€” section/stimulus/variable-option schema (PR-1)
-
-This section establishes a new PR-1..PR-11 delivery sequence (section
-linkage, printed-order preservation, variable option counts, shared text
-stimuli, importer v2, admin review, projection, learner practice, unified
-evidence, mastery/planner/persona integration, advanced question types).
-Note: this sequence is **not** currently checked into
-`docs/architecture/pyq-intelligence-v2.md` (that doc's own delivery order
-covers frequency/scoring/snapshot semantics, a different workstream) â€” treat
-this checklist section as the source of record for this sequence unless/until
-it is consolidated with the checklist proposed in PR #893 (not present on this
-branch/`main` as of this writing â€” reference it by PR number, not by file
-path, until it lands) or folded into the architecture doc. PR-1 is schema-only;
-importer v2, admin review, projection, and learner delivery are separate,
-later PRs.
-
-| Item | Status | Notes |
-| --- | --- | --- |
-| PR-1 schema: `pyq_questions.section_id`/`source_question_ref`/`display_order`, `pyq_options.display_order`/`source_label`, `pyq_stimuli`, `pyq_question_stimuli` | CODE-FIXED, VALIDATION PENDING | Migration `223_pyq_section_stimulus_schema.sql`, revised twice under checkpost review (PR #892). All new columns nullable; `pyq_bulk_import.py`'s fixed A-D/four-option write path is unchanged and remains the legacy import format. Cross-parent integrity (question/stimulus `section_id` must share the paper's `exam_phase_id`; `pyq_question_stimuli` links must stay within one paper/compatible section) is enforced by triggers, including re-validation when a section/paper/question/stimulus is moved after links exist, **and** re-validation of existing links when a question's or stimulus's own `section_id` is reassigned (2nd-pass fix â€” the link row itself doesn't change on that write path, so its own trigger never fired). All move-revalidation predicates use `IS DISTINCT FROM`, not a bare `<>` (2nd-pass fix â€” `<>` against a NULL new value is NULL, never TRUE, silently skipping the check). Every parent/child read a decision depends on takes an explicit `FOR SHARE`/`FOR SHARE OF` row lock to mitigate (not fully eliminate) concurrent-write races; the question-section and stimulus-section validators lock in opposite orders, so a concurrent edit on both sides of the same link can deadlock â€” Postgres aborts one side safely rather than corrupting state, but this is a mitigation, not a serializability proof. `pyq_stimuli` carries the same `reviewer_status`/`reviewed_by`/`reviewed_at` lifecycle as `pyq_questions`/`pyq_options` (migrations 103/155), and editing a verified stimulus's content_text/stimulus_type/language/metadata forces it back to `needs_correction`. `pyq_question_stimuli` also carries its own `reviewer_status`/`reviewed_by`/`reviewed_at` (mirroring `pyq_question_topic_tags`) so the association is independently governed rather than inheriting trust from either endpoint, and repointing (question_id/stimulus_id change) forces it back to `pending`. The atomic cross-cascade RPC (question review approving its stimulus links, mirroring `update_pyq_question_review_atomic` in migration 162) is backend-endpoint work and stays scoped to PR-3. `display_order` is **positive** (`>= 1`, not merely non-negative) and unique per parent scope (paper questions, question options, paper stimuli, question-stimulus links). Scope: text/shared-grouping only â€” no first-class media/asset (image/chart binary) reference, locator, or alt-text contract; that is explicitly deferred to PR-11. New tables mirror the existing `pyq_papers`/`pyq_questions`/`pyq_options` admin-only RLS posture (`public.is_admin(auth.uid())`); no aspirant-facing read policy added. Text-assertion migration-contract tests: `app/backend/tests/test_pyq_section_stimulus_schema_migration.py` (19 assertions). Manual live-DB regression proving valid same-paper/same-phase rows pass and cross-exam/cross-phase/cross-paper rows â€” including a post-hoc paper phase move, a NULL-phase paper move, and reassigning an already-linked question's section to an incompatible same-phase section â€” fail atomically: `app/supabase/tests/regression_223_pyq_section_stimulus_integrity.sql` (7 cases; not run in CI â€” same manual-operator convention as `regression_184_index_repair.sql`). `VERIFY DB`: (1) run `SELECT * FROM pg_policies WHERE tablename IN ('pyq_stimuli','pyq_question_stimuli')`; (2) run the regression SQL above against a live/staging Supabase instance and confirm all 7 PASS notices; (3) run a two-session concurrency test exercising the opposite-lock-order path (question-section edit vs. stimulus-section edit on the same link) and confirm either a clean serialization or a safe deadlock abort, never inconsistent committed state â€” no such test exists yet, this is a known gap, not asserted complete; (4) confirm the migration's slot number against live `SELECT max(version)::int + 1 FROM schema_migrations` per `AGENTS.md` (filesystem contiguity was checked, not the live sequence). |
-| PR-2 importer v2 (variable options, `options_json`, section/stimulus refs, non-integer `source_question_ref`) | CODE-FIXED, VALIDATION PENDING | `app/backend/app/exam_intelligence/pyq_bulk_import.py` extended in place: `parse_bytes()` now returns a canonical `{format_version, is_csv, stimuli, rows}` envelope and detects v2 via a JSON *object* with a `questions` list (JSON) or an `options_json` column (CSV); the legacy bare-list JSON / `option_a`..`option_d` CSV v1 path is byte-for-byte unchanged (verified: existing `test_pyq_bulk_import.py`/`test_cms_pyq_bulk.py`/`test_pyq_import_tokens.py` pass unmodified). v2 supports 2+ arbitrarily-labeled options per question (`_validate_row_v2`), a top-level `stimuli` array whose entries are validated as a batch (`_validate_stimuli_batch`; a broken shared-stimulus entry fails the whole batch, not one row, since it's shared infrastructure) and created once per `ref` during `commit()` (shared across every question in that call via `stimulus_cache`, linked through `pyq_question_stimuli`), and `section_ref` resolution scoped to the target paper's `exam_phase_id` (case-insensitive match on `exam_phase_sections.section_label`) â€” an unresolvable `section_ref` is a row-level error, never a silent NULL. `correct_option_label` must resolve to exactly one supplied option's label for `question_type='mcq'`; validated best-effort (unenforced) for other types. Idempotency/dedup extended to key off `source_question_ref` when present, falling back to `question_number` (both optional for v2 rows), preserving the existing per-row atomic rollback pattern â€” extended to also roll back `pyq_options`/`pyq_question_stimuli` rows on failure. New test file `app/backend/tests/exam_intelligence/test_pyq_bulk_import_v2.py` (12 tests originally; now 23 â€” see checkpost round 2 below). Router (`app/api/admin_exam_intel_cms.py`) unchanged in round 1 â€” round 2 wires `paper_id` through to `commit()`. `VERIFY DB`: run this importer against a live/staging Supabase instance with a real multi-section, multi-stimulus paper (the migration-223 cross-parent integrity triggers are the enforcement backstop; this Python-level validation is defense-in-depth, not a replacement) before relying on it for a real import. **Checkpost review round 2 (PR #894) â€” 9 bugs fixed:** (1) `commit()` now requires a keyword-only `paper_id` argument and scopes the token lookup to `.eq("token", ...).eq("paper_id", ...)`, so a token preflighted for one paper can never be committed through a different paper's URL (previously the router never passed `paper_id`, so `commit()` derived it purely from the token row â€” cross-paper commit was possible; the audit log would even attribute the write to the wrong paper). (2) Token consumption is now atomic: a new `_claim_token(sb, *, token, paper_id)` helper performs the consuming `UPDATE ... WHERE token=$1 AND paper_id=$2 AND consumed_at IS NULL` as the very first DB operation in `commit()` (previously a read-only SELECT was done first and `_consume_token()` only ran at the very end, so two concurrent commits could both pass the initial check and both write); `_load_token`/`_consume_token` themselves are untouched and still directly tested by `test_pyq_import_tokens.py`, they are simply no longer called from `commit()`. (3) `section_lookup` is now `dict[str, list[str]]` (was `dict[str, str]`, silently overwriting on a repeated label) â€” since `exam_phase_sections` is only unique on `(exam_phase_id, subject_id, section_label)`, a repeated label under two subjects in one phase now raises an "ambiguous â€” N sections named ... exist" row/batch error instead of silently resolving to whichever id was fetched last. (4) `pyq_question_stimuli.display_order` (added by migration 223 specifically for this) is now populated from each question's `stimulus_refs` array position (1-based), previously always omitted. (5) `parse_bytes()` now requires the JSON v2 object envelope to declare `"format_version": 2` as exactly the integer 2 â€” missing/wrong-type/wrong-value now raises `ValueError` instead of being silently accepted as v2. (6) Preflight now also dedupes against a batch-local hash map (`batch_hash_map`) checked before the existing-DB hash/fuzzy checks, so two byte-identical rows with neither `source_question_ref` nor `question_number` set in the same upload no longer both preflight `"ok"`. (7) The existing-`pyq_questions`-rows fetch in both `preflight()` and `commit()` now fails closed (raises `RuntimeError`) instead of logging a warning and continuing with empty dedup/idempotency sets on a transient DB error â€” this is a shared-code-path behavior change that also affects v1, confirmed not to break any existing test. (8) Shared stimuli now carry `metadata: {"import_ref": ref}` on insert; `commit()` fetches existing `pyq_stimuli` for the paper up front and checks `existing_stimuli_by_ref` (durable, cross-call) before `stimulus_cache` (this-call-only) before inserting, so a retried/second commit referencing the same `ref` reuses the same canonical stimulus row instead of creating a duplicate. (9) v2 now restricts `question_type` to `'mcq'` only (other `_QUESTION_TYPES` values have no scoring/import path implemented) and `stimulus_type` to `{"passage","caselet","table"}` (media types `chart`/`image`/`diagram` are explicitly PR-11 scope, referenced in the new error message) â€” v1's own `_QUESTION_TYPES` validation and migration 223's DB CHECK constraint (the superset) are both untouched. New defense-in-depth migration `224_pyq_bulk_import_v2_uniqueness.sql` adds two partial unique indexes (`pyq_questions_paper_source_ref_uidx`, `pyq_questions_paper_question_number_uidx`) as a DB-level backstop against the Python-level dedup being bypassed. 17 new regression tests added across `test_pyq_bulk_import.py` (+2), `test_pyq_bulk_import_v2.py` (+11), `test_pyq_import_tokens.py` (+4). Verified in this checkout: `python3 -m pytest tests/exam_intelligence/` â†’ 1610 passed, 8 skipped, 0 failed. `VERIFY DB`: same live-DB caveat as round 1, plus confirm migration 224's slot number against the live `schema_migrations` sequence per `AGENTS.md` before applying. **Checkpost review round 3 (PR #894) â€” 5 bug groups fixed:** (1) The no-identity duplicate hole survived round 2 across two SEPARATE `commit()` calls (not a race â€” sequential preflight-both-then-commit-both is enough): `batch_hash_map` only guards one upload, and `commit()`'s idempotency re-check only ever looked at `question_number`/`source_question_ref`. `commit()` now also selects `normalized_question_hash` on its existing-`pyq_questions` fetch, builds `already_inserted_hashes`, and checks it uniformly for v1 and v2 before every insert (free extra safety for v1, which always has a hash anyway) â€” a match is treated exactly like the existing `already_exists`/`"already_exists"` skip path. DB-level backstop: migration `224_pyq_bulk_import_v2_uniqueness.sql` (amended in place, not yet merged) adds a third partial unique index, `pyq_questions_paper_hash_uidx` on `(pyq_paper_id, normalized_question_hash) where normalized_question_hash is not null` â€” **`VERIFY DB`**: unlike the two round-2 indexes, this one is scoped to a column populated since before this PR, so it requires a pre-deployment duplicate audit (an operator could have force-committed an exact-hash duplicate via `override_errors=true` in the past); the audit query lives in the new `app/supabase/tests/regression_224_pyq_bulk_import_v2_uniqueness_audit.sql`, run it and resolve any rows before applying the index â€” not yet proven safe against live data. (2) `batch_hash_map` was only seeded when a row's status was `"ok"`, never `"fuzzy"` â€” two byte-identical rows that each independently land on `"fuzzy"` against some existing DB row (near-miss, not exact-hash) never saw each other as batch-local duplicates, and since fuzzy rows commit by default, both would commit as exact-text duplicates of each other. The seed line in `preflight()` is now unconditional (runs for every row that reaches a final status, not just `"ok"`). (3) Persistent stimulus identity (round 2's `metadata.import_ref` mechanism) was fail-open, ignored content drift, and had no DB backstop â€” three sub-fixes, all in `commit()`: (3a) the existing-`pyq_stimuli` fetch now fails closed (raises `RuntimeError`) instead of `logger.warning()`-and-continue â€” this was the one fail-open lookup left standing after round 2; (3b) `commit()` now fetches `content_text, stimulus_type, language, section_id` alongside `id, metadata` for existing stimuli, and â€” after the token claim, once `stimuli_meta` is available, but strictly before any writes â€” compares each batch-declared `ref`'s metadata against the stored row field-by-field, raising `ValueError` (now mapped to 422 by the router, mirroring `preflight`'s existing `ValueError`â†’422 handling) on any mismatch, so a corrected retry (same ref, different content) can no longer silently link new questions to a stale canonical stimulus; (3c) migration 224 adds a fourth partial unique index, `pyq_stimuli_paper_import_ref_uidx` on `(pyq_paper_id, (metadata->>'import_ref')) where metadata->>'import_ref' is not null` â€” this one is NEW infrastructure introduced in round 2, so no pre-existing data can violate it and no audit is required before applying it (unlike fix (1)'s hash index). (4) Reordered `commit()` so both read-only prerequisite fetches (existing questions, existing stimuli â€” both depend only on `paper_id`, not the token's content) now run BEFORE `_claim_token()`, so a `RuntimeError` from either never burns the one-shot token â€” the caller can safely retry the exact same `commit()` call once the transient DB issue clears (previously the token was claimed first, so a transient fetch failure meant the operator had to re-preflight from scratch even though nothing was written). Also documented (not changed) the bearer-token design: `commit()`'s docstring now explicitly states that `actor` is accepted for interface symmetry with `preflight()` but is not used to restrict who may commit â€” any actor holding a valid, unexpired, unconsumed token for the correct paper may commit it, a deliberate current product decision, not a bug. (5) Three preflight-time validation improvements in `_validate_row_v2`/`_validate_stimuli_batch`: an omitted `options[i].display_order` now defaults to the option's 1-based array position instead of staying `None` (an explicitly-given value is still validated as before); a question's `stimulus_refs` listing the same ref twice is now a row-level error instead of silently double-linking (which would have hit `pyq_question_stimuli`'s `unique(question_id, stimulus_id)` constraint at commit time as a late, confusing failure); and duplicate EXPLICIT `display_order` values among questions within one upload, or among stimuli within the batch's top-level `stimuli` array, are now caught at preflight time with a "first used at row N" message â€” this last item is a UX/DX improvement layered on top of migration 223's already-safe `pyq_questions_paper_display_order_uidx`/`pyq_stimuli_paper_display_order_uidx` commit-time backstop for the cross-batch case, not the closure of a live correctness gap. New companion file `app/supabase/tests/regression_224_pyq_bulk_import_v2_uniqueness_audit.sql` (pre-deployment duplicate-audit query for fix (1)'s hash index only). 9 new regression tests added, all in `test_pyq_bulk_import_v2.py` (one existing `test_pyq_bulk_import.py` assertion updated, not a new test, to reflect fix (4)'s reordering). Verified in this checkout: `python3 -m pytest tests/exam_intelligence/` â†’ 1619 passed, 8 skipped, 0 failed. `VERIFY DB`: run the round-3 duplicate audit against live/staging data before applying `pyq_questions_paper_hash_uidx`; `pyq_stimuli_paper_import_ref_uidx` needs no such audit; same live-DB import caveat as rounds 1â€“2 otherwise. **Checkpost round-4 / e2e fix:** e2e bulk-import failed with `42501 permission denied for table pyq_stimuli` â€” migration 223 created `pyq_stimuli`/`pyq_question_stimuli` AFTER migration 173's one-time blanket `grant ... on all tables ... to service_role`, so they never received it (latent since PR-1; only surfaced now because round-3's fail-closed stimulus fetch is the first service_role SELECT of the table â€” round-2's fail-open fetch swallowed the 42501). Fixed by new migration `225_pyq_stimuli_service_role_grant.sql` granting select/insert/update/delete on both tables to service_role. |
-| PR-3 admin review UI for section assignment / passage grouping | CODE-FIXED, VALIDATION PENDING | Backend (`admin_exam_intel_cms.py` + `admin_exam_intelligence.py`): curate allowlists now accept `section_id`/`source_question_ref`/`display_order` (question) and `display_order`/`source_label` (option) via the existing PATCH endpoints (`reviewer_status` still excluded â€” status only via the review router); a bad `section_id` (wrong exam_phase) is surfaced as 422 from migration 223's trigger, not a raw 500. `_REVIEWABLE["pyq_question"]` select gains the new columns; two new reviewable kinds `pyq_stimulus`/`pyq_question_stimulus` flow through the existing generic `PATCH /items/{kind}/{id}/review`. New headless CMS endpoints: `GET/POST/PATCH/DELETE /pyq-stimuli`, `GET/POST/PATCH/DELETE /pyq-question-stimuli` (allowlists `_STIMULUS_FIELDS`/`_LINK_FIELDS`, audited, PERM_CMS â€” read gating matches the sibling `GET /pyq-questions`). New migration `227_pyq_question_stimulus_review_cascade.sql` CREATE-OR-REPLACEs `update_pyq_question_review_atomic` (same signature, caller unchanged) to also cascade a verified/rejected/needs_correction question review to its `pyq_question_stimuli` LINKS (returns `cascaded_link_count`) â€” shared `pyq_stimuli` CONTENT is reviewed independently and never auto-verified by one question's review. Frontend (`PyqPaperWorkspace.jsx`, embedded â€” no new route/nav per the IA no-new-surface lock): question editor gains a phase-scoped Section select + `source_question_ref`/`display_order` inputs; option rows gain `source_label`/`display_order`; a collapsible Passages/Stimuli panel (`pyq-stimuli-panel`) lists a paper's stimuli with type/status badges, linked-question counts, and (canReview) per-stimulus + per-link verify/reject/needs_correction, (canEdit) create/edit/delete/link/unlink; the question editor shows the selected question's stimulus links with review controls. Verified in this checkout: `python3 -m pytest tests/exam_intelligence/` â†’ 1649 passed, 8 skipped; frontend `PyqPaperWorkspace|PyqWorkbench` â†’ 142 passed; eslint clean. `VERIFY DB`: apply migration 227 and exercise a question-reviewâ†’link-cascade + independent stimulus-content review against a live/staging Supabase instance;  confirm 227's slot number against live `schema_migrations`. **Checkpost round 2 (6 findings) fixed:** (P0) `list_items()` now exam-scopes the new `pyq_stimulus` (via paperâ†’exam) and `pyq_question_stimulus` (via questionâ†’paperâ†’exam) kinds â€” previously table-wide across all exams; (P0) migration 227's link cascade now carries `and reviewer_status not in ('rejected','needs_correction')` so a question verify no longer overwrites an operator's explicit negative decision on a specific association (options cascade unchanged); (P0) both DELETE endpoints now require a `reason` (min 8 chars, audited) and 409-block deleting a stimulus/link while any linked question is `verified` (auditing cascade_deleted_link_count/linked_question_count); (P1) media stimulus types (chart/image/diagram/other) are no longer creatable from this surface â€” backend `_STIMULUS_TYPES_CREATABLE={passage,caselet,table}` â†’ 422, frontend create dropdown restricted to the same three (existing media-type rows still display); (P1) unique (23505â†’409) and check (23514â†’422) constraint violations on links/display_order now map to actionable errors instead of raw 500s. Re-verified: `tests/exam_intelligence/` 1665 passed, 8 skipped; frontend `PyqPaperWorkspace` 57 passed. |
-| PR-4 projection/snapshot fidelity (section, stimulus, display order, source labels in `mock_question_bank`) | CODE-FIXED, VALIDATION PENDING | Migration `229_pyq_projection_stimulus_fidelity.sql` (183/184 immutable â€” new forward migration): adds `mock_question_bank.section_id` (FKâ†’exam_phase_sections, denormalized snapshot), `mock_question_options.source_label`/`display_order`, and a new `mock_question_stimuli` snapshot table (mock_question_id FK cascade, pyq_stimulus_id lineage, stimulus_type/content_text/language/display_order; RLS service-role only + grant). `create or replace project_pyq_question_to_mock_bank` (**187 base** â€” the latest authoritative RPC; 186's `paper_source_document_id` select/hash/`mock_question_sources` write + 187's step-2a source-document provenance revalidation carried forward, and 187's slim RETURN / dropped `mock_question_review_log` write preserved so 229 is a minimal forward from live, not a revert of a merged migration â€” + PR-4 additions): selects `q.section_id`; adds a conjunctive-trust eligibility gate `stimulus_not_verified` (a question with any pyq_question_stimuli link projects only when every link AND its referenced pyq_stimuli are `reviewer_status='verified'`; questions with no links unaffected); carries section_id into the INSERT/UPDATE, writes source_label/display_order onto each projected option, and snapshots the verified linked stimuli (delete-then-insert, ordered by link then stimulus display_order). The SHA-256 content hash is extended **identically in the SQL RPC and the Python `compute_content_hash` mirror** (append-only after existing fields, order preserved: section_id, then per-verified-option source_label+display_order, then per-verified-stimulus type+content+language+link display_order; NUL/RS/FS separators match chr(0)/chr(30)/chr(31)). New invalidation: `fn_invalidate_pyq_projection` gains `pyq_stimuli`/`pyq_question_stimuli` branches + 5 new triggers (`_stim_upd/_stim_del`, `_qs_ins/_qs_upd/_qs_del`) so a de-verified/edited passage or repointed link stales the projected mock row (these source tables landed in 223, after 183/184, so had no invalidation before). Python mirror (`pyq_mock_projection.py`): `_fetch_paper_questions` +section_id, `_fetch_options_for_question` +source_label/display_order, new `_fetch_question_stimuli`, `_check_question_eligibility` +stimulus gate, `compute_content_hash` +stimulus/section/option-meta. Frontend `PyqMockProjectionPanel.jsx`: `stimulus_not_verified` reason label + eligibility-copy update. **Checkpost fix (PR #903, `PR-903-checkpost-source-document-regression`):** the first cut of 229 was built on a stale 184-era RPC body and silently dropped migration 186/187's `source_document_id` provenance deltas (paper SELECT alias, hash position after `paper_source_type`, `mock_question_sources` write, `fn_invalidate` watch) plus 187's step-2a revalidation â€” breaking the SQLâ†”Python hash lockstep (Python already hashed `source_document_id`). Rebuilt 229 on the **187 authoritative base** with all five deltas restored; the earlier "pre-existing divergence, out of scope" note was wrong â€” that divergence WAS this regression and is now fixed. Contract tests in `test_pyq_projection_stimulus_fidelity_migration.py` assert all five 186/187 deltas, hash ordering, and the 187-base decision (no `mock_question_review_log` reintroduction, slim RETURN). Verified in this checkout: `pytest tests/admin/ tests/exam_intelligence/` â†’ 2050 passed, 8 skipped; frontend `PyqMockProjectionPanel` â†’ 2 passed. `VERIFY DB`: apply 229 (reconcile its live slot number against `schema_migrations`), then project a paper with a verified shared passage and confirm the snapshot rows + hash + that unverifying the passage stales the mock row; runtime render of the projected stimulus is PR-5/6 (mock_engine snapshot/serve not yet extended). |
-| PR-5/6 learner PYQ practice (full paper / section / topic / revision) | IN PROGRESS â€” API + core learner flow OPERATOR VALIDATED (2026-07-13, UPSC CSE); slices A/B/C/D/D.2/E/F/G/H CODE-LANDED; three UI-quality defects OPEN (Slice I); revision mode deferred to PR-8 | Embedded Study OS drill-in per no-new-surface rule; depends on PR-1 through PR-4. **Sliced for reviewability.** **Slice A â€” projected-PYQ render fidelity in the mock attempt path (this PR, no schema/route change):** PR-4 made the projection *store* section_id / per-option `source_label`+`display_order` / the `mock_question_stimuli` passage snapshot, but the mock attempt engine froze and served none of them (render was explicitly deferred to PR-5/6). Now `mock_engine._question_snapshot` freezes `section_id`, per-option `source_label`/`display_order`, and a `stimuli[]` array (loaded via new `_load_stimuli_for_questions` from `mock_question_stimuli`, ordered by `display_order`); `generated_mock_attempt._load_questions` attaches the same so generated realistic mocks over projected PYQs also freeze their passage. All read paths surface them from the frozen snapshot (never the live bank): `get_attempt` (+`stimuli`,`section_id`), `_build_result` per-question (+`stimuli`,`section_id`), `get_review` (via full snapshot), `_serialise_question_for_attempt`. Frontend: new shared `QuestionStimuli.jsx` renders passage/caselet/table above the stem for every question type via `QuestionRenderer`; `OptionList` prefers the projected `source_label` (e.g. "(a)") over the aâ€“d letter. Tests: backend `tests/study_os/test_mock_pyq_render_fidelity.py` (7); frontend `QuestionRenderer.test.jsx` (+4). **Checkpost round 1 (PR #905) â€” 2 P0 fixes:** (P0) **printed option order** â€” both loaders order `mock_question_options` by `option_index`, but migration 229 derives `option_index` from the answer-key label order and stores the printed order separately in `display_order`; the snapshot now freezes options via new `_ordered_options()` (sort `display_order` asc NULLS LAST, then `option_index`, then `id`) so the learner sees the PYQ's printed order, and `OptionList` defensively re-sorts by `display_order` (stable) with matching number-key nav. (P0) **fail-closed passage read** â€” the fixed-template path used `_safe(default=None)` and would freeze `stimuli:[]` for a projected comprehension PYQ on a transient `mock_question_stimuli` read failure; `_load_stimuli_for_questions(required=â€¦)` now distinguishes read-failure from empty-success and raises `LookupError` (before any insert) when a PYQ-derived question is selected, and `generated_mock_attempt._load_questions` fails closed on the same read (was `safe_required(...) or []`). New regressions: out-of-order `option_index`/`display_order` (backend + frontend) and stimuli-read-raises â†’ attempt refuses to start (nothing persisted) + authored-only tolerance. Verified: `pytest tests/study_os/` â†’ 1101 passed, 203 skipped; `QuestionRenderer` â†’ 6 passed; eslint clean. **Slice B â€” learner practice attempt assembly (backend, CODE-FIXED, VALIDATION PENDING):** new `app/backend/app/study_os/pyq_practice.py` selects VERIFIED, actively-projected PYQ rows from `mock_question_bank` by paper / section / topic (`pyq_question_id` NOT NULL + `reviewer_status in (verified,published,live)` + `pyq_mock_question_projections.sync_status='active'`, deterministic newest-year-first order, capped 1â€“200) and assembles them into an ad-hoc attempt through the **generated blueprint path** (`start_attempt_from_blueprint`, migrations 174/175/178/179) â€” reusing the existing `/study/mocks/attempts/{id}` answer/submit/result/review flow and slice-A render fidelity, with **no attempt-schema change and no new route** (`mock_attempts.template_id` was already made nullable + `generated_blueprint_id` added by migration 175; the attempt shell renders any attempt, so the earlier "template_id NOT NULL / new drill-in route" plan was unnecessary). Practice is a learning mode: no negative marking, single "Practice" section, 24 h TTL. Fail-closed freeze (missing/bad MCQ snapshot / count mismatch â†’ RuntimeError before any write) mirrors the generator. New endpoint `POST /study/mocks/practice/start` (`{mode, target_id, exam_id?, limit?}`; 409 `empty_pool` = zero writes; 422 bad mode) on the existing `mock_engine` router. Only schema change: migration `231_mock_practice_blueprint_source.sql` extends the `mock_generated_blueprints.source` CHECK (174, immutable) to admit `pyq_practice_paper/section/topic` (additive; no RLS/table change). **Checkpost round 1 (PR #907) â€” 2 P0 + 3 P1 fixed:** (P0) **exam scoping** â€” topic practice now REQUIRES `exam_id` (topic ids are shared across exams), and any selected pool spanning >1 exam is rejected (422) so an attempt is never assembled across exams (was: recorded the first row's exam while mixing). (P0) **printed order** â€” paper/section practice sorted by `pyq_year` then bank `id` (arbitrary for one paper); now joins `pyq_questions` for `display_order`â†’`question_number`â†’`source_question_ref` and sorts by source printed order (topic keeps newest-year-first). (P1) **bounded projection read** â€” `_active_projection_ids` now filters `.in_(mock_question_id, candidate_ids)` instead of scanning all active projections. (P1) **input validation** â€” `target_id`/`exam_id` validated as UUIDs â†’ 422 (`PracticeInputError`) before any DB call, not a 500. (P1) **live check** â€” `app/supabase/checks/mock_generated_blueprints_schema.sql` + its test now assert the three `pyq_practice_*` sources in the CHECK. New regressions: printed-order-differs-from-id, topic-requires-exam / topic-no-exam-mix, invalid-UUIDâ†’422. Tests: `tests/study_os/test_pyq_practice.py` (11) + `test_mock_practice_blueprint_source_migration.py` (4). Verified: `pytest tests/study_os/` â†’ 1116 passed, 203 skipped; migrations-contract â†’ pass. `VERIFY DB`: apply 231 (reconcile slot vs live `schema_migrations`), then start a practice attempt over a projected paper and confirm the blueprint/attempt/response rows land and the passage renders. **Slice C â€” learner launcher (frontend, CODE-FIXED, VALIDATION PENDING):** `features/exams/PyqExplorerSection.jsx` (learner PYQ browser on the exam-detail page) gains a per-question **"Practice this paper"** CTA â€” `mode='paper'`, `target_id=q.paper_id`, `exam_id` read from the list response envelope (`data.exam_id`) â€” that POSTs `/api/study/mocks/practice/start` and `navigate`s to the existing `/app/study/mocks/attempts/{attempt_id}` shell on `{outcome:'ready'}`. No new route/sidebar surface (no-new-surface rule preserved); reuses the mock attempt shell + slice-A render fidelity. Not every listed paper is projected to the mock bank, so a **409 `empty_pool`** is handled gracefully with an inline amber notice ("this paper isn't available for practice yet â€” its questions need to be verified and projected first") and no navigation; button hidden when a row has no `paper_id`; single in-flight guard via `practicingPaperId`. Tests: `PyqExplorerSection.practice.test.jsx` (3 â€” startâ†’navigate with exact body, 409â†’graceful notice + no-nav, no-button-without-paper_id). Verified: `QuestionRenderer`/`PyqExplorerSection` frontend â†’ pass; eslint clean. Section- and topic-mode launchers (the endpoint already supports them) and a paper/topic picker are a thin follow-on; **revision mode** depends on SRS/mastery due-signals (overlaps PR-8) and is deferred until those land. **Slice D â€” learner practice UX hardening (frontend, CODE-FIXED, VALIDATION PENDING; PR #940):** post-#939 the PYQâ†’practiceâ†’review flow works but is not aspirant-ready. Fixes, all frontend, no schema/route/API change: (1) `MockAttemptShell` moves the 97-question palette from a top horizontal strip to a right-side **sticky question navigator** (`data-testid=attempt-palette` preserved; `attempt-nav-*` ids preserved) with a mobile bottom-sheet toggle (`attempt-palette-toggle`); (2) the attempt body renders the stem via shared `QuestionStimuli` + `QuestionStem` (structured/math/multi-line) instead of a flat `<p>{question_text}</p>`, and option labels use `source_label` when projected; (3) `MockReview` maps classifier codes to learner labels via new `errorTypeLabels.js` (`silly_mistakeâ†’Careless mistake`, etc. â€” raw codes never shown); (4) `MCQSingle` review resolves `correct_option_id`â†’printed label+text (new `review-correct-answer` testid) â€” no raw UUID; (5) `MockReview` filtered palettes/header show the **original** attempt-order question number, not the re-based filtered index; (6) source-aware back links (`attempt/result/review-back-source`) via new sessionStorage `attemptReturnContext.js` set on practice launch in `PyqExplorerSection` (`Back to <exam> PYQs`); (7) `ExamIntelligenceTab` replaces the operator-facing "PYQ availability trend" chart with an aspirant **practice-ready action summary** (`pyq-practice-summary` â€” practice-ready questions / verified papers / covered subjects + "Start PYQ practice" CTA to `#pyq-explorer`); (8) `ExamDetail` no-cycle mode collapses the three repeated no-cycle panels into one `no-cycle-banner` and hides the recruitment-only About/Eligibility/Docs&Fees sections (and drops them from the anchor nav). Tests: `errorTypeLabels.test.js`, `MCQSingle.review.test.jsx` (no-UUID), `MockReview.test.jsx` (labels + original numbers + back link), updated `ExamDetail.test.jsx` + e2e `exam-detail-no-cycle.spec.ts`. Verified: frontend suites 110+ pass; `CI=true react-scripts build` clean (entry bundle ~190 KB gz, under 220 KB); e2e `tsc` clean. `VERIFY DB`: none (no schema). Deferred: full practiceâ†’submitâ†’review e2e needs a seeded projected verified-PYQ pool fixture (current workspace seed has none). **Checkpost round 1 (PR #940) â€” 3 fixes:** (P1a) **review numbering correctness** â€” `mock_engine.get_review` selected `mock_attempt_responses` with no `order(...)`, so the frontend's `index+1` "original number" was really PostgREST row position; `get_review` now orders questions by the frozen `template_snapshot.question_ids` (the same source `get_attempt` iterates) and emits an immutable 1-based `attempt_order` per row, which `MockReview` numbers by (`_num = attempt_order ?? index+1`). Regression `test_get_review_orders_by_frozen_attempt_order` reverses the response rows and asserts the review still returns frozen order + correct `attempt_order`; frontend `MockReview.test.jsx` gains a shuffled-payload case. (P1b) **honest PYQ metric** â€” `ExamIntelligenceTab` labeled `difficulty_heatmap.verified_question_count` as "Practice-ready questions", but that count is verified-corpus, not the stricter `start_pyq_practice` launch predicate (active projection + non-expired + MCQ snapshot with options/`correct_option_id`); relabeled to "Verified tagged questions" under a "Verified PYQ coverage" header with CTA "Browse & practice PYQs" (testid `verified-question-count`), so the UI no longer implies a paper is practiceable when the launcher would 409. (P2) **result-tab code leak** â€” `MockResult` built the error donut from raw `error_type`; now mapped through `errorTypeLabel()` (raw code kept only as an internal `code` key), with regression `MockResult.errorLabels.test.jsx` asserting no raw code renders. Verified: backend `pytest tests/study_os/test_mock_engine.py test_pyq_practice.py` â†’ 31 passed; frontend 112 passed; build clean; e2e `tsc` clean. **Slice D.2 â€” practice UX + timing (PR #942 phase P0):** sticky footer action bars + keyboard nav on `MockAttemptShell`/`MockReview`; shared `optionLabels.js` (`resolveOptionLabel` â€” never renders raw `0/1/2/3`); exam-canvas layout; real per-question dwell tracking flushed into `time_spent_sec`; `_build_result` now returns `time_used_sec`/`time_remaining_sec`/`avg_time_per_q_sec`; `MockResult` styled segmented tabs + real time metrics + "timing unavailable" state. Tests: backend `test_result_payload_includes_time_used_sec`; frontend `optionLabels`, `MockAttemptShell.keyboard`, `MockReview` (+footer/kbd), `MockResult.errorLabels` (+time). Verified: backend 21, frontend 126, build clean, e2e `tsc` clean; existing `attempt-happy-path`/`submit-review` e2e selectors preserved. Deferred to later PR #942 phases: P1 PYQ-Explorer redesign + `/pyq-summary` API + learner filters; P1 top-level Exam Intelligence nav (owner-approved no-new-surface-lock override, recorded when it lands); P2 Accountability Partner. See `docs/status/PYQ-Unified-Practice-Implementation-Checklist-2026-07-07.md` Slice D.2. **Slice E â€” P1 phase A + P2 (PR #944):** learner PYQ intelligence API (`/pyqs` phase/subject/topic enrichment + new `GET â€¦/pyq-summary` with verified-only distributions and launch-accurate per-paper `practice_ready_count`/`practice_enabled` via `pyq_practice.practice_ready_counts_by_paper`) and the Accountability Partner CTA + `AccountabilityWizard` (localStorage-persisted prefs, honest "matching isn't live yet" copy). **Slice F â€” P1 phase B + C (PR #942 items 10â€“13):** rebuilt `PyqExplorerSection` into intelligence-overview (`PyqSummaryCharts`) + practice-by-paper (`PyqPaperPracticeCards`) + collapsible browse; learner filters now Year/Phase/Subject/Topic/Difficulty (Source/Trust removed, internal-only); question chips â†’ Year/Phase/Subject/Difficulty/Q#. **Top-level Exam Intelligence sidebar destination + `/app/exam-intelligence[/exams/:slug]` routes with `ExamDetailRedirect` from the old `/app/eligibility/exams/:slug` path â€” the owner-approved override of the no-new-surface lock (locked 2026-06-21) for item 13; Eligibility stays the recruitment funnel.** Verified: frontend 116 pass (exams/ExamDetail/navContract/appRoutes); `CI=true react-scripts build` clean (entry 194.54 kB gz, < 220 KB); e2e `tsc` clean; `exam-detail-no-cycle.spec.ts` retargeted to the canonical route. See PYQ-Unified checklist "P1 phase B + C". **Slice G â€” PYQ hub UX polish (this PR, frontend + read-only backend, CODE-FIXED, VALIDATION PENDING):** two learner-facing gaps found auditing the shipped hub against the Step-3B feature list. (1) **Source/Trust leak on the exam-intelligence detail** â€” `ExamIntelligenceTab`'s "Verified PYQ papers" list (`PaperRow`) still printed `source: {source_type}` and `Shift {shift}` to aspirants, inconsistent with the Source/Trust suppression already applied to the hub's paper/question cards; dropped both provenance fragments (kept phase/year/paper_code/date and the neutral "Open" link to the actual paper). (2) **Result distribution charts fed empty placeholders** â€” `MockResult`'s Topic heatmap was passed `cells={[]}` with the raw `topic_id` as the display name, and the Time-distribution chart `data={[]}`, so both always rendered their empty state. Now the Topic tab derives per-difficulty accuracy cells from each `topic_breakdown` row's `difficulty_breakdown` (cell only when attempted) and labels rows with a real name â€” `mock_engine.get_analytics` now fail-open-enriches `topic_breakdown[].topic_name` from the `topics` table; the Time tab builds a real dwell histogram (0â€“30s/30â€“60s/1â€“2m/2â€“3m/3m+) from `result.per_question[].time_spent_sec` (now exposed by `_build_result`, skipped 0s questions excluded) and only renders when dwell exists. Tests: backend `test_result_per_question_exposes_time_spent_sec`, `test_get_analytics_enriches_topic_breakdown_with_topic_name`, `test_get_analytics_topic_name_fail_open_on_missing_topic`; frontend `MockResult.charts.test.jsx` (real names + per-difficulty cells + dwell buckets excluding 0s). Verified: backend `pytest tests/study_os/test_mock_engine.py test_attempt_derivation.py test_mock_review.py test_generated_mock_attempt.py` â†’ 107 passed; frontend `MockResult`/`ExamIntelligence`/`ExamDetail`/`PyqExplorer` suites â†’ 89 passed; `CI=true react-scripts build` clean (entry 194.56 kB gz, < 220 KB). No schema/route/nav change. **Slice H â€” projected-PYQ practiceâ†’submitâ†’review e2e (this PR, tests/fixtures only, CODE-LANDED, VALIDATION PENDING):** closes the deferred half of the PR-5 exit gate (Slice D flagged "full practiceâ†’submitâ†’review e2e needs a seeded projected verified-PYQ pool fixture â€” current workspace seed has none"). New `e2e/fixtures/seedProjectedPyq.ts` seeds, on the existing E2E workspace exam, the **canonical** side â€” a **verified** `pyq_papers` row + verified `pyq_questions` (printed order) + verified `pyq_options` (printed `source_label`/`display_order`, exactly one correct) + one primary verified `pyq_question_topic_tags` per question â€” then projects each question through the **real** `project_pyq_question_to_mock_bank` bridge RPC (the projection table is RPC-only: migration 183 revokes direct DML), so the E2E exercises the genuine projection path (183/229) and its trust gates, not a hand-forged `mock_question_bank`/projection. Fixed UUIDs, service-role upserts, idempotent (RPC returns `unchanged` on re-run, projection stays `active`); `resetPyqPracticeAttempts` clears prior `pyq_practice_*` blueprint attempts. New `e2e/flows/pyq-practice-review.spec.ts` drives the full learner path: Exam Intelligence detail (`/app/exam-intelligence/exams/:slug`) â†’ PYQ Explorer overview (`/pyq-summary`) â†’ launch-accurate `pyq-paper-practice-btn` â†’ `POST /practice/start` (asserts 200) â†’ shared attempt shell â†’ answer all â†’ submit â†’ result â†’ review with the projected question's printed correct answer. This also exercises the live-schema path (migration 231 blueprint source, 183/229 projection bridge) that mock-Supabase unit tests cannot. **Real bug caught by this E2E â†’ migration `251_pyq_projection_service_role_read_grant.sql` (renumbered from 241/249 as main advanced):** the CI run surfaced `42501 permission denied for table pyq_mock_question_projections` from the backend's service-role read (`pyq_practice._active_projection_ids`) â€” migration 183 granted service_role EXECUTE on the projection RPCs but **no table privilege**, so practice readiness failed closed (no Practice CTA) and the launch would 500 wherever projected PYQ data exists. 251 grants `select` only (writes stay RPC-only, preserving the 183 posture; service_role bypasses RLS); contract test `test_pyq_projection_service_role_read_grant_migration.py`. Verified: `(cd app/frontend/e2e && npx tsc --noEmit)` â†’ exit 0; migration-contract assertions pass. **VALIDATION PENDING:** the CI e2e run is the live proof (migration 251 unblocks it). **Revision mode still deferred** (SRS/mastery due-signals, PR-8; mastery live-write gate Â§G12 closed), so the PR-5 exit gate is not yet fully closed. **Operator validation (2026-07-13, UPSC CSE) â€” API + CORE LEARNER FLOW VALIDATED, UI DEFECTS OPEN:** the learner blocker was the `exam_phases.name` vs canonical `phase_name` column bug (`42703`, HTTP 200 empty payloads on `/pyq-summary` + `/pyqs`), fixed in **PR #980** and confirmed live after redeploy (`papers:4, questions:177, projected_practice_ready:177, error:null`; `/pyqs total:177`; first item `phase_name:"Prelims"` + subject/primary-topic + 4 options + correct id). Full learner path PASS: Explorer totals, launch-accurate Practice buttons, 97-question GS paper launch, render, answer persistence, submission, result analytics, review of all 97 questions. Disposition `API AND CORE LEARNER FLOW VALIDATED / FULL-PAPER PRACTICE FUNCTIONAL / FOLLOW-UP UI DEFECTS OPEN`. **Slice I (OPEN, frontend + 1 e2e)** tracks the three usability defects (not data/projection/persistence blockers): (1) attempt-header timer shows `--` on a valid timed attempt [High] â€” bind to launch-payload duration, init after load, explicit `Untimed` fallback, never `--`; (2) navigator clips Q96â€“97 behind the fixed footer + no auto-scroll/active-sync under keyboard nav [High] â€” own scroll container reserving footer height, `scrollIntoView({block:'nearest'})` on index change, active state from canonical id/index; (3) review options concatenated `A. â€¦B. â€¦` without separation [Medâ€“High] â€” one block/list item per option via the shared option-label formatter; plus a â‰¥97-question e2e regression guarding sticky-header/footer/navigator clipping. Evidence: `docs/audits/2026-07-13-upsc-cse-pyq-learner-flow-operator-validation.md`; detail in `docs/status/PYQ-Unified-Practice-Implementation-Checklist-2026-07-07.md` (PR-5 Slice I). |
-| PR-7 unified attempt evidence adapter | CODE-FIXED, VALIDATION PENDING | New `app/backend/app/study_os/attempt_evidence.py` normalizes every learner attempt source into the single canonical contract `mastery_engine.schemas.DerivedAttemptAnalytics` (`AttemptQuestionAnalytics`/`AttemptTopicAnalytics`), so mastery/planner/persona consume one shape. **`load_mock_attempt_evidence`** is the extracted mock/generated/PYQ-practice loader (frozen `question_snapshot` + authoritative `mock_attempt_response_classification` error types); `MasteryWriter._load_analytics` now **delegates** to it (single normalization path â€” behaviour unchanged, verified by the mastery loader suite). **`load_trap_drill_evidence`** brings the previously-orphaned direct-PYQ store (`user_trap_drill_attempts`, live `pyq_questions` lineage) into the same contract: `topic_id` from the drill row, `difficulty` from `pyq_questions.observed_difficulty`, `pyq_year` from `pyq_papers.year`, `source_type='pyq'`, `attempted=True`, no `error_type` (drills aren't classified), synthetic deterministic `uuid5` attempt id per `drill_seed`. A `load_attempt_evidence(source=â€¦)` dispatcher + `trust_level_for_source` per-source trust tag round it out. **READ-ONLY** â€” this module writes nothing; wiring trap-drill (and future SRS/flashcard) evidence into the feature-gated, shadow-first mastery writer is **PR-8**. Since PYQ-practice attempts (PR-5/6 slice B) already funnel through `mock_attempts`, they are covered by the mock loader with no extra work. Tests: `tests/study_os/test_attempt_evidence.py` (7 â€” mock normalization incl. attempted/unanswered + topic rollup + classification error types, missing-attempt None, trap-drill normalization to the same contract, empty session None, dispatcher routing + unknown-source reject, trust tags). Verified: `pytest tests/study_os/` â†’ 1123 passed, 203 skipped (incl. mastery loader/derivation suites green after the delegation). `VERIFY DB`: none required (no schema/migration); behaviour is exercised by unit tests over the fake Supabase stub. |
-| PR-8 mastery/revision integration | CODE-FIXED, VALIDATION PENDING (shadow only) | Feeds the previously-orphaned direct-PYQ (trap-drill) evidence â€” via the PR-7 adapter â€” into a **shadow-only** would-be mastery + revision observation, without touching the live mastery path. **Deliberately isolated** (keeps trap-drill a distinct population from the mock shadow analysis and avoids the `mock_mastery_shadow.attempt_id â†’ mock_attempts` FK, which a synthetic trap-drill id would violate): new migration `232_trap_drill_mastery_shadow.sql` adds a **separate** `trap_drill_mastery_shadow` table (no FK to `mock_attempts`; `synthetic_attempt_id` lineage only; `flag_state` CHECK-pinned to `'shadow'`; `revision_bucket` âˆˆ relearn/review/practice; `source='trap_drill'`; RLS + explicit service_role grant). New module `app/study_os/trap_drill_shadow.py::record_trap_drill_shadow` loads `load_trap_drill_evidence` â†’ `derive_from_analytics` (pure) â†’ writes only the new table; gated behind its own `FF_TRAP_DRILL_MASTERY_SHADOW` flag (only the literal `shadow` enables it â€” there is **no** live value, independent of `FF_MOCK_MASTERY_WRITES`). Revision routing derives from the would-be mastery band (lowâ†’relearn, highâ†’review, elseâ†’practice, per arch Â§P3). Hooked best-effort into the trap-drill route (`api/exam_intelligence.py`, non-fingerprinted) after `log_drill_attempts` â€” never breaks the drill response, never writes `user_topic_mastery`/`mock_mastery_shadow`/`user_topic_error_patterns`/`revision_items`. Trust/scaling (`_weighted_delta`, Â±0.15 cap, unitâ†’db) replicated from the mastery writer so shadow numbers are comparable. **Checkpost round 1 (PR #911) â€” 2 fixes:** (P1) `_load_current_mastery` now returns `None` on a read *failure* (vs `{}` for an empty success) and `record_trap_drill_shadow` **fails closed** (`outcome:'read_failed'`, no write) â€” a fabricated baseline would have written contaminated shadow analytics. (P2) `source` is now CHECK-pinned `check (source = 'trap_drill')`, not merely defaulted, so the distinct-population invariant is structural. Tests: `test_trap_drill_shadow.py` (10, incl. current-mastery-read-failure fails-closed) + `test_trap_drill_mastery_shadow_migration.py` (8, incl. source CHECK). Verified: `pytest tests/study_os/ tests/exam_intelligence/test_trap_drill.py` â†’ 1158 passed, 203 skipped. `VERIFY DB`: apply 232 (reconcile slot vs live `schema_migrations`), run a drill with `FF_TRAP_DRILL_MASTERY_SHADOW=shadow`, confirm `trap_drill_mastery_shadow` rows land and no live mastery moves. **P8 note:** the P8 shadow window was **ended by owner direction (2026-07-08); a fresh T0 will be started later** â€” so the fingerprint-freeze constraint is lifted, but this PR was still built fully isolated (no fingerprinted-file edits) by design. |
-| PR-9 planner task resolver | CODE-FIXED, VALIDATION PENDING | Wires a planner "practice"/"revision" task to a concrete PYQ-practice launch â€” the surfaces already existed (PR-5/6 practice endpoint + the migration-205 typed `study_tasks.launch_type/launch_entity_id/launch_context` columns), only the resolution was missing. **Resolver** `app/backend/app/study_os/pyq_practice_launch.py`: pure `resolve_practice_payload(task)` â†’ `{mode:'topic', target_id:task.topic_id, exam_id:task.exam_id}` when both present (else None), + `pyq_practice_action(...)` mirroring `writing_practice/launch.py::compute_action`. **Endpoint** `app/backend/app/api/pyq_practice_launch.py` `POST /api/study/tasks/{study_task_id}/launch-pyq-practice` (mirrors `launch_writing`): the task is the **sole** exam-context authority (owned-task 404; client input never trusted), resolves the payload (409 if no topic/exam), calls `start_pyq_practice(mode=topic,â€¦)`, maps `PracticeInputError`/`ValueError`â†’422 and `empty_pool`â†’409, returns the ready attempt â†’ handed to the existing `/attempts/{id}` flow. Registered in `server.py`. **Planner stamping** (`planner.py::_build_tasks`): tasks with `task_typeâˆˆ{retrieval_practice,revision}` + `topic_id` + `exam_id` get `launch_type='pyq_practice'`, `launch_entity_id=topic_id`, `launch_context={mode:topic,target_id,exam_id}` + `why_this_task.launch_target='pyq_practice'`; `concept_learning`/topic-or-exam-less tasks stay byte-identical. `_persist` forwards tasks wholesale (no whitelist change). **Reasoning** (`task_reasoning.py`): one additive `reasoning_trace` row (`layer:plan, rule_key:pyq_practice_launch`) when stamped. No new migration; no new route/sidebar surface; `planner.py` not in the mastery fingerprint manifest. Tests: `test_pyq_practice_launch.py` (endpoint + resolver, all error paths), `test_planner.py`/`test_task_reasoning.py` additions (stamp on practice/revision, none on concept_learning, persistence, trace row). **Checkpost round 1 (PR #912) â€” 2 P1 fixes:** (P1) **idempotent launch** â€” a double-click/retry no longer creates duplicate in-progress attempts: `start_pyq_practice` gained an optional `blueprint_id`, and the launch endpoint passes a deterministic `uuid5(user_id, study_task_id)` so `start_attempt_from_blueprint` reuses the existing in-progress attempt (migration-179 unique-violation path); once submitted, the same id correctly starts a fresh attempt. (P1) **removed premature `pyq_practice_action`** â€” it keyed the action URL on `launch_entity_id` (the topic id) as if a task id, which would break the task-owned launch contract; action computation is deferred to the mission-control call site (which has the task id). Regression: relaunch-while-in-progress returns the same `attempt_id` with exactly one attempt/blueprint and no duplicate responses. Verified (parent, integrated): `pytest tests/study_os/ tests/persona_questions/` â†’ 1200 passed, 203 skipped; `import server` clean. `VERIFY DB`: none (no schema); live â€” click a planner practice task, confirm it launches a projected-PYQ attempt. **PR-10 (persona behavioural aggregates) â€” CODE-FIXED (see next row).** |
-| PR-10 persona behavioural aggregates | CODE-FIXED, VALIDATION PENDING | Folds direct-PYQ engagement into the persona behavioural signals â€” **read-derived, no migration / no new table / no snapshot-writer change** (mirrors how `mocks_taken_30d` reads `mock_tests`). `app/backend/app/persona/signals.py::collect_user_signals` gains two 30d aggregates: **`pyq_practice_sessions_30d`** = `mock_attempts` started from a PYQ-practice blueprint, and **`trap_drill_sessions_30d`** = distinct `drill_seed` runs in `user_trap_drill_attempts` (seedless legacy rows each count as one). Both degrade to 0 via `_safe` on a missing/denied source table, and are added to `_empty_signals` to keep the signal contract stable. **Classifier** (`classifier.py::_classify_learning_behavior`): the `mock_avoider` label now also requires zero PYQ engagement (`â€¦ and pyq_engagement == 0`), so a heavy PYQ practitioner with zero full mocks is no longer mislabelled a mock avoider; the two new counts are added to its evidence. `study_policy` is unchanged (it reads dimensions, not raw signals). No fingerprint-manifest file touched; `aspirant_persona_snapshots` write path (service-role) unchanged. **Checkpost round 1 (PR #914) â€” 2 fixes:** (P1) **`pyq_practice_sessions_30d` no longer undercounts** a user with a large historical practice backlog â€” the derivation now windows the recent `mock_attempts` **first** (30d, non-null `generated_blueprint_id`, â‰¤500), collects those bounded blueprint ids, classifies them by source via chunked `in` lookups (â‰¤100/chunk), then counts matching attempts; the old blueprint-ids-first order let >500 stale `pyq_practice_*` blueprints push a recent attempt's blueprint past the row cap. A Python-side null guard re-drops NULL blueprint ids (the PostgREST `not.is.null` filter is a no-op in the test stub). (P2) **no-activity guard** â€” the `learning_behavior` `insufficient_data`/`no_study_activity` branch now also requires `pyq_engagement == 0`, so a PYQ-only learner (zero tasks/focus/mocks) is no longer mislabelled inactive. Tests: `tests/persona/test_signals_pyq_engagement.py` (5 â€” both counts, 30d window exclusion, zero-activity, seedless drills, **+600-stale-blueprint regression asserting the recent attempt still counts**) + classifier `test_heavy_pyq_practice_is_not_mock_avoider` + `test_pyq_only_activity_is_not_no_study_activity` + safe-default assertions in `test_snapshots.py` + `_base_signals` keys. Verified: `pytest tests/persona/ tests/study_os/test_planner.py` â†’ 57 passed. `VERIFY DB`: none (read-derived, no schema). |
-| PR-11 media/advanced question types (MSQ, integer, image stem/options, matching, descriptive) | PARTIAL â€” slice 1 (media storage, migration 233) + slice 2 (CMS media authoring) CODE-FIXED, VALIDATION PENDING; advanced-answer runtimes DEFERRED | Media storage + rendering + CMS authoring landed â€” see the "PYQ media & advanced question types" rows above (migration 233 + `/pyq-stimuli`). Stimulus model (PR-1) and importer v2 (PR-2) merged. Still deferred: MSQ/integer/matching/descriptive scoring + UI, image-option accessibility, asset-upload surface, bulk-importer media, PR-4-owned projection/snapshot media wiring. |
-
-## Exam intelligence / workspace â€” design defects & UX cleanup
-
-Findings confirmed against this checkout. Full audit evidence:
-- `docs/audits/exam-intelligence-gaps-2026-06-20.md` â€” P0 runtime bugs and UX gaps
-- `docs/reviews/exam-intelligence-design-review-2026-06-20.md` â€” 23 structural design defects (D/E/F/M/I series)
-
-### Exam Intelligence workspace cleanup â€” source recheck 2026-07-03
-
-Post-consolidation cleanup track (I8-A/B/C, I9, D10, Score Snapshot Workbench, text-extract worker all merged). Delivery is serial where files overlap: PR 1 phase-kind contract/editor â†’ PR 2 PYQ phase selector â†’ PR 3 readiness copy + projection remediation â†’ PR 4 workspace/Review compression â†’ PR 5 Setup timeline regression + mutation governance. PR 4 touches `ExamWorkspace.jsx`/`ExamActionConsole.jsx` and stays single-owner per the I8 no-fan-out rule.
-
-| ID | Area | Status | Exit condition |
-|---|---|---|---|
-| EI-CLEAN-01 | Canonical phase-kind editor | CODE-FIXED, VALIDATION PENDING (this PR) | Operator can assign a validated `phase_kind` (422 on unknown values; backend `_PHASE_FIELDS` + `PhaseForm.jsx` select); Step 9 CTA deep-links `?tab=setup&action=classify-phases` to the unclassified phases and clears after save. |
-| EI-CLEAN-02 | Add-PYQ phase selector | CODE-FIXED, VALIDATION PENDING (this PR) | Add PYQ modal submits a resolved `exam_phase_id`; exam-wide/no-phase option is explicit; fail-closed on unresolvable phase IDs; D10 readiness remains exam-wide. **PR #871 review hardening:** migration **220** (`CREATE OR REPLACE cms_pyq_onboarding`) adds a fail-closed phaseâ†”cycle consistency guard â€” a supplied phase must be bound to exactly the supplied cycle (cross-cycle / cycle-agnostic / phase-without-cycle all raise `exam_phase_cycle_mismatch` â†’ HTTP 422), closing the same-exam cross-cycle provenance hole the RPC previously allowed. **NOTE (duplicate-version fix, PR #874):** originally merged as 219 (PR #871) but collided with `219_j3_applied_vs_appeared.sql` (PR #870, merged first, keeps 219); renumbered 219â†’220. **OPERATOR ATTESTED (johnefficacy, 2026-07-03):** deployed `schema_migrations` records version 219 as `219_j3_applied_vs_appeared` (PYQ was NOT applied as 219) â†’ disposition case (a): the 219==J3 / 220==PYQ mapping is confirmed correct; apply 220 after 219. OPERATOR PENDING: apply migration 220 (after 219); confirm `service_role`-only EXECUTE preserved; exercise cross-cycle rejection + rollback on staging. (Re-verify the ledger per target before a fresh rollout.) |
-| EI-CLEAN-03 | PYQ readiness terminology | CODE-FIXED, VALIDATION PENDING (PR 3) | `pyq_readiness.py` exposes four explicit fields â€” `planner_ready_question_count` (== verified, 3 gates), `reviewed_question_count` (SME-verified), `missing_verified_tag_count`, `rejected_question_count` â€” flowing to the frontend via `readiness.py` `metrics.pyq_readiness` (no new plumbing). `ReviewActivatePanel` renders "X / Y planner-ready" + reviewed / need-a-verified-tag / rejected chips and a "Review missing topic tags â†’" CTA (routes to the pyq tab) when tags are missing. Three-gate rule unchanged. 4 backend + 3 frontend tests. |
-| EI-DATA-01 | UPSC 2026 primary topic tags | OPERATOR / DATA PENDING (runbook evidence pair not yet captured) | Every usable SME-reviewed question has exactly one verified primary tag; rejected rows remain excluded (see D10 follow-up row above). Operator runbook: `docs/runbooks/EI-DATA-01_upsc_2026_primary_topic_tags.md` (preflight/assignment/postflight SQL + review-lifecycle steps). **Do not close without the runbook stop-condition evidence** (Â§ Closeout): the frozen **98**-ID count + `target_digest`, the Phase 0.3 pre / Phase 2.3 post projection-preview reason distributions, and proof the **2** rejected rows stayed unchanged â€” captured against the **live** DB, never from doc inspection. The 2026-07-13 learner validation (`docs/audits/2026-07-13-upsc-cse-pyq-learner-flow-operator-validation.md`) records only **aggregate learner-API** evidence over this data (4 verified papers / 177 verified questions / 177 active projections; `pyq-summary` `papers:4, questions:177, projected_practice_ready:177, error:null`), which is a distinct scope from the 98/2 identity set and does **not** carry the frozen-ID digest / reason-distribution / reject-invariance invariants â€” so it validates the learner read path, not the EI-DATA-01 data gate. Row stays pending until the Phase 0 + Phase 2 outputs are attached. |
-| EI-CLEAN-04 | Mock Projection remediation UX | CODE-FIXED, VALIDATION PENDING (PR 3) | `PyqMockProjectionPanel`: `humanizeProjectionReason` maps every internal code to operator text (graceful fallback, no raw leak); `aggregateBlockers` groups ineligible rows into humanized counts (largest first) + "N eligible for projection"; Sync disabled with a note when a loaded preview shows `eligible_count === 0` (Preview stays enabled); rows show the question label (backend preview serializer now adds a trimmed `label`), short-id fallback only when absent; keyboard-operable â“˜ projection-contract disclosure. 2 backend + 5 frontend tests. |
-| EI-CLEAN-05 | Workspace advisory/action compression | CODE-FIXED, VALIDATION PENDING (this PR) | SmartHeader stays canonical (headline + first blocker + one next action). The embedded `ExamActionConsole` (action queue/checks/evidence/mock advisory), advisory content-readiness strip and lifecycle legend now live inside one native `<details>` disclosure (`workspace-action-details`) that is collapsed by default and keyboard-operable â€” no longer always-expanded above the tabs. Backend stays the status authority; no new route or top-level surface. `ExamWorkspace.jsx` only. |
-| EI-CLEAN-06 | Review & Activate compression | CODE-FIXED, VALIDATION PENDING (this PR) | Duplicate activation-status banner removed (SmartHeader owns the verdict); `Created â‰  planner-ready` note + row-lifecycle reference moved behind an â“˜ `<details>` disclosure (`planner-readiness-disclosure`); section checklist is failed-first with a "Show completed (N)" toggle; `RowLockButton` now mutates via `useApiAction` (busy state + toast) instead of a raw `api.patch`. `ReviewActivatePanel.jsx` only. |
-| EI-CLEAN-07 | Setup phase timeline regression | CODE-FIXED, VALIDATION PENDING (PR 5) | `SetupPanel` now renders the single canonical `PhaseTimeline` (the duplicate hand-rolled rail is gone). Needs-date phases carry an inline "Needs date" badge and an in-place date editor (`phase-date-editor-*`) on the timeline row â€” the standalone "Phases needing dates" card is removed (no filtered duplicate list). Template phases moved into one collapsed `<details>` advanced section. Fabricated cycle Trust column (derived from cycle status) removed. `promote-template` and phase date-patch now route through `useApiAction` (add-phase/classify/cycle mutations already did). Tests reconciled: `PhaseTimeline.test.jsx` (display-only default preserved) + `PhaseDateWorklist.test.jsx` / `SetupPanel.cycleContext.test.jsx` retargeted to the inline editor testids. `SetupPanel.jsx` + `PhaseTimeline.jsx` only. |
-| EI-CLEAN-08 | Checklist and Graphify reconciliation | CODE-FIXED (this PR, partial) | D10/#765 corrected to MERGED, D3 re-flagged as regression, #812 recorded label-only, D10 follow-up rows split out, this section added. Graphify refresh remains an operator-side step (CLI unavailable in the remote container). |
-| EI-CLEAN-09 | Advanced Repair `pyq_papers` scope integrity | CODE-FIXED, VALIDATION PENDING (own PR) | The onboarding RPC (migration 220) enforced scope consistency only on its own path; the direct Advanced Repair `pyq_papers` write paths did not. Closed with a shared app-layer validator `_pyq_paper_scope_error()` in `admin_exam_intel_cms.py` mirroring migration 220's full token vocabulary â€” validates each independent FK dimension: exam exists (`exam_not_found`), cycle exists + belongs to exam (`exam_cycle_not_found` / `exam_cycle_exam_mismatch`) **even when no phase is supplied**, phase exists + belongs to exam (`exam_phase_not_found` / `exam_phase_exam_mismatch`), and phaseâ†”cycle via **null-safe equality** (`exam_phase_cycle_mismatch`) â€” an exam-level/cycle-agnostic phase (cycle NULL) on an exam-level paper (cycle NULL) is consistent and allowed; a cross-cycle phase or a cycle-bound-phase-on-a-cycle-less-paper fails closed. Wired into `create_pyq_paper`, `update_pyq_paper` (re-validates the merged row when the patch touches ANY of `exam_id`/`exam_cycle_id`/`exam_phase_id`, so an `exam_id`-only change still revalidates the retained cycle/phase; unrelated edits to legacy rows are not retroactively blocked), and `/bulk-import` `pyq-papers` via a per-entity `row_validator` hook (per-row attribution preserved). Verified papers additionally reject scope-field patches (`scope_locked`) â€” reassigning trusted evidence requires re-review. App-layer chosen over a DB trigger to avoid a migration colliding with #874's contested 220 slot and retroactive legacy-row rejection; a DB trigger remains a possible future hardening. 21 tests in `test_cms_pyq_paper_phase_cycle.py`; full `tests/exam_intelligence`+`tests/admin` 1870 green (incl. the `test_e2e_exam_activation` exam-level-phase case the first cut had over-rejected). |
-| EI-CLEAN-10 | Advanced Repair: biannual cadence, more filters, bulk select/CRUD, organization edit | CODE-FIXED, VALIDATION PENDING (this PR) | Four operator-reported gaps closed: (1) `exams.cadence` had no value for exams that run twice a year â€” migration 237 widens the CHECK to add `biannual` (originally filed as 236, renumbered after `236_ewp_complete_evaluation_safeupdate_fix.sql` landed on `main` first), mirrored in `_EXAM_CADENCES` (`admin_exam_intel_cms.py`) and the CMS enum/optionLabel; (2) `list_exams` gained `exam_type`/`management_mode`/`cadence`/`conducting_organization_id` query params, surfaced as new CMS filter dropdowns (`ENTITY_EXTRA_FILTERS`) plus an organization filter, alongside `is_active`/`level` filters for exam-families/subjects/topics; (3) new generic `POST /bulk-update` and `POST /bulk-deactivate` endpoints (`_BULK_EDIT_CONFIG` / `_BULK_DEACTIVATABLE_TABLES`, scoped to the same entities as the existing single-row edit/retire â€” lifecycle-owned entities stay out) back row-checkbox selection, a "select all matching filter" (capped at 500 ids), a bulk-edit-one-field form, and a bulk-retire dialog in `ExamIntelCms.jsx`; identity columns (`name`/`slug`/`cycle_name`/`phase_name`/`exam_id` on child tables) are excluded from the bulk-edit field picker on both sides since setting one value across a whole selected batch is never the intent: (4) `OrganizationEditPanel.jsx` only exposed `website_url` although `PUT /admin/organizations/{id}` (`admin_trust.py`) already accepted `name`/`type`/`state`/`website_url`/`official_domain`/`trust_tier`/`verification_notes` â€” panel now exposes the full editable set, no backend change needed. 8 new backend tests (`test_admin_study_os.py`) + 8 new frontend tests (`ExamIntelCms.bulkFilters.test.jsx`); full `tests/admin/test_admin_study_os.py` (125) and `ExamIntelCms*`/`Organizations*` frontend suites green. Migration 237 is `CODE-FIXED, VALIDATION PENDING` â€” apply to staging/prod and confirm the widened constraint before relying on `biannual` in production data. |
-| EI-CLEAN-11 | Advanced Repair: exam name search | CODE-FIXED, VALIDATION PENDING (this PR) | Follow-up to EI-CLEAN-10: the exams entity had filter dropdowns but no free-text search â€” no way to find an exam by name. `list_exams` gained a `q` query param (case-insensitive `ilike` on `name`, composes with the existing filters) and `exams` was added to the frontend `ENTITY_SEARCH_PARAM` map so the existing debounced search box renders and sends `q`. Backend-only note for operators: this is additive â€” a stale backend simply ignores `q` (FastAPI drops unknown query params), so the search box appears to do nothing until the backend is redeployed; the filter dropdowns from EI-CLEAN-10 have the same deploy dependency. 1 new backend test (`test_cms_list_exams_name_search_ilike`) + 1 new frontend test (`exams name search sends a q param`); full `tests/admin/test_admin_study_os.py` (131) and the studyos frontend suites (27 suites / 286) green. |
-
-**Validation sweep â€” attempted PR #927 (honest status).** No live Supabase/staging is reachable from the CI/dev container (`env | grep supabase` empty, no `.env`/`docker-compose`, `pytest.ini` excludes `integration` by default), so no item below can be marked as having true live-browser/operator validation from here â€” all remain **VALIDATION PENDING** at the operator layer. Best achievable evidence obtained: frontend jest (mocked-API) suites for EI-CLEAN-01 (`SetupPanel.classify` 5/5), 03/04/05/06/07 (`PhaseTimeline`, `PhaseDateWorklist`, `SetupPanel.cycleContext`, `ReviewActivatePanel`, `PyqMockProjectionPanel`, `ExamWorkspace` â€” 125/125 in a clean run) pass against mocked backends. **Backend pytest could not run in this container** (broken pinned deps: `starlette==1.3.1`â†’missing `httpx2`, missing `cachetools`; 86 collection errors) â€” so EI-CLEAN-09's 21 `test_cms_pyq_paper_phase_cycle.py` tests and all backend coverage for 01/03/04 were **not executed here** (they pass in CI where `pip install -r requirements.txt` runs first). Net: frontend-only items are test-suite-validated (mocked API); backend and all live/operator proof still genuinely pending an environment with staging DB access + working backend deps.
-
-### P0 runtime bugs
-
-| Area | Status | Notes |
-|---|---|---|
-| BUG-EI-1 `POST .../syllabus/propose` â†’ 404 | CODE-FIXED, VALIDATION PENDING | `syllabus_mapper.py` now queries `syllabus_documents` (has `exam_id` column) on both occurrences. Duplicate `ProposerError` and `propose_syllabus_mentions` definitions removed. Regression tests in `tests/exam_intelligence/test_syllabus_proposer.py` â€” 30 tests passing. Branch: `fix/h1-syllabus-propose-404`. |
-| BUG-EI-4 PYQâ†’mock projection/sync crashes on NUL hash separator | CODE-FIXED, VALIDATION PENDING (PR #935 + renumber follow-up) | The content-hash in `project_pyq_question_to_mock_bank` (from migrations 183/184, carried through 229) joined its top-level fields with `chr(0)` (ASCII NUL). PostgreSQL `text` cannot hold a null byte â€” `chr(0)` raises `null character not permitted` â€” so the RPC aborted the instant it reached the hash expression, crashing **every** PYQâ†’mock projection and sync (and blocking projection-eligibility for EI-DATA-01's 98 questions once tagged). `compute_content_hash()` in `pyq_mock_projection.py` mirrored the same NUL separator. Fix (migration **239**, `create or replace` on the RPC only): swap every **top-level** `chr(0)` â†’ `chr(29)` (GS); the within-list `chr(31)`/`chr(30)` (US/RS) are already valid non-null bytes and are unchanged. Python mirror updated in lockstep (`GS, FS, RS = "\x1d", "\x1f", "\x1e"`; docstring NUL wording corrected). Pure separator swap â€” field set + order preserved verbatim from 229 (asserted by `test_field_set_and_order_preserved_from_229`, which replays 229's expression with `chr(0)`â†’`chr(29)` and byte-compares). Since the pre-fix RPC could never complete, no already-projected row carries the old hash â†’ no historical-hash migration concern. **SLOT NOTE:** originally merged (PR #935) as `238_pyq_projection_null_separator_fix.sql`, but slot 238 was already held by `238_ewp_rollup_completed_at.sql` (applied first) â†’ live apply hit `duplicate key â€¦ schema_migrations_pkey (23505)`. Renumbered 238 â†’ **239** as a follow-up. Tests: `test_pyq_projection_null_separator_migration.py` (7, incl. no-NUL-in-hash-expression + posture-preserved) + `test_pyq_mock_projection.py::test_hashed_content_uses_no_null_byte_separator` (spies the sha256 input, asserts no `\x00`); 110 green across the three projection suites. **OPERATOR PENDING:** apply migration 239 (VERIFY DB 239 is the next free slot), confirm `service_role`-only EXECUTE preserved, and exercise a real PYQâ†’mock sync end-to-end (the crash only reproduces against live PostgreSQL â€” the container has no live DB). |
-| BUG-EI-2 `GET /console/exams/{id}` â†’ 500 | MERGED / CODE PRESENT â€” PR #750 | `load_doc_extraction_counts(strict=True/False)` in readiness.py â€” strict path (console) uses full pagination + fail-closed reads; workspace path is fail-soft. Full vocabulary: total/extracted/pending/failed/needs_review/not_started. Deterministic latest-job by (created_at, id). No `.limit(2000)`. 58 tests. |
-| BUG-EI-3 Admin document extraction broken (0/7 PDFs extracted) | CODE-FIXED, VALIDATION PENDING | PR #779 (`claude/admin-doc-extraction-fix-jxczar`). Root cause: `complete_document_upload` enqueued but never ran extraction (no background worker); `run_text_extract_job` used `owner_user_id` equality on admin docs (which have `owner_user_id=NULL`); proposer queried `document_pages` by `syllabus_documents.id` (wrong UUID namespace). Fixes: (1) synchronous extraction call in `complete_document_upload`; (2) `admin_scope` parameter in `run_text_extract_job` validates `scope` field; (3) migration 195 adds `source_document_id` FK on `syllabus_documents â†’ document_assets` with storage_path backfill; (4) proposer SELECT includes `source_document_id`, uses it for page lookup; (5) `link_to_syllabus` populates `source_document_id`, demotes `verified` â†’ `pending` on replacement; (6) `complete-upload` CAS (`uploadedâ†’processing`) with archive-race detection; (7) enqueue-failure CAS rollback checks result â€” returns 409 if archive won; (8) archive provenance blocks (pyq_papers + syllabus_documents); (9) `_update_doc` conditional (`.neq("status","archived")`); (10) ownership-before-job-state in `archive_item`. **Closed by migration 202:** `finalize_document_extraction` (`202_atomic_extraction_finalize.sql`) locks the document row `FOR UPDATE`, aborts if archived, locks the job row, deletes+inserts pages, and writes terminal status for both in one transaction â€” the archive/page-write race is fully closed. `_write_pages` in `text_extract.py` (which called `replace_document_pages` from migration 113) is dead code and has been removed; the `finalize_document_extraction` RPC is the sole write path. Regression tests: CAS race, enqueue-failure archive-wins 409, archive audit, provenance blocks, trust demotion, non-owner 404. **Validation required:** (a) apply migration 195 to staging; verify `source_document_id` backfilled + NOTICE output; (b) upload PDF â†’ complete-upload â†’ confirm `processed` + `document_pages` rows; (c) archive with verified PYQ/syllabus dep â†’ 409; (d) replace source on verified syllabus â†’ demoted to `pending`; (e) proposer on unextracted â†’ 422 `extraction_required`; (f) drain/retry existing failed UPSC CSE jobs post-deploy. |
-
-| BUG-EI-4 Syllabus Mapper page viewer `GET .../workspace/{exam_id}/documents/{doc_id}/pages/{n}` â†’ 404 + raw-UUID dropdowns | CODE-FIXED, VALIDATION PENDING | Two operator-reported symptoms on the Exam Workspace. (1) **404 page viewer:** `SyllabusMapperPanel.jsx` fetched a non-existent `/admin/exam-intelligence/workspace/{examId}/documents/{docId}/pages/{n}` route and read `text_content` off the (404) body, so the mapper's page pane was always blank. Repointed to the real CMS listing `GET /admin/exam-intelligence-cms/documents/{assetId}/pages` (`admin_exam_intel_documents.py:473`, returns `{items:[{page_number,text_content}]}`); the panel now fetches once per document and indexes by `page_number` (proposals' `source_page` are real page numbers, not list offsets). **Checkpost fix:** the pages listing is keyed by the `document_assets` id, so it must be called with the selected syllabus row's `source_document_id` (asset id), NOT the `syllabus_documents.id` â€” passing the latter 404s (`_load_admin_asset`), mirroring the BUG-EI-3 namespace and the proposer's `source_document_id or syllabus_document_id` fallback (`syllabus_mapper.py:122`). `DocumentSelector` now surfaces the selected row via `onChange(id, doc)`; the panel resolves `doc.source_document_id || id` for the pages fetch. Regression test asserts the fetch path uses the asset id. **Known limitation (deferred):** legacy `syllabus_documents` rows with `source_document_id = null` (migration-198 ambiguous backfills) still show a blank page pane â€” the CMS pages route gates on `document_assets` existence, so a syllabus id 404s even though the proposer reads those rows' pages by syllabus id. Serving page text for them requires a backend change to the pages endpoint (accept a syllabus id / legacy resolve); out of scope for this UI-only fix. Proposal generation is unaffected. (2) **Raw-UUID dropdowns:** the Syllabus Mapper document selector (`DocumentSelector.jsx`), the PYQ-onboarding "reuse source" selector (`AddPyqPaperModal.jsx`), and the "source document" selector (`documentOptionLabel` in `PyqProvenanceFields.jsx`) fell back to displaying a full UUID when the human-readable field was absent â€” now show a short labelled fallback (`Untitled â€¦ (â€¦{last6})`). `value`/`key` still carry the full id; no contract change. Tests: `SyllabusMapper`, `DocumentSelector`, `PyqWorkbench` suites green (105 tests, incl. asset-id regression); eslint clean on the changed `.jsx`. No backend change â€” the pages endpoint already existed. Note: `POST /admin/exam-intelligence-cms/pyq-onboarding` 404 on the demo host is a stale-deploy artifact (route is registered at `server.py:367`), not a code defect â€” **OPERATOR PENDING** redeploy of `ccp-api-demo`. |
-
-### D-series â€” Redundant data display (4 defects)
-
-Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` Â§Category 1.
-
-| ID | Area | Status | Notes |
-|---|---|---|---|
-| D1 | Exam identity in 3 locations simultaneously | CODE-FIXED, VALIDATION PENDING | SmartHeader (`ExamWorkspace.jsx:110â€“128`) is canonical. Name/slug/type/family removed from `OverviewPanel` identity section and `SetupPanel` "Exam details" card (909â€“924). Unique fields (management lane, cadence, active) preserved in OverviewPanel. D1 regression tests in `OverviewPanel.test.jsx` and `SetupPanel.identity.test.jsx`. |
-| D2 | Readiness scorecard duplicated in header and OverviewPanel | CODE-FIXED, VALIDATION PENDING | `ExamWorkspace.jsx:152â€“204` (actionable, has CTA) is canonical. Overall score/status summary removed from `OverviewPanel` readiness section; per-section readiness rows (7 sections) are unique to OverviewPanel and preserved. D2 regression tests in `OverviewPanel.test.jsx`. |
-| D3 | "Phases needing dates" is filtered duplicate of main phases list | CODE-FIXED, VALIDATION PENDING (PR 5) | Resolved by EI-CLEAN-07: `SetupPanel` renders one canonical `PhaseTimeline`; the standalone "Phases needing dates" card is removed and date authoring is inline on the needs-date rows; templates are in one collapsed advanced `<details>`; the fabricated cycle Trust column is gone. `PhaseTimeline.test.jsx` and `PhaseDateWorklist.test.jsx` reconciled with the restored layout. |
-| D4 | Competition "Exam" column always identical in workspace context | CODE-FIXED, VALIDATION PENDING | Exam column removed in commit `9aefa58` (Wave 1 UI cleanup, 2026-06-29). `CompetitionMetricsTable.jsx` no longer renders `c.exam`; a comment at the deletion site records the rationale. `CompetitionPanel.jsx:43` still pre-filters by `exam.id` as the source-of-truth guard. |
-
-### E-series â€” Multiple overlapping entry points (5 defects)
-
-Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` Â§Category 2.
-
-| ID | Area | Status | Notes |
-|---|---|---|---|
-| E1 / I7 | KnowledgeGovernance "Exam truth & planner readiness" lane removed | CODE-FIXED, VALIDATION PENDING | Lane card removed from `KnowledgeGovernance.jsx` (Â§4.4 landing-card removal). Landing copy updated from "Four lanes" â†’ "Three lanes". Exam-governance links (Console, Registry, Create exam) remain in AdminShell primary nav â€” not duplicated on the KG landing page. Sidebar exam group untouched (removed atomically in I8-A). 4 landing tests updated. |
-| E2 | ExamIntelligence.jsx exposes 5 navigation paths simultaneously | **LOCKED â€” SUPERSEDED; I8 GATED** | Decision locked 2026-06-21: old "registry-first cleanup" approach is superseded. Locked end state: one visible Exam Management front door combining Registry + Console purposes (search/discovery, blocked/needs-action/ready filters, family/exam/cycle context, first blocker, one row action: `Manage exam`). "Console" and "Workspace" must not be peer product choices. I8-A/B/C gated by IA design lock document. See Â§Exam Management IA section below. |
-| E3 | Exam/cycle/phase entities editable from 3 surfaces, no governance model | DESIGN QUESTION | CMS (`ExamIntelCms.jsx:159â€“200`): full CRUD. Workspace (`SetupPanel.jsx`): operational edits. Header cycle picker (`ExamWorkspace.jsx:136`). UI does not communicate the tier hierarchy (CMS=repair, workspace=operation, CMS=power-users-only). |
-| E4 | PyqPaperWorkspace reachable as standalone route and embedded tab | CLEANUP PENDING | Commit `9aefa58` adds a source-code comment explaining embedded vs standalone, but both entry points remain and no operator-facing path guidance was added. Defect still open. |
-| E5 | Three surfaces to create a new exam | CLEANUP PENDING | Commit `9aefa58` adds helper text distinguishing the guided wizard from the CMS repair form (partially addresses "UI does not differentiate"), but all three creation entry points remain. The bounded outcome is: differentiation copy added; overlapping entry points not removed. |
-
-### F-series â€” Workflow gaps and flow inconsistency (5 defects)
-
-Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` Â§Category 3.
-
-| ID | Area | Status | Notes |
-|---|---|---|---|
-| F1 | No guided workflow for the most common operator task (cycle setup end-to-end) | **LOCKED ARCHITECTURE; I9 IMPLEMENTATION GATED** | Architecture locked 2026-06-21: hybrid approach. (1) Mini-wizard for atomic cycle creation: cycle identity + dates â†’ phase selection/creation â†’ review + save â†’ return to Manage Exam. (2) Persistent 9-step activation checklist (resumable across sessions): Cycle details â†’ Phases and schedule â†’ Source documents â†’ Extraction â†’ Syllabus mapping â†’ PYQ readiness â†’ Policy updates â†’ Competition context â†’ Review and activate. Implementation blocked on I6 cycle-setup gate document defining completion sources, hard/advisory/N-A gates, deep links, resume behaviour, `AddCycleWizard` decision, progress derivation model, and management-mode/cadence applicability per step. |
-| F2 | Bulk import modal detached from paper management workflow | CODE-FIXED, VALIDATION PENDING | `BulkImportModal` now accepts `onSuccess(paperId)` prop. On result-step Close, fires `onSuccess(state.selected_paper_id)` then `onClose`. `PyqWorkbenchPanel` passes `onSuccess={(paperId) => { setSelectedPaperId(paperId); setShowBulkImport(false); }}` â€” auto-selects imported paper and mounts `<PyqPaperWorkspace>`. `CommitResult` shows inline success banner ("N questions committed. Close to open the paper.") and relabels Close â†’ "Open paper" when committed > 0. Tests: `BulkImport.test.jsx` (F2 onSuccess, success banner, button label); `PyqWorkbench.test.jsx` (F2 auto-select via mocked BulkImportModal). |
-| F3 | PYQ tab shows one paper at a time with no overview | CODE-FIXED, VALIDATION PENDING | `PyqWorkbenchPanel.jsx` `<select>` replaced with a table (columns: year, section, questions, readiness). Row click sets selected paper; `<PyqPaperWorkspace>` is driven by the selected row. Tests added in `__tests__/PyqWorkbench.test.jsx` asserting no `<select>`, table rows per paper, and row-click selection. |
-| F4 | Topics management not accessible from workspace context | CODE PRESENT â€” ROW WAS STALE (recheck PR #927) | The general claim is false as written today: `SyllabusTopicEditorPanel.jsx` is mounted unconditionally at the top of `SyllabusMapperPanel.jsx` (`SyllabusMapperPanel.jsx:83`), which is the workspace's Syllabus Mapper tab (`ExamWorkspace.jsx:43,493-496`), and provides subject dropdown + level filter + debounced search hitting `GET {BASE}/topics?exam_id=...&subject_id=...&level=...&q=...` (`SyllabusTopicEditorPanel.jsx:91-99,156-177`) â€” i.e. topics **can** be browsed/filtered by exam from workspace context, and this is NOT nested inside `TopicEditDrawer`/`TopicAliasesEditor`. Topic prerequisites DO have a dedicated surface â€” see M1. Narrow caveat that remains literally true: topic browsing lives on the Syllabus Mapper tab, not the **Setup** tab specifically; that is placement, not a missing capability. No further code change required. |
-| F5 | Policy `affects_*` flags displayed prominently but immutable | CODE-FIXED, VALIDATION PENDING | Flags remain immutable (unchanged). Added a correction-*request* affordance: `PolicyUpdatesTable.jsx`/`UpdatesPanel.jsx` "Request correction" captures disputed flag(s) + reason (â‰¥8 chars) via `CorrectionRequestControl`, reusing the existing `PATCH /api/admin/exam-intelligence/policy-updates/{id}/review` reason-capture pattern (`reviewer_status`â†’`needs_correction` + `reviewer_notes`), extended with a `disputed_flags` field. The endpoint (`admin_exam_intelligence.py`) never writes `affects_*`; it only records an `admin_audit_logs` entry (`exam_intel.review.policy_update.correction_requested`). Wired into the live `UpdatesPanel.jsx` (Updates tab) via `useApiAction`. Tests: `test_admin_api.py` (backend validation/audit), `PolicyUpdatesTable.correction.test.jsx`, `UpdatesPanel.test.jsx`. |
-
-### M-series â€” Missing CRUD / management capabilities (4 defects)
-
-Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` Â§Category 4.
-
-| ID | Area | Status | Notes |
-|---|---|---|---|
-| M1 | Topic prerequisites: no editable surface | CODE PRESENT â€” ROW WAS STALE (recheck PR #927) | Both prior claims are false today. Schema: base `topic_prerequisites` table created in `029_exam_intelligence_taxonomy.sql` (with `strength numeric` + `relation_type âˆˆ requires/recommended_before/supports/foundation_for`); `208_topic_prerequisite_lifecycle.sql` only ALTERs it to add a reviewer_status/reviewed_by/review_notes lifecycle + the cycle-safe `cms_write_topic_prerequisite` RPC â€” layered on top of, not a replacement for, the strength model. UI: `TopicPrerequisiteEditor.jsx` (`pages/admin/exam-workspace/syllabus-mapper/`) does full add/edit/delete of topicâ†’topic prerequisite links with a strength field (`tpe-edit-strength`, aria-labelled "Strength") plus submit/review/lock, and is reachable via the per-topic "Prereqs" button in `SyllabusTopicEditorPanel.jsx:221-223,263-271` (not orphaned). Backend: `admin_exam_intel_manage.py` wires `GET/POST/PATCH/DELETE /topic-prerequisites` (+ `/submit`, `/review`) gated on `exam_intelligence.manage`/`.review`, router mounted at `server.py:368`; `study_os/planner.py::_load_prerequisites` consumes only `reviewer_status='locked'` edges for scheduling order. No schema decision outstanding; no further code change required. |
-| M2 | Topic aliases: exists only in mapper context | CODE-FIXED, VALIDATION PENDING | Standalone/pre-proposal alias management already exists via `SyllabusTopicEditorPanel` ("Manage topics" bar, mounted unconditionally at the top of `SyllabusMapperPanel.jsx`, independent of document/proposal selection) â†’ per-topic "Aliases" â†’ `AliasEditorContainer`/`TopicAliasEditor` (`pages/admin/studyos/editors/`), hitting `/api/admin/exam-intelligence-manage/topic-aliases`. This was previously undocumented in this row. The only remaining gap was stale copy in `TopicAliasesEditor.jsx`/`TopicEditDrawer.jsx` (inside the mapper-proposal `TopicEditDrawer`) claiming aliases are "only accessible from the Syllabus Mapper context" â€” corrected to point at the standalone path. Test: `TopicEdit.test.jsx` ("M2: alias editor note points to the standalone 'Manage topics' path"). Existing coverage: `SyllabusTopicEditorPanel.test.jsx`. |
-| M3 | PYQ questions: all 200 loaded simultaneously, no pagination | CODE-FIXED, VALIDATION PENDING | `limit=200` removed. `PyqPaperWorkspace` now fetches `PAGE_SIZE=50` per page with `limit`/`offset` server params. `reviewer_status` and `source_kind` filters both moved server-side (backend: `source_kind: str | None = Query(default=None)` added to `list_pyq_questions`; frontend: `loadQuestions` sends `source_kind` param when filter â‰  "all"; client-side `source_kind` filter removed). Client-only sorts (`confidence_asc`, `status`) dropped â€” server orders by `question_number ASC`. Offset resets on filter/paper/source_kind change; page clamped after mutations; questions refetched after review actions; total from server shown in list header. Pagination controls (prev/next, range label) added to left pane. 14 targeted tests: `PyqPaperWorkspace.pagination.test.jsx` (includes source_kind server filter + offset reset). |
-| M4 | Subjects surface: IDs visible, no exam-scoped management | CODE-FIXED, VALIDATION PENDING | UUID humanization (prior fix) preserved. Added exam-family-scoped filtering: `subjects` has no direct `exam_family_id` column, so `GET /api/admin/exam-intelligence-cms/subjects?exam_family_id=` (backend) resolves membership via `exams(exam_family_id) â†’ exam_topic_coverage â†’ topics â†’ distinct subject_id` (mirrors the LOCKED J2-A coverage-path resolution, generalised per-family); empty coverage returns an empty result, never a global fallback. Frontend: new "Exam family" filter in `ExamIntelCms.jsx` (`ENTITY_FAMILY_SCOPE`), populated from `/exam-families`, wired through the existing search/status/pagination `load()` flow. Tests: `test_cms_taxonomy.py` (backend scoping + empty-coverage contract), `ExamIntelCms.m4.familyFilter.test.jsx`. |
-
-### I-series â€” Identifier leakage (5 sites)
-
-Full evidence: `docs/reviews/exam-intelligence-design-review-2026-06-20.md` Â§Category 5.
-`operatorChrome.humanizeToken` and `formatOperatorActor` enforce no-UUID-in-UI. All five sites violate that contract.
-
-| ID | Location | File:Line | Status | Notes |
-|---|---|---|---|---|
-| I1 | ReviewQueueTable "Row id" button | `ReviewQueueTable.jsx:92` | CLEANUP PENDING | `{r.id}` raw UUID rendered. `operatorChrome.humanizeToken` pattern exists but not applied here. Covered by H3. |
-| I2 | SetupPanel phase error message | `SetupPanel.jsx:803` | CLEANUP PENDING | `{ptError.phaseId}` raw UUID in error message text. Covered by H3. |
-| I3 | ExamIntelCms entity table rows | `ExamIntelCms.jsx` (multiple) | CODE-FIXED, VALIDATION PENDING | `renderCellValue` helper imported from `operatorChrome.humanizeToken`; UUID-shaped id/FK cells now rendered as `${first8}â€¦` instead of the full identifier. All entity table rows (exam-families, exams, cycles, phases, topics, coverage, etc.) use this path. 4-test identifier regression added in `ExamIntelCms.identifiers.test.jsx`. |
-| I4 | Competition table "exam" column in workspace | `CompetitionMetricsTable.jsx:78` | CODE-FIXED, VALIDATION PENDING | `humanizeToken(c.exam \|\| c.exam_slug) \|\| "â€”"` replaces the raw `c.exam_slug` render. `humanizeToken` truncates UUID-shaped exam slugs and transforms snake_case slugs into readable labels. 4-test regression in `CompetitionMetricsTable.identifiers.test.jsx`. |
-| I5 | Subjects CMS surface | `ExamIntelCms.jsx` subjects entity | CODE-FIXED, VALIDATION PENDING | `subject_id` column in the topics entity table now goes through `renderCellValue` (same fix as I3) â€” UUID is truncated to `${first8}â€¦`. Covered by `ExamIntelCms.identifiers.test.jsx` test "I5: subject_id FK column is truncated". |
-
-### Prior setup/workspace UX items
-
-| Area | Status | Notes |
-|---|---|---|
-| Setup phase UX | CODE-FIXED, VALIDATION PENDING (PR 5) | EI-CLEAN-07: `SetupPanel` renders one canonical `PhaseTimeline`; the separate "phases needing dates" card is gone (date authoring is inline on needs-date rows) and template phases are in one collapsed `<details>` section. (Lane C) |
-| Template phases duplication | CODE-FIXED, VALIDATION PENDING (PR 5) | EI-CLEAN-07: the canonical timeline receives only cycle-bound phases (`cyclePhases = phases.filter(p => p.exam_cycle_id != null)`); unbound template phases render **only** in the collapsed Template phases section and are not date-editable there. Regression test asserts a template is absent from `PhaseTimeline`/`phase-date-editor-*` and present only under `promote-template-card`. (Lane C) |
-| Slow/heavy date inputs | CODE-FIXED, VALIDATION PENDING | Resolved (PR #927): `DateField` now wraps a native `<input type="date">` instead of `react-day-picker`'s `DayPicker` (dependency removed; popup calendar chrome dropped â€” browsers supply their own picker). External prop contract unchanged (value/onChange still ISO `YYYY-MM-DD`; `minDate`/`maxDate` â†’ native `min`/`max` + retained JS range check). Four caller test suites that fired dd-mm-yyyy at the input (a native input sanitizes that to `""`) retargeted to ISO â€” the real native-input behavior. `DateField.test.jsx` 8/8; affected set 57/57 green. Live browser perf confirmation remains operator-side. (Lane C) |
-| Setup mutations governance | CODE-FIXED, VALIDATION PENDING (PR 5) | All Setup mutations now route through `useApiAction`: cycle create/edit (pre-existing), add phase, classify phase-kind, phase-date patch, and template promotion. No raw `api.post`/`api.patch` remains in `SetupPanel`. (Lane C) |
-| Cycle Trust column | CODE-FIXED, VALIDATION PENDING (PR 5) | Removed by EI-CLEAN-07 â€” the fabricated cycle Trust column (derived from cycle status: `active` â†’ `locked`, otherwise `verified`) no longer renders in `SetupPanel`. If a real cycle-trust lifecycle is ever wanted it must be a genuine reviewer_status-backed column, not derived from cycle status. |
-| Add-cycle product path | MERGED / CODE PRESENT â€” PR #917 | Retired. `AddCycleWizard.jsx` and `AddCycleWizard.test.jsx` deleted (confirmed zero remaining references); route continues to redirect into workspace setup via `AddCycleRedirect` in `adminRoutes.jsx`. PR #917 merged into main (source recheck 2026-07-08). |
-| Document readiness extraction status | MERGED / CODE PRESENT â€” PR #750 | `load_doc_extraction_counts(strict=False/True)` in `readiness.py`: strict path (console) uses full pagination + fail-closed reads; workspace path is fail-soft. Full vocabulary: extracted/pending/failed/needs_review/not_started. Deterministic by (created_at, id). 58 tests. See `docs/audits/document-readiness-2026-06-21.md`. |
-| Bulk import JSON schema undocumented (UX-EI-4) | CODE-FIXED, VALIDATION PENDING (PR #927) | Documented at `docs/architecture/bulk-import-schema.md` â€” covers both the generic `POST /api/admin/exam-intelligence-cms/bulk-import` (all 15 CMS entities, required/allowed fields, FK pre-req order) and the PYQ paper preflight/commit wizard (`BulkImportModal.jsx`, CSV/JSON v1+v2, dedup ladder, error tokens). Doc also records a real backend defect it surfaced: `exams` bulk import is non-functional (config requires server-derived `slug` that the bulk path never produces) â€” documented as unsupported with a working `exam-cycles` example instead. Moves to `MERGED / CODE PRESENT` once PR #927 lands. |
-| Competition metrics phase/category cutoffs unstructured (UX-EI-6) | PLANNED | Schema now contracted and operator-approved: `docs/status/J3-Competition-Cutoffs-Gate-2026-07-02.md` (`OPERATOR APPROVED â€” 2026-07-02`) locks `cutoff_by_category`/`vacancy_by_category`/`difficulty_assessment` shapes, evidence model and lifecycle; implementation = J3 PR 1 (`docs/status/J3-Implementation-Checklist-2026-07-02.md`, unblocked). Supersedes the earlier DESIGN QUESTION (migration 055 opaque JSONB). |
-| D10 PYQ Readiness â€” exam-wide scope and canonical trust gates | MERGED / CODE PRESENT | PR #765 (feat/d10-exam-wide-pyq-readiness) is MERGED (source recheck 2026-07-03; previously mis-recorded as "in progress"). `pyq_readiness.py` shared module with pure `aggregate_pyq_evidence()` (three-gate: verified paper + verified question + â‰¥1 verified topic tag) is on main; `readiness.py` and `work_queue.py` consume it. Frontend D10 fixes merged in PR #763. The three-gate rule is the locked contract â€” do NOT weaken it to count question-reviewed rows before topic tagging. Follow-up rows split out below: EI-DATA-01 (production topic-tag completion), EI-CLEAN-03 (truthful readiness copy â€” "0 of 100 verified" must become planner-ready vs question-reviewed vs missing-tag vs rejected), EI-CLEAN-04 (operator deep-link remediation in Mock Projection). PR #812 was label-only: cycle/phase display fixed, `exam_phase_id` still always null â€” phase selection is EI-CLEAN-02. |
-| D10 follow-up â€” UPSC 2026 primary topic tags (EI-DATA-01) | OPERATOR / DATA PENDING | 98 SME-verified questions have zero verified primary topic tags â†’ 0/100 planner-ready. Assign exactly one verified `primary` tag per usable question (secondary/trap as separate roles); keep the 2 rejected rows excluded unless SME re-reviews. Data-review task â€” must preserve existing SME question verification; no bulk status update. Expected result: 98 projection-eligible. Executable runbook landed: `docs/runbooks/EI-DATA-01_upsc_2026_primary_topic_tags.md` â€” grounds the exactly-one-verified-primary gate (one of 8 projection checks) against `pyq_mock_projection.py`/`pyq_readiness.py` with exact mounted routes + permissions (`POST /api/admin/exam-intelligence-cms/pyq-question-topic-tags` with `WriteEnvelope{reason,payload}` under `exam_intelligence.cms`+flag â†’ `PATCH /api/admin/exam-intelligence/items/pyq_question_topic_tag/{id}/review` under `exam_intelligence.review`; preview `GET /api/admin/mocks/pyq-papers/{id}/projection/preview` under `mock_questions:author`). Phase 0 freezes the target IDs from live projection-preview evidence (exam-wide, NOT `pyq_papers.year`/cycle per D10) and proves all 98 are blocked ONLY by `not_exactly_one_verified_primary_tag:0`; Phase 1 per-question createâ†’review; Phase 2 re-checks the same frozen IDs. Tag assignment itself remains OPERATOR/SME + VERIFY DB (no prod DB or per-question topic judgment in-repo). **Tooling verified (PR #927, code inspection + 170 backend tests green):** all three runbook endpoints confirmed mounted with the exact permission tiers claimed â€” create at `admin_exam_intel_cms.py:3884` (`exam_intelligence.cms` + `ADMIN_STUDY_OS_ENABLED` flag, forces `reviewer_status="pending"`, 409 on unique conflict), review at `admin_exam_intelligence.py:953` (`exam_intelligence.review`, `pyq_question_topic_tag` registered `_REVIEWABLE`, touches only the tag row never `pyq_questions`), projection preview at `admin_mocks.py:446` (`mock_questions:author`; sync counterpart correctly `mock_questions:publish`); schema in migration `032_pyq_question_intelligence.sql` matches the runbook SQL verbatim. Minor runbook drift: `WriteEnvelope` is at `admin_exam_intel_cms.py:172-176` (not `:119-123`). UI note: the create path is reachable via the generic `ExamIntelCms.jsx` CMS form (`entity=pyq-question-topic-tags`), but there is **no dedicated per-question tag UI in `PyqPaperWorkspace.jsx` and `ReviewQueueTable.jsx` is mounted by no production route** â€” an SME follows the runbook's documented curl/API path for review (the runbook never claimed a UI). Tag assignment still OPERATOR/SME. |
-| J3 OD resolutions (all four gates) | OPERATOR APPROVED â€” 2026-07-02; implementation UNBLOCKED | Consolidated resolutions for all `OD-*` items across the four J3 gate documents in `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` â€” authoritative (operator approval recorded on PR #861). Sequencing: `docs/status/J3-Implementation-Checklist-2026-07-02.md`: PR1 Competition â†’ PR2 Applied-vs-Appeared (serial) â†’ PR3 Mixed-PDF (independent) â†’ PR4 Coverage. `source_registry` confirmed pre-existing. See the PR 1 row below for implementation status. NOTE: actual landing order deviated from this plan by explicit operator direction â€” PR4 landed immediately after PR1 (+its follow-up fix #869), ahead of PR2; see the J3 PR 4 row and `docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md`. |
-| J3 PR 1 â€” Competition structure | CODE-FIXED, VALIDATION PENDING | Migration `216_j3_competition_structure.sql`: `reservation_categories`/`reservation_category_aliases` (seeded general/ews/obc/sc/st); additive `cutoff_by_category`/`difficulty_assessment`/`metric_kind`/`version_no`/`supersedes_id`/`superseded_at`/`is_current_published`/`breakdown_complete` on `exam_competition_metrics` (legacy `cutoff_trend`/`difficulty_trend`/`selection_ratio` deprecated in place, not dropped); fail-closed Â§1.3 legacy `metric_kind` disposition (splits combined rows, preserves published data, triages phaseless cutoff content) and Â§1.4 current-lane initialization (fail-closed on duplicate published rows, per-`source_basis` legacy trust policy â€” human-basis rows grandfathered current with a revalidation flag, `model_generated` never auto-grandfathered, zero-availability-loss assertion); field-ownership + lineage CHECKs and NULL-safe two-lane partial unique indexes (Â§2.1); JSONB validation trigger (`_ecm_validate_jsonb`) enforcing the locked `cutoff_by_category`/`vacancy_by_category`/`difficulty_assessment` shapes; published-parent `BEFORE UPDATE`/`DELETE` guard triggers (content frozen once reviewed/locked, only the lifecycle RPC may transition/supersede); `exam_competition_metric_evidence` child table with append-only immutability triggers + RLS; `cms_review_competition_metric` lifecycle RPC (transition matrix + CAS + evidence/vacancy-sum/model_generated validation + atomic current-published supersession, mirrors migration 204/208) and `cms_reopen_competition_metric_for_edit` (clone-to-draft, OD-7). **Backend:** `admin_exam_intel_cms.py` write allowlist drops legacy/server-controlled fields, derives `metric_kind` from `exam_phase_id` with field-ownership 422s; `admin_exam_intelligence.py` review endpoint now calls the RPC (error-tokenâ†’HTTP mapping mirrors the snapshot-review pattern), plus new reopen-for-edit and evidence-attach endpoints; `competition.py`/`competition_context.py` use the shared `is_current_published` selector (OD-10, no per-reader "best row" heuristic) and merge `cycle_summary`+`phase_cutoff` rows into one series entry; `cutoff_series` prefers `cutoff_by_category`; new `cutoff_direction()` read-time-only derivation (OD-3, â‰¥2 comparable cycles or `null`); ratio contract PR-1 half â€” `selection_rate`/`candidates_per_vacancy`/`ratio_denominator` always `null` until PR 2's denominator lands, `selection_ratio`/`selection_ratio_legacy` preserved verbatim. **Frontend:** `CompetitionPanel.jsx` replaced the `"rising"`/`"harder"` string-enum inputs with a category-map editor (marks/max_marks per reservation category) gated on phase selection (mutually exclusive with vacancy fields, matching field-ownership), removed the inverse `applicant_count/vacancy_total` ratio calc; `CompetitionMetricsTable.jsx` now displays vacancy-by-category, cutoff-by-category, and difficulty (OD-9). Tests: `test_competition.py` (merge/selector/cutoff_direction/ratio-null-contract), `PanelWritePayloads.test.jsx` (phase-scoped vs cycle-level payload shape), `CompetitionMetricsTable.d4.test.jsx` fixed for the new column. **Deferred/simplified in this PR** (documented, not silent): the Â§1.4 duplicate-scope fail-closed path is exercised only by the migration's own logic (no live-duplicate fixture â€” CI databases start empty); `evidence.py`/`status.py` consumers of `selection_ratio` were not touched (additive fields only, no existing key removed, so no consumer breakage); PR 2 (`exam_candidate_counts`) not started. OPERATOR PENDING: apply migration 216 to staging (`SELECT MAX(version) FROM schema_migrations` first); verify `pg_policies` for the three new tables; run the Â§1.3/Â§1.4 preflight against real data and capture pre/post counts; confirm RPC EXECUTE grants (anon/authenticated denied, service_role only); exercise createâ†’evidence-attachâ†’promoteâ†’lock end-to-end. |
-| J3 PR 1 follow-up â€” competition-metric PATCH field-ownership parity | CODE-FIXED, VALIDATION PENDING | Post-merge checkpost fix (PR #866, comment 4874679618, Bug 3). `admin_exam_intel_cms.py::update_competition_metric` (PATCH) skipped the field-ownership guard that `create_competition_metric` enforces: a PATCH adding `cutoff_by_category`/`difficulty_assessment` to a `cycle_summary` row (or vacancy/pressure fields to a `phase_cutoff` row) was caught only by the DB `ecm_kind_field_ownership` CHECK and surfaced as an unhandled 500. Fix adds an app-layer field-ownership pre-check on the merged (existingâŠ•patch) row keyed on the immutable existing `metric_kind` (`NULL`/legacy-triaged rows exempt, mirroring the CHECK) â†’ clean 422, and wraps the `.update().execute()` to map residual `published_row_immutable` (409) and `ecm_kind_field_ownership` (422) DB tokens instead of leaking a 500. Tests: `test_cms_trust_invariant.py` adds 3 cases (cutoff-on-cycle_summary reject, vacancy-on-phase_cutoff reject, owned-field allow). No migration/schema change. |
-| J3 PR 2 â€” Applied-vs-Appeared | CODE-FIXED, VALIDATION PENDING (PR #870, merged) | **Status reconciliation 2026-07-08:** the earlier `BLOCKED` label was stale â€” the atomic consumer switch and DB-invariant code all landed via merged PR #870 and the row body already read "Status below CODE-FIXED". Source-verified complete on `main`: migration `219` (both `exam_candidate_counts`/`exam_candidate_count_evidence` tables, `cms_review_candidate_count`/`cms_reopen_candidate_count_for_edit` RPCs, RLS, scope-integrity + lineage triggers, `NULLS NOT DISTINCT` two-lane indexes, OD-6 fail-closed backfill DO-block), `candidate_counts.py` (`ratio_denominator(target_phase_id)`/`derive_rates`), the `competition.py`/`competition_context.py` atomic switch with `applicant_count` removed from `_COMPETITION_FIELDS`, the CMS + admin candidate-count endpoints, `CandidateCountsSection.jsx` mounted in `CompetitionPanel.jsx`, and all four backend suites + the JSX suite + `_stub.py` RPC emulation. Remaining scope is purely OPERATOR/DB (no code): apply migration `219` to staging after 216/217/218, verify `pg_policies`, confirm PG15+ `NULLS NOT DISTINCT`, and exercise createâ†’evidenceâ†’promoteâ†’lock live. Migration `219_j3_applied_vs_appeared.sql` (branched from merged PR 1 `216`; renumbered 217â†’218â†’219 as those slots were taken by landed PRs â€” `validate` CI requires a contiguous MAX(main)+1). **Checkpost review (PR #870) fixed:** P0-1 atomic consumer switch completed â€” `applicant_count` removed from `_COMPETITION_FIELDS` (no new legacy writes; column deprecated-in-place), `CompetitionPanel.jsx` applicant input/write removed and its ratio column now renders derived `selection_rate`+`ratio_denominator` (legacy `applicant_count`/`selection_ratio` labelled legacy only), `CompetitionMetricsTable.jsx` likewise. P0-2 prohibited cross-phase heuristic DELETED â€” `ratio_denominator()` gained a `target_phase_id` param: cycle-level uses ONLY a cycle aggregate (never a phase row), a phase entry uses that phase's own appeared count (then the cycle applied aggregate), so a Mains row can never show a Prelims denominator (`competition.py` passes the correct phase id per series row). P1-3 scope trigger + app validator now require EXACT `exam_phase.exam_cycle_id = exam_cycle_id` (template/NULL/unbound phases rejected). P1-4 lineage trigger `_ecc_check_lineage` added (superseding revision must share full scope/category, `version_no = parent+1`) and CMS PATCH now treats `reservation_category_id` as immutable scope. P1-5 promotion source-trust tightened (`source_id IS NULL` no longer trusted â€” inner JOIN + active/verified/non-discovery/non-aggregator + url-or-doc required) plus a `jsonb_typeof â€¦ = 'number'` claim_value shape guard before the numeric cast. P1-6 OD-6 Section I is now executable fail-closed evidence (RAISE-on-mismatch for pre-migration non-null `applicant_count`, converted=0, preserved-unknown, zero-loss equality, representative `competition_pressure_score` preservation) instead of a prose notice. **Validation still pending (live/operator):** DB-invariant behavior (triggers/RPC/DO-blocks) is asserted only against SQL-text/contract tests and the Python stub â€” no live PostgreSQL is available in this environment, so the DB-backed integration proof remains VERIFY DB / OPERATOR PENDING. New `exam_candidate_counts` table: `exam_id`/`exam_cycle_id` required, `exam_phase_id` nullable, `scope_kind âˆˆ {cycle,phase}`, `count_type âˆˆ {applied,appeared}`, `reservation_category_id` FK to PR1's shared `reservation_categories` (NULL = official total, reused not recreated), `count_value`, full reviewer lifecycle + two-lane revision model (`version_no`/`supersedes_id`/`superseded_at`/`is_current_published`) mirroring `exam_competition_metrics`. OD-3 scope/count-type shape CHECKs (`applied`â†’cycle+no-phase; `appeared`â†’phase-scoped or labelled cycle aggregate) plus a scope-integrity trigger validating `exam_phase_id` belongs to the same exam AND cycle. NULL-safe two-lane uniqueness via `NULLS NOT DISTINCT` partial indexes (published/working lanes + per-scope `version_no`), lineage CHECKs (`version_no>0`, self-FK `supersedes_id`, no self-reference), published-parent `BEFORE UPDATE`/`DELETE` guards (content frozen once reviewed/locked). `exam_candidate_count_evidence` per resolutions Â§4.1 EXACT schema (no `claim_field`/`reservation_category_id` â€” the parent row IS the single claim; `claim_value` snapshots `{count_type,scope_kind,exam_phase_id,reservation_category_code,count_value}`) + server-computed `evidence_key` + append-only immutability triggers; RLS on both tables (`exam_candidate_counts` read requires `reviewer_status IN ('reviewed','locked')` OR `public.is_admin()`; evidence has no authenticated policy at all, service-role only). `cms_review_candidate_count` lifecycle RPC (same transition matrix as 216, promotion gate compares evidence `claim_value.count_value`/`count_type`/`scope_kind`/`exam_phase_id`/`reservation_category_code` against the CURRENT parent â€” stale evidence rejected, `reviewed_analysis` never sole primary) and `cms_reopen_candidate_count_for_edit` (clone-to-draft, OD-7). **OD-6 backfill judgment call: ZERO rows migrated.** `exam_competition_metric_evidence.claim_field` (migration 216) does not even accept `'applicant_count'` as a value and the table itself predates this PR, so every legacy `exam_competition_metrics.applicant_count` value has zero queryable evidence â€” Option B's "migrate only evidence-proven rows" therefore yields an empty set by construction; `applicant_count` is left untouched/deprecated-in-place rather than partially/speculatively backfilled (reasoning documented in the migration's Section I comment). **Backend:** new `app/exam_intelligence/candidate_counts.py` (`ratio_denominator(â€¦, target_phase_id)` â€” prefers `appeared`â†’`applied`â†’`null` over current-published, official-total rows only; cycle-level uses ONLY a cycle aggregate and phase-scoped uses only the matching phase's appeared count (no cross-phase heuristic, PD-2); `derive_rates()` â€” `selection_rate`/`candidates_per_vacancy`, null unless both inputs positive). Â§1.2 PR-2 atomic switch: `competition.py` (`competition_series`) and `study_os/competition_context.py` (`competition_context`) both now derive `selection_rate`/`candidates_per_vacancy`/`ratio_denominator` from reviewed/locked `exam_candidate_counts` instead of the null-contract PR1 left; `competition_pressure_score` itself is untouched (OD-5) â€” only the count display and the `cycle_pressure.reason` explanation text change to cite the denominator basis. `admin_exam_intel_cms.py` gets `POST`/`PATCH /exam-candidate-counts` (create/curate, scope validator mirrors 216's phase/cycle check); `admin_exam_intelligence.py` gets `GET /candidate-counts`, `PATCH /candidate-counts/{id}/review`, `POST /candidate-counts/{id}/reopen-for-edit`, `POST`/`GET /candidate-counts/{id}/evidence` â€” all on the existing exam-intelligence admin router (no new top-level route). Tests: `test_j3_applied_vs_appeared_migration.py` (19 schema-contract assertions mirroring the 216 pattern), `test_candidate_counts.py` (14, ratio preference/derive_rates/atomic-switch/pressure-score-regression), `test_admin_candidate_counts.py` (11, lifecycle/evidence/RLS-predicate-shape), `test_cms_candidate_counts.py` (11, create/patch/scope-validator). `app/backend/tests/persona_questions/_stub.py` gained `cms_review_candidate_count`/`cms_reopen_candidate_count_for_edit` RPC emulation. `python -m pytest tests/exam_intelligence/ -q`: 1396 passed, 1 pre-existing unrelated failure (`test_mock_readiness_endpoint.py`, missing `email-validator`), 8 skipped. OPERATOR PENDING: apply migration 219 to staging after 216/217/218 (`SELECT MAX(version) FROM schema_migrations` first); verify `pg_policies` for `exam_candidate_counts`/`exam_candidate_count_evidence`; confirm target Postgres version supports `NULLS NOT DISTINCT` (PG15+); exercise createâ†’evidence-attachâ†’promoteâ†’lock end-to-end and confirm `competition_series`/`competition_context` pick up the new denominator live. graphify artifacts not regenerated (graphify unavailable) â€” OPERATOR PENDING. |
-| J3 PR2 follow-up â€” candidate-count operator UI | CODE-FIXED, VALIDATION PENDING | Renamed from the earlier "J3 PR 3" label, which collided with the authoritative J3 sequence (PR 3 = Mixed-Format, see row below); this is the operator UI for the already-merged PR2 (#870) `exam_candidate_counts` endpoints, tracked as a PR2 follow-up. `CandidateCountsSection.jsx` renders alongside the competition-metrics table inside `CompetitionPanel.jsx` (Competition tab) â€” no new route or sidebar destination (no-new-surface rule). **Checkpost findings (three reviews) resolved:** (P0-1 permission tier) create/curate/reopen/evidence-attach now gated on `exam_intelligence.manage` (normal Manage-Exam canonical editing, J2 gate Â§D), review transitions on `exam_intelligence.review`, list/read on manage-OR-review, super_admin bypass â€” **backend decorators fixed too**: `admin_exam_intel_cms.py` candidate create/patch moved from `PERM_CMS`â†’`PERM_MANAGE`; `admin_exam_intelligence.py` list/evidence-list use a manage-or-review gate, evidence-attach + reopen-for-edit require `manage`, review stays `review`; frontend `canManage` uses `manage` not `cms`. (P0-2 evidence gate) evidence list + attach form implemented (`GET`/`POST /candidate-counts/{id}/evidence`) with the exact Â§4.1 claim snapshot `{count_type,scope_kind,exam_phase_id,reservation_category_code,count_value}` auto-filled from the parent; `â†’reviewed` is disabled with a clear blocker until qualifying evidence exists. (P0-3 curate/reopen) working draft/pending edit form wired to `PATCH /exam-candidate-counts/{id}` (count_value/source_basis/notes; recovers a model_generated row). (P1-4) transition buttons aligned EXACTLY to migration 219's `cms_review_candidate_count` matrix â€” `reviewedâ†’locked` only (the invalid `reviewedâ†’rejected` button removed), with per-transition + negative tests. (P1-5) client-side ratio-denominator heuristic removed â€” rows labelled by their own scope; denominator stays server-derived. (P1-6) all mutations (create/lifecycle/reopen/edit/evidence-attach) routed through `useApiAction`. (P1-7) integer validation rejects fractions (12.9) and exponents (1e3) instead of `parseInt` truncation. (P2-8) `<label htmlFor>`/id + aria-labels on every control. (checkpost A) cycle required fail-closed â€” no cycle â‡’ read/create disabled, never submits `exam_cycle_id:null`. (checkpost B) list read is server-side cycle-scoped (`exam_cycle_id` query param) instead of a client slice of an exam-wide top-100. (C) source comments corrected migration 217â†’219. Tests: `CandidateCountsSection.test.jsx` (33 frontend across both suites incl. the CandidateCounts suite) + backend `test_cms_candidate_counts.py` / `test_admin_candidate_counts.py` permission-tier + cycle-scope cases (36 backend passing); eslint clean. The branch also carries a pre-existing `ReviewActivatePanel.test.jsx` duplicate-fixture cleanup (commit 51bc6109), left as-is. **Deferred (documented):** per-category candidate counts (no reservation_category_id client lookup yet; official-total NULL path built â€” the value the denominator reads). OPERATOR PENDING: live browser smoke on the Competition tab (createâ†’attach evidenceâ†’submitâ†’reviewâ†’lock, gating per role); graphify unavailable â€” OPERATOR PENDING. |
-| J3 PR 4 â€” evidence-based coverage scoring (evidence-derived `exam_topic_coverage`) | CODE-FIXED, VALIDATION PENDING | Code + tests on `claude/j3-pr4-coverage-derivation`, migration `217_evidence_derived_coverage.sql` now landed in `app/supabase/migrations/`. Merged after J3 PR1 (+follow-up fix #869), ahead of PR2 (Applied-vs-Appeared), per explicit operator override of the original PR1â†’PR2â†’PR4 sequencing (see `docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md` and PR #867). New `coverage_derivation.py` projects the latest **locked** `exam_topic_score_snapshots` (+ verified `syllabus_topic_mentions`) into `draft` `exam_topic_coverage` rows: total `coverage_depth` bucket function (Â§5.1, incl. `deep` fallback), complete Â§5.2 conflict-rule matrix (human-authored bases + `pyq_analysis`/`hybrid` â†’ skip+delta; `model_generated` â†’ skip+triage; `evidence_derived` by status â†’ update/skip/leave/update), fingerprint-idempotent (over the snapshot's own input fingerprint, not its model_version), CAS-guarded concurrent-derivation-safe writes with insert-conflict handling, stale derivation-owned row reconciliation when evidence/mentions disappear, fail-closed on read error, exam-wide + phase-scoped only (no cycle-only). Manual operator-triggered `POST /admin/exam-intelligence/exams/{exam_id}/coverage/derive` added to the existing admin exam-intelligence router (no new top-level surface), gated on `exam_intelligence.manage`, requires an explicit `exam_phase_id` key in every request body, audited via `admin_audit_logs`. Break-the-edge (OD-3): `score_snapshots.py`'s `coverage_component` read now excludes `source_basis='evidence_derived'` rows â€” enforced by a dedicated scoring-invariant test, not a promotion check. Migration adds a `source_basis` CHECK extension + exam-wide partial unique index + fail-closed duplicate `DO` block to the existing `exam_topic_coverage` table â€” no new table, so no new RLS policy required. OPERATOR PENDING: apply migration 217 to staging/live, run the `pg_policies` verification (confirm no drift), and validate PR2 (Applied-vs-Appeared) integrates cleanly against this now-landed coverage projection when it lands. |
-
-## Exam Management IA â€” locked decisions (2026-06-21)
-
-Full decision record: `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`
-
-**Locked mental model:** Find the exam â†’ Manage the exam â†’ Advanced Repair only when the normal workflow cannot resolve the problem.
-
-**No-new-surface rule:** No new top-level destination unless it removes at least two existing top-level destinations. A new sidebar item or promoted top-level route IS a surface. A drill-in, backend endpoint, or embedded component is NOT.
-
-**Surface-count exit test:** Before: KG exam lane + Registry + Console + Workspace + CMS = 5 visible peers. After: Exam Management â†’ Manage Exam drill-in â†’ Advanced Repair overflow = 1 visible peer with 2 scoped sub-destinations. If visible peer count stays equal or increases, the arc fails.
-
-### Dispatch tracker
-
-| Item | State | Action |
-|---|---|---|
-| H2/D2 â€” real extraction readiness | **MERGED / CODE PRESENT** | PR #750 merged; `load_doc_extraction_counts` in readiness.py; console_detail no longer uses trust_status proxy; needs_review supported; deterministic latest-job selection. |
-| I7 â€” KG exam lane removal | **MERGED / CODE PRESENT** | PR #747 merged (`bb68352a`). |
-| Mock semantics trust fix | **MERGED / CODE PRESENT** | PR #749 merged (`efc520e1`). |
-| I5 â€” PYQ question pagination | **MERGED / CODE PRESENT** | PR #751 merged (`bc643719`). |
-| H1 â€” syllabus/propose linked-document E2E | **CODE-FIXED, VALIDATION PENDING** | operator E2E test on redeploy |
-| IA design-lock document | **MERGED / CODE PRESENT â€” PR #752** | `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` merged. I8 design gate: satisfied. Next implementation prerequisite: backend management read model (code-fixed, see below). I8-A/B/C: serial, single owner. |
-| I6 cycle-setup gate document | **MERGED / CODE PRESENT â€” PR #761 (`d69602f8`)** | Gate document created in `docs/status/Exam-Cycle-Setup-Gate-2026-06-22.md`. D01â€“D16 all APPROVED (johnefficacy-crypto, 2026-06-23/24); D13 APPROVED as controlled temporary admin-readiness waiver. E1â€“E6 all MET. PR #761 merged 2026-06-23. I9 and D13 waiver implementation are separate follow-up PRs. J1/J2 gates cleared. |
-| I8-A/B/C â€” Exam Management consolidation | **ALL MERGED** Â· I8-A: PR #755 Â· I8-B: PR #757 Â· I8-C: PR #759 | I8-A merged at `899f450b`; I8-B merged at `385912bd`; I8-C merged at `f4378097`. I8 complete. |
-| Portfolio/readiness read-model (backend) | **CODE-FIXED, VALIDATION PENDING** | `management_read_model.py` + `/management/exams` + `/management/exams/{id}` landed in Phase 0 PR. 21 tests passing. Frontend integration complete (I8-B/C merged). |
-| J1/J2/J3, competition metrics, mixed-PDF, coverage governance, KG rename | **DEFERRED** | contract-first; I8 and I6 complete â€” J1/J2 gates cleared |
-
-### Locked item details
-
-| Item | Status | Notes |
-|---|---|---|
-| IA design-lock document | MERGED / CODE PRESENT â€” PR #752 | `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` merged. All 13 sections locked. Appendix B COMPLETE â€” no items block I8-A/B/C (all 5 deferred decisions resolved). I8 design gate: satisfied. |
-| I7 â€” KG exam lane removal | MERGED / CODE PRESENT â€” PR #747 (`bb68352a`) | Exam lane card removed from `KnowledgeGovernance.jsx`; count/copy updated from 4 to 3 lanes; landing tests updated. Sidebar exam group untouched (removed atomically in I8-A). |
-| KG sidebar exam group | DEFERRED â€” I8-A ONLY | Must be removed atomically in I8-A when the new single Exam Management sidebar entry lands. Removing it before a replacement nav entry exists makes exam operations harder to discover. |
-| KG rename ("Knowledge Governance" â†’ "Policy & Trust") | DEFERRED â€” SEPARATE LATER PR | Touches sidebar labels, masthead/page titles, breadcrumbs, tests. Must not fold into I7 or I8-A. |
-| I8-A â€” Exam Management front door | MERGED â€” PR #755 (`899f450b`) | One sidebar entry; family/exam/cycle discovery + triage; single-view front door (no competing tabs); one row action: `Manage exam`. Atomically removes ALL old exam sidebar items (Console, Registry, Create exam, Advanced Repair nav entry). |
-| I8-B â€” Manage Exam consolidation | MERGED â€” PR #757 (`385912bd`) | URL-driven tab state, cycle-aware action queue via management endpoint, backend verdict authority (activation_verdict), identity header (management_mode/cadence/is_active/family/org), entity-level CTA routes (row/paper/document params), PYQ status+rowId deep-link selection, tag/optionâ†’questionâ†’paper evidence resolution, document-asset ID space fix, Updates rowId passing, embedded 404 visible error, behavioral tests. |
-| I8-C â€” Advanced Repair isolation | MERGED â€” PR #759 (`f4378097`) | Overflow action in Manage Exam (`AdvancedRepairMenu`); `exam_intelligence.cms` permission gate; `AdminSafetyBanner` replaces amber banner; scoped list requests (exam_id / exam_cycle_id); `/console` redirect to `/exam-intelligence`; navContract updated. Auth hydration fix (isAuthorized + scope in effect deps), ExamIntelDocuments scope props (scopeExamId/scopeCycleId), scopeGen generation-counter workflow guard, load() gen guard, upload-busy finally race (scoped setBusy), poll-identity race (functional setPollId in all exit paths + post-await re-check), WAI-ARIA keyboard nav for AdvancedRepairMenu. Regression tests: 18 scope tests, 21 access tests, 53 ExamWorkspace tests incl. 6 keyboard-nav. Pre-merge browser smoke test: all 6 scenarios PASS (2026-06-22). I8 complete. |
-| I8 delivery model | LOCKED â€” NO FAN-OUT | I8-A, I8-B, and I8-C must be **serial and owned by one lane/owner**. Must NOT be fanned out to parallel agents. Shared write scope includes: `AdminShell.jsx`, `adminRoutes.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `ConsoleWorkQueue.jsx`, `ExamActionConsole.jsx`, `ExamWorkspace.jsx`, action CTA generation, route/title tests, navigation active-state tests. |
-| I9 architecture | LOCKED | Hybrid: (1) bounded mini-wizard for atomic cycle creation only; (2) persistent 9-step activation checklist resumable across sessions. |
-| I9 implementation | MERGED â€” PR #798 (`7df67ca8`) â€” REMEDIATION PENDING | PR #791 merged (initial). PR #794 merged (structural hotfix). PR #798 merged 2026-06-29 18:00 UTC (canonical implementation with D04/D06/D07/D08/D10/D11/D12/D14/D15/A1/A2 improvements). **Known defects on main requiring remediation (PR #801):** (1) `_get_exam_doc_ids()` accepted cycle_id but never filtered â€” fixed in PR #801 (fail-closed: only exact-cycle docs count; unscoped docs excluded until D05 canonical registration). (2) D04 fetch race fixed in PR #801: readiness now gated on management contract validation via generation counter; fetchReadiness only triggered by fetchMgmt after successful validation. (3) **D14 KNOWN NONCOMPLIANCE**: applicability is derived from gate_class (`hard`â†’`required`, `advisory`â†’`conditional`) â€” this is an approximation. D14 defines an explicit per-step, per-management-mode matrix; gate_class and applicability are separate concerns. Not fixed in PR #801; explicit matrix is separate follow-up. (4) D12 step 9 `activation_verdict` was exam-wide and mode-blind â€” **IN PROGRESS: cross-cycle fail-open FIXED (PR #841, merged); full D05 evidence engine being built as an operator-approved multi-PR program (decision 2026-07-02).** Merged (#841): Step 9 no longer consumes the exam-wide `classify_exam` verdict; evaluates the selected-cycle minimum directly (cycle details + applicable locked coverage via D08, scope `selected_cycle_plus_exam_wide`); CTAs preserve `?cycle={cycle_id}`; **Step 9 currently fail-closed** (required-phase completeness unverifiable â†’ never false-ready) pending the evaluator. **Operator decision (2026-07-02):** "required phases complete" per D05/D12 requires the FULL D05 evidence policy (phase-kind-specific syllabus/pattern/PYQ/answer-key + independent source/human-review/extraction predicates), not classification alone; build the real engine rather than narrow the contract. Program sequence: **PR-1 = #843 (this) â€” SCHEMA FOUNDATION, no behavior change:** migration **210** (`exam_phases.phase_kind` D05 Â§1 + `exam_cycles.planner_activation_enabled` D12/D14 exposure authority) + migration **211** (D05 Â§2â€“5 evidence model â€” 5 tables: `exam_evidence_kinds` canonical vocab, `exam_evidence_requirements` policy table + **phase-subset seed only**, `exam_document_evidence` registration + trust lifecycle + `source_registry` FK, `exam_document_evidence_roles`, `exam_evidence_requirement_overrides`; hierarchy/role/supersession/override-determinism integrity triggers; **service-role-only RLS** â€” no authenticated policy, privileges revoked from anon/authenticated). **PR-2 = IN PROGRESS (this PR, under review):** migration **212** seeds the cycle-scoped D05 matrix (primary_cycle_document block on `cycle_is_operational`/`study_os_enabled`; corrigendum/phase_schedule/application_instructions advisory-conditional; strengthened seed assertions incl. row counts + no-all-advisory-hole). New `document_policy.py` evaluator: deterministic D05 policy resolution (base specificity exact>mode+exam_type>mode+phase_kind>default; phase>cycle>exam override precedence with **expiry**; all override fields incl. condition/human-review/distinct-years), resolves each non-cancelled phase's + the cycle's BLOCKING requirements and checks them against verified, in-scope, authoritative (`source_registry` active+official+not-discovery), extracted (D06 latest text_extract), non-superseded evidence in `exam_document_evidence`/roles (DISTINCT-doc counting), plus **per-phase-compatible** verified `pyq_papers` (phase-tagged; cross-phase rejected). PYQ `requires_verified_source` resolves the full authority chain (`pyq_papers.pyq_source_id â†’ pyq_sources.source_id â†’ source_registry`); `requires_human_review` honored (verified only when true; else usable lifecycle, never rejected/superseded); overrides respect `base_requirement_id` targeting. The `objective_pyq_used_for_scoring` condition is a **deferred conservative default** (no canonical scoring-use signal exists yet â€” objective/mixed phases over-require an answer key, fail-closed; NOT full condition evaluation). Fail-closed by code: **non-operational cycle â†’ Step 9 N/A**; **empty/unseeded phase policy â†’ not ready** (not vacuously complete); **evaluator exception â†’ fail-soft** (Step 9 missing + `evaluator_error`, no 500). `cycle_readiness` Step 9 consumes it (unclassified/unmet â†’ not ready; CTA Setup/Documents/Syllabus by first failed prereq). Until PR-4 registers evidence, document-backed requirements are unmet, so **Step 9 stays fail-closed in production (never false-ready)**. Tests: 20 `document_policy` predicate units (7 D05 predicates incl. role-match + all source arms; base specificity/exam-type overlay; phase>cycle>exam + expired-override; empty-policyâ†’not-ready; override promote/downgrade; per-phase PYQ + cross-phase reject; non-operational; conditions) + evaluator-driven Step-9 integration (full-evidenceâ†’ready, missingâ†’documents-CTA, unverifiedâ†’not-ready, non-operationalâ†’N/A, fail-soft, coverageâ†’syllabus). `light` still evaluated like `core` here; exposure applicability lands with PR-3. **PR-3 = CODE-FIXED, VALIDATION PENDING (this PR):** planner enforcement of the exposure authority. `study_os/planner._compute_plan` now refuses to generate a plan for a `management_mode=light` exam whose resolved target cycle is not exposed (`{"generated": False, "reason": "planner_activation_disabled"}`) via a new fail-closed `_cycle_planner_exposed()` helper reading `exam_cycles.planner_activation_enabled` â€” the SAME canonical authority `cycle_readiness` Step 9 consumes (no readinessâ†”planner drift); `core` is always planner-eligible, index_only/archive gating is a separate concern. `cycle_readiness` Step 9 gained a matching branch: `light` + not-exposed â†’ `review_activate` **not_applicable** (`planner_activation_disabled`), while `light` + exposed is evaluated like `core`. Migration **221** backfills `planner_activation_enabled=true` for operational (`expected`/`open`/`active`) cycles of `light` exams that already have â‰¥1 locked `exam_topic_coverage` row (so PR-3 does not regress any already-planner-usable light exam); new light cycles keep the fail-closed default and require explicit operator opt-in. Migration 221 validated on throwaway PostgreSQL 16 (selective `UPDATE 1` on the qualifying light cycle; core / non-operational / no-locked-coverage / already-exposed rows untouched; idempotent re-run `UPDATE 0`). Tests: `test_planner_exposure.py` (4: light-not-exposedâ†’refuse, light-exposedâ†’plans, coreâ†’plans regardless, light-cancelled-cycleâ†’refuse), updated `test_cycle_readiness` Step-9 exposure cases, and the `test_e2e_exam_activation` emptyâ†’planner-ready path now performs the operator exposure opt-in step (new exams default to `light` via the CMS create-only default). `python -m pytest tests/exam_intelligence/ tests/study_os/ tests/admin/test_admin_study_os.py -q`: all green (2612+117 pass). **Checkpost review (PR #887) fixed:** (P0) planner exposure now requires the resolved cycle to be **operational** â€” `_cycle_planner_exposed` reads `status, planner_activation_enabled` from the same cycle row and fail-closes on `closed`/`completed`/`cancelled`/missing/read-failure; `resolve_exam_target_window` only excludes `cancelled` and its fallback can pick a `closed`/`completed` cycle, which readiness marks Step 9 N/A, so the planner must refuse it too (drift removed). Tests added for exposed `closed` + `completed` cycles. (P1) migration 221 predicate is now **selected-cycle canonical** â€” `tc.exam_cycle_id = c.id OR tc.exam_cycle_id IS NULL`, matching cycle_readiness `_resolve_coverage` (cycle-scoped âˆª exam-wide); a locked row scoped to a different cycle no longer opts sibling cycles into activation. PG16 revalidation: Cycle A (only sibling Cycle B has scoped coverage) stays false; Cycle B and an exam-wide-covered cycle flip true; idempotent. Planner regression added (exposed sibling cycle must not generate for an unexposed target cycle). OPERATOR PENDING: apply migration 221 to staging after 220 (`SELECT MAX(version) FROM schema_migrations` first) and confirm the live backfill count matches the per-cycle applicable-coverage light-cycle set. **PR-4:** document-evidence upload/review UI wiring. **D12 v1 is NOT delivered until PR-2/PR-3 land and Step 9 evaluates real evidence.** **F2 status: D12 â†’ v1 IN PROGRESS (full-engine program); D06/D11/D14/D15 â†’ v2 deferred (D06/D07/D08 core rules already implemented in cycle_readiness).** (5) D11 locked vs reviewed distinction and pending lifecycle counts not tracked â€” **v2 deferred** (fail-closed). (6) D15 reason code set not validated at runtime â€” **v2 deferred** (non-gating; note `no_phases_in_cycle` is an existing out-of-vocab code to reconcile in v2). (7) D06 extraction metrics and `other_documents_unresolved` advisory not emitted â€” **v2 deferred** (non-gating observability). Remediation PR: #801 (`claude/i9-remediation`). Downstream activation rollout blocked pending PR #801 merge and remaining deferred items. |
-| Blocker deep-link contract | LOCKED â€” DESIGN LOCK SECTION 7 | All action CTAs must deep-link to exact task state. Route shape: `/exams/{exam_id}?cycle={cycle_id}&tab={tab}[&status={status}&document={id}&paper={id}]`. 8 locked examples in design-lock doc Section 7.2. Backend implementation (`console_detail.py`) lands in I8-B or backend prerequisite PR. |
-| Backend management read-model | CODE-FIXED, VALIDATION PENDING | New `management_read_model.py` + `GET /management/exams` + `GET /management/exams/{exam_id}` in Phase 0 PR. Contract per design-lock Section 8: paginated list + single-exam detail with all cycles/phases. `select_current_cycle` (Section 8.3), deep-link CTAs (Section 7.2), advisory section readiness (fail-soft). 21 tests passing. Frontend integration complete (I8-B/C merged). |
-| Portfolio/coverage matrix (I10) | CANCELLED â€” FOLDED INTO I8 | No separate dashboard, coverage-matrix page, or lane. Portfolio hierarchy and coverage readiness are content inside the Exam Management / Manage Exam hierarchy. Adding another route would repeat the KG mistake. |
-| Mock semantics trust fix | MERGED / CODE PRESENT â€” PR #749 (`efc520e1`) | `Mocks.jsx` relabeled: "Self-reported error patterns", "Average across N logged mocks", conditional `MockAnalysis` subtitle, `ErrorPatternPanel` footer. 15 regression tests passing. |
-| I5 â€” PYQ question pagination | MERGED / CODE PRESENT â€” PR #751 (`bc643719`) | `limit=200` removed; `PAGE_SIZE=50` server pagination; `reviewer_status` + `source_kind` filters server-side; offset resets on filter/paper change; total shown in list header; pagination controls added. 14 targeted tests. |
-| J1 â€” Advanced Repair scoping | **CODE-FIXED, VALIDATION PENDING â€” PR #820 (open draft)** | Operator approved 2026-06-30 (verbal "J1" selection). Contract: `docs/status/Advanced-Repair-Scoping-Gate-2026-06-29.md` (OPERATOR APPROVED; OD-2 and OD-12 amended per `#issuecomment-4851692372`). **Amended OD-2:** search exposed for four entities only (`syllabus-topic-mentions`, `exam-phase-sections`, `subjects`, `topics`) via `q=` query param; all other entities (including `pyq-options`) have no search. **Unscoped mode:** when no `exam_id` is present in the URL, global/super-admin recovery mode applies â€” mutations are permitted without scope restriction. Scope-blocked writes apply only when a `exam_id` is supplied but has not been confirmed resolved. Implemented in `ExamIntelCms.jsx`: scope indicator (resolved exam/cycle name via paginated lookup + explicit loading/"not found" state + "Clear scope" + "not scoped by exam" note per OD-6), search input (300ms debounce, `q` param, four entities only per amended OD-2), status filter (`reviewer_status` / `trust_status` per entity type, DB-correct option values), pagination (PAGE_SIZE=50, `limit`+`offset`, Previous/Next; `hasMore` fallback when total absent), scope-safety state machine (`examScopeState`/`cycleScopeState`: `idle|resolving|valid|error`), `resolvedExamId`/`resolvedCycleId` fail-closed write guard (blocks on initial render AND scope-change transitions until new ID resolves and matches URL param), `writesBlocked` early-return in all mutation handlers (`submitCreate`, `submitBulk`, `submitEdit`, `confirmRetire`) and `ExamIntelDocuments` (upload/link). **Backend change (amended OD-12):** `pyq-options` endpoint amended with `offset` query param and `.range()` pagination; `total` reflects full filtered count via `count="exact"`; `ENTITY_NO_OFFSET` emptied. No new routes. No migrations. 5 backend pagination regression tests in `test_cms_pyq_options_pagination.py` (page1/page2 no overlap, question_id+offset composition, limit=51â†’422, total=full count). **Tests:** 151 frontend tests (including 5 scope-safety tests in `ExamIntelCms.scope.test.jsx`) + 5 backend pagination tests. **Graphify:** `graphify-out/GRAPH_REPORT.md` remains at `f269f95f`; `graphify update .` is required post-merge â€” CLI not installed in remote execution container; this is an operator-side step. **VERIFY DB:** live Supabase `pyq_options` RLS policy verification pending. PR still open draft. |
-| J2 â€” missing operational editors in Manage Exam | **J2-A MERGED (PR #826); J2-Aâ€² MERGED (PR #835) â€” MIGRATION 208 VERIFY DB PARTIAL PASS; manage/review GRANTS APPLIED; J2-B/C still GATED** (gate: `docs/status/Manage-Exam-Operational-Editors-Gate-2026-07-01.md`, PR #824); I8-B AND I6 GATES CLEARED | I8-B merged (`385912bd`); I6 merged (`d69602f8`); J1 merged (PR #820 `d70c33aa`). Move normal work into Manage Exam tabs. **J2-A implementation (CODE-FIXED):** new `exam_intelligence.manage`-gated router `admin_exam_intel_manage.py` â€” `GET /exams/{id}/subjects` (coverage-path resolver, OD-4), topic list/create/update/delete + alias list/create/delete, all single-token `require_permission("exam_intelligence.manage")`, reason+audit, subjectâˆˆexam & topicâˆˆsubject integrity (OD-15), rule-4 locked-coverage 409 on identity edits, rule-5 dependency 409 on delete; `EXAM_INTELLIGENCE_MANAGE` added to `core/permissions.py`; router registered in `server.py`; frontend `SyllabusTopicEditorPanel` (canManage-gated, renders null otherwise; fail-closed on subject resolution; 300ms search debounce; topic create/edit/delete + alias add/remove) rendered inside `SyllabusMapperPanel`. 19 backend + 8 frontend tests; existing exam-workspace suite green (373). **NOTE â€” deviation from gate D.4:** there is NO permission-catalog table in the repo; `exam_intelligence.manage` is a code constant + `auth.users.app_metadata.permissions`, so granting is an OPERATOR step (Supabase admin), NOT a SQL migration. **Review round (PR #826, 2026-07-01):** 7 operator blockers addressed â€” create uses collision-probe+insert (no upsert/overwrite), locked-coverage rejects ALL canonical patches (incl. deactivation), subject-move parent integrity, delete blocks child topics + PYQ tags + relation edges + syllabus mentions (409 not 500), frontend mutations via `useApiAction`, level filter + offset pagination added, shared editor components extracted to `studyos/editors/`. **OD-3 CORRECTED (operator-approved 2026-07-01) â€” CMS CONVERGENCE NOT REQUIRED BY J2-A:** the "import from both surfaces" wording rested on a false premise (ExamIntelCms is a generic ENTITY_CONFIG engine with no topic-specific editor to extract). Corrected contract: Manage Exam uses shared `TopicEditorForm`/`TopicAliasEditor` under `studyos/editors/`; Advanced Repair stays generic under OD-10; parity held via shared backend contracts + shared enums + parity tests. **Second review round (Codex):** target-side `topic_relation_edges` delete blocker added; failed topic-fetch now blocks writes (no silent empty state); edit form remounts per topic id (no stale-value cross-save). **J2-A OPERATOR: grants APPLIED (2026-07-02); browser live-smoke of the Syllabus topic/alias editor still pending.** **J2 gate (2026-07-01, PR #824):** slices J2 into J2-A (Syllabus tab: topic+alias editors â€” buildable), J2-Aâ€² (prerequisite editor â€” **gate OPERATOR APPROVED (2026-07-01)** merged PR #830 `40719a8`, approval recorded in the gate doc per operator directive; audit-atomicity amended to repo-consistent best-effort (gate Â§C.2a); **IMPLEMENTATION CODE-FIXED**: migration 208 (lifecycle cols + reviewer_status index + PD-D-opt-1 grandfather backfill to `locked` + `cms_write_topic_prerequisite` SECURITY DEFINER RPC: single global advisory lock + recursive transitive-cycle check); `admin_exam_intel_manage.py` prereq endpoints (GET manage-OR-review, POST/PATCH via cycle-safe RPC, submit handoff, review transitions, delete draft/rejected-only); Advanced Repair create rerouted through the same RPC (no bypass); planner `_load_prerequisites` locked-only; frontend `TopicPrerequisiteEditor` (mounts manage-OR-review, manage vs review controls gated). Tests: manage/taxonomy/planner backend + prereq-editor/review-mount frontend. **Review round (PR #835 checkpost, 2026-07-01):** #2 subject/topic GET reads now readable by manage OR review (review-only operators can reach the flow); #3 lifecycle CAS â€” PATCH via RPC `p_expected_status` guard, submit/review/delete use conditional writes (409 on concurrent transition); #4 two-endpoint scope (both `topic_id` and `prerequisite_topic_id` âˆˆ exam) on submit/review/delete; #5 both-direction listing + frontend edit (PATCH) control; #6 metadata preserved through the RPC (`p_metadata`). **VERIFY DB (#7):** advisory-lock/CAS concurrency proven only against real Postgres â€” `app/supabase/validation/validate_topic_prerequisite_concurrency.sql` (3-transaction cycle + CAS races); unit emulator lock is a no-op, so concurrency acceptance is VERIFY DB, not unit-complete. **Graphify (#8):** graph stale (built `ad81e8d`); `graphify update .` is an operator step â€” CLI unavailable in the remote container. **Candidate-source round (operator-directed fold-in):** scoped searchable `GET /exams/{id}/candidate-topics` across ALL exam subjects; editor fetches candidates independently (debounced search + pagination); both-direction edge list is one DB-filtered counted/ranged query (bounded items+total) with Prev/Next; RLS tightened (authenticated direct SELECT revoked); CAS `updated_at` lost-update guard; full review transition UI; manage relations restricted to ordering set (Codex PD-3). **MIGRATION 208 â€” OPERATOR VALIDATED / VERIFY DB PARTIAL PASS (2026-07-02):** live Supabase run proved concurrent transitive-cycle prevention (global advisory lock; 3-session Aâ†’B/Bâ†’C/Câ†’A â†’ cycle-closing edge rejected, graph acyclic), **lifecycle-state** CAS for manage/submit/review/delete (stale ops â†’ `concurrent_modification` / `UPDATE 0` / `DELETE 0`), grandfather backfill (post-migration 3/3 edges `locked`, 0 legacy), locked-edge manage lock-out + full review reopenâ†’`reviewed`â†’`draft`â†’manage-edit path (reversible; production data restored unchanged), RLS revoke for anon/authenticated, RPC `service_role`-only. Evidence: `docs/audits/2026-07-02-migration-208-operator-validation.md`. **NOT independently captured (unit-covered; DB isolation pending):** PD-D pre-migration count + representative planner pre/post preservation; the same-state `updated_at` lost-update race (the recorded race changed status, so `p_expected_status` alone rejected it). **Manage/review grants APPLIED** to operator accounts. **J2-Aâ€² REMAINING OPERATOR:** capture the PD-D pre/post planner evidence + same-state `updated_at` race for a full PD-D PASS; run `graphify update .`; browser live-smoke. J2-B (Updates: policy-flag correction â€” gate revision), J2-C (cycle entity mgmt â€” gate revision). **OD-2 (permission tier) OPERATOR-APPROVED 2026-07-01:** new `exam_intelligence.manage` token; new J2 mutation endpoints use single-token `require_permission("exam_intelligence.manage")` (NO OR-helper); `exam_intelligence.cms` stays exclusive to Advanced Repair, `exam_intelligence.review` stays exclusive to trust/lifecycle transitions; `super_admin` bypass unchanged. Locked rules: editing never promotes reviewer_status/trust/coverage/activation (reason+audit required); verified/locked content must be reopened via `review` before `manage` edits; destructive actions bounded (409 on aliases/locked coverage/questions/prereq edges â€” forced cleanup only via cms); `manage` is global (no per-exam assignment yet) so endpoints MUST enforce exam_id + parent-child integrity. Reuse mandate: shared editor components consumed by both `ExamIntelCms.jsx` and the Syllabus panel; frontend `canManage` gates mutation controls only (not whole tabs). examâ†’subject resolved via `exam_topic_coverage` path (no direct FK). Historical-paper creation + question/option correction OUT of J2 scope (PYQ onboarding track, PR #769). **J2-A MERGED (PR #826); J2-Aâ€² prerequisite editor MERGED (PR #835) with migration 208 VERIFY DB partial-pass.** **PYQ source/paper onboarding sub-item:** `docs/status/PYQ-Source-and-Paper-Onboarding-Gate-2026-06-25.md` is **APPROVED â€” IMPLEMENTATION AUTHORIZED** (operator 2026-06-25; rev. 3 rebased onto merged `main` after PR #763 `fe1c54ea`; OD-1â€¦OD-6 LOCKED). It locks the contextual flow (embedded in `PyqWorkbenchPanel.jsx`, no new surface), a transactional `POST /pyq-onboarding` RPC + one forward migration, and reuse of PR #763's document picker / `pyq_source` selector / `isPaperProvenanceComplete` contract via a shared `PyqProvenanceFields`. `pyq_source_id` stays optional; no source-trust promotion in v1. **Implementation prerequisite:** migration 191 staging validation is now `OPERATOR VALIDATED` (2026-06-25, see row above), clearing gate Â§F.4. **Implementation (CODE-FIXED, VALIDATION PENDING):** backend `POST /pyq-onboarding` + transactional `cms_pyq_onboarding` RPC (migration 192, SECURITY DEFINER, atomic source+paper+document-link+3 audits, full REVOKE/GRANT matrix); frontend `AddPyqPaperModal` + "Add PYQ paper" header action + "Add the first PYQ paper" empty-state CTA (no CMS reference) + "No reusable source record" advisory (OD-3); shared `PyqProvenanceFields` extracted from `PaperProvenanceModal` (reuse mandate; folds in the long-filename truncate+tooltip fix); `onboardPaper` via `useApiAction`. `source.source_id` is the canonical registry FK (not `source_registry_id`). 23 backend tests pass; frontend tests + migration-number guard verified by CI. **Migration 192 â€” OPERATOR VALIDATED (2026-06-30):** staging presence confirmed (ledger 188â€“203, contiguous); grant matrix confirmed (`SECURITY DEFINER=true`, `search_path=public`, `anon EXECUTE=false`, `authenticated EXECUTE=false`, `service_role EXECUTE=true`); atomic happy path validated via rollback-only transaction (`source_rows:1 / paper_rows:1 / audit_rows:3`, trust gates `pending`); rollback cleanup confirmed (`source_rows:0 / paper_rows:0 / audit_rows:0`). **Follow-ups (PR #769, CODE-FIXED, VALIDATION PENDING):** OD-2 + OD-5 are authorized by the bounded contract `docs/status/PYQ-Onboarding-Followups-Contract-2026-06-26.md` (DRAFT â€” OPERATOR APPROVAL REQUIRED), which supersedes their v1 deferral. (1) **Source trust lifecycle (OD-2):** `POST /pyq-sources/{id}/review` + migration 201 `cms_review_pyq_source` SECURITY DEFINER RPC mirroring `review_pyq_paper` (renumbered from 193 via PR #782 â€” duplicate migration hotfix; FOR UPDATE, transition matrix pendingâ†’verified/rejected Â· verifiedâ†’rejected Â· rejectedâ†’pending, concurrent-mod guard, atomic audit+update, `exam_intelligence.review` gate); Workbench source-trust summary + Verify/Reject/Re-queue. (2) **Inline upload (OD-5):** AddPyqPaperModal "upload new PDF" mode reusing the documents upload sequence; both POSTs run through `useApiAction`, binary PUT via raw fetch; terminal extraction failure does NOT link the asset. (3) **Cycle/phase label fix:** DocumentsPanel upload selectors now render readable names (year Â· cycle_name; phase_name|phase_slug) with short-id fallback, never raw UUIDs. 24 backend source-review + 138 backend total; 113 workbench + 15 DocumentsPanel frontend tests. **Migration 201 â€” OPERATOR VALIDATED (2026-06-30):** staging presence confirmed; grant matrix confirmed (same as migration 192); allowed transitions (pendingâ†’verified, pendingâ†’rejected, verifiedâ†’rejected, rejectedâ†’pending), forbidden/no-op transitions, concurrency guard, audit/no-false-audit behavior all verified. **CODE-FIXED, BROWSER/OPERATOR VALIDATION PENDING** (`claude/pyq-modal-cycle-phase-labels-fix`, PR #812): `AddPyqPaperModal` now renders immutable cycle/phase context; `phaseId` is always `null` from this panel (`exam_cycles` has no `exam_phase_id` column â€” phase selection is out of scope for this bounded PR); ID/label mismatch fails closed (error banner + disabled submit); "No cycle selected (exam-wide paper)" shown when no cycle context is active. Durable operator evidence for migrations 192 and 201: see PR #806 body (staging validation recorded 2026-06-30). Browser gate (Add PYQ paper flow, source trust lifecycle, inline upload, label display) still required before follow-ups contract can be promoted from DRAFT to APPROVED. |
-| J3 â€” schema/domain redesign | **GATES DRAFTED â€” OPERATOR APPROVAL REQUIRED (4 sub-item contracts, 2026-07-02)** | Four contract-first gate drafts landed (no implementation code; approval required before any J3 code, each has flagged OPERATOR DECISION items): (1) `docs/status/J3-Competition-Cutoffs-Gate-2026-07-02.md` â€” `cutoff_trend`/`vacancy_by_category`/`difficulty_trend` opaque-JSONB â†’ category-keyed phase-aware locked shapes, derived-at-read direction, structured evidence, transition matrix/CAS (9 ODs). (2) `docs/status/J3-Applied-Vs-Appeared-Gate-2026-07-02.md` â€” no `appeared_count` today (overloaded `applicant_count`); locks distinct applied/appeared facts, exam/cycle/phase canonicity, verified-only lifecycle (5 ODs). (3) `docs/status/J3-Mixed-Format-PDF-Gate-2026-07-02.md` â€” one-format-per-document today; recommends Option B (reject mixed loudly + workaround) over per-page classification since v1 only extracts MCQ, forward-compatible (3 ODs). (4) `docs/status/J3-Evidence-Coverage-Scoring-Gate-2026-07-02.md` â€” projects locked `exam_topic_score_snapshots` into reviewable draft `exam_topic_coverage` (projection, not a 2nd engine; no new table in preferred path) (6 ODs). Sequencing: contract-first per sub-item; implement after operator approval + OD resolution. Competition-cutoffs and applied-vs-appeared share the `exam_competition_metrics` surface (coordinate/serial). |
-| Competition metrics structure | DEFERRED â€” CONTRACT-FIRST | Opaque JSONB `cutoff_trend`/`vacancy_by_category`; no locked schema. Needs domain contract + JSON/schema decision + evidence model + reviewer lifecycle. |
-| Mixed-format PDF support | **CODE-FIXED, VALIDATION PENDING â€” J3 PR 3 (Option B / B1)** | Implemented per `docs/status/J3-Mixed-Format-PDF-Gate-2026-07-02.md` (OPERATOR APPROVED) + `docs/status/J3-Mixed-Format-PDF-PR3-Addendum-2026-07-03.md`. `document_assets.metadata.mixed_format=true` (B1 admin-declared flag, validated boolean-only; no migration). `ExtractionMixedFormatError` raised in `extraction/pipeline.py`'s scope fence before any OCR/fitz.open â€” zero `pyq_questions` writes. Admin toggle added to `ExamIntelDocuments.jsx` (existing surface; no new route) calling `POST /admin/exam-intelligence-cms/documents/{id}/mixed-format`. SOP doc: `docs/engineering/mixed-format-pdf-workaround-v1.md` (split-and-reupload), linked from the error message. Future Option A (`document_format_segments` child table, non-overlap constraint, no backfill) recorded but NOT built â€” deferred to a later gate per OD-3. 13 new backend unit tests (`test_mixed_format_scope_fence.py`) + existing extraction guard tests updated for the new field and passing (no regression). VALIDATION PENDING: no live-DB/operator browser smoke captured yet. |
-| Management mode / cadence / coverage governance | DEFERRED â€” PRODUCT CONTRACT | Who assigns management mode (core/light/index-only/archive), cadence, coverage depth, priority score, high-yield designation? Deterministic rule vs admin judgement vs model suggestion not yet decided. |
-| KG rename | DEFERRED â€” SEPARATE LATER PR | Separate from I7 and I8; touches sidebar labels, masthead/page titles, breadcrumbs, tests. |
-
-## Backend CI / dependency gate
-
-| Item | Current status | Notes |
-|---|---|---|
-| pip-audit dependency versions | PARTIALLY UPDATED | `litellm==1.84.0` and `pypdf==6.13.3` are pinned in `app/backend/requirements.txt`. |
-| pip-audit before pytest sequencing | RESOLVED | `pip-audit` step now has `continue-on-error: true` and runs before `pytest` â€” audit failures are non-blocking. Backend tests always execute. |
-| Duplicate migration slot 193 | RESOLVED | `193_pyq_source_review_transaction.sql` has been renamed to `201_pyq_source_review_transaction.sql` on `main`. Both migrations now apply under distinct version slots. e2e migration apply unblocked. |
-
-## Implementation sequencing plan â€” concurrent sub-agents
-
-Last assessed: 2026-06-29 at `main @ 3f19726`. Review before dispatch.
-
-### Wave 0 â€” CI hardening â€” COMPLETE (2026-06-29)
-
-Both items resolved on `main` before Wave 1 dispatch:
-- `pip-audit` runs with `continue-on-error: true` â€” tests always execute.
-- `193_pyq_source_review_transaction.sql` â†’ `201_pyq_source_review_transaction.sql` on `main` â€” e2e migration apply unblocked.
-
-### Wave 1 â€” Parallel independent code work (dispatch after Wave 0 merges)
-
-These touch fully disjoint modules. All can run simultaneously.
-
-| Agent | Scope | Key files | Constraint |
-|---|---|---|---|
-| **doc-extraction-race** | Issue #780: wrap `replace_document_pages` + job terminal update in a DB-side transactional RPC. New migration (MAX+1 after 193 collision resolves). | `run_text_extract_job.py`, new migration | None â€” isolated to extraction pipeline. |
-| **i9-cycle-checklist** | Implement the 9-step cycle activation checklist: cycle-readiness endpoint + section/check vocabulary per D01â€“D16 (gate doc approved PR #761). Separate D13 admin waiver PR. | `management_read_model.py`, new endpoint, new migration, new checklist frontend component | I6 gate CLEARED (PR #761 merged). Do NOT touch `AdminShell.jsx` or `adminRoutes.jsx` in this agent. |
-| **cleanup-isolated-ui** | Address isolated CLEANUP PENDING items: D4 (CompetitionPanel redundant exam column), E4 (PyqPaperWorkspace dual-entry-point note/link), E5 (exam creation surface differentiation copy), M2 (standalone topic alias management â€” **CODE-FIXED**), M4 (subjects CMS exam-family filter â€” **CODE-FIXED**), F5 (policy `affects_*` flags â€” correction-request affordance â€” **CODE-FIXED**). | `CompetitionMetricsTable.jsx`, `ExamIntelCms.jsx`, `TopicAliasesEditor.jsx`, `TopicEditDrawer.jsx`, `PolicyUpdatesTable.jsx`, `UpdatesPanel.jsx`, `admin_exam_intel_cms.py`, `admin_exam_intelligence.py` | No routing files. Each item is independent. M2/M4/F5 landed together (topic-alias/subject-scope/policy-correction PR); D4/E4/E5 tracked separately. |
-
-### Wave 2 â€” Operator-gated code (start alongside Wave 1; gate on operator deploy)
-
-Write the code; operator sign-off required before merge.
-
-| Agent | Scope | Gate |
-|---|---|---|
-| **otp-auth** | Complete phone/SMS OTP PR: Twilio client wiring, user migration script, browser OTP flow, E2E test suite. Draft PR only. | Twilio provisioning by operator before merge. |
-| **j1-advanced-repair** | Scope Advanced Repair to selected exam + cycle: search, filters, pagination, `exam_intelligence.cms` permission gate. Contract-first doc required before implementation. | I8-C CLEARED (PR #759). Contract must be operator-approved before code. |
-| **j2-manage-exam-editors** | Move topic/microtopic management, alias management, historical paper creation, policy flag correction into Manage Exam tabs. Contract-first doc required. **All sub-steps serial within one agent** â€” shared write scope includes `ExamWorkspace.jsx`. | I8-B CLEARED (PR #757). Contract must be operator-approved before code. Do NOT fan out sub-steps. |
-
-### Wave 3 â€” Contract-first / deferred (cannot start until product decisions locked)
-
-| Item | Blocking decision needed |
-|---|---|
-| J3 competition metrics structure | Domain contract: JSONB schema for `cutoff_trend`/`vacancy_by_category`, phase/category breakdown, evidence model, reviewer lifecycle. |
-| M1 topic prerequisites | Schema design decision: data model for strength values between topics before any UI. |
-| Management mode / cadence / coverage governance | Product contract: deterministic rule vs admin judgement vs model suggestion for `management_mode`, `cadence`, coverage depth. |
-| KG rename ("Knowledge Governance" â†’ "Policy & Trust") | Separate PR; touches sidebar labels, masthead/page titles, breadcrumbs, tests. Do not fold into any Wave 1â€“2 work. |
-| Exam Knowledge Compiler v1 (topic co-occurrence) | **PLANNED â€” contract drafted, operator sign-off required before implementation.** `docs/architecture/exam-knowledge-compiler-v1.md` â€” bounded v1 slice compiling `topic_relation_edges` (`relation_type='co_occurs_with'`) from verified PYQ primary-tag co-occurrence; reuses the `cms_review_exam_topic_snapshot` (migration 204) RPC shape for draftâ†’reviewedâ†’locked review. Open questions OQ-1â€¦OQ-7 in the doc require operator/product resolution before any migration or code PR. |
-| Operations Console review/publish split | Contract drafted: `docs/architecture/operations-console-review-publish-split.md` (**PLANNED â€” operator approval required before implementation**). Splits `OperationsConsole.jsx`'s redundant `sources`/`runs` fan-out out to the already-existing Source Registry/Scrape Monitor surfaces; no new nav destination, no backend router change. Open questions: `progressState` replacement for dropped source/run status, official-source resolver's `sources` dependency shape, optional nav label rename. |
-
-### Parallelism constraints (enforced by repo rules)
-
-- **Never fan out to parallel agents** any work that shares `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamIntelligence.jsx`, or route/title test files simultaneously. Serial delivery only (I8 lesson, AGENTS.md Â§19).
-- **J2 sub-steps are serial** within a single agent â€” all Manage Exam tab work is a shared write scope.
-- **No new top-level surface** unless it removes â‰¥ 2 existing peers (no-new-surface rule, locked 2026-06-21).
-
-## English Writing Practice â€” Lane H
-
-Architecture contract: `docs/architecture/english-writing-practice.md`
-PR plan: `docs/status/career-copilot-pr-plan.md` Â§ Lane H
-
-Current verdict: **ARCHITECTURE LOCKED (PR #819 merged). EWP-1 MERGED (PR #821): migration 205 + version_set_hash helper â€” OPERATOR VALIDATION PENDING (apply migration 205 to staging, verify RLS). EWP-2 MERGED (PR #823): deterministic practice API â€” OPERATOR VALIDATION PENDING. EWP-2B MERGED (PR #836): migration 209, evaluator/mastery-outbox workers, scheduler wiring â€” OPERATOR VALIDATION PENDING. EWP-3 (Sentence Builder UI) MERGED â€” code on `main` (`pages/study/EnglishPracticeShell.jsx` + `features/study/english-practice/*`); OPERATOR live click-through + Â§16 gate evidence still pending. EWP-4 (Error/Improvement Lab) + EWP-5 (planner launch/generation) CODE-FIXED, VALIDATION PENDING (see rows below). EWP-5 mastery live writes blocked on Lane A gate.**
-
-Migration number for EWP-1 must come from `select max(version)::int + 1 from schema_migrations`. VERIFY DB before writing the migration file â€” do not guess or derive from filenames.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| Architecture contract | MERGED / CODE PRESENT â€” PR #819 | `docs/architecture/english-writing-practice.md` â€” 24 locked implementation rules, full schema, state machines, evaluation stages, RLS contract, projection policy. Design-locked 2026-07-01. |
-| English taxonomy seed | CODE PRESENT IN PR #821 | Full Â§3 hierarchy seeded: 8 topics (Sentence Construction, Grammar, Vocabulary, Paragraph, PrÃ©cis, Essay, Letter/Report, Comprehension) + 28 microtopics (incl. simple/compound/complex/transformation, topic-sentence/conclusion, and a microtopic child for each descriptive leaf). Deterministic `md5('ewp:...')::uuid`; map validated to active English microtopics. |
-| EWP-1 â€” Schema, constraints, RLS | CODE PRESENT IN PR #821 (open) / REVIEW PENDING â€” migration `205_english_writing_practice_schema.sql` | All 17 tables + `effective_user_topic_mastery_evidence` fold view (security_invoker, service-role-only, REVOKE authenticated/anon â€” no client leak; folds via shared `ewp_issue_effectively_invalidated` using `(created_at, event_seq)`) + helpers (`ewp_tier_rank`, `ewp_forbid_mutation`, `ewp_guard_session_snapshot`, `ewp_check_override_projection`) + immutability triggers + partial-unique review-override indexes + evidence supersession integrity (composite same-user FK, one-successor, op/cause, no-self) + owner RLS filters effectively-invalidated issue/resolution/projection rows + null-safe feedback CHECK on sessions & requirements + blank-version integrity + review-override integrity (corrected-type CHECK + cross-table trigger) + key-format (SHA-256 hex) + queue lease-shape CHECKs + value-domain CHECKs + immutable-history FKs as NO ACTION + FULL Â§3 taxonomy (8 topics / 28 microtopics). `study_tasks` launch columns. `version_set_hash` helper + pinned vector. Postgres integration suite `tests/study_os/test_writing_schema_integration.py` **runs in CI** (backend job now provisions a Postgres service + `EWP_PG_DSN`): immutability-vs-service-role on all 7 history tables, view isolation across users A/B + authenticated/anon/service roles, `(created_at,event_seq)` tiebreak, cross-user supersession rejection, review-override coexistence + integrity, blank-version, snapshot guard, cascade-block. Effective-review helper is `SECURITY DEFINER` in a **private schema** (`ewp_private`, not PostgREST-exposed; the old `public` function is dropped) so authenticated owner RLS filters invalidated issues without becoming a cross-user RPC oracle. Correction causal-chain trigger covers retract/replace **and re-assertions** (`invalidatedâ†’confirmed`, `reclassifiedâ†’confirmed`): cross-issue, branch-from-non-tail, projection-less replace, and correction of non-issue evidence are all rejected; predecessor must resolve to an issue projection; a replace must carry the review-override projection created by its cited review event. exercise_type domain CHECK; blank word-count = 0. Text tests `test_writing_schema.py` (61), integration `test_writing_schema_integration.py` (27, incl. authenticated-owner invalidation filtering, no-public-oracle, and review-decisionâ†’evidence-op mapping). Runtime state-machine/rollup/`unit_constraints` tests are EWP-2 (finalizer/model logic, not DDL). **OPERATOR PENDING:** run live `select max(version)::int+1 from schema_migrations` to confirm/rename the migration number before merge; apply to staging. |
-| EWP-2 â€” Deterministic practice API | MERGED (PR #823, 2026-07-01) / OPERATOR VALIDATION PENDING | Practice runtime `/api/study/practice/english/*` (learning mode only â€” exam mode is rejected with 400 in EWP-2). **Atomic write paths via migration 207 RPCs** (renumbered from 206 after PR #828's `206_snapshot_lock_authority_guards.sql` merged first; main now has 205+206) (`ewp_create_writing_session`, `ewp_submit_writing_unit`, `ewp_reopen_writing_unit`, `ewp_finalize_writing_session`): SECURITY DEFINER, service-role-only, canonical `sessionâ†’all-units-ascending` `FOR UPDATE` lock order (Â§8.0). **State machine enforced in-DB:** submit accepts ONLY legal source states `{not_started, draft, rewrite_required}` (an `evaluation_pending` unit is not resubmittable â€” blocks duplicate/retry versions), the version CAS token is **mandatory** (missing/stale/duplicate `expected_version` â†’ `ewp_stale_version`), and a first submission walks the **legal path** `not_started â†’ draft â†’ evaluation_pending` (both edges persisted; no direct `not_started â†’ evaluation_pending`). Post-submit coverage/finalize is a **best-effort idempotent refresh** (the submission has already committed + rolled up in-txn) â€” a refresh failure is logged, never surfaced as an error that would block resubmission of a committed version. **Finalization is transactional:** submit and reopen apply the session rollup (`ewp_private.ewp_apply_session_rollup`) in the SAME transaction under the held locks, so session status can never lag a committed unit transition; `ewp_finalize_writing_session` acquires the canonical locks then rolls up after the authoritative coverage row is written. Required-word coverage is read authoritatively **in-DB**: `version_set_hash` is recomputed under lock **byte-for-byte identical** to the backend helper (`convert_to`/`int4send`/`uuid_send`/`sha256`; Pythonâ†”SQL parity asserted in CI) and a coverage row is trusted only while its pinned hash still matches (two-check contract Â§4.7a â€” safe under concurrency). Validated end-to-end against Postgres 16: create/atomicity, submitâ†’`evaluation_pending`+in-txn rollup, mandatory-CAS + stale + duplicate rejection, completion gate â†’ `completed`/`fully_evaluated`, reopen `completedâ†’active` atomic rollback with monotonic outcome, stale-coverage blocks completion, hash parity, user isolation. API calls the RPCs and maps their RAISE prefixes to HTTP codes. Pure, tested cores: `deterministic.py`, `session_state.py` (rollup Â§4.3b + gate Â§4.6c + outcome Â§9.1a + transition validator Â§4.4b), `session_finalizer.py` (now the pure reference; the DB RPC is the write path), `coverage_checker.py`, `constraints.py` (`extra='forbid'`; per-unit min/max at submit), `content_hash.py`, `launch.py` (Â§11.1), `mastery_flag.py` (fail-closed + Lane A gate). Tests: deterministic (25), transitions/gate/constraints (13), mastery-flag (11), launch (5), migration-207 contract (11 text), **migration-207 behaviour (11, Postgres-gated on `EWP_PG_DSN`, runs in CI â€” incl. a two-connection concurrent-submit race proving the session lock serializes and the duplicate is rejected)**, route registration. **DEFERRED to EWP-2B:** async language/rubric worker (jobs enqueued, not consumed). **REMAINING (own slice):** exam-mode runtime (Â§9.2/Â§9.3 â€” blank versions, answer locking, `submitted_at`, `feedback_released_at`, all-unit enqueue); `completed_at` write; `launch.compute_action` wired into mission-control (EWP-5); resume-state + `version_set_hash` API assertion; live Supabase round-trip validation (OPERATOR). |
-| EWP-2B â€” Evaluator runtime (Stage 2/3) | CODE-FIXED, VALIDATION PENDING (round-4 review blockers resolved) | Async evaluator worker via **migration 209** SECURITY DEFINER RPCs (service-role-only): `ewp_claim_evaluation_job`, `ewp_complete_language_evaluation` (fencing + replay guard + issue events with backend-owned lineage + microtopic-map resolution + `resolved`/`persisted`/`regressed` resolution events + race-safe automatic projection via `pg_advisory_xact_lock` + unit transition + mastery-outbox enqueue + in-txn rollup under canonical Â§8.0 locks), `ewp_fail_evaluation_job`, `ewp_sweep_stale_evaluation_jobs`, and the mastery drain `ewp_claim_mastery_outbox`/`ewp_complete_mastery_outbox`/`ewp_fail_mastery_outbox` (idempotent evidence + shadow via `ON CONFLICT (evidence_key)`). **P0-1 corrected tier semantics (Â§4.12a):** an ACTIVE/unresolved error (esp. must_fix) earns NO positive evidence; the ONLY projection-linked positive row is a `correction` for a lineage the aspirant actually RESOLVED this evaluation (`outcome='resolved'`, resolving eval = this one), linked to the resolved issue's automatic projection so a later false-positive review can retract/replace it. `recognition` is never emitted by the writing path; `production` stays the clean unit-level row. **P0-3 batch set/tier enforcement:** `ewp_complete_mastery_outbox_batch` now DERIVES the expected projection-id set + each row's expected tier + microtopic + key SERVER-SIDE and requires EXACT set equality (count, uniqueness, projection ids, microtopic, tier); omission, duplicate and forged-tier payloads are rejected. **P0-2 serialized review transitions (Â§4.10a/Â§4.12c):** `ewp_enqueue_review_correction` is no longer latest-only â€” it enqueues EVERY effective transition (advisory-locked per issue), and the correction guard `ewp_check_evidence_correction` is redefined in 209 (forward CREATE OR REPLACE; 205 untouched) from "cited-review-must-be-latest" to an in-ORDER gate (the tail's causing decision must equal the cited event's previous effective decision), so intermediate transitions land one step at a time in `(created_at,event_seq)` order and the retractâ†’re-assert chain stays intact while skip-ahead/out-of-order corrections are still rejected. **P0-4 correction identity binding:** `ewp_complete_review_correction` re-derives the current effective tail + ALL identity fields via the shared `ewp_private.ewp_review_correction_context` helper (also used by the claim RPC) and compares every payload field AND `supersedes_evidence_key` before insert â€” a forged tier/topic/source/evaluation/projection is rejected at completion, not merely by the chain trigger. **P1 fail-closed pinning + override mapping:** the pinned `mastery_flag_state` is COPIED from the assertion's evaluation outbox and FAILS CLOSED (skip `unresolved_pinned_mode`) when unresolvable (no invented `shadow`); the `review_override` projection uses the ACTUAL transactional prior-occurrence count via `ewp_canonical_error_type(corrected_type, actual_count)` (unknown â†’ NULL), not a hardcoded `prior_count=1`. Op-specific projection (retractâ†’predecessor proj, replaceâ†’override proj, re-assertâ†’chain-root automatic proj) and effective fold (`effective_user_topic_mastery_evidence`) verified. **Deterministic MOCK evaluators** behind an adapter boundary (real LLM deferred â€” respects "no new AI writes"): `language_evaluator.py` (`lang-mock-v1`), `rubric_evaluator.py` (`rubric-mock-v1`). `evidence_deriver.py` = single owner of the Â§4.12b SHA-256 evidence-key layout + unit-level tier derivation. Workers wired into APScheduler (`writing:evaluate` + `writing:mastery_outbox`, 20s, `max_instances=1`, coalesce; evaluator pass also sweeps stale leases). **Mastery is SHADOW-ONLY** â€” Lane A gate forces `liveâ†’shadow`. Tests: pure/unit (44), migration-209 contract (text), **migration-209 behaviour (Postgres-gated on `EWP_PG_DSN`, runs in CI â€” incl. active-must_fixâ†’no-positive-evidence, resolvedâ†’one correction row, batch omission/duplicate/forged-tier rejection + exact-set accept, two-transitions-queued-before-drain processed in order, out-of-order + forged-identity rejection, first-occurrence reclassification mapping, pinned-flag copy)**. Full writing suite green on a fresh Postgres 16 (**272 passed, 1 skipped**). **DEFERRED:** real LLM adapter (own gated slice); EWP-3 review PRODUCER UI (this slice ships the correction APPLY side). **OPERATOR / VERIFY DB:** live Supabase round-trip; confirm 209 against live `schema_migrations`. |
-| EWP-2B pipeline repair (migration 214 fallout) â€” pinned session context + prompt snapshot | CODE-FIXED, VALIDATION PENDING â€” migration `222_ewp_prompt_snapshot_and_exam_derivation.sql` | **Migration 214 dropped `writing_prompts.exam_id`/`exam_cycle_id`/`exam_phase_id` but left migration 209's runtime functions reading `v_prompt.exam_id` â€” every claim RAISED `record "v_prompt" has no field "exam_id"`, breaking the whole async pipeline.** PR #889 checkpost (round 2) found the first pass incomplete: runtime consumers still read the live prompt, the snapshot had no DB-level immutability guard, exam context was re-derived from mutable `study_tasks` at each async stage instead of pinned at launch, and the new PG-gated test contaminated the shared CI database. All four addressed: (1) `writing_sessions.prompt_snapshot jsonb NOT NULL` now captures the FULL runtime-affecting prompt contract â€” `{schema_version, exercise_type, topic_id, prompt_text, source_text, required_words, required_sentence_count, difficulty_level, min_words, max_words, rubric_dimensions}` â€” and `app/backend/app/api/writing_practice.py` (`_session_prompt`, `submit_unit`) now reads resume/validation fields from the session snapshot, never live `writing_prompts`; (2) `writing_sessions.exam_id`/`exam_phase_id` are PINNED once at `ewp_create_writing_session` from the launch study_task (the same context validated for prompt applicability), NOT re-derived from `study_tasks` by the claim/drain RPCs â€” a task's exam_id changing or the task being deleted after launch can no longer redirect evidence attribution; (3) `ewp_guard_session_snapshot()` (CREATE OR REPLACE of the migration-205 trigger function; same trigger picks up the new body) now also rejects any service-role UPDATE of `prompt_snapshot`/`exam_id`/`exam_phase_id` after insert; (4) the behaviour test now provisions its OWN disposable database (`ewp_it_snapshot222`, created/dropped by the test module) instead of the shared `EWP_PG_DSN` database, since 214's column drop is permanent and was contaminating sibling modules that assume the pre-214 shape. Idempotency unaffected (evidence key excludes exam_id). Tests: `tests/study_os/test_writing_prompt_snapshot_behaviour.py` (11, isolated-DB, covers snapshot capture/expansion, exam pinning + NULL-without-task, both guard rejections, exam staying pinned after the task's exam_id is mutated, prompt-edit-after-session non-leakage across every snapshotted field, full sessionâ†’claimâ†’completeâ†’mastery-outboxâ†’evidence); `test_writing_practice_resume.py` updated so its fixture's live `writing_prompts` row deliberately diverges from `prompt_snapshot`, proving `_session_prompt` never reads the live row. **Verified locally on Postgres 16:** new suite 11/11; full cross-module isolation check (content_studio_ops + applicability_resolver + evaluator_rpcs + prompt_snapshot + prompt_targets_migration + rpcs_behaviour + rpcs_migration + schema + schema_integration) run together in one shared DB, matching CI's setup â€” 240/240, no contamination; `test_writing_practice_resume.py` 7/7. **OPERATOR / VERIFY DB:** apply 222 after 214 on the live DB; confirm against live `schema_migrations`. |
-| EWP-3 â€” Sentence Builder UI | MERGED â€” code on `main` (landed via the sentence-slice + GQR-S5 merges; last touched by `49dc7d1`). OPERATOR live click-through + Â§16 gate evidence PENDING (see EWP-6 row for the gate map). | `EnglishPracticeShell` (page at `pages/study/EnglishPracticeShell.jsx`) + `features/study/english-practice/`: `SentenceBuilder` (required-word `WordChips` + `words used: N/total`, `sessionStorage` autosave keyed by session+unit), `SentenceIssueCard` (UTF-16 span-verified highlight Â§4.5b via `utf16.js`), `RewriteEditor` (live `BeforeAfterDiff` + unchanged-rewrite guard), `BeforeAfterDiff` (word-level LCS diff), `WordChips`/`requiredWords` (case-insensitive whole-token match), `autosave`, data hook `useEnglishPracticeSession` (one source of truth â†’ `/api/study/practice/english/*`; mutations via `useApiAction`). Route `/app/study/practice/english/:sessionId` â€” mounted **UNDER `StudyShell`** inside `RouteErrorBoundary` per the design lock (NOT via `AttemptShellRouter`; **no sidebar destination** per the no-new-surface rule; entry via planner tasks). Registered in `appRoutes.jsx` + `navContract.test.js`. **Enriched resume contract (backend):** `GET /sessions/{id}` now returns `{session, prompt, units[], feedback_released}` with per-unit `latest_version` (answer + version number â†’ CAS baseline) + `latest_evaluation` (language issues), feedback-bearing fields gated by release (Â§13 rule 13); the shell derives the rewrite CAS from server state (not a local `1`) and seeds the rewrite editor from the resumed answer. **Async issue polling:** the shell polls the session (2.5s) while any unit is `evaluation_pending` â€” **cancellation-safe** (serialized `setTimeout` loop + monotonic load-token guard so a slow old poll or a session switch can never commit stale state) with a poll cap that surfaces a **timeout + manual "check again" retry** instead of hanging. **Autosave covers rewrites too** (`RewriteEditor` keyed by session+unit; restore over the server answer) and drafts are cleared **only after a successful submit** (failed/stale-CAS/network submits retain the recoverable draft). The accepted **before/after diff is retained through the `rewrite_required â†’ ready/completed` transition** and is **resumable on reload** (resume payload returns per-unit `previous_version`; shell diffs `previous_version â†’ latest_version`). **Cancellation-safe polling** uses a monotonic per-read sequence + generation guard so a slow older poll (even across independently-submittable units) and a submit-triggered refetch can never commit stale state; a committed submit **optimistically locks the unit to `evaluation_pending`** (no duplicate `ewp_stale_version` resubmit even if the refresh fails). Feedback gating **fails closed** client-side (`feedback_released === true`). Required-word matching supports hyphen/apostrophe compounds and dedupes case-variant duplicates in the `N/total` counter. Loading/error/pending states; feedback gated client-side too. Tests via `react-scripts test` (components + shell submit/poll/resume/gating + `requiredWords`/`WordChips`/`autosave`/unchanged-rewrite) + backend `test_writing_practice_resume.py` (resume shape + feedback gating); ESLint clean. **DEFERRED:** exam-mode `feedback_released_at` writer runtime (Â§9.3) â€” its own slice; live click-through (OPERATOR). **BLOCKED-BY:** none â€” EWP-2 (merged) + EWP-2B (#836, merged). |
-| EWP-4 â€” Grammar Lab and Error Lab | Error Lab: CODE-FIXED, VALIDATION PENDING (four original checkpost blockers, plus the five follow-up checkpost blockers, resolved in follow-up PR #853 â€” the original PR #848 shipped the pre-fix Error Lab). Migration 213: VERIFY DB â€” number **derived from repo max (212)+1 = 213** (filesystem-contiguous, `validate`/migration-numbers green); live `select max(version)::int+1 from schema_migrations` reconcile/rename is an OPERATOR / VERIFY DB step at apply (do not renumber blindly). Grammar Lab drills: DEFERRED (needs verified grammar-prompt bank â€” does not exist yet). | **Error Lab (this slice, buildable):** read-only surface of the caller's recurring writing issues grouped by microtopic. **Backend** â€” `GET /api/study/practice/english/error-lab` (drill-down: per-microtopic list of current-state issues with `issue_type`, `severity`, `quoted_text`, `explanation`, `suggested_text`, UTF-16 span, `created_at`; busiest microtopic first, recency-ordered within a group). **Server-side read model (checkpost F4):** the former Python `sessionsâ†’unitsâ†’versionsâ†’evaluationsâ†’issues` ID fan-out (`_released_evaluation_ids`/`_current_state_issue_events`) is replaced by **migration 213** â€” a `SECURITY DEFINER` read function `ewp_private.ewp_error_lab(p_user uuid)` (service_role-only: `REVOKE ALL â€¦ FROM PUBLIC, anon, authenticated` + `GRANT EXECUTE â€¦ TO service_role`) with a REST-callable public wrapper `public.ewp_error_lab(uuid)` (same REVOKE/GRANT matrix). It does the whole walk + fold + join in SQL: **the candidate issue set is scoped to `p_user` FIRST** (join issue_eventsâ†’evaluationsâ†’versionsâ†’unitsâ†’sessions on `sessions.user_id = p_user`), and ONLY those issues' reviews are folded via a correlated `LATERAL` "latest effective review per issue" lookup (follow-up checkpost F2 â€” the earlier global `DISTINCT ON` over the whole platform's review history before user-scoping is removed; supporting index `idx_writing_issue_review_events_effective (issue_event_id, created_at DESC, event_seq DESC)` added in 213). Owner-scoped, feedback-released only (learning always; exam `feedback_released_at <= now()`), `affects_current_state=true` (Â§4.8), **effective-invalidation excluded AND effective-reclassification applied (checkpost F1, Â§4.10a):** the latest review event by `(created_at DESC, event_seq DESC)` wins â€” an effective `reclassified` renders the **corrected `issue_type` + its remapped ACTIVE canonical microtopic** via `writing_issue_type_microtopic_map` (English-subject/active/`level='microtopic'` guard mirrored from migration 209), then joins canonical `topics` for `microtopic_name`/`microtopic_slug`. The Python endpoints call it once via `supabase.rpc("ewp_error_lab", â€¦)` and only shape/group; `error-summary` reads the same model. **Names not UUIDs (checkpost F2):** endpoint returns `microtopic_name`+`microtopic_slug` (id kept only as grouping key); `ErrorReview.jsx` renders the name (fallback "Unmapped issues"). **No new writes, no AI writes.** **Frontend** â€” `pages/study/ErrorLab.jsx` at route `/app/study/error-lab` mounted **UNDER `StudyShell` inside `RouteErrorBoundary`**, lazy-loaded, **no sidebar destination** (no-new-surface rule). **Contextual entry (checkpost F3):** a `type`-safe `Link` (`aria-label`) in `EnglishPracticeShell.jsx` (the feedback/review area) â€” the only entry point. Data hook `useErrorLab` over the four-state `useApiCollection`. `features/study/english-practice/ErrorReview.jsx` (Â§13.2) renders each microtopic group expandable; **Grammar Lab cross-links are disabled "coming soon" stubs** (`aria-disabled`), never wired to generation. Tests: backend `test_writing_practice_error_lab.py` (endpoint shaping/grouping/names over a fake `rpc()` â€” single owner-scoped call, no fan-out) + **Postgres-gated `test_writing_error_lab_read_model_behaviour.py`** (`EWP_PG_DSN`) proving `confirmedâ†’reclassified` corrected+remap, `reclassifiedâ†’confirmed` revert, same-timestamp `event_seq` tiebreak, invalidation exclusion, large-history single-call, **plus (follow-up F3) the SECURITY DEFINER privilege matrix via `SET ROLE`: `service_role` CAN execute `public.ewp_error_lab(uuid)`; `authenticated`/`anon` get `permission denied` even when passing ANOTHER user's UUID** (the `_review()` helper now supplies the NOT-NULL `reviewer_type` â€” follow-up F1, the backend-CI failure â€” so the suite runs end-to-end); frontend `ErrorLab.test.jsx` + `ErrorReview.test.jsx` (human label asserted) + `EnglishPracticeShell.test.jsx` (Error Lab entry click-through) + `navContract.test.js`. **DEFERRED:** Grammar Lab drill exercises â€” blocked on a verified grammar-prompt bank. **OPERATOR / VERIFY DB:** apply migration 213 (reconcile number), verify `pg_proc` REVOKE/GRANT + live Supabase round-trip for the read endpoint. **GQR-S5 UPDATE (CODE-FIXED, VALIDATION PENDING):** the learner page was renamed to **Improvement Lab** at canonical route `/app/study/improvement-lab`; `ErrorLab.jsx`/`ErrorLab.test.jsx` were replaced by `pages/study/ImprovementLab.jsx` composing three independent, `SectionBoundary`-isolated sections â€” **My Writing Errors** (`features/study/improvement-lab/MyWritingErrors.jsx`, the unchanged `ewp_error_lab` English authority), **Methods & Shortcuts** (Quant) and **Approaches & Patterns** (Reasoning) as `PlannedSection` placeholders (personalized feeds deferred to GQR-S6). `/app/study/error-lab` is preserved as a `<Navigate>` backward-compat redirect; internal links (`EnglishPracticeShell.jsx`, `subject_runtime_policy.py`) and route tests updated. See `docs/status/GQR-Solution-Strategies-Improvement-Lab-Checklist-2026-07-14.md`. |
-| EWP-5 â€” Planner integration (launch wiring + generation) | CODE-FIXED, VALIDATION PENDING â€” launch wiring DONE; planner GENERATION now DONE via the session-less planner-shaped-task approach (Â§11.1) | **Launch wiring â€” delivered earlier.** `launch.compute_action` (Â§11.1) is wired into mission-control: `_load_today_tasks` selects the typed launch columns (`launch_type`/`launch_entity_id`/`launch_context`) and, for `english_writing_session` tasks, emits `launch_type`, `launch_entity_id`, `action_url`, `action_label` on the serialized task; non-english tasks are left unchanged. **No URL is stored in the DB** â€” computed at response time only (no migration; launch columns exist from migration 205). Tests: mission-control launch serialization (english wiring + non-english untouched) live in `tests/study_os/test_mission_control.py`; `launch.compute_action` unit coverage in `tests/study_os/test_writing_launch.py`. **Planner GENERATION â€” delivered on `claude/ews-planner-generation-kqbo7i` (see `docs/status/EWS-Planner-Generation-PR-Plan-2026-07-10.md` PR-A).** DESIGN CHOICE: rather than the earlier eager-RPC design (a single RPC creating task+session+backlink+prompt-match atomically at plan time), generation uses the **session-less planner-shaped-task** shape Â§11.1 documents and #941 shipped/validated: the planner emits an `english_writing_session` `study_task` with `launch_entity_id=NULL` + `launch_context={exercise_type: sentence_construction}`, and the already-shipped `POST /api/study/tasks/{id}/launch-writing` resolves the prompt + creates the session on the learner's click. This reuses `_select_launch_prompt`'s verified+active+runtime-ready+applicability matching (no duplicate RPC, no eager session) and satisfies the goal (planner creates real EWP task rows, not operator-created). New module `app/backend/app/study_os/writing_practice/planner_tasks.py` (`resolve_writing_eligible_topic_ids` gate mirroring `_select_launch_prompt`; pure `build_writing_tasks`) wired into `planner._compute_plan` via `_generate_writing_tasks` + `_open_writing_topic_ids` (dedup excluding soon-to-be-cleared `planned` rows). Additive, capped by `_MAX_WRITING_TASKS`, `writing_task_count` recorded in `input_context`. **Review hardening (checkpost r2):** (a) dedup fails **closed** â€” `_open_writing_topic_ids` returns `_READ_FAILED` on a `study_tasks` read error and `_generate_writing_tasks` then skips generation, so a transient read never lets a duplicate through; (b) eligibility is pinned to `WRITING_EXERCISE_TYPE` (not "any runtime-ready type") so a future widened allowlist can't make a vocabulary-only topic emit a sentence task, and `_select_launch_prompt` now honors `launch_context.exercise_type` so a launched prompt's type can't diverge from the task's stamped type; (c) **regen FK safety (codex review)** â€” `launch_writing` now transitions a launched task `planned â†’ in_progress` (`_mark_task_started`), because `writing_sessions.study_task_id` is `NO ACTION` on delete (migration 205; unlike the PYQ/mock backlink's `ON DELETE SET NULL`, migration 063) so a launched task left `planned` would make `_persist`'s delete-of-planned cleanup fail on the FK and abort regeneration for the whole user. Tests: `tests/study_os/test_planner_writing_tasks.py` (17, incl. 3 e2e through `_compute_plan`, fail-closed dedup, and allowlist-widening pin) + `test_writing_launch_endpoint.py` (pinned-type selection + `plannedâ†’in_progress` on new-session and idempotent-reuse launch). **REMAINING refinements (not blockers):** difficulty-`level`-aware prompt personalization + effective-evidence-fold level derivation (Â§11.3) â€” deferred; current selection is topic + applicability + lexicographic-stable pick. **BLOCKED:** mastery live writes on Lane A gate; Â§10.3 shadow-to-live promotion gates + operator approval. **OPERATOR / VERIFY DB:** live mission-control round-trip from a planner-GENERATED row once a verified prompt bank exists at scale. |
-| EWP-SP1a â€” Semantic (LLM) evaluator adapter | PROPOSAL â€” governance doc merged; SHADOW authorized, LIVE BLOCKED | `docs/architecture/ewp-semantic-evaluator-adapter.md` is the explicit architecture justification required by the CLAUDE.md "LLM adapter only when justified in an architecture doc" invariant. **Authorizes:** building the semantic adapter behind the existing `LanguageEvaluator` boundary + `FF_WRITING_LLM_EVAL` (offâ†’shadowâ†’live) flag and running it in **SHADOW** (model called; disagreement/latency/cost/confidence recorded; ZERO lifecycle/mastery effect). Adds `prompt_text`/`source_text` to the evaluator Protocol, consuming the migration-222 session-snapshot source. Augments (never replaces) the SP1 deterministic source-comparison states (`source_unchanged`/`meaning_not_preserved`/`source_comparison_uncertain`); source mismatch routes to `needs_human_review`, **never** reuses `off_topic` (the PR #882 mistake). **Still BLOCKED:** LIVE mode + correction/grammar/vocab activation until the Â§5.2 promotion gates pass (per-exercise, min 500 human-labelled samples: FP â‰¤5%, FN â‰¤10%, source-mismatch precision â‰¥90%, p95 latency â‰¤8s, cost â‰¤US$0.02/unit, ZERO determinism-authority regressions) tied to Â§16 gate 5, plus operator sign-off. Default to latest Claude models; provider-swappable; no hardcoded secrets. Fail-closed on adapter error/timeout/low-confidence/uncertainty in every mode. No new AI writes; determinism authority unchanged (adapter may only ADD an issue or route to human review). |
-| EWP-SP1b â€” Semantic (LLM) evaluator adapter (SHADOW ONLY) | CODE-FIXED, VALIDATION PENDING â€” promotion still gated on Â§16 metrics | Real provider-backed semantic adapter (`app/backend/app/study_os/writing_practice/semantic_evaluator.py`, `SemanticLanguageEvaluator`) implementing the shipped `LanguageEvaluator` boundary, wired ONLY behind `get_semantic_shadow_evaluator()` when `FF_WRITING_LLM_EVAL=shadow`. `off` â†’ no adapter constructed/called; `live` â†’ still returns `None` from the shadow seam (NOT wired to canonical this PR). **Canonical path unchanged:** `get_language_evaluator()` stays the deterministic `MockLanguageEvaluator`; adapter output NEVER reaches `ewp_complete_language_evaluation` (worker persists only the deterministic result). **No mastery effect, no prompt activation, `cms_writing_gate_open('semantic_evaluator')` left CLOSED** (opening is a future migration). Provider = Anthropic SDK (`anthropic`, already a dep); model resolved from `EWP_SEMANTIC_MODEL` env (default a latest-Claude id), key from `ANTHROPIC_API_KEY` via the SDK â€” never hardcoded; provider-swappable. Strict JSON via tool-use (`record_semantic_evaluation`), `prompt_version` constant `ewp-sem-v1`. **Telemetry** into `writing_language_evaluator_runs` via `ewp_record_language_evaluator_run` (reuses migration 235 â€” NO new migration): provider / provider_model / prompt_version / confidence / input+output+total tokens / estimated_cost_usd (derived from token counts Ã— per-model USD/Mtok rate constant, rates per the claude-api reference Opus $5/$25, Sonnet $3/$15) / latency_ms / status â€” plus input hash + summary only; **no raw answer/prompt/source text persisted** (proved by test). **Resilience (arch doc Â§4):** 20s hard timeout, â‰¤2 retries with exponential backoff on transient errors, circuit breaker opens after 5 consecutive failures â†’ skips the provider for a 60s cooldown. **New telemetry statuses** `malformed` / `refusal` / `low_confidence` (+ `timeout` / `provider_error` / `skipped`+`circuit_open`) â€” shadow measurement only, route to NOTHING canonical. **Fail-closed:** any adapter/provider/telemetry failure leaves canonical deterministic completion byte-identical to shadow-off (proved). Tests: `tests/study_os/test_writing_semantic_adapter.py` (16 â€” mocked client: happy path + full telemetry, timeoutâ†’retryâ†’fail-closed, non-transient no-retry, circuit-breaker open+short-circuit+reset, malformed, refusal via stop_reason + verdict flag, low_confidence, worker integration proving shadow-failure inertness + shadow-success canonical determinism + no-raw-text, and off/live/shadow seam + deterministic-canonical guards). Existing writing suite green (`tests/study_os/` 1191 passed, 203 skipped; 1 pre-existing unrelated `fitz`/PyMuPDF failure in `test_writing_practice_routes.py`). **Promotion to LIVE still BLOCKED** on the Â§5.2 / Â§16-gate-5 metrics (per-exercise â‰¥500 human-labelled samples: FP â‰¤5%, FN â‰¤10%, source-mismatch precision â‰¥90%, p95 â‰¤8s, cost â‰¤US$0.02/unit, ZERO determinism regressions) + operator sign-off. **OPERATOR / VERIFY DB:** capture shadow-run telemetry against a live env with `FF_WRITING_LLM_EVAL=shadow` + a real key; confirm `writing_language_evaluator_runs` fills provider/model/tokens/cost/status; begin the Â§16 evidence window. |
-| EWP service_role table grants â€” migration 234 | CODE-FIXED, VALIDATION PENDING â€” apply + e2e | `234_ewp_service_role_table_grants.sql` grants `service_role` full CRUD on all 18 EWP tables (migration 205's `writing_*` set + `exam_descriptive_requirements` + `user_topic_mastery_evidence`, and 214's `writing_prompt_targets`). Migration 173's one-time blanket `grant â€¦ on all tables â€¦ to service_role` predated these tables and migration 205 granted `service_role` only on functions + the `effective_user_topic_mastery_evidence` fold view â€” never table-level CRUD. So the writing-practice backend (`get_supabase_admin()` == service_role, which bypasses RLS but still needs explicit Postgres grants) hit `42501 permission denied for table writing_sessions` in `launch_writing()`, surfaced by the writing-practice e2e (`POST /api/study/tasks/{id}/launch-writing` â†’ 500). Mirrors migration 225 (`pyq_stimuli` grant); idempotent. Number 234 = repo max (233) + 1. Contract test `tests/study_os/test_ewp_service_role_grants_migration.py` (18-table completeness + `writing_sessions` + PostgREST reload). **OPERATOR / VERIFY DB:** apply 234 after 233; confirm the writing-practice e2e flow goes green. |
-| EWP `.maybe_single()` zero-row crash â€” `writing_practice.py` | CODE-FIXED, VALIDATION PENDING â€” e2e | Real root cause of the writing-practice e2e red run (independent of, and not fixed by, migration 234's grants): the pinned `postgrest==2.29.0` client's `SyncMaybeSingleRequestBuilder.execute()` returns bare `None` â€” not a response object with `.data=None` â€” when a `.maybe_single()` query matches zero rows (confirmed by reading the installed package source). Eight call sites in `app/backend/app/api/writing_practice.py` (`_owned_session`, `_owned_task`, `_create_learning_session`'s prompt lookup, `_english_subject_id`, `submit_unit`'s unit lookup, `get_evaluation`'s evaluation/version/unit lookups) chained `.execute().data` directly on `.maybe_single()`, crashing with `AttributeError: 'NoneType' object has no attribute 'data'` on the legitimate "not found" case â€” an unhandled 500 instead of the intended 404/403. This is exactly what PR #906's SP5 negative specs trip (e.g. "unverified prompt is not launchable" expects 404, got 500). Introduced in PR #900; latent until #906's real-backend/real-Postgres e2e exercised the zero-row branch â€” the existing unit-test fake Supabase client's `execute()` always returns a response object, never bare `None`, so it never reproduced this. **Fix:** new `_maybe_single(query)` helper centralizing the None-guard; all 8 call sites now route through it. New regression suite `tests/study_os/test_writing_practice_maybe_single_none_guard.py` (6 tests) uses a fake client that DOES return bare `None` on a zero-row `.maybe_single()` match (matching real postgrest-py) â€” confirmed to fail against the pre-fix code and pass against the fix. Full `tests/study_os/` = 1182 passed, 203 skipped. **Also found, not fixed here (same unguarded pattern, out of scope for this PR):** `app/backend/app/api/pyq_practice_launch.py`'s `_owned_task` and `app/backend/app/study_os/writing_practice/applicability.py`'s `_resolve_exam_family`. **Merged (#923); e2e re-checked post-merge and found a SECOND, independent blocker** (see the next row â€” migration 236) â€” the `.maybe_single()` crash itself is confirmed gone from the e2e job log (zero `AttributeError` occurrences), but the job stayed red on that unrelated bug. |
-| `.maybe_single()` zero-row crash â€” deferred sites (`pyq_practice_launch.py`, `applicability.py`) | CODE-FIXED, VALIDATION PENDING | Completes the None-guard sweep #923 explicitly deferred as out of scope. Same pinned `postgrest==2.29.0` bug: `SyncMaybeSingleRequestBuilder.execute()` returns bare `None` (not a response object with `.data=None`) on a zero-row `.maybe_single()` match, so `.execute()).data` chained directly raises `AttributeError: 'NoneType' object has no attribute 'data'` on the legitimate "not found" case. Two live 500s fixed: (1) `app/backend/app/api/pyq_practice_launch.py::_owned_task` â€” a genuinely missing/unowned `study_tasks` row now 404s instead of 500ing; (2) `app/backend/app/study_os/writing_practice/applicability.py::_resolve_exam_family` â€” a missing `exams` row now resolves to `None` (no family) instead of 500ing. **Fix:** rather than re-add a per-module private helper, the #923 `_maybe_single` guard is CENTRALIZED into one shared `app/backend/app/db/utils.py::maybe_single` (checkpost review on #1000 flagged the triplicated logic against the AGENTS.md no-duplicate-logic rule); all THREE call-site modules â€” `writing_practice.py` (8 sites, migrated off its now-removed private copy), `pyq_practice_launch.py`, `applicability.py` â€” route through it. New regression suite `tests/study_os/test_maybe_single_none_guard_launch_applicability.py` (10 tests) uses a fake client that returns bare `None` on a zero-row `.maybe_single()` match (matching real postgrest-py) â€” helper unit coverage for both modules + `_owned_task` 404 (missing row + other-user row) + `_resolve_exam_family` None (missing exam + no exam_id) + positive-path assertions. Backend-only; no routing/nav/shared-locked file. All 10 pass; existing `test_pyq_practice_launch.py` + writing-applicability suites green, no regressions. |
-| EWP `ewp_complete_language_evaluation` pg_safeupdate 400 â€” migration 236 | CODE-FIXED, VALIDATION PENDING â€” e2e | Second, independent writing-practice e2e blocker found immediately after #923 merged (confirmed via the post-merge `main` push-triggered e2e job log, not the PR-scoped job â€” PR-scoped e2e is path-filtered and skips on backend-only diffs like #923's). Every call to `public.ewp_complete_language_evaluation()` (migration 209 â€” the RPC `evaluation_worker.run_worker_pass()` calls to finalize a language evaluation) returned HTTP 400 with body `{"message": "DELETE requires a WHERE clause", "code": "21000"}`. Root cause: Supabase's Postgres image runs the SECURITY DEFINER function's owning role (`postgres`) with the `pg_safeupdate` extension active, which rejects ANY unqualified UPDATE/DELETE statement â€” including one issued from inside a plpgsql function body, not only raw client SQL. Migration 209's function resets its per-call temp table with a bare `DELETE FROM _ewp_regressions;` (the table is `ON COMMIT DROP`, scoped to one call, genuinely needs every row cleared â€” there is no narrower predicate to add), which `pg_safeupdate` blocked on every single invocation; the evaluation-completion RPC had never once succeeded end-to-end. **Fix:** migration `236_ewp_complete_evaluation_safeupdate_fix.sql` â€” `CREATE OR REPLACE`s the identical function (migration 209 is immutable, per CLAUDE.md migration discipline; same 9-param signature, so existing grants/callers are unchanged) with that one statement changed to `DELETE FROM _ewp_regressions WHERE true;` â€” functionally identical (still deletes every row) but satisfies `pg_safeupdate`'s syntactic WHERE-clause requirement. New text-contract test `tests/study_os/test_ewp_complete_evaluation_safeupdate_migration.py` (6 tests, no live DB) asserts: the fixed migration exists with the matching signature; the bare-DELETE bug is NOT present in the new function body; migration 209 is left unpatched (immutability); and â€” by extracting + diffing both function bodies with only the one intended statement normalized back â€” the rest of the function is byte-for-byte identical to 209, proving this is a surgical one-statement fix and not a broader rewrite. Full `tests/study_os/` = 1204 passed, 203 skipped, no regressions. **VALIDATION PENDING:** confirm the writing-practice e2e job goes fully green on the next `main` push now that both the `.maybe_single()` fix (#923) and this migration are applied; apply migration 236 to staging/live after 235. |
-| EWP-6 â€” Paragraph Builder | SCAFFOLD CODE PRESENT (frontend, INERT â€” no gate opened), VALIDATION PENDING â€” **EWP-3 code is MERGED, so that leg is clear**; the remaining blockers are NOT code a session can land: (a) the locked delivery rule "Do NOT build until the sentence slice passes live E2E" (EWP-SP1 is OPERATOR PENDING) and (b) the Â§16 gates. **Â§16 gate map (code-side vs operator):** gates **1** (autosave no-lost-answer â€” `autosave.test.js`), **2** (idempotent version/rewrite â€” optimistic-lock + `ewp_stale_version` + unchanged-rewrite tests), **3** (word-count parity â€” `wordCount.test.js`), **6** (mastery-replay identity â€” evidence-key `ON CONFLICT` + batch set-equality, PG-gated), **7** (planner no-dup retest â€” `test_planner_writing_tasks.py` fail-closed dedup) have **in-repo test evidence**; gates **4** (curated UTF-16 span benchmark â€” dataset not yet in repo; `utf16.js` helper exists), **5** (human-labelled grammar FP rate), **8** (â‰¥1 `exam_descriptive_requirements.reviewer_status='verified'`), **9** (`FF_WRITING_MASTERY_WRITES` shadowâ†’live per Â§10.3 / Lane A), **10** (operator approval recorded here) are **OPERATOR/QA**. The paragraph release gate `cms_writing_gate_open('paragraph')` is **CLOSED** (migration 226) and opens only via a future migration + operator sign-off, so a coding session cannot ship a *launchable* Paragraph Builder. Design intent when unblocked: evidence-gated scaffolding (via `tier_rank`), outline scratchpad as `outline_json`. **SCAFFOLD LANDED (owner-authorized 2026-07-14, explicitly overriding the row-420 "do not build until the sentence slice passes live E2E" lock):** frontend-only, additive, and INERT â€” `features/study/english-practice/ParagraphBuilder.jsx` (compose surface for the Â§13.2 paragraph slot: word-count via the backend-parity tokeniser, autosaved draft, and the `outline_json` **outline scratchpad** â€” a client `sessionStorage` plan, NOT persisted to the backend in this scaffold) + shell dispatch in `EnglishPracticeShell.jsx` (`isParagraphExercise` routes the 5 `_PARAGRAPH_EXERCISES` types to ParagraphBuilder; every other type stays on SentenceBuilder). **NO route/nav/surface added, NO API, NO migration, NO schema write, NO gate opened** â€” `cms_writing_gate_open('paragraph')` stays CLOSED and no paragraph prompt is verified/active/launchable, so the branch is dead for real sessions and reachable only by tests until Â§16 opens the gate. Tests: `ParagraphBuilder.test.jsx` (compose/word-count/autosave + outline add/edit/remove + outline_json persist/restore + clear-both-on-success / keep-both-on-failure) and a shell dispatch test in `EnglishPracticeShell.test.jsx`. **REMAINING for a launchable EWP-6 (unchanged, all operator/gated):** the Â§16 operator gates (4/5/8/9/10), the paragraph rubric (`rubric_id` on paragraph prompts + a seeded rubric â€” Stage-3 `rubric_dimensions`), backend `outline_json` persistence + submit-contract wiring, and opening the paragraph release gate (a future migration + operator sign-off). |
-| EWP-7 â€” Descriptive mock runtime | PLANNED â€” blocked on EWP-6 stable + release gates Â§16 of architecture doc | Extends mock `AnswerBody`. Adds `descriptive` interface mode to `AttemptShellRouter`. Wires M176/M177 columns. |
-| `FF_WRITING_MASTERY_WRITES` | BLOCKED â€” live prohibited until Lane A gate clears | Defaults to `off`. Shadow mode is permitted at any time. Live mode blocked on Lane A gate + Â§10.3 promotion gates + operator approval; `live` publishes to the unified aggregator, never writes `user_topic_mastery` directly. |
-| `version_set_hash` test vector | CODE PRESENT IN PR #821 (open) | Backend helper `app/study_os/writing_practice/version_set_hash.py` + pinned SHA-256 vector in `test_version_set_hash.py`. Clients consume the hash and never compute it (AGENTS.md EWP-3); no client-side parity test. API integration assertion deferred to EWP-2 (endpoint that returns the hash). |
-| UTF-16 span offset contract | PLANNED â€” required in EWP-2 | `span_start_utf16 + span_end_utf16 + quoted_text` verification in both Python evaluator and React frontend. |
-| Prompt bank seed | REPO-AUTHORED (not imported/verified/active) â€” RUNTIME CODE BLOCKERS before activation â€” **OWNERSHIP REVISED (Content Studio, migration 214)** | **270 prompts repo-authored** in `app/supabase/seeds/writing_prompts/` (50 sentence-construction + 50 sentence-correction + 100 grammar + 50 vocabulary + 20 paragraph). Distinct states â€” **Repo-authored** (this PR âœ…) â†’ **Imported** (pending/inactive rows, â›”) â†’ **Verified** (â›”) â†’ **Active** (â›”, gated). Files are **UI-uploadable row arrays** (the shape `PromptBulkImport.jsx` parses; operator enters `subject_id`+`reason` in the form); `to_api_envelope.py` wraps a file into the `{reason, subject_id, rows}` API envelope for `curl`. Import is the audited `cms_bulk_upsert_writing_prompts` RPC â†’ `reviewer_status='pending'`/`is_active=false` (NOT raw SQL). **Taxonomy IDs are NOT assumed portable:** rows bake the deterministic 205 IDs, but 205 is insert-if-absent (`ON CONFLICT (slug) DO NOTHING`), so a pre-205 English taxonomy has different live IDs â†’ `invalid_scope`; **mandatory `preflight_ids.py` (EWP_PG_DSN)** proves every baked subject/topic/microtopic ID is the live, active, correctly-parented row before POSTing. Tests: `tests/study_os/test_writing_prompt_seed.py` (arrays, microtopicâ†’topic parentage, required-word tokenizer + case-insensitive uniqueness, generatorâ†”committed byte-identity, real `WritingPromptBulkRow` parse in backend CI). **RUNTIME CODE BLOCKERS (must land + have behavior tests before activating affected types; NOT operator-only):** (1) **evaluator prompt/source context** â€” RPC half LANDED in migration 222: `ewp_claim_evaluation_job` now returns `prompt_text`/`source_text` (from the immutable session snapshot). REMAINING (worker half, design-gated): `evaluation_worker` still evaluates with only `answer_text`+`exercise_type` â€” it does not yet CONSUME the surfaced source to score meaning-preserving correction (a clean unrelated sentence still passes). A gated real-adapter design is now proposed in `docs/architecture/ewp-semantic-evaluator-adapter.md` (PROPOSAL â€” not yet approved): `FF_WRITING_LLM_EVAL` off/shadow/live flag, fail-closed on adapter error/low-confidence, a NEW source-comparison outcome routed to `needs_human_review` (deliberately NOT reusing `off_topic` â€” the PR #882 mistake this replaces). Correction/grammar/vocab types stay inactive until the doc is approved AND the shadow-mode false-positive/negative rate + cost/latency are measured per Â§16 gate 5; (2) **paragraph rubric** â€” the 20 paragraph rows omit `rubric_id` and no rubric is seeded, so Stage-3 persists empty `rubric_dimensions=[]` â†’ paragraph stays inactive (also blocked by EWP-6 Â§16). **DONE:** the EWP_PG_DSN-gated behavior test importing all 5 seed files via the RPC (270 pending/inactive + idempotent re-import) LANDED â€” `tests/study_os/test_writing_prompt_seed_import_pg_behaviour.py` (isolated throwaway DB, migrations 205â†’213â†’214â†’215, per-batch created counts 50/50/100/50/20, no verified/active leak, re-import all-`unchanged`). **DONE (editorial):** the documented editorial answer-key/rationale fixture per correction prompt now lives in `app/supabase/seeds/writing_prompts/answer_keys/` â€” 186 entries (50 sentence-correction + 100 grammar + 36 source-bearing vocabulary), keyed by `external_key`, each with `error_type`/`reference_answer`/`acceptable_variants`/`rationale` and an echoed `source_text` that byte-matches the seed row; the 14 open-ended production vocab rows (`use the word` / `write one sentence using`) plus sentence-construction and paragraph are excluded by design (no single canonical answer). Exclusion rule is now exactly "no `source_text` âŸº production": one formal-rewrite row (`ewp-seed-vocab-034`) that had embedded its source in `prompt_text` was normalised in the seed (`source_text`/generic instruction, matching its 11 siblings) so no correction prompt is dropped. Content-only reviewer/evaluator-gold reference; NOT imported, NOT runtime. **Prompts are subject-scoped canonical content in the shared Content Studio (NOT the Exam Workspace CMS).** Applicability via `writing_prompt_targets`. **The duplicate migration 219 on main is repaired in a separate migration-history PR (with live `schema_migrations` evidence), not here.** See `docs/architecture/content-studio.md` + EWP Â§17 (revised) + the seed README. |
-| EWP content scoping â€” migration 214 (drop `writing_prompts` exam-scope columns + `writing_prompt_targets`) | CODE-FIXED / VERIFY DB â€” RLS policy + apply are OPERATOR PENDING | `214_writing_prompt_content_scoping.sql` (revised per initial checkpost **and follow-up checkpost P0-1..P0-4, P1**): **(1) Backfill BEFORE drop (idempotent)** â€” non-cycle legacy prompts (`exam_cycle_id` NULL) â†’ `active` phase/exam target (`source_basis='legacy_backfill'`); **legacy prompts with `exam_cycle_id IS NOT NULL` are QUARANTINED (follow-up P0-2)** â†’ `applicability_status='pending_review'`, `source_basis='legacy_cycle_quarantine'`, provenance in `metadata` (`legacy_exam_cycle_id`/`legacy_exam_id`/`legacy_exam_phase_id`), scoped most-specific (phase else exam else defensive `is_global`) so cycle content is held for operator disposition, **not silently widened**. `INSERT â€¦ SELECT â€¦ ON CONFLICT DO NOTHING`, guarded by `information_schema` column-existence check so re-apply is a no-op. **(2) DROP the dual-authority columns** `exam_id`, `exam_cycle_id`, `exam_phase_id` from `writing_prompts` (canonical prompts **subject-scoped**; `writing_prompt_targets` is the SOLE applicability authority). 205's `idx_writing_prompts_exam` + `idx_writing_prompts_active` are `DROP INDEX IF EXISTS` FIRST (205 not edited), replaced by `idx_writing_prompts_active_subject â€¦ WHERE reviewer_status='verified' AND is_active=true`. **(3) DEFAULT-DENY + explicit global (follow-up P0-1):** added `is_global boolean NOT NULL DEFAULT false`; `CHECK (num_nonnulls(exam_family_id,exam_id,exam_phase_id) + (is_global)::int = 1)` (**exactly one of** {global, family, exam, phase}) + null-safe unique index `(prompt_id, is_global, exam_family_id, exam_id, exam_phase_id) NULLS NOT DISTINCT` (blocks a duplicate global row). Contract: applicable **IFF** an `active` matching target exists (active `is_global`, OR active family/exam/phase per phase>exam>family); **no active target â‡’ NOT applicable (unassigned), never global** â€” deletion/exam-cascade/pending-only can never widen access (fail-closed). `excluded` subtracts from an explicit active broader scope; `pending_review` inert. Documented identically in migration header + content-studio.md + EWP Â§17.1/Â§17.2 + domain-model.md (no leftover "no rows = global"). **(4) ACTIVATION GATE now migration-enforced (follow-up P0-4):** Â§5 runs `UPDATE writing_prompts SET is_active=false WHERE is_active=true` after the drops (fail-closed until resolver/enforcement/public-read-replacement land). **(5) RLS** ENABLED, service-role-managed, NO client allow policy (Â§12.2). Evergreen â€” NO `exam_cycle_id`. **(6) Duplicate-topic seed bug (follow-up P0-3):** PG-test seed no longer inserts a second top-level `grammar` (205 already seeds it; NULL parent never collides on the UNIQUE) â€” reuses 205 rows, deterministic topic subqueries (`parent_topic_id IS NULL ORDER BY created_at LIMIT 1`); isolated throwaway-DB fixture retained. Filename stays **214** (filesystem max on main = 213; strict `migration-numbers` guard requires exactly 214). **OPERATOR ORDER (P1):** apply pending **213 (Error Lab) first**, then **214**. **OPERATOR-ATTESTED (VERIFY DB, 2026-07-02):** operator attests live `SELECT max(version) FROM supabase_migrations.schema_migrations = 212` (operator-attested, not self-derived â€” live query can't run in the CI container). **OPERATOR / VERIFY DB:** `SELECT * FROM pg_policies WHERE tablename='writing_prompt_targets'` shows RLS on + no authenticated/anon policy. Postgres-gated test `test_writing_prompt_targets_migration_behaviour.py` (EWP_PG_DSN) proves column drops, backfill + idempotency, exactly-one-scope CHECK (incl. is_global), duplicate-global reject, default-deny (target delete / exam-cascade / pending-only â‡’ no active target), cycle quarantine (exam+cycle, exam+cycle+phase; metadata carries cycle; re-apply no-dup), activation-gate deactivation, cascade, RLS. Resolver + Content Studio UI + public-read replacement are LATER PRs (see activation gate row). |
-| EWP Prompt Operations â€” Content Studio write path (migration 215 + `content_studio` router) | CODE-FIXED, VALIDATION PENDING â€” reworked onto main's Content Studio (subject-scoped) architecture after #858 superseded the earlier exam-scoped draft; RPC apply + live round-trip OPERATOR PENDING | **Reworked** (was PR #855's exam-scoped model; **rebuilt subject-scoped** to fit migration 214/#858 â€” NO exam columns reintroduced). **Migration `215_writing_prompt_content_studio_ops.sql`** â€” all atomic `SECURITY DEFINER`, service-role-only (`REVOKE â€¦ FROM PUBLIC, anon, authenticated` + `GRANT â€¦ TO service_role` per function): **(1)** subject-scoped idempotency index `uq_writing_prompts_external_key ON (subject_id, metadata->>'external_key') WHERE â€¦ NOT NULL`; **(2)** activation-integrity CHECK `writing_prompts_active_requires_verified` (`is_active=false OR reviewer_status='verified'`) â€” compatible with 214's fail-closed deactivation; **(3)** helpers `ewp_assert_reason` (8â€“500), `ewp_writing_prompt_content_differs`, `ewp_validate_prompt_scope(subject,topic,microtopic,document)` â€” subject must be active `english-language`, topicâˆˆsubject, microtopic active/`level='microtopic'`/child-of-topic, source document `scope='admin_exam_intelligence'`/allowed kind/statusâˆ‰{failed,archived}/storage present, and **topic must be active + `level='topic'`** (P1 checkpost) (**no exam scope** â€” content is reusable); **(4)** `cms_create_writing_prompt` (forces `pending`/`is_active=false`, audit), `cms_review_writing_prompt` (reviewer transitions pendingâ†”needs_correctionâ†’verifiedâ†’rejected; **MANDATORY** `updated_at` CAS â€” a NULL token fails closed 409 so the RPC contract itself can't bypass the optimistic lock; **re-runs `ewp_validate_prompt_scope` before `verified`** so a topic/document that went inactive/archived after authoring can't verify; `is_active` only ever cleared, never set â€” activation stays gated), `cms_update_writing_prompt` (verified-locked â†’ `prompt_verified_locked`; **MANDATORY** `updated_at` CAS; scope re-validated), `cms_bulk_upsert_writing_prompts` (subject-scoped `external_key` required, lifecycle-safe: identical=unchanged, changed pending/needs_correction=update+reset, changed verified/rejected=`bulk_locked_row`, in-batch duplicate rejected; **per-(subject,key) `pg_advisory_xact_lock`** so a concurrent first-import of the same key serializes instead of aborting on the unique index); **(5)** Exam Assignments write path **split by the locked J2 authority separation** (P0 checkpost â€” manage never promotes activation state): `writing_prompt_targets` gains an `updated_at` revision token, and the single upsert is replaced by `cms_propose_writing_prompt_target` (**manage**: INSERT-ONLY inert `pending_review`; duplicate (prompt,scope) â†’ `target_exists` 409, never a silent overwrite), `cms_review_writing_prompt_target` (**review**: `pending_review`â†’`active|excluded`, mandatory CAS, **global-exclude rejected** as `invalid_scope`, audits exact oldâ†’new), `cms_remove_writing_prompt_target` (**review**: mandatory CAS, audits the exact old row â€” never `old_value=NULL`). **NO activate RPC** â€” reactivation is the resolver PR's gate (see activation-gate row). **Router `app/api/content_studio.py`** at `/api/admin/content-studio` (registered in `server.py`): Library/Review-Queue (list/get/create/patch/bulk/review over writing-prompts) + Exam-Assignments (list/propose/review/remove targets). **Permissions:** reads = `content_studio.author` OR `content_studio.review` OR `exam_intelligence.manage` OR `exam_intelligence.review` OR super_admin; author/patch/bulk = `content_studio.author`; prompt review = `content_studio.review`; target **propose = `exam_intelligence.manage`**; target **review/remove = `exam_intelligence.review`** (J2 lifecycle authority). Strict Pydantic boundary (`extra='forbid'`, StrictInt/StrictStr/UUID, explicit-null rejection on NOT-NULL columns, merged min/max word-bound â†’ controlled 422 via `exc.json()`), ERRCODEâ†’HTTP mapping (P0404â†’404, P0409â†’409 incl. `target_exists`, P0422â†’422). New perm constants `CONTENT_STUDIO_AUTHOR`/`CONTENT_STUDIO_REVIEW`/`EXAM_INTELLIGENCE_REVIEW` in `core/permissions.py`. **Deep-checkpost round 2 also addressed:** (a) **client-supplied CAS** â€” PATCH/review bodies now carry `expected_updated_at` (+ `expected_status` for review) and the router passes the CLIENT token unchanged (no pre-write fresh SELECT), so a stale-browser edit-after-edit / review-after-author-edit loses with 409; (b) **`metadata.external_key` is system-owned + immutable** â€” create/patch reject it (router + RPC `reserved_metadata_key`), patch preserves it across metadata edits, bulk MERGES metadata (no provenance-erase), and migration 215 preflights duplicate `(subject,external_key)` before creating the unique index; (c) **NULL-safe source-document provenance** (`scope/kind/status` NULL now fail, not fall open); (d) **UUID boundary typing** on all path/query IDs â†’ malformed â†’ controlled 422 (not swallowed 404 / 500); (e) **prompt-content canonicalization** â€” blank `prompt_text` and blank/multi-token/case-duplicate `required_words` rejected at the API (NFC+trim, single-token per backend tokenizer) AND coarsely in-DB via `ewp_assert_prompt_content`. Tests: router-layer `tests/exam_intelligence/test_content_studio_writing_prompts.py` (53 â€” perms incl. propose/review/remove split, strict validation, read filters, transition guard, **client-CAS token requirement + pass-through**, **reserved-metadata + required-word/prompt-text canon**, **malformed-UUID 422**, error mapping through a **real `postgrest.APIError`**, no-activate-route assertion) + **Postgres-gated `tests/study_os/test_content_studio_ops_pg_behaviour.py`** (55, EWP_PG_DSN; applies 205â†’213â†’214â†’215 on an isolated throwaway DB) proving create/audit/pending-inactive, scope rejections (non-english subject, **inactive topic, wrong-level topic**, cross-topic microtopic, archived + **NULL scope/kind/status** document), **content guards** (blank prompt, blank/multiword/case-dup required word), **external_key reservation/immutability + re-import-after-edit idempotency + provenance preservation**, activation CHECK, review transitions + **mandatory/stale CAS** + **scope re-validation on verify**, verified-lock, bulk lifecycle + **concurrent same-key import** (advisory-lock serialized) + **review-vs-curation / review-vs-bulk stale-loses**, target **propose(pending)/review(active|excluded)/remove** with CAS + exact old/new audit + **global-exclude reject** + valid exam-scope exclusion + **concurrent same-target review race** (exactly one wins), and the service-role-only privilege matrix. **OPERATOR / VERIFY DB:** apply 215 after 213â†’214; provision `content_studio.author`/`content_studio.review` (+ `exam_intelligence.manage`/`review`) in trusted app metadata for the intended operators; capture the live `213â†’214â†’215` sequence proof; live Supabase round-trip for the RPCs; confirm `has_function_privilege` REVOKE/GRANT on live. |
-| EWP prompt **activation gate** (blocks aspirant launch) | GATE â€” **ALL THREE LEGS CODE-FIXED, VALIDATION PENDING** (resolver + session enforcement + migration 218 public-read lockdown on branch `claude/ewp-applicability-resolver`) â€” reactivation remains OPERATOR PENDING until 218 is applied live + live enforcement round-trip is proven | Migration 214 Â§5 deactivated all prompts (fail-closed). The three reactivation preconditions now have code: **(a) resolver** `app/backend/app/study_os/writing_practice/applicability.py` â€” deterministic, service-role, default-deny over `writing_prompt_targets` (explicit `is_global` only; precedence phase>exam>family>global; `excluded` subtracts at the most specific matching band; `pending_review`/any non-active|excluded status inert â€” never widens); **(b) session-creation enforcement** â€” `POST /api/study/practice/english/sessions` derives the authoritative exam context from the caller-owned `study_tasks` row (`exam_id`/`exam_phase_id`, migration 034 columns; never a client-supplied exam) and rejects a non-applicable `prompt_id` with 403 BEFORE the create RPC; with no study_task there is no exam context and only an explicit active GLOBAL target passes (fail-closed); the resolver is also exported as the mandatory planner selection primitive (`resolve_applicable_prompt_ids`); **(c) migration `218_writing_prompts_public_read_lockdown.sql`** drops `writing_prompts_public_read` (205 Â§12) with NO replacement client policy â€” RLS stays ENABLED so anon/authenticated read ZERO prompt rows; prompts reach aspirants only via the service-role backend through the resolver. `exam_descriptive_requirements_public_read` intentionally untouched (requirements metadata, not launchable content). Tests: `test_writing_applicability_resolver.py` (22, pure/unit + FastAPI enforcement â€” passing) + Postgres-gated `test_writing_applicability_resolver_behaviour.py` (14, `EWP_PG_DSN`, isolated throwaway DB applying 205â†’213â†’214â†’215â†’218 and deliberately SKIPPING 216/217 as unrelated; psql calls all timeout-bounded): default-deny, explicit-global, exclusion-subtracts, pending-never-widens, target-delete/exam-cascade never widen, phase-vs-exam isolation, plus two end-to-end DB-path tests that drive `applicability.is_prompt_applicable` (examsâ†’`exam_family_id` join + `writing_prompt_targets` fetch) through a psql-backed service-role shim over REAL rows (`study_tasks` bootstrap extended with the migration-034 `exam_id`/`exam_phase_id` columns), policy removed from `pg_policies`, RLS still enabled, authenticated reads 0 rows. **VERIFY DB / OPERATOR PENDING:** migration number 218 chosen as filesystem MAX_ON_MAIN(217)+1 per the `migration-numbers` CI guard â€” live `schema_migrations` max could NOT be queried from the container (last operator attestation was 212 on 2026-07-02); operator must reconcile the live number and apply in order pending 213â†’214â†’215â†’216â†’217â†’218, then verify `SELECT * FROM pg_policies WHERE tablename='writing_prompts'` shows NO `writing_prompts_public_read` and RLS enabled, plus a live launch round-trip (applicable prompt launches; non-applicable 403). Prompt reactivation (`is_active=true` for the seeded bank) stays gated on that operator proof. |
-| EWP-SP2 â€” prompt **activation lifecycle** (backend only) | CODE-FIXED, VALIDATION PENDING â€” migration apply + live round-trip OPERATOR PENDING; Content Studio activate button is a LATER serial frontend step (still gated per the Content Studio surface row) | Adds the activation path migration 215 deliberately omitted. **Migration `226_ewp_prompt_activation_lifecycle.sql`** (RENUMBERED from 224 â†’ 226 in the migration-history repair PR: PR #894 landed `224_pyq_bulk_import_v2_uniqueness.sql` first + `225_pyq_stimuli_service_role_grant.sql` took 225, colliding on `schema_migrations` version 224 on main; repaired to the next contiguous slot 226; apply after 215) â€” two atomic `SECURITY DEFINER`, service-role-only RPCs (`REVOKE â€¦ FROM PUBLIC, anon, authenticated` + `GRANT â€¦ TO service_role`): **`cms_activate_writing_prompt(p_prompt_id, p_expected_updated_at, p_reason, p_exercise_runtime_allowlist?, p_actor_user_id, p_actor_email)`** â€” NOT a boolean toggle: under a row lock it collects ALL preconditions and on ANY failure returns a structured `{eligible:false, blockers:[...]}` result and writes NOTHING; only when every precondition passes does it set `is_active=true`, bump `updated_at`, and audit oldâ†’new (`writing_prompt_activate`). Blocker codes: `prompt_not_verified`, `already_active`, `no_active_applicability_target` (default-deny â€” an `active` `writing_prompt_targets` row must exist), `exercise_type_not_runtime_ready` (server-owned allowlist), `semantic_evaluator_not_live` (source-dependent types), `rubric_missing` + `paragraph_gate_closed` (paragraph types), `invalid_scope` (re-runs `ewp_validate_prompt_scope`), `reason_required` (8..500). CAS is a HARD error (NOT a blocker): a NULL or mismatched `p_expected_updated_at` â†’ `P0409 concurrent_modification (stale_prompt)`; missing prompt â†’ `P0404 not_found`; NULL actor â†’ `P0422 missing_actor_id`. **`cms_deactivate_writing_prompt`** â€” CAS + reason + audit (`writing_prompt_deactivate`); sets `is_active=false`. **Server-owned readiness constants surfaced to SQL as IMMUTABLE functions (no client-writable settings row, no heuristic):** `cms_writing_runtime_ready_types()` (allowlist â€” **starts with ONLY `sentence_construction`**; correction/rewrite/reconstruction/vocab/paragraph excluded), `cms_writing_source_dependent_types()`, `cms_writing_paragraph_types()`, and `cms_writing_gate_open(gate_key)` â€” the semantic-evaluator gate (`FF_WRITING_LLM_EVAL` "live" state) and the paragraph (EWP-6 Â§16) release gate are BOTH CLOSED (`false`) and fail closed; opening a gate is a FUTURE migration (`CREATE OR REPLACE`), never a runtime write, keeping activation deterministic + immutable-once-merged. The optional `p_exercise_runtime_allowlist` can only NARROW (intersect) the server set â€” never widen. **Activation is a NEW authority `content_studio.activate`** (constant added to `core/permissions.py`, distinct from `.author`/`.review` â€” neither may activate; only `content_studio.activate` or super_admin). **Router** `app/api/content_studio.py`: `POST /api/admin/content-studio/writing-prompts/{prompt_id}/activate` + `/deactivate`, strict Pydantic (`extra='forbid'`, `expected_updated_at` + `reason`), permission-gated on `content_studio.activate`. **Eligibility-blocked returns HTTP 200 with `{eligible:false, blockers}`** (a valid answer, not an error); CAS mismatch â†’ 409; malformed â†’ 422. The API/frontend NEVER compute eligibility â€” the RPC does. No new tables (RPCs + IMMUTABLE functions on existing tables) â†’ no RLS surface introduced. Tests: router-layer `tests/exam_intelligence/test_content_studio_writing_prompts.py` (added: activate/deactivate route registration, author/review CANNOT activate, only `content_studio.activate`/super_admin, CAS + reason + `extra=forbid` validation, no-widen allowlist omission, eligibility-blocked-is-200-with-blockers, staleâ†’409/not_foundâ†’404/malformedâ†’422 mapping) + Postgres-gated `tests/study_os/test_ewp_activation_lifecycle_pg_behaviour.py` (applies 205â†’213â†’214â†’215â†’226 on an isolated throwaway DB; proves each blocker path writes nothing + no audit, the happy path flips `is_active` + audits oldâ†’new, deactivate round-trips, mandatory/NULL/stale CAS â†’ 409, not_found, NULL actor, caller-allowlist-can-only-narrow, and the service-role-only privilege matrix). Verified locally against real Postgres (74 PG-gated passed incl. the sibling 215 suite; router 68 passed). **OPERATOR / VERIFY DB:** reconcile the live `schema_migrations` number and apply 226 after 215; provision `content_studio.activate` in trusted app metadata for the intended operators; capture a live Supabase activate/deactivate round-trip; confirm `has_function_privilege` REVOKE/GRANT on live. |
-| EWP-SP2-UI â€” Content Studio prompt **activation affordance** (frontend) | CODE-FIXED, VALIDATION PENDING â€” no gate opened (backend authority unchanged); operator provisioning of `content_studio.activate` still OPERATOR PENDING per the SP2 backend row | Surfaces the shipped SP2 activate/deactivate RPCs in the Content Studio Library. **Serial-delivery lock respected** â€” only Content Studio's OWN pages touched: `contentStudioApi.js` (+`activateWritingPrompt`/`deactivateWritingPrompt` mutations through the data-layer `api` adapter, never raw `fetch`; +`ACTIVATION_BLOCKER_LABELS`/`describeActivationBlocker` codeâ†’text map), `permissions.js` (+`canActivate` = `content_studio.activate` OR super_admin â€” distinct from author/review), new `PromptActivation.jsx` dialog, `PromptLibrary.jsx` row action, `ContentStudio.jsx` stale "no activate control" comment corrected. No AdminShell/adminRoutes/nav/ExamWorkspace/shared-file edits; no new top-level route/surface; component stays lazy/admin-only. **Affordance:** an Activate button on `reviewer_status='verified'` prompts (Deactivate when `is_active`), rendered ONLY with `canActivate` (hidden otherwise). The dialog requires a reason (8â€“500) and sends the client's `expected_updated_at` (CAS) UNCHANGED (no pre-write refetch), mirroring PATCH/review. **Eligibility is NEVER computed client-side** â€” on the RPC's HTTP-200 `{eligible:false, blockers}` verdict the dialog renders an explicit "Activation blocked" state listing each blocker code as human-readable text; success reflects the returned `is_active`; 409 â†’ conflict/re-read; 404/422 â†’ explicit error + retry (no silent failure). **Tests:** `__tests__/ContentStudio.test.jsx` (+11 â€” permission gating hidden/visible/verified-only/activeâ†’Deactivate; reason required; CAS pass-through unchanged; `{eligible:false, blockers}` â†’ "Activation blocked" with `no_active_applicability_target` + `semantic_evaluator_not_live` rendered and no success; success reflects is_active; 409 conflict; 422 error+retry; deactivate round-trip) â€” 48 passed; ESLint clean on changed files. **NO gate opened** â€” backend RPC/authority unchanged; this is affordance-only. **OPERATOR PENDING:** provision `content_studio.activate` for intended operators (shared with the SP2 backend row); live round-trip depends on migration 226 applied. |
-| EWP planner / aspirant prompt-listing applicability filter (`resolve_applicable_prompt_ids`) | PLANNED â€” primitive shipped on branch `claude/ewp-applicability-resolver`, no in-repo caller yet | `app.study_os.writing_practice.applicability.resolve_applicable_prompt_ids(supabase, prompt_ids, *, exam_id, exam_phase_id)` is the REQUIRED, mandatory applicability filter for ANY future EWP planner or aspirant prompt-listing surface: such a surface MUST pass its candidate prompt ids through this primitive and surface only the returned subset â€” it may NOT re-derive applicability, query `writing_prompt_targets` directly, or bypass the default-deny resolver. Not wired into any listing/planner endpoint yet (deliberate â€” wiring touches planner/mission-control surfaces under the serial-delivery routing lock, so it is a separate sequential PR). This row exists so a future listing endpoint cannot silently ship without the filter. Session-creation enforcement already uses the sibling `is_prompt_applicable`. |
-| Content Studio â€” consolidated content admin surface (architecture decision) | CODE PRESENT IN PR #868 (draft), VALIDATION PENDING â€” UI + nav consolidation present in the serial-delivery PR (not yet merged); live click-through with provisioned permissions OPERATOR PENDING | `docs/architecture/content-studio.md`: single admin destination (Library / Review Queue / Bulk Import / Exam Assignments) that creates+governs canonical content; **one content system, subject as a filter** (content types objective_question / writing_prompt / grammar_drill / quant_drill / reasoning_puzzle / passage_set / descriptive_prompt) â€” explicitly NO separate `/admin/english\|quant\|reasoning`. **No-new-surface rule satisfied:** removes 3 Mock Content destinations (`/admin/mocks/questions`, `/admin/mocks/review-queue`, `/admin/mocks/import`), adds 1 (net âˆ’2) â€” IA lock Â§1.2. Division: Content Studio = create/govern; Manage Exam = applicability + coverage (Practice-Content-Coverage summary + `Content Studio?exam_id=â€¦&cycle=â€¦&phase=â€¦` hand-off; does NOT own/edit content); Study OS = select/deliver. Withdraws "prompts in Exam Workspace CMS" (EWP Â§17) + the "PYQ Workbench \| Prompt Bank \| Updates" ExamWorkspace tab plan. **UI present in PR #868 (draft â€” not merged):** `/admin/content-studio?tab=library\|review-queue\|bulk-import\|exam-assignments` (`pages/admin/content-studio/`); nav = one Content Studio entry replacing the Mock Content group; the 3 legacy routes redirect with query params carried through, incl. URL-backed page state on the objective review queue (question-editor drill-ins retained); objective-question tabs reuse the existing mocks pages; writing-prompt tabs wire the #855 contract (reason envelope, `expected_updated_at`/`expected_status` CAS with 409 re-read guidance, dirty-diff PATCH with explicit-null clearing of nullable fields, verified+rejected edit lock, full-snapshot review, shared backend-parity required-words/int validation, `total`-based pagination, atomic bulk import â€” hardened RFC-4180 CSV parsing, unknown-column rejection, 500-row cap, single batch-level error banner, `result.{created,updated,unchanged}` â€” Libraryâ†’Exam-Assignments deep link, and the J2 proposeâ†’review/remove Exam Assignments split; **NO prompt activate affordance** â€” gated). Reviewer-notes author read-back + Manage-Exam coverage panel/deep link + friendlier taxonomy pickers still deferred (see handoff doc). |
-| Prompt Bank tab in Exam Workspace (`ExamWorkspace` "PYQ Workbench \| Prompt Bank \| Updates") | **PAUSED / SUPERSEDED** by Content Studio decision (2026-07-02) | Prompt Bank does NOT live in the exam-scoped `ExamWorkspace`. Prompt authoring/governance moves to Content Studio (Library, subject=English filter). `ExamWorkspace` may surface coverage + an assignment hand-off only. See `docs/architecture/content-studio.md` Â§6. |
-| Release gates for paragraphs/essays | PLANNED | 10 quality gates in Â§16 of architecture doc. Not time-based. Operator approval required before EWP-6 begins. |
-
-#### EWP sentence-practice vertical slice â€” locked delivery sequence (2026-07-07)
-
-Release-safe order to make the sentence-practice slice launchable BEFORE paragraph mode, exam mode, or any broad activation. Rationale: migration 222 already snapshots `prompt_text`/`source_text` per session; the gap is the learner UI + evaluator worker, not another prompt-schema migration. **Activation must NOT precede source-aware runtime** â€” activating a content-blind correction/grammar bank would let clean-but-irrelevant answers pass. Immediate order: (1) source_text display + evaluator consumption â†’ (2) semantic adapter shadow â†’ (3) controlled activation RPC/API/UI â†’ (4) planner taskâ†’session launch â†’ (5) full Playwright E2E â†’ (6) import/review/activate safe sentence prompts â†’ (7) Paragraph Builder later.
-
-| Slice | Status | Notes |
-|---|---|---|
-| **EWP-SP1 â€” Source-aware learner + evaluator runtime** | CODE-FIXED, VALIDATION PENDING â€” branch `claude/ewp-source-aware-runtime`. **Frontend:** new `SourceContext.jsx` renders `prompt.source_text` read-only (region + `aria-labelledby` + `aria-readonly`, never an input) above the editor across compose/eval-pending/rewrite/resume/completed; wired into `SentenceBuilder`/`RewriteEditor` + `EnglishPracticeShell` (shell renders it for non-editor states, editors render their own copy). Label by exercise type. **Backend:** `language_evaluator.evaluate_language`/`LanguageEvaluator.evaluate`/`MockLanguageEvaluator.evaluate` widened with `prompt_text`/`source_text` (backward-compatible defaults); `compute_source_comparison` emits deterministic `source_unchanged`/`meaning_not_preserved`(empty-answer only, no similarity heuristic)/`source_comparison_uncertain` gated to source-dependent types; all verdicts set `needs_human_review` and `evaluation_worker.py` skips mastery derivation (fail-closed). `off_topic` NOT reused. Version bumped `lang-mock-v1`â†’`lang-mock-v2`. `FF_WRITING_LLM_EVAL` (off/shadow/live, default+fail-closed **off**) scaffolded; `LlmLanguageEvaluator` stub raises and is never built/called on the off path. Tests: `test_writing_language_evaluator.py` (+13), `test_writing_evaluation_worker.py` (+3), `SourceContext.test.jsx`, shell/component source-state tests â€” study_os suite green except pre-existing `fitz` gap in `test_writing_practice_routes.py`. **Validation pending:** live shadow/operator run. | **Frontend:** render `prompt.source_text` as immutable task context above the answer editor, visible across compose / eval-pending / rewrite / resume / completed; label by exercise type ("Sentence to correct" vs "Source passage"); pass source context into `SentenceBuilder` + `RewriteEditor`; a11y + resumed-session tests. (Shell currently passes only `prompt.prompt_text`.) **Backend:** widen the evaluator adapter boundary to `evaluate(answer_text, *, exercise_type, prompt_text, source_text, active_prior_issues, resolved_prior_lineages)`; `evaluation_worker.py` passes the already-claimed snapshot `prompt_text`/`source_text` through. **DETERMINISTIC result states** (per locked decision 2026-07-07 â€” NO LLM adapter in this PR): `source_unchanged` (answer == source after normalize), `meaning_not_preserved` (only where deterministically decidable), `source_comparison_uncertain`; uncertain/unavailable â‡’ **fail closed to `needs_human_review`**, never positive mastery. Do NOT reuse `off_topic` (would contaminate content-relevance mastery). Bump evaluator version. `FF_WRITING_LLM_EVAL` offâ†’shadowâ†’live flag SCAFFOLDED defaulting **off**; real model adapter slot stubbed (no model call) â€” deferred to the governance-doc PR below. |
-| **EWP-SP1a â€” Semantic evaluator adapter (governance-gated)** | PLANNED â€” needs `docs/architecture/ewp-semantic-evaluator-adapter.md` APPROVED first | Real semantic (LLM) adapter behind `FF_WRITING_LLM_EVAL`, **shadow mode only** at first: record disagreement / latency / cost / confidence, NO lifecycle or mastery effect until Â§16 gate-5 false-positive/negative + cost/latency thresholds are met. Blocked by the locked "no LLM adapter without an architecture doc" invariant. |
-| **EWP-SP2 â€” Controlled prompt activation lifecycle** | PLANNED â€” after SP1 behavior-tested | Atomic `cms_activate_writing_prompt` / `cms_deactivate_writing_prompt` RPCs (NOT a boolean toggle). Activation verifies UNDER LOCK: prompt `verified`; currently inactive; â‰¥1 effective active applicability target; exercise type in a server-owned runtime-readiness allowlist; source-dependent types have the semantic-evaluator gate cleared; paragraph types have an approved rubric + EWP-6 gate cleared; taxonomy/provenance still valid; client CAS token matches; operator reason present; activation authority explicit + separate from authoring. RPC returns structured `{eligible, blockers[]}` â€” the frontend does NOT compute eligibility; Content Studio renders "Activation blocked" with precise reasons. |
-| **EWP-SP3 â€” Planner task â†’ session launch** | CODE-FIXED, VALIDATION PENDING â€” live launch round-trip OPERATOR PENDING (depends on the activation-gate operator proof: migration 218 applied live + prompt reactivation) | Server-owned **`POST /api/study/tasks/{study_task_id}/launch-writing`** added to a `/study/tasks` router in `app/api/writing_practice.py` (registered in `server.py`; NO new sidebar/top-level surface, no AdminShell/adminRoutes/nav change â€” serial-delivery routing lock respected). Flow: **(1)** verify caller owns the `study_task` (404 otherwise); **(2)** read the PINNED authoritative `exam_id`/`exam_phase_id` from the task (never client-supplied); **(3)** build the candidate prompt set from the task scope â€” `reviewer_status='verified'` + `is_active=true` + English-language subject (resolved from the `english-language` subject slug, migration 205; falls back to the task's `subject_id`) + narrowed to the task's pinned `topic_id` when present; **(4)** apply BOTH gates (defense in depth): the runtime-readiness allowlist (read from the server-owned `cms_writing_runtime_ready_types()` DB function, migration 224 = `['sentence_construction']`; mirrored as `RUNTIME_READY_EXERCISE_TYPES` fallback kept in parity by `test_runtime_ready_mirror_matches_migration_224`) AND the DEFAULT-DENY applicability resolver `resolve_applicable_prompt_ids` for the pinned exam context; **(5)** deterministically select the surviving prompt with the **lexicographically-smallest id** (stable, content-independent â€” same task always launches the same prompt); on empty surviving set â†’ **409 `no_eligible_prompt`** (NO arbitrary fallback); **(6)** create the session ATOMICALLY through the SHARED `_create_learning_session` path that `POST /study/practice/english/sessions` also uses â€” so the verified/active gate, the applicability re-check, and the snapshot-taking `ewp_create_writing_session` RPC (migrations 214/221/222) all re-run; the browser is NEVER handed a `prompt_id`; **(7)** return `{session_id, practice_route: "/app/study/practice/english/{session_id}"}`. **Idempotency:** a task with a live (non-terminal, i.e. status âˆ‰ {completed, abandoned}) `writing_sessions` row (`study_task_id` FK, migration 205) re-launches into that session (deterministic smallest-id pick) rather than creating a duplicate; terminal sessions do not block a fresh launch. **Files:** `app/backend/app/api/writing_practice.py` (extracted shared `_create_learning_session` + `_owned_task`; new `launch_writing`, `_select_launch_prompt`, `_runtime_ready_types`, `_english_subject_id`), `app/backend/server.py` (register `tasks_router`). **Tests:** `tests/study_os/test_writing_launch_endpoint.py` (16 â€” ownership 404, no-eligible 409/no-fallback, runtime-readiness gate excludes a non-ready active prompt, resolver default-deny excluded/pending never selected, deterministic smallest-id selection + stability across calls, idempotent re-launch reuses a live session, terminal session doesn't block, no-exam-context denies scoped prompt, shared-create-path assertion, DB-allowlist-vs-mirror parity + read/fallback). Existing `test_writing_applicability_resolver.py` + `test_writing_launch.py` stay green. Full `tests/study_os/` = 1093 passed, 203 skipped, 1 pre-existing unrelated `fitz`/PyMuPDF import failure (`test_writing_practice_routes_registered`). **OPERATOR / VERIFY DB:** live launch round-trip is gated on the activation-gate operator work (migration 218 applied live + prompt reactivation) â€” until seeded prompts are `is_active=true` with an active applicability target, launch correctly returns 409 for every task. No new tables/RLS surface (route + reuse of existing RPCs). |
-| **EWP-SP3-UI â€” Learner launch-writing control (frontend)** | CODE-FIXED, VALIDATION PENDING â€” live launch still OPERATOR PENDING (depends on the SP3 backend activation-gate proof: migration 218 applied live + prompt reactivation; until a task's scope has an active applicable prompt the control correctly shows the calm "no practice available yet" 409 state) | Surfaces the shipped server-owned SP3 launch endpoint to the aspirant. **Serial-delivery routing lock respected** â€” NO new route/top-level surface, NO AdminShell/adminRoutes/nav/sidebar change; the control programmatically navigates (`useNavigate`) to the EXISTING practice-shell route `/app/study/practice/english/:sessionId` returned by the server. **Data layer:** `launchWriting(studyTaskId)` added to the writing-practice hook `features/study/english-practice/useEnglishPracticeSession.js` â†’ `POST /api/study/tasks/{id}/launch-writing` (planner-task action namespace already used by this surface for task status; funnels into the same writing-session runtime). Returned as a bare promise (not via `useApiAction`) so the EXPECTED 409 `no_eligible_prompt` does NOT fire an automatic error toast â€” the component owns the states. **Control:** new presentational `features/study/english-practice/LaunchWritingPracticeButton.jsx` â€” takes the planner `task`, calls `launchWriting(task.id)` and on success (`{session_id, practice_route}`) navigates to `practice_route`. NEVER computes eligibility client-side; NEVER passes a `prompt_id` (server derives everything from the owned task). State machine idleâ†’launchingâ†’success|error: disabled + `aria-busy` + "Startingâ€¦" while launching; **409 `no_eligible_prompt` â†’ calm "No practice available for this task yet" note (not a hard error, no retry, no navigation)**; 404 â†’ "This task is no longer available"; any other failure â†’ explicit error + Retry (never silent), no navigation. **Wiring:** `pages/study/StudyHome.jsx` (mission-control surface, which already stamps `launch_type='english_writing_session'`/`action_label` via `writing_practice/launch.compute_action`) renders the control in the "Next study action" card in place of the generic "Start" link when `task.launch_type === 'english_writing_session'`; non-writing tasks unchanged. No new dependency; component sits in the existing study/english-practice chunk (no admin/prototype leakage). Frontend uses `exam`/writing display labels only; no `exam_id` FK renamed. **Tests:** `LaunchWritingPracticeButton.test.jsx` (6, RTL, router + hook mocked â€” renders on a writing task; success calls `launchWriting` and navigates to the returned `practice_route`; 409 `no_eligible_prompt` â†’ calm state + no navigation; 404 â†’ not-available + no navigation; network/other error â†’ explicit error + Retry that re-launches; loading disables the control) â€” passing; existing `StudyHome.network.test.jsx` + `StudyHome.next-action.test.js` stay green (12 passed); ESLint clean on changed files. **OPERATOR / VERIFY DB:** live click-through once a verified+active applicable prompt bank exists (shared with the SP3 backend + activation-gate operator work). |
-| **EWP-SP4 â€” Operator usability completion** | CODE-FIXED, VALIDATION PENDING â€” VERIFY DB / OPERATOR PENDING (live selector feeds depend on seeded subjects/topics/exam-registry/rubrics/documents rows; no schema/RLS change) | Raw-UUID text inputs on the Content Studio surface replaced with readable, DEPENDENT selectors and readable table labels; reviewer correction notes surfaced read-only to authors. **Serial-delivery lock respected** â€” only Content Studio's OWN pages + the existing `content_studio` router were touched (no AdminShell/adminRoutes/nav/ExamWorkspace/shared-file edits; no new top-level route/surface). **Frontend:** new `selectors.jsx` (Subject / Topic-by-subject / Microtopic-by-topic / Rubric / Source-document / ExamFamily / Exam-by-family / Phase-by-exam selects; parent change invalidates children); `PromptEditor.jsx` create/edit now use the taxonomy + rubric + document selects (still emit canonical `*_id`; buildPayload dirty-diff unchanged); `ExamAssignments.jsx` propose form uses ExamFamilyâ†’Examâ†’Phase dependent selects with an explicit **Global** option and only the LEAF id is sent (migration-214 exactly-one-scope preserved; proposeâ†’review/remove split unchanged), and the scope/summary labels show resolved names; `PromptReviewQueue.jsx` snapshot shows subject/topic/microtopic/rubric/source-document NAMES (id fallback); new `CorrectionNote.jsx` fetches the latest `needs_correction` audit note and renders it read-only in the editor. **Backend (reads only, gated by `_require_content_read` + `_flag_enabled`):** added to `content_studio.py` â€” `GET /taxonomy/subjects`, `/taxonomy/topics` (subject_id/parent_topic_id/level filters), `/exam-scope/families`, `/exam-scope/exams` (family filter), `/exam-scope/phases` (exam filter), `/rubrics`, `/source-documents` (scope=`admin_exam_intelligence`), and `GET /writing-prompts/{id}/correction-note` (latest `needs_correction` transition from `admin_audit_logs` â€” the note is NOT stored on the prompt row). `get_writing_prompt` + target list + the review-queue LIST now enrich with `*_name`/`*_title` display labels (never mutating id columns). No write-path permission weakened; no new AI writes; strict Pydantic/UUID typing. **Checkpost (PR #902) hardening:** (P1-1) selector feeds now MIRROR the write validators so they can never offer an option `ewp_validate_prompt_scope` would reject with `invalid_scope` â€” `/taxonomy/subjects` hard-scoped to the ACTIVE `english-language` subject; `/taxonomy/topics` returns only ACTIVE topics/microtopics; `/source-documents` replicates the exact provenance predicate (valid `document_kind`, non-null `status` NOT IN failed/archived, non-blank storage bucket+path) via `_document_passes_provenance`; exam-scope/rubric feeds return only rows the propose RPC accepts. (P1-2) `useOptions` upgraded to the full `idle â†’ loading â†’ data | empty | error` collection contract with `status`/`error`/`reload`; every selector renders an explicit error state + Retry (never a silent fail-closed `[]`). (P1-3) all feeds bounded (`limit=500`); `/taxonomy/topics` requires `subject_id`|`parent_topic_id` and `/exam-scope/phases` requires `exam_id` (unfiltered â†’ 422). (P2-1) review-queue LIST enriched with batched (no N+1) subject/topic labels and the queue table now renders a Subject/Topic column. (P2-2) `contentStudioApi.js` stale "no activate endpoint" comment corrected to reflect the shipped SP2 activate/deactivate. **Tests:** `selectors.test.jsx` (13 â€” +failed-load-shows-error, +retry-recovers) & `ContentStudio.test.jsx` (+queue table renders subject/topic names not UUIDs); `tests/exam_intelligence/test_content_studio_writing_prompts.py` (87 passed â€” +negative feed tests: non-English subject / inactive-or-wrong-level topic / archivedÂ·failedÂ·no-statusÂ·no-bucketÂ·no-pathÂ·wrong-scopeÂ·bad-kind document all excluded; unfiltered topics/phases â†’ 422; limit bounds; batched list enrichment). ESLint clean on changed `.jsx`. **OPERATOR:** the pre-existing `fitz`/PyMuPDF import failure in `tests/study_os` is unrelated and untouched. **VERIFY DB:** selector dropdowns are only as populated as the live taxonomy/exam-registry/rubric/document tables. **Follow-up checkpost:** functional blockers cleared; `/source-documents` now pushes ALL filterable provenance clauses (non-null status, status NOT IN failed/archived, non-null + non-empty storage bucket/path) into the PostgREST query so the `limit(500)` window can't hide older valid docs behind newer invalid ones (Python guard retains only the whitespace-only `btrim` edge). **Graphify hygiene gate â€” OPERATOR PENDING (waived in-container):** `graphify update .` could not run (the AST-only CLI is not installed in the remote build container; `command -v graphify` â†’ not found); `GRAPH_REPORT.md` remains built from `5b4c53f6`. No runtime impact (knowledge-graph artifact only); operator to refresh the graph post-merge. |
-| **EWP-SP5 â€” Real browser E2E** | CODE-FIXED, VALIDATION PENDING â€” branch `claude/ewp-sentence-e2e`; specs typecheck + register locally, full run is CI-only (no Docker/Supabase in the authoring sandbox). | Playwright suite on the REAL stack the e2e job provisions. New files: `app/frontend/e2e/flows/writing-sentence-journey.spec.ts` (happy path), `app/frontend/e2e/flows/writing-sentence-negatives.spec.ts` (negatives), `app/frontend/e2e/fixtures/seedWriting.ts` (self-seeding helpers). **Self-seeding (no live bank dependency â€” SP2/SP3 live seeding stays OPERATOR PENDING):** the whole governance chain runs at test time through the REAL Content Studio APIs as the seeded **super_admin** (which bypasses `require_permission` incl. `content_studio.activate`): create `sentence_construction` prompt â†’ reviewer verify â†’ manager propose GLOBAL target â†’ reviewer activate target â†’ **release-authority `cms_activate_writing_prompt`** (all gates pass â€” sentence_construction is the sole runtime-ready type, non-source-dependent). English taxonomy resolved from the migration-205 seed; a planner `study_tasks` row + exam/family/phase fixtures created via service-role. **Activation DOES run in the e2e DB** â€” `supabase start` applies 214/215/226 and super_admin satisfies the activate authority, so the operator-pending live gate is exercised in CI. **Happy path (browser-driven learner):** server-owned launch (`POST /study/tasks/{id}/launch-writing`, no learner launch button yet â†’ called via API, browser then navigates to the returned `practice_route`; no new routing/nav) â†’ shell renders â†’ **source_text visible** read-only (prompt seeded WITH `source_text`; snapshot migration 222 carries it) â†’ compose + submit (version-1 CAS) â†’ **async EWP-2B worker ticked via the existing `POST /api/admin/jobs/run/writing:evaluate` admin manual-trigger** (scheduler is off in CI â€” this is the SAME code path APScheduler calls, not a product route) â†’ must_fix `subject_verb_agreement` issue card shown â†’ **Error Lab lineage asserted** (`/error-lab` returns the issue while it is current-state, before the rewrite supersedes it) â†’ mandatory rewrite (clean answer) â†’ worker tick â†’ unit/session **completed** â†’ mastery-outbox pass clean. Deterministic inputs via the mock evaluator rules ("They is â€¦" â‡’ must_fix; "The students are â€¦" â‡’ clean). **Negatives (real backend, all fail-closed):** unverified â‡’ create-session 404; verified-but-inactive â‡’ 404; no eligible prompt for task scope â‡’ launch **409 `no_eligible_prompt`**; excluded-phase carve-out beats an active global target â‡’ launch **409**; stale operator CAS on activate â‡’ **409**; source-dependent (`sentence_correction`) activation â‡’ **200 `{eligible:false, blockers:[exercise_type_not_runtime_ready \| semantic_evaluator_not_live]}`** and stays not-launchable (the "adapter unavailable â†’ not activatable" fail-closed proof). **Visibly `test.skip`-gated (loud, not silent):** (a) SP1 source-comparison â†’ `needs_human_review` runtime path â€” needs an ACTIVE source-dependent prompt, but that type CANNOT activate while the semantic gate is closed (opening it is a future migration, never a runtime write); covered by `test_writing_language_evaluator.py`, and its e2e-observable half (never activates) IS asserted; (b) worker timeout/retry â€” no deterministic fault-injection hook in the e2e stack (mock evaluator always succeeds); covered by `test_writing_evaluation_worker.py`. **No data-testid added** â€” all learner selectors already existed. **Verification:** `tsc -p e2e/tsconfig.json --noEmit` clean; `eslint` clean on the 3 new files; `playwright test --list` registers both specs (2 skips visible). **Isolation + job-ok fixes (checkpost, PR #906):** (1) the two `409 no_eligible_prompt` negatives (no-eligible-for-scope, excluded-phase) were order-dependent â€” they matched candidates on the shared `sentence-construction` topic, so a prompt seeded by the happy-path spec (not cleaned up; Playwright runs serial + `globalSetup` does not reset writing prompts) could make `launch-writing` return 200 instead of 409. Each now seeds BOTH its prompt-under-test AND its `study_task` under its OWN fixture-unique English topic (`seedUniqueTopic` helper in `seedWriting.ts`, deterministic fixed UUID/slug â€” no `Math.random`/`Date.now`), so `_select_launch_prompt`'s `.eq("topic_id", ...)` narrows the candidate set to exactly that test's prompt(s); removing/excluding it deterministically yields 409 regardless of other specs. Happy path unaffected (its global prompt still matches its own `sentence-construction` task topic). (2) admin job-run ticks (`runWritingEvaluator`/`waitWorker` and the mastery-outbox pass) now assert `body.ok === true`, not just HTTP 200 â€” `POST /api/admin/jobs/run/{job_id}` returns 200 even when the job records an operational failure (`ok:false`), so status-only checks could pass on a broken worker. No product/assertion-weakening changes. **VALIDATION PENDING:** the Chromium suite itself runs only in the e2e CI job (the change touches `app/frontend/e2e/**`, which matches the workflow's run filter). |
-
-**Do NOT build until the sentence slice passes live E2E:** Paragraph Builder (EWP-6), descriptive exam mode (EWP-7), essay/prÃ©cis/letter practice, live writing-mastery promotion, broad prompt activation.
-
-#### EWP `sentence_construction` live runtime validation (2026-07-09)
-
-| Item | Status | Notes |
-|---|---|---|
-| `sentence_construction` live runtime | **VALIDATED (live)** | Full live path exercised end-to-end: Content Studio seed â†’ review verified â†’ active global target â†’ prompt activation â†’ learner session creation â†’ UI load â†’ answer submit â†’ evaluation â†’ terminal `ready`/`completed`. Evidence: `prompt_id=82961b19-8d4e-41a6-b677-b94433a4389c`, `session_id=cb012028-6899-465b-ab2a-463f7b385ed1`; `session.status=completed`, `session.evaluation_outcome=fully_evaluated`, `unit.status=ready` (version 1), `overall/deterministic/language_status=completed`, `language_result.issues=[]`, `feedback_released=true`. The `unit.status=ready` + `session.status=completed` pairing is valid under the current rollup â€” `ewp_private.ewp_apply_session_rollup` (migration 207) treats every unit in `{ready,completed}` as terminal and marks the session `completed` once coverage passes and no unresolved `must_fix` issue remains (207:213, 253â€“259). |
-| Scope of this validation | â€” | `sentence_construction` (non-source-dependent) only. Paragraph / source-dependent EWP types remain gated (semantic-evaluator gate + EWP-6/Â§16). |
-| **Follow-up A â€” session completion timestamps never written** | `completed_at` LIVE VALIDATED; `submitted_at` LIVE VALIDATED (migration 240) | **`submitted_at` (2026-07-10, owner-approved cleared-parallel):** new migration `240_ewp_rollup_submitted_at.sql` CREATE OR REPLACEs `ewp_private.ewp_apply_session_rollup` to maintain `submitted_at IS NOT NULL â‡” status <> 'active'` â€” stamps `COALESCE(submitted_at, now())` the first time the session leaves `'active'` (all units submitted; monotonic while past-drafting) and clears it to `NULL` on a learning-mode reopen back to `'active'`. Deliberately parallel to `completed_at` (same function; migration 238's deferral was owner-reviewed and this concrete definition adopted over its "arbitrary" concern). `session_finalizer.py` reference kept in parity. 238 left untouched (immutable). Migration number 240 = next filesystem slot; **operator must verify live `MAX(schema_migrations)+1` before apply** (AGENTS.md). Tests: `tests/study_os/test_ewp_rollup_submitted_at_migration.py` (text assertions + pg-behaviour on the current chain `205â†’207â†’209â†’214â†’222â†’238â†’240` in an isolated DB: stamp on first submit / clear on reopen / preserve on re-roll, gated on `EWP_PG_DSN`). Merged in PR #949. **LIVE VALIDATED (2026-07-12 19:57:54 UTC â€” see `docs/audits/ewp/2026-07-12-migration-240-submitted-at-live-validation.md`):** live `schema_migrations` max = 244; version 240 is `ewp_rollup_submitted_at` (the live history had already advanced through 241â€“244, so no renumber/re-apply was required). Live function inspection confirms `ewp_private.ewp_apply_session_rollup` carries the `submitted_at` write path and still writes `completed_at`. Validated on session `3c90846c-20b6-43d4-8f97-bdf035f1f948`: re-running the rollup kept `status=completed`, `evaluation_outcome=fully_evaluated`, `completed_at` unchanged, and populated `submitted_at=2026-07-12 19:55:04 UTC` (pre-mutation safety checks: unit `ready`/coverage passed, no unresolved must_fix). Remaining null `submitted_at` rows (2 of 3 completed sessions) are pre-validation historical rows; migration 240 is not retroactive (per contract). **Live confirmation (2026-07-10):** new completed EWP sessions now populate `completed_at`, confirming migration 238's rollup fix live â€” e.g. `session_id=3c22ef9e-e0ee-477e-9eea-296fa59036b3` (`completed_at=2026-07-10T12:04:09.889646+00:00`) and later `session_id=3c90846c-20b6-43d4-8f97-bdf035f1f948` (`completed_at=2026-07-10T15:07:27.428837+00:00`). (Historical note: migration 238 closed only the completion timestamp; `submitted_at` was subsequently implemented and live-validated by migration 240 â€” see the block above.) Fixed by new migration `238_ewp_rollup_completed_at.sql`: `ewp_private.ewp_apply_session_rollup` now maintains `completed_at IS NOT NULL â‡” status='completed'` â€” stamps `COALESCE(completed_at, now())` on the transition into `completed` (monotonic; existing stamp preserved on re-roll) and clears it to `NULL` on any transition out (e.g. learning-mode reopen); the no-op guard also gates on `completed_at`. Python reference `session_finalizer.py` kept in parity. (`submitted_at` was out of scope for migration 238 and is now handled by migration 240, above.) Tests: `tests/study_os/test_ewp_rollup_completed_at_migration.py` (text assertions + pg-behaviour: set on completed / clear on reopen / preserve on re-roll, gated on `EWP_PG_DSN`). Not retroactive (per checkpost #936): only affects transitions after apply and any re-finalized session â€” already-`completed` rows written before 238 keep `completed_at=NULL` until re-finalized; a one-off operator backfill is out of scope if historical rows need a completion time immediately. **Live apply confirmed** via the `completed_at` observation above. `submitted_at` is now implemented (migration 240) AND live-validated (see the migration-240 block above) â€” this row is fully closed except for any optional operator backfill of the pre-validation historical rows. |
-| **Follow-up B â€” Study Home planner-launch** | **LIVE VALIDATED** (backend/runtime + UI click-through, 2026-07-10) | **Backend/runtime path VALIDATED live:** study task â†’ `POST /api/study/tasks/{id}/launch-writing` â†’ server-side prompt resolution â†’ writing-session creation with `study_task_id` â†’ practice-route load â†’ answer submit â†’ evaluation â†’ completion (`study_task_id=4fa0a619-0d9c-47b6-9767-9e7c74c90086`, `session_id=3c22ef9e-e0ee-477e-9eea-296fa59036b3`; `session.status=completed`, `evaluation_outcome=fully_evaluated`, `unit.status=ready`, `language_result.issues=[]`, `feedback_released=true`). **UI click-through VALIDATED live after #941:** operator-created task `05988024-f518-46c7-a625-318a031c923a` (`launch_type='english_writing_session'`, `launch_entity_id=NULL`) rendered on Study Home as `English sentence construction Â· Writing practice` with the `Start sentence practice` button; clicking it launched through `POST /api/study/tasks/{id}/launch-writing`, created `session_id=3c90846c-20b6-43d4-8f97-bdf035f1f948`, opened `/app/study/practice/english/3c90846c-20b6-43d4-8f97-bdf035f1f948`, accepted the submission, completed evaluation, and marked the session `completed` (`completed_at=2026-07-10T15:07:27.428837+00:00`, `evaluation_outcome=fully_evaluated`, `overall/deterministic/language_status=completed`). The language evaluator returned one non-blocking `should_fix` punctuation issue (lowercase sentence start) while still allowing the runtime to complete. **Remaining product gap (separate feature, not launch plumbing):** the planner does not yet auto-create `english_writing_session` tasks for SSC English or UPSC/CSAT English â€” this validation used an operator-created task; the button's absence for those exams is expected. |
-| **Follow-up B.1 â€” Mission Control EWP task shaping (planner launch, null `launch_entity_id`)** | **MERGED (#941) + LIVE VALIDATED** â€” live Study Home click-through confirmed (see Follow-up B evidence) | Fixes the Follow-up B UI CTA gap. `writing_practice/launch.compute_action` (Â§11.1) now resolves for **any** `english_writing_session` launch, not only ones carrying a session id: it returns `action_label` from `launch_context.exercise_type` and sets `action_url=None` when `launch_entity_id` is null (no session route exists yet â€” the click creates the session server-side via `POST /api/study/tasks/{id}/launch-writing`). `mission_control._load_today_tasks` therefore preserves `launch_type` (and `action_label`) on planner-shaped tasks, so `StudyHome.isWritingTask` renders `LaunchWritingPracticeButton` (which only needs `task.id`) instead of the generic plan CTA. Tests: `test_writing_launch.py` (null-entity resolves with null url + label), `test_mission_control.py::test_mission_control_shapes_planner_launch_without_session`, `StudyHome.writingLaunch.test.jsx` (planner task with null `launch_entity_id` renders the launch button, not the generic Start CTA). No DB/migration/RLS change. |
-
-### Operator validation still required (EWP)
-
-| Item | Gate |
-|---|---|
-| EWP-1 migration applied | OPERATOR PENDING â€” apply to staging, verify RLS, confirm no authenticated/anon write access to issue/projection/mastery tables |
-| `version_set_hash` backend vector | OPERATOR PENDING â€” confirm the backend helper output matches the pinned fixed-input vector and the API returns that exact value (clients consume only) |
-| Append-only immutability triggers | OPERATOR PENDING â€” confirm service-role UPDATE and DELETE fail on every immutable table (Â§12.4) on staging |
-| Shadow mastery output | OPERATOR PENDING â€” after EWP-2B deploys, verify source-neutral evidence + shadow rows appear and no `user_topic_mastery` mutations occur |
-| Prompt bank reviewed | OPERATOR PENDING â€” 270 prompts through CMS review lifecycle before aspirant launch |
-| Release gates Â§16 | OPERATOR PENDING â€” 10 gates must be documented in this checklist before EWP-6 begins |
-
-### 1. Delivery track
-
-Engineering-complete does not mean release-ready. Two independent readiness tracks govern rollout: the 270-prompt content inventory blocks aspirant launch; the Â§16 reliability evidence blocks progression into Paragraph Builder (EWP-6) and descriptive mocks (EWP-7).
-
-| Track | Current state | Entry gate | Exit gate |
-|---|---|---|---|
-| Sentence foundation | EWP-3 merged (code) â€” operator live-validation pending | EWP-2/2B merged | EWP-3 merged and stable |
-| Grammar and planner | EWP-4/5 planned | EWP-2/2B merged | Shadow evidence and planner validated |
-| Paragraph runtime | EWP-6 blocked | EWP-3 stable + Â§16 approved | Paragraph stability evidence |
-| Descriptive mocks | EWP-7 blocked | EWP-6 stable + Â§16 valid | Mock-runtime validation |
-
-### 2. Â§17 prompt-bank tracker
-
-Track actual operator progress per exercise type, not a single "270 prompts pending" row. Only the `Verified` and `Active` counts determine launch readiness â€” a prompt is aspirant-visible only when both `reviewer_status = 'verified'` and `is_active = true`. Author or import inside the existing Exam Workspace CMS; do not add a new admin sidebar destination.
-
-`Required` is the fixed inventory target. `Authored`/`Verified`/`Active` are live CMS/DB facts the repository cannot prove â€” they stay `VERIFY DB` until a dated query/export is captured and linked here (per AGENTS.md: absence of repo evidence is not a zero count).
-
-| Type | Required | Authored | Verified | Active | Status |
-|---|---:|---:|---:|---:|---|
-| Sentence construction | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-| Sentence correction | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-| Grammar rules | 100 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-| Vocabulary context | 50 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-| Scaffolded paragraphs | 20 | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-| **Total** | **270** | VERIFY DB | VERIFY DB | VERIFY DB | OPERATOR PENDING |
-
-### 3. Â§16 release-gate tracker
-
-Evidence-based gates â€” do not substitute elapsed time, session count, or development completion for this evidence. Statuses use the declared checklist vocabulary and are grounded in repo code/tests where present; the "Evidence" column links existing code/tests, and large benchmark outputs, SQL captures, test reports, and operator validation proof will live in separate dated files under `docs/audits/ewp/` (created only when validation evidence exists). Code-present â‰  gate-passed: every gate still needs its release evidence and owner approval.
-
-| Gate | Status | Evidence | Owner approval |
-|---|---|---|---|
-| Autosave no-loss | CODE PRESENT, VALIDATION PENDING | `features/study/english-practice/autosave.js` + `autosave.test.js`; destructive reload/tab-close/network-failure benchmark pending | â€” |
-| Submission idempotency | CODE PRESENT, VALIDATION PENDING | migration-207/209 CAS + two-connection race test in `tests/study_os/test_writing_rpcs_behaviour.py`; broader release evidence pending | â€” |
-| Word-count parity | CODE PRESENT, VALIDATION PENDING (PR #855) | **Fixed on this branch:** the client tokenizer now mirrors backend `deterministic.py` `_WORD_RE = [^\W_]+(?:['\-][^\W_]+)*` (NFC, straight apostrophe/hyphen compounds, `WORD_TOKENIZER_VERSION="det-v1"`) via `app/frontend/src/features/study/english-practice/requiredWords.js`; `SentenceBuilder.jsx` + `RewriteEditor.jsx` consume it (no more `draft.split(/\s+/)`). Parity vector `wordCount.test.js`. **VALIDATION PENDING:** Â§16 gate-3 benchmark/operator evidence not yet captured â€” do NOT mark the release gate passed from unit tests alone. | `requiredWords.js`, `SentenceBuilder.jsx`, `RewriteEditor.jsx`, `wordCount.test.js` |
-| UTF-16 span benchmark | CODE PRESENT, VALIDATION PENDING | `features/study/english-practice/utf16.js` span-verified highlight (Â§4.5b); curated exact-text benchmark pending | â€” |
-| Grammar false-positive rate | PLANNED | Only deterministic mock evaluator (`language_evaluator.py`, `lang-mock-v1`) exists; acceptable threshold undefined and no human-labelled sample set yet | â€” |
-| Mastery replay determinism | CODE PRESENT, VALIDATION PENDING | Deterministic evidence-key derivation in `evidence_deriver.py` (Â§4.12b) + `deterministic.py`; byte-equivalent replay projection benchmark pending | â€” |
-| Planner task deduplication | CODE-FIXED, VALIDATION PENDING | Writing-task dedup delivered with EWP-5 generation: `planner._open_writing_topic_ids` skips a topic that already carries an ACTIVE (non-`planned`) `english_writing_session` task today, so regen never duplicates; `planned` rows are excluded because `_persist` clears them before re-insert (counting them would drop the task on the second regen). Tested in `test_planner_writing_tasks.py::test_compute_plan_dedups_against_active_writing_task`. Topic-study (PYQ) task dedup remains a separate future item. | â€” |
-| Verified exam configuration | OPERATOR PENDING | â‰¥1 officially sourced `exam_descriptive_requirements` row verified + active â€” live CMS/DB fact (VERIFY DB) | â€” |
-| Writing shadow gate | OPERATOR PENDING | Â§10.3 shadow-to-live conditions; `FF_WRITING_MASTERY_WRITES` remains `shadow`, live blocked on Lane A gate + operator approval | â€” |
-| Operator approval | BLOCKED | Depends on all gates above; dated approval to be recorded here + `docs/audits/ewp/` | â€” |
-
-## GA / Quant / Reasoning Expansion â€” Lane GQR
-
-Architecture contracts: `docs/architecture/subject-practice-framework.md` (runtime policy, Quant, Reasoning) + `docs/architecture/current-affairs-pipeline.md` (GA current-affairs).
-PR plan: `docs/status/career-copilot-pr-plan.md` Â§ Lane GQR.
-
-Current verdict: **CONTRACT-FIRST / PLANNED. Two architecture contracts landed (this PR); no runtime code shipped. GA v1 = current-affairs only and must NEVER write `user_topic_mastery`. Quant performance signals and any mastery activation stay shadow-only behind the Lane A gate (`FF_MOCK_MASTERY_WRITES=live` BLOCKED). The LLM current-affairs pipeline (GQR-G3) is GATED on approval of `current-affairs-pipeline.md`. Reasoning v1 is text-only; non-verbal is a named deferred gap (GQR-R2), not silent scope.**
-
-Migration numbers for every implementation PR must come from `select max(version)::int + 1 from schema_migrations` (VERIFY DB; current max in checkout is 239 â€” do not hardcode). All migrations forward-only.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| Architecture contracts (framework + CA pipeline) | CODE PRESENT (this PR) / REVIEW PENDING | `docs/architecture/subject-practice-framework.md`, `docs/architecture/current-affairs-pipeline.md`. Cross-examined against `main @ ec1f4a2`; corrections folded (runtime already generic, math already renders, two unreconciled mastery writers, no `attempt_kind`, no scraping scheduler, `source_kind='current_event'` isolation reuse, template-path leak). |
-| GQR-1 Subject runtime policy | CODE-FIXED, VALIDATION PENDING | Server-owned registry `app/backend/app/study_os/subject_runtime_policy.py` is the runtime authority. Family resolved from canonical governed metadata (`subject_group` â†’ `slug`, never display name; `_load_locked_coverage` now surfaces both). `_subject_practice` iterates `policy.inventory_resolver(ctx)` â€” no English/PYQ branch; `planner._plan_tasks` delegates to `policy.planner_resolver` so a `general_awareness` retrieval/revision task never stamps `pyq_practice` while PYQ subjects stay byte-stable; `subject_practice.start` dispatches via `_LAUNCH_HANDLERS` in parity with `WIRED_RUNTIME_MODES` (unwired modes â†’ 422); `StudyHome` `NextActionCard` uses generic `launcherForTask(task.launch_type)`. GA fenced from generic PYQ (no seeded GA subject yet; SSC GA seed still prerequisite). Tests: `test_subject_runtime_policy.py` (family resolution, resolver authority, GA no-PYQ, registry/handler parity), `test_subject_practice_endpoint.py`, `test_subjects.py`, `test_planner*.py` â€” 80 backend pass; FE `StudyHome*`/`LaunchWritingPracticeButton` 19 pass. No new subject behaviour. Graph refresh deferred â€” `graphify` CLI absent in this environment. |
-| GQR-G0 Template-path is_current leak fix | CODE-FIXED, VALIDATION PENDING | `mock_engine._select_criteria_question_ids` now excludes `is_current` / `is_current_based` from the criteria pool, aligning the legacy template path with `mock_blueprint_selection._exam_base_pool` (already gated expired via `valid_until`). Regression: `test_criteria_excludes_current_affairs_items`. Closes the latent leak where a promoted `current_event` question could enter a template-path mock with a decaying answer; unblocks GQR-G5. |
-| GQR-G2 CA source + evidence authority | CODE-FIXED, VALIDATION PENDING | Migration 241 creates `current_affairs_sources/documents/events/claims/claim_evidence` (service-role RLS, content-hash dedup index, three separated validity axes), wires the soft `mock_question_bank.current_affairs_item_id` FK â†’ `current_affairs_events`, and seeds PIB+RBI primary_official sources. `app/backend/app/current_affairs/{sources,ingestion}.py`: adapter URL resolution, structural pre-filter, and `ingest_source` (conditional fetch reusing `scraping/fetcher.py` â†’ 304 short-circuit â†’ content-hash dedup â†’ immutable snapshot â†’ source-health). No LLM, no learner UI, no scheduler wiring (ca:ingest deferred to GQR-G5). Tests: `tests/current_affairs/test_ingestion.py` (9). `OPERATOR PENDING` for live migration apply. |
-| GQR-G3 CA LLM shadow pipeline | CODE-FIXED, VALIDATION PENDING (gate CLEARED) | Gate cleared: `current-affairs-pipeline.md` **APPROVED 2026-07-12**. Migration 247 (renumbered from 245 â€” 245/246 were claimed by the concurrently-merged GQR-Q8 calc-gym and GQR-Q7 review-CAS migrations) adds `current_affairs_generation_runs` (append-only audit + immutability trigger), `current_affairs_question_candidates` (staging; status `generated/validation_failed/review_ready/approved/rejected/promoted`), and a `current_affairs_generation_jobs` lease+fencing queue with `ca_enqueue/claim/complete/fail/sweep` RPCs (service-role only, SECURITY DEFINER, FOR UPDATE SKIP LOCKED + `claim_token` fencing, single-in-flight active index) mirroring the EWP `writing_evaluation_jobs` pattern. `app/backend/app/current_affairs/generation/`: `adapters.py` (Stage A extraction / B MCQ-gen / C verify LLM boundary â€” deterministic **mock** default, real provider-backed adapter behind `FF_CA_LLM=shadow`, fails closed to mock; telemetry: provider/model/prompt_version/tokens/cost/latency), `validator.py` (Stage D deterministic gate â€” 4-option/single-correct/no-dup/evidence-linked/no-superseded-claim/ADR-0007 no-sole-discovery-only/self-dating/no-answer-leak/dup-fingerprint), `worker.py` (`run_generation_worker_pass`: stages Aâ€“C outside any txn â†’ validate D â†’ atomic fenced `ca_complete_generation`; shadow / no promotion). Claims/events inserted `reviewer_status='pending'`; nothing writes `mock_question_bank` (promotion = G4/G5). **Checkpost #966 fixes:** (F1) candidate audit lineage now persisted â€” `_ca_insert_generation_run` writes Stage-B/Stage-C rows with `candidate_id`, and the candidate is updated with `generator_run_id`/`verifier_run_id` in the same txn (per-candidate `generator_run`/`verifier_run` on the worker payload); (F2) `ON CONFLICT (question_fingerprint) WHERE question_fingerprint IS NOT NULL` matches the partial unique index; (F3) replay guard moved BEFORE the lease/token fencing branch so a retry after a successful ack returns `replayed` (not a fencing error). Tests: `test_ca_validator.py` (15), `test_ca_generation_adapters.py` (4), `test_ca_generation_worker.py` (5, incl. shadow/no-authority, fail-via-fencing, candidate lineage), `test_ca_generation_migration.py` (11 SQL-contract, incl. conflict-target/replay-order/lineage) â€” 43 pass; `test_migrations_contract.py` green (247 unique). Scheduler cron `ca:generate` deferred to GQR-G5 (as G2 deferred `ca:ingest`). `OPERATOR PENDING`: apply migration + run `app/supabase/validation/validate_ca_generation_rpcs.sql` (executes candidate-insert lineage, partial-index dedup, replay-after-ack, fencing) â€” VERIFY DB. `graphify update .` deferred (CLI absent). |
-| GQR-G4a Operator review + audited promotion (backend) | CODE-FIXED, VALIDATION PENDING | Migration 249 adds `current_affairs_question_links` (candidateâ†’bank provenance) + two service-role SECURITY DEFINER RPCs mirroring `cms_review_quant_heuristic`: `ca_review_candidate` (CAS on `expected_status`, transition matrix review_readyâ†”approvedâ†”rejected, reason-on-send-back, `admin_audit_logs` entry; **never** writes `promoted`) and `ca_promote_candidate` (the human gate â€” requires an `approved` candidate + live/unexpired event, inserts the bank row as `source_kind='current_event', is_current_based=true`, event relevance window, `current_affairs_item_id`â†’event, 4 `mock_question_options` + resolved `correct_option_id`, the provenance link, candidateâ†’`promoted`, audit â€” all atomic). Endpoints in `content_studio.py`: `GET /ca-question-candidates` (+`/{id}` review context), `POST /{id}/review` (gate `content_studio.review`), `POST /{id}/promote` (higher gate `mock_questions:publish`). No autonomous publication â€” model/worker never reach promote. No-new-surface (Content Studio content type). **Checkpost #970 fixes (forward migration 253 â€” 249 is landed/immutable):** (F3) both RPCs `CREATE OR REPLACE`d to **dual-CAS** on `expected_status` **+ `expected_updated_at`** (content-revision token) and require an 8-500 char audit `reason` (mirrors migration 246; old signatures dropped); (F4) `ca_promote_candidate` **revalidates Stage-D inside the txn** â€” persisted `validation_result.ok`, exactly-4/distinct options + resolvable correct, non-empty stem/explanation, resolved claims exist + `current`, evidence present, and ADR-0007 not-solely-`discovery_only` active source â€” fail closed; (F5) **one provenance link per resolved claim** (links unique key altered to `(candidate_id, mock_question_id, claim_id)`); (F2) `GET /{id}` returns a full review envelope (each resolved claim + exact evidence spans + document/source + authority + warnings + audit runs); (F6) `_map_rpc_error` maps the new domain tokens to 4xx (not 500). Tests: `test_content_studio_ca_candidates.py` (router: read-gate, transition guard, send-back note, reason gate, publish gate, 409 map), `test_ca_promotion_hardening_migration.py` (251 SQL-contract: dropped old sigs, dual-CAS, revalidation, multi-claim) â€” 86 backend pass; migrations-contract (251 unique). `OPERATOR PENDING`: apply migrations 249 + 251 + run `app/supabase/validation/validate_ca_promotion_rpcs.sql` (seeds a real `auth.users` actor; review CAS + reason gate, promote â†’ current_event + options + per-claim link + audit, plus F4 negatives: evidence-free and discovery_only-sole rejected) â€” VERIFY DB. `graphify` deferred (CLI absent). |
-| GQR-G4b Operator review queue UI | CODE-FIXED, VALIDATION PENDING | `CaQuestionReviewQueue.jsx` (Content Studio content type `current_affairs_question`, review-queue only â€” candidates are shadow-generated, no author/library path): list by status, drill-in showing question/options/correct/explanation + validation verdict + verifier verdict + event + claim count, approve/reject/send-back over `POST /review`, and **Promote** over `POST /promote` (shown only when `canPublish` = `mock_questions:publish`). 409 â†’ conflict banner (refetch). Uses the **real shared-hook contracts** (`useApiCollection(url, [], {params})`, `useApiAction().run({action,â€¦})`) â€” checkpost #970 F1. Drill-in renders the full **evidence envelope** (each claim + exact evidence + document source + authority) + ADR-0007 warnings (F2). Every decision carries the candidate's `updated_at` **content-CAS token** + an 8-500 char **audit reason** (F3). `contentStudioApi.{listCaCandidates,getCaCandidate,reviewCaCandidate,promoteCaCandidate}` + `CA_REVIEW_TRANSITIONS` + `isValidReason`; `studioPerms.canPublish`; wired into `ContentStudio.jsx` switch (no new sidebar surface). Affordance-hiding only; backend authoritative. Tests: `CaQuestionReviewQueue.test.jsx` (6: real (url,seed,{params}) contract, evidence-envelope render, dual-CAS+reason on approve, reason-gated submit, promote gate, promote CAS+reason) + `ContentStudio.test.jsx` â€” 68 FE pass. `graphify` deferred (CLI absent). |
-| GQR-G5a Weekly bundle + learner runtime (backend) | CODE-FIXED, VALIDATION PENDING | Migration 253 adds the CA learner runtime on its **OWN** tables â€” `current_affairs_bundles` (cadence, period window, `exam_id` FK + `exam_family_id` **FKâ†’exam_families**, publish/availability window, reviewer_status, draft/published/archived), `current_affairs_bundle_questions` (ordered set, unique `(bundle_id, mock_question_id)`), `current_affairs_attempts` (own attempt row, unique `(user_id, bundle_id)`, `bundle_id` **ON DELETE RESTRICT** so a bundle delete can't erase historical analytics, `template_snapshot` jsonb, score fields), `current_affairs_attempt_responses` (frozen `question_snapshot` jsonb per Q, `time_spent_sec`/`client_seq` â‰¥ 0 checks). Four service-role SECURITY DEFINER RPCs: `ca_eligible_bundle_question_ids` (authoritative still-eligible set â€” reviewed promoted `current_event` in validity window), `ca_start_current_affairs_attempt` (locks the bundle; gates published+verified+publish/availability window; re-derives the authoritative set and proves the caller-frozen rows **exactly** equal it â€” `bundle_set_mismatch` on any missing/stale/extra row, never silent shortening; **conflict-safe** `ON CONFLICT (user_id,bundle_id) DO NOTHING` idempotent reuse), `ca_save_current_affairs_answer` (atomic locked update â€” owner / in-progress / frozen-question / frozen-option membership / monotonic `client_seq` where `â‰¤ stored_seq` is an idempotent no-op, mirroring `mock_engine.save_answer`), and `ca_submit_current_affairs_attempt` (ownership check; **inline** scoring against the frozen `question_snapshot->>'correct_option_id'`). The submit path writes **NO** `mock_attempts`, `user_topic_mastery`, SRS, Mistake-Book, correction-task, or analytics job â€” GA never enters the `mock_engine.submit_attempt` â†’ `JOB_ANALYTICS_RETRY` fan-out (mastery/correction bypass by construction). `app/backend/app/current_affairs/{bundles,attempts}.py`: verified-only promoted-`current_event` selection; bundle resolution with **scope precedence exact-exam â†’ exam-family â†’ global** (family resolved via `exams.exam_family_id`) requiring published+verified+open windows; gated freeze set (`eligible_bundle_question_ids`); server freeze reusing `mock_engine._question_snapshot` + `generated_mock_attempt._load_questions`, plus a frozen **Â§10 provenance envelope** (event date, source publication date, source URL, supersession warning) revealed **only post-submit**; learner view hides answer+provenance until submit; save/submit routed through the atomic RPCs with domain-errorâ†’`LookupError`/`PermissionError`/`ValueError` mapping. Learner API `current_affairs_practice.py` (GET state / save / submit) under `/api/study` (404/403/422 mapped) â€” **no new sidebar** (no-new-surface rule). **Hub launch intentionally NOT wired in this PR** (checkpost #976 F1): the `weekly_current_affairs` Subject-Practice-Hub launch is deferred with the learner attempt UI so no live launch points at a not-yet-existent route; the backend runtime + RPCs land ready for that follow-up + GQR-G5b crons. Tests: `test_ca_bundles_attempts_migration.py` (SQL-contract: own-tables, RESTRICT-preserves-history, exam_family FK, no-TTL, conflict-safe integrity-locked start, seq/option-guarded save, inline-scoring-no-mastery, service-role grants, â‰¥4 SECURITY DEFINER search_path), `test_ca_bundles.py` (window/reviewer/anchor, scope precedence, gated membership, provenance envelope + supersession), `test_ca_attempts.py` (gated freeze + provenance, no_bundle/empty, idempotent reuse, learner hide/reveal, save seq-idempotency/option/owner guards, submit scoring/owner), `test_ca_practice_api.py` (router 404/403/422 mapping) â€” current_affairs suite 100 pass, study_os green (1324). **Checkpost #976 fixes:** F1 (unwired launch â€” no dead route), F2 (exam_family FK + scope precedence + verified/publish gates), F3 (authoritative exact-set integrity lock, no silent shortening), F4 (dropped the invented, unenforced 48h TTL â€” start gate is the doc-specified bundle availability window), F5 (atomic locked save + `â‰¤ stored_seq` idempotent no-op + option/timing/seq validation & DB checks), F6 (`ON CONFLICT` conflict-safe idempotent start), F7 (attemptâ†’bundle RESTRICT preserves history), F8 (frozen Â§10 provenance envelope, post-submit only), F9 (domain-error mapping + router tests). **E2E fix:** renumbered migration 252â†’**253** (concurrently-merged pyq grant took 252) â€” resolves the `schema_migrations_pkey` duplicate-version failure at the E2E migration-apply step. `OPERATOR PENDING`: apply migration 253 + run `app/supabase/validation/validate_ca_attempt_rpcs.sql` (integrity lock, mismatch reject, conflict-safe reuse, seq idempotency, option/owner guards, inline scoring, RESTRICT-preserves-history) â€” VERIFY DB. Scheduler crons split to **GQR-G5b**; learner attempt UI + hub launch wiring to a follow-up. `graphify` deferred (CLI absent). |
-| GQR-G5a-h CA attempt-start hardening (checkpost #976 rounds 2+3) | CODE-FIXED, VALIDATION PENDING | Forward migration **255** over the immutable 253 (ALTER + guard trigger + 3Ã— CREATE OR REPLACE). Makes the published bundle an immutable, scope-checked, provenance-**integrity**-verified authority and the frozen attempt a bank-verified, drift-proof snapshot (never trusts caller JSON). **Round 2:** scope-shape CHECK `(exam_id is null or exam_family_id is null)` + start enforces the chosen bundle's exam/family scope (`bundle_scope_mismatch`); fail-**closed** on `bundle_degraded` (rawâ‰ eligible) with ordered exact-set; snapshot verified vs bank (answer + option-id set) + content-revision bound; eligibility requires provenance existence; `load_question_provenance` fails closed + freezes auditable ids (event/claim/document ids + `content_hash` + spans); GET returns per-question `client_seq`/`time_spent_sec` for resume; `_raise_mapped` maps only known tokens (infra faults â†’ 500), `CaAnswerBody` bounded. **Round 3 (checkpost #978):** **F1** membership FK `mock_question_id` â†’ **ON DELETE RESTRICT** (a bank delete can't silently shrink a bundle) + a **membership-lock trigger** (`bundle_membership_locked_when_published` â€” order/inclusion edits forced through draftâ†’republish) + each attempt bound to a **membership fingerprint** (`md5` of the ordered set) so a bundle id + revision identify one question set. **F2** start now verifies each frozen snapshot's **question text, explanation, and per-option id+text** (not just the id set) against the LOCKED bank+option rows (`snapshot_text_mismatch`), defeating a text swap under a stable id. **F3** eligibility now proves the **full promoted relation** â€” link/claim/bank event-id consistency, `reviewer_status='verified'` + `factual_status='current'` claim, `status='active'` + still-relevant event, and an active non-`discovery_only` source (ADR-0007) â€” mirrored in `_provenance_complete_ids`; `load_question_provenance` fails closed per-claim on partial evidence. **F4** bundle `exam_id`/`exam_family_id` FKs â†’ **RESTRICT** (deleting the exam/family can't widen a published scoped bundle to global) and `current_affairs_attempts.exam_id` becomes a real FK. Tests: `test_ca_attempt_hardening_migration.py` (255 SQL-contract: forward-only, RESTRICT FKs, membership lock, membership-revision, content verification, full-integrity eligibility) + updated `test_ca_bundles.py`/`test_ca_attempts.py`/`test_ca_practice_api.py` (integrity rejection, content-text verification, provenance fail-closed) â€” current_affairs suite green (116). `OPERATOR PENDING`: apply migration 255 + run `validate_ca_attempt_rpcs.sql` (membership-lock, scope-mismatch, degradation, snapshot-forgery with the full integrity chain + correct `p_exam`, history protection). **E2E:** the `253/253` collision (`253_current_affairs_bundles_attempts` #976 vs `253_exam_eligibility_stream_aware_activation` #975) was resolved on `main` by renumbering exam-eligibility â†’ **254**; this hardening migration is **255**. |
-| GQR-G5b CA scheduler crons | CODE-FIXED, VALIDATION PENDING | Three CA crons wired into `app/notifications/scheduler.py` (the single APScheduler module, prod-gated by `ENABLE_SCHEDULER`, all `max_instances=1`+`coalesce=True`): **`ca:ingest`** (every 30 min) â†’ `ingestion.run_ingest_pass` loops ACTIVE sources, gates each on a `crawl_schedule.interval_hours`-vs-`last_fetch_at` cadence (`_is_due`; no `next_crawl_at` column exists), calls the pure `ingest_source` per due source, and hands each freshly-`snapshotted` document to the generation queue via `ca_enqueue_generation_job` (a duplicate/not-modified tick never enqueues); **`ca:generate`** (every 30 s) mirrors `_job_writing_evaluator` â€” `sweep_stale_generation_jobs` + one `run_generation_worker_pass` (shadow/mock unless `FF_CA_LLM`; never promotes); **`ca:promote-sweep`** (daily 02:30 UTC) â†’ `retirement.sweep_expired_current_events` calls the new **migration 256** RPC `ca_sweep_expired_current_events()` which archives `current_affairs_events` past `relevance_until` (`status='active' â†’ 'archived'`) â€” defence-in-depth over the read-time filters (attempt eligibility already requires `event.status='active'`); it touches ONLY event status, never `mock_question_bank`/bundles/attempts (expiry must never delete or rewrite history). `_is_noop_result`/`_is_failure_result` extended: `ca:generate` noop=`processed=0 & !swept` / failure=`status='failed'`; `ca:ingest` noop when nothing material moved (snapshotted/enqueued/error/deprioritised all 0), no failure shape (per-source errors are counted); `ca:promote-sweep` noop=`archived=0`. Migration 256: service-role only, SECURITY DEFINER, `search_path` pinned. **Checkpost #983 fixes:** **F1 (mock never consumes prod docs)** â€” `run_generation_worker_pass(require_real_provider=True)` (set by the cron) refuses to CLAIM a job unless a real provider adapter is active; with `FF_CA_LLM` off/unavailable it returns `idle` WITHOUT acknowledging any job, so the deterministic mock can't process a document and pin its generation `done` (generation is fixed at 1 â†’ unreprocessable). **F2 (durable enqueue, no loss/backfill gap)** â€” the crawl loop no longer owns the lossy enqueue; a `_reconcile_pending_generation` pass idempotently enqueues EVERY `snapshotted` document that has no job (any status), covering fresh snapshots, transient enqueue failures, AND pre-existing G2 backlog; enqueue failures are counted (`enqueue_failed`), not swallowed. **F3 (covers every source + isolation)** â€” `_iter_active_sources` pages all active sources deterministically by `id` (no silent 100-row cap); each source is wrapped so one failure can't abort the pass; non-object `crawl_schedule` JSONB is tolerated. **F4 (honest failure reporting)** â€” the pass returns a `status` (`ok`/`partial`/`failed`): a source-query outage â†’ `failed`, per-source/enqueue errors â†’ `partial`; `_is_noop_result` only noops a clean `ok` pass and `_is_failure_result('ca:ingest')` treats `failed`/`partial` as operational failures; `ingest_source` now distinguishes a unique-violation (23505 â†’ benign `write_contended` duplicate) from any other insert exception (â†’ real `error`, health streak bumped) instead of masking all failures as duplicates. Tests: `test_ca_ingest_pass.py` (reconciliation enqueue, backfill, per-source isolation, >1-page coverage, non-dict schedule, source-query-failed/enqueue-failed classification), `test_ingestion.py` (unique-vs-infra insert classification), `test_ca_generation_worker.py` (require_real_provider refuses to claim with mock), `test_scheduler_config.py` (ca:ingest failed/partial classification) â€” 158 CA + scheduler + migrations-contract green. `OPERATOR PENDING`: apply migration 256 + VERIFY DB the sweep RPC; keep `ENABLE_SCHEDULER=false` until a real CA provider adapter is approved (with the mock, `ca:generate` now idles by design). |
-| GQR-G6 Monthly consolidation + retry (backend) | CODE-FIXED, VALIDATION PENDING | Migration **258** adds the monthly runtime + short-lived personalised retry queue on GA's OWN tables. `current_affairs_retry_items` (`user_id`, `question_id` **FKâ†’bank ON DELETE RESTRICT**, `source_attempt_id` **FKâ†’attempts ON DELETE SET NULL**, `exam_id`, `due_at`, `expires_at`, `status` `pending`/`consumed`/`expired`, unique `(user_id, question_id)`); `current_affairs_attempt_responses.item_role` (`core`/`retry_tail`) via forward ALTER. RPCs (service-role, SECURITY DEFINER, `search_path` pinned): **`ca_question_current_relevant`** (full promoted-relation integrity predicate per question); **`ca_enqueue_weekly_retry_items`** (from a **submitted weekly** attempt, upserts still-relevant answered-wrong questions as `pending`, idempotent `ON CONFLICT DO NOTHING`, `due_at`=+7d, `expires_at`=bank relevance end); **`ca_eligible_retry_tail`** (server owns which pending/due/non-expired/relevant items may enter a tail); **`ca_start_monthly_current_affairs_attempt`** â€” mirrors the hardened weekly start for an EDITORIAL CORE (`cadence='monthly'` bundle; scope-gated; core must equal the authoritative eligible set in order â€” `bundle_degraded`/`bundle_set_mismatch`) PLUS a per-learner RETRY TAIL (capped 10 â€” `retry_tail_cap_exceeded`; no dup/overlap â€” `retry_tail_duplicate`/`retry_tail_overlaps_core`; each an owned `pending` eligible item â€” `retry_tail_not_eligible`/`retry_tail_not_relevant`), every frozen row content-verified vs the LOCKED bank (text/answer/option id+text), tail rows stamped `retry_tail` + items flipped to `consumed`, conflict-safe per `(user, monthly bundle)`; **`ca_sweep_expired_retry_items`** (`pending`â†’`expired` past `expires_at`/no-longer-relevant â€” expiry never deletes history). Service `app/backend/app/current_affairs/monthly.py`: `enqueue_weekly_retry_items`, `start_monthly_current_affairs_attempt`, `monthly_consolidation_report` (core-vs-retry-tail composition + score, ownership-checked). The **`ca:promote-sweep`** cron now also expires retry items (`_job_ca_promote_sweep` merges `{archived, retry_expired}`; `_is_noop_result` updated). Monthly error tokens registered in `attempts._VALUE_TOKENS`. NO mastery/SRS/Mistake-Book/correction/mock-attempt write. **Hub launch + learner UI deferred** (as G5a). Tests: `test_ca_monthly_retry_migration.py` (258 SQL-contract), `test_ca_monthly.py` (core+tail freeze, cap, core-overlap exclusion, core-only, enqueue-from-weekly, report), updated `test_ca_retirement.py`/`test_scheduler_config.py` â€” current_affairs + scheduler + migrations-contract green (177). `OPERATOR PENDING`: apply migration 258 + run `app/supabase/validation/validate_ca_monthly_retry.sql` (eligible tail, monthly core+tail start, overlap reject, consume, idempotent reuse, expiry sweep) â€” VERIFY DB. `graphify` deferred (CLI absent). |
-| GQR-Q7 Quant heuristic authority | CODE-FIXED, VALIDATION PENDING | Migration 243 creates `quant_heuristics` (structured jsonb `applicability_rule`, shortcut/standard_method/trap/estimation, `pendingâ†’verified\|rejected\|needs_correction` lifecycle, scope CHECK, no `expected_time_saving_pct`) + `quant_question_heuristics` link (own reviewer_status) + `cms_review_quant_heuristic` RPC (transition matrix + CAS + audit, mirrors 216) â€” all service-role RLS. `app/backend/app/study_os/quant_heuristics.py`: verified-only CONJUNCTIVE reads (link verified AND heuristic verified AND active) + topic-scoped list + review wrapper. Tests: `test_quant_heuristics.py` (11) + SBStub RPC emulation. No gym/signals/planner (GQR-Q8/Q9). `OPERATOR PENDING` for live migration apply. **Content Studio admin UI + API glue (2026-07-12):** `content_studio.py` adds `/admin/content-studio/quant-heuristics` list (topic/type/status/`q`/pagination, batched topic-name enrichment) + get + `/review` (heuristic transition matrix guard â€” `needs_correctionâ†’pending\|rejected`, `verifiedâ†’needs_correction`, `rejectedâ†’pending`; reopen-verified requires notes; delegates to the study_os `review_heuristic` RPC wrapper; `_map_rpc_error` extended with `invalid_reviewer_notes`). Reads reuse `_require_content_read`; review is `content_studio.review`. FE: `quant_heuristic` content type in `ContentStudio.jsx` (Library + Review Queue tabs only â€” no bulk/assign RPC exists), `QuantHeuristicLibrary.jsx` (read-only browse + KaTeX formula drawer via existing `MathRenderer`), `QuantHeuristicReviewQueue.jsx` (lifecycle review, CAS on `expected_status`), `contentStudioApi.js` adds `listHeuristics`/`getHeuristic`/`reviewHeuristic` + `HEURISTIC_TYPES` + `HEURISTIC_REVIEW_TRANSITIONS`. No create/edit/activate/assign path (deferred â€” migration 243 ships only the review RPC). Tests: `test_content_studio_quant_heuristics.py` (17), FE `ContentStudio.test.jsx` (+11). **Checkpost #965 hardening (2026-07-12):** migration `246_quant_heuristic_review_cas_reason.sql` (renumbered from 245 â€” 245 was claimed by the concurrently-merged GQR-Q8 calc-gym migration) drops+recreates `cms_review_quant_heuristic` with mandatory `p_expected_updated_at` (content-revision CAS â€” a reviewer can never verify a revision they did not read, mirrors `cms_review_writing_prompt`) + mandatory 8â€“500 char `p_reason` persisted on the audit row; `review_heuristic` wrapper + router body + FE adapter/dialog carry `expected_updated_at`+`reason`; SBStub emulation updated. FE fixes: `QuantHeuristicLibrary.buildListParams` (was serializing `undefined` filter params â†’ backend filtered everything out), review dialog now renders every canonical field (`applicability_rule`/`standard_method`/`worked_example`/`common_traps`/existing `reviewer_notes`), review queue exposes a `rejected` filter (makes `rejectedâ†’pending` reachable). Tests: +3 backend, +5 FE (full-snapshot dialog, rejectedâ†’pending submit, undefined-param regression). `OPERATOR PENDING` for live 246 apply. |
-| GQR-S3 Reasoning strategy authority + Content Studio | CODE-FIXED, VALIDATION PENDING | Contract: `docs/architecture/solution-strategies-improvement-lab.md` Â§8 + `docs/status/GQR-Solution-Strategies-Improvement-Lab-Checklist-2026-07-14.md`. The Reasoning-lane equivalent of GQR-Q7, mirroring it exactly (review-only). Migration `262_reasoning_strategy_authority.sql` creates `reasoning_strategies` (structured jsonb `applicability_rule`; types approach/pattern/elimination/diagram_method/set_method/trap; `pendingâ†’verified\|rejected\|needs_correction` lifecycle; scope CHECK; learner-content columns `standard_method`/`faster_method`/`key_observation`/`worked_example`/`common_traps`/`formula_latex` named to match the shared DTO so GQR-S4 projection is a straight copy) + `reasoning_question_strategies` link (own reviewer_status + relevance, unique `(question_id, strategy_id)`) + `cms_review_reasoning_strategy` RPC (transition matrix + dual CAS on `expected_status` **and** content `expected_updated_at` + mandatory 8â€“500 char `reason` + `admin_audit_logs` row â€” folds migration 246's hardening into the first landing) â€” all service-role RLS, anon/authenticated revoked. `app/backend/app/study_os/reasoning_strategies.py`: `review_strategy` RPC wrapper (learner batched read deferred to GQR-S4). `content_studio.py` adds `/admin/content-studio/reasoning-strategies` list (topic/type/status/`q`/pagination, batched topic-name enrichment) + get + `/review` (reasoning transition-matrix guard identical to the heuristic one; reopen-verified requires notes; `_require_content_read` read gate, `content_studio.review` review gate). FE: `reasoning_strategy` content type in `ContentStudio.jsx` (Library + Review Queue tabs only â€” migration 262 ships only the review RPC), `ReasoningStrategyLibrary.jsx` (read-only browse + KaTeX formula drawer via existing `MathRenderer`), `ReasoningStrategyReviewQueue.jsx` (lifecycle review, dual CAS), `contentStudioApi.js` adds `listStrategies`/`getStrategy`/`reviewStrategy` + `REASONING_STRATEGY_TYPES` + `REASONING_REVIEW_TRANSITIONS`. No create/edit/activate/assign/link-review/preview path â€” deferred to **GQR-S3b** (as GQR-Q7 deferred Quant authoring to GQR-S2); stops before learner delivery (GQR-S4). Tests: `test_content_studio_reasoning_strategies.py` (19 router), FE `ContentStudio.test.jsx` (+6). Fully independent of GQR-S1/S2. `VERIFY DB` (migration renumbered to 262 after 261 landed on main â€” reconcile before apply) + `OPERATOR PENDING` for live 262 apply + RLS proof. **GQR-S3b UPDATE (CODE-FIXED, VERIFY DB):** governed verified content path landed with NO migration, mirroring GQR-S2 â€” service-role INSERT into `reasoning_strategies`/`reasoning_question_strategies` + the existing `cms_review_reasoning_strategy` RPC to reach verified, link verified by service-role UPDATE. New SQL: `app/supabase/checks/reasoning_content_readiness_preflight.sql`, `app/supabase/seeds/reasoning_strategy_demo_ssc_cgl.sql` (2 Coding-Decoding strategies verified via the audited RPC + 1 verified link on a reachable demo question), `app/supabase/validation/validate_reasoning_strategy_readiness.sql` (rollback-only conjunctive-gate proof). Full Content Studio authoring UI (new RPCs = migration) remains a tracked follow-up. Submitted-review evidence belongs to GQR-S4. `VERIFY DB`: run preflight â†’ seed â†’ validation against staging. |
-| GQR-S4 Reasoning learner delivery | CODE-FIXED, VALIDATION PENDING | The Reasoning twin of GQR-S1, plugged into the same aggregator. `reasoning_strategies.strategies_for_questions` (batched: ONE link + ONE strategy query; conjunctive gate â€” link verified AND strategy verified AND active AND canonical-Reasoning scope match to the embedded bank-question topic/microtopic; no cross-question/cross-subject leak; deterministic order; fail-soft) mirrors `quant_heuristics.heuristics_for_questions` exactly. Registered as a source in `solution_strategies.py` (`_project_reasoning`, `subject_family='reasoning'`, explicit allowlist â€” governance fields dropped by construction; Reasoning columns already DTO-named so projection is a straight copy incl. `key_observation`). `mock_engine.get_review` is UNCHANGED â€” it already batches the aggregator once, so Reasoning strategies now attach to `solution_strategies` alongside Quant. FE unchanged: the subject-agnostic `SolutionStrategyPanel` already renders `key_observation`. **No migration, no RLS change.** A single canonical question carries ONE topic scope, so mixed-family content on one real question is impossible by construction â€” the gate enforces cross-source ISOLATION, not co-appearance. Tests: `test_reasoning_strategies_delivery.py` (11 â€” one-query, gate, scope/cross-subject block, isolation, projection-strip, aggregator multi-source composition with per-subject isolation, fail-soft, get_review attach), FE `SolutionStrategyPanel.test.jsx` (+1 reasoning `key_observation` case). Live submitted-review proof **blocked on GQR-S3b** (no governed Reasoning authoring/seed yet â€” same posture GQR-S1 had toward GQR-S2). No set/stimulus delivery (GQR-S7), no non-verbal (GQR-S9). |
-| GQR-S6 Improvement Lab personalized feeds | CODE-FIXED, VALIDATION PENDING | Fills the GQR-S5 `PlannedSection` placeholders with real, personalized Quant (Methods & Shortcuts) + Reasoning (Approaches & Patterns) feeds. `study_os/improvement_lab.py::build_feed`: BOUNDED, owner-scoped projection over the caller's SUBMITTED mock history â€” recent attempts (`.eq user_id` + `.eq status=submitted`, limit 30) â†’ their response questions (bounded 2000) â†’ the verified-only LIVE Solution-Strategy set via the shared `solution_strategies` aggregator (never a full-library dump) â†’ per-strategy evidence (`times_seen`/`wrong_count`/`correct_count`/`last_seen_at`/bounded `source_question_ids`) â†’ ranked wrong-associated & recent first, then relevance, then stable name/id. Fail-soft (any read error â†’ `[]`, never 500); governance stripped by construction (aggregator DTO only); no saved-strategy table, no planner writes, no target-solve-time. Endpoints `GET /api/study/improvement-lab/{quant,reasoning}` on the `study_os.py` router (`get_current_user`, `get_supabase_admin`). FE: `StrategyFeedSection` (four-state, mirrors `MyWritingErrors`) + `StrategyFeedCard` (evidence chips + DTO fields, KaTeX formula via existing `MathRenderer`) + `useStrategyFeed` (wraps `useApiCollection`); `ImprovementLab.jsx` swaps the two `PlannedSection`s, section testids/isolation preserved. **No migration, no RLS change.** Tests: `test_improvement_lab.py` (10), FE `StrategyFeedSection.test.jsx` (4) + updated `ImprovementLab.test.jsx`. Live proof pending seeded verified content (Quant = GQR-S2 present; Reasoning = GQR-S3b, PR #996). |
-| GQR-Q8 Calculation Gym + shadow signals | CODE-FIXED, VALIDATION PENDING | Migration 245 creates `calc_gym_sessions`/`calc_gym_session_items` (frozen seed+items, server-owned answers/limits) + `quant_performance_signals` (sibling, versioned `policy_version`, NULLS-NOT-DISTINCT scope upsert) â€” all service-role RLS. `study_os/calc_gym.py`: deterministic seeded generator for 9 skills (tables/squares/cubes/roots/fractionâ†”%/ratio/approx/patterns), `create_session` (answers never leaked to learner) + idempotent `submit_session` scoring against frozen answers. `study_os/quant_signals.py`: `derive_signals` (Â§3.3 exclusions â€” unanswered/zero-time/extreme-dwell; labels insufficient/concept/application/speed/calculation/stable) + shadow `persist_signals` (upsert; **never writes `user_topic_mastery`**; `mastery_delta` 0.95 weighting untouched). Checkpost #964 hardening (2 rounds): create + submit are now single-transaction RPCs (`create_calc_gym_session` / `submit_calc_gym_session`) â€” atomic parent+child (no orphan/partial), owner-scoped `FOR UPDATE`, state+deadline enforced (lateâ†’`expired`), frozen-answer scoring, and client timing CLAMPED non-negative + bounded by the frozen duration (plus non-negative CHECKs on the timing columns). `derive_signals` builds ONE eligible set (excluded rows count toward nothing) behind a fail-closed gate where BOTH `attempt_trusted` and `attempt_complete` default False. Nearest-rank `_p75`; approximation uses explicit half-up (not banker's) rounding. Tests: `test_calc_gym.py` + `test_quant_signals.py` (27) + SBStub RPC emulations with atomicity failure-injection. No planner/runtime wiring (GQR-Q9/GQR-11). `OPERATOR PENDING` for live migration apply. |
-| GQR-Q9 Quant planner activation | PLANNED â€” BLOCKED on Lane A gate | Versioned threshold policy; heuristic + gym recommendations; canary. Separate governed decision on existing time weighting (two writers). |
-| GQR-S1 Quant Solution Strategy delivery | CODE-FIXED, VALIDATION PENDING | First learner-facing consumer of the GQR-Q7 authority. Contract: `docs/architecture/solution-strategies-improvement-lab.md` + exec checklist `GQR-Solution-Strategies-Improvement-Lab-Checklist-2026-07-14.md`. New `study_os/solution_strategies.py` (normalized learner DTO `ALLOWED_FIELDS`; quant projection renames `heuristic_typeâ†’strategy_type`, `shortcut_methodâ†’faster_method`, `subject_family='quant'`, governance fields dropped by construction; per-source fail-soft) + `quant_heuristics.heuristics_for_questions` (batched: ONE link + ONE heuristic query, conjunctive verified+active gate, no cross-question leak, deterministic order). `mock_engine.get_review` attaches `solution_strategies` as a LIVE sibling of `question_snapshot` (never frozen) â€” regular + generated mock share the path. FE: `SolutionStrategyPanel.jsx` (review-only, null when empty, KaTeX via existing `MathRenderer`) mounted ONCE in `QuestionRenderer.jsx`; `MockReview.jsx` threads `current.solution_strategies ?? []`. **No migration, no RLS change.** Tests: `test_solution_strategies.py` (10 â€” batched one-query, gate, isolation, projection-strip, fail-soft, get_review attach), FE `SolutionStrategyPanel.test.jsx` (5). Deferred: Reasoning source (GQR-S4), Improvement Lab rename (GQR-S5), personalized feeds (GQR-S6). `VERIFY DB` for live verified-content appearing in review. |
-| GQR-R2 Reasoning non-verbal | PLANNED â€” DEFERRED (named coverage gap) | Non-verbal / figure options / option media. ~40â€“50% of SSC GI&Reasoning; out of v1 scope but tracked so "Reasoning shipped" is not overstated. |
-| GQR-R10 Reasoning text sets | CODE-FIXED, VALIDATION PENDING (partial: timed_practice slice) | Reasoning family wires `topic_pyq` (topic_practice) **+ `timed_practice`** in `subject_runtime_policy` â€” surfaced on the hub, dispatched via `_LAUNCH_HANDLERS`. **Family-gated launch** (checkpost #960 F1, re-review F2): the endpoint resolves the path subject via `subjects.resolve_subject_family` â†’ `(family, known)` and (a) **fails closed** when the subject is not in the exam's locked coverage or the read fails (`known=False` â†’ 422, never the generic policy), and (b) rejects any mode not in that family's `wired_runtime_modes` (timed_practice is Reasoning-only in v1; rejected for Quant/English). **Single enforced deadline** (re-review F1): `start_pyq_practice` sets `expires_at` = the short timed window for timed practice (server-owned `seconds_per_question`) and the 24h abandonment TTL for untimed. All runtime paths (`get_attempt`, `save_answer`, `submit`, auto-submit/sweeper) enforce that one `expires_at` â€” the timed clock is authoritative, not display-only. `mock_engine.get_attempt` surfaces `time_remaining_sec` from `expires_at`, except **untimed practice â†’ `None`** (shell renders `--`, no countdown/auto-submit); real mocks unchanged. Tests: `test_pyq_practice.py` (timed short-deadline enforced, late save rejected past deadline, untimed None + long TTL), `test_subject_practice_endpoint.py` (family gate quant+english rejected, fail-closed on unknown subject), `test_subject_runtime_policy.py`, FE `MockAttemptShell.timer.test.jsx`. Backend study_os 1274 pass; FE shell 18 pass. **Deferred:** `reasoning_set` (shared stimulus sets) needs a stimulus-grouped selector; Quant may adopt `timed_practice` in its lane. No non-verbal/option-media. |
-| GQR-S2 Quant content readiness/seed | CODE-FIXED, VERIFY DB | Completes the data-readiness slice without a migration. **Preflight** `app/supabase/checks/quant_content_readiness_preflight.sql` counts only double-verified active heuristic surfaces whose bank rows pass the mock-pipeline `verified/live/published` gate. **Seed** `app/supabase/seeds/quant_heuristic_demo_ssc_cgl.sql` authors pending rows, requires a real operator actor, verifies heuristics through the audited `cms_review_quant_heuristic` RPC, resolves conflicts by `heuristic_code`, and verifies one eligible question link through the documented service-role path. **Proof** `app/supabase/validation/validate_quant_heuristic_readiness.sql` is rollback-only and asserts the status/reason/audit/conjunctive gates. **Submitted-review evidence remains blocked on GQR-S1** because `heuristics_for_question` has no review-payload consumer yet; direct helper tests do not satisfy that E2E gate. `OPERATOR PENDING`: rerun preflight â†’ audited seed â†’ validation against staging/shadow after this review fix. Content Studio authoring/link-review RPCs remain deferred. |
-| GQR-11 Integration + rollout | PLANNED | Study Home, planner, reports (label GA as current-affairs practice, not mastery), correction routing, operator telemetry, E2E + accessibility, shadow/canary/prod gates. |
-| SSC GA section seed (structural) + GA readiness exemption | CODE-FIXED, VALIDATION PENDING | **Seed:** `exam_intelligence_demo_ssc_cgl.sql` authors the real Tier-1 fourth section â€” subject `55555555-â€¦-554` (slug `general-awareness`, subject_group `general_awareness` â†’ GA SubjectRuntimePolicy family) + exam_phase_section `88888888-â€¦-884` (General Awareness, 25Q / 50 marks / 25% weightage, sort_order 4). Tier-1 authored structure is now 4Ã—25 = 100Q / 200 marks, matching the exam_phases row. GA is bundle-driven: NO topics / exam_topic_coverage / PYQ / mastery seeded. **Readiness contract (checkpost #1004 r1 â†’ option 3):** `diagnostics.readiness_verdict` now resolves each section's SubjectRuntimePolicy family (via canonical `subject_slug`/`subject_group` newly surfaced by `section_structure_completeness`) and EXEMPTS the `general_awareness` family from the durable `no_locked_coverage` / `thin_mcq_pool` gates â€” GA content is bundle-sourced, not from the durable bank/coverage. GA sections emit a new `structural_only` verdict (reason `content_bundle_sourced`), tracked in an additive `summary.structural_only` bucket that the fixed-key aggregators (`console_detail`, admin readiness endpoint) safely ignore. So an authored-but-unfilled GA section neither blocks nor thins the phase; only genuine `missing_structure` still blocks it. **Runtime NOT changed:** GA bundles/attempts remain keyed on the virtual subject `00000000-â€¦-00ca`; migration 253 scopes bundles/attempts by exam / exam-family (no `subject_id`). Wiring the hub/launch onto the canonical GA subject is a separate, deferred change. Regressions: `test_mock_readiness.py` (GA `structural_only`; GA still blocks on missing structure; summary key), `test_mock_blueprint.py::test_seeded_four_section_envelope_ga_structural_only` + `_ga_still_blocks_on_missing_structure`, `test_mock_readiness_endpoint.py` (4-key per-phase summary), `test_ssc_ga_section_seed.py` (seed subject/section + 100Q/200/100%). `VERIFY DB`: apply seed to staging/shadow and confirm the four-section envelope with GA `structural_only`. |
-
-## Financial Regulatory & Development Institutions â€” Lane R
-
-Architecture contract: `docs/architecture/financial-regulatory-development-family.md`
-
-Current verdict: **PLANNING â€” no code landed.** Family model spanning
-regulators (RBI, SEBI, IRDAI, PFRDA, IFSCA, IBBI) **and** development-finance
-institutions (NABARD, SIDBI, NHB, EXIM, NaBFID) â€” renamed from "Regulatory
-Officers" because development-finance bodies are not regulators. Core exams:
-RBI Grade B, SEBI Grade A, NABARD Grade A/B, IRDAI AM, PFRDA Grade A, IFSCA
-Grade A, SIDBI Grade A; NHB/EXIM/NaBFID = light; NPS Trust/EPFO/ECGC/IBBI =
-index-only (portfolio matrix Â§1). **Scope boundary (owner-locked):** Lane R owns
-regulatory/development **domain knowledge + domain rubrics only** â€” generic
-aptitude (Lane GQR), the English evaluator (Lane H), and the Phase-I aptitude
-mock path stay with their workstreams and are external dependencies here.
-
-Folds in the corrections that (a) the descriptive-answer subsystem already exists
-via EWP-1/2/2B (Lane H) â€” new work is the domain (non-English) rubric path; and
-(b) media assets already landed via migration 233 (only later PR-11 slices
-deferred).
-
-Serial-delivery note: R1 stream/eligibility migrations and any router/nav changes
-are single-owner sequential work (no fan-out) per the CLAUDE.md serial-delivery
-rule. IFSCA rows stay `draft`/unverified until the official advertisement PDF is
-ingested and reviewed.
-
-| Item | Current status | Repo evidence / notes |
-|---|---|---|
-| Family scope + portfolio matrix | PLANNED (P0) | Rename to Financial Regulatory & Development Institutions; core = RBI/SEBI/NABARD/IRDAI/PFRDA/IFSCA/SIDBI; light = NHB/EXIM/NaBFID; index-only = NPS Trust/EPFO/ECGC/IBBI (light/index split proposed, pending owner confirm). Contract Â§1. |
-| Classifier `"tra"` fix + IFSCA | CODE-FIXED, VALIDATION PENDING (this PR) â€” graphify OPERATOR PENDING | `recruitment_classifier.py` â€” root fix is **boundary-aware acronym matching** (`_acronym_re`, non-alphanumeric lookarounds), not just `"tra"`â†’`"trai"`: raw substring membership was the bug class (`"trai"` alone still matches `training`/`trainee`). Regulatory acronyms SEBI/IRDAI/PFRDA/IFSCA/TRAI + full org-name phrases; banking adds NHB/EXIM/NaBFID acronyms + dev-finance org names. State-PSC now matches the `<letters>PSC` shape (MPSC/UPPSCâ€¦) on boundaries â€” the prior `state_psc` test passed only via `"maha`**`tra`**`shtra"` false-matching regulatory; test now asserts the family key. Unit-tested: `tests/scraping/test_recruitment_classifier.py` (26 passed; boundary negatives pinned for training/trainee/Johnhburg). Self-contained, no schema change. `graphify update .` is an operator step â€” the CLI is not installed in the remote container (not on PATH, not an npm/pip package; the checked-in `graphify-out/repo-graph.json` is a Windows-generated operator artifact dated 2026-05-11). |
-| Stream schema (full contract) | CODE-FIXED, VERIFY DB (this PR) â€” migration 242 (renumbered from 241 to resolve a duplicate-version collision on main) | `migration 242_exam_streams_schema.sql` (additive; never edits merged 030). Canonical `exam_streams` (`unique(exam_id, stream_key)`) + `exam_cycle_streams` (availability, vacancy_count, status). Nullable `stream_id` on `exam_phases`/`exam_phase_sections`/`exam_topic_coverage` (NULL = common). **Uniqueness is `NULLS NOT DISTINCT`** (PG15+, as 219) â€” no forgeable zero-UUID sentinel: replaced the two 030 phase partial indexes, the inline section constraint (dropped by definition lookup, name-agnostic), and the two coverage partial indexes. **Bidirectional cross-parent integrity (checkpost P0, two passes):** four `FOR SHARE`-locked child triggers (`errcode P0422`, INSERT+UPDATE) enforce single-exam cycle/stream pairing, the cycle-bound-phaseâ†’offered/expected pair rule, availability for the *effective stream below the phase* (stream-scoped section, cycle-scoped coverage), full coverage scope (own cycleâ†”exam, section resolved through its phase even when the coverage phase is NULL), and stream non-conflict. Plus **parent-side guards** so the invariant survives parent moves: `_exam_cycle_streams_guard_delete` (BEFORE DELETE), demotion/pair-move guards, and `_exam_streams_guard_exam_move` / `_exam_cycles_guard_exam_move` (BEFORE UPDATE OF exam_id) reject reassigning a parent while dependents exist. FKs alone allow contradictory rows (posture mirrors 219/223). **Retire, not destroy:** every stream_id FK is `ON DELETE RESTRICT`. RLS authenticated-read (writes service-role, mirrors 035); `tg_set_updated_at` triggers. Tests: string-contract `tests/test_exam_streams_migration.py` (11 pass) + **committed behavioural regression `app/supabase/tests/regression_242_exam_streams_integrity.sql`** (18 checks: apply/idempotent re-apply, coexistence, duplicate + every cross-parent/availability/parent-move/DELETE rejection) â€” validated end-to-end on ephemeral PG16. **VERIFY DB** = shadow/live apply pending. Follow-up (not this PR): reconcile loose `stream_key text` on `exam_descriptive_requirements` (205:136) â†’ FK (needs seeded streams Â§6; touches Lane H). |
-| Eligibility: baseline vs cycle (schema + runtime safety + authoring) | CODE-FIXED, VERIFY DB (this PR) â€” migration 248 (renumbered from 245 as main advanced); stream-AWARE evaluation deferred | `migration 248_exam_stream_eligibility.sql` + evaluator + admin API (#967 checkpost rework). **Baseline** `exam_eligibility_rules`: optional `stream_id` (`ON DELETE RESTRICT`) + `value_json`; FIVE new baseline rule_types (discipline/min_percentage/certification/qualification_combination/stream_availability); **`experience_min_years` is cycle-only** (baseline-vs-cycle separation). `qualification_combination` is **structurally** validated by `is_valid_qualification_combination()` (recursive `{op:and/or, clauses:[â€¦]}` grammar), CHECK-enforced on both tables â€” not just NOT NULL. **Fail-closed (P0):** a DB CHECK + API guard block promoting an evaluator-unsupported rule_type to `verified`, so a verified rule can never be silently non-operative. Stream-aware `NULLS NOT DISTINCT` uniqueness. Child cross-parent trigger + **242's `_exam_streams_guard_exam_move` REPLACED to also cover eligibility rules**. **Cycle** `exam_cycle_stream_eligibility`: composite-FK-bound to `exam_cycle_streams(cycle,stream)` with **`ON DELETE RESTRICT`** (reviewed-row audit trail preserved); carries `cutoff_date_basis`/`cutoff_date` + `experience_min_years` + `value_json`. **Runtime safety (P0):** `evaluator._load_rules_by_exam` drops `stream_id IS NOT NULL` rows so a verified stream rule can never apply exam-wide (isolation test pins it). **Authoring (P0):** `admin_exam_eligibility.py` accepts new rule_types + `stream_id` + `value_json` (create/update/read/projections), stream-aware duplicate pre-check (Python-filtered, driver-agnostic), and `model_fields_set`-based `stream_id` clearing. Service-role RLS. Tests: `test_exam_stream_eligibility_migration.py`, `test_stream_isolation.py`, admin API stream/verified-guard/combo cases, committed `regression_248_â€¦sql` (12 checks incl. all rule_types, structural qual-combo negatives, fail-closed verify, experience-baseline reject, cross-exam INSERT/UPDATE, parent-move, cutoff/experience, RESTRICT audit-preservation) â€” validated on PG16, idempotent. **VERIFY DB** = shadow/live apply pending. `eligibility_runner` stays for per-vacancy truth. |
-| Eligibility: stream-AWARE evaluation (activation) | CODE-FIXED, VERIFY DB (this PR) â€” migration 253 | Activates the deferred evaluator wiring. `evaluate_exam_for_user` now implements branches for **all** baseline rule_types â€” discipline/min_percentage/certification (against `aspirant_education.degree`/`stream`/`percentage` + `aspirant_certifications`), `stream_availability` (a `not_offered` knockout), and structured `qualification_combination` (recursive tri-state AND/OR reusing the atomics) â€” preserving the four-state eligible/conditional/not_eligible/unknown + knockout contract. **Stream-aware selection:** `_rules_for_stream` merges common rules with one stream's rules (stream overrides); the exam-WIDE verdict still uses common-only (isolation invariant kept), and `summarize_user_eligibility` gains an **additive per-exam `streams[]` breakdown** (per-stream status/reasons/missing_fields â€” backward-compatible; existing buckets/keys unchanged, confirmed against every consumer: `exam_eligibility.py`, `exams.py` overlay, `mission_control.py`, `EligibleExamsCard.jsx`). **`migration 253`** drops the fail-closed `exam_eligibility_rules_verified_supported_check` (all baseline types now evaluated); the admin API verify-guard is lifted to match. Tests: `test_new_rule_types.py` (discipline/percentage/certification/combo AND-OR/stream_availability + per-stream summarize), updated `test_stream_isolation.py` (exam-wide uses common-only), `test_exam_eligibility_activation_migration.py`; 27 evaluator tests pass.  **Checkpost hardening:** the loader now selects `value_json` (a verified combination no longer silently fails); discipline/percentage in a combination are **record-correlated** (LLB-50% + BCom-75% â‰  "LLB AND 60%"); discipline matching is **boundary-aware + alias-expanded** (ITâ‰ statistics); `stream_availability` fails closed on unknown values (DB domain CHECK + evaluator); baseline combos **exclude** cycle-only `experience_min_years` (migration 253 baseline validator). Follow-up: a Compass surface consuming `streams[]`; ~~cycle-scoped evaluation reading `exam_cycle_stream_eligibility`~~ **DONE** (cutoff-aware `cycle` band â€” prereq 3 row above). |
-| Regulator identities & official data | CODE-FIXED, VERIFY DB (this PR) â€” migration 244 (renumbered from 242 after the base duplicate-241 defect was reconciled and 242/243 were claimed by the exam_streams and quant-heuristic migrations) | `migration 244_financial_regulatory_family_identity_seed.sql`, reworked per the #962 checkpost to the **canonical hierarchy the product reads**: **one** umbrella `exam_family` `financial-regulatory` (family-scoped applicability resolves on `exams.exam_family_id` equality, not metadata) with all 15 portfolio exams reparented onto it (incl. legacy RBI/SEBI from 110); institution dimension on `exams.conducting_organization_id â†’ organizations`; portfolio lane on canonical `exams.management_mode` (core/light/index_only) + `cadence`. Draft identities are `is_active=false` so they can't leak into `GET /exams` (which gates only on is_active); live RBI/SEBI keep is_active + gain canonical family/org/lane. **Convergent** upserts (`ON CONFLICT DO UPDATE` normalizes family/org/lane on malformed same-slug rows, never touches is_active). Coverage: core (incl. **NABARD Grade A+B**) + light + **index-only exam identities** (NPS Trust/EPFO/ECGC/IBBI); canonical stream vocab as draft â€” RBI(3)/SEBI(7, electrical+civil split)/IRDAI(6)/PFRDA(7) in full, NABARD/SIDBI generalist + specialist `blocked_on_notification`, IFSCA blocked-on-PDF. Nothing aspirant-verified. No cycles/availability/phases/eligibility (Â§4). Tests: `tests/test_financial_regulatory_seed_migration.py` (8) + committed behavioural `app/supabase/tests/regression_244_â€¦sql` (umbrella/reparent/org/lane/is_active/index-only/NABARD-B/SEBI-eng/convergence, NULL-safe `IS DISTINCT FROM`) â€” validated on ephemeral PG16 with idempotent re-apply. |
-| Regulator eligibility rules & cycles (R1 data) | Prereqs 1â€“4 CODE-FIXED (1 & 2 VALIDATION PENDING â€” migrations 257/261; 3 resolved by #989; 4 resolved by #984); no `verified` rule/cycle operationally safe until 1 & 2 validate | `docs/architecture/regulatory-eligibility-authoring-spec.md` (revised per PR #979 checkpost). The migration-seed attempt (PR #977) was **closed** (leaked cycles, lossy encodings). Authoring is via `admin_exam_eligibility.py` (`draft`), grounded in the merged #973 evaluator's alias vocab. **Not a gated contract â€” four prerequisites, all now closed in code:** (1) **CLOSED IN CODE (migration 257, VALIDATION PENDING):** `exam_eligibility_rules` gains `source_document_id` (FKâ†’`document_assets`, `ON DELETE RESTRICT`, repo convention name) + paired `source_page_start`/`source_page_end` + `created_by`; `syllabus_documents` gains `reviewed_by`/`reviewed_at`/`reviewer_notes`; two atomic SECURITY DEFINER RPCs (`review_syllabus_document`, `review_exam_eligibility_rule`) gate `pendingâ†’verified` / `draftâ†’verified` on a verified, authoritative (`official_archive`/`official_scan`), processed, page-extracted, same-exam(+cycle) document with reviewer separation (fail-closed on missing `created_by`/`uploaded_by`), and the rule RPC **locks** the supporting verified syllabus row (no TOCTOU); an AFTER-UPDATE trigger on `syllabus_documents` **cascade-demotes** dependent verified rules to draft when the authority is demoted or its source is replaced (covers the review RPC AND `link-to-syllabus`); create is draft-only, generic update cannot promote, a material edit demotes a verified rule (DB trigger backstop), `POST /rules/{id}/review` is the only promotion path. **No URL-only / no waiver-based verify remain.** Apply 257 to the linked Supabase + capture operator/RLS proof before promoting any rule. (2) **CLOSED IN CODE (migration 261, VALIDATION PENDING):** `exam_cycles` gains a `draft`/`reviewed`/`verified` `reviewer_status` (+ `reviewed_by`/`reviewed_at`/`created_by`); existing cycles are grandfathered `verified` once (column default `draft`, so new cycles are gated); the permissive 035 `exam_cycles_read_authenticated` policy is replaced by verified-only authenticated read (`exam_cycles_read_verified`, admin-exempt); an atomic SECURITY DEFINER `review_exam_cycle` RPC gates `draftâ†’reviewedâ†’verified` (no jump, CAS on expected status, reviewer separation fail-closed on missing `created_by`, atomic audit); a BEFORE-UPDATE trigger blocks reviewed-content edits on reviewed/verified cycles unless demoted to `draft` (CMS generic and corrigendum registry-action updates demote material edits, including source provenance/metadata; create lands `draft`); and Study OS verified-only filtering lands in `exam_target_window.py`, `planner.py`, `mission_control.py`, `plan_timeline.py`, and the `/study/exams` cycle API. Apply 261 to the linked Supabase + capture operator/RLS proof before authoring cycles. Tests: `tests/exam_intelligence/test_exam_cycles_trust_gate_migration.py`, `test_exam_cycles_trust_gate_behaviour.py` (live PG), `test_exam_cycle_review.py`, `test_registry_actions.py`; (3) **CODE-FIXED (this PR)** â€” cutoff-aware cycle age evaluation lands: `evaluator.py` gains `_resolve_cutoff_date` (`fixed_date`â†’rule's own `cutoff_date`; `cycle_notification`â†’authoritative cycle's `notification_date`) + a `cutoff_context` mode on `evaluate_exam_for_user` measuring age on the official cut-off per age rule, a public `evaluate_cycle_eligibility` (age in the cycle layer, four-state contract preserved), and `experience_min_years` (cycle-only, missingâ‡’conditional, never fail-open). `summarize_user_eligibility` loads verified `exam_cycle_stream_eligibility` and attaches an **additive per-exam `cycle` provenance band** (per `(cycle, stream)` verdicts + best-of aggregate; baseline buckets/`streams[]` unchanged, all consumers backward-compatible). **Preserves `unknown` when the cut-off â€” or the authoritative cycle source â€” is unavailable**: `fixed_date` cut-offs always evaluate. **A2 (CODE-FIXED, VALIDATION PENDING â€” this branch) wires the loader to pass the verified cycle:** `summarize_user_eligibility` now calls new `_load_verified_cycles` (filters `reviewer_status='verified'` per the migration-261 trust gate) so `_cycle_band_for_exam` measures `cycle_notification` age on the verified cycle's `notification_date` instead of returning `unknown` for `cycle=None`. Unverified/absent cycles are dropped (never shown; baseline never substituted). Tests: `tests/exam_eligibility/test_cycle_eligibility.py` (cut-off resolution, cut-off-vs-today divergence, unknown-preservation, experience, aggregate fold, summarize wiring), `test_cycle_runtime_guards.py`. **Still keep age out of baseline rows.** (4) **RESOLVED (#984)** â€” `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) lists inactive identities with `is_active` **+ `provenance`** (draft vs retired â€” `is_active=false` alone is ambiguous), and `GET â€¦/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id` (244 stream UUIDs are non-deterministic); default stays active-only. Rule corrections: SEBI **General** inherits the common baseline (110) â†’ false `eligible`, must be resolved before verifying any SEBI stream; IRDAI/PFRDA **Actuarial** stays `unknown` (a partial `min_percentage` floor would resolve eligible â€” fail-closed). Tests: `tests/exam_eligibility/test_document_trust_gate_migration.py`, `test_rule_review.py`, `tests/exam_intelligence/test_syllabus_document_review.py`, updated `test_admin_api.py`. Follow-ups filed in the spec. |
-| Domain (non-English) descriptive scoring | PLANNED (P1) | English descriptive exists (205 + EWP-2/2B, Lane H). New work = domain rubric path â€” grammar-centric issue-type taxonomy (205:308-312) does not fit IRDAI ESI / Insurance & Management or SEBI Legal. Must stay in `shadow â†’ live` mastery lifecycle (205:715-769); no new AI writes. Reuse EWP evaluator; do not fork. |
-| Media assets â€” corrected | INFORMED (not a gap) | Media linkage/alt-text/integrity/CMS/renderer already landed via migration 233 + `docs/architecture/pyq-media.md` slice 1. Genuinely deferred (that doc Â§Deferred): asset upload flow, bulk-importer media, projection/snapshot wiring, advanced answer runtimes/scorers. Off Lane R critical path. |
-| Aspirant surfaces (Compass, feed, tracker, interview) | Compass streams UI CODE-FIXED, VALIDATION PENDING (consumes the existing `streams[]` payload; `has_stream_specific_rules` optional refinement); **Compass current-cycle band (A2) CODE-FIXED, VALIDATION PENDING (browser/live proof pending â€” this branch)**; feed/tracker/interview PLANNED (R2/R4) | No-new-surface rule (locked 2026-06-21): Compass lives inside the Eligibility area; feed/tracker/interview must reuse existing surfaces or remove â‰¥2 destinations. **Compass streams breakdown (PR #975, checkpost-hardened):** `ExamStreamBreakdown.jsx` renders per-exam `streams[]` grouped Eligible/Conditional/Not-eligible/**Not-evaluated** (unknown streams stay visible) plus the two Â§8.1 provenance bands â€” a **baseline** band and the **real current-cycle band (A2)**. **A2 â€” current-cycle band now rendered from the enriched, trust-gated `cycle` payload:** the evaluator's additive `cycle` payload is verified-only (migration 261 trust gate via `_load_verified_cycles`) and carries nested per-cycle metadata under `cycle.cycles` (`cycle_id`/`cycle_name`/`year`/`notification_date`/`cutoff_date`/`source_url`/`verified_at`/`status`/`streams[]`) plus a top-level `cycle.status` aggregate; `ExamStreamBreakdown.jsx` + `EligibleExamsCard.jsx` render cycle name + notification/cutoff date, streams grouped eligible/conditional/not_eligible/unknown with per-stream missing fields + reasons, the official source link + verification date, and an explicit **"No verified cycle eligibility available"** empty state. **Invariant: the baseline band is never substituted for the current-cycle band** (unverified/absent cycles are dropped, never fabricated). **Checkpost PR #998 hardening (4 findings fixed):** (P1) `_load_verified_cycles` now also gates on operational `status` (only `expected`/`open`/`active` â€” `_CURRENT_CYCLE_STATUSES`); a verified but cancelled/closed/completed cycle is history, excluded from the current-cycle band. (P1) `cutoff_date`/`source_url`/`verified_at` are carried **per stream** and lifted to a cycle-level field **only when every displayed stream agrees** (else `null`, via `_unique_or_none`) â€” no lossy first-wins pick across unordered rows. (P1) provenance now attests the **eligibility rules** (`exam_cycle_stream_eligibility.source_url`/`verified_at`), not the `exam_cycles` row â€” the UI labels it "Official source"/"Rules verified", distinct from the cycle "Notified" date. (P2) an unknown cycle stream no longer shows "verified rules missing"; the cycle-runtime guard emits a concrete unresolved-cut-off reason and the UI falls back to neutral "Unable to evaluate for this cycle". FE tests: `ExamStreamBreakdown.test.js`; BE tests: `test_cycle_eligibility.py` (non-current exclusion, per-stream vs unanimous cutoff/source, unresolved-cutoff reason), `test_cycle_runtime_guards.py`. **Finding 1 (cross-bucket):** `EligibleExamsCard` surfaces exams from the `unknown`/`not_eligible` buckets that carry a stream-specific eligible/conditional verdict, in a distinct "Stream-level opportunities" group (never as exam-wide eligible; eligible vs conditional labelled honestly). **Finding 2 (provenance) â€” no backend dependency:** a stream whose verdict **diverges** from the exam-wide verdict must have its own rules (an inherited stream mirrors the exam verdict), so stream-specific-ness is derived from the payload that exists today; `has_stream_specific_rules` is used authoritatively **when present** but not required. Wired into the existing expanded row (no new surface, no routing/AdminShell â†’ outside serial rule); streamless exams get an explicit no-stream-identity state. 22 FE tests. Regulatory-domain feed only (generic GA external, Lane GQR); flows through the review lifecycle + Tier-A verification. |
-
-### Delivery track
-
-| Track | Current state | Entry gate | Exit gate |
-|---|---|---|---|
-| R1 truth & eligibility | IN PROGRESS | Architecture contract reviewed | Classifier fix merged (#956); stream contract migration 241 lands (VERIFY DB pending); baseline/cycle eligibility migration + core-tier identity seeds still open |
-| R2 aspirant utility | BLOCKED (entry gate: R1 exit, still in progress) | R1 exit | Compass (two provenance bands, #975 merged) + shared-core planner substrate (increment 1, this PR) + regulatory feed + tracker on reused surfaces, verified data only |
-| R2 shared-core planner substrate (increment 1) | CODE-FIXED, VALIDATION PENDING (this PR) â€” R2 remains BLOCKED on the R1 gate | `app/backend/app/study_os/shared_core.py` â€” deterministic, read-only substrate for the combined multi-regulatory plan; does NOT touch `_compute_plan` (increment 2). Pure `partition_topics`/`mastery_reuse`/`allocation_targets`. Wrapper `summarize_regulatory_overlap` (checkpost #981 hardened): resolves target exams from the **canonical** sources (`aspirant_preferences.target_exams` slugs + `profiles.target_exam` UUID), shared core from **common** coverage only (`exam_topic_coverage.stream_id IS NULL`; stream-specific reported separately), mastery on the **0â€“100** scale with **global-only** fail-closed reuse (exam-scoped mastery never suppresses another regulator), `_READ_FAILED`-sentinel reads returning `status:"unavailable"` on any required-read failure (never a partial recompute), deterministic slug ordering, and empty-band allocation (zeros + shortfall flags; 70/20/10 is the documented family-doc Â§8 default, not owner-locked). Read-only `GET /api/study/regulatory-overlap` (no new surface). 10 tests (filter-aware fake, real-schema values). **Increment 2 (separate PR):** apply allocation + cross-exam dedup in `_compute_plan`. |
-| R3 preparation | BLOCKED | R1 exit + PYQ/mock reuse confirmed | Domain PYQ + stream Paper-2 domain mocks; domain descriptive rubric path validated |
-| R4 adaptive | BLOCKED | R3 stable | Domain mock corrections + multi-exam overlap + interview readiness validated |
-
-## Prior arcs / live-DB-only tails
-
-Keep these separated from code-verifiable status.
-
-| Item | Current status | Notes |
-|---|---|---|
-| SEBI Grade A orphan | CLOSED BY PRIOR OPERATOR CLAIM | Treat as live-DB state; reverify before using it as fresh evidence. |
-| `e2e-workspace-exam` prod-row cleanup | VERIFY DB | Code guard exists, but row existence/deletion is live DB state. |
-| state PSC URL backfill | VERIFY DB | Importer behavior is code-verifiable; actual 29-org/10-calendar backfill status is live DB state. |
-| J&K doubled-prefix slug | LEAVE | Do not clean slug unless a real operator/user-facing break appears. |
-
-## Maintenance rule for agents
-
-Every PR that changes any of the following must update this checklist in the same branch:
-
-1. Mock Engine v2 / Study OS feedback-loop code, feature flags, scheduler behavior, retry jobs, or validation docs.
-2. Exam Governance Console routes, work queue, action console, cleanup tier, or workspace-console orphan code.
-3. Exam intelligence setup/workspace UX, Advanced Import / Repair, Guided/Add Cycle flows, document readiness, PYQ, topic coverage, competition, or publish gates.
-4. Backend CI ordering, dependency audit policy, or known flaky checks.
-5. Any operator decision that changes a `BLOCKED`, `OPERATOR PENDING`, `PLANNED`, or `CLEANUP PENDING` status.
-6. English Writing Practice schema, API, frontend, mastery flag, evaluation pipeline, or prompt bank.
-7. GA / Quant / Reasoning Expansion (Lane GQR): subject runtime policy, current-affairs pipeline/sources/bundles, Quant heuristics/Calculation Gym/performance signals, Reasoning text runtime, or the CA attempts/promotion/isolation path.
-8. Financial Regulatory & Development Institutions (Lane R): recruitment classifier regulator/development-institution aliases, stream schema, baseline/cycle eligibility extension, institution identities/cycles/streams/phases, or domain descriptive scoring.
-
-When a task is live-DB or deployment-only, write **OPERATOR PENDING** or **VERIFY DB**; never mark it complete from code inspection alone.
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×~øÓTèµ©hºÚn¶X§zÍHÈØ\™Y\ˆÛÜ[ÝÚXÚÛ\Ý8 %™\ÈÛÝ\˜ÙHÙˆ™XÛÜ™‚“\Ý™\È™\šYšXØ][ÛŽˆŒ‹LËLÈ]XZ[ˆ˜LL™
+^[H[[YÙ[˜ÙHÛÜšÜÜXÙHÛX[\ÛÝ\˜ÙH™XÚXÚÈ8 %LÈÍÍHÝ]\ÈÛÜœ™XÝYÈ™YÜ™\ÜÚ[Ûˆ™KY›YÙÙYRKPÓPSˆ˜XÚÈYYÈX\›Y\ˆ[™\šYšXØ][ÛˆŒ‹LËLH]XZ[ˆŽX™YØ˜
+H
+ÜÝœÈÎLØÛÜ™HÛ˜\ÚÝÛÜšØ™[˜ÚRKÎLH^Y^˜XÝ˜XÚÙÜ›Ý[™ÛÜšÙ\‹ÎLˆÞXÛKÜ\ÙHX™[š^ÎMÜ›ÜÜË\]›Ü›Hš[™Ù\œš[™\šYšY\‹ÎMH\Ý[˜ÙK]Ë\™[X\ÙH˜XÚÙ\‹ÎMˆØÜÈ™XÛÛ˜Ú[X][Û‹ÎNÓUQK›YÈÜ˜\YžK[Ý]ÑÔTÔ‘TÔ•›Y™Yœ™\ÚY]YNLØÌ˜Œ‹LËLJKˆˆÍÎNÎÎÈY\™ÙYÈˆÎHÛÜÙY\ÈÝ\\œÙYYžHÎËˆˆÎMÈ\ÈH[™[™È™XÛÛ˜Ú[X][Ûˆ[H™\™\Ù[YžHHÝ\œ™[œ˜[˜Ú[™\È›ÝY]\Ùˆ\È˜\ÙH™\šYšXØ][Û‹‚‚•\ÈÚXÚÛ\Ý™\XÙ\ÈÚ][Û›HÈRK[Û›HÝ]\ÈÛš\]ËˆÙY\]Ý\œ™[[ˆHØ[YHˆ\È[žHÛÙHÚ[™ÙHÜˆXÚ\Ú[Ûˆ]Ú[™Ù\ÈÛ™HÙˆ\ÙHÝ]\Ù\Ë‚‚‘^XÝ][Ûˆ[ˆ›Üˆ\˜[[œÎˆØÜËÜÝ]\ËØØ\™Y\‹XÛÜ[Ý\‹\[‹›Y‚‚ˆÈÈÝ]\È›ØØX[\žB‚‹H
+Š“QT‘ÑQÈÓÑH‘TÑS•
+Šˆ8 %™\šYšYYœ›ÛHš[\È[ˆ\È™\ÜÚ]ÜžHÚXÚÛÝ]‚‹H
+ŠÓÑKQ’VQSQUSÓˆS‘S‘ÊŠˆ8 %™[YYX][Ûˆ\È™\Ù[[ˆÛÙK]]™KÛÜ\˜]Üˆ›ÛÙˆ\ÈÝ[™\]Z\™Y‚‹H
+Š“ÔTUÔˆS‘S‘ÊŠˆ8 %Ø[››Ý™H›Ý™[ˆœ›ÛH™\ÈÛÙH[Û™NÈ™\]Z\™\È\Þ[Y[ÚÙ[‹™[™\‹Ý\X˜\ÙKÜˆÝ\ˆ]™H]šY[˜ÙK‚‹H
+Š“ÐÒÑQ
+Šˆ8 %È›ÝÝ\ÝÛœÝ™X[HÛÜšÈ[[HÝ]YØ]H\ÜÙ\Ë‚‹H
+Š”S“‘Q
+Šˆ8 %›ÝY][\[Y[Y[ˆ\ÈÚXÚÛÝ]‚‹H
+ŠÓPS•TS‘S‘ÊŠˆ8 %›ÈÛ™Ù\ˆÛˆHÜš]XØ[[[YH]]ÛÛÙHÜˆVX™[XZ[œË‚‚ˆÈÈ[ØÚÈ[™Ú[™HŒˆ8¡¥ÝYHÔÈ8 %XÝ]™HØ]B‚ŠŠ”S‘Q–HÕÓ‘TˆT‘PÕSÓˆ
+Œ‹LËL
+NŠŠˆH[‹Y›YÚÚYÝÈÚ[™ÝÈ
+Œ‹LËL•NNŒNŒMV˜
+HØ\È\›Z[˜]YX\›HžHH™\ÈÝÛ™\ŽÈHœ™\ÚÚ[™HÝ\Y]\ˆ™Y›Ü™H[žH]™H›ÙÜ™\ÜÚ[Û‹ˆHÍ‹Yš[Hš[™Ù\œš[œ™Y^™Hœ›ÛH]›ÈÛ™Ù\ˆÛÛœÝ˜Z[œÈY]Ëˆ‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ[]™XÝ^\È
+Š“ÐÒÑQ
+Šˆ™YØ\™\ÜÈ8 %H™]ÈÚ[™ÝÈ
+ÈHØ[˜\žH]\ÝÛÛ\]HYØZ[œÝH™^™Y›Ü™H]™Kˆ
+THŒˆ‹N	ÜÈ˜\Yš[ÚYÝÈ]\È[H\ÛÛ]Y[™Ù\È›Ý\[™Ûˆ\ÈÚ[™ÝËŠH\ÝÜšXØ[™XÛÜ™ÙˆH[™YÚ[™ÝÈ›ÛÝÜË‚‚Ý\œ™[™\™XÝˆ
+Š‘È“Õ“ÐÑQQÈU‘JŠ‹ˆ‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ[]™X™[XZ[œÈ›ØÚÙY[[
+JHHœ™\ÚMY^HÚYÝÈÚ[™ÝÈ
+™KU
+HÛÛ\]\È[™
+ŠHH›Ý[™Y]™HØ[˜\žH
+JH\È\›Ý™Yˆ
+Š”Ý]\È\]H
+Œ‹LËLÈ™XÛÛ˜Ú[X][ÛŠNˆ\ÈÕT•Q›Ý››ÝÙ]ŠŠˆ8 %ÙYHØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›YˆÚ[™Ý×ÜÝ\Ý]ÈHŒ‹LËL•NNŒNŒMV˜Ú[™Ý×Ù[™Ý]ÈHŒ‹LËLŒNNŒNŒMV˜œ›Þ™[ˆ\Þ[Y[ÒHMYÌÙŒÌŽYMMXNŒ˜MŽXMLÍYXÎLÙX‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ\ÚYÝØXÝ]™Kš[™Ù\œš[™\šYšY\ˆVUÐÓÑOLYØZ[œÝH\›Ý™YÍ‹Yš[KØLXÙŽLŽ8 )˜YÙ\ÝˆÝ\œ™[\ÜÜÚ][ÛŽˆˆSˆ“ÑÔ‘TÔÈ8 %‘PÓÔ‘QÈ‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ[]™X™[XZ[œÈ
+Š“ÐÒÑQ
+Šˆ[[HÚ[™ÝÈ[™È[™H‹MÈÚYÝÈ[˜[\Ú\È\ÜÙ\Ëˆ™KUØ]\ÈÙ\™H
+ŠÓPTŠŠŽˆ
+Š”HÍ‹Yš[H›Ý[™\žHÔTUÔˆTÔÈ
+Èœ™Y^™HÛÛ›Û™XÛÜ™QT‘ÑQ
+ˆÎŒ‹LËLÎÈÛÝ\˜ÙHÒHŒMÌLØx )˜œ™Y^™KXØ[™Y]HYÙ\ÝLXÙŽLŽ8 )˜
+JŠŽÈ
+Š‘ŒÈ\˜Ú]™K\˜XÙHÔTUÔˆTÔÈ
+Œ‹LËL‹ÒHLŒÍ
+JŠŽÈ
+Š”ˆØÚY[\ˆÔTUÔˆTÔÈ
+Œ‹LËLJJŠŽÈ
+Š”È‹Mˆ™]˜[Y][ÛˆÔTUÔˆTÔÈ
+Œ‹LËL‹ÒH™XÙ˜™YX
+JŠŽÈZYÜ˜][ÛˆNˆÔTUÔˆSQUQˆÙYHØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›YØÜËØ]Y]ËÌŒ‹L‹LÌ[ZYÜ˜][Û‹LN‹[Ü\˜]Ü‹]˜[Y][Û‹›YØÜËØ]Y]ËÌŒ‹LËLK\ØÚY[\‹Y˜Z[‹]˜[Y][Û‹›YØÜËØ]Y]ËÌŒ‹LËL‹\ËYš[˜[XØ[™Y]K\™]˜[Y][Û‹M™XÙ˜™YK›Y[™ØÜËØ]Y]ËÌŒ‹LËL‹YŒËY^˜XÝ[Û‹X\˜Ú]™K\˜XÙK]˜[Y][Û‹›Y‚‚Ÿ][HÝ\œ™[Ý]\È™\È]šY[˜ÙHÈ›Ý\ÈŸKK_KK_KK_ŸÍŽMHXÚ\Ú[ÛˆÈ[ˆØÈQT‘ÑQÈÓÑH‘TÑS•ØÜËÜÝYWÛÜËÛ[ØÚËY[™Ú[™K]Œ‹\ÝYK[ÜËZ[YÜ˜][Û‹›Y™[XZ[œÈHÛÝ\˜ÙHÙˆ]›ÜˆÙ\]Y[˜Ú[™È[™XÚ\Ú[ÛœËˆŸÍŽMÈPÔK[Û›HØY™]HÛÛQT‘ÑQÈÓÑH‘TÑS•[™XYH™X]Y\ÈY\™ÙY[ˆH[›š[™ÈØÎÈ›È˜XÚÈÈ^[œÚ[ÛˆY]ˆŸÍŽNKTŒÈÙ[™\˜]Y[ØÚÈÚYÛ˜[›ÙXÙ\ˆQT‘ÑQÈÓÑH‘TÑS•Ù[™\˜]Y][\]™[XZ[œÈHÚYÛ˜[›ÙXÙ\‹›Ý\œÛÛ˜[^˜][Û‹ˆŸÍÌˆ0©ÍˆÛÜœ™XÝ[ÛˆØÚ[XHÛÛ\]Xš[]HQT‘ÑQÈÓÑH‘TÑS•\ÝÜšXØ[ØÚ[XH[˜ÛÛ\]Xš[]H\È™XÛÜ™Y\ÈÛÙK\™[YYX]Y[™[™È˜[Y][Û‹ˆŸÍÌÚ\™YÛÜœ™XÝ[ÛˆØ]YÛÜš^™\ˆQT‘ÑQÈÓÑH‘TÑS•Ú\™YÛXÞH\ÚYÛˆ™[XZ[œÈÛÜÙYÈ[[YH›ÜYØ][ÛˆØ\È\ÝÜšXØ[HY™XÝ]™H]ÛÙKYš^YžH]\ˆ™[YYX][Û‹ˆŸ™]šY]×Û[ØÚÈÜš]\ˆ]]Üš]HÔTUÔˆTÔÈ
+Œ‹LËLŽÈØ]HHTÔÈ]ÒH™XÙ˜™YX
+HØ[›ÛšXØ[œNŽœ™]šY]×Û[ØÚØ\™[™Y
+ˆÍÌN
+Nˆ
+JH[ÝÛ\ÝÔU“Ô“WÔ‘U’QU×ÐSÕÑQ™\XÙ\È[ž[\Ý8 %™]ÈšY[È\™H™Z™XÝYžHY˜][›Üˆ]›Ü›H[ØÚÜÎÈ
+ŠH[\H›ÙH8¡¤ˆŒŽÈ]ÚZ[Û›Hœ›ÛH[Ù[ÙšY[×ÜÙ]ÛÈÛZ]YšY[È
+[˜ÛY[™È™]šY]×ÜÝ]\Ø
+H\™H™]™\ˆÚ[[HÝ™\Üš][ŽÈ
+ÊHÝÛ™\œÚ\ÛÚÝ\ÙÜÈšXHÙÙÙ\‹™^Ù\[Û˜Ûˆ˜Z[\™NÈ
+
+HØÛÜYTUH
+Y
+È\Ù\—ÚY
+ÈÛÝ\˜ÙWÝ\X
+HÛÜÙ\ÈHÐÕÕH˜XÙNÈ™\›Ë\›ÝÈ™\Ý[šYÙÙ\œÈXØ\ÙHXYÛ›ÜÝXÈ
+[]Y8¡¤ÝÛ™\‹XÚ[™ÙY8¡¤ÛÝ\˜ÙKXÚ[™ÙY8¡¤K[™^Z[™Y8¡¤LÊNÈ
+JH]›Ü›HÛÙH][H\ÛÛ]Y8 %YÙÜ™YØ]YÙ\œ›Ü—Ý\\Ø[™œ™XZÙÝÛ‹ÛX\Ý\žKÜ™YÙ[ˆ™]™\ˆ^XÝ]H›Üˆ]›Ü›WØ][\ˆÛÜœ™XÝ[Û‹]\ÚÈ˜Y[™È›Üˆ]›Ü›H][\È™[XZ[œÈ›ØÚÙY]Ù\šXÙH^Y\ˆ
+ˆÍÌM‹[™XYHÛˆXZ[ŠKˆNÌN\ÝÛ[ØÚ×Ü™]šY]ËœH\ÜÚ[™È
+H™]È\ÝÈ
+Èˆ\]Y\ÜÙ\[ÛœÊKˆŸQ‘PÕLH][\YÙ[X[XÜÈÓÑKQ’VQSQUSÓˆS‘S‘ÈX\Ý\žUÜš]\‹—ÛØYØ[˜[]XÜØ›ÝÈ™X]ÈÙ[XÝYÛÜ[Û—ÚY\È›Ý›Û™X\ÈH][\YÛÝ\˜ÙHÙˆ]È\š]™WÛX\Ý\žWÙ[\ØÚÚ\È[˜][\Y]Y\Ý[ÛœËˆŸQ‘PÕLÈÛ\ÜÚYšXØ][Ûˆ›ÜYØ][ÛˆÓÑKQ’VQSQUSÓˆS‘S‘ÈX\Ý\žUÜš]\‹—ÛØYØ[˜[]XÜØ›ÝÈ™XYÈ[ØÚ×Ø][\Ü™\ÜÛœÙWØÛ\ÜÚYšXØ][Û˜[™™YYÈ\œ›Ü—Ý\X[È[˜[]XÜËˆŸQ‘PÕLˆÚYÝÈY[\Ý[˜ÞHÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆNÛ[ØÚ×ÛX\Ý\žWÜÚYÝ×ÚY[\Ý[˜ÞKœÜ[Y\\ËØYÈ[š\]YHÚYÝÈÙ^\ÎÈÝÜš]WÜÚYÝØ\Ù\ÈÛÛ™›XÝZYÛ›Ü™H\Ù\ˆŸQ‘PÕLPHÝ[ÛX\šÜØÛÙ\˜Ú[ÛˆÓÑKQ’VQSQUSÓˆS‘S‘ÈÝ×Ú[YÜ˜[ÛX\šÜØ\È\ÙY[ˆ›Ý[š]X[[ØÚÈÛÛ\]\›ÝÈ[œÙ\[™™]žH[Z\ÜÚ[Û‹ˆŸQ‘PÕLˆX[X[ÙXZË]ÜXÈ˜[˜XÚÈÓÑKQ’VQSQUSÓˆS‘S‘ÈX[X[[ØÚÈÛÜœ™XÝ[Ûˆ˜Y[™È[YØ]\ÈÙXZË]ÜXÈ˜[˜XÚÈÈÛÜœ™XÝ[Û—ÜÛXÞXˆŸÛ\ÜÚYšXØ][Ûˆ™XY[™\ÜÈÈX\Ý\žH™XÛÝ™\žH
+KQ
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈˆÍÌNNˆ
+JHÝX›Z]Ø][\[˜[]XÜÈ˜Z[\™H›ÈÛ™Ù\ˆÚ[[HÚÚ\ÈX\Ý\žH8 %X\Ý\žPÛ\ÜÚYšXØ][Û“›Ý™XYX\È˜Z\ÙY[™HX\Ý\žWÜ™]žH›Øˆ\È™\ØÚY[Yˆ
+‹™]š\ÙYžHˆÍÍLÊH]]×ÜÝX›Z]Ø][\[œ]Y]Y\ÈÓ“H[˜[]XÜ×Ü™]žXÈXYÙ\ˆX\Ý\žH[œ]Y]YH™[[Ý™YÈ[[Z[˜]HH˜XÙHÚ\™H›YÈ\È™\ÛÛ™Y™Y›Ü™H[˜[]XÜÈ[œËˆX\Ý\žH\È›ÝÈY™\œ™YÈˆ
+ÊH›ØÙ\Ü×Ø][\ÜÞ[˜ØØ]\ÈÛˆÚXÚ×ØÛ\ÜÚYšXØ][Û—Ü™XY[™\ÜØ™Y›Ü™H[žHÜš]\È8 %Z\ÜÚ[™ÈÛ\ÜÚYšXØ][ÛœÈ˜Z\ÙHX\Ý\žPÛ\ÜÚYšXØ][Û“›Ý™XYX[™™KY[œ]Y]YH[˜[]XÜ×Ü™]žXÈX\Ý\žH™]™\ˆ[œÈÚ]›Û™H\œ›Ü—Ý\\Èœ›ÛHXœÙ[Û\ÜÚYšXØ][Ûˆ›ÝÜËˆ
+
+HÜ[—Ú›Øˆ“Ð—ÐSSUPÔ×Ô‘U–X[œ]Y]Y\ÈX\Ý\žWÜ™]žXY\ˆÛÛ\]WØ[™Ü\œÚ\ÝÝXØÙYYÈÚ[ˆ‘¸¢hÙ™‹\Ú[™ÈÙ]ÛÜ—Ü™\ÛÛ™WÜ[›™YÛX\Ý\žWÙ›YØ8 %\È\È›ÝÈHÚ[™ÛH™\ÛÛ][ÛˆÚ[›Üˆ[X\Ý\žH[ÙHXÚ\Ú[ÛœËˆ™]È[Ù[NˆÝYWÛÜËØ][\ØÛ\ÜÚYšXØ][Û—Ü™XY[™\ÜËœXˆŒ™]È\ÝÈ
+ˆÍÌNJH
+È‹Ñ[ˆ\ÝÈ
+ˆÍÍLÊKˆŸÛÜœ™XÝ[ÛˆY[\Ý[˜ÞHÝX\™
+ŒÍLJHÈ]ÛZXÈ\œÚ\Ý[˜ÙHÓÑKQ’VQRQÔUSÓˆÔTUÔˆSQUQH]ÛZXÈ”È[\[Y[][Ûˆ™[XZ[œÈÛÙKYš^YˆZYÜ˜][ÛˆNˆØ\ÈžK\[‹\YYÚYÛ˜]\™KXÚXÚÙYÝÛ™\œÚ\ÜÙX\˜ÚÜ]XÚXÚÙY[™š]š[YÙK]˜[Y]YYØZ[œÝ[›Û‹Ø]][XØ]YÜÙ\šXÙWÜ›ÛKˆÙYHØÜËØ]Y]ËÌŒ‹L‹LÌ[ZYÜ˜][Û‹LN‹[Ü\˜]Ü‹]˜[Y][Û‹›YˆŸ]›Ü›KX][\ÛÜœ™XÝ[ÛˆØ]HÓÑKQ’VQSQUSÓˆS‘S‘ÈˆÍÌMŽˆÔÕØ\KÜÝYKÛ[ØÚÜËÞÛ[ØÚ×ÚYKØÛÜœ™XÝ[Û‹]\ÚÜØ›ÝÈ˜Z\Ù\ÈHÚ]U“Ô“WÐUSTÓPS•PSÐÓÔ”‘PÕSÓ—Ñ“Ô’QS˜›ÜˆÛÝ\˜ÙWÝ\O\]›Ü›WØ][\[ØÚÜËˆX\Ý\žUÜš]\ˆ\[[™HÝÛœÈ]]ÈX[X[˜Y[™È\È›Ü˜šY[‹ˆŸX\Ý\žH™]šY]ÈÈ^XÝ™\^H
+\š]™WÜ™]šY]Ø
+HÓÑH‘TÑS•ÔTUÔˆSQUSÓˆS‘S‘È™Y˜XÝÜ‹ÛX\Ý\žK\™]šY]ËY^XÝ\™\^Xˆ\š]™WÜ™]šY]Ê
+X™Y˜XÝÜ™YÈ[YØ]HÈ™]È][\Ù\š]˜][Û‹œX[Ù[Kˆ™]ÈÚ\NˆXXÚÙ]™\ÜÛœÙWØÛÝ[Ø
+Ù[XÝYÛX\šÙYÝ[˜[œÝÙ\™YÝš\Ú]YÝ[˜[œÝÙ\™YÝ[ÝXÚY
+KÛ\ÜÚYšXØ][Û—ØÛÝ™\˜YÙX\œÚ\ÝYÜÚYÝ×ÙXÚ\Ú[Û˜
+›ÝÜÊÙ\XØ]WÚÙ^\ÊK™\^WØÛÛœÚ\Ý[˜ÞXÚ]^XÝXÚ[X[PUÒÓRTÓPUÒÓ“×ÐTÑSS‘H
+›È]]X›HX\Ý\žH[ˆ™\^H]
+K]\›Z[š\ÝXÈ][\Ù]šY[˜ÙWØÛÜœ™XÝ[ÛœØ
+›È\Ù\ˆÝ]JKX™[YÝ\œ™[ÜÝ]WÜ™]šY]ØˆYZ[ˆ›Ý]Hš^ˆˆ\œ›Üˆ8¡¤ˆLÈ
+›ÝÚ[[
+KÝXÝ\™YŒˆÛÙ\È›Üˆ›Û‹\]›Ü›H[™Z\ÜÚ[™È][\[[šÈØ\Ù\ËˆÌH™]È\ÝËˆŸÚYÝÈ[˜[\Ú\ÈÛÛ™Y\ÚYÛˆÓÑKQ’VQSQUSÓˆS‘S‘ÈˆÍÌŒÎˆÚYÝË\™\^XØ[È™X[][\Ù\š]˜][Û˜TH
+ØYØ][\Ú[œ]È8¡¤ˆØYÜ\œÚ\ÝYÜÚYÝ×ÙXÚ\Ú[ÛœÈ8¡¤ˆ™\^WÙœ›ÛWÜ\œÚ\ÝYØ˜\Ù[[™JHÚ]ÛÜœ™XÝÚYÛ˜]\™\ÎÈ™XYÈØ[›ÛšXØ[Z\ÛX]ÚÙ^\È
+\œÚ\ÝYÙ[WÙ‹Ü™\^WÙ[WÙŠNÈÛ\ÜÚYšXØ][Û—Û›ÝÜ™XYHÝXÝ\™Y™XÛÜ™È[˜ÛYHZ\ÜÚ[™ËÙ\XØ]H]Y\Ý[ÛˆQËˆÛÜœ™XÝ[Û‹\\š]X]Y\šY\ÈÝX›Z]Y[ØÚ×Ø][\È
+›ÝÚYÝÈ›ÝÜÊHÈ[˜ÛYH[˜[œÝÙ\™Y[Û›H][\Ëˆ]™KX]Y]XÛÛ\\™X[Z]ÈRSÚ[ˆ]H\ÈÝY™šXÚY[]ÛÛ™][ÛœÈ˜Z[
+ÚYÛ—ØYÜ™Y[Y[MKZ\ÜÚ[™×Ø]Y]ˆ\XØ]WØ]Y]ˆÝ]Y\œÈˆ[WÛZ\ÛX]Úˆ
+NÈYÈ[WÛZ\ÛX]ÚØÛÝ[Ù[WÛZ\ÛX]Ú\ÈšY[Ëˆ\ÝÈ\ÙH™X[][\Ù\š]˜][Ûˆ[Ù[H
+]Ú[™ÈÛ›Hˆ^Y\ŠKˆÓH˜[Y]\ÎˆKX][\ZY
+ËKY^\È]]X[^Û\Ú[Û‹K]Ë]]ÈÚ]Ý]KYœ›ÛK]]Ë^\ÈH[˜[YURQ[˜[YTÓËNŒKœ›ÛK]]ÈHË]]Ëˆ•S[˜\šX[šY[È8¡¤ˆÓÔ”•T
+›ÝÚ[[™\›ÊKˆ™[[Ý™Y[˜[Y	KÍŒ	H™\ÚÛËˆÜ\˜]ÜˆÚYÝË\[ˆ˜[Y][ÛˆÝ[™\]Z\™Y™Y›Ü™H]™H›\ˆŸ]™HØ[˜\žH\Ù\ˆ[ÝÛ\ÝÓÑKQ’VQSQUSÓˆS‘S‘È™\ÛÛ™WÙY™™XÝ]™WÛX\Ý\žWÙ›YÊ™\]Y\ÝYÙ›YË\Ù\—ÚY
+X[\[Y[Y[ˆX\Ý\žWÝÜš]\‹œX
+ˆÍÍŠKˆ™XYÈ‘—ÓSÐÒ×ÓPTÕT–WÓU‘WÕTÑT—ÒQØ
+ÛÛ[XK\Ù\\˜]YURQÊNÈÝÛ™Ü˜Y\È]™X8¡¤ˆÚYÝØ›Üˆ›Û‹X[ÝÛ\ÝY\Ù\œÎÈ˜Z[ÈÛÜÙYÛˆ[\KÛX[›Ü›YY[ÝÛ\Ýˆ
+ŠMÞ[˜Ë\ÝX›Z]š^
+ˆÍÍLÊNŠŠˆÔÕØ\KÜÝYKÛ[ØÚÜËØ][\ËÞÚYKÜÝX›Z]™]š[Ý\ÛHØ[YÙ]ÛX\Ý\žWÝÜš]WÙ›YÊ
+X]“Õ™\ÛÛ™WÙY™™XÝ]™WÛX\Ý\žWÙ›YÊ
+XÛÈHÛØ˜[‘[]™X˜[YHž\\ÜÙYH\‹]\Ù\ˆ[ÝÛ\Ý[ˆHÞ[˜È]ˆš^Yˆ[™Ú[›ÝÈØ[ÈÙ]ÛÜ—Ü™\ÛÛ™WÜ[›™YÛX\Ý\žWÙ›YÊØ‹][\ÚY\Ù\—ÚY
+Xˆ
+Š”[›™Y[[ÙHš^
+ˆÍÍLÊNŠŠˆÙ]ÛÜ—Ü™\ÛÛ™WÜ[›™YÛX\Ý\žWÙ›YØ]Y\šY\È^\Ý[™È›Û‹XØ[˜Ù[YX\Ý\žWÜ™]žH›ØœÈš\œÝÈ™]\›œÈH[›™Y[ÙHYˆ›Ý[™
+™]™[[™ÈH‘ˆÜˆ[ÝÛ\ÝÚ[™ÙH™]ÙY[ˆÝX›Z][™[˜[]XÜ×Ü™]žHœ›ÛH›ÙXÚ[™ÈÛÛ™›XÝ[™È]™JÜÚYÝÈX\Ý\žH›ØœÊKˆ˜[È˜XÚÈÈ™\ÛÛ™WÙY™™XÝ]™WÛX\Ý\žWÙ›YØÛ›HÛˆš\œÝ™\ÛÛ™H
+›È›Øˆ^\ÝÊKˆ\YY]Þ[˜ÈÝX›Z]“Ð—ÐSSUPÔ×Ô‘U–X[™Ù™‹[™Ü™XÛÝ™\—ØÛÜœ™XÝ[Ûœ×ØY\—Û[ØÚ×Ý\ÝØˆXYÙ\ˆX\Ý\žH[œ]Y]YH™[[Ý™Yœ›ÛH]]×ÜÝX›Z]Ø][\
+ˆ™]š\ÙY
+KˆÐ”ÝX˜^[™YÚ]›ÝËš[—Ê
+XÝ\Ü
+Ó›Ý›ÞXÛ\ÜÊKˆH™]È™YÜ™\ÜÚ[Ûˆ\ÝÛ\ÜÙ\È[ˆ\ÝÛX\Ý\žWÜ[›™YÛ[ÙKœXÈ\ÝÛX\Ý\žWØ[ÝÛ\ÝÜÝX›Z]œX\]YÈ\ÝÛX\Ý\žWØ[ÝÛ\ÝœXˆ\ÝÈ™]š\ÙYÈ\ÝØÛ\ÜÚYšXØ][Û—Ü™XY[™\ÜËœXˆ\Ý™]š\ÙYÈ\ÝÙÙ[™\˜]YÛ[ØÚ×Ø][\œX[›™Y[[ÙH™\ÝX›Z]\Ý™]š\ÙYÈ\ÝÛX\Ý\ž]Üš]\—ØÛÜœ™XÝ[Û—ÜØÚ[XKœX™XÛÝ™\žH\ÝÈ\]YÈÙYY[›™YX\Ý\žH›Ø‹ˆ›ØÚÚ[™È™\™\]Z\Ú]\È›Üˆ]™HØ[˜\žNˆ
+JH
+Š”‹MˆÔTUÔˆTÔÈ
+Œ‹LËL‹ÒH™XÙ˜™YX
+JŠŽÈ
+ŠH
+Š”‹MÈMY^HÚYÝÈÚ[™ÝÈSˆ“ÑÔ‘TÔÈ8 %‘PÓÔ‘QŒ‹LËL•NNŒNŒMVŠŠˆ
+ÙYHMY^HÚYÝÈØ]X›ÝÈ[™ØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›YÈÚ[™ÝÈ[™ÈŒ‹LËLŒNNŒNŒMVŠNÈ
+ÊHZYÜ˜][ÛˆNˆÔTUÔˆSQUQ
+Œ‹L‹LÌÈÙYHØÜËØ]Y]ËÌŒ‹L‹LÌ[ZYÜ˜][Û‹LN‹[Ü\˜]Ü‹]˜[Y][Û‹›Y
+NÈ
+
+H‘—ÓSÐÒ×ÓPTÕT–WÓU‘WÕTÑT—ÒQØÛÛ™š\›YYÜ[]Y
+Œ‹LËLŠKˆØÚY[\ˆ›ÛÙŽˆÔTUÔˆTÔÈ
+Œ‹LËLNÈÙYHØÚY[\ˆ™\šYšXØ][Û˜›ÝÊKˆŸØ\WÙ\œ›Ü—Ü]\›œØØÚ[XHš^ÓÑKQ’VQSQUSÓˆS‘S‘ÈˆÍÍNˆÛÛ[[ˆ™[˜[YY\œ›Ü—ØÛÝ[8¡¤ˆœ™\]Y[˜ÞWØÛÝ[ÈZXÜ›ÝÜX×ÚY™[[Ý™Yœ›ÛHÜ[]™[ÛÛ[[œÈ[™ÝÜ™Y[œÚYH]šY[˜ÙX”ÓÓˆ[Û™ÜÚYHÚYÛ˜[ÜÝ™[™Ý[™]šY[˜ÙWÜ]Y\Ý[Û—ÚYØˆH™]ÈØÚ[XK\™YÜ™\ÜÚ[Ûˆ\ÝÈ[ˆ\ÝÛX\Ý\žWÙ\œ›Ü—Ü]\›—ÜØÚ[XKœXˆŸH][\[[Y]žH˜XÚÙ[™ÜšYÚ[ˆÔTUÔˆTÔÈ
+Œ‹LËLÎÈÛÝ\˜ÙHÒHŒMÌLØM™˜ÙLLYXLŽMXÙŽYLÍŒX™ŒÙŒXXÌØX
+HÝYÚ[™ÈÚXÚÈÐHÛÛ™š\›YY]][XØ]Y]Y\Ý[Û‹š\Ú]Y[[Y]žH™XXÚYHÛÛ™šYÝ\™Y™[™\ˆ˜XÚÙ[™Ú]ŒˆÚXÚÈÐˆÛÛ™š\›YY›Ü˜ÙYML™][[Ûˆ›ÛÝÙYžHŒ™\Ù[™[™[ˆ[\H\˜X›H]Y]YKˆÚXÚÈÐÈÛÛ™š\›YY\œÚ\ÝY\X[XÛÝ™\˜YÙH[˜[]XÜÈ
+˜[˜XÚ×Ü]Y\Ý[Û—ØÛÝ[LL˜]™[×Ý\ÙYMX]™[ØÛÝ™\™YÜ]Y\Ý[ÛœÏLØ]™[×ÛX[›Ü›YYL
+KˆHÜ\˜]Üˆ^XÚ]H\›Ý™YHÍ‹Yš[H›Ý[™\žKˆœ™Y^™KXØ[™Y]HYÙ\ÝˆLXÙŽLŽLÌŽLÙŒMÌÙXÍŽŽYXYXŽÌL™XÙNM™LMÌÍYXMÌY™™MÍˆŸØÚY[\ˆ™\šYšXØ][ÛˆÔTUÔˆTÔÈ
+Œ‹LËLNÈØ[™Y]HÒHŽX™YØ˜™MÙYNÌYL˜ÙM™ÍLÌ™MÌØ™™˜
+HØ]Ú\‹X˜\ÙYØ\\™HÛÛ™š\›YYˆÛÛ›ÛY[˜[]XÜ×Ü™]žX›ØˆÙŒ˜NL˜XKMLNÍXYXÍ˜MMMŒØYXÛZ[YY[™ÛÛ\]Y[ˆ
+ŠŒNKÈÊŠˆ
+8¢iÌÊNÈÛÛ[\Ü˜[™[Ý\ÈØ\KØYZ[‹Ú›ØœØXÚÈÚÝÜÈX[X[ˆXœÙ[\š]˜][ÛœÎˆX\œ›ÜœÎˆÈš[˜[Ý]HÛ™HÈ][\ÏLHÈ\ÝÙ\œ›Ü[[ˆ[ŒWÜØÚY[\—Ù˜Z[—Ý™\šYšXØ][Û‹›Y™\]Z\™[Y[ÈY]ˆ[]šY[˜ÙH[ˆØÜËØ]Y]ËÌŒ‹LËLK\ØÚY[\‹Y˜Z[‹]˜[Y][Û‹›YˆŸØÎ^Ù^˜XÝ˜XÚÙÜ›Ý[™ÛÜšÙ\ˆ
+\ÜÝYHÍM
+HÓÑKQ’VQÔTUÔˆSQUSÓˆS‘S‘ÈˆÎLNˆ^Ù^˜XÝÝÛÜšÙ\‹œX
+ÈØÎ^Ù^˜XÝTØÚY[\ˆ›Øˆ
+ŒÈ[\˜[ÛÛ™šYÝ\˜X›HšXHVÑVPÕÕÓÔ’ÑT—ÒS•T•SÔÑPÓÓ‘Ø
+KˆØÛÜHš[\™YšXHÜÝÔ‘TÕØÝ[Y[Ø\ÜÙ]ÈZ[›™\ŠØÛÜJX›Ú[ˆ8 %Û›HYZ[—Ù^[WÚ[[YÙ[˜ÙXØÝ[Y[È›ØÙ\ÜÙYˆÙ˜[˜XÚ×Ù˜Z[Ú›Ø˜ÛÛ™][Û˜[H\]\ÈØÝ[Y[Ø\ÜÙ]ØÛ›HÚ[ˆH›ØˆÐTÈTUHX]ÚY
+™]™[È[ÛH˜Z[\™HÜš]\ÊKˆ[—ÝÛÜšÙ\—Ü\ÜØ˜Z[ËXÛÜÙYÛˆZ\ÜÚ[™ËÝ[œ™XÛÙÛš\ÙYš[˜[Ý]\Ëˆ[—Ú›Ø—Û›ÝØÛ›Ý\œÈÚ\×Ù˜Z[\™WÜ™\Ý[›ÜˆÚØÛ\ÜÚYšXØ][Û‹ˆX[X[]šYÙÙ\ˆ\›Z\ÜÚ[Ûˆ›ÜˆØÎ^Ù^˜XÝ˜Z\ÙYÈ^[WÚ[[YÙ[˜ÙK˜Û\Ø
+[™›Ü˜ÙY[ˆÔÕØ\KØYZ[‹Ú›ØœËÜ[‹ÞÚ›Ø—ÚYX
+KˆŒÈ[š]\ÝÈ
+ÛÜšÙ\ˆ
+ÈØÚY[\ˆÛÛ™šYÊKˆ
+Š•˜[œÚY[™]žKØ˜XÚÛÙ™ˆ
+\ÜÝYHÎLËˆÎÌÊNŠŠˆÛZ[WÛ™^Ü™]žWÚ›Ø˜Ù[XÝÈ˜Z[Y›ØœÈÚ\™H\œ›Ü—ØÛÙH8¢"ÙÝÛ›ØYÙ˜Z[YÝÜ˜YÙWÛØš™XÝÛZ\ÜÚ[™ËYÙWÝÜš]WÙ˜Z[YX][\ØÛÝ[Ø
+Ù\™\‹\ÚYH›š[\ŠK[™›ÝÈ8¢$ˆš[š\ÚYØ]8¢iH][\ØÛÝ[0åÈŒØ
+]Ûˆ˜XÚÛÙ™‹˜Z[XÛÜÙYÛˆ[Û˜Z]™KÛX[›Ü›YYš[š\ÚYØ]
+Kˆ[—ÝÛÜšÙ\—Ü\ÜØÚXÚÜÈ›Ý]Y]YY[™™]žHØ[™Y]\È]™\žH\ÜÈ[™XÚÜÈÚXÚ]™\ˆ\ÈHX\›Y\ˆY™™XÝ]™HYH[YH
+˜Z\ˆÛÛXš[™YÜ™\š[™È8 %™]™[È™]žHÝ\˜][ÛŠKˆ
+Š“›È™KXÛZ[H]]][ÛŠŠŽˆØÛZ[WÚ›Ø˜[™XYHXØÙ\ÈÝ]\ÈSˆ
+	Ü]Y]YY	Ë	Ù˜Z[Y	ÊXÈHÛÜšÙ\ˆØ[È[—Ý^Ù^˜XÝÚ›Ø˜\™XÝHÚ]Ý]ÝXÚ[™ÈH›Øˆ›ÝÈš\œÝˆ\›Z[˜[ÛÙ\È
+[œÝ\ÜYÛZ[YXÝÛ™\œÚ\ÛZ\ÛX]ÚØÛÜWÛZ\ÛX]Ú\˜Ú]™Yš[WÝÛ×Û\™ÙWÙ›Ü—Ù^˜XÝ^˜XÝÝ[Y[Ý]
+H\™H™]™\ˆ™]šYYˆÍˆ\ÝÈÝ[
+LÈ™]È™]žKÝ‹[˜Z]™KØÛÝ™\˜YÙHØ\Ù\ÎÈ\ÝØÛZ[WÚ›Ø—ØXØÙ\×Ù˜Z[YÜÝ]\Ø[ˆ\ÝÛXœ˜\žWÝ^Ù^˜XÝœXÝX\™ÈHØÛZ[WÚ›Ø˜™YXØ]H[™]ËY[™
+KˆÔTUÔˆS‘S‘Îˆ\ÞH[™™\šYžHšXHØ\KØYZ[‹Ú›ØœØX[X[šYÙÙ\ˆÚ]^[WÚ[[YÙ[˜ÙK˜Û\Ø\›Z\ÜÚ[Û‹ÛÛ™š\›HYZ[—Ù^[WÚ[[YÙ[˜ÙXØÝ[Y[]Y]YY8¡¤œÝXØÙYYY[™]ËY[™ˆŸ^˜XÝ[Ûˆ\˜Ú]™K\˜XÙH\›Z[˜[^˜][Ûˆ
+™[X\ÙHŒÊHÔTUÔˆTÔÈ
+Œ‹LËLŽÈ\ÞYYÒHLŒÍØ˜MÍŒLØ˜ÍM™™˜MYŽLLMŽXŒØ
+HˆÎÍ\›Z[˜[^™\ÈHÛZ[YY^Ù^˜XÝ›Øˆ™Y›Ü™H˜Z\Ú[™ÈÚ[ˆš[˜[^™WÙØÝ[Y[Ù^˜XÝ[Û˜™\ÜÈØÝ[Y[Ø\˜Ú]™YˆÝYÚ[™È˜[Y][Ûˆ\ÙY\ÜÜØX›HØÝ[Y[M™LXÌXÙXÍŒKMXLËNMÎKMÍÌÙÎÙŒ˜[™›ØˆÍMÌMÌŽKXÌXKMY‹X˜˜KXŒNM™Y™Y™Øˆ›Ø‹ÙØÝ[Y[Ù\™HØœÙ\™Y[›š[™ØØ›ØÙ\ÜÚ[™ØÈØÝ[Y[Ø\È\˜Ú]™YZYY^˜XÝ[ÛŽÈTH™]\›™YØÝ[Y[Ø\˜Ú]™YÈš[˜[›ØˆØ\È˜Z[YÚ]\œ›Ü—ØÛÙOYØÝ[Y[Ø\˜Ú]™YÈØÝ[Y[™[XZ[™Y\˜Ú]™YÈ™\›ÈYÙ\ÈÙ\™HÛÛ[Z]Yˆ[]šY[˜ÙNˆØÜËØ]Y]ËÌŒ‹LËL‹YŒËY^˜XÝ[Û‹X\˜Ú]™K\˜XÙK]˜[Y][Û‹›YˆŸÝXÚË\›ØÙ\ÜÚ[™ÈXYÛ›ÜÝXÜÈ
+\ÜÝYHÍMŠHÓÑKQ’VQÔTUÔˆSQUSÓˆS‘S‘ÈÑUØYZ[‹Ù^[KZ[[YÙ[˜ÙKXÛ\ËÙXYÛ›ÜÝXÜØ
+YÙK]™\ÚÛÛÛ™šYÝ\˜X›KY˜][
+ŠŒÌZ[ŠŠŠKÔÕ‹‹‹ÙXYÛ›ÜÝXÜËÜÝXÚËYØÝ[Y[ÞÚYKÜ™\Ù]
+Ý]\ËYÝX\™Y›ØÙ\ÜÚ[™ø¡¤\ØYYÈHYˆ›Ý›ØÙ\ÜÚ[™Ø
+KÔÕ‹‹‹ÙXYÛ›ÜÝXÜËÜÝXÚËZ›Ø‹ÞÚYKÜ™\Ù]
+Ý]\ËYÝX\™Y[›š[™ø¡¤™˜Z[YÚ]\œ›Ü—ØÛÙOIÛX[X[Ü™\Ù]	ØÈHYˆ›Ý[›š[™Ø
+Kˆ[™YH[™Ú[È[\[Y[Y[ˆYZ[—Ù^[WÚ[[ØÛ\ËœX[™\ÈÍ¸ $ÌÍMÍŽÈØÛÜKYÝX\™YÈYZ[—Ù^[WÚ[[YÙ[˜ÙXˆš[™ÜÝXÚ×ÙØÝ[Y[Ê
+X[™š[™ÜÝXÚ×Ý^Ù^˜XÝÚ›ØœÊ
+X[ˆ^[WÚ[[YÙ[˜ÙKÙXYÛ›ÜÝXÜËœXˆÔTUÔˆS‘S‘Îˆ\ÞH[™[›ÚÙHÑUÙXYÛ›ÜÝXÜØÛˆÝYÚ[™ÎÈ™\šYžHÝXÚËYØÝ[Y[]XÝ[ÛŽÈšYÙÙ\ˆH™\Ù][™ÛÛ™š\›HØÝ[Y[˜[œÚ][ÛœÈÈ\ØYY
+™K\]Y]YYžH™^\ØYXÛÛ\]JH[™ÝXÚÈ›Øˆ˜[œÚ][ÛœÈÈ˜Z[YˆŸ™\X]Ù™‹ÜÚYÝÈ˜[Y][ÛˆÔTUÔˆTÔÈ
+Œ‹LËLŽÈØ[™Y]HÒH™XÙ˜™YMM˜ØÍØÍÌYLÍÙÙLØŒXLÙX
+H
+ŠŒŒ‹L‹LNHÝ]XÈ™Y›YÚ
+Šˆ
+›È]™HÑ‹Ñ‘ˆXÝ[ÛœÊNˆ[ˆÝÜY]Ø]HH
+[ÝÛ\ÝXœÙ[
+NÈØ]Hš[™Ù\œš[
+™ÙMø )˜
+HÛÛ\]YÝ™\ˆÛNYš[HŒHX[šY™\Ý]Ý[HÒH
+Ý\\œÙYYžHÍ‹Yš[HŒˆX[šY™\Ý™Y™\™[˜ÙHŒ™YL˜Í8 )˜
+Kˆ[ÝÛ\Ý
+È[›™Y[[ÙHÛÙKYš^Y[ˆˆÍÍLËˆ
+ŠŒŒ‹LËLˆ\X[]™H[ŠŠˆ]Ø[™Y]HÒHXŒÎM™Y
+™[™\ˆ\ÞYYÒHHOHˆÛÛ™š\›YY
+NˆLˆÝ\Ø]\ÈTÔÎÈ
+Š‘Ø]HH“ÐÒÑQ
+Šˆ8 %Ø[›ÛšXØ[œNŽœ™]šY]×Û[ØÚØÜ›ÝHÈÜ›Û™ÈÛÛ[[ŽÈÛÙHš^Y\™ÙYˆÎˆ
+ŠŒŒ‹LËLˆÔTUÔˆTÔÊŠˆ]\ÞYYÒH™XÙ˜™YMM˜ØÍØÍÌYLÍÙÙLØŒXLÙX
+ÛÛ™š\›YYˆOHJNˆ[LˆÝ\Ø]\ÈTÔÈ[˜ÛY[™ÈØ]Hœ™\Úš[™Ù\œš[ŒØÙXÍXØÙŒØ™ÌŽYÙŽMŽMØ˜Y˜ÍŽYNM˜™˜˜ÌMYMÌÎNMÌÙMÍÌÎN˜
+Íˆš[\ÎÈÛ™Hš[HY™™\œÈœ›ÛH™Y™\™[˜ÙHŒ™YL˜Í8 )˜ˆØ[›ÛšXØ[œXHØ]HHš^
+NÈ
+Š‘Ø]HHTÔÊŠˆ8 %™]šY]×ÜÝ]XÚ[™ÙY[œ™]šY]ÙY8¡¤œ™]šY]ÙYÈ›Ý\Ë[Û›H8¡¤ˆŒ™]šY]×ÜÝ]X[˜Ú[™ÙYÈ^XÚ]™]šY]×ÜÝ]\Îˆ[Y›ÝÜš]H[ÈHÛˆÜX×Øœ™XZÙÝÛœØÈ
+Š‘Ø]\È¸ $ÑK8 $ÒˆTÔÊŠŽÈ
+Š‘Ø]\È‹ÑÎˆS”ÕQ‘’PÒQS•ÑUH
+^]Ë\›Z]Y
+JŠˆ8 %Žˆ\Ý[˜ÝØ][\ØÛÝ[LXÜX×ÙXÚ\Ú[Û—ØÛÝ[L˜
+™\ÚÛÎˆZ[—Ù\Ý[˜ÝØ][\ÏLŒZ[—ÝÜX×ÙXÚ\Ú[ÛœÏML
+NÈÎˆXÚ\Ú[Û—ØÛÝ[LØ
+™\ÚÛˆZ[—ØÛÜœ™XÝ[Û—ÙXÚ\Ú[ÛœÏLL
+Kˆ™XÛÜ™YŒ‹LËL•NNŒNŒMVŽÈMY^HÛØÚÈ[›š[™Ë[™ÈŒ‹LËLŒNNŒNŒMVˆ
+ÙYHØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›Y
+Kˆ[]šY[˜ÙNˆØÜËØ]Y]ËÌŒ‹LËL‹\ËYš[˜[XØ[™Y]K\™]˜[Y][Û‹M™XÙ˜™YK›YˆŸMY^HÚYÝÈØ]H
+‹MÊHSˆ“ÑÔ‘TÔÈ8 %‘PÓÔ‘QŒ‹LËL•NNŒNŒMVˆ
+Š•‘PÓÔ‘Q
+Šˆ]Ú[™Ý×ÜÝ\Ý]ÈHŒ‹LËL•NNŒNŒMV˜\ÞYYÒHMYÌÙŒÌŽYMMXNŒ˜MŽXMLÍYXÎLÙX‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ\ÚYÝØš[™Ù\œš[™\šYšY\ˆVUÐÓÑOLYØZ[œÝH\›Ý™YÍ‹Yš[HYÙ\Ý8 %ÙYHØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›YˆÚ[™Ý×Ù[™Ý]ÈHŒ‹LËLŒNNŒNŒMV˜ˆH™KUÙ\]Y[˜ÙH™[ÝÈ\È™]Z[™Y›Üˆ\ÝÜšXØ[™XÛÜ™ˆHÝYÚ[™ÈÚXÚÜÈÐKÌÐ‹ÌÐË^XÚ]Í‹Yš[H›Ý[™\žH\›Ý˜[[™Hœ™Y^™HÛÛ›Û™XÛÜ™Ù\™H
+Š“QT‘ÑQ
+Šˆ
+ˆÎŒ‹LËLÎÈ\›Ý™YÛÝ\˜ÙHÒHŒMÌLØM™˜ÙLLYXLŽMXÙŽYLÍŒX™ŒÙŒXXÌØXœ™Y^™KXØ[™Y]HYÙ\ÝLXÙŽLŽLÌŽLÙŒMÌÙXÍŽŽYXYXŽÌL™XÙNM™LMÌÍYXMÌY™™MÍ
+Kˆ™XØ]\ÙHXZ[˜YY˜[˜ÙY\ÝHœ™Y^™KXØ[™Y]HÒKHÛÛ\]Y™KUÙ\]Y[˜ÙHØ\Îˆš[š\ÚÙ[XÝY™KU]™[ÜY[8¡¤ˆÛÛ\]H™\]Z\™Y]™KÑL‘HÜ\˜]Üˆ˜[Y][Ûˆ8¡¤ˆÚÛÜÙHHš[˜[™[X\ÙHÒH8¡¤ˆ\ÞH]^XÝÒH
+œ›Û[™
+È˜XÚÙ[™
+H8¡¤ˆÛÛ™š\›H‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ\ÚYÝØ8¡¤ˆ™K\[ˆHÍ‹Yš[Hš[™Ù\œš[™\šYšY\ˆ]]ÒH8¡¤ˆ™XÛÜ™^XÝUÈÚ[™Ý×ÜÝ\8¡¤ˆÝ\ˆ]Ù\]Y[˜ÙH\È›ÝÈÛÛ\]NÈÈ›Ý™K\[ˆ]ˆ™[XZ[š[™ÎˆÛÚYÝØ[ÙH›ÜˆH[MY^HÚ[™ÝÈ[™\ÜÈH™\]Z\™Y‹MÈÚYÝËYØ]H™\ÚÛÈ]Ú[™Ý×Ù[™ˆŸ‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ[]™X“ÐÒÑQH
+ÈÍ‹Yš[H›Ý[™\žH\›Ý˜[
+Èœ™Y^™HÛÛ›Û™XÛÜ™\™HÛÛ\]H[™
+Š“QT‘ÑQ
+ˆÎ
+JŠ‹ˆ\È™XÛÜ™Y
+Œ‹LËL•NNŒNŒMVŽÈÙYHØÜËØ]Y]ËÌŒ‹LËL‹\]\Ý\›Y
+H8 %™[XZ[š[™È›ØÚÙ\œÈ\™NˆÛÛ\]HHMY^HÚYÝÈÚ[™ÝÈ
+[™ÈŒ‹LËLŒNNŒNŒMVŠKØ]\ÙžH[ÚYÝËYØ]H™\ÚÛËØZ[ˆ›Ý[™Y]™KXØ[˜\žH\›Ý˜[
+JKS‘ÛÛ\]HH\˜[[KÔ‹Ô]™K[ZYÜ˜][Ûˆ\XØ][Ûˆ
+YÙ\ˆXY\È›ÝÈ
+ŠŒŒŒ
+Š‹›ÝŒLŠH
+È“ËÔ”È™X[R•Õ™\šYšXØ][Ûˆ
+ÈZYÜ˜][Û‹LŒÛ˜\ÚÝ\™]šY]È”È]™H˜[Y][Û‹ˆŸ[ØÚÈ][\[[Y]žH[]™\žH\™[š[™È
+ˆÎ
+HÔTUÔˆTÔÈ
+Œ‹LËLÊH˜XÚÙ[™[ÜšYÚ[ˆ[]™\žK›Ü˜ÙY\™Z™XÝ[Ûˆ\˜X›H™]žK[™\X[XÛÝ™\˜YÙH[˜[]XÜÈÙ\™H˜[Y]YÛˆÝYÚ[™È]ÛÝ\˜ÙHÒHŒMÌLØM™˜ÙLLYXLŽMXÙŽYLÍŒX™ŒÙŒXXÌØXˆHÜ\˜]Üˆ\›Ý™YHÍ‹Yš[Hš[™Ù\œš[›Ý[™\žKˆœ™Y^™KXØ[™Y]HYÙ\ÝˆLXÙŽLŽLÌŽLÙŒMÌÙXÍŽŽYXYXŽÌL™XÙNM™LMÌÍYXMÌY™™MÍˆŸ[ØÚÈÙ[X[XÜÈX™[š^
+0©ÌMÈœ›Û[™
+HÓÑKQ’VQSQUSÓˆS‘S‘È[ØÚÜËšœÞˆ
+JH‘\œ›Üˆ]\›œÈˆ^YXœ›ÝÈ8¡¤ˆ”Ù[‹\™\ÜY\œ›Üˆ]\›œÈˆ›Üˆ\ÝÛ]™[\Ù[—Ü™\ÜYØÛÝ\˜ÙWÝ\O[X[X[ÛÙØ[ØÚÜÎÈ
+ŠH[ØÚÐ[˜[\Ú\ØÙXÝ[Û’XY\˜ÝX]H\È›ÝÈÛÛ™][Û˜[8 %Ù[‹\™\ÜYÚÝÜÈ˜˜\ÙYÛˆH˜[Y\È[ÝH[\™Y‹]›Ü›HÚÝÜÈ™\š]™Yœ›ÛH[Ý\ˆ]›Ü›K\ØÛÜ™Y][\ˆ
+™[[Ý™\ÈH˜[ÙH™^˜XÝYœ›ÛH[Ý\ˆÙÙÙY[œÝÙ\ˆÚY]ˆÛÜJNÈ
+ÊH\œ›Ü”]\›”[™[›ÛÝ\ˆ8¡¤ˆ˜ÛÝ[È[\™YžH[ÝH0­È\Ù\‹Y[\™Y›ÝÞ\Ý[KZ[™™\œ™Yˆ›ÜˆÙ[‹[ÙÙÙY[˜Ú[™ÙY›Üˆ]›Ü›KX][\È
+
+H]™\˜YÙHÝ]™[X™[Y]™\˜YÙHXÜ›ÜÜÈˆÙÙÙY[ØÚÜÈ‹ˆ›È\š]™Y[X™[ÙÚXÈÚ[™ÙY
+0©ÌMËH[™[™È›ÙXÝ\›Ý˜[
+Kˆ™YÜ™\ÜÚ[Ûˆ\ÝÈ[ˆYÙ\Ë××Ý\Ý××ËÓ[ØÚÜË›X™[Ë\ÝšœÞ
+MH\ÝË[\ÜÚ[™ÊKˆŸTH8¡¤ˆ[ØÚÈ˜[šÈ›Ú™XÝ[ÛˆœšYÙH
+ˆÍÍMŠHQT‘ÑQÈÓÑH‘TÑS•8 %ÔTUÔˆSQUQ8 %ˆÍÍMˆ
+Ø™ŒÙ˜˜
+HZYÜ˜][ÛˆNÎˆ\WÛ[ØÚ×Ü]Y\Ý[Û—Ü›Ú™XÝ[ÛœØ[ØÚ×ÜÛÝ\˜ÙWÛZ^ÜÛXÚY\Ø›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šÊ]ZY]ZY^
+X”Ë[˜[Y][ÛˆšYÙÙ\œË›—Ø›ØÚ×Ü›Ú™XÝ[Û—Ù›Ü—Ü]Y\Ý[ÛŠ]ZY^
+X[š\]YH\X[[™^\WÛ[ØÚ×ÜX˜[š×Ü\WÜ]Y\Ý[Û—ÚYˆÙ[XÝÜ]Y\Ý[Ûœ×Ù›Ü—Ý[\]X[™ÛØYÜ]Y\Ý[Ûœ×Ù›Ü—Ý[\]X›Ý˜Z[XÛÜÙY›Üˆš^Y\ÙXÝ[ÛˆQÈ
+ÛÚÝ\\œ›ÜˆYˆ[žHÛÛ™šYÝ\™YQ[˜]˜Z[X›HY\ˆÝ]\ËÙ^\žKÛ[™XYÙHš[\š[™ÊKˆÜÜXÚYšXÚ]J
+XÚYÛ‹Z[™\œÚ[Ûˆš^YˆÜ™\ÛÛ™WÜÛÝ\˜ÙWÛZ^ÜÛXÞX™]\›œÈË]\NÈ˜Z[[Ü[ˆÛ›HÛˆÔSÕUH”KÙÙ\Ë[›ÝY^\Ý
+™[[Ý™YÝ™\›KXœ›ØYœ™[][ÛˆˆÙ^]ÛÜ™
+KˆÜÙ[XÝÜÙXÝ[Û˜X^Ü˜][È\Ù\ÈXÝX[Ù[XÝYÛÝ[
+›Ý\™Ù]
+NÈ™XÛÛ\]\È˜][ÈY\ˆ˜XÚÙš[È™\ÜÈ[™›Ü˜ÙYÛX^Ü˜][×Ü\X[Ú[ˆ˜XÚÙš[[œÝY™šXÚY[ˆ][WÙ^[WØÛÝ™\˜YÙX™\ÛÛ™\ÈšXH›Ý[\]H[™Ù[™\˜]YX›Y\š[]ÎÈYÚ[˜]\È™\ÜÛœÙ\Ëˆ\S[ØÚÔ›Ú™XÝ[Û”[™[]Y]™X\ÛÛˆRKˆ˜Z[XÛÜÙY™YÜ™\ÜÚ[Ûˆ\ÝÈ
+ÈˆX^Ü˜][ÈÛÛœÝ˜Z[\ÝÈYYˆ
+Š“ZYÜ˜][ÛˆN
+ÝYÚ[™È™\Z\ŠNŠŠˆNÜ™\Z\—Ü\WÛ[ØÚ×Ü›Ú™XÝ[Û—ØœšYÙKœÜ[™KZ[œÝ[È›—Ú[˜[Y]WÜ›Ú™XÝ[Û—Ù›Ü—Ü]Y\Ý[ÛŠ]ZY
+X›—Ø›ØÚ×Ü›Ú™XÝ[Û—Ù›Ü—Ü]Y\Ý[ÛŠ]ZY^
+X[™\WÛ[ØÚ×ÜX˜[š×Ü\WÜ]Y\Ý[Û—ÚYÚXÚÙ\™HXœÙ[œ›ÛHÝYÚ[™È\Ü]HZYÜ˜][ÛˆNÈ™Z[™È™XÛÜ™Yˆ[ÛÈ™Z[œÝ[ÈH”Ë›—Ú[˜[Y]WÜ\WÜ›Ú™XÝ[Û˜[™[[˜[Y][ÛˆšYÙÙ\œÈšXHÔ‘PUHÔˆ‘TPÑHÈ“Ô
+ÐÔ‘PUKˆX›ÜÈÚ]^XÚ]\œ›ÜˆYˆ\XØ]H\WÜ]Y\Ý[Û—ÚY˜[Y\È^\Ý
+›È]]ËY[]JKˆ˜[Y][Ûˆ\ÜÙ\[ÛœÈ›ØÚÈÛÛ[Z]Ûˆ[žHZ\ÜÚ[™ÈØš™XÝÜˆÜ›Û™ÈÜ˜[ˆ
+Š“ZYÜ˜][ÛˆNH
+]ÛZXÈ™]šY]È”ÊNŠŠˆNWÜ\WÜ\\—Ü™]šY]×Ý˜[œØXÝ[Û‹œÜ[YÈ™]šY]×Ü\WÜ\\ŠÜ\\—ÚYÙ^XÝYÜÝ]\ËÝ\™Ù]ÜÝ]\ËÜ™X\ÛÛ‹ØXÝÜ—ÚYØXÝÜ—Ù[XZ[
+XÑPÕT’UHQ’S‘Tˆ[˜Ý[Ûˆ
+Ù\šXÙWÜ›ÛHÛ›JKˆ™\XÙ\ÈHÛË\Ý\ÜÝÔ‘TÕÜš]H
+Ù\\˜]H]Y]S”ÑT•
+È\\ˆTUJHÚ]HÚ[™ÛH˜[œØXÝ[ÛŽˆ
+JH^XÚ]•S
+Èš[[YY[[™ÝÚXÚÈÛˆ™X\ÛÛˆ
+8 $ÍLÚ\œÊNÈ
+ŠH\™Ù]Ý]\È˜[Y][ÛŽÈ
+ÊHÑSPÕ8 )ˆ“ÔˆTUX›ÝÈØÚÎÈ
+
+HÛÛ˜Ý\œ™[[[ÙYšXØ][ÛˆÝX\™È
+JH˜[œÚ][ÛˆX]š^ÛˆØÚÙY›ÝÎÈ
+ŠH›Ý™[˜[˜ÙH™KXÚXÚÈÛˆØÚÙY›ÝÈ
+Ø]Ú\È˜XÙHÚ\™HÛÛ˜Ý\œ™[ÓTÈY]ÛX\œÈÛÝ\˜ÙWÝ\›Ú[H\ÝÜÝ]\ØÝ^\È[™[™Ø
+NÈ
+ÊH]Y]S”ÑT•
+È\\ˆTUH[ˆÛ™H]ÛZXÈ›ØÚÈ8 %[žH˜Z[\™H›ÛÈ˜XÚÈ›ÝˆYZ[—Ù^[WÚ[[ØÛ\ËœXØ[È\È”È[™X\È\œ›ÜˆÚÙ[œÈÈŒ‹ÍKÍˆŽ˜XÚÙ[™\ÝËÈŽLˆÝ[ˆY™\œ™YÈ‹MÎˆ˜XÚË[]™[ÛÝ™\˜YÙKY™šXÝ[KZ[‹XXÚÙ]™X[ÈZYÜ˜][Ûˆ\ÝËÜXËXÛÛ^ÛXÚY\Ëˆ
+Š“ZYÜ˜][ÛˆNˆ
+ÛÝ\˜ÙKYØÝ[Y[[šØYÙJNŠŠˆN—Ü\WÜ\\—ÜÛÝ\˜ÙWÙØÝ[Y[œÜ[YÈÛÝ\˜ÙWÙØÝ[Y[ÚY]ZY’È8¡¤ˆØÝ[Y[Ø\ÜÙ]ØÛˆ\WÜ\\œØ[™[ØÚ×Ü]Y\Ý[Û—ÜÛÝ\˜Ù\ØÈ™\XÙ\ÈZYÜ˜][ÛˆNIÜÈ™]šY]×Ü\WÜ\\Š
+XÚ][ˆ^[™Y›Ý™[˜[˜ÙHØ]H]™\]Z\™\È˜[YÛÝ\˜ÙWÝ\XS‘Z]\ˆ›Û‹Y[\HÛÝ\˜ÙWÝ\›ÔˆH˜[Y]XÚYØÝ[Y[
+˜[Y]Y[™\ˆHØ[YH“ÔˆTUHØÚÎˆØÛÜKØÝ[Y[ÚÚ[™Ý]\ËÝÜ˜YÙK^[WÚY
+NÈ^[™È›—Ú[˜[Y]WÜ\WÜ›Ú™XÝ[ÛŠ
+XÈØ]ÚÛÝ\˜ÙWÙØÝ[Y[ÚYÚ[™Ù\ÈÛˆ\WÜ\\œØÈ^[™È›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šÊ
+XÈ[˜ÛYHÛÝ\˜ÙWÙØÝ[Y[ÚY[ˆHÛÛ[Z\Ú›Ü›][H[™[ØÚ×Ü]Y\Ý[Û—ÜÛÝ\˜Ù\ØS”ÑT•ˆ]Ûˆ^Y\ŽˆÛÝ\˜ÙWÙØÝ[Y[ÚYYYÈÔTT—Ñ’QSØÈ›Ý™[˜[˜ÙH™XÚXÚÈ\]YÈ\WÜ\\—ÜÚYÛ™YÜ˜[™Ú[›ÝÈ™\šYšY\ÈH™\]Y\ÝYØÝ[Y[\ÈH\\‰ÜÈ]XÚYØÝ[Y[
+ÈÝ\Ú\ÙJNÈÛÛ\]WØÛÛ[Ú\Ú
+
+X›Ü›][H\]YÈX]Úˆœ›Û[™
+THÛÜšØ™[˜Ú›È™]È›Ý]JNˆ]XÚØÈÈ™\XÙHØÈ[Ù[[™šY]Èˆ]ÛˆYYÈ\\ˆX›HXÝ[ÛˆÛÛ[[‹ˆNH™]È\ÝÈ
+Ý[H™]šY]ËY[™Ú[\ÝÈ
+ÈÈÚYÛ™YTˆ\ÝÈ
+ÈH\ÚY›Ü›][H\Ý
+KˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛœÈNÈ8¡¤ˆN8¡¤ˆNH8¡¤ˆNˆÈÝYÚ[™È[ˆÜ™\ˆ
+Nˆ\ÈY[\Ý[šXHQÓÓSSˆQˆ“ÕVTÕØ
+ÈÔ‘PUHÔˆ‘TPÑX
+NÈ™\šYžH™]šY]×Ü\WÜ\\˜[™›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šØÜ˜[È
+[›Û˜Ø]][XØ]Y]\Ý›ÝVPÕUKÙ\šXÙWÜ›ÛX]\Ý
+NÈÛÛ™š\›H\WÜ\\œËœÛÝ\˜ÙWÙØÝ[Y[ÚYÛÛ[[ˆ[™YÜ\WÜ\\œ×ÜÛÝ\˜ÙWÙØÝ[Y[ÚY[™^™\Ù[ÈÛÛ™š\›H[ØÚ×Ü]Y\Ý[Û—ÜÛÝ\˜Ù\ËœÛÝ\˜ÙWÙØÝ[Y[ÚYÛÛ[[ˆ™\Ù[È[ˆL‘H˜[Y][ÛˆÚXÚÛ\ÝˆÈ“Õ\HÈ›ÙXÝ[ÛˆÚ]Ý]Ü\˜]ÜˆÚYÛ‹[Ù™‹ˆŸTH\\ˆ›Ý™[˜[˜ÙHV[™˜XÚÙ[™ÛÛ˜XÝš^\È
+ZYÜ˜][ÛˆNLJHÔTUÔˆSQUQ
+Œ‹L‹LJH
+Š“ZYÜ˜][ÛˆNLJŠˆ
+NLWÜ\WÜ›Ý™[˜[˜ÙWÚ[˜ÛYWÜÛÝ\˜ÙKœÜ[
+NˆÔ‘PUHÔˆ‘TPÑHÛ\×ÜÙ]Ü\WÜ\\—Ü›Ý™[˜[˜ÙX^[™YÈXØÙ\\WÜÛÝ\˜ÙWÚY[ˆÜ]ÚÈ˜[Y]\È^\Ý[˜ÙH[™^[WÚYX]ÚYØZ[œÝ\WÜÛÝ\˜Ù\ØÈ\Y\È[ˆTUNÈ[‘U“ÒÑKÑÔS•ÙXÝ\š]H]\›ˆœ›ÛHZYÜ˜][ÛˆNL\YYˆ
+Š˜XÚÙ[™
+Šˆ
+YZ[—Ù^[WÚ[[ØÛ\ËœX
+NˆÔ“Õ‘SSÑWÑ’QSØ^[™YÚ]œ\WÜÛÝ\˜ÙWÚY˜ˆ
+Š‘œ›Û[™
+ŠŽˆ\\”›Ý™[˜[˜ÙS[Ù[
+XÚÙ\ˆ
+ÈÛÝ\˜ÙH™YÚ\ÝžJH™\XÙYH˜]ËUURQ[Ù[È\Ô\\”›Ý™[˜[˜ÙPÛÛ\]J
+XÈ\ÙT\UÛÜšØ™[˜Ú™]Ú\œËˆ
+Š“ÔTUÔˆSQUQÛˆÝYÚ[™ÈŒ‹L‹LNŠŠˆZYÜ˜][ÛˆNLH\YYÈÛ\×ÜÙ]Ü\WÜ\\—Ü›Ý™[˜[˜ÙX^\ÝÈÚ]ÛÜœ™XÝÚYÛ˜]\™H
+ÈÑPÕT’UHQ’S‘TŽÈÜ˜[X]š^ÛÛ™š\›YY
+[›Û˜[šYY]][XØ]Y[šYYÙ\šXÙWÜ›ÛX[ÝÙY
+NÈØ[YKY^[H\WÜÛÝ\˜ÙWÚYXØÙ\YÈ™\šYšYY\\ˆ[[ÝYÈ[™[™ÎÈ]Y]
+È™]š[Ý\Ë\›Ý™[˜[˜ÙH™XÛÜ™YÈZ\ÜÚ[™ÈÛÝ\˜ÙH™Z™XÝYÈÜ›ÜÜËY^[HÛÝ\˜ÙH™Z™XÝYÈ˜[œØXÝ[Ûˆ›Û˜XÚÈ™\Ù\™YÜšYÚ[˜[]NÈØÝ[Y[XÚÙ\ˆÚÝÜÈ™XYX›H™XÛÜ™ÈÚ]]Y\Ý[ÛˆÛÝ[Ëˆ
+Z[›Üˆ›Û‹X›ØÚÚ[™ÈVˆÛ™ËYš[[˜[YHXÚÙ\ˆX™[Û\È8 %Y™\ÜÙYžHHÛ˜›Ø\™[™È‰ÜÈÚ\™Y\T›Ý™[˜[˜ÙQšY[Ø[˜Ø]JÝÛÛ\ŠHŸKT^ÜÝ\™HÛÛÛÝÛˆ
+ÈKTHX\Ý\žKZ[™›Ü›YY[ØÚÈÙ[XÝ[Ûˆ“ÐÒÑQÈS“‘QÝ\Û›HY\ˆÛX[ˆÚYÝËÛ]™K\™XY[™\ÜÈØ]KˆŸTÐÈÔÑHŒH™[[\ÈÔÐUØ[›ÛšXØ[\\ˆ
+ZYÜ˜][ÛˆŒŽ
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈŒŽÜ\WÝ\Ø×ØÜÙWÌŒWÜ™[[\×ØÜØ]ØØ[›ÛšXØ[œÜ[[š™XÝÈHTÐÈÔÑHŒH™[[\È\\ˆRH
+ÔÐU
+HÙ™šXÚX[]Y\Ý[Ûˆ\\ˆ\ÈH
+Š˜Ø[›ÛšXØ[
+ŠˆTHÛÝ\˜ÙH
+ÛÝ\˜ÙWÝ\OIÛÙ™šXÚX[	Ø
+Kˆ™\ÛÛ™\È^[\ËœÛYÏIÝ\ØËXÜÙIØÈ
+Šœ™]\Ù\ÈH^\Ý[™ÈŒHÞXÛJŠˆžH
+^[WÚYYX\ŠX
+H[[ÈÙYYÜ™X]\È]\ÈÔÑHŒX
+KÛ›HÜ™X][™ÈÛ™HÚ[ˆXœÙ[\Ú[™ÈHÙYY	ÜÈ]\›Z[š\ÝXÈYÛÈH]\ˆÙYY[ˆ›Ë[ÜÈ8 %H[[YHÝX\™\ÜÙ\È^XÝHÛ™HŒHÞXÛKˆYÈHÞXÛK\ØÛÜY^[WÜ\Ù\Ø›ÝÈ
+™[[\ËXÜØ]][\ÈÈŒX\šÜÈÈLŒZ[ŠK[ˆ[œÙ\ÈÛ™H\WÜÛÝ\˜Ù\Ø
+ÈÛ™H\WÜ\\œØ›ÝÈ
+È
+ŠŽ
+Šˆ\WÜ]Y\Ý[ÛœØ
+È
+ŠŒÌŒ
+Šˆ\WÛÜ[ÛœØ
+XXÚ
+H
+È
+ŠŒM
+Šˆ™\˜˜][H\WÜÝ[][X™XY[™È\ÜØYÙ\È[šÙYšXH
+ŠŒJŠˆ\WÜ]Y\Ý[Û—ÜÝ[][X›ÝÜËˆ›Ü›X[^™YÜ]Y\Ý[Û—Ú\ÚØ›Ü›X[^™YÛÜ[Û—Ú\Ú\ÙHHØ[YHØ[›ÛšXØ[›Ü›H\ÈÜ[Û—Û›Ü›X[^™KœX
+[\Ü\‹XÛÛœÚ\Ý[
+Kˆ[HY[\Ý[8 %]™\žH[œÙ\Ù^YYÛˆH]\›Z[š\ÝXÈ]ZYXÚ]ÓˆÓÓ‘“PÕ
+Y
+HÈ“ÕS‘Øˆ
+Š•\ÝÝ^\È[™[™Ø
+ŠˆÛˆ›ÝÛÝ\˜ÙH[™\\ŽˆHÛÝ\˜ÙHØÈ\È›È^XÝ\\‹\ÛÝ\˜ÙHT“ÈÛÝ\˜ÙWÙØÝ[Y[ÚY[™›È[œÝÙ\ˆÙ^K[™™\šYšYYÜ\WÜ\\œÊ
+X\ÝÈÛˆ\WÜ\\œË\ÝÜÝ]\ÏIÝ™\šYšYY	Ø[Û™H8 %›Û[Ý[™È›ÝÈÛÝ[Ý\™˜XÙHH™\šYšYY\\ˆ˜XÚÙYÛ›HžHHTÐÈÛY\YÙKˆ\\ˆÛÝ\˜ÙWÝ\›\ÈY[
+Ü\˜]Üˆ]XÚ\È^XÝÛÝ\˜ÙWÝ\›ØÛÝ\˜ÙWÙØÝ[Y[ÚY]™\šYšXØ][ÛŠKˆ[ÛÛ[›ÝÜÈ\™H™]šY]Ù\—ÜÝ]\ÏIÜ[™[™ÉØÚ]ÛÜœ™XÝÛÜ[Û—ÚY[[Ø\×ØÛÜœ™XÝY˜[ÙXÈH[ØÚÈ›Ú™XÝ[ÛˆØ]H
+\WÛ[ØÚ×Ü›Ú™XÝ[Û‹œX
+H™YYÈ™\šYšYY
+È^XÝHÛ™HÛÜœ™XÝÜ[Û‹ÛÈH\\ˆÝ^\ÈÝ]ÙˆX\›™\ˆÝ\™˜XÙ\È[[Ü\˜]Üˆ™]šY]Ëˆ™\™XÝÈ\™HÜ\˜]Ü‹[Û›K™]™\ˆ˜XœšXØ]YˆLËÔM
+›ÛÙ
+H[™LLKÔLLˆ
+YÜšXÝ[\™JH™Y™\™[˜ÙHÈ\ÜØYÙ\ÈXœÙ[œ›ÛHHÛÝ\˜ÙHØÈ8¡¤ˆÜÙH›Ý\ˆ][\ÈØ\œžHY]Y]K›Z\ÜÚ[™×ÜÝ[][\Ï]YX
+ÈÛÝ\˜ÙWÜ\ÜØYÙWØXœÙ[]YX
+ÈZ\ÜÚ[™×ÜÝ[][\×Ü™X\ÛÛ˜
+XXÚ[™KYš[\˜X›JH[™›ÈÝ[][\È[šÎÈHÝX\™\ÜÙ\È^XÝHÝXÚ›ÝÜËˆ™[[X™\™YŒ8¡¤ŠŠŒŒŽ
+ŠˆY\ˆXZ[˜Y˜[˜ÙY
+H\XØ]HŒ
+ÈHŒH[™Y
+NÈHÈ][\È]Ú\™HHÙ[™\šXÈÝ[H
+K™Ëˆ˜Ù[˜[YXHÛÛ™^YYžHH\ÜØYÙHˆ›Üˆ][\ÈKÍŒKÍÌJH\™H\ÜØYÙK\ØÛÜY[ˆ›Ü›X[^™YÜ]Y\Ý[Û—Ú\ÚÛÈ^HØ]\ÙžHZYÜ˜][ÛˆŒ	ÜÈ™]È\X[[š\]YH[™^\WÜ]Y\Ý[Ûœ×Ü\\—Ú\ÚÝZYÛˆ
+\WÜ\\—ÚY›Ü›X[^™YÜ]Y\Ý[Û—Ú\Ú
+X8 %[\Ú\È\Ý[˜Ý›Û™H[ˆ˜[Y]YÛˆH\ÜÜØX›HÌMˆÛ\Ý\ˆÚ]ZYÜ˜][ÛœÈÌÌÌ‹ÌN‹XÛÛÌŒŒÈ
+ÈXZ[‰ÜÈ
+ŠŒŒÌŒJŠˆ
+H™]È\H[š\]YKZ[™^
+ÈÝ[][HÜ˜[
+H
+ÈÙYYLL
+ÈH[[ÈÔÑHŒXÞXÛH[ˆ
+Š˜›ÝÜ™\š[™ÜÊŠˆ
+ZYÜ˜][Û‹X™Y›Ü™K\ÙYY[™ÙYYX™Y›Ü™K[ZYÜ˜][Ûˆ8¡¤ˆ^XÝHHÞXÛHXXÚ
+NˆŒŽ\Y\ÈÛX[ˆ[™\ˆH™]È[™^\ËÛÝ\˜ÙJÜ\\ˆ[™[™ØÌÌŒ\Ý[˜Ý\Ú\Ë›YÙÙY][\È
+ËLKLŠKY[\Ý[™K\[ˆ
+ÌÌŒHÞXÛJNÈ›Ý™[˜[˜ÙHÝX\™™Z™XÝÈH™\šYšYY\\ˆXÚÚ[™È^XÝÛÝ\˜ÙWÝ\›ØÛÝ\˜ÙWÙØÝ[Y[ÚYˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒŽÈÝYÚ[™ø¡¤œ›Ù
+Y\ˆŒJNÈ]XÚH^XÝÙ™šXÚX[ÔÐUŒH\\ˆÛÝ\˜ÙH
+È[œÝÙ\ˆÙ^H[™[ˆH™]šY]ÈY™XÞXÛHÈ™\šYšYY™Y›Ü™H[ØÚËÛX\›™\ˆ^ÜÝ\™KˆŸTHÝXÝ\™Y^[˜][Ûˆ^Y\ˆ
+ZYÜ˜][ÛˆŒÌ
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈŒÌÜ\WÜ]Y\Ý[Û—Ù^[˜][ÛœËœÜ[[™ÈHš\œÝXÛ\ÜËÛÝ\˜ÙKX]Ø\™K[™\[™[K\™]šY]ÙY^[˜][Ûˆ^Y\ˆ8 %
+ŠœØÚ[XH
+ÈÛÝ™\›˜[˜ÙHÛ›NÈ“È\™\\HÛÜœ\ÈÛÛ[Z]Y
+Šˆ
+ÚXÚÜÜÝˆÎL™\]Z\™YÜ][™ÈØÚ[XHœ›ÛH]H[™Ù\Ý[ÛŠKˆ
+Š”ØÚ[XNŠŠˆX›XËœ\WÜ]Y\Ý[Û—Ù^[˜][ÛœØ
+’ø¡¤˜\WÜ]Y\Ý[ÛœØTK\ØÛÜYÛÈ]Ý^\ÈÛX\ˆÙˆH‹M[ØÚËÜ›Ú™XÝ[ÛˆÝ\™˜XÙJHÚ]ÚÜÙ^[˜][Û˜^[˜][Û—Ý^ÛÛ][Û—ÜÝ\ØØÜ[Û—Ü˜][Û˜[\ØØ›Ü›][WÝ\ÙYØÛÛ[[Û—Ý˜\Ø
+œÛÛ˜ŠK
+ŠœÝXÝ\™Y
+Šˆš[˜[Ø[œÝÙ\—ÛÜ[Û—ÚYØ[\›˜]WØ[œÝÙ\—ÛÜ[Û—ÚY
+’ø¡¤˜\WÛÜ[ÛœØ›ÝHœ™YK]^KÐ‹ÐËÑX™[
+K[XšYÝZ]WÜÝ]\Ø^[˜][Û—ÜÛÝ\˜ÙWÝ\XÛÝ\˜ÙWÝ\›
+™X[^[˜][ÛˆÛÝ\˜ÙHÛ›JKÛÝ\˜ÙWÙØÝ[Y[ÚY
+’ø¡¤˜ØÝ[Y[Ø\ÜÙ]Ø
+KØÛÝ\˜ÙWÚ\ÚXÙ[œÙWÜÝ]\Ø[™]È
+Š›ÝÛŠŠˆ™]šY]Ù\—ÜÝ]\ØØ™]šY]ÙYØžXØ™]šY]ÙYØ]
+[™\[™[ÙˆH]Y\Ý[Û‰ÜÊKY]Y]X[Y\Ý[\ÎÈ[š\]YJ]Y\Ý[Û—ÚY^[˜][Û—ÜÛÝ\˜ÙWÝ\JXˆ
+Š“Û™H]\›Z[š\ÝXÈ‘Q“Ô‘HšYÙÙ\ŠŠˆ[™›Ü˜Ù\Îˆ
+JHØ[YK\]Y\Ý[Ûˆ[YÜš]H8 %XXÚ[œÝÙ\ˆÜ[Ûˆ’È]\Ý™[Û™ÈÈ]Y\Ý[Û—ÚYÈ
+ŠHÛÛ[YY]ÝÛ™Ü˜YHÙˆH™\šYšYY›ÝÈ8¡¤ˆ™YY×ØÛÜœ™XÝ[Û˜È
+ÊH
+Š™˜Z[XÛÜÙY™\šYšXØ][ÛŠŠˆ8 %™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø\È™Z™XÝYÛˆS”ÑT•
+˜[™
+ˆTUH[›\ÜÈXÙ[˜ÙH\ÈÛX\™Y
+ÝÛ™YØXÙ[œÙYØX›X×ÙÛXZ[˜
+K[XšYÝZ]H\È›Û™Xš[˜[Ø[œÝÙ\—ÛÜ[Û—ÚY\ÈÙ][™™]šY]Ù\ˆY[]KÝ[Y\Ý[\\™H™\Ù[ˆ
+Š”“ÈYZ[‹ÜÙ\šXÙK\›ÛHÛ›KŠŠˆ
+Š‘™[˜ÙY™]šY]È”ÊŠˆÛ\×Ü™]šY]×Ü\WÜ]Y\Ý[Û—Ù^[˜][ÛŠY^XÝY\™Ù]›Ý\ËXÝÜ—ÚYXÝÜ—Ù[XZ[
+X
+ÑPÕT’UHQ’S‘T‹Ù\šXÙWÜ›ÛXÛ›NÈ‘U“ÒÑHX›XËØ[›Û‹Ø]][XØ]Y
+HØÚÜÈH›ÝË[™›Ü˜Ù\ÈH˜[œÚ][ÛˆX]š^
+È™\šYžH™XÛÛ™][ÛœËÝ[\È™]šY]Ù\ˆY[]K[™Üš]\ÈÛ™HYZ[—Ø]Y]ÛÙÜØ›ÝÈ\ˆ˜[œÚ][Û‹ˆ[Ù[
+È[\ÜÛÝ™\›˜[˜ÙHØÝ[Y[Y[ˆØÜËØ\˜Ú]XÝ\™KÜ\KY^[˜][ÛœË›Yˆ
+ŠÛØXÚ[™ÈÔÐU^[˜][ÛˆÛÜœ\È[X™\˜][H“ÕÛÛ[Z]Y
+Šˆ8 %]\È[™Ù\ÝYÝ][Ù‹X˜[™\ÈÜ\˜]Üˆ™Y™\™[˜ÙH
+ØÝ[Y[\ÜÙ]
+ÈÛÝ\˜ÙWÚ\Ú
+È™XÛÜ™Y\›Z\ÜÚ[Ûˆ˜\Ú\ÊH\ˆHØÎÈÛ›H]›Ü›K[ÝÛ™YØÛX\™Y^X^H™HÛÛ[Z]Y[™[œÝÙ\ˆÙ^\ÈÝ^HÜ\˜]Ü‹]™\šYšYY
+›È\WÛÜ[ÛœËš\×ØÛÜœ™XÝÜš]\ÊKˆ™YÜ™\ÜÚ[Ûˆ\Ý\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—ÌŒÌÜ\WÜ]Y\Ý[Û—Ù^[˜][ÛœËœÜ[
+LØ\Ù\ÊNˆØ[YK\]Y\Ý[Ûˆ[YÜš]KXXÚ˜Z[XÛÜÙY™XÛÛ™][Û‹ÛÛ[ÝÛ™Ü˜YK[š\]Y[™\ÜË[™”È™\šYžH
+È]Y]
+È[˜ÛX\™Y[XÙ[˜ÙH™Y\Ø[8 %[\ÜÈÛˆH\ÜÜØX›HÌMˆÛ\Ý\ˆ
+ÌÌÌ‹ÌŒŒÈ
+ÈÝXœÊNÈZYÜ˜][ÛˆY[\Ý[Ûˆ™KX\KˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒÌ
+Y\ˆŒŽJNÈ[™Ù\ÝÛØXÚ[™È™Y™\™[˜ÙHšXHHÜ\˜]Üˆ]Ú]™XÛÜ™Y\›Z\ÜÚ[ÛŽÈ]]Üˆ]›Ü›K[ÜšYÚ[˜[™]šY]ÙY^[˜][ÛœÈ
+ÝXÝ\™Yš[˜[Ø[œÝÙ\—ÛÜ[Û—ÚY[XšYÝZ]H™\ÛÛ™Y
+H[™™\šYžHšXHH”È™Y›Ü™H[žHX\›™\ˆ^ÜÝ\™KˆŒHÙˆH^[˜][Ûˆ›ÙÜ˜[H8 %[\Ü\‹ØYZ[‹URKÜ[[YKÜØÛÜš[™È[™\ÈY™\œ™Y[™Ý™\›\H‹M›Ú™XÝ[ÛˆÝÛ™\‰ÜÈÝ\™˜XÙKˆŸTHYYXH	ˆY˜[˜ÙY]Y\Ý[Ûˆ\\È8 %YYXHÝÜ˜YÙH
+‹LLHÛXÙHKZYÜ˜][ÛˆŒÌÊHÓÑKQ’VQSQUSÓˆS‘S‘ÈŒÌ×Ü\WÜÝ[][WÛYYXWØ\ÜÙ]ËœÜ[[™ÈHš\œÝXÛ\ÜÈYYXHÝÜ˜YÙHZYÜ˜][ÛˆŒŒÈY™\œ™YÈ‹LLKˆYÈÈX›XËœ\WÜÝ[][XˆØÝ[Y[Ø\ÜÙ]ÚY
+’ø¡¤˜ØÝ[Y[Ø\ÜÙ]Ø
+K\ÜÙ]ÛØØ]Ü˜œÛÛ˜ˆ
+YÙKØ˜›ÞØØ]ÜŠK[™[Ý^ˆ
+Š‘ÛÝ™\›˜[˜ÙJŠˆ
+Z\œ›ÜœÈŒŒÊNˆ
+JH\ÜÙ]Z[YÜš]HšYÙÙ\ˆ8 %H[šÙY\ÜÙ]]\Ý™HH]™HYZ[—Ù^[WÚ[[YÙ[˜ÙX
+Šš[XYÙJŠˆØÝ[Y[
+ØÝ[Y[ÚÚ[™IÚ[XYÙIØÈÝ]\È›Ý[ˆ˜Z[YØ\˜Ú]™Y
+KØ[YHÜÝ\™H\ÈN‰ÜÈ\WÜ\\œËœÛÝ\˜ÙWÙØÝ[Y[ÚYÚXÚÎÈ
+ŠH
+Š™˜Z[XÛÜÙYXØÙ\ÜÚXš[]H
+È™[™\˜Xš[]JŠˆ8 %HYYXHÝ[][\È
+[XYÙXØÚ\ØXYÜ˜[X
+HØ[››Ý™H™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	ØÚ]Ý][Ý^
+Š˜[™
+ŠˆH[šÙY[XYÙH\ÜÙ]ÈÛÛ[Ý^\È›ÝHÝXœÝ]]H
+H™[™\™\ˆ™]™\ˆÚÝÜÈ]›ÜˆYYXJK[™›Ü˜ÙYÛˆS”ÑT•[™TUNÈ
+ÊHHŒŒÈ™\šYšYYXÛÛ[ÝÛ™Ü˜YH\È^[™YÛÈY][™È[Ý^ØØÝ[Y[Ø\ÜÙ]ÚYØ\ÜÙ]ÛØØ]Ü˜ÛˆH™\šYšYYÝ[][\È›Ü˜Ù\È™YY×ØÛÜœ™XÝ[Û˜ˆY]]™H
+ÈY[\Ý[È›È[\Ü\‹Ü›Ú™XÝ[ÛˆÛÛ˜XÝÚ[™ÙYˆ
+Š‘œ›Û[™ŠŠˆ]Y\Ý[Û”Ý[][X
+[œÚYHH^\Ý[™È[ØÚÈ][\Ú[8 %
+Š››È™]ÈÝ\™˜XÙJŠ‹\ˆH›Ë[™]Ë\Ý\™˜XÙH[JH›ÝÈ™[™\œÈ[XYÙXØÚ\ØXYÜ˜[XÝ[][H\È[ˆ[YÏ˜Ú][X[Ý^
+^žJKÚ][ˆXØÙ\ÜÚX›H›ÛOHš[YÈ˜Ø\šXK[X™[^˜[˜XÚÈÚ[ˆ›È\ÜÙ]Ý\›\È™\Ù[È^Ý[][H[˜Ú[™ÙYÈ˜XÚÝØ\™XÛÛ\]X›KˆØÜÎˆØÜËØ\˜Ú]XÝ\™KÜ\K[YYXK›Yˆ˜[Y]Yˆ™YÜ™\ÜÚ[Ûˆ\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—ÌŒÌ×Ü\WÜÝ[][WÛYYXWØ\ÜÙ]ËœÜ[
+LØ\Ù\È[˜ÛˆÜ›Û™Ë\ØÛÜKØ\˜Ú]™YÙ˜Z[YÛ›Û‹Z[XYÙH\ÜÙ]™Z™XÝ[Û‹YYXK\™\]Z\™\ËX\ÜÙ]™\šYžKYYXKYY]ÝÛ™Ü˜YK›Û‹[YYXH™\šYžJH\ÜÙ\ÈÛˆH\ÜÜØX›HÌMˆÛ\Ý\ˆ
+ÌÌÌ‹ÌŒŒÈ
+ÈŒÌÊNÈZYÜ˜][ÛˆY[\Ý[È]Y\Ý[Û”™[™\™\‹\ÝšœÞKÎH\ÜÎÈTÓ[ÛX[‹ˆ[œÈÛˆ]È
+Š›ÝÛŠŠˆ‹Øœ˜[˜Úˆ]]Ü™Y]™[[X™\™Y\ÈXZ[ˆY˜[˜ÙY8 %
+Š››ÝÈŒÌÊŠˆ
+‹NY\™ÙYš\œÝ[™ÛÚÈŒÌŽÈH™[[X™\‹X][Y\™ÙH]\›ŠKˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒÌÈ
+Y\ˆ]\Ý
+KˆY™\œ™Y]\ˆ‹LLHÛXÙ\Îˆ[\Ü\ˆYYXK]\HÝ\Ü
+È\ÜÙ]\ØY›ÝËÚ\š[™È\ÜÙ]Ý\›Ø[Ý^›ÝYÚH‹M[ÝÛ™Y[ØÚÈ›Ú™XÝ[Û‹ÜÛ˜\ÚÝ[™Y˜[˜ÙY[œÝÙ\ˆ[[Y\È
+TÔKÚ[YÙ\‹Ù\ØÜš\]™JH
+ÈØÛÜ™\œËˆŸTHYYXH]]Üš[™È8 %ÓTÈÝ[][\ÈÜš]H]
+‹LLHÛXÙHŠHÓÑKQ’VQSQUSÓˆS‘S‘È˜XÚÙ[™[Û›H›ÛÝË]\ÈZYÜ˜][ÛˆŒÌÎˆH^[KZ[[YÙ[˜ÙHÓTÈ
+YZ[—Ù^[WÚ[[ØÛ\ËœXÔÕØUÒÜ\K\Ý[][X
+HØ[ˆ›ÝÈ]]Üˆ
+Š›YYXJŠˆÝ[][KˆÔÕSUST×ÕTT×ÐÔ‘PUP“X^[™Yœ›ÛH^[Û›HÈ[˜ÛYH[XYÙXØÚ\ØXYÜ˜[X
+Ý\˜Ý^\ÈY™\œ™Y8 %›È]]Üš[™ÈÛÛ˜XÝ
+NÈHÜš]H[ÝÛ\ÝXØÙ\ÈØÝ[Y[Ø\ÜÙ]ÚY\ÜÙ]ÛØØ]Ü˜[Ý^ˆH[™Ú[È\ÜÈšY[ÈÝ˜ZYÚ›ÝYÚ8 %ZYÜ˜][ÛˆŒÌÉÜÈ\WÜÝ[][WÛYYXWÙÝX\™
+
+X[™›Ü˜Ù\È\ÜÙ][YÜš]H
+]™HYZ[—Ù^[WÚ[[YÙ[˜ÙX[XYÙX\ÜÙ]›Ý˜Z[YØ\˜Ú]™Y
+H[™H™\šYžK][YHXØÙ\ÜÚXš[]HÛÛ˜XÝÈÜÙHÝX\™˜Z\Ù\È\™HX\YÈŒˆ
+Ü™X]H
+È]Ú
+Kˆ™]šY]Ù\—ÜÝ]\Ø\ÈÝ[™]™\ˆÙ]X›H\™H
+›Û[Ý[ÛˆÝ^\ÈÚ]H™]šY]È›Ý]\ŽÈ™]È›ÝÜÈ[™[™[™Ø
+Kˆ›È™]ÈZYÜ˜][Û‹›È™]ÈÝ\™˜XÙKˆ\ÝÎˆ\ÝÜ\WÜÝ[][\×Ü™]šY]×Ø\KœX8 %[XYÙKXÜ™X]H\œÚ\ÝÈYYXHšY[Ë]Ú]Ë[YYXH[ÝÙYÝ\˜Ý[Œ‹ˆÝX\™™Z™XÝ[Ûˆ8¡¤ˆŒŽÈ[š[H
+ŠÍ\ÜÊŠ‹ˆØÜÈ\]Y
+ØÜËØ\˜Ú]XÝ\™KÜ\K[YYXK›Y
+KˆÝ[YY™\œ™Y‹LLH[™\Îˆ\ÜÙ]\ØY›ÝÈ
+YZ[ˆÝ\™˜XÙJK[ËZ[\Ü\ˆYYXHÝ\Ü‹M[ÝÛ™Y›Ú™XÝ[Û‹ÜÛ˜\ÚÝÚ\š[™Ë[™TÔKÚ[YÙ\‹Ù\ØÜš\]™H[[Y\È
+ÈØÛÜ™\œËˆŸTHY˜[˜ÙY\\È8 %[YÙ\‹Û[Y\šXØ[[œÝÙ\ˆ[[YH
+‹LLHÛXÙHËØ]HÌLJHÓÑKQ’VQSQUSÓˆS‘S‘È
+‘T’Q–HŽˆZYÜ˜][ÛˆL
+HH]\›Z[š\ÝXÈØÛÜš[™È[[YH›Üˆ[YÙ\˜Ø[Y\šXØ[]Y\Ý[ÛœÈ8 %H0©ÑÌLH™\™\]Z\Ú]H
+š[\[Y[[YÙ\‹Û[Y\šXØ[[œÝÙ\ˆØÛÜš[™È
+Š˜™Y›Ü™JŠˆ[˜X›[™È[YÙ\ˆ]Y\Ý[ÛœÈŠKˆ
+Š”ØÛÜNŠŠˆ[[YH
+ÈØÛÜš[™È[Xš[™ÈÛ›K˜Z[XÛÜÙYÈÓTÈ]]Üš[™ÈÙˆHÛÜœ™XÝ˜[YKTx¡¤›[ØÚÈ›Ú™XÝ[ÛˆÚY[š[™È
+[Y\šXØ[8¡¤˜[YÙ\˜
+K[™HÔÑSPÕP“WÔUQTÕSÓ—ÕTTØXÜK[Û›HØÚÈ
+ØY™]HXÚ\Ú[ÛˆJH[Ý^H
+Š™Y™\œ™YÚ[XÝ
+Šˆ8 %›È™X[[YÙ\ˆ]Y\Ý[ÛˆØ[ˆ™XXÚ[ˆ][\[[]]Üš[™ÊÜ›Ú™XÝ[Ûˆ[™ÛÈHHØÚÈ\È[ÝXÚYˆ
+Š“ZYÜ˜][ÛˆL
+Šˆ
+™[[X™\™Yœ›ÛHKÌH\ÈXZ[ˆY˜[˜ÙY
+H
+LÚ[YÙ\—Û[Y\šX×Ø[œÝÙ\‹œÜ[Y]]™KÛ[X›K›È“ÈÚ[™ÙJNˆ[ØÚ×Ü]Y\Ý[Û—Ø˜[šË›[Y\šX×Ø[œÝÙ\ˆœÛÛ˜˜
+Ø[›ÛšXØ[Ý˜[YKÛ\˜[˜Ù_X
+H
+È[ØÚ×Ø][\Ü™\ÜÛœÙ\Ë›[Y\šX×Ø[œÝÙ\ˆ[Y\šXØ
+X\›™\‰ÜÈ\Y˜[YJKˆ
+Š˜XÚÙ[™
+Šˆ
+[ØÚ×Ù[™Ú[™KœX
+NˆÜ]Y\Ý[Û—ÜÛ˜\ÚÝœ™Y^™\ÈHÝ˜[YKÛ\˜[˜Ù_XÜXÈ›Üˆ[YÙ\ˆ\HÛ›H
+•SÝ\Ú\ÙJHÛÈÝX›Z]ØÛÜ™\Èœ›ÛHH[[]]X›HÛ˜\ÚÝ™]™\ˆH]™H˜[šË[™HÛÜœ™XÝ˜[YH™]™\ˆXZÜÈÈH][\šY]È
+Ù]Ø][\ØÜÙ\šX[\ÙWÜ]Y\Ý[Û—Ù›Ü—Ø][\^ÜÙHÛ›HHX\›™\‰ÜÈØ]™Y˜[YJNÈØ]™WØ[œÝÙ\˜XØÙ\È[Y\šX×Ø[œÝÙ\˜
+]]X[H^Û\Ú]™HÚ]Ù[XÝYÛÜ[Û—ÚY
+NÈØÛÜš[™È™Y˜XÝÜ™Y[ÈÙÜ˜YWÜ™\ÜÛœÙXØÙÜ˜YWÛ[Y\šX×Ü™\ÜÛœÙX8 %[YÙ\ˆÜ˜Y\ÈÝX›Z]Y8¢$ˆ˜[Y_8¢iÛ\˜[˜ÙXPÔH[˜Ú[™ÙY[™
+Š˜[žH\HÚ]Ý]H]\›Z[š\ÝXÈØÛÜ™\‹Üˆ[ˆ[™Ü˜YXX›H[œÝÙ\‹™]\›œÈ[˜][\Y8 %™]™\ˆH˜[ÙK\ÜÚ]]™HÛÜœ™XÝ
+Šˆ
+\Ý[[™H˜Z[XÛÜÙYÝX\™
+KˆØZ[Ü™\Ý[ØÙ]Ü™]šY]ØÝ\™˜XÙHX\›™\ˆ˜[YH
+ÈÛÜœ™XÝ˜[YJÝÛ\˜[˜ÙH›Üˆ™]šY]Ëˆ[˜[]XÜÈÛÛ\]WÜØÛÜš[™ØØÜX×Øœ™XZÙÝÛ˜›ÝÈÙ^H][\YØÛÜœ™XÝÝÜ›Û™ÈÙ™ˆH]]Üš]]]™H\×ØÛÜœ™XÝ
+Ü[œÈ›Ý[Ù[]Y\ÎÈH\YX]][™Ü˜YXX›H[œÝÙ\ˆ™]™\ˆ[™È[ˆHÜ›Û™ÈXÚÙ][™\ˆ™YØ]]™HX\šÚ[™ÊKˆTH[œÝÙ\›ÙK›[Y\šX×Ø[œÝÙ\˜ˆ
+Š‘œ›Û[™ŠŠˆ[ØÚÐ][\Ú[™[™\œÈH[Y\šXÈ[œ]›Üˆ[YÙ\ˆ]Y\Ý[ÛœÈ
+Ü[Û‹\Ù[XÝÚÙ^X›Ø\™[[X™\ˆØY™[H[™\È[œÝÙ\™YXÛÝ[
+È[]H
+ÈÝX›Z]Y›\ÚÛÝ[›Ý[Ù[]Y\ÊK[Y\šXØ[[œÝÙ\˜™]Üš][ˆ
+][\[œ][Z]ÈÛ[Y\šX×Ø[œÝÙ\ŸXÈ™]šY]ÈÚÝÜÈX\›™\ˆ
+ÈÛÜœ™XÝ˜[YH0¬HÛ\˜[˜ÙJK]Y\Ý[Û”™[™\™\˜X\È[YÙ\˜8¡¤›[Y\šXË[ØÚÔ™]šY]Ø[˜][\Yš[\ˆ
+È™]šY]È\ÜÝ›ÝYÚˆ\ÝÎˆ˜XÚÙ[™\ÝÛ[ØÚ×Ú[YÙ\—ÜØÛÜš[™ËœX
+L8 %^XÝÝÛ\˜[˜ÙKÛÝ]ÚYKÝ[˜][\YÛ˜\ÚÝœ™Y^™H
+È›Ë[XZË™\Ý[YK˜Z[XÛÜÙY›Ë\ÜXËPÔK[[\ÜXËTJNÈ[ÝYWÛÜØÝZ]H
+ŠŒLŽMH\ÜÙY
+Š‹ˆœ›Û[™[ØÚÐ][\Ú[š[YÙ\‹\ÝšœÞ
+ÊH
+È[Y\šXØ[[œÝÙ\‹\ÝšœÞ
+
+NÈ[ØÚÜÈÝZ]H
+ŠŽNH\ÜÙY
+ŠŽÈÒO]YH™XXÝ\ØÜš\ÈZ[ÛX[ˆ
+NMMˆÐˆÞŠKˆ
+Š•‘T’Q–HŽŠŠˆ\HZYÜ˜][ÛˆL
+ÛÛ™š\›HÛÝœÈ]™HØÚ[XWÛZYÜ˜][ÛœØ
+Kˆ
+Š‘Y™\œ™YŠŠˆÓTÈ[Y\šXËX[œÝÙ\ˆ]]Üš[™Ë›Ú™XÝ[ÛˆÚY[š[™È
+ÈÔÑSPÕP“WÔUQTÕSÓ—ÕTTØ›\
+›Ý™YYYÈ^\˜Ú\ÙH[™]ËY[™
+KTÔKÛX]Ú[™ËÙ\ØÜš\]™H[[Y\Ë[YÙ\ˆ\œ›Ü‹XÛ\ÜÚYšXØ][ÛˆX[˜ÙKˆŸ˜XÚÈÈ]Y\Ý[Û‹[[Ù[ŒˆÈTHÙZYÚ[™È“ÐÒÑQÈS“‘Q˜XÚÈÈ™[XZ[œÈÝÛœÝ™X[HÙˆHÛX[ˆ^SPÔH™YY˜XÚË[ÛÜØ]KˆŸÛ˜›Ø\™[™ÈÛ›ÝÛYÙHØ[Xœ˜][Ûˆ
+[™HÊHSˆ‘U’QUÈ8 %ˆÍÍÎ
+Û]YKÛÛ˜›Ø\™[™Ë\š[ÜœË\ÜXØ
+KÝÛ™\‹\™]šY]ÈT‘S‘Q[™YHÛXÙ\È[ˆÛ™H‹[ˆ\™[™YYØZ[œÝ[ˆÝÛ™\ˆÚXÚÜÜÝ™]šY]Ëˆ
+Š‘]NŠŠˆZYÜ˜][ÛˆNN
+\Ù\—ÝÜX×ÜÙ[—Ø\ÜÙ\ÜÛY[]šY[˜ÙJH
+ÈZYÜ˜][ÛˆNNH
+\Ù\—Ù^[WØØ[Xœ˜][Û˜Ø]H™XÛÜ™
+Kˆ
+Š”ÙXÝ\š]NŠŠˆ›ÝX›\È\™HÝÛ™\‹XÑSPÕ[Û›H“ÈÚ]“ÈÛY[Üš]HÛXÞH8 %Üš]\È\™HÙ\šXÙK\›ÛK[Û›KÛÈÛY[ÈÝX›Z]Û›HH˜[™[™HÙ\™\ˆÝÛœÈ˜[™8¡¤œš[Ü—ÛX\Ý\žH
+È][\ø¡¤œ™\ÜØÛÛ™šY[˜ÙH
+ÛY[ÈØ[››Ý›Ü™ÙH[Y\šXÈš[ÜœÊKˆ™]™\ˆÝXÚ\È\Ù\—ÝÜX×ÛX\Ý\žXØX\Ý\žUÜš]\˜ˆ
+ŠTNŠŠˆÑUÔUÔÔÕ\ÚÚ\Ø\KÜÝYKÜÙ[‹X\ÜÙ\ÜÛY[8 %Ù\™\ˆ™\ÛÛ™\ÈH™\]Z\™YÝXš™XÝÙ]
+ØÚÙYXÛÝ™\˜YÙHÝXš™XÝÈZ[\ÈÜÙH[™XYHÛÝ™\™YžH˜[Y]YX\Ý\žJK˜[Y]\È^[K\ØÛÜKÙ\XØ]\ËØÛÛ\][™\ÜÈ
+ŒŠK[™Ø[Xœ˜]Y\š]™\Èœ›ÛHHØ]H™XÛÜ™
+“Õ˜[žH›ÝÈ^\ÝÈŠKˆ
+Š”[›™\ŽŠŠˆ˜Z[XÛÜÙYÛˆ\Ù\—ÝÜX×ÛX\Ý\žX™XY˜Z[\™H
+š[ÜœÈ›ÝÛÛœÝ[YYÈX\Ý\žWÜ™XYÙ˜Z[Y™XÛÜ™Y
+HÛÈ˜[Y]Y]šY[˜ÙH[Ø^\ÈÚ[œÎÈÛ™\Ý›Ý™[˜[˜ÙH
+›Èœ™XÙ[XØÝ\˜XÞHˆX™[ÛˆHš[ÜŽÈ^XÚ]™]ØÙ[‹\™\ÜÈÙ[—Ø\ÜÙ\ÜÛY[Üš[Ü˜™X\ÛÛš[™Ë]˜XÙH›ÝÊNÈ^[™YÙ[—Ø\ÜÙ\ÜÛY[ÜÝ[[X\žX]Y]^[ØYˆ
+Š‘œ›Û[™ŠŠˆ[\œÝ]X[[HØ]\È[ˆÙ[™\˜][Ûˆ
+›È[‹\ÚÜØ\ØØ\H]ÚÈ^[K\ÝÚ]Ú™\Ù]
+NÈ\œÚ\ÝYÚÚ\È›Û‹X›ØÚÚ[™È•\]H[Ý\ˆÝ\[™ÈÚ[ˆY]Y™›Ü™[˜ÙKˆKÑ‹ÑÈ[\›Ý™Yˆ
+Š”›Ý[™ˆ\™[š[™ÊŠˆ
+Ú\™Y\ÜÝYWÛÜËØØ[Xœ˜][Û‹œX[Ù[JNˆ˜XÚÙ[™[ˆ™XÛÛ™][Ûˆ
+Ø]H[™›Ü˜ÙYÛˆÜ[‹ÙÙ[™\˜]_˜Y\X
+È™YÙ[‹œX›Ýœ›Û[™[Û›JNÈš[ÜˆÛÛœÝ[\[ÛˆØ]YÛˆHÓÓTUQØ[Xœ˜][Ûˆ
+ÚÚ\YÜ\X[8¡¤ˆÛÛ\Ý\
+NÈ^\Ý[™Ë\[ˆÜ˜[™˜]\‹Ü›ÛÝ]
+›È™]›ØXÝ]™H›ØÚÊNÈ›Û‹\\X[\Ù\ÛÛ™›XÝ[™^\È
+ÜÝÔ‘TÕÛ—ØÛÛ™›XÝÛÜšÜÈÛˆ™X[ÊNÈ]šY[˜ÙKXÛÛ™šY[˜ÙH›Ü›X[^˜][ÛˆXÜ›ÜÜÈ][KXØ[ÛÛ\][ÛŽÈœ›Û[™ØY[™ËY˜Z[XÛÜÙY
+ÈÝ[HÜ›ÜÜËY^[HÝX\™
+ÈY˜][Û‹\˜XÙHš^È][\È^XÚ]H™\]Z\™YÈžWØ˜[™ÛÝ[ÈÝXš™XÝÎÈÝX›H™X\ÛÛš[™Ë]˜XÙHÝ]\ÈÚÙ[‹ˆ
+Š•\ÝÎŠŠˆ[\ÝËÜÝYWÛÜËØÍÈÜ™Y[ˆ
+™]È\ÝÜ[—ØØ[Xœ˜][Û—ÙØ]KœXŒ
+È\ÝÜÙ[—Ø\ÜÙ\ÜÛY[Ø\KœXŒÈ
+È\ÝÜ[›™\—Üš[ÜœËœXMŠH
+ÈNHœ›Û[™XÜ›ÜÜÈHÝZ]\ËTÓ[ÛX[‹ˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛœÈNN8¡¤ˆNNHÈÝYÚ[™È[ˆÜ™\ŽÈÛÛ™š\›HÝÛ™\‹XÑSPÕ[Û›H“È[™]]][XØ]YØ[›Û˜Ø[››ÝÜš]HZ]\ˆX›NÈ˜[Y]HHØ]K\™XÛÜ™Ø[Xœ˜]Y›ÝÈ
+È˜XÚÙ[™[ˆ™XÛÛ™][Ûˆ[™È[™ˆ“Ó‹PÓÑNˆÜ˜\YžHÛÙK[X\\Y˜XÝ™YYÈ[ˆ^\›˜[]ÛÛ[™È™K\[ˆYØZ[œÝ\ÈXYˆŸTH[[YÙ[˜ÙHŒˆ8 %ØÛÜ™HÛ˜\ÚÝÛÜšØ™[˜ÚRH
+ˆÎL
+HÓÑKQ’VQÔTUÔ‹Ð”“ÕÔÑTˆSQUSÓˆS‘S‘ÈYZ[ˆÛÜšØ™[˜Ú[X™YY\ÈÝšY]Ï\Û˜\ÚÝØ[œÚYHTHÛÜšØ™[˜ÚXˆ
+“ÕHY\ˆXˆ8 %PHÛÛœÝ˜Z[™\Ù\™Y
+Kˆ
+Š‘œ›Û[™
+Šˆ
+ØÛÜ™TÛ˜\ÚÝ[™[šœÞ
+NˆØÛÜHÙ[XÝÜˆ
+^[K]ÚYH
+È\Ù\Èœ›ÛHÛÛ^
+NÈ\ÙHT“\˜[H˜[Y]YYØZ[œÝÛÛ^Ú][˜[Y\ØÛÜKY\œ›Ü˜˜[›™\ˆÛˆ[šÛ›ÝÛˆ˜[Y\ÎÈY™™XÝ]™T\ÙX\š]™YÜÝ]˜[Y][ÛŽÈÙ[™\˜][Û‹XÛÝ[\ˆ˜XÙHÝX\™
+ØYÙ[”™Y˜
+H8 %Ý[H™\ÜÛœÙ\È\ØØ\™Y\ÝÛX\™YÛˆXXÚØYÈÛÛ\]HÜÝÈ^[WÜ\ÙWÚY[ˆH”ÓÓˆ›ÙH
+“Õ]Y\žHÝš[™È8 %X]Ú\ÈÛÛ\]TÛ˜\ÚÝ›ÙXÛÛ˜XÝ
+NÈ\ØÛÜÝ\™H]Ûˆ\šXKY^[™Y˜›Üˆ]šY[˜ÙH˜]Ù\ˆ
+Ù^X›Ø\™Ü\˜X›JNÈ›ØÝ\È™\ÝÜ™YÈ[™[XY[™Ô™Y˜
+ˆX’[™^KLO˜
+HY\ˆÝXØÙ\ÜÙ[ØÚÙY8¡¤œ™]šY]ÙY™]™\œØ[
+[›ÚÙ\ˆ™YˆX^H™H]XÚYY\ˆ™[ØY
+NÈÙ[œšXÚÜÛ˜\ÚÝÝÜXÜØ[ˆYZ[—Ù^[WÚ[[YÙ[˜ÙKœX˜]ÚY™]Ú\ÈÜX×Û˜[YXØÜX×Ü]œ›ÛHHÜXÜØX›H[™]XÚ\È[HÈ\Ý›ÝÜÎÈ]šY[˜ÙH˜]Ù\ˆÚÝÜÈ™X[˜XÚÙ[™šY[˜[Y\È
+ÜX×Üš[X\žWØÛÝ[ÛÜœ\×ÝÝ[Üš[X\žXœ™\]Y[˜ÞWØÛÛ\Û™[ÛÝ™\˜YÙWØÛÛ\Û™[]šY[˜ÙWÜ]X[]Xš[™Ù\œš[
+NÈØÚÈXÝ[Ûˆ\ØX›YÚ]Ý]ÜX×Û˜[YXˆ
+Š”\›Z\ÜÚ[ÛˆØ]NŠŠˆÛÛ\]H[™ØÚÈ[™Ú[È[™›Ü˜ÙH^[WÚ[[YÙ[˜ÙKœ™]šY]Ø\›Z\ÜÚ[ÛŽÈ›Û‹XYZ[ˆÈ\ÝYˆ
+Š”YÚ[˜][ÛŽŠŠˆTH™\ÜÛœÙH\ÈÙ™œÙ]\YÚ[˜]Y
+]Û‹\ÚYHÛXÙHY\ˆ[ˆ™XY[™[œšXÚY[8 %[Ü›ÝÜÖÛÙ™œÙ]ˆÙ™œÙ]
+È[Z]X
+NÈ‹[]™[YÚ[˜][Ûˆ[™ÛÝ[\™HY™\œ™YØØ[Xš[]H›ÛÝË]\Ëˆœ›Û[™ÛX\œÈ[™™[ØYÈH\ÝÛˆXXÚØÛÜHÚ[™ÙHšXHØYÙ[”™Y˜ˆ
+Š•\ÝÎŠŠˆMÝ[XÜ›ÜÜÈHÛÈš[X\žH\Ýš[\È8 %Hœ›Û[™Ø\Ù\È[ˆØÛÜ™TÛ˜\ÚÝ[™[\ÝšœÞ
+ØÛÜHÙ[XÝÜ‹\ÙH˜[Y][Û‹TH\ÛÛ][Û‹ÛÛ\]H›ÙHÛÛ˜XÝ›Ý\È[Ù[\œ›Ü‹ÜÝXØÙ\ÜË]šY[˜ÙH˜]Ù\ˆšY[Ë\›Z\ÜÚ[ÛˆØ]JNÈŽH˜XÚÙ[™Ø\Ù\È[ˆ\ÝÜØÛÜ™WÜÛ˜\ÚÝØYZ[—Ø\KœX
+[œšXÚY[\KÙÜ˜XÙY[ÛÛ\]H›ÙH^[WÜ\ÙWÚY˜[œÚ][Ûˆ]ËÍŒ‹ÍË]ÛZXÚ]KXÝÜˆ›ÜØ\™[™ËÛÛ˜Ý\œ™[[ÙYšXØ][ÛŠKˆ
+Š•˜[Y][Ûˆ™\]Z\™YŠŠˆ
+JHÜ[ˆ^[HÛÜšÜÜXÙH8¡¤ˆTHXˆ8¡¤ˆÛ˜\ÚÝÈ[8¡¤ˆÛÛ™š\›HØÛÜH]ÛœÈ
+ÈÛ˜\ÚÝX›H™[™\ŽÈ
+ŠHÙ[XÝH\ÙHØÛÜH8¡¤ˆÛÛ™š\›H\ÝØÛÜY
+ÈT“\]YÈ
+ÊH[\ˆ[šÛ›ÝÛˆÜ\ÙOX˜[YH8¡¤ˆÛÛ™š\›H\œ›Üˆ˜[›™\ˆ
+È^[K]ÚYH˜[˜XÚÎÈ
+
+HÛXÚÈ^[™]Ûˆ8¡¤ˆÛÛ™š\›H˜]Ù\ˆÚÝÜÈÜX×Üš[X\žWØÛÝ[ØÛÜœ\×ÝÝ[Üš[X\žKÜØÛÜ™HÛÛ\Û™[ÎÈ
+JHÛÛ\]H8¡¤ˆÛÛ™š\›HÔÕ›ÙHÛÛZ[œÈ^[WÜ\ÙWÚY
+›Ý]Y\žHÝš[™ÊNÈ
+ŠHØÚÙY8¡¤œ™]šY]ÙY™]™\œØ[Ú]›Ý\È8¡¤ˆÛÛ™š\›H[Ù[ÛÜÙ\È
+È›ØÝ\È[™ÈÛˆ[™[XY[™ËˆŸTH[[YÙ[˜ÙHŒˆ8 %ØÛÜ™HÛ˜\ÚÝØÚËX]]Üš]HÛÜœ™XÝ™\ÜÈÓÑKQ’VQÔTUÔˆSQUSÓˆS‘S‘ÈØÛÜY\›Ý™Y[™[\[Y[YšXH\ÜÝYHÎŒˆ[™ˆÛˆœ˜[˜ÚÛ]YKÜÛ˜\ÚÝ[ØÚËX]]Üš]K\ÎZÌ›[˜ˆ
+Š‘ÝX\™H
+Ý[K[[Ù[
+NŠŠˆZYÜ˜][ÛˆŒˆYÈØÝ\œ™[Û[Ù[Ý™\œÚ[Û˜\˜[Y]\ˆÈÛ\×Ü™]šY]×Ù^[WÝÜX×ÜÛ˜\ÚÝÈ”È˜Z\Ù\ÈÝ[WÛ[Ù[Ý™\œÚ[Û˜
+ŒŠHÚ[ˆ›ÝË›[Ù[Ý™\œÚ[Ûˆ8¢hØÝ\œ™[Û[Ù[Ý™\œÚ[Û˜Ûˆ™]šY]ÙY8¡¤›ØÚÙYˆ˜Y8¡¤œ™]šY]ÙY[™ØÚÙY8¡¤œ™]šY]ÙY™[XZ[ˆ[Ø^\È[ÝÙY™YØ\™\ÜÈÙˆ[Ù[™\œÚ[Û‹ˆ
+Š‘ÝX\™ˆ
+Ý\\œÙYYXÝ\œ™[[[Ù[
+NŠŠˆ”È˜Z\Ù\ÈÝ\\œÙYYÜÛ˜\ÚÝ
+ŒŠHÚ[ˆHØÚÙY›ÝÈÚ]ÛÛ\]YØ]HØ[™Y]K˜ÛÛ\]YØ][™XYH^\ÝÈ›ÜˆHØ[YHØÛÜH
+^[WÚY^[WÜ\ÙWÚYÜX×ÚY
+X]HÝ\œ™[[Ù[™\œÚ[Û‹ˆHXÛÛ˜XÝ[œÝ\™\È\]X[][Y\Ý[\›ÝÜÈ\™H™Z™XÝYÈÚ]™HH[›™\ˆÛ™H]\›Z[š\ÝXÈÚ[›™\‹ˆ
+Š”˜XÙHØY™]NŠŠˆ×ØYš\ÛÜžWÞXÝÛØÚÊ\Ú^
+^[WÚY8 %™^[WÜ\ÙWÚY8 %ÜX×ÚY8 %›[Ù[Ý™\œÚ[ÛŠJXXÜ]Z\™Y™Y›Ü™HÑSPÕ“ÔˆTUXÈÙ\šX[\ÙHÛÛ˜Ý\œ™[™]šY]ÙY8¡¤›ØÚÙY][\È›ÜˆHØ[YHØÛÜKˆ
+Š”]Ûˆ^Y\ŠŠˆ
+YZ[—Ù^[WÚ[[YÙ[˜ÙKœX
+Nˆ”ÈØ[^[™YÚ]œØÝ\œ™[Û[Ù[Ý™\œÚ[ÛˆŽˆÔÓTÒÕÓSÑSÕ‘T”ÒSÓ˜È\œ›ÜˆÚÙ[ˆX\[™È^[™YÚ]Ý[WÛ[Ù[Ý™\œÚ[Û˜[™Ý\\œÙYYÜÛ˜\ÚÝˆ
+Š•\ÝÎŠŠˆH™]ÈØ\Ù\È[ˆ\ÝÜØÛÜ™WÜÛ˜\ÚÝØYZ[—Ø\KœX
+ÝX\™H™Z™XÝÈÝ[H[Ù[ÈÝX\™H[ÝÜÈ˜Y8¡¤œ™]šY]ÙYÚ]Ý[H[Ù[ÈÝX\™ˆ™Z™XÝÈÝ\\œÙYYÈÝX\™ˆ™Z™XÝÈ\]X[ÛÛ\]YØ]ÈÝX\™ˆ[ÝÜÈØÚÈÚ[ˆÛ›HÛ\ˆØÚÙY^\ÝÎÈÝX\™ˆY™™\™[ØÛÜHÙ\È›Ý›ØÚÎÈØÚÙY8¡¤œ™]šY]ÙY™]™\œØ[[ÝÙY›ÜˆÝ\\œÙYY›ÝÎÈ™K[ØÚÈY\ˆ™]™\œØ[›ØÚÙYžHÝX\™ŽÈØÝ\œ™[Û[Ù[Ý™\œÚ[Û˜›ÜØ\™Y
+KˆÝ[Î˜XÚÙ[™\ÝÈ\ÜËˆÔTUÔˆSQUSÓˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒˆÈÝYÚ[™È
+Y\ˆZYÜ˜][ÛˆŒH[™Û\ÚÜš][™È˜XÝXÙJNÈ™\šYžHË\\˜[HÛ\×Ü™]šY]×Ù^[WÝÜX×ÜÛ˜\ÚÝ^\ÝÈÚ]Ù\šXÙWÜ›ÛX[Û›HVPÕUNÈ\Ý™]šY]ÙY8¡¤›ØÚÙYÚ]HÝ[K[[Ù[›ÝÈ8¡¤ˆÛÛ™š\›HŒˆÝ[WÛ[Ù[Ý™\œÚ[Û˜È\Ý™]šY]ÙY8¡¤›ØÚÙYÚ[ˆH™]Ù\ˆÜˆ\]X[][Y\Ý[\ØÚÙY›ÝÈ^\ÝÈ›ÜˆØ[YHØÛÜH8¡¤ˆÛÛ™š\›HŒˆÝ\\œÙYYÜÛ˜\ÚÝÈÛÛ™š\›H˜Y8¡¤œ™]šY]ÙY[™ØÚÙY8¡¤œ™]šY]ÙY™]™\œØ[\™H[˜›ØÚÙYˆY™\ˆš[˜[™]šY]ÙY8¡¤›ØÚÙY˜[Y][Ûˆ[[ZYÜ˜][ÛˆŒˆ\È\ÞYYˆŸTH[[YÙ[˜ÙHŒˆ8 %[›™\ˆÛÛœÝ[\[ÛˆÙˆØÚÙYÛ˜\ÚÝÈ
+ÛXÙHŠHQT‘ÑQ
+ˆÍÍÌÊHÙXÛÛ™ÛXÙHÙˆØÜËØ\˜Ú]XÝ\™KÜ\KZ[[YÙ[˜ÙK]Œ‹›YˆØÚÙYÜØÛÜ™WÜÛ˜\ÚÝÊ
+XÚ\™Y[È[›™\‹œX\ÈH›Ý[™YY]]™Hš[Üš]HÚYÛ˜[
+8 $ÌMHËÛÛ™šY[˜ÙK]ÙZYÚY
+Kˆ
+ŠŠJHÞXÛKZ[™\[™[˜ÙNŠŠˆÛ˜\ÚÝÈ\™HÞXÛKZ[™\[™[žH\ÚYÛˆ8 %Üš]\ˆ™]™\ˆÙ]È^[WØÞXÛWÚYÈÛÜœ\È\È[][YH™\šYšYYT\Ëˆ
+ŠŠŠHÛÛ™šY[˜ÙH[Ù[][ÛŽŠŠˆÛ˜\ÚÝØÛÛ\Û™[HZ[ŠMKØÛÜ™KÌL0åÈMH0åÈÛÛ™šY[˜ÙJXÈXœÙ[ÛÛ™šY[˜ÙHY˜][ÈÈKŒÈÛÛ™šY[˜ÙOLŒZY[ÈËˆ
+ŠŠÊHÛÛ\]H[™XYÙNŠŠˆÚWÝ\×Ý\ÚØ\œÚ\ÝÈˆ[X›HÛ˜\ÚÝšY[È
+Û˜\ÚÝÚYÛ˜\ÚÝÜš[Üš]WÜØÛÜ™XÛ˜\ÚÝØÛÛ™šY[˜ÙXÛ˜\ÚÝÛ[Ù[Ý™\œÚ[Û˜Û˜\ÚÝØÛÛ\]YØ]Û˜\ÚÝÙ]šY[˜ÙWØÛÝ[
+NÈ[œÈÚ]Ý]Û˜\ÚÝÈ\™H“Õž]KZY[XØ[È™K\ÛXÙKLˆ
+[Ù^\È[Ø^\È™\Ù[
+Kˆ
+ŠŠ
+HÚ[[Y˜Z[\™HÝX\™ŠŠˆØÚÙYÜØÛÜ™WÜÛ˜\ÚÝÊ
+X™]\›œÈ›Û™XÛˆˆ™XY˜Z[\™NÈØ[\ˆ™XÛÜ™ÈÛ˜\ÚÝÜ™XYÙ˜Z[YUYX[ˆ[œ]ØÛÛ^È[ˆÝ[Ù[™\˜]\ÈÚ]Ý]Û˜\ÚÝÛÛ\Û™[ˆ
+ŠŠJH™X\ÛÛš[™È˜XÙNŠŠˆZ[Ý\Ú×Ü™X\ÛÛš[™×Ù]Z[
+
+XYÈHØÚÙYÜØÛÜ™WÜÛ˜\ÚÝ˜XÙH›ÝÈœ›ÛH\œÚ\ÝY[™XYÙH8 %›È™K\]Y\žKˆ
+ŠŠŠH\Ù\‹]š\ÚX›HÝ[[X\žNŠŠˆÝÚWÜÝ[[X\žJ
+X\[™È[˜[\Ú\ÈÛÛ™šY[˜ÙH	XÈHÛ™K[[™\ˆÚ[ˆHÛ˜\ÚÝ\È™\Ù[ÈÛÛ™šY[˜ÙH[Ù[]\ÈH›ÛÜÝÛÈH^\ÈXØÝ\˜]Kˆ
+Š•\ÝÎŠŠˆMˆÝ[
+H™KY^\Ý[™È
+ÈÈ™]ÊKˆ[ÎN\ÝÈ\ÜËˆÔTUÔˆS‘S‘ÎˆÛÛ™š\›H[›™\ˆÛÛœÝ[Y\ÈØÚÙYÛ˜\ÚÝÈY\ˆÜ\˜]Üˆ˜[Y][ÛˆÙˆÛXÙHH
+ZYÜ˜][ÛœÈÌÈ
+ÈÍJKˆŸTH[[YÙ[˜ÙHŒˆ8 %Û˜\ÚÝ™]šY]È]ÛZXÚ]H
+ZYÜ˜][ÛˆŒ
+HÓÑKQ’VQÔTUÔˆSQUSÓˆS‘S‘ÈÛÜÙ\ÈHÛ›ÝÛˆ]ÛZXÚ]HØ\[ˆUÒÜØÛÜ™K\Û˜\ÚÝËÞÚYKÜ™]šY]ØˆH™]š[Ý\È[\[Y[][Ûˆ\™›Ü›YYH™\ÝYY™›ÜYZ[—Ø]Y]ÛÙÜØS”ÑT•›ÛÝÙYžHHÙ\\˜]H^[WÝÜX×ÜØÛÜ™WÜÛ˜\ÚÝØTUKX]š[™ÈÛÈ˜Z[\™H[Ù\È
+Üœ[ˆ]Y]›ÝÈYˆTUH˜Z[YÈÚ[[Ý]\ÈÚ[™ÙHÚ]Ý]]Y]YˆS”ÑT•Ø\ÈÝØ[ÝÙYžHÜØY™X
+Kˆ
+Š“ZYÜ˜][ÛˆŒ
+Šˆ
+ŒØ]ÛZX×ÜÛ˜\ÚÝÜ™]šY]×Ý˜[œÚ][Û‹œÜ[
+HYÈÛ\×Ü™]šY]×Ù^[WÝÜX×ÜÛ˜\ÚÝ
+ÜÛ˜\ÚÝÚYÙ^XÝYÜÝ]\ËÛ™]×ÜÝ]\ËÜ™]šY]Ù\—Û›Ý\ËØXÝÜ—Ý\Ù\—ÚYØXÝÜ—Ù[XZ[
+X8 %HÑPÕT’UHQ’S‘T˜”È
+Ù\šXÙWÜ›ÛHÛ›NÈ‘U“ÒÑHœ›ÛHP“PËØ[›Û‹Ø]][XØ]Y
+H]ˆ
+JH˜[Y]\ÈÛ™]×ÜÝ]\Ø\ÈHÛ›ÝÛˆÝ]\ÎÈ
+ŠHÑSPÕ‹‹ˆ“ÔˆTUXHÛ˜\ÚÝ›ÝÎÈ
+ÊH›ÝY›Ý[™ÝX\™
+
+NÈ
+
+HÛÛ˜Ý\œ™[[[ÙYšXØ][ÛˆÝX\™YØZ[œÝÙ^XÝYÜÝ]\Ø
+JNÈ
+JH[™›Ü˜Ù\ÈH[˜[œÚ][ÛˆX]š^
+ŒŠNÈ
+ŠH]Y]S”ÑT•
+ÈÛ˜\ÚÝTUX[ˆÛ™H˜[œØXÝ[Ûˆ8 %[žH˜Z[\™H›ÛÈ˜XÚÈ›Ýˆ™]\›œÈÛÚË]Y]ÚYÛ˜\ÚÝÚY™]—ÜÝ]\Ë™]×ÜÝ]\ßXˆ
+Š”]Ûˆ^Y\ŠŠˆ
+YZ[—Ù^[WÚ[[YÙ[˜ÙKœX
+Nˆ™KTÑSPÕ›ÜˆÙ^XÝYÜÝ]\Ø™]Z[™YÈ]Ûˆ˜[œÚ][ÛˆÚXÚÈ[™ØÚÙY8¡¤œ™]šY]ÙY›Ý\ÈÝX\™™[XZ[ˆ\È˜\Ý\]VÈH™\ÝYY™›ÜÛË\Ý\Üš]\È\™H™\XÙYžHHÚ[™ÛH”ÈØ[È\œ›ÜˆÚÙ[œÈ
+ÛÛ˜Ý\œ™[Û[ÙYšXØ][Ûˆ8¡¤ˆK˜[œÚ][Û—Û›ÝØ[ÝÙYÚ[˜[YÝ\™Ù]ÜÝ]\È8¡¤ˆŒ‹›ÝÙ›Ý[™8¡¤ˆ
+HX\Yœ›ÛH”È^Ù\[ÛˆY\ÜØYÙKˆ
+Š•\ÝÊŠˆ
+\ÝÜØÛÜ™WÜÛ˜\ÚÝØYZ[—Ø\KœX
+Nˆ™]ÈÔÛ˜\ÚÝÐ”ÝX˜Z\œ›ÜœÈ”ÈÛÛ˜XÝÈH™]ËÝ\]Y\ÝÎˆ˜Y8¡¤œ™]šY]ÙY™]šY]ÙY8¡¤›ØÚÙYØÚÙY8¡¤œ™]šY]ÙY[˜[Y˜[œÚ][Ûˆ
+›ÈÜœ[ˆ›ÝÊKØÚÙY™]™\œØ[›Ý\ÈÝX\™]ÛZXÚ]H
+Ú[™ÛHÙÈ
+ÈÚ[™ÛH]]][ÛŠKXÝÜ‹Û›Ý\È›ÜØ\™[™Ë›ËY˜[˜XÚË[Û‹T”ËY˜Z[\™H
+L›ÝÈ[ÝXÚY
+KÛÛ˜Ý\œ™[[ÙYšXØ][Ûˆ
+K›È]Y]›ÝÊKˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒÈÝYÚ[™ÎÈ™\šYžHVPÕUHÜ˜[X]š^
+[›Û˜Ø]][XØ]Y[šYYÙ\šXÙWÜ›ÛX[ÝÙY
+NÈ[ˆHÛÛ\]H8¡¤ˆ™]šY]È8¡¤ˆØÚÈÞXÛH[™ÛÛ™š\›H^XÝHÛ™HYZ[—Ø]Y]ÛÙÜØ›ÝÈ\ˆ˜[œÚ][ÛˆÚ]XÝ[ÛˆH	ÜÛ˜\ÚÝÜÝ]\×Ý˜[œÚ][Û‰ØYZ[—Ý\Ù\—ÚYÙ]ÛÝ˜[YKÛ™]×Ý˜[YHHÜÝ]\Îˆ‹‹ŸX[™›Ý\ØHH[X[ˆ™]šY]Ù\ˆ^ÈÛÛ™š\›H›È\™XÝ^[WÝÜX×ÜØÛÜ™WÜÛ˜\ÚÝØTUH]^\ÝÈ[ˆHÙ\šXÙWÜ›ÛH›ÝËˆŸÝXš™XÝ˜XÝXÙHXˆ
+Ø\ÜÝYKÜÝXš™XÝØ
+HÓÑKQ’VQSQUSÓˆS‘S‘È\›œÈH™XY[Û›HÝXš™XÝ[X\Ý\žHYÙH[ÈHX\›™\ˆ˜ÚÛÜÙHÚ]È˜XÝXÙHˆXˆÛˆHVTÕS‘ÈØ\ÜÝYKÜÝXš™XÝØÝ\™˜XÙH
+›È™]ÈÚYX˜\ˆ\Ý[˜][ÛŠKˆ
+Š”‹Pˆ
+™XY[™\ÜÊNŠŠˆÑUØ\KÜÝYKÜÝXš™XÝØ›ÝÈ™]\›œÈH˜XÝXÙNˆØ]˜Z[X›K[Ù\Ö×_XØš™XÝ\ˆÝXš™XÝÛÛ\]YÙ\™\‹\ÚYHœ›ÛHHØ[YH™\šYšYYØXÝ]™HØ]\ÈH][˜Ú]\Ù\È8 %[™Û\Ú]Üš][™È]˜Z[Xš[]HšXHÜš][™×Ü˜XÝXÙKÜÝXš™XÝÛ][˜Ú˜]˜Z[X›WÝÜš][™×ÜÝXš™XÝÚYØ
+™\šYšYY
+ØXÝ]™JÜ[[YK\™XYJÑQUSQS–KX\XØX›H›Û\Ë˜]ÚY
+KTK]ÜXÈ]˜Z[Xš[]HšXH\WÜ˜XÝXÙKœ˜XÝXÙXX›WÝÜX×ÚYØ
+™\šYšYYXÝ]™[K\›Ú™XÝY[™^\™Y[ØÚ×Ü]Y\Ý[Û—Ø˜[šØ›ÝÜÈ›ÜˆH\Ù\‰ÜÈ\™Ù]^[K˜]ÚY˜Z[XÛÜÙY
+KˆÙ\™\—Û][˜Ú[Ù\Îˆ[™Û\ÚÝÜš][™Ø
+
+È\œ›Ü—ÛX˜ÛY[[šÊKÜX×Ü\X\™Ù][™ÈHÙXZÙ\Ý]˜Z[X›HÜXÈ
+
+È[ØÚ×ÜÙXÝ[Û˜ÛY[[šÊKˆ
+Š”‹PËÔ‹Q
+][˜Ú
+NŠŠˆ™]ÈÙ\™\‹[ÝÛ™YÜ˜Ú\Ý˜]ÜˆÔÕØ\KÜÝYKÜÝXš™XÝËÞÜÝXš™XÝÚYKÜ˜XÝXÙKÜÝ\
+\Ø\KÜÝXš™XÝÜ˜XÝXÙKœX™YÚ\Ý\™Y™Y›Ü™HØ[›ÛšXØ[
+H™\ÛÛ™\È^[HÛÛ^œ›ÛHHØ[\‰ÜÈ\™Ù]^[H
+™]™\ˆÛY[]\ÝY
+H[™\Ü]Ú\Îˆ[™Û\ÚÝÜš][™Ø8¡¤ˆ™\ÛÛ™HÛ™H›Û\Ù\™\‹\ÚYH
+È[›™[›ÝYÚHUÔÚ[™ÛKXš\]
+Üš][™×Ü˜XÝXÙK˜Ü™X]WÛX\›š[™×ÜÙ\ÜÚ[Û˜X›XÈ[X\ÈYYÈœ›ÝÜÙ\ˆ™]™\ˆXÚÜÈ›Û\ÚY
+H8¡¤ˆÚÚ[™›Ý]N‹Ø\ÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÏÙ\ÜÚ[Û—ÚYŸXÈÜX×Ü\X8¡¤ˆ^\Ý[™ÈÝ\Ü\WÜ˜XÝXÙJ[ÙOIÝÜXÉË^[WÚY™\]Z\™Y
+X8¡¤ˆÚÚ[™›Ý]N‹Ø\ÜÝYKÛ[ØÚÜËØ][\ËÏ][\ÚYŸXˆH›×Ù[YÚX›WÜ›Û\È[\K\ÛÛ“›È™\šYšYY˜XÝXÙHÙ]Y]ˆÝ\™˜XÙY\ÈHØ[H[›[™HØ\™›ÝH
+›ÝH\™Ø\Ý
+Kˆ
+Š‘œ›Û[™ŠŠˆÝXš™XÝËšœÞ™]Üš][ˆÈH˜XÝXÙHXˆšXH\ÙP\PÛÛXÝ[Û˜
+ØY[™ËÙ[\KÙ\œ›ÜˆÝ]\ÊH
+È\‹XØ\™ÝXš™XÝ˜XÝXÙPØ\™\Ú[™È\ÙP\PXÝ[Û˜8¡¤ˆ˜]šYØ]HÈH™]\›™Y›Ý]NÈ˜Y\ˆ
+ÈX\Ý\žHÝ[[X\žH
+È]K]\ÝYHœÝXš™XÝË\YÙH˜
+ÈX\›š[™ËXØ\™\ÝXš™XÝØ[šÈ™\Ù\™Yˆ›È›Ý][™ËÛ˜]‹ÐYZ[”Ú[Y]Ëˆ\ÝÎˆ˜XÚÙ[™\ÝËÜÝYWÛÜËÝ\ÝÜÝXš™XÝÛ][˜ÚœX
+
+H
+È^[™Y\ÝÜÝXš™XÝËœXÈ›Ý]KXÛÛ\Ú[ÛˆÝX\™Ü™Y[ŽÈ\ÝËÈZÈÜš][™×Û][˜ÚÜˆÝXš™XÝÈ˜ËZÈ\WÜ˜XÝXÙXKˆœ›Û[™ÝXš™XÝË\ÝšœØ
+JH
+ÈÝYRXœØØ˜]ÛÛ˜XÝ[˜Ú[™ÙYˆ
+ŠÚXÚÜÜÝÎLÍÈ\™[š[™ÎŠŠˆ
+JHHÜX×Ü\X][˜Ú˜[Y]\ÈÙ\™\‹\ÚYH]ÜX×ÚY™[Û™ÜÈÈH]ÝXš™XÝÚY[ˆHØ[\‰ÜÈØÚÙYXÛÝ™\˜YÙHØÛÜH
+ÝXš™XÝË›ØÚÙYÝÜX×ÚY×Ù›Ü—ÜÝXš™XÝ
+H8¡¤ˆŒˆÛˆÜ›ÜÜË\ÝXš™XÝZ\ÛX]Ú
+œ›ÝÜÙ\ˆÜXÈ™]™\ˆ\ÝY
+NÈ
+ŠH˜XÝXÙXX›WÝÜX×ÚYØ›ÝÈZ\œ›ÜœÈH][˜Ú
+Š™œ™Y^™H™XY[™\ÜÊŠˆ
+™]\Ù\ÈÛØYÜ]Y\Ý[ÛœØ
+ØÜ]Y\Ý[Û—ÜÛ˜\ÚÝHØ[YHÜ[ÛœÊØÛÜœ™XÝÛÜ[Û—ÚY™YXØ]HØZ[Ü˜XÝXÙWÜ^[ØYX›ÜÈÛ‹Ø[YHÜXË[[ÙHÜ™\š[™ÊÛ[Z]
+HÛÈH›Ú™XÝYX]][œ™XYHÛÛ›ÈÛ™Ù\ˆY™\\Ù\ÈHÜX×Ü\X[ÙH]ÛÝ[LÛˆÛXÚÎÈYY\ÝÜÝXš™XÝÜ˜XÝXÙWÙ[™Ú[œX
+Ü›ÜÜË\ÝXš™XÝŒˆ
+È[‹\ÝXš™XÝÝ\
+H[™[ˆ[œ™XYK\Û˜\ÚÝ^Û\Ú[Ûˆ\Ýˆ™]\Ù\ÈH[ØÚÈ][\Ú[
+ÈUÔÙ\ÜÚ[ÛˆÚ[
+›È™]È][\ÜÙ\ÜÚ[ÛˆX›\ÎÈUÔLH˜XÝXÙx¢h[ØÚËX][\ÛÛ˜XÝ™\ÜXÝY
+KˆÔTUÔ‹ÑˆS‘S‘Îˆ[™]ËY[™Ú]HÙYYY™\šYšYY
+ØXÝ]™JÙÛØ˜[]\™Ù]Ù[[˜ÙWØÛÛœÝXÝ[Û˜›Û\[™[ˆXÝ]™[K\›Ú™XÝYÜXÈTHÛÛÈÙ^HHœ™\Úˆ\È™\›È][˜ÚX›HÜš][™È›Û\È
+ZYÜ˜][ÛˆŒM˜Z[XÛÜÙY
+KÛÈ[™Û\Ú[Ù\ÈÝ^HY[ˆ[[ÛÛ[\ÈÙYYYˆŸTH[[YÙ[˜ÙHŒˆ8 %œ™\]Y[˜ÞHÙ[X[XÜÈ
+ÈØÛÜ™HÛ˜\ÚÝÈ
+ÛXÙHJHÓÑH‘TÑS•ÔTUÔˆSQUSÓˆS‘S‘Èš\œÝ[\[Y[][ÛˆÛXÙHÙˆØÜËØ\˜Ú]XÝ\™KÜ\KZ[[YÙ[˜ÙK]Œ‹›Yˆ
+ŠŠJHš[X\žK[Û›Hœ™\]Y[˜ÞNŠŠˆÛÝ™\˜YÙKœNŽ™\šYšYYÜ\WÝÜX×ØÛÝ[Ø›ÝÈš[\œÈY×Ü›ÛOIÜš[X\žIØ]Hˆ]Y\žHS‘ÝX\™ÈHÛÝ[ÛÜ
+Y™[œÙKZ[‹Y\
+HÛÈÛ™H™\šYšYY]Y\Ý[ÛˆØ[ˆ›ÈÛ™Ù\ˆ[™›]H][\HÜXÜÉÈœ™\]Y[˜ÞH›ÝYÚÙXÛÛ™\žKÝ˜\ØØ[Ý[][Û—Û^Y\ˆYÜËˆ\\ˆ\ÝÜÝ]\ÏIÝ™\šYšYY	Ø
+È]Y\Ý[Ûˆ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø
+ÈYÈ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	ØØ]\È™[XZ[ˆÛÛš[˜Ý]™Kˆ
+ŠŠŠH™\œÚ[Û™YÛ˜\ÚÝÜš]\ŽŠŠˆ™]È^[WÚ[[YÙ[˜ÙKÜØÛÜ™WÜÛ˜\ÚÝËœXÛÛ\]\È˜Y^[WÝÜX×ÜØÛÜ™WÜÛ˜\ÚÝØœ›ÛH™\šYšYYTH]šY[˜ÙH
+ÈØÚÙY^[WÝÜX×ØÛÝ™\˜YÙXˆ]\›Z[š\ÝXÈ
+ÈY[\Ý[šXHÒKLMˆ[œ]š[™Ù\œš[
+™K\[›š[™ÈÚ]HØ[YHÛÜœ\ÈÚÚ\È[˜Ú[™ÙYÜXÜÊKˆXXÚÛ˜\ÚÝ™XÛÜ™È[Ù[Ý™\œÚ[Û˜
+ŒKŒ
+K]šY[˜ÙWØÛÝ[ØÛÜ™WØÛÛ\Û™[Ø
+œ™\]Y[˜ÞKØÛÝ™\˜YÙKÙ]šY[˜ÙWÜ]X[]KXXÚ›Ü›X[^™Y8 $ÌJK[œ]ÜÝ[[X\žK™š[™Ù\œš[[™ÛÛ™šY[˜ÙWÜØÛÜ™XˆØÚÙYÜØÛÜ™WÜÛ˜\ÚÝÊ
+X™]\›œÈÓ“HÝ]\ÏIÛØÚÙY	Ø›ÝÜÈ8 %˜YËÜ™]šY]ÙY™]™\ˆ™XXÚ[›™\ˆÜˆ\Ù\ˆÝ\™˜XÙ\Ëˆ
+ŠŠÊHYZ[ˆ™]šY]ÈÝ\™˜XÙNŠŠˆ™YH[™Ú[ÈYYÈH^\Ý[™ÈØYZ[‹Ù^[KZ[[YÙ[˜ÙX›Ý]\ˆ
+“È™]ÈÜ[]™[›Ý]JNˆÑU‹‹‹Ù^[\ËÞÚYKÜØÛÜ™K\Û˜\ÚÝØ
+Ü[Û˜[Ý]\Èš[\ŠKUÒ‹‹‹ÜØÛÜ™K\Û˜\ÚÝËÞÚYKÜ™]šY]Ø
+[™›Ü˜Ù\È˜Y8¡¤œ™]šY]ÙY8¡¤›ØÚÙY˜[œÚ][ÛœÎÈØÚÙY8¡¤œ™]šY]ÙY™]™\œØ[™\]Z\™\È™]šY]Ù\—Û›Ý\ØÈÝ[\È™]šY]ÙYØžXØ™]šY]ÙYØ]
+KÔÕ‹‹‹Ù^[\ËÞÚYKÜØÛÜ™K\Û˜\ÚÝËØÛÛ\]XˆÛ˜\ÚÝÈ\™H[œÙ\[Û›H
+ÛØÚÙYÛ˜\ÚÝÈ™[XZ[ˆ]Y]X›JNÈ›ÈRHÜš]\È[ÈØÚÙY›ÝÜËˆ
+Š•\ÝÎŠŠˆÈœ™\]Y[˜ÞK\Ù[X[XÜÈ\ÝÈ
+\ÝÜ\WÙœ™\]Y[˜ÞWÜÙ[X[XÜËœX
+KHÜš]\‹Ü™XY\ˆ\ÝÈ
+\ÝÜØÛÜ™WÜÛ˜\ÚÝËœX8 %[˜ÛÛ\]HÛÜœ\Ë][K\›ÛHYÜË™\›È]šY[˜ÙKY[\Ý[˜ÞKÝ]\Èš[\‹ÛÜÜ™\‹œ›ÚÙ[ˆX›JKLHYZ[‹Y[™Ú[\ÝÈ
+\ÝÜØÛÜ™WÜÛ˜\ÚÝØYZ[—Ø\KœX8 %\ÝÝ]\Èš[\‹[˜[œÚ][Ûˆ]ËŒ‹›Û‹XYZ[ˆÊKˆ[\ÝËÙ^[WÚ[[YÙ[˜ÙKØÝZ]HÜ™Y[‹ˆÔTUÔˆS‘S‘ÎˆÛÛ™š\›HZYÜ˜][ÛˆÌÈ
+^[WÝÜX×ÜØÛÜ™WÜÛ˜\ÚÝØ
+H
+ÈZYÜ˜][ÛˆÍH“È\YYÈ\™Ù][ŽÈ™\šYžH]][XØ]Y\Ù\œÈÙYHÛ›H™]šY]ÙYØØÚÙY›ÝÜÎÈ[ˆH™X[ÛÛ\]H8¡¤ˆ™]šY]È8¡¤ˆØÚÈÞXÛKˆ
+[›™\ˆÛÛœÝ[\[ÛˆÙˆØÚÙYÛ˜\ÚÝÈ\È[\[Y[Y[ˆÛXÙKLˆÈˆÍÍÌÈ8 %˜[Y]H[›™\ˆÝ]]Y\ˆÛXÙKLHÜ\˜]Üˆ˜[Y][Ûˆ\ÜÙ\ËŠH‚ˆÈÈÈÜ\˜]Üˆ˜[Y][ÛˆÝ[™\]Z\™Y‚•H™\ÜÚ]ÜžHØ[ˆ›Ý™HÛÙH™[YYX][ÛˆÛ›Kˆ]Ø[››Ý›Ý™H]™HØÚY[\ˆ™Z]š[Ü‹ÚÙ[ˆ™XXÚXš[]H[ˆ[›Ý\ˆYÙ[\›™\ÜË™[™\ˆÝ]KÜˆÝ\X˜\ÙH›ÝËY˜Z[ˆ]šY[˜ÙKˆÈ›ÝX\šÈHÜ\˜]ÜˆØ]\ÈÛÛ\]Hœ›ÛHÛÙH[œÜXÝ[Ûˆ[Û™K‚‚ˆÈÈØÚ[XH	ˆ”È\›Z\ÜÚ[ÛœÈ8 %ŒH™[X\ÙHØ]\È
+ˆÍÎL
+B‚•ÛÈŒH™[X\ÙK\™XY[™\ÜÈØ]\È[›ÙXÙYžHˆÍÎLˆ›Ý\™H[X™\˜][H
+Š››Ý
+ŠˆÚYÛ™YÙ™ˆ[‹\™\ÎˆH]™H™\šYšXØ][Ûˆ\ÈÜ\˜]Ü‹[Û›K‚‚Ÿ][HÝ\œ™[Ý]\È™\È]šY[˜ÙHÈ›Ý\ÈŸKK_KK_KK_Ÿ”ÈVPÕUHÜ˜[\™[š[™È
+ZYÜ˜][ÛˆŒÊHÓÑKQ’VQSQUSÓˆS‘S‘ÈŒ×Üœ×ÙÜ˜[Ú\™[š[™×ÝŒKœÜ[™]›ÚÙ\ÈVPÕUHœ›ÛH
+Š”P“PË[›Û‹S‘]][XØ]Y
+Šˆ
+\ˆHZYÜ˜][Û‹LNL\ÜÛÛˆ]‘U“ÒÑH”“ÓHP“PØ[Û™HX]™\È^XÚ]\‹\›ÛHÜ˜[ÊH[™™KYÜ˜[ÈÛ›HÙ\šXÙWÜ›ÛX›Üˆ
+ŠœÚ^Y[ŠŠˆ˜XÚÙ[™[Û›H”ÜÈ8 %Ü›Ý\H
+
+H^XÚ]HÜ˜[Y]][XØ]YÈÜ›Ý\ˆ
+
+H›È^XÚ]Ü˜[8¡¤ˆY˜][P“PÈ
+[˜ÛˆYØXÞH›—Ù˜[›Ý]Ø[\Ù]™[
+NÈÜ›Ý\È
+
+HÜ˜[YÙ\šXÙWÜ›ÛH]™]™\ˆ™]›ÚÙYY˜][P“PÈ
+ÛZ[WÙ[YÚXš[]WÜ]Y]YXL[œ]Y]YWÙ[YÚXš[]WÜ™XÛÛ\]XK\Ù\ÙšY[Ü™]šY]ØLËÛÛœÝ[YWÜ›Ùš[WÛY\™ÙWØÛZ[XLŽ
+NÈÜ›Ý\
+
+H™]›ÚÙYP“PÈÛ›K›Ý[›Û‹Ø]][XØ]Y
+\]WÜ\WÜ]Y\Ý[Û—Ü™]šY]×Ø]ÛZXØMŒ‹Ý\Ø][\Ùœ›ÛWØ›Y\š[MÎK›—Ú[˜[Y]WÜ›Ú™XÝ[Û—Ù›Ü—Ü]Y\Ý[Û˜
+È›—Ø›ØÚ×Ü›Ú™XÝ[Û—Ù›Ü—Ü]Y\Ý[Û˜N
+Kˆ›Ý\ˆÙ\™H^XÚ]HÜ˜[YÈ]][XØ]Yˆ›Û[ÝWÜ™XÜZ]Y[
+œÛÛ˜ŠX
+Yˆø¡¤ŒNJKÜ™X]WÝ™\šYšXØ][Û—Ü™\Ü
+œÛÛ˜ŠX
+ÈÝ\\œÙYWØ[™ØÜ™X]WÝ™\šYšXØ][Û—Ü™\Ü
+]ZYœÛÛ˜ŠX
+YˆÍŠKÛZ[WÜÛÝ\˜ÙWÙ›Ü—ÜØÜ˜\J]ZY[YÙ\ŠX
+YˆM
+Kˆ™YHY
+Š››È^XÚ]Ü˜[
+ŠˆÛÈ[HÜÝÜ™TÔSY˜][P“PØ
+›ÈSTˆQUS’U’SQÑTØ^\ÝÈ[ˆH™\ÊNˆ\WÛ[ØÚ×ÛX\Ý\žWÙ[J]ZY]ZY]ZY[Y\šXË^
+X
+YˆMKS•“ÒÑTŠKÛZ[WÛ[ØÚ×ÛX\Ý\žWÜ™]žJ]ZY^[Y\Ý[\ŠX
+ÈÛÛ\]WÛ[ØÚ×ÛX\Ý\žWÜ™]žJ]ZY
+X
+YˆN›ÝÑPÕT’UHQ’S‘TŠKˆ›È\XØ][Ûˆ[\XÝ8 %[Ø[\œÈ\ÙHHÙ\šXÙK\›ÛHÛY[ˆ[]Y][ˆØÜËÜØÚ[XKÜœËYÜ˜[X]Y]]ŒK›Y
+TKÐÓTÈYZ[ˆ”ÜÈNx $ÌŒH™\šYšYY[™XYKZ\™[™YY™™XÝ]™HYœÈÛÜœ™XÝYÈNÎÈ\×ØYZ[˜Y]][XØ]YžH\ÚYÛˆ›Üˆ“ÎÈ™Yœ™\ÚÊ˜\™HšYÙÙ\ˆ[\œÊKˆ
+Š“ÔTUÔˆS‘S‘ÎŠŠˆ\HZYÜ˜][ÛˆŒÈÈÝYÚ[™ø¡¤œ›ÙÈ[ˆHÜ˜[YH]Y\žH
+™[™\œÈP“PË›YÜÈ•SXÛ
+H[™[ˆH[[Y\˜]KPS[›Û‹]šYÙÙ\‹Y[˜Ý[ÛœÈ]Y\žH
+›ÝHÝ\˜]Y\Ý
+H[™ÛÛ™š\›H›È˜XÚÙ[™”ÈX]™\ÈP“PËØ[›Û‹Ø]][XØ]YVPÕUH
+Û›H\×ØYZ[ˆ
+ÈÛÛ[][š]WÚ[˜×ÊˆÚÝ[\X\ŠNÈÛ[ÚÙK]\ÝHÙ\šXÙK\›ÛH›ÝÜËˆŸ“È™\›Ë\ÛXÞHÛÝ™\˜YÙH™XÛÛ˜Ú[X][ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %ÔTUÔˆS‘S‘ÈØÜËÜØÚ[XKÜ›ËXÛÝ™\˜YÙK\™XÛÛ˜Ú[X][Û‹]ŒK›YÛ\ÜÚYšY\ÈH
+Ý[HŒ‹LKLŒJHÛ˜\ÚÝÙˆŒL“Ë[Û‹Þ™\›Ë\ÛXÞHX›\ÎˆMˆÑT•’PÑWÔ“ÓWÓÓ“H
+ŒØ][ÙÈ
+ÈÌÙ\šXÙK\›ÛH
+ÈˆYZ[ŠKÌHQ‘T”‘QÝÛ™\‹\ØÛÜY
+ØY™HÛ›HÚ[H™XYÈ\™HÙ\šXÙK\›ÛK[YYX]Y
+KLÈ“ÑPÕÑQ‘T”‘Q
+›ÙËØÛÛ[][š]KÙ›Ü[HØ][™ÊKˆÛÝ\˜ÙHÙˆ]\ÈH
+Š›]™H[›ÜÜXÝ[Ûˆ]Y\žK›ÝHš[JŠˆ8 %HÛ˜\ÚÝ\ÈÛ›ÝÛˆÝ[H
+K™ËˆÝ\ÜØÛÛ[ØXØÙ\ÜØ“ËY[˜X›Y™\›Ë\ÛXÞHžHZYÜ˜][ÛˆNMKÌNMË\ÈXœÙ[œ›ÛH]
+Kˆ
+Š““ÕHÔ‘QSˆÚYÛ‹[Ù™‹ŠŠˆ
+Š“ÔTUÔˆS‘S‘ÎŠŠˆ™YÙ[™\˜]HH]™H[™[ÜžHÛˆÝYÚ[™ø¡¤œ›ÙY™ˆH^XÝX›K[˜[YHÙ]YØZ[œÝHÛ˜\ÚÝÛ\ÜÚYžH]™\žHY][Û‹Ü™[[Ý˜[[ˆX\šÈÔ‘QS‹ˆ›ÙXÝXÚ\Ú[ÛˆÝ[ÝÙYÛˆHLÈ›ÙËØÛÛ[][š]KÙ›Ü[HX›\È
+ŒKž
+Kˆ‚ŸXÙZÛ\ˆ[™Ú[È\ÛÛ]Y
+Y™\œ™YÈŒŠHÓ‘H
+ÓÑH‘TÑS•
+H\Ø\KÜXÙZÛ\œËœX™YXÙYÈ]È]™HÝ\™˜XÙNˆHXYÙYYÛÛœÝ[È
+‘PÔ•RUQS•ËÐÓÓSUS’UWÊ‹Ô‘TÓÕTÑTËÔ“Õ’QT”ËÐQ‘’SPUTÊH[™[[‹[Y[[ÜžH\‹]\Ù\ˆÝ]HXÝÈÙ\™H™[[Ý™Y
+Û›HQS•Ô”ØÛÛœÝ[YYžHH™X[XØÛÝ[Xš[]H›Ý]\‹\È™]Z[™Y
+KˆH™[XZ[š[™È[[Ë[Û›H[™Ú[È
+ØYZ[‹ÜÛÝ\˜Ù\Ë\Ý]XØØYZ[‹ÜØÜ˜\\‹Ü[œË\Ý]XØØYZ[‹Ù[YÚXš[]K\]Y]YK\Ý]XØØYZ[‹Û›ÝYšXØ][ÛœËÝÙÙÛX
+H]™H›È™X[\]Z]˜[[[™\™H
+Š›Ù™ˆžHY˜][
+Šˆ8 %Ù\™\‹œX[Ý[ÈH›Ý]\ˆÛ›HÚ[ˆ‘—ÑSP“WÔPÑRÓT—ÑS‘ÒS•Ø\È]Kˆœ›Û[™Ø[È›Û™HÙˆ[H
+™\šYšYY
+Kˆ›È›ÙXÝ[Ûˆ›Ý]H›ÝÈ\[™ÈÛˆXÙZÛ\‹Ú[‹[Y[[ÜžH™\ÜÛœÙ\ÎÈ\ÙH›Ý\ˆ\™H^XÚ]ŒˆØÛÜKˆŸŒHÛË[]™H[˜›ÛÚÈÓÑH‘TÑS•ÔTUÔˆSQUSÓˆS‘S‘ÈØÜËÛÜËÝŒKYÛË[]™K\[˜›ÛÚË›Y8 %Ú[™ÛHÜ™\™YÜ\˜]ÜˆÚXÚÛ\ÝÝ]Ú[™ÈH™[XZ[š[™ÈŒHØ]\È
+ØÚ[XKÜ\›Z\ÜÚ[ÛˆZYÜ˜][ÛœÈ\YYšXHH™[[ÝKZ\ÝÜžKYš]™[ˆ[›™\ˆ
+È™\šYšXØ][Ûˆ]Y\šY\ÎÈ“ÈÚYÛ‹[Ù™ˆÚ]™X[R•Õ›ÛÙŽÈ[ØÚÈ[™Ú[™HØÚY[\ˆ8¡¤ˆ‹Mˆ8¡¤ˆ‹MÈMY^HÚYÝÈ8¡¤ˆ‹NØ[˜\žH8¡¤ˆ‹NH]™H›\Ú]˜Z[‹X˜\ÙY›Û˜XÚÎÈ›ÙXÝ[Û‹\Ý\™˜XÙHÛÛ™šYÎÈ[Ý
+KˆYš[™\ÈÜ™\‹ÛÝÛ™\‹Ü\ÜËXÛÛ™][Û‹Ü›Û˜XÚÈ\ˆ\ÙH[™Y™\œÈÈH]]Üš]]]™HØ]HØÜËˆ›È]™H]šY[˜ÙH\È\ÜÙ\YÛÛ\]NÈHZYÜ˜][Û‹LŒˆ^˜XÝ[Ûˆ\˜Ú]™K\˜XÙHØ]H
+Œ—Ø]ÛZX×Ù^˜XÝ[Û—Ùš[˜[^™KœÜ[
+H\ÈÓÑKQ’VQSQUSÓˆS‘S‘È
+^Ù^˜XÝœXØ[\ˆ›ÝÈ\›Z[˜]\ÈH›Øˆ™Y›Ü™H˜Z\Ú[™ÈÛˆØÝ[Y[Ø\˜Ú]™YÈZYY›YÚ™YÜ™\ÜÚ[Ûˆ\ÝYY
+Kˆ‚ˆÈÈ^[HÛÝ™\›˜[˜ÙHÛÛœÛÛH8 %Ø]™H‚‚Ý\œ™[™\™XÝˆ
+Š˜ÛÜ™H\˜ÈÛÛ\]NÈÛX[\Y\ˆ™[XZ[œÊŠ‹‚‚Ÿ][HÝ\œ™[Ý]\È™\È]šY[˜ÙHÈ›Ý\ÈŸKK_KK_KK_ŸÍŽMV]Y]ÈXÚ\Ú[ÛœÈQT‘ÑQÈÓÑH‘TÑS•]Y]ØÜÈ™[XZ[ˆ[ˆØÜËÙ^[KYÛÝ™\›˜[˜ÙKØˆŸÍŽNHÛÛœÛÛHš[X\žHÛÜˆQT‘ÑQÈÓÑH‘TÑS•YZ[”Ú[^ÜÙ\È^[HÛÝ™\›˜[˜ÙHÛÛœÛÛH[™™YÚ\ÝžH\Èš[X\žH[šY\ÎÈÜ™X]H^[H[™Y˜[˜ÙY[\ÜÈ™\Z\ˆ\™HY˜[˜ÙY[šY\ËˆŸÍÌÛÛœÛÛH\ÝÚ[QT‘ÑQÈÓÑH‘TÑS•^[S\ÝÚ[Ý[^\ÝÈ\ÈÙ[™\šXÈ\ÝÚ[ˆŸÍÌH˜XÚÙ[™Ø\Xš[]H™Y›YÚQT‘ÑQÈÓÑH‘TÑS•˜XÚÙ[™ØÜÈ™[XZ[ˆ]˜Z[X›KˆŸÍÌÈ˜XÚÙ[™ÛÜšË\]Y]YH™XYÈQT‘ÑQÈÓÑH‘TÑS•ØÛÛœÛÛKÙ^[\Ø[™ØÛÛœÛÛKÜÝ[[X\žX›Ý]\È^\Ý[™\ÙHÛÜšË\]Y]YHÛ\ÜÚYšXØ][Û‹ˆŸÍÌHœ›Û[™ÛÜšË\]Y]YHÚ\š[™ÈQT‘ÑQÈÓÑH‘TÑS•ØÛÛœÛÛX™[™\œÈÛÛœÛÛUÛÜšÔ]Y]YXˆŸÍÌÈ\‹Y^[H˜XÚÙ[™™XYQT‘ÑQÈÓÑH‘TÑS•ØÛÛœÛÛKÙ^[\ËÞÙ^[WÚYX[YØ]\ÈÈÛÛœÛÛWÙ]Z[˜Z[ØÛÛœÛÛWÙ]Z[ˆŸÍÌH\‹Y^[HXÝ[ÛˆÛÛœÛÛHQT‘ÑQÈÓÑH‘TÑS•Ù[XÝYY^[HÛÛœÛÛH™[™\œÈ^[PXÝ[ÛÛÛœÛÛX›Ý[X™YY^[UÛÜšÜÜXÙH˜\šX[H˜ÛÛœÛÛH˜ˆŸÓLHY[YšY\ˆYÚY[™HÓÑH‘TÑS•SˆTÈÒPÒÓÕUÜ\˜]ÜÚ›ÛYX[\œÈ[™\ÝÈ\™H™\Ù[ˆÛÛ™š\›H™[[ÝHˆÝ]HÙ\\˜][HYˆ™YYYˆŸÓLXˆK[XZÈ^[PXÝ[ÛÛÛœÛÛXÓÑH‘TÑS•SˆTÈÒPÒÓÕUÜ\˜]ÜÚ›ÛYKš[X[š^™UÚÙ[˜^[™YÈ[˜Ø]HURQ\Ú\YÝš[™ÜÈ
+š\œÝÚ\œÈ
+È¸ )ˆŠH8 %ÛÜÙ\ÈH™XÝÜˆÚ\™HHURQ]˜[YYÚÙ[ˆ™XXÚ[™È[žH[X[š^™UÚÙ[˜˜[˜XÚÈÛÝ[™[™\ˆ™\˜˜][Kˆ›Ü›X]Ü\˜]ÜXÝÜ˜›ÝÈÚ\™\ÈHØ[YHURQÕÒÑS—Ô‘XÛÛœÝ[ˆ^[PXÝ[ÛÛÛœÛÛX[™XYH[\ÜÈ[™\Ù\È[X[š^™UÚÙ[˜›Üˆ[™X\ÛÛ‹Ø\™XKÙØ]H˜[˜XÚÜÎÈ›È™]È˜]ËUURQ™[™\ˆÚ]\È›Ý[™ˆ\™Ù]YÓLXˆ™YÜ™\ÜÚ[Ûˆ\ÝYYˆ[ÈHURQ\È™\™XÝœÝ]\Ø[™\ÜÙ\ÈH˜]ÈURQÙ\È›Ý\X\ˆÚ[HHXÚ\ˆ[˜Ø][ÛˆÙ\ËˆŸÓLˆ™YÚ\ÝžH›ÝÈ^[œÚ[ÛˆÈÛÛ[[ˆÛX[\ÓÑH‘TÑS•SˆTÈÒPÒÓÕU™YÚ\ÝžH›ÝÜÈ›ÝÈXYÚ]H^[H˜[YH[™^ÜÙHÙ^X›Ø\™XXØÙ\ÜÚX›H]Z[Ëˆ[™KØY[˜ÙK^[HÙ^K[™ÙXÛÛ™\žHY]šXÜÈ[Ý™YÝ]ÙˆH[œÙHš[X\žHX›Kˆ^\Ý[™Èš[\œËYÚ[˜][Û‹ÛÛœÛÛKÝÛÜšÜÜXÙHXÝ[ÛœËY[YšY\ˆYÚY[™K[™HÙ^[\ÈTHÛÛ˜XÝ™[XZ[ˆ[˜Ú[™ÙYˆŸÓLÈ™[[Ý™HÓTÈ
+È™]ÈÝZYY^[XÕHÓÑH‘TÑS•SˆTÈÒPÒÓÕUY˜[˜ÙY[\ÜÈ™\Z\ˆ›ÈÛ™Ù\ˆ™[™\œÈH™Y[™[ÝZYYY^[HÕKˆ[]HÙ[XÝ[Û‹™[ØY™]È›ÝË[È[\Ü[™Z\ˆ^\Ý[™È›Ü›\È™[XZ[ˆ[˜Ú[™ÙYˆHÝZYYY^[H›Ý]H™[XZ[œÈ]˜Z[X›HÝ]ÚYHHÓTËˆŸÓMÛÛ\ÚX›HY™XÞXÛH˜[›™\ˆÓÑH‘TÑS•SˆTÈÒPÒÓÕUH^[H™YÚ\ÝžHY™XÞXÛHÛÛ˜XÝ›ÝÈ™[™\œÈ\ÈHÙ^X›Ø\™XXØÙ\ÜÚX›KÛÛ\ÙYXžKYY˜][\ØÛÜÝ\™Kˆ]È[™]šY]ÙYÛØÚÙYÝ™\šYšYYÝZY[˜ÙH™[XZ[œÈ]˜Z[X›HÛˆ[X[™Ú[HÝ\ˆYZ[”ØY™]P˜[›™\ˆØ[\œÈ™]Z[ˆZ\ˆ^\Ý[™È^[™Y™Z]š[Ü‹ˆŸÓMHÛ™K\š[X\žK\\‹\ØÜ™Y[ˆ]ÛœÈÓÑH‘TÑS•SˆTÈÒPÒÓÕUŒÙXÛÜÙHÚ^\Ý\™˜XÙH]Y]\ÜÙY[ˆ\ÈÚXÚÛÝ]ˆ™YÚ\ÝžKÛÛœÛÛHÛÜšÈ]Y]YKXÝ[ÛˆÛÛœÛÛKÝZYYÚ^˜\™ÛÜšÜÜXÙHÛX\XY\‹[™Y˜[˜ÙY[\ÜÈ™\Z\ˆÙ\™H[œÜXÝYˆ™YÚ\ÝžH\ÈÛ™Hš[X\žHXY\ˆXÝ[Û‹Ü[ˆÛÛœÛÛNÈÛÜšÈ]Y]YH\È›ÈØÜ™Y[‹[]™[š[X\žHÕH™XØ]\ÙHÛÜšÙ›ÝÈš[\œÈ\™H™\ÜÙYÙ[XÝÜœÈ[™™\X]Y›ÝÈXÝ[ÛœÈ\™HÛÛ^X[ÈXÝ[ÛˆÛÛœÛÛHXY\ˆ˜]šYØ][Ûˆ\ÈÙXÛÛ™\žH[™]Y]YHXÝ[ÛœÈ\™HÛÛ^X[ÈÝZYYÚ^˜\™ÙY\ÈÛ™H›ÜØ\™ØÜ™X]Hš[X\žH\ˆXÝ]™HÝ\Ú[HÜ™Ø[š^˜][Ûˆ[ÙHÛÛ›ÛÈ\™H™\ÜÙYÙ[XÝÜœÎÈÛÜšÜÜXÙHÛX\XY\ˆ\ÈÛÈÈ™^XÝ[Ûˆ\È]ÈÛÛHØÜ™Y[‹[]™[š[X\žNÈY˜[˜ÙY[\ÜÈ™\Z\ˆ\È›ÈXY\‹[]™[š[X\žHÕH[™]È™[ØY™]È›ÝË[™[È[\ÜÛÛ›ÛÈ\™HØØ[™]]˜[™\Z\ˆÛÛ›ÛËˆ[NˆHØÜ™Y[ˆX^H^ÜÙH][ÜÝÛ™HØÜ™Y[‹[]™[š[X\žHÕNÈ™\ÜÙYš[\œËÜÙ[XÝÜœÈ\™H›Ýš[X\žHXÝ[ÛœÎÈ™\X]Y›ÝÈXÝ[ÛœÈ\™HÛÛ^X[ÈØØ[›Ü›HÝX›Z\ÜÚ[Ûˆ]ÛœÈ\™HØÛÜYÈZ\ˆ›Ü›KØØ\™[™\™H›Ý]]ÛX]XØ[HÛÛ\][™ÈØÜ™Y[‹[]™[Õ\ËˆÙ]\[™[ØØ[˜[œØXÝ[ÛˆÛÛ›ÛÈ™[XZ[ˆÝÛ™YžH[™HÈ[™]\Ý›Ý™HXœÛÜ˜™Y[ÈŒÙˆ]Y]]šY[˜ÙH\È[ˆØÜËÜ™]šY]ÜËÙ^[KYÛÝ™\›˜[˜ÙK\š[X\žKXXÝ[Û‹X]Y]›YˆŸÓMˆ™[[Ý™HÜœ[™Y›ÛÝÛÛœÛÛH^[Ý]
+È^[U\ÚÔ˜Z[ÓÑH‘TÑS•SˆTÈÒPÒÓÕU^[UÛÜšÜÜXÙX›ÈÛ™Ù\ˆXØÙ\ÈÜˆœ˜[˜Ú\ÈÛˆ˜\šX[H˜ÛÛœÛÛH˜[™^[U\ÚÔ˜Z[\È[]YˆHÝ[™[Û™HZYÚ]XˆÛÜšÜÜXÙH\È[˜Ú[™ÙYˆŸÓM˜ˆ™]\™HÜ›X[ÛÛœÛÛH™\Ù[][Ûˆ[Xš[™ÈÓÑH‘TÑS•SˆTÈÒPÒÓÕU›ÝšY\ˆ˜\šX[Ø\È™[[Ý™Yœ›ÛH^[UÛÜšÜÜXÙPÛÛ^ÈÝ™\šY]Ô[™[[™™]šY]ÐXÝ]˜]T[™[›ÝÈÛÛZ[ˆÛÜšÜÜXÙK[Û›H™Z]š[ÜˆÚ]™XY[™\ÜÈ\˜Ù[YÙ\È™\Ù\™Y›ÜˆHÝ[™[Û™HÛÜšÜÜXÙNÈÜœ[™Y^[TX›\Ú[\XÝ[™]È\ÛÛ]Y\ÝÙ\™H[]YÈXÝ]™HÝ[™[Û™HÛÜšÜÜXÙH[™^[PXÝ[ÛÛÛœÛÛX›Ý]\È™[XZ[ˆ[˜Ú[™ÙYÈÙ]\[™[™[XZ[œÈ[˜Ú[™ÙYˆ‚ˆÈÈTH[[YÙ[˜ÙHŒˆ8 %ÙXÝ[Û‹ÜÝ[][\ËÝ˜\šXX›K[Ü[ÛˆØÚ[XH
+‹LJB‚•\ÈÙXÝ[Ûˆ\ÝX›\Ú\ÈH™]È‹LK‹”‹LLH[]™\žHÙ\]Y[˜ÙH
+ÙXÝ[Û‚›[šØYÙKš[Y[Ü™\ˆ™\Ù\˜][Û‹˜\šXX›HÜ[ÛˆÛÝ[ËÚ\™Y^œÝ[][K[\Ü\ˆŒ‹YZ[ˆ™]šY]Ë›Ú™XÝ[Û‹X\›™\ˆ˜XÝXÙK[šYšYY™]šY[˜ÙKX\Ý\žKÜ[›™\‹Ü\œÛÛ˜H[YÜ˜][Û‹Y˜[˜ÙY]Y\Ý[Ûˆ\\ÊK‚“›ÝNˆ\ÈÙ\]Y[˜ÙH\È
+Š››Ý
+ŠˆÝ\œ™[HÚXÚÙY[Â˜ØÜËØ\˜Ú]XÝ\™KÜ\KZ[[YÙ[˜ÙK]Œ‹›Y
+]ØÉÜÈÝÛˆ[]™\žHÜ™\‚˜ÛÝ™\œÈœ™\]Y[˜ÞKÜØÛÜš[™ËÜÛ˜\ÚÝÙ[X[XÜËHY™™\™[ÛÜšÜÝ™X[JH8 %™X]\ÈÚXÚÛ\ÝÙXÝ[Ûˆ\ÈHÛÝ\˜ÙHÙˆ™XÛÜ™›Üˆ\ÈÙ\]Y[˜ÙH[›\ÜËÝ[[š]\ÈÛÛœÛÛY]YÚ]HÚXÚÛ\Ý›ÜÜÙY[ˆˆÎLÈ
+›Ý™\Ù[Ûˆ\Â˜œ˜[˜ÚØXZ[˜\ÈÙˆ\ÈÜš][™È8 %™Y™\™[˜ÙH]žHˆ[X™\‹›ÝžHš[Bœ][[][™ÊHÜˆ›ÛY[ÈH\˜Ú]XÝ\™HØËˆ‹LH\ÈØÚ[XK[Û›NÂš[\Ü\ˆŒ‹YZ[ˆ™]šY]Ë›Ú™XÝ[Û‹[™X\›™\ˆ[]™\žH\™HÙ\\˜]K›]\ˆœË‚‚Ÿ][HÝ]\È›Ý\ÈŸKKHKKHKKHŸ‹LHØÚ[XNˆ\WÜ]Y\Ý[ÛœËœÙXÝ[Û—ÚYØÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜Ø\Ü^WÛÜ™\˜\WÛÜ[ÛœË™\Ü^WÛÜ™\˜ØÛÝ\˜ÙWÛX™[\WÜÝ[][X\WÜ]Y\Ý[Û—ÜÝ[][XÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆŒŒ×Ü\WÜÙXÝ[Û—ÜÝ[][\×ÜØÚ[XKœÜ[™]š\ÙYÚXÙH[™\ˆÚXÚÜÜÝ™]šY]È
+ˆÎLŠKˆ[™]ÈÛÛ[[œÈ[X›NÈ\WØ[×Ú[\ÜœX	ÜÈš^YKQÙ›Ý\‹[Ü[ÛˆÜš]H]\È[˜Ú[™ÙY[™™[XZ[œÈHYØXÞH[\Ü›Ü›X]ˆÜ›ÜÜË\\™[[YÜš]H
+]Y\Ý[Û‹ÜÝ[][\ÈÙXÝ[Û—ÚY]\ÝÚ\™HH\\‰ÜÈ^[WÜ\ÙWÚYÈ\WÜ]Y\Ý[Û—ÜÝ[][X[šÜÈ]\ÝÝ^HÚ][ˆÛ™H\\‹ØÛÛ\]X›HÙXÝ[ÛŠH\È[™›Ü˜ÙYžHšYÙÙ\œË[˜ÛY[™È™K]˜[Y][ÛˆÚ[ˆHÙXÝ[Û‹Ü\\‹Ü]Y\Ý[Û‹ÜÝ[][\È\È[Ý™YY\ˆ[šÜÈ^\Ý
+Š˜[™
+Šˆ™K]˜[Y][ÛˆÙˆ^\Ý[™È[šÜÈÚ[ˆH]Y\Ý[Û‰ÜÈÜˆÝ[][\ÉÜÈÝÛˆÙXÝ[Û—ÚY\È™X\ÜÚYÛ™Y
+›™\\ÜÈš^8 %H[šÈ›ÝÈ]Ù[ˆÙ\Û‰ÝÚ[™ÙHÛˆ]Üš]H]ÛÈ]ÈÝÛˆšYÙÙ\ˆ™]™\ˆš\™Y
+Kˆ[[Ý™K\™]˜[Y][Ûˆ™YXØ]\È\ÙHTÈTÕSÕ”“ÓX›ÝH˜\™H˜
+›™\\ÜÈš^8 %˜YØZ[œÝH•S™]È˜[YH\È•S™]™\ˆ•QKÚ[[HÚÚ\[™ÈHÚXÚÊKˆ]™\žH\™[ØÚ[™XYHXÚ\Ú[Ûˆ\[™ÈÛˆZÙ\È[ˆ^XÚ]“ÔˆÒT‘XØ“ÔˆÒT‘HÑ˜›ÝÈØÚÈÈZ]YØ]H
+›Ý[H[[Z[˜]JHÛÛ˜Ý\œ™[]Üš]H˜XÙ\ÎÈH]Y\Ý[Û‹\ÙXÝ[Ûˆ[™Ý[][\Ë\ÙXÝ[Ûˆ˜[Y]ÜœÈØÚÈ[ˆÜÜÚ]HÜ™\œËÛÈHÛÛ˜Ý\œ™[Y]Ûˆ›ÝÚY\ÈÙˆHØ[YH[šÈØ[ˆXYØÚÈ8 %ÜÝÜ™\ÈX›ÜÈÛ™HÚYHØY™[H˜]\ˆ[ˆÛÜœ\[™ÈÝ]K]\È\ÈHZ]YØ][Û‹›ÝHÙ\šX[^˜Xš[]H›ÛÙ‹ˆ\WÜÝ[][XØ\œšY\ÈHØ[YH™]šY]Ù\—ÜÝ]\ØØ™]šY]ÙYØžXØ™]šY]ÙYØ]Y™XÞXÛH\È\WÜ]Y\Ý[ÛœØØ\WÛÜ[ÛœØ
+ZYÜ˜][ÛœÈLËÌMMJK[™Y][™ÈH™\šYšYYÝ[][\ÉÜÈÛÛ[Ý^ÜÝ[][\×Ý\KÛ[™ÝXYÙKÛY]Y]H›Ü˜Ù\È]˜XÚÈÈ™YY×ØÛÜœ™XÝ[Û˜ˆ\WÜ]Y\Ý[Û—ÜÝ[][X[ÛÈØ\œšY\È]ÈÝÛˆ™]šY]Ù\—ÜÝ]\ØØ™]šY]ÙYØžXØ™]šY]ÙYØ]
+Z\œ›Üš[™È\WÜ]Y\Ý[Û—ÝÜX×ÝYÜØ
+HÛÈH\ÜÛØÚX][Ûˆ\È[™\[™[HÛÝ™\›™Y˜]\ˆ[ˆ[š\š][™È\Ýœ›ÛHZ]\ˆ[™Ú[[™™\Ú[[™È
+]Y\Ý[Û—ÚYÜÝ[][\×ÚYÚ[™ÙJH›Ü˜Ù\È]˜XÚÈÈ[™[™ØˆH]ÛZXÈÜ›ÜÜËXØ\ØØYH”È
+]Y\Ý[Ûˆ™]šY]È\›Ýš[™È]ÈÝ[][\È[šÜËZ\œ›Üš[™È\]WÜ\WÜ]Y\Ý[Û—Ü™]šY]×Ø]ÛZXØ[ˆZYÜ˜][ÛˆMŒŠH\È˜XÚÙ[™Y[™Ú[ÛÜšÈ[™Ý^\ÈØÛÜYÈ‹LËˆ\Ü^WÛÜ™\˜\È
+ŠœÜÚ]]™JŠˆ
+HX›ÝY\™[H›Û‹[™YØ]]™JH[™[š\]YH\ˆ\™[ØÛÜH
+\\ˆ]Y\Ý[ÛœË]Y\Ý[ÛˆÜ[ÛœË\\ˆÝ[][K]Y\Ý[Û‹\Ý[][\È[šÜÊKˆØÛÜNˆ^ÜÚ\™YYÜ›Ý\[™ÈÛ›H8 %›Èš\œÝXÛ\ÜÈYYXKØ\ÜÙ]
+[XYÙKØÚ\š[˜\žJH™Y™\™[˜ÙKØØ]Ü‹Üˆ[]^ÛÛ˜XÝÈ]\È^XÚ]HY™\œ™YÈ‹LLKˆ™]ÈX›\ÈZ\œ›ÜˆH^\Ý[™È\WÜ\\œØØ\WÜ]Y\Ý[ÛœØØ\WÛÜ[ÛœØYZ[‹[Û›H“ÈÜÝ\™H
+X›XËš\×ØYZ[Š]]ZY
+
+JX
+NÈ›È\Ü\˜[Y˜XÚ[™È™XYÛXÞHYYˆ^X\ÜÙ\[ÛˆZYÜ˜][Û‹XÛÛ˜XÝ\ÝÎˆ\Ø˜XÚÙ[™Ý\ÝËÝ\ÝÜ\WÜÙXÝ[Û—ÜÝ[][\×ÜØÚ[XWÛZYÜ˜][Û‹œX
+NH\ÜÙ\[ÛœÊKˆX[X[]™KQˆ™YÜ™\ÜÚ[Ûˆ›Ýš[™È˜[YØ[YK\\\‹ÜØ[YK\\ÙH›ÝÜÈ\ÜÈ[™Ü›ÜÜËY^[KØÜ›ÜÜË\\ÙKØÜ›ÜÜË\\\ˆ›ÝÜÈ8 %[˜ÛY[™ÈHÜÝZØÈ\\ˆ\ÙH[Ý™KH•S\\ÙH\\ˆ[Ý™K[™™X\ÜÚYÛš[™È[ˆ[™XYK[[šÙY]Y\Ý[Û‰ÜÈÙXÝ[ÛˆÈ[ˆ[˜ÛÛ\]X›HØ[YK\\ÙHÙXÝ[Ûˆ8 %˜Z[]ÛZXØ[Nˆ\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—ÌŒŒ×Ü\WÜÙXÝ[Û—ÜÝ[][\×Ú[YÜš]KœÜ[
+ÈØ\Ù\ÎÈ›Ý[ˆ[ˆÒH8 %Ø[YHX[X[[Ü\˜]ÜˆÛÛ™[[Ûˆ\È™YÜ™\ÜÚ[Û—ÌNÚ[™^Ü™\Z\‹œÜ[
+Kˆ‘T’Q–H˜ˆ
+JH[ˆÑSPÕ
+ˆ”“ÓH×ÜÛXÚY\ÈÒT‘HX›[˜[YHSˆ
+	Ü\WÜÝ[][IË	Ü\WÜ]Y\Ý[Û—ÜÝ[][IÊXÈ
+ŠH[ˆH™YÜ™\ÜÚ[ÛˆÔSX›Ý™HYØZ[œÝH]™KÜÝYÚ[™ÈÝ\X˜\ÙH[œÝ[˜ÙH[™ÛÛ™š\›H[ÈTÔÈ›ÝXÙ\ÎÈ
+ÊH[ˆHÛË\Ù\ÜÚ[ÛˆÛÛ˜Ý\œ™[˜ÞH\Ý^\˜Ú\Ú[™ÈHÜÜÚ]K[ØÚË[Ü™\ˆ]
+]Y\Ý[Û‹\ÙXÝ[ÛˆY]œËˆÝ[][\Ë\ÙXÝ[ÛˆY]ÛˆHØ[YH[šÊH[™ÛÛ™š\›HZ]\ˆHÛX[ˆÙ\šX[^˜][ÛˆÜˆHØY™HXYØÚÈX›Ü™]™\ˆ[˜ÛÛœÚ\Ý[ÛÛ[Z]YÝ]H8 %›ÈÝXÚ\Ý^\ÝÈY]\È\ÈHÛ›ÝÛˆØ\›Ý\ÜÙ\YÛÛ\]NÈ
+
+HÛÛ™š\›HHZYÜ˜][Û‰ÜÈÛÝ[X™\ˆYØZ[œÝ]™HÑSPÕX^
+™\œÚ[ÛŠNŽš[
+ÈH”“ÓHØÚ[XWÛZYÜ˜][ÛœØ\ˆQÑS•Ë›Y
+š[\Þ\Ý[HÛÛYÝZ]HØ\ÈÚXÚÙY›ÝH]™HÙ\]Y[˜ÙJKˆŸ‹Lˆ[\Ü\ˆŒˆ
+˜\šXX›HÜ[ÛœËÜ[Ûœ×ÚœÛÛ˜ÙXÝ[Û‹ÜÝ[][\È™YœË›Û‹Z[YÙ\ˆÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜
+HÓÑKQ’VQSQUSÓˆS‘S‘È\Ø˜XÚÙ[™Ø\Ù^[WÚ[[YÙ[˜ÙKÜ\WØ[×Ú[\ÜœX^[™Y[ˆXÙNˆ\œÙWØž]\Ê
+X›ÝÈ™]\›œÈHØ[›ÛšXØ[Ù›Ü›X]Ý™\œÚ[Û‹\×ØÜÝ‹Ý[][K›ÝÜßX[™[ÜH[™]XÝÈŒˆšXHH”ÓÓˆ
+›Øš™XÝ
+ˆÚ]H]Y\Ý[ÛœØ\Ý
+”ÓÓŠHÜˆ[ˆÜ[Ûœ×ÚœÛÛ˜ÛÛ[[ˆ
+ÔÕŠNÈHYØXÞH˜\™K[\Ý”ÓÓˆÈÜ[Û—ØX‹˜Ü[Û—ÙÔÕˆŒH]\Èž]KY›Ü‹Xž]H[˜Ú[™ÙY
+™\šYšYYˆ^\Ý[™È\ÝÜ\WØ[×Ú[\ÜœXØ\ÝØÛ\×Ü\WØ[ËœXØ\ÝÜ\WÚ[\ÜÝÚÙ[œËœX\ÜÈ[›[ÙYšYY
+KˆŒˆÝ\ÜÈŠÈ\˜š]˜\š[K[X™[YÜ[ÛœÈ\ˆ]Y\Ý[Ûˆ
+Ý˜[Y]WÜ›Ý×ÝŒ˜
+KHÜ[]™[Ý[][X\œ˜^HÚÜÙH[šY\È\™H˜[Y]Y\ÈH˜]Ú
+Ý˜[Y]WÜÝ[][WØ˜]ÚÈHœ›ÚÙ[ˆÚ\™Y\Ý[][\È[žH˜Z[ÈHÚÛH˜]Ú›ÝÛ™H›ÝËÚ[˜ÙH]	ÜÈÚ\™Y[™œ˜\ÝXÝ\™JH[™Ü™X]YÛ˜ÙH\ˆ™Y˜\š[™ÈÛÛ[Z]
+
+X
+Ú\™YXÜ›ÜÜÈ]™\žH]Y\Ý[Ûˆ[ˆ]Ø[šXHÝ[][\×ØØXÚX[šÙY›ÝYÚ\WÜ]Y\Ý[Û—ÜÝ[][X
+K[™ÙXÝ[Û—Ü™Y˜™\ÛÛ][ÛˆØÛÜYÈH\™Ù]\\‰ÜÈ^[WÜ\ÙWÚY
+Ø\ÙKZ[œÙ[œÚ]]™HX]ÚÛˆ^[WÜ\ÙWÜÙXÝ[ÛœËœÙXÝ[Û—ÛX™[
+H8 %[ˆ[œ™\ÛÛ˜X›HÙXÝ[Û—Ü™Y˜\ÈH›ÝË[]™[\œ›Ü‹™]™\ˆHÚ[[•SˆÛÜœ™XÝÛÜ[Û—ÛX™[]\Ý™\ÛÛ™HÈ^XÝHÛ™HÝ\YYÜ[Û‰ÜÈX™[›Üˆ]Y\Ý[Û—Ý\OIÛXÜIØÈ˜[Y]Y™\ÝYY™›Ü
+[™[™›Ü˜ÙY
+H›ÜˆÝ\ˆ\\ËˆY[\Ý[˜ÞKÙY\^[™YÈÙ^HÙ™ˆÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜Ú[ˆ™\Ù[˜[[™È˜XÚÈÈ]Y\Ý[Û—Û[X™\˜
+›ÝÜ[Û˜[›ÜˆŒˆ›ÝÜÊK™\Ù\š[™ÈH^\Ý[™È\‹\›ÝÈ]ÛZXÈ›Û˜XÚÈ]\›ˆ8 %^[™YÈ[ÛÈ›Û˜XÚÈ\WÛÜ[ÛœØØ\WÜ]Y\Ý[Û—ÜÝ[][X›ÝÜÈÛˆ˜Z[\™Kˆ™]È\Ýš[H\Ø˜XÚÙ[™Ý\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝÜ\WØ[×Ú[\ÜÝŒ‹œX
+Lˆ\ÝÈÜšYÚ[˜[NÈ›ÝÈŒÈ8 %ÙYHÚXÚÜÜÝ›Ý[™ˆ™[ÝÊKˆ›Ý]\ˆ
+\Ø\KØYZ[—Ù^[WÚ[[ØÛ\ËœX
+H[˜Ú[™ÙY[ˆ›Ý[™H8 %›Ý[™ˆÚ\™\È\\—ÚY›ÝYÚÈÛÛ[Z]
+
+Xˆ‘T’Q–H˜ˆ[ˆ\È[\Ü\ˆYØZ[œÝH]™KÜÝYÚ[™ÈÝ\X˜\ÙH[œÝ[˜ÙHÚ]H™X[][K\ÙXÝ[Û‹][K\Ý[][\È\\ˆ
+HZYÜ˜][Û‹LŒŒÈÜ›ÜÜË\\™[[YÜš]HšYÙÙ\œÈ\™HH[™›Ü˜Ù[Y[˜XÚÜÝÜÈ\È]Û‹[]™[˜[Y][Ûˆ\ÈY™[œÙKZ[‹Y\›ÝH™\XÙ[Y[
+H™Y›Ü™H™[Z[™ÈÛˆ]›ÜˆH™X[[\Üˆ
+ŠÚXÚÜÜÝ™]šY]È›Ý[™ˆ
+ˆÎM
+H8 %HYÜÈš^YŠŠˆ
+JHÛÛ[Z]
+
+X›ÝÈ™\]Z\™\ÈHÙ^]ÛÜ™[Û›H\\—ÚY\™Ý[Y[[™ØÛÜ\ÈHÚÙ[ˆÛÚÝ\È™\JÚÙ[ˆ‹‹‹ŠK™\Jœ\\—ÚY‹‹‹ŠXÛÈHÚÙ[ˆ™Y›YÚY›ÜˆÛ™H\\ˆØ[ˆ™]™\ˆ™HÛÛ[Z]Y›ÝYÚHY™™\™[\\‰ÜÈT“
+™]š[Ý\ÛHH›Ý]\ˆ™]™\ˆ\ÜÙY\\—ÚYÛÈÛÛ[Z]
+
+X\š]™Y]\™[Hœ›ÛHHÚÙ[ˆ›ÝÈ8 %Ü›ÜÜË\\\ˆÛÛ[Z]Ø\ÈÜÜÚX›NÈH]Y]ÙÈÛÝ[]™[ˆ]šX]HHÜš]HÈHÜ›Û™È\\ŠKˆ
+ŠHÚÙ[ˆÛÛœÝ[\[Ûˆ\È›ÝÈ]ÛZXÎˆH™]ÈØÛZ[WÝÚÙ[ŠØ‹
+‹ÚÙ[‹\\—ÚY
+X[\ˆ\™›Ü›\ÈHÛÛœÝ[Z[™ÈTUH‹‹ˆÒT‘HÚÙ[IHS‘\\—ÚYIˆS‘ÛÛœÝ[YYØ]TÈ•S\ÈH™\žHš\œÝˆÜ\˜][Ûˆ[ˆÛÛ[Z]
+
+X
+™]š[Ý\ÛHH™XY[Û›HÑSPÕØ\ÈÛ™Hš\œÝ[™ØÛÛœÝ[YWÝÚÙ[Š
+XÛ›H˜[ˆ]H™\žH[™ÛÈÛÈÛÛ˜Ý\œ™[ÛÛ[Z]ÈÛÝ[›Ý\ÜÈH[š]X[ÚXÚÈ[™›ÝÜš]JNÈÛØYÝÚÙ[˜ØØÛÛœÝ[YWÝÚÙ[˜[\Ù[™\È\™H[ÝXÚY[™Ý[\™XÝH\ÝYžH\ÝÜ\WÚ[\ÜÝÚÙ[œËœX^H\™HÚ[\H›ÈÛ™Ù\ˆØ[Yœ›ÛHÛÛ[Z]
+
+Xˆ
+ÊHÙXÝ[Û—ÛÛÚÝ\\È›ÝÈXÝÜÝ‹\ÝÜÝ—WX
+Ø\ÈXÝÜÝ‹Ý—XÚ[[HÝ™\Üš][™ÈÛˆH™\X]YX™[
+H8 %Ú[˜ÙH^[WÜ\ÙWÜÙXÝ[ÛœØ\ÈÛ›H[š\]YHÛˆ
+^[WÜ\ÙWÚYÝXš™XÝÚYÙXÝ[Û—ÛX™[
+XH™\X]YX™[[™\ˆÛÈÝXš™XÝÈ[ˆÛ™H\ÙH›ÝÈ˜Z\Ù\È[ˆ˜[XšYÝ[Ý\È8 %ˆÙXÝ[ÛœÈ˜[YY‹‹ˆ^\Ýˆ›ÝËØ˜]Ú\œ›Üˆ[œÝXYÙˆÚ[[H™\ÛÛš[™ÈÈÚXÚ]™\ˆYØ\È™]ÚY\Ýˆ
+
+H\WÜ]Y\Ý[Û—ÜÝ[][K™\Ü^WÛÜ™\˜
+YYžHZYÜ˜][ÛˆŒŒÈÜXÚYšXØ[H›Üˆ\ÊH\È›ÝÈÜ[]Yœ›ÛHXXÚ]Y\Ý[Û‰ÜÈÝ[][\×Ü™YœØ\œ˜^HÜÚ][Ûˆ
+KX˜\ÙY
+K™]š[Ý\ÛH[Ø^\ÈÛZ]Yˆ
+JH\œÙWØž]\Ê
+X›ÝÈ™\]Z\™\ÈH”ÓÓˆŒˆØš™XÝ[™[ÜHÈXÛ\™H™›Ü›X]Ý™\œÚ[ÛˆŽˆ˜\È^XÝHH[YÙ\ˆˆ8 %Z\ÜÚ[™ËÝÜ›Û™Ë]\KÝÜ›Û™Ë]˜[YH›ÝÈ˜Z\Ù\È˜[YQ\œ›Ü˜[œÝXYÙˆ™Z[™ÈÚ[[HXØÙ\Y\ÈŒ‹ˆ
+ŠH™Y›YÚ›ÝÈ[ÛÈY\\ÈYØZ[œÝH˜]Ú[ØØ[\ÚX\
+˜]ÚÚ\ÚÛX\
+HÚXÚÙY™Y›Ü™HH^\Ý[™ËQˆ\ÚÙ^žžHÚXÚÜËÛÈÛÈž]KZY[XØ[›ÝÜÈÚ]™Z]\ˆÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜›Üˆ]Y\Ý[Û—Û[X™\˜Ù][ˆHØ[YH\ØY›ÈÛ™Ù\ˆ›Ý™Y›YÚ›ÚÈ˜ˆ
+ÊHH^\Ý[™ËX\WÜ]Y\Ý[ÛœØ\›ÝÜÈ™]Ú[ˆ›Ý™Y›YÚ
+
+X[™ÛÛ[Z]
+
+X›ÝÈ˜Z[ÈÛÜÙY
+˜Z\Ù\È[[YQ\œ›Ü˜
+H[œÝXYÙˆÙÙÚ[™ÈHØ\›š[™È[™ÛÛ[Z[™ÈÚ][\HY\ÚY[\Ý[˜ÞHÙ]ÈÛˆH˜[œÚY[ˆ\œ›Üˆ8 %\È\ÈHÚ\™YXÛÙK\]™Z]š[ÜˆÚ[™ÙH][ÛÈY™™XÝÈŒKÛÛ™š\›YY›ÝÈœ™XZÈ[žH^\Ý[™È\Ýˆ
+
+HÚ\™YÝ[][H›ÝÈØ\œžHY]Y]NˆÈš[\ÜÜ™YˆŽˆ™YŸXÛˆ[œÙ\ÈÛÛ[Z]
+
+X™]Ú\È^\Ý[™È\WÜÝ[][X›ÜˆH\\ˆ\œ›Û[™ÚXÚÜÈ^\Ý[™×ÜÝ[][WØžWÜ™Y˜
+\˜X›KÜ›ÜÜËXØ[
+H™Y›Ü™HÝ[][\×ØØXÚX
+\ËXØ[[Û›JH™Y›Ü™H[œÙ\[™ËÛÈH™]šYYÜÙXÛÛ™ÛÛ[Z]™Y™\™[˜Ú[™ÈHØ[YH™Y˜™]\Ù\ÈHØ[YHØ[›ÛšXØ[Ý[][\È›ÝÈ[œÝXYÙˆÜ™X][™ÈH\XØ]Kˆ
+JHŒˆ›ÝÈ™\ÝšXÝÈ]Y\Ý[Û—Ý\XÈ	ÛXÜIØÛ›H
+Ý\ˆÔUQTÕSÓ—ÕTTØ˜[Y\È]™H›ÈØÛÜš[™ËÚ[\Ü][\[Y[Y
+H[™Ý[][\×Ý\XÈÈœ\ÜØYÙH‹˜Ø\Ù[]‹X›HŸX
+YYXH\\ÈÚ\Ø[XYÙXØXYÜ˜[X\™H^XÚ]H‹LLHØÛÜK™Y™\™[˜ÙY[ˆH™]È\œ›ÜˆY\ÜØYÙJH8 %ŒIÜÈÝÛˆÔUQTÕSÓ—ÕTTØ˜[Y][Ûˆ[™ZYÜ˜][ÛˆŒŒÉÜÈˆÒPÒÈÛÛœÝ˜Z[
+HÝ\\œÙ]
+H\™H›Ý[ÝXÚYˆ™]ÈY™[œÙKZ[‹Y\ZYÜ˜][ÛˆŒÜ\WØ[×Ú[\ÜÝŒ—Ý[š\]Y[™\ÜËœÜ[YÈÛÈ\X[[š\]YH[™^\È
+\WÜ]Y\Ý[Ûœ×Ü\\—ÜÛÝ\˜ÙWÜ™Y—ÝZY\WÜ]Y\Ý[Ûœ×Ü\\—Ü]Y\Ý[Û—Û[X™\—ÝZY
+H\ÈH‹[]™[˜XÚÜÝÜYØZ[œÝH]Û‹[]™[Y\™Z[™Èž\\ÜÙYˆMÈ™]È™YÜ™\ÜÚ[Ûˆ\ÝÈYYXÜ›ÜÜÈ\ÝÜ\WØ[×Ú[\ÜœX
+
+ÌŠK\ÝÜ\WØ[×Ú[\ÜÝŒ‹œX
+
+ÌLJK\ÝÜ\WÚ[\ÜÝÚÙ[œËœX
+
+Í
+Kˆ™\šYšYY[ˆ\ÈÚXÚÛÝ]ˆ]ÛŒÈ[H]\Ý\ÝËÙ^[WÚ[[YÙ[˜ÙKØ8¡¤ˆMŒL\ÜÙYÚÚ\Y˜Z[Yˆ‘T’Q–H˜ˆØ[YH]™KQˆØ]™X]\È›Ý[™K\ÈÛÛ™š\›HZYÜ˜][ÛˆŒ	ÜÈÛÝ[X™\ˆYØZ[œÝH]™HØÚ[XWÛZYÜ˜][ÛœØÙ\]Y[˜ÙH\ˆQÑS•Ë›Y™Y›Ü™H\Z[™Ëˆ
+ŠÚXÚÜÜÝ™]šY]È›Ý[™È
+ˆÎM
+H8 %HYÈÜ›Ý\Èš^YŠŠˆ
+JHH›ËZY[]H\XØ]HÛHÝ\š]™Y›Ý[™ˆXÜ›ÜÜÈÛÈÑTTUHÛÛ[Z]
+
+XØ[È
+›ÝH˜XÙH8 %Ù\]Y[X[™Y›YÚX›Ý][‹XÛÛ[Z]X›Ý\È[›ÝYÚ
+Nˆ˜]ÚÚ\ÚÛX\Û›HÝX\™ÈÛ™H\ØY[™ÛÛ[Z]
+
+X	ÜÈY[\Ý[˜ÞH™KXÚXÚÈÛ›H]™\ˆÛÚÙY]]Y\Ý[Û—Û[X™\˜ØÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜ˆÛÛ[Z]
+
+X›ÝÈ[ÛÈÙ[XÝÈ›Ü›X[^™YÜ]Y\Ý[Û—Ú\ÚÛˆ]È^\Ý[™ËX\WÜ]Y\Ý[ÛœØ™]ÚZ[È[™XYWÚ[œÙ\YÚ\Ú\Ø[™ÚXÚÜÈ][šY›Ü›[H›ÜˆŒH[™Œˆ™Y›Ü™H]™\žH[œÙ\
+œ™YH^˜HØY™]H›ÜˆŒKÚXÚ[Ø^\È\ÈH\Ú[ž]Ø^JH8 %HX]Ú\È™X]Y^XÝHZÙHH^\Ý[™È[™XYWÙ^\ÝØØ˜[™XYWÙ^\ÝÈ˜ÚÚ\]ˆ‹[]™[˜XÚÜÝÜˆZYÜ˜][ÛˆŒÜ\WØ[×Ú[\ÜÝŒ—Ý[š\]Y[™\ÜËœÜ[
+[Y[™Y[ˆXÙK›ÝY]Y\™ÙY
+HYÈH\™\X[[š\]YH[™^\WÜ]Y\Ý[Ûœ×Ü\\—Ú\ÚÝZYÛˆ
+\WÜ\\—ÚY›Ü›X[^™YÜ]Y\Ý[Û—Ú\Ú
+HÚ\™H›Ü›X[^™YÜ]Y\Ý[Û—Ú\Ú\È›Ý[8 %
+Š˜‘T’Q–H˜
+ŠŽˆ[›ZÙHHÛÈ›Ý[™Lˆ[™^\Ë\ÈÛ™H\ÈØÛÜYÈHÛÛ[[ˆÜ[]YÚ[˜ÙH™Y›Ü™H\È‹ÛÈ]™\]Z\™\ÈH™KY\Þ[Y[\XØ]H]Y]
+[ˆÜ\˜]ÜˆÛÝ[]™H›Ü˜ÙKXÛÛ[Z]Y[ˆ^XÝZ\Ú\XØ]HšXHÝ™\œšYWÙ\œ›ÜœÏ]YX[ˆH\Ý
+NÈH]Y]]Y\žH]™\È[ˆH™]È\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—ÌŒÜ\WØ[×Ú[\ÜÝŒ—Ý[š\]Y[™\Ü×Ø]Y]œÜ[[ˆ][™™\ÛÛ™H[žH›ÝÜÈ™Y›Ü™H\Z[™ÈH[™^8 %›ÝY]›Ý™[ˆØY™HYØZ[œÝ]™H]Kˆ
+ŠH˜]ÚÚ\ÚÛX\Ø\ÈÛ›HÙYYYÚ[ˆH›ÝÉÜÈÝ]\ÈØ\È›ÚÈ˜™]™\ˆ™^žžH˜8 %ÛÈž]KZY[XØ[›ÝÜÈ]XXÚ[™\[™[H[™Ûˆ™^žžH˜YØZ[œÝÛÛYH^\Ý[™Èˆ›ÝÈ
+™X\‹[Z\ÜË›Ý^XÝZ\Ú
+H™]™\ˆØ]ÈXXÚÝ\ˆ\È˜]Ú[ØØ[\XØ]\Ë[™Ú[˜ÙH^žžH›ÝÜÈÛÛ[Z]žHY˜][›ÝÛÝ[ÛÛ[Z]\È^XÝ]^\XØ]\ÈÙˆXXÚÝ\‹ˆHÙYY[™H[ˆ™Y›YÚ
+
+X\È›ÝÈ[˜ÛÛ™][Û˜[
+[œÈ›Üˆ]™\žH›ÝÈ]™XXÚ\ÈHš[˜[Ý]\Ë›Ý\Ý›ÚÈ˜
+Kˆ
+ÊH\œÚ\Ý[Ý[][\ÈY[]H
+›Ý[™‰ÜÈY]Y]Kš[\ÜÜ™Y˜YXÚ[š\ÛJHØ\È˜Z[[Ü[‹YÛ›Ü™YÛÛ[šY[™Y›Èˆ˜XÚÜÝÜ8 %™YHÝX‹Yš^\Ë[[ˆÛÛ[Z]
+
+Xˆ
+ØJHH^\Ý[™ËX\WÜÝ[][X™]Ú›ÝÈ˜Z[ÈÛÜÙY
+˜Z\Ù\È[[YQ\œ›Ü˜
+H[œÝXYÙˆÙÙÙ\‹Ø\›š[™Ê
+XX[™XÛÛ[YH8 %\ÈØ\ÈHÛ™H˜Z[[Ü[ˆÛÚÝ\YÝ[™[™ÈY\ˆ›Ý[™ŽÈ
+ØŠHÛÛ[Z]
+
+X›ÝÈ™]Ú\ÈÛÛ[Ý^Ý[][\×Ý\K[™ÝXYÙKÙXÝ[Û—ÚY[Û™ÜÚYHYY]Y]X›Üˆ^\Ý[™ÈÝ[][K[™8 %Y\ˆHÚÙ[ˆÛZ[KÛ˜ÙHÝ[][WÛY]X\È]˜Z[X›K]ÝšXÝH™Y›Ü™H[žHÜš]\È8 %ÛÛ\\™\ÈXXÚ˜]ÚYXÛ\™Y™Y˜	ÜÈY]Y]HYØZ[œÝHÝÜ™Y›ÝÈšY[XžKYšY[˜Z\Ú[™È˜[YQ\œ›Ü˜
+›ÝÈX\YÈŒˆžHH›Ý]\‹Z\œ›Üš[™È™Y›YÚ	ÜÈ^\Ý[™È˜[YQ\œ›Ü˜8¡¤Œˆ[™[™ÊHÛˆ[žHZ\ÛX]ÚÛÈHÛÜœ™XÝY™]žH
+Ø[YH™Y‹Y™™\™[ÛÛ[
+HØ[ˆ›ÈÛ™Ù\ˆÚ[[H[šÈ™]È]Y\Ý[ÛœÈÈHÝ[HØ[›ÛšXØ[Ý[][\ÎÈ
+ØÊHZYÜ˜][ÛˆŒYÈH›Ý\\X[[š\]YH[™^\WÜÝ[][WÜ\\—Ú[\ÜÜ™Y—ÝZYÛˆ
+\WÜ\\—ÚY
+Y]Y]KO‰Ú[\ÜÜ™Y‰ÊJHÚ\™HY]Y]KO‰Ú[\ÜÜ™Y‰È\È›Ý[8 %\ÈÛ™H\È‘UÈ[™œ˜\ÝXÝ\™H[›ÙXÙY[ˆ›Ý[™‹ÛÈ›È™KY^\Ý[™È]HØ[ˆš[Û]H][™›È]Y]\È™\]Z\™Y™Y›Ü™H\Z[™È]
+[›ZÙHš^
+JIÜÈ\Ú[™^
+Kˆ
+
+H™[Ü™\™YÛÛ[Z]
+
+XÛÈ›Ý™XY[Û›H™\™\]Z\Ú]H™]Ú\È
+^\Ý[™È]Y\Ý[ÛœË^\Ý[™ÈÝ[][H8 %›Ý\[™Û›HÛˆ\\—ÚY›ÝHÚÙ[‰ÜÈÛÛ[
+H›ÝÈ[ˆ‘Q“Ô‘HØÛZ[WÝÚÙ[Š
+XÛÈH[[YQ\œ›Ü˜œ›ÛHZ]\ˆ™]™\ˆ\›œÈHÛ™K\ÚÝÚÙ[ˆ8 %HØ[\ˆØ[ˆØY™[H™]žHH^XÝØ[YHÛÛ[Z]
+
+XØ[Û˜ÙHH˜[œÚY[ˆ\ÜÝYHÛX\œÈ
+™]š[Ý\ÛHHÚÙ[ˆØ\ÈÛZ[YYš\œÝÛÈH˜[œÚY[™]Ú˜Z[\™HYX[HÜ\˜]ÜˆYÈ™K\™Y›YÚœ›ÛHØÜ˜]Ú]™[ˆÝYÚ›Ý[™ÈØ\ÈÜš][ŠKˆ[ÛÈØÝ[Y[Y
+›ÝÚ[™ÙY
+HH™X\™\‹]ÚÙ[ˆ\ÚYÛŽˆÛÛ[Z]
+
+X	ÜÈØÜÝš[™È›ÝÈ^XÚ]HÝ]\È]XÝÜ˜\ÈXØÙ\Y›Üˆ[\™˜XÙHÞ[[Y]žHÚ]™Y›YÚ
+
+X]\È›Ý\ÙYÈ™\ÝšXÝÚÈX^HÛÛ[Z]8 %[žHXÝÜˆÛ[™ÈH˜[Y[™^\™Y[˜ÛÛœÝ[YYÚÙ[ˆ›ÜˆHÛÜœ™XÝ\\ˆX^HÛÛ[Z]]H[X™\˜]HÝ\œ™[›ÙXÝXÚ\Ú[Û‹›ÝHYËˆ
+JH™YH™Y›YÚ][YH˜[Y][Ûˆ[\›Ý™[Y[È[ˆÝ˜[Y]WÜ›Ý×ÝŒ˜ØÝ˜[Y]WÜÝ[][WØ˜]Úˆ[ˆÛZ]YÜ[ÛœÖÚWK™\Ü^WÛÜ™\˜›ÝÈY˜][ÈÈHÜ[Û‰ÜÈKX˜\ÙY\œ˜^HÜÚ][Ûˆ[œÝXYÙˆÝ^Z[™È›Û™X
+[ˆ^XÚ]KYÚ]™[ˆ˜[YH\ÈÝ[˜[Y]Y\È™Y›Ü™JNÈH]Y\Ý[Û‰ÜÈÝ[][\×Ü™YœØ\Ý[™ÈHØ[YH™YˆÚXÙH\È›ÝÈH›ÝË[]™[\œ›Üˆ[œÝXYÙˆÚ[[HÝX›K[[šÚ[™È
+ÚXÚÛÝ[]™H]\WÜ]Y\Ý[Û—ÜÝ[][X	ÜÈ[š\]YJ]Y\Ý[Û—ÚYÝ[][\×ÚY
+XÛÛœÝ˜Z[]ÛÛ[Z][YH\ÈH]KÛÛ™\Ú[™È˜Z[\™JNÈ[™\XØ]HVPÒU\Ü^WÛÜ™\˜˜[Y\È[[Û™È]Y\Ý[ÛœÈÚ][ˆÛ™H\ØYÜˆ[[Û™ÈÝ[][HÚ][ˆH˜]Ú	ÜÈÜ[]™[Ý[][X\œ˜^K\™H›ÝÈØ]YÚ]™Y›YÚ[YHÚ]H™š\œÝ\ÙY]›ÝÈˆˆY\ÜØYÙH8 %\È\Ý][H\ÈHVÑ[\›Ý™[Y[^Y\™YÛˆÜÙˆZYÜ˜][ÛˆŒŒÉÜÈ[™XYK\ØY™H\WÜ]Y\Ý[Ûœ×Ü\\—Ù\Ü^WÛÜ™\—ÝZYØ\WÜÝ[][WÜ\\—Ù\Ü^WÛÜ™\—ÝZYÛÛ[Z]][YH˜XÚÜÝÜ›ÜˆHÜ›ÜÜËX˜]ÚØ\ÙK›ÝHÛÜÝ\™HÙˆH]™HÛÜœ™XÝ™\ÜÈØ\ˆ™]ÈÛÛ\[š[Ûˆš[H\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—ÌŒÜ\WØ[×Ú[\ÜÝŒ—Ý[š\]Y[™\Ü×Ø]Y]œÜ[
+™KY\Þ[Y[\XØ]KX]Y]]Y\žH›Üˆš^
+JIÜÈ\Ú[™^Û›JKˆH™]È™YÜ™\ÜÚ[Ûˆ\ÝÈYY[[ˆ\ÝÜ\WØ[×Ú[\ÜÝŒ‹œX
+Û™H^\Ý[™È\ÝÜ\WØ[×Ú[\ÜœX\ÜÙ\[Ûˆ\]Y›ÝH™]È\ÝÈ™Y›XÝš^
+
+IÜÈ™[Ü™\š[™ÊKˆ™\šYšYY[ˆ\ÈÚXÚÛÝ]ˆ]ÛŒÈ[H]\Ý\ÝËÙ^[WÚ[[YÙ[˜ÙKØ8¡¤ˆMŒNH\ÜÙYÚÚ\Y˜Z[Yˆ‘T’Q–H˜ˆ[ˆH›Ý[™LÈ\XØ]H]Y]YØZ[œÝ]™KÜÝYÚ[™È]H™Y›Ü™H\Z[™È\WÜ]Y\Ý[Ûœ×Ü\\—Ú\ÚÝZYÈ\WÜÝ[][WÜ\\—Ú[\ÜÜ™Y—ÝZY™YYÈ›ÈÝXÚ]Y]ÈØ[YH]™KQˆ[\ÜØ]™X]\È›Ý[™Èx $ÌˆÝ\Ú\ÙKˆ
+ŠÚXÚÜÜÝ›Ý[™MÈL™Hš^ŠŠˆL™H[ËZ[\Ü˜Z[YÚ]LH\›Z\ÜÚ[Ûˆ[šYY›ÜˆX›H\WÜÝ[][X8 %ZYÜ˜][ÛˆŒŒÈÜ™X]Y\WÜÝ[][XØ\WÜ]Y\Ý[Û—ÜÝ[][XQ•TˆZYÜ˜][ÛˆMÌÉÜÈÛ™K][YH›[šÙ]Ü˜[‹‹ˆÛˆ[X›\È‹‹ˆÈÙ\šXÙWÜ›ÛXÛÈ^H™]™\ˆ™XÙZ]™Y]
+][Ú[˜ÙH‹LNÈÛ›HÝ\™˜XÙY›ÝÈ™XØ]\ÙH›Ý[™LÉÜÈ˜Z[XÛÜÙYÝ[][\È™]Ú\ÈHš\œÝÙ\šXÙWÜ›ÛHÑSPÕÙˆHX›H8 %›Ý[™L‰ÜÈ˜Z[[Ü[ˆ™]ÚÝØ[ÝÙYHLJKˆš^YžH™]ÈZYÜ˜][ÛˆŒWÜ\WÜÝ[][WÜÙ\šXÙWÜ›ÛWÙÜ˜[œÜ[Ü˜[[™ÈÙ[XÝÚ[œÙ\Ý\]KÙ[]HÛˆ›ÝX›\ÈÈÙ\šXÙWÜ›ÛKˆŸ‹LÈYZ[ˆ™]šY]ÈRH›ÜˆÙXÝ[Ûˆ\ÜÚYÛ›Y[È\ÜØYÙHÜ›Ý\[™ÈÓÑKQ’VQSQUSÓˆS‘S‘È˜XÚÙ[™
+YZ[—Ù^[WÚ[[ØÛ\ËœX
+ÈYZ[—Ù^[WÚ[[YÙ[˜ÙKœX
+NˆÝ\˜]H[ÝÛ\ÝÈ›ÝÈXØÙ\ÙXÝ[Û—ÚYØÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜Ø\Ü^WÛÜ™\˜
+]Y\Ý[ÛŠH[™\Ü^WÛÜ™\˜ØÛÝ\˜ÙWÛX™[
+Ü[ÛŠHšXHH^\Ý[™ÈUÒ[™Ú[È
+™]šY]Ù\—ÜÝ]\ØÝ[^ÛYY8 %Ý]\ÈÛ›HšXHH™]šY]È›Ý]\ŠNÈH˜YÙXÝ[Û—ÚY
+Ü›Û™È^[WÜ\ÙJH\ÈÝ\™˜XÙY\ÈŒˆœ›ÛHZYÜ˜][ÛˆŒŒÉÜÈšYÙÙ\‹›ÝH˜]ÈLˆÔ‘U’QUÐP“VÈœ\WÜ]Y\Ý[Ûˆ—XÙ[XÝØZ[œÈH™]ÈÛÛ[[œÎÈÛÈ™]È™]šY]ØX›HÚ[™È\WÜÝ[][\ØØ\WÜ]Y\Ý[Û—ÜÝ[][\Ø›ÝÈ›ÝYÚH^\Ý[™ÈÙ[™\šXÈUÒÚ][\ËÞÚÚ[™KÞÚYKÜ™]šY]Øˆ™]ÈXY\ÜÈÓTÈ[™Ú[ÎˆÑUÔÔÕÔUÒÑSUHÜ\K\Ý[][XÑUÔÔÕÔUÒÑSUHÜ\K\]Y\Ý[Û‹\Ý[][X
+[ÝÛ\ÝÈÔÕSUST×Ñ’QSØØÓS’×Ñ’QSØ]Y]YT“WÐÓTÈ8 %™XYØ][™ÈX]Ú\ÈHÚX›[™ÈÑUÜ\K\]Y\Ý[ÛœØ
+Kˆ™]ÈZYÜ˜][ÛˆŒ×Ü\WÜ]Y\Ý[Û—ÜÝ[][\×Ü™]šY]×ØØ\ØØYKœÜ[Ô‘PUKSÔ‹T‘TPÑ\È\]WÜ\WÜ]Y\Ý[Û—Ü™]šY]×Ø]ÛZXØ
+Ø[YHÚYÛ˜]\™KØ[\ˆ[˜Ú[™ÙY
+HÈ[ÛÈØ\ØØYHH™\šYšYYÜ™Z™XÝYÛ™YY×ØÛÜœ™XÝ[Ûˆ]Y\Ý[Ûˆ™]šY]ÈÈ]È\WÜ]Y\Ý[Û—ÜÝ[][XS’ÔÈ
+™]\›œÈØ\ØØYYÛ[š×ØÛÝ[
+H8 %Ú\™Y\WÜÝ[][XÓÓ•S•\È™]šY]ÙY[™\[™[H[™™]™\ˆ]]Ë]™\šYšYYžHÛ™H]Y\Ý[Û‰ÜÈ™]šY]Ëˆœ›Û[™
+\T\\•ÛÜšÜÜXÙKšœÞ[X™YY8 %›È™]È›Ý]KÛ˜]ˆ\ˆHPH›Ë[™]Ë\Ý\™˜XÙHØÚÊNˆ]Y\Ý[ÛˆY]ÜˆØZ[œÈH\ÙK\ØÛÜYÙXÝ[ÛˆÙ[XÝ
+ÈÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜Ø\Ü^WÛÜ™\˜[œ]ÎÈÜ[Ûˆ›ÝÜÈØZ[ˆÛÝ\˜ÙWÛX™[Ø\Ü^WÛÜ™\˜ÈHÛÛ\ÚX›H\ÜØYÙ\ËÔÝ[][H[™[
+\K\Ý[][K\[™[
+H\ÝÈH\\‰ÜÈÝ[][HÚ]\KÜÝ]\È˜YÙ\Ë[šÙY\]Y\Ý[ÛˆÛÝ[Ë[™
+Ø[”™]šY]ÊH\‹\Ý[][\È
+È\‹[[šÈ™\šYžKÜ™Z™XÝÛ™YY×ØÛÜœ™XÝ[Û‹
+Ø[‘Y]
+HÜ™X]KÙY]Ù[]KÛ[šËÝ[›[šÎÈH]Y\Ý[ÛˆY]ÜˆÚÝÜÈHÙ[XÝY]Y\Ý[Û‰ÜÈÝ[][\È[šÜÈÚ]™]šY]ÈÛÛ›ÛËˆ™\šYšYY[ˆ\ÈÚXÚÛÝ]ˆ]ÛŒÈ[H]\Ý\ÝËÙ^[WÚ[[YÙ[˜ÙKØ8¡¤ˆMH\ÜÙYÚÚ\YÈœ›Û[™\T\\•ÛÜšÜÜXÙ_\UÛÜšØ™[˜Ú8¡¤ˆMˆ\ÜÙYÈ\Û[ÛX[‹ˆ‘T’Q–H˜ˆ\HZYÜ˜][ÛˆŒÈ[™^\˜Ú\ÙHH]Y\Ý[Û‹\™]šY]ø¡¤›[šËXØ\ØØYH
+È[™\[™[Ý[][\ËXÛÛ[™]šY]ÈYØZ[œÝH]™KÜÝYÚ[™ÈÝ\X˜\ÙH[œÝ[˜ÙNÈÛÛ™š\›HŒÉÜÈÛÝ[X™\ˆYØZ[œÝ]™HØÚ[XWÛZYÜ˜][ÛœØˆ
+ŠÚXÚÜÜÝ›Ý[™ˆ
+ˆš[™[™ÜÊHš^YŠŠˆ
+
+H\ÝÚ][\Ê
+X›ÝÈ^[K\ØÛÜ\ÈH™]È\WÜÝ[][\Ø
+šXH\\¸¡¤™^[JH[™\WÜ]Y\Ý[Û—ÜÝ[][\Ø
+šXH]Y\Ý[Û¸¡¤œ\\¸¡¤™^[JHÚ[™È8 %™]š[Ý\ÛHX›K]ÚYHXÜ›ÜÜÈ[^[\ÎÈ
+
+HZYÜ˜][ÛˆŒÉÜÈ[šÈØ\ØØYH›ÝÈØ\œšY\È[™™]šY]Ù\—ÜÝ]\È›Ý[ˆ
+	Ü™Z™XÝY	Ë	Û™YY×ØÛÜœ™XÝ[Û‰ÊXÛÈH]Y\Ý[Ûˆ™\šYžH›ÈÛ™Ù\ˆÝ™\Üš]\È[ˆÜ\˜]Ü‰ÜÈ^XÚ]™YØ]]™HXÚ\Ú[ÛˆÛˆHÜXÚYšXÈ\ÜÛØÚX][Ûˆ
+Ü[ÛœÈØ\ØØYH[˜Ú[™ÙY
+NÈ
+
+H›ÝSUH[™Ú[È›ÝÈ™\]Z\™HH™X\ÛÛ˜
+Z[ˆÚ\œË]Y]Y
+H[™KX›ØÚÈ[][™ÈHÝ[][\ËÛ[šÈÚ[H[žH[šÙY]Y\Ý[Ûˆ\È™\šYšYY
+]Y][™ÈØ\ØØYWÙ[]YÛ[š×ØÛÝ[Û[šÙYÜ]Y\Ý[Û—ØÛÝ[
+NÈ
+JHYYXHÝ[][\È\\È
+Ú\Ú[XYÙKÙXYÜ˜[KÛÝ\ŠH\™H›ÈÛ™Ù\ˆÜ™X]X›Hœ›ÛH\ÈÝ\™˜XÙH8 %˜XÚÙ[™ÔÕSUST×ÕTT×ÐÔ‘PUP“O^Ü\ÜØYÙKØ\Ù[]X›_X8¡¤ˆŒ‹œ›Û[™Ü™X]H›ÜÝÛˆ™\ÝšXÝYÈHØ[YH™YH
+^\Ý[™ÈYYXK]\H›ÝÜÈÝ[\Ü^JNÈ
+JH[š\]YH
+ŒÍLx¡¤JH[™ÚXÚÈ
+ŒÍLM8¡¤ŒŠHÛÛœÝ˜Z[š[Û][ÛœÈÛˆ[šÜËÙ\Ü^WÛÜ™\ˆ›ÝÈX\ÈXÝ[Û˜X›H\œ›ÜœÈ[œÝXYÙˆ˜]ÈLËˆ™K]™\šYšYYˆ\ÝËÙ^[WÚ[[YÙ[˜ÙKØMH\ÜÙYÚÚ\YÈœ›Û[™\T\\•ÛÜšÜÜXÙXMÈ\ÜÙYˆŸ‹M›Ú™XÝ[Û‹ÜÛ˜\ÚÝšY[]H
+ÙXÝ[Û‹Ý[][\Ë\Ü^HÜ™\‹ÛÝ\˜ÙHX™[È[ˆ[ØÚ×Ü]Y\Ý[Û—Ø˜[šØ
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆŒŽWÜ\WÜ›Ú™XÝ[Û—ÜÝ[][\×ÙšY[]KœÜ[
+NËÌN[[]]X›H8 %™]È›ÜØ\™ZYÜ˜][ÛŠNˆYÈ[ØÚ×Ü]Y\Ý[Û—Ø˜[šËœÙXÝ[Û—ÚY
+’ø¡¤™^[WÜ\ÙWÜÙXÝ[ÛœË[›Ü›X[^™YÛ˜\ÚÝ
+K[ØÚ×Ü]Y\Ý[Û—ÛÜ[ÛœËœÛÝ\˜ÙWÛX™[Ø\Ü^WÛÜ™\˜[™H™]È[ØÚ×Ü]Y\Ý[Û—ÜÝ[][XÛ˜\ÚÝX›H
+[ØÚ×Ü]Y\Ý[Û—ÚY’ÈØ\ØØYK\WÜÝ[][\×ÚY[™XYÙKÝ[][\×Ý\KØÛÛ[Ý^Û[™ÝXYÙKÙ\Ü^WÛÜ™\ŽÈ“ÈÙ\šXÙK\›ÛHÛ›H
+ÈÜ˜[
+KˆÜ™X]HÜˆ™\XÙH›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šØ
+
+ŠŒNÈ˜\ÙJŠˆ8 %H]\Ý]]Üš]]]™H”ÎÈN‰ÜÈ\\—ÜÛÝ\˜ÙWÙØÝ[Y[ÚYÙ[XÝÚ\ÚØ[ØÚ×Ü]Y\Ý[Û—ÜÛÝ\˜Ù\ØÜš]H
+ÈNÉÜÈÝ\L˜HÛÝ\˜ÙKYØÝ[Y[›Ý™[˜[˜ÙH™]˜[Y][ÛˆØ\œšYY›ÜØ\™[™NÉÜÈÛ[H‘UT“ˆÈ›ÜY[ØÚ×Ü]Y\Ý[Û—Ü™]šY]×ÛÙØÜš]H™\Ù\™YÛÈŒŽH\ÈHZ[š[X[›ÜØ\™œ›ÛH]™K›ÝH™]™\ÙˆHY\™ÙYZYÜ˜][Ûˆ8 %
+È‹MY][ÛœÊNˆÙ[XÝÈKœÙXÝ[Û—ÚYÈYÈHÛÛš[˜Ý]™K]\Ý[YÚXš[]HØ]HÝ[][\×Û›ÝÝ™\šYšYY
+H]Y\Ý[ÛˆÚ][žH\WÜ]Y\Ý[Û—ÜÝ[][H[šÈ›Ú™XÝÈÛ›HÚ[ˆ]™\žH[šÈS‘]È™Y™\™[˜ÙY\WÜÝ[][H\™H™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	ØÈ]Y\Ý[ÛœÈÚ]›È[šÜÈ[˜Y™™XÝY
+NÈØ\œšY\ÈÙXÝ[Û—ÚY[ÈHS”ÑT•ÕTUKÜš]\ÈÛÝ\˜ÙWÛX™[Ù\Ü^WÛÜ™\ˆÛÈXXÚ›Ú™XÝYÜ[Û‹[™Û˜\ÚÝÈH™\šYšYY[šÙYÝ[][H
+[]K][‹Z[œÙ\Ü™\™YžH[šÈ[ˆÝ[][\È\Ü^WÛÜ™\ŠKˆHÒKLMˆÛÛ[\Ú\È^[™Y
+ŠšY[XØ[H[ˆHÔS”È[™H]ÛˆÛÛ\]WØÛÛ[Ú\ÚZ\œ›ÜŠŠˆ
+\[™[Û›HY\ˆ^\Ý[™ÈšY[ËÜ™\ˆ™\Ù\™YˆÙXÝ[Û—ÚY[ˆ\‹]™\šYšYY[Ü[ÛˆÛÝ\˜ÙWÛX™[
+Ù\Ü^WÛÜ™\‹[ˆ\‹]™\šYšYY\Ý[][\È\JØÛÛ[
+Û[™ÝXYÙJÛ[šÈ\Ü^WÛÜ™\ŽÈ•SÔ”ËÑ”ÈÙ\\˜]ÜœÈX]ÚÚŠ
+KØÚŠÌ
+KØÚŠÌJJKˆ™]È[˜[Y][ÛŽˆ›—Ú[˜[Y]WÜ\WÜ›Ú™XÝ[Û˜ØZ[œÈ\WÜÝ[][XØ\WÜ]Y\Ý[Û—ÜÝ[][Xœ˜[˜Ú\È
+ÈH™]ÈšYÙÙ\œÈ
+ÜÝ[WÝ\×ÜÝ[WÙ[Ü\×Ú[œË×Ü\×Ý\×Ü\×Ù[
+HÛÈHK]™\šYšYYÙY]Y\ÜØYÙHÜˆ™\Ú[Y[šÈÝ[\ÈH›Ú™XÝY[ØÚÈ›ÝÈ
+\ÙHÛÝ\˜ÙHX›\È[™Y[ˆŒŒËY\ˆNËÌNÛÈY›È[˜[Y][Ûˆ™Y›Ü™JKˆ]ÛˆZ\œ›Üˆ
+\WÛ[ØÚ×Ü›Ú™XÝ[Û‹œX
+NˆÙ™]ÚÜ\\—Ü]Y\Ý[ÛœØ
+ÜÙXÝ[Û—ÚYÙ™]ÚÛÜ[Ûœ×Ù›Ü—Ü]Y\Ý[Û˜
+ÜÛÝ\˜ÙWÛX™[Ù\Ü^WÛÜ™\‹™]ÈÙ™]ÚÜ]Y\Ý[Û—ÜÝ[][XØÚXÚ×Ü]Y\Ý[Û—Ù[YÚXš[]X
+ÜÝ[][\ÈØ]KÛÛ\]WØÛÛ[Ú\Ú
+ÜÝ[][\ËÜÙXÝ[Û‹ÛÜ[Û‹[Y]Kˆœ›Û[™\S[ØÚÔ›Ú™XÝ[Û”[™[šœÞˆÝ[][\×Û›ÝÝ™\šYšYY™X\ÛÛˆX™[
+È[YÚXš[]KXÛÜH\]Kˆ
+ŠÚXÚÜÜÝš^
+ˆÎLË‹NLËXÚXÚÜÜÝ\ÛÝ\˜ÙKYØÝ[Y[\™YÜ™\ÜÚ[Û˜
+NŠŠˆHš\œÝÝ]ÙˆŒŽHØ\ÈZ[ÛˆHÝ[HNY\˜H”È›ÙH[™Ú[[H›ÜYZYÜ˜][ÛˆN‹ÌNÉÜÈÛÝ\˜ÙWÙØÝ[Y[ÚY›Ý™[˜[˜ÙH[\È
+\\ˆÑSPÕ[X\Ë\ÚÜÚ][ÛˆY\ˆ\\—ÜÛÝ\˜ÙWÝ\X[ØÚ×Ü]Y\Ý[Û—ÜÛÝ\˜Ù\ØÜš]K›—Ú[˜[Y]XØ]Ú
+H\ÈNÉÜÈÝ\L˜H™]˜[Y][Ûˆ8 %œ™XZÚ[™ÈHÔS8¡¥]Ûˆ\ÚØÚÜÝ\
+]Ûˆ[™XYH\ÚYÛÝ\˜ÙWÙØÝ[Y[ÚY
+Kˆ™XZ[ŒŽHÛˆH
+ŠŒNÈ]]Üš]]]™H˜\ÙJŠˆÚ][š]™H[\È™\ÝÜ™YÈHX\›Y\ˆœ™KY^\Ý[™È]™\™Ù[˜ÙKÝ]ÙˆØÛÜHˆ›ÝHØ\ÈÜ›Û™È8 %]]™\™Ù[˜ÙHÐTÈ\È™YÜ™\ÜÚ[Ûˆ[™\È›ÝÈš^YˆÛÛ˜XÝ\ÝÈ[ˆ\ÝÜ\WÜ›Ú™XÝ[Û—ÜÝ[][\×ÙšY[]WÛZYÜ˜][Û‹œX\ÜÙ\[š]™HN‹ÌNÈ[\Ë\ÚÜ™\š[™Ë[™HNËX˜\ÙHXÚ\Ú[Ûˆ
+›È[ØÚ×Ü]Y\Ý[Û—Ü™]šY]×ÛÙØ™Z[›ÙXÝ[Û‹Û[H‘UT“ŠKˆ™\šYšYY[ˆ\ÈÚXÚÛÝ]ˆ]\Ý\ÝËØYZ[‹È\ÝËÙ^[WÚ[[YÙ[˜ÙKØ8¡¤ˆŒL\ÜÙYÚÚ\YÈœ›Û[™\S[ØÚÔ›Ú™XÝ[Û”[™[8¡¤ˆˆ\ÜÙYˆ‘T’Q–H˜ˆ\HŒŽH
+™XÛÛ˜Ú[H]È]™HÛÝ[X™\ˆYØZ[œÝØÚ[XWÛZYÜ˜][ÛœØ
+K[ˆ›Ú™XÝH\\ˆÚ]H™\šYšYYÚ\™Y\ÜØYÙH[™ÛÛ™š\›HHÛ˜\ÚÝ›ÝÜÈ
+È\Ú
+È][™\šYžZ[™ÈH\ÜØYÙHÝ[\ÈH[ØÚÈ›ÝÎÈ[[YH™[™\ˆÙˆH›Ú™XÝYÝ[][\È\È‹MKÍˆ
+[ØÚ×Ù[™Ú[™HÛ˜\ÚÝÜÙ\™H›ÝY]^[™Y
+KˆŸ‹MKÍˆX\›™\ˆTH˜XÝXÙH
+[\\ˆÈÙXÝ[ÛˆÈÜXÈÈ™]š\Ú[ÛŠHSˆ“ÑÔ‘TÔÈ8 %TH
+ÈÛÜ™HX\›™\ˆ›ÝÈÔTUÔˆSQUQ
+Œ‹LËLLËTÐÈÔÑJNÈÛXÙ\ÈKÐ‹ÐËÑÑŒ‹ÑKÑ‹ÑËÒÓÑKSS‘QÈ™YHRK\]X[]HY™XÝÈÔSˆ
+ÛXÙHJNÈ™]š\Ú[Ûˆ[ÙHY™\œ™YÈ‹N[X™YYÝYHÔÈš[Z[ˆ\ˆ›Ë[™]Ë\Ý\™˜XÙH[NÈ\[™ÈÛˆ‹LH›ÝYÚ‹Mˆ
+Š”ÛXÙY›Üˆ™]šY]ØXš[]KŠŠˆ
+Š”ÛXÙHH8 %›Ú™XÝYTTH™[™\ˆšY[]H[ˆH[ØÚÈ][\]
+\È‹›ÈØÚ[XKÜ›Ý]HÚ[™ÙJNŠŠˆ‹MXYHH›Ú™XÝ[Ûˆ
+œÝÜ™JˆÙXÝ[Û—ÚYÈ\‹[Ü[ÛˆÛÝ\˜ÙWÛX™[
+Ø\Ü^WÛÜ™\˜ÈH[ØÚ×Ü]Y\Ý[Û—ÜÝ[][X\ÜØYÙHÛ˜\ÚÝ]H[ØÚÈ][\[™Ú[™Hœ›Þ™H[™Ù\™Y›Û™HÙˆ[H
+™[™\ˆØ\È^XÚ]HY™\œ™YÈ‹MKÍŠKˆ›ÝÈ[ØÚ×Ù[™Ú[™K—Ü]Y\Ý[Û—ÜÛ˜\ÚÝœ™Y^™\ÈÙXÝ[Û—ÚY\‹[Ü[ÛˆÛÝ\˜ÙWÛX™[Ø\Ü^WÛÜ™\˜[™HÝ[][V×X\œ˜^H
+ØYYšXH™]ÈÛØYÜÝ[][WÙ›Ü—Ü]Y\Ý[ÛœØœ›ÛH[ØÚ×Ü]Y\Ý[Û—ÜÝ[][XÜ™\™YžH\Ü^WÛÜ™\˜
+NÈÙ[™\˜]YÛ[ØÚ×Ø][\—ÛØYÜ]Y\Ý[ÛœØ]XÚ\ÈHØ[YHÛÈÙ[™\˜]Y™X[\ÝXÈ[ØÚÜÈÝ™\ˆ›Ú™XÝYT\È[ÛÈœ™Y^™HZ\ˆ\ÜØYÙKˆ[™XY]ÈÝ\™˜XÙH[Hœ›ÛHHœ›Þ™[ˆÛ˜\ÚÝ
+™]™\ˆH]™H˜[šÊNˆÙ]Ø][\
+
+ØÝ[][XÙXÝ[Û—ÚY
+KØZ[Ü™\Ý[\‹\]Y\Ý[Ûˆ
+
+ØÝ[][XÙXÝ[Û—ÚY
+KÙ]Ü™]šY]Ø
+šXH[Û˜\ÚÝ
+KÜÙ\šX[\ÙWÜ]Y\Ý[Û—Ù›Ü—Ø][\ˆœ›Û[™ˆ™]ÈÚ\™Y]Y\Ý[Û”Ý[][KšœÞ™[™\œÈ\ÜØYÙKØØ\Ù[]ÝX›HX›Ý™HHÝ[H›Üˆ]™\žH]Y\Ý[Ûˆ\HšXH]Y\Ý[Û”™[™\™\˜ÈÜ[Û“\Ý™Y™\œÈH›Ú™XÝYÛÝ\˜ÙWÛX™[
+K™ËˆŠJHŠHÝ™\ˆHx $Ù]\‹ˆ\ÝÎˆ˜XÚÙ[™\ÝËÜÝYWÛÜËÝ\ÝÛ[ØÚ×Ü\WÜ™[™\—ÙšY[]KœX
+ÊNÈœ›Û[™]Y\Ý[Û”™[™\™\‹\ÝšœÞ
+
+Í
+Kˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎLJH8 %ˆš^\ÎŠŠˆ
+
+H
+Šœš[YÜ[ÛˆÜ™\ŠŠˆ8 %›ÝØY\œÈÜ™\ˆ[ØÚ×Ü]Y\Ý[Û—ÛÜ[ÛœØžHÜ[Û—Ú[™^]ZYÜ˜][ÛˆŒŽH\š]™\ÈÜ[Û—Ú[™^œ›ÛHH[œÝÙ\‹ZÙ^HX™[Ü™\ˆ[™ÝÜ™\ÈHš[YÜ™\ˆÙ\\˜][H[ˆ\Ü^WÛÜ™\˜ÈHÛ˜\ÚÝ›ÝÈœ™Y^™\ÈÜ[ÛœÈšXH™]ÈÛÜ™\™YÛÜ[ÛœÊ
+X
+ÛÜ\Ü^WÛÜ™\˜\ØÈ•SÈTÕ[ˆÜ[Û—Ú[™^[ˆY
+HÛÈHX\›™\ˆÙY\ÈHTIÜÈš[YÜ™\‹[™Ü[Û“\ÝY™[œÚ]™[H™K\ÛÜÈžH\Ü^WÛÜ™\˜
+ÝX›JHÚ]X]Ú[™È[X™\‹ZÙ^H˜]‹ˆ
+
+H
+Š™˜Z[XÛÜÙY\ÜØYÙH™XY
+Šˆ8 %Hš^Y][\]H]\ÙYÜØY™JY˜][S›Û™JX[™ÛÝ[œ™Y^™HÝ[][N–×X›ÜˆH›Ú™XÝYÛÛ\™Z[œÚ[ÛˆTHÛˆH˜[œÚY[[ØÚ×Ü]Y\Ý[Û—ÜÝ[][X™XY˜Z[\™NÈÛØYÜÝ[][WÙ›Ü—Ü]Y\Ý[ÛœÊ™\]Z\™Yx )ŠX›ÝÈ\Ý[™ÝZ\Ú\È™XYY˜Z[\™Hœ›ÛH[\K\ÝXØÙ\ÜÈ[™˜Z\Ù\ÈÛÚÝ\\œ›Ü˜
+™Y›Ü™H[žH[œÙ\
+HÚ[ˆHTKY\š]™Y]Y\Ý[Ûˆ\ÈÙ[XÝY[™Ù[™\˜]YÛ[ØÚ×Ø][\—ÛØYÜ]Y\Ý[ÛœØ˜Z[ÈÛÜÙYÛˆHØ[YH™XY
+Ø\ÈØY™WÜ™\]Z\™Y
+‹‹ŠHÜˆ×X
+Kˆ™]È™YÜ™\ÜÚ[ÛœÎˆÝ][Ù‹[Ü™\ˆÜ[Û—Ú[™^Ø\Ü^WÛÜ™\˜
+˜XÚÙ[™
+Èœ›Û[™
+H[™Ý[][K\™XY\˜Z\Ù\È8¡¤ˆ][\™Y\Ù\ÈÈÝ\
+›Ý[™È\œÚ\ÝY
+H
+È]]Ü™Y[Û›HÛ\˜[˜ÙKˆ™\šYšYYˆ]\Ý\ÝËÜÝYWÛÜËØ8¡¤ˆLLH\ÜÙYŒÈÚÚ\YÈ]Y\Ý[Û”™[™\™\˜8¡¤ˆˆ\ÜÙYÈ\Û[ÛX[‹ˆ
+Š”ÛXÙHˆ8 %X\›™\ˆ˜XÝXÙH][\\ÜÙ[X›H
+˜XÚÙ[™ÓÑKQ’VQSQUSÓˆS‘S‘ÊNŠŠˆ™]È\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜ\WÜ˜XÝXÙKœXÙ[XÝÈ‘T’Q’QQXÝ]™[K\›Ú™XÝYTH›ÝÜÈœ›ÛH[ØÚ×Ü]Y\Ý[Û—Ø˜[šØžH\\ˆÈÙXÝ[ÛˆÈÜXÈ
+\WÜ]Y\Ý[Û—ÚY“Õ•S
+È™]šY]Ù\—ÜÝ]\È[ˆ
+™\šYšYYX›\ÚY]™JX
+È\WÛ[ØÚ×Ü]Y\Ý[Û—Ü›Ú™XÝ[ÛœËœÞ[˜×ÜÝ]\ÏIØXÝ]™IØ]\›Z[š\ÝXÈ™]Ù\Ý^YX\‹Yš\œÝÜ™\‹Ø\Yx $ÌŒ
+H[™\ÜÙ[X›\È[H[È[ˆYZØÈ][\›ÝYÚH
+Š™Ù[™\˜]Y›Y\š[]
+Šˆ
+Ý\Ø][\Ùœ›ÛWØ›Y\š[ZYÜ˜][ÛœÈMÍÌMÍKÌMÎÌMÎJH8 %™]\Ú[™ÈH^\Ý[™ÈÜÝYKÛ[ØÚÜËØ][\ËÞÚYX[œÝÙ\‹ÜÝX›Z]Ü™\Ý[Ü™]šY]È›ÝÈ[™ÛXÙKPH™[™\ˆšY[]KÚ]
+Š››È][\\ØÚ[XHÚ[™ÙH[™›È™]È›Ý]JŠˆ
+[ØÚ×Ø][\Ë[\]WÚYØ\È[™XYHXYH[X›H
+ÈÙ[™\˜]YØ›Y\š[ÚYYYžHZYÜ˜][ÛˆMÍNÈH][\Ú[™[™\œÈ[žH][\ÛÈHX\›Y\ˆ[\]WÚY“Õ•SÈ™]Èš[Z[ˆ›Ý]Hˆ[ˆØ\È[›™XÙ\ÜØ\žJKˆ˜XÝXÙH\ÈHX\›š[™È[ÙNˆ›È™YØ]]™HX\šÚ[™ËÚ[™ÛH”˜XÝXÙHˆÙXÝ[Û‹ˆ˜Z[XÛÜÙYœ™Y^™H
+Z\ÜÚ[™ËØ˜YPÔHÛ˜\ÚÝÈÛÝ[Z\ÛX]Ú8¡¤ˆ[[YQ\œ›Üˆ™Y›Ü™H[žHÜš]JHZ\œ›ÜœÈHÙ[™\˜]Ü‹ˆ™]È[™Ú[ÔÕÜÝYKÛ[ØÚÜËÜ˜XÝXÙKÜÝ\
+Û[ÙK\™Ù]ÚY^[WÚYË[Z]ßXÈH[\WÜÛÛH™\›ÈÜš]\ÎÈŒˆ˜Y[ÙJHÛˆH^\Ý[™È[ØÚ×Ù[™Ú[™X›Ý]\‹ˆÛ›HØÚ[XHÚ[™ÙNˆZYÜ˜][ÛˆŒÌWÛ[ØÚ×Ü˜XÝXÙWØ›Y\š[ÜÛÝ\˜ÙKœÜ[^[™ÈH[ØÚ×ÙÙ[™\˜]YØ›Y\š[ËœÛÝ\˜ÙXÒPÒÈ
+MÍ[[]]X›JHÈYZ]\WÜ˜XÝXÙWÜ\\‹ÜÙXÝ[Û‹ÝÜXØ
+Y]]™NÈ›È“ËÝX›HÚ[™ÙJKˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎLÊH8 %ˆ
+ÈÈHš^YŠŠˆ
+
+H
+Š™^[HØÛÜ[™ÊŠˆ8 %ÜXÈ˜XÝXÙH›ÝÈ‘TURT‘TÈ^[WÚY
+ÜXÈYÈ\™HÚ\™YXÜ›ÜÜÈ^[\ÊK[™[žHÙ[XÝYÛÛÜ[›š[™ÈŒH^[H\È™Z™XÝY
+ŒŠHÛÈ[ˆ][\\È™]™\ˆ\ÜÙ[X›YXÜ›ÜÜÈ^[\È
+Ø\Îˆ™XÛÜ™YHš\œÝ›ÝÉÜÈ^[HÚ[HZ^[™ÊKˆ
+
+H
+Šœš[YÜ™\ŠŠˆ8 %\\‹ÜÙXÝ[Ûˆ˜XÝXÙHÛÜYžH\WÞYX\˜[ˆ˜[šÈY
+\˜š]˜\žH›ÜˆÛ™H\\ŠNÈ›ÝÈ›Ú[œÈ\WÜ]Y\Ý[ÛœØ›Üˆ\Ü^WÛÜ™\˜8¡¤˜]Y\Ý[Û—Û[X™\˜8¡¤˜ÛÝ\˜ÙWÜ]Y\Ý[Û—Ü™Y˜[™ÛÜÈžHÛÝ\˜ÙHš[YÜ™\ˆ
+ÜXÈÙY\È™]Ù\Ý^YX\‹Yš\œÝ
+Kˆ
+JH
+Š˜›Ý[™Y›Ú™XÝ[Ûˆ™XY
+Šˆ8 %ØXÝ]™WÜ›Ú™XÝ[Û—ÚYØ›ÝÈš[\œÈš[—Ê[ØÚ×Ü]Y\Ý[Û—ÚYØ[™Y]WÚYÊX[œÝXYÙˆØØ[›š[™È[XÝ]™H›Ú™XÝ[ÛœËˆ
+JH
+Šš[œ]˜[Y][ÛŠŠˆ8 %\™Ù]ÚYØ^[WÚY˜[Y]Y\ÈURQÈ8¡¤ˆŒˆ
+˜XÝXÙR[œ]\œ›Ü˜
+H™Y›Ü™H[žHˆØ[›ÝHLˆ
+JH
+Š›]™HÚXÚÊŠˆ8 %\ÜÝ\X˜\ÙKØÚXÚÜËÛ[ØÚ×ÙÙ[™\˜]YØ›Y\š[×ÜØÚ[XKœÜ[
+È]È\Ý›ÝÈ\ÜÙ\H™YH\WÜ˜XÝXÙWÊ˜ÛÝ\˜Ù\È[ˆHÒPÒËˆ™]È™YÜ™\ÜÚ[ÛœÎˆš[Y[Ü™\‹YY™™\œËYœ›ÛKZYÜXË\™\]Z\™\ËY^[HÈÜXË[›ËY^[K[Z^[˜[YUURQ8¡¤Œ‹ˆ\ÝÎˆ\ÝËÜÝYWÛÜËÝ\ÝÜ\WÜ˜XÝXÙKœX
+LJH
+È\ÝÛ[ØÚ×Ü˜XÝXÙWØ›Y\š[ÜÛÝ\˜ÙWÛZYÜ˜][Û‹œX
+
+Kˆ™\šYšYYˆ]\Ý\ÝËÜÝYWÛÜËØ8¡¤ˆLLMˆ\ÜÙYŒÈÚÚ\YÈZYÜ˜][ÛœËXÛÛ˜XÝ8¡¤ˆ\ÜËˆ‘T’Q–H˜ˆ\HŒÌH
+™XÛÛ˜Ú[HÛÝœÈ]™HØÚ[XWÛZYÜ˜][ÛœØ
+K[ˆÝ\H˜XÝXÙH][\Ý™\ˆH›Ú™XÝY\\ˆ[™ÛÛ™š\›HH›Y\š[Ø][\Ü™\ÜÛœÙH›ÝÜÈ[™[™H\ÜØYÙH™[™\œËˆ
+Š”ÛXÙHÈ8 %X\›™\ˆ][˜Ú\ˆ
+œ›Û[™ÓÑKQ’VQSQUSÓˆS‘S‘ÊNŠŠˆ™X]\™\ËÙ^[\ËÔ\Q^Ü™\”ÙXÝ[Û‹šœÞ
+X\›™\ˆTHœ›ÝÜÙ\ˆÛˆH^[KY]Z[YÙJHØZ[œÈH\‹\]Y\Ý[Ûˆ
+Šˆ”˜XÝXÙH\È\\ˆŠŠˆÕH8 %[ÙOIÜ\\‰Ø\™Ù]ÚY\Kœ\\—ÚY^[WÚY™XYœ›ÛHH\Ý™\ÜÛœÙH[™[ÜH
+]K™^[WÚY
+H8 %]ÔÕÈØ\KÜÝYKÛ[ØÚÜËÜ˜XÝXÙKÜÝ\[™˜]šYØ]XÈÈH^\Ý[™ÈØ\ÜÝYKÛ[ØÚÜËØ][\ËÞØ][\ÚYXÚ[ÛˆÛÝ]ÛÛYN‰Ü™XYIßXˆ›È™]È›Ý]KÜÚYX˜\ˆÝ\™˜XÙH
+›Ë[™]Ë\Ý\™˜XÙH[H™\Ù\™Y
+NÈ™]\Ù\ÈH[ØÚÈ][\Ú[
+ÈÛXÙKPH™[™\ˆšY[]Kˆ›Ý]™\žH\ÝY\\ˆ\È›Ú™XÝYÈH[ØÚÈ˜[šËÛÈH
+ŠH[\WÜÛÛ
+Šˆ\È[™YÜ˜XÙY[HÚ][ˆ[›[™H[X™\ˆ›ÝXÙH
+\È\\ˆ\Û‰Ý]˜Z[X›H›Üˆ˜XÝXÙHY]8 %]È]Y\Ý[ÛœÈ™YYÈ™H™\šYšYY[™›Ú™XÝYš\œÝŠH[™›È˜]šYØ][ÛŽÈ]ÛˆY[ˆÚ[ˆH›ÝÈ\È›È\\—ÚYÈÚ[™ÛH[‹Y›YÚÝX\™šXH˜XÝXÚ[™Ô\\’Yˆ\ÝÎˆ\Q^Ü™\”ÙXÝ[Û‹œ˜XÝXÙK\ÝšœÞ
+È8 %Ý\8¡¤›˜]šYØ]HÚ]^XÝ›ÙKx¡¤™Ü˜XÙY[›ÝXÙH
+È›Ë[˜]‹›ËX]Û‹]Ú]Ý]\\\—ÚY
+Kˆ™\šYšYYˆ]Y\Ý[Û”™[™\™\˜Ø\Q^Ü™\”ÙXÝ[Û˜œ›Û[™8¡¤ˆ\ÜÎÈ\Û[ÛX[‹ˆÙXÝ[Û‹H[™ÜXË[[ÙH][˜Ú\œÈ
+H[™Ú[[™XYHÝ\ÜÈ[JH[™H\\‹ÝÜXÈXÚÙ\ˆ\™HH[ˆ›ÛÝË[ÛŽÈ
+Šœ™]š\Ú[Ûˆ[ÙJŠˆ\[™ÈÛˆÔ”ËÛX\Ý\žHYK\ÚYÛ˜[È
+Ý™\›\È‹N
+H[™\ÈY™\œ™Y[[ÜÙH[™ˆ
+Š”ÛXÙH8 %X\›™\ˆ˜XÝXÙHV\™[š[™È
+œ›Û[™ÓÑKQ’VQSQUSÓˆS‘S‘ÎÈˆÎM
+NŠŠˆÜÝHÎLÎHHTx¡¤œ˜XÝXÙx¡¤œ™]šY]È›ÝÈÛÜšÜÈ]\È›Ý\Ü\˜[\™XYKˆš^\Ë[œ›Û[™›ÈØÚ[XKÜ›Ý]KÐTHÚ[™ÙNˆ
+JH[ØÚÐ][\Ú[[Ý™\ÈHMË\]Y\Ý[Ûˆ[]Hœ›ÛHHÜÜš^›Û[Ýš\ÈHšYÚ\ÚYH
+ŠœÝXÚÞH]Y\Ý[Ûˆ˜]šYØ]ÜŠŠˆ
+]K]\ÝYX][\\[]X™\Ù\™YÈ][\[˜]‹J˜YÈ™\Ù\™Y
+HÚ]H[Øš[H›ÝÛK\ÚY]ÙÙÛH
+][\\[]K]ÙÙÛX
+NÈ
+ŠHH][\›ÙH™[™\œÈHÝ[HšXHÚ\™Y]Y\Ý[Û”Ý[][X
+È]Y\Ý[Û”Ý[X
+ÝXÝ\™YÛX]Û][K[[™JH[œÝXYÙˆH›]žÜ]Y\Ý[Û—Ý^OÜ˜[™Ü[ÛˆX™[È\ÙHÛÝ\˜ÙWÛX™[Ú[ˆ›Ú™XÝYÈ
+ÊH[ØÚÔ™]šY]ØX\ÈÛ\ÜÚYšY\ˆÛÙ\ÈÈX\›™\ˆX™[ÈšXH™]È\œ›Ü•\SX™[ËšœØ
+Ú[WÛZ\ÝZÙx¡¤Ø\™[\ÜÈZ\ÝZÙX]Ëˆ8 %˜]ÈÛÙ\È™]™\ˆÚÝÛŠNÈ
+
+HPÔTÚ[™ÛX™]šY]È™\ÛÛ™\ÈÛÜœ™XÝÛÜ[Û—ÚY8¡¤œš[YX™[
+Ý^
+™]È™]šY]ËXÛÜœ™XÝX[œÝÙ\˜\ÝY
+H8 %›È˜]ÈURQÈ
+JH[ØÚÔ™]šY]Øš[\™Y[]\ËÚXY\ˆÚÝÈH
+Š›ÜšYÚ[˜[
+Šˆ][\[Ü™\ˆ]Y\Ý[Ûˆ[X™\‹›ÝH™KX˜\ÙYš[\™Y[™^È
+ŠHÛÝ\˜ÙKX]Ø\™H˜XÚÈ[šÜÈ
+][\Ü™\Ý[Ü™]šY]ËX˜XÚË\ÛÝ\˜ÙX
+HšXH™]ÈÙ\ÜÚ[Û”ÝÜ˜YÙH][\™]\›ÛÛ^šœØÙ]Ûˆ˜XÝXÙH][˜Ú[ˆ\Q^Ü™\”ÙXÝ[Û˜
+˜XÚÈÈ^[OˆT\Ø
+NÈ
+ÊH^[R[[YÙ[˜ÙUX˜™\XÙ\ÈHÜ\˜]Ü‹Y˜XÚ[™È”TH]˜Z[Xš[]H™[™ˆÚ\Ú][ˆ\Ü\˜[
+Šœ˜XÝXÙK\™XYHXÝ[ÛˆÝ[[X\žJŠˆ
+\K\˜XÝXÙK\Ý[[X\žX8 %˜XÝXÙK\™XYH]Y\Ý[ÛœÈÈ™\šYšYY\\œÈÈÛÝ™\™YÝXš™XÝÈ
+È”Ý\TH˜XÝXÙHˆÕHÈÜ\KY^Ü™\˜
+NÈ
+
+H^[Q]Z[›ËXÞXÛH[ÙHÛÛ\Ù\ÈH™YH™\X]Y›ËXÞXÛH[™[È[ÈÛ™H›ËXÞXÛKX˜[›™\˜[™Y\ÈH™XÜZ]Y[[Û›HX›Ý]Ñ[YÚXš[]KÑØÜÉ‘™Y\ÈÙXÝ[ÛœÈ
+[™›ÜÈ[Hœ›ÛHH[˜ÚÜˆ˜]ŠKˆ\ÝÎˆ\œ›Ü•\SX™[Ë\ÝšœØPÔTÚ[™ÛKœ™]šY]Ë\ÝšœÞ
+›ËUURQ
+K[ØÚÔ™]šY]Ë\ÝšœÞ
+X™[È
+ÈÜšYÚ[˜[[X™\œÈ
+È˜XÚÈ[šÊK\]Y^[Q]Z[\ÝšœÞ
+ÈL™H^[KY]Z[[›ËXÞXÛKœÜXËØˆ™\šYšYYˆœ›Û[™ÝZ]\ÈLL
+È\ÜÎÈÒO]YH™XXÝ\ØÜš\ÈZ[ÛX[ˆ
+[žH[™HŒNLÐˆÞ‹[™\ˆŒŒÐŠNÈL™HØØÛX[‹ˆ‘T’Q–H˜ˆ›Û™H
+›ÈØÚ[XJKˆY™\œ™Yˆ[˜XÝXÙx¡¤œÝX›Z]8¡¤œ™]šY]ÈL™H™YYÈHÙYYY›Ú™XÝY™\šYšYYTTHÛÛš^\™H
+Ý\œ™[ÛÜšÜÜXÙHÙYY\È›Û™JKˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎM
+H8 %Èš^\ÎŠŠˆ
+XJH
+Šœ™]šY]È[X™\š[™ÈÛÜœ™XÝ™\ÜÊŠˆ8 %[ØÚ×Ù[™Ú[™K™Ù]Ü™]šY]ØÙ[XÝY[ØÚ×Ø][\Ü™\ÜÛœÙ\ØÚ]›ÈÜ™\Š‹‹ŠXÛÈHœ›Û[™	ÜÈ[™^
+ÌX›ÜšYÚ[˜[[X™\ˆˆØ\È™X[HÜÝÔ‘TÕ›ÝÈÜÚ][ÛŽÈÙ]Ü™]šY]Ø›ÝÈÜ™\œÈ]Y\Ý[ÛœÈžHHœ›Þ™[ˆ[\]WÜÛ˜\ÚÝœ]Y\Ý[Û—ÚYØ
+HØ[YHÛÝ\˜ÙHÙ]Ø][\]\˜]\ÊH[™[Z]È[ˆ[[]]X›HKX˜\ÙY][\ÛÜ™\˜\ˆ›ÝËÚXÚ[ØÚÔ™]šY]Ø[X™\œÈžH
+Û[HH][\ÛÜ™\ˆÏÈ[™^
+ÌX
+Kˆ™YÜ™\ÜÚ[Ûˆ\ÝÙÙ]Ü™]šY]×ÛÜ™\œ×ØžWÙœ›Þ™[—Ø][\ÛÜ™\˜™]™\œÙ\ÈH™\ÜÛœÙH›ÝÜÈ[™\ÜÙ\ÈH™]šY]ÈÝ[™]\›œÈœ›Þ™[ˆÜ™\ˆ
+ÈÛÜœ™XÝ][\ÛÜ™\˜Èœ›Û[™[ØÚÔ™]šY]Ë\ÝšœÞØZ[œÈHÚY™›Y\^[ØYØ\ÙKˆ
+XŠH
+ŠšÛ™\ÝTHY]šXÊŠˆ8 %^[R[[YÙ[˜ÙUX˜X™[YY™šXÝ[WÚX]X\™\šYšYYÜ]Y\Ý[Û—ØÛÝ[\È”˜XÝXÙK\™XYH]Y\Ý[ÛœÈ‹]]ÛÝ[\È™\šYšYYXÛÜœ\Ë›ÝHÝšXÝ\ˆÝ\Ü\WÜ˜XÝXÙX][˜Ú™YXØ]H
+XÝ]™H›Ú™XÝ[Ûˆ
+È›Û‹Y^\™Y
+ÈPÔHÛ˜\ÚÝÚ]Ü[ÛœËØÛÜœ™XÝÛÜ[Û—ÚY
+NÈ™[X™[YÈ•™\šYšYYYÙÙY]Y\Ý[ÛœÈˆ[™\ˆH•™\šYšYYTHÛÝ™\˜YÙHˆXY\ˆÚ]ÕHœ›ÝÜÙH	ˆ˜XÝXÙHT\Èˆ
+\ÝY™\šYšYY\]Y\Ý[Û‹XÛÝ[
+KÛÈHRH›ÈÛ™Ù\ˆ[\Y\ÈH\\ˆ\È˜XÝXÙXX›HÚ[ˆH][˜Ú\ˆÛÝ[Kˆ
+ŠH
+Šœ™\Ý[]XˆÛÙHXZÊŠˆ8 %[ØÚÔ™\Ý[Z[H\œ›ÜˆÛ]œ›ÛH˜]È\œ›Ü—Ý\XÈ›ÝÈX\Y›ÝYÚ\œ›Ü•\SX™[
+
+X
+˜]ÈÛÙHÙ\Û›H\È[ˆ[\›˜[ÛÙXÙ^JKÚ]™YÜ™\ÜÚ[Ûˆ[ØÚÔ™\Ý[™\œ›Ü“X™[Ë\ÝšœÞ\ÜÙ\[™È›È˜]ÈÛÙH™[™\œËˆ™\šYšYYˆ˜XÚÙ[™]\Ý\ÝËÜÝYWÛÜËÝ\ÝÛ[ØÚ×Ù[™Ú[™KœH\ÝÜ\WÜ˜XÝXÙKœX8¡¤ˆÌH\ÜÙYÈœ›Û[™LLˆ\ÜÙYÈZ[ÛX[ŽÈL™HØØÛX[‹ˆ
+Š”ÛXÙHŒˆ8 %˜XÝXÙHV
+È[Z[™È
+ˆÎMˆ\ÙH
+NŠŠˆÝXÚÞH›ÛÝ\ˆXÝ[Ûˆ˜\œÈ
+ÈÙ^X›Ø\™˜]ˆÛˆ[ØÚÐ][\Ú[Ø[ØÚÔ™]šY]ØÈÚ\™YÜ[Û“X™[ËšœØ
+™\ÛÛ™SÜ[Û“X™[8 %™]™\ˆ™[™\œÈ˜]ÈÌKÌ‹ÌØ
+NÈ^[KXØ[˜\È^[Ý]È™X[\‹\]Y\Ý[ÛˆÙ[˜XÚÚ[™È›\ÚY[È[YWÜÜ[ÜÙXØÈØZ[Ü™\Ý[›ÝÈ™]\›œÈ[YWÝ\ÙYÜÙXØØ[YWÜ™[XZ[š[™×ÜÙXØØ]™×Ý[YWÜ\—ÜWÜÙXØÈ[ØÚÔ™\Ý[Ý[YÙYÛY[YXœÈ
+È™X[[YHY]šXÜÈ
+È[Z[™È[˜]˜Z[X›HˆÝ]Kˆ\ÝÎˆ˜XÚÙ[™\ÝÜ™\Ý[Ü^[ØYÚ[˜ÛY\×Ý[YWÝ\ÙYÜÙXØÈœ›Û[™Ü[Û“X™[Ø[ØÚÐ][\Ú[šÙ^X›Ø\™[ØÚÔ™]šY]Ø
+
+Ù›ÛÝ\‹ÚØ™
+K[ØÚÔ™\Ý[™\œ›Ü“X™[Ø
+
+Ý[YJKˆ™\šYšYYˆ˜XÚÙ[™ŒKœ›Û[™L‹Z[ÛX[‹L™HØØÛX[ŽÈ^\Ý[™È][\Z\K\]ØÝX›Z]\™]šY]ØL™HÙ[XÝÜœÈ™\Ù\™YˆY™\œ™YÈ]\ˆˆÎMˆ\Ù\ÎˆHTKQ^Ü™\ˆ™Y\ÚYÛˆ
+ÈÜ\K\Ý[[X\žXTH
+ÈX\›™\ˆš[\œÎÈHÜ[]™[^[H[[YÙ[˜ÙH˜]ˆ
+ÝÛ™\‹X\›Ý™Y›Ë[™]Ë\Ý\™˜XÙK[ØÚÈÝ™\œšYK™XÛÜ™YÚ[ˆ][™ÊNÈˆXØÛÝ[Xš[]H\™\‹ˆÙYHØÜËÜÝ]\ËÔTKU[šYšYYT˜XÝXÙKR[\[Y[][Û‹PÚXÚÛ\ÝLŒ‹LËLË›YÛXÙHŒ‹ˆ
+Š”ÛXÙHH8 %H\ÙHH
+Èˆ
+ˆÎM
+NŠŠˆX\›™\ˆTH[[YÙ[˜ÙHTH
+Ü\\Ø\ÙKÜÝXš™XÝÝÜXÈ[œšXÚY[
+È™]ÈÑU8 )‹Ü\K\Ý[[X\žXÚ]™\šYšYY[Û›H\ÝšX][ÛœÈ[™][˜ÚXXØÝ\˜]H\‹\\\ˆ˜XÝXÙWÜ™XYWØÛÝ[Ø˜XÝXÙWÙ[˜X›YšXH\WÜ˜XÝXÙKœ˜XÝXÙWÜ™XYWØÛÝ[×ØžWÜ\\˜
+H[™HXØÛÝ[Xš[]H\™\ˆÕH
+ÈXØÛÝ[Xš[]UÚ^˜\™
+ØØ[ÝÜ˜YÙK\\œÚ\ÝY™YœËÛ™\Ý›X]Ú[™È\Û‰Ý]™HY]ˆÛÜJKˆ
+Š”ÛXÙHˆ8 %H\ÙHˆ
+ÈÈ
+ˆÎMˆ][\ÈL8 $ÌLÊNŠŠˆ™XZ[\Q^Ü™\”ÙXÝ[Û˜[È[[YÙ[˜ÙK[Ý™\šY]È
+\TÝ[[X\žPÚ\Ø
+H
+È˜XÝXÙKXžK\\\ˆ
+\T\\”˜XÝXÙPØ\™Ø
+H
+ÈÛÛ\ÚX›Hœ›ÝÜÙNÈX\›™\ˆš[\œÈ›ÝÈYX\‹Ô\ÙKÔÝXš™XÝÕÜXËÑY™šXÝ[H
+ÛÝ\˜ÙKÕ\Ý™[[Ý™Y[\›˜[[Û›JNÈ]Y\Ý[ÛˆÚ\È8¡¤ˆYX\‹Ô\ÙKÔÝXš™XÝÑY™šXÝ[KÔHËˆ
+Š•Ü[]™[^[H[[YÙ[˜ÙHÚYX˜\ˆ\Ý[˜][Ûˆ
+ÈØ\Ù^[KZ[[YÙ[˜ÙVËÙ^[\ËÎœÛY×X›Ý]\ÈÚ]^[Q]Z[™Y\™XÝœ›ÛHHÛØ\Ù[YÚXš[]KÙ^[\ËÎœÛYØ]8 %HÝÛ™\‹X\›Ý™YÝ™\œšYHÙˆH›Ë[™]Ë\Ý\™˜XÙHØÚÈ
+ØÚÙYŒ‹L‹LŒJH›Üˆ][HLÎÈ[YÚXš[]HÝ^\ÈH™XÜZ]Y[[›™[ŠŠˆ™\šYšYYˆœ›Û[™LMˆ\ÜÈ
+^[\ËÑ^[Q]Z[Û˜]ÛÛ˜XÝØ\›Ý]\ÊNÈÒO]YH™XXÝ\ØÜš\ÈZ[ÛX[ˆ
+[žHNMMÐˆÞ‹ŒŒÐŠNÈL™HØØÛX[ŽÈ^[KY]Z[[›ËXÞXÛKœÜXËØ™]\™Ù]YÈHØ[›ÛšXØ[›Ý]KˆÙYHTKU[šYšYYÚXÚÛ\Ý”H\ÙHˆ
+ÈÈ‹ˆ
+Š”ÛXÙHÈ8 %THXˆVÛ\Ú
+\È‹œ›Û[™
+È™XY[Û›H˜XÚÙ[™ÓÑKQ’VQSQUSÓˆS‘S‘ÊNŠŠˆÛÈX\›™\‹Y˜XÚ[™ÈØ\È›Ý[™]Y][™ÈHÚ\YXˆYØZ[œÝHÝ\LÐˆ™X]\™H\Ýˆ
+JH
+Š”ÛÝ\˜ÙKÕ\ÝXZÈÛˆH^[KZ[[YÙ[˜ÙH]Z[
+Šˆ8 %^[R[[YÙ[˜ÙUX˜	ÜÈ•™\šYšYYTH\\œÈˆ\Ý
+\\”›ÝØ
+HÝ[š[YÛÝ\˜ÙNˆÜÛÝ\˜ÙWÝ\_X[™ÚYÜÚYXÈ\Ü\˜[Ë[˜ÛÛœÚ\Ý[Ú]HÛÝ\˜ÙKÕ\ÝÝ\™\ÜÚ[Ûˆ[™XYH\YYÈHX‰ÜÈ\\‹Ü]Y\Ý[ÛˆØ\™ÎÈ›ÜY›Ý›Ý™[˜[˜ÙHœ˜YÛY[È
+Ù\\ÙKÞYX\‹Ü\\—ØÛÙKÙ]H[™H™]]˜[“Ü[ˆˆ[šÈÈHXÝX[\\ŠKˆ
+ŠH
+Š”™\Ý[\ÝšX][ÛˆÚ\È™Y[\HXÙZÛ\œÊŠˆ8 %[ØÚÔ™\Ý[	ÜÈÜXÈX]X\Ø\È\ÜÙYÙ[Ï^Ö×_XÚ]H˜]ÈÜX×ÚY\ÈH\Ü^H˜[YK[™H[YKY\ÝšX][ÛˆÚ\]O^Ö×_XÛÈ›Ý[Ø^\È™[™\™YZ\ˆ[\HÝ]Kˆ›ÝÈHÜXÈXˆ\š]™\È\‹YY™šXÝ[HXØÝ\˜XÞHÙ[Èœ›ÛHXXÚÜX×Øœ™XZÙÝÛ˜›ÝÉÜÈY™šXÝ[WØœ™XZÙÝÛ˜
+Ù[Û›HÚ[ˆ][\Y
+H[™X™[È›ÝÜÈÚ]H™X[˜[YH8 %[ØÚ×Ù[™Ú[™K™Ù]Ø[˜[]XÜØ›ÝÈ˜Z[[Ü[‹Y[œšXÚ\ÈÜX×Øœ™XZÙÝÛ–×KÜX×Û˜[YXœ›ÛHHÜXÜØX›NÈH[YHXˆZ[ÈH™X[Ù[\ÝÙÜ˜[H
+8 $ÌÌËÌÌ8 $ÍŒËÌx $Ì›KÌ¸ $ÌÛKÌÛJÊHœ›ÛH™\Ý[œ\—Ü]Y\Ý[Û–×K[YWÜÜ[ÜÙXØ
+›ÝÈ^ÜÙYžHØZ[Ü™\Ý[ÚÚ\YÈ]Y\Ý[ÛœÈ^ÛYY
+H[™Û›H™[™\œÈÚ[ˆÙ[^\ÝËˆ\ÝÎˆ˜XÚÙ[™\ÝÜ™\Ý[Ü\—Ü]Y\Ý[Û—Ù^ÜÙ\×Ý[YWÜÜ[ÜÙXØ\ÝÙÙ]Ø[˜[]XÜ×Ù[œšXÚ\×ÝÜX×Øœ™XZÙÝÛ—ÝÚ]ÝÜX×Û˜[YX\ÝÙÙ]Ø[˜[]XÜ×ÝÜX×Û˜[YWÙ˜Z[ÛÜ[—ÛÛ—ÛZ\ÜÚ[™×ÝÜXØÈœ›Û[™[ØÚÔ™\Ý[˜Ú\Ë\ÝšœÞ
+™X[˜[Y\È
+È\‹YY™šXÝ[HÙ[È
+ÈÙ[XÚÙ]È^ÛY[™ÈÊKˆ™\šYšYYˆ˜XÚÙ[™]\Ý\ÝËÜÝYWÛÜËÝ\ÝÛ[ØÚ×Ù[™Ú[™KœH\ÝØ][\Ù\š]˜][Û‹œH\ÝÛ[ØÚ×Ü™]šY]ËœH\ÝÙÙ[™\˜]YÛ[ØÚ×Ø][\œX8¡¤ˆLÈ\ÜÙYÈœ›Û[™[ØÚÔ™\Ý[Ø^[R[[YÙ[˜ÙXØ^[Q]Z[Ø\Q^Ü™\˜ÝZ]\È8¡¤ˆH\ÜÙYÈÒO]YH™XXÝ\ØÜš\ÈZ[ÛX[ˆ
+[žHNMMˆÐˆÞ‹ŒŒÐŠKˆ›ÈØÚ[XKÜ›Ý]KÛ˜]ˆÚ[™ÙKˆ
+Š”ÛXÙH8 %›Ú™XÝYTTH˜XÝXÙx¡¤œÝX›Z]8¡¤œ™]šY]ÈL™H
+\È‹\ÝËÙš^\™\ÈÛ›KÓÑKSS‘QSQUSÓˆS‘S‘ÊNŠŠˆÛÜÙ\ÈHY™\œ™Y[ˆÙˆH‹MH^]Ø]H
+ÛXÙH›YÙÙY™[˜XÝXÙx¡¤œÝX›Z]8¡¤œ™]šY]ÈL™H™YYÈHÙYYY›Ú™XÝY™\šYšYYTTHÛÛš^\™H8 %Ý\œ™[ÛÜšÜÜXÙHÙYY\È›Û™HŠKˆ™]ÈL™KÙš^\™\ËÜÙYY›Ú™XÝY\KØÙYYËÛˆH^\Ý[™ÈL‘HÛÜšÜÜXÙH^[KH
+Š˜Ø[›ÛšXØ[
+ŠˆÚYH8 %H
+Š™\šYšYY
+Šˆ\WÜ\\œØ›ÝÈ
+È™\šYšYY\WÜ]Y\Ý[ÛœØ
+š[YÜ™\ŠH
+È™\šYšYY\WÛÜ[ÛœØ
+š[YÛÝ\˜ÙWÛX™[Ø\Ü^WÛÜ™\˜^XÝHÛ™HÛÜœ™XÝ
+H
+ÈÛ™Hš[X\žH™\šYšYY\WÜ]Y\Ý[Û—ÝÜX×ÝYÜØ\ˆ]Y\Ý[Ûˆ8 %[ˆ›Ú™XÝÈXXÚ]Y\Ý[Ûˆ›ÝYÚH
+Šœ™X[
+Šˆ›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šØœšYÙH”È
+H›Ú™XÝ[ÛˆX›H\È”Ë[Û›NˆZYÜ˜][ÛˆNÈ™]›ÚÙ\È\™XÝS
+KÛÈHL‘H^\˜Ú\Ù\ÈHÙ[Z[™H›Ú™XÝ[Ûˆ]
+NËÌŒŽJH[™]È\ÝØ]\Ë›ÝH[™Y›Ü™ÙY[ØÚ×Ü]Y\Ý[Û—Ø˜[šØÜ›Ú™XÝ[Û‹ˆš^YURQËÙ\šXÙK\›ÛH\Ù\ËY[\Ý[
+”È™]\›œÈ[˜Ú[™ÙYÛˆ™K\[‹›Ú™XÝ[ÛˆÝ^\ÈXÝ]™X
+NÈ™\Ù]\T˜XÝXÙP][\ØÛX\œÈš[Üˆ\WÜ˜XÝXÙWÊ˜›Y\š[][\Ëˆ™]ÈL™KÙ›ÝÜËÜ\K\˜XÝXÙK\™]šY]ËœÜXËØš]™\ÈH[X\›™\ˆ]ˆ^[H[[YÙ[˜ÙH]Z[
+Ø\Ù^[KZ[[YÙ[˜ÙKÙ^[\ËÎœÛYØ
+H8¡¤ˆTH^Ü™\ˆÝ™\šY]È
+Ü\K\Ý[[X\žX
+H8¡¤ˆ][˜ÚXXØÝ\˜]H\K\\\‹\˜XÝXÙKX˜8¡¤ˆÔÕÜ˜XÝXÙKÜÝ\
+\ÜÙ\ÈŒ
+H8¡¤ˆÚ\™Y][\Ú[8¡¤ˆ[œÝÙ\ˆ[8¡¤ˆÝX›Z]8¡¤ˆ™\Ý[8¡¤ˆ™]šY]ÈÚ]H›Ú™XÝY]Y\Ý[Û‰ÜÈš[YÛÜœ™XÝ[œÝÙ\‹ˆ\È[ÛÈ^\˜Ú\Ù\ÈH]™K\ØÚ[XH]
+ZYÜ˜][ÛˆŒÌH›Y\š[ÛÝ\˜ÙKNËÌŒŽH›Ú™XÝ[ÛˆœšYÙJH][ØÚËTÝ\X˜\ÙH[š]\ÝÈØ[››Ýˆ
+Š”™X[YÈØ]YÚžH\ÈL‘H8¡¤ˆZYÜ˜][ÛˆLWÜ\WÜ›Ú™XÝ[Û—ÜÙ\šXÙWÜ›ÛWÜ™XYÙÜ˜[œÜ[
+™[[X™\™Yœ›ÛHKÌH\ÈXZ[ˆY˜[˜ÙY
+NŠŠˆHÒH[ˆÝ\™˜XÙYLH\›Z\ÜÚ[Ûˆ[šYY›ÜˆX›H\WÛ[ØÚ×Ü]Y\Ý[Û—Ü›Ú™XÝ[ÛœØœ›ÛHH˜XÚÙ[™	ÜÈÙ\šXÙK\›ÛH™XY
+\WÜ˜XÝXÙK—ØXÝ]™WÜ›Ú™XÝ[Û—ÚYØ
+H8 %ZYÜ˜][ÛˆNÈÜ˜[YÙ\šXÙWÜ›ÛHVPÕUHÛˆH›Ú™XÝ[Ûˆ”ÜÈ]
+Š››ÈX›Hš]š[YÙJŠ‹ÛÈ˜XÝXÙH™XY[™\ÜÈ˜Z[YÛÜÙY
+›È˜XÝXÙHÕJH[™H][˜ÚÛÝ[LÚ\™]™\ˆ›Ú™XÝYTH]H^\ÝËˆLHÜ˜[ÈÙ[XÝÛ›H
+Üš]\ÈÝ^H”Ë[Û›K™\Ù\š[™ÈHNÈÜÝ\™NÈÙ\šXÙWÜ›ÛHž\\ÜÙ\È“ÊNÈÛÛ˜XÝ\Ý\ÝÜ\WÜ›Ú™XÝ[Û—ÜÙ\šXÙWÜ›ÛWÜ™XYÙÜ˜[ÛZYÜ˜][Û‹œXˆ™\šYšYYˆ
+Ù\Ùœ›Û[™ÙL™H	‰ˆœØÈK[›Ñ[Z]
+X8¡¤ˆ^]ÈZYÜ˜][Û‹XÛÛ˜XÝ\ÜÙ\[ÛœÈ\ÜËˆ
+Š•SQUSÓˆS‘S‘ÎŠŠˆHÒHL™H[ˆ\ÈH]™H›ÛÙˆ
+ZYÜ˜][ÛˆLH[˜›ØÚÜÈ]
+Kˆ
+Š”™]š\Ú[Ûˆ[ÙHÝ[Y™\œ™Y
+Šˆ
+Ô”ËÛX\Ý\žHYK\ÚYÛ˜[Ë‹NÈX\Ý\žH]™K]Üš]HØ]H0©ÑÌLˆÛÜÙY
+KÛÈH‹MH^]Ø]H\È›ÝY][HÛÜÙYˆ
+Š“Ü\˜]Üˆ˜[Y][Ûˆ
+Œ‹LËLLËTÐÈÔÑJH8 %TH
+ÈÓÔ‘HPT“‘Tˆ“ÕÈSQUQRHQ‘PÕÈÔSŽŠŠˆHX\›™\ˆ›ØÚÙ\ˆØ\ÈH^[WÜ\Ù\Ë›˜[YXœÈØ[›ÛšXØ[\ÙWÛ˜[YXÛÛ[[ˆYÈ
+ÌØŒ[\H^[ØYÈÛˆÜ\K\Ý[[X\žX
+ÈÜ\\Ø
+Kš^Y[ˆ
+Š”ˆÎN
+Šˆ[™ÛÛ™š\›YY]™HY\ˆ™Y\ÞH
+\\œÎ]Y\Ý[ÛœÎŒMÍË›Ú™XÝYÜ˜XÝXÙWÜ™XYNŒMÍË\œ›ÜŽ›[ÈÜ\\ÈÝ[ŒMÍØÈš\œÝ][H\ÙWÛ˜[YNˆ”™[[\È˜
+ÈÝXš™XÝÜš[X\žK]ÜXÈ
+ÈÜ[ÛœÈ
+ÈÛÜœ™XÝY
+Kˆ[X\›™\ˆ]TÔÎˆ^Ü™\ˆÝ[Ë][˜ÚXXØÝ\˜]H˜XÝXÙH]ÛœËMË\]Y\Ý[ÛˆÔÈ\\ˆ][˜Ú™[™\‹[œÝÙ\ˆ\œÚ\Ý[˜ÙKÝX›Z\ÜÚ[Û‹™\Ý[[˜[]XÜË™]šY]ÈÙˆ[MÈ]Y\Ý[ÛœËˆ\ÜÜÚ][ÛˆTHS‘ÓÔ‘HPT“‘Tˆ“ÕÈSQUQÈ•STTTˆPÕPÑH•SÕSÓSÈ“ÓÕËUTRHQ‘PÕÈÔS˜ˆ
+Š”ÛXÙHH
+ÔS‹œ›Û[™
+ÈHL™JJŠˆ˜XÚÜÈH™YH\ØXš[]HY™XÝÈ
+›Ý]KÜ›Ú™XÝ[Û‹Ü\œÚ\Ý[˜ÙH›ØÚÙ\œÊNˆ
+JH][\ZXY\ˆ[Y\ˆÚÝÜÈKXÛˆH˜[Y[YY][\ÒYÚH8 %š[™È][˜Ú\^[ØY\˜][Û‹[š]Y\ˆØY^XÚ][[YY˜[˜XÚË™]™\ˆKXÈ
+ŠH˜]šYØ]ÜˆÛ\ÈNM¸ $ÎMÈ™Z[™Hš^Y›ÛÝ\ˆ
+È›È]]Ë\ØÜ›ÛØXÝ]™K\Þ[˜È[™\ˆÙ^X›Ø\™˜]ˆÒYÚH8 %ÝÛˆØÜ›ÛÛÛZ[™\ˆ™\Ù\š[™È›ÛÝ\ˆZYÚØÜ›Û[ÕšY]ÊØ›ØÚÎ‰Û™X\™\Ý	ßJXÛˆ[™^Ú[™ÙKXÝ]™HÝ]Hœ›ÛHØ[›ÛšXØ[YÚ[™^È
+ÊH™]šY]ÈÜ[ÛœÈÛÛ˜Ø][˜]YKˆ8 )‹ˆ8 )˜Ú]Ý]Ù\\˜][ÛˆÓYY8 $ÒYÚH8 %Û™H›ØÚËÛ\Ý][H\ˆÜ[ÛˆšXHHÚ\™YÜ[Û‹[X™[›Ü›X]\ŽÈ\ÈH8¢iNMË\]Y\Ý[ÛˆL™H™YÜ™\ÜÚ[ÛˆÝX\™[™ÈÝXÚÞKZXY\‹Ù›ÛÝ\‹Û˜]šYØ]ÜˆÛ\[™Ëˆ]šY[˜ÙNˆØÜËØ]Y]ËÌŒ‹LËLLË]\ØËXÜÙK\\K[X\›™\‹Y›ÝË[Ü\˜]Ü‹]˜[Y][Û‹›YÈ]Z[[ˆØÜËÜÝ]\ËÔTKU[šYšYYT˜XÝXÙKR[\[Y[][Û‹PÚXÚÛ\ÝLŒ‹LËLË›Y
+‹MHÛXÙHJKˆŸ‹MÈ[šYšYY][\]šY[˜ÙHY\\ˆÓÑKQ’VQSQUSÓˆS‘S‘È™]È\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËØ][\Ù]šY[˜ÙKœX›Ü›X[^™\È]™\žHX\›™\ˆ][\ÛÝ\˜ÙH[ÈHÚ[™ÛHØ[›ÛšXØ[ÛÛ˜XÝX\Ý\žWÙ[™Ú[™KœØÚ[X\Ë‘\š]™Y][\[˜[]XÜØ
+][\]Y\Ý[Û[˜[]XÜØØ][\ÜXÐ[˜[]XÜØ
+KÛÈX\Ý\žKÜ[›™\‹Ü\œÛÛ˜HÛÛœÝ[YHÛ™HÚ\Kˆ
+Š˜ØYÛ[ØÚ×Ø][\Ù]šY[˜ÙX
+Šˆ\ÈH^˜XÝY[ØÚËÙÙ[™\˜]YÔTK\˜XÝXÙHØY\ˆ
+œ›Þ™[ˆ]Y\Ý[Û—ÜÛ˜\ÚÝ
+È]]Üš]]]™H[ØÚ×Ø][\Ü™\ÜÛœÙWØÛ\ÜÚYšXØ][Û˜\œ›Üˆ\\ÊNÈX\Ý\žUÜš]\‹—ÛØYØ[˜[]XÜØ›ÝÈ
+Š™[YØ]\ÊŠˆÈ]
+Ú[™ÛH›Ü›X[^˜][Ûˆ]8 %™Z]š[Ý\ˆ[˜Ú[™ÙY™\šYšYYžHHX\Ý\žHØY\ˆÝZ]JKˆ
+Š˜ØYÝ˜\Ùš[Ù]šY[˜ÙX
+Šˆœš[™ÜÈH™]š[Ý\ÛK[Üœ[™Y\™XÝTTHÝÜ™H
+\Ù\—Ý˜\Ùš[Ø][\Ø]™H\WÜ]Y\Ý[ÛœØ[™XYÙJH[ÈHØ[YHÛÛ˜XÝˆÜX×ÚYœ›ÛHHš[›ÝËY™šXÝ[Xœ›ÛH\WÜ]Y\Ý[ÛœË›ØœÙ\™YÙY™šXÝ[X\WÞYX\˜œ›ÛH\WÜ\\œËžYX\˜ÛÝ\˜ÙWÝ\OIÜ\IØ][\YUYX›È\œ›Ü—Ý\X
+š[È\™[‰ÝÛ\ÜÚYšYY
+KÞ[]XÈ]\›Z[š\ÝXÈ]ZYX][\Y\ˆš[ÜÙYYˆHØYØ][\Ù]šY[˜ÙJÛÝ\˜ÙOx )ŠX\Ü]Ú\ˆ
+È\ÝÛ]™[Ù›Ü—ÜÛÝ\˜ÙX\‹\ÛÝ\˜ÙH\ÝYÈ›Ý[™]Ý]ˆ
+Š”‘PQSÓ“JŠˆ8 %\È[Ù[HÜš]\È›Ý[™ÎÈÚ\š[™È˜\Yš[
+[™]\™HÔ”ËÙ›\ÚØ\™
+H]šY[˜ÙH[ÈH™X]\™KYØ]YÚYÝËYš\œÝX\Ý\žHÜš]\ˆ\È
+Š”‹N
+Š‹ˆÚ[˜ÙHTK\˜XÝXÙH][\È
+‹MKÍˆÛXÙHŠH[™XYH[›™[›ÝYÚ[ØÚ×Ø][\Ø^H\™HÛÝ™\™YžHH[ØÚÈØY\ˆÚ]›È^˜HÛÜšËˆ\ÝÎˆ\ÝËÜÝYWÛÜËÝ\ÝØ][\Ù]šY[˜ÙKœX
+È8 %[ØÚÈ›Ü›X[^˜][Ûˆ[˜Ûˆ][\YÝ[˜[œÝÙ\™Y
+ÈÜXÈ›Û\
+ÈÛ\ÜÚYšXØ][Ûˆ\œ›Üˆ\\ËZ\ÜÚ[™ËX][\›Û™K˜\Yš[›Ü›X[^˜][ÛˆÈHØ[YHÛÛ˜XÝ[\HÙ\ÜÚ[Ûˆ›Û™K\Ü]Ú\ˆ›Ý][™È
+È[šÛ›ÝÛ‹\ÛÝ\˜ÙH™Z™XÝ\ÝYÜÊKˆ™\šYšYYˆ]\Ý\ÝËÜÝYWÛÜËØ8¡¤ˆLLŒÈ\ÜÙYŒÈÚÚ\Y
+[˜ÛˆX\Ý\žHØY\‹Ù\š]˜][ÛˆÝZ]\ÈÜ™Y[ˆY\ˆH[YØ][ÛŠKˆ‘T’Q–H˜ˆ›Û™H™\]Z\™Y
+›ÈØÚ[XKÛZYÜ˜][ÛŠNÈ™Z]š[Ý\ˆ\È^\˜Ú\ÙYžH[š]\ÝÈÝ™\ˆH˜ZÙHÝ\X˜\ÙHÝX‹ˆŸ‹NX\Ý\žKÜ™]š\Ú[Ûˆ[YÜ˜][ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È
+ÚYÝÈÛ›JH™YYÈH™]š[Ý\ÛK[Üœ[™Y\™XÝTTH
+˜\Yš[
+H]šY[˜ÙH8 %šXHH‹MÈY\\ˆ8 %[ÈH
+ŠœÚYÝË[Û›JŠˆÛÝ[X™HX\Ý\žH
+È™]š\Ú[ÛˆØœÙ\˜][Û‹Ú]Ý]ÝXÚ[™ÈH]™HX\Ý\žH]ˆ
+Š‘[X™\˜][H\ÛÛ]Y
+Šˆ
+ÙY\È˜\Yš[H\Ý[˜ÝÜ[][Ûˆœ›ÛHH[ØÚÈÚYÝÈ[˜[\Ú\È[™]›ÚYÈH[ØÚ×ÛX\Ý\žWÜÚYÝË˜][\ÚY8¡¤ˆ[ØÚ×Ø][\Ø’ËÚXÚHÞ[]XÈ˜\Yš[YÛÝ[š[Û]JNˆ™]ÈZYÜ˜][ÛˆŒÌ—Ý˜\Ùš[ÛX\Ý\žWÜÚYÝËœÜ[YÈH
+ŠœÙ\\˜]JŠˆ˜\Ùš[ÛX\Ý\žWÜÚYÝØX›H
+›È’ÈÈ[ØÚ×Ø][\ØÈÞ[]X×Ø][\ÚY[™XYÙHÛ›NÈ›Y×ÜÝ]XÒPÒË\[›™YÈ	ÜÚYÝÉØÈ™]š\Ú[Û—ØXÚÙ]8¢"™[X\›‹Ü™]šY]ËÜ˜XÝXÙNÈÛÝ\˜ÙOIÝ˜\Ùš[	ØÈ“È
+È^XÚ]Ù\šXÙWÜ›ÛHÜ˜[
+Kˆ™]È[Ù[H\ÜÝYWÛÜËÝ˜\Ùš[ÜÚYÝËœNŽœ™XÛÜ™Ý˜\Ùš[ÜÚYÝØØYÈØYÝ˜\Ùš[Ù]šY[˜ÙX8¡¤ˆ\š]™WÙœ›ÛWØ[˜[]XÜØ
+\™JH8¡¤ˆÜš]\ÈÛ›HH™]ÈX›NÈØ]Y™Z[™]ÈÝÛˆ‘—ÕTÑ’SÓPTÕT–WÔÒQÕØ›YÈ
+Û›HH]\˜[ÚYÝØ[˜X›\È]8 %\™H\È
+Š››ÊŠˆ]™H˜[YK[™\[™[Ùˆ‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTØ
+Kˆ™]š\Ú[Ûˆ›Ý][™È\š]™\Èœ›ÛHHÛÝ[X™HX\Ý\žH˜[™
+Ýø¡¤œ™[X\›‹YÚ8¡¤œ™]šY]Ë[Ùx¡¤œ˜XÝXÙK\ˆ\˜Ú0©ÔÊKˆÛÚÙY™\ÝYY™›Ü[ÈH˜\Yš[›Ý]H
+\KÙ^[WÚ[[YÙ[˜ÙKœX›Û‹Yš[™Ù\œš[Y
+HY\ˆÙ×Ùš[Ø][\Ø8 %™]™\ˆœ™XZÜÈHš[™\ÜÛœÙK™]™\ˆÜš]\È\Ù\—ÝÜX×ÛX\Ý\žXØ[ØÚ×ÛX\Ý\žWÜÚYÝØØ\Ù\—ÝÜX×Ù\œ›Ü—Ü]\›œØØ™]š\Ú[Û—Ú][\Øˆ\ÝÜØØ[[™È
+ÝÙZYÚYÙ[X0¬LŒMHØ\[š]8¡¤™ŠH™\XØ]Yœ›ÛHHX\Ý\žHÜš]\ˆÛÈÚYÝÈ[X™\œÈ\™HÛÛ\\˜X›Kˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎLLJH8 %ˆš^\ÎŠŠˆ
+JHÛØYØÝ\œ™[ÛX\Ý\žX›ÝÈ™]\›œÈ›Û™XÛˆH™XY
+™˜Z[\™Jˆ
+œÈßX›Üˆ[ˆ[\HÝXØÙ\ÜÊH[™™XÛÜ™Ý˜\Ùš[ÜÚYÝØ
+Š™˜Z[ÈÛÜÙY
+Šˆ
+Ý]ÛÛYN‰Ü™XYÙ˜Z[Y	Ø›ÈÜš]JH8 %H˜XœšXØ]Y˜\Ù[[™HÛÝ[]™HÜš][ˆÛÛ[Z[˜]YÚYÝÈ[˜[]XÜËˆ
+ŠHÛÝ\˜ÙX\È›ÝÈÒPÒË\[›™YÚXÚÈ
+ÛÝ\˜ÙHH	Ý˜\Ùš[	ÊX›ÝY\™[HY˜][YÛÈH\Ý[˜Ý\Ü[][Ûˆ[˜\šX[\ÈÝXÝ\˜[ˆ\ÝÎˆ\ÝÝ˜\Ùš[ÜÚYÝËœX
+L[˜ÛˆÝ\œ™[[X\Ý\žK\™XYY˜Z[\™H˜Z[ËXÛÜÙY
+H
+È\ÝÝ˜\Ùš[ÛX\Ý\žWÜÚYÝ×ÛZYÜ˜][Û‹œX
+[˜ÛˆÛÝ\˜ÙHÒPÒÊKˆ™\šYšYYˆ]\Ý\ÝËÜÝYWÛÜËÈ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝÝ˜\Ùš[œX8¡¤ˆLMN\ÜÙYŒÈÚÚ\Yˆ‘T’Q–H˜ˆ\HŒÌˆ
+™XÛÛ˜Ú[HÛÝœÈ]™HØÚ[XWÛZYÜ˜][ÛœØ
+K[ˆHš[Ú]‘—ÕTÑ’SÓPTÕT–WÔÒQÕÏ\ÚYÝØÛÛ™š\›H˜\Ùš[ÛX\Ý\žWÜÚYÝØ›ÝÜÈ[™[™›È]™HX\Ý\žH[Ý™\Ëˆ
+Š”›ÝNŠŠˆHÚYÝÈÚ[™ÝÈØ\È
+Š™[™YžHÝÛ™\ˆ\™XÝ[Ûˆ
+Œ‹LËL
+NÈHœ™\ÚÚ[™HÝ\Y]\ŠŠˆ8 %ÛÈHš[™Ù\œš[Yœ™Y^™HÛÛœÝ˜Z[\ÈYY]\ÈˆØ\ÈÝ[Z[[H\ÛÛ]Y
+›Èš[™Ù\œš[YYš[HY]ÊHžH\ÚYÛ‹ˆŸ‹NH[›™\ˆ\ÚÈ™\ÛÛ™\ˆÓÑKQ’VQSQUSÓˆS‘S‘ÈÚ\™\ÈH[›™\ˆœ˜XÝXÙH‹Èœ™]š\Ú[Ûˆˆ\ÚÈÈHÛÛ˜Ü™]HTK\˜XÝXÙH][˜Ú8 %HÝ\™˜XÙ\È[™XYH^\ÝY
+‹MKÍˆ˜XÝXÙH[™Ú[
+ÈHZYÜ˜][Û‹LŒH\YÝYWÝ\ÚÜË›][˜ÚÝ\KÛ][˜ÚÙ[]WÚYÛ][˜ÚØÛÛ^ÛÛ[[œÊKÛ›HH™\ÛÛ][ÛˆØ\ÈZ\ÜÚ[™Ëˆ
+Š”™\ÛÛ™\ŠŠˆ\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜ\WÜ˜XÝXÙWÛ][˜ÚœXˆ\™H™\ÛÛ™WÜ˜XÝXÙWÜ^[ØY
+\ÚÊX8¡¤ˆÛ[ÙN‰ÝÜXÉË\™Ù]ÚY\ÚËÜX×ÚY^[WÚY\ÚË™^[WÚYXÚ[ˆ›Ý™\Ù[
+[ÙH›Û™JK
+È\WÜ˜XÝXÙWØXÝ[ÛŠ‹‹ŠXZ\œ›Üš[™ÈÜš][™×Ü˜XÝXÙKÛ][˜ÚœNŽ˜ÛÛ\]WØXÝ[Û˜ˆ
+Š‘[™Ú[
+Šˆ\Ø˜XÚÙ[™Ø\Ø\KÜ\WÜ˜XÝXÙWÛ][˜ÚœXÔÕØ\KÜÝYKÝ\ÚÜËÞÜÝYWÝ\Ú×ÚYKÛ][˜Ú\\K\˜XÝXÙX
+Z\œ›ÜœÈ][˜ÚÝÜš][™Ø
+NˆH\ÚÈ\ÈH
+ŠœÛÛJŠˆ^[KXÛÛ^]]Üš]H
+ÝÛ™Y]\ÚÈÈÛY[[œ]™]™\ˆ\ÝY
+K™\ÛÛ™\ÈH^[ØY
+HYˆ›ÈÜXËÙ^[JKØ[ÈÝ\Ü\WÜ˜XÝXÙJ[ÙO]ÜXË8 )ŠXX\È˜XÝXÙR[œ]\œ›Ü˜Ø˜[YQ\œ›Ü˜8¡¤Œˆ[™[\WÜÛÛ8¡¤K™]\›œÈH™XYH][\8¡¤ˆ[™YÈH^\Ý[™ÈØ][\ËÞÚYX›ÝËˆ™YÚ\Ý\™Y[ˆÙ\™\‹œXˆ
+Š”[›™\ˆÝ[\[™ÊŠˆ
+[›™\‹œNŽ—ØZ[Ý\ÚÜØ
+Nˆ\ÚÜÈÚ]\Ú×Ý\x¢"Ü™]šY]˜[Ü˜XÝXÙK™]š\Ú[ÛŸX
+ÈÜX×ÚY
+È^[WÚYÙ]][˜ÚÝ\OIÜ\WÜ˜XÝXÙIØ][˜ÚÙ[]WÚY]ÜX×ÚY][˜ÚØÛÛ^^Û[ÙNÜXË\™Ù]ÚY^[WÚYX
+ÈÚWÝ\×Ý\ÚË›][˜ÚÝ\™Ù]IÜ\WÜ˜XÝXÙIØÈÛÛ˜Ù\ÛX\›š[™ØÝÜXË[Ü‹Y^[K[\ÜÈ\ÚÜÈÝ^Hž]KZY[XØ[ˆÜ\œÚ\Ý›ÜØ\™È\ÚÜÈÚÛ\Ø[H
+›ÈÚ][\ÝÚ[™ÙJKˆ
+Š”™X\ÛÛš[™ÊŠˆ
+\Ú×Ü™X\ÛÛš[™ËœX
+NˆÛ™HY]]™H™X\ÛÛš[™×Ý˜XÙX›ÝÈ
+^Y\Žœ[‹[WÚÙ^Nœ\WÜ˜XÝXÙWÛ][˜Ú
+HÚ[ˆÝ[\Yˆ›È™]ÈZYÜ˜][ÛŽÈ›È™]È›Ý]KÜÚYX˜\ˆÝ\™˜XÙNÈ[›™\‹œX›Ý[ˆHX\Ý\žHš[™Ù\œš[X[šY™\Ýˆ\ÝÎˆ\ÝÜ\WÜ˜XÝXÙWÛ][˜ÚœX
+[™Ú[
+È™\ÛÛ™\‹[\œ›Üˆ]ÊK\ÝÜ[›™\‹œXØ\ÝÝ\Ú×Ü™X\ÛÛš[™ËœXY][ÛœÈ
+Ý[\Ûˆ˜XÝXÙKÜ™]š\Ú[Û‹›Û™HÛˆÛÛ˜Ù\ÛX\›š[™Ë\œÚ\Ý[˜ÙK˜XÙH›ÝÊKˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎLLŠH8 %ˆHš^\ÎŠŠˆ
+JH
+ŠšY[\Ý[][˜Ú
+Šˆ8 %HÝX›KXÛXÚËÜ™]žH›ÈÛ™Ù\ˆÜ™X]\È\XØ]H[‹\›ÙÜ™\ÜÈ][\ÎˆÝ\Ü\WÜ˜XÝXÙXØZ[™Y[ˆÜ[Û˜[›Y\š[ÚY[™H][˜Ú[™Ú[\ÜÙ\ÈH]\›Z[š\ÝXÈ]ZYJ\Ù\—ÚYÝYWÝ\Ú×ÚY
+XÛÈÝ\Ø][\Ùœ›ÛWØ›Y\š[™]\Ù\ÈH^\Ý[™È[‹\›ÙÜ™\ÜÈ][\
+ZYÜ˜][Û‹LMÎH[š\]YK]š[Û][Ûˆ]
+NÈÛ˜ÙHÝX›Z]YHØ[YHYÛÜœ™XÝHÝ\ÈHœ™\Ú][\ˆ
+JH
+Šœ™[[Ý™Y™[X]\™H\WÜ˜XÝXÙWØXÝ[Û˜
+Šˆ8 %]Ù^YYHXÝ[ÛˆT“Ûˆ][˜ÚÙ[]WÚY
+HÜXÈY
+H\ÈYˆH\ÚÈYÚXÚÛÝ[œ™XZÈH\ÚË[ÝÛ™Y][˜ÚÛÛ˜XÝÈXÝ[ÛˆÛÛ\]][Ûˆ\ÈY™\œ™YÈHZ\ÜÚ[Û‹XÛÛ›ÛØ[Ú]H
+ÚXÚ\ÈH\ÚÈY
+Kˆ™YÜ™\ÜÚ[ÛŽˆ™[][˜Ú]Ú[KZ[‹\›ÙÜ™\ÜÈ™]\›œÈHØ[YH][\ÚYÚ]^XÝHÛ™H][\Ø›Y\š[[™›È\XØ]H™\ÜÛœÙ\Ëˆ™\šYšYY
+\™[[YÜ˜]Y
+Nˆ]\Ý\ÝËÜÝYWÛÜËÈ\ÝËÜ\œÛÛ˜WÜ]Y\Ý[ÛœËØ8¡¤ˆLŒ\ÜÙYŒÈÚÚ\YÈ[\ÜÙ\™\˜ÛX[‹ˆ‘T’Q–H˜ˆ›Û™H
+›ÈØÚ[XJNÈ]™H8 %ÛXÚÈH[›™\ˆ˜XÝXÙH\ÚËÛÛ™š\›H]][˜Ú\ÈH›Ú™XÝYTTH][\ˆ
+Š”‹LL
+\œÛÛ˜H™Z]š[Ý\˜[YÙÜ™YØ]\ÊH8 %ÓÑKQ’VQ
+ÙYH™^›ÝÊKŠŠˆŸ‹LL\œÛÛ˜H™Z]š[Ý\˜[YÙÜ™YØ]\ÈÓÑKQ’VQSQUSÓˆS‘S‘È›ÛÈ\™XÝTTH[™ØYÙ[Y[[ÈH\œÛÛ˜H™Z]š[Ý\˜[ÚYÛ˜[È8 %
+Šœ™XYY\š]™Y›ÈZYÜ˜][ÛˆÈ›È™]ÈX›HÈ›ÈÛ˜\ÚÝ]Üš]\ˆÚ[™ÙJŠˆ
+Z\œ›ÜœÈÝÈ[ØÚÜ×ÝZÙ[—ÌÌ™XYÈ[ØÚ×Ý\ÝØ
+Kˆ\Ø˜XÚÙ[™Ø\Ü\œÛÛ˜KÜÚYÛ˜[ËœNŽ˜ÛÛXÝÝ\Ù\—ÜÚYÛ˜[ØØZ[œÈÛÈÌYÙÜ™YØ]\Îˆ
+Š˜\WÜ˜XÝXÙWÜÙ\ÜÚ[Ûœ×ÌÌ
+ŠˆH[ØÚ×Ø][\ØÝ\Yœ›ÛHHTK\˜XÝXÙH›Y\š[[™
+Š˜˜\Ùš[ÜÙ\ÜÚ[Ûœ×ÌÌ
+ŠˆH\Ý[˜Ýš[ÜÙYY[œÈ[ˆ\Ù\—Ý˜\Ùš[Ø][\Ø
+ÙYY\ÜÈYØXÞH›ÝÜÈXXÚÛÝ[\ÈÛ™JKˆ›ÝYÜ˜YHÈšXHÜØY™XÛˆHZ\ÜÚ[™ËÙ[šYYÛÝ\˜ÙHX›K[™\™HYYÈÙ[\WÜÚYÛ˜[ØÈÙY\HÚYÛ˜[ÛÛ˜XÝÝX›Kˆ
+ŠÛ\ÜÚYšY\ŠŠˆ
+Û\ÜÚYšY\‹œNŽ—ØÛ\ÜÚYžWÛX\›š[™×Ø™Z]š[Ü˜
+NˆH[ØÚ×Ø]›ÚY\˜X™[›ÝÈ[ÛÈ™\]Z\™\È™\›ÈTH[™ØYÙ[Y[
+8 )ˆ[™\WÙ[™ØYÙ[Y[OH
+KÛÈHX]žHTH˜XÝ][Û™\ˆÚ]™\›È[[ØÚÜÈ\È›ÈÛ™Ù\ˆZ\ÛX™[YH[ØÚÈ]›ÚY\ŽÈHÛÈ™]ÈÛÝ[È\™HYYÈ]È]šY[˜ÙKˆÝYWÜÛXÞX\È[˜Ú[™ÙY
+]™XYÈ[Y[œÚ[ÛœË›Ý˜]ÈÚYÛ˜[ÊKˆ›Èš[™Ù\œš[[X[šY™\Ýš[HÝXÚYÈ\Ü\˜[Ü\œÛÛ˜WÜÛ˜\ÚÝØÜš]H]
+Ù\šXÙK\›ÛJH[˜Ú[™ÙYˆ
+ŠÚXÚÜÜÝ›Ý[™H
+ˆÎLM
+H8 %ˆš^\ÎŠŠˆ
+JH
+Š˜\WÜ˜XÝXÙWÜÙ\ÜÚ[Ûœ×ÌÌ›ÈÛ™Ù\ˆ[™\˜ÛÝ[ÊŠˆH\Ù\ˆÚ]H\™ÙH\ÝÜšXØ[˜XÝXÙH˜XÚÛÙÈ8 %H\š]˜][Ûˆ›ÝÈÚ[™ÝÜÈH™XÙ[[ØÚ×Ø][\Ø
+Š™š\œÝ
+Šˆ
+Ì›Û‹[[Ù[™\˜]YØ›Y\š[ÚY8¢iL
+KÛÛXÝÈÜÙH›Ý[™Y›Y\š[YËÛ\ÜÚYšY\È[HžHÛÝ\˜ÙHšXHÚ[šÙY[˜ÛÚÝ\È
+8¢iLØÚ[šÊK[ˆÛÝ[ÈX]Ú[™È][\ÎÈHÛ›Y\š[ZYËYš\œÝÜ™\ˆ]LÝ[H\WÜ˜XÝXÙWÊ˜›Y\š[È\ÚH™XÙ[][\	ÜÈ›Y\š[\ÝH›ÝÈØ\ˆH]Û‹\ÚYH[ÝX\™™KY›ÜÈ•S›Y\š[YÈ
+HÜÝÔ‘TÕ›Ýš\Ë›[š[\ˆ\ÈH›Ë[Ü[ˆH\ÝÝXŠKˆ
+ŠH
+Š››ËXXÝ]š]HÝX\™
+Šˆ8 %HX\›š[™×Ø™Z]š[Ü˜[œÝY™šXÚY[Ù]XØ›×ÜÝYWØXÝ]š]Xœ˜[˜Ú›ÝÈ[ÛÈ™\]Z\™\È\WÙ[™ØYÙ[Y[OHÛÈHTK[Û›HX\›™\ˆ
+™\›È\ÚÜËÙ›ØÝ\ËÛ[ØÚÜÊH\È›ÈÛ™Ù\ˆZ\ÛX™[Y[˜XÝ]™Kˆ\ÝÎˆ\ÝËÜ\œÛÛ˜KÝ\ÝÜÚYÛ˜[×Ü\WÙ[™ØYÙ[Y[œX
+H8 %›ÝÛÝ[ËÌÚ[™ÝÈ^Û\Ú[Û‹™\›ËXXÝ]š]KÙYY\ÜÈš[Ë
+ŠŠÍŒ\Ý[KX›Y\š[™YÜ™\ÜÚ[Ûˆ\ÜÙ\[™ÈH™XÙ[][\Ý[ÛÝ[ÊŠŠH
+ÈÛ\ÜÚYšY\ˆ\ÝÚX]žWÜ\WÜ˜XÝXÙWÚ\×Û›ÝÛ[ØÚ×Ø]›ÚY\˜
+È\ÝÜ\WÛÛ›WØXÝ]š]WÚ\×Û›ÝÛ›×ÜÝYWØXÝ]š]X
+ÈØY™KYY˜][\ÜÙ\[ÛœÈ[ˆ\ÝÜÛ˜\ÚÝËœX
+ÈØ˜\ÙWÜÚYÛ˜[ØÙ^\Ëˆ™\šYšYYˆ]\Ý\ÝËÜ\œÛÛ˜KÈ\ÝËÜÝYWÛÜËÝ\ÝÜ[›™\‹œX8¡¤ˆMÈ\ÜÙYˆ‘T’Q–H˜ˆ›Û™H
+™XYY\š]™Y›ÈØÚ[XJKˆŸ‹LLHYYXKØY˜[˜ÙY]Y\Ý[Ûˆ\\È
+TÔK[YÙ\‹[XYÙHÝ[KÛÜ[ÛœËX]Ú[™Ë\ØÜš\]™JHT•PS8 %ÛXÙHH
+YYXHÝÜ˜YÙKZYÜ˜][ÛˆŒÌÊH
+ÈÛXÙHˆ
+ÓTÈYYXH]]Üš[™ÊHÓÑKQ’VQSQUSÓˆS‘S‘ÎÈY˜[˜ÙYX[œÝÙ\ˆ[[Y\ÈQ‘T”‘QYYXHÝÜ˜YÙH
+È™[™\š[™È
+ÈÓTÈ]]Üš[™È[™Y8 %ÙYHH”THYYXH	ˆY˜[˜ÙY]Y\Ý[Ûˆ\\Èˆ›ÝÜÈX›Ý™H
+ZYÜ˜][ÛˆŒÌÈ
+ÈÜ\K\Ý[][X
+KˆÝ[][\È[Ù[
+‹LJH[™[\Ü\ˆŒˆ
+‹LŠHY\™ÙYˆÝ[Y™\œ™YˆTÔKÚ[YÙ\‹ÛX]Ú[™ËÙ\ØÜš\]™HØÛÜš[™È
+ÈRK[XYÙK[Ü[ÛˆXØÙ\ÜÚXš[]K\ÜÙ]]\ØYÝ\™˜XÙK[ËZ[\Ü\ˆYYXK‹M[ÝÛ™Y›Ú™XÝ[Û‹ÜÛ˜\ÚÝYYXHÚ\š[™Ëˆ‚ˆÈÈ^[H[[YÙ[˜ÙHÈÛÜšÜÜXÙH8 %\ÚYÛˆY™XÝÈ	ˆVÛX[\‚‘š[™[™ÜÈÛÛ™š\›YYYØZ[œÝ\ÈÚXÚÛÝ]ˆ[]Y]]šY[˜ÙN‚‹HØÜËØ]Y]ËÙ^[KZ[[YÙ[˜ÙKYØ\ËLŒ‹L‹LŒ›Y8 %[[YHYÜÈ[™VØ\Â‹HØÜËÜ™]šY]ÜËÙ^[KZ[[YÙ[˜ÙKY\ÚYÛ‹\™]šY]ËLŒ‹L‹LŒ›Y8 %ŒÈÝXÝ\˜[\ÚYÛˆY™XÝÈ
+ÑKÑ‹ÓKÒHÙ\šY\ÊB‚ˆÈÈÈ^[H[[YÙ[˜ÙHÛÜšÜÜXÙHÛX[\8 %ÛÝ\˜ÙH™XÚXÚÈŒ‹LËLÂ‚”ÜÝXÛÛœÛÛY][ÛˆÛX[\˜XÚÈ
+NPKÐ‹ÐËNKLØÛÜ™HÛ˜\ÚÝÛÜšØ™[˜Ú^Y^˜XÝÛÜšÙ\ˆ[Y\™ÙY
+Kˆ[]™\žH\ÈÙ\šX[Ú\™Hš[\ÈÝ™\›\ˆˆH\ÙKZÚ[™ÛÛ˜XÝÙY]Üˆ8¡¤ˆˆˆTH\ÙHÙ[XÝÜˆ8¡¤ˆˆÈ™XY[™\ÜÈÛÜH
+È›Ú™XÝ[Ûˆ™[YYX][Ûˆ8¡¤ˆˆÛÜšÜÜXÙKÔ™]šY]ÈÛÛ\™\ÜÚ[Ûˆ8¡¤ˆˆHÙ]\[Y[[™H™YÜ™\ÜÚ[Ûˆ
+È]]][ÛˆÛÝ™\›˜[˜ÙKˆˆÝXÚ\È^[UÛÜšÜÜXÙKšœÞØ^[PXÝ[ÛÛÛœÛÛKšœÞ[™Ý^\ÈÚ[™ÛK[ÝÛ™\ˆ\ˆHN›ËY˜[‹[Ý][K‚‚ŸQ\™XHÝ]\È^]ÛÛ™][ÛˆŸKK_KK_KK_KK_ŸRKPÓPS‹LHØ[›ÛšXØ[\ÙKZÚ[™Y]ÜˆÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠHÜ\˜]ÜˆØ[ˆ\ÜÚYÛˆH˜[Y]Y\ÙWÚÚ[™
+ŒˆÛˆ[šÛ›ÝÛˆ˜[Y\ÎÈ˜XÚÙ[™ÔTÑWÑ’QSØ
+È\ÙQ›Ü›KšœÞÙ[XÝ
+NÈÝ\HÕHY\[[šÜÈÝX\Ù]\	˜XÝ[ÛXÛ\ÜÚYžK\\Ù\ØÈH[˜Û\ÜÚYšYY\Ù\È[™ÛX\œÈY\ˆØ]™KˆŸRKPÓPS‹LˆYTTH\ÙHÙ[XÝÜˆÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠHYTH[Ù[ÝX›Z]ÈH™\ÛÛ™Y^[WÜ\ÙWÚYÈ^[K]ÚYKÛ›Ë\\ÙHÜ[Ûˆ\È^XÚ]È˜Z[XÛÜÙYÛˆ[œ™\ÛÛ˜X›H\ÙHQÎÈL™XY[™\ÜÈ™[XZ[œÈ^[K]ÚYKˆ
+Š”ˆÎÌH™]šY]È\™[š[™ÎŠŠˆZYÜ˜][Ûˆ
+ŠŒŒŒ
+Šˆ
+Ô‘PUHÔˆ‘TPÑHÛ\×Ü\WÛÛ˜›Ø\™[™Ø
+HYÈH˜Z[XÛÜÙY\Ùx¡¥ÞXÛHÛÛœÚ\Ý[˜ÞHÝX\™8 %HÝ\YY\ÙH]\Ý™H›Ý[™È^XÝHHÝ\YYÞXÛH
+Ü›ÜÜËXÞXÛHÈÞXÛKXYÛ›ÜÝXÈÈ\ÙK]Ú]Ý]XÞXÛH[˜Z\ÙH^[WÜ\ÙWØÞXÛWÛZ\ÛX]Ú8¡¤ˆŒŠKÛÜÚ[™ÈHØ[YKY^[HÜ›ÜÜËXÞXÛH›Ý™[˜[˜ÙHÛHH”È™]š[Ý\ÛH[ÝÙYˆ
+Š““ÕH
+\XØ]K]™\œÚ[Ûˆš^ˆÎÍ
+NŠŠˆÜšYÚ[˜[HY\™ÙY\ÈŒNH
+ˆÎÌJH]ÛÛYYÚ]ŒNWÚŒ×Ø\YYÝœ×Ø\X\™YœÜ[
+ˆÎÌY\™ÙYš\œÝÙY\ÈŒNJNÈ™[[X™\™YŒNx¡¤ŒŒŒˆ
+Š“ÔTUÔˆUTÕQ
+›Ú™Y™šXØXÞKŒ‹LËLÊNŠŠˆ\ÞYYØÚ[XWÛZYÜ˜][ÛœØ™XÛÜ™È™\œÚ[ÛˆŒNH\ÈŒNWÚŒ×Ø\YYÝœ×Ø\X\™Y
+THØ\È“Õ\YY\ÈŒNJH8¡¤ˆ\ÜÜÚ][ÛˆØ\ÙH
+JNˆHŒNOORŒÈÈŒŒOTTHX\[™È\ÈÛÛ™š\›YYÛÜœ™XÝÈ\HŒŒY\ˆŒNKˆÔTUÔˆS‘S‘Îˆ\HZYÜ˜][ÛˆŒŒ
+Y\ˆŒNJNÈÛÛ™š\›HÙ\šXÙWÜ›ÛX[Û›HVPÕUH™\Ù\™YÈ^\˜Ú\ÙHÜ›ÜÜËXÞXÛH™Z™XÝ[Ûˆ
+È›Û˜XÚÈÛˆÝYÚ[™Ëˆ
+™K]™\šYžHHYÙ\ˆ\ˆ\™Ù]™Y›Ü™HHœ™\Ú›ÛÝ]ŠHŸRKPÓPS‹LÈTH™XY[™\ÜÈ\›Z[›ÛÙÞHÓÑKQ’VQSQUSÓˆS‘S‘È
+ˆÊH\WÜ™XY[™\ÜËœX^ÜÙ\È›Ý\ˆ^XÚ]šY[È8 %[›™\—Ü™XYWÜ]Y\Ý[Û—ØÛÝ[
+OH™\šYšYYÈØ]\ÊK™]šY]ÙYÜ]Y\Ý[Û—ØÛÝ[
+ÓQK]™\šYšYY
+KZ\ÜÚ[™×Ý™\šYšYYÝY×ØÛÝ[™Z™XÝYÜ]Y\Ý[Û—ØÛÝ[8 %›ÝÚ[™ÈÈHœ›Û[™šXH™XY[™\ÜËœXY]šXÜËœ\WÜ™XY[™\ÜØ
+›È™]È[Xš[™ÊKˆ™]šY]ÐXÝ]˜]T[™[™[™\œÈ–ÈH[›™\‹\™XYHˆ
+È™]šY]ÙYÈ™YYXK]™\šYšYY]YÈÈ™Z™XÝYÚ\È[™H”™]šY]ÈZ\ÜÚ[™ÈÜXÈYÜÈ8¡¤ˆˆÕH
+›Ý]\ÈÈH\HXŠHÚ[ˆYÜÈ\™HZ\ÜÚ[™Ëˆ™YKYØ]H[H[˜Ú[™ÙYˆ˜XÚÙ[™
+ÈÈœ›Û[™\ÝËˆŸRKQUKLHTÐÈŒˆš[X\žHÜXÈYÜÈÔTUÔˆÈUHS‘S‘È
+[˜›ÛÚÈ]šY[˜ÙHZ\ˆ›ÝY]Ø\\™Y
+H]™\žH\ØX›HÓQK\™]šY]ÙY]Y\Ý[Ûˆ\È^XÝHÛ™H™\šYšYYš[X\žHYÎÈ™Z™XÝY›ÝÜÈ™[XZ[ˆ^ÛYY
+ÙYHL›ÛÝË]\›ÝÈX›Ý™JKˆÜ\˜]Üˆ[˜›ÛÚÎˆØÜËÜ[˜›ÛÚÜËÑRKQUKLWÝ\Ø×ÌŒ—Üš[X\žWÝÜX×ÝYÜË›Y
+™Y›YÚØ\ÜÚYÛ›Y[ÜÜÝ›YÚÔS
+È™]šY]Ë[Y™XÞXÛHÝ\ÊKˆ
+Š‘È›ÝÛÜÙHÚ]Ý]H[˜›ÛÚÈÝÜXÛÛ™][Ûˆ]šY[˜ÙJŠˆ
+0©ÈÛÜÙ[Ý]
+NˆHœ›Þ™[ˆ
+ŠŽN
+Š‹RQÛÝ[
+È\™Ù]ÙYÙ\ÝH\ÙHŒÈ™HÈ\ÙH‹ŒÈÜÝ›Ú™XÝ[Û‹\™]šY]È™X\ÛÛˆ\ÝšX][ÛœË[™›ÛÙˆH
+ŠŒŠŠˆ™Z™XÝY›ÝÜÈÝ^YY[˜Ú[™ÙY8 %Ø\\™YYØZ[œÝH
+Š›]™JŠˆ‹™]™\ˆœ›ÛHØÈ[œÜXÝ[Û‹ˆHŒ‹LËLLÈX\›™\ˆ˜[Y][Ûˆ
+ØÜËØ]Y]ËÌŒ‹LËLLË]\ØËXÜÙK\\K[X\›™\‹Y›ÝË[Ü\˜]Ü‹]˜[Y][Û‹›Y
+H™XÛÜ™ÈÛ›H
+Š˜YÙÜ™YØ]HX\›™\‹PTJŠˆ]šY[˜ÙHÝ™\ˆ\È]H
+™\šYšYY\\œÈÈMÍÈ™\šYšYY]Y\Ý[ÛœÈÈMÍÈXÝ]™H›Ú™XÝ[ÛœÎÈ\K\Ý[[X\žX\\œÎ]Y\Ý[ÛœÎŒMÍË›Ú™XÝYÜ˜XÝXÙWÜ™XYNŒMÍË\œ›ÜŽ›[
+KÚXÚ\ÈH\Ý[˜ÝØÛÜHœ›ÛHHNÌˆY[]HÙ][™Ù\È
+Š››Ý
+ŠˆØ\œžHHœ›Þ™[‹RQYÙ\ÝÈ™X\ÛÛ‹Y\ÝšX][ÛˆÈ™Z™XÝZ[˜\šX[˜ÙH[˜\šX[È8 %ÛÈ]˜[Y]\ÈHX\›™\ˆ™XY]›ÝHRKQUKLH]HØ]Kˆ›ÝÈÝ^\È[™[™È[[H\ÙH
+È\ÙHˆÝ]]È\™H]XÚYˆŸRKPÓPS‹L[ØÚÈ›Ú™XÝ[Ûˆ™[YYX][ÛˆVÓÑKQ’VQSQUSÓˆS‘S‘È
+ˆÊH\S[ØÚÔ›Ú™XÝ[Û”[™[ˆ[X[š^™T›Ú™XÝ[Û”™X\ÛÛ˜X\È]™\žH[\›˜[ÛÙHÈÜ\˜]Üˆ^
+Ü˜XÙY[˜[˜XÚË›È˜]ÈXZÊNÈYÙÜ™YØ]P›ØÚÙ\œØÜ›Ý\È[™[YÚX›H›ÝÜÈ[È[X[š^™YÛÝ[È
+\™Ù\Ýš\œÝ
+H
+È“ˆ[YÚX›H›Üˆ›Ú™XÝ[ÛˆŽÈÞ[˜È\ØX›YÚ]H›ÝHÚ[ˆHØYY™]šY]ÈÚÝÜÈ[YÚX›WØÛÝ[OOH
+™]šY]ÈÝ^\È[˜X›Y
+NÈ›ÝÜÈÚÝÈH]Y\Ý[ÛˆX™[
+˜XÚÙ[™™]šY]ÈÙ\šX[^™\ˆ›ÝÈYÈHš[[YYX™[
+KÚÜZY˜[˜XÚÈÛ›HÚ[ˆXœÙ[ÈÙ^X›Ø\™[Ü\˜X›H8¤æ›Ú™XÝ[Û‹XÛÛ˜XÝ\ØÛÜÝ\™Kˆˆ˜XÚÙ[™
+ÈHœ›Û[™\ÝËˆŸRKPÓPS‹LHÛÜšÜÜXÙHYš\ÛÜžKØXÝ[ÛˆÛÛ\™\ÜÚ[ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠHÛX\XY\ˆÝ^\ÈØ[›ÛšXØ[
+XY[™H
+Èš\œÝ›ØÚÙ\ˆ
+ÈÛ™H™^XÝ[ÛŠKˆH[X™YY^[PXÝ[ÛÛÛœÛÛX
+XÝ[Ûˆ]Y]YKØÚXÚÜËÙ]šY[˜ÙKÛ[ØÚÈYš\ÛÜžJKYš\ÛÜžHÛÛ[\™XY[™\ÜÈÝš\[™Y™XÞXÛHYÙ[™›ÝÈ]™H[œÚYHÛ™H˜]]™H]Z[Ï˜\ØÛÜÝ\™H
+ÛÜšÜÜXÙKXXÝ[Û‹Y]Z[Ø
+H]\ÈÛÛ\ÙYžHY˜][[™Ù^X›Ø\™[Ü\˜X›H8 %›ÈÛ™Ù\ˆ[Ø^\ËY^[™YX›Ý™HHXœËˆ˜XÚÙ[™Ý^\ÈHÝ]\È]]Üš]NÈ›È™]È›Ý]HÜˆÜ[]™[Ý\™˜XÙKˆ^[UÛÜšÜÜXÙKšœÞÛ›KˆŸRKPÓPS‹Lˆ™]šY]È	ˆXÝ]˜]HÛÛ\™\ÜÚ[ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠH\XØ]HXÝ]˜][Û‹\Ý]\È˜[›™\ˆ™[[Ý™Y
+ÛX\XY\ˆÝÛœÈH™\™XÝ
+NÈÜ™X]Y8¢h[›™\‹\™XYX›ÝH
+È›ÝË[Y™XÞXÛH™Y™\™[˜ÙH[Ý™Y™Z[™[ˆ8¤æ]Z[Ï˜\ØÛÜÝ\™H
+[›™\‹\™XY[™\ÜËY\ØÛÜÝ\™X
+NÈÙXÝ[ÛˆÚXÚÛ\Ý\È˜Z[YYš\œÝÚ]H”ÚÝÈÛÛ\]Y
+ŠHˆÙÙÛNÈ›ÝÓØÚÐ]Û˜›ÝÈ]]]\ÈšXH\ÙP\PXÝ[Û˜
+\ÞHÝ]H
+ÈØ\Ý
+H[œÝXYÙˆH˜]È\Kœ]Úˆ™]šY]ÐXÝ]˜]T[™[šœÞÛ›KˆŸRKPÓPS‹LÈÙ]\\ÙH[Y[[™H™YÜ™\ÜÚ[ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È
+ˆJHÙ]\[™[›ÝÈ™[™\œÈHÚ[™ÛHØ[›ÛšXØ[\ÙU[Y[[™X
+H\XØ]H[™\›ÛY˜Z[\ÈÛÛ™JKˆ™YYËY]H\Ù\ÈØ\œžH[ˆ[›[™H“™YYÈ]Hˆ˜YÙH[™[ˆ[‹\XÙH]HY]Üˆ
+\ÙKY]KYY]Ü‹J˜
+HÛˆH[Y[[™H›ÝÈ8 %HÝ[™[Û™H”\Ù\È™YY[™È]\ÈˆØ\™\È™[[Ý™Y
+›Èš[\™Y\XØ]H\Ý
+Kˆ[\]H\Ù\È[Ý™Y[ÈÛ™HÛÛ\ÙY]Z[Ï˜Y˜[˜ÙYÙXÝ[Û‹ˆ˜XœšXØ]YÞXÛH\ÝÛÛ[[ˆ
+\š]™Yœ›ÛHÞXÛHÝ]\ÊH™[[Ý™Yˆ›Û[ÝK][\]X[™\ÙH]K\]Ú›ÝÈ›Ý]H›ÝYÚ\ÙP\PXÝ[Û˜
+Y\\ÙKØÛ\ÜÚYžKØÞXÛH]]][ÛœÈ[™XYHY
+Kˆ\ÝÈ™XÛÛ˜Ú[Yˆ\ÙU[Y[[™K\ÝšœÞ
+\Ü^K[Û›HY˜][™\Ù\™Y
+H
+È\ÙQ]UÛÜšÛ\Ý\ÝšœÞÈÙ]\[™[˜ÞXÛPÛÛ^\ÝšœÞ™]\™Ù]YÈH[›[™HY]Üˆ\ÝYËˆÙ]\[™[šœÞ
+È\ÙU[Y[[™KšœÞÛ›KˆŸRKPÓPS‹LÚXÚÛ\Ý[™Ü˜\YžH™XÛÛ˜Ú[X][ÛˆÓÑKQ’VQ
+\È‹\X[
+HLÈÍÍHÛÜœ™XÝYÈQT‘ÑQÈ™KY›YÙÙY\È™YÜ™\ÜÚ[Û‹ÎLˆ™XÛÜ™YX™[[Û›KL›ÛÝË]\›ÝÜÈÜ]Ý]\ÈÙXÝ[ÛˆYYˆÜ˜\YžH™Yœ™\Ú™[XZ[œÈ[ˆÜ\˜]Ü‹\ÚYHÝ\
+ÓH[˜]˜Z[X›H[ˆH™[[ÝHÛÛZ[™\ŠKˆŸRKPÓPS‹LHY˜[˜ÙY™\Z\ˆ\WÜ\\œØØÛÜH[YÜš]HÓÑKQ’VQSQUSÓˆS‘S‘È
+ÝÛˆŠHHÛ˜›Ø\™[™È”È
+ZYÜ˜][ÛˆŒŒ
+H[™›Ü˜ÙYØÛÜHÛÛœÚ\Ý[˜ÞHÛ›HÛˆ]ÈÝÛˆ]ÈH\™XÝY˜[˜ÙY™\Z\ˆ\WÜ\\œØÜš]H]ÈY›ÝˆÛÜÙYÚ]HÚ\™Y\[^Y\ˆ˜[Y]ÜˆÜ\WÜ\\—ÜØÛÜWÙ\œ›ÜŠ
+X[ˆYZ[—Ù^[WÚ[[ØÛ\ËœXZ\œ›Üš[™ÈZYÜ˜][ÛˆŒŒ	ÜÈ[ÚÙ[ˆ›ØØX[\žH8 %˜[Y]\ÈXXÚ[™\[™[’È[Y[œÚ[ÛŽˆ^[H^\ÝÈ
+^[WÛ›ÝÙ›Ý[™
+KÞXÛH^\ÝÈ
+È™[Û™ÜÈÈ^[H
+^[WØÞXÛWÛ›ÝÙ›Ý[™È^[WØÞXÛWÙ^[WÛZ\ÛX]Ú
+H
+Š™]™[ˆÚ[ˆ›È\ÙH\ÈÝ\YY
+Š‹\ÙH^\ÝÈ
+È™[Û™ÜÈÈ^[H
+^[WÜ\ÙWÛ›ÝÙ›Ý[™È^[WÜ\ÙWÙ^[WÛZ\ÛX]Ú
+K[™\Ùx¡¥ÞXÛHšXH
+Š›[\ØY™H\]X[]JŠˆ
+^[WÜ\ÙWØÞXÛWÛZ\ÛX]Ú
+H8 %[ˆ^[K[]™[ØÞXÛKXYÛ›ÜÝXÈ\ÙH
+ÞXÛH•S
+HÛˆ[ˆ^[K[]™[\\ˆ
+ÞXÛH•S
+H\ÈÛÛœÚ\Ý[[™[ÝÙYÈHÜ›ÜÜËXÞXÛH\ÙHÜˆHÞXÛKX›Ý[™\\ÙK[Û‹XKXÞXÛK[\ÜË\\\ˆ˜Z[ÈÛÜÙYˆÚ\™Y[ÈÜ™X]WÜ\WÜ\\˜\]WÜ\WÜ\\˜
+™K]˜[Y]\ÈHY\™ÙY›ÝÈÚ[ˆH]ÚÝXÚ\ÈS–HÙˆ^[WÚYØ^[WØÞXÛWÚYØ^[WÜ\ÙWÚYÛÈ[ˆ^[WÚY[Û›HÚ[™ÙHÝ[™]˜[Y]\ÈH™]Z[™YÞXÛKÜ\ÙNÈ[œ™[]YY]ÈÈYØXÞH›ÝÜÈ\™H›Ý™]›ØXÝ]™[H›ØÚÙY
+K[™Ø[ËZ[\Ü\K\\\œØšXHH\‹Y[]H›Ý×Ý˜[Y]Ü˜ÛÚÈ
+\‹\›ÝÈ]šX][Ûˆ™\Ù\™Y
+Kˆ™\šYšYY\\œÈY][Û˜[H™Z™XÝØÛÜKYšY[]Ú\È
+ØÛÜWÛØÚÙY
+H8 %™X\ÜÚYÛš[™È\ÝY]šY[˜ÙH™\]Z\™\È™K\™]šY]Ëˆ\[^Y\ˆÚÜÙ[ˆÝ™\ˆHˆšYÙÙ\ˆÈ]›ÚYHZYÜ˜][ÛˆÛÛY[™ÈÚ]ÎÍ	ÜÈÛÛ\ÝYŒŒÛÝ[™™]›ØXÝ]™HYØXÞK\›ÝÈ™Z™XÝ[ÛŽÈHˆšYÙÙ\ˆ™[XZ[œÈHÜÜÚX›H]\™H\™[š[™ËˆŒH\ÝÈ[ˆ\ÝØÛ\×Ü\WÜ\\—Ü\ÙWØÞXÛKœXÈ[\ÝËÙ^[WÚ[[YÙ[˜ÙX
+Ø\ÝËØYZ[˜NÌÜ™Y[ˆ
+[˜ÛˆH\ÝÙL™WÙ^[WØXÝ]˜][Û˜^[K[]™[\\ÙHØ\ÙHHš\œÝÝ]YÝ™\‹\™Z™XÝY
+KˆŸRKPÓPS‹LLY˜[˜ÙY™\Z\ŽˆšX[›X[ØY[˜ÙK[Ü™Hš[\œË[ÈÙ[XÝÐÔ•QÜ™Ø[š^˜][ÛˆY]ÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠH›Ý\ˆÜ\˜]Ü‹\™\ÜYØ\ÈÛÜÙYˆ
+JH^[\Ë˜ØY[˜ÙXY›È˜[YH›Üˆ^[\È][ˆÚXÙHHYX\ˆ8 %ZYÜ˜][ÛˆŒÍÈÚY[œÈHÒPÒÈÈYšX[›X[
+ÜšYÚ[˜[Hš[Y\ÈŒÍ‹™[[X™\™YY\ˆŒÍ—Ù]ÜØÛÛ\]WÙ]˜[X][Û—ÜØY™]\]WÙš^œÜ[[™YÛˆXZ[˜š\œÝ
+KZ\œ›Ü™Y[ˆÑVSWÐÐQSÑTØ
+YZ[—Ù^[WÚ[[ØÛ\ËœX
+H[™HÓTÈ[[KÛÜ[Û“X™[È
+ŠH\ÝÙ^[\ØØZ[™Y^[WÝ\XØX[˜YÙ[Y[Û[ÙXØØY[˜ÙXØÛÛ™XÝ[™×ÛÜ™Ø[š^˜][Û—ÚY]Y\žH\˜[\ËÝ\™˜XÙY\È™]ÈÓTÈš[\ˆ›ÜÝÛœÈ
+S•UWÑVWÑ’ST”Ø
+H\È[ˆÜ™Ø[š^˜][Ûˆš[\‹[Û™ÜÚYH\×ØXÝ]™XØ]™[š[\œÈ›Üˆ^[KY˜[Z[Y\ËÜÝXš™XÝËÝÜXÜÎÈ
+ÊH™]ÈÙ[™\šXÈÔÕØ[Ë]\]X[™ÔÕØ[ËYXXÝ]˜]X[™Ú[È
+Ð•S×ÑQUÐÓÓ‘’QØÈÐ•S×ÑPPÕUUP“WÕP“TØØÛÜYÈHØ[YH[]Y\È\ÈH^\Ý[™ÈÚ[™ÛK\›ÝÈY]Ü™]\™H8 %Y™XÞXÛK[ÝÛ™Y[]Y\ÈÝ^HÝ]
+H˜XÚÈ›ÝËXÚXÚØ›ÞÙ[XÝ[Û‹HœÙ[XÝ[X]Ú[™Èš[\ˆˆ
+Ø\Y]LYÊKH[ËYY][Û™KYšY[›Ü›K[™H[Ë\™]\™HX[ÙÈ[ˆ^[R[[Û\ËšœÞÈY[]HÛÛ[[œÈ
+˜[YXØÛYØØÞXÛWÛ˜[YXØ\ÙWÛ˜[YXØ^[WÚYÛˆÚ[X›\ÊH\™H^ÛYYœ›ÛHH[ËYY]šY[XÚÙ\ˆÛˆ›ÝÚY\ÈÚ[˜ÙHÙ][™ÈÛ™H˜[YHXÜ›ÜÜÈHÚÛHÙ[XÝY˜]Ú\È™]™\ˆH[[ˆ
+
+HÜ™Ø[š^˜][Û‘Y][™[šœÞÛ›H^ÜÙYÙXœÚ]WÝ\›[ÝYÚUØYZ[‹ÛÜ™Ø[š^˜][ÛœËÞÚYX
+YZ[—Ý\ÝœX
+H[™XYHXØÙ\Y˜[YXØ\XØÝ]XØÙXœÚ]WÝ\›ØÙ™šXÚX[ÙÛXZ[˜Ø\ÝÝY\˜Ø™\šYšXØ][Û—Û›Ý\Ø8 %[™[›ÝÈ^ÜÙ\ÈH[Y]X›HÙ]›È˜XÚÙ[™Ú[™ÙH™YYYˆ™]È˜XÚÙ[™\ÝÈ
+\ÝØYZ[—ÜÝYWÛÜËœX
+H
+È™]Èœ›Û[™\ÝÈ
+^[R[[Û\Ë˜[Ñš[\œË\ÝšœÞ
+NÈ[\ÝËØYZ[‹Ý\ÝØYZ[—ÜÝYWÛÜËœX
+LJH[™^[R[[Û\Ê˜ØÜ™Ø[š^˜][ÛœÊ˜œ›Û[™ÝZ]\ÈÜ™Y[‹ˆZYÜ˜][ÛˆŒÍÈ\ÈÓÑKQ’VQSQUSÓˆS‘S‘Ø8 %\HÈÝYÚ[™ËÜ›Ù[™ÛÛ™š\›HHÚY[™YÛÛœÝ˜Z[™Y›Ü™H™[Z[™ÈÛˆšX[›X[[ˆ›ÙXÝ[Ûˆ]KˆŸRKPÓPS‹LLHY˜[˜ÙY™\Z\Žˆ^[H˜[YHÙX\˜ÚÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠH›ÛÝË]\ÈRKPÓPS‹LLˆH^[\È[]HYš[\ˆ›ÜÝÛœÈ]›Èœ™YK]^ÙX\˜Ú8 %›ÈØ^HÈš[™[ˆ^[HžH˜[YKˆ\ÝÙ^[\ØØZ[™YHX]Y\žH\˜[H
+Ø\ÙKZ[œÙ[œÚ]]™H[ZÙXÛˆ˜[YXÛÛ\ÜÙ\ÈÚ]H^\Ý[™Èš[\œÊH[™^[\ØØ\ÈYYÈHœ›Û[™S•UWÔÑPTÒÔTSXX\ÛÈH^\Ý[™ÈX›Ý[˜ÙYÙX\˜Ú›Þ™[™\œÈ[™Ù[™ÈXˆ˜XÚÙ[™[Û›H›ÝH›ÜˆÜ\˜]ÜœÎˆ\È\ÈY]]™H8 %HÝ[H˜XÚÙ[™Ú[\HYÛ›Ü™\ÈX
+˜\ÝTH›ÜÈ[šÛ›ÝÛˆ]Y\žH\˜[\ÊKÛÈHÙX\˜Ú›Þ\X\œÈÈÈ›Ý[™È[[H˜XÚÙ[™\È™Y\ÞYYÈHš[\ˆ›ÜÝÛœÈœ›ÛHRKPÓPS‹LL]™HHØ[YH\ÞH\[™[˜ÞKˆH™]È˜XÚÙ[™\Ý
+\ÝØÛ\×Û\ÝÙ^[\×Û˜[YWÜÙX\˜ÚÚ[ZÙX
+H
+ÈH™]Èœ›Û[™\Ý
+^[\È˜[YHÙX\˜ÚÙ[™ÈHH\˜[X
+NÈ[\ÝËØYZ[‹Ý\ÝØYZ[—ÜÝYWÛÜËœX
+LÌJH[™HÝY[ÜÈœ›Û[™ÝZ]\È
+ÈÝZ]\ÈÈŽŠHÜ™Y[‹ˆ‚ŠŠ•˜[Y][ÛˆÝÙY\8 %][\YˆÎLÈ
+Û™\ÝÝ]\ÊKŠŠˆ›È]™HÝ\X˜\ÙKÜÝYÚ[™È\È™XXÚX›Hœ›ÛHHÒKÙ]ˆÛÛZ[™\ˆ
+[ˆÜ™\Ý\X˜\ÙX[\K›È™[˜ØØÚÙ\‹XÛÛ\ÜÙX]\Ýš[šX^ÛY\È[YÜ˜][Û˜žHY˜][
+KÛÈ›È][H™[ÝÈØ[ˆ™HX\šÙY\È]š[™ÈYH]™KXœ›ÝÜÙ\‹ÛÜ\˜]Üˆ˜[Y][Ûˆœ›ÛH\™H8 %[™[XZ[ˆ
+Š•SQUSÓˆS‘S‘ÊŠˆ]HÜ\˜]Üˆ^Y\‹ˆ™\ÝXÚY]˜X›H]šY[˜ÙHØZ[™Yˆœ›Û[™™\Ý
+[ØÚÙYPTJHÝZ]\È›ÜˆRKPÓPS‹LH
+Ù]\[™[˜Û\ÜÚYžXKÍJKËÌÌKÌ‹ÌÈ
+\ÙU[Y[[™X\ÙQ]UÛÜšÛ\ÝÙ]\[™[˜ÞXÛPÛÛ^™]šY]ÐXÝ]˜]T[™[\S[ØÚÔ›Ú™XÝ[Û”[™[^[UÛÜšÜÜXÙX8 %LKÌLH[ˆHÛX[ˆ[ŠH\ÜÈYØZ[œÝ[ØÚÙY˜XÚÙ[™Ëˆ
+Š˜XÚÙ[™]\ÝÛÝ[›Ý[ˆ[ˆ\ÈÛÛZ[™\ŠŠˆ
+œ›ÚÙ[ˆ[›™Y\ÎˆÝ\›]OOLKŒËŒX8¡¤›Z\ÜÚ[™È˜Z\ÜÚ[™ÈØXÚ]ÛÛØÈˆÛÛXÝ[Ûˆ\œ›ÜœÊH8 %ÛÈRKPÓPS‹LIÜÈŒH\ÝØÛ\×Ü\WÜ\\—Ü\ÙWØÞXÛKœX\ÝÈ[™[˜XÚÙ[™ÛÝ™\˜YÙH›ÜˆKÌËÌÙ\™H
+Š››Ý^XÝ]Y\™JŠˆ
+^H\ÜÈ[ˆÒHÚ\™H\[œÝ[\ˆ™\]Z\™[Y[Ë[œÈš\œÝ
+Kˆ™]ˆœ›Û[™[Û›H][\È\™H\Ý\ÝZ]K]˜[Y]Y
+[ØÚÙYTJNÈ˜XÚÙ[™[™[]™KÛÜ\˜]Üˆ›ÛÙˆÝ[Ù[Z[™[H[™[™È[ˆ[š\›Û›Y[Ú]ÝYÚ[™ÈˆXØÙ\ÜÈ
+ÈÛÜšÚ[™È˜XÚÙ[™\Ë‚‚ˆÈÈÈ[[YHYÜÂ‚Ÿ\™XHÝ]\È›Ý\ÈŸKK_KK_KK_Ÿ•QËQRKLHÔÕ‹‹‹ÜÞ[X\ËÜ›ÜÜÙX8¡¤ˆÓÑKQ’VQSQUSÓˆS‘S‘ÈÞ[X\×ÛX\\‹œX›ÝÈ]Y\šY\ÈÞ[X\×ÙØÝ[Y[Ø
+\È^[WÚYÛÛ[[ŠHÛˆ›ÝØØÝ\œ™[˜Ù\Ëˆ\XØ]H›ÜÜÙ\‘\œ›Ü˜[™›ÜÜÙWÜÞ[X\×ÛY[[ÛœØYš[š][ÛœÈ™[[Ý™Yˆ™YÜ™\ÜÚ[Ûˆ\ÝÈ[ˆ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝÜÞ[X\×Ü›ÜÜÙ\‹œX8 %Ì\ÝÈ\ÜÚ[™Ëˆœ˜[˜Úˆš^ÚK\Þ[X\Ë\›ÜÜÙKMˆŸ•QËQRKMTx¡¤›[ØÚÈ›Ú™XÝ[Û‹ÜÞ[˜ÈÜ˜\Ú\ÈÛˆ•S\ÚÙ\\˜]ÜˆÓÑKQ’VQSQUSÓˆS‘S‘È
+ˆÎLÍH
+È™[[X™\ˆ›ÛÝË]\
+HHÛÛ[Z\Ú[ˆ›Ú™XÝÜ\WÜ]Y\Ý[Û—Ý×Û[ØÚ×Ø˜[šØ
+œ›ÛHZYÜ˜][ÛœÈNËÌNØ\œšYY›ÝYÚŒŽJH›Ú[™Y]ÈÜ[]™[šY[ÈÚ]ÚŠ
+X
+TÐÒRH•S
+KˆÜÝÜ™TÔS^Ø[››ÝÛH[ž]H8 %ÚŠ
+X˜Z\Ù\È[Ú\˜XÝ\ˆ›Ý\›Z]Y8 %ÛÈH”ÈX›ÜYH[œÝ[]™XXÚYH\Ú^™\ÜÚ[Û‹Ü˜\Ú[™È
+Š™]™\žJŠˆTx¡¤›[ØÚÈ›Ú™XÝ[Ûˆ[™Þ[˜È
+[™›ØÚÚ[™È›Ú™XÝ[Û‹Y[YÚXš[]H›ÜˆRKQUKLIÜÈN]Y\Ý[ÛœÈÛ˜ÙHYÙÙY
+KˆÛÛ\]WØÛÛ[Ú\Ú
+
+X[ˆ\WÛ[ØÚ×Ü›Ú™XÝ[Û‹œXZ\œ›Ü™YHØ[YH•SÙ\\˜]Ü‹ˆš^
+ZYÜ˜][Ûˆ
+ŠŒŒÎJŠ‹Ü™X]HÜˆ™\XÙXÛˆH”ÈÛ›JNˆÝØ\]™\žH
+ŠÜ[]™[
+ŠˆÚŠ
+X8¡¤ˆÚŠŽJX
+ÔÊNÈHÚ][‹[\ÝÚŠÌJXØÚŠÌ
+X
+TËÔ”ÊH\™H[™XYH˜[Y›Û‹[[ž]\È[™\™H[˜Ú[™ÙYˆ]ÛˆZ\œ›Üˆ\]Y[ˆØÚÜÝ\
+ÔË”Ë”ÈH—Y‹—Yˆ‹—YH˜ÈØÜÝš[™È•SÛÜ™[™ÈÛÜœ™XÝY
+Kˆ\™HÙ\\˜]ÜˆÝØ\8 %šY[Ù]
+ÈÜ™\ˆ™\Ù\™Y™\˜˜][Hœ›ÛHŒŽH
+\ÜÙ\YžH\ÝÙšY[ÜÙ]Ø[™ÛÜ™\—Ü™\Ù\™YÙœ›ÛWÌŒŽXÚXÚ™\^\ÈŒŽIÜÈ^™\ÜÚ[ÛˆÚ]ÚŠ
+X8¡¤˜ÚŠŽJX[™ž]KXÛÛ\\™\ÊKˆÚ[˜ÙHH™KYš^”ÈÛÝ[™]™\ˆÛÛ\]K›È[™XYK\›Ú™XÝY›ÝÈØ\œšY\ÈHÛ\Ú8¡¤ˆ›È\ÝÜšXØ[Z\ÚZYÜ˜][ÛˆÛÛ˜Ù\›‹ˆ
+Š”ÓÕ“ÕNŠŠˆÜšYÚ[˜[HY\™ÙY
+ˆÎLÍJH\ÈŒÎÜ\WÜ›Ú™XÝ[Û—Û[ÜÙ\\˜]Ü—Ùš^œÜ[]ÛÝŒÎØ\È[™XYH[žHŒÎÙ]ÜÜ›Û\ØÛÛ\]YØ]œÜ[
+\YYš\œÝ
+H8¡¤ˆ]™H\H]\XØ]HÙ^H8 )ˆØÚ[XWÛZYÜ˜][Ûœ×ÜÙ^H
+ŒÍLJXˆ™[[X™\™YŒÎ8¡¤ˆ
+ŠŒŒÎJŠˆ\ÈH›ÛÝË]\ˆ\ÝÎˆ\ÝÜ\WÜ›Ú™XÝ[Û—Û[ÜÙ\\˜]Ü—ÛZYÜ˜][Û‹œX
+Ë[˜Ûˆ›ËS•SZ[‹Z\ÚY^™\ÜÚ[Ûˆ
+ÈÜÝ\™K\™\Ù\™Y
+H
+È\ÝÜ\WÛ[ØÚ×Ü›Ú™XÝ[Û‹œNŽ\ÝÚ\ÚYØÛÛ[Ý\Ù\×Û›×Û[Øž]WÜÙ\\˜]Ü˜
+ÜY\ÈHÚLMˆ[œ]\ÜÙ\È›È
+NÈLLÜ™Y[ˆXÜ›ÜÜÈH™YH›Ú™XÝ[ÛˆÝZ]\Ëˆ
+Š“ÔTUÔˆS‘S‘ÎŠŠˆ\HZYÜ˜][ÛˆŒÎH
+‘T’Q–HˆŒÎH\ÈH™^œ™YHÛÝ
+KÛÛ™š\›HÙ\šXÙWÜ›ÛX[Û›HVPÕUH™\Ù\™Y[™^\˜Ú\ÙHH™X[Tx¡¤›[ØÚÈÞ[˜È[™]ËY[™
+HÜ˜\ÚÛ›H™\›ÙXÙ\ÈYØZ[œÝ]™HÜÝÜ™TÔS8 %HÛÛZ[™\ˆ\È›È]™HŠKˆŸ•QËQRKLˆÑUØÛÛœÛÛKÙ^[\ËÞÚYX8¡¤ˆLQT‘ÑQÈÓÑH‘TÑS•8 %ˆÍÍLØYÙØ×Ù^˜XÝ[Û—ØÛÝ[ÊÝšXÝUYKÑ˜[ÙJX[ˆ™XY[™\ÜËœH8 %ÝšXÝ]
+ÛÛœÛÛJH\Ù\È[YÚ[˜][Ûˆ
+È˜Z[XÛÜÙY™XYÎÈÛÜšÜÜXÙH]\È˜Z[\ÛÙˆ[›ØØX[\žNˆÝ[Ù^˜XÝYÜ[™[™ËÙ˜Z[YÛ™YY×Ü™]šY]ËÛ›ÝÜÝ\Yˆ]\›Z[š\ÝXÈ]\ÝZ›ØˆžH
+Ü™X]YØ]Y
+Kˆ›È›[Z]
+Œ
+XˆN\ÝËˆŸ•QËQRKLÈYZ[ˆØÝ[Y[^˜XÝ[Ûˆœ›ÚÙ[ˆ
+ÍÈœÈ^˜XÝY
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈˆÍÍÎH
+Û]YKØYZ[‹YØËY^˜XÝ[Û‹Yš^ZžÞ˜\˜
+Kˆ›ÛÝØ]\ÙNˆÛÛ\]WÙØÝ[Y[Ý\ØY[œ]Y]YY]™]™\ˆ˜[ˆ^˜XÝ[Ûˆ
+›È˜XÚÙÜ›Ý[™ÛÜšÙ\ŠNÈ[—Ý^Ù^˜XÝÚ›Ø˜\ÙYÝÛ™\—Ý\Ù\—ÚY\]X[]HÛˆYZ[ˆØÜÈ
+ÚXÚ]™HÝÛ™\—Ý\Ù\—ÚYS•S
+NÈ›ÜÜÙ\ˆ]Y\šYYØÝ[Y[ÜYÙ\ØžHÞ[X\×ÙØÝ[Y[ËšY
+Ü›Û™ÈURQ˜[Y\ÜXÙJKˆš^\Îˆ
+JHÞ[˜Ú›Û›Ý\È^˜XÝ[ÛˆØ[[ˆÛÛ\]WÙØÝ[Y[Ý\ØYÈ
+ŠHYZ[—ÜØÛÜX\˜[Y]\ˆ[ˆ[—Ý^Ù^˜XÝÚ›Ø˜˜[Y]\ÈØÛÜXšY[È
+ÊHZYÜ˜][ÛˆNMHYÈÛÝ\˜ÙWÙØÝ[Y[ÚY’ÈÛˆÞ[X\×ÙØÝ[Y[È8¡¤ˆØÝ[Y[Ø\ÜÙ]ØÚ]ÝÜ˜YÙWÜ]˜XÚÙš[È
+
+H›ÜÜÙ\ˆÑSPÕ[˜ÛY\ÈÛÝ\˜ÙWÙØÝ[Y[ÚY\Ù\È]›ÜˆYÙHÛÚÝ\È
+JH[š×Ý×ÜÞ[X\ØÜ[]\ÈÛÝ\˜ÙWÙØÝ[Y[ÚY[[Ý\È™\šYšYY8¡¤ˆ[™[™ØÛˆ™\XÙ[Y[È
+ŠHÛÛ\]K]\ØYÐTÈ
+\ØYY8¡¤œ›ØÙ\ÜÚ[™Ø
+HÚ]\˜Ú]™K\˜XÙH]XÝ[ÛŽÈ
+ÊH[œ]Y]YKY˜Z[\™HÐTÈ›Û˜XÚÈÚXÚÜÈ™\Ý[8 %™]\›œÈHYˆ\˜Ú]™HÛÛŽÈ
+
+H\˜Ú]™H›Ý™[˜[˜ÙH›ØÚÜÈ
+\WÜ\\œÈ
+ÈÞ[X\×ÙØÝ[Y[ÊNÈ
+JHÝ\]WÙØØÛÛ™][Û˜[
+›™\JœÝ]\È‹˜\˜Ú]™YŠX
+NÈ
+L
+HÝÛ™\œÚ\X™Y›Ü™KZ›Ø‹\Ý]H[ˆ\˜Ú]™WÚ][Xˆ
+ŠÛÜÙYžHZYÜ˜][ÛˆŒŽŠŠˆš[˜[^™WÙØÝ[Y[Ù^˜XÝ[Û˜
+Œ—Ø]ÛZX×Ù^˜XÝ[Û—Ùš[˜[^™KœÜ[
+HØÚÜÈHØÝ[Y[›ÝÈ“ÔˆTUXX›ÜÈYˆ\˜Ú]™YØÚÜÈH›Øˆ›ÝË[]\ÊÚ[œÙ\ÈYÙ\Ë[™Üš]\È\›Z[˜[Ý]\È›Üˆ›Ý[ˆÛ™H˜[œØXÝ[Ûˆ8 %H\˜Ú]™KÜYÙK]Üš]H˜XÙH\È[HÛÜÙYˆÝÜš]WÜYÙ\Ø[ˆ^Ù^˜XÝœX
+ÚXÚØ[Y™\XÙWÙØÝ[Y[ÜYÙ\Øœ›ÛHZYÜ˜][ÛˆLLÊH\ÈXYÛÙH[™\È™Y[ˆ™[[Ý™YÈHš[˜[^™WÙØÝ[Y[Ù^˜XÝ[Û˜”È\ÈHÛÛHÜš]H]ˆ™YÜ™\ÜÚ[Ûˆ\ÝÎˆÐTÈ˜XÙK[œ]Y]YKY˜Z[\™H\˜Ú]™K]Ú[œÈK\˜Ú]™H]Y]›Ý™[˜[˜ÙH›ØÚÜË\Ý[[Ý[Û‹›Û‹[ÝÛ™\ˆˆ
+Š•˜[Y][Ûˆ™\]Z\™YŠŠˆ
+JH\HZYÜ˜][ÛˆNMHÈÝYÚ[™ÎÈ™\šYžHÛÝ\˜ÙWÙØÝ[Y[ÚY˜XÚÙš[Y
+È“ÕPÑHÝ]]È
+ŠH\ØYˆ8¡¤ˆÛÛ\]K]\ØY8¡¤ˆÛÛ™š\›H›ØÙ\ÜÙY
+ÈØÝ[Y[ÜYÙ\Ø›ÝÜÎÈ
+ÊH\˜Ú]™HÚ]™\šYšYYTKÜÞ[X\È\8¡¤ˆNÈ
+
+H™\XÙHÛÝ\˜ÙHÛˆ™\šYšYYÞ[X\È8¡¤ˆ[[ÝYÈ[™[™ØÈ
+JH›ÜÜÙ\ˆÛˆ[™^˜XÝY8¡¤ˆŒˆ^˜XÝ[Û—Ü™\]Z\™YÈ
+ŠH˜Z[‹Ü™]žH^\Ý[™È˜Z[YTÐÈÔÑH›ØœÈÜÝY\ÞKˆ‚Ÿ•QËQRKMÞ[X\ÈX\\ˆYÙHšY]Ù\ˆÑU‹‹‹ÝÛÜšÜÜXÙKÞÙ^[WÚYKÙØÝ[Y[ËÞÙØ×ÚYKÜYÙ\ËÞÛŸX8¡¤ˆ
+È˜]ËUURQ›ÜÝÛœÈÓÑKQ’VQSQUSÓˆS‘S‘ÈÛÈÜ\˜]Ü‹\™\ÜYÞ[\Û\ÈÛˆH^[HÛÜšÜÜXÙKˆ
+JH
+ŠYÙHšY]Ù\ŽŠŠˆÞ[X\ÓX\\”[™[šœÞ™]ÚYH›Û‹Y^\Ý[ØYZ[‹Ù^[KZ[[YÙ[˜ÙKÝÛÜšÜÜXÙKÞÙ^[RYKÙØÝ[Y[ËÞÙØÒYKÜYÙ\ËÞÛŸX›Ý]H[™™XY^ØÛÛ[Ù™ˆH
+
+H›ÙKÛÈHX\\‰ÜÈYÙH[™HØ\È[Ø^\È›[šËˆ™\Ú[YÈH™X[ÓTÈ\Ý[™ÈÑUØYZ[‹Ù^[KZ[[YÙ[˜ÙKXÛ\ËÙØÝ[Y[ËÞØ\ÜÙ]YKÜYÙ\Ø
+YZ[—Ù^[WÚ[[ÙØÝ[Y[ËœNÌØ™]\›œÈÚ][\Î–ÞÜYÙWÛ[X™\‹^ØÛÛ[W_X
+NÈH[™[›ÝÈ™]Ú\ÈÛ˜ÙH\ˆØÝ[Y[[™[™^\ÈžHYÙWÛ[X™\˜
+›ÜÜØ[ÉÈÛÝ\˜ÙWÜYÙX\™H™X[YÙH[X™\œË›Ý\ÝÙ™œÙ]ÊKˆ
+ŠÚXÚÜÜÝš^ŠŠˆHYÙ\È\Ý[™È\ÈÙ^YYžHHØÝ[Y[Ø\ÜÙ]ØYÛÈ]]\Ý™HØ[YÚ]HÙ[XÝYÞ[X\È›ÝÉÜÈÛÝ\˜ÙWÙØÝ[Y[ÚY
+\ÜÙ]Y
+K“ÕHÞ[X\×ÙØÝ[Y[ËšY8 %\ÜÚ[™ÈH]\ˆÈ
+ÛØYØYZ[—Ø\ÜÙ]
+KZ\œ›Üš[™ÈH•QËQRKLÈ˜[Y\ÜXÙH[™H›ÜÜÙ\‰ÜÈÛÝ\˜ÙWÙØÝ[Y[ÚYÜˆÞ[X\×ÙØÝ[Y[ÚY˜[˜XÚÈ
+Þ[X\×ÛX\\‹œNŒLŒ˜
+KˆØÝ[Y[Ù[XÝÜ˜›ÝÈÝ\™˜XÙ\ÈHÙ[XÝY›ÝÈšXHÛÚ[™ÙJYØÊXÈH[™[™\ÛÛ™\ÈØËœÛÝ\˜ÙWÙØÝ[Y[ÚYY›ÜˆHYÙ\È™]Úˆ™YÜ™\ÜÚ[Ûˆ\Ý\ÜÙ\ÈH™]Ú]\Ù\ÈH\ÜÙ]Yˆ
+Š’Û›ÝÛˆ[Z]][Ûˆ
+Y™\œ™Y
+NŠŠˆYØXÞHÞ[X\×ÙØÝ[Y[Ø›ÝÜÈÚ]ÛÝ\˜ÙWÙØÝ[Y[ÚYH[
+ZYÜ˜][Û‹LNN[XšYÝ[Ý\È˜XÚÙš[ÊHÝ[ÚÝÈH›[šÈYÙH[™H8 %HÓTÈYÙ\È›Ý]HØ]\ÈÛˆØÝ[Y[Ø\ÜÙ]Ø^\Ý[˜ÙKÛÈHÞ[X\ÈYÈ]™[ˆÝYÚH›ÜÜÙ\ˆ™XYÈÜÙH›ÝÜÉÈYÙ\ÈžHÞ[X\ÈYˆÙ\š[™ÈYÙH^›Üˆ[H™\]Z\™\ÈH˜XÚÙ[™Ú[™ÙHÈHYÙ\È[™Ú[
+XØÙ\HÞ[X\ÈYÈYØXÞH™\ÛÛ™JNÈÝ]ÙˆØÛÜH›Üˆ\ÈRK[Û›Hš^ˆ›ÜÜØ[Ù[™\˜][Ûˆ\È[˜Y™™XÝYˆ
+ŠH
+Š”˜]ËUURQ›ÜÝÛœÎŠŠˆHÞ[X\ÈX\\ˆØÝ[Y[Ù[XÝÜˆ
+ØÝ[Y[Ù[XÝÜ‹šœÞ
+KHTK[Û˜›Ø\™[™Èœ™]\ÙHÛÝ\˜ÙHˆÙ[XÝÜˆ
+Y\T\\“[Ù[šœÞ
+K[™HœÛÝ\˜ÙHØÝ[Y[ˆÙ[XÝÜˆ
+ØÝ[Y[Ü[Û“X™[[ˆ\T›Ý™[˜[˜ÙQšY[ËšœÞ
+H™[˜XÚÈÈ\Ü^Z[™ÈH[URQÚ[ˆH[X[‹\™XYX›HšY[Ø\ÈXœÙ[8 %›ÝÈÚÝÈHÚÜX™[Y˜[˜XÚÈ
+[]Y8 )ˆ
+8 )žÛ\ÝŸJX
+Kˆ˜[YXØÙ^XÝ[Ø\œžHH[YÈ›ÈÛÛ˜XÝÚ[™ÙKˆ\ÝÎˆÞ[X\ÓX\\˜ØÝ[Y[Ù[XÝÜ˜\UÛÜšØ™[˜ÚÝZ]\ÈÜ™Y[ˆ
+LH\ÝË[˜Ûˆ\ÜÙ]ZY™YÜ™\ÜÚ[ÛŠNÈ\Û[ÛX[ˆÛˆHÚ[™ÙYšœÞˆ›È˜XÚÙ[™Ú[™ÙH8 %HYÙ\È[™Ú[[™XYH^\ÝYˆ›ÝNˆÔÕØYZ[‹Ù^[KZ[[YÙ[˜ÙKXÛ\ËÜ\K[Û˜›Ø\™[™ØÛˆH[[ÈÜÝ\ÈHÝ[KY\ÞH\Y˜XÝ
+›Ý]H\È™YÚ\Ý\™Y]Ù\™\‹œNŒÍØ
+K›ÝHÛÙHY™XÝ8 %
+Š“ÔTUÔˆS‘S‘ÊŠˆ™Y\ÞHÙˆØÜX\KY[[Øˆ‚ˆÈÈÈ\Ù\šY\È8 %™Y[™[]H\Ü^H
+Y™XÝÊB‚‘[]šY[˜ÙNˆØÜËÜ™]šY]ÜËÙ^[KZ[[YÙ[˜ÙKY\ÚYÛ‹\™]šY]ËLŒ‹L‹LŒ›Y0©ÐØ]YÛÜžHK‚‚ŸQ\™XHÝ]\È›Ý\ÈŸKK_KK_KK_KK_ŸH^[HY[]H[ˆÈØØ][ÛœÈÚ[][[™[Ý\ÛHÓÑKQ’VQSQUSÓˆS‘S‘ÈÛX\XY\ˆ
+^[UÛÜšÜÜXÙKšœÞŒLL8 $ÌLŽ
+H\ÈØ[›ÛšXØ[ˆ˜[YKÜÛYËÝ\KÙ˜[Z[H™[[Ý™Yœ›ÛHÝ™\šY]Ô[™[Y[]HÙXÝ[Ûˆ[™Ù]\[™[‘^[H]Z[ÈˆØ\™
+Lx $ÎL
+Kˆ[š\]YHšY[È
+X[˜YÙ[Y[[™KØY[˜ÙKXÝ]™JH™\Ù\™Y[ˆÝ™\šY]Ô[™[ˆH™YÜ™\ÜÚ[Ûˆ\ÝÈ[ˆÝ™\šY]Ô[™[\ÝšœÞ[™Ù]\[™[šY[]K\ÝšœÞˆŸˆ™XY[™\ÜÈØÛÜ™XØ\™\XØ]Y[ˆXY\ˆ[™Ý™\šY]Ô[™[ÓÑKQ’VQSQUSÓˆS‘S‘È^[UÛÜšÜÜXÙKšœÞŒML¸ $ÌŒ
+XÝ[Û˜X›K\ÈÕJH\ÈØ[›ÛšXØ[ˆÝ™\˜[ØÛÜ™KÜÝ]\ÈÝ[[X\žH™[[Ý™Yœ›ÛHÝ™\šY]Ô[™[™XY[™\ÜÈÙXÝ[ÛŽÈ\‹\ÙXÝ[Ûˆ™XY[™\ÜÈ›ÝÜÈ
+ÈÙXÝ[ÛœÊH\™H[š\]YHÈÝ™\šY]Ô[™[[™™\Ù\™Yˆˆ™YÜ™\ÜÚ[Ûˆ\ÝÈ[ˆÝ™\šY]Ô[™[\ÝšœÞˆŸÈ”\Ù\È™YY[™È]\Èˆ\Èš[\™Y\XØ]HÙˆXZ[ˆ\Ù\È\ÝÓÑKQ’VQSQUSÓˆS‘S‘È
+ˆJH™\ÛÛ™YžHRKPÓPS‹LÎˆÙ]\[™[™[™\œÈÛ™HØ[›ÛšXØ[\ÙU[Y[[™XÈHÝ[™[Û™H”\Ù\È™YY[™È]\ÈˆØ\™\È™[[Ý™Y[™]H]]Üš[™È\È[›[™HÛˆH™YYËY]H›ÝÜÎÈ[\]\È\™H[ˆÛ™HÛÛ\ÙYY˜[˜ÙY]Z[Ï˜ÈH˜XœšXØ]YÞXÛH\ÝÛÛ[[ˆ\ÈÛÛ™Kˆ\ÙU[Y[[™K\ÝšœÞ[™\ÙQ]UÛÜšÛ\Ý\ÝšœÞ™XÛÛ˜Ú[YÚ]H™\ÝÜ™Y^[Ý]ˆŸÛÛ\]][Ûˆ‘^[HˆÛÛ[[ˆ[Ø^\ÈY[XØ[[ˆÛÜšÜÜXÙHÛÛ^ÓÑKQ’VQSQUSÓˆS‘S‘È^[HÛÛ[[ˆ™[[Ý™Y[ˆÛÛ[Z]XYY˜MN
+Ø]™HHRHÛX[\Œ‹L‹LŽJKˆÛÛ\]][Û“Y]šXÜÕX›KšœÞ›ÈÛ™Ù\ˆ™[™\œÈË™^[XÈHÛÛ[Y[]H[][ÛˆÚ]H™XÛÜ™ÈH˜][Û˜[KˆÛÛ\]][Û”[™[šœÞØÝ[™KYš[\œÈžH^[KšY\ÈHÛÝ\˜ÙK[Ù‹]]ÝX\™ˆ‚ˆÈÈÈK\Ù\šY\È8 %][\HÝ™\›\[™È[žHÚ[È
+HY™XÝÊB‚‘[]šY[˜ÙNˆØÜËÜ™]šY]ÜËÙ^[KZ[[YÙ[˜ÙKY\ÚYÛ‹\™]šY]ËLŒ‹L‹LŒ›Y0©ÐØ]YÛÜžH‹‚‚ŸQ\™XHÝ]\È›Ý\ÈŸKK_KK_KK_KK_ŸLHÈMÈÛ›ÝÛYÙQÛÝ™\›˜[˜ÙH‘^[H]	ˆ[›™\ˆ™XY[™\ÜÈˆ[™H™[[Ý™YÓÑKQ’VQSQUSÓˆS‘S‘È[™HØ\™™[[Ý™Yœ›ÛHÛ›ÝÛYÙQÛÝ™\›˜[˜ÙKšœÞ
+0©Í[™[™ËXØ\™™[[Ý˜[
+Kˆ[™[™ÈÛÜH\]Yœ›ÛH‘›Ý\ˆ[™\Èˆ8¡¤ˆ•™YH[™\È‹ˆ^[KYÛÝ™\›˜[˜ÙH[šÜÈ
+ÛÛœÛÛK™YÚ\ÝžKÜ™X]H^[JH™[XZ[ˆ[ˆYZ[”Ú[š[X\žH˜]ˆ8 %›Ý\XØ]YÛˆHÑÈ[™[™ÈYÙKˆÚYX˜\ˆ^[HÜ›Ý\[ÝXÚY
+™[[Ý™Y]ÛZXØ[H[ˆNPJKˆ[™[™È\ÝÈ\]YˆŸLˆ^[R[[YÙ[˜ÙKšœÞ^ÜÙ\ÈH˜]šYØ][Ûˆ]ÈÚ[][[™[Ý\ÛH
+Š“ÐÒÑQ8 %ÕTT”ÑQQÈNÐUQ
+ŠˆXÚ\Ú[ÛˆØÚÙYŒ‹L‹LŒNˆ÷ï5¶‰žËkºwµç]›Ë\™]žKÚ\˜ÝZ]Xœ™XZÙ\ˆÜ[ŠÜÚÜXÚ\˜ÝZ]
+Ü™\Ù]X[›Ü›YY™Y\Ø[šXHÝÜÜ™X\ÛÛˆ
+È™\™XÝ›YËÝ×ØÛÛ™šY[˜ÙKÛÜšÙ\ˆ[YÜ˜][Ûˆ›Ýš[™ÈÚYÝËY˜Z[\™H[™\™\ÜÈ
+ÈÚYÝË\ÝXØÙ\ÜÈØ[›ÛšXØ[]\›Z[š\ÛH
+È›Ë\˜]Ë]^[™Ù™‹Û]™KÜÚYÝÈÙX[H
+È]\›Z[š\ÝXËXØ[›ÛšXØ[ÝX\™ÊKˆ^\Ý[™ÈÜš][™ÈÝZ]HÜ™Y[ˆ
+\ÝËÜÝYWÛÜËØLNLH\ÜÙYŒÈÚÚ\YÈH™KY^\Ý[™È[œ™[]Yš]˜ÔS]Tˆ˜Z[\™H[ˆ\ÝÝÜš][™×Ü˜XÝXÙWÜ›Ý]\ËœX
+Kˆ
+Š”›Û[Ý[ÛˆÈU‘HÝ[“ÐÒÑQ
+ŠˆÛˆH0©ÍKŒˆÈ0©ÌM‹YØ]KMHY]šXÜÈ
+\‹Y^\˜Ú\ÙH8¢iML[X[‹[X™[YØ[\\Îˆ”8¢iIK“ˆ8¢iL	KÛÝ\˜ÙK[Z\ÛX]Ú™XÚ\Ú[Ûˆ8¢iNL	KMH8¢iËÛÜÝ8¢iTÉŒ‹Ý[š]‘T“È]\›Z[š\ÛH™YÜ™\ÜÚ[ÛœÊH
+ÈÜ\˜]ÜˆÚYÛ‹[Ù™‹ˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆØ\\™HÚYÝË\[ˆ[[Y]žHYØZ[œÝH]™H[ˆÚ]‘—ÕÔ’US‘×ÓWÑUS\ÚYÝØ
+ÈH™X[Ù^NÈÛÛ™š\›HÜš][™×Û[™ÝXYÙWÙ]˜[X]Ü—Ü[œØš[È›ÝšY\‹Û[Ù[ÝÚÙ[œËØÛÜÝÜÝ]\ÎÈ™YÚ[ˆH0©ÌMˆ]šY[˜ÙHÚ[™ÝËˆŸUÔÙ\šXÙWÜ›ÛHX›HÜ˜[È8 %ZYÜ˜][ÛˆŒÍÓÑKQ’VQSQUSÓˆS‘S‘È8 %\H
+ÈL™HŒÍÙ]ÜÜÙ\šXÙWÜ›ÛWÝX›WÙÜ˜[ËœÜ[Ü˜[ÈÙ\šXÙWÜ›ÛX[Ô•QÛˆ[NUÔX›\È
+ZYÜ˜][ÛˆŒIÜÈÜš][™×Ê˜Ù]
+È^[WÙ\ØÜš\]™WÜ™\]Z\™[Y[Ø
+È\Ù\—ÝÜX×ÛX\Ý\žWÙ]šY[˜ÙX[™ŒM	ÜÈÜš][™×Ü›Û\Ý\™Ù]Ø
+KˆZYÜ˜][ÛˆMÌÉÜÈÛ™K][YH›[šÙ]Ü˜[8 )ˆÛˆ[X›\È8 )ˆÈÙ\šXÙWÜ›ÛX™Y]Y\ÙHX›\È[™ZYÜ˜][ÛˆŒHÜ˜[YÙ\šXÙWÜ›ÛXÛ›HÛˆ[˜Ý[ÛœÈ
+ÈHY™™XÝ]™WÝ\Ù\—ÝÜX×ÛX\Ý\žWÙ]šY[˜ÙX›ÛšY]È8 %™]™\ˆX›K[]™[Ô•QˆÛÈHÜš][™Ë\˜XÝXÙH˜XÚÙ[™
+Ù]ÜÝ\X˜\ÙWØYZ[Š
+XOHÙ\šXÙWÜ›ÛKÚXÚž\\ÜÙ\È“È]Ý[™YYÈ^XÚ]ÜÝÜ™\ÈÜ˜[ÊH]LH\›Z\ÜÚ[Ûˆ[šYY›ÜˆX›HÜš][™×ÜÙ\ÜÚ[ÛœØ[ˆ][˜ÚÝÜš][™Ê
+XÝ\™˜XÙYžHHÜš][™Ë\˜XÝXÙHL™H
+ÔÕØ\KÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™Ø8¡¤ˆL
+KˆZ\œ›ÜœÈZYÜ˜][ÛˆŒH
+\WÜÝ[][XÜ˜[
+NÈY[\Ý[ˆ[X™\ˆŒÍH™\ÈX^
+ŒÌÊH
+ÈKˆÛÛ˜XÝ\Ý\ÝËÜÝYWÛÜËÝ\ÝÙ]ÜÜÙ\šXÙWÜ›ÛWÙÜ˜[×ÛZYÜ˜][Û‹œX
+N]X›HÛÛ\][™\ÜÈ
+ÈÜš][™×ÜÙ\ÜÚ[ÛœØ
+ÈÜÝÔ‘TÕ™[ØY
+Kˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆ\HŒÍY\ˆŒÌÎÈÛÛ™š\›HHÜš][™Ë\˜XÝXÙHL™H›ÝÈÛÙ\ÈÜ™Y[‹ˆŸUÔ›X^X™WÜÚ[™ÛJ
+X™\›Ë\›ÝÈÜ˜\Ú8 %Üš][™×Ü˜XÝXÙKœXÓÑKQ’VQSQUSÓˆS‘S‘È8 %L™H™X[›ÛÝØ]\ÙHÙˆHÜš][™Ë\˜XÝXÙHL™H™Y[ˆ
+[™\[™[Ù‹[™›Ýš^YžKZYÜ˜][ÛˆŒÍ	ÜÈÜ˜[ÊNˆH[›™YÜÝÜ™\ÝOL‹ŒŽKŒÛY[	ÜÈÞ[˜ÓX^X™TÚ[™ÛT™\]Y\ÝZ[\‹™^XÝ]J
+X™]\›œÈ˜\™H›Û™X8 %›ÝH™\ÜÛœÙHØš™XÝÚ]™]OS›Û™X8 %Ú[ˆH›X^X™WÜÚ[™ÛJ
+X]Y\žHX]Ú\È™\›È›ÝÜÈ
+ÛÛ™š\›YYžH™XY[™ÈH[œÝ[YXÚØYÙHÛÝ\˜ÙJKˆZYÚØ[Ú]\È[ˆ\Ø˜XÚÙ[™Ø\Ø\KÝÜš][™×Ü˜XÝXÙKœX
+ÛÝÛ™YÜÙ\ÜÚ[Û˜ÛÝÛ™YÝ\ÚØØÜ™X]WÛX\›š[™×ÜÙ\ÜÚ[Û˜	ÜÈ›Û\ÛÚÝ\Ù[™Û\ÚÜÝXš™XÝÚYÝX›Z]Ý[š]	ÜÈ[š]ÛÚÝ\Ù]Ù]˜[X][Û˜	ÜÈ]˜[X][Û‹Ý™\œÚ[Û‹Ý[š]ÛÚÝ\ÊHÚZ[™Y™^XÝ]J
+K™]X\™XÝHÛˆ›X^X™WÜÚ[™ÛJ
+XÜ˜\Ú[™ÈÚ]]šX]Q\œ›ÜŽˆ	Ó›Û™U\IÈØš™XÝ\È›È]šX]H	Ù]IØÛˆHYÚ][X]H››Ý›Ý[™ˆØ\ÙH8 %[ˆ[š[™YL[œÝXYÙˆH[[™YÍËˆ\È\È^XÝHÚ]ˆÎL‰ÜÈÔH™YØ]]™HÜXÜÈš\
+K™Ëˆ[™\šYšYY›Û\\È›Ý][˜ÚX›Hˆ^XÝÈÛÝL
+Kˆ[›ÙXÙY[ˆˆÎLÈ][[[ÎL‰ÜÈ™X[X˜XÚÙ[™Ü™X[TÜÝÜ™\ÈL™H^\˜Ú\ÙYH™\›Ë\›ÝÈœ˜[˜Ú8 %H^\Ý[™È[š]]\Ý˜ZÙHÝ\X˜\ÙHÛY[	ÜÈ^XÝ]J
+X[Ø^\È™]\›œÈH™\ÜÛœÙHØš™XÝ™]™\ˆ˜\™H›Û™XÛÈ]™]™\ˆ™\›ÙXÙY\Ëˆ
+Š‘š^ŠŠˆ™]ÈÛX^X™WÜÚ[™ÛJ]Y\žJX[\ˆÙ[˜[^š[™ÈH›Û™KYÝX\™È[Ø[Ú]\È›ÝÈ›Ý]H›ÝYÚ]ˆ™]È™YÜ™\ÜÚ[ÛˆÝZ]H\ÝËÜÝYWÛÜËÝ\ÝÝÜš][™×Ü˜XÝXÙWÛX^X™WÜÚ[™ÛWÛ›Û™WÙÝX\™œX
+ˆ\ÝÊH\Ù\ÈH˜ZÙHÛY[]ÑTÈ™]\›ˆ˜\™H›Û™XÛˆH™\›Ë\›ÝÈ›X^X™WÜÚ[™ÛJ
+XX]Ú
+X]Ú[™È™X[ÜÝÜ™\Ý\JH8 %ÛÛ™š\›YYÈ˜Z[YØZ[œÝH™KYš^ÛÙH[™\ÜÈYØZ[œÝHš^ˆ[\ÝËÜÝYWÛÜËØHLNˆ\ÜÙYŒÈÚÚ\Yˆ
+Š[ÛÈ›Ý[™›Ýš^Y\™H
+Ø[YH[™ÝX\™Y]\›‹Ý]ÙˆØÛÜH›Üˆ\ÈŠNŠŠˆ\Ø˜XÚÙ[™Ø\Ø\KÜ\WÜ˜XÝXÙWÛ][˜ÚœX	ÜÈÛÝÛ™YÝ\ÚØ[™\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÝÜš][™×Ü˜XÝXÙKØ\XØXš[]KœX	ÜÈÜ™\ÛÛ™WÙ^[WÙ˜[Z[Xˆ
+Š“Y\™ÙY
+ÎLŒÊNÈL™H™KXÚXÚÙYÜÝ[Y\™ÙH[™›Ý[™HÑPÓÓ‘[™\[™[›ØÚÙ\ŠŠˆ
+ÙYHH™^›ÝÈ8 %ZYÜ˜][ÛˆŒÍŠH8 %H›X^X™WÜÚ[™ÛJ
+XÜ˜\Ú]Ù[ˆ\ÈÛÛ™š\›YYÛÛ™Hœ›ÛHHL™H›ØˆÙÈ
+™\›È]šX]Q\œ›Ü˜ØØÝ\œ™[˜Ù\ÊK]H›ØˆÝ^YY™YÛˆ][œ™[]YYËˆŸ›X^X™WÜÚ[™ÛJ
+X™\›Ë\›ÝÈÜ˜\Ú8 %Y™\œ™YÚ]\È
+\WÜ˜XÝXÙWÛ][˜ÚœX\XØXš[]KœX
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈÛÛ\]\ÈH›Û™KYÝX\™ÝÙY\ÎLŒÈ^XÚ]HY™\œ™Y\ÈÝ]ÙˆØÛÜKˆØ[YH[›™YÜÝÜ™\ÝOL‹ŒŽKŒYÎˆÞ[˜ÓX^X™TÚ[™ÛT™\]Y\ÝZ[\‹™^XÝ]J
+X™]\›œÈ˜\™H›Û™X
+›ÝH™\ÜÛœÙHØš™XÝÚ]™]OS›Û™X
+HÛˆH™\›Ë\›ÝÈ›X^X™WÜÚ[™ÛJ
+XX]ÚÛÈ™^XÝ]J
+JK™]XÚZ[™Y\™XÝH˜Z\Ù\È]šX]Q\œ›ÜŽˆ	Ó›Û™U\IÈØš™XÝ\È›È]šX]H	Ù]IØÛˆHYÚ][X]H››Ý›Ý[™ˆØ\ÙKˆÛÈ]™HLÈš^Yˆ
+JH\Ø˜XÚÙ[™Ø\Ø\KÜ\WÜ˜XÝXÙWÛ][˜ÚœNŽ—ÛÝÛ™YÝ\ÚØ8 %HÙ[Z[™[HZ\ÜÚ[™ËÝ[›ÝÛ™YÝYWÝ\ÚÜØ›ÝÈ›ÝÈÈ[œÝXYÙˆL[™ÎÈ
+ŠH\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÝÜš][™×Ü˜XÝXÙKØ\XØXš[]KœNŽ—Ü™\ÛÛ™WÙ^[WÙ˜[Z[X8 %HZ\ÜÚ[™È^[\Ø›ÝÈ›ÝÈ™\ÛÛ™\ÈÈ›Û™X
+›È˜[Z[JH[œÝXYÙˆL[™Ëˆ
+Š‘š^ŠŠˆ˜]\ˆ[ˆ™KXYH\‹[[Ù[Hš]˜]H[\‹HÎLŒÈÛX^X™WÜÚ[™ÛXÝX\™\ÈÑS•SV‘Q[ÈÛ™HÚ\™Y\Ø˜XÚÙ[™Ø\Ù‹Ý][ËœNŽ›X^X™WÜÚ[™ÛX
+ÚXÚÜÜÝ™]šY]ÈÛˆÌL›YÙÙYHš\XØ]YÙÚXÈYØZ[œÝHQÑS•Ë›Y›ËY\XØ]K[ÙÚXÈ[JNÈ[‘QHØ[\Ú]H[Ù[\È8 %Üš][™×Ü˜XÝXÙKœX
+Ú]\ËZYÜ˜]YÙ™ˆ]È›ÝË\™[[Ý™Yš]˜]HÛÜJK\WÜ˜XÝXÙWÛ][˜ÚœX\XØXš[]KœX8 %›Ý]H›ÝYÚ]ˆ™]È™YÜ™\ÜÚ[ÛˆÝZ]H\ÝËÜÝYWÛÜËÝ\ÝÛX^X™WÜÚ[™ÛWÛ›Û™WÙÝX\™Û][˜ÚØ\XØXš[]KœX
+L\ÝÊH\Ù\ÈH˜ZÙHÛY[]™]\›œÈ˜\™H›Û™XÛˆH™\›Ë\›ÝÈ›X^X™WÜÚ[™ÛJ
+XX]Ú
+X]Ú[™È™X[ÜÝÜ™\Ý\JH8 %[\ˆ[š]ÛÝ™\˜YÙH›Üˆ›Ý[Ù[\È
+ÈÛÝÛ™YÝ\ÚØ
+Z\ÜÚ[™È›ÝÈ
+ÈÝ\‹]\Ù\ˆ›ÝÊH
+ÈÜ™\ÛÛ™WÙ^[WÙ˜[Z[X›Û™H
+Z\ÜÚ[™È^[H
+È›È^[WÚY
+H
+ÈÜÚ]]™K\]\ÜÙ\[ÛœËˆ˜XÚÙ[™[Û›NÈ›È›Ý][™ËÛ˜]‹ÜÚ\™Y[ØÚÙYš[Kˆ[L\ÜÎÈ^\Ý[™È\ÝÜ\WÜ˜XÝXÙWÛ][˜ÚœX
+ÈÜš][™ËX\XØXš[]HÝZ]\ÈÜ™Y[‹›È™YÜ™\ÜÚ[ÛœËˆŸUÔ]ÜØÛÛ\]WÛ[™ÝXYÙWÙ]˜[X][Û˜×ÜØY™]\]H8 %ZYÜ˜][ÛˆŒÍˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %L™HÙXÛÛ™[™\[™[Üš][™Ë\˜XÝXÙHL™H›ØÚÙ\ˆ›Ý[™[[YYX][HY\ˆÎLŒÈY\™ÙY
+ÛÛ™š\›YYšXHHÜÝ[Y\™ÙHXZ[˜\Ú]šYÙÙ\™YL™H›ØˆÙË›ÝH‹\ØÛÜY›Øˆ8 %‹\ØÛÜYL™H\È]Yš[\™Y[™ÚÚ\ÈÛˆ˜XÚÙ[™[Û›HY™œÈZÙHÎLŒÉÜÊKˆ]™\žHØ[ÈX›XË™]ÜØÛÛ\]WÛ[™ÝXYÙWÙ]˜[X][ÛŠ
+X
+ZYÜ˜][ÛˆŒH8 %H”È]˜[X][Û—ÝÛÜšÙ\‹œ[—ÝÛÜšÙ\—Ü\ÜÊ
+XØ[ÈÈš[˜[^™HH[™ÝXYÙH]˜[X][ÛŠH™]\›™YÚ]›ÙHÈ›Y\ÜØYÙHŽˆ‘SUH™\]Z\™\ÈHÒT‘HÛ]\ÙH‹˜ÛÙHŽˆŒŒLŸXˆ›ÛÝØ]\ÙNˆÝ\X˜\ÙIÜÈÜÝÜ™\È[XYÙH[œÈHÑPÕT’UHQ’S‘Tˆ[˜Ý[Û‰ÜÈÝÛš[™È›ÛH
+ÜÝÜ™\Ø
+HÚ]H×ÜØY™]\]X^[œÚ[ÛˆXÝ]™KÚXÚ™Z™XÝÈS–H[œ]X[YšYYTUKÑSUHÝ][Y[8 %[˜ÛY[™ÈÛ™H\ÜÝYYœ›ÛH[œÚYHHÜÜ[[˜Ý[Ûˆ›ÙK›ÝÛ›H˜]ÈÛY[ÔSˆZYÜ˜][ÛˆŒIÜÈ[˜Ý[Ûˆ™\Ù]È]È\‹XØ[[\X›HÚ]H˜\™HSUH”“ÓHÙ]ÜÜ™YÜ™\ÜÚ[ÛœÎØ
+HX›H\ÈÓˆÓÓSRU“ÔØÛÜYÈÛ™HØ[Ù[Z[™[H™YYÈ]™\žH›ÝÈÛX\™Y8 %\™H\È›È˜\œ›ÝÙ\ˆ™YXØ]HÈY
+KÚXÚ×ÜØY™]\]X›ØÚÙYÛˆ]™\žHÚ[™ÛH[›ØØ][ÛŽÈH]˜[X][Û‹XÛÛ\][Ûˆ”ÈY™]™\ˆÛ˜ÙHÝXØÙYYY[™]ËY[™ˆ
+Š‘š^ŠŠˆZYÜ˜][ÛˆŒÍ—Ù]ÜØÛÛ\]WÙ]˜[X][Û—ÜØY™]\]WÙš^œÜ[8 %Ô‘PUHÔˆ‘TPÑXÈHY[XØ[[˜Ý[Ûˆ
+ZYÜ˜][ÛˆŒH\È[[]]X›K\ˆÓUQK›YZYÜ˜][Ûˆ\ØÚ\[™NÈØ[YHK\\˜[HÚYÛ˜]\™KÛÈ^\Ý[™ÈÜ˜[ËØØ[\œÈ\™H[˜Ú[™ÙY
+HÚ]]Û™HÝ][Y[Ú[™ÙYÈSUH”“ÓHÙ]ÜÜ™YÜ™\ÜÚ[ÛœÈÒT‘HYNØ8 %[˜Ý[Û˜[HY[XØ[
+Ý[[]\È]™\žH›ÝÊH]Ø]\ÙšY\È×ÜØY™]\]X	ÜÈÞ[XÝXÈÒT‘KXÛ]\ÙH™\]Z\™[Y[ˆ™]È^XÛÛ˜XÝ\Ý\ÝËÜÝYWÛÜËÝ\ÝÙ]ÜØÛÛ\]WÙ]˜[X][Û—ÜØY™]\]WÛZYÜ˜][Û‹œX
+ˆ\ÝË›È]™HŠH\ÜÙ\ÎˆHš^YZYÜ˜][Ûˆ^\ÝÈÚ]HX]Ú[™ÈÚYÛ˜]\™NÈH˜\™KQSUHYÈ\È“Õ™\Ù[[ˆH™]È[˜Ý[Ûˆ›ÙNÈZYÜ˜][ÛˆŒH\ÈY[œ]ÚY
+[[]]Xš[]JNÈ[™8 %žH^˜XÝ[™È
+ÈY™š[™È›Ý[˜Ý[Ûˆ›ÙY\ÈÚ]Û›HHÛ™H[[™YÝ][Y[›Ü›X[^™Y˜XÚÈ8 %H™\ÝÙˆH[˜Ý[Ûˆ\Èž]KY›Ü‹Xž]HY[XØ[ÈŒK›Ýš[™È\È\ÈHÝ\™ÚXØ[Û™K\Ý][Y[š^[™›ÝHœ›ØY\ˆ™]Üš]Kˆ[\ÝËÜÝYWÛÜËØHLŒ\ÜÙYŒÈÚÚ\Y›È™YÜ™\ÜÚ[ÛœËˆ
+Š•SQUSÓˆS‘S‘ÎŠŠˆÛÛ™š\›HHÜš][™Ë\˜XÝXÙHL™H›ØˆÛÙ\È[HÜ™Y[ˆÛˆH™^XZ[˜\Ú›ÝÈ]›ÝH›X^X™WÜÚ[™ÛJ
+Xš^
+ÎLŒÊH[™\ÈZYÜ˜][Ûˆ\™H\YYÈ\HZYÜ˜][ÛˆŒÍˆÈÝYÚ[™ËÛ]™HY\ˆŒÍKˆŸUÔMˆ8 %\˜YÜ˜\Z[\ˆÐÐQ‘“ÓÓÑH‘TÑS•
+œ›Û[™S‘T•8 %›ÈØ]HÜ[™Y
+KSQUSÓˆS‘S‘È8 %
+Š‘UÔLÈÛÙH\ÈQT‘ÑQÛÈ]YÈ\ÈÛX\ŠŠŽÈH™[XZ[š[™È›ØÚÙ\œÈ\™H“ÕÛÙHHÙ\ÜÚ[ÛˆØ[ˆ[™ˆ
+JHHØÚÙY[]™\žH[H‘È“ÕZ[[[HÙ[[˜ÙHÛXÙH\ÜÙ\È]™HL‘Hˆ
+UÔTÔH\ÈÔTUÔˆS‘S‘ÊH[™
+ŠHH0©ÌMˆØ]\Ëˆ
+Š°©ÌMˆØ]HX\
+ÛÙK\ÚYHœÈÜ\˜]ÜŠNŠŠˆØ]\È
+ŠŒJŠˆ
+]]ÜØ]™H›Ë[ÜÝX[œÝÙ\ˆ8 %]]ÜØ]™K\ÝšœØ
+K
+ŠŒŠŠˆ
+Y[\Ý[™\œÚ[Û‹Ü™]Üš]H8 %Ü[Z\ÝXË[ØÚÈ
+È]ÜÜÝ[WÝ™\œÚ[Û˜
+È[˜Ú[™ÙY\™]Üš]H\ÝÊK
+ŠŒÊŠˆ
+ÛÜ™XÛÝ[\š]H8 %ÛÜ™ÛÝ[\ÝšœØ
+K
+ŠŠŠˆ
+X\Ý\žK\™\^HY[]H8 %]šY[˜ÙKZÙ^HÓˆÓÓ‘“PÕ
+È˜]ÚÙ]Y\]X[]KËYØ]Y
+K
+ŠÊŠˆ
+[›™\ˆ›ËY\™]\Ý8 %\ÝÜ[›™\—ÝÜš][™×Ý\ÚÜËœX˜Z[XÛÜÙYY\
+H]™H
+Šš[‹\™\È\Ý]šY[˜ÙJŠŽÈØ]\È
+Š
+Šˆ
+Ý\˜]YU‹LMˆÜ[ˆ™[˜ÚX\šÈ8 %]\Ù]›ÝY][ˆ™\ÎÈ]ŒM‹šœØ[\ˆ^\ÝÊK
+ŠJŠˆ
+[X[‹[X™[YÜ˜[[X\ˆ”˜]JK
+ŠŽ
+Šˆ
+8¢iLH^[WÙ\ØÜš\]™WÜ™\]Z\™[Y[Ëœ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø
+K
+ŠŽJŠˆ
+‘—ÕÔ’US‘×ÓPTÕT–WÕÔ’UTØÚYÝø¡¤›]™H\ˆ0©ÌLŒÈÈ[™HJK
+ŠŒL
+Šˆ
+Ü\˜]Üˆ\›Ý˜[™XÛÜ™Y\™JH\™H
+Š“ÔTUÔ‹ÔPJŠ‹ˆH\˜YÜ˜\™[X\ÙHØ]HÛ\×ÝÜš][™×ÙØ]WÛÜ[Š	Ü\˜YÜ˜\	ÊX\È
+ŠÓÔÑQ
+Šˆ
+ZYÜ˜][ÛˆŒŠH[™Ü[œÈÛ›HšXHH]\™HZYÜ˜][Ûˆ
+ÈÜ\˜]ÜˆÚYÛ‹[Ù™‹ÛÈHÛÙ[™ÈÙ\ÜÚ[ÛˆØ[››ÝÚ\H
+›][˜ÚX›Jˆ\˜YÜ˜\Z[\‹ˆ\ÚYÛˆ[[Ú[ˆ[˜›ØÚÙYˆ]šY[˜ÙKYØ]YØØY™›Û[™È
+šXHY\—Ü˜[šØ
+KÝ][™HØÜ˜]ÚY\ÈÝ][™WÚœÛÛ˜ˆ
+Š”ÐÐQ‘“ÓS‘Q
+ÝÛ™\‹X]]Üš^™YŒ‹LËLM^XÚ]HÝ™\œšY[™ÈH›ÝËMŒ™È›ÝZ[[[HÙ[[˜ÙHÛXÙH\ÜÙ\È]™HL‘HˆØÚÊNŠŠˆœ›Û[™[Û›KY]]™K[™S‘T•8 %™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKÔ\˜YÜ˜\Z[\‹šœÞ
+ÛÛ\ÜÙHÝ\™˜XÙH›ÜˆH0©ÌLËŒˆ\˜YÜ˜\ÛÝˆÛÜ™XÛÝ[šXHH˜XÚÙ[™\\š]HÚÙ[š\Ù\‹]]ÜØ]™Y˜Y[™HÝ][™WÚœÛÛ˜
+Š›Ý][™HØÜ˜]ÚY
+Šˆ8 %HÛY[Ù\ÜÚ[Û”ÝÜ˜YÙX[‹“Õ\œÚ\ÝYÈH˜XÚÙ[™[ˆ\ÈØØY™›Û
+H
+ÈÚ[\Ü]Ú[ˆ[™Û\Ú˜XÝXÙTÚ[šœÞ
+\Ô\˜YÜ˜\^\˜Ú\ÙX›Ý]\ÈHHÔTQÔTÑVTÒTÑTØ\\ÈÈ\˜YÜ˜\Z[\ŽÈ]™\žHÝ\ˆ\HÝ^\ÈÛˆÙ[[˜ÙPZ[\ŠKˆ
+Š““È›Ý]KÛ˜]‹ÜÝ\™˜XÙHYY“ÈTK“ÈZYÜ˜][Û‹“ÈØÚ[XHÜš]K“ÈØ]HÜ[™Y
+Šˆ8 %Û\×ÝÜš][™×ÙØ]WÛÜ[Š	Ü\˜YÜ˜\	ÊXÝ^\ÈÓÔÑQ[™›È\˜YÜ˜\›Û\\È™\šYšYYØXÝ]™KÛ][˜ÚX›KÛÈHœ˜[˜Ú\ÈXY›Üˆ™X[Ù\ÜÚ[ÛœÈ[™™XXÚX›HÛ›HžH\ÝÈ[[0©ÌMˆÜ[œÈHØ]Kˆ\ÝÎˆ\˜YÜ˜\Z[\‹\ÝšœÞ
+ÛÛ\ÜÙKÝÛÜ™XÛÝ[Ø]]ÜØ]™H
+ÈÝ][™HYÙY]Ü™[[Ý™H
+ÈÝ][™WÚœÛÛˆ\œÚ\ÝÜ™\ÝÜ™H
+ÈÛX\‹X›Ý[Û‹\ÝXØÙ\ÜÈÈÙY\X›Ý[Û‹Y˜Z[\™JH[™HÚ[\Ü]Ú\Ý[ˆ[™Û\Ú˜XÝXÙTÚ[\ÝšœÞˆ
+Š”‘SPRS’S‘È›ÜˆH][˜ÚX›HUÔMˆ
+[˜Ú[™ÙY[Ü\˜]Ü‹ÙØ]Y
+NŠŠˆH0©ÌMˆÜ\˜]ÜˆØ]\È
+ÍKÎÎKÌL
+KH\˜YÜ˜\XœšXÈ
+XœšX×ÚYÛˆ\˜YÜ˜\›Û\È
+ÈHÙYYYXœšXÈ8 %ÝYÙKLÈXœšX×Ù[Y[œÚ[ÛœØ
+K˜XÚÙ[™Ý][™WÚœÛÛ˜\œÚ\Ý[˜ÙH
+ÈÝX›Z]XÛÛ˜XÝÚ\š[™Ë[™Ü[š[™ÈH\˜YÜ˜\™[X\ÙHØ]H
+H]\™HZYÜ˜][Ûˆ
+ÈÜ\˜]ÜˆÚYÛ‹[Ù™ŠKˆŸUÔMÈ8 %\ØÜš\]™H[ØÚÈ[[YHS“‘Q8 %›ØÚÙYÛˆUÔMˆÝX›H
+È™[X\ÙHØ]\È0©ÌMˆÙˆ\˜Ú]XÝ\™HØÈ^[™È[ØÚÈ[œÝÙ\›ÙXˆYÈ\ØÜš\]™X[\™˜XÙH[ÙHÈ][\Ú[›Ý]\˜ˆÚ\™\ÈLMÍ‹ÓLMÍÈÛÛ[[œËˆŸ‘—ÕÔ’US‘×ÓPTÕT–WÕÔ’UTØ“ÐÒÑQ8 %]™H›ÚXš]Y[[[™HHØ]HÛX\œÈY˜][ÈÈÙ™˜ˆÚYÝÈ[ÙH\È\›Z]Y][žH[YKˆ]™H[ÙH›ØÚÙYÛˆ[™HHØ]H
+È0©ÌLŒÈ›Û[Ý[ÛˆØ]\È
+ÈÜ\˜]Üˆ\›Ý˜[È]™XX›\Ú\ÈÈH[šYšYYYÙÜ™YØ]Ü‹™]™\ˆÜš]\È\Ù\—ÝÜX×ÛX\Ý\žX\™XÝKˆŸ™\œÚ[Û—ÜÙ]Ú\Ú\Ý™XÝÜˆÓÑH‘TÑS•SˆˆÎŒH
+Ü[ŠH˜XÚÙ[™[\ˆ\ÜÝYWÛÜËÝÜš][™×Ü˜XÝXÙKÝ™\œÚ[Û—ÜÙ]Ú\ÚœX
+È[›™YÒKLMˆ™XÝÜˆ[ˆ\ÝÝ™\œÚ[Û—ÜÙ]Ú\ÚœXˆÛY[ÈÛÛœÝ[YHH\Ú[™™]™\ˆÛÛ\]H]
+QÑS•Ë›YUÔLÊNÈ›ÈÛY[\ÚYH\š]H\ÝˆTH[YÜ˜][Ûˆ\ÜÙ\[ÛˆY™\œ™YÈUÔLˆ
+[™Ú[]™]\›œÈH\Ú
+KˆŸU‹LMˆÜ[ˆÙ™œÙ]ÛÛ˜XÝS“‘Q8 %™\]Z\™Y[ˆUÔLˆÜ[—ÜÝ\Ý]ŒMˆ
+ÈÜ[—Ù[™Ý]ŒMˆ
+È][ÝYÝ^™\šYšXØ][Ûˆ[ˆ›Ý]Ûˆ]˜[X]Üˆ[™™XXÝœ›Û[™ˆŸ›Û\˜[šÈÙYY‘TËPUUÔ‘Q
+›Ý[\ÜYÝ™\šYšYYØXÝ]™JH8 %•S•SQHÓÑH“ÐÒÑT”È™Y›Ü™HXÝ]˜][Ûˆ8 %
+Š“ÕÓ‘T”ÒT‘U’TÑQ
+ÛÛ[ÝY[ËZYÜ˜][ÛˆŒM
+JŠˆ
+ŠŒÌ›Û\È™\ËX]]Ü™Y
+Šˆ[ˆ\ÜÝ\X˜\ÙKÜÙYYËÝÜš][™×Ü›Û\ËØ
+LÙ[[˜ÙKXÛÛœÝXÝ[Ûˆ
+ÈLÙ[[˜ÙKXÛÜœ™XÝ[Ûˆ
+ÈLÜ˜[[X\ˆ
+ÈL›ØØX[\žH
+ÈŒ\˜YÜ˜\
+Kˆ\Ý[˜ÝÝ]\È8 %
+Š”™\ËX]]Ü™Y
+Šˆ
+\Èˆ8§!JH8¡¤ˆ
+Š’[\ÜY
+Šˆ
+[™[™ËÚ[˜XÝ]™H›ÝÜË8¦å
+H8¡¤ˆ
+Š•™\šYšYY
+Šˆ
+8¦å
+H8¡¤ˆ
+ŠXÝ]™JŠˆ
+8¦åØ]Y
+Kˆš[\È\™H
+Š•RK]\ØYX›H›ÝÈ\œ˜^\ÊŠˆ
+HÚ\H›Û\[Ò[\ÜšœÞ\œÙ\ÎÈÜ\˜]Üˆ[\œÈÝXš™XÝÚY
+Ø™X\ÛÛ˜[ˆH›Ü›JNÈ×Ø\WÙ[™[ÜKœXÜ˜\ÈHš[H[ÈHÜ™X\ÛÛ‹ÝXš™XÝÚY›ÝÜßXTH[™[ÜH›ÜˆÝ\›ˆ[\Ü\ÈH]Y]YÛ\×Ø[×Ý\Ù\ÝÜš][™×Ü›Û\Ø”È8¡¤ˆ™]šY]Ù\—ÜÝ]\ÏIÜ[™[™ÉØØ\×ØXÝ]™OY˜[ÙX
+“Õ˜]ÈÔS
+Kˆ
+Š•^Û›Û^HQÈ\™H“Õ\ÜÝ[YYÜX›NŠŠˆ›ÝÜÈ˜ZÙHH]\›Z[š\ÝXÈŒHQË]ŒH\È[œÙ\ZY‹XXœÙ[
+ÓˆÓÓ‘“PÕ
+ÛYÊHÈ“ÕS‘Ø
+KÛÈH™KLŒH[™Û\Ú^Û›Û^H\ÈY™™\™[]™HQÈ8¡¤ˆ[˜[YÜØÛÜXÈ
+Š›X[™]ÜžH™Y›YÚÚYËœX
+UÔÔ×ÑÓŠJŠˆ›Ý™\È]™\žH˜ZÙYÝXš™XÝÝÜXËÛZXÜ›ÝÜXÈQ\ÈH]™KXÝ]™KÛÜœ™XÝK\\™[Y›ÝÈ™Y›Ü™HÔÕ[™Ëˆ\ÝÎˆ\ÝËÜÝYWÛÜËÝ\ÝÝÜš][™×Ü›Û\ÜÙYYœX
+\œ˜^\ËZXÜ›ÝÜXø¡¤ÜXÈ\™[YÙK™\]Z\™Y]ÛÜ™ÚÙ[š^™\ˆ
+ÈØ\ÙKZ[œÙ[œÚ]]™H[š\]Y[™\ÜËÙ[™\˜]Ü¸¡¥ÛÛ[Z]Yž]KZY[]K™X[Üš][™Ô›Û\[Ô›ÝØ\œÙH[ˆ˜XÚÙ[™ÒJKˆ
+Š”•S•SQHÓÑH“ÐÒÑT”È
+]\Ý[™
+È]™H™Z]š[Üˆ\ÝÈ™Y›Ü™HXÝ]˜][™ÈY™™XÝY\\ÎÈ“ÕÜ\˜]Ü‹[Û›JNŠŠˆ
+JH
+Š™]˜[X]Üˆ›Û\ÜÛÝ\˜ÙHÛÛ^
+Šˆ8 %”È[ˆS‘Q[ˆZYÜ˜][ÛˆŒŒŽˆ]ÜØÛZ[WÙ]˜[X][Û—Ú›Ø˜›ÝÈ™]\›œÈ›Û\Ý^ØÛÝ\˜ÙWÝ^
+œ›ÛHH[[]]X›HÙ\ÜÚ[ÛˆÛ˜\ÚÝ
+Kˆ‘SPRS’S‘È
+ÛÜšÙ\ˆ[‹\ÚYÛ‹YØ]Y
+Nˆ]˜[X][Û—ÝÛÜšÙ\˜Ý[]˜[X]\ÈÚ]Û›H[œÝÙ\—Ý^
+Ø^\˜Ú\ÙWÝ\X8 %]Ù\È›ÝY]ÓÓ”ÕSQHHÝ\™˜XÙYÛÝ\˜ÙHÈØÛÜ™HYX[š[™Ë\™\Ù\š[™ÈÛÜœ™XÝ[Ûˆ
+HÛX[ˆ[œ™[]YÙ[[˜ÙHÝ[\ÜÙ\ÊKˆHØ]Y™X[XY\\ˆ\ÚYÛˆ\È›ÝÈ›ÜÜÙY[ˆØÜËØ\˜Ú]XÝ\™KÙ]Ü\Ù[X[XËY]˜[X]Ü‹XY\\‹›Y
+“ÔÔÐS8 %›ÝY]\›Ý™Y
+Nˆ‘—ÕÔ’US‘×ÓWÑUSÙ™‹ÜÚYÝËÛ]™H›YË˜Z[XÛÜÙYÛˆY\\ˆ\œ›Ü‹ÛÝËXÛÛ™šY[˜ÙKH‘UÈÛÝ\˜ÙKXÛÛ\\š\ÛÛˆÝ]ÛÛYH›Ý]YÈ™YY×Ú[X[—Ü™]šY]Ø
+[X™\˜][H“Õ™]\Ú[™ÈÙ™—ÝÜXØ8 %HˆÎˆZ\ÝZÙH\È™\XÙ\ÊKˆÛÜœ™XÝ[Û‹ÙÜ˜[[X\‹Ý›ØØXˆ\\ÈÝ^H[˜XÝ]™H[[HØÈ\È\›Ý™YS‘HÚYÝË[[ÙH˜[ÙK\ÜÚ]]™KÛ™YØ]]™H˜]H
+ÈÛÜÝÛ][˜ÞH\™HYX\Ý\™Y\ˆ0©ÌMˆØ]HNÈ
+ŠH
+Šœ\˜YÜ˜\XœšXÊŠˆ8 %HŒ\˜YÜ˜\›ÝÜÈÛZ]XœšX×ÚY[™›ÈXœšXÈ\ÈÙYYYÛÈÝYÙKLÈ\œÚ\ÝÈ[\HXœšX×Ù[Y[œÚ[ÛœÏV×X8¡¤ˆ\˜YÜ˜\Ý^\È[˜XÝ]™H
+[ÛÈ›ØÚÙYžHUÔMˆ0©ÌMŠKˆ
+Š‘Ó‘NŠŠˆHUÔÔ×ÑÓ‹YØ]Y™Z]š[Üˆ\Ý[\Ü[™È[HÙYYš[\ÈšXHH”È
+Ì[™[™ËÚ[˜XÝ]™H
+ÈY[\Ý[™KZ[\Ü
+HS‘Q8 %\ÝËÜÝYWÛÜËÝ\ÝÝÜš][™×Ü›Û\ÜÙYYÚ[\ÜÜ×Ø™Z]š[Ý\‹œX
+\ÛÛ]Y›ÝØ]Ø^H‹ZYÜ˜][ÛœÈŒx¡¤ŒŒLø¡¤ŒŒM8¡¤ŒŒMK\‹X˜]ÚÜ™X]YÛÝ[ÈLÍLÌLÍLÌŒ›È™\šYšYYØXÝ]™HXZË™KZ[\Ü[X[˜Ú[™ÙY
+Kˆ
+Š‘Ó‘H
+Y]ÜšX[
+NŠŠˆHØÝ[Y[YY]ÜšX[[œÝÙ\‹ZÙ^KÜ˜][Û˜[Hš^\™H\ˆÛÜœ™XÝ[Ûˆ›Û\›ÝÈ]™\È[ˆ\ÜÝ\X˜\ÙKÜÙYYËÝÜš][™×Ü›Û\ËØ[œÝÙ\—ÚÙ^\ËØ8 %Nˆ[šY\È
+LÙ[[˜ÙKXÛÜœ™XÝ[Ûˆ
+ÈLÜ˜[[X\ˆ
+ÈÍˆÛÝ\˜ÙKX™X\š[™È›ØØX[\žJKÙ^YYžH^\›˜[ÚÙ^XXXÚÚ]\œ›Ü—Ý\XØ™Y™\™[˜ÙWØ[œÝÙ\˜ØXØÙ\X›WÝ˜\šX[ØØ˜][Û˜[X[™[ˆXÚÙYÛÝ\˜ÙWÝ^]ž]K[X]Ú\ÈHÙYY›ÝÎÈHMÜ[‹Y[™Y›ÙXÝ[Ûˆ›ØØXˆ›ÝÜÈ
+\ÙHHÛÜ™ÈÜš]HÛ™HÙ[[˜ÙH\Ú[™Ø
+H\ÈÙ[[˜ÙKXÛÛœÝXÝ[Ûˆ[™\˜YÜ˜\\™H^ÛYYžH\ÚYÛˆ
+›ÈÚ[™ÛHØ[›ÛšXØ[[œÝÙ\ŠKˆ^Û\Ú[Ûˆ[H\È›ÝÈ^XÝH››ÈÛÝ\˜ÙWÝ^8§îˆ›ÙXÝ[ÛˆŽˆÛ™H›Ü›X[\™]Üš]H›ÝÈ
+]Ü\ÙYY]›ØØX‹LÍ
+H]Y[X™YY]ÈÛÝ\˜ÙH[ˆ›Û\Ý^Ø\È›Ü›X[\ÙY[ˆHÙYY
+ÛÝ\˜ÙWÝ^ÙÙ[™\šXÈ[œÝXÝ[Û‹X]Ú[™È]ÈLHÚX›[™ÜÊHÛÈ›ÈÛÜœ™XÝ[Ûˆ›Û\\È›ÜYˆÛÛ[[Û›H™]šY]Ù\‹Ù]˜[X]Ü‹YÛÛ™Y™\™[˜ÙNÈ“Õ[\ÜY“Õ[[YKˆ
+Š”›Û\È\™HÝXš™XÝ\ØÛÜYØ[›ÛšXØ[ÛÛ[[ˆHÚ\™YÛÛ[ÝY[È
+“ÕH^[HÛÜšÜÜXÙHÓTÊKŠŠˆ\XØXš[]HšXHÜš][™×Ü›Û\Ý\™Ù]Øˆ
+Š•H\XØ]HZYÜ˜][ÛˆŒNHÛˆXZ[ˆ\È™\Z\™Y[ˆHÙ\\˜]HZYÜ˜][Û‹Z\ÝÜžHˆ
+Ú]]™HØÚ[XWÛZYÜ˜][ÛœØ]šY[˜ÙJK›Ý\™KŠŠˆÙYHØÜËØ\˜Ú]XÝ\™KØÛÛ[\ÝY[Ë›Y
+ÈUÔ0©ÌMÈ
+™]š\ÙY
+H
+ÈHÙYY‘PQQKˆŸUÔÛÛ[ØÛÜ[™È8 %ZYÜ˜][ÛˆŒM
+›ÜÜš][™×Ü›Û\Ø^[K\ØÛÜHÛÛ[[œÈ
+ÈÜš][™×Ü›Û\Ý\™Ù]Ø
+HÓÑKQ’VQÈ‘T’Q–Hˆ8 %“ÈÛXÞH
+È\H\™HÔTUÔˆS‘S‘ÈŒMÝÜš][™×Ü›Û\ØÛÛ[ÜØÛÜ[™ËœÜ[
+™]š\ÙY\ˆ[š]X[ÚXÚÜÜÝ
+Š˜[™›ÛÝË]\ÚXÚÜÜÝLK‹”MJŠŠNˆ
+ŠŠJH˜XÚÙš[‘Q“Ô‘H›Ü
+Y[\Ý[
+JŠˆ8 %›Û‹XÞXÛHYØXÞH›Û\È
+^[WØÞXÛWÚY•S
+H8¡¤ˆXÝ]™X\ÙKÙ^[H\™Ù]
+ÛÝ\˜ÙWØ˜\Ú\ÏIÛYØXÞWØ˜XÚÙš[	Ø
+NÈ
+Š›YØXÞH›Û\ÈÚ]^[WØÞXÛWÚYTÈ“Õ•S\™HUPTS•S‘Q
+›ÛÝË]\LŠJŠˆ8¡¤ˆ\XØXš[]WÜÝ]\ÏIÜ[™[™×Ü™]šY]ÉØÛÝ\˜ÙWØ˜\Ú\ÏIÛYØXÞWØÞXÛWÜ]X\˜[[™IØ›Ý™[˜[˜ÙH[ˆY]Y]X
+YØXÞWÙ^[WØÞXÛWÚYØYØXÞWÙ^[WÚYØYØXÞWÙ^[WÜ\ÙWÚY
+KØÛÜY[ÜÝ\ÜXÚYšXÈ
+\ÙH[ÙH^[H[ÙHY™[œÚ]™H\×ÙÛØ˜[
+HÛÈÞXÛHÛÛ[\È[›ÜˆÜ\˜]Üˆ\ÜÜÚ][Û‹
+Š››ÝÚ[[HÚY[™Y
+Š‹ˆS”ÑT•8 )ˆÑSPÕ8 )ˆÓˆÓÓ‘“PÕÈ“ÕS‘ØÝX\™YžH[™›Ü›X][Û—ÜØÚ[XXÛÛ[[‹Y^\Ý[˜ÙHÚXÚÈÛÈ™KX\H\ÈH›Ë[Üˆ
+ŠŠŠH“ÔHX[X]]Üš]HÛÛ[[œÊŠˆ^[WÚY^[WØÞXÛWÚY^[WÜ\ÙWÚYœ›ÛHÜš][™×Ü›Û\Ø
+Ø[›ÛšXØ[›Û\È
+ŠœÝXš™XÝ\ØÛÜY
+ŠŽÈÜš][™×Ü›Û\Ý\™Ù]Ø\ÈHÓÓH\XØXš[]H]]Üš]JKˆŒIÜÈYÝÜš][™×Ü›Û\×Ù^[X
+ÈYÝÜš][™×Ü›Û\×ØXÝ]™X\™H“ÔS‘VQˆVTÕØ’T”Õ
+ŒH›ÝY]Y
+K™\XÙYžHYÝÜš][™×Ü›Û\×ØXÝ]™WÜÝXš™XÝ8 )ˆÒT‘H™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	ÈS‘\×ØXÝ]™O]YXˆ
+ŠŠÊHQUSQS–H
+È^XÚ]ÛØ˜[
+›ÛÝË]\LJNŠŠˆYY\×ÙÛØ˜[›ÛÛX[ˆ“Õ•SQUS˜[ÙXÈÒPÒÈ
+[WÛ›Û›[Ê^[WÙ˜[Z[WÚY^[WÚY^[WÜ\ÙWÚY
+H
+È
+\×ÙÛØ˜[
+NŽš[HJX
+
+Š™^XÝHÛ™HÙŠŠˆÙÛØ˜[˜[Z[K^[K\Ù_JH
+È[\ØY™H[š\]YH[™^
+›Û\ÚY\×ÙÛØ˜[^[WÙ˜[Z[WÚY^[WÚY^[WÜ\ÙWÚY
+H•SÈ“ÕTÕSÕ
+›ØÚÜÈH\XØ]HÛØ˜[›ÝÊKˆÛÛ˜XÝˆ\XØX›H
+Š’Q‘ŠŠˆ[ˆXÝ]™XX]Ú[™È\™Ù]^\ÝÈ
+XÝ]™H\×ÙÛØ˜[ÔˆXÝ]™H˜[Z[KÙ^[KÜ\ÙH\ˆ\ÙO™^[O™˜[Z[JNÈ
+Š››ÈXÝ]™H\™Ù]8¡äˆ“Õ\XØX›H
+[˜\ÜÚYÛ™Y
+K™]™\ˆÛØ˜[
+Šˆ8 %[][Û‹Ù^[KXØ\ØØYKÜ[™[™Ë[Û›HØ[ˆ™]™\ˆÚY[ˆXØÙ\ÜÈ
+˜Z[XÛÜÙY
+Kˆ^ÛYYÝX˜XÝÈœ›ÛH[ˆ^XÚ]XÝ]™Hœ›ØY\ˆØÛÜNÈ[™[™×Ü™]šY]Ø[™\ˆØÝ[Y[YY[XØ[H[ˆZYÜ˜][ÛˆXY\ˆ
+ÈÛÛ[\ÝY[Ë›Y
+ÈUÔ0©ÌMËŒKð©ÌMËŒˆ
+ÈÛXZ[‹[[Ù[›Y
+›ÈYÝ™\ˆ››È›ÝÜÈHÛØ˜[ŠKˆ
+ŠŠ
+HPÕUUSÓˆÐUH›ÝÈZYÜ˜][Û‹Y[™›Ü˜ÙY
+›ÛÝË]\M
+NŠŠˆ0©ÍH[œÈTUHÜš][™×Ü›Û\ÈÑU\×ØXÝ]™OY˜[ÙHÒT‘H\×ØXÝ]™O]YXY\ˆH›ÜÈ
+˜Z[XÛÜÙY[[™\ÛÛ™\‹Ù[™›Ü˜Ù[Y[ÜX›XË\™XY\™\XÙ[Y[[™
+Kˆ
+ŠŠJH“ÊŠˆSP“QÙ\šXÙK\›ÛK[X[˜YÙY“ÈÛY[[ÝÈÛXÞH
+0©ÌL‹ŒŠKˆ]™\™Ü™Y[ˆ8 %“È^[WØÞXÛWÚYˆ
+ŠŠŠH\XØ]K]ÜXÈÙYYYÈ
+›ÛÝË]\LÊNŠŠˆË]\ÝÙYY›ÈÛ™Ù\ˆ[œÙ\ÈHÙXÛÛ™Ü[]™[Ü˜[[X\˜
+ŒH[™XYHÙYYÈ]È•S\™[™]™\ˆÛÛY\ÈÛˆHS’TUQJH8 %™]\Ù\ÈŒH›ÝÜË]\›Z[š\ÝXÈÜXÈÝXœ]Y\šY\È
+\™[ÝÜX×ÚYTÈ•SÔ‘Tˆ–HÜ™X]YØ]SRUX
+NÈ\ÛÛ]Y›ÝØ]Ø^KQˆš^\™H™]Z[™Yˆš[[˜[YHÝ^\È
+ŠŒŒM
+Šˆ
+š[\Þ\Ý[HX^ÛˆXZ[ˆHŒLÎÈÝšXÝZYÜ˜][Û‹[[X™\œØÝX\™™\]Z\™\È^XÝHŒM
+Kˆ
+Š“ÔTUÔˆÔ‘Tˆ
+JNŠŠˆ\H[™[™È
+ŠŒŒLÈ
+\œ›ÜˆXŠHš\œÝ
+Š‹[ˆ
+ŠŒŒM
+Š‹ˆ
+Š“ÔTUÔ‹PUTÕQ
+‘T’Q–H‹Œ‹LËLŠNŠŠˆÜ\˜]Üˆ]\ÝÈ]™HÑSPÕX^
+™\œÚ[ÛŠH”“ÓHÝ\X˜\ÙWÛZYÜ˜][ÛœËœØÚ[XWÛZYÜ˜][ÛœÈHŒL˜
+Ü\˜]Ü‹X]\ÝY›ÝÙ[‹Y\š]™Y8 %]™H]Y\žHØ[‰Ý[ˆ[ˆHÒHÛÛZ[™\ŠKˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆÑSPÕ
+ˆ”“ÓH×ÜÛXÚY\ÈÒT‘HX›[˜[YOIÝÜš][™×Ü›Û\Ý\™Ù]ÉØÚÝÜÈ“ÈÛˆ
+È›È]][XØ]YØ[›ÛˆÛXÞKˆÜÝÜ™\ËYØ]Y\Ý\ÝÝÜš][™×Ü›Û\Ý\™Ù]×ÛZYÜ˜][Û—Ø™Z]š[Ý\‹œX
+UÔÔ×ÑÓŠH›Ý™\ÈÛÛ[[ˆ›ÜË˜XÚÙš[
+ÈY[\Ý[˜ÞK^XÝK[Û™K\ØÛÜHÒPÒÈ
+[˜Ûˆ\×ÙÛØ˜[
+K\XØ]KYÛØ˜[™Z™XÝY˜][Y[žH
+\™Ù][]HÈ^[KXØ\ØØYHÈ[™[™Ë[Û›H8¡äˆ›ÈXÝ]™H\™Ù]
+KÞXÛH]X\˜[[™H
+^[JØÞXÛK^[JØÞXÛJÜ\ÙNÈY]Y]HØ\œšY\ÈÞXÛNÈ™KX\H›ËY\
+KXÝ]˜][Û‹YØ]HXXÝ]˜][Û‹Ø\ØØYK“Ëˆ™\ÛÛ™\ˆ
+ÈÛÛ[ÝY[ÈRH
+ÈX›XË\™XY™\XÙ[Y[\™HUTˆœÈ
+ÙYHXÝ]˜][ÛˆØ]H›ÝÊKˆŸUÔ›Û\Ü\˜][ÛœÈ8 %ÛÛ[ÝY[ÈÜš]H]
+ZYÜ˜][ÛˆŒMH
+ÈÛÛ[ÜÝY[Ø›Ý]\ŠHÓÑKQ’VQSQUSÓˆS‘S‘È8 %™]ÛÜšÙYÛÈXZ[‰ÜÈÛÛ[ÝY[È
+ÝXš™XÝ\ØÛÜY
+H\˜Ú]XÝ\™HY\ˆÎNÝ\\œÙYYHX\›Y\ˆ^[K\ØÛÜY˜YÈ”È\H
+È]™H›Ý[™]š\ÔTUÔˆS‘S‘È
+Š”™]ÛÜšÙY
+Šˆ
+Ø\ÈˆÎMIÜÈ^[K\ØÛÜY[Ù[È
+Šœ™XZ[ÝXš™XÝ\ØÛÜY
+ŠˆÈš]ZYÜ˜][ÛˆŒMÈÎN8 %“È^[HÛÛ[[œÈ™Z[›ÙXÙY
+Kˆ
+Š“ZYÜ˜][ÛˆŒMWÝÜš][™×Ü›Û\ØÛÛ[ÜÝY[×ÛÜËœÜ[
+Šˆ8 %[]ÛZXÈÑPÕT’UHQ’S‘T˜Ù\šXÙK\›ÛK[Û›H
+‘U“ÒÑH8 )ˆ”“ÓHP“PË[›Û‹]][XØ]Y
+ÈÔS•8 )ˆÈÙ\šXÙWÜ›ÛX\ˆ[˜Ý[ÛŠNˆ
+ŠŠJJŠˆÝXš™XÝ\ØÛÜYY[\Ý[˜ÞH[™^\WÝÜš][™×Ü›Û\×Ù^\›˜[ÚÙ^HÓˆ
+ÝXš™XÝÚYY]Y]KO‰Ù^\›˜[ÚÙ^IÊHÒT‘H8 )ˆ“Õ•SÈ
+ŠŠŠJŠˆXÝ]˜][Û‹Z[YÜš]HÒPÒÈÜš][™×Ü›Û\×ØXÝ]™WÜ™\]Z\™\×Ý™\šYšYY
+\×ØXÝ]™OY˜[ÙHÔˆ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø
+H8 %ÛÛ\]X›HÚ]ŒM	ÜÈ˜Z[XÛÜÙYXXÝ]˜][ÛŽÈ
+ŠŠÊJŠˆ[\œÈ]ÜØ\ÜÙ\Ü™X\ÛÛ˜
+8 $ÍL
+K]ÜÝÜš][™×Ü›Û\ØÛÛ[ÙY™™\œØ]ÜÝ˜[Y]WÜ›Û\ÜØÛÜJÝXš™XÝÜXËZXÜ›ÝÜXËØÝ[Y[
+X8 %ÝXš™XÝ]\Ý™HXÝ]™H[™Û\Ú[[™ÝXYÙXÜXø¢"ÝXš™XÝZXÜ›ÝÜXÈXÝ]™KØ]™[IÛZXÜ›ÝÜXÉØØÚ[[Ù‹]ÜXËÛÝ\˜ÙHØÝ[Y[ØÛÜOIØYZ[—Ù^[WÚ[[YÙ[˜ÙIØØ[ÝÙYÚ[™ÜÝ]\ø¢"^Ù˜Z[Y\˜Ú]™YKÜÝÜ˜YÙH™\Ù[[™
+ŠÜXÈ]\Ý™HXÝ]™H
+È]™[IÝÜXÉØ
+Šˆ
+HÚXÚÜÜÝ
+H
+
+Š››È^[HØÛÜJŠˆ8 %ÛÛ[\È™]\ØX›JNÈ
+ŠŠ
+JŠˆÛ\×ØÜ™X]WÝÜš][™×Ü›Û\
+›Ü˜Ù\È[™[™ØØ\×ØXÝ]™OY˜[ÙX]Y]
+KÛ\×Ü™]šY]×ÝÜš][™×Ü›Û\
+™]šY]Ù\ˆ˜[œÚ][ÛœÈ[™[™ø¡¥™YY×ØÛÜœ™XÝ[Û¸¡¤™\šYšYY8¡¤œ™Z™XÝYÈ
+Š“PS‘UÔ–JŠˆ\]YØ]ÐTÈ8 %H•SÚÙ[ˆ˜Z[ÈÛÜÙYHÛÈH”ÈÛÛ˜XÝ]Ù[ˆØ[‰Ýž\\ÜÈHÜ[Z\ÝXÈØÚÎÈ
+Šœ™K\[œÈ]ÜÝ˜[Y]WÜ›Û\ÜØÛÜX™Y›Ü™H™\šYšYY
+ŠˆÛÈHÜXËÙØÝ[Y[]Ù[[˜XÝ]™KØ\˜Ú]™YY\ˆ]]Üš[™ÈØ[‰Ý™\šYžNÈ\×ØXÝ]™XÛ›H]™\ˆÛX\™Y™]™\ˆÙ]8 %XÝ]˜][ÛˆÝ^\ÈØ]Y
+KÛ\×Ý\]WÝÜš][™×Ü›Û\
+™\šYšYY[ØÚÙY8¡¤ˆ›Û\Ý™\šYšYYÛØÚÙYÈ
+Š“PS‘UÔ–JŠˆ\]YØ]ÐTÎÈØÛÜH™K]˜[Y]Y
+KÛ\×Ø[×Ý\Ù\ÝÜš][™×Ü›Û\Ø
+ÝXš™XÝ\ØÛÜY^\›˜[ÚÙ^X™\]Z\™YY™XÞXÛK\ØY™NˆY[XØ[][˜Ú[™ÙYÚ[™ÙY[™[™ËÛ™YY×ØÛÜœ™XÝ[Û]\]JÜ™\Ù]Ú[™ÙY™\šYšYYÜ™Z™XÝYX[×ÛØÚÙYÜ›ÝØ[‹X˜]Ú\XØ]H™Z™XÝYÈ
+Šœ\‹JÝXš™XÝÙ^JH×ØYš\ÛÜžWÞXÝÛØÚØ
+ŠˆÛÈHÛÛ˜Ý\œ™[š\œÝZ[\ÜÙˆHØ[YHÙ^HÙ\šX[^™\È[œÝXYÙˆX›Ü[™ÈÛˆH[š\]YH[™^
+NÈ
+ŠŠJJŠˆ^[H\ÜÚYÛ›Y[ÈÜš]H]
+ŠœÜ]žHHØÚÙYŒˆ]]Üš]HÙ\\˜][ÛŠŠˆ
+ÚXÚÜÜÝ8 %X[˜YÙH™]™\ˆ›Û[Ý\ÈXÝ]˜][ÛˆÝ]JNˆÜš][™×Ü›Û\Ý\™Ù]ØØZ[œÈ[ˆ\]YØ]™]š\Ú[ÛˆÚÙ[‹[™HÚ[™ÛH\Ù\\È™\XÙYžHÛ\×Ü›ÜÜÙWÝÜš][™×Ü›Û\Ý\™Ù]
+
+Š›X[˜YÙJŠŽˆS”ÑT•SÓ“H[™\[™[™×Ü™]šY]ØÈ\XØ]H
+›Û\ØÛÜJH8¡¤ˆ\™Ù]Ù^\ÝØK™]™\ˆHÚ[[Ý™\Üš]JKÛ\×Ü™]šY]×ÝÜš][™×Ü›Û\Ý\™Ù]
+
+Šœ™]šY]ÊŠŽˆ[™[™×Ü™]šY]Ø8¡¤˜XÝ]™_^ÛYYX[™]ÜžHÐTË
+Š™ÛØ˜[Y^ÛYH™Z™XÝY
+Šˆ\È[˜[YÜØÛÜX]Y]È^XÝÛ8¡¤›™]ÊKÛ\×Ü™[[Ý™WÝÜš][™×Ü›Û\Ý\™Ù]
+
+Šœ™]šY]ÊŠŽˆX[™]ÜžHÐTË]Y]ÈH^XÝÛ›ÝÈ8 %™]™\ˆÛÝ˜[YOS•S
+Kˆ
+Š““ÈXÝ]˜]H”ÊŠˆ8 %™XXÝ]˜][Ûˆ\ÈH™\ÛÛ™\ˆ‰ÜÈØ]H
+ÙYHXÝ]˜][Û‹YØ]H›ÝÊKˆ
+Š”›Ý]\ˆ\Ø\KØÛÛ[ÜÝY[ËœX
+Šˆ]Ø\KØYZ[‹ØÛÛ[\ÝY[Ø
+™YÚ\Ý\™Y[ˆÙ\™\‹œX
+NˆXœ˜\žKÔ™]šY]ËT]Y]YH
+\ÝÙÙ]ØÜ™X]KÜ]ÚØ[ËÜ™]šY]ÈÝ™\ˆÜš][™Ë\›Û\ÊH
+È^[KP\ÜÚYÛ›Y[È
+\ÝÜ›ÜÜÙKÜ™]šY]ËÜ™[[Ý™H\™Ù]ÊKˆ
+Š”\›Z\ÜÚ[ÛœÎŠŠˆ™XYÈHÛÛ[ÜÝY[Ë˜]]Ü˜ÔˆÛÛ[ÜÝY[Ëœ™]šY]ØÔˆ^[WÚ[[YÙ[˜ÙK›X[˜YÙXÔˆ^[WÚ[[YÙ[˜ÙKœ™]šY]ØÔˆÝ\\—ØYZ[ŽÈ]]Ü‹Ü]ÚØ[ÈHÛÛ[ÜÝY[Ë˜]]Ü˜È›Û\™]šY]ÈHÛÛ[ÜÝY[Ëœ™]šY]ØÈ\™Ù]
+Šœ›ÜÜÙHH^[WÚ[[YÙ[˜ÙK›X[˜YÙX
+ŠŽÈ\™Ù]
+Šœ™]šY]ËÜ™[[Ý™HH^[WÚ[[YÙ[˜ÙKœ™]šY]Ø
+Šˆ
+ŒˆY™XÞXÛH]]Üš]JKˆÝšXÝY[XÈ›Ý[™\žH
+^˜OIÙ›Ü˜šY	ØÝšXÝ[ÔÝšXÝÝ‹ÕURQ^XÚ][[™Z™XÝ[ÛˆÛˆ“ÕS•SÛÛ[[œËY\™ÙYZ[‹ÛX^ÛÜ™X›Ý[™8¡¤ˆÛÛ›ÛYŒˆšXH^ËšœÛÛŠ
+X
+KT”ÓÑx¡¤’X\[™È
+8¡¤x¡¤H[˜Ûˆ\™Ù]Ù^\ÝØŒ¸¡¤ŒŠKˆ™]È\›HÛÛœÝ[ÈÓÓ•S•ÔÕQS×ÐUUÔ˜ØÓÓ•S•ÔÕQS×Ô‘U’QUØØVSWÒS•SQÑSÑWÔ‘U’QUØ[ˆÛÜ™KÜ\›Z\ÜÚ[ÛœËœXˆ
+Š‘Y\XÚXÚÜÜÝ›Ý[™ˆ[ÛÈY™\ÜÙYŠŠˆ
+JH
+Š˜ÛY[\Ý\YYÐTÊŠˆ8 %UÒÜ™]šY]È›ÙY\È›ÝÈØ\œžH^XÝYÝ\]YØ]
+
+È^XÝYÜÝ]\Ø›Üˆ™]šY]ÊH[™H›Ý]\ˆ\ÜÙ\ÈHÓQS•ÚÙ[ˆ[˜Ú[™ÙY
+›È™K]Üš]Hœ™\ÚÑSPÕ
+KÛÈHÝ[KXœ›ÝÜÙ\ˆY]XY\‹YY]È™]šY]ËXY\‹X]]Ü‹YY]ÜÙ\ÈÚ]NÈ
+ŠH
+Š˜Y]Y]K™^\›˜[ÚÙ^X\ÈÞ\Ý[K[ÝÛ™Y
+È[[]]X›JŠˆ8 %Ü™X]KÜ]Ú™Z™XÝ]
+›Ý]\ˆ
+È”È™\Ù\™YÛY]Y]WÚÙ^X
+K]Ú™\Ù\™\È]XÜ›ÜÜÈY]Y]HY]Ë[ÈQT‘ÑTÈY]Y]H
+›È›Ý™[˜[˜ÙKY\˜\ÙJK[™ZYÜ˜][ÛˆŒMH™Y›YÚÈ\XØ]H
+ÝXš™XÝ^\›˜[ÚÙ^JX™Y›Ü™HÜ™X][™ÈH[š\]YH[™^È
+ÊH
+Š“•S\ØY™HÛÝ\˜ÙKYØÝ[Y[›Ý™[˜[˜ÙJŠˆ
+ØÛÜKÚÚ[™ÜÝ]\Ø•S›ÝÈ˜Z[›Ý˜[Ü[ŠNÈ
+
+H
+Š•URQ›Ý[™\žH\[™ÊŠˆÛˆ[]Ü]Y\žHQÈ8¡¤ˆX[›Ü›YY8¡¤ˆÛÛ›ÛYŒˆ
+›ÝÝØ[ÝÙYÈL
+NÈ
+JH
+Šœ›Û\XÛÛ[Ø[›ÛšXØ[^˜][ÛŠŠˆ8 %›[šÈ›Û\Ý^[™›[šËÛ][K]ÚÙ[‹ØØ\ÙKY\XØ]H™\]Z\™YÝÛÜ™Ø™Z™XÝY]HTH
+‘ÊÝš[KÚ[™ÛK]ÚÙ[ˆ\ˆ˜XÚÙ[™ÚÙ[š^™\ŠHS‘ÛØ\œÙ[H[‹QˆšXH]ÜØ\ÜÙ\Ü›Û\ØÛÛ[ˆ\ÝÎˆ›Ý]\‹[^Y\ˆ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝØÛÛ[ÜÝY[×ÝÜš][™×Ü›Û\ËœX
+LÈ8 %\›\È[˜Ûˆ›ÜÜÙKÜ™]šY]ËÜ™[[Ý™HÜ]ÝšXÝ˜[Y][Û‹™XYš[\œË˜[œÚ][ÛˆÝX\™
+Š˜ÛY[PÐTÈÚÙ[ˆ™\]Z\™[Y[
+È\ÜË]›ÝYÚ
+Š‹
+Šœ™\Ù\™Y[Y]Y]H
+È™\]Z\™Y]ÛÜ™Ü›Û\]^Ø[›ÛŠŠ‹
+Š›X[›Ü›YYUURQŒŠŠ‹\œ›ÜˆX\[™È›ÝYÚH
+Šœ™X[ÜÝÜ™\ÝTQ\œ›Ü˜
+Š‹›ËXXÝ]˜]K\›Ý]H\ÜÙ\[ÛŠH
+È
+Š”ÜÝÜ™\ËYØ]Y\ÝËÜÝYWÛÜËÝ\ÝØÛÛ[ÜÝY[×ÛÜ×Ü×Ø™Z]š[Ý\‹œX
+Šˆ
+MKUÔÔ×ÑÓŽÈ\Y\ÈŒx¡¤ŒŒLø¡¤ŒŒM8¡¤ŒŒMHÛˆ[ˆ\ÛÛ]Y›ÝØ]Ø^HŠH›Ýš[™ÈÜ™X]KØ]Y]Ü[™[™ËZ[˜XÝ]™KØÛÜH™Z™XÝ[ÛœÈ
+›Û‹Y[™Û\ÚÝXš™XÝ
+Šš[˜XÝ]™HÜXËÜ›Û™Ë[]™[ÜXÊŠ‹Ü›ÜÜË]ÜXÈZXÜ›ÝÜXË\˜Ú]™Y
+È
+Š“•SØÛÜKÚÚ[™ÜÝ]\ÊŠˆØÝ[Y[
+K
+Š˜ÛÛ[ÝX\™ÊŠˆ
+›[šÈ›Û\›[šËÛ][]ÛÜ™ØØ\ÙKY\™\]Z\™YÛÜ™
+K
+Š™^\›˜[ÚÙ^H™\Ù\˜][Û‹Ú[[]]Xš[]H
+È™KZ[\ÜXY\‹YY]Y[\Ý[˜ÞH
+È›Ý™[˜[˜ÙH™\Ù\˜][ÛŠŠ‹XÝ]˜][ÛˆÒPÒË™]šY]È˜[œÚ][ÛœÈ
+È
+Š›X[™]ÜžKÜÝ[HÐTÊŠˆ
+È
+ŠœØÛÜH™K]˜[Y][ÛˆÛˆ™\šYžJŠ‹™\šYšYY[ØÚË[ÈY™XÞXÛH
+È
+Š˜ÛÛ˜Ý\œ™[Ø[YKZÙ^H[\Ü
+Šˆ
+Yš\ÛÜžK[ØÚÈÙ\šX[^™Y
+H
+È
+Šœ™]šY]Ë]œËXÝ\˜][ÛˆÈ™]šY]Ë]œËX[ÈÝ[K[ÜÙ\ÊŠ‹\™Ù]
+Šœ›ÜÜÙJ[™[™ÊKÜ™]šY]ÊXÝ]™_^ÛYY
+KÜ™[[Ý™JŠˆÚ]ÐTÈ
+È^XÝÛÛ™]È]Y]
+È
+Š™ÛØ˜[Y^ÛYH™Z™XÝ
+Šˆ
+È˜[Y^[K\ØÛÜH^Û\Ú[Ûˆ
+È
+Š˜ÛÛ˜Ý\œ™[Ø[YK]\™Ù]™]šY]È˜XÙJŠˆ
+^XÝHÛ™HÚ[œÊK[™HÙ\šXÙK\›ÛK[Û›Hš]š[YÙHX]š^ˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆ\HŒMHY\ˆŒLø¡¤ŒŒMÈ›Ýš\Ú[ÛˆÛÛ[ÜÝY[Ë˜]]Ü˜ØÛÛ[ÜÝY[Ëœ™]šY]Ø
+
+È^[WÚ[[YÙ[˜ÙK›X[˜YÙXØ™]šY]Ø
+H[ˆ\ÝY\Y]Y]H›ÜˆH[[™YÜ\˜]ÜœÎÈØ\\™HH]™HŒLø¡¤ŒŒM8¡¤ŒŒMXÙ\]Y[˜ÙH›ÛÙŽÈ]™HÝ\X˜\ÙH›Ý[™]š\›ÜˆH”ÜÎÈÛÛ™š\›H\×Ù[˜Ý[Û—Üš]š[YÙX‘U“ÒÑKÑÔS•Ûˆ]™KˆŸUÔ›Û\
+Š˜XÝ]˜][ÛˆØ]JŠˆ
+›ØÚÜÈ\Ü\˜[][˜Ú
+HÐUH8 %
+ŠS‘QHQÔÈÓÑKQ’VQSQUSÓˆS‘S‘ÊŠˆ
+™\ÛÛ™\ˆ
+ÈÙ\ÜÚ[Ûˆ[™›Ü˜Ù[Y[
+ÈZYÜ˜][ÛˆŒNX›XË\™XYØÚÙÝÛˆÛˆœ˜[˜ÚÛ]YKÙ]ÜX\XØXš[]K\™\ÛÛ™\˜
+H8 %™XXÝ]˜][Ûˆ™[XZ[œÈÔTUÔˆS‘S‘È[[ŒN\È\YY]™H
+È]™H[™›Ü˜Ù[Y[›Ý[™]š\\È›Ý™[ˆZYÜ˜][ÛˆŒM0©ÍHXXÝ]˜]Y[›Û\È
+˜Z[XÛÜÙY
+KˆH™YH™XXÝ]˜][Ûˆ™XÛÛ™][ÛœÈ›ÝÈ]™HÛÙNˆ
+ŠŠJH™\ÛÛ™\ŠŠˆ\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÝÜš][™×Ü˜XÝXÙKØ\XØXš[]KœX8 %]\›Z[š\ÝXËÙ\šXÙK\›ÛKY˜][Y[žHÝ™\ˆÜš][™×Ü›Û\Ý\™Ù]Ø
+^XÚ]\×ÙÛØ˜[Û›NÈ™XÙY[˜ÙH\ÙO™^[O™˜[Z[O™ÛØ˜[È^ÛYYÝX˜XÝÈ]H[ÜÝÜXÚYšXÈX]Ú[™È˜[™È[™[™×Ü™]šY]ØØ[žH›Û‹XXÝ]™_^ÛYYÝ]\È[™\8 %™]™\ˆÚY[œÊNÈ
+ŠŠŠHÙ\ÜÚ[Û‹XÜ™X][Ûˆ[™›Ü˜Ù[Y[
+Šˆ8 %ÔÕØ\KÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÜÙ\ÜÚ[ÛœØ\š]™\ÈH]]Üš]]]™H^[HÛÛ^œ›ÛHHØ[\‹[ÝÛ™YÝYWÝ\ÚÜØ›ÝÈ
+^[WÚYØ^[WÜ\ÙWÚYZYÜ˜][ÛˆÍÛÛ[[œÎÈ™]™\ˆHÛY[\Ý\YY^[JH[™™Z™XÝÈH›Û‹X\XØX›H›Û\ÚYÚ]È‘Q“Ô‘HHÜ™X]H”ÎÈÚ]›ÈÝYWÝ\ÚÈ\™H\È›È^[HÛÛ^[™Û›H[ˆ^XÚ]XÝ]™HÓÐS\™Ù]\ÜÙ\È
+˜Z[XÛÜÙY
+NÈH™\ÛÛ™\ˆ\È[ÛÈ^ÜY\ÈHX[™]ÜžH[›™\ˆÙ[XÝ[Ûˆš[Z]]™H
+™\ÛÛ™WØ\XØX›WÜ›Û\ÚYØ
+NÈ
+ŠŠÊHZYÜ˜][ÛˆŒNÝÜš][™×Ü›Û\×ÜX›X×Ü™XYÛØÚÙÝÛ‹œÜ[
+Šˆ›ÜÈÜš][™×Ü›Û\×ÜX›X×Ü™XY
+ŒH0©ÌLŠHÚ]“È™\XÙ[Y[ÛY[ÛXÞH8 %“ÈÝ^\ÈSP“QÛÈ[›Û‹Ø]][XØ]Y™XY‘T“È›Û\›ÝÜÎÈ›Û\È™XXÚ\Ü\˜[ÈÛ›HšXHHÙ\šXÙK\›ÛH˜XÚÙ[™›ÝYÚH™\ÛÛ™\‹ˆ^[WÙ\ØÜš\]™WÜ™\]Z\™[Y[×ÜX›X×Ü™XY[[[Û˜[H[ÝXÚY
+™\]Z\™[Y[ÈY]Y]K›Ý][˜ÚX›HÛÛ[
+Kˆ\ÝÎˆ\ÝÝÜš][™×Ø\XØXš[]WÜ™\ÛÛ™\‹œX
+Œ‹\™KÝ[š]
+È˜\ÝTH[™›Ü˜Ù[Y[8 %\ÜÚ[™ÊH
+ÈÜÝÜ™\ËYØ]Y\ÝÝÜš][™×Ø\XØXš[]WÜ™\ÛÛ™\—Ø™Z]š[Ý\‹œX
+MUÔÔ×ÑÓ˜\ÛÛ]Y›ÝØ]Ø^Hˆ\Z[™ÈŒx¡¤ŒŒLø¡¤ŒŒM8¡¤ŒŒMx¡¤ŒŒN[™[X™\˜][HÒÒTS‘ÈŒM‹ÌŒMÈ\È[œ™[]YÈÜ[Ø[È[[Y[Ý]X›Ý[™Y
+NˆY˜][Y[žK^XÚ]YÛØ˜[^Û\Ú[Û‹\ÝX˜XÝË[™[™Ë[™]™\‹]ÚY[œË\™Ù]Y[]KÙ^[KXØ\ØØYH™]™\ˆÚY[‹\ÙK]œËY^[H\ÛÛ][Û‹\ÈÛÈ[™]ËY[™‹\]\ÝÈ]š]™H\XØXš[]Kš\×Ü›Û\Ø\XØX›X
+^[\ø¡¤˜^[WÙ˜[Z[WÚY›Ú[ˆ
+ÈÜš][™×Ü›Û\Ý\™Ù]Ø™]Ú
+H›ÝYÚHÜ[X˜XÚÙYÙ\šXÙK\›ÛHÚ[HÝ™\ˆ‘PS›ÝÜÈ
+ÝYWÝ\ÚÜØ›ÛÝÝ˜\^[™YÚ]HZYÜ˜][Û‹LÍ^[WÚYØ^[WÜ\ÙWÚYÛÛ[[œÊKÛXÞH™[[Ý™Yœ›ÛH×ÜÛXÚY\Ø“ÈÝ[[˜X›Y]][XØ]Y™XYÈ›ÝÜËˆ
+Š•‘T’Q–HˆÈÔTUÔˆS‘S‘ÎŠŠˆZYÜ˜][Ûˆ[X™\ˆŒNÚÜÙ[ˆ\Èš[\Þ\Ý[HPVÓÓ—ÓPRSŠŒMÊJÌH\ˆHZYÜ˜][Û‹[[X™\œØÒHÝX\™8 %]™HØÚ[XWÛZYÜ˜][ÛœØX^ÛÝ[“Õ™H]Y\šYYœ›ÛHHÛÛZ[™\ˆ
+\ÝÜ\˜]Üˆ]\Ý][ÛˆØ\ÈŒLˆÛˆŒ‹LËLŠNÈÜ\˜]Üˆ]\Ý™XÛÛ˜Ú[HH]™H[X™\ˆ[™\H[ˆÜ™\ˆ[™[™ÈŒLø¡¤ŒŒM8¡¤ŒŒMx¡¤ŒŒM¸¡¤ŒŒMø¡¤ŒŒN[ˆ™\šYžHÑSPÕ
+ˆ”“ÓH×ÜÛXÚY\ÈÒT‘HX›[˜[YOIÝÜš][™×Ü›Û\ÉØÚÝÜÈ“ÈÜš][™×Ü›Û\×ÜX›X×Ü™XY[™“È[˜X›Y\ÈH]™H][˜Ú›Ý[™]š\
+\XØX›H›Û\][˜Ú\ÎÈ›Û‹X\XØX›HÊKˆ›Û\™XXÝ]˜][Ûˆ
+\×ØXÝ]™O]YX›ÜˆHÙYYY˜[šÊHÝ^\ÈØ]YÛˆ]Ü\˜]Üˆ›ÛÙ‹ˆŸUÔTÔˆ8 %›Û\
+Š˜XÝ]˜][ÛˆY™XÞXÛJŠˆ
+˜XÚÙ[™Û›JHÓÑKQ’VQSQUSÓˆS‘S‘È8 %ZYÜ˜][Ûˆ\H
+È]™H›Ý[™]š\ÔTUÔˆS‘S‘ÎÈÛÛ[ÝY[ÈXÝ]˜]H]Ûˆ\ÈHUTˆÙ\šX[œ›Û[™Ý\
+Ý[Ø]Y\ˆHÛÛ[ÝY[ÈÝ\™˜XÙH›ÝÊHYÈHXÝ]˜][Ûˆ]ZYÜ˜][ÛˆŒMH[X™\˜][HÛZ]Yˆ
+Š“ZYÜ˜][ÛˆŒ—Ù]ÜÜ›Û\ØXÝ]˜][Û—ÛY™XÞXÛKœÜ[
+Šˆ
+‘S•SP‘T‘Qœ›ÛHŒ8¡¤ˆŒˆ[ˆHZYÜ˜][Û‹Z\ÝÜžH™\Z\ˆŽˆˆÎM[™YŒÜ\WØ[×Ú[\ÜÝŒ—Ý[š\]Y[™\ÜËœÜ[š\œÝ
+ÈŒWÜ\WÜÝ[][WÜÙ\šXÙWÜ›ÛWÙÜ˜[œÜ[ÛÚÈŒKÛÛY[™ÈÛˆØÚ[XWÛZYÜ˜][ÛœØ™\œÚ[ÛˆŒÛˆXZ[ŽÈ™\Z\™YÈH™^ÛÛYÝ[Ý\ÈÛÝŒŽÈ\HY\ˆŒMJH8 %ÛÈ]ÛZXÈÑPÕT’UHQ’S‘T˜Ù\šXÙK\›ÛK[Û›H”ÜÈ
+‘U“ÒÑH8 )ˆ”“ÓHP“PË[›Û‹]][XØ]Y
+ÈÔS•8 )ˆÈÙ\šXÙWÜ›ÛX
+Nˆ
+Š˜Û\×ØXÝ]˜]WÝÜš][™×Ü›Û\
+Ü›Û\ÚYÙ^XÝYÝ\]YØ]Ü™X\ÛÛ‹Ù^\˜Ú\ÙWÜ[[YWØ[ÝÛ\ÝËØXÝÜ—Ý\Ù\—ÚYØXÝÜ—Ù[XZ[
+X
+Šˆ8 %“ÕH›ÛÛX[ˆÙÙÛNˆ[™\ˆH›ÝÈØÚÈ]ÛÛXÝÈS™XÛÛ™][ÛœÈ[™ÛˆS–H˜Z[\™H™]\›œÈHÝXÝ\™YÙ[YÚX›N™˜[ÙK›ØÚÙ\œÎ–Ë‹‹—_X™\Ý[[™Üš]\È“ÕS‘ÎÈÛ›HÚ[ˆ]™\žH™XÛÛ™][Ûˆ\ÜÙ\ÈÙ\È]Ù]\×ØXÝ]™O]YX[\\]YØ][™]Y]Û8¡¤›™]È
+Üš][™×Ü›Û\ØXÝ]˜]X
+Kˆ›ØÚÙ\ˆÛÙ\Îˆ›Û\Û›ÝÝ™\šYšYY[™XYWØXÝ]™X›×ØXÝ]™WØ\XØXš[]WÝ\™Ù]
+Y˜][Y[žH8 %[ˆXÝ]™XÜš][™×Ü›Û\Ý\™Ù]Ø›ÝÈ]\Ý^\Ý
+K^\˜Ú\ÙWÝ\WÛ›ÝÜ[[YWÜ™XYX
+Ù\™\‹[ÝÛ™Y[ÝÛ\Ý
+KÙ[X[X×Ù]˜[X]Ü—Û›ÝÛ]™X
+ÛÝ\˜ÙKY\[™[\\ÊKXœšX×ÛZ\ÜÚ[™Ø
+È\˜YÜ˜\ÙØ]WØÛÜÙY
+\˜YÜ˜\\\ÊK[˜[YÜØÛÜX
+™K\[œÈ]ÜÝ˜[Y]WÜ›Û\ÜØÛÜX
+K™X\ÛÛ—Ü™\]Z\™Y
+‹L
+KˆÐTÈ\ÈHT‘\œ›Üˆ
+“ÕH›ØÚÙ\ŠNˆH•SÜˆZ\ÛX]ÚYÙ^XÝYÝ\]YØ]8¡¤ˆHÛÛ˜Ý\œ™[Û[ÙYšXØ][Ûˆ
+Ý[WÜ›Û\
+XÈZ\ÜÚ[™È›Û\8¡¤ˆ›ÝÙ›Ý[™È•SXÝÜˆ8¡¤ˆŒˆZ\ÜÚ[™×ØXÝÜ—ÚYˆ
+Š˜Û\×ÙXXÝ]˜]WÝÜš][™×Ü›Û\
+Šˆ8 %ÐTÈ
+È™X\ÛÛˆ
+È]Y]
+Üš][™×Ü›Û\ÙXXÝ]˜]X
+NÈÙ]È\×ØXÝ]™OY˜[ÙXˆ
+Š”Ù\™\‹[ÝÛ™Y™XY[™\ÜÈÛÛœÝ[ÈÝ\™˜XÙYÈÔS\ÈSSUUP“H[˜Ý[ÛœÈ
+›ÈÛY[]Üš]X›HÙ][™ÜÈ›ÝË›È]\š\ÝXÊNŠŠˆÛ\×ÝÜš][™×Ü[[YWÜ™XYWÝ\\Ê
+X
+[ÝÛ\Ý8 %
+ŠœÝ\ÈÚ]Ó“HÙ[[˜ÙWØÛÛœÝXÝ[Û˜
+ŠŽÈÛÜœ™XÝ[Û‹Ü™]Üš]KÜ™XÛÛœÝXÝ[Û‹Ý›ØØX‹Ü\˜YÜ˜\^ÛYY
+KÛ\×ÝÜš][™×ÜÛÝ\˜ÙWÙ\[™[Ý\\Ê
+XÛ\×ÝÜš][™×Ü\˜YÜ˜\Ý\\Ê
+X[™Û\×ÝÜš][™×ÙØ]WÛÜ[ŠØ]WÚÙ^JX8 %HÙ[X[XËY]˜[X]ÜˆØ]H
+‘—ÕÔ’US‘×ÓWÑUS›]™HˆÝ]JH[™H\˜YÜ˜\
+UÔMˆ0©ÌMŠH™[X\ÙHØ]H\™H“ÕÓÔÑQ
+˜[ÙX
+H[™˜Z[ÛÜÙYÈÜ[š[™ÈHØ]H\ÈH•UT‘HZYÜ˜][Ûˆ
+Ô‘PUHÔˆ‘TPÑX
+K™]™\ˆH[[YHÜš]KÙY\[™ÈXÝ]˜][Ûˆ]\›Z[š\ÝXÈ
+È[[]]X›K[Û˜ÙK[Y\™ÙYˆHÜ[Û˜[Ù^\˜Ú\ÙWÜ[[YWØ[ÝÛ\ÝØ[ˆÛ›HT”“ÕÈ
+[\œÙXÝ
+HHÙ\™\ˆÙ]8 %™]™\ˆÚY[‹ˆ
+ŠXÝ]˜][Ûˆ\ÈH‘UÈ]]Üš]HÛÛ[ÜÝY[Ë˜XÝ]˜]X
+Šˆ
+ÛÛœÝ[YYÈÛÜ™KÜ\›Z\ÜÚ[ÛœËœX\Ý[˜Ýœ›ÛH˜]]Ü˜Øœ™]šY]Ø8 %™Z]\ˆX^HXÝ]˜]NÈÛ›HÛÛ[ÜÝY[Ë˜XÝ]˜]XÜˆÝ\\—ØYZ[ŠKˆ
+Š”›Ý]\ŠŠˆ\Ø\KØÛÛ[ÜÝY[ËœXˆÔÕØ\KØYZ[‹ØÛÛ[\ÝY[ËÝÜš][™Ë\›Û\ËÞÜ›Û\ÚYKØXÝ]˜]X
+ÈÙXXÝ]˜]XÝšXÝY[XÈ
+^˜OIÙ›Ü˜šY	Ø^XÝYÝ\]YØ]
+È™X\ÛÛ˜
+K\›Z\ÜÚ[Û‹YØ]YÛˆÛÛ[ÜÝY[Ë˜XÝ]˜]Xˆ
+Š‘[YÚXš[]KX›ØÚÙY™]\›œÈŒÚ]Ù[YÚX›N™˜[ÙK›ØÚÙ\œßX
+Šˆ
+H˜[Y[œÝÙ\‹›Ý[ˆ\œ›ÜŠNÈÐTÈZ\ÛX]Ú8¡¤ˆNÈX[›Ü›YY8¡¤ˆŒ‹ˆHTKÙœ›Û[™‘U‘TˆÛÛ\]H[YÚXš[]H8 %H”ÈÙ\Ëˆ›È™]ÈX›\È
+”ÜÈ
+ÈSSUUP“H[˜Ý[ÛœÈÛˆ^\Ý[™ÈX›\ÊH8¡¤ˆ›È“ÈÝ\™˜XÙH[›ÙXÙYˆ\ÝÎˆ›Ý]\‹[^Y\ˆ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝØÛÛ[ÜÝY[×ÝÜš][™×Ü›Û\ËœX
+YYˆXÝ]˜]KÙXXÝ]˜]H›Ý]H™YÚ\Ý˜][Û‹]]Ü‹Ü™]šY]ÈÐS““ÕXÝ]˜]KÛ›HÛÛ[ÜÝY[Ë˜XÝ]˜]XÜÝ\\—ØYZ[‹ÐTÈ
+È™X\ÛÛˆ
+È^˜OY›Ü˜šY˜[Y][Û‹›Ë]ÚY[ˆ[ÝÛ\ÝÛZ\ÜÚ[Û‹[YÚXš[]KX›ØÚÙYZ\ËLŒ]Ú]X›ØÚÙ\œËÝ[x¡¤KÛ›ÝÙ›Ý[™8¡¤ÛX[›Ü›YY8¡¤ŒˆX\[™ÊH
+ÈÜÝÜ™\ËYØ]Y\ÝËÜÝYWÛÜËÝ\ÝÙ]ÜØXÝ]˜][Û—ÛY™XÞXÛWÜ×Ø™Z]š[Ý\‹œX
+\Y\ÈŒx¡¤ŒŒLø¡¤ŒŒM8¡¤ŒŒMx¡¤ŒŒˆÛˆ[ˆ\ÛÛ]Y›ÝØ]Ø^HŽÈ›Ý™\ÈXXÚ›ØÚÙ\ˆ]Üš]\È›Ý[™È
+È›È]Y]H\H]›\È\×ØXÝ]™X
+È]Y]ÈÛ8¡¤›™]ËXXÝ]˜]H›Ý[™]š\ËX[™]ÜžKÓ•SÜÝ[HÐTÈ8¡¤ˆK›ÝÙ›Ý[™•SXÝÜ‹Ø[\‹X[ÝÛ\ÝXØ[‹[Û›K[˜\œ›ÝË[™HÙ\šXÙK\›ÛK[Û›Hš]š[YÙHX]š^
+Kˆ™\šYšYYØØ[HYØZ[œÝ™X[ÜÝÜ™\È
+ÍËYØ]Y\ÜÙY[˜ÛˆHÚX›[™ÈŒMHÝZ]NÈ›Ý]\ˆŽ\ÜÙY
+Kˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆ™XÛÛ˜Ú[HH]™HØÚ[XWÛZYÜ˜][ÛœØ[X™\ˆ[™\HŒˆY\ˆŒMNÈ›Ýš\Ú[ÛˆÛÛ[ÜÝY[Ë˜XÝ]˜]X[ˆ\ÝY\Y]Y]H›ÜˆH[[™YÜ\˜]ÜœÎÈØ\\™HH]™HÝ\X˜\ÙHXÝ]˜]KÙXXÝ]˜]H›Ý[™]š\ÈÛÛ™š\›H\×Ù[˜Ý[Û—Üš]š[YÙX‘U“ÒÑKÑÔS•Ûˆ]™KˆŸUÔTÔ‹URH8 %ÛÛ[ÝY[È›Û\
+Š˜XÝ]˜][ÛˆY™›Ü™[˜ÙJŠˆ
+œ›Û[™
+HÓÑKQ’VQSQUSÓˆS‘S‘È8 %›ÈØ]HÜ[™Y
+˜XÚÙ[™]]Üš]H[˜Ú[™ÙY
+NÈÜ\˜]Üˆ›Ýš\Ú[Ûš[™ÈÙˆÛÛ[ÜÝY[Ë˜XÝ]˜]XÝ[ÔTUÔˆS‘S‘È\ˆHÔˆ˜XÚÙ[™›ÝÈÝ\™˜XÙ\ÈHÚ\YÔˆXÝ]˜]KÙXXÝ]˜]H”ÜÈ[ˆHÛÛ[ÝY[ÈXœ˜\žKˆ
+Š”Ù\šX[Y[]™\žHØÚÈ™\ÜXÝY
+Šˆ8 %Û›HÛÛ[ÝY[ÉÜÈÕÓˆYÙ\ÈÝXÚYˆÛÛ[ÝY[Ð\KšœØ
+
+ØXÝ]˜]UÜš][™Ô›Û\ØXXÝ]˜]UÜš][™Ô›Û\]]][ÛœÈ›ÝYÚH]K[^Y\ˆ\XY\\‹™]™\ˆ˜]È™]ÚÈ
+ØPÕUUSÓ—Ð“ÐÒÑT—ÓP‘SØØ\ØÜšX™PXÝ]˜][Û›ØÚÙ\˜ÛÙx¡¤^X\
+K\›Z\ÜÚ[ÛœËšœØ
+
+ØØ[XÝ]˜]XHÛÛ[ÜÝY[Ë˜XÝ]˜]XÔˆÝ\\—ØYZ[ˆ8 %\Ý[˜Ýœ›ÛH]]Ü‹Ü™]šY]ÊK™]È›Û\XÝ]˜][Û‹šœÞX[ÙË›Û\Xœ˜\žKšœÞ›ÝÈXÝ[Û‹ÛÛ[ÝY[ËšœÞÝ[H››ÈXÝ]˜]HÛÛ›ÛˆÛÛ[Y[ÛÜœ™XÝYˆ›ÈYZ[”Ú[ØYZ[”›Ý]\ËÛ˜]‹Ñ^[UÛÜšÜÜXÙKÜÚ\™YYš[HY]ÎÈ›È™]ÈÜ[]™[›Ý]KÜÝ\™˜XÙNÈÛÛ\Û™[Ý^\È^žKØYZ[‹[Û›Kˆ
+ŠY™›Ü™[˜ÙNŠŠˆ[ˆXÝ]˜]H]ÛˆÛˆ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø›Û\È
+XXÝ]˜]HÚ[ˆ\×ØXÝ]™X
+K™[™\™YÓ“HÚ]Ø[XÝ]˜]X
+Y[ˆÝ\Ú\ÙJKˆHX[ÙÈ™\]Z\™\ÈH™X\ÛÛˆ
+8 $ÍL
+H[™Ù[™ÈHÛY[	ÜÈ^XÝYÝ\]YØ]
+ÐTÊHSÒS‘ÑQ
+›È™K]Üš]H™Y™]Ú
+KZ\œ›Üš[™ÈUÒÜ™]šY]Ëˆ
+Š‘[YÚXš[]H\È‘U‘TˆÛÛ\]YÛY[\ÚYJŠˆ8 %ÛˆH”ÉÜÈLŒÙ[YÚX›N™˜[ÙK›ØÚÙ\œßX™\™XÝHX[ÙÈ™[™\œÈ[ˆ^XÚ]XÝ]˜][Ûˆ›ØÚÙYˆÝ]H\Ý[™ÈXXÚ›ØÚÙ\ˆÛÙH\È[X[‹\™XYX›H^ÈÝXØÙ\ÜÈ™Y›XÝÈH™]\›™Y\×ØXÝ]™XÈH8¡¤ˆÛÛ™›XÝÜ™K\™XYÈÍŒˆ8¡¤ˆ^XÚ]\œ›Üˆ
+È™]žH
+›ÈÚ[[˜Z[\™JKˆ
+Š•\ÝÎŠŠˆ×Ý\Ý××ËÐÛÛ[ÝY[Ë\ÝšœÞ
+
+ÌLH8 %\›Z\ÜÚ[ÛˆØ][™ÈY[‹Ýš\ÚX›KÝ™\šYšYY[Û›KØXÝ]™x¡¤‘XXÝ]˜]NÈ™X\ÛÛˆ™\]Z\™YÈÐTÈ\ÜË]›ÝYÚ[˜Ú[™ÙYÈÙ[YÚX›N™˜[ÙK›ØÚÙ\œßX8¡¤ˆXÝ]˜][Ûˆ›ØÚÙYˆÚ]›×ØXÝ]™WØ\XØXš[]WÝ\™Ù]
+ÈÙ[X[X×Ù]˜[X]Ü—Û›ÝÛ]™X™[™\™Y[™›ÈÝXØÙ\ÜÎÈÝXØÙ\ÜÈ™Y›XÝÈ\×ØXÝ]™NÈHÛÛ™›XÝÈŒˆ\œ›ÜŠÜ™]žNÈXXÝ]˜]H›Ý[™]š\
+H8 %\ÜÙYÈTÓ[ÛX[ˆÛˆÚ[™ÙYš[\Ëˆ
+Š““ÈØ]HÜ[™Y
+Šˆ8 %˜XÚÙ[™”ËØ]]Üš]H[˜Ú[™ÙYÈ\È\ÈY™›Ü™[˜ÙK[Û›Kˆ
+Š“ÔTUÔˆS‘S‘ÎŠŠˆ›Ýš\Ú[ÛˆÛÛ[ÜÝY[Ë˜XÝ]˜]X›Üˆ[[™YÜ\˜]ÜœÈ
+Ú\™YÚ]HÔˆ˜XÚÙ[™›ÝÊNÈ]™H›Ý[™]š\\[™ÈÛˆZYÜ˜][ÛˆŒˆ\YYˆŸUÔ[›™\ˆÈ\Ü\˜[›Û\[\Ý[™È\XØXš[]Hš[\ˆ
+™\ÛÛ™WØ\XØX›WÜ›Û\ÚYØ
+HS“‘Q8 %š[Z]]™HÚ\YÛˆœ˜[˜ÚÛ]YKÙ]ÜX\XØXš[]K\™\ÛÛ™\˜›È[‹\™\ÈØ[\ˆY]\œÝYWÛÜËÜš][™×Ü˜XÝXÙK˜\XØXš[]Kœ™\ÛÛ™WØ\XØX›WÜ›Û\ÚYÊÝ\X˜\ÙK›Û\ÚYË
+‹^[WÚY^[WÜ\ÙWÚY
+X\ÈH‘TURT‘QX[™]ÜžH\XØXš[]Hš[\ˆ›ÜˆS–H]\™HUÔ[›™\ˆÜˆ\Ü\˜[›Û\[\Ý[™ÈÝ\™˜XÙNˆÝXÚHÝ\™˜XÙHUTÕ\ÜÈ]ÈØ[™Y]H›Û\YÈ›ÝYÚ\Èš[Z]]™H[™Ý\™˜XÙHÛ›HH™]\›™YÝXœÙ]8 %]X^H“Õ™KY\š]™H\XØXš[]K]Y\žHÜš][™×Ü›Û\Ý\™Ù]Ø\™XÝKÜˆž\\ÜÈHY˜][Y[žH™\ÛÛ™\‹ˆ›ÝÚ\™Y[È[žH\Ý[™ËÜ[›™\ˆ[™Ú[Y]
+[X™\˜]H8 %Ú\š[™ÈÝXÚ\È[›™\‹ÛZ\ÜÚ[Û‹XÛÛ›ÛÝ\™˜XÙ\È[™\ˆHÙ\šX[Y[]™\žH›Ý][™ÈØÚËÛÈ]\ÈHÙ\\˜]HÙ\]Y[X[ŠKˆ\È›ÝÈ^\ÝÈÛÈH]\™H\Ý[™È[™Ú[Ø[››ÝÚ[[HÚ\Ú]Ý]Hš[\‹ˆÙ\ÜÚ[Û‹XÜ™X][Ûˆ[™›Ü˜Ù[Y[[™XYH\Ù\ÈHÚX›[™È\×Ü›Û\Ø\XØX›XˆŸÛÛ[ÝY[È8 %ÛÛœÛÛY]YÛÛ[YZ[ˆÝ\™˜XÙH
+\˜Ú]XÝ\™HXÚ\Ú[ÛŠHÓÑH‘TÑS•SˆˆÎŽ
+˜Y
+KSQUSÓˆS‘S‘È8 %RH
+È˜]ˆÛÛœÛÛY][Ûˆ™\Ù[[ˆHÙ\šX[Y[]™\žHˆ
+›ÝY]Y\™ÙY
+NÈ]™HÛXÚË]›ÝYÚÚ]›Ýš\Ú[Û™Y\›Z\ÜÚ[ÛœÈÔTUÔˆS‘S‘ÈØÜËØ\˜Ú]XÝ\™KØÛÛ[\ÝY[Ë›YˆÚ[™ÛHYZ[ˆ\Ý[˜][Ûˆ
+Xœ˜\žHÈ™]šY]È]Y]YHÈ[È[\ÜÈ^[H\ÜÚYÛ›Y[ÊH]Ü™X]\ÊÙÛÝ™\›œÈØ[›ÛšXØ[ÛÛ[È
+Š›Û™HÛÛ[Þ\Ý[KÝXš™XÝ\ÈHš[\ŠŠˆ
+ÛÛ[\\ÈØš™XÝ]™WÜ]Y\Ý[ÛˆÈÜš][™×Ü›Û\ÈÜ˜[[X\—Ùš[È]X[Ùš[È™X\ÛÛš[™×Ü^ž›HÈ\ÜØYÙWÜÙ]È\ØÜš\]™WÜ›Û\
+H8 %^XÚ]H“ÈÙ\\˜]HØYZ[‹Ù[™Û\Ú]X[™X\ÛÛš[™Øˆ
+Š“›Ë[™]Ë\Ý\™˜XÙH[HØ]\ÙšYYŠŠˆ™[[Ý™\ÈÈ[ØÚÈÛÛ[\Ý[˜][ÛœÈ
+ØYZ[‹Û[ØÚÜËÜ]Y\Ý[ÛœØØYZ[‹Û[ØÚÜËÜ™]šY]Ë\]Y]YXØYZ[‹Û[ØÚÜËÚ[\Ü
+KYÈH
+™]8¢$ŒŠH8 %PHØÚÈ0©ÌKŒ‹ˆ]š\Ú[ÛŽˆÛÛ[ÝY[ÈHÜ™X]KÙÛÝ™\›ŽÈX[˜YÙH^[HH\XØXš[]H
+ÈÛÝ™\˜YÙH
+˜XÝXÙKPÛÛ[PÛÝ™\˜YÙHÝ[[X\žH
+ÈÛÛ[ÝY[ÏÙ^[WÚYx )‰˜ÞXÛOx )‰œ\ÙOx )˜[™[Ù™ŽÈÙ\È“ÕÝÛ‹ÙY]ÛÛ[
+NÈÝYHÔÈHÙ[XÝÙ[]™\‹ˆÚ]˜]ÜÈœ›Û\È[ˆ^[HÛÜšÜÜXÙHÓTÈˆ
+UÔ0©ÌMÊH
+ÈH”THÛÜšØ™[˜Ú›Û\˜[šÈ\]\Èˆ^[UÛÜšÜÜXÙHXˆ[‹ˆ
+Š•RH™\Ù[[ˆˆÎŽ
+˜Y8 %›ÝY\™ÙY
+NŠŠˆØYZ[‹ØÛÛ[\ÝY[ÏÝX[Xœ˜\žW™]šY]Ë\]Y]YW[ËZ[\Ü^[KX\ÜÚYÛ›Y[Ø
+YÙ\ËØYZ[‹ØÛÛ[\ÝY[ËØ
+NÈ˜]ˆHÛ™HÛÛ[ÝY[È[žH™\XÚ[™ÈH[ØÚÈÛÛ[Ü›Ý\ÈHÈYØXÞH›Ý]\È™Y\™XÝÚ]]Y\žH\˜[\ÈØ\œšYY›ÝYÚ[˜ÛˆT“X˜XÚÙYYÙHÝ]HÛˆHØš™XÝ]™H™]šY]È]Y]YH
+]Y\Ý[Û‹YY]Üˆš[Z[œÈ™]Z[™Y
+NÈØš™XÝ]™K\]Y\Ý[ÛˆXœÈ™]\ÙHH^\Ý[™È[ØÚÜÈYÙ\ÎÈÜš][™Ë\›Û\XœÈÚ\™HHÎMHÛÛ˜XÝ
+™X\ÛÛˆ[™[ÜK^XÝYÝ\]YØ]Ø^XÝYÜÝ]\ØÐTÈÚ]H™K\™XYÝZY[˜ÙK\KYY™ˆUÒÚ]^XÚ][[ÛX\š[™ÈÙˆ[X›HšY[Ë™\šYšYY
+Ü™Z™XÝYY]ØÚË[\Û˜\ÚÝ™]šY]ËÚ\™Y˜XÚÙ[™\\š]H™\]Z\™Y]ÛÜ™ËÚ[˜[Y][Û‹Ý[X˜\ÙYYÚ[˜][Û‹]ÛZXÈ[È[\Ü8 %\™[™Y‘ËMNÔÕˆ\œÚ[™Ë[šÛ›ÝÛ‹XÛÛ[[ˆ™Z™XÝ[Û‹L\›ÝÈØ\Ú[™ÛH˜]Ú[]™[\œ›Üˆ˜[›™\‹™\Ý[žØÜ™X]Y\]Y[˜Ú[™ÙYX8 %Xœ˜\žx¡¤‘^[KP\ÜÚYÛ›Y[ÈY\[šË[™HŒˆ›ÜÜÙx¡¤œ™]šY]ËÜ™[[Ý™H^[H\ÜÚYÛ›Y[ÈÜ]È
+Š““È›Û\XÝ]˜]HY™›Ü™[˜ÙJŠˆ8 %Ø]Y
+Kˆ™]šY]Ù\‹[›Ý\È]]Üˆ™XYX˜XÚÈ
+ÈX[˜YÙKQ^[HÛÝ™\˜YÙH[™[ÙY\[šÈ
+ÈœšY[™Y\ˆ^Û›Û^HXÚÙ\œÈÝ[Y™\œ™Y
+ÙYH[™Ù™ˆØÊKˆŸ›Û\˜[šÈXˆ[ˆ^[HÛÜšÜÜXÙH
+^[UÛÜšÜÜXÙX”THÛÜšØ™[˜Ú›Û\˜[šÈ\]\ÈŠH
+Š”UTÑQÈÕTT”ÑQQ
+ŠˆžHÛÛ[ÝY[ÈXÚ\Ú[Ûˆ
+Œ‹LËLŠH›Û\˜[šÈÙ\È“Õ]™H[ˆH^[K\ØÛÜY^[UÛÜšÜÜXÙXˆ›Û\]]Üš[™ËÙÛÝ™\›˜[˜ÙH[Ý™\ÈÈÛÛ[ÝY[È
+Xœ˜\žKÝXš™XÝQ[™Û\Úš[\ŠKˆ^[UÛÜšÜÜXÙXX^HÝ\™˜XÙHÛÝ™\˜YÙH
+È[ˆ\ÜÚYÛ›Y[[™[Ù™ˆÛ›KˆÙYHØÜËØ\˜Ú]XÝ\™KØÛÛ[\ÝY[Ë›Y0©Í‹ˆŸ™[X\ÙHØ]\È›Üˆ\˜YÜ˜\ËÙ\ÜØ^\ÈS“‘QL]X[]HØ]\È[ˆ0©ÌMˆÙˆ\˜Ú]XÝ\™HØËˆ›Ý[YKX˜\ÙYˆÜ\˜]Üˆ\›Ý˜[™\]Z\™Y™Y›Ü™HUÔMˆ™YÚ[œËˆ‚ˆÈÈÈÈUÔÙ[[˜ÙK\˜XÝXÙH™\XØ[ÛXÙH8 %ØÚÙY[]™\žHÙ\]Y[˜ÙH
+Œ‹LËLÊB‚”™[X\ÙK\ØY™HÜ™\ˆÈXZÙHHÙ[[˜ÙK\˜XÝXÙHÛXÙH][˜ÚX›H‘Q“Ô‘H\˜YÜ˜\[ÙK^[H[ÙKÜˆ[žHœ›ØYXÝ]˜][Û‹ˆ˜][Û˜[NˆZYÜ˜][ÛˆŒŒˆ[™XYHÛ˜\ÚÝÈ›Û\Ý^ØÛÝ\˜ÙWÝ^\ˆÙ\ÜÚ[ÛŽÈHØ\\ÈHX\›™\ˆRH
+È]˜[X]ÜˆÛÜšÙ\‹›Ý[›Ý\ˆ›Û\\ØÚ[XHZYÜ˜][Û‹ˆ
+ŠXÝ]˜][Ûˆ]\Ý“Õ™XÙYHÛÝ\˜ÙKX]Ø\™H[[YJŠˆ8 %XÝ]˜][™ÈHÛÛ[X›[™ÛÜœ™XÝ[Û‹ÙÜ˜[[X\ˆ˜[šÈÛÝ[]ÛX[‹X]Z\œ™[]˜[[œÝÙ\œÈ\ÜËˆ[[YYX]HÜ™\Žˆ
+JHÛÝ\˜ÙWÝ^\Ü^H
+È]˜[X]ÜˆÛÛœÝ[\[Ûˆ8¡¤ˆ
+ŠHÙ[X[XÈY\\ˆÚYÝÈ8¡¤ˆ
+ÊHÛÛ›ÛYXÝ]˜][Ûˆ”ËÐTKÕRH8¡¤ˆ
+
+H[›™\ˆ\Úø¡¤œÙ\ÜÚ[Ûˆ][˜Ú8¡¤ˆ
+JH[^]ÜšYÚL‘H8¡¤ˆ
+ŠH[\ÜÜ™]šY]ËØXÝ]˜]HØY™HÙ[[˜ÙH›Û\È8¡¤ˆ
+ÊH\˜YÜ˜\Z[\ˆ]\‹‚‚ŸÛXÙHÝ]\È›Ý\ÈŸKK_KK_KK_Ÿ
+Š‘UÔTÔH8 %ÛÝ\˜ÙKX]Ø\™HX\›™\ˆ
+È]˜[X]Üˆ[[YJŠˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %œ˜[˜ÚÛ]YKÙ]Ü\ÛÝ\˜ÙKX]Ø\™K\[[YXˆ
+Š‘œ›Û[™ŠŠˆ™]ÈÛÝ\˜ÙPÛÛ^šœÞ™[™\œÈ›Û\œÛÝ\˜ÙWÝ^™XY[Û›H
+™YÚ[Ûˆ
+È\šXK[X™[YžX
+È\šXK\™XYÛ›X™]™\ˆ[ˆ[œ]
+HX›Ý™HHY]ÜˆXÜ›ÜÜÈÛÛ\ÜÙKÙ]˜[\[™[™ËÜ™]Üš]KÜ™\Ý[YKØÛÛ\]YÈÚ\™Y[ÈÙ[[˜ÙPZ[\˜Ø™]Üš]QY]Ü˜
+È[™Û\Ú˜XÝXÙTÚ[
+Ú[™[™\œÈ]›Üˆ›Û‹YY]ÜˆÝ]\ËY]ÜœÈ™[™\ˆZ\ˆÝÛˆÛÜJKˆX™[žH^\˜Ú\ÙH\Kˆ
+Š˜XÚÙ[™ŠŠˆ[™ÝXYÙWÙ]˜[X]Ü‹™]˜[X]WÛ[™ÝXYÙXØ[™ÝXYÙQ]˜[X]Ü‹™]˜[X]XØ[ØÚÓ[™ÝXYÙQ]˜[X]Ü‹™]˜[X]XÚY[™YÚ]›Û\Ý^ØÛÝ\˜ÙWÝ^
+˜XÚÝØ\™XÛÛ\]X›HY˜][ÊNÈÛÛ\]WÜÛÝ\˜ÙWØÛÛ\\š\ÛÛ˜[Z]È]\›Z[š\ÝXÈÛÝ\˜ÙWÝ[˜Ú[™ÙYØYX[š[™×Û›ÝÜ™\Ù\™Y
+[\KX[œÝÙ\ˆÛ›K›ÈÚ[Z[\š]H]\š\ÝXÊKØÛÝ\˜ÙWØÛÛ\\š\ÛÛ—Ý[˜Ù\Z[˜Ø]YÈÛÝ\˜ÙKY\[™[\\ÎÈ[™\™XÝÈÙ]™YY×Ú[X[—Ü™]šY]Ø[™]˜[X][Û—ÝÛÜšÙ\‹œXÚÚ\ÈX\Ý\žH\š]˜][Ûˆ
+˜Z[XÛÜÙY
+KˆÙ™—ÝÜXØ“Õ™]\ÙYˆ™\œÚ[Ûˆ[\Y[™Ë[[ØÚË]ŒX8¡¤˜[™Ë[[ØÚË]Œ˜ˆ‘—ÕÔ’US‘×ÓWÑUS
+Ù™‹ÜÚYÝËÛ]™KY˜][
+Ù˜Z[XÛÜÙY
+Š›Ù™ŠŠŠHØØY™›ÛYÈS[™ÝXYÙQ]˜[X]Ü˜ÝXˆ˜Z\Ù\È[™\È™]™\ˆZ[ØØ[YÛˆHÙ™ˆ]ˆ\ÝÎˆ\ÝÝÜš][™×Û[™ÝXYÙWÙ]˜[X]Ü‹œX
+
+ÌLÊK\ÝÝÜš][™×Ù]˜[X][Û—ÝÛÜšÙ\‹œX
+
+ÌÊKÛÝ\˜ÙPÛÛ^\ÝšœÞÚ[ØÛÛ\Û™[ÛÝ\˜ÙK\Ý]H\ÝÈ8 %ÝYWÛÜÈÝZ]HÜ™Y[ˆ^Ù\™KY^\Ý[™Èš]˜Ø\[ˆ\ÝÝÜš][™×Ü˜XÝXÙWÜ›Ý]\ËœXˆ
+Š•˜[Y][Ûˆ[™[™ÎŠŠˆ]™HÚYÝËÛÜ\˜]Üˆ[‹ˆ
+Š‘œ›Û[™ŠŠˆ™[™\ˆ›Û\œÛÝ\˜ÙWÝ^\È[[]]X›H\ÚÈÛÛ^X›Ý™HH[œÝÙ\ˆY]Ü‹š\ÚX›HXÜ›ÜÜÈÛÛ\ÜÙHÈ]˜[\[™[™ÈÈ™]Üš]HÈ™\Ý[YHÈÛÛ\]YÈX™[žH^\˜Ú\ÙH\H
+”Ù[[˜ÙHÈÛÜœ™XÝˆœÈ”ÛÝ\˜ÙH\ÜØYÙHŠNÈ\ÜÈÛÝ\˜ÙHÛÛ^[ÈÙ[[˜ÙPZ[\˜
+È™]Üš]QY]Ü˜ÈLL^H
+È™\Ý[YY\Ù\ÜÚ[Ûˆ\ÝËˆ
+Ú[Ý\œ™[H\ÜÙ\ÈÛ›H›Û\œ›Û\Ý^ŠH
+Š˜XÚÙ[™ŠŠˆÚY[ˆH]˜[X]ÜˆY\\ˆ›Ý[™\žHÈ]˜[X]J[œÝÙ\—Ý^
+‹^\˜Ú\ÙWÝ\K›Û\Ý^ÛÝ\˜ÙWÝ^XÝ]™WÜš[Ü—Ú\ÜÝY\Ë™\ÛÛ™YÜš[Ü—Û[™XYÙ\ÊXÈ]˜[X][Û—ÝÛÜšÙ\‹œX\ÜÙ\ÈH[™XYKXÛZ[YYÛ˜\ÚÝ›Û\Ý^ØÛÝ\˜ÙWÝ^›ÝYÚˆ
+Š‘UT“RS’TÕPÈ™\Ý[Ý]\ÊŠˆ
+\ˆØÚÙYXÚ\Ú[ÛˆŒ‹LËLÈ8 %“ÈHY\\ˆ[ˆ\ÈŠNˆÛÝ\˜ÙWÝ[˜Ú[™ÙY
+[œÝÙ\ˆOHÛÝ\˜ÙHY\ˆ›Ü›X[^™JKYX[š[™×Û›ÝÜ™\Ù\™Y
+Û›HÚ\™H]\›Z[š\ÝXØ[HXÚYX›JKÛÝ\˜ÙWØÛÛ\\š\ÛÛ—Ý[˜Ù\Z[˜È[˜Ù\Z[‹Ý[˜]˜Z[X›H8¡äˆ
+Š™˜Z[ÛÜÙYÈ™YY×Ú[X[—Ü™]šY]Ø
+Š‹™]™\ˆÜÚ]]™HX\Ý\žKˆÈ“Õ™]\ÙHÙ™—ÝÜXØ
+ÛÝ[ÛÛ[Z[˜]HÛÛ[\™[]˜[˜ÙHX\Ý\žJKˆ[\]˜[X]Üˆ™\œÚ[Û‹ˆ‘—ÕÔ’US‘×ÓWÑUSÙ™¸¡¤œÚYÝø¡¤›]™H›YÈÐÐQ‘“ÓQY˜][[™È
+Š›Ù™ŠŠŽÈ™X[[Ù[Y\\ˆÛÝÝX˜™Y
+›È[Ù[Ø[
+H8 %Y™\œ™YÈHÛÝ™\›˜[˜ÙKYØÈˆ™[ÝËˆŸ
+Š‘UÔTÔXH8 %Ù[X[XÈ]˜[X]ÜˆY\\ˆ
+ÛÝ™\›˜[˜ÙKYØ]Y
+JŠˆS“‘Q8 %™YYÈØÜËØ\˜Ú]XÝ\™KÙ]Ü\Ù[X[XËY]˜[X]Ü‹XY\\‹›YT“Õ‘Qš\œÝ™X[Ù[X[XÈ
+JHY\\ˆ™Z[™‘—ÕÔ’US‘×ÓWÑUS
+ŠœÚYÝÈ[ÙHÛ›JŠˆ]š\œÝˆ™XÛÜ™\ØYÜ™Y[Y[È][˜ÞHÈÛÜÝÈÛÛ™šY[˜ÙK“ÈY™XÞXÛHÜˆX\Ý\žHY™™XÝ[[0©ÌMˆØ]KMH˜[ÙK\ÜÚ]]™KÛ™YØ]]™H
+ÈÛÜÝÛ][˜ÞH™\ÚÛÈ\™HY]ˆ›ØÚÙYžHHØÚÙY››ÈHY\\ˆÚ]Ý][ˆ\˜Ú]XÝ\™HØÈˆ[˜\šX[ˆŸ
+Š‘UÔTÔˆ8 %ÛÛ›ÛY›Û\XÝ]˜][ÛˆY™XÞXÛJŠˆS“‘Q8 %Y\ˆÔH™Z]š[Ü‹]\ÝY]ÛZXÈÛ\×ØXÝ]˜]WÝÜš][™×Ü›Û\ÈÛ\×ÙXXÝ]˜]WÝÜš][™×Ü›Û\”ÜÈ
+“ÕH›ÛÛX[ˆÙÙÛJKˆXÝ]˜][Ûˆ™\šYšY\ÈS‘TˆÐÒÎˆ›Û\™\šYšYYÈÝ\œ™[H[˜XÝ]™NÈ8¢iLHY™™XÝ]™HXÝ]™H\XØXš[]H\™Ù]È^\˜Ú\ÙH\H[ˆHÙ\™\‹[ÝÛ™Y[[YK\™XY[™\ÜÈ[ÝÛ\ÝÈÛÝ\˜ÙKY\[™[\\È]™HHÙ[X[XËY]˜[X]ÜˆØ]HÛX\™YÈ\˜YÜ˜\\\È]™H[ˆ\›Ý™YXœšXÈ
+ÈUÔMˆØ]HÛX\™YÈ^Û›Û^KÜ›Ý™[˜[˜ÙHÝ[˜[YÈÛY[ÐTÈÚÙ[ˆX]Ú\ÎÈÜ\˜]Üˆ™X\ÛÛˆ™\Ù[ÈXÝ]˜][Ûˆ]]Üš]H^XÚ]
+ÈÙ\\˜]Hœ›ÛH]]Üš[™Ëˆ”È™]\›œÈÝXÝ\™YÙ[YÚX›K›ØÚÙ\œÖ×_X8 %Hœ›Û[™Ù\È“ÕÛÛ\]H[YÚXš[]NÈÛÛ[ÝY[È™[™\œÈXÝ]˜][Ûˆ›ØÚÙYˆÚ]™XÚ\ÙH™X\ÛÛœËˆŸ
+Š‘UÔTÔÈ8 %[›™\ˆ\ÚÈ8¡¤ˆÙ\ÜÚ[Ûˆ][˜Ú
+ŠˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %]™H][˜Ú›Ý[™]š\ÔTUÔˆS‘S‘È
+\[™ÈÛˆHXÝ]˜][Û‹YØ]HÜ\˜]Üˆ›ÛÙŽˆZYÜ˜][ÛˆŒN\YY]™H
+È›Û\™XXÝ]˜][ÛŠHÙ\™\‹[ÝÛ™Y
+Š˜ÔÕØ\KÜÝYKÝ\ÚÜËÞÜÝYWÝ\Ú×ÚYKÛ][˜Ú]Üš][™Ø
+ŠˆYYÈHÜÝYKÝ\ÚÜØ›Ý]\ˆ[ˆ\Ø\KÝÜš][™×Ü˜XÝXÙKœX
+™YÚ\Ý\™Y[ˆÙ\™\‹œXÈ“È™]ÈÚYX˜\‹ÝÜ[]™[Ý\™˜XÙK›ÈYZ[”Ú[ØYZ[”›Ý]\ËÛ˜]ˆÚ[™ÙH8 %Ù\šX[Y[]™\žH›Ý][™ÈØÚÈ™\ÜXÝY
+Kˆ›ÝÎˆ
+ŠŠJJŠˆ™\šYžHØ[\ˆÝÛœÈHÝYWÝ\ÚØ
+Ý\Ú\ÙJNÈ
+ŠŠŠJŠˆ™XYHS“‘Q]]Üš]]]™H^[WÚYØ^[WÜ\ÙWÚYœ›ÛHH\ÚÈ
+™]™\ˆÛY[\Ý\YY
+NÈ
+ŠŠÊJŠˆZ[HØ[™Y]H›Û\Ù]œ›ÛHH\ÚÈØÛÜH8 %™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø
+È\×ØXÝ]™O]YX
+È[™Û\Ú[[™ÝXYÙHÝXš™XÝ
+™\ÛÛ™Yœ›ÛHH[™Û\Ú[[™ÝXYÙXÝXš™XÝÛYËZYÜ˜][ÛˆŒNÈ˜[È˜XÚÈÈH\ÚÉÜÈÝXš™XÝÚY
+H
+È˜\œ›ÝÙYÈH\ÚÉÜÈ[›™YÜX×ÚYÚ[ˆ™\Ù[È
+ŠŠ
+JŠˆ\H“ÕØ]\È
+Y™[œÙH[ˆ\
+NˆH[[YK\™XY[™\ÜÈ[ÝÛ\Ý
+™XYœ›ÛHHÙ\™\‹[ÝÛ™YÛ\×ÝÜš][™×Ü[[YWÜ™XYWÝ\\Ê
+Xˆ[˜Ý[Û‹ZYÜ˜][ÛˆŒHÉÜÙ[[˜ÙWØÛÛœÝXÝ[Û‰×XÈZ\œ›Ü™Y\È•S•SQWÔ‘PQWÑVTÒTÑWÕTTØ˜[˜XÚÈÙ\[ˆ\š]HžH\ÝÜ[[YWÜ™XYWÛZ\œ›Ü—ÛX]Ú\×ÛZYÜ˜][Û—ÌŒ
+HS‘HQUSQS–H\XØXš[]H™\ÛÛ™\ˆ™\ÛÛ™WØ\XØX›WÜ›Û\ÚYØ›ÜˆH[›™Y^[HÛÛ^È
+ŠŠJJŠˆ]\›Z[š\ÝXØ[HÙ[XÝHÝ\š]š[™È›Û\Ú]H
+Š›^XÛÙÜ˜\XØ[K\ÛX[\ÝY
+Šˆ
+ÝX›KÛÛ[Z[™\[™[8 %Ø[YH\ÚÈ[Ø^\È][˜Ú\ÈHØ[YH›Û\
+NÈÛˆ[\HÝ\š]š[™ÈÙ]8¡¤ˆ
+ŠH›×Ù[YÚX›WÜ›Û\
+Šˆ
+“È\˜š]˜\žH˜[˜XÚÊNÈ
+ŠŠŠJŠˆÜ™X]HHÙ\ÜÚ[ÛˆUÓRPÐSH›ÝYÚHÒT‘QØÜ™X]WÛX\›š[™×ÜÙ\ÜÚ[Û˜]]ÔÕÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÜÙ\ÜÚ[ÛœØ[ÛÈ\Ù\È8 %ÛÈH™\šYšYYØXÝ]™HØ]KH\XØXš[]H™KXÚXÚË[™HÛ˜\ÚÝ]ZÚ[™È]ÜØÜ™X]WÝÜš][™×ÜÙ\ÜÚ[Û˜”È
+ZYÜ˜][ÛœÈŒMÌŒŒKÌŒŒŠH[™K\[ŽÈHœ›ÝÜÙ\ˆ\È‘U‘Tˆ[™YH›Û\ÚYÈ
+ŠŠÊJŠˆ™]\›ˆÜÙ\ÜÚ[Û—ÚY˜XÝXÙWÜ›Ý]Nˆ‹Ø\ÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÞÜÙ\ÜÚ[Û—ÚYHŸXˆ
+Š’Y[\Ý[˜ÞNŠŠˆH\ÚÈÚ]H]™H
+›Û‹]\›Z[˜[K™KˆÝ]\È8¢"HØÛÛ\]YX˜[™Û™YJHÜš][™×ÜÙ\ÜÚ[ÛœØ›ÝÈ
+ÝYWÝ\Ú×ÚY’ËZYÜ˜][ÛˆŒJH™K[][˜Ú\È[È]Ù\ÜÚ[Ûˆ
+]\›Z[š\ÝXÈÛX[\ÝZYXÚÊH˜]\ˆ[ˆÜ™X][™ÈH\XØ]NÈ\›Z[˜[Ù\ÜÚ[ÛœÈÈ›Ý›ØÚÈHœ™\Ú][˜Úˆ
+Š‘š[\ÎŠŠˆ\Ø˜XÚÙ[™Ø\Ø\KÝÜš][™×Ü˜XÝXÙKœX
+^˜XÝYÚ\™YØÜ™X]WÛX\›š[™×ÜÙ\ÜÚ[Û˜
+ÈÛÝÛ™YÝ\ÚØÈ™]È][˜ÚÝÜš][™ØÜÙ[XÝÛ][˜ÚÜ›Û\Ü[[YWÜ™XYWÝ\\ØÙ[™Û\ÚÜÝXš™XÝÚY
+K\Ø˜XÚÙ[™ÜÙ\™\‹œX
+™YÚ\Ý\ˆ\ÚÜ×Ü›Ý]\˜
+Kˆ
+Š•\ÝÎŠŠˆ\ÝËÜÝYWÛÜËÝ\ÝÝÜš][™×Û][˜ÚÙ[™Ú[œX
+Mˆ8 %ÝÛ™\œÚ\›ËY[YÚX›HKÛ›ËY˜[˜XÚË[[YK\™XY[™\ÜÈØ]H^ÛY\ÈH›Û‹\™XYHXÝ]™H›Û\™\ÛÛ™\ˆY˜][Y[žH^ÛYYÜ[™[™È™]™\ˆÙ[XÝY]\›Z[š\ÝXÈÛX[\ÝZYÙ[XÝ[Ûˆ
+ÈÝXš[]HXÜ›ÜÜÈØ[ËY[\Ý[™K[][˜Ú™]\Ù\ÈH]™HÙ\ÜÚ[Û‹\›Z[˜[Ù\ÜÚ[ÛˆÙ\Û‰Ý›ØÚË›ËY^[KXÛÛ^[šY\ÈØÛÜY›Û\Ú\™YXÜ™X]K\]\ÜÙ\[Û‹‹X[ÝÛ\Ý]œË[Z\œ›Üˆ\š]H
+È™XYÙ˜[˜XÚÊKˆ^\Ý[™È\ÝÝÜš][™×Ø\XØXš[]WÜ™\ÛÛ™\‹œX
+È\ÝÝÜš][™×Û][˜ÚœXÝ^HÜ™Y[‹ˆ[\ÝËÜÝYWÛÜËØHLLÈ\ÜÙYŒÈÚÚ\YH™KY^\Ý[™È[œ™[]Yš]˜ÔS]Tˆ[\Ü˜Z[\™H
+\ÝÝÜš][™×Ü˜XÝXÙWÜ›Ý]\×Ü™YÚ\Ý\™Y
+Kˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆ]™H][˜Ú›Ý[™]š\\ÈØ]YÛˆHXÝ]˜][Û‹YØ]HÜ\˜]ÜˆÛÜšÈ
+ZYÜ˜][ÛˆŒN\YY]™H
+È›Û\™XXÝ]˜][ÛŠH8 %[[ÙYYY›Û\È\™H\×ØXÝ]™O]YXÚ][ˆXÝ]™H\XØXš[]H\™Ù]][˜ÚÛÜœ™XÝH™]\›œÈH›Üˆ]™\žH\ÚËˆ›È™]ÈX›\ËÔ“ÈÝ\™˜XÙH
+›Ý]H
+È™]\ÙHÙˆ^\Ý[™È”ÜÊKˆŸ
+Š‘UÔTÔËURH8 %X\›™\ˆ][˜Ú]Üš][™ÈÛÛ›Û
+œ›Û[™
+JŠˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %]™H][˜ÚÝ[ÔTUÔˆS‘S‘È
+\[™ÈÛˆHÔÈ˜XÚÙ[™XÝ]˜][Û‹YØ]H›ÛÙŽˆZYÜ˜][ÛˆŒN\YY]™H
+È›Û\™XXÝ]˜][ÛŽÈ[[H\ÚÉÜÈØÛÜH\È[ˆXÝ]™H\XØX›H›Û\HÛÛ›ÛÛÜœ™XÝHÚÝÜÈHØ[H››È˜XÝXÙH]˜Z[X›HY]ˆHÝ]JHÝ\™˜XÙ\ÈHÚ\YÙ\™\‹[ÝÛ™YÔÈ][˜Ú[™Ú[ÈH\Ü\˜[ˆ
+Š”Ù\šX[Y[]™\žH›Ý][™ÈØÚÈ™\ÜXÝY
+Šˆ8 %“È™]È›Ý]KÝÜ[]™[Ý\™˜XÙK“ÈYZ[”Ú[ØYZ[”›Ý]\ËÛ˜]‹ÜÚYX˜\ˆÚ[™ÙNÈHÛÛ›Û›ÙÜ˜[[X]XØ[H˜]šYØ]\È
+\ÙS˜]šYØ]X
+HÈHVTÕS‘È˜XÝXÙK\Ú[›Ý]HØ\ÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÎœÙ\ÜÚ[Û’Y™]\›™YžHHÙ\™\‹ˆ
+Š‘]H^Y\ŽŠŠˆ][˜ÚÜš][™ÊÝYU\ÚÒY
+XYYÈHÜš][™Ë\˜XÝXÙHÛÚÈ™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKÝ\ÙQ[™Û\Ú˜XÝXÙTÙ\ÜÚ[Û‹šœØ8¡¤ˆÔÕØ\KÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™Ø
+[›™\‹]\ÚÈXÝ[Ûˆ˜[Y\ÜXÙH[™XYH\ÙYžH\ÈÝ\™˜XÙH›Üˆ\ÚÈÝ]\ÎÈ[›™[È[ÈHØ[YHÜš][™Ë\Ù\ÜÚ[Ûˆ[[YJKˆ™]\›™Y\ÈH˜\™H›ÛZ\ÙH
+›ÝšXH\ÙP\PXÝ[Û˜
+HÛÈHVPÕQH›×Ù[YÚX›WÜ›Û\Ù\È“Õš\™H[ˆ]]ÛX]XÈ\œ›ÜˆØ\Ý8 %HÛÛ\Û™[ÝÛœÈHÝ]\Ëˆ
+ŠÛÛ›ÛŠŠˆ™]È™\Ù[][Û˜[™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKÓ][˜ÚÜš][™Ô˜XÝXÙP]Û‹šœÞ8 %ZÙ\ÈH[›™\ˆ\ÚØØ[È][˜ÚÜš][™Ê\ÚËšY
+X[™ÛˆÝXØÙ\ÜÈ
+ÜÙ\ÜÚ[Û—ÚY˜XÝXÙWÜ›Ý]_X
+H˜]šYØ]\ÈÈ˜XÝXÙWÜ›Ý]Xˆ‘U‘TˆÛÛ\]\È[YÚXš[]HÛY[\ÚYNÈ‘U‘Tˆ\ÜÙ\ÈH›Û\ÚY
+Ù\™\ˆ\š]™\È]™\ž][™Èœ›ÛHHÝÛ™Y\ÚÊKˆÝ]HXXÚ[™HYx¡¤›][˜Ú[™ø¡¤œÝXØÙ\Üß\œ›ÜŽˆ\ØX›Y
+È\šXKX\ÞX
+È”Ý\[™ø )ˆˆÚ[H][˜Ú[™ÎÈ
+ŠH›×Ù[YÚX›WÜ›Û\8¡¤ˆØ[H“›È˜XÝXÙH]˜Z[X›H›Üˆ\È\ÚÈY]ˆ›ÝH
+›ÝH\™\œ›Ü‹›È™]žK›È˜]šYØ][ÛŠJŠŽÈ8¡¤ˆ•\È\ÚÈ\È›ÈÛ™Ù\ˆ]˜Z[X›HŽÈ[žHÝ\ˆ˜Z[\™H8¡¤ˆ^XÚ]\œ›Üˆ
+È™]žH
+™]™\ˆÚ[[
+K›È˜]šYØ][Û‹ˆ
+Š•Ú\š[™ÎŠŠˆYÙ\ËÜÝYKÔÝYRÛYKšœÞ
+Z\ÜÚ[Û‹XÛÛ›ÛÝ\™˜XÙKÚXÚ[™XYHÝ[\È][˜ÚÝ\OIÙ[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û‰ØØXÝ[Û—ÛX™[šXHÜš][™×Ü˜XÝXÙKÛ][˜Ú˜ÛÛ\]WØXÝ[Û˜
+H™[™\œÈHÛÛ›Û[ˆH“™^ÝYHXÝ[ÛˆˆØ\™[ˆXÙHÙˆHÙ[™\šXÈ”Ý\ˆ[šÈÚ[ˆ\ÚË›][˜ÚÝ\HOOH	Ù[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û‰ØÈ›Û‹]Üš][™È\ÚÜÈ[˜Ú[™ÙYˆ›È™]È\[™[˜ÞNÈÛÛ\Û™[Ú]È[ˆH^\Ý[™ÈÝYKÙ[™Û\Ú\˜XÝXÙHÚ[šÈ
+›ÈYZ[‹Ü›ÝÝ\HXZØYÙJKˆœ›Û[™\Ù\È^[XÝÜš][™È\Ü^HX™[ÈÛ›NÈ›È^[WÚY’È™[˜[YYˆ
+Š•\ÝÎŠŠˆ][˜ÚÜš][™Ô˜XÝXÙP]Û‹\ÝšœÞ
+‹•›Ý]\ˆ
+ÈÛÚÈ[ØÚÙY8 %™[™\œÈÛˆHÜš][™È\ÚÎÈÝXØÙ\ÜÈØ[È][˜ÚÜš][™Ø[™˜]šYØ]\ÈÈH™]\›™Y˜XÝXÙWÜ›Ý]XÈH›×Ù[YÚX›WÜ›Û\8¡¤ˆØ[HÝ]H
+È›È˜]šYØ][ÛŽÈ8¡¤ˆ›ÝX]˜Z[X›H
+È›È˜]šYØ][ÛŽÈ™]ÛÜšËÛÝ\ˆ\œ›Üˆ8¡¤ˆ^XÚ]\œ›Üˆ
+È™]žH]™K[][˜Ú\ÎÈØY[™È\ØX›\ÈHÛÛ›Û
+H8 %\ÜÚ[™ÎÈ^\Ý[™ÈÝYRÛYK›™]ÛÜšË\ÝšœÞ
+ÈÝYRÛYK›™^XXÝ[Û‹\ÝšœØÝ^HÜ™Y[ˆ
+Lˆ\ÜÙY
+NÈTÓ[ÛX[ˆÛˆÚ[™ÙYš[\Ëˆ
+Š“ÔTUÔˆÈ‘T’Q–HŽŠŠˆ]™HÛXÚË]›ÝYÚÛ˜ÙHH™\šYšYY
+ØXÝ]™H\XØX›H›Û\˜[šÈ^\ÝÈ
+Ú\™YÚ]HÔÈ˜XÚÙ[™
+ÈXÝ]˜][Û‹YØ]HÜ\˜]ÜˆÛÜšÊKˆŸ
+Š‘UÔTÔ8 %Ü\˜]Üˆ\ØXš[]HÛÛ\][ÛŠŠˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %‘T’Q–HˆÈÔTUÔˆS‘S‘È
+]™HÙ[XÝÜˆ™YYÈ\[™ÛˆÙYYYÝXš™XÝËÝÜXÜËÙ^[K\™YÚ\ÝžKÜXœšXÜËÙØÝ[Y[È›ÝÜÎÈ›ÈØÚ[XKÔ“ÈÚ[™ÙJH˜]ËUURQ^[œ]ÈÛˆHÛÛ[ÝY[ÈÝ\™˜XÙH™\XÙYÚ]™XYX›KTS‘S•Ù[XÝÜœÈ[™™XYX›HX›HX™[ÎÈ™]šY]Ù\ˆÛÜœ™XÝ[Ûˆ›Ý\ÈÝ\™˜XÙY™XY[Û›HÈ]]ÜœËˆ
+Š”Ù\šX[Y[]™\žHØÚÈ™\ÜXÝY
+Šˆ8 %Û›HÛÛ[ÝY[ÉÜÈÕÓˆYÙ\È
+ÈH^\Ý[™ÈÛÛ[ÜÝY[Ø›Ý]\ˆÙ\™HÝXÚY
+›ÈYZ[”Ú[ØYZ[”›Ý]\ËÛ˜]‹Ñ^[UÛÜšÜÜXÙKÜÚ\™YYš[HY]ÎÈ›È™]ÈÜ[]™[›Ý]KÜÝ\™˜XÙJKˆ
+Š‘œ›Û[™ŠŠˆ™]ÈÙ[XÝÜœËšœÞ
+ÝXš™XÝÈÜXËXžK\ÝXš™XÝÈZXÜ›ÝÜXËXžK]ÜXÈÈXœšXÈÈÛÝ\˜ÙKYØÝ[Y[È^[Q˜[Z[HÈ^[KXžKY˜[Z[HÈ\ÙKXžKY^[HÙ[XÝÎÈ\™[Ú[™ÙH[˜[Y]\ÈÚ[™[ŠNÈ›Û\Y]Ü‹šœÞÜ™X]KÙY]›ÝÈ\ÙHH^Û›Û^H
+ÈXœšXÈ
+ÈØÝ[Y[Ù[XÝÈ
+Ý[[Z]Ø[›ÛšXØ[
+—ÚYÈZ[^[ØY\KYY™ˆ[˜Ú[™ÙY
+NÈ^[P\ÜÚYÛ›Y[ËšœÞ›ÜÜÙH›Ü›H\Ù\È^[Q˜[Z[x¡¤‘^[x¡¤”\ÙH\[™[Ù[XÝÈÚ][ˆ^XÚ]
+Š‘ÛØ˜[
+ŠˆÜ[Ûˆ[™Û›HHPQˆY\ÈÙ[
+ZYÜ˜][Û‹LŒM^XÝK[Û™K\ØÛÜH™\Ù\™YÈ›ÜÜÙx¡¤œ™]šY]ËÜ™[[Ý™HÜ][˜Ú[™ÙY
+K[™HØÛÜKÜÝ[[X\žHX™[ÈÚÝÈ™\ÛÛ™Y˜[Y\ÎÈ›Û\™]šY]Ô]Y]YKšœÞÛ˜\ÚÝÚÝÜÈÝXš™XÝÝÜXËÛZXÜ›ÝÜXËÜXœšXËÜÛÝ\˜ÙKYØÝ[Y[SQTÈ
+Y˜[˜XÚÊNÈ™]ÈÛÜœ™XÝ[Û“›ÝKšœÞ™]Ú\ÈH]\Ý™YY×ØÛÜœ™XÝ[Û˜]Y]›ÝH[™™[™\œÈ]™XY[Û›H[ˆHY]Ü‹ˆ
+Š˜XÚÙ[™
+™XYÈÛ›KØ]YžHÜ™\]Z\™WØÛÛ[Ü™XY
+ÈÙ›Y×Ù[˜X›Y
+NŠŠˆYYÈÛÛ[ÜÝY[ËœX8 %ÑUÝ^Û›Û^KÜÝXš™XÝØÝ^Û›Û^KÝÜXÜØ
+ÝXš™XÝÚYÜ\™[ÝÜX×ÚYÛ]™[š[\œÊKÙ^[K\ØÛÜKÙ˜[Z[Y\ØÙ^[K\ØÛÜKÙ^[\Ø
+˜[Z[Hš[\ŠKÙ^[K\ØÛÜKÜ\Ù\Ø
+^[Hš[\ŠKÜXœšXÜØÜÛÝ\˜ÙKYØÝ[Y[Ø
+ØÛÜOXYZ[—Ù^[WÚ[[YÙ[˜ÙX
+K[™ÑUÝÜš][™Ë\›Û\ËÞÚYKØÛÜœ™XÝ[Û‹[›ÝX
+]\Ý™YY×ØÛÜœ™XÝ[Û˜˜[œÚ][Ûˆœ›ÛHYZ[—Ø]Y]ÛÙÜØ8 %H›ÝH\È“ÕÝÜ™YÛˆH›Û\›ÝÊKˆÙ]ÝÜš][™×Ü›Û\
+È\™Ù]\Ý
+ÈH™]šY]Ë\]Y]YHTÕ›ÝÈ[œšXÚÚ]
+—Û˜[YXØ
+—Ý]X\Ü^HX™[È
+™]™\ˆ]]][™ÈYÛÛ[[œÊKˆ›ÈÜš]K\]\›Z\ÜÚ[ÛˆÙXZÙ[™YÈ›È™]ÈRHÜš]\ÎÈÝšXÝY[XËÕURQ\[™Ëˆ
+ŠÚXÚÜÜÝ
+ˆÎLŠH\™[š[™ÎŠŠˆ
+KLJHÙ[XÝÜˆ™YYÈ›ÝÈRT”“ÔˆHÜš]H˜[Y]ÜœÈÛÈ^HØ[ˆ™]™\ˆÙ™™\ˆ[ˆÜ[Ûˆ]ÜÝ˜[Y]WÜ›Û\ÜØÛÜXÛÝ[™Z™XÝÚ][˜[YÜØÛÜX8 %Ý^Û›Û^KÜÝXš™XÝØ\™\ØÛÜYÈHPÕU‘H[™Û\Ú[[™ÝXYÙXÝXš™XÝÈÝ^Û›Û^KÝÜXÜØ™]\›œÈÛ›HPÕU‘HÜXÜËÛZXÜ›ÝÜXÜÎÈÜÛÝ\˜ÙKYØÝ[Y[Ø™\XØ]\ÈH^XÝ›Ý™[˜[˜ÙH™YXØ]H
+˜[YØÝ[Y[ÚÚ[™›Û‹[[Ý]\Ø“ÕSˆ˜Z[YØ\˜Ú]™Y›Û‹X›[šÈÝÜ˜YÙHXÚÙ]
+Ü]
+HšXHÙØÝ[Y[Ü\ÜÙ\×Ü›Ý™[˜[˜ÙXÈ^[K\ØÛÜKÜXœšXÈ™YYÈ™]\›ˆÛ›H›ÝÜÈH›ÜÜÙH”ÈXØÙ\Ëˆ
+KLŠH\ÙSÜ[ÛœØ\Ü˜YYÈH[YH8¡¤ˆØY[™È8¡¤ˆ]H[\H\œ›Ü˜ÛÛXÝ[ÛˆÛÛ˜XÝÚ]Ý]\ØØ\œ›Ü˜Ø™[ØYÈ]™\žHÙ[XÝÜˆ™[™\œÈ[ˆ^XÚ]\œ›ÜˆÝ]H
+È™]žH
+™]™\ˆHÚ[[˜Z[XÛÜÙY×X
+Kˆ
+KLÊH[™YYÈ›Ý[™Y
+[Z]ML
+NÈÝ^Û›Û^KÝÜXÜØ™\]Z\™\ÈÝXš™XÝÚY\™[ÝÜX×ÚY[™Ù^[K\ØÛÜKÜ\Ù\Ø™\]Z\™\È^[WÚY
+[™š[\™Y8¡¤ˆŒŠKˆ
+‹LJH™]šY]Ë\]Y]YHTÕ[œšXÚYÚ]˜]ÚY
+›ÈŠÌJHÝXš™XÝÝÜXÈX™[È[™H]Y]YHX›H›ÝÈ™[™\œÈHÝXš™XÝÕÜXÈÛÛ[[‹ˆ
+‹LŠHÛÛ[ÝY[Ð\KšœØÝ[H››ÈXÝ]˜]H[™Ú[ˆÛÛ[Y[ÛÜœ™XÝYÈ™Y›XÝHÚ\YÔˆXÝ]˜]KÙXXÝ]˜]Kˆ
+Š•\ÝÎŠŠˆÙ[XÝÜœË\ÝšœÞ
+LÈ8 %
+Ù˜Z[Y[ØY\ÚÝÜËY\œ›Ü‹
+Ü™]žK\™XÛÝ™\œÊH	ˆÛÛ[ÝY[Ë\ÝšœÞ
+
+Ü]Y]YHX›H™[™\œÈÝXš™XÝÝÜXÈ˜[Y\È›ÝURQÊNÈ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝØÛÛ[ÜÝY[×ÝÜš][™×Ü›Û\ËœX
+È\ÜÙY8 %
+Û™YØ]]™H™YY\ÝÎˆ›Û‹Q[™Û\ÚÝXš™XÝÈ[˜XÝ]™K[Ü‹]Ü›Û™Ë[]™[ÜXÈÈ\˜Ú]™Y0­Ù˜Z[Y0­Û›Ë\Ý]\ð­Û›ËXXÚÙ]0­Û›Ë\]0­ÝÜ›Û™Ë\ØÛÜp­Ø˜YZÚ[™ØÝ[Y[[^ÛYYÈ[™š[\™YÜXÜËÜ\Ù\È8¡¤ˆŒŽÈ[Z]›Ý[™ÎÈ˜]ÚY\Ý[œšXÚY[
+KˆTÓ[ÛX[ˆÛˆÚ[™ÙYšœÞˆ
+Š“ÔTUÔŽŠŠˆH™KY^\Ý[™Èš]˜ÔS]Tˆ[\Ü˜Z[\™H[ˆ\ÝËÜÝYWÛÜØ\È[œ™[]Y[™[ÝXÚYˆ
+Š•‘T’Q–HŽŠŠˆÙ[XÝÜˆ›ÜÝÛœÈ\™HÛ›H\ÈÜ[]Y\ÈH]™H^Û›Û^KÙ^[K\™YÚ\ÝžKÜXœšXËÙØÝ[Y[X›\Ëˆ
+Š‘›ÛÝË]\ÚXÚÜÜÝŠŠˆ[˜Ý[Û˜[›ØÚÙ\œÈÛX\™YÈÜÛÝ\˜ÙKYØÝ[Y[Ø›ÝÈ\Ú\ÈSš[\˜X›H›Ý™[˜[˜ÙHÛ]\Ù\È
+›Û‹[[Ý]\ËÝ]\È“ÕSˆ˜Z[YØ\˜Ú]™Y›Û‹[[
+È›Û‹Y[\HÝÜ˜YÙHXÚÙ]Ü]
+H[ÈHÜÝÔ‘TÕ]Y\žHÛÈH[Z]
+L
+XÚ[™ÝÈØ[‰ÝYHÛ\ˆ˜[YØÜÈ™Z[™™]Ù\ˆ[˜[YÛ™\È
+]ÛˆÝX\™™]Z[œÈÛ›HHÚ]\ÜXÙK[Û›Hš[XYÙJKˆ
+Š‘Ü˜\YžHYÚY[™HØ]H8 %ÔTUÔˆS‘S‘È
+ØZ]™Y[‹XÛÛZ[™\ŠNŠŠˆÜ˜\YžH\]H˜ÛÝ[›Ý[ˆ
+HTÕ[Û›HÓH\È›Ý[œÝ[Y[ˆH™[[ÝHZ[ÛÛZ[™\ŽÈÛÛ[X[™]ˆÜ˜\YžX8¡¤ˆ›Ý›Ý[™
+NÈÔTÔ‘TÔ•›Y™[XZ[œÈZ[œ›ÛHXÍLÙ˜ˆ›È[[YH[\XÝ
+Û›ÝÛYÙKYÜ˜\\Y˜XÝÛ›JNÈÜ\˜]ÜˆÈ™Yœ™\ÚHÜ˜\ÜÝ[Y\™ÙKˆŸ
+Š‘UÔTÔH8 %™X[œ›ÝÜÙ\ˆL‘JŠˆÓÑKQ’VQSQUSÓˆS‘S‘È8 %œ˜[˜ÚÛ]YKÙ]Ü\Ù[[˜ÙKYL™XÈÜXÜÈ\XÚXÚÈ
+È™YÚ\Ý\ˆØØ[K[[ˆ\ÈÒK[Û›H
+›ÈØÚÙ\‹ÔÝ\X˜\ÙH[ˆH]]Üš[™ÈØ[™›Þ
+Kˆ^]ÜšYÚÝZ]HÛˆH‘PSÝXÚÈHL™H›Øˆ›Ýš\Ú[ÛœËˆ™]Èš[\Îˆ\Ùœ›Û[™ÙL™KÙ›ÝÜËÝÜš][™Ë\Ù[[˜ÙKZ›Ý\›™^KœÜXËØ
+\H]
+K\Ùœ›Û[™ÙL™KÙ›ÝÜËÝÜš][™Ë\Ù[[˜ÙK[™YØ]]™\ËœÜXËØ
+™YØ]]™\ÊK\Ùœ›Û[™ÙL™KÙš^\™\ËÜÙYYÜš][™ËØ
+Ù[‹\ÙYY[™È[\œÊKˆ
+Š”Ù[‹\ÙYY[™È
+›È]™H˜[šÈ\[™[˜ÞH8 %Ô‹ÔÔÈ]™HÙYY[™ÈÝ^\ÈÔTUÔˆS‘S‘ÊNŠŠˆHÚÛHÛÝ™\›˜[˜ÙHÚZ[ˆ[œÈ]\Ý[YH›ÝYÚH‘PSÛÛ[ÝY[ÈT\È\ÈHÙYYY
+ŠœÝ\\—ØYZ[ŠŠˆ
+ÚXÚž\\ÜÙ\È™\]Z\™WÜ\›Z\ÜÚ[Û˜[˜ÛˆÛÛ[ÜÝY[Ë˜XÝ]˜]X
+NˆÜ™X]HÙ[[˜ÙWØÛÛœÝXÝ[Û˜›Û\8¡¤ˆ™]šY]Ù\ˆ™\šYžH8¡¤ˆX[˜YÙ\ˆ›ÜÜÙHÓÐS\™Ù]8¡¤ˆ™]šY]Ù\ˆXÝ]˜]H\™Ù]8¡¤ˆ
+Šœ™[X\ÙKX]]Üš]HÛ\×ØXÝ]˜]WÝÜš][™×Ü›Û\
+Šˆ
+[Ø]\È\ÜÈ8 %Ù[[˜ÙWØÛÛœÝXÝ[Ûˆ\ÈHÛÛH[[YK\™XYH\K›Û‹\ÛÝ\˜ÙKY\[™[
+Kˆ[™Û\Ú^Û›Û^H™\ÛÛ™Yœ›ÛHHZYÜ˜][Û‹LŒHÙYYÈH[›™\ˆÝYWÝ\ÚÜØ›ÝÈ
+È^[KÙ˜[Z[KÜ\ÙHš^\™\ÈÜ™X]YšXHÙ\šXÙK\›ÛKˆ
+ŠXÝ]˜][ÛˆÑTÈ[ˆ[ˆHL™HŠŠˆ8 %Ý\X˜\ÙHÝ\\Y\ÈŒMÌŒMKÌŒˆ[™Ý\\—ØYZ[ˆØ]\ÙšY\ÈHXÝ]˜]H]]Üš]KÛÈHÜ\˜]Ü‹\[™[™È]™HØ]H\È^\˜Ú\ÙY[ˆÒKˆ
+Š’\H]
+œ›ÝÜÙ\‹Yš]™[ˆX\›™\ŠNŠŠˆÙ\™\‹[ÝÛ™Y][˜Ú
+ÔÕÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™Ø›ÈX\›™\ˆ][˜Ú]ÛˆY]8¡¤ˆØ[YšXHTKœ›ÝÜÙ\ˆ[ˆ˜]šYØ]\ÈÈH™]\›™Y˜XÝXÙWÜ›Ý]XÈ›È™]È›Ý][™ËÛ˜]ŠH8¡¤ˆÚ[™[™\œÈ8¡¤ˆ
+ŠœÛÝ\˜ÙWÝ^š\ÚX›JŠˆ™XY[Û›H
+›Û\ÙYYYÒUÛÝ\˜ÙWÝ^ÈÛ˜\ÚÝZYÜ˜][ÛˆŒŒˆØ\œšY\È]
+H8¡¤ˆÛÛ\ÜÙH
+ÈÝX›Z]
+™\œÚ[Û‹LHÐTÊH8¡¤ˆ
+Š˜\Þ[˜ÈUÔLˆÛÜšÙ\ˆXÚÙYšXHH^\Ý[™ÈÔÕØ\KØYZ[‹Ú›ØœËÜ[‹ÝÜš][™Î™]˜[X]XYZ[ˆX[X[]šYÙÙ\ŠŠˆ
+ØÚY[\ˆ\ÈÙ™ˆ[ˆÒH8 %\È\ÈHÐSQHÛÙH]TØÚY[\ˆØ[Ë›ÝH›ÙXÝ›Ý]JH8¡¤ˆ]\ÝÙš^ÝXš™XÝÝ™\˜—ØYÜ™Y[Y[\ÜÝYHØ\™ÚÝÛˆ8¡¤ˆ
+Š‘\œ›ÜˆXˆ[™XYÙH\ÜÙ\Y
+Šˆ
+Ù\œ›Ü‹[X˜™]\›œÈH\ÜÝYHÚ[H]\ÈÝ\œ™[\Ý]K™Y›Ü™HH™]Üš]HÝ\\œÙY\È]
+H8¡¤ˆX[™]ÜžH™]Üš]H
+ÛX[ˆ[œÝÙ\ŠH8¡¤ˆÛÜšÙ\ˆXÚÈ8¡¤ˆ[š]ÜÙ\ÜÚ[Ûˆ
+Š˜ÛÛ\]Y
+Šˆ8¡¤ˆX\Ý\žK[Ý]›Þ\ÜÈÛX[‹ˆ]\›Z[š\ÝXÈ[œ]ÈšXHH[ØÚÈ]˜[X]Üˆ[\È
+•^H\È8 )ˆˆ8¡äˆ]\ÝÙš^È•HÝY[È\™H8 )ˆˆ8¡äˆÛX[ŠKˆ
+Š“™YØ]]™\È
+™X[˜XÚÙ[™[˜Z[XÛÜÙY
+NŠŠˆ[™\šYšYY8¡äˆÜ™X]K\Ù\ÜÚ[ÛˆÈ™\šYšYYX]Z[˜XÝ]™H8¡äˆÈ›È[YÚX›H›Û\›Üˆ\ÚÈØÛÜH8¡äˆ][˜Ú
+ŠH›×Ù[YÚX›WÜ›Û\
+ŠŽÈ^ÛYY\\ÙHØ\™K[Ý]™X]È[ˆXÝ]™HÛØ˜[\™Ù]8¡äˆ][˜Ú
+ŠJŠŽÈÝ[HÜ\˜]ÜˆÐTÈÛˆXÝ]˜]H8¡äˆ
+ŠJŠŽÈÛÝ\˜ÙKY\[™[
+Ù[[˜ÙWØÛÜœ™XÝ[Û˜
+HXÝ]˜][Ûˆ8¡äˆ
+ŠŒŒÙ[YÚX›N™˜[ÙK›ØÚÙ\œÎ–Ù^\˜Ú\ÙWÝ\WÛ›ÝÜ[[YWÜ™XYHÙ[X[X×Ù]˜[X]Ü—Û›ÝÛ]™W_X
+Šˆ[™Ý^\È›Ý[][˜ÚX›H
+H˜Y\\ˆ[˜]˜Z[X›H8¡¤ˆ›ÝXÝ]˜]X›Hˆ˜Z[XÛÜÙY›ÛÙŠKˆ
+Š•š\ÚX›H\ÝœÚÚ\YØ]Y
+ÝY›ÝÚ[[
+NŠŠˆ
+JHÔHÛÝ\˜ÙKXÛÛ\\š\ÛÛˆ8¡¤ˆ™YY×Ú[X[—Ü™]šY]Ø[[YH]8 %™YYÈ[ˆPÕU‘HÛÝ\˜ÙKY\[™[›Û\]]\HÐS““ÕXÝ]˜]HÚ[HHÙ[X[XÈØ]H\ÈÛÜÙY
+Ü[š[™È]\ÈH]\™HZYÜ˜][Û‹™]™\ˆH[[YHÜš]JNÈÛÝ™\™YžH\ÝÝÜš][™×Û[™ÝXYÙWÙ]˜[X]Ü‹œX[™]ÈL™K[ØœÙ\˜X›H[ˆ
+™]™\ˆXÝ]˜]\ÊHTÈ\ÜÙ\YÈ
+ŠHÛÜšÙ\ˆ[Y[Ý]Ü™]žH8 %›È]\›Z[š\ÝXÈ˜][Z[š™XÝ[ÛˆÛÚÈ[ˆHL™HÝXÚÈ
+[ØÚÈ]˜[X]Üˆ[Ø^\ÈÝXØÙYYÊNÈÛÝ™\™YžH\ÝÝÜš][™×Ù]˜[X][Û—ÝÛÜšÙ\‹œXˆ
+Š“›È]K]\ÝYYY
+Šˆ8 %[X\›™\ˆÙ[XÝÜœÈ[™XYH^\ÝYˆ
+Š•™\šYšXØ][ÛŽŠŠˆØÈ\L™KÝØÛÛ™šYËšœÛÛˆK[›Ñ[Z]ÛX[ŽÈ\Û[ÛX[ˆÛˆHÈ™]Èš[\ÎÈ^]ÜšYÚ\ÝK[\Ý™YÚ\Ý\œÈ›ÝÜXÜÈ
+ˆÚÚ\Èš\ÚX›JKˆ
+Š’\ÛÛ][Ûˆ
+È›Ø‹[ÚÈš^\È
+ÚXÚÜÜÝˆÎLŠNŠŠˆ
+JHHÛÈH›×Ù[YÚX›WÜ›Û\™YØ]]™\È
+›ËY[YÚX›KY›Ü‹\ØÛÜK^ÛYY\\ÙJHÙ\™HÜ™\‹Y\[™[8 %^HX]ÚYØ[™Y]\ÈÛˆHÚ\™YÙ[[˜ÙKXÛÛœÝXÝ[Û˜ÜXËÛÈH›Û\ÙYYYžHH\K\]ÜXÈ
+›ÝÛX[™Y\È^]ÜšYÚ[œÈÙ\šX[
+ÈÛØ˜[Ù]\Ù\È›Ý™\Ù]Üš][™È›Û\ÊHÛÝ[XZÙH][˜Ú]Üš][™Ø™]\›ˆŒ[œÝXYÙˆKˆXXÚ›ÝÈÙYYÈ“Õ]È›Û\][™\‹]\ÝS‘]ÈÝYWÝ\ÚØ[™\ˆ]ÈÕÓˆš^\™K][š\]YH[™Û\ÚÜXÈ
+ÙYY[š\]YUÜXØ[\ˆ[ˆÙYYÜš][™ËØ]\›Z[š\ÝXÈš^YURQÜÛYÈ8 %›ÈX]œ˜[™ÛXØ]K››ÝØ
+KÛÈÜÙ[XÝÛ][˜ÚÜ›Û\	ÜÈ™\JÜX×ÚY‹‹‹ŠX˜\œ›ÝÜÈHØ[™Y]HÙ]È^XÝH]\Ý	ÜÈ›Û\
+ÊNÈ™[[Ýš[™ËÙ^ÛY[™È]]\›Z[š\ÝXØ[HZY[ÈH™YØ\™\ÜÈÙˆÝ\ˆÜXÜËˆ\H][˜Y™™XÝY
+]ÈÛØ˜[›Û\Ý[X]Ú\È]ÈÝÛˆÙ[[˜ÙKXÛÛœÝXÝ[Û˜\ÚÈÜXÊKˆ
+ŠHYZ[ˆ›Ø‹\[ˆXÚÜÈ
+[•Üš][™Ñ]˜[X]Ü˜ØØZ]ÛÜšÙ\˜[™HX\Ý\žK[Ý]›Þ\ÜÊH›ÝÈ\ÜÙ\›ÙK›ÚÈOOHYX›Ý\ÝŒ8 %ÔÕØ\KØYZ[‹Ú›ØœËÜ[‹ÞÚ›Ø—ÚYX™]\›œÈŒ]™[ˆÚ[ˆH›Øˆ™XÛÜ™È[ˆÜ\˜][Û˜[˜Z[\™H
+ÚÎ™˜[ÙX
+KÛÈÝ]\Ë[Û›HÚXÚÜÈÛÝ[\ÜÈÛˆHœ›ÚÙ[ˆÛÜšÙ\‹ˆ›È›ÙXÝØ\ÜÙ\[Û‹]ÙXZÙ[š[™ÈÚ[™Ù\Ëˆ
+Š•SQUSÓˆS‘S‘ÎŠŠˆHÚ›ÛZ][HÝZ]H]Ù[ˆ[œÈÛ›H[ˆHL™HÒH›Øˆ
+HÚ[™ÙHÝXÚ\È\Ùœ›Û[™ÙL™KÊŠ˜ÚXÚX]Ú\ÈHÛÜšÙ›ÝÉÜÈ[ˆš[\ŠKˆ‚ŠŠ‘È“ÕZ[[[HÙ[[˜ÙHÛXÙH\ÜÙ\È]™HL‘NŠŠˆ\˜YÜ˜\Z[\ˆ
+UÔMŠK\ØÜš\]™H^[H[ÙH
+UÔMÊK\ÜØ^KÜ°êXÚ\ËÛ]\ˆ˜XÝXÙK]™HÜš][™Ë[X\Ý\žH›Û[Ý[Û‹œ›ØY›Û\XÝ]˜][Û‹‚‚ˆÈÈÈÈUÔÙ[[˜ÙWØÛÛœÝXÝ[Û˜]™H[[YH˜[Y][Ûˆ
+Œ‹LËLJB‚Ÿ][HÝ]\È›Ý\ÈŸKK_KK_KK_ŸÙ[[˜ÙWØÛÛœÝXÝ[Û˜]™H[[YH
+Š•SQUQ
+]™JJŠˆ[]™H]^\˜Ú\ÙY[™]ËY[™ˆÛÛ[ÝY[ÈÙYY8¡¤ˆ™]šY]È™\šYšYY8¡¤ˆXÝ]™HÛØ˜[\™Ù]8¡¤ˆ›Û\XÝ]˜][Ûˆ8¡¤ˆX\›™\ˆÙ\ÜÚ[ÛˆÜ™X][Ûˆ8¡¤ˆRHØY8¡¤ˆ[œÝÙ\ˆÝX›Z]8¡¤ˆ]˜[X][Ûˆ8¡¤ˆ\›Z[˜[™XYXØÛÛ\]Yˆ]šY[˜ÙNˆ›Û\ÚYNŽMŒXŒNKNKMXM‹XÍËXŽMÌØMÎXØÙ\ÜÚ[Û—ÚYXØŒLŒŽMŽNKMX‹XXŒ˜KMŒÙØŒÎYYXÈÙ\ÜÚ[Û‹œÝ]\ÏXÛÛ\]YÙ\ÜÚ[Û‹™]˜[X][Û—ÛÝ]ÛÛYOY[WÙ]˜[X]Y[š]œÝ]\Ï\™XYX
+™\œÚ[ÛˆJKÝ™\˜[Ù]\›Z[š\ÝXËÛ[™ÝXYÙWÜÝ]\ÏXÛÛ\]Y[™ÝXYÙWÜ™\Ý[š\ÜÝY\ÏV×X™YY˜XÚ×Ü™[X\ÙY]YXˆH[š]œÝ]\Ï\™XYX
+ÈÙ\ÜÚ[Û‹œÝ]\ÏXÛÛ\]YZ\š[™È\È˜[Y[™\ˆHÝ\œ™[›Û\8 %]ÜÜš]˜]K™]ÜØ\WÜÙ\ÜÚ[Û—Ü›Û\
+ZYÜ˜][ÛˆŒÊH™X]È]™\žH[š][ˆÜ™XYKÛÛ\]YX\È\›Z[˜[[™X\šÜÈHÙ\ÜÚ[ÛˆÛÛ\]YÛ˜ÙHÛÝ™\˜YÙH\ÜÙ\È[™›È[œ™\ÛÛ™Y]\ÝÙš^\ÜÝYH™[XZ[œÈ
+ŒÎŒŒLËLø $ÌNJKˆŸØÛÜHÙˆ\È˜[Y][Ûˆ8 %Ù[[˜ÙWØÛÛœÝXÝ[Û˜
+›Û‹\ÛÝ\˜ÙKY\[™[
+HÛ›Kˆ\˜YÜ˜\ÈÛÝ\˜ÙKY\[™[UÔ\\È™[XZ[ˆØ]Y
+Ù[X[XËY]˜[X]ÜˆØ]H
+ÈUÔM‹ð©ÌMŠKˆŸ
+Š‘›ÛÝË]\H8 %Ù\ÜÚ[ÛˆÛÛ\][Ûˆ[Y\Ý[\È™]™\ˆÜš][ŠŠˆÛÛ\]YØ]U‘HSQUQÈÝX›Z]YØ]U‘HSQUQ
+ZYÜ˜][Ûˆ
+H
+Š˜ÝX›Z]YØ]
+Œ‹LËLLÝÛ™\‹X\›Ý™YÛX\™Y\\˜[[
+NŠŠˆ™]ÈZYÜ˜][ÛˆÙ]ÜÜ›Û\ÜÝX›Z]YØ]œÜ[Ô‘PUHÔˆ‘TPÑ\È]ÜÜš]˜]K™]ÜØ\WÜÙ\ÜÚ[Û—Ü›Û\ÈXZ[Z[ˆÝX›Z]YØ]TÈ“Õ•S8¡åÝ]\Èˆ	ØXÝ]™IØ8 %Ý[\ÈÓÐSTÐÑJÝX›Z]YØ]›ÝÊ
+JXHš\œÝ[YHHÙ\ÜÚ[ÛˆX]™\È	ØXÝ]™IØ
+[[š]ÈÝX›Z]YÈ[Û›ÝÛšXÈÚ[H\ÝY˜Y[™ÊH[™ÛX\œÈ]È•SÛˆHX\›š[™Ë[[ÙH™[Ü[ˆ˜XÚÈÈ	ØXÝ]™IØˆ[X™\˜][H\˜[[ÈÛÛ\]YØ]
+Ø[YH[˜Ý[ÛŽÈZYÜ˜][ÛˆŒÎ	ÜÈY™\œ˜[Ø\ÈÝÛ™\‹\™]šY]ÙY[™\ÈÛÛ˜Ü™]HYš[š][ÛˆYÜYÝ™\ˆ]È˜\˜š]˜\žHˆÛÛ˜Ù\›ŠKˆÙ\ÜÚ[Û—Ùš[˜[^™\‹œX™Y™\™[˜ÙHÙ\[ˆ\š]KˆŒÎY[ÝXÚY
+[[]]X›JKˆZYÜ˜][Ûˆ[X™\ˆH™^š[\Þ\Ý[HÛÝÈ
+Š›Ü\˜]Üˆ]\Ý™\šYžH]™HPV
+ØÚ[XWÛZYÜ˜][ÛœÊJÌX™Y›Ü™H\JŠˆ
+QÑS•Ë›Y
+Kˆ\ÝÎˆ\ÝËÜÝYWÛÜËÝ\ÝÙ]ÜÜ›Û\ÜÝX›Z]YØ]ÛZYÜ˜][Û‹œX
+^\ÜÙ\[ÛœÈ
+ÈËX™Z]š[Ý\ˆÛˆHÝ\œ™[ÚZ[ˆŒx¡¤ŒŒø¡¤ŒŒx¡¤ŒŒM8¡¤ŒŒŒ¸¡¤ŒŒÎ8¡¤Œ[ˆ[ˆ\ÛÛ]YŽˆÝ[\Ûˆš\œÝÝX›Z]ÈÛX\ˆÛˆ™[Ü[ˆÈ™\Ù\™HÛˆ™K\›ÛØ]YÛˆUÔÔ×ÑÓ˜
+KˆY\™ÙY[ˆˆÎMKˆ
+Š“U‘HSQUQ
+Œ‹LËLLˆNNMÎMUÈ8 %ÙYHØÜËØ]Y]ËÙ]ÜÌŒ‹LËLL‹[ZYÜ˜][Û‹L\ÝX›Z]YX][]™K]˜[Y][Û‹›Y
+NŠŠˆ]™HØÚ[XWÛZYÜ˜][ÛœØX^HÈ™\œÚ[Ûˆ\È]ÜÜ›Û\ÜÝX›Z]YØ]
+H]™H\ÝÜžHY[™XYHY˜[˜ÙY›ÝYÚx $ÌÛÈ›È™[[X™\‹Ü™KX\HØ\È™\]Z\™Y
+Kˆ]™H[˜Ý[Ûˆ[œÜXÝ[ÛˆÛÛ™š\›\È]ÜÜš]˜]K™]ÜØ\WÜÙ\ÜÚ[Û—Ü›Û\Ø\œšY\ÈHÝX›Z]YØ]Üš]H][™Ý[Üš]\ÈÛÛ\]YØ]ˆ˜[Y]YÛˆÙ\ÜÚ[ÛˆØÎL˜ËLŒ‹MÙNŽMËX™ŒÍYŒYŽMˆ™K\[›š[™ÈH›Û\Ù\Ý]\ÏXÛÛ\]Y]˜[X][Û—ÛÝ]ÛÛYOY[WÙ]˜[X]YÛÛ\]YØ][˜Ú[™ÙY[™Ü[]YÝX›Z]YØ]LŒ‹LËLLˆNNMNŒUØ
+™K[]]][ÛˆØY™]HÚXÚÜÎˆ[š]™XYXØÛÝ™\˜YÙH\ÜÙY›È[œ™\ÛÛ™Y]\ÝÙš^
+Kˆ™[XZ[š[™È[ÝX›Z]YØ]›ÝÜÈ
+ˆÙˆÈÛÛ\]YÙ\ÜÚ[ÛœÊH\™H™K]˜[Y][Ûˆ\ÝÜšXØ[›ÝÜÎÈZYÜ˜][Ûˆ\È›Ý™]›ØXÝ]™H
+\ˆÛÛ˜XÝ
+Kˆ
+Š“]™HÛÛ™š\›X][Ûˆ
+Œ‹LËLL
+NŠŠˆ™]ÈÛÛ\]YUÔÙ\ÜÚ[ÛœÈ›ÝÈÜ[]HÛÛ\]YØ]ÛÛ™š\›Z[™ÈZYÜ˜][ÛˆŒÎ	ÜÈ›Û\š^]™H8 %K™ËˆÙ\ÜÚ[Û—ÚYLØÌŒ™YŽYKYLYKMÍÙKNYYXKLŽM™˜MNLÍ˜ŒØ
+ÛÛ\]YØ]LŒ‹LËLLLŽŒŒKŽMŠÌŒ
+H[™]\ˆÙ\ÜÚ[Û—ÚYLØÎL˜ËLŒ‹MÙNŽMËX™ŒÍYŒYŽM
+ÛÛ\]YØ]LŒ‹LËLLMNŒÎŒËŽÍÊÌŒ
+Kˆ
+\ÝÜšXØ[›ÝNˆZYÜ˜][ÛˆŒÎÛÜÙYÛ›HHÛÛ\][Ûˆ[Y\Ý[\ÈÝX›Z]YØ]Ø\ÈÝXœÙ\]Y[H[\[Y[Y[™]™K]˜[Y]YžHZYÜ˜][Ûˆ8 %ÙYHH›ØÚÈX›Ý™KŠHš^YžH™]ÈZYÜ˜][ÛˆŒÎÙ]ÜÜ›Û\ØÛÛ\]YØ]œÜ[ˆ]ÜÜš]˜]K™]ÜØ\WÜÙ\ÜÚ[Û—Ü›Û\›ÝÈXZ[Z[œÈÛÛ\]YØ]TÈ“Õ•S8¡åÝ]\ÏIØÛÛ\]Y	Ø8 %Ý[\ÈÓÐSTÐÑJÛÛ\]YØ]›ÝÊ
+JXÛˆH˜[œÚ][Ûˆ[ÈÛÛ\]Y
+[Û›ÝÛšXÎÈ^\Ý[™ÈÝ[\™\Ù\™YÛˆ™K\›Û
+H[™ÛX\œÈ]È•SÛˆ[žH˜[œÚ][ÛˆÝ]
+K™ËˆX\›š[™Ë[[ÙH™[Ü[ŠNÈH›Ë[ÜÝX\™[ÛÈØ]\ÈÛˆÛÛ\]YØ]ˆ]Ûˆ™Y™\™[˜ÙHÙ\ÜÚ[Û—Ùš[˜[^™\‹œXÙ\[ˆ\š]Kˆ
+ÝX›Z]YØ]Ø\ÈÝ]ÙˆØÛÜH›ÜˆZYÜ˜][ÛˆŒÎ[™\È›ÝÈ[™YžHZYÜ˜][ÛˆX›Ý™KŠH\ÝÎˆ\ÝËÜÝYWÛÜËÝ\ÝÙ]ÜÜ›Û\ØÛÛ\]YØ]ÛZYÜ˜][Û‹œX
+^\ÜÙ\[ÛœÈ
+ÈËX™Z]š[Ý\ŽˆÙ]ÛˆÛÛ\]YÈÛX\ˆÛˆ™[Ü[ˆÈ™\Ù\™HÛˆ™K\›ÛØ]YÛˆUÔÔ×ÑÓ˜
+Kˆ›Ý™]›ØXÝ]™H
+\ˆÚXÚÜÜÝÎLÍŠNˆÛ›HY™™XÝÈ˜[œÚ][ÛœÈY\ˆ\H[™[žH™KYš[˜[^™YÙ\ÜÚ[Ûˆ8 %[™XYKXÛÛ\]Y›ÝÜÈÜš][ˆ™Y›Ü™HŒÎÙY\ÛÛ\]YØ]S•S[[™KYš[˜[^™YÈHÛ™K[Ù™ˆÜ\˜]Üˆ˜XÚÙš[\ÈÝ]ÙˆØÛÜHYˆ\ÝÜšXØ[›ÝÜÈ™YYHÛÛ\][Ûˆ[YH[[YYX][Kˆ
+Š“]™H\HÛÛ™š\›YY
+ŠˆšXHHÛÛ\]YØ]ØœÙ\˜][ÛˆX›Ý™KˆÝX›Z]YØ]\È›ÝÈ[\[Y[Y
+ZYÜ˜][Ûˆ
+HS‘]™K]˜[Y]Y
+ÙYHHZYÜ˜][Û‹L›ØÚÈX›Ý™JH8 %\È›ÝÈ\È[HÛÜÙY^Ù\›Üˆ[žHÜ[Û˜[Ü\˜]Üˆ˜XÚÙš[ÙˆH™K]˜[Y][Ûˆ\ÝÜšXØ[›ÝÜËˆŸ
+Š‘›ÛÝË]\ˆ8 %ÝYHÛYH[›™\‹[][˜Ú
+Šˆ
+Š“U‘HSQUQ
+Šˆ
+˜XÚÙ[™Ü[[YH
+ÈRHÛXÚË]›ÝYÚŒ‹LËLL
+H
+Š˜XÚÙ[™Ü[[YH]SQUQ]™NŠŠˆÝYH\ÚÈ8¡¤ˆÔÕØ\KÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™Ø8¡¤ˆÙ\™\‹\ÚYH›Û\™\ÛÛ][Ûˆ8¡¤ˆÜš][™Ë\Ù\ÜÚ[ÛˆÜ™X][ÛˆÚ]ÝYWÝ\Ú×ÚY8¡¤ˆ˜XÝXÙK\›Ý]HØY8¡¤ˆ[œÝÙ\ˆÝX›Z]8¡¤ˆ]˜[X][Ûˆ8¡¤ˆÛÛ\][Ûˆ
+ÝYWÝ\Ú×ÚYM˜LMŒNKLXËMØ‹NMÍËNYMØÍÍÎL˜Ù\ÜÚ[Û—ÚYLØÌŒ™YŽYKYLYKMÍÙKNYYXKLŽM™˜MNLÍ˜ŒØÈÙ\ÜÚ[Û‹œÝ]\ÏXÛÛ\]Y]˜[X][Û—ÛÝ]ÛÛYOY[WÙ]˜[X]Y[š]œÝ]\Ï\™XYX[™ÝXYÙWÜ™\Ý[š\ÜÝY\ÏV×X™YY˜XÚ×Ü™[X\ÙY]YX
+Kˆ
+Š•RHÛXÚË]›ÝYÚSQUQ]™HY\ˆÎMNŠŠˆÜ\˜]Ü‹XÜ™X]Y\ÚÈNNYLNM˜ÍËXMŒKLÌNLÌXÎLŒØX
+][˜ÚÝ\OIÙ[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û‰Ø][˜ÚÙ[]WÚYS•S
+H™[™\™YÛˆÝYHÛYH\È[™Û\ÚÙ[[˜ÙHÛÛœÝXÝ[Ûˆ0­ÈÜš][™È˜XÝXÙXÚ]HÝ\Ù[[˜ÙH˜XÝXÙX]ÛŽÈÛXÚÚ[™È]][˜ÚY›ÝYÚÔÕØ\KÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™ØÜ™X]YÙ\ÜÚ[Û—ÚYLØÎL˜ËLŒ‹MÙNŽMËX™ŒÍYŒYŽMÜ[™YØ\ÜÝYKÜ˜XÝXÙKÙ[™Û\ÚÌØÎL˜ËLŒ‹MÙNŽMËX™ŒÍYŒYŽMXØÙ\YHÝX›Z\ÜÚ[Û‹ÛÛ\]Y]˜[X][Û‹[™X\šÙYHÙ\ÜÚ[ÛˆÛÛ\]Y
+ÛÛ\]YØ]LŒ‹LËLLMNŒÎŒËŽÍÊÌŒ]˜[X][Û—ÛÝ]ÛÛYOY[WÙ]˜[X]YÝ™\˜[Ù]\›Z[š\ÝXËÛ[™ÝXYÙWÜÝ]\ÏXÛÛ\]Y
+KˆH[™ÝXYÙH]˜[X]Üˆ™]\›™YÛ™H›Û‹X›ØÚÚ[™ÈÚÝ[Ùš^[˜ÝX][Ûˆ\ÜÝYH
+ÝÙ\˜Ø\ÙHÙ[[˜ÙHÝ\
+HÚ[HÝ[[ÝÚ[™ÈH[[YHÈÛÛ\]Kˆ
+Š”™[XZ[š[™È›ÙXÝØ\
+Ù\\˜]H™X]\™K›Ý][˜Ú[Xš[™ÊNŠŠˆH[›™\ˆÙ\È›ÝY]]]ËXÜ™X]H[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û˜\ÚÜÈ›ÜˆÔÐÈ[™Û\ÚÜˆTÐËÐÔÐU[™Û\Ú8 %\È˜[Y][Ûˆ\ÙY[ˆÜ\˜]Ü‹XÜ™X]Y\ÚÎÈH]Û‰ÜÈXœÙ[˜ÙH›ÜˆÜÙH^[\È\È^XÝYˆŸ
+Š‘›ÛÝË]\‹ŒH8 %Z\ÜÚ[ÛˆÛÛ›ÛUÔ\ÚÈÚ\[™È
+[›™\ˆ][˜Ú[][˜ÚÙ[]WÚY
+JŠˆ
+Š“QT‘ÑQ
+ÎMJH
+ÈU‘HSQUQ
+Šˆ8 %]™HÝYHÛYHÛXÚË]›ÝYÚÛÛ™š\›YY
+ÙYH›ÛÝË]\ˆ]šY[˜ÙJHš^\ÈH›ÛÝË]\ˆRHÕHØ\ˆÜš][™×Ü˜XÝXÙKÛ][˜Ú˜ÛÛ\]WØXÝ[Û˜
+0©ÌLKŒJH›ÝÈ™\ÛÛ™\È›Üˆ
+Š˜[žJŠˆ[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û˜][˜Ú›ÝÛ›HÛ™\ÈØ\œžZ[™ÈHÙ\ÜÚ[ÛˆYˆ]™]\›œÈXÝ[Û—ÛX™[œ›ÛH][˜ÚØÛÛ^™^\˜Ú\ÙWÝ\X[™Ù]ÈXÝ[Û—Ý\›S›Û™XÚ[ˆ][˜ÚÙ[]WÚY\È[
+›ÈÙ\ÜÚ[Ûˆ›Ý]H^\ÝÈY]8 %HÛXÚÈÜ™X]\ÈHÙ\ÜÚ[ÛˆÙ\™\‹\ÚYHšXHÔÕØ\KÜÝYKÝ\ÚÜËÞÚYKÛ][˜Ú]Üš][™Ø
+KˆZ\ÜÚ[Û—ØÛÛ›Û—ÛØYÝÙ^WÝ\ÚÜØ\™Y›Ü™H™\Ù\™\È][˜ÚÝ\X
+[™XÝ[Û—ÛX™[
+HÛˆ[›™\‹\Ú\Y\ÚÜËÛÈÝYRÛYKš\ÕÜš][™Õ\ÚØ™[™\œÈ][˜ÚÜš][™Ô˜XÝXÙP]Û˜
+ÚXÚÛ›H™YYÈ\ÚËšY
+H[œÝXYÙˆHÙ[™\šXÈ[ˆÕKˆ\ÝÎˆ\ÝÝÜš][™×Û][˜ÚœX
+[Y[]H™\ÛÛ™\ÈÚ][\›
+ÈX™[
+K\ÝÛZ\ÜÚ[Û—ØÛÛ›ÛœNŽ\ÝÛZ\ÜÚ[Û—ØÛÛ›ÛÜÚ\\×Ü[›™\—Û][˜ÚÝÚ]Ý]ÜÙ\ÜÚ[Û˜ÝYRÛYKÜš][™Ó][˜Ú\ÝšœÞ
+[›™\ˆ\ÚÈÚ][][˜ÚÙ[]WÚY™[™\œÈH][˜Ú]Û‹›ÝHÙ[™\šXÈÝ\ÕJKˆ›È‹ÛZYÜ˜][Û‹Ô“ÈÚ[™ÙKˆ‚ˆÈÈÈÜ\˜]Üˆ˜[Y][ÛˆÝ[™\]Z\™Y
+UÔ
+B‚Ÿ][HØ]HŸKK_KK_ŸUÔLHZYÜ˜][Ûˆ\YYÔTUÔˆS‘S‘È8 %\HÈÝYÚ[™Ë™\šYžH“ËÛÛ™š\›H›È]][XØ]YØ[›ÛˆÜš]HXØÙ\ÜÈÈ\ÜÝYKÜ›Ú™XÝ[Û‹ÛX\Ý\žHX›\ÈŸ™\œÚ[Û—ÜÙ]Ú\Ú˜XÚÙ[™™XÝÜˆÔTUÔˆS‘S‘È8 %ÛÛ™š\›HH˜XÚÙ[™[\ˆÝ]]X]Ú\ÈH[›™Yš^YZ[œ]™XÝÜˆ[™HTH™]\›œÈ]^XÝ˜[YH
+ÛY[ÈÛÛœÝ[YHÛ›JHŸ\[™[Û›H[[]]Xš[]HšYÙÙ\œÈÔTUÔˆS‘S‘È8 %ÛÛ™š\›HÙ\šXÙK\›ÛHTUH[™SUH˜Z[Ûˆ]™\žH[[]]X›HX›H
+0©ÌL‹
+HÛˆÝYÚ[™ÈŸÚYÝÈX\Ý\žHÝ]]ÔTUÔˆS‘S‘È8 %Y\ˆUÔLˆ\Þ\Ë™\šYžHÛÝ\˜ÙK[™]]˜[]šY[˜ÙH
+ÈÚYÝÈ›ÝÜÈ\X\ˆ[™›È\Ù\—ÝÜX×ÛX\Ý\žX]]][ÛœÈØØÝ\ˆŸ›Û\˜[šÈ™]šY]ÙYÔTUÔˆS‘S‘È8 %Ì›Û\È›ÝYÚÓTÈ™]šY]ÈY™XÞXÛH™Y›Ü™H\Ü\˜[][˜ÚŸ™[X\ÙHØ]\È0©ÌMˆÔTUÔˆS‘S‘È8 %LØ]\È]\Ý™HØÝ[Y[Y[ˆ\ÈÚXÚÛ\Ý™Y›Ü™HUÔMˆ™YÚ[œÈ‚ˆÈÈÈKˆ[]™\žH˜XÚÂ‚‘[™Ú[™Y\š[™ËXÛÛ\]HÙ\È›ÝYX[ˆ™[X\ÙK\™XYKˆÛÈ[™\[™[™XY[™\ÜÈ˜XÚÜÈÛÝ™\›ˆ›ÛÝ]ˆHÌ\›Û\ÛÛ[[™[ÜžH›ØÚÜÈ\Ü\˜[][˜ÚÈH0©ÌMˆ™[XXš[]H]šY[˜ÙH›ØÚÜÈ›ÙÜ™\ÜÚ[Ûˆ[È\˜YÜ˜\Z[\ˆ
+UÔMŠH[™\ØÜš\]™H[ØÚÜÈ
+UÔMÊK‚‚Ÿ˜XÚÈÝ\œ™[Ý]H[žHØ]H^]Ø]HŸKK_KK_KK_KK_ŸÙ[[˜ÙH›Ý[™][ÛˆUÔLÈY\™ÙY
+ÛÙJH8 %Ü\˜]Üˆ]™K]˜[Y][Ûˆ[™[™ÈUÔL‹ÌˆY\™ÙYUÔLÈY\™ÙY[™ÝX›HŸÜ˜[[X\ˆ[™[›™\ˆUÔMÍH[›™YUÔL‹ÌˆY\™ÙYÚYÝÈ]šY[˜ÙH[™[›™\ˆ˜[Y]YŸ\˜YÜ˜\[[YHUÔMˆ›ØÚÙYUÔLÈÝX›H
+È0©ÌMˆ\›Ý™Y\˜YÜ˜\ÝXš[]H]šY[˜ÙHŸ\ØÜš\]™H[ØÚÜÈUÔMÈ›ØÚÙYUÔMˆÝX›H
+È0©ÌMˆ˜[Y[ØÚË\[[YH˜[Y][Ûˆ‚ˆÈÈÈ‹ˆ0©ÌMÈ›Û\X˜[šÈ˜XÚÙ\‚‚•˜XÚÈXÝX[Ü\˜]Üˆ›ÙÜ™\ÜÈ\ˆ^\˜Ú\ÙH\K›ÝHÚ[™ÛHŒÌ›Û\È[™[™Èˆ›ÝËˆÛ›HH™\šYšYY[™XÝ]™XÛÝ[È]\›Z[™H][˜Ú™XY[™\ÜÈ8 %H›Û\\È\Ü\˜[]š\ÚX›HÛ›HÚ[ˆ›Ý™]šY]Ù\—ÜÝ]\ÈH	Ý™\šYšYY	Ø[™\×ØXÝ]™HHYXˆ]]ÜˆÜˆ[\Ü[œÚYHH^\Ý[™È^[HÛÜšÜÜXÙHÓTÎÈÈ›ÝYH™]ÈYZ[ˆÚYX˜\ˆ\Ý[˜][Û‹‚‚˜™\]Z\™Y\ÈHš^Y[™[ÜžH\™Ù]ˆ]]Ü™YØ™\šYšYYØXÝ]™X\™H]™HÓTËÑˆ˜XÝÈH™\ÜÚ]ÜžHØ[››Ý›Ý™H8 %^HÝ^H‘T’Q–H˜[[H]Y]Y\žKÙ^Ü\ÈØ\\™Y[™[šÙY\™H
+\ˆQÑS•Ë›YˆXœÙ[˜ÙHÙˆ™\È]šY[˜ÙH\È›ÝH™\›ÈÛÝ[
+K‚‚Ÿ\H™\]Z\™Y]]Ü™Y™\šYšYYXÝ]™HÝ]\ÈŸKK_KKNŸKKNŸKKNŸKKNŸKK_ŸÙ[[˜ÙHÛÛœÝXÝ[ÛˆL‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘ÈŸÙ[[˜ÙHÛÜœ™XÝ[ÛˆL‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘ÈŸÜ˜[[X\ˆ[\ÈL‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘ÈŸ›ØØX[\žHÛÛ^L‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘ÈŸØØY™›ÛY\˜YÜ˜\ÈŒ‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘ÈŸ
+Š•Ý[
+Šˆ
+ŠŒÌ
+Šˆ‘T’Q–Hˆ‘T’Q–Hˆ‘T’Q–HˆÔTUÔˆS‘S‘È‚ˆÈÈÈËˆ0©ÌMˆ™[X\ÙKYØ]H˜XÚÙ\‚‚‘]šY[˜ÙKX˜\ÙYØ]\È8 %È›ÝÝXœÝ]]H[\ÙY[YKÙ\ÜÚ[ÛˆÛÝ[Üˆ]™[ÜY[ÛÛ\][Ûˆ›Üˆ\È]šY[˜ÙKˆÝ]\Ù\È\ÙHHXÛ\™YÚXÚÛ\Ý›ØØX[\žH[™\™HÜ›Ý[™Y[ˆ™\ÈÛÙKÝ\ÝÈÚ\™H™\Ù[ÈH‘]šY[˜ÙHˆÛÛ[[ˆ[šÜÈ^\Ý[™ÈÛÙKÝ\ÝË[™\™ÙH™[˜ÚX\šÈÝ]]ËÔSØ\\™\Ë\Ý™\ÜË[™Ü\˜]Üˆ˜[Y][Ûˆ›ÛÙˆÚ[]™H[ˆÙ\\˜]H]Yš[\È[™\ˆØÜËØ]Y]ËÙ]ÜØ
+Ü™X]YÛ›HÚ[ˆ˜[Y][Ûˆ]šY[˜ÙH^\ÝÊKˆÛÙK\™\Ù[8¢hØ]K\\ÜÙYˆ]™\žHØ]HÝ[™YYÈ]È™[X\ÙH]šY[˜ÙH[™ÝÛ™\ˆ\›Ý˜[‚‚ŸØ]HÝ]\È]šY[˜ÙHÝÛ™\ˆ\›Ý˜[ŸKK_KK_KK_KK_Ÿ]]ÜØ]™H›Ë[ÜÜÈÓÑH‘TÑS•SQUSÓˆS‘S‘È™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKØ]]ÜØ]™KšœØ
+È]]ÜØ]™K\ÝšœØÈ\ÝXÝ]™H™[ØYÝX‹XÛÜÙKÛ™]ÛÜšËY˜Z[\™H™[˜ÚX\šÈ[™[™È8 %ŸÝX›Z\ÜÚ[ÛˆY[\Ý[˜ÞHÓÑH‘TÑS•SQUSÓˆS‘S‘ÈZYÜ˜][Û‹LŒËÌŒHÐTÈ
+ÈÛËXÛÛ›™XÝ[Ûˆ˜XÙH\Ý[ˆ\ÝËÜÝYWÛÜËÝ\ÝÝÜš][™×ÜœÜ×Ø™Z]š[Ý\‹œXÈœ›ØY\ˆ™[X\ÙH]šY[˜ÙH[™[™È8 %ŸÛÜ™XÛÝ[\š]HÓÑH‘TÑS•SQUSÓˆS‘S‘È
+ˆÎMJH
+Š‘š^YÛˆ\Èœ˜[˜ÚŠŠˆHÛY[ÚÙ[š^™\ˆ›ÝÈZ\œ›ÜœÈ˜XÚÙ[™]\›Z[š\ÝXËœXÕÓÔ‘Ô‘HH×—××JÊÎ–É×WV×—××JÊJ˜
+‘ËÝ˜ZYÚ\ÜÝ›ÜKÚ\[ˆÛÛ\Ý[™ËÓÔ‘ÕÒÑS’V‘T—Õ‘T”ÒSÓH™]]ŒH˜
+HšXH\Ùœ›Û[™ÜÜ˜ËÙ™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKÜ™\]Z\™YÛÜ™ËšœØÈÙ[[˜ÙPZ[\‹šœÞ
+È™]Üš]QY]Ü‹šœÞÛÛœÝ[YH]
+›È[Ü™H˜YœÜ]
+×ÊËÊX
+Kˆ\š]H™XÝÜˆÛÜ™ÛÝ[\ÝšœØˆ
+Š•SQUSÓˆS‘S‘ÎŠŠˆ0©ÌMˆØ]KLÈ™[˜ÚX\šËÛÜ\˜]Üˆ]šY[˜ÙH›ÝY]Ø\\™Y8 %È“ÕX\šÈH™[X\ÙHØ]H\ÜÙYœ›ÛH[š]\ÝÈ[Û™Kˆ™\]Z\™YÛÜ™ËšœØÙ[[˜ÙPZ[\‹šœÞ™]Üš]QY]Ü‹šœÞÛÜ™ÛÝ[\ÝšœØŸU‹LMˆÜ[ˆ™[˜ÚX\šÈÓÑH‘TÑS•SQUSÓˆS‘S‘È™X]\™\ËÜÝYKÙ[™Û\Ú\˜XÝXÙKÝ]ŒM‹šœØÜ[‹]™\šYšYYYÚYÚ
+0©ÍXŠNÈÝ\˜]Y^XÝ]^™[˜ÚX\šÈ[™[™È8 %ŸÜ˜[[X\ˆ˜[ÙK\ÜÚ]]™H˜]HS“‘QÛ›H]\›Z[š\ÝXÈ[ØÚÈ]˜[X]Üˆ
+[™ÝXYÙWÙ]˜[X]Ü‹œX[™Ë[[ØÚË]ŒX
+H^\ÝÎÈXØÙ\X›H™\ÚÛ[™Yš[™Y[™›È[X[‹[X™[YØ[\HÙ]Y]8 %ŸX\Ý\žH™\^H]\›Z[š\ÛHÓÑH‘TÑS•SQUSÓˆS‘S‘È]\›Z[š\ÝXÈ]šY[˜ÙKZÙ^H\š]˜][Ûˆ[ˆ]šY[˜ÙWÙ\š]™\‹œX
+0©ÍŒL˜ŠH
+È]\›Z[š\ÝXËœXÈž]KY\]Z]˜[[™\^H›Ú™XÝ[Ûˆ™[˜ÚX\šÈ[™[™È8 %Ÿ[›™\ˆ\ÚÈY\XØ][ÛˆÓÑKQ’VQSQUSÓˆS‘S‘ÈÜš][™Ë]\ÚÈY\[]™\™YÚ]UÔMHÙ[™\˜][ÛŽˆ[›™\‹—ÛÜ[—ÝÜš][™×ÝÜX×ÚYØÚÚ\ÈHÜXÈ][™XYHØ\œšY\È[ˆPÕU‘H
+›Û‹X[›™Y
+H[™Û\ÚÝÜš][™×ÜÙ\ÜÚ[Û˜\ÚÈÙ^KÛÈ™YÙ[ˆ™]™\ˆ\XØ]\ÎÈ[›™Y›ÝÜÈ\™H^ÛYY™XØ]\ÙHÜ\œÚ\ÝÛX\œÈ[H™Y›Ü™H™KZ[œÙ\
+ÛÝ[[™È[HÛÝ[›ÜH\ÚÈÛˆHÙXÛÛ™™YÙ[ŠKˆ\ÝY[ˆ\ÝÜ[›™\—ÝÜš][™×Ý\ÚÜËœNŽ\ÝØÛÛ\]WÜ[—ÙY\×ØYØZ[œÝØXÝ]™WÝÜš][™×Ý\ÚØˆÜXË\ÝYH
+TJH\ÚÈY\™[XZ[œÈHÙ\\˜]H]\™H][Kˆ8 %Ÿ™\šYšYY^[HÛÛ™šYÝ\˜][ÛˆÔTUÔˆS‘S‘È8¢iLHÙ™šXÚX[HÛÝ\˜ÙY^[WÙ\ØÜš\]™WÜ™\]Z\™[Y[Ø›ÝÈ™\šYšYY
+ÈXÝ]™H8 %]™HÓTËÑˆ˜XÝ
+‘T’Q–HŠH8 %ŸÜš][™ÈÚYÝÈØ]HÔTUÔˆS‘S‘È0©ÌLŒÈÚYÝË]Ë[]™HÛÛ™][ÛœÎÈ‘—ÕÔ’US‘×ÓPTÕT–WÕÔ’UTØ™[XZ[œÈÚYÝØ]™H›ØÚÙYÛˆ[™HHØ]H
+ÈÜ\˜]Üˆ\›Ý˜[8 %ŸÜ\˜]Üˆ\›Ý˜[“ÐÒÑQ\[™ÈÛˆ[Ø]\ÈX›Ý™NÈ]Y\›Ý˜[È™H™XÛÜ™Y\™H
+ÈØÜËØ]Y]ËÙ]ÜØ8 %‚ˆÈÈÐHÈ]X[È™X\ÛÛš[™È^[œÚ[Ûˆ8 %[™HÔT‚‚\˜Ú]XÝ\™HÛÛ˜XÝÎˆØÜËØ\˜Ú]XÝ\™KÜÝXš™XÝ\˜XÝXÙKYœ˜[Y]ÛÜšË›Y
+[[YHÛXÞK]X[™X\ÛÛš[™ÊH
+ÈØÜËØ\˜Ú]XÝ\™KØÝ\œ™[XY™˜Z\œË\\[[™K›Y
+ÐHÝ\œ™[XY™˜Z\œÊK‚”ˆ[ŽˆØÜËÜÝ]\ËØØ\™Y\‹XÛÜ[Ý\‹\[‹›Y0©È[™HÔT‹‚‚Ý\œ™[™\™XÝˆ
+ŠÓÓ•PÕQ’T”ÕÈS“‘QˆÛÈ\˜Ú]XÝ\™HÛÛ˜XÝÈ[™Y
+\ÈŠNÈ›È[[YHÛÙHÚ\YˆÐHŒHHÝ\œ™[XY™˜Z\œÈÛ›H[™]\Ý‘U‘TˆÜš]H\Ù\—ÝÜX×ÛX\Ý\žXˆ]X[\™›Ü›X[˜ÙHÚYÛ˜[È[™[žHX\Ý\žHXÝ]˜][ÛˆÝ^HÚYÝË[Û›H™Z[™H[™HHØ]H
+‘—ÓSÐÒ×ÓPTÕT–WÕÔ’UTÏ[]™X“ÐÒÑQ
+KˆHHÝ\œ™[XY™˜Z\œÈ\[[™H
+ÔT‹QÌÊH\ÈÐUQÛˆ\›Ý˜[ÙˆÝ\œ™[XY™˜Z\œË\\[[™K›Yˆ™X\ÛÛš[™ÈŒH\È^[Û›NÈ›Û‹]™\˜˜[\ÈH˜[YYY™\œ™YØ\
+ÔT‹TŒŠK›ÝÚ[[ØÛÜKŠŠ‚‚“ZYÜ˜][Ûˆ[X™\œÈ›Üˆ]™\žH[\[Y[][Ûˆˆ]\ÝÛÛYHœ›ÛHÙ[XÝX^
+™\œÚ[ÛŠNŽš[
+ÈHœ›ÛHØÚ[XWÛZYÜ˜][ÛœØ
+‘T’Q–HŽÈÝ\œ™[X^[ˆÚXÚÛÝ]\ÈŒÎH8 %È›Ý\™ÛÙJKˆ[ZYÜ˜][ÛœÈ›ÜØ\™[Û›K‚‚Ÿ][HÝ\œ™[Ý]\È™\È]šY[˜ÙHÈ›Ý\ÈŸKK_KK_KK_Ÿ\˜Ú]XÝ\™HÛÛ˜XÝÈ
+œ˜[Y]ÛÜšÈ
+ÈÐH\[[™JHÓÑH‘TÑS•
+\ÈŠHÈ‘U’QUÈS‘S‘ÈØÜËØ\˜Ú]XÝ\™KÜÝXš™XÝ\˜XÝXÙKYœ˜[Y]ÛÜšË›YØÜËØ\˜Ú]XÝ\™KØÝ\œ™[XY™˜Z\œË\\[[™K›YˆÜ›ÜÜËY^[Z[™YYØZ[œÝXZ[ˆXÌYL˜ÈÛÜœ™XÝ[ÛœÈ›ÛY
+[[YH[™XYHÙ[™\šXËX][™XYH™[™\œËÛÈ[œ™XÛÛ˜Ú[YX\Ý\žHÜš]\œË›È][\ÚÚ[™›ÈØÜ˜\[™ÈØÚY[\‹ÛÝ\˜ÙWÚÚ[™IØÝ\œ™[Ù]™[	Ø\ÛÛ][Ûˆ™]\ÙK[\]K\]XZÊKˆŸÔT‹LHÝXš™XÝ[[YHÛXÞHÓÑKQ’VQSQUSÓˆS‘S‘ÈÙ\™\‹[ÝÛ™Y™YÚ\ÝžH\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜÝXš™XÝÜ[[YWÜÛXÞKœX\ÈH[[YH]]Üš]Kˆ˜[Z[H™\ÛÛ™Yœ›ÛHØ[›ÛšXØ[ÛÝ™\›™YY]Y]H
+ÝXš™XÝÙÜ›Ý\8¡¤ˆÛYØ™]™\ˆ\Ü^H˜[YNÈÛØYÛØÚÙYØÛÝ™\˜YÙX›ÝÈÝ\™˜XÙ\È›Ý
+KˆÜÝXš™XÝÜ˜XÝXÙX]\˜]\ÈÛXÞKš[™[ÜžWÜ™\ÛÛ™\ŠÝ
+X8 %›È[™Û\ÚÔTHœ˜[˜ÚÈ[›™\‹—Ü[—Ý\ÚÜØ[YØ]\ÈÈÛXÞKœ[›™\—Ü™\ÛÛ™\˜ÛÈHÙ[™\˜[Ø]Ø\™[™\ÜØ™]šY]˜[Ü™]š\Ú[Ûˆ\ÚÈ™]™\ˆÝ[\È\WÜ˜XÝXÙXÚ[HTHÝXš™XÝÈÝ^Hž]K\ÝX›NÈÝXš™XÝÜ˜XÝXÙKœÝ\\Ü]Ú\ÈšXHÓUSÒÒS‘T”Ø[ˆ\š]HÚ]ÒT‘QÔ•S•SQWÓSÑTØ
+[Ú\™Y[Ù\È8¡¤ˆŒŠNÈÝYRÛYX™^XÝ[ÛØ\™\Ù\ÈÙ[™\šXÈ][˜Ú\‘›Ü•\ÚÊ\ÚË›][˜ÚÝ\JXˆÐH™[˜ÙYœ›ÛHÙ[™\šXÈTH
+›ÈÙYYYÐHÝXš™XÝY]ÈÔÐÈÐHÙYYÝ[™\™\]Z\Ú]JKˆ\ÝÎˆ\ÝÜÝXš™XÝÜ[[YWÜÛXÞKœX
+˜[Z[H™\ÛÛ][Û‹™\ÛÛ™\ˆ]]Üš]KÐH›ËTTK™YÚ\ÝžKÚ[™\ˆ\š]JK\ÝÜÝXš™XÝÜ˜XÝXÙWÙ[™Ú[œX\ÝÜÝXš™XÝËœX\ÝÜ[›™\Š‹œX8 %˜XÚÙ[™\ÜÎÈ‘HÝYRÛYJ˜Ø][˜ÚÜš][™Ô˜XÝXÙP]Û˜NH\ÜËˆ›È™]ÈÝXš™XÝ™Z]š[Ý\‹ˆÜ˜\™Yœ™\ÚY™\œ™Y8 %Ü˜\YžXÓHXœÙ[[ˆ\È[š\›Û›Y[ˆŸÔT‹QÌ[\]K\]\×ØÝ\œ™[XZÈš^ÓÑKQ’VQSQUSÓˆS‘S‘È[ØÚ×Ù[™Ú[™K—ÜÙ[XÝØÜš]\šXWÜ]Y\Ý[Û—ÚYØ›ÝÈ^ÛY\È\×ØÝ\œ™[È\×ØÝ\œ™[Ø˜\ÙYœ›ÛHHÜš]\šXHÛÛ[YÛš[™ÈHYØXÞH[\]H]Ú][ØÚ×Ø›Y\š[ÜÙ[XÝ[Û‹—Ù^[WØ˜\ÙWÜÛÛ
+[™XYHØ]Y^\™YšXH˜[YÝ[[
+Kˆ™YÜ™\ÜÚ[ÛŽˆ\ÝØÜš]\šXWÙ^ÛY\×ØÝ\œ™[ØY™˜Z\œ×Ú][\ØˆÛÜÙ\ÈH][XZÈÚ\™HH›Û[ÝYÝ\œ™[Ù]™[]Y\Ý[ÛˆÛÝ[[\ˆH[\]K\][ØÚÈÚ]HXØ^Z[™È[œÝÙ\ŽÈ[˜›ØÚÜÈÔT‹QÍKˆŸÔT‹QÌˆÐHÛÝ\˜ÙH
+È]šY[˜ÙH]]Üš]HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆHÜ™X]\ÈÝ\œ™[ØY™˜Z\œ×ÜÛÝ\˜Ù\ËÙØÝ[Y[ËÙ]™[ËØÛZ[\ËØÛZ[WÙ]šY[˜ÙX
+Ù\šXÙK\›ÛH“ËÛÛ[Z\ÚY\[™^™YHÙ\\˜]Y˜[Y]H^\ÊKÚ\™\ÈHÛÙ[ØÚ×Ü]Y\Ý[Û—Ø˜[šË˜Ý\œ™[ØY™˜Z\œ×Ú][WÚY’È8¡¤ˆÝ\œ™[ØY™˜Z\œ×Ù]™[Ø[™ÙYYÈPŠÔ’Hš[X\žWÛÙ™šXÚX[ÛÝ\˜Ù\Ëˆ\Ø˜XÚÙ[™Ø\ØÝ\œ™[ØY™˜Z\œËÞÜÛÝ\˜Ù\Ë[™Ù\Ý[ÛŸKœXˆY\\ˆT“™\ÛÛ][Û‹ÝXÝ\˜[™KYš[\‹[™[™Ù\ÝÜÛÝ\˜ÙX
+ÛÛ™][Û˜[™]Ú™]\Ú[™ÈØÜ˜\[™ËÙ™]Ú\‹œX8¡¤ˆÌÚÜXÚ\˜ÝZ]8¡¤ˆÛÛ[Z\ÚY\8¡¤ˆ[[]]X›HÛ˜\ÚÝ8¡¤ˆÛÝ\˜ÙKZX[
+Kˆ›ÈK›ÈX\›™\ˆRK›ÈØÚY[\ˆÚ\š[™È
+ØNš[™Ù\ÝY™\œ™YÈÔT‹QÍJKˆ\ÝÎˆ\ÝËØÝ\œ™[ØY™˜Z\œËÝ\ÝÚ[™Ù\Ý[Û‹œX
+JKˆÔTUÔˆS‘S‘Ø›Üˆ]™HZYÜ˜][Ûˆ\KˆŸÔT‹QÌÈÐHHÚYÝÈ\[[™HÓÑKQ’VQSQUSÓˆS‘S‘È
+Ø]HÓPT‘Q
+HØ]HÛX\™YˆÝ\œ™[XY™˜Z\œË\\[[™K›Y
+ŠT“Õ‘QŒ‹LËLLŠŠ‹ˆZYÜ˜][ÛˆÈ
+™[[X™\™Yœ›ÛHH8 %KÌˆÙ\™HÛZ[YYžHHÛÛ˜Ý\œ™[K[Y\™ÙYÔT‹TNØ[ËYÞ[H[™ÔT‹TMÈ™]šY]ËPÐTÈZYÜ˜][ÛœÊHYÈÝ\œ™[ØY™˜Z\œ×ÙÙ[™\˜][Û—Ü[œØ
+\[™[Û›H]Y]
+È[[]]Xš[]HšYÙÙ\ŠKÝ\œ™[ØY™˜Z\œ×Ü]Y\Ý[Û—ØØ[™Y]\Ø
+ÝYÚ[™ÎÈÝ]\ÈÙ[™\˜]YÝ˜[Y][Û—Ù˜Z[YÜ™]šY]×Ü™XYKØ\›Ý™YÜ™Z™XÝYÜ›Û[ÝY
+K[™HÝ\œ™[ØY™˜Z\œ×ÙÙ[™\˜][Û—Ú›ØœØX\ÙJÙ™[˜Ú[™È]Y]YHÚ]ØWÙ[œ]Y]YKØÛZ[KØÛÛ\]KÙ˜Z[ÜÝÙY\”ÜÈ
+Ù\šXÙK\›ÛHÛ›KÑPÕT’UHQ’S‘T‹“ÔˆTUHÒÒTÐÒÑQ
+ÈÛZ[WÝÚÙ[˜™[˜Ú[™ËÚ[™ÛKZ[‹Y›YÚXÝ]™H[™^
+HZ\œ›Üš[™ÈHUÔÜš][™×Ù]˜[X][Û—Ú›ØœØ]\›‹ˆ\Ø˜XÚÙ[™Ø\ØÝ\œ™[ØY™˜Z\œËÙÙ[™\˜][Û‹ØˆY\\œËœX
+ÝYÙHH^˜XÝ[ÛˆÈˆPÔKYÙ[ˆÈÈ™\šYžHH›Ý[™\žH8 %]\›Z[š\ÝXÈ
+Š›[ØÚÊŠˆY˜][™X[›ÝšY\‹X˜XÚÙYY\\ˆ™Z[™‘—ÐÐWÓO\ÚYÝØ˜Z[ÈÛÜÙYÈ[ØÚÎÈ[[Y]žNˆ›ÝšY\‹Û[Ù[Ü›Û\Ý™\œÚ[Û‹ÝÚÙ[œËØÛÜÝÛ][˜ÞJK˜[Y]Ü‹œX
+ÝYÙH]\›Z[š\ÝXÈØ]H8 %[Ü[Û‹ÜÚ[™ÛKXÛÜœ™XÝÛ›ËY\Ù]šY[˜ÙK[[šÙYÛ›Ë\Ý\\œÙYYXÛZ[KÐQ‹LÈ›Ë\ÛÛKY\ØÛÝ™\žK[Û›KÜÙ[‹Y][™ËÛ›ËX[œÝÙ\‹[XZËÙ\Yš[™Ù\œš[
+KÛÜšÙ\‹œX
+[—ÙÙ[™\˜][Û—ÝÛÜšÙ\—Ü\ÜØˆÝYÙ\Èx $ÐÈÝ]ÚYH[žHˆ8¡¤ˆ˜[Y]H8¡¤ˆ]ÛZXÈ™[˜ÙYØWØÛÛ\]WÙÙ[™\˜][Û˜ÈÚYÝÈÈ›È›Û[Ý[ÛŠKˆÛZ[\ËÙ]™[È[œÙ\Y™]šY]Ù\—ÜÝ]\ÏIÜ[™[™ÉØÈ›Ý[™ÈÜš]\È[ØÚ×Ü]Y\Ý[Û—Ø˜[šØ
+›Û[Ý[ÛˆHÍÑÍJKˆ
+ŠÚXÚÜÜÝÎMˆš^\ÎŠŠˆ
+ŒJHØ[™Y]H]Y][™XYÙH›ÝÈ\œÚ\ÝY8 %ØØWÚ[œÙ\ÙÙ[™\˜][Û—Ü[˜Üš]\ÈÝYÙKP‹ÔÝYÙKPÈ›ÝÜÈÚ]Ø[™Y]WÚY[™HØ[™Y]H\È\]YÚ]Ù[™\˜]Ü—Ü[—ÚYØ™\šYšY\—Ü[—ÚY[ˆHØ[YHˆ
+\‹XØ[™Y]HÙ[™\˜]Ü—Ü[˜Ø™\šYšY\—Ü[˜ÛˆHÛÜšÙ\ˆ^[ØY
+NÈ
+ŒŠHÓˆÓÓ‘“PÕ
+]Y\Ý[Û—Ùš[™Ù\œš[
+HÒT‘H]Y\Ý[Û—Ùš[™Ù\œš[TÈ“Õ•SX]Ú\ÈH\X[[š\]YH[™^È
+ŒÊH™\^HÝX\™[Ý™Y‘Q“Ô‘HHX\ÙKÝÚÙ[ˆ™[˜Ú[™Èœ˜[˜ÚÛÈH™]žHY\ˆHÝXØÙ\ÜÙ[XÚÈ™]\›œÈ™\^YY
+›ÝH™[˜Ú[™È\œ›ÜŠKˆ\ÝÎˆ\ÝØØWÝ˜[Y]Ü‹œX
+MJK\ÝØØWÙÙ[™\˜][Û—ØY\\œËœX
+
+K\ÝØØWÙÙ[™\˜][Û—ÝÛÜšÙ\‹œX
+K[˜ÛˆÚYÝËÛ›ËX]]Üš]K˜Z[]šXKY™[˜Ú[™ËØ[™Y]H[™XYÙJK\ÝØØWÙÙ[™\˜][Û—ÛZYÜ˜][Û‹œX
+LHÔSXÛÛ˜XÝ[˜ÛˆÛÛ™›XÝ]\™Ù]Ü™\^K[Ü™\‹Û[™XYÙJH8 %È\ÜÎÈ\ÝÛZYÜ˜][Ûœ×ØÛÛ˜XÝœXÜ™Y[ˆ
+È[š\]YJKˆØÚY[\ˆÜ›ÛˆØN™Ù[™\˜]XY™\œ™YÈÔT‹QÍH
+\ÈÌˆY™\œ™YØNš[™Ù\Ý
+KˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][Ûˆ
+È[ˆ\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WØØWÙÙ[™\˜][Û—ÜœÜËœÜ[
+^XÝ]\ÈØ[™Y]KZ[œÙ\[™XYÙK\X[Z[™^Y\™\^KXY\‹XXÚË™[˜Ú[™ÊH8 %‘T’Q–H‹ˆÜ˜\YžH\]H˜Y™\œ™Y
+ÓHXœÙ[
+KˆŸÔT‹QÍHÜ\˜]Üˆ™]šY]È
+È]Y]Y›Û[Ý[Ûˆ
+˜XÚÙ[™
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆHYÈÝ\œ™[ØY™˜Z\œ×Ü]Y\Ý[Û—Û[šÜØ
+Ø[™Y]x¡¤˜˜[šÈ›Ý™[˜[˜ÙJH
+ÈÛÈÙ\šXÙK\›ÛHÑPÕT’UHQ’S‘Tˆ”ÜÈZ\œ›Üš[™ÈÛ\×Ü™]šY]×Ü]X[Ú]\š\ÝXØˆØWÜ™]šY]×ØØ[™Y]X
+ÐTÈÛˆ^XÝYÜÝ]\Ø˜[œÚ][ÛˆX]š^™]šY]×Ü™XYx¡¥\›Ý™Y8¡¥™Z™XÝY™X\ÛÛ‹[Û‹\Ù[™X˜XÚËYZ[—Ø]Y]ÛÙÜØ[žNÈ
+Š›™]™\ŠŠˆÜš]\È›Û[ÝY
+H[™ØWÜ›Û[ÝWØØ[™Y]X
+H[X[ˆØ]H8 %™\]Z\™\È[ˆ\›Ý™YØ[™Y]H
+È]™KÝ[™^\™Y]™[[œÙ\ÈH˜[šÈ›ÝÈ\ÈÛÝ\˜ÙWÚÚ[™IØÝ\œ™[Ù]™[	Ë\×ØÝ\œ™[Ø˜\ÙY]YX]™[™[]˜[˜ÙHÚ[™ÝËÝ\œ™[ØY™˜Z\œ×Ú][WÚY8¡¤™]™[[ØÚ×Ü]Y\Ý[Û—ÛÜ[ÛœØ
+È™\ÛÛ™YÛÜœ™XÝÛÜ[Û—ÚYH›Ý™[˜[˜ÙH[šËØ[™Y]x¡¤˜›Û[ÝY]Y]8 %[]ÛZXÊKˆ[™Ú[È[ˆÛÛ[ÜÝY[ËœXˆÑUØØK\]Y\Ý[Û‹XØ[™Y]\Ø
+
+ØÞÚYX™]šY]ÈÛÛ^
+KÔÕÞÚYKÜ™]šY]Ø
+Ø]HÛÛ[ÜÝY[Ëœ™]šY]Ø
+KÔÕÞÚYKÜ›Û[ÝX
+YÚ\ˆØ]H[ØÚ×Ü]Y\Ý[ÛœÎœX›\Ú
+Kˆ›È]]Û›Û[Ý\ÈX›XØ][Ûˆ8 %[Ù[ÝÛÜšÙ\ˆ™]™\ˆ™XXÚ›Û[ÝKˆ›Ë[™]Ë\Ý\™˜XÙH
+ÛÛ[ÝY[ÈÛÛ[\JKˆ
+ŠÚXÚÜÜÝÎMÌš^\È
+›ÜØ\™ZYÜ˜][ÛˆLÈ8 %H\È[™YÚ[[]]X›JNŠŠˆ
+ŒÊH›Ý”ÜÈÔ‘PUHÔˆ‘TPÑXÈ
+Š™X[PÐTÊŠˆÛˆ^XÝYÜÝ]\Ø
+ŠŠÈ^XÝYÝ\]YØ]
+Šˆ
+ÛÛ[\™]š\Ú[ÛˆÚÙ[ŠH[™™\]Z\™H[ˆMLÚ\ˆ]Y]™X\ÛÛ˜
+Z\œ›ÜœÈZYÜ˜][ÛˆŽÈÛÚYÛ˜]\™\È›ÜY
+NÈ
+
+HØWÜ›Û[ÝWØØ[™Y]X
+Šœ™]˜[Y]\ÈÝYÙKQ[œÚYHHŠŠˆ8 %\œÚ\ÝY˜[Y][Û—Ü™\Ý[›ÚØ^XÝKMÙ\Ý[˜ÝÜ[ÛœÈ
+È™\ÛÛ˜X›HÛÜœ™XÝ›Û‹Y[\HÝ[KÙ^[˜][Û‹™\ÛÛ™YÛZ[\È^\Ý
+ÈÝ\œ™[]šY[˜ÙH™\Ù[[™Q‹LÈ›Ý\ÛÛ[KX\ØÛÝ™\žWÛÛ›XXÝ]™HÛÝ\˜ÙH8 %˜Z[ÛÜÙYÈ
+JH
+Š›Û™H›Ý™[˜[˜ÙH[šÈ\ˆ™\ÛÛ™YÛZ[JŠˆ
+[šÜÈ[š\]YHÙ^H[\™YÈ
+Ø[™Y]WÚY[ØÚ×Ü]Y\Ý[Û—ÚYÛZ[WÚY
+X
+NÈ
+ŒŠHÑUÞÚYX™]\›œÈH[™]šY]È[™[ÜH
+XXÚ™\ÛÛ™YÛZ[H
+È^XÝ]šY[˜ÙHÜ[œÈ
+ÈØÝ[Y[ÜÛÝ\˜ÙH
+È]]Üš]H
+ÈØ\›š[™ÜÈ
+È]Y][œÊNÈ
+ŠHÛX\Üœ×Ù\œ›Ü˜X\ÈH™]ÈÛXZ[ˆÚÙ[œÈÈ
+›ÝL
+Kˆ\ÝÎˆ\ÝØÛÛ[ÜÝY[×ØØWØØ[™Y]\ËœX
+›Ý]\Žˆ™XYYØ]K˜[œÚ][ÛˆÝX\™Ù[™X˜XÚÈ›ÝK™X\ÛÛˆØ]KX›\ÚØ]KHX\
+K\ÝØØWÜ›Û[Ý[Û—Ú\™[š[™×ÛZYÜ˜][Û‹œX
+LHÔSXÛÛ˜XÝˆ›ÜYÛÚYÜËX[PÐTË™]˜[Y][Û‹][KXÛZ[JH8 %ˆ˜XÚÙ[™\ÜÎÈZYÜ˜][ÛœËXÛÛ˜XÝ
+LH[š\]YJKˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][ÛœÈH
+ÈLH
+È[ˆ\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WØØWÜ›Û[Ý[Û—ÜœÜËœÜ[
+ÙYYÈH™X[]]\Ù\œØXÝÜŽÈ™]šY]ÈÐTÈ
+È™X\ÛÛˆØ]K›Û[ÝH8¡¤ˆÝ\œ™[Ù]™[
+ÈÜ[ÛœÈ
+È\‹XÛZ[H[šÈ
+È]Y]\È™YØ]]™\Îˆ]šY[˜ÙKYœ™YH[™\ØÛÝ™\žWÛÛ›K\ÛÛH™Z™XÝY
+H8 %‘T’Q–H‹ˆÜ˜\YžXY™\œ™Y
+ÓHXœÙ[
+KˆŸÔT‹QÍˆÜ\˜]Üˆ™]šY]È]Y]YHRHÓÑKQ’VQSQUSÓˆS‘S‘ÈØT]Y\Ý[Û”™]šY]Ô]Y]YKšœÞ
+ÛÛ[ÝY[ÈÛÛ[\HÝ\œ™[ØY™˜Z\œ×Ü]Y\Ý[Û˜™]šY]Ë\]Y]YHÛ›H8 %Ø[™Y]\È\™HÚYÝËYÙ[™\˜]Y›È]]Ü‹ÛXœ˜\žH]
+Nˆ\ÝžHÝ]\Ëš[Z[ˆÚÝÚ[™È]Y\Ý[Û‹ÛÜ[ÛœËØÛÜœ™XÝÙ^[˜][Ûˆ
+È˜[Y][Ûˆ™\™XÝ
+È™\šYšY\ˆ™\™XÝ
+È]™[
+ÈÛZ[HÛÝ[\›Ý™KÜ™Z™XÝÜÙ[™X˜XÚÈÝ™\ˆÔÕÜ™]šY]Ø[™
+Š”›Û[ÝJŠˆÝ™\ˆÔÕÜ›Û[ÝX
+ÚÝÛˆÛ›HÚ[ˆØ[”X›\ÚH[ØÚ×Ü]Y\Ý[ÛœÎœX›\Ú
+KˆH8¡¤ˆÛÛ™›XÝ˜[›™\ˆ
+™Y™]Ú
+Kˆ\Ù\ÈH
+Šœ™X[Ú\™YZÛÚÈÛÛ˜XÝÊŠˆ
+\ÙP\PÛÛXÝ[ÛŠ\›×KÜ\˜[\ßJX\ÙP\PXÝ[ÛŠ
+Kœ[ŠØXÝ[Û‹8 )ŸJX
+H8 %ÚXÚÜÜÝÎMÌŒKˆš[Z[ˆ™[™\œÈH[
+Š™]šY[˜ÙH[™[ÜJŠˆ
+XXÚÛZ[H
+È^XÝ]šY[˜ÙH
+ÈØÝ[Y[ÛÝ\˜ÙH
+È]]Üš]JH
+ÈQ‹LÈØ\›š[™ÜÈ
+ŒŠKˆ]™\žHXÚ\Ú[ÛˆØ\œšY\ÈHØ[™Y]IÜÈ\]YØ]
+Š˜ÛÛ[PÐTÈÚÙ[ŠŠˆ
+È[ˆMLÚ\ˆ
+Š˜]Y]™X\ÛÛŠŠˆ
+ŒÊKˆÛÛ[ÝY[Ð\KžÛ\ÝØPØ[™Y]\ËÙ]ØPØ[™Y]K™]šY]ÐØPØ[™Y]K›Û[ÝPØPØ[™Y]_X
+ÈÐWÔ‘U’QU×ÕS”ÒUSÓ”Ø
+È\Õ˜[Y™X\ÛÛ˜ÈÝY[Ô\›\Ë˜Ø[”X›\ÚÈÚ\™Y[ÈÛÛ[ÝY[ËšœÞÝÚ]Ú
+›È™]ÈÚYX˜\ˆÝ\™˜XÙJKˆY™›Ü™[˜ÙKZY[™ÈÛ›NÈ˜XÚÙ[™]]Üš]]]™Kˆ\ÝÎˆØT]Y\Ý[Û”™]šY]Ô]Y]YK\ÝšœÞ
+Žˆ™X[
+\›ÙYYÜ\˜[\ßJHÛÛ˜XÝ]šY[˜ÙKY[™[ÜH™[™\‹X[PÐTÊÜ™X\ÛÛˆÛˆ\›Ý™K™X\ÛÛ‹YØ]YÝX›Z]›Û[ÝHØ]K›Û[ÝHÐTÊÜ™X\ÛÛŠH
+ÈÛÛ[ÝY[Ë\ÝšœÞ8 %Ž‘H\ÜËˆÜ˜\YžXY™\œ™Y
+ÓHXœÙ[
+KˆŸÔT‹QÍXHÙYZÛH[™H
+ÈX\›™\ˆ[[YH
+˜XÚÙ[™
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆLÈYÈHÐHX\›™\ˆ[[YHÛˆ]È
+Š“ÕÓŠŠˆX›\È8 %Ý\œ™[ØY™˜Z\œ×Ø[™\Ø
+ØY[˜ÙK\š[ÙÚ[™ÝË^[WÚY’È
+È^[WÙ˜[Z[WÚY
+Š‘’ø¡¤™^[WÙ˜[Z[Y\ÊŠ‹X›\ÚØ]˜Z[Xš[]HÚ[™ÝË™]šY]Ù\—ÜÝ]\Ë˜YÜX›\ÚYØ\˜Ú]™Y
+KÝ\œ™[ØY™˜Z\œ×Ø[™WÜ]Y\Ý[ÛœØ
+Ü™\™YÙ][š\]YH
+[™WÚY[ØÚ×Ü]Y\Ý[Û—ÚY
+X
+KÝ\œ™[ØY™˜Z\œ×Ø][\Ø
+ÝÛˆ][\›ÝË[š\]YH
+\Ù\—ÚY[™WÚY
+X[™WÚY
+Š“ÓˆSUH‘TÕ’PÕ
+ŠˆÛÈH[™H[]HØ[‰Ý\˜\ÙH\ÝÜšXØ[[˜[]XÜË[\]WÜÛ˜\ÚÝœÛÛ˜‹ØÛÜ™HšY[ÊKÝ\œ™[ØY™˜Z\œ×Ø][\Ü™\ÜÛœÙ\Ø
+œ›Þ™[ˆ]Y\Ý[Û—ÜÛ˜\ÚÝœÛÛ˜ˆ\ˆK[YWÜÜ[ÜÙXØØÛY[ÜÙ\X8¢iHÚXÚÜÊKˆ›Ý\ˆÙ\šXÙK\›ÛHÑPÕT’UHQ’S‘Tˆ”ÜÎˆØWÙ[YÚX›WØ[™WÜ]Y\Ý[Û—ÚYØ
+]]Üš]]]™HÝ[Y[YÚX›HÙ]8 %™]šY]ÙY›Û[ÝYÝ\œ™[Ù]™[[ˆ˜[Y]HÚ[™ÝÊKØWÜÝ\ØÝ\œ™[ØY™˜Z\œ×Ø][\
+ØÚÜÈH[™NÈØ]\ÈX›\ÚY
+Ý™\šYšYY
+ÜX›\ÚØ]˜Z[Xš[]HÚ[™ÝÎÈ™KY\š]™\ÈH]]Üš]]]™HÙ][™›Ý™\ÈHØ[\‹Yœ›Þ™[ˆ›ÝÜÈ
+Š™^XÝJŠˆ\]X[]8 %[™WÜÙ]ÛZ\ÛX]ÚÛˆ[žHZ\ÜÚ[™ËÜÝ[KÙ^˜H›ÝË™]™\ˆÚ[[ÚÜ[š[™ÎÈ
+Š˜ÛÛ™›XÝ\ØY™JŠˆÓˆÓÓ‘“PÕ
+\Ù\—ÚY[™WÚY
+HÈ“ÕS‘ØY[\Ý[™]\ÙJKØWÜØ]™WØÝ\œ™[ØY™˜Z\œ×Ø[œÝÙ\˜
+]ÛZXÈØÚÙY\]H8 %ÝÛ™\ˆÈ[‹\›ÙÜ™\ÜÈÈœ›Þ™[‹\]Y\Ý[ÛˆÈœ›Þ™[‹[Ü[ÛˆY[X™\œÚ\È[Û›ÝÛšXÈÛY[ÜÙ\XÚ\™H8¢iÝÜ™YÜÙ\X\È[ˆY[\Ý[›Ë[ÜZ\œ›Üš[™È[ØÚ×Ù[™Ú[™KœØ]™WØ[œÝÙ\˜
+K[™ØWÜÝX›Z]ØÝ\œ™[ØY™˜Z\œ×Ø][\
+ÝÛ™\œÚ\ÚXÚÎÈ
+Šš[›[™JŠˆØÛÜš[™ÈYØZ[œÝHœ›Þ™[ˆ]Y\Ý[Û—ÜÛ˜\ÚÝO‰ØÛÜœ™XÝÛÜ[Û—ÚY	Ø
+KˆHÝX›Z]]Üš]\È
+Š““ÊŠˆ[ØÚ×Ø][\Ø\Ù\—ÝÜX×ÛX\Ý\žXÔ”ËZ\ÝZÙKP›ÛÚËÛÜœ™XÝ[Û‹]\ÚËÜˆ[˜[]XÜÈ›Øˆ8 %ÐH™]™\ˆ[\œÈH[ØÚ×Ù[™Ú[™KœÝX›Z]Ø][\8¡¤ˆ“Ð—ÐSSUPÔ×Ô‘U–X˜[‹[Ý]
+X\Ý\žKØÛÜœ™XÝ[Ûˆž\\ÜÈžHÛÛœÝXÝ[ÛŠKˆ\Ø˜XÚÙ[™Ø\ØÝ\œ™[ØY™˜Z\œËÞØ[™\Ë][\ßKœXˆ™\šYšYY[Û›H›Û[ÝYXÝ\œ™[Ù]™[Ù[XÝ[ÛŽÈ[™H™\ÛÛ][ÛˆÚ]
+ŠœØÛÜH™XÙY[˜ÙH^XÝY^[H8¡¤ˆ^[KY˜[Z[H8¡¤ˆÛØ˜[
+Šˆ
+˜[Z[H™\ÛÛ™YšXH^[\Ë™^[WÙ˜[Z[WÚY
+H™\]Z\š[™ÈX›\ÚY
+Ý™\šYšYY
+ÛÜ[ˆÚ[™ÝÜÎÈØ]Yœ™Y^™HÙ]
+[YÚX›WØ[™WÜ]Y\Ý[Û—ÚYØ
+NÈÙ\™\ˆœ™Y^™H™]\Ú[™È[ØÚ×Ù[™Ú[™K—Ü]Y\Ý[Û—ÜÛ˜\ÚÝ
+ÈÙ[™\˜]YÛ[ØÚ×Ø][\—ÛØYÜ]Y\Ý[ÛœØ\ÈHœ›Þ™[ˆ
+Š°©ÌL›Ý™[˜[˜ÙH[™[ÜJŠˆ
+]™[]KÛÝ\˜ÙHX›XØ][Ûˆ]KÛÝ\˜ÙHT“Ý\\œÙ\ÜÚ[ÛˆØ\›š[™ÊH™]™X[Y
+Š›Û›HÜÝ\ÝX›Z]
+ŠŽÈX\›™\ˆšY]ÈY\È[œÝÙ\ŠÜ›Ý™[˜[˜ÙH[[ÝX›Z]ÈØ]™KÜÝX›Z]›Ý]Y›ÝYÚH]ÛZXÈ”ÜÈÚ]ÛXZ[‹Y\œ›Ü¸¡¤˜ÛÚÝ\\œ›Ü˜Ø\›Z\ÜÚ[Û‘\œ›Ü˜Ø˜[YQ\œ›Ü˜X\[™ËˆX\›™\ˆTHÝ\œ™[ØY™˜Z\œ×Ü˜XÝXÙKœX
+ÑUÝ]HÈØ]™HÈÝX›Z]
+H[™\ˆØ\KÜÝYX
+ÍËÍŒˆX\Y
+H8 %
+Š››È™]ÈÚYX˜\ŠŠˆ
+›Ë[™]Ë\Ý\™˜XÙH[JKˆ
+Š’Xˆ][˜Ú[[[Û˜[H“ÕÚ\™Y[ˆ\ÈŠŠˆ
+ÚXÚÜÜÝÎMÍˆŒJNˆHÙYZÛWØÝ\œ™[ØY™˜Z\œØÝXš™XÝT˜XÝXÙKRXˆ][˜Ú\ÈY™\œ™YÚ]HX\›™\ˆ][\RHÛÈ›È]™H][˜ÚÚ[È]H›Ý^Y]Y^\Ý[›Ý]NÈH˜XÚÙ[™[[YH
+È”ÜÈ[™™XYH›Üˆ]›ÛÝË]\
+ÈÔT‹QÍXˆÜ›ÛœËˆ\ÝÎˆ\ÝØØWØ[™\×Ø][\×ÛZYÜ˜][Û‹œX
+ÔSXÛÛ˜XÝˆÝÛ‹]X›\Ë‘TÕ’PÕ\™\Ù\™\ËZ\ÝÜžK^[WÙ˜[Z[H’Ë›ËUÛÛ™›XÝ\ØY™H[YÜš]K[ØÚÙYÝ\Ù\KÛÜ[Û‹YÝX\™YØ]™K[›[™K\ØÛÜš[™Ë[›Ë[X\Ý\žKÙ\šXÙK\›ÛHÜ˜[Ë8¢iMÑPÕT’UHQ’S‘TˆÙX\˜ÚÜ]
+K\ÝØØWØ[™\ËœX
+Ú[™ÝËÜ™]šY]Ù\‹Ø[˜ÚÜ‹ØÛÜH™XÙY[˜ÙKØ]YY[X™\œÚ\›Ý™[˜[˜ÙH[™[ÜH
+ÈÝ\\œÙ\ÜÚ[ÛŠK\ÝØØWØ][\ËœX
+Ø]Yœ™Y^™H
+È›Ý™[˜[˜ÙK›×Ø[™KÙ[\KY[\Ý[™]\ÙKX\›™\ˆYKÜ™]™X[Ø]™HÙ\KZY[\Ý[˜ÞKÛÜ[Û‹ÛÝÛ™\ˆÝX\™ËÝX›Z]ØÛÜš[™ËÛÝÛ™\ŠK\ÝØØWÜ˜XÝXÙWØ\KœX
+›Ý]\ˆÍËÍŒˆX\[™ÊH8 %Ý\œ™[ØY™˜Z\œÈÝZ]HL\ÜËÝYWÛÜÈÜ™Y[ˆ
+LÌ
+Kˆ
+ŠÚXÚÜÜÝÎMÍˆš^\ÎŠŠˆŒH
+[Ú\™Y][˜Ú8 %›ÈXY›Ý]JKŒˆ
+^[WÙ˜[Z[H’È
+ÈØÛÜH™XÙY[˜ÙH
+È™\šYšYYÜX›\ÚØ]\ÊKŒÈ
+]]Üš]]]™H^XÝ\Ù][YÜš]HØÚË›ÈÚ[[ÚÜ[š[™ÊK
+›ÜYH[™[Y[™[™›Ü˜ÙY8 %Ý\Ø]H\ÈHØË\ÜXÚYšYY[™H]˜Z[Xš[]HÚ[™ÝÊKH
+]ÛZXÈØÚÙYØ]™H
+È8¢iÝÜ™YÜÙ\XY[\Ý[›Ë[Ü
+ÈÜ[Û‹Ý[Z[™ËÜÙ\H˜[Y][Ûˆ	ˆˆÚXÚÜÊKˆ
+ÓˆÓÓ‘“PÕÛÛ™›XÝ\ØY™HY[\Ý[Ý\
+KÈ
+][\8¡¤˜[™H‘TÕ’PÕ™\Ù\™\È\ÝÜžJKŽ
+œ›Þ™[ˆ0©ÌL›Ý™[˜[˜ÙH[™[ÜKÜÝ\ÝX›Z]Û›JKŽH
+ÛXZ[‹Y\œ›ÜˆX\[™È
+È›Ý]\ˆ\ÝÊKˆ
+Š‘L‘Hš^ŠŠˆ™[[X™\™YZYÜ˜][ÛˆL¸¡¤ŠŠŒLÊŠˆ
+ÛÛ˜Ý\œ™[K[Y\™ÙY\HÜ˜[ÛÚÈLŠH8 %™\ÛÛ™\ÈHØÚ[XWÛZYÜ˜][Ûœ×ÜÙ^X\XØ]K]™\œÚ[Ûˆ˜Z[\™H]HL‘HZYÜ˜][Û‹X\HÝ\ˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][ÛˆLÈ
+È[ˆ\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WØØWØ][\ÜœÜËœÜ[
+[YÜš]HØÚËZ\ÛX]Ú™Z™XÝÛÛ™›XÝ\ØY™H™]\ÙKÙ\HY[\Ý[˜ÞKÜ[Û‹ÛÝÛ™\ˆÝX\™Ë[›[™HØÛÜš[™Ë‘TÕ’PÕ\™\Ù\™\ËZ\ÝÜžJH8 %‘T’Q–H‹ˆØÚY[\ˆÜ›ÛœÈÜ]È
+Š‘ÔT‹QÍXŠŠŽÈX\›™\ˆ][\RH
+ÈXˆ][˜ÚÚ\š[™ÈÈH›ÛÝË]\ˆÜ˜\YžXY™\œ™Y
+ÓHXœÙ[
+KˆŸÔT‹QÍXKZÐH][\\Ý\\™[š[™È
+ÚXÚÜÜÝÎMÍˆ›Ý[™ÈŠÌÊHÓÑKQ’VQSQUSÓˆS‘S‘È›ÜØ\™ZYÜ˜][Ûˆ
+ŠŒMJŠˆÝ™\ˆH[[]]X›HLÈ
+STˆ
+ÈÝX\™šYÙÙ\ˆ
+ÈðåÈÔ‘PUHÔˆ‘TPÑJKˆXZÙ\ÈHX›\ÚY[™H[ˆ[[]]X›KØÛÜKXÚXÚÙY›Ý™[˜[˜ÙKJŠš[YÜš]JŠ‹]™\šYšYY]]Üš]H[™Hœ›Þ™[ˆ][\H˜[šË]™\šYšYYšY\›ÛÙˆÛ˜\ÚÝ
+™]™\ˆ\ÝÈØ[\ˆ”ÓÓŠKˆ
+Š”›Ý[™ŽŠŠˆØÛÜK\Ú\HÒPÒÈ
+^[WÚY\È[Üˆ^[WÙ˜[Z[WÚY\È[
+X
+ÈÝ\[™›Ü˜Ù\ÈHÚÜÙ[ˆ[™IÜÈ^[KÙ˜[Z[HØÛÜH
+[™WÜØÛÜWÛZ\ÛX]Ú
+NÈ˜Z[JŠ˜ÛÜÙY
+ŠˆÛˆ[™WÙYÜ˜YY
+˜]ø¢h[YÚX›JHÚ]Ü™\™Y^XÝ\Ù]ÈÛ˜\ÚÝ™\šYšYYœÈ˜[šÈ
+[œÝÙ\ˆ
+ÈÜ[Û‹ZYÙ]
+H
+ÈÛÛ[\™]š\Ú[Ûˆ›Ý[™È[YÚXš[]H™\]Z\™\È›Ý™[˜[˜ÙH^\Ý[˜ÙNÈØYÜ]Y\Ý[Û—Ü›Ý™[˜[˜ÙX˜Z[ÈÛÜÙY
+Èœ™Y^™\È]Y]X›HYÈ
+]™[ØÛZ[KÙØÝ[Y[YÈ
+ÈÛÛ[Ú\Ú
+ÈÜ[œÊNÈÑU™]\›œÈ\‹\]Y\Ý[ÛˆÛY[ÜÙ\XØ[YWÜÜ[ÜÙXØ›Üˆ™\Ý[YNÈÜ˜Z\ÙWÛX\YX\ÈÛ›HÛ›ÝÛˆÚÙ[œÈ
+[™œ˜H˜][È8¡¤ˆL
+KØP[œÝÙ\›ÙX›Ý[™Yˆ
+Š”›Ý[™È
+ÚXÚÜÜÝÎMÎ
+NŠŠˆ
+Š‘ŒJŠˆY[X™\œÚ\’È[ØÚ×Ü]Y\Ý[Û—ÚY8¡¤ˆ
+Š“ÓˆSUH‘TÕ’PÕ
+Šˆ
+H˜[šÈ[]HØ[‰ÝÚ[[HÚš[šÈH[™JH
+ÈH
+Š›Y[X™\œÚ\[ØÚÈšYÙÙ\ŠŠˆ
+[™WÛY[X™\œÚ\ÛØÚÙYÝÚ[—ÜX›\ÚY8 %Ü™\‹Ú[˜Û\Ú[ÛˆY]È›Ü˜ÙY›ÝYÚ˜Y8¡¤œ™\X›\Ú
+H
+ÈXXÚ][\›Ý[™ÈH
+Š›Y[X™\œÚ\š[™Ù\œš[
+Šˆ
+YXÙˆHÜ™\™YÙ]
+HÛÈH[™HY
+È™]š\Ú[ÛˆY[YžHÛ™H]Y\Ý[ÛˆÙ]ˆ
+Š‘ŒŠŠˆÝ\›ÝÈ™\šYšY\ÈXXÚœ›Þ™[ˆÛ˜\ÚÝ	ÜÈ
+Šœ]Y\Ý[Ûˆ^^[˜][Û‹[™\‹[Ü[ÛˆY
+Ý^
+Šˆ
+›Ý\ÝHYÙ]
+HYØZ[œÝHÐÒÑQ˜[šÊÛÜ[Ûˆ›ÝÜÈ
+Û˜\ÚÝÝ^ÛZ\ÛX]Ú
+KY™X][™ÈH^ÝØ\[™\ˆHÝX›HYˆ
+Š‘ŒÊŠˆ[YÚXš[]H›ÝÈ›Ý™\ÈH
+Š™[›Û[ÝY™[][ÛŠŠˆ8 %[šËØÛZ[KØ˜[šÈ]™[ZYÛÛœÚ\Ý[˜ÞK™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø
+È˜XÝX[ÜÝ]\ÏIØÝ\œ™[	ØÛZ[KÝ]\ÏIØXÝ]™IØ
+ÈÝ[\™[]˜[]™[[™[ˆXÝ]™H›Û‹X\ØÛÝ™\žWÛÛ›XÛÝ\˜ÙH
+Q‹LÊH8 %Z\œ›Ü™Y[ˆÜ›Ý™[˜[˜ÙWØÛÛ\]WÚYØÈØYÜ]Y\Ý[Û—Ü›Ý™[˜[˜ÙX˜Z[ÈÛÜÙY\‹XÛZ[HÛˆ\X[]šY[˜ÙKˆ
+Š‘
+Šˆ[™H^[WÚYØ^[WÙ˜[Z[WÚY’ÜÈ8¡¤ˆ
+Š”‘TÕ’PÕ
+Šˆ
+[][™ÈH^[KÙ˜[Z[HØ[‰ÝÚY[ˆHX›\ÚYØÛÜY[™HÈÛØ˜[
+H[™Ý\œ™[ØY™˜Z\œ×Ø][\Ë™^[WÚY™XÛÛY\ÈH™X[’Ëˆ\ÝÎˆ\ÝØØWØ][\Ú\™[š[™×ÛZYÜ˜][Û‹œX
+MHÔSXÛÛ˜XÝˆ›ÜØ\™[Û›K‘TÕ’PÕ’ÜËY[X™\œÚ\ØÚËY[X™\œÚ\\™]š\Ú[Û‹ÛÛ[™\šYšXØ][Û‹[Z[YÜš]H[YÚXš[]JH
+È\]Y\ÝØØWØ[™\ËœXØ\ÝØØWØ][\ËœXØ\ÝØØWÜ˜XÝXÙWØ\KœX
+[YÜš]H™Z™XÝ[Û‹ÛÛ[]^™\šYšXØ][Û‹›Ý™[˜[˜ÙH˜Z[XÛÜÙY
+H8 %Ý\œ™[ØY™˜Z\œÈÝZ]HÜ™Y[ˆ
+LMŠKˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][ÛˆMH
+È[ˆ˜[Y]WØØWØ][\ÜœÜËœÜ[
+Y[X™\œÚ\[ØÚËØÛÜK[Z\ÛX]ÚYÜ˜Y][Û‹Û˜\ÚÝY›Ü™Ù\žHÚ]H[[YÜš]HÚZ[ˆ
+ÈÛÜœ™XÝÙ^[X\ÝÜžH›ÝXÝ[ÛŠKˆ
+Š‘L‘NŠŠˆHLËÌLØÛÛ\Ú[Ûˆ
+L×ØÝ\œ™[ØY™˜Z\œ×Ø[™\×Ø][\ØÎMÍˆœÈL×Ù^[WÙ[YÚXš[]WÜÝ™X[WØ]Ø\™WØXÝ]˜][Û˜ÎMÍJHØ\È™\ÛÛ™YÛˆXZ[˜žH™[[X™\š[™È^[KY[YÚXš[]H8¡¤ˆ
+ŠŒM
+ŠŽÈ\È\™[š[™ÈZYÜ˜][Ûˆ\È
+ŠŒMJŠ‹ˆŸÔT‹QÍXˆÐHØÚY[\ˆÜ›ÛœÈÓÑKQ’VQSQUSÓˆS‘S‘È™YHÐHÜ›ÛœÈÚ\™Y[È\Û›ÝYšXØ][ÛœËÜØÚY[\‹œX
+HÚ[™ÛHTØÚY[\ˆ[Ù[K›ÙYØ]YžHSP“WÔÐÒQST˜[X^Ú[œÝ[˜Ù\ÏLX
+ØÛØ[\ØÙOUYX
+Nˆ
+Š˜ØNš[™Ù\Ý
+Šˆ
+]™\žHÌZ[ŠH8¡¤ˆ[™Ù\Ý[Û‹œ[—Ú[™Ù\ÝÜ\ÜØÛÜÈPÕU‘HÛÝ\˜Ù\ËØ]\ÈXXÚÛˆHÜ˜]ÛÜØÚY[Kš[\˜[ÚÝ\œØ]œËX\ÝÙ™]ÚØ]ØY[˜ÙH
+Ú\×ÙYXÈ›È™^ØÜ˜]ÛØ]ÛÛ[[ˆ^\ÝÊKØ[ÈH\™H[™Ù\ÝÜÛÝ\˜ÙX\ˆYHÛÝ\˜ÙK[™[™ÈXXÚœ™\ÚKXÛ˜\ÚÝYØÝ[Y[ÈHÙ[™\˜][Ûˆ]Y]YHšXHØWÙ[œ]Y]YWÙÙ[™\˜][Û—Ú›Ø˜
+H\XØ]KÛ›Ý[[ÙYšYYXÚÈ™]™\ˆ[œ]Y]Y\ÊNÈ
+Š˜ØN™Ù[™\˜]X
+Šˆ
+]™\žHÌÊHZ\œ›ÜœÈÚ›Ø—ÝÜš][™×Ù]˜[X]Ü˜8 %ÝÙY\ÜÝ[WÙÙ[™\˜][Û—Ú›ØœØ
+ÈÛ™H[—ÙÙ[™\˜][Û—ÝÛÜšÙ\—Ü\ÜØ
+ÚYÝËÛ[ØÚÈ[›\ÜÈ‘—ÐÐWÓXÈ™]™\ˆ›Û[Ý\ÊNÈ
+Š˜ØNœ›Û[ÝK\ÝÙY\
+Šˆ
+Z[HŽŒÌUÊH8¡¤ˆ™]\™[Y[œÝÙY\Ù^\™YØÝ\œ™[Ù]™[ØØ[ÈH™]È
+Š›ZYÜ˜][ÛˆMŠŠˆ”ÈØWÜÝÙY\Ù^\™YØÝ\œ™[Ù]™[Ê
+XÚXÚ\˜Ú]™\ÈÝ\œ™[ØY™˜Z\œ×Ù]™[Ø\Ý™[]˜[˜ÙWÝ[[
+Ý]\ÏIØXÝ]™IÈ8¡¤ˆ	Ø\˜Ú]™Y	Ø
+H8 %Y™[˜ÙKZ[‹Y\Ý™\ˆH™XY][YHš[\œÈ
+][\[YÚXš[]H[™XYH™\]Z\™\È]™[œÝ]\ÏIØXÝ]™IØ
+NÈ]ÝXÚ\ÈÓ“H]™[Ý]\Ë™]™\ˆ[ØÚ×Ü]Y\Ý[Û—Ø˜[šØØ[™\ËØ][\È
+^\žH]\Ý™]™\ˆ[]HÜˆ™]Üš]H\ÝÜžJKˆÚ\×Û›ÛÜÜ™\Ý[ØÚ\×Ù˜Z[\™WÜ™\Ý[^[™YˆØN™Ù[™\˜]X›ÛÜX›ØÙ\ÜÙYL	ˆ\ÝÙ\È˜Z[\™OXÝ]\ÏIÙ˜Z[Y	ØÈØNš[™Ù\Ý›ÛÜÚ[ˆ›Ý[™ÈX]\šX[[Ý™Y
+Û˜\ÚÝYÙ[œ]Y]YYÙ\œ›Ü‹Ù\š[Üš]\ÙY[
+K›È˜Z[\™HÚ\H
+\‹\ÛÝ\˜ÙH\œ›ÜœÈ\™HÛÝ[Y
+NÈØNœ›Û[ÝK\ÝÙY\›ÛÜX\˜Ú]™YLˆZYÜ˜][ÛˆMŽˆÙ\šXÙK\›ÛHÛ›KÑPÕT’UHQ’S‘T‹ÙX\˜ÚÜ][›™Yˆ
+ŠÚXÚÜÜÝÎNÈš^\ÎŠŠˆ
+Š‘ŒH
+[ØÚÈ™]™\ˆÛÛœÝ[Y\È›ÙØÜÊJŠˆ8 %[—ÙÙ[™\˜][Û—ÝÛÜšÙ\—Ü\ÜÊ™\]Z\™WÜ™X[Ü›ÝšY\UYJX
+Ù]žHHÜ›ÛŠH™Y\Ù\ÈÈÓRSHH›Øˆ[›\ÜÈH™X[›ÝšY\ˆY\\ˆ\ÈXÝ]™NÈÚ]‘—ÐÐWÓXÙ™‹Ý[˜]˜Z[X›H]™]\›œÈYXÒUÕUXÚÛ›ÝÛYÚ[™È[žH›Ø‹ÛÈH]\›Z[š\ÝXÈ[ØÚÈØ[‰Ý›ØÙ\ÜÈHØÝ[Y[[™[ˆ]ÈÙ[™\˜][ÛˆÛ™X
+Ù[™\˜][Ûˆ\Èš^Y]H8¡¤ˆ[œ™\›ØÙ\ÜØX›JKˆ
+Š‘Œˆ
+\˜X›H[œ]Y]YK›ÈÜÜËØ˜XÚÙš[Ø\
+JŠˆ8 %HÜ˜]ÛÛÜ›ÈÛ™Ù\ˆÝÛœÈHÜÜÞH[œ]Y]YNÈHÜ™XÛÛ˜Ú[WÜ[™[™×ÙÙ[™\˜][Û˜\ÜÈY[\Ý[H[œ]Y]Y\ÈU‘T–HÛ˜\ÚÝYØÝ[Y[]\È›È›Øˆ
+[žHÝ]\ÊKÛÝ™\š[™Èœ™\ÚÛ˜\ÚÝË˜[œÚY[[œ]Y]YH˜Z[\™\ËS‘™KY^\Ý[™ÈÌˆ˜XÚÛÙÎÈ[œ]Y]YH˜Z[\™\È\™HÛÝ[Y
+[œ]Y]YWÙ˜Z[Y
+K›ÝÝØ[ÝÙYˆ
+Š‘ŒÈ
+ÛÝ™\œÈ]™\žHÛÝ\˜ÙH
+È\ÛÛ][ÛŠJŠˆ8 %Ú]\—ØXÝ]™WÜÛÝ\˜Ù\ØYÙ\È[XÝ]™HÛÝ\˜Ù\È]\›Z[š\ÝXØ[HžHY
+›ÈÚ[[L\›ÝÈØ\
+NÈXXÚÛÝ\˜ÙH\ÈÜ˜\YÛÈÛ™H˜Z[\™HØ[‰ÝX›ÜH\ÜÎÈ›Û‹[Øš™XÝÜ˜]ÛÜØÚY[X”ÓÓˆ\ÈÛ\˜]Yˆ
+Š‘
+Û™\Ý˜Z[\™H™\Ü[™ÊJŠˆ8 %H\ÜÈ™]\›œÈHÝ]\Ø
+ÚØØ\X[Ø˜Z[Y
+NˆHÛÝ\˜ÙK\]Y\žHÝ]YÙH8¡¤ˆ˜Z[Y\‹\ÛÝ\˜ÙKÙ[œ]Y]YH\œ›ÜœÈ8¡¤ˆ\X[ÈÚ\×Û›ÛÜÜ™\Ý[Û›H›ÛÜÈHÛX[ˆÚØ\ÜÈ[™Ú\×Ù˜Z[\™WÜ™\Ý[
+	ØØNš[™Ù\Ý	ÊX™X]È˜Z[YØ\X[\ÈÜ\˜][Û˜[˜Z[\™\ÎÈ[™Ù\ÝÜÛÝ\˜ÙX›ÝÈ\Ý[™ÝZ\Ú\ÈH[š\]YK]š[Û][Ûˆ
+ŒÍLH8¡¤ˆ™[šYÛˆÜš]WØÛÛ[™Y\XØ]JHœ›ÛH[žHÝ\ˆ[œÙ\^Ù\[Ûˆ
+8¡¤ˆ™X[\œ›Ü˜X[Ý™XZÈ[\Y
+H[œÝXYÙˆX\ÚÚ[™È[˜Z[\™\È\È\XØ]\Ëˆ\ÝÎˆ\ÝØØWÚ[™Ù\ÝÜ\ÜËœX
+™XÛÛ˜Ú[X][Ûˆ[œ]Y]YK˜XÚÙš[\‹\ÛÝ\˜ÙH\ÛÛ][Û‹ŒK\YÙHÛÝ™\˜YÙK›Û‹YXÝØÚY[KÛÝ\˜ÙK\]Y\žKY˜Z[YÙ[œ]Y]YKY˜Z[YÛ\ÜÚYšXØ][ÛŠK\ÝÚ[™Ù\Ý[Û‹œX
+[š\]YK]œËZ[™œ˜H[œÙ\Û\ÜÚYšXØ][ÛŠK\ÝØØWÙÙ[™\˜][Û—ÝÛÜšÙ\‹œX
+™\]Z\™WÜ™X[Ü›ÝšY\ˆ™Y\Ù\ÈÈÛZ[HÚ][ØÚÊK\ÝÜØÚY[\—ØÛÛ™šYËœX
+ØNš[™Ù\Ý˜Z[YÜ\X[Û\ÜÚYšXØ][ÛŠH8 %MNÐH
+ÈØÚY[\ˆ
+ÈZYÜ˜][ÛœËXÛÛ˜XÝÜ™Y[‹ˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][ÛˆMˆ
+È‘T’Q–HˆHÝÙY\”ÎÈÙY\SP“WÔÐÒQSTY˜[ÙX[[H™X[ÐH›ÝšY\ˆY\\ˆ\È\›Ý™Y
+Ú]H[ØÚËØN™Ù[™\˜]X›ÝÈY\ÈžH\ÚYÛŠKˆŸÔT‹QÍˆ[ÛHÛÛœÛÛY][Ûˆ
+È™]žH
+˜XÚÙ[™
+HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][Ûˆ
+ŠŒN
+ŠˆYÈH[ÛH[[YH
+ÈÚÜ[]™Y\œÛÛ˜[\ÙY™]žH]Y]YHÛˆÐIÜÈÕÓˆX›\ËˆÝ\œ™[ØY™˜Z\œ×Ü™]žWÚ][\Ø
+\Ù\—ÚY]Y\Ý[Û—ÚY
+Š‘’ø¡¤˜˜[šÈÓˆSUH‘TÕ’PÕ
+Š‹ÛÝ\˜ÙWØ][\ÚY
+Š‘’ø¡¤˜][\ÈÓˆSUHÑU•S
+Š‹^[WÚYYWØ]^\™\×Ø]Ý]\Ø[™[™ØØÛÛœÝ[YYØ^\™Y[š\]YH
+\Ù\—ÚY]Y\Ý[Û—ÚY
+X
+NÈÝ\œ™[ØY™˜Z\œ×Ø][\Ü™\ÜÛœÙ\Ëš][WÜ›ÛX
+ÛÜ™XØ™]žWÝZ[
+HšXH›ÜØ\™ST‹ˆ”ÜÈ
+Ù\šXÙK\›ÛKÑPÕT’UHQ’S‘T‹ÙX\˜ÚÜ][›™Y
+Nˆ
+Š˜ØWÜ]Y\Ý[Û—ØÝ\œ™[Ü™[]˜[
+Šˆ
+[›Û[ÝY\™[][Ûˆ[YÜš]H™YXØ]H\ˆ]Y\Ý[ÛŠNÈ
+Š˜ØWÙ[œ]Y]YWÝÙYZÛWÜ™]žWÚ][\Ø
+Šˆ
+œ›ÛHH
+ŠœÝX›Z]YÙYZÛJŠˆ][\\Ù\ÈÝ[\™[]˜[[œÝÙ\™Y]Ü›Û™È]Y\Ý[ÛœÈ\È[™[™ØY[\Ý[ÓˆÓÓ‘“PÕÈ“ÕS‘ØYWØ]JÍÙ^\™\×Ø]X˜[šÈ™[]˜[˜ÙH[™
+NÈ
+Š˜ØWÙ[YÚX›WÜ™]žWÝZ[
+Šˆ
+Ù\™\ˆÝÛœÈÚXÚ[™[™ËÙYKÛ›Û‹Y^\™YÜ™[]˜[][\ÈX^H[\ˆHZ[
+NÈ
+Š˜ØWÜÝ\Û[ÛWØÝ\œ™[ØY™˜Z\œ×Ø][\
+Šˆ8 %Z\œ›ÜœÈH\™[™YÙYZÛHÝ\›Üˆ[ˆQUÔ’PSÓÔ‘H
+ØY[˜ÙOIÛ[ÛIØ[™NÈØÛÜKYØ]YÈÛÜ™H]\Ý\]X[H]]Üš]]]™H[YÚX›HÙ][ˆÜ™\ˆ8 %[™WÙYÜ˜YYØ[™WÜÙ]ÛZ\ÛX]Ú
+HTÈH\‹[X\›™\ˆ‘U–HRS
+Ø\YL8 %™]žWÝZ[ØØ\Ù^ÙYYYÈ›È\ÛÝ™\›\8 %™]žWÝZ[Ù\XØ]XØ™]žWÝZ[ÛÝ™\›\×ØÛÜ™XÈXXÚ[ˆÝÛ™Y[™[™Ø[YÚX›H][H8 %™]žWÝZ[Û›ÝÙ[YÚX›XØ™]žWÝZ[Û›ÝÜ™[]˜[
+K]™\žHœ›Þ™[ˆ›ÝÈÛÛ[]™\šYšYYœÈHÐÒÑQ˜[šÈ
+^Ø[œÝÙ\‹ÛÜ[ÛˆY
+Ý^
+KZ[›ÝÜÈÝ[\Y™]žWÝZ[
+È][\È›\YÈÛÛœÝ[YYÛÛ™›XÝ\ØY™H\ˆ
+\Ù\‹[ÛH[™JXÈ
+Š˜ØWÜÝÙY\Ù^\™YÜ™]žWÚ][\Ø
+Šˆ
+[™[™Ø8¡¤˜^\™Y\Ý^\™\×Ø]Û›Ë[Û™Ù\‹\™[]˜[8 %^\žH™]™\ˆ[]\È\ÝÜžJKˆÙ\šXÙH\Ø˜XÚÙ[™Ø\ØÝ\œ™[ØY™˜Z\œËÛ[ÛKœXˆ[œ]Y]YWÝÙYZÛWÜ™]žWÚ][\ØÝ\Û[ÛWØÝ\œ™[ØY™˜Z\œ×Ø][\[ÛWØÛÛœÛÛY][Û—Ü™\Ü
+ÛÜ™K]œË\™]žK]Z[ÛÛ\ÜÚ][Ûˆ
+ÈØÛÜ™KÝÛ™\œÚ\XÚXÚÙY
+KˆH
+Š˜ØNœ›Û[ÝK\ÝÙY\
+ŠˆÜ›Ûˆ›ÝÈ[ÛÈ^\™\È™]žH][\È
+Ú›Ø—ØØWÜ›Û[ÝWÜÝÙY\Y\™Ù\ÈØ\˜Ú]™Y™]žWÙ^\™YXÈÚ\×Û›ÛÜÜ™\Ý[\]Y
+Kˆ[ÛH\œ›ÜˆÚÙ[œÈ™YÚ\Ý\™Y[ˆ][\Ë—ÕSQWÕÒÑS”Øˆ“ÈX\Ý\žKÔÔ”ËÓZ\ÝZÙKP›ÛÚËØÛÜœ™XÝ[Û‹Û[ØÚËX][\Üš]Kˆ
+Š’Xˆ][˜Ú
+ÈX\›™\ˆRHY™\œ™Y
+Šˆ
+\ÈÍXJKˆ\ÝÎˆ\ÝØØWÛ[ÛWÜ™]žWÛZYÜ˜][Û‹œX
+NÔSXÛÛ˜XÝ
+K\ÝØØWÛ[ÛKœX
+ÛÜ™JÝZ[œ™Y^™KØ\ÛÜ™K[Ý™\›\^Û\Ú[Û‹ÛÜ™K[Û›K[œ]Y]YKYœ›ÛK]ÙYZÛK™\Ü
+K\]Y\ÝØØWÜ™]\™[Y[œXØ\ÝÜØÚY[\—ØÛÛ™šYËœX8 %Ý\œ™[ØY™˜Z\œÈ
+ÈØÚY[\ˆ
+ÈZYÜ˜][ÛœËXÛÛ˜XÝÜ™Y[ˆ
+MÍÊKˆÔTUÔˆS‘S‘Øˆ\HZYÜ˜][ÛˆN
+È[ˆ\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WØØWÛ[ÛWÜ™]žKœÜ[
+[YÚX›HZ[[ÛHÛÜ™JÝZ[Ý\Ý™\›\™Z™XÝÛÛœÝ[YKY[\Ý[™]\ÙK^\žHÝÙY\
+H8 %‘T’Q–H‹ˆÜ˜\YžXY™\œ™Y
+ÓHXœÙ[
+KˆŸÔT‹TMÈ]X[]\š\ÝXÈ]]Üš]HÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆÈÜ™X]\È]X[Ú]\š\ÝXÜØ
+ÝXÝ\™YœÛÛ˜ˆ\XØXš[]WÜ[XÚÜÝ]ÜÝ[™\™ÛY]ÙÝ˜\Ù\Ý[X][Û‹[™[™ø¡¤™\šYšYY™Z™XÝY™YY×ØÛÜœ™XÝ[Û˜Y™XÞXÛKØÛÜHÒPÒË›È^XÝYÝ[YWÜØ]š[™×ÜÝ
+H
+È]X[Ü]Y\Ý[Û—Ú]\š\ÝXÜØ[šÈ
+ÝÛˆ™]šY]Ù\—ÜÝ]\ÊH
+ÈÛ\×Ü™]šY]×Ü]X[Ú]\š\ÝXØ”È
+˜[œÚ][ÛˆX]š^
+ÈÐTÈ
+È]Y]Z\œ›ÜœÈŒMŠH8 %[Ù\šXÙK\›ÛH“Ëˆ\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜ]X[Ú]\š\ÝXÜËœXˆ™\šYšYY[Û›HÓÓ’•SÕU‘H™XYÈ
+[šÈ™\šYšYYS‘]\š\ÝXÈ™\šYšYYS‘XÝ]™JH
+ÈÜXË\ØÛÜY\Ý
+È™]šY]ÈÜ˜\\‹ˆ\ÝÎˆ\ÝÜ]X[Ú]\š\ÝXÜËœX
+LJH
+ÈÐ”ÝXˆ”È[][][Û‹ˆ›ÈÞ[KÜÚYÛ˜[ËÜ[›™\ˆ
+ÔT‹TNÔNJKˆÔTUÔˆS‘S‘Ø›Üˆ]™HZYÜ˜][Ûˆ\Kˆ
+ŠÛÛ[ÝY[ÈYZ[ˆRH
+ÈTHÛYH
+Œ‹LËLLŠNŠŠˆÛÛ[ÜÝY[ËœXYÈØYZ[‹ØÛÛ[\ÝY[ËÜ]X[Z]\š\ÝXÜØ\Ý
+ÜXËÝ\KÜÝ]\ËØXÜYÚ[˜][Û‹˜]ÚYÜXË[˜[YH[œšXÚY[
+H
+ÈÙ]
+ÈÜ™]šY]Ø
+]\š\ÝXÈ˜[œÚ][ÛˆX]š^ÝX\™8 %™YY×ØÛÜœ™XÝ[Û¸¡¤œ[™[™×™Z™XÝY™\šYšYY8¡¤›™YY×ØÛÜœ™XÝ[Û˜™Z™XÝY8¡¤œ[™[™ØÈ™[Ü[‹]™\šYšYY™\]Z\™\È›Ý\ÎÈ[YØ]\ÈÈHÝYWÛÜÈ™]šY]×Ú]\š\ÝXØ”ÈÜ˜\\ŽÈÛX\Üœ×Ù\œ›Ü˜^[™YÚ][˜[YÜ™]šY]Ù\—Û›Ý\Ø
+Kˆ™XYÈ™]\ÙHÜ™\]Z\™WØÛÛ[Ü™XYÈ™]šY]È\ÈÛÛ[ÜÝY[Ëœ™]šY]Øˆ‘Nˆ]X[Ú]\š\ÝXØÛÛ[\H[ˆÛÛ[ÝY[ËšœÞ
+Xœ˜\žH
+È™]šY]È]Y]YHXœÈÛ›H8 %›È[ËØ\ÜÚYÛˆ”È^\ÝÊK]X[]\š\ÝXÓXœ˜\žKšœÞ
+™XY[Û›Hœ›ÝÜÙH
+ÈØUV›Ü›][H˜]Ù\ˆšXH^\Ý[™ÈX]™[™\™\˜
+K]X[]\š\ÝXÔ™]šY]Ô]Y]YKšœÞ
+Y™XÞXÛH™]šY]ËÐTÈÛˆ^XÝYÜÝ]\Ø
+KÛÛ[ÝY[Ð\KšœØYÈ\Ý]\š\ÝXÜØØÙ]]\š\ÝXØØ™]šY]Ò]\š\ÝXØ
+ÈUT’TÕP×ÕTTØ
+ÈUT’TÕP×Ô‘U’QU×ÕS”ÒUSÓ”Øˆ›ÈÜ™X]KÙY]ØXÝ]˜]KØ\ÜÚYÛˆ]
+Y™\œ™Y8 %ZYÜ˜][ÛˆÈÚ\ÈÛ›HH™]šY]È”ÊKˆ\ÝÎˆ\ÝØÛÛ[ÜÝY[×Ü]X[Ú]\š\ÝXÜËœX
+MÊK‘HÛÛ[ÝY[Ë\ÝšœÞ
+
+ÌLJKˆ
+ŠÚXÚÜÜÝÎMH\™[š[™È
+Œ‹LËLLŠNŠŠˆZYÜ˜][Ûˆ—Ü]X[Ú]\š\ÝX×Ü™]šY]×ØØ\×Ü™X\ÛÛ‹œÜ[
+™[[X™\™Yœ›ÛHH8 %HØ\ÈÛZ[YYžHHÛÛ˜Ý\œ™[K[Y\™ÙYÔT‹TNØ[ËYÞ[HZYÜ˜][ÛŠH›ÜÊÜ™XÜ™X]\ÈÛ\×Ü™]šY]×Ü]X[Ú]\š\ÝXØÚ]X[™]ÜžHÙ^XÝYÝ\]YØ]
+ÛÛ[\™]š\Ú[ÛˆÐTÈ8 %H™]šY]Ù\ˆØ[ˆ™]™\ˆ™\šYžHH™]š\Ú[Ûˆ^HY›Ý™XYZ\œ›ÜœÈÛ\×Ü™]šY]×ÝÜš][™×Ü›Û\
+H
+ÈX[™]ÜžH8 $ÍLÚ\ˆÜ™X\ÛÛ˜\œÚ\ÝYÛˆH]Y]›ÝÎÈ™]šY]×Ú]\š\ÝXØÜ˜\\ˆ
+È›Ý]\ˆ›ÙH
+È‘HY\\‹ÙX[ÙÈØ\œžH^XÝYÝ\]YØ]
+Ø™X\ÛÛ˜ÈÐ”ÝXˆ[][][Ûˆ\]Yˆ‘Hš^\Îˆ]X[]\š\ÝXÓXœ˜\žK˜Z[\Ý\˜[\Ø
+Ø\ÈÙ\šX[^š[™È[™Yš[™Yš[\ˆ\˜[\È8¡¤ˆ˜XÚÙ[™š[\™Y]™\ž][™ÈÝ]
+K™]šY]ÈX[ÙÈ›ÝÈ™[™\œÈ]™\žHØ[›ÛšXØ[šY[
+\XØXš[]WÜ[XØÝ[™\™ÛY]ÙØÛÜšÙYÙ^[\XØÛÛ[[Û—Ý˜\ØÙ^\Ý[™È™]šY]Ù\—Û›Ý\Ø
+K™]šY]È]Y]YH^ÜÙ\ÈH™Z™XÝYš[\ˆ
+XZÙ\È™Z™XÝY8¡¤œ[™[™Ø™XXÚX›JKˆ\ÝÎˆ
+ÌÈ˜XÚÙ[™
+ÍH‘H
+[\Û˜\ÚÝX[ÙË™Z™XÝY8¡¤œ[™[™ÈÝX›Z][™Yš[™Y\\˜[H™YÜ™\ÜÚ[ÛŠKˆÔTUÔˆS‘S‘Ø›Üˆ]™Hˆ\KˆŸÔT‹TÌÈ™X\ÛÛš[™ÈÝ˜]YÞH]]Üš]H
+ÈÛÛ[ÝY[ÈÓÑKQ’VQSQUSÓˆS‘S‘ÈÛÛ˜XÝˆØÜËØ\˜Ú]XÝ\™KÜÛÛ][Û‹\Ý˜]YÚY\ËZ[\›Ý™[Y[[X‹›Y0©Î
+ÈØÜËÜÝ]\ËÑÔT‹TÛÛ][Û‹TÝ˜]YÚY\ËR[\›Ý™[Y[SX‹PÚXÚÛ\ÝLŒ‹LËLM›YˆH™X\ÛÛš[™Ë[[™H\]Z]˜[[ÙˆÔT‹TMËZ\œ›Üš[™È]^XÝH
+™]šY]Ë[Û›JKˆZYÜ˜][ÛˆŒ—Ü™X\ÛÛš[™×ÜÝ˜]YÞWØ]]Üš]KœÜ[Ü™X]\È™X\ÛÛš[™×ÜÝ˜]YÚY\Ø
+ÝXÝ\™YœÛÛ˜ˆ\XØXš[]WÜ[XÈ\\È\›ØXÚÜ]\›‹Ù[[Z[˜][Û‹ÙXYÜ˜[WÛY]ÙÜÙ]ÛY]ÙÝ˜\È[™[™ø¡¤™\šYšYY™Z™XÝY™YY×ØÛÜœ™XÝ[Û˜Y™XÞXÛNÈØÛÜHÒPÒÎÈX\›™\‹XÛÛ[ÛÛ[[œÈÝ[™\™ÛY]ÙØ˜\Ý\—ÛY]ÙØÙ^WÛØœÙ\˜][Û˜ØÛÜšÙYÙ^[\XØÛÛ[[Û—Ý˜\ØØ›Ü›][WÛ]^˜[YYÈX]ÚHÚ\™YÈÛÈÔT‹TÍ›Ú™XÝ[Ûˆ\ÈHÝ˜ZYÚÛÜJH
+È™X\ÛÛš[™×Ü]Y\Ý[Û—ÜÝ˜]YÚY\Ø[šÈ
+ÝÛˆ™]šY]Ù\—ÜÝ]\È
+È™[]˜[˜ÙK[š\]YH
+]Y\Ý[Û—ÚYÝ˜]YÞWÚY
+X
+H
+ÈÛ\×Ü™]šY]×Ü™X\ÛÛš[™×ÜÝ˜]YÞX”È
+˜[œÚ][ÛˆX]š^
+ÈX[ÐTÈÛˆ^XÝYÜÝ]\Ø
+Š˜[™
+ŠˆÛÛ[^XÝYÝ\]YØ]
+ÈX[™]ÜžH8 $ÍLÚ\ˆ™X\ÛÛ˜
+ÈYZ[—Ø]Y]ÛÙÜØ›ÝÈ8 %›ÛÈZYÜ˜][Ûˆ‰ÜÈ\™[š[™È[ÈHš\œÝ[™[™ÊH8 %[Ù\šXÙK\›ÛH“Ë[›Û‹Ø]][XØ]Y™]›ÚÙYˆ\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜ™X\ÛÛš[™×ÜÝ˜]YÚY\ËœXˆ™]šY]×ÜÝ˜]YÞX”ÈÜ˜\\ˆ
+X\›™\ˆ˜]ÚY™XYY™\œ™YÈÔT‹TÍ
+KˆÛÛ[ÜÝY[ËœXYÈØYZ[‹ØÛÛ[\ÝY[ËÜ™X\ÛÛš[™Ë\Ý˜]YÚY\Ø\Ý
+ÜXËÝ\KÜÝ]\ËØXÜYÚ[˜][Û‹˜]ÚYÜXË[˜[YH[œšXÚY[
+H
+ÈÙ]
+ÈÜ™]šY]Ø
+™X\ÛÛš[™È˜[œÚ][Û‹[X]š^ÝX\™Y[XØ[ÈH]\š\ÝXÈÛ™NÈ™[Ü[‹]™\šYšYY™\]Z\™\È›Ý\ÎÈÜ™\]Z\™WØÛÛ[Ü™XY™XYØ]KÛÛ[ÜÝY[Ëœ™]šY]Ø™]šY]ÈØ]JKˆ‘Nˆ™X\ÛÛš[™×ÜÝ˜]YÞXÛÛ[\H[ˆÛÛ[ÝY[ËšœÞ
+Xœ˜\žH
+È™]šY]È]Y]YHXœÈÛ›H8 %ZYÜ˜][ÛˆŒˆÚ\ÈÛ›HH™]šY]È”ÊK™X\ÛÛš[™ÔÝ˜]YÞSXœ˜\žKšœÞ
+™XY[Û›Hœ›ÝÜÙH
+ÈØUV›Ü›][H˜]Ù\ˆšXH^\Ý[™ÈX]™[™\™\˜
+K™X\ÛÛš[™ÔÝ˜]YÞT™]šY]Ô]Y]YKšœÞ
+Y™XÞXÛH™]šY]ËX[ÐTÊKÛÛ[ÝY[Ð\KšœØYÈ\ÝÝ˜]YÚY\ØØÙ]Ý˜]YÞXØ™]šY]ÔÝ˜]YÞX
+È‘PTÓÓ’S‘×ÔÕUQÖWÕTTØ
+È‘PTÓÓ’S‘×Ô‘U’QU×ÕS”ÒUSÓ”Øˆ›ÈÜ™X]KÙY]ØXÝ]˜]KØ\ÜÚYÛ‹Û[šË\™]šY]ËÜ™]šY]È]8 %Y™\œ™YÈ
+Š‘ÔT‹TÌØŠŠˆ
+\ÈÔT‹TMÈY™\œ™Y]X[]]Üš[™ÈÈÔT‹TÌŠNÈÝÜÈ™Y›Ü™HX\›™\ˆ[]™\žH
+ÔT‹TÍ
+Kˆ\ÝÎˆ\ÝØÛÛ[ÜÝY[×Ü™X\ÛÛš[™×ÜÝ˜]YÚY\ËœX
+NH›Ý]\ŠK‘HÛÛ[ÝY[Ë\ÝšœÞ
+
+ÍŠKˆ[H[™\[™[ÙˆÔT‹TÌKÔÌ‹ˆ‘T’Q–H˜
+ZYÜ˜][Ûˆ™[[X™\™YÈŒˆY\ˆŒH[™YÛˆXZ[ˆ8 %™XÛÛ˜Ú[H™Y›Ü™H\JH
+ÈÔTUÔˆS‘S‘Ø›Üˆ]™HŒˆ\H
+È“È›ÛÙ‹ˆ
+Š‘ÔT‹TÌØˆTUH
+ÓÑKQ’VQ‘T’Q–HŠNŠŠˆÛÝ™\›™Y™\šYšYYÛÛ[][™YÚ]“ÈZYÜ˜][Û‹Z\œ›Üš[™ÈÔT‹TÌˆ8 %Ù\šXÙK\›ÛHS”ÑT•[È™X\ÛÛš[™×ÜÝ˜]YÚY\ØØ™X\ÛÛš[™×Ü]Y\Ý[Û—ÜÝ˜]YÚY\Ø
+ÈH^\Ý[™ÈÛ\×Ü™]šY]×Ü™X\ÛÛš[™×ÜÝ˜]YÞX”ÈÈ™XXÚ™\šYšYY[šÈ™\šYšYYžHÙ\šXÙK\›ÛHTUKˆ™]ÈÔSˆ\ÜÝ\X˜\ÙKØÚXÚÜËÜ™X\ÛÛš[™×ØÛÛ[Ü™XY[™\Ü×Ü™Y›YÚœÜ[\ÜÝ\X˜\ÙKÜÙYYËÜ™X\ÛÛš[™×ÜÝ˜]YÞWÙ[[×ÜÜØ×ØÙÛœÜ[
+ˆÛÙ[™ËQXÛÙ[™ÈÝ˜]YÚY\È™\šYšYYšXHH]Y]Y”È
+ÈH™\šYšYY[šÈÛˆH™XXÚX›H[[È]Y\Ý[ÛŠK\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WÜ™X\ÛÛš[™×ÜÝ˜]YÞWÜ™XY[™\ÜËœÜ[
+›Û˜XÚË[Û›HÛÛš[˜Ý]™KYØ]H›ÛÙŠKˆ[ÛÛ[ÝY[È]]Üš[™ÈRH
+™]È”ÜÈHZYÜ˜][ÛŠH™[XZ[œÈH˜XÚÙY›ÛÝË]\ˆÝX›Z]Y\™]šY]È]šY[˜ÙH™[Û™ÜÈÈÔT‹TÍˆ‘T’Q–H˜ˆ[ˆ™Y›YÚ8¡¤ˆÙYY8¡¤ˆ˜[Y][ÛˆYØZ[œÝÝYÚ[™ËˆŸÔT‹TÍ™X\ÛÛš[™ÈX\›™\ˆ[]™\žHÓÑKQ’VQSQUSÓˆS‘S‘ÈH™X\ÛÛš[™ÈÚ[ˆÙˆÔT‹TÌKYÙÙY[ÈHØ[YHYÙÜ™YØ]Ü‹ˆ™X\ÛÛš[™×ÜÝ˜]YÚY\ËœÝ˜]YÚY\×Ù›Ü—Ü]Y\Ý[ÛœØ
+˜]ÚYˆÓ‘H[šÈ
+ÈÓ‘HÝ˜]YÞH]Y\žNÈÛÛš[˜Ý]™HØ]H8 %[šÈ™\šYšYYS‘Ý˜]YÞH™\šYšYYS‘XÝ]™HS‘Ø[›ÛšXØ[T™X\ÛÛš[™ÈØÛÜHX]ÚÈH[X™YY˜[šË\]Y\Ý[ÛˆÜXËÛZXÜ›ÝÜXÎÈ›ÈÜ›ÜÜË\]Y\Ý[Û‹ØÜ›ÜÜË\ÝXš™XÝXZÎÈ]\›Z[š\ÝXÈÜ™\ŽÈ˜Z[\ÛÙ
+HZ\œ›ÜœÈ]X[Ú]\š\ÝXÜËš]\š\ÝXÜ×Ù›Ü—Ü]Y\Ý[ÛœØ^XÝKˆ™YÚ\Ý\™Y\ÈHÛÝ\˜ÙH[ˆÛÛ][Û—ÜÝ˜]YÚY\ËœX
+Ü›Ú™XÝÜ™X\ÛÛš[™ØÝXš™XÝÙ˜[Z[OIÜ™X\ÛÛš[™ÉØ^XÚ][ÝÛ\Ý8 %ÛÝ™\›˜[˜ÙHšY[È›ÜYžHÛÛœÝXÝ[ÛŽÈ™X\ÛÛš[™ÈÛÛ[[œÈ[™XYHË[˜[YYÛÈ›Ú™XÝ[Ûˆ\ÈHÝ˜ZYÚÛÜH[˜ÛˆÙ^WÛØœÙ\˜][Û˜
+Kˆ[ØÚ×Ù[™Ú[™K™Ù]Ü™]šY]Ø\ÈSÒS‘ÑQ8 %][™XYH˜]Ú\ÈHYÙÜ™YØ]ÜˆÛ˜ÙKÛÈ™X\ÛÛš[™ÈÝ˜]YÚY\È›ÝÈ]XÚÈÛÛ][Û—ÜÝ˜]YÚY\Ø[Û™ÜÚYH]X[ˆ‘H[˜Ú[™ÙYˆHÝXš™XÝXYÛ›ÜÝXÈÛÛ][Û”Ý˜]YÞT[™[[™XYH™[™\œÈÙ^WÛØœÙ\˜][Û˜ˆ
+Š“›ÈZYÜ˜][Û‹›È“ÈÚ[™ÙKŠŠˆHÚ[™ÛHØ[›ÛšXØ[]Y\Ý[ÛˆØ\œšY\ÈÓ‘HÜXÈØÛÜKÛÈZ^YY˜[Z[HÛÛ[ÛˆÛ™H™X[]Y\Ý[Ûˆ\È[\ÜÜÚX›HžHÛÛœÝXÝ[Ûˆ8 %HØ]H[™›Ü˜Ù\ÈÜ›ÜÜË\ÛÝ\˜ÙHTÓÓUSÓ‹›ÝÛËX\X\˜[˜ÙKˆ\ÝÎˆ\ÝÜ™X\ÛÛš[™×ÜÝ˜]YÚY\×Ù[]™\žKœX
+LH8 %Û™K\]Y\žKØ]KØÛÜKØÜ›ÜÜË\ÝXš™XÝ›ØÚË\ÛÛ][Û‹›Ú™XÝ[Û‹\Ýš\YÙÜ™YØ]Üˆ][K\ÛÝ\˜ÙHÛÛ\ÜÚ][ÛˆÚ]\‹\ÝXš™XÝ\ÛÛ][Û‹˜Z[\ÛÙÙ]Ü™]šY]È]XÚ
+K‘HÛÛ][Û”Ý˜]YÞT[™[\ÝšœÞ
+
+ÌH™X\ÛÛš[™ÈÙ^WÛØœÙ\˜][Û˜Ø\ÙJKˆ]™HÝX›Z]Y\™]šY]È›ÛÙˆ
+Š˜›ØÚÙYÛˆÔT‹TÌØŠŠˆ
+›ÈÛÝ™\›™Y™X\ÛÛš[™È]]Üš[™ËÜÙYYY]8 %Ø[YHÜÝ\™HÔT‹TÌHYÝØ\™ÔT‹TÌŠKˆ›ÈÙ]ÜÝ[][\È[]™\žH
+ÔT‹TÍÊK›È›Û‹]™\˜˜[
+ÔT‹TÎJKˆŸÔT‹TÍˆ[\›Ý™[Y[Xˆ\œÛÛ˜[^™Y™YYÈÓÑKQ’VQSQUSÓˆS‘S‘Èš[ÈHÔT‹TÍH[›™YÙXÝ[Û˜XÙZÛ\œÈÚ]™X[\œÛÛ˜[^™Y]X[
+Y]ÙÈ	ˆÚÜÝ]ÊH
+È™X\ÛÛš[™È
+\›ØXÚ\È	ˆ]\›œÊH™YYËˆÝYWÛÜËÚ[\›Ý™[Y[ÛX‹œNŽ˜Z[Ù™YYˆ“ÕS‘QÝÛ™\‹\ØÛÜY›Ú™XÝ[ÛˆÝ™\ˆHØ[\‰ÜÈÕP“RUQ[ØÚÈ\ÝÜžH8 %™XÙ[][\È
+™\H\Ù\—ÚY
+È™\HÝ]\Ï\ÝX›Z]Y[Z]Ì
+H8¡¤ˆZ\ˆ™\ÜÛœÙH]Y\Ý[ÛœÈ
+›Ý[™YŒ
+H8¡¤ˆH™\šYšYY[Û›HU‘HÛÛ][Û‹TÝ˜]YÞHÙ]šXHHÚ\™YÛÛ][Û—ÜÝ˜]YÚY\ØYÙÜ™YØ]Üˆ
+™]™\ˆH[[Xœ˜\žH[\
+H8¡¤ˆ\‹\Ý˜]YÞH]šY[˜ÙH
+[Y\×ÜÙY[˜ØÜ›Û™×ØÛÝ[ØÛÜœ™XÝØÛÝ[Ø\ÝÜÙY[—Ø]Ø›Ý[™YÛÝ\˜ÙWÜ]Y\Ý[Û—ÚYØ
+H8¡¤ˆ˜[šÙYÜ›Û™ËX\ÜÛØÚX]Y	ˆ™XÙ[š\œÝ[ˆ™[]˜[˜ÙK[ˆÝX›H˜[YKÚYˆ˜Z[\ÛÙ
+[žH™XY\œ›Üˆ8¡¤ˆ×X™]™\ˆL
+NÈÛÝ™\›˜[˜ÙHÝš\YžHÛÛœÝXÝ[Ûˆ
+YÙÜ™YØ]ÜˆÈÛ›JNÈ›ÈØ]™Y\Ý˜]YÞHX›K›È[›™\ˆÜš]\Ë›È\™Ù]\ÛÛ™K][YKˆ[™Ú[ÈÑUØ\KÜÝYKÚ[\›Ý™[Y[[X‹ÞÜ]X[™X\ÛÛš[™ßXÛˆHÝYWÛÜËœX›Ý]\ˆ
+Ù]ØÝ\œ™[Ý\Ù\˜Ù]ÜÝ\X˜\ÙWØYZ[˜
+Kˆ‘NˆÝ˜]YÞQ™YYÙXÝ[Û˜
+›Ý\‹\Ý]KZ\œ›ÜœÈ^UÜš][™Ñ\œ›ÜœØ
+H
+ÈÝ˜]YÞQ™YYØ\™
+]šY[˜ÙHÚ\È
+ÈÈšY[ËØUV›Ü›][HšXH^\Ý[™ÈX]™[™\™\˜
+H
+È\ÙTÝ˜]YÞQ™YY
+Ü˜\È\ÙP\PÛÛXÝ[Û˜
+NÈ[\›Ý™[Y[X‹šœÞÝØ\ÈHÛÈ[›™YÙXÝ[Û˜ËÙXÝ[Ûˆ\ÝYËÚ\ÛÛ][Ûˆ™\Ù\™Yˆ
+Š“›ÈZYÜ˜][Û‹›È“ÈÚ[™ÙKŠŠˆ\ÝÎˆ\ÝÚ[\›Ý™[Y[ÛX‹œX
+L
+K‘HÝ˜]YÞQ™YYÙXÝ[Û‹\ÝšœÞ
+
+H
+È\]Y[\›Ý™[Y[X‹\ÝšœÞˆ]™H›ÛÙˆ[™[™ÈÙYYY™\šYšYYÛÛ[
+]X[HÔT‹TÌˆ™\Ù[È™X\ÛÛš[™ÈHÔT‹TÌØ‹ˆÎNMŠKˆŸÔT‹TNØ[Ý[][ÛˆÞ[H
+ÈÚYÝÈÚYÛ˜[ÈÓÑKQ’VQSQUSÓˆS‘S‘ÈZYÜ˜][ÛˆHÜ™X]\ÈØ[×ÙÞ[WÜÙ\ÜÚ[ÛœØØØ[×ÙÞ[WÜÙ\ÜÚ[Û—Ú][\Ø
+œ›Þ™[ˆÙYY
+Ú][\ËÙ\™\‹[ÝÛ™Y[œÝÙ\œËÛ[Z]ÊH
+È]X[Ü\™›Ü›X[˜ÙWÜÚYÛ˜[Ø
+ÚX›[™Ë™\œÚ[Û™YÛXÞWÝ™\œÚ[Û˜•SËS“ÕQTÕSÕØÛÜH\Ù\
+H8 %[Ù\šXÙK\›ÛH“ËˆÝYWÛÜËØØ[×ÙÞ[KœXˆ]\›Z[š\ÝXÈÙYYYÙ[™\˜]Üˆ›ÜˆHÚÚ[È
+X›\ËÜÜ]X\™\ËØÝX™\ËÜ›ÛÝËÙœ˜XÝ[Û¸¡¥	KÜ˜][ËØ\›ÞÜ]\›œÊKÜ™X]WÜÙ\ÜÚ[Û˜ÝÛ™\‹\ØÛÜYX\›™\ˆ›Ú™XÝ[Ûˆ
+[œÝÙ\œÈY[ˆ[[ÝX›Z]
+K[™Y[\Ý[ÝX›Z]ÜÙ\ÜÚ[Û˜ØÛÜš[™ÈYØZ[œÝœ›Þ™[ˆ[œÝÙ\œËˆÝYWÛÜËÜ]X[ÜÚYÛ˜[ËœXˆ\š]™WÜÚYÛ˜[Ø
+0©ÌËŒÈ^Û\Ú[ÛœÈ8 %[˜[œÝÙ\™YÞ™\›Ë][YKÙ^™[YKYÙ[ÈX™[È[œÝY™šXÚY[ØÛÛ˜Ù\Ø\XØ][Û‹ÜÜYYØØ[Ý[][Û‹ÜÝX›JH
+ÈÚYÝÈ\œÚ\ÝÜÚYÛ˜[Ø
+\Ù\È
+Š›™]™\ˆÜš]\È\Ù\—ÝÜX×ÛX\Ý\žX
+ŠŽÈX\Ý\žWÙ[XŽMHÙZYÚ[™È[ÝXÚY
+KˆÚXÚÜÜÝÎM\™[š[™È
+ˆ›Ý[™ÊNˆÜ™X]H
+ÈÝX›Z]\™HÚ[™ÛK]˜[œØXÝ[Ûˆ”ÜÈ
+Ü™X]WØØ[×ÙÞ[WÜÙ\ÜÚ[Û˜ÈÝX›Z]ØØ[×ÙÞ[WÜÙ\ÜÚ[Û˜
+H8 %]ÛZXÈ\™[
+ØÚ[ÝÛ™\‹\ØÛÜY“ÔˆTUXÝ]JÙXY[™H[™›Ü˜ÙYœ›Þ™[‹X[œÝÙ\ˆØÛÜš[™Ë[™›Ý[™YÛY[[Z[™Ëˆ
+Š“X\›™\ˆ[[YNŠŠˆ]X[ÛXÞH›ÝÈÚ\™\ÈØ[Ý[][Û—ÙÞ[X[™\[™[HÙˆTH[™[ÜžNÈÝXš™XÝÜ˜XÝXÙKœX][˜Ú\ÈHÙ\™\‹[ÝÛ™YŒ\]Y\Ý[Û‹ÌN\ÙXÛÛ™X›\ÈÙ\ÜÚ[ÛŽÈØ[×ÙÞ[WÜ˜XÝXÙKœX^ÜÙ\ÈÝÛ™\‹\ØÛÜYÑU
+È]ÛZXÈÝX›Z]ÈØ[Ý[][Û‘Þ[TÚ[šœÞ›ÝšY\ÈHÙ^X›Ø\™\ÝX›Z]˜\YYš\™H[Y\‹XY[™HÚ]˜]Ø[ØY[™ËÙ\œ›Ü‹Ù^\™YÜ™\Ý[Ý]\Ë[™ÜÝ\ÝX›Z][œÝÙ\ˆ™]™X[[™\ˆÝYTÚ[Ú]›È™]ÈÚYX˜\‹ˆ›ØÝ\ÙY˜XÚÙ[™L\ÜÙYÈœ›Û[™LÈ\ÜÙYˆNH[›™\‹ÛX\Ý\žHXÝ]˜][Ûˆ™[XZ[œÈ›ØÚÙY[™[ÝXÚYˆÔTUÔˆS‘S‘Ø›Üˆ]™HZYÜ˜][ÛˆH\H
+ÈÛXÚË]›ÝYÚ›ÛÙ‹ˆŸÔT‹TNH]X[[›™\ˆXÝ]˜][ÛˆS“‘Q8 %“ÐÒÑQÛˆ[™HHØ]H™\œÚ[Û™Y™\ÚÛÛXÞNÈ]\š\ÝXÈ
+ÈÞ[H™XÛÛ[Y[™][ÛœÎÈØ[˜\žKˆÙ\\˜]HÛÝ™\›™YXÚ\Ú[ÛˆÛˆ^\Ý[™È[YHÙZYÚ[™È
+ÛÈÜš]\œÊKˆŸÔT‹TÌH]X[ÛÛ][ÛˆÝ˜]YÞH[]™\žHÓÑKQ’VQSQUSÓˆS‘S‘Èš\œÝX\›™\‹Y˜XÚ[™ÈÛÛœÝ[Y\ˆÙˆHÔT‹TMÈ]]Üš]KˆÛÛ˜XÝˆØÜËØ\˜Ú]XÝ\™KÜÛÛ][Û‹\Ý˜]YÚY\ËZ[\›Ý™[Y[[X‹›Y
+È^XÈÚXÚÛ\ÝÔT‹TÛÛ][Û‹TÝ˜]YÚY\ËR[\›Ý™[Y[SX‹PÚXÚÛ\ÝLŒ‹LËLM›Yˆ™]ÈÝYWÛÜËÜÛÛ][Û—ÜÝ˜]YÚY\ËœX
+›Ü›X[^™YX\›™\ˆÈSÕÑQÑ’QSØÈ]X[›Ú™XÝ[Ûˆ™[˜[Y\È]\š\ÝX×Ý\x¡¤œÝ˜]YÞWÝ\XÚÜÝ]ÛY]Ù8¡¤™˜\Ý\—ÛY]ÙÝXš™XÝÙ˜[Z[OIÜ]X[	ØÛÝ™\›˜[˜ÙHšY[È›ÜYžHÛÛœÝXÝ[ÛŽÈ\‹\ÛÝ\˜ÙH˜Z[\ÛÙ
+H
+È]X[Ú]\š\ÝXÜËš]\š\ÝXÜ×Ù›Ü—Ü]Y\Ý[ÛœØ
+˜]ÚYˆÓ‘H[šÈ
+ÈÓ‘H]\š\ÝXÈ]Y\žKÛÛš[˜Ý]™H™\šYšYY
+ØXÝ]™HØ]K›ÈÜ›ÜÜË\]Y\Ý[ÛˆXZË]\›Z[š\ÝXÈÜ™\ŠKˆ[ØÚ×Ù[™Ú[™K™Ù]Ü™]šY]Ø]XÚ\ÈÛÛ][Û—ÜÝ˜]YÚY\Ø\ÈHU‘HÚX›[™ÈÙˆ]Y\Ý[Û—ÜÛ˜\ÚÝ
+™]™\ˆœ›Þ™[ŠH8 %™YÝ[\ˆ
+ÈÙ[™\˜]Y[ØÚÈÚ\™HH]ˆ‘NˆÛÛ][Û”Ý˜]YÞT[™[šœÞ
+™]šY]Ë[Û›K[Ú[ˆ[\KØUVšXH^\Ý[™ÈX]™[™\™\˜
+H[Ý[YÓÑH[ˆ]Y\Ý[Û”™[™\™\‹šœÞÈ[ØÚÔ™]šY]ËšœÞ™XYÈÝ\œ™[œÛÛ][Û—ÜÝ˜]YÚY\ÈÏÈ×Xˆ
+Š“›ÈZYÜ˜][Û‹›È“ÈÚ[™ÙKŠŠˆ\ÝÎˆ\ÝÜÛÛ][Û—ÜÝ˜]YÚY\ËœX
+L8 %˜]ÚYÛ™K\]Y\žKØ]K\ÛÛ][Û‹›Ú™XÝ[Û‹\Ýš\˜Z[\ÛÙÙ]Ü™]šY]È]XÚ
+K‘HÛÛ][Û”Ý˜]YÞT[™[\ÝšœÞ
+JKˆY™\œ™Yˆ™X\ÛÛš[™ÈÛÝ\˜ÙH
+ÔT‹TÍ
+K[\›Ý™[Y[Xˆ™[˜[YH
+ÔT‹TÍJK\œÛÛ˜[^™Y™YYÈ
+ÔT‹TÍŠKˆ‘T’Q–H˜›Üˆ]™H™\šYšYYXÛÛ[\X\š[™È[ˆ™]šY]ËˆŸÔT‹TŒˆ™X\ÛÛš[™È›Û‹]™\˜˜[S“‘Q8 %Q‘T”‘Q
+˜[YYÛÝ™\˜YÙHØ\
+H›Û‹]™\˜˜[ÈšYÝ\™HÜ[ÛœÈÈÜ[ÛˆYYXKˆ8 $ÍL	HÙˆÔÐÈÒI”™X\ÛÛš[™ÎÈÝ]ÙˆŒHØÛÜH]˜XÚÙYÛÈ”™X\ÛÛš[™ÈÚ\Yˆ\È›ÝÝ™\œÝ]YˆŸÔT‹TŒL™X\ÛÛš[™È^Ù]ÈÓÑKQ’VQSQUSÓˆS‘S‘È
+\X[ˆ[YYÜ˜XÝXÙHÛXÙJH™X\ÛÛš[™È˜[Z[HÚ\™\ÈÜX×Ü\X
+ÜX×Ü˜XÝXÙJH
+ŠŠÈ[YYÜ˜XÝXÙX
+Šˆ[ˆÝXš™XÝÜ[[YWÜÛXÞX8 %Ý\™˜XÙYÛˆHX‹\Ü]ÚYšXHÓUSÒÒS‘T”Øˆ
+Š‘˜[Z[KYØ]Y][˜Ú
+Šˆ
+ÚXÚÜÜÝÎMŒŒK™K\™]šY]ÈŒŠNˆH[™Ú[™\ÛÛ™\ÈH]ÝXš™XÝšXHÝXš™XÝËœ™\ÛÛ™WÜÝXš™XÝÙ˜[Z[X8¡¤ˆ
+˜[Z[KÛ›ÝÛŠX[™
+JH
+Š™˜Z[ÈÛÜÙY
+ŠˆÚ[ˆHÝXš™XÝ\È›Ý[ˆH^[IÜÈØÚÙYÛÝ™\˜YÙHÜˆH™XY˜Z[È
+Û›ÝÛQ˜[ÙX8¡¤ˆŒ‹™]™\ˆHÙ[™\šXÈÛXÞJK[™
+ŠH™Z™XÝÈ[žH[ÙH›Ý[ˆ]˜[Z[IÜÈÚ\™YÜ[[YWÛ[Ù\Ø
+[YYÜ˜XÝXÙH\È™X\ÛÛš[™Ë[Û›H[ˆŒNÈ™Z™XÝY›Üˆ]X[Ñ[™Û\Ú
+Kˆ
+Š”Ú[™ÛH[™›Ü˜ÙYXY[™JŠˆ
+™K\™]šY]ÈŒJNˆÝ\Ü\WÜ˜XÝXÙXÙ]È^\™\×Ø]HHÚÜ[YYÚ[™ÝÈ›Üˆ[YY˜XÝXÙH
+Ù\™\‹[ÝÛ™YÙXÛÛ™×Ü\—Ü]Y\Ý[Û˜
+H[™HX˜[™Û›Y[›Üˆ[[YYˆ[[[YH]È
+Ù]Ø][\Ø]™WØ[œÝÙ\˜ÝX›Z]]]Ë\ÝX›Z]ÜÝÙY\\ŠH[™›Ü˜ÙH]Û™H^\™\×Ø]8 %H[YYÛØÚÈ\È]]Üš]]]™K›Ý\Ü^K[Û›Kˆ[ØÚ×Ù[™Ú[™K™Ù]Ø][\Ý\™˜XÙ\È[YWÜ™[XZ[š[™×ÜÙXØœ›ÛH^\™\×Ø]^Ù\
+Š[[YY˜XÝXÙH8¡¤ˆ›Û™X
+Šˆ
+Ú[™[™\œÈKX›ÈÛÝ[ÝÛ‹Ø]]Ë\ÝX›Z]
+NÈ™X[[ØÚÜÈ[˜Ú[™ÙYˆ\ÝÎˆ\ÝÜ\WÜ˜XÝXÙKœX
+[YYÚÜYXY[™H[™›Ü˜ÙY]HØ]™H™Z™XÝY\ÝXY[™K[[YY›Û™H
+ÈÛ™È
+K\ÝÜÝXš™XÝÜ˜XÝXÙWÙ[™Ú[œX
+˜[Z[HØ]H]X[
+Ù[™Û\Ú™Z™XÝY˜Z[XÛÜÙYÛˆ[šÛ›ÝÛˆÝXš™XÝ
+K\ÝÜÝXš™XÝÜ[[YWÜÛXÞKœX‘H[ØÚÐ][\Ú[[Y\‹\ÝšœÞˆ˜XÚÙ[™ÝYWÛÜÈLÍ\ÜÎÈ‘HÚ[N\ÜËˆ
+Š‘Y™\œ™YŠŠˆ™X\ÛÛš[™×ÜÙ]
+Ú\™YÝ[][\ÈÙ]ÊH™YYÈHÝ[][\ËYÜ›Ý\YÙ[XÝÜŽÈ]X[X^HYÜ[YYÜ˜XÝXÙX[ˆ]È[™Kˆ›È›Û‹]™\˜˜[ÛÜ[Û‹[YYXKˆŸÔT‹TÌˆ]X[ÛÛ[™XY[™\ÜËÜÙYYÓÑKQ’VQ‘T’Q–HˆÛÛ\]\ÈH]K\™XY[™\ÜÈÛXÙHÚ]Ý]HZYÜ˜][Û‹ˆ
+Š”™Y›YÚ
+Šˆ\ÜÝ\X˜\ÙKØÚXÚÜËÜ]X[ØÛÛ[Ü™XY[™\Ü×Ü™Y›YÚœÜ[ÛÝ[ÈÛ›HÝX›K]™\šYšYYXÝ]™H]\š\ÝXÈÝ\™˜XÙ\ÈÚÜÙH˜[šÈ›ÝÜÈ\ÜÈH[ØÚË\\[[™H™\šYšYYÛ]™KÜX›\ÚYØ]Kˆ
+Š”ÙYY
+Šˆ\ÜÝ\X˜\ÙKÜÙYYËÜ]X[Ú]\š\ÝX×Ù[[×ÜÜØ×ØÙÛœÜ[]]ÜœÈ[™[™È›ÝÜË™\]Z\™\ÈH™X[Ü\˜]ÜˆXÝÜ‹™\šYšY\È]\š\ÝXÜÈ›ÝYÚH]Y]YÛ\×Ü™]šY]×Ü]X[Ú]\š\ÝXØ”Ë™\ÛÛ™\ÈÛÛ™›XÝÈžH]\š\ÝX×ØÛÙX[™™\šYšY\ÈÛ™H[YÚX›H]Y\Ý[Ûˆ[šÈ›ÝYÚHØÝ[Y[YÙ\šXÙK\›ÛH]ˆ
+Š”›ÛÙŠŠˆ\ÜÝ\X˜\ÙKÝ˜[Y][Û‹Ý˜[Y]WÜ]X[Ú]\š\ÝX×Ü™XY[™\ÜËœÜ[\È›Û˜XÚË[Û›H[™\ÜÙ\ÈHÝ]\ËÜ™X\ÛÛ‹Ø]Y]ØÛÛš[˜Ý]™HØ]\Ëˆ
+Š”ÝX›Z]Y\™]šY]È]šY[˜ÙH™[XZ[œÈ›ØÚÙYÛˆÔT‹TÌJŠˆ™XØ]\ÙH]\š\ÝXÜ×Ù›Ü—Ü]Y\Ý[Û˜\È›È™]šY]Ë\^[ØYÛÛœÝ[Y\ˆY]È\™XÝ[\ˆ\ÝÈÈ›ÝØ]\ÙžH]L‘HØ]KˆÔTUÔˆS‘S‘Øˆ™\[ˆ™Y›YÚ8¡¤ˆ]Y]YÙYY8¡¤ˆ˜[Y][ÛˆYØZ[œÝÝYÚ[™ËÜÚYÝÈY\ˆ\È™]šY]Èš^ˆÛÛ[ÝY[È]]Üš[™ËÛ[šË\™]šY]È”ÜÈ™[XZ[ˆY™\œ™YˆŸÔT‹LLH[YÜ˜][Ûˆ
+È›ÛÝ]T•PS8 %ÐSÈÖSH•S•SQHÓÑKQ’VQSQUSÓˆS‘S‘ÈØ[Ý[][ÛˆÞ[HX\›™\ˆ][˜ÚÐTKÜÚ[\ÈÚ\™Y›ÝYÚH^\Ý[™ÈÝXš™XÝ˜XÝXÙHXˆ[™ÝYTÚ[ÈNH[›™\ˆXÝ]˜][Û‹ÝYHÛYH™XÛÛ[Y[™][ÛˆÝ[\[™Ë™\ÜËÛÜœ™XÝ[Ûˆ›Ý][™ËÜ\˜]Üˆ[[Y]žKL‘KÛXÚË]›ÝYÚ[™ÚYÝËØØ[˜\žKÜ›ÙØ]\È™[XZ[‹ˆŸÔÐÈÐHÙXÝ[ÛˆÙYY
+ÝXÝ\˜[
+H
+ÈÐH™XY[™\ÜÈ^[\[ÛˆÓÑKQ’VQSQUSÓˆS‘S‘È
+Š”ÙYYŠŠˆ^[WÚ[[YÙ[˜ÙWÙ[[×ÜÜØ×ØÙÛœÜ[]]ÜœÈH™X[Y\‹LH›Ý\ÙXÝ[Ûˆ8 %ÝXš™XÝMMMMMMMKx )‹MMM
+ÛYÈÙ[™\˜[X]Ø\™[™\ÜØÝXš™XÝÙÜ›Ý\Ù[™\˜[Ø]Ø\™[™\ÜØ8¡¤ˆÐHÝXš™XÝ[[YTÛXÞH˜[Z[JH
+È^[WÜ\ÙWÜÙXÝ[Ûˆx )‹N
+Ù[™\˜[]Ø\™[™\ÜËTHÈLX\šÜÈÈIHÙZYÚYÙKÛÜÛÜ™\ˆ
+KˆY\‹LH]]Ü™YÝXÝ\™H\È›ÝÈ0åÌHHLHÈŒX\šÜËX]Ú[™ÈH^[WÜ\Ù\È›ÝËˆÐH\È[™KYš]™[Žˆ“ÈÜXÜÈÈ^[WÝÜX×ØÛÝ™\˜YÙHÈTHÈX\Ý\žHÙYYYˆ
+Š”™XY[™\ÜÈÛÛ˜XÝ
+ÚXÚÜÜÝÌLŒH8¡¤ˆÜ[ÛˆÊNŠŠˆXYÛ›ÜÝXÜËœ™XY[™\Ü×Ý™\™XÝ›ÝÈ™\ÛÛ™\ÈXXÚÙXÝ[Û‰ÜÈÝXš™XÝ[[YTÛXÞH˜[Z[H
+šXHØ[›ÛšXØ[ÝXš™XÝÜÛYØØÝXš™XÝÙÜ›Ý\™]ÛHÝ\™˜XÙYžHÙXÝ[Û—ÜÝXÝ\™WØÛÛ\][™\ÜØ
+H[™VSTÈHÙ[™\˜[Ø]Ø\™[™\ÜØ˜[Z[Hœ›ÛHH\˜X›H›×ÛØÚÙYØÛÝ™\˜YÙXÈ[—ÛXÜWÜÛÛØ]\È8 %ÐHÛÛ[\È[™K\ÛÝ\˜ÙY›Ýœ›ÛHH\˜X›H˜[šËØÛÝ™\˜YÙKˆÐHÙXÝ[ÛœÈ[Z]H™]ÈÝXÝ\˜[ÛÛ›X™\™XÝ
+™X\ÛÛˆÛÛ[Ø[™WÜÛÝ\˜ÙY
+K˜XÚÙY[ˆ[ˆY]]™HÝ[[X\žKœÝXÝ\˜[ÛÛ›XXÚÙ]]Hš^YZÙ^HYÙÜ™YØ]ÜœÈ
+ÛÛœÛÛWÙ]Z[YZ[ˆ™XY[™\ÜÈ[™Ú[
+HØY™[HYÛ›Ü™KˆÛÈ[ˆ]]Ü™YX]][™š[YÐHÙXÝ[Ûˆ™Z]\ˆ›ØÚÜÈ›Üˆ[œÈH\ÙNÈÛ›HÙ[Z[™HZ\ÜÚ[™×ÜÝXÝ\™XÝ[›ØÚÜÈ]ˆ
+Š”[[YH“ÕÚ[™ÙYŠŠˆÐH[™\ËØ][\È™[XZ[ˆÙ^YYÛˆHš\X[ÝXš™XÝx )‹LØXÈZYÜ˜][ÛˆLÈØÛÜ\È[™\ËØ][\ÈžH^[HÈ^[KY˜[Z[H
+›ÈÝXš™XÝÚY
+KˆÚ\š[™ÈHX‹Û][˜ÚÛÈHØ[›ÛšXØ[ÐHÝXš™XÝ\ÈHÙ\\˜]KY™\œ™YÚ[™ÙKˆ™YÜ™\ÜÚ[ÛœÎˆ\ÝÛ[ØÚ×Ü™XY[™\ÜËœX
+ÐHÝXÝ\˜[ÛÛ›XÈÐHÝ[›ØÚÜÈÛˆZ\ÜÚ[™ÈÝXÝ\™NÈÝ[[X\žHÙ^JK\ÝÛ[ØÚ×Ø›Y\š[œNŽ\ÝÜÙYYYÙ›Ý\—ÜÙXÝ[Û—Ù[™[ÜWÙØWÜÝXÝ\˜[ÛÛ›X
+ÈÙØWÜÝ[Ø›ØÚÜ×ÛÛ—ÛZ\ÜÚ[™×ÜÝXÝ\™X\ÝÛ[ØÚ×Ü™XY[™\Ü×Ù[™Ú[œX
+ZÙ^H\‹\\ÙHÝ[[X\žJK\ÝÜÜØ×ÙØWÜÙXÝ[Û—ÜÙYYœX
+ÙYYÝXš™XÝÜÙXÝ[Ûˆ
+ÈLKÌŒÌL	JKˆ‘T’Q–H˜ˆ\HÙYYÈÝYÚ[™ËÜÚYÝÈ[™ÛÛ™š\›HH›Ý\‹\ÙXÝ[Ûˆ[™[ÜHÚ]ÐHÝXÝ\˜[ÛÛ›Xˆ‚ˆÈÈš[˜[˜ÚX[™YÝ[]ÜžH	ˆ]™[ÜY[[œÝ]][ÛœÈ8 %[™H‚‚\˜Ú]XÝ\™HÛÛ˜XÝˆØÜËØ\˜Ú]XÝ\™KÙš[˜[˜ÚX[\™YÝ[]ÜžKY]™[ÜY[Y˜[Z[K›Y‚Ý\œ™[™\™XÝˆ
+Š”S“’S‘È8 %›ÈÛÙH[™YŠŠˆ˜[Z[H[Ù[Ü[›š[™Âœ™YÝ[]ÜœÈ
+’KÑP’KT‘RK”‘KQ”ÐÐKP’JH
+Š˜[™
+Šˆ]™[ÜY[Yš[˜[˜ÙBš[œÝ]][ÛœÈ
+PT‘ÒQ’K’‹VSK˜P‘’Q
+H8 %™[˜[YYœ›ÛH”™YÝ[]ÜžB“Ù™šXÙ\œÈˆ™XØ]\ÙH]™[ÜY[Yš[˜[˜ÙH›ÙY\È\™H›Ý™YÝ[]ÜœËˆÛÜ™H^[\Î‚”’HÜ˜YH‹ÑP’HÜ˜YHKPT‘Ü˜YHKÐ‹T‘RHSK”‘HÜ˜YHKQ”ÐÐB‘Ü˜YHKÒQ’HÜ˜YHNÈ’‹ÑVSKÓ˜P‘’QHYÚÈ”È\ÝÑT“ËÑPÑÐËÒP’HBš[™^[Û›H
+Ü›Û[ÈX]š^0©ÌJKˆ
+Š”ØÛÜH›Ý[™\žH
+ÝÛ™\‹[ØÚÙY
+NŠŠˆ[™HˆÝÛœÂœ™YÝ[]ÜžKÙ]™[ÜY[
+Š™ÛXZ[ˆÛ›ÝÛYÙH
+ÈÛXZ[ˆXœšXÜÈÛ›JŠˆ8 %Ù[™\šXÂ˜\]YH
+[™HÔTŠKH[™Û\Ú]˜[X]Üˆ
+[™H
+K[™H\ÙKRH\]YB›[ØÚÈ]Ý^HÚ]Z\ˆÛÜšÜÝ™X[\È[™\™H^\›˜[\[™[˜ÚY\È\™K‚‚‘›ÛÈ[ˆHÛÜœ™XÝ[ÛœÈ]
+JHH\ØÜš\]™KX[œÝÙ\ˆÝXœÞ\Ý[H[™XYH^\ÝÂšXHUÔLKÌ‹Ìˆ
+[™H
+H8 %™]ÈÛÜšÈ\ÈHÛXZ[ˆ
+›Û‹Q[™Û\Ú
+HXœšXÈ]È[™ŠŠHYYXH\ÜÙ]È[™XYH[™YšXHZYÜ˜][ÛˆŒÌÈ
+Û›H]\ˆ‹LLHÛXÙ\Â™Y™\œ™Y
+K‚‚”Ù\šX[Y[]™\žH›ÝNˆŒHÝ™X[KÙ[YÚXš[]HZYÜ˜][ÛœÈ[™[žH›Ý]\‹Û˜]ˆÚ[™Ù\Â˜\™HÚ[™ÛK[ÝÛ™\ˆÙ\]Y[X[ÛÜšÈ
+›È˜[‹[Ý]
+H\ˆHÓUQK›YÙ\šX[Y[]™\žBœ[KˆQ”ÐÐH›ÝÜÈÝ^H˜YÝ[™\šYšYY[[HÙ™šXÚX[Y™\\Ù[Y[ˆ\Âš[™Ù\ÝY[™™]šY]ÙY‚‚Ÿ][HÝ\œ™[Ý]\È™\È]šY[˜ÙHÈ›Ý\ÈŸKK_KK_KK_Ÿ˜[Z[HØÛÜH
+ÈÜ›Û[ÈX]š^S“‘Q
+
+H™[˜[YHÈš[˜[˜ÚX[™YÝ[]ÜžH	ˆ]™[ÜY[[œÝ]][ÛœÎÈÛÜ™HH’KÔÑP’KÓPT‘ÒT‘RKÔ”‘KÒQ”ÐÐKÔÒQ’NÈYÚH’‹ÑVSKÓ˜P‘’QÈ[™^[Û›HH”È\ÝÑT“ËÑPÑÐËÒP’H
+YÚÚ[™^Ü]›ÜÜÙY[™[™ÈÝÛ™\ˆÛÛ™š\›JKˆÛÛ˜XÝ0©ÌKˆŸÛ\ÜÚYšY\ˆ˜H˜š^
+ÈQ”ÐÐHÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠH8 %Ü˜\YžHÔTUÔˆS‘S‘È™XÜZ]Y[ØÛ\ÜÚYšY\‹œX8 %›ÛÝš^\È
+Š˜›Ý[™\žKX]Ø\™HXÜ›Ûž[HX]Ú[™ÊŠˆ
+ØXÜ›Ûž[WÜ™X›Û‹X[[[Y\šXÈÛÚØ\›Ý[™ÊK›Ý\Ý˜H˜8¡¤˜˜ZH˜ˆ˜]ÈÝXœÝš[™ÈY[X™\œÚ\Ø\ÈHYÈÛ\ÜÈ
+˜ZH˜[Û™HÝ[X]Ú\È˜Z[š[™ØØ˜Z[™YX
+Kˆ™YÝ[]ÜžHXÜ›Ûž[\ÈÑP’KÒT‘RKÔ”‘KÒQ”ÐÐKÕRH
+È[Ü™Ë[˜[YH˜\Ù\ÎÈ˜[šÚ[™ÈYÈ’‹ÑVSKÓ˜P‘’QXÜ›Ûž[\È
+È]‹Yš[˜[˜ÙHÜ™È˜[Y\ËˆÝ]KTÐÈ›ÝÈX]Ú\ÈH]\œÏ”ÐØÚ\H
+TÐËÕTÐø )ŠHÛˆ›Ý[™\šY\È8 %Hš[ÜˆÝ]WÜØØ\Ý\ÜÙYÛ›HšXH›XZX
+Š˜˜X
+Š˜Ú˜H˜˜[ÙK[X]Ú[™È™YÝ[]ÜžNÈ\Ý›ÝÈ\ÜÙ\ÈH˜[Z[HÙ^Kˆ[š]]\ÝYˆ\ÝËÜØÜ˜\[™ËÝ\ÝÜ™XÜZ]Y[ØÛ\ÜÚYšY\‹œX
+ˆ\ÜÙYÈ›Ý[™\žH™YØ]]™\È[›™Y›Üˆ˜Z[š[™ËÝ˜Z[™YKÒ›Úš\™ÊKˆÙ[‹XÛÛZ[™Y›ÈØÚ[XHÚ[™ÙKˆÜ˜\YžH\]H˜\È[ˆÜ\˜]ÜˆÝ\8 %HÓH\È›Ý[œÝ[Y[ˆH™[[ÝHÛÛZ[™\ˆ
+›ÝÛˆU›Ý[ˆœKÜ\XÚØYÙNÈHÚXÚÙYZ[ˆÜ˜\YžK[Ý]Ü™\ËYÜ˜\šœÛÛ˜\ÈHÚ[™ÝÜËYÙ[™\˜]YÜ\˜]Üˆ\Y˜XÝ]YŒ‹LKLLJKˆŸÝ™X[HØÚ[XH
+[ÛÛ˜XÝ
+HÓÑKQ’VQ‘T’Q–Hˆ
+\ÈŠH8 %ZYÜ˜][Ûˆˆ
+™[[X™\™Yœ›ÛHHÈ™\ÛÛ™HH\XØ]K]™\œÚ[ÛˆÛÛ\Ú[ÛˆÛˆXZ[ŠHZYÜ˜][Ûˆ—Ù^[WÜÝ™X[\×ÜØÚ[XKœÜ[
+Y]]™NÈ™]™\ˆY]ÈY\™ÙYÌ
+KˆØ[›ÛšXØ[^[WÜÝ™X[\Ø
+[š\]YJ^[WÚYÝ™X[WÚÙ^JX
+H
+È^[WØÞXÛWÜÝ™X[\Ø
+]˜Z[Xš[]K˜XØ[˜ÞWØÛÝ[Ý]\ÊKˆ[X›HÝ™X[WÚYÛˆ^[WÜ\Ù\ØØ^[WÜ\ÙWÜÙXÝ[ÛœØØ^[WÝÜX×ØÛÝ™\˜YÙX
+•SHÛÛ[[ÛŠKˆ
+Š•[š\]Y[™\ÜÈ\È•SÈ“ÕTÕSÕ
+Šˆ
+ÌMJË\ÈŒNJH8 %›È›Ü™ÙXX›H™\›ËUURQÙ[[™[ˆ™\XÙYHÛÈÌ\ÙH\X[[™^\ËH[›[™HÙXÝ[ÛˆÛÛœÝ˜Z[
+›ÜYžHYš[š][ÛˆÛÚÝ\˜[YKXYÛ›ÜÝXÊK[™HÛÈÛÝ™\˜YÙH\X[[™^\Ëˆ
+ŠšY\™XÝ[Û˜[Ü›ÜÜË\\™[[YÜš]H
+ÚXÚÜÜÝÛÈ\ÜÙ\ÊNŠŠˆ›Ý\ˆ“ÔˆÒT‘X[ØÚÙYÚ[šYÙÙ\œÈ
+\œ˜ÛÙHŒ˜S”ÑT•
+ÕTUJH[™›Ü˜ÙHÚ[™ÛKY^[HÞXÛKÜÝ™X[HZ\š[™ËHÞXÛKX›Ý[™\\Ùx¡¤›Ù™™\™YÙ^XÝYZ\ˆ[K]˜Z[Xš[]H›ÜˆH
+™Y™™XÝ]™HÝ™X[H™[ÝÈH\ÙJˆ
+Ý™X[K\ØÛÜYÙXÝ[Û‹ÞXÛK\ØÛÜYÛÝ™\˜YÙJK[ÛÝ™\˜YÙHØÛÜH
+ÝÛˆÞXÛx¡¥^[KÙXÝ[Ûˆ™\ÛÛ™Y›ÝYÚ]È\ÙH]™[ˆÚ[ˆHÛÝ™\˜YÙH\ÙH\È•S
+K[™Ý™X[H›Û‹XÛÛ™›XÝˆ\È
+Šœ\™[\ÚYHÝX\™ÊŠˆÛÈH[˜\šX[Ý\š]™\È\™[[Ý™\ÎˆÙ^[WØÞXÛWÜÝ™X[\×ÙÝX\™Ù[]X
+‘Q“Ô‘HSUJK[[Ý[Û‹ÜZ\‹[[Ý™HÝX\™Ë[™Ù^[WÜÝ™X[\×ÙÝX\™Ù^[WÛ[Ý™XÈÙ^[WØÞXÛ\×ÙÝX\™Ù^[WÛ[Ý™X
+‘Q“Ô‘HTUHÑˆ^[WÚY
+H™Z™XÝ™X\ÜÚYÛš[™ÈH\™[Ú[H\[™[È^\Ýˆ’ÜÈ[Û™H[ÝÈÛÛ˜YXÝÜžH›ÝÜÈ
+ÜÝ\™HZ\œ›ÜœÈŒNKÌŒŒÊKˆ
+Š”™]\™K›Ý\Ý›ÞNŠŠˆ]™\žHÝ™X[WÚY’È\ÈÓˆSUH‘TÕ’PÕˆ“È]][XØ]Y\™XY
+Üš]\ÈÙ\šXÙK\›ÛKZ\œ›ÜœÈÍJNÈ×ÜÙ]Ý\]YØ]šYÙÙ\œËˆ\ÝÎˆÝš[™ËXÛÛ˜XÝ\ÝËÝ\ÝÙ^[WÜÝ™X[\×ÛZYÜ˜][Û‹œX
+LH\ÜÊH
+È
+Š˜ÛÛ[Z]Y™Z]š[Ý\˜[™YÜ™\ÜÚ[Ûˆ\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—Ì—Ù^[WÜÝ™X[\×Ú[YÜš]KœÜ[
+Šˆ
+NÚXÚÜÎˆ\KÚY[\Ý[™KX\KÛÙ^\Ý[˜ÙK\XØ]H
+È]™\žHÜ›ÜÜË\\™[Ø]˜Z[Xš[]KÜ\™[[[Ý™KÑSUH™Z™XÝ[ÛŠH8 %˜[Y]Y[™]ËY[™Ûˆ\[Y\˜[ÌM‹ˆ
+Š•‘T’Q–HŠŠˆHÚYÝËÛ]™H\H[™[™Ëˆ›ÛÝË]\
+›Ý\ÈŠNˆ™XÛÛ˜Ú[HÛÜÙHÝ™X[WÚÙ^H^Ûˆ^[WÙ\ØÜš\]™WÜ™\]Z\™[Y[Ø
+ŒNŒLÍŠH8¡¤ˆ’È
+™YYÈÙYYYÝ™X[\È0©ÍŽÈÝXÚ\È[™H
+KˆŸ[YÚXš[]Nˆ˜\Ù[[™HœÈÞXÛH
+ØÚ[XH
+È[[YHØY™]H
+È]]Üš[™ÊHÓÑKQ’VQ‘T’Q–Hˆ
+\ÈŠH8 %ZYÜ˜][Ûˆ
+™[[X™\™Yœ›ÛHH\ÈXZ[ˆY˜[˜ÙY
+NÈÝ™X[KPUÐT‘H]˜[X][ÛˆY™\œ™YZYÜ˜][ÛˆÙ^[WÜÝ™X[WÙ[YÚXš[]KœÜ[
+È]˜[X]Üˆ
+ÈYZ[ˆTH
+ÎMÈÚXÚÜÜÝ™]ÛÜšÊKˆ
+Š˜\Ù[[™JŠˆ^[WÙ[YÚXš[]WÜ[\ØˆÜ[Û˜[Ý™X[WÚY
+ÓˆSUH‘TÕ’PÕ
+H
+È˜[YWÚœÛÛ˜È’U‘H™]È˜\Ù[[™H[WÝ\\È
+\ØÚ\[™KÛZ[—Ü\˜Ù[YÙKØÙ\YšXØ][Û‹Ü]X[YšXØ][Û—ØÛÛXš[˜][Û‹ÜÝ™X[WØ]˜Z[Xš[]JNÈ
+Š˜^\šY[˜ÙWÛZ[—ÞYX\œØ\ÈÞXÛK[Û›JŠˆ
+˜\Ù[[™K]œËXÞXÛHÙ\\˜][ÛŠKˆ]X[YšXØ][Û—ØÛÛXš[˜][Û˜\È
+ŠœÝXÝ\˜[JŠˆ˜[Y]YžH\×Ý˜[YÜ]X[YšXØ][Û—ØÛÛXš[˜][ÛŠ
+X
+™XÝ\œÚ]™HÛÜ˜[™ÛÜ‹Û]\Ù\Î–ø )—_XÜ˜[[X\ŠKÒPÒËY[™›Ü˜ÙYÛˆ›ÝX›\È8 %›Ý\Ý“Õ•Sˆ
+Š‘˜Z[XÛÜÙY
+
+NŠŠˆHˆÒPÒÈ
+ÈTHÝX\™›ØÚÈ›Û[Ý[™È[ˆ]˜[X]Ü‹][œÝ\ÜY[WÝ\HÈ™\šYšYYÛÈH™\šYšYY[HØ[ˆ™]™\ˆ™HÚ[[H›Û‹[Ü\˜]]™KˆÝ™X[KX]Ø\™H•SÈ“ÕTÕSÕ[š\]Y[™\ÜËˆÚ[Ü›ÜÜË\\™[šYÙÙ\ˆ
+È
+ŠŒ‰ÜÈÙ^[WÜÝ™X[\×ÙÝX\™Ù^[WÛ[Ý™X‘TPÑQÈ[ÛÈÛÝ™\ˆ[YÚXš[]H[\ÊŠ‹ˆ
+ŠÞXÛJŠˆ^[WØÞXÛWÜÝ™X[WÙ[YÚXš[]XˆÛÛ\ÜÚ]KQ’ËX›Ý[™È^[WØÞXÛWÜÝ™X[\ÊÞXÛKÝ™X[JXÚ]
+Š˜ÓˆSUH‘TÕ’PÕ
+Šˆ
+™]šY]ÙY\›ÝÈ]Y]˜Z[™\Ù\™Y
+NÈØ\œšY\ÈÝ]Ù™—Ù]WØ˜\Ú\ØØÝ]Ù™—Ù]X
+È^\šY[˜ÙWÛZ[—ÞYX\œØ
+È˜[YWÚœÛÛ˜ˆ
+Š”[[YHØY™]H
+
+NŠŠˆ]˜[X]Ü‹—ÛØYÜ[\×ØžWÙ^[X›ÜÈÝ™X[WÚYTÈ“Õ•S›ÝÜÈÛÈH™\šYšYYÝ™X[H[HØ[ˆ™]™\ˆ\H^[K]ÚYH
+\ÛÛ][Ûˆ\Ý[œÈ]
+Kˆ
+Š]]Üš[™È
+
+NŠŠˆYZ[—Ù^[WÙ[YÚXš[]KœXXØÙ\È™]È[WÝ\\È
+ÈÝ™X[WÚY
+È˜[YWÚœÛÛ˜
+Ü™X]KÝ\]KÜ™XYÜ›Ú™XÝ[ÛœÊKÝ™X[KX]Ø\™H\XØ]H™KXÚXÚÈ
+]Û‹Yš[\™Yš]™\‹XYÛ›ÜÝXÊK[™[Ù[ÙšY[×ÜÙ]X˜\ÙYÝ™X[WÚYÛX\š[™ËˆÙ\šXÙK\›ÛH“Ëˆ\ÝÎˆ\ÝÙ^[WÜÝ™X[WÙ[YÚXš[]WÛZYÜ˜][Û‹œX\ÝÜÝ™X[WÚ\ÛÛ][Û‹œXYZ[ˆTHÝ™X[KÝ™\šYšYYYÝX\™ØÛÛX›ÈØ\Ù\ËÛÛ[Z]Y™YÜ™\ÜÚ[Û—Ìø )œÜ[
+LˆÚXÚÜÈ[˜Ûˆ[[WÝ\\ËÝXÝ\˜[]X[XÛÛX›È™YØ]]™\Ë˜Z[XÛÜÙY™\šYžK^\šY[˜ÙKX˜\Ù[[™H™Z™XÝÜ›ÜÜËY^[HS”ÑT•ÕTUK\™[[[Ý™KÝ]Ù™‹Ù^\šY[˜ÙK‘TÕ’PÕ]Y]\™\Ù\˜][ÛŠH8 %˜[Y]YÛˆÌM‹Y[\Ý[ˆ
+Š•‘T’Q–HŠŠˆHÚYÝËÛ]™H\H[™[™Ëˆ[YÚXš[]WÜ[›™\˜Ý^\È›Üˆ\‹]˜XØ[˜ÞH]ˆŸ[YÚXš[]NˆÝ™X[KPUÐT‘H]˜[X][Ûˆ
+XÝ]˜][ÛŠHÓÑKQ’VQ‘T’Q–Hˆ
+\ÈŠH8 %ZYÜ˜][ÛˆLÈXÝ]˜]\ÈHY™\œ™Y]˜[X]ÜˆÚ\š[™Ëˆ]˜[X]WÙ^[WÙ›Ü—Ý\Ù\˜›ÝÈ[\[Y[Èœ˜[˜Ú\È›Üˆ
+Š˜[
+Šˆ˜\Ù[[™H[WÝ\\È8 %\ØÚ\[™KÛZ[—Ü\˜Ù[YÙKØÙ\YšXØ][Ûˆ
+YØZ[œÝ\Ü\˜[ÙYXØ][Û‹™YÜ™YXØÝ™X[XØ\˜Ù[YÙX
+È\Ü\˜[ØÙ\YšXØ][ÛœØ
+KÝ™X[WØ]˜Z[Xš[]X
+H›ÝÛÙ™™\™YÛ›ØÚÛÝ]
+K[™ÝXÝ\™Y]X[YšXØ][Û—ØÛÛXš[˜][Û˜
+™XÝ\œÚ]™HšK\Ý]HS‘ÓÔˆ™]\Ú[™ÈH]ÛZXÜÊH8 %™\Ù\š[™ÈH›Ý\‹\Ý]H[YÚX›KØÛÛ™][Û˜[Û›ÝÙ[YÚX›KÝ[šÛ›ÝÛˆ
+ÈÛ›ØÚÛÝ]ÛÛ˜XÝˆ
+Š”Ý™X[KX]Ø\™HÙ[XÝ[ÛŽŠŠˆÜ[\×Ù›Ü—ÜÝ™X[XY\™Ù\ÈÛÛ[[Ûˆ[\ÈÚ]Û™HÝ™X[IÜÈ[\È
+Ý™X[HÝ™\œšY\ÊNÈH^[KUÒQH™\™XÝÝ[\Ù\ÈÛÛ[[Û‹[Û›H
+\ÛÛ][Ûˆ[˜\šX[Ù\
+K[™Ý[[X\š^™WÝ\Ù\—Ù[YÚXš[]XØZ[œÈ[ˆ
+Š˜Y]]™H\‹Y^[HÝ™X[\Ö×Xœ™XZÙÝÛŠŠˆ
+\‹\Ý™X[HÝ]\ËÜ™X\ÛÛœËÛZ\ÜÚ[™×ÙšY[È8 %˜XÚÝØ\™XÛÛ\]X›NÈ^\Ý[™ÈXÚÙ]ËÚÙ^\È[˜Ú[™ÙYÛÛ™š\›YYYØZ[œÝ]™\žHÛÛœÝ[Y\Žˆ^[WÙ[YÚXš[]KœX^[\ËœXÝ™\›^KZ\ÜÚ[Û—ØÛÛ›ÛœX[YÚX›Q^[\ÐØ\™šœÞ
+Kˆ
+Š˜ZYÜ˜][ÛˆLØ
+Šˆ›ÜÈH˜Z[XÛÜÙY^[WÙ[YÚXš[]WÜ[\×Ý™\šYšYYÜÝ\ÜYØÚXÚØ
+[˜\Ù[[™H\\È›ÝÈ]˜[X]Y
+NÈHYZ[ˆTH™\šYžKYÝX\™\ÈYYÈX]Úˆ\ÝÎˆ\ÝÛ™]×Ü[WÝ\\ËœX
+\ØÚ\[™KÜ\˜Ù[YÙKØÙ\YšXØ][Û‹ØÛÛX›ÈS‘SÔ‹ÜÝ™X[WØ]˜Z[Xš[]H
+È\‹\Ý™X[HÝ[[X\š^™JK\]Y\ÝÜÝ™X[WÚ\ÛÛ][Û‹œX
+^[K]ÚYH\Ù\ÈÛÛ[[Û‹[Û›JK\ÝÙ^[WÙ[YÚXš[]WØXÝ]˜][Û—ÛZYÜ˜][Û‹œXÈÈ]˜[X]Üˆ\ÝÈ\ÜËˆ
+ŠÚXÚÜÜÝ\™[š[™ÎŠŠˆHØY\ˆ›ÝÈÙ[XÝÈ˜[YWÚœÛÛ˜
+H™\šYšYYÛÛXš[˜][Ûˆ›ÈÛ™Ù\ˆÚ[[H˜Z[ÊNÈ\ØÚ\[™KÜ\˜Ù[YÙH[ˆHÛÛXš[˜][Ûˆ\™H
+Šœ™XÛÜ™XÛÜœ™[]Y
+Šˆ
+‹ML	H
+ÈÛÛKMÍIH8¢h“ˆS‘Œ	HŠNÈ\ØÚ\[™HX]Ú[™È\È
+Š˜›Ý[™\žKX]Ø\™H
+È[X\ËY^[™Y
+Šˆ
+U8¢hÝ]\ÝXÜÊNÈÝ™X[WØ]˜Z[Xš[]X˜Z[ÈÛÜÙYÛˆ[šÛ›ÝÛˆ˜[Y\È
+ˆÛXZ[ˆÒPÒÈ
+È]˜[X]ÜŠNÈ˜\Ù[[™HÛÛX›ÜÈ
+Š™^ÛYJŠˆÞXÛK[Û›H^\šY[˜ÙWÛZ[—ÞYX\œØ
+ZYÜ˜][ÛˆLÈ˜\Ù[[™H˜[Y]ÜŠKˆ›ÛÝË]\ˆHÛÛ\\ÜÈÝ\™˜XÙHÛÛœÝ[Z[™ÈÝ™X[\Ö×XÈŸ˜ÞXÛK\ØÛÜY]˜[X][Ûˆ™XY[™È^[WØÞXÛWÜÝ™X[WÙ[YÚXš[]XŸˆ
+Š‘Ó‘JŠˆ
+Ý]Ù™‹X]Ø\™HÞXÛX˜[™8 %™\™\HÈ›ÝÈX›Ý™JKˆŸ™YÝ[]ÜˆY[]Y\È	ˆÙ™šXÚX[]HÓÑKQ’VQ‘T’Q–Hˆ
+\ÈŠH8 %ZYÜ˜][Ûˆ
+™[[X™\™Yœ›ÛHˆY\ˆH˜\ÙH\XØ]KLHY™XÝØ\È™XÛÛ˜Ú[Y[™‹ÌÈÙ\™HÛZ[YYžHH^[WÜÝ™X[\È[™]X[Z]\š\ÝXÈZYÜ˜][ÛœÊHZYÜ˜][ÛˆÙš[˜[˜ÚX[Ü™YÝ[]ÜžWÙ˜[Z[WÚY[]WÜÙYYœÜ[™]ÛÜšÙY\ˆHÎMŒˆÚXÚÜÜÝÈH
+Š˜Ø[›ÛšXØ[Y\˜\˜ÚHH›ÙXÝ™XYÊŠŽˆ
+Š›Û™JŠˆ[Xœ™[H^[WÙ˜[Z[Xš[˜[˜ÚX[\™YÝ[]ÜžX
+˜[Z[K\ØÛÜY\XØXš[]H™\ÛÛ™\ÈÛˆ^[\Ë™^[WÙ˜[Z[WÚY\]X[]K›ÝY]Y]JHÚ][MHÜ›Û[È^[\È™\\™[YÛÈ]
+[˜ÛˆYØXÞH’KÔÑP’Hœ›ÛHLL
+NÈ[œÝ]][Ûˆ[Y[œÚ[ÛˆÛˆ^[\Ë˜ÛÛ™XÝ[™×ÛÜ™Ø[š^˜][Û—ÚY8¡¤ˆÜ™Ø[š^˜][ÛœØÈÜ›Û[È[™HÛˆØ[›ÛšXØ[^[\Ë›X[˜YÙ[Y[Û[ÙX
+ÛÜ™KÛYÚÚ[™^ÛÛ›JH
+ÈØY[˜ÙXˆ˜YY[]Y\È\™H\×ØXÝ]™OY˜[ÙXÛÈ^HØ[‰ÝXZÈ[ÈÑUÙ^[\Ø
+ÚXÚØ]\ÈÛ›HÛˆ\×ØXÝ]™JNÈ]™H’KÔÑP’HÙY\\×ØXÝ]™H
+ÈØZ[ˆØ[›ÛšXØ[˜[Z[KÛÜ™ËÛ[™Kˆ
+ŠÛÛ™\™Ù[
+Šˆ\Ù\È
+ÓˆÓÓ‘“PÕÈTUX›Ü›X[^™\È˜[Z[KÛÜ™ËÛ[™HÛˆX[›Ü›YYØ[YK\ÛYÈ›ÝÜË™]™\ˆÝXÚ\È\×ØXÝ]™JKˆÛÝ™\˜YÙNˆÛÜ™H
+[˜Ûˆ
+Š“PT‘Ü˜YHJÐŠŠŠH
+ÈYÚ
+È
+Šš[™^[Û›H^[HY[]Y\ÊŠˆ
+”È\ÝÑT“ËÑPÑÐËÒP’JNÈØ[›ÛšXØ[Ý™X[H›ØØXˆ\È˜Y8 %’JÊKÔÑP’JË[XÝšXØ[
+ØÚ]š[Ü]
+KÒT‘RJŠKÔ”‘JÊH[ˆ[PT‘ÔÒQ’HÙ[™\˜[\Ý
+ÈÜXÚX[\Ý›ØÚÙYÛÛ—Û›ÝYšXØ][Û˜Q”ÐÐH›ØÚÙY[Û‹T‹ˆ›Ý[™È\Ü\˜[]™\šYšYYˆ›ÈÞXÛ\ËØ]˜Z[Xš[]KÜ\Ù\ËÙ[YÚXš[]H
+0©Í
+Kˆ\ÝÎˆ\ÝËÝ\ÝÙš[˜[˜ÚX[Ü™YÝ[]ÜžWÜÙYYÛZYÜ˜][Û‹œX
+
+H
+ÈÛÛ[Z]Y™Z]š[Ý\˜[\ÜÝ\X˜\ÙKÝ\ÝËÜ™YÜ™\ÜÚ[Û—Ìø )œÜ[
+[Xœ™[KÜ™\\™[ÛÜ™ËÛ[™KÚ\×ØXÝ]™KÚ[™^[Û›KÓPT‘P‹ÔÑP’KY[™ËØÛÛ™\™Ù[˜ÙK•S\ØY™HTÈTÕSÕ”“ÓX
+H8 %˜[Y]YÛˆ\[Y\˜[ÌMˆÚ]Y[\Ý[™KX\KˆŸ™YÝ[]Üˆ[YÚXš[]H[\È	ˆÞXÛ\È
+ŒH]JH™\™\\Èx $ÍÓÑKQ’VQ
+H	ˆˆSQUSÓˆS‘S‘È8 %ZYÜ˜][ÛœÈMËÌŒNÈÈ™\ÛÛ™YžHÎNNÈ™\ÛÛ™YžHÎN
+NÈ›È™\šYšYY[KØÞXÛHÜ\˜][Û˜[HØY™H[[H	ˆˆ˜[Y]HØÜËØ\˜Ú]XÝ\™KÜ™YÝ[]ÜžKY[YÚXš[]KX]]Üš[™Ë\ÜXË›Y
+™]š\ÙY\ˆˆÎMÎHÚXÚÜÜÝ
+KˆHZYÜ˜][Û‹\ÙYY][\
+ˆÎMÍÊHØ\È
+Š˜ÛÜÙY
+Šˆ
+XZÙYÞXÛ\ËÜÜÞH[˜ÛÙ[™ÜÊKˆ]]Üš[™È\ÈšXHYZ[—Ù^[WÙ[YÚXš[]KœX
+˜Y
+KÜ›Ý[™Y[ˆHY\™ÙYÎMÌÈ]˜[X]Ü‰ÜÈ[X\È›ØØX‹ˆ
+Š“›ÝHØ]YÛÛ˜XÝ8 %›Ý\ˆ™\™\]Z\Ú]\Ë[›ÝÈÛÜÙY[ˆÛÙNŠŠˆ
+JH
+ŠÓÔÑQSˆÓÑH
+ZYÜ˜][ÛˆMËSQUSÓˆS‘S‘ÊNŠŠˆ^[WÙ[YÚXš[]WÜ[\ØØZ[œÈÛÝ\˜ÙWÙØÝ[Y[ÚY
+’ø¡¤˜ØÝ[Y[Ø\ÜÙ]ØÓˆSUH‘TÕ’PÕ™\ÈÛÛ™[[Ûˆ˜[YJH
+ÈZ\™YÛÝ\˜ÙWÜYÙWÜÝ\ØÛÝ\˜ÙWÜYÙWÙ[™
+ÈÜ™X]YØžXÈÞ[X\×ÙØÝ[Y[ØØZ[œÈ™]šY]ÙYØžXØ™]šY]ÙYØ]Ø™]šY]Ù\—Û›Ý\ØÈÛÈ]ÛZXÈÑPÕT’UHQ’S‘Tˆ”ÜÈ
+™]šY]×ÜÞ[X\×ÙØÝ[Y[™]šY]×Ù^[WÙ[YÚXš[]WÜ[X
+HØ]H[™[™ø¡¤™\šYšYYÈ˜Y8¡¤™\šYšYYÛˆH™\šYšYY]]Üš]]]™H
+Ù™šXÚX[Ø\˜Ú]™XØÙ™šXÚX[ÜØØ[˜
+K›ØÙ\ÜÙYYÙKY^˜XÝYØ[YKY^[J
+ØÞXÛJHØÝ[Y[Ú]™]šY]Ù\ˆÙ\\˜][Ûˆ
+˜Z[XÛÜÙYÛˆZ\ÜÚ[™ÈÜ™X]YØžXØ\ØYYØžX
+K[™H[H”È
+Š›ØÚÜÊŠˆHÝ\Ü[™È™\šYšYYÞ[X\È›ÝÈ
+›ÈÐÕÕJNÈ[ˆQ•T‹UTUHšYÙÙ\ˆÛˆÞ[X\×ÙØÝ[Y[Ø
+Š˜Ø\ØØYKY[[Ý\ÊŠˆ\[™[™\šYšYY[\ÈÈ˜YÚ[ˆH]]Üš]H\È[[ÝYÜˆ]ÈÛÝ\˜ÙH\È™\XÙY
+ÛÝ™\œÈH™]šY]È”ÈS‘[šË]Ë\Þ[X\Ø
+NÈÜ™X]H\È˜Y[Û›KÙ[™\šXÈ\]HØ[››Ý›Û[ÝKHX]\šX[Y][[Ý\ÈH™\šYšYY[H
+ˆšYÙÙ\ˆ˜XÚÜÝÜ
+KÔÕÜ[\ËÞÚYKÜ™]šY]Ø\ÈHÛ›H›Û[Ý[Ûˆ]ˆ
+Š“›ÈT“[Û›HÈ›ÈØZ]™\‹X˜\ÙY™\šYžH™[XZ[‹ŠŠˆ\HMÈÈH[šÙYÝ\X˜\ÙH
+ÈØ\\™HÜ\˜]Ü‹Ô“È›ÛÙˆ™Y›Ü™H›Û[Ý[™È[žH[Kˆ
+ŠH
+ŠÓÔÑQSˆÓÑH
+ZYÜ˜][ÛˆŒKSQUSÓˆS‘S‘ÊNŠŠˆ^[WØÞXÛ\ØØZ[œÈH˜YØ™]šY]ÙYØ™\šYšYY™]šY]Ù\—ÜÝ]\Ø
+
+È™]šY]ÙYØžXØ™]šY]ÙYØ]ØÜ™X]YØžX
+NÈ^\Ý[™ÈÞXÛ\È\™HÜ˜[™˜]\™Y™\šYšYYÛ˜ÙH
+ÛÛ[[ˆY˜][˜YÛÈ™]ÈÞXÛ\È\™HØ]Y
+NÈH\›Z\ÜÚ]™HÍH^[WØÞXÛ\×Ü™XYØ]][XØ]YÛXÞH\È™\XÙYžH™\šYšYY[Û›H]][XØ]Y™XY
+^[WØÞXÛ\×Ü™XYÝ™\šYšYYYZ[‹Y^[\
+NÈ[ˆ]ÛZXÈÑPÕT’UHQ’S‘Tˆ™]šY]×Ù^[WØÞXÛX”ÈØ]\È˜Y8¡¤œ™]šY]ÙY8¡¤™\šYšYY
+›È[\ÐTÈÛˆ^XÝYÝ]\Ë™]šY]Ù\ˆÙ\\˜][Ûˆ˜Z[XÛÜÙYÛˆZ\ÜÚ[™ÈÜ™X]YØžX]ÛZXÈ]Y]
+NÈH‘Q“Ô‘KUTUHšYÙÙ\ˆ›ØÚÜÈ™]šY]ÙYXÛÛ[Y]ÈÛˆ™]šY]ÙYÝ™\šYšYYÞXÛ\È[›\ÜÈ[[ÝYÈ˜Y
+ÓTÈÙ[™\šXÈ[™ÛÜœšYÙ[™[H™YÚ\ÝžKXXÝ[Ûˆ\]\È[[ÝHX]\šX[Y]Ë[˜ÛY[™ÈÛÝ\˜ÙH›Ý™[˜[˜ÙKÛY]Y]NÈÜ™X]H[™È˜Y
+NÈ[™ÝYHÔÈ™\šYšYY[Û›Hš[\š[™È[™È[ˆ^[WÝ\™Ù]ÝÚ[™ÝËœX[›™\‹œXZ\ÜÚ[Û—ØÛÛ›ÛœX[—Ý[Y[[™KœX[™HÜÝYKÙ^[\ØÞXÛHTKˆ\HŒHÈH[šÙYÝ\X˜\ÙH
+ÈØ\\™HÜ\˜]Ü‹Ô“È›ÛÙˆ™Y›Ü™H]]Üš[™ÈÞXÛ\Ëˆ\ÝÎˆ\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝÙ^[WØÞXÛ\×Ý\ÝÙØ]WÛZYÜ˜][Û‹œX\ÝÙ^[WØÞXÛ\×Ý\ÝÙØ]WØ™Z]š[Ý\‹œX
+]™HÊK\ÝÙ^[WØÞXÛWÜ™]šY]ËœX\ÝÜ™YÚ\ÝžWØXÝ[ÛœËœXÈ
+ÊH
+ŠÓÑKQ’VQ
+\ÈŠJŠˆ8 %Ý]Ù™‹X]Ø\™HÞXÛHYÙH]˜[X][Ûˆ[™Îˆ]˜[X]Ü‹œXØZ[œÈÜ™\ÛÛ™WØÝ]Ù™—Ù]X
+š^YÙ]X8¡¤œ[IÜÈÝÛˆÝ]Ù™—Ù]XÈÞXÛWÛ›ÝYšXØ][Û˜8¡¤˜]]Üš]]]™HÞXÛIÜÈ›ÝYšXØ][Û—Ù]X
+H
+ÈHÝ]Ù™—ØÛÛ^[ÙHÛˆ]˜[X]WÙ^[WÙ›Ü—Ý\Ù\˜YX\Ý\š[™ÈYÙHÛˆHÙ™šXÚX[Ý][Ù™ˆ\ˆYÙH[KHX›XÈ]˜[X]WØÞXÛWÙ[YÚXš[]X
+YÙH[ˆHÞXÛH^Y\‹›Ý\‹\Ý]HÛÛ˜XÝ™\Ù\™Y
+K[™^\šY[˜ÙWÛZ[—ÞYX\œØ
+ÞXÛK[Û›KZ\ÜÚ[™ø¡ä˜ÛÛ™][Û˜[™]™\ˆ˜Z[[Ü[ŠKˆÝ[[X\š^™WÝ\Ù\—Ù[YÚXš[]XØYÈ™\šYšYY^[WØÞXÛWÜÝ™X[WÙ[YÚXš[]X[™]XÚ\È[ˆ
+Š˜Y]]™H\‹Y^[HÞXÛX›Ý™[˜[˜ÙH˜[™
+Šˆ
+\ˆ
+ÞXÛKÝ™X[JX™\™XÝÈ
+È™\Ý[ÙˆYÙÜ™YØ]NÈ˜\Ù[[™HXÚÙ]ËØÝ™X[\Ö×X[˜Ú[™ÙY[ÛÛœÝ[Y\œÈ˜XÚÝØ\™XÛÛ\]X›JKˆ
+Š”™\Ù\™\È[šÛ›ÝÛ˜Ú[ˆHÝ][Ù™ˆ8 %ÜˆH]]Üš]]]™HÞXÛHÛÝ\˜ÙH8 %\È[˜]˜Z[X›JŠŽˆš^YÙ]XÝ][Ù™œÈ[Ø^\È]˜[X]Kˆ
+ŠLˆ
+ÓÑKQ’VQSQUSÓˆS‘S‘È8 %\Èœ˜[˜Ú
+HÚ\™\ÈHØY\ˆÈ\ÜÈH™\šYšYYÞXÛNŠŠˆÝ[[X\š^™WÝ\Ù\—Ù[YÚXš[]X›ÝÈØ[È™]ÈÛØYÝ™\šYšYYØÞXÛ\Ø
+š[\œÈ™]šY]Ù\—ÜÝ]\ÏIÝ™\šYšYY	Ø\ˆHZYÜ˜][Û‹LŒH\ÝØ]JHÛÈØÞXÛWØ˜[™Ù›Ü—Ù^[XYX\Ý\™\ÈÞXÛWÛ›ÝYšXØ][Û˜YÙHÛˆH™\šYšYYÞXÛIÜÈ›ÝYšXØ][Û—Ù]X[œÝXYÙˆ™]\›š[™È[šÛ›ÝÛ˜›ÜˆÞXÛOS›Û™Xˆ[™\šYšYYØXœÙ[ÞXÛ\È\™H›ÜY
+™]™\ˆÚÝÛŽÈ˜\Ù[[™H™]™\ˆÝXœÝ]]Y
+Kˆ\ÝÎˆ\ÝËÙ^[WÙ[YÚXš[]KÝ\ÝØÞXÛWÙ[YÚXš[]KœX
+Ý][Ù™ˆ™\ÛÛ][Û‹Ý][Ù™‹]œË]Ù^H]™\™Ù[˜ÙK[šÛ›ÝÛ‹\™\Ù\˜][Û‹^\šY[˜ÙKYÙÜ™YØ]H›ÛÝ[[X\š^™HÚ\š[™ÊK\ÝØÞXÛWÜ[[YWÙÝX\™ËœXˆ
+Š”Ý[ÙY\YÙHÝ]Ùˆ˜\Ù[[™H›ÝÜËŠŠˆ
+
+H
+Š”‘TÓÓ‘Q
+ÎN
+JŠˆ8 %ÑUØ\KØYZ[‹Ù^[KY[YÚXš[]KÙ^[\ÏÚ[˜ÛYWÚ[˜XÝ]™O]YX
+YZ[‹YØ]Y
+H\ÝÈ[˜XÝ]™HY[]Y\ÈÚ]\×ØXÝ]™X
+ŠŠÈ›Ý™[˜[˜ÙX
+Šˆ
+˜YœÈ™]\™Y8 %\×ØXÝ]™OY˜[ÙX[Û™H\È[XšYÝ[Ý\ÊK[™ÑU8 )‹Ù^[\ËÞÙ^[WÚYKÜÝ™X[\Ø™]\›œÈØ[›ÛšXØ[Ý™X[HYËÚÙ^\È›Üˆ[PÜ™X]KœÝ™X[WÚY
+Ý™X[HURQÈ\™H›Û‹Y]\›Z[š\ÝXÊNÈY˜][Ý^\ÈXÝ]™K[Û›Kˆ[HÛÜœ™XÝ[ÛœÎˆÑP’H
+Š‘Ù[™\˜[
+Šˆ[š\š]ÈHÛÛ[[Ûˆ˜\Ù[[™H
+LL
+H8¡¤ˆ˜[ÙH[YÚX›X]\Ý™H™\ÛÛ™Y™Y›Ü™H™\šYžZ[™È[žHÑP’HÝ™X[NÈT‘RKÔ”‘H
+ŠXÝX\šX[
+ŠˆÝ^\È[šÛ›ÝÛ˜
+H\X[Z[—Ü\˜Ù[YÙX›ÛÜˆÛÝ[™\ÛÛ™H[YÚX›H8 %˜Z[XÛÜÙY
+Kˆ\ÝÎˆ\ÝËÙ^[WÙ[YÚXš[]KÝ\ÝÙØÝ[Y[Ý\ÝÙØ]WÛZYÜ˜][Û‹œX\ÝÜ[WÜ™]šY]ËœX\ÝËÙ^[WÚ[[YÙ[˜ÙKÝ\ÝÜÞ[X\×ÙØÝ[Y[Ü™]šY]ËœX\]Y\ÝØYZ[—Ø\KœXˆ›ÛÝË]\Èš[Y[ˆHÜXËˆŸÛXZ[ˆ
+›Û‹Q[™Û\Ú
+H\ØÜš\]™HØÛÜš[™ÈS“‘Q
+JH[™Û\Ú\ØÜš\]™H^\ÝÈ
+ŒH
+ÈUÔL‹Ì‹[™H
+Kˆ™]ÈÛÜšÈHÛXZ[ˆXœšXÈ]8 %Ü˜[[X\‹XÙ[šXÈ\ÜÝYK]\H^Û›Û^H
+ŒNŒÌLÌLŠHÙ\È›Ýš]T‘RHTÒHÈ[œÝ\˜[˜ÙH	ˆX[˜YÙ[Y[ÜˆÑP’HYØ[ˆ]\ÝÝ^H[ˆÚYÝÈ8¡¤ˆ]™XX\Ý\žHY™XÞXÛH
+ŒNÌMKMÍŽJNÈ›È™]ÈRHÜš]\Ëˆ™]\ÙHUÔ]˜[X]ÜŽÈÈ›Ý›ÜšËˆŸYYXH\ÜÙ]È8 %ÛÜœ™XÝYS‘“Ô“QQ
+›ÝHØ\
+HYYXH[šØYÙKØ[]^Ú[YÜš]KÐÓTËÜ™[™\™\ˆ[™XYH[™YšXHZYÜ˜][ÛˆŒÌÈ
+ÈØÜËØ\˜Ú]XÝ\™KÜ\K[YYXK›YÛXÙHKˆÙ[Z[™[HY™\œ™Y
+]ØÈ0©ÑY™\œ™Y
+Nˆ\ÜÙ]\ØY›ÝË[ËZ[\Ü\ˆYYXK›Ú™XÝ[Û‹ÜÛ˜\ÚÝÚ\š[™ËY˜[˜ÙY[œÝÙ\ˆ[[Y\ËÜØÛÜ™\œËˆÙ™ˆ[™HˆÜš]XØ[]ˆŸ\Ü\˜[Ý\™˜XÙ\È
+ÛÛ\\ÜË™YY˜XÚÙ\‹[\šY]ÊHÛÛ\\ÜÈÝ™X[\ÈRHÓÑKQ’VQSQUSÓˆS‘S‘È
+ÛÛœÝ[Y\ÈH^\Ý[™ÈÝ™X[\Ö×X^[ØYÈ\×ÜÝ™X[WÜÜXÚYšX×Ü[\ØÜ[Û˜[™Yš[™[Y[
+NÈ
+ŠÛÛ\\ÜÈÝ\œ™[XÞXÛH˜[™
+LŠHÓÑKQ’VQSQUSÓˆS‘S‘È
+œ›ÝÜÙ\‹Û]™H›ÛÙˆ[™[™È8 %\Èœ˜[˜Ú
+JŠŽÈ™YYÝ˜XÚÙ\‹Ú[\šY]ÈS“‘Q
+Œ‹Ô
+H›Ë[™]Ë\Ý\™˜XÙH[H
+ØÚÙYŒ‹L‹LŒJNˆÛÛ\\ÜÈ]™\È[œÚYHH[YÚXš[]H\™XNÈ™YYÝ˜XÚÙ\‹Ú[\šY]È]\Ý™]\ÙH^\Ý[™ÈÝ\™˜XÙ\ÈÜˆ™[[Ý™H8¢iLˆ\Ý[˜][ÛœËˆ
+ŠÛÛ\\ÜÈÝ™X[\Èœ™XZÙÝÛˆ
+ˆÎMÍKÚXÚÜÜÝZ\™[™Y
+NŠŠˆ^[TÝ™X[Pœ™XZÙÝÛ‹šœÞ™[™\œÈ\‹Y^[HÝ™X[\Ö×XÜ›Ý\Y[YÚX›KÐÛÛ™][Û˜[Ó›ÝY[YÚX›KÊŠ“›ÝY]˜[X]Y
+Šˆ
+[šÛ›ÝÛˆÝ™X[\ÈÝ^Hš\ÚX›JH\ÈHÛÈ0©ÎŒH›Ý™[˜[˜ÙH˜[™È8 %H
+Š˜˜\Ù[[™JŠˆ˜[™[™H
+Šœ™X[Ý\œ™[XÞXÛH˜[™
+LŠJŠ‹ˆ
+ŠLˆ8 %Ý\œ™[XÞXÛH˜[™›ÝÈ™[™\™Yœ›ÛHH[œšXÚY\ÝYØ]YÞXÛX^[ØYŠŠˆH]˜[X]Ü‰ÜÈY]]™HÞXÛX^[ØY\È™\šYšYY[Û›H
+ZYÜ˜][ÛˆŒH\ÝØ]HšXHÛØYÝ™\šYšYYØÞXÛ\Ø
+H[™Ø\œšY\È™\ÝY\‹XÞXÛHY]Y]H[™\ˆÞXÛK˜ÞXÛ\Ø
+ÞXÛWÚYØÞXÛWÛ˜[YXØYX\˜Ø›ÝYšXØ][Û—Ù]XØÝ]Ù™—Ù]XØÛÝ\˜ÙWÝ\›Ø™\šYšYYØ]ØÝ]\ØØÝ™X[\Ö×X
+H\ÈHÜ[]™[ÞXÛKœÝ]\ØYÙÜ™YØ]NÈ^[TÝ™X[Pœ™XZÙÝÛ‹šœÞ
+È[YÚX›Q^[\ÐØ\™šœÞ™[™\ˆÞXÛH˜[YH
+È›ÝYšXØ][Û‹ØÝ]Ù™ˆ]KÝ™X[\ÈÜ›Ý\Y[YÚX›KØÛÛ™][Û˜[Û›ÝÙ[YÚX›KÝ[šÛ›ÝÛˆÚ]\‹\Ý™X[HZ\ÜÚ[™ÈšY[È
+È™X\ÛÛœËHÙ™šXÚX[ÛÝ\˜ÙH[šÈ
+È™\šYšXØ][Ûˆ]K[™[ˆ^XÚ]
+Šˆ“›È™\šYšYYÞXÛH[YÚXš[]H]˜Z[X›HŠŠˆ[\HÝ]Kˆ
+Š’[˜\šX[ˆH˜\Ù[[™H˜[™\È™]™\ˆÝXœÝ]]Y›ÜˆHÝ\œ™[XÞXÛH˜[™
+Šˆ
+[™\šYšYYØXœÙ[ÞXÛ\È\™H›ÜY™]™\ˆ˜XœšXØ]Y
+Kˆ
+ŠÚXÚÜÜÝˆÎNN\™[š[™È
+š[™[™ÜÈš^Y
+NŠŠˆ
+JHÛØYÝ™\šYšYYØÞXÛ\Ø›ÝÈ[ÛÈØ]\ÈÛˆÜ\˜][Û˜[Ý]\Ø
+Û›H^XÝYØÜ[˜ØXÝ]™X8 %ÐÕT”‘S•ÐÖPÓWÔÕUTÑTØ
+NÈH™\šYšYY]Ø[˜Ù[YØÛÜÙYØÛÛ\]YÞXÛH\È\ÝÜžK^ÛYYœ›ÛHHÝ\œ™[XÞXÛH˜[™ˆ
+JHÝ]Ù™—Ù]XØÛÝ\˜ÙWÝ\›Ø™\šYšYYØ]\™HØ\œšYY
+Šœ\ˆÝ™X[JŠˆ[™YYÈHÞXÛK[]™[šY[
+Š›Û›HÚ[ˆ]™\žH\Ü^YYÝ™X[HYÜ™Y\ÊŠˆ
+[ÙH[šXHÝ[š\]YWÛÜ—Û›Û™X
+H8 %›ÈÜÜÞHš\œÝ]Ú[œÈXÚÈXÜ›ÜÜÈ[›Ü™\™Y›ÝÜËˆ
+JH›Ý™[˜[˜ÙH›ÝÈ]\ÝÈH
+Š™[YÚXš[]H[\ÊŠˆ
+^[WØÞXÛWÜÝ™X[WÙ[YÚXš[]KœÛÝ\˜ÙWÝ\›Ø™\šYšYYØ]
+K›ÝH^[WØÞXÛ\Ø›ÝÈ8 %HRHX™[È]“Ù™šXÚX[ÛÝ\˜ÙH‹È”[\È™\šYšYY‹\Ý[˜Ýœ›ÛHHÞXÛH“›ÝYšYYˆ]Kˆ
+ŠH[ˆ[šÛ›ÝÛˆÞXÛHÝ™X[H›ÈÛ™Ù\ˆÚÝÜÈ™\šYšYY[\ÈZ\ÜÚ[™ÈŽÈHÞXÛK\[[YHÝX\™[Z]ÈHÛÛ˜Ü™]H[œ™\ÛÛ™YXÝ][Ù™ˆ™X\ÛÛˆ[™HRH˜[È˜XÚÈÈ™]]˜[•[˜X›HÈ]˜[X]H›Üˆ\ÈÞXÛH‹ˆ‘H\ÝÎˆ^[TÝ™X[Pœ™XZÙÝÛ‹\ÝšœØÈ‘H\ÝÎˆ\ÝØÞXÛWÙ[YÚXš[]KœX
+›Û‹XÝ\œ™[^Û\Ú[Û‹\‹\Ý™X[HœÈ[˜[š[[Ý\ÈÝ]Ù™‹ÜÛÝ\˜ÙK[œ™\ÛÛ™YXÝ]Ù™ˆ™X\ÛÛŠK\ÝØÞXÛWÜ[[YWÙÝX\™ËœXˆ
+Š‘š[™[™ÈH
+Ü›ÜÜËXXÚÙ]
+NŠŠˆ[YÚX›Q^[\ÐØ\™Ý\™˜XÙ\È^[\Èœ›ÛHH[šÛ›ÝÛ˜Ø›ÝÙ[YÚX›XXÚÙ]È]Ø\œžHHÝ™X[K\ÜXÚYšXÈ[YÚX›KØÛÛ™][Û˜[™\™XÝ[ˆH\Ý[˜Ý”Ý™X[K[]™[ÜÜ[š]Y\ÈˆÜ›Ý\
+™]™\ˆ\È^[K]ÚYH[YÚX›NÈ[YÚX›HœÈÛÛ™][Û˜[X™[YÛ™\ÝJKˆ
+Š‘š[™[™Èˆ
+›Ý™[˜[˜ÙJH8 %›È˜XÚÙ[™\[™[˜ÞNŠŠˆHÝ™X[HÚÜÙH™\™XÝ
+Š™]™\™Ù\ÊŠˆœ›ÛHH^[K]ÚYH™\™XÝ]\Ý]™H]ÈÝÛˆ[\È
+[ˆ[š\š]YÝ™X[HZ\œ›ÜœÈH^[H™\™XÝ
+KÛÈÝ™X[K\ÜXÚYšXË[™\ÜÈ\È\š]™Yœ›ÛHH^[ØY]^\ÝÈÙ^NÈ\×ÜÝ™X[WÜÜXÚYšX×Ü[\Ø\È\ÙY]]Üš]]]™[H
+ŠÚ[ˆ™\Ù[
+Šˆ]›Ý™\]Z\™YˆÚ\™Y[ÈH^\Ý[™È^[™Y›ÝÈ
+›È™]ÈÝ\™˜XÙK›È›Ý][™ËÐYZ[”Ú[8¡¤ˆÝ]ÚYHÙ\šX[[JNÈÝ™X[[\ÜÈ^[\ÈÙ][ˆ^XÚ]›Ë\Ý™X[KZY[]HÝ]KˆŒˆ‘H\ÝËˆ™YÝ[]ÜžKYÛXZ[ˆ™YYÛ›H
+Ù[™\šXÈÐH^\›˜[[™HÔTŠNÈ›ÝÜÈ›ÝYÚH™]šY]ÈY™XÞXÛH
+ÈY\‹PH™\šYšXØ][Û‹ˆ‚ˆÈÈÈ[]™\žH˜XÚÂ‚Ÿ˜XÚÈÝ\œ™[Ý]H[žHØ]H^]Ø]HŸKK_KK_KK_KK_ŸŒH]	ˆ[YÚXš[]HSˆ“ÑÔ‘TÔÈ\˜Ú]XÝ\™HÛÛ˜XÝ™]šY]ÙYÛ\ÜÚYšY\ˆš^Y\™ÙY
+ÎMMŠNÈÝ™X[HÛÛ˜XÝZYÜ˜][ÛˆH[™È
+‘T’Q–Hˆ[™[™ÊNÈ˜\Ù[[™KØÞXÛH[YÚXš[]HZYÜ˜][Ûˆ
+ÈÛÜ™K]Y\ˆY[]HÙYYÈÝ[Ü[ˆŸŒˆ\Ü\˜[][]H“ÐÒÑQ
+[žHØ]NˆŒH^]Ý[[ˆ›ÙÜ™\ÜÊHŒH^]ÛÛ\\ÜÈ
+ÛÈ›Ý™[˜[˜ÙH˜[™ËÎMÍHY\™ÙY
+H
+ÈÚ\™YXÛÜ™H[›™\ˆÝXœÝ˜]H
+[˜Ü™[Y[K\ÈŠH
+È™YÝ[]ÜžH™YY
+È˜XÚÙ\ˆÛˆ™]\ÙYÝ\™˜XÙ\Ë™\šYšYY]HÛ›HŸŒˆÚ\™YXÛÜ™H[›™\ˆÝXœÝ˜]H
+[˜Ü™[Y[JHÓÑKQ’VQSQUSÓˆS‘S‘È
+\ÈŠH8 %Œˆ™[XZ[œÈ“ÐÒÑQÛˆHŒHØ]H\Ø˜XÚÙ[™Ø\ÜÝYWÛÜËÜÚ\™YØÛÜ™KœX8 %]\›Z[š\ÝXË™XY[Û›HÝXœÝ˜]H›ÜˆHÛÛXš[™Y][K\™YÝ[]ÜžH[ŽÈÙ\È“ÕÝXÚØÛÛ\]WÜ[˜
+[˜Ü™[Y[ŠKˆ\™H\][Û—ÝÜXÜØØX\Ý\žWÜ™]\ÙXØ[ØØ][Û—Ý\™Ù]ØˆÜ˜\\ˆÝ[[X\š^™WÜ™YÝ[]ÜžWÛÝ™\›\
+ÚXÚÜÜÝÎNH\™[™Y
+Nˆ™\ÛÛ™\È\™Ù]^[\Èœ›ÛHH
+Š˜Ø[›ÛšXØ[
+ŠˆÛÝ\˜Ù\È
+\Ü\˜[Ü™Y™\™[˜Ù\Ë\™Ù]Ù^[\ØÛYÜÈ
+È›Ùš[\Ë\™Ù]Ù^[XURQ
+KÚ\™YÛÜ™Hœ›ÛH
+Š˜ÛÛ[[ÛŠŠˆÛÝ™\˜YÙHÛ›H
+^[WÝÜX×ØÛÝ™\˜YÙKœÝ™X[WÚYTÈ•SÈÝ™X[K\ÜXÚYšXÈ™\ÜYÙ\\˜][JKX\Ý\žHÛˆH
+ŠŒ8 $ÌL
+ŠˆØØ[HÚ]
+Š™ÛØ˜[[Û›JŠˆ˜Z[XÛÜÙY™]\ÙH
+^[K\ØÛÜYX\Ý\žH™]™\ˆÝ\™\ÜÙ\È[›Ý\ˆ™YÝ[]ÜŠKÔ‘PQÑRSQ\Ù[[™[™XYÈ™]\›š[™ÈÝ]\Îˆ[˜]˜Z[X›H˜Ûˆ[žH™\]Z\™Y\™XY˜Z[\™H
+™]™\ˆH\X[™XÛÛ\]JK]\›Z[š\ÝXÈÛYÈÜ™\š[™Ë[™[\KX˜[™[ØØ][Ûˆ
+™\›ÜÈ
+ÈÚÜ˜[›YÜÎÈÌÌŒÌL\ÈHØÝ[Y[Y˜[Z[KYØÈ0©ÎY˜][›ÝÝÛ™\‹[ØÚÙY
+Kˆ™XY[Û›HÑUØ\KÜÝYKÜ™YÝ[]ÜžK[Ý™\›\
+›È™]ÈÝ\™˜XÙJKˆL\ÝÈ
+š[\‹X]Ø\™H˜ZÙK™X[\ØÚ[XH˜[Y\ÊKˆ
+Š’[˜Ü™[Y[ˆ
+Ù\\˜]HŠNŠŠˆ\H[ØØ][Ûˆ
+ÈÜ›ÜÜËY^[HY\[ˆØÛÛ\]WÜ[˜ˆŸŒÈ™\\˜][Ûˆ“ÐÒÑQŒH^]
+ÈTKÛ[ØÚÈ™]\ÙHÛÛ™š\›YYÛXZ[ˆTH
+ÈÝ™X[H\\‹LˆÛXZ[ˆ[ØÚÜÎÈÛXZ[ˆ\ØÜš\]™HXœšXÈ]˜[Y]YŸY\]™H“ÐÒÑQŒÈÝX›HÛXZ[ˆ[ØÚÈÛÜœ™XÝ[ÛœÈ
+È][KY^[HÝ™\›\
+È[\šY]È™XY[™\ÜÈ˜[Y]Y‚ˆÈÈš[Üˆ\˜ÜÈÈ]™KQ‹[Û›HZ[Â‚’ÙY\\ÙHÙ\\˜]Yœ›ÛHÛÙK]™\šYšXX›HÝ]\Ë‚‚Ÿ][HÝ\œ™[Ý]\È›Ý\ÈŸKK_KK_KK_ŸÑP’HÜ˜YHHÜœ[ˆÓÔÑQ–H’SÔˆÔTUÔˆÓRSH™X]\È]™KQˆÝ]NÈ™]™\šYžH™Y›Ü™H\Ú[™È]\Èœ™\Ú]šY[˜ÙKˆŸL™K]ÛÜšÜÜXÙKY^[X›Ù\›ÝÈÛX[\‘T’Q–HˆÛÙHÝX\™^\ÝË]›ÝÈ^\Ý[˜ÙKÙ[][Ûˆ\È]™HˆÝ]KˆŸÝ]HÐÈT“˜XÚÙš[‘T’Q–Hˆ[\Ü\ˆ™Z]š[Üˆ\ÈÛÙK]™\šYšXX›NÈXÝX[ŽK[Ü™ËÌLXØ[[™\ˆ˜XÚÙš[Ý]\È\È]™HˆÝ]KˆŸ‰’ÈÝX›Y\™Yš^ÛYÈPU‘HÈ›ÝÛX[ˆÛYÈ[›\ÜÈH™X[Ü\˜]Ü‹Ý\Ù\‹Y˜XÚ[™Èœ™XZÈ\X\œËˆ‚ˆÈÈXZ[[˜[˜ÙH[H›ÜˆYÙ[Â‚‘]™\žHˆ]Ú[™Ù\È[žHÙˆH›ÛÝÚ[™È]\Ý\]H\ÈÚXÚÛ\Ý[ˆHØ[YHœ˜[˜Ú‚‚ŒKˆ[ØÚÈ[™Ú[™HŒˆÈÝYHÔÈ™YY˜XÚË[ÛÜÛÙK™X]\™H›YÜËØÚY[\ˆ™Z]š[Ü‹™]žH›ØœËÜˆ˜[Y][ÛˆØÜË‚Œ‹ˆ^[HÛÝ™\›˜[˜ÙHÛÛœÛÛH›Ý]\ËÛÜšÈ]Y]YKXÝ[ÛˆÛÛœÛÛKÛX[\Y\‹ÜˆÛÜšÜÜXÙKXÛÛœÛÛHÜœ[ˆÛÙK‚ŒËˆ^[H[[YÙ[˜ÙHÙ]\ÝÛÜšÜÜXÙHVY˜[˜ÙY[\ÜÈ™\Z\‹ÝZYYÐYÞXÛH›ÝÜËØÝ[Y[™XY[™\ÜËTKÜXÈÛÝ™\˜YÙKÛÛ\]][Û‹ÜˆX›\ÚØ]\Ë‚ˆ˜XÚÙ[™ÒHÜ™\š[™Ë\[™[˜ÞH]Y]ÛXÞKÜˆÛ›ÝÛˆ›ZÞHÚXÚÜË‚Kˆ[žHÜ\˜]ÜˆXÚ\Ú[Ûˆ]Ú[™Ù\ÈH“ÐÒÑQÔTUÔˆS‘S‘ØS“‘QÜˆÓPS•TS‘S‘ØÝ]\Ë‚‹ˆ[™Û\ÚÜš][™È˜XÝXÙHØÚ[XKTKœ›Û[™X\Ý\žH›YË]˜[X][Ûˆ\[[™KÜˆ›Û\˜[šË‚ËˆÐHÈ]X[È™X\ÛÛš[™È^[œÚ[Ûˆ
+[™HÔTŠNˆÝXš™XÝ[[YHÛXÞKÝ\œ™[XY™˜Z\œÈ\[[™KÜÛÝ\˜Ù\ËØ[™\Ë]X[]\š\ÝXÜËÐØ[Ý[][ÛˆÞ[KÜ\™›Ü›X[˜ÙHÚYÛ˜[Ë™X\ÛÛš[™È^[[YKÜˆHÐH][\ËÜ›Û[Ý[Û‹Ú\ÛÛ][Ûˆ]‚Žˆš[˜[˜ÚX[™YÝ[]ÜžH	ˆ]™[ÜY[[œÝ]][ÛœÈ
+[™HŠNˆ™XÜZ]Y[Û\ÜÚYšY\ˆ™YÝ[]Ü‹Ù]™[ÜY[Z[œÝ]][Ûˆ[X\Ù\ËÝ™X[HØÚ[XK˜\Ù[[™KØÞXÛH[YÚXš[]H^[œÚ[Û‹[œÝ]][ÛˆY[]Y\ËØÞXÛ\ËÜÝ™X[\ËÜ\Ù\ËÜˆÛXZ[ˆ\ØÜš\]™HØÛÜš[™Ë‚‚•Ú[ˆH\ÚÈ\È]™KQˆÜˆ\Þ[Y[[Û›KÜš]H
+Š“ÔTUÔˆS‘S‘ÊŠˆÜˆ
+Š•‘T’Q–HŠŠŽÈ™]™\ˆX\šÈ]ÛÛ\]Hœ›ÛHÛÙH[œÜXÝ[Ûˆ[Û™K‚
