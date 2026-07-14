@@ -463,6 +463,65 @@ def test_verdict_counts_phase_level_sectionless_locked_coverage():
     assert sec["locked_coverage"] == 1
 
 
+def test_verdict_structural_only_for_bundle_driven_ga():
+    # A General Awareness section (general_awareness family) is content-exempt:
+    # its questions come from current-affairs bundles, not the durable bank /
+    # locked coverage this verdict gates on. With no durable GA bank and no
+    # locked GA coverage it is structural_only — NOT blocked, NOT thin.
+    sb = _sb(
+        exam_phases=[{"id": PHASE, "exam_id": EXAM, "duration_mins": 120}],
+        exam_phase_sections=[
+            {"id": SEC, "exam_phase_id": PHASE, "subject_id": SUBJ,
+             "section_label": "General Awareness", "question_count": 25,
+             "marks": 50, "duration_mins": 120, "sort_order": 0},
+        ],
+        subjects=[
+            {"id": SUBJ, "slug": "general-awareness",
+             "subject_group": "general_awareness"},
+        ],
+        mock_question_bank=[],   # no durable GA bank
+        exam_topic_coverage=[],  # no locked GA coverage
+    )
+    structure, depth, coverage = _chain(sb)
+    verdict = readiness_verdict(
+        structure, depth, coverage, min_per_section=30, min_locked_coverage=1
+    )
+    sec = verdict["sections"][0]
+    assert sec["verdict"] == "structural_only"
+    assert sec["reasons"] == ["content_bundle_sourced"]
+    assert "no_locked_coverage" not in sec["reasons"]
+    assert "thin_mcq_pool" not in sec["reasons"]
+    assert verdict["summary"]["structural_only"] == 1
+    assert verdict["summary"]["blocked"] == 0
+    assert verdict["summary"]["thin_bank"] == 0
+
+
+def test_verdict_ga_still_blocks_on_missing_structure():
+    # The GA exemption covers CONTENT only — a structurally incomplete GA
+    # section (missing question_count / marks) is still blocked.
+    sb = _sb(
+        exam_phases=[{"id": PHASE, "exam_id": EXAM, "duration_mins": 120}],
+        exam_phase_sections=[
+            {"id": SEC, "exam_phase_id": PHASE, "subject_id": SUBJ,
+             "section_label": "General Awareness", "question_count": None,
+             "marks": None, "duration_mins": 120, "sort_order": 0},
+        ],
+        subjects=[
+            {"id": SUBJ, "slug": "general-awareness",
+             "subject_group": "general_awareness"},
+        ],
+        mock_question_bank=[],
+        exam_topic_coverage=[],
+    )
+    structure, depth, coverage = _chain(sb)
+    verdict = readiness_verdict(
+        structure, depth, coverage, min_per_section=30, min_locked_coverage=1
+    )
+    sec = verdict["sections"][0]
+    assert sec["verdict"] == "blocked"
+    assert "missing_structure" in sec["reasons"]
+
+
 def test_verdict_blocked_when_no_sections():
     sb = _sb(exam_phases=[], exam_phase_sections=[], mock_question_bank=[], exam_topic_coverage=[])
     structure, depth, coverage = _chain(sb)

@@ -312,6 +312,21 @@ def section_structure_completeness(
         .in_("exam_phase_id", phase_ids)
     )
 
+    # Canonical subject metadata (slug / subject_group) for each section's
+    # subject, so downstream family resolution (e.g. the bundle-driven GA
+    # content exemption in readiness_verdict) reads governed taxonomy, not the
+    # display label. Absent when the subjects table is unavailable → the fields
+    # stay None and callers fall back to the ungoverned path.
+    subject_ids = [s.get("subject_id") for s in sections if s.get("subject_id")]
+    subj_by_id: dict = {}
+    if subject_ids:
+        subj_rows = _fetch_all(
+            lambda: sb.table("subjects")
+            .select("id, slug, subject_group")
+            .in_("id", subject_ids)
+        )
+        subj_by_id = {r.get("id"): r for r in subj_rows}
+
     out_sections = []
     missing_total = 0
     for s in sections:
@@ -331,11 +346,14 @@ def section_structure_completeness(
             missing.append("duration_mins")
         if missing:
             missing_total += 1
+        subj = subj_by_id.get(s.get("subject_id")) or {}
         out_sections.append(
             {
                 "section_id": s.get("id"),
                 "exam_phase_id": s.get("exam_phase_id"),
                 "subject_id": s.get("subject_id"),
+                "subject_slug": subj.get("slug"),
+                "subject_group": subj.get("subject_group"),
                 "section_label": s.get("section_label"),
                 "question_count": s.get("question_count"),
                 "marks": s.get("marks"),
@@ -675,6 +693,15 @@ def readiness_verdict(
     Emits one verdict per (exam, section):
       - blocked: no_sections | missing_structure | no_locked_coverage
       - thin_bank: thin_mcq_pool (structure + coverage OK, pool too shallow)
+      - structural_only: a bundle-driven General Awareness section (the
+        ``general_awareness`` SubjectRuntimePolicy family). GA content is sourced
+        from current-affairs BUNDLES, not the durable ``mock_question_bank`` or
+        locked ``exam_topic_coverage``, so the durable coverage/base-pool gates
+        do not apply — the section is EXEMPT from ``no_locked_coverage`` /
+        ``thin_mcq_pool`` and only genuine ``missing_structure`` can still block
+        it. Tracked in ``summary.structural_only`` (a distinct bucket, so it
+        never inflates ready/thin/blocked). Bundle availability is judged on the
+        current-affairs path, not here.
       - ready: none of the above
 
     Pool depth is attributed to a section by its subject_id (the only link
@@ -714,7 +741,7 @@ def readiness_verdict(
                     "locked_coverage": 0,
                 }
             ],
-            "summary": {"ready": 0, "thin_bank": 0, "blocked": 1},
+            "summary": {"ready": 0, "thin_bank": 0, "blocked": 1, "structural_only": 0},
         }
 
     # Base pool per subject (durable pool only; current items excluded upstream).
@@ -728,8 +755,16 @@ def readiness_verdict(
         _COVERAGE_LOCKED_STATUS, 0
     )
 
+    # Local import (leaf module, stdlib-only) — avoids importing the study_os
+    # package machinery at diagnostics import time while keeping the GA-family
+    # taxonomy authority in one place.
+    from app.study_os.subject_runtime_policy import (
+        FAMILY_GENERAL_AWARENESS,
+        family_for_subject,
+    )
+
     results = []
-    summary = {"ready": 0, "thin_bank": 0, "blocked": 0}
+    summary = {"ready": 0, "thin_bank": 0, "blocked": 0, "structural_only": 0}
     for s in sections:
         section_id = s.get("section_id")
         subject_id = s.get("subject_id")
@@ -738,19 +773,34 @@ def readiness_verdict(
             _COVERAGE_LOCKED_STATUS, 0
         ) + phase_level_locked
 
+        # Bundle-driven GA sections are content-exempt: their questions come from
+        # current-affairs bundles, not the durable bank/coverage this verdict
+        # gates on. Exempt them from no_locked_coverage / thin_mcq_pool; only a
+        # genuine structural gap (missing_structure) can still block them.
+        is_bundle_ga = (
+            family_for_subject(
+                slug=s.get("subject_slug"), subject_group=s.get("subject_group")
+            )
+            == FAMILY_GENERAL_AWARENESS
+        )
+
         reasons = []
         if s.get("missing"):
             reasons.append("missing_structure")
-        if locked < min_locked_coverage:
-            reasons.append("no_locked_coverage")
-        if base_pool < min_per_section:
-            reasons.append("thin_mcq_pool")
+        if not is_bundle_ga:
+            if locked < min_locked_coverage:
+                reasons.append("no_locked_coverage")
+            if base_pool < min_per_section:
+                reasons.append("thin_mcq_pool")
 
         blocking = {"missing_structure", "no_locked_coverage"}
         if blocking & set(reasons):
             verdict = "blocked"
         elif "thin_mcq_pool" in reasons:
             verdict = "thin_bank"
+        elif is_bundle_ga:
+            verdict = "structural_only"
+            reasons.append("content_bundle_sourced")
         else:
             verdict = "ready"
         summary[verdict] += 1
