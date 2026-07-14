@@ -837,22 +837,77 @@ def _load_cycle_rules_by_stream(
     return out
 
 
+def _load_verified_cycles(
+    supabase: Any, cycle_ids: list[Any]
+) -> dict[str, dict[str, Any]]:
+    """Verified ``exam_cycles`` metadata keyed by id — the trust gate (migration
+    261) for the Compass cycle band.
+
+    Only ``reviewer_status='verified'`` cycles are surfaced to aspirants. A cycle
+    rule whose authoritative ``exam_cycles`` row is draft/reviewed/absent is
+    dropped by ``_cycle_band_for_exam`` so an unreviewed cycle is never shown as
+    current-cycle eligibility (and baseline is never substituted for it).
+    """
+    ids = list({cid for cid in cycle_ids if cid})
+    if not ids:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for batch in _chunks(ids, _EXAM_BATCH):
+        rows = (
+            _safe(
+                lambda b=batch: (
+                    supabase.table("exam_cycles")
+                    .select(
+                        "id, cycle_name, year, notification_date, source_url, "
+                        "reviewed_at, reviewer_status"
+                    )
+                    .in_("id", b)
+                    .eq("reviewer_status", "verified")
+                    .limit(_PER_BATCH_LIMIT)
+                    .execute()
+                    .data
+                ),
+                default=[],
+            )
+            or []
+        )
+        for r in rows:
+            out[r["id"]] = r
+    return out
+
+
 def _cycle_band_for_exam(
     streams: list[dict[str, Any]],
     cycle_rules_by_stream: dict[str, list[dict[str, Any]]],
+    cycles_by_id: dict[str, dict[str, Any]],
     profile: dict[str, Any],
 ) -> dict[str, Any] | None:
-    """The cycle provenance band for one exam, or ``None`` when it carries no
-    verified cycle rules (no cycle signal — mirrors how exams with no baseline
-    rules are omitted from the buckets).
+    """The cutoff-aware, cycle-scoped provenance band for one exam, or ``None``
+    when it carries no VERIFIED cycle signal — mirrors how exams with no baseline
+    rules are omitted from the buckets, and keeps the band strictly separate from
+    the baseline verdict (baseline is never substituted for a cycle).
 
-    Each verdict is per ``(cycle, stream)`` because cycle rules are inherently
-    stream-scoped. The authoritative-cycle source (``exam_cycles``) has no trust
-    gate yet (Lane R §4 prereq 2), so we do not vouch for a cycle here: any
-    ``cycle_notification`` age rule resolves to ``unknown`` while a self-contained
-    ``fixed_date`` cut-off is still evaluated on its official date.
+    Trust gate (migration 261): a cycle rule is only surfaced when its
+    authoritative ``exam_cycles`` row is ``reviewer_status='verified'`` (present in
+    ``cycles_by_id``); an unverified/absent cycle is dropped entirely. Because the
+    cycle is now vouched for, ``cycle_notification`` age rules resolve on the
+    cycle's ``notification_date`` (``fixed_date`` cut-offs already self-resolve).
+
+    Shape (per verified cycle, streams nested so the Compass can head each cycle
+    with its own name/date/source/verification and group its streams by verdict)::
+
+        {
+          "status": "<aggregate across every cycle's streams>",
+          "cycles": [
+            {"cycle_id", "cycle_name", "year", "notification_date", "cutoff_date",
+             "source_url", "verified_at", "status",
+             "streams": [{"stream_id","stream_key","name","status","reasons","missing_fields"}]},
+            ...
+          ]
+        }
     """
-    stream_verdicts: list[dict[str, Any]] = []
+    # cycle_id -> [(stream, cycle_rules_for_that_stream), ...]
+    per_cycle: dict[Any, list[tuple[dict[str, Any], list[dict[str, Any]]]]] = {}
     for st in streams:
         st_rules = cycle_rules_by_stream.get(st["id"], [])
         if not st_rules:
@@ -861,10 +916,21 @@ def _cycle_band_for_exam(
         for r in st_rules:
             by_cycle.setdefault(r.get("exam_cycle_id"), []).append(r)
         for cycle_id, crules in by_cycle.items():
-            verdict = evaluate_cycle_eligibility(crules, profile, cycle=None)
+            per_cycle.setdefault(cycle_id, []).append((st, crules))
+
+    cycle_entries: list[dict[str, Any]] = []
+    all_stream_verdicts: list[dict[str, Any]] = []
+    for cycle_id, stream_rulesets in per_cycle.items():
+        cycle_row = cycles_by_id.get(cycle_id)
+        if cycle_row is None:
+            # Trust gate: unverified/absent cycle → never a current-cycle verdict.
+            continue
+        stream_verdicts: list[dict[str, Any]] = []
+        cutoff_date: str | None = None
+        for st, crules in stream_rulesets:
+            verdict = evaluate_cycle_eligibility(crules, profile, cycle=cycle_row)
             stream_verdicts.append(
                 {
-                    "cycle_id": cycle_id,
                     "stream_id": st["id"],
                     "stream_key": st.get("stream_key"),
                     "name": st.get("name"),
@@ -873,11 +939,35 @@ def _cycle_band_for_exam(
                     "missing_fields": verdict["missing_fields"],
                 }
             )
-    if not stream_verdicts:
+            if cutoff_date is None:
+                for r in crules:
+                    d = _resolve_cutoff_date(r, cycle_row)
+                    if d is not None:
+                        cutoff_date = d.isoformat()
+                        break
+        all_stream_verdicts.extend(stream_verdicts)
+        cycle_entries.append(
+            {
+                "cycle_id": cycle_id,
+                "cycle_name": cycle_row.get("cycle_name"),
+                "year": cycle_row.get("year"),
+                "notification_date": cycle_row.get("notification_date"),
+                "cutoff_date": cutoff_date,
+                "source_url": cycle_row.get("source_url"),
+                "verified_at": cycle_row.get("reviewed_at"),
+                "status": _aggregate_cycle_status(stream_verdicts),
+                "streams": stream_verdicts,
+            }
+        )
+    if not cycle_entries:
         return None
+    # Most recent notification first (None last), then by id for a stable order.
+    cycle_entries.sort(
+        key=lambda c: (c["notification_date"] or "", str(c["cycle_id"])), reverse=True
+    )
     return {
-        "status": _aggregate_cycle_status(stream_verdicts),
-        "streams": stream_verdicts,
+        "status": _aggregate_cycle_status(all_stream_verdicts),
+        "cycles": cycle_entries,
     }
 
 
@@ -918,6 +1008,13 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
     streams_by_exam = _load_streams_by_exam(supabase, exam_ids)
     all_stream_ids = [st["id"] for sts in streams_by_exam.values() for st in sts]
     cycle_rules_by_stream = _load_cycle_rules_by_stream(supabase, all_stream_ids)
+    # Trust gate (migration 261): only verified exam_cycles feed the cycle band.
+    all_cycle_ids = [
+        r.get("exam_cycle_id")
+        for rules in cycle_rules_by_stream.values()
+        for r in rules
+    ]
+    cycles_by_id = _load_verified_cycles(supabase, all_cycle_ids)
     profile = _load_user_profile(supabase, user_id)
 
     buckets: dict[str, list[dict[str, Any]]] = {
@@ -960,7 +1057,7 @@ def summarize_user_eligibility(supabase: Any, user_id: str) -> dict[str, Any]:
         # verdicts kept SEPARATE from the baseline verdict above. ``None`` when
         # the exam carries no verified cycle rules.
         cycle_band = _cycle_band_for_exam(
-            streams_by_exam.get(exam["id"], []), cycle_rules_by_stream, profile
+            streams_by_exam.get(exam["id"], []), cycle_rules_by_stream, cycles_by_id, profile
         )
 
         buckets[result["status"]].append(

@@ -145,6 +145,7 @@ function ExamRow({ item, tone, expanded, onToggle }) {
                 streams={item.streams}
                 examName={item.name}
                 examStatus={examStatus}
+                cycle={item.cycle}
               />
             </div>
           )}

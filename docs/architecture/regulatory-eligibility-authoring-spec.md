@@ -94,9 +94,15 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    is left unevaluated so the verdict **preserves `unknown`** (never a today-based
    guess). **Notification age still belongs in the cycle layer, not baseline
    rows.** Precise age rows may now be authored on `exam_cycle_stream_eligibility`
-   with an explicit `fixed_date` cut-off; `cycle_notification` age remains `unknown` in `summarize_user_eligibility`
-   until its cycle-band loader is wired to pass a migration-261 `verified` cycle
-   (the evaluator already accepts an authoritative cycle explicitly).
+   with an explicit `fixed_date` cut-off. **A2 (CODE-FIXED, VALIDATION PENDING)
+   wires the cycle-band loader:** `summarize_user_eligibility` now loads verified
+   cycles via `_load_verified_cycles` (filters `reviewer_status='verified'` per the
+   migration-261 trust gate) and `_cycle_band_for_exam` resolves `cycle_notification`
+   age on the verified cycle's `notification_date`; unverified/absent cycles are
+   dropped (never shown, baseline never substituted). The Regulatory Exam Compass
+   (`ExamStreamBreakdown.jsx` + `EligibleExamsCard.jsx`) renders this real
+   current-cycle band with an explicit "No verified cycle eligibility available"
+   empty state. Live/browser proof PENDING.
 4. **~~No include-inactive discovery for draft identities.~~ RESOLVED.**
    `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) lists
    inactive identities (PFRDA Grade A / IRDAI AM, migration 244); default
@@ -241,6 +247,6 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 ## Follow-ups to file
 - ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 257, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
 - ~~`exam_cycles` trust/review column + gate every consumer & RLS.~~ **CODE-FIXED (migration 261); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before authoring cycles.
-- ~~Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.~~ **DONE** — cycle-layer cutoff-aware age (`evaluate_cycle_eligibility` + `cycle` provenance band); `cycle_notification` age stays `unknown` in the summary path until the loader passes a migration-261 `verified` cycle.
+- ~~Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.~~ **DONE** — cycle-layer cutoff-aware age (`evaluate_cycle_eligibility` + `cycle` provenance band). **A2 (CODE-FIXED, VALIDATION PENDING):** the summary path now passes migration-261 `verified` cycles (`_load_verified_cycles`), so `cycle_notification` age resolves on the verified cycle's `notification_date` and the Compass renders the real current-cycle band; unverified/absent cycles are dropped. Live/browser proof PENDING.
 - ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.
 - ~~Registry gap: add the missing `irdai-am/law` stream.~~ **NOT A GAP** — migration 244 already seeds all six IRDAI streams, including `law`.

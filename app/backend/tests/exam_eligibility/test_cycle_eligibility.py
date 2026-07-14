@@ -172,12 +172,25 @@ _STREAM = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 _CYCLE = "ffffffff-ffff-4fff-8fff-ffffffffffff"
 
 
-def _world_with_cycle(cutoff_basis="fixed_date", cutoff_date="2025-01-01"):
+def _world_with_cycle(
+    cutoff_basis="fixed_date",
+    cutoff_date="2025-01-01",
+    *,
+    cycle_status="verified",
+    notification_date="2025-01-01",
+):
     return {
         "exams": [{"id": _EXAM, "slug": "sebi-grade-a", "name": "SEBI Grade A",
                    "is_active": True, "exam_family_id": None}],
         "exam_streams": [{"id": _STREAM, "exam_id": _EXAM, "stream_key": "legal",
                           "name": "Legal", "is_active": True}],
+        # The authoritative cycle: only reviewer_status='verified' feeds the band
+        # (migration 261 trust gate).
+        "exam_cycles": [{"id": _CYCLE, "exam_id": _EXAM, "cycle_name": "2025 Cycle",
+                         "year": 2025, "notification_date": notification_date,
+                         "source_url": "https://sebi.gov.in/notif.pdf",
+                         "reviewed_at": "2025-02-01T00:00:00Z",
+                         "reviewer_status": cycle_status, "status": "open"}],
         "exam_eligibility_rules": [
             {"exam_id": _EXAM, "stream_id": None, "scope": "all",
              "rule_type": "education_min_level", "value_num": None,
@@ -202,25 +215,61 @@ def test_summarize_attaches_cutoff_aware_cycle_band():
     item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
     # Baseline verdict (graduation) is unchanged and separate.
     assert item["reasons"] == []
-    # Cycle band present, keyed per (cycle, stream), evaluated on the cut-off.
+    # Cycle band present, nested per verified cycle with authoritative metadata.
     band = item["cycle"]
     assert band is not None
     assert band["status"] == "eligible"
-    st = band["streams"][0]
-    assert st["cycle_id"] == _CYCLE
+    cyc = band["cycles"][0]
+    assert cyc["cycle_id"] == _CYCLE
+    assert cyc["cycle_name"] == "2025 Cycle"
+    assert cyc["notification_date"] == "2025-01-01"
+    assert cyc["cutoff_date"] == "2025-01-01"  # fixed_date cut-off
+    assert cyc["source_url"] == "https://sebi.gov.in/notif.pdf"
+    assert cyc["verified_at"] == "2025-02-01T00:00:00Z"
+    assert cyc["status"] == "eligible"
+    st = cyc["streams"][0]
     assert st["stream_id"] == _STREAM
     assert st["status"] == "eligible"
 
 
-def test_summarize_cycle_band_unknown_without_authoritative_cycle():
-    # A cycle_notification age rule with no trusted cycle source stays unknown.
+def test_summarize_cycle_notification_resolves_on_verified_cycle():
+    # With a VERIFIED authoritative cycle, a cycle_notification age rule now
+    # resolves on the cycle's notification_date (trust gate, migration 261).
     invalidate_eligibility_rules_cache()
     out = summarize_user_eligibility(
         SBStub(_world_with_cycle(cutoff_basis="cycle_notification", cutoff_date=None)), "u1"
     )
     invalidate_eligibility_rules_cache()
     item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
-    assert item["cycle"]["status"] == "unknown"
+    cyc = item["cycle"]["cycles"][0]
+    assert cyc["status"] == "eligible"
+    assert cyc["cutoff_date"] == "2025-01-01"  # resolved from notification_date
+
+
+def test_summarize_cycle_notification_unknown_when_notification_missing():
+    # A verified cycle that carries no notification_date cannot resolve a
+    # cycle_notification cut-off → the stream stays unknown (never today-based).
+    invalidate_eligibility_rules_cache()
+    out = summarize_user_eligibility(
+        SBStub(_world_with_cycle(cutoff_basis="cycle_notification", cutoff_date=None,
+                                 notification_date=None)),
+        "u1",
+    )
+    invalidate_eligibility_rules_cache()
+    item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+    cyc = item["cycle"]["cycles"][0]
+    assert cyc["status"] == "unknown"
+    assert cyc["cutoff_date"] is None
+
+
+def test_summarize_cycle_band_is_none_for_unverified_cycle():
+    # Trust gate: a cycle rule whose exam_cycles row is NOT verified is dropped —
+    # an unreviewed cycle is never shown, and baseline is never substituted.
+    invalidate_eligibility_rules_cache()
+    out = summarize_user_eligibility(SBStub(_world_with_cycle(cycle_status="draft")), "u1")
+    invalidate_eligibility_rules_cache()
+    item = next(i for i in out["eligible"] if i["slug"] == "sebi-grade-a")
+    assert item["cycle"] is None
 
 
 def test_summarize_cycle_band_is_none_without_cycle_rules():
