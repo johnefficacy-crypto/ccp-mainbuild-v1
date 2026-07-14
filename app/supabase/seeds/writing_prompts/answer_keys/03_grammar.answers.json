@@ -1,0 +1,852 @@
+{
+  "_meta": {
+    "purpose": "Editorial reference answer keys and rationales for correction-type English writing prompts. Human-authored gold data for Content Studio reviewers and for a future evaluator gold-set. NOT runtime data and NOT imported to any database — the seed batches next door are the importable content; these files are documentation/fixtures only.",
+    "keyed_by": "external_key (matches the corresponding NN_*.json seed batch)",
+    "coverage": "one entry per source-bearing (correction) prompt; production prompts that carry no source_text are excluded by design",
+    "entry_fields": {
+      "source_text": "the faulty sentence from the seed row (echoed for reviewer cross-check)",
+      "exercise_type": "the seed row's exercise_type",
+      "error_type": "specific error class in this sentence",
+      "reference_answer": "one model correction (minimal, meaning-preserving)",
+      "acceptable_variants": "other equally-correct rewrites; [] when one natural fix",
+      "rationale": "why the source is wrong and why the fix is correct (names the rule)"
+    },
+    "not_authoritative": "reference_answer/acceptable_variants are illustrative gold answers, not an exhaustive accept-list; correction prompts admit many valid rewrites. Reviewers judge learner answers on the rule, not string-match.",
+    "batch": "03_grammar.json",
+    "scope": "Grammar-correction prompts (batch 03): fix the single named grammatical error (subject-verb agreement, tense, articles, prepositions, pronoun case, modifiers, punctuation, spelling).",
+    "count": 100
+  },
+  "keys": {
+    "ewp-seed-gram-001": {
+      "source_text": "The list of items are on the desk.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The list of items is on the desk.",
+      "acceptable_variants": [],
+      "rationale": "The subject is the singular noun 'list', so the verb must be 'is'; the intervening prepositional phrase 'of items' does not govern agreement."
+    },
+    "ewp-seed-gram-002": {
+      "source_text": "Each of the players have a locker in the room.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Each of the players has a locker in the room.",
+      "acceptable_variants": [],
+      "rationale": "The indefinite pronoun 'each' is singular and takes a singular verb 'has'; the plural 'players' in the of-phrase does not control the verb."
+    },
+    "ewp-seed-gram-003": {
+      "source_text": "Neither the teacher nor the students was ready for the test.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Neither the teacher nor the students were ready for the test.",
+      "acceptable_variants": [],
+      "rationale": "With 'neither...nor', the verb agrees with the nearer subject; the nearer subject 'students' is plural, so the verb must be 'were'."
+    },
+    "ewp-seed-gram-004": {
+      "source_text": "There is many reasons to celebrate today.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "There are many reasons to celebrate today.",
+      "acceptable_variants": [],
+      "rationale": "In an existential 'there' clause the verb agrees with the logical subject; 'reasons' is plural, so the verb must be 'are'."
+    },
+    "ewp-seed-gram-005": {
+      "source_text": "One of my friends live in Canada.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "One of my friends lives in Canada.",
+      "acceptable_variants": [],
+      "rationale": "The subject is the singular 'one', which takes the singular verb 'lives'; the plural 'friends' is part of the modifying of-phrase."
+    },
+    "ewp-seed-gram-006": {
+      "source_text": "The quality of the roads have improved a lot.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The quality of the roads has improved a lot.",
+      "acceptable_variants": [],
+      "rationale": "The singular head noun 'quality' governs the verb, so it must be 'has'; the plural 'roads' in the of-phrase does not."
+    },
+    "ewp-seed-gram-007": {
+      "source_text": "Mathematics are my favourite subject.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Mathematics is my favourite subject.",
+      "acceptable_variants": [],
+      "rationale": "'Mathematics' is a singular subject noun despite its -s ending, so it takes the singular verb 'is'."
+    },
+    "ewp-seed-gram-008": {
+      "source_text": "The number of applicants were higher this year.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The number of applicants was higher this year.",
+      "acceptable_variants": [],
+      "rationale": "'The number of' is treated as singular and takes 'was', unlike 'a number of', which is plural."
+    },
+    "ewp-seed-gram-009": {
+      "source_text": "A pair of scissors were lying on the table.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "A pair of scissors was lying on the table.",
+      "acceptable_variants": [],
+      "rationale": "The singular head noun 'pair' governs the verb, so it takes 'was' even though 'scissors' is plural in form."
+    },
+    "ewp-seed-gram-010": {
+      "source_text": "Everybody in the class have submitted the form.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Everybody in the class has submitted the form.",
+      "acceptable_variants": [],
+      "rationale": "The indefinite pronoun 'everybody' is grammatically singular and takes the singular verb 'has'."
+    },
+    "ewp-seed-gram-011": {
+      "source_text": "The news about the floods were alarming.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "The news about the floods was alarming.",
+      "acceptable_variants": [],
+      "rationale": "'News' is an uncountable singular noun and takes the singular verb 'was' despite its -s ending."
+    },
+    "ewp-seed-gram-012": {
+      "source_text": "Ten kilometres are a long way to walk.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Ten kilometres is a long way to walk.",
+      "acceptable_variants": [],
+      "rationale": "A measurement of distance treated as a single amount takes a singular verb, so 'is' is correct."
+    },
+    "ewp-seed-gram-013": {
+      "source_text": "Bread and butter are all he eats for breakfast.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "Bread and butter is all he eats for breakfast.",
+      "acceptable_variants": [],
+      "rationale": "'Bread and butter' names a single combined dish, so it is treated as one unit and takes the singular verb 'is'."
+    },
+    "ewp-seed-gram-014": {
+      "source_text": "My trousers is torn at the knee.",
+      "exercise_type": "sentence_correction",
+      "error_type": "subject-verb agreement",
+      "reference_answer": "My trousers are torn at the knee.",
+      "acceptable_variants": [],
+      "rationale": "'Trousers' is a plural-only noun and takes the plural verb 'are'."
+    },
+    "ewp-seed-gram-015": {
+      "source_text": "She has finished her lunch an hour ago.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "She finished her lunch an hour ago.",
+      "acceptable_variants": [],
+      "rationale": "A definite past time marker ('an hour ago') requires the simple past 'finished', not the present perfect 'has finished'."
+    },
+    "ewp-seed-gram-016": {
+      "source_text": "I am knowing the answer to this question.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "I know the answer to this question.",
+      "acceptable_variants": [],
+      "rationale": "'Know' is a stative verb and is not used in the continuous form, so the simple present 'know' is required."
+    },
+    "ewp-seed-gram-017": {
+      "source_text": "When I reached the station, the train already left.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "When I reached the station, the train had already left.",
+      "acceptable_variants": [],
+      "rationale": "The earlier of two past events takes the past perfect, so 'had already left' is required before the later 'reached'."
+    },
+    "ewp-seed-gram-018": {
+      "source_text": "He said that he will call me the next day.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "He said that he would call me the next day.",
+      "acceptable_variants": [],
+      "rationale": "In reported speech after a past reporting verb, 'will' shifts to 'would' by the sequence-of-tenses rule."
+    },
+    "ewp-seed-gram-019": {
+      "source_text": "They are living here since 2015.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "They have been living here since 2015.",
+      "acceptable_variants": [],
+      "rationale": "An action beginning in the past and continuing to now with 'since' requires the present perfect continuous 'have been living'."
+    },
+    "ewp-seed-gram-020": {
+      "source_text": "If I would have known, I would have helped you.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "If I had known, I would have helped you.",
+      "acceptable_variants": [],
+      "rationale": "In a third-conditional if-clause the past perfect 'had known' is used, not 'would have', which belongs only in the main clause."
+    },
+    "ewp-seed-gram-021": {
+      "source_text": "By next month, I will complete two years at this office.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "By next month, I will have completed two years at this office.",
+      "acceptable_variants": [],
+      "rationale": "An action to be finished by a future point takes the future perfect 'will have completed'."
+    },
+    "ewp-seed-gram-022": {
+      "source_text": "She was used to walk to school every morning.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "She used to walk to school every morning.",
+      "acceptable_variants": [],
+      "rationale": "A past habit is expressed with 'used to' plus the base verb; 'was used to' means being accustomed and is not intended here."
+    },
+    "ewp-seed-gram-023": {
+      "source_text": "I have seen that film yesterday.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "I saw that film yesterday.",
+      "acceptable_variants": [],
+      "rationale": "The definite past adverb 'yesterday' requires the simple past 'saw', not the present perfect 'have seen'."
+    },
+    "ewp-seed-gram-024": {
+      "source_text": "While he cooked, the phone was ringing twice.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "While he was cooking, the phone rang twice.",
+      "acceptable_variants": [],
+      "rationale": "The ongoing background action takes the past continuous 'was cooking', while the completed interrupting action takes the simple past 'rang'."
+    },
+    "ewp-seed-gram-025": {
+      "source_text": "Water boils at 100 degrees, everyone knew that even before it was discovered.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "Water boils at 100 degrees, and everyone knew that even before it was discovered.",
+      "acceptable_variants": [
+        "Water boils at 100 degrees, something everyone knew even before it was discovered."
+      ],
+      "rationale": "A general scientific fact stays in the simple present 'boils' even in a past context; the original mismatch is resolved by keeping the fact in the present."
+    },
+    "ewp-seed-gram-026": {
+      "source_text": "He is having a car and a motorbike.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "He has a car and a motorbike.",
+      "acceptable_variants": [],
+      "rationale": "'Have' meaning possession is stative and not used in the continuous, so the simple present 'has' is required."
+    },
+    "ewp-seed-gram-027": {
+      "source_text": "No sooner had I left than it starts to rain.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "No sooner had I left than it started to rain.",
+      "acceptable_variants": [],
+      "rationale": "With the past perfect 'had left' in a 'no sooner...than' construction, the second clause must also be in the past, so 'started' is required."
+    },
+    "ewp-seed-gram-028": {
+      "source_text": "They were playing cricket since morning.",
+      "exercise_type": "sentence_correction",
+      "error_type": "tense",
+      "reference_answer": "They had been playing cricket since morning.",
+      "acceptable_variants": [
+        "They have been playing cricket since morning."
+      ],
+      "rationale": "An action continuing over a period marked by 'since' requires a perfect continuous form, not the simple past continuous 'were playing'."
+    },
+    "ewp-seed-gram-029": {
+      "source_text": "She is honest girl who never lies.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "She is an honest girl who never lies.",
+      "acceptable_variants": [],
+      "rationale": "A singular countable noun phrase needs an article, and 'honest' begins with a vowel sound (silent h), so 'an' is required."
+    },
+    "ewp-seed-gram-030": {
+      "source_text": "He wants to become a engineer.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "He wants to become an engineer.",
+      "acceptable_variants": [],
+      "rationale": "'Engineer' begins with a vowel sound, so the indefinite article must be 'an', not 'a'."
+    },
+    "ewp-seed-gram-031": {
+      "source_text": "The Mount Everest is the highest peak in the world.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "Mount Everest is the highest peak in the world.",
+      "acceptable_variants": [],
+      "rationale": "Names of individual mountains do not take the definite article, so 'the' before 'Mount Everest' must be removed."
+    },
+    "ewp-seed-gram-032": {
+      "source_text": "I bought an university sweatshirt yesterday.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "I bought a university sweatshirt yesterday.",
+      "acceptable_variants": [],
+      "rationale": "'University' begins with a consonant (yoo) sound, so the article must be 'a', not 'an'."
+    },
+    "ewp-seed-gram-033": {
+      "source_text": "She plays the football every evening.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "She plays football every evening.",
+      "acceptable_variants": [],
+      "rationale": "Names of games and sports take no article, so 'the' before 'football' must be removed."
+    },
+    "ewp-seed-gram-034": {
+      "source_text": "He was sent to the prison for the theft.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "He was sent to prison for the theft.",
+      "acceptable_variants": [],
+      "rationale": "Institutions like 'prison' used for their primary purpose take no article, so 'the' before 'prison' is dropped."
+    },
+    "ewp-seed-gram-035": {
+      "source_text": "Sun rises in the east.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "The sun rises in the east.",
+      "acceptable_variants": [],
+      "rationale": "Unique natural objects such as 'the sun' require the definite article 'the'."
+    },
+    "ewp-seed-gram-036": {
+      "source_text": "She is best singer in our school.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "She is the best singer in our school.",
+      "acceptable_variants": [],
+      "rationale": "A superlative adjective ('best') requires the definite article 'the'."
+    },
+    "ewp-seed-gram-037": {
+      "source_text": "We had a breakfast at eight o'clock.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "We had breakfast at eight o'clock.",
+      "acceptable_variants": [],
+      "rationale": "Names of meals take no article when referring to the meal in general, so 'a' before 'breakfast' is removed."
+    },
+    "ewp-seed-gram-038": {
+      "source_text": "He is an one-eyed man with a kind face.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "He is a one-eyed man with a kind face.",
+      "acceptable_variants": [],
+      "rationale": "'One' begins with a consonant (w) sound, so the article must be 'a', not 'an'."
+    },
+    "ewp-seed-gram-039": {
+      "source_text": "A honest officer refused the bribe.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "An honest officer refused the bribe.",
+      "acceptable_variants": [],
+      "rationale": "'Honest' begins with a vowel sound (silent h), so the indefinite article must be 'an'."
+    },
+    "ewp-seed-gram-040": {
+      "source_text": "I met him a hour before the show.",
+      "exercise_type": "sentence_correction",
+      "error_type": "article",
+      "reference_answer": "I met him an hour before the show.",
+      "acceptable_variants": [],
+      "rationale": "'Hour' begins with a vowel sound (silent h), so the indefinite article must be 'an'."
+    },
+    "ewp-seed-gram-041": {
+      "source_text": "She is married with a doctor.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "She is married to a doctor.",
+      "acceptable_variants": [],
+      "rationale": "The adjective 'married' takes the preposition 'to' when naming the spouse, not 'with'."
+    },
+    "ewp-seed-gram-042": {
+      "source_text": "He has been ill since three days.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "He has been ill for three days.",
+      "acceptable_variants": [],
+      "rationale": "A duration of time takes 'for'; 'since' is used only with a point in time."
+    },
+    "ewp-seed-gram-043": {
+      "source_text": "I am good in mathematics.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "I am good at mathematics.",
+      "acceptable_variants": [],
+      "rationale": "The adjective 'good' meaning skilled takes the preposition 'at', not 'in'."
+    },
+    "ewp-seed-gram-044": {
+      "source_text": "The cat jumped in the wall.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "The cat jumped onto the wall.",
+      "acceptable_variants": [
+        "The cat jumped on the wall."
+      ],
+      "rationale": "Movement to a surface takes 'onto' (or 'on'); 'in' wrongly implies entering an enclosed space."
+    },
+    "ewp-seed-gram-045": {
+      "source_text": "He was accused for stealing the money.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "He was accused of stealing the money.",
+      "acceptable_variants": [],
+      "rationale": "The verb 'accuse' takes the preposition 'of' before the offence, not 'for'."
+    },
+    "ewp-seed-gram-046": {
+      "source_text": "She is senior to me by two years, but reports directly under our manager.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "She is senior to me by two years, but reports directly to our manager.",
+      "acceptable_variants": [],
+      "rationale": "'Report' in the sense of answering to a superior takes 'to', not 'under'."
+    },
+    "ewp-seed-gram-047": {
+      "source_text": "We discussed about the plan for an hour.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "We discussed the plan for an hour.",
+      "acceptable_variants": [],
+      "rationale": "The verb 'discuss' is transitive and takes a direct object with no preposition, so 'about' must be removed."
+    },
+    "ewp-seed-gram-048": {
+      "source_text": "He is fond for sweets and chocolate.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "He is fond of sweets and chocolate.",
+      "acceptable_variants": [],
+      "rationale": "The adjective 'fond' takes the preposition 'of', not 'for'."
+    },
+    "ewp-seed-gram-049": {
+      "source_text": "The train will arrive at five minutes.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "The train will arrive in five minutes.",
+      "acceptable_variants": [],
+      "rationale": "A period of time after which something happens takes 'in', not 'at'."
+    },
+    "ewp-seed-gram-050": {
+      "source_text": "She has an advantage above the other players.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "She has an advantage over the other players.",
+      "acceptable_variants": [],
+      "rationale": "The noun 'advantage' takes the preposition 'over' when comparing with others, not 'above'."
+    },
+    "ewp-seed-gram-051": {
+      "source_text": "They reached to the airport in time.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "They reached the airport in time.",
+      "acceptable_variants": [],
+      "rationale": "The verb 'reach' is transitive and takes a direct object with no preposition, so 'to' must be removed."
+    },
+    "ewp-seed-gram-052": {
+      "source_text": "He apologised for me for the delay.",
+      "exercise_type": "sentence_correction",
+      "error_type": "preposition",
+      "reference_answer": "He apologised to me for the delay.",
+      "acceptable_variants": [],
+      "rationale": "One apologises 'to' the person and 'for' the offence, so the first preposition must be 'to', not 'for'."
+    },
+    "ewp-seed-gram-053": {
+      "source_text": "Between you and I, the plan will not work.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "Between you and me, the plan will not work.",
+      "acceptable_variants": [],
+      "rationale": "The preposition 'between' requires objective-case pronouns, so 'I' must become 'me'."
+    },
+    "ewp-seed-gram-054": {
+      "source_text": "The manager praised John and myself for the report.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "The manager praised John and me for the report.",
+      "acceptable_variants": [],
+      "rationale": "As the object of 'praised', the correct form is the objective 'me', not the reflexive 'myself', which needs an antecedent in the same clause."
+    },
+    "ewp-seed-gram-055": {
+      "source_text": "She is taller than me, though I am older than her.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "She is taller than I am, though I am older than she is.",
+      "acceptable_variants": [
+        "She is taller than I, though I am older than she."
+      ],
+      "rationale": "In comparisons with 'than' the pronoun is the subject of an implied clause, so the subjective forms 'I' and 'she' (with the verb) are correct."
+    },
+    "ewp-seed-gram-056": {
+      "source_text": "Give the tickets to whoever wants them, but not to he.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "Give the tickets to whoever wants them, but not to him.",
+      "acceptable_variants": [],
+      "rationale": "As the object of the preposition 'to', the pronoun must be the objective 'him', not the subjective 'he'."
+    },
+    "ewp-seed-gram-057": {
+      "source_text": "Me and my friend went to the fair together.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "My friend and I went to the fair together.",
+      "acceptable_variants": [],
+      "rationale": "As part of the subject of 'went', the pronoun must be the subjective 'I', and convention places it after 'my friend'."
+    },
+    "ewp-seed-gram-058": {
+      "source_text": "The dog wagged its tail when it saw it's owner.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "The dog wagged its tail when it saw its owner.",
+      "acceptable_variants": [],
+      "rationale": "The possessive determiner is 'its' with no apostrophe; \"it's\" is only the contraction of 'it is'."
+    },
+    "ewp-seed-gram-059": {
+      "source_text": "Us students should support the new library rule.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "We students should support the new library rule.",
+      "acceptable_variants": [],
+      "rationale": "The pronoun is in apposition with the subject 'students', so the subjective 'we' is required, not 'us'."
+    },
+    "ewp-seed-gram-060": {
+      "source_text": "This is a secret between she and her sister.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "This is a secret between her and her sister.",
+      "acceptable_variants": [],
+      "rationale": "As the object of the preposition 'between', the pronoun must be the objective 'her', not the subjective 'she'."
+    },
+    "ewp-seed-gram-061": {
+      "source_text": "Him and I finished the project a day early.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "He and I finished the project a day early.",
+      "acceptable_variants": [],
+      "rationale": "As part of the compound subject, both pronouns must be subjective, so 'him' becomes 'he'."
+    },
+    "ewp-seed-gram-062": {
+      "source_text": "The prize was shared between she and me.",
+      "exercise_type": "sentence_correction",
+      "error_type": "pronoun case",
+      "reference_answer": "The prize was shared between her and me.",
+      "acceptable_variants": [],
+      "rationale": "Both pronouns are objects of the preposition 'between', so the objective 'her' is required, not 'she'."
+    },
+    "ewp-seed-gram-063": {
+      "source_text": "Running down the street, my hat blew away.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Running down the street, I lost my hat when it blew away.",
+      "acceptable_variants": [
+        "As I ran down the street, my hat blew away.",
+        "While I was running down the street, my hat blew away."
+      ],
+      "rationale": "The introductory participle 'running' must modify a person; the subject is corrected so that 'I', not 'my hat', is doing the running."
+    },
+    "ewp-seed-gram-064": {
+      "source_text": "She almost drove the children to school every day.",
+      "exercise_type": "sentence_correction",
+      "error_type": "misplaced modifier",
+      "reference_answer": "She drove the children to school almost every day.",
+      "acceptable_variants": [],
+      "rationale": "'Almost' was misplaced before the verb, implying she nearly drove; it should modify 'every day' to convey frequency."
+    },
+    "ewp-seed-gram-065": {
+      "source_text": "He only eats vegetables on Mondays and nothing else.",
+      "exercise_type": "sentence_correction",
+      "error_type": "misplaced modifier",
+      "reference_answer": "He eats only vegetables on Mondays and nothing else.",
+      "acceptable_variants": [],
+      "rationale": "The limiting word 'only' should sit directly before 'vegetables', the element it restricts, to match the sense 'nothing else'."
+    },
+    "ewp-seed-gram-066": {
+      "source_text": "Covered in mud, the coach scolded the players.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Covered in mud, the players were scolded by the coach.",
+      "acceptable_variants": [
+        "The coach scolded the players, who were covered in mud."
+      ],
+      "rationale": "The opening phrase 'covered in mud' must modify the ones actually muddy, so the players, not the coach, must be the subject."
+    },
+    "ewp-seed-gram-067": {
+      "source_text": "I saw a puppy walking to the market.",
+      "exercise_type": "sentence_correction",
+      "error_type": "misplaced modifier",
+      "reference_answer": "While walking to the market, I saw a puppy.",
+      "acceptable_variants": [
+        "Walking to the market, I saw a puppy."
+      ],
+      "rationale": "The phrase 'walking to the market' was misplaced next to 'puppy'; it should modify 'I', the one who was walking."
+    },
+    "ewp-seed-gram-068": {
+      "source_text": "To write well, practice is essential every day.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "To write well, you must practise every day.",
+      "acceptable_variants": [
+        "To write well, one must practise every day."
+      ],
+      "rationale": "The infinitive phrase 'to write well' needs a personal subject to perform the action; 'practice' cannot write, so a person is supplied."
+    },
+    "ewp-seed-gram-069": {
+      "source_text": "The waiter served a steak to the guest that was overcooked.",
+      "exercise_type": "sentence_correction",
+      "error_type": "misplaced modifier",
+      "reference_answer": "The waiter served a steak that was overcooked to the guest.",
+      "acceptable_variants": [
+        "The waiter served the guest a steak that was overcooked."
+      ],
+      "rationale": "The relative clause 'that was overcooked' describes the steak, so it must sit beside 'steak', not 'guest'."
+    },
+    "ewp-seed-gram-070": {
+      "source_text": "Barely two years old, my father taught me to swim.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "When I was barely two years old, my father taught me to swim.",
+      "acceptable_variants": [],
+      "rationale": "The phrase 'barely two years old' must describe the person it applies to; recasting it makes clear that 'I', not my father, was two years old."
+    },
+    "ewp-seed-gram-071": {
+      "source_text": "She served sandwiches to the children on paper plates that were half eaten.",
+      "exercise_type": "sentence_correction",
+      "error_type": "misplaced modifier",
+      "reference_answer": "She served sandwiches that were half eaten to the children on paper plates.",
+      "acceptable_variants": [
+        "On paper plates, she served the children sandwiches that were half eaten."
+      ],
+      "rationale": "The clause 'that were half eaten' describes the sandwiches, so it must be placed next to 'sandwiches', not 'paper plates'."
+    },
+    "ewp-seed-gram-072": {
+      "source_text": "Hoping to win, the trophy seemed within his reach.",
+      "exercise_type": "sentence_correction",
+      "error_type": "dangling modifier",
+      "reference_answer": "Hoping to win, he felt the trophy was within his reach.",
+      "acceptable_variants": [
+        "Hoping to win, he thought the trophy seemed within his reach."
+      ],
+      "rationale": "The participle 'hoping to win' must modify a person; a human subject 'he' is supplied, since the trophy cannot hope."
+    },
+    "ewp-seed-gram-073": {
+      "source_text": "Lets eat grandma before the food gets cold.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "Let's eat, Grandma, before the food gets cold.",
+      "acceptable_variants": [
+        "Let's eat, Grandma, before the food gets cold."
+      ],
+      "rationale": "An apostrophe is needed in the contraction 'Let's', and commas set off the direct address 'Grandma' to avoid the sense of eating Grandma."
+    },
+    "ewp-seed-gram-074": {
+      "source_text": "The teacher said the exam is on friday.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "The teacher said the exam is on Friday.",
+      "acceptable_variants": [],
+      "rationale": "Days of the week are proper nouns and must be capitalised, so 'friday' becomes 'Friday'."
+    },
+    "ewp-seed-gram-075": {
+      "source_text": "Its raining again and the dog lost it's collar.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "It's raining again and the dog lost its collar.",
+      "acceptable_variants": [],
+      "rationale": "'It's' needs an apostrophe as the contraction of 'it is', while the possessive 'its' takes no apostrophe."
+    },
+    "ewp-seed-gram-076": {
+      "source_text": "Where are you going she asked.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "\"Where are you going?\" she asked.",
+      "acceptable_variants": [],
+      "rationale": "The direct question needs quotation marks and a question mark, with 'she asked' as the reporting clause outside the quotation."
+    },
+    "ewp-seed-gram-077": {
+      "source_text": "We bought apples oranges and bananas from the market.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "We bought apples, oranges, and bananas from the market.",
+      "acceptable_variants": [
+        "We bought apples, oranges and bananas from the market."
+      ],
+      "rationale": "Items in a series must be separated by commas; the serial (Oxford) comma before 'and' is optional."
+    },
+    "ewp-seed-gram-078": {
+      "source_text": "My sister who lives in Delhi is a doctor.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "My sister, who lives in Delhi, is a doctor.",
+      "acceptable_variants": [],
+      "rationale": "The non-restrictive relative clause 'who lives in Delhi' adds extra information and must be set off with a pair of commas."
+    },
+    "ewp-seed-gram-079": {
+      "source_text": "He shouted stop the bus is leaving.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "He shouted, \"Stop! The bus is leaving.\"",
+      "acceptable_variants": [
+        "He shouted, \"Stop, the bus is leaving!\""
+      ],
+      "rationale": "The reported exclamation needs a comma after 'shouted' and quotation marks around the direct speech, separating the two statements."
+    },
+    "ewp-seed-gram-080": {
+      "source_text": "The childrens toys were scattered across the floor.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "The children's toys were scattered across the floor.",
+      "acceptable_variants": [],
+      "rationale": "The plural noun 'children' forms the possessive by adding an apostrophe plus s, giving 'children's'."
+    },
+    "ewp-seed-gram-081": {
+      "source_text": "I have three hobbies reading painting and cycling.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "I have three hobbies: reading, painting, and cycling.",
+      "acceptable_variants": [
+        "I have three hobbies: reading, painting and cycling."
+      ],
+      "rationale": "A colon introduces the list after a complete clause, and commas separate the three items."
+    },
+    "ewp-seed-gram-082": {
+      "source_text": "She replied yes I will certainly come.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "She replied, \"Yes, I will certainly come.\"",
+      "acceptable_variants": [],
+      "rationale": "A comma follows the reporting verb 'replied' and quotation marks enclose the direct speech, with a comma after the introductory 'Yes'."
+    },
+    "ewp-seed-gram-083": {
+      "source_text": "Its a long way to the top isnt it.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "It's a long way to the top, isn't it?",
+      "acceptable_variants": [],
+      "rationale": "Apostrophes are needed in 'It's' and 'isn't', a comma sets off the tag question, and a question mark ends the tag."
+    },
+    "ewp-seed-gram-084": {
+      "source_text": "The mens room is at the end of the corridor.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "The men's room is at the end of the corridor.",
+      "acceptable_variants": [],
+      "rationale": "The plural noun 'men' forms the possessive by adding an apostrophe plus s, giving 'men's'."
+    },
+    "ewp-seed-gram-085": {
+      "source_text": "He asked, whether the shop was open?",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "He asked whether the shop was open.",
+      "acceptable_variants": [],
+      "rationale": "An indirect question takes no comma after 'asked' and ends with a full stop, not a question mark."
+    },
+    "ewp-seed-gram-086": {
+      "source_text": "Although it was late; we decided to continue.",
+      "exercise_type": "sentence_correction",
+      "error_type": "punctuation",
+      "reference_answer": "Although it was late, we decided to continue.",
+      "acceptable_variants": [],
+      "rationale": "An introductory subordinate clause is followed by a comma, not a semicolon, which can only join independent clauses."
+    },
+    "ewp-seed-gram-087": {
+      "source_text": "He recieved the parcel on Monday morning.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "He received the parcel on Monday morning.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'received', following the 'i before e except after c' rule."
+    },
+    "ewp-seed-gram-088": {
+      "source_text": "It was a beautifull sunset over the sea.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "It was a beautiful sunset over the sea.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'beautiful', with a single 'l'."
+    },
+    "ewp-seed-gram-089": {
+      "source_text": "The government made an important annoucement.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "The government made an important announcement.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'announcement', with a double 'n' and 'ounce'."
+    },
+    "ewp-seed-gram-090": {
+      "source_text": "She was embarassed by the sudden question.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "She was embarrassed by the sudden question.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'embarrassed', with double 'r' and double 's'."
+    },
+    "ewp-seed-gram-091": {
+      "source_text": "They faced a lot of dificulties on the trek.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "They faced a lot of difficulties on the trek.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'difficulties', with a double 'f'."
+    },
+    "ewp-seed-gram-092": {
+      "source_text": "The commitee will meet again next week.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "The committee will meet again next week.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'committee', with double 'm', double 't', and double 'e'."
+    },
+    "ewp-seed-gram-093": {
+      "source_text": "He has a good knowlege of history.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "He has a good knowledge of history.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'knowledge', with a 'd' before 'ge'."
+    },
+    "ewp-seed-gram-094": {
+      "source_text": "Please seperate the waste before disposal.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "Please separate the waste before disposal.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'separate', with an 'a' in the middle ('par')."
+    },
+    "ewp-seed-gram-095": {
+      "source_text": "The medicine had no noticable side effect.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "The medicine had no noticeable side effect.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'noticeable', which keeps the 'e' after 'c' to preserve the soft sound."
+    },
+    "ewp-seed-gram-096": {
+      "source_text": "We must maintain proper disipline in class.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "We must maintain proper discipline in class.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'discipline', with 'sc' and a 'p' before 'line'."
+    },
+    "ewp-seed-gram-097": {
+      "source_text": "The wether was pleasant throughout the trip.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "The weather was pleasant throughout the trip.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'weather' (atmospheric conditions), with 'ea'."
+    },
+    "ewp-seed-gram-098": {
+      "source_text": "Her arguement was clear and convincing.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "Her argument was clear and convincing.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'argument', which drops the 'e' of 'argue'."
+    },
+    "ewp-seed-gram-099": {
+      "source_text": "He signed the form in the space provieded.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "He signed the form in the space provided.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'provided', with 'vid' before 'ed'."
+    },
+    "ewp-seed-gram-100": {
+      "source_text": "The manager gave a breif reply to the query.",
+      "exercise_type": "sentence_correction",
+      "error_type": "spelling",
+      "reference_answer": "The manager gave a brief reply to the query.",
+      "acceptable_variants": [],
+      "rationale": "The correct spelling is 'brief', following the 'i before e' rule."
+    }
+  }
+}
