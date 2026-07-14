@@ -47,7 +47,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | Shared question renderer | MERGED / CODE PRESENT | `QuestionRenderer.jsx` owns shared stimulus + type renderer composition. |
 | Existing English Error Lab read model | MERGED / CODE PRESENT | `ewp_error_lab`, English endpoint, hook, and `ErrorLab.jsx`; preserve as English-specific authority. |
 | Quant learner strategy delivery | CODE-FIXED, VALIDATION PENDING | GQR-S1 below — `solution_strategies.py` + batched and scope-compatible `heuristics_for_questions` + `get_review` attach + `SolutionStrategyPanel`; automated tests green; live/operator proof pending. |
-| Reasoning strategy authority | CODE-FIXED, VALIDATION PENDING | `app/supabase/migrations/262_reasoning_strategy_authority.sql`, `app/backend/app/study_os/reasoning_strategies.py`, Content Studio Reasoning tab (Library + Review Queue). Authoring/assignment/preview + seeded content deferred (GQR-S3b). |
+| Reasoning strategy authority | CODE-FIXED, VALIDATION PENDING | `app/supabase/migrations/262_reasoning_strategy_authority.sql`, `app/backend/app/study_os/reasoning_strategies.py`, Content Studio Reasoning tab (Library + Review Queue). Authoring/assignment UI still deferred; governed seeded content path landed (GQR-S3b — preflight/seed/proof SQL). |
 | Improvement Lab composition | CODE-FIXED, VALIDATION PENDING | GQR-S5 below — rename + shell landed; personalized feeds are GQR-S6. |
 
 ---
@@ -60,7 +60,7 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | GQR-S1 | Quant Solution Strategy delivery in mock review | CODE-FIXED, VALIDATION PENDING | Existing GQR-Q7 authority | Batched verified-only read, learner projection, review payload field, shared panel, regular/generated-mock tests. No migration. |
 | GQR-S2 | Quant content-readiness completion | CODE-FIXED, VERIFY DB (this PR) | GQR-S1 code present; live submitted-review proof depends on seeded content | Seed verified linked Quant content via pending INSERT + audited `cms_review_quant_heuristic` RPC — no migration. Preflight/seed/proof scripts + read-layer regression. Full Content Studio authoring UI deferred (needs new create/edit/activate/link-review RPCs = migration). |
 | GQR-S3 | Reasoning strategy authority and Content Studio | CODE-FIXED, VALIDATION PENDING | GQR-S0 | Governed schema, RLS, lifecycle/audit RPC, and the Content Studio Reasoning tab (Library + Review Queue) landed (migration 262). Mirrors the Quant heuristic authority: review-only. Authoring/editing/activation/assignment/link-review + learner-safe preview + seeded content are deferred to GQR-S3b, exactly as GQR-Q7 deferred Quant authoring to GQR-S2. |
-| GQR-S3b | Reasoning authoring, assignment, and seeded content | PLANNED | GQR-S3 | Draft creation/editing, activation/retirement, question assignment, question-link review, learner-safe projection preview, and at least one verified strategy + verified link produced through the governed workflow. Required before GQR-S4 learner delivery can validate. |
+| GQR-S3b | Reasoning authoring, assignment, and seeded content | CODE-FIXED, VERIFY DB | GQR-S3 | Governed verified strategy + verified link produced through the existing service-role INSERT + `cms_review_reasoning_strategy` RPC path (preflight/seed/proof SQL; no migration), mirroring GQR-S2. Full Content Studio authoring UI (new create/edit/activate/link-review RPCs = migration) remains a tracked follow-up. |
 | GQR-S4 | Reasoning independent-question learner delivery | CODE-FIXED, VALIDATION PENDING | GQR-S3 authority (migration 262) present; live proof needs GQR-S3b content | `reasoning_strategies.strategies_for_questions` (batched, conjunctive verified+active+scope gate, mirrors Quant) + registered in `solution_strategies` aggregator (`_project_reasoning`, `subject_family='reasoning'`); `get_review` already batches it; shared `SolutionStrategyPanel` reused (renders `key_observation`). No migration. |
 | GQR-S5 | Rename Error Lab learner page to Improvement Lab | CODE-FIXED, VALIDATION PENDING | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
 | GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | BLOCKED on learner delivery | GQR-S1 and GQR-S4 | Bounded owner-scoped attempt-history aggregation; live verified-only projection; independent section states. |
@@ -267,7 +267,40 @@ independent-question family below; the strategy CONTENT for each is seeded throu
 - [ ] RLS/privilege tests pass. *(OPERATOR PENDING — RLS asserted by migration DDL; live proof pending.)*
 - [x] Lifecycle and CAS tests pass (router-layer boundary + transition/CAS/reason guards).
 - [x] Content Studio tests pass (`ContentStudio.test.jsx` reasoning blocks).
-- [ ] At least one verified strategy and verified question link can be produced through the governed workflow. *(GQR-S3b — authoring/assignment path.)*
+- [x] At least one verified strategy and verified question link can be produced through the governed workflow. *(GQR-S3b — governed service-role INSERT + `cms_review_reasoning_strategy` RPC path; seed + rollback proof below. VERIFY DB.)*
+
+---
+
+## GQR-S3b — Reasoning content readiness
+
+**Status:** CODE-FIXED, VERIFY DB (this PR)
+
+**Posture:** mirrors GQR-S2 exactly. No migration. The governed intake path is a
+service-role INSERT into `reasoning_strategies` / `reasoning_question_strategies`
+plus the existing `cms_review_reasoning_strategy` lifecycle RPC (migration 262) to
+reach verified; the link carries its own `reviewer_status` and is verified by a
+service-role UPDATE (v1 has no link RPC).
+
+### Preflight — `app/supabase/checks/reasoning_content_readiness_preflight.sql` (read-only)
+
+- [x] Count verified active reasoning strategies. (Greenfield: 0 before seed — migration 262 shipped tables + review RPC only, no content.)
+- [x] Count verified reasoning question links. (0 before seed.)
+- [x] Count DISTINCT learner-ready questions under the conjunctive gate (link verified AND strategy verified AND active).
+- [x] Confirm those questions are reachable through mock/generated-mock review (mock-pipeline `verified/live/published` status gate).
+
+### Decision
+
+- [x] Skip full Content Studio authoring UI — verified linked content is producible through the existing governed service-role path; adding create/edit/activate/link-review the governed (RPC-owned-audit) way requires **new RPCs = a migration**, which this readiness/seed PR deliberately avoids (exactly as GQR-S2 decided for Quant). Authoring UI is a tracked follow-up.
+- [x] Do not create a new AdminShell/sidebar destination. (No frontend change.)
+- [x] Keep strategy and link reviews separate and conjunctive.
+
+### Data/operator gate
+
+- [x] Seed at least one reviewed Reasoning strategy + verified link for a supported question. — `app/supabase/seeds/reasoning_strategy_demo_ssc_cgl.sql` (idempotent; authors pending rows, verifies 2 Coding-Decoding strategies through the audited RPC, 1 verified link on a reachable demo question).
+- [ ] Verify it appears in submitted review. — **BLOCKED on GQR-S4:** the batched `strategies_for_questions()` reader/projection is not landed yet, so submitted-review evidence belongs to the GQR-S4 branch.
+- [x] Move the strategy or link out of verified and prove it disappears on the next read. — `app/supabase/validation/validate_reasoning_strategy_readiness.sql` (rollback-only; asserts pending-gate, reason gate, audit row, conjunctive link gate, link-rejected, is_active retire, needs_correction).
+
+**VERIFY DB:** run, in order, `checks/reasoning_content_readiness_preflight.sql` → `seeds/reasoning_strategy_demo_ssc_cgl.sql` (with an existing operator `actor_user_id` / `actor_email`) → `validation/validate_reasoning_strategy_readiness.sql` against staging.
 
 ---
 
