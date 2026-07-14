@@ -28,12 +28,14 @@ What it DOES:
 
 AUTHORED-STRUCTURE SCOPE (important): readiness is computed over AUTHORED
 ``exam_phase_sections`` rows ONLY. There is no source of truth here for whether
-an exam's authored structure is officially complete (e.g. SSC CGL Tier 1 has 4
-real sections but only 3 are authored — GA missing). OP-0 audits authored rows
-and cannot detect a missing section, so this service deliberately does NOT judge
-"official N-section completeness". That stays a HUMAN canary-prep gate. The
-payload marks this scope explicitly (``authored_structure_scope`` /
-``scope_note``).
+an exam's authored structure is officially complete: OP-0 audits authored rows
+and cannot tell whether a section is missing, so this service deliberately does
+NOT judge "official N-section completeness". That stays a HUMAN canary-prep
+gate. (The SSC CGL Tier 1 demo seed now authors all FOUR real sections,
+including General Awareness; earlier it carried only three, and this service
+reported the authored count either way without flagging the gap — the point is
+the service never self-reports official completeness.) The payload marks this
+scope explicitly (``authored_structure_scope`` / ``scope_note``).
 
 DESIGN INTENT: the verdict is data-driven off the diagnostic. When the missing
 section is authored and content is populated, the SAME code flips a phase from

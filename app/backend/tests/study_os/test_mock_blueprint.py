@@ -24,12 +24,25 @@ from tests.persona_questions._stub import SBStub
 EXAM = "exam-cgl"
 PHASE = "phase-tier1"
 
-# SSC CGL Tier 1 dev-canary: 3 AUTHORED sections (the real exam has 4 — GA is
-# missing — but OP-0/this service audit authored rows only).
+# Generic thin_bank canary: THREE authored sections, each with its own locked
+# coverage row, used to exercise the service's per-section verdict math for an
+# arbitrary N. It is a synthetic fixture, NOT the SSC seed shape (the SSC CGL
+# Tier 1 demo seed now authors all four real sections — that four-section
+# envelope is pinned by test_seeded_four_section_envelope_ga_thin_until_filled).
 SECTIONS = [
     ("sec-quant", "subj-quant", "Quantitative Aptitude", 0),
     ("sec-reason", "subj-reason", "General Intelligence & Reasoning", 1),
     ("sec-eng", "subj-eng", "English Comprehension", 2),
+]
+
+# SSC CGL Tier 1 real shape after the GA section was authored in the demo seed:
+# Quant / English / Reasoning carry a filled bank; General Awareness is authored
+# for structural completeness but has no question bank of its own yet.
+SEED_SECTIONS = [
+    ("sec-quant", "subj-quant", "Quantitative Aptitude", 0),
+    ("sec-eng", "subj-eng", "English Comprehension", 1),
+    ("sec-reason", "subj-reason", "General Intelligence & Reasoning", 2),
+    ("sec-ga", "subj-ga", "General Awareness", 3),
 ]
 
 
@@ -157,6 +170,85 @@ def test_canary_flips_to_ready_when_pool_filled_no_code_change():
     assert payload["structural_envelope"] is not None
 
 
+# ── SSC CGL Tier 1 four-section envelope (matches the demo seed) ───────────────
+
+def _cgl_four_section_sb(*, bank):
+    """SSC CGL Tier 1 as the demo seed now authors it: FOUR sections + phase-level
+    locked coverage.
+
+    The seed's ``exam_topic_coverage`` rows are phase-scoped (``section_id`` NULL),
+    so locked coverage applies to every section INCLUDING General Awareness — GA
+    is never blocked for ``no_locked_coverage`` here. GA carries no question bank
+    of its own, which is the honest reason it stays ``thin_bank`` until a GA bank
+    is authored.
+    """
+    return _sb(
+        exam_phases=[
+            {"id": PHASE, "exam_id": EXAM, "phase_name": "Tier 1",
+             "phase_slug": "tier-1", "phase_order": 1, "duration_mins": 60},
+        ],
+        exam_phase_sections=[
+            {
+                "id": sid, "exam_phase_id": PHASE, "subject_id": subj,
+                "section_label": label, "question_count": 25, "marks": 50,
+                "duration_mins": None, "negative_marking": "-0.50",
+                "difficulty_level": "medium", "weightage_percent": 25.0,
+                "sort_order": order,
+            }
+            for sid, subj, label, order in SEED_SECTIONS
+        ],
+        mock_question_bank=list(bank),
+        # Phase-level (section_id NULL) locked coverage — mirrors the seed.
+        exam_topic_coverage=[
+            {"id": "cov-phase", "exam_id": EXAM, "exam_phase_id": PHASE,
+             "section_id": None, "reviewer_status": "locked"},
+        ],
+    )
+
+
+def test_seeded_four_section_envelope_ga_thin_until_filled():
+    # Stock the three non-GA subjects above min_per_section (30); GA gets none.
+    bank, n = [], 0
+    for _sid, subj, _label, _order in SEED_SECTIONS[:3]:
+        for _ in range(35):
+            bank.append(_mcq(n, subj))
+            n += 1
+    payload = build_blueprint_payload(
+        _cgl_four_section_sb(bank=bank),
+        exam_id=EXAM,
+        exam_phase_id=PHASE,
+        user_id="user-1",
+        **_CANARY_THRESHOLDS,
+    )
+    # All FOUR authored SSC sections are reported — no fabricated completeness,
+    # and the four-section envelope is present (proves the missing GA section is
+    # now authored). This is the mock_blueprint "author the section, then the
+    # SAME code flips it" design intent, exercised end-to-end.
+    assert payload["authored_structure_scope"] is True
+    assert payload["template_snapshot"]["authored_section_count"] == 4
+    assert len(payload["section_snapshot"]) == 4
+    labels = {s["section_label"] for s in payload["section_snapshot"]}
+    assert "General Awareness" in labels
+
+    # Honest GA readiness: the three content-backed sections are ready, GA alone
+    # is thin_bank (authored + coverage inherited, but no GA question bank yet).
+    assert payload["readiness_snapshot"]["summary"] == {
+        "ready": 3, "thin_bank": 1, "blocked": 0,
+    }
+    assert payload["outcome"] == "thin_bank"
+    ga_verdict = next(
+        s for s in payload["readiness_snapshot"]["verdict"]["sections"]
+        if s["section_label"] == "General Awareness"
+    )
+    assert ga_verdict["verdict"] == "thin_bank"
+    assert ga_verdict["reasons"] == ["thin_mcq_pool"]  # NOT no_locked_coverage
+    # The GA shortfall is the whole section (30 - 0) — honest, not hidden.
+    ga_shortfall = next(
+        s for s in payload["section_shortfall"] if s["section_id"] == "sec-ga"
+    )
+    assert ga_shortfall["shortfall"] == 30
+
+
 # ── blocked / no_sections ─────────────────────────────────────────────────────
 
 def test_blocked_no_sections_envelope_absent():
@@ -223,8 +315,10 @@ def test_readiness_is_over_authored_sections_only():
         user_id="user-1",
         **_CANARY_THRESHOLDS,
     )
-    # 3 authored sections — the service must NOT claim official 4-section
-    # completeness; the real exam has 4 (GA missing) but that is a human gate.
+    # This synthetic fixture authors 3 sections, so the service reports 3 — it
+    # counts AUTHORED rows and never self-reports official N-section
+    # completeness. (The seeded SSC four-section shape is pinned separately by
+    # test_seeded_four_section_envelope_ga_thin_until_filled.)
     assert payload["authored_structure_scope"] is True
     assert payload["template_snapshot"]["authored_section_count"] == 3
     assert len(payload["section_snapshot"]) == 3
