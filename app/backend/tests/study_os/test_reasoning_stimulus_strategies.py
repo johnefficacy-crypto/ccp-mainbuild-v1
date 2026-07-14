@@ -1,9 +1,12 @@
 """GQR-S7 hardening for set/stimulus-aware Reasoning strategy delivery."""
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 
 from app.study_os import reasoning_strategies as rs
+from app.study_os import solution_strategies as ss
 from tests.persona_questions._stub import SBStub
 
 
@@ -140,3 +143,22 @@ def test_stimulus_reader_is_fail_soft_by_default_and_strict_when_requested():
     assert rs.strategies_for_stimuli(BrokenSupabase(), scopes) == {"stim-1": []}
     with pytest.raises(RuntimeError, match="database unavailable"):
         rs.strategies_for_stimuli(BrokenSupabase(), scopes, strict=True)
+
+
+def test_shared_projection_normalizes_uuid_stimulus_ids():
+    stimulus_id = UUID("93417197-9b21-5e01-9460-fb5abdac2aa4")
+    sb = SBStub(
+        {
+            "reasoning_stimulus_strategies": [_link(str(stimulus_id), "s1")],
+            "reasoning_strategies": [_strategy("s1")],
+        }
+    )
+
+    out = ss.strategies_for_stimuli(
+        sb,
+        {stimulus_id: [{"topic_id": "rt1", "microtopic_id": None}]},
+    )
+
+    assert list(out) == [str(stimulus_id)]
+    assert out[str(stimulus_id)][0]["subject_family"] == "reasoning"
+    assert set(out[str(stimulus_id)][0]) == set(ss.ALLOWED_FIELDS)
