@@ -156,6 +156,19 @@ current-cycle eligibility* ("for the open 2025 cycle") sourced from the
 recruitment/cycle layer with its own source + verification date. Baseline is
 never presented as cycle-confirmed.
 
+**Status — A2 (CODE-FIXED, VALIDATION PENDING; live/browser proof pending):** the
+current-cycle band is now real and trust-gated, not a placeholder. The evaluator's
+additive `cycle` payload is verified-only (migration 261 trust gate via
+`_load_verified_cycles`, filtering `reviewer_status='verified'`) and carries nested
+per-cycle metadata (`cycle_name`/`year`/`notification_date`/`cutoff_date`/`source_url`/
+`verified_at`/`status`/`streams[]`); `cycle_notification` age resolves on the verified
+cycle's `notification_date`. `ExamStreamBreakdown.jsx` + `EligibleExamsCard.jsx` render
+cycle name + notification/cutoff date, streams grouped eligible/conditional/
+not_eligible/unknown with missing fields + reasons, the official source link +
+verification date, and an explicit "No verified cycle eligibility available" empty
+state. Unverified/absent cycles are dropped — the baseline band is never substituted
+for the current-cycle band.
+
 The current SEBI baseline collapses to graduation + age + Indian
 (`110:171-178`) — materially insufficient for stream rules and must be corrected
 under this contract.

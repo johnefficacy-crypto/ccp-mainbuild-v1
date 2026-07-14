@@ -98,6 +98,19 @@ def test_summary_loads_recorded_experience_for_cycle_rule():
                 "reviewer_status": "verified",
             }
         ],
+        "exam_cycles": [
+            {
+                "id": _CYCLE,
+                "exam_id": _EXAM,
+                "cycle_name": "2025 Cycle",
+                "year": 2025,
+                "notification_date": "2025-01-01",
+                "source_url": "https://sebi.gov.in/notif.pdf",
+                "reviewed_at": "2025-02-01T00:00:00Z",
+                "reviewer_status": "verified",
+                "status": "open",
+            }
+        ],
         "exam_cycle_stream_eligibility": [
             {
                 "exam_cycle_id": _CYCLE,

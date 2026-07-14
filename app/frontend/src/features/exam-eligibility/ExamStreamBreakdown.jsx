@@ -26,12 +26,36 @@ import { humanFieldList } from "./eligibilityFields";
  */
 
 const STATUS_TONE = { eligible: "sage", conditional: "amber", not_eligible: "rose", unknown: "outline" };
+const STATUS_LABEL = {
+  eligible: "Eligible",
+  conditional: "Conditional",
+  not_eligible: "Not eligible",
+  unknown: "Not evaluated",
+};
 const GROUPS = [
   { status: "eligible", label: "Eligible" },
   { status: "conditional", label: "Conditional" },
   { status: "not_eligible", label: "Not eligible" },
   { status: "unknown", label: "Not evaluated" },
 ];
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Format an ISO date ("YYYY-MM-DD") or ISO timestamp into a readable "12 Mar
+// 2026". Parsed lexically (not via Date) so it is timezone-stable across
+// environments and never shifts a date-only value by a day.
+function formatDate(iso) {
+  if (!iso) return null;
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(iso);
+  const [, year, month, day] = m;
+  const mi = parseInt(month, 10) - 1;
+  const name = MONTHS[mi] || month;
+  return `${parseInt(day, 10)} ${name} ${year}`;
+}
 
 function streamLabel(stream) {
   return stream.name || stream.stream_key || "Stream";
@@ -71,16 +95,23 @@ export function hasStreamLevelOpportunity(exam, examStatus) {
   return eligible.length > 0 || conditional.length > 0;
 }
 
-function streamNote(stream, status) {
+// `context` distinguishes the baseline band from the cycle band: an `unknown`
+// baseline stream genuinely lacks verified rules, but an `unknown` CYCLE stream
+// usually has verified rules whose cut-off couldn't be resolved — so it must not
+// claim "verified rules missing". A backend-supplied reason always wins.
+function streamNote(stream, status, context) {
   const missing = Array.isArray(stream.missing_fields) ? stream.missing_fields : [];
   const reason = Array.isArray(stream.reasons) && stream.reasons.length ? stream.reasons[0] : null;
   if (status === "conditional" && missing.length) return `add ${humanFieldList(missing)}`;
   if (status === "not_eligible" && reason) return reason;
-  if (status === "unknown") return "verified rules missing";
+  if (status === "unknown") {
+    if (reason) return reason;
+    return context === "cycle" ? "Unable to evaluate for this cycle" : "verified rules missing";
+  }
   return null;
 }
 
-function StreamGroup({ label, status, streams }) {
+function StreamGroup({ label, status, streams, context }) {
   if (!streams.length) return null;
   const tone = STATUS_TONE[status] || "outline";
   return (
@@ -88,7 +119,7 @@ function StreamGroup({ label, status, streams }) {
       <div className="num-mono uppercase text-[9.5px] tracking-[0.18em] text-clay-700">{label}</div>
       <ul className="space-y-1">
         {streams.map((s) => {
-          const note = streamNote(s, status);
+          const note = streamNote(s, status, context);
           return (
             <li
               key={streamKey(s)}
@@ -109,14 +140,130 @@ StreamGroup.propTypes = {
   label: PropTypes.string.isRequired,
   status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]).isRequired,
   streams: PropTypes.arrayOf(PropTypes.object).isRequired,
+  // "cycle" adjusts the unknown copy for the current-cycle band; omit for baseline.
+  context: PropTypes.oneOf(["cycle"]),
 };
 
-export default function ExamStreamBreakdown({ streams, examName, examStatus }) {
+StreamGroup.defaultProps = { context: undefined };
+
+// A single verified current-cycle entry. Reads ONLY from the cycle payload —
+// never from the baseline streams/examStatus — and groups THIS cycle's streams
+// independently via the shared GROUPS/StreamGroup pipeline.
+function CycleEntry({ cycle }) {
+  const streams = Array.isArray(cycle.streams) ? cycle.streams : [];
+  const title = cycle.cycle_name || "Cycle";
+  const notified = formatDate(cycle.notification_date);
+  const cutoff = formatDate(cycle.cutoff_date);
+  const verified = formatDate(cycle.verified_at);
+  const tone = STATUS_TONE[cycle.status] || "outline";
+  const statusLabel = STATUS_LABEL[cycle.status] || "Not evaluated";
+
+  return (
+    <div
+      data-testid={`cycle-entry-${cycle.cycle_id}`}
+      className="rounded-lg border border-[#E7DECB] bg-white/55 px-3 py-2.5 space-y-1.5"
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-semibold text-[12.5px] text-clay-900">
+          {title}
+          {cycle.year ? ` ${cycle.year}` : ""}
+        </span>
+        <Pill tone={tone}>{statusLabel}</Pill>
+      </div>
+
+      <div className="text-[11.5px] text-clay-700 flex flex-wrap gap-x-3 gap-y-0.5">
+        {notified || cutoff ? (
+          <>
+            {notified && <span data-testid="cycle-notified">Notified {notified}</span>}
+            {cutoff && <span data-testid="cycle-cutoff">Cut-off {cutoff}</span>}
+          </>
+        ) : (
+          <span data-testid="cycle-dates-missing">Cycle dates aren't published yet.</span>
+        )}
+      </div>
+
+      {/* Rule-level provenance (from exam_cycle_stream_eligibility): attests the
+          displayed eligibility verdicts, distinct from the cycle notification
+          metadata above. Shown only when all displayed streams agree. */}
+      <div className="text-[11.5px] text-clay-700 flex flex-wrap gap-x-3 gap-y-0.5">
+        {cycle.source_url && (
+          <a
+            href={cycle.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-under text-clay-900 font-semibold"
+            data-testid="cycle-source-link"
+          >
+            Official source
+          </a>
+        )}
+        {verified && <span data-testid="cycle-verified">Rules verified {verified}</span>}
+      </div>
+
+      {streams.length ? (
+        <div className="mt-1.5 space-y-2.5" data-testid="cycle-stream-verdicts">
+          {GROUPS.map((g) => (
+            <StreamGroup
+              key={g.status}
+              label={g.label}
+              status={g.status}
+              streams={streams.filter((s) => s.status === g.status)}
+              context="cycle"
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11.5px] text-clay-600" data-testid="cycle-no-streams">
+          No stream verdicts recorded for this cycle.
+        </p>
+      )}
+    </div>
+  );
+}
+
+CycleEntry.propTypes = {
+  cycle: PropTypes.object.isRequired,
+};
+
+// Band 2 — the real current-cycle eligibility band. Renders strictly from the
+// `cycle` prop. An absent or empty cycle payload yields an explicit empty state;
+// it NEVER substitutes the baseline streams for current-cycle eligibility.
+function CycleBand({ cycle }) {
+  const cycles = Array.isArray(cycle?.cycles) ? cycle.cycles : [];
+  return (
+    <section data-testid="provenance-band-cycle" aria-label="Current-cycle stream eligibility">
+      <div className="flex items-center gap-2">
+        <Eyebrow>Streams · current cycle</Eyebrow>
+        <Pill tone="dusk">Per cycle</Pill>
+      </div>
+      {cycles.length ? (
+        <div className="mt-2 space-y-2.5" data-testid="cycle-entries">
+          {cycles.map((c) => (
+            <CycleEntry key={c.cycle_id} cycle={c} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11.5px] text-clay-600 mt-1" data-testid="cycle-band-empty">
+          No verified cycle eligibility available.
+        </p>
+      )}
+    </section>
+  );
+}
+
+CycleBand.propTypes = {
+  cycle: PropTypes.object,
+};
+
+export default function ExamStreamBreakdown({ streams, examName, examStatus, cycle }) {
   const list = Array.isArray(streams) ? streams : [];
+  const cycleEntries = Array.isArray(cycle?.cycles) ? cycle.cycles : [];
 
   // Finding 5 — explicit no-stream-identity state instead of a silent null, so
-  // the expanded detail never just vanishes for a streamless exam.
-  if (list.length === 0) {
+  // the expanded detail never just vanishes for a streamless exam. Only taken
+  // when there is NEITHER a baseline stream NOR any cycle data; a cycle band is
+  // never hidden merely because baseline streams are absent (requirement 6).
+  if (list.length === 0 && cycleEntries.length === 0) {
     return (
       <div
         data-testid="no-stream-identity"
@@ -136,57 +283,60 @@ export default function ExamStreamBreakdown({ streams, examName, examStatus }) {
       className="mt-3 pt-3 border-t border-[#E7DECB] space-y-3"
     >
       {/* Band 1 — Baseline provenance */}
-      <section data-testid="provenance-band-baseline" aria-label="Baseline stream eligibility">
-        <div className="flex items-center gap-2">
-          <Eyebrow>Streams · baseline</Eyebrow>
-          <Pill tone="outline">Baseline</Pill>
-        </div>
-        <p className="text-[11.5px] text-clay-700 mt-1">
-          Verdicts below are from each stream's own rules
-          {examName ? ` for ${examName}` : ""}. Not confirmed against any cycle.
-        </p>
-
-        {specific.length ? (
-          <div className="mt-2 space-y-2.5" data-testid="stream-specific-verdicts">
-            {GROUPS.map((g) => (
-              <StreamGroup
-                key={g.status}
-                label={g.label}
-                status={g.status}
-                streams={specific.filter((s) => s.status === g.status)}
-              />
-            ))}
+      {list.length > 0 ? (
+        <section data-testid="provenance-band-baseline" aria-label="Baseline stream eligibility">
+          <div className="flex items-center gap-2">
+            <Eyebrow>Streams · baseline</Eyebrow>
+            <Pill tone="outline">Baseline</Pill>
           </div>
-        ) : (
-          <p className="text-[11.5px] text-clay-600 mt-2" data-testid="stream-no-specific">
-            No stream diverges from the exam-wide verdict yet.
+          <p className="text-[11.5px] text-clay-700 mt-1">
+            Verdicts below are from each stream's own rules
+            {examName ? ` for ${examName}` : ""}. Not confirmed against any cycle.
           </p>
-        )}
 
-        {matchesBaseline.length > 0 && (
-          <div className="mt-2.5" data-testid="stream-inherited">
-            <div className="num-mono uppercase text-[9.5px] tracking-[0.18em] text-clay-700">
-              Matches the exam-wide baseline
+          {specific.length ? (
+            <div className="mt-2 space-y-2.5" data-testid="stream-specific-verdicts">
+              {GROUPS.map((g) => (
+                <StreamGroup
+                  key={g.status}
+                  label={g.label}
+                  status={g.status}
+                  streams={specific.filter((s) => s.status === g.status)}
+                />
+              ))}
             </div>
-            <p className="text-[11.5px] text-clay-600 mt-1">
-              Same as the exam-level verdict (no divergent stream rule):{" "}
-              {matchesBaseline.map(streamLabel).join(", ")}.
+          ) : (
+            <p className="text-[11.5px] text-clay-600 mt-2" data-testid="stream-no-specific">
+              No stream diverges from the exam-wide verdict yet.
             </p>
-          </div>
-        )}
-      </section>
+          )}
 
-      {/* Band 2 — Current-cycle provenance (makes no claim about cycle state) */}
-      <section data-testid="provenance-band-cycle" aria-label="Current-cycle stream eligibility">
-        <div className="flex items-center gap-2">
-          <Eyebrow>Streams · current cycle</Eyebrow>
-          <Pill tone="dusk">Per cycle</Pill>
-        </div>
-        <p className="text-[11.5px] text-clay-700 mt-1" data-testid="cycle-band-pending">
-          Current-cycle eligibility isn't evaluated in this view. Check the official notification
-          for any current cycle, if available, to confirm.
-        </p>
-      </section>
+          {matchesBaseline.length > 0 && (
+            <div className="mt-2.5" data-testid="stream-inherited">
+              <div className="num-mono uppercase text-[9.5px] tracking-[0.18em] text-clay-700">
+                Matches the exam-wide baseline
+              </div>
+              <p className="text-[11.5px] text-clay-600 mt-1">
+                Same as the exam-level verdict (no divergent stream rule):{" "}
+                {matchesBaseline.map(streamLabel).join(", ")}.
+              </p>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section data-testid="provenance-band-baseline" aria-label="Baseline stream eligibility">
+          <div className="flex items-center gap-2">
+            <Eyebrow>Streams · baseline</Eyebrow>
+            <Pill tone="outline">Baseline</Pill>
+          </div>
+          <p className="text-[11.5px] text-clay-600 mt-1" data-testid="baseline-no-streams">
+            This exam has no separate streams — the exam-wide verdict above applies.
+          </p>
+        </section>
+      )}
+
+      {/* Band 2 — Real current-cycle provenance (reads only from `cycle`) */}
+      <CycleBand cycle={cycle} />
     </div>
   );
 }
@@ -207,10 +357,46 @@ ExamStreamBreakdown.propTypes = {
   // The exam-wide verdict, used to detect stream divergence when the backend
   // omits `has_stream_specific_rules`.
   examStatus: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]),
+  // Additive current-cycle eligibility payload (frozen backend contract). Read
+  // ONLY by Band 2; never substituted for baseline `streams`.
+  cycle: PropTypes.shape({
+    status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]),
+    cycles: PropTypes.arrayOf(
+      PropTypes.shape({
+        cycle_id: PropTypes.string,
+        cycle_name: PropTypes.string,
+        year: PropTypes.number,
+        // Operational lifecycle state (expected/open/active); cycle metadata,
+        // distinct from the verdict `status` below.
+        cycle_status: PropTypes.string,
+        notification_date: PropTypes.string,
+        // cutoff/source/verified are lifted to cycle level only when every
+        // displayed stream agrees (else null); per-stream values always carried.
+        cutoff_date: PropTypes.string,
+        source_url: PropTypes.string,
+        verified_at: PropTypes.string,
+        status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]),
+        streams: PropTypes.arrayOf(
+          PropTypes.shape({
+            stream_id: PropTypes.string,
+            stream_key: PropTypes.string,
+            name: PropTypes.string,
+            status: PropTypes.oneOf(["eligible", "conditional", "not_eligible", "unknown"]),
+            reasons: PropTypes.arrayOf(PropTypes.string),
+            missing_fields: PropTypes.arrayOf(PropTypes.string),
+            cutoff_date: PropTypes.string,
+            source_url: PropTypes.string,
+            verified_at: PropTypes.string,
+          }),
+        ),
+      }),
+    ),
+  }),
 };
 
 ExamStreamBreakdown.defaultProps = {
   streams: [],
   examName: undefined,
   examStatus: undefined,
+  cycle: null,
 };

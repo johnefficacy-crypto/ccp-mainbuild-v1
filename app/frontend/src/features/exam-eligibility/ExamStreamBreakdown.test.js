@@ -1,11 +1,36 @@
 /* eslint-env jest */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import ExamStreamBreakdown, {
   hasStreamLevelOpportunity,
   streamOpportunity,
   isStreamSpecific,
 } from "./ExamStreamBreakdown";
+
+// A verified current-cycle payload matching the frozen backend contract.
+function cyclePayload() {
+  return {
+    status: "conditional",
+    cycles: [
+      {
+        cycle_id: "c1",
+        cycle_name: "SEBI Grade A 2026",
+        year: 2026,
+        notification_date: "2026-03-12",
+        cutoff_date: "2026-04-01",
+        source_url: "https://sebi.gov.in/notification.pdf",
+        verified_at: "2026-03-15T10:30:00Z",
+        status: "conditional",
+        streams: [
+          { stream_id: "cs1", stream_key: "general", name: "General", status: "eligible", reasons: [], missing_fields: [] },
+          { stream_id: "cs2", stream_key: "research", name: "Research", status: "conditional", reasons: [], missing_fields: ["education_percentage"] },
+          { stream_id: "cs3", stream_key: "legal", name: "Legal", status: "not_eligible", reasons: ["Requires a law degree."], missing_fields: [] },
+          { stream_id: "cs4", stream_key: "it", name: "IT", status: "unknown", reasons: [], missing_fields: [] },
+        ],
+      },
+    ],
+  };
+}
 
 // Streams carrying the optional PR #973 provenance flag.
 function flaggedStreams() {
@@ -66,14 +91,134 @@ test("no flag → divergence from the exam-wide verdict marks a stream specific"
   expect(screen.getByTestId("stream-inherited").textContent).toMatch(/IT/);
 });
 
-test("finding 3 — the cycle band makes NO claim about cycle status", () => {
-  render(<ExamStreamBreakdown streams={flaggedStreams()} examStatus="eligible" />);
-  const cycle = screen.getByTestId("cycle-band-pending").textContent;
-  expect(cycle).toMatch(/isn't evaluated in this view/i);
-  expect(cycle).toMatch(/any current cycle/i);
-  expect(cycle).not.toMatch(/the open cycle/i);
-  expect(cycle).not.toMatch(/published yet/i);
-  expect(cycle).not.toMatch(/applies until a cycle opens/i);
+test("A2 — the cycle band renders name+year, notification/cut-off dates, source link, verified date", () => {
+  render(
+    <ExamStreamBreakdown streams={flaggedStreams()} examStatus="eligible" cycle={cyclePayload()} />,
+  );
+  const entry = screen.getByTestId("cycle-entry-c1");
+  const scoped = within(entry);
+  expect(entry.textContent).toMatch(/SEBI Grade A 2026/);
+  expect(entry.textContent).toMatch(/2026/);
+  expect(scoped.getByTestId("cycle-notified").textContent).toMatch(/Notified 12 Mar 2026/);
+  expect(scoped.getByTestId("cycle-cutoff").textContent).toMatch(/Cut-off 1 Apr 2026/);
+  const link = scoped.getByTestId("cycle-source-link");
+  expect(link.getAttribute("href")).toBe("https://sebi.gov.in/notification.pdf");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  expect(link.getAttribute("target")).toBe("_blank");
+  // Provenance attests the eligibility RULES (from exam_cycle_stream_eligibility),
+  // labelled distinctly from the cycle notification metadata.
+  expect(link.textContent).toMatch(/Official source/i);
+  expect(scoped.getByTestId("cycle-verified").textContent).toMatch(/Rules verified 15 Mar 2026/);
+});
+
+test("A2 — each cycle's streams are grouped by all four statuses, independently of baseline", () => {
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cyclePayload()} />);
+  // Scope to the cycle entry so the baseline band (absent here anyway) can never
+  // be mistaken for the current-cycle grouping.
+  const scoped = within(screen.getByTestId("cycle-entry-c1"));
+  expect(scoped.getByTestId("stream-group-eligible").textContent).toMatch(/General/);
+  const conditional = scoped.getByTestId("stream-group-conditional");
+  expect(conditional.textContent).toMatch(/Research/);
+  expect(conditional.textContent).toMatch(/marks percentage/); // missing_fields surfaced
+  const notEligible = scoped.getByTestId("stream-group-not_eligible");
+  expect(notEligible.textContent).toMatch(/Legal/);
+  expect(notEligible.textContent).toMatch(/law degree/i); // reason surfaced
+  expect(scoped.getByTestId("stream-group-unknown").textContent).toMatch(/IT/);
+});
+
+test("A2 — an unknown CYCLE stream never claims 'verified rules missing' (P2)", () => {
+  // The backend produces `unknown` for a verified cycle+rule whose cut-off can't
+  // be resolved (e.g. no notification_date) — verified rules ARE present, so the
+  // baseline copy would be factually wrong.
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cyclePayload()} />);
+  const unknownGroup = within(screen.getByTestId("cycle-entry-c1")).getByTestId("stream-group-unknown");
+  expect(unknownGroup.textContent).toMatch(/IT/);
+  expect(unknownGroup.textContent).not.toMatch(/verified rules missing/i);
+  expect(unknownGroup.textContent).toMatch(/Unable to evaluate for this cycle/i);
+});
+
+test("A2 — a cycle stream surfaces a backend-supplied unresolved-cut-off reason", () => {
+  const cycle = {
+    status: "unknown",
+    cycles: [
+      {
+        cycle_id: "cr",
+        cycle_name: "2026 Cycle",
+        year: 2026,
+        notification_date: null,
+        cutoff_date: null,
+        source_url: null,
+        verified_at: null,
+        status: "unknown",
+        streams: [
+          {
+            stream_id: "u1", stream_key: "general", name: "General", status: "unknown",
+            reasons: ["This cycle's cut-off date isn't published yet, so age can't be verified."],
+            missing_fields: [],
+          },
+        ],
+      },
+    ],
+  };
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cycle} />);
+  const unknownGroup = within(screen.getByTestId("cycle-entry-cr")).getByTestId("stream-group-unknown");
+  expect(unknownGroup.textContent).toMatch(/cut-off date isn't published/i);
+  expect(unknownGroup.textContent).not.toMatch(/verified rules missing/i);
+});
+
+test("A2 — cycle band never substitutes baseline eligibility for current-cycle eligibility", () => {
+  // Baseline says General is eligible; the cycle says General is NOT eligible.
+  const cycle = {
+    status: "not_eligible",
+    cycles: [
+      {
+        cycle_id: "cx",
+        cycle_name: "2027 Cycle",
+        year: 2027,
+        notification_date: null,
+        cutoff_date: null,
+        source_url: null,
+        verified_at: null,
+        status: "not_eligible",
+        streams: [
+          { stream_id: "g", stream_key: "general", name: "General", status: "not_eligible", reasons: ["Cycle-specific bar."], missing_fields: [] },
+        ],
+      },
+    ],
+  };
+  render(<ExamStreamBreakdown streams={flaggedStreams()} examStatus="eligible" cycle={cycle} />);
+  const scoped = within(screen.getByTestId("cycle-entry-cx"));
+  expect(scoped.getByTestId("stream-group-not_eligible").textContent).toMatch(/General/);
+  expect(scoped.queryByTestId("stream-group-eligible")).toBeNull();
+  // Dates unpublished → explicit note; no source link.
+  expect(scoped.getByTestId("cycle-dates-missing").textContent).toMatch(/aren't published/i);
+  expect(scoped.queryByTestId("cycle-source-link")).toBeNull();
+});
+
+test("A2 — cycle=null renders the explicit empty state and NO baseline substitution", () => {
+  const { getByTestId, queryByTestId } = render(
+    <ExamStreamBreakdown streams={flaggedStreams()} examStatus="eligible" cycle={null} />,
+  );
+  expect(getByTestId("cycle-band-empty").textContent).toMatch(/No verified cycle eligibility available/i);
+  expect(queryByTestId("cycle-entries")).toBeNull();
+  // The baseline eligible stream must NOT leak into the cycle band.
+  expect(within(getByTestId("provenance-band-cycle")).queryByTestId("stream-group-eligible")).toBeNull();
+});
+
+test("A2 — an empty cycles array is treated as the empty state, not a baseline fallback", () => {
+  render(
+    <ExamStreamBreakdown streams={flaggedStreams()} examStatus="eligible" cycle={{ status: "unknown", cycles: [] }} />,
+  );
+  expect(screen.getByTestId("cycle-band-empty")).toBeTruthy();
+  expect(screen.queryByTestId("cycle-entries")).toBeNull();
+});
+
+test("A2 — streamless baseline still shows the cycle band when cycle is present", () => {
+  render(<ExamStreamBreakdown streams={[]} examStatus="unknown" cycle={cyclePayload()} />);
+  // Not the streamless early-return — the cycle band is rendered.
+  expect(screen.queryByTestId("no-stream-identity")).toBeNull();
+  expect(screen.getByTestId("cycle-entry-c1")).toBeTruthy();
+  expect(screen.getByTestId("baseline-no-streams")).toBeTruthy();
 });
 
 test("provenance helpers work off the flag when present and divergence otherwise", () => {
