@@ -1,9 +1,9 @@
 # Regulator eligibility rule authoring — SOP + enforcement prerequisites
 
-**Status:** PLANNED / OPERATOR-RISK. This is a **manual, non-enforced** standard
-operating procedure, **not** an enforced authoring contract. Several trust gates
-it relies on do not exist in code yet (see §Enforcement gaps). No rule may be
-promoted to `verified` until those gaps are closed. Nothing is landed by this doc.
+**Status:** CODE-FIXED, OPERATOR VALIDATION PENDING. The authoring safeguards
+now exist in code, but migrations 257 and 261 still require linked-Supabase
+application and operator/RLS proof (see §Enforcement gaps). No new rule or cycle
+may be promoted to `verified` until that validation is captured.
 
 Supersedes the withdrawn migration seed (PR #977, closed) — that leaked cycles
 and used lossy encodings. This revision also corrects the first draft of this
@@ -56,11 +56,30 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    Supabase, capture RLS/behavioural proof) before any rule is promoted `verified`
    in production. Until that validation lands, treat verification as code-gated but
    not operationally proven.
-2. **No trust gate on `exam_cycles`.** It has no review column,
-   `exam_cycles_read_authenticated` (035) grants authenticated read, and
-   `study_os/exam_target_window.py` consumes every non-`cancelled` cycle. → Any
-   cycle row is immediately live. **Prereq:** add a review/trust column + gate
-   every consumer/RLS before authoring cycles. **Do not author cycles until then.**
+2. **Trust gate on `exam_cycles`.** — **CODE-FIXED, VALIDATION PENDING**
+   Previously `exam_cycles` had no review column, `exam_cycles_read_authenticated`
+   (035) granted every authenticated user read, and `study_os/exam_target_window.py`
+   (+ planner / mission-control / plan-timeline) consumed every non-`cancelled`
+   cycle → any cycle row was immediately live.
+   - Migration **261** adds `reviewer_status` (`draft`/`reviewed`/`verified`) +
+     `reviewed_by`/`reviewed_at`/`created_by`. Existing cycles are grandfathered
+     `verified` once (column default `draft`, so new cycles are gated); the
+     permissive 035 read policy is replaced by verified-only authenticated read
+     (`exam_cycles_read_verified`, admin-exempt).
+   - An atomic SECURITY DEFINER `review_exam_cycle` RPC gates
+     `draft → reviewed → verified` (no jump; CAS on expected status; reviewer
+     separation, fail-closed on missing `created_by`; atomic audit; demotion to
+     draft clears the stamp), and a BEFORE-UPDATE trigger blocks reviewed-content edits on reviewed/verified
+     cycles unless the same statement demotes to `draft` (the CMS create path lands
+     `draft`; generic CMS and corrigendum registry-action updates demote on
+     material edits, including source provenance/metadata, and can never promote). `POST /exam-cycles/{id}/review` is the only promotion path.
+   - Every Study OS consumer (`exam_target_window.py`, `planner.py`,
+     `mission_control.py`, `plan_timeline.py`, the `/study/exams` cycle API) now
+     filters `reviewer_status='verified'`.
+
+   The remaining work is operator/live validation (apply 261 to the linked
+   Supabase, capture RLS/behavioural proof). **Do not author cycles until that
+   validation lands.**
 3. **~~No cutoff-aware age evaluation.~~ CODE-FIXED.** The baseline evaluator
    still measures age against `date.today()` (correct for stable baseline), but a
    cutoff-aware **cycle layer** now lands: `evaluator._resolve_cutoff_date`
@@ -75,8 +94,9 @@ manual-SOP only and every `verified` promotion is an operator-risk action.
    is left unevaluated so the verdict **preserves `unknown`** (never a today-based
    guess). **Notification age still belongs in the cycle layer, not baseline
    rows.** Precise age rows may now be authored on `exam_cycle_stream_eligibility`
-   with an explicit `fixed_date` cut-off; `cycle_notification` age stays `unknown`
-   until prereq 2 (cycle trust) closes.
+   with an explicit `fixed_date` cut-off; `cycle_notification` age remains `unknown` in `summarize_user_eligibility`
+   until its cycle-band loader is wired to pass a migration-261 `verified` cycle
+   (the evaluator already accepts an authoritative cycle explicitly).
 4. **~~No include-inactive discovery for draft identities.~~ RESOLVED.**
    `GET /api/admin/exam-eligibility/exams?include_inactive=true` (admin-gated) lists
    inactive identities (PFRDA Grade A / IRDAI AM, migration 244); default
@@ -220,7 +240,7 @@ Baseline age: defer to the cycle layer (§Prereq 3).
 
 ## Follow-ups to file
 - ~~`exam_eligibility_rules` document linkage FK + reviewed-document verify transition + reviewer separation.~~ **CODE-FIXED (migration 257, `source_document_id` per repo convention); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before promoting any rule `verified`.
-- `exam_cycles` trust/review column + gate every consumer & RLS.
-- ~~Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.~~ **DONE** — cycle-layer cutoff-aware age (`evaluate_cycle_eligibility` + `cycle` provenance band); `cycle_notification` age stays `unknown` until the `exam_cycles` trust gate closes.
+- ~~`exam_cycles` trust/review column + gate every consumer & RLS.~~ **CODE-FIXED (migration 261); VALIDATION PENDING** — apply to the linked Supabase and capture operator/RLS proof before authoring cycles.
+- ~~Cutoff-aware age evaluation (select + apply `cutoff_date_basis`/`cutoff_date`), or cycle-layer age only.~~ **DONE** — cycle-layer cutoff-aware age (`evaluate_cycle_eligibility` + `cycle` provenance band); `cycle_notification` age stays `unknown` in the summary path until the loader passes a migration-261 `verified` cycle.
 - ~~Admin include-inactive exam listing + stream listing for draft identities.~~ **RESOLVED** — `GET …/exams?include_inactive=true` surfaces inactive identities with `is_active` + `provenance`; `GET …/exams/{exam_id}/streams` returns canonical stream ids/keys for `RuleCreate.stream_id`.
 - ~~Registry gap: add the missing `irdai-am/law` stream.~~ **NOT A GAP** — migration 244 already seeds all six IRDAI streams, including `law`.

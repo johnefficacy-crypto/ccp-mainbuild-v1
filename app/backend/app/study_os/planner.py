@@ -96,6 +96,7 @@ def _cached_next_cycle(supabase: Any, exam_id: str, today_iso: str) -> dict[str,
                 supabase.table("exam_cycles")
                 .select("id, exam_start, cycle_name")
                 .eq("exam_id", exam_id)
+                .eq("reviewer_status", "verified")  # trust gate (migration 261)
                 .gte("exam_start", today_iso)
                 .order("exam_start")
                 .limit(1)
@@ -225,6 +226,7 @@ def _cycle_planner_exposed(supabase: Any, cycle_id: str | None) -> bool:
             supabase.table("exam_cycles")
             .select("status, planner_activation_enabled")
             .eq("id", cycle_id)
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
             .limit(1)
             .execute()
             .data
