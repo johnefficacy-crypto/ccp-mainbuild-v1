@@ -41,6 +41,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from app.db.utils import maybe_single
+
 # Most-specific -> least-specific precedence bands.
 _BAND_ORDER = ("phase", "exam", "family", "global")
 
@@ -132,13 +134,12 @@ def _resolve_exam_family(supabase: Any, exam_id: str | None) -> str | None:
     """The exam's family id, or None when there is no exam / no family."""
     if not exam_id:
         return None
-    row = (
+    row = maybe_single(
         supabase.table("exams")
         .select("exam_family_id")
         .eq("id", str(exam_id))
         .maybe_single()
-        .execute()
-    ).data
+    )
     return (row or {}).get("exam_family_id")
 
 

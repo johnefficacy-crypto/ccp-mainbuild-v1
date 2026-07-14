@@ -26,6 +26,9 @@ import ErrorState from "../../shared/ui/ErrorState";
 import EmptyState from "../../shared/ui/EmptyState";
 import { PageHeader, StudyCard, SectionHeader, StatusDot } from "../../shared/ui/studyos";
 import SentenceBuilder from "../../features/study/english-practice/SentenceBuilder";
+import ParagraphBuilder, {
+  isParagraphExercise,
+} from "../../features/study/english-practice/ParagraphBuilder";
 import RewriteEditor from "../../features/study/english-practice/RewriteEditor";
 import SourceContext from "../../features/study/english-practice/SourceContext";
 import SentenceIssueCard from "../../features/study/english-practice/SentenceIssueCard";
@@ -300,11 +303,16 @@ export default function EnglishPracticeShell() {
           result?.rewriteAfter ?? unit.latest_version?.answer_text ?? null;
         const showRewriteDiff =
           isDone && diffBefore != null && diffAfter != null && diffBefore !== diffAfter;
+        // EWP-6 scaffold: paragraph-level drills compose via ParagraphBuilder.
+        // Inert until the paragraph gate opens — no paragraph prompt is
+        // active/launchable, so this branch is dead for real sessions today.
+        const isParagraph = isParagraphExercise(prompt.exercise_type);
+        const unitNoun = isParagraph ? "Paragraph" : "Sentence";
 
         return (
           <StudyCard key={unit.id} className="mt-4" data-testid={`unit-${unit.unit_number}`}>
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium">Sentence {unit.unit_number}</span>
+              <span className="text-sm font-medium">{unitNoun} {unit.unit_number}</span>
               <span className="flex items-center gap-1.5 text-xs text-slate-500">
                 <StatusDot state={meta.dot} label={meta.label} />
                 {meta.label}
@@ -321,21 +329,36 @@ export default function EnglishPracticeShell() {
               />
             )}
 
-            {/* Compose (not_started/draft): submit version 1+. */}
-            {["not_started", "draft"].includes(unit.status) && (
-              <SentenceBuilder
-                unitNumber={unit.unit_number}
-                promptText={prompt.prompt_text}
-                sourceText={prompt.source_text}
-                exerciseType={prompt.exercise_type}
-                minWords={minWords}
-                maxWords={maxWords}
-                requiredWords={requiredWords}
-                sessionId={sessionId}
-                busy={busy}
-                onSubmit={(text) => onSubmitUnit(unit, text)}
-              />
-            )}
+            {/* Compose (not_started/draft): submit version 1+. Paragraph-level
+                drills route to the EWP-6 ParagraphBuilder (outline scratchpad);
+                everything else stays on the SentenceBuilder. */}
+            {["not_started", "draft"].includes(unit.status) &&
+              (isParagraph ? (
+                <ParagraphBuilder
+                  unitNumber={unit.unit_number}
+                  promptText={prompt.prompt_text}
+                  sourceText={prompt.source_text}
+                  exerciseType={prompt.exercise_type}
+                  minWords={minWords}
+                  maxWords={maxWords}
+                  sessionId={sessionId}
+                  busy={busy}
+                  onSubmit={(text) => onSubmitUnit(unit, text)}
+                />
+              ) : (
+                <SentenceBuilder
+                  unitNumber={unit.unit_number}
+                  promptText={prompt.prompt_text}
+                  sourceText={prompt.source_text}
+                  exerciseType={prompt.exercise_type}
+                  minWords={minWords}
+                  maxWords={maxWords}
+                  requiredWords={requiredWords}
+                  sessionId={sessionId}
+                  busy={busy}
+                  onSubmit={(text) => onSubmitUnit(unit, text)}
+                />
+              ))}
 
             {unit.status === "evaluation_pending" && (
               <div role="status" aria-live="polite" data-testid={`unit-${unit.unit_number}-pending`}>

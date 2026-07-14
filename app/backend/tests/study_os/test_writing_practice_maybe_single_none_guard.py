@@ -22,6 +22,7 @@ import pytest
 pytest.importorskip("fastapi")
 
 from app.api import writing_practice as wp  # noqa: E402
+from app.db.utils import maybe_single  # noqa: E402
 
 _USER = "u1"
 _SESSION = "00000000-0000-0000-0000-0000000000f1"
@@ -47,12 +48,12 @@ class _RealPostgrestMaybeSingleQuery:
 
 
 def test_maybe_single_helper_returns_none_on_zero_rows():
-    assert wp._maybe_single(_RealPostgrestMaybeSingleQuery(None)) is None
+    assert maybe_single(_RealPostgrestMaybeSingleQuery(None)) is None
 
 
 def test_maybe_single_helper_returns_data_on_match():
     row = {"id": "x"}
-    assert wp._maybe_single(_RealPostgrestMaybeSingleQuery(row)) == row
+    assert maybe_single(_RealPostgrestMaybeSingleQuery(row)) == row
 
 
 # --------------------------------------------------------------------------- #

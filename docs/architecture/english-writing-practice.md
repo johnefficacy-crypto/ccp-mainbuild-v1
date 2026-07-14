@@ -1682,6 +1682,8 @@ EnglishPracticeShell
 
 This shell does not go through `AttemptShellRouter`. That router fetches a mock attempt header and dispatches only between mock interface modes. Later, full descriptive mock exams will add `interface_mode = 'descriptive'` to the mock router — essays and précis conducted as timed examinations are real mock attempts and belong there.
 
+`ParagraphBuilder` is present as an **inert scaffold** (EWP-6): the shell dispatches the paragraph-level exercise types (`_PARAGRAPH_EXERCISES`) to it, and it carries the `outline_json` outline scratchpad, but no paragraph prompt is verified/active/launchable and the paragraph release gate (§16) is closed, so the branch is dead in production until the gate opens. The outline is a client scratchpad in this scaffold; a persisted `outline_json` column is a future gated backend slice.
+
 ### 13.3 Mandatory patterns
 
 All frontend code follows AGENTS.md governance:

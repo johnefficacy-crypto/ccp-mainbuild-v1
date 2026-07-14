@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.db.utils import maybe_single
 from app.study_os.writing_practice import applicability
 from app.study_os.writing_practice import coverage_checker
 from app.study_os.writing_practice import deterministic as det
@@ -71,23 +72,9 @@ class ReopenUnitRequest(BaseModel):
 
 # --- helpers --------------------------------------------------------------
 
-def _maybe_single(query: Any) -> dict | None:
-    """Run a ``.maybe_single()`` query, tolerating a zero-row match.
-
-    postgrest-py's ``SyncMaybeSingleRequestBuilder.execute()`` returns bare
-    ``None`` (not a response object with ``.data=None``) when the query
-    matches zero rows, so ``.execute().data`` chained directly on a
-    ``.maybe_single()`` query raises ``AttributeError: 'NoneType' object has
-    no attribute 'data'`` on the legitimate "not found" case instead of
-    returning ``None``. Every ``.maybe_single()`` call in this module must go
-    through this helper.
-    """
-    resp = query.execute()
-    return resp.data if resp is not None else None
-
 
 def _owned_session(supabase: Any, session_id: str, user_id: str) -> dict:
-    row = _maybe_single(
+    row = maybe_single(
         supabase.table("writing_sessions")
         .select("*")
         .eq("id", session_id)
@@ -239,7 +226,7 @@ def _owned_task(supabase: Any, user_id: str, study_task_id: str) -> dict:
     subject/topic scope used to derive candidate prompts. A client-supplied exam
     is NEVER trusted — everything downstream reads the pinned columns here.
     """
-    task = _maybe_single(
+    task = maybe_single(
         supabase.table("study_tasks")
         .select("id,user_id,exam_id,exam_phase_id,subject_id,topic_id,launch_context")
         .eq("id", str(study_task_id))
@@ -267,7 +254,7 @@ def _create_learning_session(
     create RPC (migrations 214/221/222) always run — no bypass path exists.
     Returns the raw session row from the RPC.
     """
-    prompt = _maybe_single(
+    prompt = maybe_single(
         supabase.table("writing_prompts")
         .select("*")
         .eq("id", str(prompt_id))
@@ -381,7 +368,7 @@ def _english_subject_id(supabase: Any, task: dict) -> str | None:
     Resolved from the ``english-language`` subject slug (migration 205 seed);
     falls back to the task's own ``subject_id`` if the slug can't be resolved.
     """
-    row = _maybe_single(
+    row = maybe_single(
         supabase.table("subjects").select("id").eq("slug", "english-language")
         .maybe_single()
     )
@@ -542,7 +529,7 @@ def submit_unit(
     if session["status"] in (st.SESSION_COMPLETED, st.SESSION_ABANDONED):
         raise HTTPException(status_code=409, detail="session is not open for submission")
 
-    unit = _maybe_single(
+    unit = maybe_single(
         supabase.table("writing_session_units")
         .select("*")
         .eq("session_id", str(session_id))
@@ -673,16 +660,16 @@ def get_evaluation(
 
     # Prove the evaluation belongs to THIS owned session: evaluation -> version
     # -> unit -> session. A globally-fetched evaluation is not sufficient.
-    evaluation = _maybe_single(
+    evaluation = maybe_single(
         supabase.table("writing_evaluations").select("*").eq("id", str(evaluation_id)).maybe_single()
     )
     if not evaluation:
         raise HTTPException(status_code=404, detail="evaluation not found")
-    version = _maybe_single(
+    version = maybe_single(
         supabase.table("writing_unit_versions").select("unit_id")
         .eq("id", evaluation["unit_version_id"]).maybe_single()
     )
-    unit = version and _maybe_single(
+    unit = version and maybe_single(
         supabase.table("writing_session_units").select("session_id")
         .eq("id", version["unit_id"]).maybe_single()
     )
