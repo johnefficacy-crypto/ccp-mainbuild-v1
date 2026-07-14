@@ -395,7 +395,9 @@ Tests: `app/backend/tests/study_os/test_reasoning_strategies_delivery.py` (11 �
 - [x] Do not infer target solve time.
 - [x] Withdrawn content disappears on the next read (live aggregator; never frozen).
 
-Tests: `app/backend/tests/study_os/test_improvement_lab.py` (10 — owner/submitted scope, evidence aggregation, verified-only, not-a-library-dump, subject filter, wrong-first ranking, governance strip, empty/fail-soft, endpoint wiring), FE `StrategyFeedSection.test.jsx` (4) + `ImprovementLab.test.jsx` updated for the real feeds.
+**Checkpost #999 hardening:** (F1) feed's own reads (attempts/responses) no longer swallow errors — a read failure propagates and the endpoint returns 502 so the client shows its error state, not a fake-empty feed; genuine empty stays 200. (F2) the bounded question window is now deterministic recent-first (`last_seen_at` desc, id tie-break) instead of arbitrary DB row order; response cap logs when saturated (no silent cap); `source_question_ids` sorted recent-first. (F3) per-strategy `relevance` aggregates the STRONGEST across links (min rank), order-independent. (F4) card renders `worked_example`.
+
+Tests: `app/backend/tests/study_os/test_improvement_lab.py` (14 — owner/submitted scope, evidence aggregation, verified-only, not-a-library-dump, subject filter, wrong-first ranking, governance strip, empty, read-failure-propagates, strongest-relevance both orders, recent-first sources, determinism, endpoint wiring + 502-on-failure), FE `StrategyFeedSection.test.jsx` (4, incl. worked_example) + `ImprovementLab.test.jsx` updated for the real feeds.
 
 - [ ] Live/operator proof that a real seeded strategy appears in a learner's feed — pending seeded verified content (Quant seed = GQR-S2; Reasoning seed = GQR-S3b, PR #996).
 

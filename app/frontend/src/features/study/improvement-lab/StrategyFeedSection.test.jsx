@@ -13,7 +13,8 @@ const item = (over = {}) => ({
   id: "h1", subject_family: "quant", name: "Base-100 percentage method",
   strategy_type: "shortcut", formula_latex: "x = \\frac{a}{b}",
   standard_method: "the long way", faster_method: "scale to 100",
-  key_observation: null, common_traps: "off-by-base", relevance: "primary",
+  key_observation: null, worked_example: "40% of 250 = 100", common_traps: "off-by-base",
+  relevance: "primary",
   times_seen: 4, wrong_count: 3, correct_count: 1, last_seen_at: "2026-07-12T00:00:00Z",
   source_question_ids: ["q1"], ...over,
 });
@@ -43,6 +44,7 @@ test("live: renders a card with evidence and DTO fields; hides null fields", () 
   expect(evidence).toHaveTextContent("Correct 1");
   expect(screen.getByText("Standard method")).toBeInTheDocument();
   expect(screen.getByText("Faster method")).toBeInTheDocument();
+  expect(screen.getByText("Worked example")).toBeInTheDocument();
   expect(screen.getByText("Watch out for")).toBeInTheDocument();
   // key_observation is null → no row.
   expect(screen.queryByTestId("strategy-feed-h1-key_observation")).toBeNull();

@@ -176,7 +176,9 @@ def test_feed_empty_history_returns_empty_and_no_user():
     assert il.build_feed(sb, None, "quant") == []
 
 
-def test_feed_fails_soft_on_attempt_read_error():
+def test_feed_read_failure_propagates_not_disguised_as_empty():
+    # A feed READ failure must surface (checkpost #999 F1), NOT be masked as an
+    # empty history — otherwise the client shows "no history" during an outage.
     sb = SBStub(_empty_sources(
         mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
         mock_attempt_responses=[_resp("a1", "q1", False)],
@@ -190,7 +192,51 @@ def test_feed_fails_soft_on_attempt_read_error():
         return orig(name)
 
     sb.table = _boom  # type: ignore[assignment]
-    assert il.build_feed(sb, "u-1", "quant") == []  # fail-soft, never raises
+    import pytest
+    with pytest.raises(RuntimeError):
+        il.build_feed(sb, "u-1", "quant")
+
+
+def test_feed_aggregates_strongest_relevance_regardless_of_order():
+    # Strategy h1 linked to two attempted questions with different relevance; the
+    # strongest (primary) must win independent of row order (checkpost #999 F3).
+    def _sb(links):
+        return SBStub(_empty_sources(
+            mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+            mock_attempt_responses=[_resp("a1", "q1", False), _resp("a1", "q2", False)],
+            quant_question_heuristics=links,
+            quant_heuristics=[_qheur("h1")],
+        ))
+    forward = il.build_feed(_sb([_qlink("q1", "h1", relevance="related"),
+                                 _qlink("q2", "h1", relevance="primary")]), "u-1", "quant")
+    reverse = il.build_feed(_sb([_qlink("q2", "h1", relevance="primary"),
+                                 _qlink("q1", "h1", relevance="related")]), "u-1", "quant")
+    assert forward[0]["relevance"] == "primary"
+    assert reverse[0]["relevance"] == "primary"
+
+
+def test_feed_source_questions_are_recent_first():
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a-old", "2026-07-01T00:00:00Z"), _att("a-new", "2026-07-20T00:00:00Z")],
+        mock_attempt_responses=[_resp("a-old", "q-old", False), _resp("a-new", "q-new", False)],
+        quant_question_heuristics=[_qlink("q-old", "h1"), _qlink("q-new", "h1")],
+        quant_heuristics=[_qheur("h1")],
+    ))
+    item = il.build_feed(sb, "u-1", "quant")[0]
+    assert item["source_question_ids"] == ["q-new", "q-old"]  # newest-seen first
+    assert item["last_seen_at"] == "2026-07-20T00:00:00Z"
+
+
+def test_feed_is_deterministic_under_reordered_responses():
+    resA = [_resp("a1", "q1", False), _resp("a1", "q2", True)]
+    common = dict(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        quant_question_heuristics=[_qlink("q1", "h1"), _qlink("q2", "h2")],
+        quant_heuristics=[_qheur("h1", name="Alpha"), _qheur("h2", name="Beta")],
+    )
+    a = il.build_feed(SBStub(_empty_sources(mock_attempt_responses=resA, **common)), "u-1", "quant")
+    b = il.build_feed(SBStub(_empty_sources(mock_attempt_responses=list(reversed(resA)), **common)), "u-1", "quant")
+    assert [s["id"] for s in a] == [s["id"] for s in b]
 
 
 # ── endpoint wiring ───────────────────────────────────────────────────────────
@@ -220,3 +266,23 @@ def test_endpoints_return_items_and_are_owner_scoped():
     assert r2.status_code == 200 and r2.json()["items"] == []
     # A different learner sees nothing.
     assert _client(sb, user_id="other").get("/api/study/improvement-lab/quant").json()["items"] == []
+
+
+def test_endpoint_maps_a_feed_read_failure_to_non_2xx():
+    # An outage must reach the client as an error (checkpost #999 F1), not a 200
+    # empty body — so the section renders its error state, not "nothing to revisit".
+    sb = SBStub(_empty_sources(
+        mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
+        mock_attempt_responses=[_resp("a1", "q1", False)],
+        quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
+    ))
+    orig = sb.table
+
+    def _boom(name):
+        if name == "mock_attempts":
+            raise RuntimeError("db down")
+        return orig(name)
+
+    sb.table = _boom  # type: ignore[assignment]
+    r = _client(sb).get("/api/study/improvement-lab/quant")
+    assert r.status_code == 502, r.text

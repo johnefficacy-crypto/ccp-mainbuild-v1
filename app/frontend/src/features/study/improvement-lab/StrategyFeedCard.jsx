@@ -16,6 +16,7 @@ const DETAIL_ROWS = [
   ["standard_method", "Standard method"],
   ["faster_method", "Faster method"],
   ["key_observation", "Key observation"],
+  ["worked_example", "Worked example"],
   ["common_traps", "Watch out for"],
 ];
 
@@ -85,6 +86,7 @@ StrategyFeedCard.propTypes = {
     standard_method: PropTypes.string,
     faster_method: PropTypes.string,
     key_observation: PropTypes.string,
+    worked_example: PropTypes.string,
     common_traps: PropTypes.string,
     times_seen: PropTypes.number,
     wrong_count: PropTypes.number,
