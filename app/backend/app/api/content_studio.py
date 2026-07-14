@@ -50,6 +50,7 @@ from pydantic import (
 
 from app.api.admin_exam_intel_cms import WriteEnvelope, _flag_enabled, _safe_select
 from app.study_os.quant_heuristics import review_heuristic as _review_quant_heuristic
+from app.study_os.reasoning_strategies import review_strategy as _review_reasoning_strategy
 from app.study_os.writing_practice.deterministic import tokenize_words as _tokenize_words
 from app.core.auth import get_current_user, require_permission
 from app.core.permissions import (
@@ -1128,6 +1129,150 @@ def review_quant_heuristic(
         )
     except Exception as exc:  # noqa: BLE001
         raise _map_rpc_error(exc, "review_quant_heuristic") from exc
+    return {"ok": True, "result": result}
+
+
+# ── Reasoning strategy authority (GQR-S3) ───────────────────────────────────
+#
+# reasoning_strategies (migration 262) are the Reasoning-lane equivalent of quant
+# heuristics: subject/topic-scoped canonical solving strategies governed here. This
+# section is the operator API glue — a permission-gated Library read + the
+# governance review transition (dual CAS on status + content updated_at, mandatory
+# audit reason), mirroring the quant-heuristic surface exactly. There is NO
+# create/edit/activate/assign path in this PR (migration 262 ships only the review
+# RPC — authoring is a later governed slice, exactly as GQR-Q7 deferred quant
+# authoring). Reads reuse the shared `_require_content_read` gate; reviewing is
+# content_studio.review. GQR-S3 stops before learner delivery; the batched
+# projection is GQR-S4.
+#
+# The transition matrix (mirrored from migration 262) matches the heuristic one:
+# needs_correction routes back to pending (never straight to verified), a verified
+# strategy can only be reopened for correction, and a rejected strategy can be
+# reopened to pending for rework.
+_RS_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending": ("verified", "rejected", "needs_correction"),
+    "needs_correction": ("pending", "rejected"),
+    "verified": ("needs_correction",),
+    "rejected": ("pending",),
+}
+_RS_TARGET_STATUSES = frozenset(s for t in _RS_TRANSITIONS.values() for s in t)
+_RS_TYPES = frozenset({"approach", "pattern", "elimination", "diagram_method", "set_method", "trap"})
+
+
+class ReasoningStrategyReviewBody(BaseModel):
+    """Review-lifecycle body for a reasoning strategy.
+
+    The RPC (`cms_review_reasoning_strategy`, migration 262) CAS-guards on BOTH
+    ``expected_status`` (the reviewer_status the client last saw) AND
+    ``expected_updated_at`` (the content-revision token — so a reviewer can never
+    verify a revision they did not read), requires an 8–500 char audit ``reason``
+    on every decision, and requires ``reviewer_notes`` when reopening a verified
+    strategy for correction (enforced here AND in the RPC)."""
+    model_config = ConfigDict(extra="forbid")
+    status: str
+    expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
+    expected_updated_at: str = Field(..., description="updated_at the client last read (content CAS token)")
+    reason: str = Field(..., min_length=8, max_length=500)
+    reviewer_notes: str | None = Field(default=None, max_length=2000)
+
+
+def _enrich_strategy_labels_batch(supabase, items: list) -> list:
+    """Attach topic_name/microtopic_name to a PAGE of reasoning_strategies rows in a
+    single batched query (both columns reference `topics`); ids are never mutated."""
+    rows = [s for s in (items or []) if isinstance(s, dict)]
+    if not rows:
+        return items
+    topics = _batch_name_map(
+        supabase, "topics",
+        [s.get("topic_id") for s in rows] + [s.get("microtopic_id") for s in rows])
+    for s in rows:
+        tid, mid = s.get("topic_id"), s.get("microtopic_id")
+        s["topic_name"] = topics.get(str(tid)) if tid else None
+        s["microtopic_name"] = topics.get(str(mid)) if mid else None
+    return items
+
+
+@router.get("/reasoning-strategies")
+def list_reasoning_strategies(
+    topic_id: UUID | None = Query(default=None),
+    microtopic_id: UUID | None = Query(default=None),
+    strategy_type: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None, description="substring match on name"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("reasoning_strategies").select("*", count="exact").order("created_at", desc=True)
+    for col, val in (
+        ("topic_id", topic_id), ("microtopic_id", microtopic_id),
+        ("strategy_type", strategy_type), ("reviewer_status", reviewer_status),
+    ):
+        if val is not None:
+            query = query.eq(col, str(val))
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    items = _enrich_strategy_labels_batch(supabase, res.data or [])
+    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.get("/reasoning-strategies/{strategy_id}")
+def get_reasoning_strategy(
+    strategy_id: UUID,
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    strategy = _safe_select(supabase, "reasoning_strategies", id=str(strategy_id))
+    if not strategy:
+        raise HTTPException(status_code=404, detail="reasoning_strategy not found")
+    return _enrich_strategy_labels_batch(supabase, [strategy])[0]
+
+
+@router.post("/reasoning-strategies/{strategy_id}/review")
+def review_reasoning_strategy(
+    strategy_id: UUID,
+    body: ReasoningStrategyReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    if body.status not in _RS_TARGET_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_RS_TARGET_STATUSES)}")
+    # Guard the transition against the status the CLIENT actually saw; the RPC
+    # re-checks expected_status under the row lock (CAS) and owns the audit row.
+    if body.status not in _RS_TRANSITIONS.get(body.expected_status, ()):
+        raise HTTPException(status_code=422, detail=(
+            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
+            f"Allowed: {list(_RS_TRANSITIONS.get(body.expected_status, ()))}"))
+    # Reopening a verified strategy for correction must carry a note (mirrors the RPC).
+    notes = (body.reviewer_notes or "").strip() or None
+    if body.expected_status == "verified" and body.status == "needs_correction" and notes is None:
+        raise HTTPException(
+            status_code=422,
+            detail="reviewer_notes required when reopening a verified strategy")
+    supabase = get_supabase_admin()
+    try:
+        result = _review_reasoning_strategy(
+            supabase,
+            strategy_id=str(strategy_id),
+            expected_status=body.expected_status,
+            # CLIENT's content token — never a server-minted fresh read — so a
+            # content edit after the reviewer's read loses with 409.
+            expected_updated_at=body.expected_updated_at,
+            new_status=body.status,
+            reviewer_notes=notes,
+            reason=body.reason,
+            actor_user_id=admin.get("id"),
+            actor_email=admin.get("email"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "review_reasoning_strategy") from exc
     return {"ok": True, "result": result}
 
 

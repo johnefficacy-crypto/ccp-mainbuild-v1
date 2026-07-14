@@ -2,11 +2,11 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import ErrorLab from "./ErrorLab";
-import useErrorLab from "../../features/study/english-practice/useErrorLab";
+import MyWritingErrors from "./MyWritingErrors";
+import useErrorLab from "../english-practice/useErrorLab";
 
 // Factory mock so the real hook (which imports lib/api → env) is never loaded.
-jest.mock("../../features/study/english-practice/useErrorLab", () => ({
+jest.mock("../english-practice/useErrorLab", () => ({
   __esModule: true,
   default: jest.fn(),
 }));
@@ -39,29 +39,29 @@ afterEach(() => jest.clearAllMocks());
 
 test("loading state announces to assistive tech", () => {
   useErrorLab.mockReturnValue({ groups: [], status: "loading", refresh: jest.fn() });
-  render(<ErrorLab />);
-  expect(screen.getByTestId("error-lab-loading")).toBeInTheDocument();
+  render(<MyWritingErrors />);
+  expect(screen.getByTestId("english-loading")).toBeInTheDocument();
   expect(screen.getByRole("status")).toBeInTheDocument();
 });
 
 test("empty state renders when there are no recurring issues", () => {
   useErrorLab.mockReturnValue({ groups: [], status: "empty", refresh: jest.fn() });
-  render(<ErrorLab />);
-  expect(screen.getByTestId("error-lab-empty")).toBeInTheDocument();
+  render(<MyWritingErrors />);
+  expect(screen.getByTestId("english-empty")).toBeInTheDocument();
 });
 
 test("error state offers a retry that calls refresh", () => {
   const refresh = jest.fn();
   useErrorLab.mockReturnValue({ groups: [], status: "error", refresh });
-  render(<ErrorLab />);
+  render(<MyWritingErrors />);
   fireEvent.click(screen.getByRole("button", { name: /retry|try again/i }));
   expect(refresh).toHaveBeenCalled();
 });
 
 test("live state renders microtopic groups; first is expanded by default", () => {
   useErrorLab.mockReturnValue({ groups: [GROUP], status: "live", refresh: jest.fn() });
-  render(<ErrorLab />);
-  expect(screen.getByTestId("error-lab-groups")).toBeInTheDocument();
+  render(<MyWritingErrors />);
+  expect(screen.getByTestId("english-groups")).toBeInTheDocument();
   expect(screen.getByTestId("error-group-m1")).toBeInTheDocument();
   // First group defaults expanded → both issues visible.
   expect(screen.getAllByTestId("error-issue")).toHaveLength(2);
@@ -70,7 +70,7 @@ test("live state renders microtopic groups; first is expanded by default", () =>
 
 test("group toggles collapse/expand and Grammar Lab stub is disabled", () => {
   useErrorLab.mockReturnValue({ groups: [GROUP], status: "live", refresh: jest.fn() });
-  render(<ErrorLab />);
+  render(<MyWritingErrors />);
 
   const stub = screen.getByTestId("grammar-lab-stub");
   expect(stub).toBeDisabled();

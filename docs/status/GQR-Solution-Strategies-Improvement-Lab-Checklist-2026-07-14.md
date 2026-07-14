@@ -47,8 +47,8 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | Shared question renderer | MERGED / CODE PRESENT | `QuestionRenderer.jsx` owns shared stimulus + type renderer composition. |
 | Existing English Error Lab read model | MERGED / CODE PRESENT | `ewp_error_lab`, English endpoint, hook, and `ErrorLab.jsx`; preserve as English-specific authority. |
 | Quant learner strategy delivery | CODE-FIXED, VALIDATION PENDING | GQR-S1 below — `solution_strategies.py` + batched and scope-compatible `heuristics_for_questions` + `get_review` attach + `SolutionStrategyPanel`; automated tests green; live/operator proof pending. |
-| Reasoning strategy authority | PLANNED | GQR-S3 below. |
-| Improvement Lab composition | PLANNED | GQR-S5 below. |
+| Reasoning strategy authority | CODE-FIXED, VALIDATION PENDING | `app/supabase/migrations/262_reasoning_strategy_authority.sql`, `app/backend/app/study_os/reasoning_strategies.py`, Content Studio Reasoning tab (Library + Review Queue). Authoring/assignment/preview + seeded content deferred (GQR-S3b). |
+| Improvement Lab composition | CODE-FIXED, VALIDATION PENDING | GQR-S5 below — rename + shell landed; personalized feeds are GQR-S6. |
 
 ---
 
@@ -59,9 +59,10 @@ This checklist records the implementation sequence for learner-facing Quant and 
 | GQR-S0 | Product/architecture decision and checklist | DESIGN LOCKED | None | This document and `solution-strategies-improvement-lab.md` are the source for scope and sequencing. |
 | GQR-S1 | Quant Solution Strategy delivery in mock review | CODE-FIXED, VALIDATION PENDING | Existing GQR-Q7 authority | Batched verified-only read, learner projection, review payload field, shared panel, regular/generated-mock tests. No migration. |
 | GQR-S2 | Quant content-readiness completion | PLANNED — CONDITIONAL | GQR-S1 or preflight | Add authoring/editing/activation/question assignment only when verified linked content cannot already be produced through an existing governed path. |
-| GQR-S3 | Reasoning strategy authority and Content Studio | PLANNED | GQR-S0 | New governed schema, RLS, lifecycle/audit RPCs, library, authoring, assignment, and review queue. |
+| GQR-S3 | Reasoning strategy authority and Content Studio | CODE-FIXED, VALIDATION PENDING | GQR-S0 | Governed schema, RLS, lifecycle/audit RPC, and the Content Studio Reasoning tab (Library + Review Queue) landed (migration 262). Mirrors the Quant heuristic authority: review-only. Authoring/editing/activation/assignment/link-review + learner-safe preview + seeded content are deferred to GQR-S3b, exactly as GQR-Q7 deferred Quant authoring to GQR-S2. |
+| GQR-S3b | Reasoning authoring, assignment, and seeded content | PLANNED | GQR-S3 | Draft creation/editing, activation/retirement, question assignment, question-link review, learner-safe projection preview, and at least one verified strategy + verified link produced through the governed workflow. Required before GQR-S4 learner delivery can validate. |
 | GQR-S4 | Reasoning independent-question learner delivery | BLOCKED on GQR-S3 | GQR-S3 validated | Reuse normalized DTO and Solution Strategy panel for text Reasoning questions. |
-| GQR-S5 | Rename Error Lab learner page to Improvement Lab | PLANNED | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
+| GQR-S5 | Rename Error Lab learner page to Improvement Lab | CODE-FIXED, VALIDATION PENDING | GQR-S0; may run after GQR-S1 contract stabilizes | Canonical route, old-route compatibility, renamed header, existing English section preserved. |
 | GQR-S6 | Improvement Lab Quant and Reasoning personalized feeds | BLOCKED on learner delivery | GQR-S1 and GQR-S4 | Bounded owner-scoped attempt-history aggregation; live verified-only projection; independent section states. |
 | GQR-S7 | Reasoning set/stimulus-aware strategies | BLOCKED on GQR-S3/GQR-S4 | Reasoning authority + independent delivery | Set-level authority and one-time grouped rendering; no duplication per question. |
 | GQR-S8 | Planner/Calculation Gym recommendations | DEFERRED | GQR-Q8/Q9 and Lane A gates | Keep speed/calculation evidence and planner activation outside the strategy-delivery PRs. |
@@ -200,45 +201,53 @@ This checklist records the implementation sequence for learner-facing Quant and 
 
 ## GQR-S3 — Reasoning strategy authority
 
-**Status:** PLANNED
+**Status:** CODE-FIXED, VALIDATION PENDING
+**Landed:** migration `262_reasoning_strategy_authority.sql`, `app/backend/app/study_os/reasoning_strategies.py`,
+`app/backend/app/api/content_studio.py` (reasoning-strategies endpoints), Content Studio Reasoning tab
+(`ReasoningStrategyLibrary.jsx` + `ReasoningStrategyReviewQueue.jsx`).
+**Posture:** mirrors the Quant heuristic authority (GQR-Q7) exactly — review-only. Authoring/assignment
+and seeded content are deferred to GQR-S3b (as GQR-Q7 deferred Quant authoring to GQR-S2).
 
 ### Schema
 
-- [ ] Add `reasoning_strategies`.
-- [ ] Add `reasoning_question_strategies`.
-- [ ] Add topic/microtopic scope checks.
-- [ ] Add stable strategy code uniqueness.
-- [ ] Add typed strategy values: approach, pattern, elimination, diagram method, set method, trap.
-- [ ] Add structured `applicability_rule` for internal selection.
-- [ ] Add method, observation, example, and trap content fields.
-- [ ] Add reviewer lifecycle and active state.
-- [ ] Add unique question-strategy link.
-- [ ] Add relevance and independent link reviewer status.
-- [ ] Add indexes for question, strategy, status, topic, and microtopic.
+- [x] Add `reasoning_strategies`.
+- [x] Add `reasoning_question_strategies`.
+- [x] Add topic/microtopic scope checks.
+- [x] Add stable strategy code uniqueness.
+- [x] Add typed strategy values: approach, pattern, elimination, diagram method, set method, trap.
+- [x] Add structured `applicability_rule` for internal selection.
+- [x] Add method, observation, example, and trap content fields (columns named to match the shared learner DTO).
+- [x] Add reviewer lifecycle and active state.
+- [x] Add unique question-strategy link.
+- [x] Add relevance and independent link reviewer status.
+- [x] Add indexes for question, strategy, status, topic, and microtopic.
 
 ### Governance
 
-- [ ] Enable RLS on every new table.
-- [ ] Revoke direct anon/authenticated access.
-- [ ] Grant only deliberate service-role capabilities.
-- [ ] Add audited review lifecycle RPC.
-- [ ] Enforce expected-status CAS.
-- [ ] Enforce expected-`updated_at` CAS.
-- [ ] Require a review reason.
-- [ ] Test transition matrix and stale-content rejection.
+- [x] Enable RLS on every new table.
+- [x] Revoke direct anon/authenticated access.
+- [x] Grant only deliberate service-role capabilities.
+- [x] Add audited review lifecycle RPC (`cms_review_reasoning_strategy`).
+- [x] Enforce expected-status CAS.
+- [x] Enforce expected-`updated_at` CAS.
+- [x] Require a review reason (8–500 chars).
+- [x] Test transition matrix and stale-content rejection (router-layer, `test_content_studio_reasoning_strategies.py`).
 
 ### Content Studio
 
-- [ ] Add Reasoning Strategy Library inside existing Content Studio.
-- [ ] Add draft creation/editing.
-- [ ] Add activation/retirement.
-- [ ] Add question assignment.
-- [ ] Add strategy review queue.
-- [ ] Add question-link review.
-- [ ] Add learner-safe projection preview.
-- [ ] No new top-level admin route.
+- [x] Add Reasoning Strategy Library inside existing Content Studio.
+- [ ] Add draft creation/editing. *(GQR-S3b — migration 262 ships only the review RPC, mirroring GQR-Q7.)*
+- [ ] Add activation/retirement. *(GQR-S3b)*
+- [ ] Add question assignment. *(GQR-S3b)*
+- [x] Add strategy review queue.
+- [ ] Add question-link review. *(GQR-S3b)*
+- [ ] Add learner-safe projection preview. *(GQR-S3b)*
+- [x] No new top-level admin route (Reasoning is a content-type facet in the existing Content Studio surface).
 
 ### Initial coverage
+
+Strategy types (`approach`/`pattern`/`elimination`/`diagram_method`/`set_method`/`trap`) support every
+independent-question family below; the strategy CONTENT for each is seeded through the authoring workflow (GQR-S3b).
 
 - [ ] Analogy/classification.
 - [ ] Number/alphabet series.
@@ -253,11 +262,11 @@ This checklist records the implementation sequence for learner-facing Quant and 
 
 ### Completion gate
 
-- [ ] Fresh migration stack succeeds.
-- [ ] RLS/privilege tests pass.
-- [ ] Lifecycle and CAS tests pass.
-- [ ] Content Studio tests pass.
-- [ ] At least one verified strategy and verified question link can be produced through the governed workflow.
+- [ ] Fresh migration stack succeeds. *(VERIFY DB — static migration renumbered to 262 after migration 261 landed on `main`; reconcile `SELECT MAX(version) FROM schema_migrations;` before apply.)*
+- [ ] RLS/privilege tests pass. *(OPERATOR PENDING — RLS asserted by migration DDL; live proof pending.)*
+- [x] Lifecycle and CAS tests pass (router-layer boundary + transition/CAS/reason guards).
+- [x] Content Studio tests pass (`ContentStudio.test.jsx` reasoning blocks).
+- [ ] At least one verified strategy and verified question link can be produced through the governed workflow. *(GQR-S3b — authoring/assignment path.)*
 
 ---
 
@@ -279,31 +288,33 @@ This checklist records the implementation sequence for learner-facing Quant and 
 
 ## GQR-S5 — Improvement Lab rename and shell
 
-**Status:** PLANNED
+**Status:** CODE-FIXED, VALIDATION PENDING
 
 ### Routing
 
-- [ ] Create canonical `/app/study/improvement-lab` route under `StudyShell`.
-- [ ] Preserve `RouteErrorBoundary` placement.
-- [ ] Redirect or alias `/app/study/error-lab`.
-- [ ] Update internal links and route tests.
-- [ ] Keep the surface absent from the primary sidebar unless separately approved.
+- [x] Create canonical `/app/study/improvement-lab` route under `StudyShell`. (`appRoutes.jsx`)
+- [x] Preserve `RouteErrorBoundary` placement. (route stays under the same `StudyShell`/`RouteErrorBoundary` nesting)
+- [x] Redirect or alias `/app/study/error-lab`. (`<Navigate>` redirect to the canonical route)
+- [x] Update internal links and route tests. (`EnglishPracticeShell.jsx` link, `subject_runtime_policy.py` companion mode, `navContract.test.js`, `Subjects.test.js`, `EnglishPracticeShell.test.jsx`)
+- [x] Keep the surface absent from the primary sidebar unless separately approved. (no `DashShell` nav entry added; nav contract unchanged)
 
 ### Page
 
-- [ ] Rename learner title to Improvement Lab.
-- [ ] Use learner copy covering recurring errors and useful solving strategies.
-- [ ] Render My Writing Errors.
-- [ ] Render Methods & Shortcuts.
-- [ ] Render Approaches & Patterns.
-- [ ] Give each section an independent loading, empty, and error state.
-- [ ] One section failure must not hide the others.
+- [x] Rename learner title to Improvement Lab. (`ImprovementLab.jsx`)
+- [x] Use learner copy covering recurring errors and useful solving strategies.
+- [x] Render My Writing Errors. (`features/study/improvement-lab/MyWritingErrors.jsx`)
+- [x] Render Methods & Shortcuts. (Quant `PlannedSection`; personalized feed deferred to GQR-S6)
+- [x] Render Approaches & Patterns. (Reasoning `PlannedSection`; personalized feed deferred to GQR-S6)
+- [x] Give each section an independent loading, empty, and error state.
+- [x] One section failure must not hide the others. (`SectionBoundary` per section)
 
 ### English preservation
 
-- [ ] Continue using `GET /api/study/practice/english/error-lab`.
-- [ ] Do not rename or repurpose `ewp_error_lab`.
-- [ ] Preserve owner scope, feedback-release gate, invalidation handling, and reclassification behavior.
+- [x] Continue using `GET /api/study/practice/english/error-lab`. (`useErrorLab` unchanged)
+- [x] Do not rename or repurpose `ewp_error_lab`. (read model untouched)
+- [x] Preserve owner scope, feedback-release gate, invalidation handling, and reclassification behavior. (no backend read-model change; only the learner-facing framing moved)
+
+**Validation pending:** live browser walk of the canonical route, the `error-lab` → `improvement-lab` redirect, and independent per-section states.
 
 ---
 

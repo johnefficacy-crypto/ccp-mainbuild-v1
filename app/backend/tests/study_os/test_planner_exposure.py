@@ -12,7 +12,8 @@ def _seed(*, mode, exposed):
         "exams": [{"id": "exam-1", "slug": "exam-1", "name": "Exam One",
                    "exam_type": "recruitment", "is_active": True, "management_mode": mode}],
         "exam_cycles": [{"id": "c-1", "exam_id": "exam-1", "status": "active",
-                         "exam_start": "2026-09-15", "planner_activation_enabled": exposed}],
+                         "exam_start": "2026-09-15", "planner_activation_enabled": exposed,
+                         "reviewer_status": "verified"}],
         "exam_topic_coverage": [
             {"id": "cov-1", "exam_id": "exam-1", "exam_cycle_id": "c-1", "exam_phase_id": "ph1",
              "topic_id": "t1", "exam_priority_score": 80, "is_high_yield": True,

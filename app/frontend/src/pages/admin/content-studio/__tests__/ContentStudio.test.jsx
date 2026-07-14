@@ -567,6 +567,133 @@ describe("QuantHeuristicLibrary screen", () => {
   });
 });
 
+// ---- Reasoning strategy authority (GQR-S3) ---------------------------------
+
+describe("reasoning strategy contract mirrors quant heuristics", () => {
+  // eslint-disable-next-line global-require
+  const {
+    REASONING_STRATEGY_TYPES, REASONING_REVIEW_TRANSITIONS,
+  } = require("../contentStudioApi");
+  // eslint-disable-next-line global-require
+  const { buildListParams: buildStrategyParams } = require("../ReasoningStrategyLibrary");
+
+  test("strategy_type facet matches the migration-261 CHECK", () => {
+    expect(REASONING_STRATEGY_TYPES).toEqual(
+      ["approach", "pattern", "elimination", "diagram_method", "set_method", "trap"]);
+  });
+
+  test("review transition matrix matches the heuristic lifecycle", () => {
+    expect(REASONING_REVIEW_TRANSITIONS).toEqual({
+      pending: ["verified", "rejected", "needs_correction"],
+      needs_correction: ["pending", "rejected"],
+      verified: ["needs_correction"],
+      rejected: ["pending"],
+    });
+  });
+
+  test("reviewStrategy carries the content CAS token + audit reason", () => {
+    const apiMock = require("../../../../lib/api").api;
+    contentStudioApi.reviewStrategy(U1, {
+      status: "verified", expected_status: "pending",
+      expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear approach, verified",
+    });
+    expect(apiMock.post).toHaveBeenCalledWith(
+      `/api/admin/content-studio/reasoning-strategies/${U1}/review`,
+      { status: "verified", expected_status: "pending",
+        expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear approach, verified" },
+    );
+  });
+
+  test("buildListParams emits ONLY limit+offset when no filters are set", () => {
+    expect(buildStrategyParams({ strategy_type: "", reviewer_status: "", q: "" }, 0))
+      .toEqual({ limit: 50, offset: 0 });
+    expect(buildStrategyParams({ strategy_type: "trap", reviewer_status: "pending", q: "  venn  " }, 0))
+      .toEqual({ limit: 50, offset: 0, strategy_type: "trap", reviewer_status: "pending", q: "venn" });
+  });
+});
+
+describe("ContentStudio shell — reasoning strategies", () => {
+  test("reasoning_strategy type exposes only Library + Review Queue tabs", async () => {
+    renderStudio("/admin/content-studio?type=reasoning_strategy");
+    expect(await screen.findByTestId("content-studio-tab-library")).toBeInTheDocument();
+    expect(screen.getByTestId("content-studio-tab-review-queue")).toBeInTheDocument();
+    // No bulk-import / exam-assignments for strategies (no create/assign RPC).
+    expect(screen.queryByTestId("content-studio-tab-bulk-import")).toBeNull();
+    expect(screen.queryByTestId("content-studio-tab-exam-assignments")).toBeNull();
+  });
+
+  test("reasoning_strategy facet without read permission shows the no-access state", async () => {
+    mockUser.user = { role: "admin", permissions: [] };
+    renderStudio("/admin/content-studio?type=reasoning_strategy");
+    expect(await screen.findByTestId("content-studio-no-access")).toBeInTheDocument();
+    mockUser.user = { role: "admin", permissions: ["content_studio.author", "content_studio.review"] };
+  });
+});
+
+describe("ReasoningStrategyReviewQueue dialog — full snapshot + reason gate", () => {
+  // eslint-disable-next-line global-require
+  const ReasoningStrategyReviewQueue = require("../ReasoningStrategyReviewQueue").default;
+  const apiMock = require("../../../../lib/api").api;
+
+  const fullSnapshot = (over = {}) => ({
+    id: U1, name: "Syllogism Venn method", strategy_code: "RS-SYL-01", strategy_type: "diagram_method",
+    reviewer_status: "pending", is_active: false, updated_at: "2026-07-10T00:00:00Z",
+    topic_id: U2, topic_name: "Reasoning", applicability_rule: { op: "syllogism" },
+    standard_method: "draw all-case Venn diagrams", faster_method: "eliminate on definite-only",
+    key_observation: "possibility cases flip some conclusions",
+    worked_example: "all A are B, no B are C", common_traps: "assuming 'some' from 'all'",
+    reviewer_notes: "a prior reviewer note", ...over,
+  });
+  const queueRow = (over = {}) => ({
+    id: U1, name: "Syllogism Venn method", strategy_code: "RS-SYL-01", strategy_type: "diagram_method",
+    reviewer_status: "pending", topic_name: "Reasoning", ...over,
+  });
+
+  test("renders EVERY canonical field including key_observation and gates verify on a valid reason", async () => {
+    apiMock.get.mockResolvedValueOnce(fullSnapshot());
+    mockCollection = { items: [queueRow()], status: "live", total: 1, refresh: jest.fn() };
+    render(<ReasoningStrategyReviewQueue perms={{ canReview: true }} />);
+    fireEvent.click(screen.getByTestId(`strategy-review-open-${U1}`));
+
+    expect(await screen.findByTestId("review-strategy-standard_method")).toHaveTextContent("draw all-case Venn diagrams");
+    expect(screen.getByTestId("review-strategy-key_observation")).toHaveTextContent("possibility cases flip some conclusions");
+    expect(screen.getByTestId("review-strategy-worked_example")).toHaveTextContent("all A are B");
+    expect(screen.getByTestId("review-strategy-common_traps")).toHaveTextContent("assuming 'some' from 'all'");
+    expect(screen.getByTestId("review-strategy-applicability_rule")).toHaveTextContent("syllogism");
+
+    // Verify is gated on a valid audit reason — no request fires without one.
+    fireEvent.click(screen.getByTestId("strategy-review-submit"));
+    expect(await screen.findByText(/Reason must be 8/)).toBeInTheDocument();
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  test("rejected row submits pending with CAS + reason", async () => {
+    apiMock.get.mockResolvedValueOnce(fullSnapshot({ reviewer_status: "rejected" }));
+    mockRun = jest.fn(async ({ action }) => { await action(); return { ok: true, data: { ok: true, result: {} } }; });
+    mockCollection = { items: [queueRow({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
+    render(<ReasoningStrategyReviewQueue perms={{ canReview: true }} />);
+
+    fireEvent.change(screen.getByTestId("strategy-review-queue-filter"), { target: { value: "rejected" } });
+    fireEvent.click(screen.getByTestId(`strategy-review-open-${U1}`));
+
+    const decision = await screen.findByTestId("strategy-review-status");
+    const options = Array.from(decision.querySelectorAll("option")).map((o) => o.value);
+    expect(options).toEqual(["pending"]);
+
+    fireEvent.change(screen.getByTestId("strategy-review-reason"), { target: { value: "reopening for rework" } });
+    fireEvent.click(screen.getByTestId("strategy-review-submit"));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        `/api/admin/content-studio/reasoning-strategies/${U1}/review`,
+        expect.objectContaining({
+          status: "pending", expected_status: "rejected",
+          expected_updated_at: "2026-07-10T00:00:00Z", reason: "reopening for rework",
+        }),
+      ),
+    );
+  });
+});
+
 // ---- Activation affordance permission gating (PromptLibrary) ----------------
 
 describe("PromptLibrary activation affordance", () => {

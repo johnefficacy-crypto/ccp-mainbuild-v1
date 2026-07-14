@@ -188,6 +188,7 @@ async def list_study_exams(
             supabase.table("exam_cycles")
             .select("id,year,cycle_name,exam_start")
             .eq("exam_id", r["id"])
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
             .gte("exam_start", __import__("datetime").datetime.utcnow().date().isoformat())
             .order("exam_start")
             .limit(1)
