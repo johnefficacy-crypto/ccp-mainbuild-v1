@@ -213,7 +213,7 @@ function renderIndex(registry) {
   lines.push('## Update rule', '');
   lines.push('Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, and change status only in `registry.json`.');
   lines.push('');
-  return `${lines.join('\n')}\n`;
+  return lines.join('\n');
 }
 
 function collectTrackedPaths(registry) {
