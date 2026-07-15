@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generated_index": "docs/operator-validation/INDEX.md",
   "tracks": [
     {
@@ -13,7 +13,7 @@
           "status": "validation_pending",
           "summary": "GQR-S7 code merged in PR #1005; migration 263 and live governed-set proof remain.",
           "updated_at": "2026-07-15",
-          "review_by": "2026-07-29",
+          "review_by": "2026-07-29T18:00:00Z",
           "next_action": "Reconcile and apply migration 263, run the privilege validator, then execute the grouped-mock and live-withdrawal proof.",
           "implementation_refs": [
             "docs/status/GQR-Solution-Strategies-Improvement-Lab-Checklist-2026-07-14.md",
@@ -21,6 +21,8 @@
           ],
           "runbook": "docs/runbooks/gqr-s7-reasoning-set-strategy-validation.md",
           "evidence": [],
+          "defects_found": [],
+          "defects_fixed": [],
           "blockers": [
             "Migration 263 is not yet reconciled and applied in the target live environment.",
             "No verified canonical stimulus-strategy link has been exercised in a submitted grouped mock."
@@ -40,7 +42,7 @@
           "status": "blocked",
           "summary": "Runtime-ready expansion remains blocked until the semantic evaluator meets the per-type quality, latency, cost, and determinism gates.",
           "updated_at": "2026-07-10",
-          "review_by": "2026-08-10",
+          "review_by": "2026-08-10T18:00:00Z",
           "next_action": "Start the governed shadow measurement only after owner direction; record one evidence report covering every acceptance threshold and sign-off.",
           "implementation_refs": [
             "docs/status/EWP-English-Completion-Tracker-2026-07-10.md",
@@ -48,6 +50,8 @@
           ],
           "runbook": null,
           "evidence": [],
+          "defects_found": [],
+          "defects_fixed": [],
           "blockers": [
             "No approved shadow measurement window is active.",
             "At least 500 labeled samples per exercise type are required before sign-off."
@@ -64,15 +68,16 @@
         {
           "id": "upsc-csat-set-b-production-validation",
           "title": "UPSC CSE 2025 CSAT Set-B production path",
-          "status": "partial_pass",
-          "summary": "Exact data, ownership, persistence, submit, scoring, review, and RLS passed; learner identification and discoverability defects remain.",
-          "updated_at": "2026-07-14",
-          "review_by": "2026-07-29",
-          "next_action": "Land the bounded API/frontend fixes for exact Set-B identity, UPSC search, large-paper palette discovery, clear-response support, and stale provenance metadata.",
+          "status": "validation_pending",
+          "summary": "The 2026-07-14 production run was a partial pass. PR #1008 code-fixed all five findings; live migration 264 and browser revalidation remain.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-29T18:00:00Z",
+          "next_action": "Apply migration 264, deploy PR #1008, and revalidate Set-B identity, UPSC search, large-paper palette discovery, clear-response persistence, and provenance cleanup.",
           "implementation_refs": [
-            "docs/status/career-copilot-checklist.md"
+            "docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md",
+            "docs/status/PYQ-Unified-Practice-Implementation-Checklist-2026-07-07.md"
           ],
-          "runbook": null,
+          "runbook": "docs/runbooks/upsc-csat-set-b-defect-revalidation.md",
           "evidence": [
             {
               "path": "docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md",
@@ -80,10 +85,279 @@
               "result": "partial_pass"
             }
           ],
+          "defects_found": [
+            { "id": "csat-setb-01", "summary": "Exact Set-B identity was absent from the learner paper card." },
+            { "id": "csat-setb-02", "summary": "Searching UPSC did not discover the exam." },
+            { "id": "csat-setb-03", "summary": "The 80-question palette did not make lower questions sufficiently discoverable." },
+            { "id": "csat-setb-04", "summary": "The learner could not clear an MCQ response back to unattempted." },
+            { "id": "csat-setb-05", "summary": "Verified paper/source metadata retained stale provenance_pending=true." }
+          ],
+          "defects_fixed": [
+            { "id": "csat-setb-01", "summary": "PR #1008 added reviewed paper/set identity to the API and paper card." },
+            { "id": "csat-setb-02", "summary": "PR #1008 expanded catalogue search to normalized name, slug, and exam type." },
+            { "id": "csat-setb-03", "summary": "PR #1008 added a bounded palette scroll area and active-item scrollIntoView." },
+            { "id": "csat-setb-04", "summary": "PR #1008 added Clear response through the existing null-answer sync path." },
+            { "id": "csat-setb-05", "summary": "PR #1008 migration 264 reconciles and prevents stale provenance_pending on verified rows." }
+          ],
           "blockers": [
-            "Exact Set-B identity is not exposed on the learner paper card.",
-            "UPSC acronym search does not discover the exam.",
-            "The 80-question palette and clear-response interaction need UX fixes."
+            "Migration 264 remains VERIFY DB.",
+            "The five code fixes have not yet been revalidated in the deployed learner flow."
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "id": "pyq-cms-document-provenance",
+      "name": "PYQ CMS document provenance",
+      "owner": "Exam Intelligence / PYQ CMS",
+      "gates": [
+        {
+          "id": "pyq-cms-provenance-staging-validation",
+          "title": "Migrations 183-190 document/provenance staging validation",
+          "status": "passed",
+          "summary": "The June 24 staging validation covered migration sync, service-role grants, document upload/linking, atomic review/provenance transitions, signed-PDF denial, frontend Replace Doc, cleanup, and Graphify refresh.",
+          "updated_at": "2026-06-24",
+          "review_by": null,
+          "next_action": "No further action for this historical gate; create a new gate only if the acceptance contract changes.",
+          "implementation_refs": [
+            "app/supabase/migrations/190_fix_rpc_grants_and_scope_kind_status_index.sql",
+            "docs/status/career-copilot-checklist.md"
+          ],
+          "runbook": null,
+          "evidence": [
+            {
+              "path": "docs/operator-validation/evidence/2026-06-24-pyq-cms-document-provenance-validation.md",
+              "recorded_at": "2026-06-24",
+              "result": "passed"
+            }
+          ],
+          "defects_found": [
+            { "id": "pyq-prov-01", "summary": "Provenance RPC execute grants were exposed beyond service_role." },
+            { "id": "pyq-prov-02", "summary": "Document validation had a precheck-to-mutation race window." },
+            { "id": "pyq-prov-03", "summary": "Provenance/link updates and audit writes were not atomic." }
+          ],
+          "defects_fixed": [
+            { "id": "pyq-prov-01", "summary": "Migration 190 revoked anon/authenticated execution and retained service_role." },
+            { "id": "pyq-prov-02", "summary": "Migration 189 locked and revalidated document rows inside the transaction." },
+            { "id": "pyq-prov-03", "summary": "Migration 188 made provenance/link mutations and audit insertion atomic." }
+          ],
+          "blockers": [],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "id": "v1-release-readiness",
+      "name": "v1 release readiness",
+      "owner": "OPS / release",
+      "gates": [
+        {
+          "id": "v1-p1-migration-chain",
+          "title": "P1 full staging-to-production migration-chain reconciliation",
+          "status": "operator_pending",
+          "summary": "Individual migrations were validated, but the contiguous repository-to-staging-to-production migration proof was not performed.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-22T18:00:00Z",
+          "next_action": "Recalculate the intended migration head, run the approved migration runner through staging and production, and preserve both ledgers plus no-hole/divergence evidence.",
+          "implementation_refs": [
+            "docs/ops/distance-to-release.md",
+            "scripts/v1_release_verification.sql"
+          ],
+          "runbook": "docs/ops/v1-go-live-runbook.md",
+          "evidence": [
+            {
+              "path": "docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md",
+              "recorded_at": "2026-07-15",
+              "result": "operator_pending"
+            }
+          ],
+          "defects_found": [
+            { "id": "v1-p1-01", "summary": "No complete staging and production schema_migrations reconciliation exists for the current repository head." }
+          ],
+          "defects_fixed": [],
+          "blockers": [
+            "Current staging and production migration heads are not durably recorded.",
+            "No approved-runner proof confirms a contiguous, divergence-free chain."
+          ],
+          "depends_on": []
+        },
+        {
+          "id": "v1-p2-rpc-rls-live-proof",
+          "title": "P2 release-wide RPC/RLS and real-JWT verification",
+          "status": "partial_pass",
+          "summary": "Selected RPC grants and RLS properties were checked, but the release-wide script and normal-user/admin real-JWT row evidence were not completed on staging and production.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-24T18:00:00Z",
+          "next_action": "After P1, run scripts/v1_release_verification.sql, the complete grant audit, RLS introspection, and normal-user/admin JWT reads on staging and production.",
+          "implementation_refs": [
+            "docs/ops/distance-to-release.md",
+            "scripts/v1_release_verification.sql"
+          ],
+          "runbook": "docs/ops/v1-go-live-runbook.md",
+          "evidence": [
+            {
+              "path": "docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md",
+              "recorded_at": "2026-07-15",
+              "result": "partial_pass"
+            }
+          ],
+          "defects_found": [
+            { "id": "v1-p2-01", "summary": "The complete release verification and RPC grant audit have not been run across staging and production." },
+            { "id": "v1-p2-02", "summary": "Normal-user and admin real-JWT returned-row evidence is missing." }
+          ],
+          "defects_fixed": [],
+          "blockers": [
+            "P1 migration-chain reconciliation must complete first.",
+            "Release-wide real-JWT evidence is absent."
+          ],
+          "depends_on": ["v1-p1-migration-chain"]
+        },
+        {
+          "id": "v1-p3-migration-182-validation",
+          "title": "P3 migration 182 operator validation",
+          "status": "passed",
+          "summary": "Migration 182 signatures, grants, privilege matrix, rollback-safe smoke test, migration hash, deployment metadata, and operator sign-off are durably recorded.",
+          "updated_at": "2026-06-30",
+          "review_by": null,
+          "next_action": "No remaining action for P3.",
+          "implementation_refs": [
+            "docs/audits/2026-06-30-migration-182-operator-validation.md"
+          ],
+          "runbook": null,
+          "evidence": [
+            {
+              "path": "docs/audits/2026-06-30-migration-182-operator-validation.md",
+              "recorded_at": "2026-06-30",
+              "result": "passed"
+            }
+          ],
+          "defects_found": [],
+          "defects_fixed": [],
+          "blockers": [],
+          "depends_on": []
+        },
+        {
+          "id": "v1-p4-migration-204-snapshot-review",
+          "title": "P4 migration 204 snapshot-review RPC staging validation",
+          "status": "partial_pass",
+          "summary": "Core staging behavior was exercised on June 30, but the run was not durably recorded and concurrency plus all negative direct-RPC cases remain unproven.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-24T18:00:00Z",
+          "next_action": "After P1, rerun the remaining concurrency and negative direct-RPC cases, then attach exact output to the reconstructed migration-204 evidence record.",
+          "implementation_refs": [
+            "app/supabase/migrations/204_atomic_snapshot_review_transition.sql",
+            "docs/ops/distance-to-release.md"
+          ],
+          "runbook": "docs/ops/v1-go-live-runbook.md",
+          "evidence": [
+            {
+              "path": "docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md",
+              "recorded_at": "2026-07-15",
+              "result": "partial_pass"
+            }
+          ],
+          "defects_found": [
+            { "id": "v1-p4-01", "summary": "The June 30 migration-204 staging run had no durable audit snapshot and the tracker remained stale." },
+            { "id": "v1-p4-02", "summary": "Concurrency and the complete negative direct-RPC matrix are not preserved in available evidence." }
+          ],
+          "defects_fixed": [
+            { "id": "v1-p4-01", "summary": "This registry PR adds a durable reconstruction and reconciles P4 to partial_pass without falsely closing it." }
+          ],
+          "blockers": [
+            "P1 must establish the intended live migration chain.",
+            "Concurrency and remaining negative direct-RPC cases require a fresh captured run."
+          ],
+          "depends_on": ["v1-p1-migration-chain"]
+        },
+        {
+          "id": "v1-p5-telemetry-boundary",
+          "title": "P5 telemetry staging validation and fingerprint boundary",
+          "status": "passed",
+          "summary": "Checks 3A, 3B, and 3C passed; the 36-file boundary and freeze-candidate digest were approved and recorded by PR #864.",
+          "updated_at": "2026-07-03",
+          "review_by": null,
+          "next_action": "No remaining P5 action; any future release SHA requires a fresh fingerprint attestation under the later T0 gate.",
+          "implementation_refs": [
+            "docs/ops/mastery_validation_fingerprint_manifest_v2.txt",
+            "docs/ops/mastery_validation_fingerprint_manifest_v2.attestation.txt"
+          ],
+          "runbook": null,
+          "evidence": [
+            {
+              "path": "docs/operator-validation/evidence/2026-07-03-p5-telemetry-boundary-validation.md",
+              "recorded_at": "2026-07-03",
+              "result": "passed"
+            }
+          ],
+          "defects_found": [
+            { "id": "v1-p5-01", "summary": "Visibility/unmount event batches could be dropped because sendBeacon could not carry authentication and failed batches were removed before acknowledgement." },
+            { "id": "v1-p5-02", "summary": "Partial event coverage fallback could occur without a persisted warning or fallback count." }
+          ],
+          "defects_fixed": [
+            { "id": "v1-p5-01", "summary": "PR #800 added authenticated keepalive delivery, retain-on-failure, retry, and acknowledgement-based removal." },
+            { "id": "v1-p5-02", "summary": "PR #800 records event coverage, fallback count, and the partial-coverage warning." }
+          ],
+          "blockers": [],
+          "depends_on": []
+        },
+        {
+          "id": "v1-p6-scheduler-drain",
+          "title": "P6 scheduler drain validation",
+          "status": "passed",
+          "summary": "The final watcher-based capture proved automatic provenance and a controlled analytics_retry job draining in 19.67 seconds.",
+          "updated_at": "2026-07-01",
+          "review_by": null,
+          "next_action": "No remaining P6 action.",
+          "implementation_refs": [
+            "docs/audits/2026-07-01-scheduler-drain-validation.md"
+          ],
+          "runbook": null,
+          "evidence": [
+            {
+              "path": "docs/audits/2026-07-01-scheduler-drain-validation.md",
+              "recorded_at": "2026-07-01",
+              "result": "passed"
+            }
+          ],
+          "defects_found": [
+            { "id": "v1-p6-01", "summary": "The earlier capture did not prove automatic scheduler provenance." },
+            { "id": "v1-p6-02", "summary": "The earlier 65-minute observation did not prove the required <=30-second drain cycle." }
+          ],
+          "defects_fixed": [
+            { "id": "v1-p6-01", "summary": "The watcher capture recorded manual absent, derivations 1, and errors 0." },
+            { "id": "v1-p6-02", "summary": "The controlled job completed in 19.67 seconds." }
+          ],
+          "blockers": [],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "id": "exam-intelligence-activation",
+      "name": "Exam Intelligence operator activation",
+      "owner": "Exam Intelligence / operations",
+      "gates": [
+        {
+          "id": "exam-intelligence-end-to-end-activation",
+          "title": "Exam setup, evidence, review, and activation workflow",
+          "status": "operator_pending",
+          "summary": "The code-backed operator surfaces exist, but the complete permission-to-activation sequence must be executed per target exam and environment.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-31T18:00:00Z",
+          "next_action": "Confirm feature flag and permissions, select a target exam, then execute the reusable 17-step activation runbook and attach one evidence record.",
+          "implementation_refs": [
+            "docs/status/Exam-Cycle-Setup-Gate-2026-06-22.md",
+            "docs/status/career-copilot-checklist.md"
+          ],
+          "runbook": "docs/runbooks/exam-intelligence-operator-activation.md",
+          "evidence": [],
+          "defects_found": [],
+          "defects_fixed": [],
+          "blockers": [
+            "ADMIN_STUDY_OS_ENABLED and exam_intelligence permissions require environment/operator confirmation.",
+            "Prerequisite editing remains governed by its separate blocked gate.",
+            "No target exam has a complete evidence-backed activation record under this registry gate."
           ],
           "depends_on": []
         }
