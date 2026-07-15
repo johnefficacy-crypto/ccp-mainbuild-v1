@@ -130,3 +130,49 @@ test("renders a source-aware back link when a return context is stored", async (
   expect(back.getAttribute("href")).toContain("/app/eligibility/exams/upsc-cse");
   window.sessionStorage.clear();
 });
+
+
+test("renders one set strategy for a shared stimulus and keeps question strategy local", async () => {
+  const setStrategy = {
+    id: "set-1",
+    subject_family: "reasoning",
+    name: "Build one arrangement grid",
+    strategy_type: "set_method",
+    standard_method: "Place fixed positions before relative clues.",
+  };
+  const questionStrategy = {
+    id: "question-1",
+    subject_family: "reasoning",
+    name: "Eliminate impossible options",
+    strategy_type: "elimination",
+  };
+  renderReview({
+    attempt_id: "att1",
+    questions: [
+      { ...REVIEW.questions[0], solution_strategies: [questionStrategy] },
+      REVIEW.questions[1],
+      REVIEW.questions[2],
+    ],
+    stimulus_solution_strategies: [{
+      pyq_stimulus_id: "stim-1",
+      question_ids: ["q1", "q2"],
+      first_attempt_order: 1,
+      strategies: [setStrategy],
+    }],
+  });
+
+  const setPanel = await screen.findByTestId("stimulus-solution-strategy-panel");
+  expect(setPanel).toHaveTextContent("Set-solving approach");
+  expect(setPanel).toHaveTextContent("Build one arrangement grid");
+  expect(screen.getAllByTestId("stimulus-solution-strategy-panel")).toHaveLength(1);
+  expect(screen.getByTestId("solution-strategy-panel")).toHaveTextContent(
+    "Eliminate impossible options",
+  );
+
+  fireEvent.click(screen.getByTestId("review-next"));
+  expect(screen.getAllByTestId("stimulus-solution-strategy-panel")).toHaveLength(1);
+  expect(screen.queryByTestId("solution-strategy-panel")).toBeNull();
+
+  fireEvent.click(screen.getByTestId("review-next"));
+  expect(screen.queryByTestId("stimulus-solution-strategy-panel")).toBeNull();
+});

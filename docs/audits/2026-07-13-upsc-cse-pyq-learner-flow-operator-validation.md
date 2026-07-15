@@ -15,6 +15,8 @@ FOLLOW-UP UI DEFECTS OPEN
 - **Functional validation: PASS**
 - **UI quality validation: PASS WITH FOLLOW-UP DEFECTS**
 
+> **Exact-paper follow-up (2026-07-14).** A separate production run validated the exact UPSC CSE 2025 Prelims GS Paper-II CSAT **Set-B** paper, all 80 frozen questions, learner ownership, persistence, submission/result/review, and anon/learner/admin projection-table RLS. That run also refined the UX disposition: the CSAT paper-practice launch was intentionally untimed, so `time_remaining_sec=null` / no countdown is not a defect for that flow; exact Set-B card identity, `UPSC` catalogue search, large-paper palette discoverability, MCQ clear-response, and stale provenance metadata remain open. See `docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md`.
+
 ## Original production finding (resolved)
 
 `GET /api/exam-intelligence/exams/upsc-cse/pyq-summary` and `.../pyqs` returned HTTP 200
@@ -66,20 +68,24 @@ Error) and review (all 97 questions) loaded. Time tab reported total 18m 59s, av
 
 | # | Defect | Priority | Direction |
 |---|---|---|---|
-| 1 | Attempt-header timer shows `--` during a valid attempt (per-question dwell tracking works — Time tab is correct) | High | Bind timer to launch-payload duration; init after attempt load; render explicit `Untimed` fallback; never `--` on a valid timed attempt; regression asserting a valid time value after load |
+| 1 | Attempt-header timer shows `--` during the 2026-07-13 attempt while per-question dwell tracking works | Historical finding — contract clarification required | Distinguish timed from untimed attempts. Timed attempts must render a countdown; untimed PYQ practice must render explicit `Untimed` rather than an ambiguous placeholder. The 2026-07-14 exact Set-B launch was untimed and correctly returned `time_remaining_sec=null`. |
 | 2 | Navigator clips questions 96–97 behind the fixed action footer; palette does not auto-scroll to / re-highlight the active question under keyboard nav | High | Own scroll container + footer-height reserve; `scrollIntoView({block:'nearest'})` on index change; derive active state from canonical current question id/index; test keyboard/mouse/direct-palette nav on a >95-question paper |
 | 3 | Review options concatenated (`A. …B. …C. …D. …`) with no separation | Medium–High | Render each option as a separate block/list item; reuse the shared option-label formatter; test each option renders in its own element |
+
+The exact Set-B follow-up additionally found: the learner paper card does not expose Set-B identity; catalogue search for `UPSC` misses the exam; the 80-question palette is not sufficiently discoverable without keyboard navigation; and an MCQ answer cannot be cleared back to unattempted even though the API accepts `selected_option_id:null`.
 
 ## Recommended automated coverage
 
 Extend the projected-PYQ e2e (`app/frontend/e2e/flows/pyq-practice-review.spec.ts`) with a
 ≥97-question paper asserting: valid timer or explicit untimed state; keyboard navigation to
 Q97 with the palette item visible + active; all 97 navigator items present in review; options
-render as separate readable elements. Guards specifically against sticky header/footer/
-navigator viewport clipping.
+render as separate readable elements. Add exact-paper coverage that identifies `CSAT · Set-B`,
+finds UPSC through catalogue search, and clears a selected MCQ response before submit.
 
 ## Not blockers
 
-The remaining findings are frontend usability defects, not data-integrity, projection-
-readiness, answer-persistence or result-generation failures. The original learner-data
-production blocker is resolved and validated.
+The remaining findings are frontend usability/identification defects, not data-integrity,
+projection-readiness, answer-persistence, scoring, result-generation, or RLS failures. The
+original learner-data production blocker is resolved and validated. An “exact Set-B is
+identifiable and discoverable in the learner UI” release claim remains blocked until the
+follow-up defects in the 2026-07-14 audit are corrected.

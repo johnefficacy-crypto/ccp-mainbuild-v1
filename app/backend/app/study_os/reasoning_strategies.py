@@ -1,4 +1,4 @@
-"""Reasoning strategy authority — verified-only reads + review wrapper (GQR-S3/S4).
+"""Reasoning strategy authority — verified-only reads + review wrapper (GQR-S3/S4/S7).
 
 Content Studio authors and reviews ``reasoning_strategies`` (migration 262). This
 module is the read/selection authority the learner-feedback path uses, plus a
@@ -6,12 +6,12 @@ thin wrapper over the ``cms_review_reasoning_strategy`` lifecycle RPC.
 
 Domain rule (CLAUDE.md): user-facing reads filter ``reviewer_status='verified'``
 CONJUNCTIVELY. A strategy reaches a learner only when BOTH the strategy row and
-its question link are verified — and the strategy is active. The reviewed link
-must also connect a question whose topic/microtopic is compatible with the
+its question/stimulus link are verified — and the strategy is active. Reviewed
+links must also connect content whose topic/microtopic is compatible with the
 strategy's governed Reasoning scope; this prevents a misassigned Reasoning link
-from leaking onto a different subject's question. The batched reader
-``strategies_for_questions`` (GQR-S4, solution-strategies-improvement-lab.md §8.4)
-mirrors ``study_os.quant_heuristics.heuristics_for_questions`` exactly.
+from leaking onto a different subject's question or set. The batched readers
+mirror ``study_os.quant_heuristics.heuristics_for_questions``: bounded queries,
+explicit projection, deterministic order, and fail-soft review delivery.
 """
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ logger = logging.getLogger("career_copilot.study_os.reasoning_strategies")
 
 _STRATEGIES = "reasoning_strategies"
 _LINKS = "reasoning_question_strategies"
+_STIMULUS_LINKS = "reasoning_stimulus_strategies"
 
 # Learner-facing display order for a question's strategies.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
@@ -226,6 +227,118 @@ def strategies_for_questions(
 
     for question_id in out:
         out[question_id].sort(key=_display_key)
+    return out
+
+
+def _normalise_stimulus_scopes(
+    stimulus_scopes: Any,
+) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
+    """Return ``(all_requested, valid_for_read)`` stimulus scope mappings.
+
+    Set delivery is fail-closed: a missing, empty, or malformed question-scope list
+    must never be silently shortened. Every requested stimulus remains in the
+    output with ``[]``, but only groups whose COMPLETE scope list is a non-empty
+    list/tuple of dictionaries are queried. This preserves the S7 invariant that a
+    strategy must match every frozen question in the set.
+    """
+    requested: dict[str, list[dict]] = {}
+    valid: dict[str, list[dict]] = {}
+    if not isinstance(stimulus_scopes, dict):
+        return requested, valid
+
+    for raw_stimulus_id, raw_scopes in stimulus_scopes.items():
+        if not raw_stimulus_id:
+            continue
+        stimulus_id = str(raw_stimulus_id)
+        requested[stimulus_id] = []
+        if not isinstance(raw_scopes, (list, tuple)) or not raw_scopes:
+            continue
+        if any(not isinstance(scope, dict) for scope in raw_scopes):
+            continue
+        valid[stimulus_id] = list(raw_scopes)
+
+    return requested, valid
+
+
+def strategies_for_stimuli(
+    supabase: Any,
+    stimulus_scopes: dict[str, list[dict]],
+    *,
+    strict: bool = False,
+) -> dict[str, list[dict]]:
+    """Return verified active strategies for canonical PYQ stimuli.
+
+    ``stimulus_scopes`` maps each ``pyq_stimuli.id`` to the COMPLETE frozen topic
+    scopes of every question displayed with that stimulus. A set strategy is
+    admitted only when its governed scope matches EVERY question in the set. The
+    reader performs one link query and one strategy query for the whole review
+    payload. Malformed or incomplete scope groups fail closed to ``[]``.
+    """
+    out, scopes = _normalise_stimulus_scopes(stimulus_scopes)
+    if not scopes:
+        return out
+
+    stimulus_ids = sorted(scopes)
+    link_rows = _read(
+        lambda: supabase.table(_STIMULUS_LINKS)
+        .select("stimulus_id,strategy_id,relevance")
+        .in_("stimulus_id", stimulus_ids)
+        .eq("reviewer_status", "verified")
+        .execute(),
+        strict,
+    )
+    links = getattr(link_rows, "data", None) or []
+    if not links:
+        return out
+
+    strategy_ids = sorted(
+        {
+            link.get("strategy_id")
+            for link in links
+            if isinstance(link, dict) and link.get("strategy_id")
+        }
+    )
+    if not strategy_ids:
+        return out
+
+    strat_rows = _read(
+        lambda: supabase.table(_STRATEGIES)
+        .select(_STRATEGY_FIELDS)
+        .in_("id", strategy_ids)
+        .eq("reviewer_status", "verified")
+        .eq("is_active", True)
+        .execute(),
+        strict,
+    )
+    strat_by_id = {
+        row["id"]: row
+        for row in (getattr(strat_rows, "data", None) or [])
+        if isinstance(row, dict) and row.get("id")
+    }
+
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        raw_stimulus_id = link.get("stimulus_id")
+        if not raw_stimulus_id:
+            continue
+        stimulus_id = str(raw_stimulus_id)
+        strategy = strat_by_id.get(link.get("strategy_id"))
+        question_scopes = scopes.get(stimulus_id)
+        if (
+            question_scopes
+            and strategy is not None
+            and all(_scope_matches(strategy, scope) for scope in question_scopes)
+        ):
+            out[stimulus_id].append(
+                {
+                    **_learner_row(strategy),
+                    "relevance": link.get("relevance") or "related",
+                }
+            )
+
+    for stimulus_id in out:
+        out[stimulus_id].sort(key=_display_key)
     return out
 
 

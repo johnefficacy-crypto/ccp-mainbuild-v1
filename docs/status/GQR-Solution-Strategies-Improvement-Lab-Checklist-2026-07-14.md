@@ -407,17 +407,25 @@ Tests: `app/backend/tests/study_os/test_improvement_lab.py` (19 — scope, evide
 
 ## GQR-S7 — Reasoning set-aware strategies
 
-**Status:** BLOCKED on GQR-S3 and GQR-S4
+**Status:** CODE-FIXED, VALIDATION PENDING
 
-- [ ] Define governed stimulus/set strategy link authority.
-- [ ] Require verified strategy + verified set link + active state.
-- [ ] Add `stimulus_solution_strategies` to the review contract.
-- [ ] Render set-solving approach once above grouped questions.
-- [ ] Preserve question-specific `solution_strategies`.
-- [ ] Do not repeat the same set strategy on every question.
-- [ ] Preserve existing text/table stimuli.
-- [ ] Add grouped seating-arrangement/puzzle tests.
-- [ ] Keep non-verbal/image Reasoning deferred.
+- [x] Define governed stimulus/set strategy link authority in migration 263.
+- [x] Require verified strategy + verified set link + active state + all-question scope match.
+- [x] Add additive `stimulus_solution_strategies` to the review contract.
+- [x] Render the set-solving approach once for the active grouped stimulus.
+- [x] Preserve question-specific `solution_strategies`.
+- [x] Do not repeat the same set strategy on every question.
+- [x] Preserve existing frozen text/table stimuli unchanged.
+- [x] Add grouped seating-arrangement/puzzle contract tests.
+- [x] Keep non-verbal/image Reasoning deferred to GQR-S9.
+- [ ] VERIFY DB: reconcile/apply migration 263 and prove the service-role-only privilege matrix.
+- [ ] OPERATOR: author and verify one canonical set link, then click through a submitted grouped mock.
+
+Implementation: `reasoning_stimulus_strategies` links canonical `pyq_stimuli.id`
+to the existing governed Reasoning authority. Backend delivery is batched and
+fail-soft, returns one strategy group per stimulus, and admits a strategy only
+when every frozen question scope in that group matches. Existing stimulus
+rendering and per-question strategy delivery are unchanged.
 
 ---
 
