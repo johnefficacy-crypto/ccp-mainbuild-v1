@@ -13,12 +13,12 @@ Do not store access tokens, cookies, API keys, authorization headers, passwords,
 | Backend deployment SHA | `<sha or n/a>` |
 | Database migration maximum | `<version or n/a>` |
 | Operator | `<GitHub handle or approved role>` |
-| Started at (UTC) | `<timestamp>` |
-| Completed at (UTC) | `<timestamp>` |
+| Started at (UTC) | `<YYYY-MM-DDTHH:mm:ssZ>` |
+| Completed at (UTC) | `<YYYY-MM-DDTHH:mm:ssZ>` |
 
 ## Preconditions
 
-State the exact data, roles, feature flags, migrations, and deployment state required by the runbook. Record identifiers only where they are needed to reproduce the result.
+State the exact data, roles, feature flags, migrations, and deployment state required by the runbook. Record identifiers only where needed to reproduce the result.
 
 ## Execution record
 
@@ -26,17 +26,28 @@ State the exact data, roles, feature flags, migrations, and deployment state req
 |---|---|---|---|---|
 | `<runbook step>` | `<acceptance condition>` | `<observed result>` | `PASS / FAIL / BLOCKED` | `<redacted response, screenshot, query output, or log reference>` |
 
-## Findings
+## Defects found
 
-Record defects with severity, affected contract, and required correction. Do not turn findings into a second delivery checklist; link issues or PRs where implementation work is tracked.
+| Defect ID | Severity | Affected contract | Finding | Tracking PR/issue |
+|---|---|---|---|---|
+| `<stable-kebab-id>` | `<P0/P1/P2/P3>` | `<contract>` | `<finding>` | `<reference>` |
+
+## Defects fixed
+
+| Defect ID | Remediation | Code/data reference | Revalidated? |
+|---|---|---|---|
+| `<same id from defects found>` | `<fix>` | `<PR/commit/migration>` | `yes / no` |
+
+A code-fixed defect remains unvalidated until the deployed path is rerun.
 
 ## Disposition
 
-State the evidence-backed gate result and the exact next action. A pass must identify every acceptance condition that was proven. A partial pass or failure must identify the remaining blocker.
+State the evidence-backed gate result and exact next action. A pass must identify every proven acceptance condition. A partial pass or failure must identify remaining blockers.
 
 ## Registry update
 
 - Registry gate ID: `<id>`
 - New status: `<status>`
-- Next review date: `<YYYY-MM-DD or terminal>`
+- Next review timestamp: `<YYYY-MM-DDTHH:mm:ssZ or terminal>`
+- Defect IDs added/fixed: `<ids or none>`
 - Added evidence path: `<this file>`
