@@ -6,8 +6,9 @@
 2. `docs/00-ai-context.md` — product context and governance rules
 3. `AGENTS.md` — locked decisions, CI quirks, pattern library
 4. `docs/architecture/domain-model.md` — entity canonicity rules
-5. `docs/status/career-copilot-checklist.md` — live gate status
-6. Module-specific doc under `docs/architecture/` for the area being changed
+5. `docs/operator-validation/INDEX.md` (generated from `docs/operator-validation/registry.json`) — live operator-validation gate status; read this before the large checklist when you need live operator status
+6. `docs/status/career-copilot-checklist.md` — implementation status, product decisions, architecture gates, and historical context (not a live operator-status mirror)
+7. Module-specific doc under `docs/architecture/` for the area being changed
 
 Never grep or glob the codebase before reading the graphify report. The graph is faster and more accurate than file search.
 
@@ -134,8 +135,8 @@ Stack:
 - Migrations are **immutable once merged**. Never edit a landed migration.
 - Decide the entity type (`exam_id` vs `recruitment_id`) before adding an FK column.
 - Every new table needs an RLS policy. Verify with `SELECT * FROM pg_policies WHERE tablename = '<name>'` before marking complete.
-- Do not mark live-deployment or Supabase operator steps as complete from code inspection alone — use `OPERATOR PENDING` or `VERIFY DB` until live proof is captured.
-- If code lands but shadow/live/operator validation is pending, mark `CODE-FIXED, VALIDATION PENDING` in the checklist.
+- Do not mark live-deployment or Supabase operator steps as complete from code inspection alone — use `operator_pending` or `validation_pending` in the operator-validation registry until live proof is captured.
+- If code lands but shadow/live/operator validation is pending, keep the implementation status in its contract/checklist and set the operator gate to `validation_pending`; do not mark the gate passed.
 
 ---
 
@@ -156,8 +157,17 @@ Read `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` before editing a
 
 ---
 
-## Checklist hygiene
+## Operator-validation registry hygiene
 
-- Every PR that changes implementation status, validation status, operator gates, or product decisions must update `docs/status/career-copilot-checklist.md` in the same branch.
-- Status vocabulary: `MERGED` / `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` / `VERIFY DB` / `BLOCKED` / `PLANNED` / `CLEANUP PENDING`.
+- `docs/operator-validation/registry.json` is the only mutable source for operator-validation status, review timing, blockers, defects, next actions, and evidence links. `docs/operator-validation/INDEX.md` is generated and must never be edited manually.
+- `docs/status/career-copilot-checklist.md` remains the source for implementation status, product decisions, architecture gates, and historical context. Migrated operator status must not be mirrored into it or into track-specific checklists.
+- Runbooks contain reusable procedures; evidence records contain immutable execution results.
+- Code completion is not operator validation. A code-fixed defect remains validation-pending until the deployed path is revalidated.
+- Every non-terminal gate requires `review_by` as an RFC3339 UTC timestamp (`YYYY-MM-DDTHH:mm:ssZ`), not a date-only value.
+- Record `defects_found` and `defects_fixed` on the gate. A fixed defect ID must also exist in `defects_found`.
+- Evidence records are immutable. Revalidation appends evidence to the same gate unless the acceptance contract or independent validation boundary changes.
+- After changing a registered source, runbook, evidence record, or gate status, update `registry.json`, regenerate `INDEX.md`, and run:
+  - `node --test scripts/__tests__/operator-validation.test.js`
+  - `node scripts/operator-validation.js --check`
+- Do not mark live-deployment, token, Render, Supabase, browser, or other operator-only proof complete from code inspection alone.
 - After modifying code, run `graphify update .` to keep the knowledge graph current (AST-only, no API cost).

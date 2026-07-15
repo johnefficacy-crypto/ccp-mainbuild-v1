@@ -1,0 +1,67 @@
+name: Operator Validation Registry
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'docs/operator-validation/**'
+      - 'docs/audits/**'
+      - 'docs/runbooks/**'
+      - 'docs/ops/**'
+      - 'docs/status/**'
+      - 'scripts/operator-validation.js'
+      - 'scripts/__tests__/operator-validation.test.js'
+      - '.github/workflows/operator-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'docs/operator-validation/**'
+      - 'docs/audits/**'
+      - 'docs/runbooks/**'
+      - 'docs/ops/**'
+      - 'docs/status/**'
+      - 'scripts/operator-validation.js'
+      - 'scripts/__tests__/operator-validation.test.js'
+      - '.github/workflows/operator-validation.yml'
+
+concurrency:
+  group: operator-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-operator-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect changed files for pull request
+        if: github.event_name == 'pull_request'
+        run: git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" > "$RUNNER_TEMP/operator-validation-changed-files.txt"
+
+      - name: Collect changed files for push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            git ls-files > "$RUNNER_TEMP/operator-validation-changed-files.txt"
+          else
+            git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" > "$RUNNER_TEMP/operator-validation-changed-files.txt"
+          fi
+
+      - name: Run registry self-tests
+        run: node --test scripts/__tests__/operator-validation.test.js
+
+      - name: Validate registry and generated index
+        run: node scripts/operator-validation.js --check --changed-files "$RUNNER_TEMP/operator-validation-changed-files.txt"
