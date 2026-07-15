@@ -121,4 +121,4 @@ Record:
 - withdrawal result;
 - operator identity and timestamp.
 
-Only then change GQR-S7 from `CODE-FIXED, VALIDATION PENDING` to a live-validated status in both checklists.
+Create one immutable evidence record from `docs/operator-validation/EVIDENCE_TEMPLATE.md`, append it to gate `gqr-s7-live-validation` in `docs/operator-validation/registry.json`, update the gate status, and regenerate `docs/operator-validation/INDEX.md`. Do not mirror operator status into the GQR or global checklist.
