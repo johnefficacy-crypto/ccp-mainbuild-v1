@@ -110,3 +110,19 @@ describe("QuestionRenderer solution-strategy wiring", () => {
     expect(screen.queryByTestId("solution-strategy-panel")).toBeNull();
   });
 });
+
+
+test("supports a distinct set-level heading and test id", () => {
+  render(
+    <SolutionStrategyPanel
+      mode="review"
+      strategies={[{ id: "set-1", name: "Grid first", subject_family: "reasoning" }]}
+      title="Set-solving approach"
+      ariaLabel="Stimulus solution strategies"
+      testId="stimulus-solution-strategy-panel"
+    />,
+  );
+  const panel = screen.getByTestId("stimulus-solution-strategy-panel");
+  expect(panel).toHaveAttribute("aria-label", "Stimulus solution strategies");
+  expect(panel).toHaveTextContent("Set-solving approach");
+});
