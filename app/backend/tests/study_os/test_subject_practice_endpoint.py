@@ -76,16 +76,29 @@ def test_topic_pyq_rejects_cross_subject_topic():
     assert "subject" in resp.json()["detail"].lower()
 
 
-def test_unwired_mode_is_rejected():
-    # A declared-but-unwired policy mode (e.g. Quant calculation_gym) has no v1
-    # launch handler and must be rejected by the registry-driven dispatch, not
-    # silently launched.
+def test_calculation_gym_starts_for_quant(monkeypatch):
+    monkeypatch.setattr(
+        subject_practice, "create_calc_gym_session",
+        lambda *a, **k: {"session_id": "88888888-8888-8888-8888-888888888888"},
+    )
     resp = _client(SBStub(_seed())).post(
         f"/api/study/subjects/{_S_QUANT}/practice/start",
         json={"mode": "calculation_gym", "topic_id": _T_QUANT},
     )
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "kind": "calculation_gym",
+        "route": "/app/study/calculation-gym/sessions/88888888-8888-8888-8888-888888888888",
+    }
+
+
+def test_calculation_gym_rejected_for_non_quant_family():
+    resp = _client(SBStub(_seed())).post(
+        f"/api/study/subjects/{_S_ENGLISH}/practice/start",
+        json={"mode": "calculation_gym"},
+    )
     assert resp.status_code == 422
-    assert "unknown practice mode" in resp.json()["detail"].lower()
+    assert "not available for this subject" in resp.json()["detail"].lower()
 
 
 def test_topic_pyq_starts_for_in_subject_topic(monkeypatch):

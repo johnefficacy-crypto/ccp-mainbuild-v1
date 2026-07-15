@@ -5,9 +5,9 @@ limits (§3.2). A session's ``seed`` and generated items are frozen at creation 
 the whole session is reproducible: identical ``(skill, seed, count,
 policy_version)`` always regenerates identical items and answers.
 
-This module is pure generation + a thin session persistence layer taking
-``supabase``; the learner-runtime API wiring (subject_practice dispatch) is a
-later slice and is intentionally NOT touched here.
+This module owns generation plus the learner-safe session projection used by the
+FastAPI runtime. Expected answers stay hidden until the frozen session is
+submitted.
 """
 from __future__ import annotations
 
@@ -155,6 +155,68 @@ def create_session(
         "policy_version": policy_version,
         # Learner-facing: prompt + index only, never the frozen expected_answer.
         "items": [{"item_index": it["item_index"], "prompt": it["prompt"]} for it in items],
+    }
+
+
+def get_session(
+    supabase: Any,
+    *,
+    session_id: str,
+    user_id: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Return an ownership-scoped learner projection of a frozen session.
+
+    The service-role query includes ``user_id`` in the predicate so another
+    learner's session is indistinguishable from a missing session. Frozen
+    answers and correctness are exposed only after submission.
+    """
+    rows = (
+        supabase.table(_SESSIONS).select("*")
+        .eq("id", session_id).eq("user_id", user_id).limit(1).execute().data
+    ) or []
+    if not rows:
+        raise LookupError("calc gym session not found")
+    session = rows[0]
+    item_rows = (
+        supabase.table(_ITEMS).select("*")
+        .eq("session_id", session_id).order("item_index").execute().data
+    ) or []
+    submitted = session.get("status") == "submitted"
+    now = now or datetime.now(timezone.utc)
+    status = session.get("status")
+    expires_at = session.get("expires_at")
+    if status == "in_progress" and expires_at:
+        deadline = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        if now > deadline:
+            status = "expired"
+
+    items: list[dict[str, Any]] = []
+    for row in item_rows:
+        view = {"item_index": row.get("item_index"), "prompt": row.get("prompt")}
+        if submitted:
+            view.update({
+                "expected_answer": row.get("expected_answer"),
+                "user_answer": row.get("user_answer"),
+                "is_correct": row.get("is_correct"),
+                "time_spent_sec": int(row.get("time_spent_sec") or 0),
+            })
+        items.append(view)
+
+    return {
+        "session_id": session.get("id"),
+        "skill": session.get("skill"),
+        "question_count": session.get("question_count"),
+        "duration_sec": session.get("duration_sec"),
+        "status": status,
+        "started_at": session.get("started_at"),
+        "expires_at": expires_at,
+        "submitted_at": session.get("submitted_at"),
+        "score_correct": session.get("score_correct"),
+        "score_total": session.get("score_total"),
+        "total_time_sec": session.get("total_time_sec"),
+        "policy_version": session.get("policy_version"),
+        "items": items,
     }
 
 

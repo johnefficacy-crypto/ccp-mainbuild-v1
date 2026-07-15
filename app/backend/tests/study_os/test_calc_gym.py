@@ -69,6 +69,52 @@ def test_create_session_freezes_items_without_leaking_answers():
     assert sb.db["calc_gym_sessions"][0]["seed"] == 99
 
 
+def test_get_session_hides_answers_until_submit():
+    sb = _db()
+    out = calc_gym.create_session(
+        sb, user_id="u1", skill="squares", question_count=2, duration_sec=60, seed=2,
+    )
+    current = calc_gym.get_session(sb, session_id=out["session_id"], user_id="u1")
+    assert current["status"] == "in_progress"
+    assert all("expected_answer" not in item for item in current["items"])
+
+    expected = calc_gym.generate_items("squares", 2, seed=2)
+    answers = {
+        item["item_index"]: {"user_answer": item["expected_answer"], "time_spent_sec": 2}
+        for item in expected
+    }
+    calc_gym.submit_session(
+        sb, session_id=out["session_id"], user_id="u1", answers=answers,
+    )
+    result = calc_gym.get_session(sb, session_id=out["session_id"], user_id="u1")
+    assert result["status"] == "submitted"
+    assert all(item["expected_answer"] for item in result["items"])
+    assert all(item["is_correct"] is True for item in result["items"])
+
+
+def test_get_session_is_owner_scoped():
+    sb = _db()
+    out = calc_gym.create_session(
+        sb, user_id="u1", skill="tables", question_count=2, duration_sec=60, seed=2,
+    )
+    with pytest.raises(LookupError):
+        calc_gym.get_session(sb, session_id=out["session_id"], user_id="attacker")
+
+
+def test_get_session_projects_expired_without_leaking_answers():
+    sb = _db()
+    now = datetime.now(timezone.utc)
+    out = calc_gym.create_session(
+        sb, user_id="u1", skill="tables", question_count=2, duration_sec=1,
+        seed=2, now=now,
+    )
+    result = calc_gym.get_session(
+        sb, session_id=out["session_id"], user_id="u1", now=now + timedelta(seconds=2),
+    )
+    assert result["status"] == "expired"
+    assert all("expected_answer" not in item for item in result["items"])
+
+
 def test_submit_scores_against_frozen_answers():
     sb = _db()
     out = calc_gym.create_session(

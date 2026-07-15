@@ -42,6 +42,7 @@ MODE_ENGLISH_WRITING = "english_writing"
 MODE_TOPIC_PYQ = "topic_pyq"
 MODE_TIMED_PRACTICE = "timed_practice"
 MODE_WEEKLY_CURRENT_AFFAIRS = "weekly_current_affairs"
+MODE_CALCULATION_GYM = "calculation_gym"
 
 # Reserved identifier for the bundle-driven GA current-affairs "subject". GA is NOT a
 # topic-coverage subject — current-affairs is bundle-driven, not topic-driven — so it has
@@ -190,6 +191,10 @@ WIRED_RUNTIME_MODES: dict[str, RuntimeModeAdapter] = {
         mode=MODE_TIMED_PRACTICE,
         label="Timed practice",
     ),
+    MODE_CALCULATION_GYM: RuntimeModeAdapter(
+        mode=MODE_CALCULATION_GYM,
+        label="Calculation Gym",
+    ),
     # GQR-G5: GA current-affairs. Unlike the topic-PYQ modes this is bundle-driven,
     # not topic-driven — the learner never picks a topic, and there is no
     # ``target_topic_id``. The server resolves the eligible weekly bundle and freezes
@@ -251,6 +256,12 @@ def _emit_weekly_current_affairs(ctx: InventoryContext) -> list[dict[str, Any]]:
     return WIRED_RUNTIME_MODES[MODE_WEEKLY_CURRENT_AFFAIRS].hub_entries()
 
 
+def _emit_calculation_gym(ctx: InventoryContext) -> list[dict[str, Any]]:
+    # Calculation fluency is independent of PYQ projection/topic inventory. A Quant
+    # learner can always launch the server-owned deterministic drill.
+    return WIRED_RUNTIME_MODES[MODE_CALCULATION_GYM].hub_entries()
+
+
 # Per wired-mode signal resolver. Registering a runtime = adding an entry here + to a
 # policy's ``wired_runtime_modes``; no branch is added to ``subjects.py``.
 _MODE_EMITTERS: dict[str, Callable[[InventoryContext], list[dict[str, Any]]]] = {
@@ -258,6 +269,7 @@ _MODE_EMITTERS: dict[str, Callable[[InventoryContext], list[dict[str, Any]]]] = 
     MODE_TOPIC_PYQ: _emit_topic_pyq,
     MODE_TIMED_PRACTICE: _emit_timed_practice,
     MODE_WEEKLY_CURRENT_AFFAIRS: _emit_weekly_current_affairs,
+    MODE_CALCULATION_GYM: _emit_calculation_gym,
 }
 
 
@@ -354,7 +366,7 @@ SUBJECT_RUNTIME_POLICIES: dict[str, SubjectRuntimePolicy] = {
     FAMILY_QUANT: _policy(
         family=FAMILY_QUANT,
         supported_modes=("topic_practice", "timed_practice", "heuristic_drill", "calculation_gym"),
-        wired_runtime_modes=(MODE_TOPIC_PYQ,),
+        wired_runtime_modes=(MODE_TOPIC_PYQ, MODE_CALCULATION_GYM),
         attempt_kind="mock_attempt",
         mastery_enabled=True, correction_enabled=True, retry_policy="normal_srs",
         planner_resolver=_pyq_planner_resolver,

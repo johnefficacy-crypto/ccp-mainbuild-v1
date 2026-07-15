@@ -26,8 +26,9 @@ sibling_doc: docs/architecture/current-affairs-pipeline.md
 
 # Subject Practice Framework — GA / Quant / Reasoning Expansion
 
-**Status:** CONTRACT-FIRST / PLANNED. This is an architecture contract; no runtime code has
-shipped for it yet. Delivery order and gate status live in
+**Status:** CONTRACT-FIRST / INCREMENTAL DELIVERY. Runtime policy, Quant Calculation Gym,
+Reasoning timed practice, and GA current-affairs slices have shipped in code; validation and
+remaining rollout gates live in
 `docs/status/career-copilot-pr-plan.md` § Lane GQR and `docs/status/career-copilot-checklist.md`
 § GA / Quant / Reasoning Expansion.
 

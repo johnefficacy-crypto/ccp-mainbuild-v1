@@ -170,13 +170,23 @@ def test_practiceable_topic_excludes_unready_snapshot():
 
 
 def test_subjects_each_item_carries_practice_object():
-    # With no launchable content, every card still exposes a practice object
-    # that is closed (no server_launch modes).
+    # Every card exposes a practice object. With no launchable PYQ/topic content,
+    # non-Quant subjects stay closed, but Quant always surfaces the
+    # inventory-independent Calculation Gym rapid-fire mode.
     sb = SBStub(_seed())
     items = subjects_service.list_subjects(sb, "u-1")
     assert items
     for it in items:
-        assert it["practice"] == {"available": False, "modes": []}
+        practice = it["practice"]
+        assert set(practice) == {"available", "modes"}
+        if it["subject"] == "Quant":
+            modes = {m["type"]: m for m in practice["modes"]}
+            assert practice["available"] is True
+            assert modes["calculation_gym"]["launch_mode"] == "calculation_gym"
+            assert modes["calculation_gym"]["route_type"] == "server_launch"
+            assert modes["calculation_gym"]["target_topic_id"] is None
+        else:
+            assert practice == {"available": False, "modes": []}
 
 
 # ── GQR-G5: bundle-driven GA current-affairs card ──────────────────────────

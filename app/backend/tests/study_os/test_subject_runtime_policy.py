@@ -80,12 +80,20 @@ def test_reasoning_timed_practice_hidden_without_projected_topics():
     ) == []
 
 
-def test_quant_family_emits_only_pyq_no_branch_needed():
+def test_quant_family_emits_pyq_and_calculation_gym():
     modes = srp.resolve_subject_modes(
         slug="quantitative-aptitude", subject_group="numerical",
         ctx=_ctx(eng=True, topics=["t-9"]),  # eng signal present but Quant policy omits writing
     )
-    assert [m["type"] for m in modes] == ["topic_pyq", "mock_section"]
+    assert [m["type"] for m in modes] == ["topic_pyq", "mock_section", "calculation_gym"]
+
+
+def test_quant_calculation_gym_does_not_require_projected_topics():
+    modes = srp.resolve_subject_modes(
+        slug="quantitative-aptitude", subject_group="numerical", ctx=_ctx(),
+    )
+    assert [m["type"] for m in modes] == ["calculation_gym"]
+    assert modes[0]["target_topic_id"] is None
 
 
 def test_general_awareness_subject_gets_no_pyq_mode_even_with_topics():

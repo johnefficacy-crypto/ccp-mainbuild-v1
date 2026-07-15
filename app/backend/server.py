@@ -90,6 +90,7 @@ from app.api.placeholders import router as placeholders_router
 from app.api.study_compare import router as study_compare_router
 from app.api.study_os import router as study_os_router
 from app.api.current_affairs_practice import router as current_affairs_practice_router
+from app.api.calc_gym_practice import router as calc_gym_practice_router
 from app.api.subject_practice import router as subject_practice_router
 from app.api.writing_practice import router as writing_practice_router
 from app.api.writing_practice import tasks_router as writing_practice_tasks_router
@@ -358,6 +359,7 @@ api.include_router(persona_router)  # internal aspirant persona v1
 api.include_router(persona_questions_router)  # PR2 progressive tiny questions
 api.include_router(subject_practice_router)  # Subject Practice Hub launch orchestrator — before canonical so /study/subjects/{id}/practice/start wins
 api.include_router(current_affairs_practice_router)  # GQR-G5: GA current-affairs learner attempt runtime (own tables)
+api.include_router(calc_gym_practice_router)  # GQR-Q8: Calculation Gym learner runtime
 api.include_router(study_os_router)  # PR3 Study OS Mission Control — before canonical so /study/mission-control wins
 api.include_router(writing_practice_router)  # EWP-2 English Writing Practice deterministic runtime
 api.include_router(writing_practice_tasks_router)  # EWP-SP3 planner task -> writing-session launch

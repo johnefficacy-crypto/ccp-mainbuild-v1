@@ -21,6 +21,7 @@ const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
 const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
 const CurrentAffairsAttemptShell = lazy(() => import("../pages/study/CurrentAffairsAttemptShell"));
+const CalculationGymShell = lazy(() => import("../pages/study/CalculationGymShell"));
 const ImprovementLab = lazy(() => import("../pages/study/ImprovementLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
@@ -106,6 +107,10 @@ export const appRouteElements = (
         <Route
           path="current-affairs/attempts/:attemptId"
           element={<CurrentAffairsAttemptShell />}
+        />
+        <Route
+          path="calculation-gym/sessions/:sessionId"
+          element={<CalculationGymShell />}
         />
         {/* Improvement Lab (GQR-S5): the renamed learner surface composing My
             Writing Errors (EWP-4 English authority), Methods & Shortcuts (Quant)

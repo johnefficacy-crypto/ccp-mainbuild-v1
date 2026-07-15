@@ -7,6 +7,8 @@ choosing a prompt_id or a question set:
     prompt server-side, create a learning session (EWP single-birth path).
   * topic_pyq       -> assemble a verified, actively-projected PYQ practice attempt
     via the existing PYQ practice engine (topic mode).
+  * calculation_gym -> create a deterministic frozen Quant fluency session with
+    server-owned limits and seed.
 Exam context is ALWAYS resolved server-side from the caller's target exam — a
 client-supplied exam is never trusted (mirrors the planner launch endpoints).
 A backend route under the existing /api/study surface — NOT a new sidebar
@@ -23,9 +25,11 @@ from app.api.writing_practice import create_learning_session
 from app.core.auth import get_current_user
 from app.current_affairs.attempts import start_weekly_current_affairs_attempt
 from app.db.supabase_client import get_supabase_admin
+from app.study_os.calc_gym import create_session as create_calc_gym_session
 from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
 from app.study_os.subject_runtime_policy import (
+    MODE_CALCULATION_GYM,
     MODE_ENGLISH_WRITING,
     MODE_TIMED_PRACTICE,
     MODE_TOPIC_PYQ,
@@ -47,6 +51,12 @@ _PRACTICE_LIMIT = 100
 # never sets the timer. A reviewed, per-topic target time may replace this flat
 # rate later from real attempt data (mirrors the Quant target-time deferral).
 _TIMED_SECONDS_PER_QUESTION = 60
+
+# Server-owned v1 gym launch policy. Skill selection/adaptive recommendation is a
+# later product slice; the hub launch cannot set limits or a seed.
+_CALC_GYM_DEFAULT_SKILL = "tables"
+_CALC_GYM_QUESTION_COUNT = 20
+_CALC_GYM_DURATION_SEC = 180
 
 
 class StartSubjectPracticeRequest(BaseModel):
@@ -157,6 +167,26 @@ def _handle_weekly_current_affairs(supabase, *, user_id, subject_id, topic_id, e
     return {"kind": "current_affairs", "outcome": outcome or "no_bundle"}
 
 
+def _handle_calculation_gym(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+    try:
+        session = create_calc_gym_session(
+            supabase,
+            user_id=user_id,
+            exam_id=exam_id,
+            skill=_CALC_GYM_DEFAULT_SKILL,
+            question_count=_CALC_GYM_QUESTION_COUNT,
+            duration_sec=_CALC_GYM_DURATION_SEC,
+        )
+    except (ValueError, RuntimeError) as exc:
+        logger.exception("calculation gym launch failed user=%s exam=%s", user_id, exam_id)
+        raise HTTPException(status_code=500, detail="Could not start Calculation Gym.") from exc
+    session_id = session.get("session_id")
+    return {
+        "kind": "calculation_gym",
+        "route": f"/app/study/calculation-gym/sessions/{session_id}",
+    }
+
+
 # Launch-handler dispatch table, keyed by wired runtime mode. Registering a new
 # runtime = one entry here + one policy in subject_runtime_policy, not an if-ladder.
 _LAUNCH_HANDLERS = {
@@ -164,6 +194,7 @@ _LAUNCH_HANDLERS = {
     MODE_TOPIC_PYQ: _handle_topic_pyq,
     MODE_TIMED_PRACTICE: _handle_timed_practice,
     MODE_WEEKLY_CURRENT_AFFAIRS: _handle_weekly_current_affairs,
+    MODE_CALCULATION_GYM: _handle_calculation_gym,
 }
 
 
