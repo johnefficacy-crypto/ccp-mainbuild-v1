@@ -54,6 +54,10 @@ export default function MockAttemptShell() {
   const timerRef = useRef(null);
   const autoSubmitFired = useRef(false);
   const timeRemainingRef = useRef(null);
+  // Points at the current question's palette button so it can be scrolled into
+  // view — with 80+ questions the active item is otherwise clipped below the
+  // navigator's fold until the user scrolls or keyboard-navigates.
+  const currentNavRef = useRef(null);
 
   // ── answer sync (data-loss prevention) ─────────────────────────────────────
   const postAnswer = useCallback(
@@ -131,6 +135,20 @@ export default function MockAttemptShell() {
 
   // Keep ref in sync so eventBus heartbeat can read without a closure over stale state.
   useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
+
+  // Keep the current question's palette button visible inside the navigator's
+  // scroll area whenever the active question changes (jsdom lacks a real
+  // scrollIntoView, so guard defensively).
+  useEffect(() => {
+    const el = currentNavRef.current;
+    if (el && typeof el.scrollIntoView === "function") {
+      try {
+        el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      } catch {
+        /* non-DOM env / unsupported options — safe to ignore */
+      }
+    }
+  }, [currentIdx]);
 
   // ── countdown ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -267,6 +285,29 @@ export default function MockAttemptShell() {
         eventBus.enqueue("question.answered", {
           question_id: questionId,
           numeric_answer: numeric,
+          time_spent_sec: dwell,
+        });
+      } catch (e) { console.warn("[Shell] enqueue error:", e); }
+      return { ...prev, [questionId]: updated };
+    });
+  }
+
+  // ── clear a response back to unattempted ───────────────────────────────────
+  // Selecting a different option is possible, but there was no way to return a
+  // question to "not answered". The server accepts and persists a null answer;
+  // this queues that null through the same sync path so counts, the palette, and
+  // the post-refresh/submit state all reflect the cleared question.
+  function clearResponse(questionId) {
+    const dwell = accrueDwell(questionId);
+    setResponses((prev) => {
+      const cur = prev[questionId] || {};
+      // Nothing to clear — avoid an empty write and a spurious sync entry.
+      if (!cur.selected_option_id && cur.numeric_answer == null) return prev;
+      const updated = { ...cur, selected_option_id: null, numeric_answer: null, numeric_input: "" };
+      sendAnswer(questionId, null, updated.is_marked_for_review || false, dwell, null);
+      try {
+        eventBus.enqueue("question.cleared", {
+          question_id: questionId,
           time_spent_sec: dwell,
         });
       } catch (e) { console.warn("[Shell] enqueue error:", e); }
@@ -524,6 +565,7 @@ export default function MockAttemptShell() {
     return (
       <button
         key={qq.question_id}
+        ref={isCurrent ? currentNavRef : undefined}
         data-testid={`attempt-nav-${i}`}
         data-section={Number(qq.section_index || 0)}
         data-sync={syncState || "none"}
@@ -651,15 +693,27 @@ export default function MockAttemptShell() {
                   })}
                 </div>
               )}
-              <label style={styles.reviewLabel}>
-                <input
-                  type="checkbox"
-                  data-testid="attempt-mark-review"
-                  checked={Boolean(resp.is_marked_for_review)}
-                  onChange={() => toggleReview(q.question_id)}
-                />
-                &nbsp; Mark for review
-              </label>
+              <div style={styles.answerActions}>
+                <label style={styles.reviewLabel}>
+                  <input
+                    type="checkbox"
+                    data-testid="attempt-mark-review"
+                    checked={Boolean(resp.is_marked_for_review)}
+                    onChange={() => toggleReview(q.question_id)}
+                  />
+                  &nbsp; Mark for review
+                </label>
+                {(Boolean(resp.selected_option_id) || resp.numeric_answer != null) ? (
+                  <button
+                    type="button"
+                    data-testid="attempt-clear-response"
+                    onClick={() => clearResponse(q.question_id)}
+                    style={styles.clearBtn}
+                  >
+                    Clear response
+                  </button>
+                ) : null}
+              </div>
             </div>
           )}
           </div>
@@ -712,7 +766,9 @@ export default function MockAttemptShell() {
               ✕
             </button>
           </div>
-          <div style={styles.paletteGrid}>{paletteButtons}</div>
+          <div className="attempt-palette-scroll" data-testid="attempt-palette-scroll">
+            <div style={styles.paletteGrid}>{paletteButtons}</div>
+          </div>
         </aside>
       </div>
 
@@ -796,7 +852,10 @@ const ATTEMPT_STYLES = `
 .attempt-body { display: flex; flex: 1; align-items: stretch; min-height: 0; }
 .attempt-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .attempt-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-.attempt-aside { width: 236px; flex-shrink: 0; background: #1f2937; border-left: 1px solid #374151; padding: 14px; position: sticky; top: 0; align-self: flex-start; max-height: 100vh; overflow-y: auto; }
+.attempt-aside { width: 236px; flex-shrink: 0; background: #1f2937; border-left: 1px solid #374151; padding: 14px; position: sticky; top: 0; align-self: flex-start; max-height: 100%; display: flex; flex-direction: column; min-height: 0; }
+/* Only the button grid scrolls; the "Questions · n/n" head stays pinned. The
+   footer-height reserve keeps the last row clear of the mobile toggle / edge. */
+.attempt-palette-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 72px; }
 .attempt-aside-close { display: none; }
 .attempt-mobile-toggle { display: none; }
 @media (max-width: 768px) {
@@ -834,7 +893,9 @@ const styles = {
   optIndex: { fontWeight: 700, minWidth: 20, color: "#9ca3af" },
   numericLabel: { fontSize: 13, color: "#9ca3af", marginBottom: 4 },
   numericInput: { padding: "12px 16px", borderRadius: 8, background: "#1f2937", border: "2px solid #374151", color: "#f9fafb", fontSize: 16, maxWidth: 260 },
-  reviewLabel: { marginTop: 16, fontSize: 14, color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center" },
+  answerActions: { marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
+  reviewLabel: { fontSize: 14, color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center" },
+  clearBtn: { padding: "6px 14px", background: "transparent", color: "#93c5fd", border: "1px solid #374151", borderRadius: 6, cursor: "pointer", fontSize: 13 },
   navRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", borderTop: "1px solid #374151", background: "#1f2937" },
   navArrow: { padding: "8px 18px", background: "#374151", color: "#f9fafb", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 },
   progress: { fontSize: 14, color: "#9ca3af" },

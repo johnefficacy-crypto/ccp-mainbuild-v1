@@ -16,6 +16,18 @@ function PaperCard({ paper, onPractice, practicing, practiceDisabled }) {
         {paper.year ? <span className="pill pill-clay text-[11px]">{paper.year}</span> : null}
         {paper.phase_name ? <span className="pill pill-dusk text-[11px]">{paper.phase_name}</span> : null}
         {paper.subject_name ? <span className="pill pill-sage text-[11px]">{paper.subject_name}</span> : null}
+        {/* Reviewed paper identity — disambiguates same-year/same-phase papers
+            (e.g. CSAT · Set B) instead of collapsing them to one anonymous card. */}
+        {paper.paper_code ? (
+          <span className="pill pill-clay text-[11px] font-medium" data-testid="pyq-paper-code">
+            {paper.paper_code}
+          </span>
+        ) : null}
+        {paper.set_label ? (
+          <span className="pill pill-dusk text-[11px] font-medium" data-testid="pyq-paper-set">
+            {paper.set_label}
+          </span>
+        ) : null}
       </div>
       <div className="text-sm text-muted-foreground">
         {qCount.toLocaleString("en-IN")} question{qCount === 1 ? "" : "s"} ·{" "}

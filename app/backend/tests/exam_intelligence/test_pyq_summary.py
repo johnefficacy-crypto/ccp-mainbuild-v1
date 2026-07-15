@@ -166,6 +166,50 @@ def test_by_subject_untagged_bucket_sums_to_total():
     assert sum(row["questions"] for row in body["by_subject"]) == body["totals"]["questions"]
 
 
+def test_pyq_summary_paper_card_exposes_reviewed_set_identity():
+    """Two same-year/same-phase papers must be distinguishable on the learner
+    card via reviewed paper_code + set label (audit 2026-07-14 defect #1)."""
+    seed = _seed()
+    # Two CSAT papers, identical year + phase, differing only by set.
+    seed["pyq_papers"] = [
+        {"id": "p1", "exam_id": "e1", "year": 2025, "exam_phase_id": "ph1",
+         "trust_status": "verified", "paper_code": "GS-PAPER-II-CSAT",
+         "metadata": {"set_code": "A", "paper_set": "SET-A", "note": "internal-only"}},
+        {"id": "p2", "exam_id": "e1", "year": 2025, "exam_phase_id": "ph1",
+         "trust_status": "verified", "paper_code": "GS-PAPER-II-CSAT",
+         "metadata": {"set_code": "B", "paper_set": "SET-B", "note": "internal-only"}},
+    ]
+    body = _summary(SBStub(seed))
+    cards = {p["paper_id"]: p for p in body["papers"]}
+    assert cards["p1"]["paper_code"] == "GS-PAPER-II-CSAT"
+    assert cards["p1"]["set_label"] == "Set A"
+    assert cards["p2"]["set_label"] == "Set B"
+    # Same year + phase, yet each card carries a distinct reviewed identity.
+    assert cards["p1"]["year"] == cards["p2"]["year"] == 2025
+    assert cards["p1"]["phase_slug"] == cards["p2"]["phase_slug"] == "prelims"
+    assert cards["p1"]["set_label"] != cards["p2"]["set_label"]
+    # The raw metadata blob (internal notes) is never surfaced on the card.
+    assert "metadata" not in cards["p1"]
+    assert "note" not in cards["p1"]
+
+
+def test_pyq_summary_set_label_falls_back_to_paper_set():
+    """When only paper_set is present it is normalized to a 'Set X' label; a
+    paper with no set identity carries a null label (no set pill)."""
+    seed = _seed()
+    seed["pyq_papers"] = [
+        {"id": "p1", "exam_id": "e1", "year": 2025, "exam_phase_id": "ph1",
+         "trust_status": "verified", "paper_code": "GS-PAPER-II-CSAT",
+         "metadata": {"paper_set": "SET-B"}},
+        {"id": "p2", "exam_id": "e1", "year": 2024, "exam_phase_id": "ph1",
+         "trust_status": "verified", "paper_code": "GS-PAPER-I", "metadata": {}},
+    ]
+    body = _summary(SBStub(seed))
+    cards = {p["paper_id"]: p for p in body["papers"]}
+    assert cards["p1"]["set_label"] == "Set B"
+    assert cards["p2"]["set_label"] is None
+
+
 def test_pyq_list_includes_phase_and_subject_metadata():
     client = TestClient(_build_app(SBStub(_seed())))
     r = client.get("/api/exam-intelligence/exams/upsc-cse/pyqs?page=1&page_size=20")
