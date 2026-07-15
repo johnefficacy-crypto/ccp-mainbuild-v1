@@ -1,7 +1,7 @@
 <!-- Table of contents -->
 - [Execution protocol](#execution-protocol)
 - [graphify](#graphify)
-- [Shared checklist status](#shared-checklist-status)
+- [Shared checklist and operator validation status](#shared-checklist-and-operator-validation-status)
 - [Known-flaky CI checks](#known-flaky-ci-checks)
 - [Study OS frontend contract](#study-os-frontend-contract)
 - [Frontend governance](#frontend-governance)
@@ -47,12 +47,15 @@ Rules:
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
-## Shared checklist status
+## Shared checklist and operator validation status
 
-The repo-level checklist lives at `docs/status/career-copilot-checklist.md`.
-It is the shared source of record for agent-visible status on the Mock Engine
-v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
-cleanup, Exam Management IA locked decisions, CI gate status, and live-DB-only tails.
+`docs/status/career-copilot-checklist.md` remains the shared source for implementation status, product decisions, architecture gates, and historical delivery context.
+
+Mutable operator-gate status is separate:
+- `docs/operator-validation/registry.json` is the only mutable source for operator status, exact UTC `review_by`, next action, blockers, defects, and evidence links.
+- `docs/operator-validation/INDEX.md` is generated from the registry and must never be edited manually.
+- Runbooks are reusable procedures; evidence records are immutable execution results.
+- Once a gate is migrated, do not mirror its operator status back into global or track checklists.
 
 The Exam Management IA findings record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
 
@@ -61,16 +64,13 @@ The Exam Management IA **implementation gate** (design-lock) is at `docs/status/
 No-new-surface rule (locked): **No new top-level destination unless it removes at least two existing top-level destinations.** A new sidebar item or promoted top-level route IS a surface. A backend endpoint, embedded component, or drill-in page is NOT. Violating this rule restarts the IA problem the work is trying to solve.
 
 Rules:
-- Before changing code or docs in those areas, read the checklist after the
-  Graphify map.
-- Every PR that changes implementation status, validation status, operator
-  gates, or product decisions in those areas must update the checklist in the
-  same branch.
-- Do not mark live-deployment, token, Render, Supabase, or other operator-only
-  evidence as complete from code inspection alone; use `OPERATOR PENDING` or
-  `VERIFY DB` until the live proof is captured.
-- If a code remediation lands but shadow/live/operator validation remains, use
-  `CODE-FIXED, VALIDATION PENDING` rather than `complete`.
+- Before changing code or docs in those areas, read the checklist and generated operator index after the Graphify map.
+- PRs changing implementation status or product decisions update the relevant status/architecture document.
+- PRs changing operator status, evidence, review timing, blockers, or defect disposition update `registry.json` and regenerate `INDEX.md` in the same branch.
+- Every non-terminal operator gate uses an RFC3339 UTC `review_by` timestamp (`YYYY-MM-DDTHH:mm:ssZ`); date-only deadlines are invalid.
+- `defects_found` is cumulative. `defects_fixed` is a verified-remediation subset and must reuse the same stable defect IDs.
+- A code-fixed defect is not live-validated. Keep the gate `validation_pending` until deployed operator evidence proves the remediation.
+- Never mark deployment, token, Render, Supabase, or other operator-only evidence complete from code inspection alone.
 
 ## Known-flaky CI checks
 
