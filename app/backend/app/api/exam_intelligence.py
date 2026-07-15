@@ -9,6 +9,7 @@ state.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -30,6 +31,26 @@ from app.study_os.trap_drill_shadow import record_trap_drill_shadow
 logger = logging.getLogger("career_copilot.api.exam_intelligence")
 
 router = APIRouter(prefix="/exam-intelligence", tags=["exam-intelligence"])
+
+
+def _pyq_paper_set_label(metadata: Any) -> str | None:
+    """Human-safe set label for a PYQ paper card (e.g. ``"Set B"``).
+
+    Derived from operator-reviewed metadata only (``set_code`` /
+    ``paper_set``). Returns ``None`` for single-set papers that carry no set
+    identity, so the learner card renders no set pill. Never surfaces the raw
+    metadata blob (which may hold internal notes) — only the normalized label.
+    """
+    meta = metadata if isinstance(metadata, dict) else {}
+    set_code = str(meta.get("set_code") or "").strip()
+    if set_code:
+        return f"Set {set_code.upper()}"
+    paper_set = str(meta.get("paper_set") or "").strip()
+    if paper_set:
+        # "SET-B" / "SET_B" / "SET B" → "Set B".
+        token = re.sub(r"(?i)^set[\s_-]*", "", paper_set).strip()
+        return f"Set {token.upper()}" if token else paper_set
+    return None
 
 
 @router.get("/exams")
@@ -538,7 +559,7 @@ def get_exam_pyq_summary(
     try:
         papers = (
             sb.table("pyq_papers")
-            .select("id, year, exam_phase_id")
+            .select("id, year, exam_phase_id, paper_code, metadata")
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
             .limit(2000)
@@ -673,6 +694,7 @@ def get_exam_pyq_summary(
             ph = p.get("exam_phase_id")
             sid = paper_subject.get(pid)
             ready = int(ready_by_paper.get(pid, 0))
+            meta = p.get("metadata") if isinstance(p.get("metadata"), dict) else {}
             papers_out.append(
                 {
                     "paper_id": pid,
@@ -684,6 +706,13 @@ def get_exam_pyq_summary(
                     "question_count": paper_qcount.get(pid, 0),
                     "practice_ready_count": ready,
                     "practice_enabled": ready > 0,
+                    # Reviewed display identity so two same-year/same-phase papers
+                    # (e.g. CSAT Set-A vs Set-B) are distinguishable on the card.
+                    # Only safe operator-typed fields — never the raw metadata blob.
+                    "paper_code": p.get("paper_code"),
+                    "set_code": meta.get("set_code"),
+                    "paper_set": meta.get("paper_set"),
+                    "set_label": _pyq_paper_set_label(meta),
                 }
             )
         papers_out.sort(key=lambda r: (-(r["year"] or 0), r.get("phase_slug") or ""))

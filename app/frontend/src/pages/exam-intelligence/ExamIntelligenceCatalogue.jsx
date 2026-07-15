@@ -17,6 +17,20 @@ const DIFFICULTY_LABELS = {
   hard: "Hard",
 };
 
+// Build the searchable text for an exam. The deployed `name` frequently omits
+// the acronym learners type (e.g. "UPSC"), while the `slug` carries it
+// (`upsc-cse`). Searching name + slug (with separators flattened to spaces) so
+// "UPSC" resolves to upsc-cse, plus exam_type for family-ish matches.
+export function examSearchHaystack(exam) {
+  const parts = [exam?.name, exam?.slug, exam?.exam_type]
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase().replace(/[-_]+/g, " "));
+  // Keep both the separated and collapsed forms so "upsccse" and "upsc cse"
+  // both hit `upsc-cse`.
+  const joined = parts.join(" ");
+  return `${joined} ${joined.replace(/\s+/g, "")}`;
+}
+
 function ExamCard({ exam }) {
   const difficulty = DIFFICULTY_LABELS[exam.default_difficulty_level];
   return (
@@ -85,7 +99,7 @@ export default function ExamIntelligenceCatalogue() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return exams;
-    return exams.filter((e) => (e.name || "").toLowerCase().includes(q));
+    return exams.filter((e) => examSearchHaystack(e).includes(q));
   }, [exams, query]);
 
   return (

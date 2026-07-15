@@ -168,6 +168,18 @@ This is valid RLS evidence because it used real PostgREST/JWT requests rather th
 | 4 | After selecting an MCQ option, the learner cannot clear it back to unattempted. The API accepts and persists `selected_option_id: null`; the UI has no clear-response control or deselect behavior. | High correctness-of-intent UX | Add an explicit `Clear response` action that queues a null answer through `useAnswerSync`, updates counts/palette immediately, persists after refresh, and is covered through submit/review. |
 | 5 | `provenance_pending=true` remains in verified paper/source metadata despite the official source being attached. | Metadata cleanup | Reconcile the promotion workflow so verified provenance clears/updates the pending flag atomically, or remove the stale flag from runtime-facing metadata. |
 
+## Defect disposition (2026-07-15 — CODE-FIXED, VALIDATION PENDING)
+
+Branch `claude/upsc-cse-learner-access-defects-wosuz1`. All five open defects are resolved in code with regression coverage; live/operator validation is still pending.
+
+| # | Disposition | Change |
+|---|---|---|
+| 1 | CODE-FIXED | `GET /pyq-summary` paper cards now expose reviewed display identity (`paper_code`, `set_code`, `paper_set`, derived `set_label`) — `app/backend/app/api/exam_intelligence.py`; `PyqPaperPracticeCards.jsx` renders `GS-PAPER-II-CSAT · Set B` pills. Raw `metadata` is never surfaced. Regression: two same-year/same-phase papers assert distinct labels (`test_pyq_summary.py`). |
+| 2 | CODE-FIXED | `ExamIntelligenceCatalogue.jsx` search indexes normalized name + slug (separators flattened) + exam_type, so `UPSC` resolves `upsc-cse` even when the name omits the acronym. Regression: `ExamIntelligenceCatalogue.test.jsx`. |
+| 3 | CODE-FIXED | `MockAttemptShell.jsx` navigator now has an explicit `attempt-palette-scroll` region (bounded flex column, footer-height reserve) and scrolls the active question button into view on navigation. Regression: `MockAttemptShell.clearAndPalette.test.jsx`. |
+| 4 | CODE-FIXED | `MockAttemptShell.jsx` adds a `Clear response` control that queues a null answer through `useAnswerSync`, updates counts/palette immediately, and emits `question.cleared`. Regression: `MockAttemptShell.clearAndPalette.test.jsx`. |
+| 5 | CODE-FIXED | Migration `264_pyq_provenance_pending_reconcile.sql` strips `provenance_pending` from verified `pyq_papers`/`pyq_sources` metadata and adds a BEFORE INSERT/UPDATE trigger clearing it atomically on every future promotion to `verified`. `VERIFY DB` on live apply. |
+
 The earlier 2026-07-13 aggregate validation reported a timer `--` finding for a different attempt context. For this exact CSAT Set-B paper-practice launch, the absence of a countdown is intentional untimed behavior and is not carried forward as a defect. The earlier concatenated-review-option finding was not reproduced here; printed labels and structured option snapshots were present in the live review response.
 
 ## Gate result
