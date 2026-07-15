@@ -25,6 +25,7 @@ const TERMINAL_STATUSES = new Set(['passed', 'failed', 'cancelled', 'superseded'
 const EVIDENCE_REQUIRED_STATUSES = new Set(['partial_pass', 'passed', 'failed']);
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const UTC_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 function normalizeRepoPath(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -39,9 +40,15 @@ function isIsoDate(value) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function todayUtc(env = process.env) {
-  if (env.OPERATOR_VALIDATION_TODAY) return env.OPERATOR_VALIDATION_TODAY;
-  return new Date().toISOString().slice(0, 10);
+function isIsoTimestamp(value) {
+  if (typeof value !== 'string' || !UTC_TIMESTAMP_PATTERN.test(value)) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().replace('.000Z', 'Z') === value;
+}
+
+function nowUtc(env = process.env) {
+  if (env.OPERATOR_VALIDATION_NOW) return env.OPERATOR_VALIDATION_NOW;
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 function validatePathExists(repoRoot, repoPath, label, errors) {
@@ -56,15 +63,37 @@ function validatePathExists(repoRoot, repoPath, label, errors) {
   return normalized;
 }
 
+function validateDefectList(gate, gateLabel, field, errors) {
+  const defects = gate[field];
+  if (!Array.isArray(defects)) {
+    errors.push(`${gateLabel}.${field} must be an array`);
+    return new Set();
+  }
+  const ids = new Set();
+  defects.forEach((defect, index) => {
+    const label = `${gateLabel}.${field}[${index}]`;
+    if (!defect || typeof defect !== 'object' || Array.isArray(defect)) {
+      errors.push(`${label} must be an object`);
+      return;
+    }
+    if (!ID_PATTERN.test(defect.id || '')) errors.push(`${label}.id must be kebab-case`);
+    else if (ids.has(defect.id)) errors.push(`duplicate ${field} id on gate ${gate.id}: ${defect.id}`);
+    else ids.add(defect.id);
+    if (typeof defect.summary !== 'string' || !defect.summary.trim()) errors.push(`${label}.summary is required`);
+  });
+  return ids;
+}
+
 function validateRegistry(registry, options = {}) {
   const repoRoot = options.repoRoot || REPO_ROOT;
-  const today = options.today || todayUtc();
+  const now = options.now || nowUtc();
+  const nowMs = isIsoTimestamp(now) ? Date.parse(now) : Number.NaN;
   const errors = [];
 
   if (!registry || typeof registry !== 'object' || Array.isArray(registry)) {
     return ['registry root must be an object'];
   }
-  if (registry.schema_version !== 1) errors.push('schema_version must equal 1');
+  if (registry.schema_version !== 2) errors.push('schema_version must equal 2');
 
   const generatedIndex = normalizeRepoPath(registry.generated_index || DEFAULT_INDEX_REL);
   if (!generatedIndex) errors.push('generated_index must be a safe repository-relative path');
@@ -105,21 +134,25 @@ function validateRegistry(registry, options = {}) {
       else gateIds.add(gate.id);
 
       if (typeof gate.title !== 'string' || !gate.title.trim()) errors.push(`${gateLabel}.title is required`);
-      if (!ALLOWED_STATUSES.has(gate.status)) {
-        errors.push(`${gateLabel}.status is invalid: ${JSON.stringify(gate.status)}`);
-      }
+      if (!ALLOWED_STATUSES.has(gate.status)) errors.push(`${gateLabel}.status is invalid: ${JSON.stringify(gate.status)}`);
       if (typeof gate.summary !== 'string' || !gate.summary.trim()) errors.push(`${gateLabel}.summary is required`);
       if (typeof gate.next_action !== 'string' || !gate.next_action.trim()) errors.push(`${gateLabel}.next_action is required`);
       if (!isIsoDate(gate.updated_at)) errors.push(`${gateLabel}.updated_at must be YYYY-MM-DD`);
 
       if (!TERMINAL_STATUSES.has(gate.status)) {
-        if (!isIsoDate(gate.review_by)) {
-          errors.push(`${gateLabel}.review_by must be YYYY-MM-DD for non-terminal status ${gate.status}`);
-        } else if (isIsoDate(today) && gate.review_by < today) {
-          errors.push(`stale gate ${gate.id}: review_by ${gate.review_by} is before ${today}`);
+        if (!isIsoTimestamp(gate.review_by)) {
+          errors.push(`${gateLabel}.review_by must be an RFC3339 UTC timestamp (YYYY-MM-DDTHH:mm:ssZ) for non-terminal status ${gate.status}`);
+        } else if (!Number.isNaN(nowMs) && Date.parse(gate.review_by) < nowMs) {
+          errors.push(`stale gate ${gate.id}: review_by ${gate.review_by} is before ${now}`);
         }
-      } else if (gate.review_by != null && !isIsoDate(gate.review_by)) {
-        errors.push(`${gateLabel}.review_by must be null or YYYY-MM-DD`);
+      } else if (gate.review_by != null && !isIsoTimestamp(gate.review_by)) {
+        errors.push(`${gateLabel}.review_by must be null or an RFC3339 UTC timestamp`);
+      }
+
+      const foundIds = validateDefectList(gate, gateLabel, 'defects_found', errors);
+      const fixedIds = validateDefectList(gate, gateLabel, 'defects_fixed', errors);
+      for (const fixedId of fixedIds) {
+        if (!foundIds.has(fixedId)) errors.push(`${gateLabel}.defects_fixed id must also exist in defects_found: ${fixedId}`);
       }
 
       if (!Array.isArray(gate.implementation_refs) || gate.implementation_refs.length === 0) {
@@ -183,6 +216,11 @@ function statusLabel(status) {
   return status.replace(/_/g, ' ').toUpperCase();
 }
 
+function formatDefects(defects) {
+  if (!Array.isArray(defects) || defects.length === 0) return '—';
+  return defects.map((item) => `\`${markdownEscape(item.id)}\` ${markdownEscape(item.summary)}`).join('<br>');
+}
+
 function renderIndex(registry) {
   const lines = [
     '# Operator validation index',
@@ -197,23 +235,22 @@ function renderIndex(registry) {
 
   for (const track of registry.tracks) {
     lines.push(`## ${track.name} \`${track.id}\``, '', `Owner: ${track.owner}`, '');
-    lines.push('| Gate | Status | Updated | Review by | Next action | Runbook | Evidence |');
-    lines.push('|---|---|---:|---:|---|---|---|');
+    lines.push('| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |');
+    lines.push('|---|---|---:|---:|---|---|---|---|---|');
     for (const gate of track.gates) {
       const evidence = (gate.evidence || []).length
         ? gate.evidence.map((entry) => repoLink(entry.path, `${entry.recorded_at} ${statusLabel(entry.result)}`)).join('<br>')
         : '—';
       lines.push(
-        `| **${markdownEscape(gate.title)}**<br>\`${gate.id}\` | **${statusLabel(gate.status)}** | ${gate.updated_at} | ${gate.review_by || '—'} | ${markdownEscape(gate.next_action)} | ${gate.runbook ? repoLink(gate.runbook) : '—'} | ${evidence} |`,
+        `| **${markdownEscape(gate.title)}**<br>\`${gate.id}\` | **${statusLabel(gate.status)}** | ${gate.updated_at} | ${gate.review_by || '—'} | ${formatDefects(gate.defects_found)} | ${formatDefects(gate.defects_fixed)} | ${markdownEscape(gate.next_action)} | ${gate.runbook ? repoLink(gate.runbook) : '—'} | ${evidence} |`,
       );
     }
     lines.push('');
   }
 
   lines.push('## Update rule', '');
-  lines.push('Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, and change status only in `registry.json`.');
-  lines.push('');
-  return lines.join('\n');
+  lines.push('Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, record defects in the gate, and change status only in `registry.json`.');
+  return `${lines.join('\n')}\n`;
 }
 
 function collectTrackedPaths(registry) {
@@ -250,12 +287,8 @@ function validateChangedFiles(changedFiles, registry) {
   if ((touchedTrackedSource || touchedEvidenceArea) && !registryChanged) {
     errors.push(`operator-validation source/evidence changed without ${REGISTRY_REL}`);
   }
-  if (registryChanged && !indexChanged) {
-    errors.push(`${REGISTRY_REL} changed without regenerated ${indexRel}`);
-  }
-  if (indexChanged && !registryChanged) {
-    errors.push(`${indexRel} is generated and must not change without ${REGISTRY_REL}`);
-  }
+  if (registryChanged && !indexChanged) errors.push(`${REGISTRY_REL} changed without regenerated ${indexRel}`);
+  if (indexChanged && !registryChanged) errors.push(`${indexRel} is generated and must not change without ${REGISTRY_REL}`);
   return errors;
 }
 
@@ -275,7 +308,7 @@ function run(argv = process.argv.slice(2), env = process.env) {
   const args = parseArgs(argv);
   const registryPath = path.join(REPO_ROOT, REGISTRY_REL);
   const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-  const errors = validateRegistry(registry, { repoRoot: REPO_ROOT, today: todayUtc(env) });
+  const errors = validateRegistry(registry, { repoRoot: REPO_ROOT, now: nowUtc(env) });
   const rendered = renderIndex(registry);
   const indexRel = normalizeRepoPath(registry.generated_index || DEFAULT_INDEX_REL) || DEFAULT_INDEX_REL;
   const indexPath = path.join(REPO_ROOT, indexRel);
@@ -313,6 +346,7 @@ module.exports = {
   DEFAULT_INDEX_REL,
   normalizeRepoPath,
   isIsoDate,
+  isIsoTimestamp,
   validateRegistry,
   renderIndex,
   collectTrackedPaths,
