@@ -1,0 +1,131 @@
+name: Apply Operator Governance Docs
+
+on:
+  push:
+    branches: [agent/operator-validation-registry-workflow]
+    paths:
+      - '.github/workflows/apply-operator-governance-docs.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-governance-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch AGENTS.md and CLAUDE.md
+        shell: python
+        run: |
+          from pathlib import Path
+
+          agents = Path('AGENTS.md')
+          text = agents.read_text()
+          text = text.replace(
+              '- [Shared checklist status](#shared-checklist-status)',
+              '- [Shared checklist and operator validation status](#shared-checklist-and-operator-validation-status)',
+              1,
+          )
+          old = '''## Shared checklist status
+
+The repo-level checklist lives at `docs/status/career-copilot-checklist.md`.
+It is the shared source of record for agent-visible status on the Mock Engine
+v2 ↔ Study OS arc, Exam Governance Console cleanup tier, exam-intelligence UX
+cleanup, Exam Management IA locked decisions, CI gate status, and live-DB-only tails.
+
+The Exam Management IA findings record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
+
+The Exam Management IA **implementation gate** (design-lock) is at `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md`. This is the authoritative gate for I8-A, I8-B, and I8-C. Read this document before touching any of: `KnowledgeGovernance.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamActionConsole.jsx`, `ConsoleWorkQueue.jsx`, `console_detail.py`, or `readiness.py`.
+
+No-new-surface rule (locked): **No new top-level destination unless it removes at least two existing top-level destinations.** A new sidebar item or promoted top-level route IS a surface. A backend endpoint, embedded component, or drill-in page is NOT. Violating this rule restarts the IA problem the work is trying to solve.
+
+Rules:
+- Before changing code or docs in those areas, read the checklist after the
+  Graphify map.
+- Every PR that changes implementation status, validation status, operator
+  gates, or product decisions in those areas must update the checklist in the
+  same branch.
+- Do not mark live-deployment, token, Render, Supabase, or other operator-only
+  evidence as complete from code inspection alone; use `OPERATOR PENDING` or
+  `VERIFY DB` until the live proof is captured.
+- If a code remediation lands but shadow/live/operator validation remains, use
+  `CODE-FIXED, VALIDATION PENDING` rather than `complete`.
+'''
+          new = '''## Shared checklist and operator validation status
+
+`docs/status/career-copilot-checklist.md` remains the shared source for implementation status, product decisions, architecture gates, and historical delivery context.
+
+Mutable operator-gate status is separate:
+- `docs/operator-validation/registry.json` is the only mutable source for operator status, exact UTC `review_by`, next action, blockers, defects, and evidence links.
+- `docs/operator-validation/INDEX.md` is generated from the registry and must never be edited manually.
+- Runbooks are reusable procedures; evidence records are immutable execution results.
+- Once a gate is migrated, do not mirror its operator status back into global or track checklists.
+
+The Exam Management IA findings record is at `docs/status/Exam-Management-IA-Findings-and-Locked-Decisions-2026-06-21.md`.
+
+The Exam Management IA **implementation gate** (design-lock) is at `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md`. This is the authoritative gate for I8-A, I8-B, and I8-C. Read this document before touching any of: `KnowledgeGovernance.jsx`, `ExamIntelligence.jsx`, `ExamGovernanceConsole.jsx`, `AdminShell.jsx`, `adminRoutes.jsx`, `ExamWorkspace.jsx`, `ExamActionConsole.jsx`, `ConsoleWorkQueue.jsx`, `console_detail.py`, or `readiness.py`.
+
+No-new-surface rule (locked): **No new top-level destination unless it removes at least two existing top-level destinations.** A new sidebar item or promoted top-level route IS a surface. A backend endpoint, embedded component, or drill-in page is NOT. Violating this rule restarts the IA problem the work is trying to solve.
+
+Rules:
+- Before changing code or docs in those areas, read the checklist and generated operator index after the Graphify map.
+- PRs changing implementation status or product decisions update the relevant status/architecture document.
+- PRs changing operator status, evidence, review timing, blockers, or defect disposition update `registry.json` and regenerate `INDEX.md` in the same branch.
+- Every non-terminal operator gate uses an RFC3339 UTC `review_by` timestamp (`YYYY-MM-DDTHH:mm:ssZ`); date-only deadlines are invalid.
+- `defects_found` is cumulative. `defects_fixed` is a verified-remediation subset and must reuse the same stable defect IDs.
+- A code-fixed defect is not live-validated. Keep the gate `validation_pending` until deployed operator evidence proves the remediation.
+- Never mark deployment, token, Render, Supabase, or other operator-only evidence complete from code inspection alone.
+'''
+          if old not in text:
+              raise SystemExit('AGENTS.md operator block not found')
+          agents.write_text(text.replace(old, new, 1))
+
+          claude = Path('CLAUDE.md')
+          text = claude.read_text()
+          old_read = '''5. `docs/status/career-copilot-checklist.md` — live gate status
+6. Module-specific doc under `docs/architecture/` for the area being changed'''
+          new_read = '''5. `docs/operator-validation/INDEX.md` — generated live operator-gate status
+6. `docs/status/career-copilot-checklist.md` — implementation and product-decision status
+7. Module-specific doc under `docs/architecture/` for the area being changed'''
+          if old_read not in text:
+              raise SystemExit('CLAUDE.md read-order block not found')
+          text = text.replace(old_read, new_read, 1)
+
+          old_migration = '''- Do not mark live-deployment or Supabase operator steps as complete from code inspection alone — use `OPERATOR PENDING` or `VERIFY DB` until live proof is captured.
+- If code lands but shadow/live/operator validation is pending, mark `CODE-FIXED, VALIDATION PENDING` in the checklist.'''
+          new_migration = '''- Do not mark live-deployment or Supabase operator steps complete from code inspection alone. Update the operator registry only from captured evidence.
+- If code lands but shadow/live/operator validation is pending, record the remediation in `defects_fixed` and keep the gate `validation_pending`.'''
+          if old_migration not in text:
+              raise SystemExit('CLAUDE.md migration block not found')
+          text = text.replace(old_migration, new_migration, 1)
+
+          old_hygiene = '''## Checklist hygiene
+
+- Every PR that changes implementation status, validation status, operator gates, or product decisions must update `docs/status/career-copilot-checklist.md` in the same branch.
+- Status vocabulary: `MERGED` / `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` / `VERIFY DB` / `BLOCKED` / `PLANNED` / `CLEANUP PENDING`.
+- After modifying code, run `graphify update .` to keep the knowledge graph current (AST-only, no API cost).'''
+          new_hygiene = '''## Status and operator-validation hygiene
+
+- Implementation status and product decisions belong in the relevant architecture/status document, including `docs/status/career-copilot-checklist.md` where applicable.
+- Mutable operator status belongs only in `docs/operator-validation/registry.json`; regenerate `docs/operator-validation/INDEX.md` in the same branch.
+- Every non-terminal gate requires an exact RFC3339 UTC `review_by` timestamp (`YYYY-MM-DDTHH:mm:ssZ`).
+- Record cumulative `defects_found` and the verified-remediation subset `defects_fixed` using stable IDs. Code-fixed does not mean operator-validated.
+- Operator evidence is immutable and appended under `docs/operator-validation/evidence/`; reusable procedures stay in runbooks.
+- Implementation vocabulary remains `MERGED` / `CODE-FIXED, VALIDATION PENDING` / `OPERATOR PENDING` / `VERIFY DB` / `BLOCKED` / `PLANNED` / `CLEANUP PENDING`.
+- After modifying code, run `graphify update .` to keep the knowledge graph current (AST-only, no API cost).'''
+          if old_hygiene not in text:
+              raise SystemExit('CLAUDE.md hygiene block not found')
+          claude.write_text(text.replace(old_hygiene, new_hygiene, 1))
+
+      - name: Commit governance docs
+        run: |
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add AGENTS.md CLAUDE.md
+          git commit -m "docs: align operator validation governance"
+          git push
