@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
       - 'docs/operator-validation/**'
       - 'docs/audits/**'
       - 'docs/runbooks/**'
@@ -15,6 +17,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
       - 'docs/operator-validation/**'
       - 'docs/audits/**'
       - 'docs/runbooks/**'
