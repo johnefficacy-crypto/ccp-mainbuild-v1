@@ -10,7 +10,7 @@ Operator validation is recorded once, not copied across a global checklist, trac
 - Runbooks are reusable procedures. Revalidation reuses the same runbook instead of creating another checklist.
 - Evidence records are immutable execution results. Add a new evidence file for a materially new run; do not rewrite an earlier result.
 
-The large `docs/status/career-copilot-checklist.md` remains implementation and product-decision history. Migrated operator gates must not duplicate mutable live-validation status there.
+The large `docs/status/career-copilot-checklist.md` remains implementation and product-decision history. Migrated operator gates must not duplicate mutable live-validation status there. `AGENTS.md` and `CLAUDE.md` enforce this split for future agent work.
 
 ## Gate lifecycle
 
