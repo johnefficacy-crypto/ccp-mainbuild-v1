@@ -10,26 +10,55 @@ Statuses: `PLANNED`, `CODE PRESENT`, `VALIDATION PENDING`, `OPERATOR PENDING`, `
 
 Owner: Study OS / GQR
 
-| Gate | Status | Updated | Review by | Next action | Runbook | Evidence |
-|---|---|---:|---:|---|---|---|
-| **Reasoning set-aware strategy live validation**<br>`gqr-s7-live-validation` | **VALIDATION PENDING** | 2026-07-15 | 2026-07-29 | Reconcile and apply migration 263, run the privilege validator, then execute the grouped-mock and live-withdrawal proof. | [gqr-s7-reasoning-set-strategy-validation.md](../../docs/runbooks/gqr-s7-reasoning-set-strategy-validation.md) | — |
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **Reasoning set-aware strategy live validation**<br>`gqr-s7-live-validation` | **VALIDATION PENDING** | 2026-07-15 | 2026-07-29T18:00:00Z | — | — | Reconcile and apply migration 263, run the privilege validator, then execute the grouped-mock and live-withdrawal proof. | [gqr-s7-reasoning-set-strategy-validation.md](../../docs/runbooks/gqr-s7-reasoning-set-strategy-validation.md) | — |
 
 ## English Writing Practice `english-writing-practice`
 
 Owner: Study OS / EWP
 
-| Gate | Status | Updated | Review by | Next action | Runbook | Evidence |
-|---|---|---:|---:|---|---|---|
-| **Semantic evaluator shadow measurement and sign-off**<br>`ewp-semantic-evaluator-shadow-signoff` | **BLOCKED** | 2026-07-10 | 2026-08-10 | Start the governed shadow measurement only after owner direction; record one evidence report covering every acceptance threshold and sign-off. | — | — |
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **Semantic evaluator shadow measurement and sign-off**<br>`ewp-semantic-evaluator-shadow-signoff` | **BLOCKED** | 2026-07-10 | 2026-08-10T18:00:00Z | — | — | Start the governed shadow measurement only after owner direction; record one evidence report covering every acceptance threshold and sign-off. | — | — |
 
 ## PYQ full-paper practice `pyq-full-paper-practice`
 
 Owner: PYQ Intelligence / learner runtime
 
-| Gate | Status | Updated | Review by | Next action | Runbook | Evidence |
-|---|---|---:|---:|---|---|---|
-| **UPSC CSE 2025 CSAT Set-B production path**<br>`upsc-csat-set-b-production-validation` | **PARTIAL PASS** | 2026-07-14 | 2026-07-29 | Land the bounded API/frontend fixes for exact Set-B identity, UPSC search, large-paper palette discovery, clear-response support, and stale provenance metadata. | — | [2026-07-14 PARTIAL PASS](../../docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md) |
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **UPSC CSE 2025 CSAT Set-B production path**<br>`upsc-csat-set-b-production-validation` | **VALIDATION PENDING** | 2026-07-15 | 2026-07-29T18:00:00Z | `csat-setb-01` Exact Set-B identity was absent from the learner paper card.<br>`csat-setb-02` Searching UPSC did not discover the exam.<br>`csat-setb-03` The 80-question palette did not make lower questions sufficiently discoverable.<br>`csat-setb-04` The learner could not clear an MCQ response back to unattempted.<br>`csat-setb-05` Verified paper/source metadata retained stale provenance_pending=true. | `csat-setb-01` PR #1008 added reviewed paper/set identity to the API and paper card.<br>`csat-setb-02` PR #1008 expanded catalogue search to normalized name, slug, and exam type.<br>`csat-setb-03` PR #1008 added a bounded palette scroll area and active-item scrollIntoView.<br>`csat-setb-04` PR #1008 added Clear response through the existing null-answer sync path.<br>`csat-setb-05` PR #1008 migration 264 reconciles and prevents stale provenance_pending on verified rows. | Apply migration 264, deploy PR #1008, and revalidate Set-B identity, UPSC search, large-paper palette discovery, clear-response persistence, and provenance cleanup. | [upsc-csat-set-b-defect-revalidation.md](../../docs/runbooks/upsc-csat-set-b-defect-revalidation.md) | [2026-07-14 PARTIAL PASS](../../docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md) |
+
+## PYQ CMS document provenance `pyq-cms-document-provenance`
+
+Owner: Exam Intelligence / PYQ CMS
+
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **Migrations 183-190 document/provenance staging validation**<br>`pyq-cms-provenance-staging-validation` | **PASSED** | 2026-06-24 | — | `pyq-prov-01` Provenance RPC execute grants were exposed beyond service_role.<br>`pyq-prov-02` Document validation had a precheck-to-mutation race window.<br>`pyq-prov-03` Provenance/link updates and audit writes were not atomic. | `pyq-prov-01` Migration 190 revoked anon/authenticated execution and retained service_role.<br>`pyq-prov-02` Migration 189 locked and revalidated document rows inside the transaction.<br>`pyq-prov-03` Migration 188 made provenance/link mutations and audit insertion atomic. | No further action for this historical gate; create a new gate only if the acceptance contract changes. | — | [2026-06-24 PASSED](../../docs/operator-validation/evidence/2026-06-24-pyq-cms-document-provenance-validation.md) |
+
+## v1 release readiness `v1-release-readiness`
+
+Owner: OPS / release
+
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **P1 full staging-to-production migration-chain reconciliation**<br>`v1-p1-migration-chain` | **OPERATOR PENDING** | 2026-07-15 | 2026-07-22T18:00:00Z | `v1-p1-01` No complete staging and production schema_migrations reconciliation exists for the current repository head. | — | Recalculate the intended migration head, run the approved migration runner through staging and production, and preserve both ledgers plus no-hole/divergence evidence. | [v1-go-live-runbook.md](../../docs/ops/v1-go-live-runbook.md) | [2026-07-15 OPERATOR PENDING](../../docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md) |
+| **P2 release-wide RPC/RLS and real-JWT verification**<br>`v1-p2-rpc-rls-live-proof` | **PARTIAL PASS** | 2026-07-15 | 2026-07-24T18:00:00Z | `v1-p2-01` The complete release verification and RPC grant audit have not been run across staging and production.<br>`v1-p2-02` Normal-user and admin real-JWT returned-row evidence is missing. | — | After P1, run scripts/v1_release_verification.sql, the complete grant audit, RLS introspection, and normal-user/admin JWT reads on staging and production. | [v1-go-live-runbook.md](../../docs/ops/v1-go-live-runbook.md) | [2026-07-15 PARTIAL PASS](../../docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md) |
+| **P3 migration 182 operator validation**<br>`v1-p3-migration-182-validation` | **PASSED** | 2026-06-30 | — | — | — | No remaining action for P3. | — | [2026-06-30 PASSED](../../docs/audits/2026-06-30-migration-182-operator-validation.md) |
+| **P4 migration 204 snapshot-review RPC staging validation**<br>`v1-p4-migration-204-snapshot-review` | **PARTIAL PASS** | 2026-07-15 | 2026-07-24T18:00:00Z | `v1-p4-01` The June 30 migration-204 staging run had no durable audit snapshot and the tracker remained stale.<br>`v1-p4-02` Concurrency and the complete negative direct-RPC matrix are not preserved in available evidence. | `v1-p4-01` This registry PR adds a durable reconstruction and reconciles P4 to partial_pass without falsely closing it. | After P1, rerun the remaining concurrency and negative direct-RPC cases, then attach exact output to the reconstructed migration-204 evidence record. | [v1-go-live-runbook.md](../../docs/ops/v1-go-live-runbook.md) | [2026-07-15 PARTIAL PASS](../../docs/operator-validation/evidence/2026-07-15-v1-release-gate-reconciliation.md) |
+| **P5 telemetry staging validation and fingerprint boundary**<br>`v1-p5-telemetry-boundary` | **PASSED** | 2026-07-03 | — | `v1-p5-01` Visibility/unmount event batches could be dropped because sendBeacon could not carry authentication and failed batches were removed before acknowledgement.<br>`v1-p5-02` Partial event coverage fallback could occur without a persisted warning or fallback count. | `v1-p5-01` PR #800 added authenticated keepalive delivery, retain-on-failure, retry, and acknowledgement-based removal.<br>`v1-p5-02` PR #800 records event coverage, fallback count, and the partial-coverage warning. | No remaining P5 action; any future release SHA requires a fresh fingerprint attestation under the later T0 gate. | — | [2026-07-03 PASSED](../../docs/operator-validation/evidence/2026-07-03-p5-telemetry-boundary-validation.md) |
+| **P6 scheduler drain validation**<br>`v1-p6-scheduler-drain` | **PASSED** | 2026-07-01 | — | `v1-p6-01` The earlier capture did not prove automatic scheduler provenance.<br>`v1-p6-02` The earlier 65-minute observation did not prove the required <=30-second drain cycle. | `v1-p6-01` The watcher capture recorded manual absent, derivations 1, and errors 0.<br>`v1-p6-02` The controlled job completed in 19.67 seconds. | No remaining P6 action. | — | [2026-07-01 PASSED](../../docs/audits/2026-07-01-scheduler-drain-validation.md) |
+
+## Exam Intelligence operator activation `exam-intelligence-activation`
+
+Owner: Exam Intelligence / operations
+
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **Exam setup, evidence, review, and activation workflow**<br>`exam-intelligence-end-to-end-activation` | **OPERATOR PENDING** | 2026-07-15 | 2026-07-31T18:00:00Z | — | — | Confirm feature flag and permissions, select a target exam, then execute the reusable 17-step activation runbook and attach one evidence record. | [exam-intelligence-operator-activation.md](../../docs/runbooks/exam-intelligence-operator-activation.md) | — |
 
 ## Update rule
 
-Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, and change status only in `registry.json`.
+Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, record defects in the gate, and change status only in `registry.json`.
