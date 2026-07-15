@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "generated_index": "docs/operator-validation/INDEX.md",
+  "tracks": [
+    {
+      "id": "gqr-solution-strategies",
+      "name": "GQR solution strategies",
+      "owner": "Study OS / GQR",
+      "gates": [
+        {
+          "id": "gqr-s7-live-validation",
+          "title": "Reasoning set-aware strategy live validation",
+          "status": "validation_pending",
+          "summary": "GQR-S7 code merged in PR #1005; migration 263 and live governed-set proof remain.",
+          "updated_at": "2026-07-15",
+          "review_by": "2026-07-29",
+          "next_action": "Reconcile and apply migration 263, run the privilege validator, then execute the grouped-mock and live-withdrawal proof.",
+          "implementation_refs": [
+            "docs/status/GQR-Solution-Strategies-Improvement-Lab-Checklist-2026-07-14.md",
+            "app/supabase/migrations/263_reasoning_stimulus_strategy_authority.sql"
+          ],
+          "runbook": "docs/runbooks/gqr-s7-reasoning-set-strategy-validation.md",
+          "evidence": [],
+          "blockers": [
+            "Migration 263 is not yet reconciled and applied in the target live environment.",
+            "No verified canonical stimulus-strategy link has been exercised in a submitted grouped mock."
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "id": "english-writing-practice",
+      "name": "English Writing Practice",
+      "owner": "Study OS / EWP",
+      "gates": [
+        {
+          "id": "ewp-semantic-evaluator-shadow-signoff",
+          "title": "Semantic evaluator shadow measurement and sign-off",
+          "status": "blocked",
+          "summary": "Runtime-ready expansion remains blocked until the semantic evaluator meets the per-type quality, latency, cost, and determinism gates.",
+          "updated_at": "2026-07-10",
+          "review_by": "2026-08-10",
+          "next_action": "Start the governed shadow measurement only after owner direction; record one evidence report covering every acceptance threshold and sign-off.",
+          "implementation_refs": [
+            "docs/status/EWP-English-Completion-Tracker-2026-07-10.md",
+            "docs/architecture/ewp-semantic-evaluator-adapter.md"
+          ],
+          "runbook": null,
+          "evidence": [],
+          "blockers": [
+            "No approved shadow measurement window is active.",
+            "At least 500 labeled samples per exercise type are required before sign-off."
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "id": "pyq-full-paper-practice",
+      "name": "PYQ full-paper practice",
+      "owner": "PYQ Intelligence / learner runtime",
+      "gates": [
+        {
+          "id": "upsc-csat-set-b-production-validation",
+          "title": "UPSC CSE 2025 CSAT Set-B production path",
+          "status": "partial_pass",
+          "summary": "Exact data, ownership, persistence, submit, scoring, review, and RLS passed; learner identification and discoverability defects remain.",
+          "updated_at": "2026-07-14",
+          "review_by": "2026-07-29",
+          "next_action": "Land the bounded API/frontend fixes for exact Set-B identity, UPSC search, large-paper palette discovery, clear-response support, and stale provenance metadata.",
+          "implementation_refs": [
+            "docs/status/career-copilot-checklist.md"
+          ],
+          "runbook": null,
+          "evidence": [
+            {
+              "path": "docs/audits/2026-07-14-upsc-cse-2025-csat-set-b-learner-access-validation.md",
+              "recorded_at": "2026-07-14",
+              "result": "partial_pass"
+            }
+          ],
+          "blockers": [
+            "Exact Set-B identity is not exposed on the learner paper card.",
+            "UPSC acronym search does not discover the exam.",
+            "The 80-question palette and clear-response interaction need UX fixes."
+          ],
+          "depends_on": []
+        }
+      ]
+    }
+  ]
+}
