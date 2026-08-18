@@ -662,3 +662,7 @@ The next migration number for any EWP schema work must be read from:
 `select max(version)::int + 1 from schema_migrations`
 Never guess or hardcode a migration number. The correct value must be
 VERIFIED against the live database before writing any migration file.
+
+
+### PYQ Frontloading
+See docs/pyq-frontload-notes.md for UPSC PYQ bulk-import state, reusable IDs, and known API bugs.
