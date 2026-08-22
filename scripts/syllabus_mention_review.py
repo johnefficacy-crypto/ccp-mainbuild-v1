@@ -56,6 +56,7 @@ CMS = "/api/admin/exam-intelligence-cms"
 INTEL = "/api/admin/exam-intelligence"
 
 DECISIONS = {"verified", "rejected", "needs_correction"}
+MENTION_TYPES = {"explicit", "implied", "parent_topic_only", "derived"}
 FIELDS = ["mention_id", "paper", "macro_topic", "level", "mention_type",
           "text", "decision", "notes"]
 
@@ -169,6 +170,45 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     return 0
 
 
+def do_retype(c: Client, args: argparse.Namespace) -> int:
+    """Change mention_type on specific mentions.
+
+    Used when a row asserts the wrong KIND of claim — e.g. a curator's grouping
+    stored as 'explicit', which says the text is a verbatim official syllabus
+    line. The CMS edit endpoint cannot touch reviewer_status (that moves only
+    through the review queue), so a retyped mention stays pending and is
+    reviewed normally afterwards.
+    """
+    if args.to not in MENTION_TYPES:
+        print(f"error: --to must be one of {sorted(MENTION_TYPES)}", file=sys.stderr)
+        return 2
+    ids = [i.strip() for i in args.ids.split(",") if i.strip()]
+    if not ids:
+        print("error: --ids is empty", file=sys.stderr)
+        return 2
+
+    ok = failed = 0
+    for mid in ids:
+        body = {"reason": args.reason, "payload": {"mention_type": args.to}}
+        if args.dry_run:
+            print(f"  {mid}: would set mention_type={args.to}")
+            continue
+        try:
+            row = c.patch(f"{CMS}/syllabus-topic-mentions/{mid}", body).get("row") or {}
+            print(f"  {mid}: mention_type={row.get('mention_type', args.to)} "
+                  f"reviewer_status={row.get('reviewer_status', '?')}")
+            ok += 1
+        except RuntimeError as exc:
+            print(f"  {mid}: {exc}", file=sys.stderr)
+            failed += 1
+
+    if args.dry_run:
+        print("\nDRY RUN — nothing written.")
+    else:
+        print(f"\nretyped={ok} failed={failed}")
+    return 1 if failed else 0
+
+
 def do_apply(c: Client, args: argparse.Namespace) -> int:
     with Path(args.infile).open(newline="", encoding="utf-8-sig") as fh:
         rows = list(csv.DictReader(fh))
@@ -228,7 +268,16 @@ def main() -> int:
     a.add_argument("--in", dest="infile", required=True)
     a.add_argument("--dry-run", action="store_true")
 
+    t = sub.add_parser("retype", help="change mention_type on specific mentions")
+    t.add_argument("--ids", required=True, help="comma-separated mention ids")
+    t.add_argument("--to", required=True, help=f"one of {sorted(MENTION_TYPES)}")
+    t.add_argument("--reason", required=True, help="audit reason, 8-500 chars")
+    t.add_argument("--dry-run", action="store_true")
+
     args = p.parse_args()
+    if args.cmd == "retype" and not (8 <= len(args.reason) <= 500):
+        print("error: --reason must be 8-500 characters", file=sys.stderr)
+        return 2
     base = args.api_base or os.environ.get("CCP_API_BASE")
     token = os.environ.get("CCP_ADMIN_JWT", "")
     if not base or not token:
@@ -236,7 +285,8 @@ def main() -> int:
         return 2
 
     c = Client(base, token)
-    return do_export(c, args) if args.cmd == "export" else do_apply(c, args)
+    handler = {"export": do_export, "apply": do_apply, "retype": do_retype}[args.cmd]
+    return handler(c, args)
 
 
 if __name__ == "__main__":
