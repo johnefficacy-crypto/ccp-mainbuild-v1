@@ -103,11 +103,10 @@ def diagnose(r: Reader, exam_id: str, phase_id: str | None) -> list[str]:
         marker = "  <-- target scope" if scope == phase_id else ""
         print(f"  {label}: {statuses}{marker}")
 
-    in_scope = [
-        p for p in papers
-        if p.get("exam_phase_id") == phase_id and p.get("trust_status") == "verified"
-    ]
-    print(f"\n  verified papers in target scope: {len(in_scope)}")
+    scoped = [p for p in papers if p.get("exam_phase_id") == phase_id]
+    in_scope = [p for p in scoped if p.get("trust_status") == "verified"]
+    print(f"\n  papers at target scope: {len(scoped)} "
+          f"({len(in_scope)} verified, {len(scoped) - len(in_scope)} not)")
     if not in_scope:
         blockers.append(
             "No verified PYQ papers at the target scope — scoring reads "
@@ -115,27 +114,34 @@ def diagnose(r: Reader, exam_id: str, phase_id: str | None) -> list[str]:
             "so it will produce zero snapshots."
         )
 
-    years = sorted({p.get("year") for p in in_scope if p.get("year")})
+    years = sorted({p.get("year") for p in scoped if p.get("year")})
     if years:
-        print(f"  years covered: {years}")
+        print(f"  years present at target scope: {years}")
 
     # ── 2. Questions on those papers ───────────────────────────────────────
-    hr("2. PYQ questions on in-scope verified papers")
+    # Count questions on EVERY in-scope paper, not just verified ones. When
+    # the papers are still pending, the verified-only view reports 0/0 and
+    # hides the actual size of the tagging workload sitting behind the gate.
+    hr("2. PYQ questions at target scope")
     verified_q = 0
     total_q = 0
-    for p in in_scope:
+    for p in sorted(scoped, key=lambda x: (x.get("year") or 0)):
         pid = p["id"]
         v = r.count(f"{CMS}/pyq-questions", {"pyq_paper_id": pid, "reviewer_status": "verified"})
         t = r.count(f"{CMS}/pyq-questions", {"pyq_paper_id": pid})
         verified_q += v
         total_q += t
-        print(f"  {p.get('year')} {pid[:8]}…: {v}/{t} verified")
-    print(f"\n  total verified questions: {verified_q} (of {total_q})")
-    if in_scope and verified_q == 0:
+        print(f"  {p.get('year')} {pid[:8]}… [{p.get('trust_status')}]: "
+              f"{t} questions, {v} verified")
+    print(f"\n  total questions at target scope: {total_q} ({verified_q} verified)")
+    if total_q and verified_q == 0:
         blockers.append(
-            "Papers exist but no questions are reviewer_status='verified' — "
-            "scoring counts only verified questions."
+            f"{total_q} questions exist at the target scope but none are "
+            "reviewer_status='verified' — scoring counts only verified questions."
         )
+    if total_q:
+        print(f"\n  tagging workload if this scope is pursued: up to {total_q} "
+              "questions\n  need exactly one verified primary topic tag each.")
 
     # ── 3. Primary verified topic tags ─────────────────────────────────────
     hr("3. Primary + verified topic tags")
