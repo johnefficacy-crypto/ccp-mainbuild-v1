@@ -1,75 +1,97 @@
 {
   "_comment": [
-    "Per-year official UPSC source URLs for Civil Services (Main) question papers.",
-    "Used by scripts/backfill_pyq_paper_provenance.py to satisfy the provenance",
-    "gate on POST /pyq-papers/{id}/review (pending -> verified requires a",
-    "non-empty source_url or a source_document_id).",
+    "Source URLs for UPSC Civil Services (Main) question papers, used by",
+    "scripts/backfill_pyq_paper_provenance.py to satisfy the provenance gate on",
+    "POST /pyq-papers/{id}/review (pending -> verified needs a non-empty",
+    "source_url or a source_document_id).",
     "",
-    "verified=true means the URL was confirmed to exist as an indexed page on",
-    "upsc.gov.in. verified=false means it follows the same URL pattern but was",
-    "NOT confirmed — open it in a browser, correct it if it 404s, and flip the",
-    "flag before using it as provenance. The backfill script refuses to write",
-    "an unverified URL unless --allow-unverified is passed.",
+    "PROVENANCE LEVEL: listing, not per-year. UPSC does not publish a per-year",
+    "landing page for Mains question papers. URLs of the shape",
+    "/examinations/Civil Services (Main) Examination, <year> appear in search",
+    "results but redirect to the site homepage, so they are NOT usable anchors —",
+    "an earlier revision of this file wrongly marked them verified on the",
+    "strength of search-index presence alone. Every year therefore points at the",
+    "same official archives listing: a reviewer reaches the right corpus and",
+    "locates the year themselves.",
     "",
-    "One paper row per year holds GS1-4 + Essay, so the anchor is the year's",
-    "exam page (which lists all five PDFs) rather than a single PDF."
+    "Direct PDFs exist (e.g. /sites/default/files/QP-CSM-22-GENERAL-STUDIES-PAPER I-190922.pdf)",
+    "but each names ONE paper, while one pyq_papers row holds GS1-4 + Essay for a",
+    "whole year — a single PDF would describe the row incorrectly.",
+    "",
+    "UPGRADE PATH: upload the five PDFs per year and set source_document_id.",
+    "That is the only anchor that is both precise and correct; until then this",
+    "file is deliberately honest about being listing-level.",
+    "",
+    "verified=true means the URL was confirmed to resolve to a real page — by",
+    "loading it, not by seeing it in search results."
   ],
   "exam": "UPSC Civil Services (Main) Examination",
   "years": {
     "2013": {
-      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2013",
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
       "verified": true,
-      "note": "Older years use the question-papers-year-YYYY archive scheme."
+      "note": "Shared official archives listing; not year-specific."
     },
     "2014": {
-      "url": "https://www.upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202014",
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
       "verified": true,
-      "note": "Uses the examinations scheme despite being an early year."
+      "note": "Shared official archives listing; not year-specific."
     },
     "2015": {
-      "url": "https://upsc.gov.in/examinations/question-papers/question-papers-year-2015",
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
       "verified": true,
-      "note": "Only the year-archive scheme was confirmed for 2015."
+      "note": "Shared official archives listing; not year-specific."
     },
     "2016": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202016",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2017": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202017",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2018": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202018",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2019": {
-      "url": "https://upsc.gov.in/examinations/civil%20services%20(main)%20examination,%202019",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2020": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202020",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2021": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202021",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2022": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202022",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2023": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202023",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2024": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202024",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     },
     "2025": {
-      "url": "https://upsc.gov.in/examinations/Civil%20Services%20%28Main%29%20Examination%2C%202025",
-      "verified": true
+      "url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "verified": true,
+      "note": "Shared official archives listing; not year-specific."
     }
-  }
+  },
+  "provenance_level": "listing"
 }

@@ -121,7 +121,28 @@ def run(args: argparse.Namespace) -> int:
             (p.get("source_url") or "").strip() or p.get("source_document_id")
         )
 
-        if not has_anchor:
+        if has_anchor and args.force_url and entry and (
+            entry.get("verified") or args.allow_unverified
+        ) and (p.get("source_url") or "") != entry["url"]:
+            # An anchor is already set but differs from the map. Only replace it
+            # on an explicit --force-url: silently rewriting provenance on a
+            # paper someone may already have reviewed against the old URL would
+            # invalidate that review without any trace.
+            try:
+                client.send(
+                    "PATCH", f"{CMS}/pyq-papers/{pid}",
+                    {"reason": args.reason or
+                     "Replace paper source_url with the corrected official anchor",
+                     "payload": {"source_url": entry["url"], "source_type": "official"}},
+                )
+                print(f"  {year}: source_url REPLACED")
+                patched += 1
+            except RuntimeError as exc:
+                print(f"  {year}: PATCH failed — {exc}")
+                failed += 1
+                continue
+
+        elif not has_anchor:
             if not entry:
                 print(f"  {year}: no URL in the source map — skipped")
                 failed += 1
@@ -188,6 +209,9 @@ def main() -> int:
                    help="Also transition each anchored paper pending -> verified")
     p.add_argument("--allow-unverified", action="store_true",
                    help="Write URLs whose existence was never confirmed")
+    p.add_argument("--force-url", action="store_true",
+                   help="Replace an existing source_url that differs from the map "
+                        "(otherwise papers with any anchor are left alone)")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
     if args.promote and not (args.reason and len(args.reason) >= 8):
