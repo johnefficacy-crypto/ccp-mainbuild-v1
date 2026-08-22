@@ -9,7 +9,11 @@
     {
       "paper_id": "GS_1",
       "paper_title": "General Studies I",
-      "core_subjects": ["Indian Heritage and Culture", "History and Geography of the World", "Society"],
+      "core_subjects": [
+        "Indian Heritage and Culture",
+        "History and Geography of the World",
+        "Society"
+      ],
       "syllabus_nodes": [
         {
           "macro_topic": "Indian Culture",
@@ -64,7 +68,8 @@
             "India's contacts with the rest of Asia: propagation of Buddhism, Roman trade, Chinese silk route, Kanishka's reign, spread of Indian culture to Southeast Asia",
             "Sangam period south Indian dynasties: Cholas, Cheras, Pandyas, Sangam polity/society/culture/economy",
             "Taxila as a renowned centre of scholarship and the strategic-location factors behind its ruin"
-          ]
+          ],
+          "official_syllabus_line_is_verbatim": false
         },
         {
           "macro_topic": "Medieval India",
@@ -85,7 +90,8 @@
             "18th-century society, economy, and culture: rural society, artisans, standard of living, ruling classes, inland/overseas trade, religion, fine arts, science and technology",
             "Northern India in the first half of the 18th century: struggle for Wizarat, Sayyid Brothers, rise of regional states and the beginning of foreign invasions",
             "The Maratha bid for supremacy and the three Anglo-Maratha/Panipat phases (1741-1761)"
-          ]
+          ],
+          "official_syllabus_line_is_verbatim": false
         },
         {
           "macro_topic": "Modern Indian History",
@@ -223,14 +229,21 @@
             "Contemporary Indian-geography themes: cyclones of the Bay of Bengal and climate change, El Nino and Indian monsoon, Indus dam construction prospects/challenges, receding Himalayan glaciers, Indian Ocean Dipole's weather impact, Himalayan landslides, tectonic deformation in northern plains, Chenab Valley land subsidence, heat waves/anticyclones/global warming in India, expanding Himalayan glacial lakes, integrated river-basin management, changing Western Disturbances, shrinking reservoir water, South China Sea geopolitics, multipurpose projects and regional development, wind-energy potential, petroleum-production challenges, critical-mineral distribution, Eastern Maritime Corridor, declining groundwater, coal demand vs net-carbon-neutrality, rare-earth-metal prospects",
             "Contemporary economic-geography themes: Shinku La tunnel and regional connectivity, Sub-Saharan Africa food security, Antarctica's mineral resources, mid-oceanic-ridge minerals, EEZ mineral deposits, hydrocarbon extraction prospects, Indian ports and economic development, Africa's Afar Triangle, India's seabed mineral exploration (Afanasy Nikitin Seamount)",
             "Contemporary human-geography themes: India's demographic profile (largest/youngest/underdeveloped paradox), urban flooding, illegal migration, human-settlement surge in flood-prone areas, tribal-habitat issues, changing migration dynamics, low human development pockets, climate change and the North-South divide within India, social capital, quality-of-life paradoxes, and changing population-composition dynamics"
-          ]
+          ],
+          "official_syllabus_line_is_verbatim": false
         }
       ]
     },
     {
       "paper_id": "GS_2",
       "paper_title": "General Studies II",
-      "core_subjects": ["Governance", "Constitution", "Polity", "Social Justice", "International Relations"],
+      "core_subjects": [
+        "Governance",
+        "Constitution",
+        "Polity",
+        "Social Justice",
+        "International Relations"
+      ],
       "syllabus_nodes": [
         {
           "macro_topic": "Indian Constitution",
@@ -333,7 +346,13 @@
     {
       "paper_id": "GS_3",
       "paper_title": "General Studies III",
-      "core_subjects": ["Technology", "Economic Development", "Bio-diversity", "Environment", "Security and Disaster Management"],
+      "core_subjects": [
+        "Technology",
+        "Economic Development",
+        "Bio-diversity",
+        "Environment",
+        "Security and Disaster Management"
+      ],
       "syllabus_nodes": [
         {
           "macro_topic": "Indian Economy: Planning, Resource Mobilization and Inclusive Growth",
@@ -468,7 +487,11 @@
     {
       "paper_id": "GS_4",
       "paper_title": "General Studies IV",
-      "core_subjects": ["Ethics", "Integrity", "Aptitude"],
+      "core_subjects": [
+        "Ethics",
+        "Integrity",
+        "Aptitude"
+      ],
       "syllabus_nodes": [
         {
           "macro_topic": "Ethics and Human Interface",
