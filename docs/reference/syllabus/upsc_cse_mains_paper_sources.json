@@ -22,16 +22,18 @@
       "note": "Older years use the question-papers-year-YYYY archive scheme."
     },
     "2014": {
-      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2014",
-      "verified": false
+      "url": "https://www.upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202014",
+      "verified": true,
+      "note": "Uses the examinations scheme despite being an early year."
     },
     "2015": {
-      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2015",
-      "verified": false
+      "url": "https://upsc.gov.in/examinations/question-papers/question-papers-year-2015",
+      "verified": true,
+      "note": "Only the year-archive scheme was confirmed for 2015."
     },
     "2016": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202016",
-      "verified": false
+      "verified": true
     },
     "2017": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202017",
@@ -39,7 +41,7 @@
     },
     "2018": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202018",
-      "verified": false
+      "verified": true
     },
     "2019": {
       "url": "https://upsc.gov.in/examinations/civil%20services%20(main)%20examination,%202019",
@@ -51,11 +53,11 @@
     },
     "2021": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202021",
-      "verified": false
+      "verified": true
     },
     "2022": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202022",
-      "verified": false
+      "verified": true
     },
     "2023": {
       "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202023",
