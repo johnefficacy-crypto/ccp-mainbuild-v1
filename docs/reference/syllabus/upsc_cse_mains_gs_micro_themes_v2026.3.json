@@ -1,0 +1,581 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination",
+  "document_type": "Official Syllabus and Micro-Theme Relational Mapping",
+  "version": "2026.3",
+  "last_updated": "2026-08-22",
+  "refinement_note": "Broadened by merging two sources into the v2.2 PYQ-refined base: (1) 745 transcribed UPSC Mains PYQ items (2013-2023), (2) GS SCORE 'UPSC Syllabus 2026-27 Micro Topics' checklist (90pp, granular Pre-cum-Mains topic tree). Micro-themes now span both 'what has been asked' and 'what the full topic universe contains', so coverage is broad (foundational + PYQ-tested + current-affairs-linked) rather than only exam-frequency-driven.",
+  "papers": [
+    {
+      "paper_id": "GS_1",
+      "paper_title": "General Studies I",
+      "core_subjects": ["Indian Heritage and Culture", "History and Geography of the World", "Society"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Indian Culture",
+          "official_syllabus_line": "Indian culture will cover the salient aspects of Art Forms, literature and Architecture from ancient to modern times.",
+          "micro_themes": [
+            "Prehistoric rock paintings and petroglyphs (Bhimbetka stylistic evolutions); socio-cultural patterns of pre-historic paintings and potteries",
+            "Early Buddhist cave-art (Barabar and Nagarjuni caves) and its evolution into later western Indian cave traditions",
+            "Indus Valley Civilization town-planning, seals, bronze casting, terracottas, and sculptures",
+            "Mauryan art and architecture (Ashokan pillars, polishing techniques, and rock-cut caves)",
+            "Evolution of Buddhist stupas (Sanchi, Amravati) and Gandhara, Mathura, Amravati schools of art; Gandhara sculpture's dual debt to Roman/Greek traditions",
+            "Post-Mauryan and Jain sculptural traditions; Gupta-era sculpture and its 'golden age' craftsmanship",
+            "Medieval school of sculpture and modern Indian sculpture",
+            "Architecture in ancient India: Harappan, Mauryan, post-Mauryan/Gupta periods",
+            "Regional temple traditions: Khajuraho, Odisha, Gwalior, Gujarat, Rajasthan, Bengal, Assam, HP, J&K temple styles",
+            "Classical Temple Architecture: Nagara, Dravida, Vesara and regional sub-schools (Pallava, Chola, Pandya, Vijayanagara, Nayaka, Hoysala, Rashtrakuta, Kerala temples)",
+            "Indo-Islamic architecture: Imperial (Delhi Sultanate) style, Provincial style, Mughal style, Sikh style, Rajput architecture",
+            "Modern architecture: European influence, Indo-Saracenic architecture, post-Independence period; Adopt-a-Heritage 2.0 and National Mission for Cultural Mapping",
+            "Indian painting traditions: mural painting, miniature painting (Rajput, Pahari, Deccan, South Indian schools), regional/modern/contemporary painting; Panamalai, Cheriyal Scroll, Mewar school, Gilgit manuscripts, Ol Chiki script, Phanigiri artefacts, Vajra Mushti Kalaga, Bagh print",
+            "Pottery traditions of India: Ochre Coloured Pottery, Black-and-Red Ware, Painted Grey Ware, Northern Black Polished Ware, glazed/unglazed pottery",
+            "Music in India: pillars, forms (Hindustani/Carnatic gharanas), instruments, and institutions related to music",
+            "Dance in India: concept, Ashta Nayika, eight classical forms, folk and modern dances; Tandava as recorded in early inscriptions; Garba, Cham Lama, Kolkali, Pulikali (Tiger Dance)",
+            "Martial arts of India: genesis and forms of traditional martial arts",
+            "Indian theatre: classical Sanskrit, regional, modern, and its renaissance",
+            "Indian puppetry: string, shadow, rod, glove, modern, and tribal puppetry traditions",
+            "Indian cinema: history and classification of Indian cinema film",
+            "Religions in India: pre-Vedic religion, Hinduism, Buddhism, Jainism, Sikhism, Islam, Christianity, Zoroastrianism, Judaism; Indian philosophy (Adi Shankaracharya, Upanishads, heterodox sects, Tantrism)",
+            "Bhakti and Sufi movements: reach across age/gender/religious barriers; Sri Chaitanya's re-orientation; Vaishnava Acharyas' metaphysical foundations; Maharashtra Dharma; Brahmo Samaj and Ramakrishna Mission as 19th-century reform continuities",
+            "Languages and literature of India: Sanskrit, Pali, Prakrit, and the major regional literatures (Tamil, Telugu, Malayalam, Kannada, Odia, Assamese, Bengali, Gujarati, Rajasthani, Punjabi, Marathi, Hindi, Persian, Urdu); Sangam literature as a record of early Tamil society",
+            "Miscellaneous cultural themes: handicrafts, Indian universities, cultural personalities, places of cultural interest, fairs and festivals, cultural institutions and awards, the calendar and eras, science and technology in ancient India, UNESCO heritage listings, legal provisions protecting cultural heritage",
+            "Coinage of India and inscriptions/coins as sources of history; Devadasi tradition; Aadi Mahotsav and tribal cultural empowerment; Dwarka and India's ancient maritime heritage; bronze art tradition from Indus Valley to medieval times; seals of the Indus Valley",
+            "History through the eyes of travellers: Ayodhya's historical narratives, Chinese pilgrim travellers, Arab travellers and cultural encounters",
+            "Historical sites in current affairs: Keeladi, Juna Khatiya, Chebrolu, Menhirs, Thoppikkallu/Hat stones, Sundargarh Natural Arch, Sisupalgarh, Chandraketugarh, Old Fort",
+            "Cultural issues/themes in news: Kuli language, military systems in ancient India, indentured labourers, UNESCO's Prix Versailles, Abhilekh Patal, Homo Naledi, Woman Odhuvar",
+            "Personalities in cultural news: reformers, freedom-linked cultural icons, and regional culture-bearers (e.g., Ahilyabai Holkar, Rukmini Lakshmipathi, Srimanta Sankaradeva, Sree Narayana Guru, Raja Ravi Varma)",
+            "UNESCO World Heritage sites of India: cultural criteria and conservation issues"
+          ]
+        },
+        {
+          "macro_topic": "Ancient India (Pre-history to Post-Mauryan)",
+          "official_syllabus_line": "Indian culture / Modern history (background formation) — foundational ancient-history spine feeding GS1 culture and history questions.",
+          "micro_themes": [
+            "Sources and periodization of Indian pre-history: Palaeolithic, Mesolithic, Neolithic, Chalcolithic, Iron Age and the impact of iron",
+            "Pastoral and farming communities: Neolithic/Chalcolithic phases and their geographic distribution",
+            "Indus Valley Civilization: major cities and town-planning, internal/foreign trade, agriculture, domestication, crafts, weights and measures, script, society, religion, economy, burial system, and decline",
+            "Vedic society: original home of Aryans, Vedic texts and Upanishads, Rig Vedic vs later Vedic geography, economy, polity, varna system, religion and thought",
+            "Pre-Mauryan period: second urbanisation, sixteen Mahajanapadas, Gana-Sangha republics, rise of urban centres, evolution of coins, Haryanka/Shishunaga/Nanda dynasties",
+            "Growth of Jainism and Buddhism as heterodox responses to Vedic orthodoxy",
+            "The Mauryan Empire: Chandragupta, Bindusara, the Arthashastra, Megasthenes, Ashoka's inscriptions/sites/Dhamma, Mauryan administration/economy/society/art, and its decline",
+            "Post-Mauryan India (200 BC-AD 300): Indo-Greeks/Shakas/Parthians/Kushanas, commercial contacts abroad, Satavahanas and other indigenous dynasties, evolution of jatis, Sangam texts, and Gandhara/Mathura/Amravati art schools",
+            "Imperial Guptas: political history, Fa-hien's account, administration, development of art and culture, urban centres, and societal change; the Gupta era as a historiographical 'golden age' debate",
+            "Harshavardhana: sources, administration, officials, economy, Huen Tsang's arrival, society and religion",
+            "India's contacts with the rest of Asia: propagation of Buddhism, Roman trade, Chinese silk route, Kanishka's reign, spread of Indian culture to Southeast Asia",
+            "Sangam period south Indian dynasties: Cholas, Cheras, Pandyas, Sangam polity/society/culture/economy",
+            "Taxila as a renowned centre of scholarship and the strategic-location factors behind its ruin"
+          ]
+        },
+        {
+          "macro_topic": "Medieval India",
+          "official_syllabus_line": "Indian culture / Modern history (background formation) — the medieval-history spine feeding GS1 culture and pre-1750 context questions.",
+          "micro_themes": [
+            "Major early medieval dynasties (750-1200): Pratiharas, Palas, Rashtrakutas, tripartite conflict, Senas, Rajputs, Pallavas, Chalukyas, and the concept of Indian feudalism",
+            "Cholas and other south Indian kingdoms: administration, socio-economic life, education/literature, Cheras, Yadavas, and contact with Southeast Asia",
+            "Early Muslim invasions: Arab conquest of Sindh, Mahmud of Ghazni, Muhammad Ghori",
+            "The Delhi Sultanate (1206-1526): Slave, Khalji, Tughlaq, Sayyid, and Lodi dynasties; Mongol/Turk attacks; administration, economy, urbanization, society, culture, science, and the causes of decline",
+            "Vijayanagar Empire: sources, political history, administration, economy, decline of trade, and regional kingdoms",
+            "Central Asian politics and Babur's advance: Timurids, Uzbek-Iran conflict, and the struggle for empire in north India (Panipat, Rana Sanga, Afghans)",
+            "Establishment of the Mughal empire: Humayun's struggles, the Sur dynasty and Sher Shah's administrative contributions",
+            "Consolidation and expansion under Akbar: conflict with the nobility, relations with Rajputs, state/government structure (mansabdari, land revenue), and religious policy (Ibadat Khana to Din-i-Ilahi)",
+            "The Deccan and the Mughals up to 1657; foreign policy of the Mughals (Uzbeks, Qandahar, Balkh, Persia)",
+            "India in the first half of the 17th century: Jahangir, Nur Jahan's 'junta', Shah Jahan's consolidation, evolution of the mansabdari system",
+            "Aurangzeb: religious policy phases, temples/jizyah, territorial consolidation, popular revolts (Jats, Satnamis, Sikhs), and the climax/crisis of the empire",
+            "Rise of the Marathas: Shivaji's Swarajya, Treaty of Purandar, Aurangzeb and the Deccan, assessment of the Jagirdari crisis",
+            "18th-century society, economy, and culture: rural society, artisans, standard of living, ruling classes, inland/overseas trade, religion, fine arts, science and technology",
+            "Northern India in the first half of the 18th century: struggle for Wizarat, Sayyid Brothers, rise of regional states and the beginning of foreign invasions",
+            "The Maratha bid for supremacy and the three Anglo-Maratha/Panipat phases (1741-1761)"
+          ]
+        },
+        {
+          "macro_topic": "Modern Indian History",
+          "official_syllabus_line": "Modern Indian history from about the middle of the eighteenth century until the present- significant events, personalities, issues.",
+          "micro_themes": [
+            "Mid-18th century fragmented polity and the decline of the Mughal empire; Panipat as a recurring site of empire-shaking battles",
+            "European trading companies' rivalry, the Carnatic Wars, and the Battle of Plassey (1757) as 'a great betrayal' rather than a great battle",
+            "East India Company's administrative expansions (Regulating Act 1773; Ring Fence policy as precursor to Subsidiary Alliance; Doctrine of Lapse); the British conquest of India, Anglo-Mysore and Anglo-Punjab Wars",
+            "Colonial land revenue systems (Permanent Settlement, Ryotwari, Mahalwari), commercialization of agriculture, and economic drain theory",
+            "Deindustrialization of traditional artisanal industries and British economic policy's impact on the rural economy",
+            "Socio-religious reform movements of the 19th century (Raja Ram Mohan Roy, Jyotirao Phule, Ishwar Chandra Vidyasagar, Ambedkar movement)",
+            "Growth of modern education, press, and vernacular public sphere under colonial rule; important newspapers/journals of the period",
+            "Peasant, tribal, and civil resistance pre- and during-British rule (Santhal Hul, Kol mutiny, Indigo revolt, tribal/peasant/working-class movements 1850-1900)"
+          ]
+        },
+        {
+          "macro_topic": "Revolt of 1857 and Freedom Struggle",
+          "official_syllabus_line": "The Freedom Struggle — its various stages and important contributors/contributions from different parts of the country.",
+          "micro_themes": [
+            "The Revolt of 1857: causes, leaders, suppression, nature, and consequences as a watershed in British colonial policy",
+            "Early nationalism: pre-Congress organisations, Indian National Congress (1858-1905), early nationalists vs Swadeshi/Extremist strategic factions, GoI Act 1909, Home Rule League",
+            "The struggle for Swaraj: Montagu's 1917 statement, Gandhi's emergence as a mass leader, Khilafat and Non-Cooperation, Swaraj Party, revolutionary terrorism phase II (1920s), Simon Commission and Nehru Report",
+            "March towards freedom: Civil Disobedience Movement, Round Table Conferences, Poona Pact, GoI Act 1935, Congress ministries, Tripuri Session, August Offer, Individual Satyagraha (1940-41)",
+            "Towards achievement of freedom: popular struggles in the princely states, WWII and nationalist response, Partition (rise of communalism, Wavell Plan, Cabinet Mission Plan, Mountbatten Plan)",
+            "Rise of Revolutionary Nationalism in India and abroad (Ghadar party, Abhinav Bharat, HSRA); role of Subhash Chandra Bose and the INA versus the Gandhian approach",
+            "Gandhian mass mobilization phases (Non-Cooperation, Civil Disobedience, Quit India) and the special role of women in this phase",
+            "Trends during the freedom struggle: Indian Renaissance/socio-religious movements, civil rebellions, tribal and peasant movements, working-class movement (1850-1900), growth of communalism, Left/Communist trends, press and education, role of women, Governors-General and Viceroys of India, important persons and Congress sessions",
+            "The 1946 Naval Mutiny as 'the last nail in the coffin' of colonial rule",
+            "Constitutional reforms as colonial concessions (Morley-Minto, Montford, GoI Act 1935) and nationalist responses"
+          ]
+        },
+        {
+          "macro_topic": "Post-Independence Consolidation",
+          "official_syllabus_line": "Post-independence consolidation and reorganization within the country.",
+          "micro_themes": [
+            "Re-organisation and integration of states: constitutional provisions, factors behind the merger, accession of princely states, J&K/Hyderabad/Junagarh crises, accession of French/Portuguese enclaves, accession of Sikkim, refugee rehabilitation, federal crisis, and national integration",
+            "Linguistic reorganization of states and the Commissions (Dhar, JVP, Fazl Ali) — and whether it strengthened or weakened Indian unity; linguistic regionalism, constitutional language policy, and recent Hindi-language controversy",
+            "Tribal issue and policy consolidation: present status of tribal issues and policy responses",
+            "Problem of caste and social consolidation: caste practices, Ambedkar movement, constitutional provisions, recent emancipation initiatives for SCs, manual scavenging",
+            "Communalism and social consolidation: secularism, causes and consequences of communalism, issue of linguistic minorities (operational inefficiency and government initiatives)",
+            "Overview of economic development since Independence: Five Year Plans journey, agriculture (land reforms, post-Green-Revolution issues, agrarian movements, achievements/challenges), industry (public/private sector development, industrial policy, Make in India), New Economic Policy impact, and post-Independence policy of Science & Technology (institutional framework, pre-/post-reform S&T, skill training agenda)"
+          ]
+        },
+        {
+          "macro_topic": "World History",
+          "official_syllabus_line": "History of the world will include events from 18th century such as industrial revolution, world wars, redrawal of national boundaries, colonization, decolonization, political philosophies like communism, capitalism, socialism etc.— their forms and effect on the society.",
+          "micro_themes": [
+            "Beginning of the modern age: disintegration of the feudal system, Renaissance (humanism, art, architecture, literature, science), Reformation, explorations/discovery/trade, colonization and the rise of the nation-state, the English Revolution",
+            "French Revolution: causes, course, France under Napoleon, impact and significance for the modern world",
+            "Nationalism in Europe: rise of the nation-state system, unification of Italy and Germany",
+            "Colonialism and Imperialism: the age of imperialism (1870-1914), imperialism in Asia, and an analysis of colonialism",
+            "Emergence of the USA: American colonies, independence, the Revolutionary War and its political/global impact, the US Civil War and its global impact and impact on India",
+            "World War I: causes, course, major events, consequences, aftermath, and the League of Nations",
+            "Russian Revolution: pre-revolution events, causes, course, consequences, aftermath, and post-Lenin Russia",
+            "Inter-war years (1919-1939): the Great Depression, rise of Fascism in Italy, rise of Nazism in Germany, and the Soviet Union (USSR)",
+            "World War II: foundations, course, aftermath, analysis, and the decolonization phase",
+            "Development in the Middle East: democratic reforms, Arab nationalism, and Israel",
+            "Cold War: reasons, development (1945-1953), the extent of post-1953 thaw, and the Nuclear Arms Race/Cuban Missile Crisis (1962)",
+            "Post-Cold War world: global issues since 1991, European integration (with timeline), rise of global Islamic terrorism, and the rise of China",
+            "Communism, Socialism and Capitalism: concepts, types, examples, and the relevance of capitalism in the present era"
+          ]
+        },
+        {
+          "macro_topic": "Indian Society",
+          "official_syllabus_line": "Salient features of Indian Society, Diversity of India. Role of women and women’s organization, population and associated issues, poverty and developmental issues, urbanization, their problems and their remedies. Effects of globalization on Indian society. Social empowerment, communalism, regionalism & secularism.",
+          "micro_themes": [
+            "Salient features and changes within Indian society and their repercussions; diversity of India and whether 'unity in diversity' is reality or a reconciled chimera",
+            "Caste system: structural resilience as a barrier to social mobility, and its adaptation to modernization/secularization",
+            "Family, marriage, and kinship structural shifts in transitional Indian society; validity of Hindu marriages, live-in relationships, raising the legal age for marriage, and the menace of girl-child marriage",
+            "Role of women's organizations and SHGs in Indian history: types, level of penetration, problems faced, and the role of microfinance institutions",
+            "Women-related issues: hysterectomies, workforce participation gaps, gender disparities in poverty, women in corporate roles, abortion rights, gender digital divide, menstrual hygiene, surrogacy rules, sexual harassment at workplace, domestic violence, marital rape, women in STEM, female entrepreneurship, NFHS-5 women-centric findings",
+            "Poverty and development issues: concept of development, Sen vs Bhagwati model, crisis of development",
+            "Social empowerment: meaning, need, Five-Year-Plan and government initiatives, role of civil society organisations",
+            "Effects of globalization on Indian society: kinds of impact (economic, political, developmental, socio-cultural) and whether the impact is solely positive or negative",
+            "Demographic transition: changes in population growth rates and distribution since Independence; population problems of developing vs developed countries; Malthusian, Marxian and Demographic Transition theories",
+            "Migration patterns: internal migration shifts, distress migration, push/pull factors, emigration across colonial/post-independence/post-liberalisation periods, and remittance economies",
+            "Urbanization challenges: growth of the informal urban sector, smart cities as a management tool, flood vulnerability of major cities, rural-urban migration, emergence of slums, urban transport/waste/water-sanitation issues, urban poverty, and the Real Estate (Regulation & Development) Act 2016",
+            "'Adivasi' as a category: reasons for the term and geographic concentration of tribal populations; issues with tribal habitat in India",
+            "Communalism: meaning, historicity, role of third parties in inciting/perpetrating it, and whether it can be eradicated; regionalism's theories, manifestations, and possible remedies",
+            "Secularism: meaning, the Indian constitutional vantage point, comparison with the Western model, Gandhian view on religion, and threats to the secular spirit",
+            "Children and vulnerable-section issues: child labour, child adoption, Juvenile Justice Act 2015, child trafficking, age of consent; tribal welfare (denotified tribes), LGBTQIA+ rights, disability rights, manual scavenging, marginalisation of sexual minorities",
+            "Education-sector issues: public schools, NIPUN Bharat Mission, Anusandhan National Research Foundation Act 2023, National Curriculum Framework for School Education, Performance Grading Index, higher-education reforms (deemed universities, foreign HEIs, National Credit Framework, accreditation)",
+            "Health, nutrition and sanitation: NFHS-5 findings, renewed healthcare system, One Health concept, Global Hunger Index, Open Defecation Free status, nutritional security through food fortification",
+            "Population and associated issues: suicide deaths in India, 'great replacement theory' discourse, population crisis in Asian nations, manual scavenging as India's 'dirtiest job', caste-based violence, need for caste census, silver economy and elderly-welfare initiatives (SACRED portal, SAGE, Elder Line, RVY, IGNOAPS, MWPSC Act 2007)",
+            "Miscellaneous social themes: old-age care, rag-pickers, caste-manual-scavenging linkage, occupational safety and health, state of prisons, migrant-worker housing, socio-economic inequality, climate change and food insecurity, MGNREGA payment delays, drug abuse, social media's effect on youth, e-Shram portal, One Nation One Ration Card, Human Development Index, universal social welfare"
+          ]
+        },
+        {
+          "macro_topic": "Geography (World Physical Geography)",
+          "official_syllabus_line": "Salient features of world’s physical geography. Distribution of key natural resources across the world (including South Asia and the Indian sub-continent); factors responsible for the location of primary, secondary, and tertiary sector industries in various parts of the world (including India). Important Geophysical phenomena such as earthquakes, Tsunami, Volcanic activity, cyclone etc., geographical features and their location-changes in critical geographical features (including water-bodies and ice-caps) and in flora and fauna and the effects of such changes.",
+          "micro_themes": [
+            "Origin and evolution of the Earth: early/modern (BBT) theories, star and planet formation, layered structure, evolution of lithosphere/atmosphere/hydrosphere, and origin of life",
+            "Latitude/longitude, motions of the Earth (rotation/revolution), axial inclination, local/standard time, International Date Line, calendar, eclipses, and the geological time scale",
+            "Interior of the Earth: sources of information (direct and indirect via seismic/body/surface waves), shadow zone, and internal structure (crust, lithosphere, mantle, asthenosphere, core, seismic discontinuities)",
+            "Geology: minerals, major crustal elements, physical characteristics of minerals, rocks (igneous/sedimentary/metamorphic), rock cycle, and rock-soil relationships",
+            "Earthquakes: types, causes, effects, frequency, epicentre location, global distribution, and observatories",
+            "Volcanism: shield/composite/caldera/flood-basalt/mid-ocean-ridge types, lava types, intrusive landforms (batholiths, laccoliths, lapoliths, phacoliths, sills, dykes), extrusive landforms, geysers/hot springs, and global distribution (Pacific Ring of Fire)",
+            "Tsunami mechanism, wave properties, and effects",
+            "Geomorphic processes: endogenic (diastrophism, orogeny, epeirogeny, plate movements, volcanism) and exogenic (denudation, weathering, mass movements, erosion-transport-deposition)",
+            "Continental Drift Theory (Wegener), Pangea/Panthalassa, Laurasia/Gondwanaland, supporting evidence (jigsaw fit, rock ages, tillite, placer deposits, fossil distribution), forces of drifting, post-drift studies (convectional current theory, ocean floor mapping)",
+            "Plate tectonics: lithospheric plates (major/minor), plate boundary types (divergent/convergent/transform), rates and forces of plate movement, and the Indian plate's 71-million-year movement history",
+            "Landform evolution by agent: wind (pediments, playas, deflation hollows, barchans, seif, parabolic/transverse/longitudinal dunes), running water (erosional/depositional stages and landforms, incised meanders, river terraces, deltas, floodplains, oxbow lakes, braided channels), groundwater/karst topography (poljes, sinkholes, caves, stalactites/stalagmites), glaciers (cirques, aretes, fiords, moraines, eskers, drumlins), and waves/currents (cliffs, stacks, beaches, spits, bars)",
+            "Weathering: chemical (solution, carbonation, hydration, oxidation-reduction), physical/mechanical, and biological processes; significance for soil formation, biomes/biodiversity, and mass movements",
+            "Landforms across the world: fold/block/volcanic mountains, plateau types (dissected, volcanic) and their economic significance",
+            "Climatology: atmospheric composition and structure (exosphere to troposphere), insolation and heat balance, temperature distribution and inversion, atmospheric pressure and wind systems (pressure gradient/frictional/Coriolis forces), general/global circulation (Hadley/Ferrel/Polar cells), air masses and fronts, extra-tropical cyclones and thunderstorms/tornadoes, water in the atmosphere (humidity, dew, frost, fog, cloud types, precipitation types)",
+            "Tropical cyclones: formation conditions, convective cyclogenesis, path, damage, Arabian Sea cyclones, naming conventions, and early-warning systems",
+            "Jet streams: features, types (permanent/temporary), influence on weather and aviation",
+            "Temperate cyclones, polar vortex (and its link to ozone depletion), El Nino/La Nina/ENSO and the Indian Ocean Dipole effect on regional and Indian monsoon climate",
+            "World climate types: equatorial, tropical monsoon/marine, Savanna, hot desert and mid-latitude desert, Mediterranean, temperate continental/oceanic/steppe, China-type, British-type, Siberian, Laurentian, and Arctic/Polar climates",
+            "Oceanography: hydrological cycle, ocean floor relief (continental shelf/slope, deep sea plain, trenches, mid-oceanic ridges, seamounts, submarine canyons, guyots, atolls), ocean water temperature/salinity/density distribution, tides and tidal currents, ocean currents (surface/deep, warm/cold) and their global effects, desert formation linkage, Atlantic Meridional Overturning Circulation, ocean resources (deposits, deep-sea minerals, energy/biotic resources, deep ocean mission), and UNCLOS maritime zones",
+            "Biogeography: soil formation processes/profiles/classification/erosion-conservation; vegetation types, forest significance (economic/ecological/cultural), forest cover, deforestation causes/patterns (tropical vs temperate), and conservation strategies (reforestation, afforestation, agro-forestry, Miyawaki method)",
+            "Resource geopolitics: Arctic ice-melt causes/consequences, Arctic resource-driven geopolitical conflict, and mineral resource base as determined by geological structure",
+            "Industrial localization parameters: distribution factors for iron-steel and cotton-textile industries in India, and why petroleum refineries are often sited away from crude-producing areas",
+            "World physiographic divisions and their economic-geographic significance; wetlands' ecological/economic importance",
+            "Contemporary physical-geography themes: subaerial/fissure volcanic eruptions, supervolcanoes, volcanic island arcs, geomagnetic storms and auroras, mid-oceanic ridges and biodiversity, changing El Nino/La Nina patterns, volcanic vortex rings, Oceanic Nino Index, sea swells and rip currents, alpenglow phenomenon, earthquake-ionosphere linkage, climate change's impact on ocean currents, cryosphere and climate change, atmospheric rivers, lightning in India, marine heatwaves, slowdown in overturning circulation, and Africa's Rift Valley/new ocean basin formation"
+          ]
+        },
+        {
+          "macro_topic": "Physical Geography of India, Human Geography, and Economic Geography",
+          "official_syllabus_line": "Salient features of world’s physical geography (India-specific extension) — physiography, drainage, climate, soils, vegetation of India; population/settlement geography; resource and industrial geography relevant to GS1's world-and-India geography demand.",
+          "micro_themes": [
+            "Physiography of India: geopolitical significance of location, geological divisions, the Peninsular Block, the Himalayas and other peninsular mountains, Indo-Gangetic-Brahmaputra Plain, and physiographic divisions",
+            "Drainage system of India: drainage patterns, Himalayan and Peninsular river systems (Indus, Ganga, Brahmaputra systems), and small east/west-flowing rivers",
+            "Climate of India: factors influencing climate, monsoon mechanism (classical/modern/air-mass/jet-stream theories), El Nino-La Nina impact, rhythm of seasons, and climatic regions",
+            "Soils and natural vegetation of India: soil classification/texture/degradation/conservation; forest types, cover, conservation, and problems",
+            "Demography: concept of human resources, population distribution (physical/socio-cultural/demographic factors), world/continental distribution, density patterns, age/sex composition, literacy, population pyramids, theories of population growth (Malthusian, Marxian, demographic transition), population problems of developed vs developing countries, and rising youth population",
+            "Migration and settlements: push/pull factors, internal vs world migration, functional classification of cities, boundaries vs frontiers, rural-urban fringe characteristics, national urbanisation policy, principles of urban planning, land-cover transformation, and settlement typologies (rural/urban, hierarchical/morphological classification)",
+            "Urbanization in India: pattern, issues, rural-urban migration, slum emergence, urban transport/waste/water-sanitation, urban poverty, and inclusive/smart-city responses",
+            "Census themes: literacy, sex ratio, family planning, ageing population, age structure, density, population growth, census terminology, and the caste-census debate",
+            "Agricultural geography: land-use/capability classification, land degradation, cropping seasons/patterns/regionalization, infrastructure factors (seeds, fertilizers, irrigation), agricultural revolutions, labour, price policy, marketing, insurance, agricultural census, major crop conditions-of-growth/production-pattern/trade (wheat, rice, maize, barley, tea, coffee, cocoa, tobacco, cotton, jute and substitutes, rubber, sugarcane/sugarbeet)",
+            "Water resources: underground/surface/inland/oceanic water resources, utilization patterns, water pollution, conservation techniques, river-interlinking projects, and the problem of ageing dams",
+            "Mineral and energy resources: metallic/non-metallic mineral types, distribution and mining regions, ferrous/non-ferrous metal production and trade, energy classification, conventional energy sources (coal, petroleum, natural gas, hydro-electricity), atomic energy (uranium/thorium), renewable energy (solar, wind, geothermal, tidal, wave, biomass), and alternate sources (hydrogen, microbial fuel cells)",
+            "Industry and industrial geography: industrial development phases, iron-and-steel/textile/engineering/chemical/agro-based/paper/cement/petroleum-refining industries and their localization factors, principal industrial regions of the world (Anglo-America, former USSR, Eastern Asia)",
+            "Transport and communication: land/water/air transport modes, sea routes and shipping canals, inland waterways, pipelines, and India-specific transport developments (RRTS, Odisha's coastal highway, AERA Act amendment)",
+            "Contemporary Indian-geography themes: cyclones of the Bay of Bengal and climate change, El Nino and Indian monsoon, Indus dam construction prospects/challenges, receding Himalayan glaciers, Indian Ocean Dipole's weather impact, Himalayan landslides, tectonic deformation in northern plains, Chenab Valley land subsidence, heat waves/anticyclones/global warming in India, expanding Himalayan glacial lakes, integrated river-basin management, changing Western Disturbances, shrinking reservoir water, South China Sea geopolitics, multipurpose projects and regional development, wind-energy potential, petroleum-production challenges, critical-mineral distribution, Eastern Maritime Corridor, declining groundwater, coal demand vs net-carbon-neutrality, rare-earth-metal prospects",
+            "Contemporary economic-geography themes: Shinku La tunnel and regional connectivity, Sub-Saharan Africa food security, Antarctica's mineral resources, mid-oceanic-ridge minerals, EEZ mineral deposits, hydrocarbon extraction prospects, Indian ports and economic development, Africa's Afar Triangle, India's seabed mineral exploration (Afanasy Nikitin Seamount)",
+            "Contemporary human-geography themes: India's demographic profile (largest/youngest/underdeveloped paradox), urban flooding, illegal migration, human-settlement surge in flood-prone areas, tribal-habitat issues, changing migration dynamics, low human development pockets, climate change and the North-South divide within India, social capital, quality-of-life paradoxes, and changing population-composition dynamics"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "GS_2",
+      "paper_title": "General Studies II",
+      "core_subjects": ["Governance", "Constitution", "Polity", "Social Justice", "International Relations"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Indian Constitution",
+          "official_syllabus_line": "Indian Constitution—historical underpinnings, evolution, features, amendments, significant provisions and basic structure. Functions and responsibilities of the Union and the States, issues and challenges pertaining to the federal structure, devolution of powers and finances up to local levels and challenges therein. Separation of powers between various organs dispute redressal mechanisms and institutions. Comparison of the Indian constitutional scheme with that of other countries.",
+          "micro_themes": [
+            "Historical evolution: Regulating Act 1773 to Government of India Act 1935 institutional lineages; the Constituent Assembly and objectives/salient features of the Constitution (unitary and federal features, parliamentary vs presidential form)",
+            "Preamble: basic features, value premises, terminology (Democratic, Sovereign, Socialist, Secular, Republic, Justice, Equality, Liberty, Fraternity, Integrity), and amendability",
+            "Citizenship: constitutional provisions, modes of acquiring/losing citizenship, dual citizenship debate, J&K-specific provisions, OCI/PIO status",
+            "Fundamental Rights: significance, definition of 'State', equality/freedom/exploitation/religion/cultural-educational/constitutional-remedies rights, Fundamental Rights and the Armed Forces, martial law, procedure-established-by-law vs due process of law, writs, restrictive limitations, rights outside Part III, Article 32's dynamic nature, and the case for revitalizing the reservation system",
+            "Directive Principles of State Policy: basic/economic-social/Gandhian/administrative/international-peace-related DPSPs, implementation record, and the Fundamental Rights-DPSP controversy (including directives outside Part IV and the Uniform Civil Code debate)",
+            "Fundamental Duties: features and their link to Fundamental Rights",
+            "Amendment process: the Constitution's dynamic/'living document' nature (Article 368), Basic Structure Doctrine as a judicial 'safety valve', and different majority-types required",
+            "Fundamental Rights vs DPSPs: structural tension resolved via landmark pronouncements; scope expansion via the Right to Privacy judgment",
+            "101st Amendment (GST): salient features and efficacy in building a common national market; 69th Amendment (NCT of Delhi) and federal friction; Article 311 safeguards for civil servants",
+            "Separation of powers: features in American/UK constitutions, checks-and-balances in the Indian scheme, judicial review, and the concept's practical limits",
+            "Comparative constitutionalism: Indian scheme vs USA, UK, France, and neighbouring constitutions",
+            "Union and states: State Reorganisation Commission, components of Indian territory, formation of new states, Zonal Councils, Union Territories, special provisions for states, Scheduled and Tribal Areas (5th/6th Schedule, autonomous councils)"
+          ]
+        },
+        {
+          "macro_topic": "Union and State Executive, Legislature and Judiciary",
+          "official_syllabus_line": "Parliament and State legislatures—structure, functioning, conduct of business, powers & privileges and issues arising out of these. Structure, organization and functioning of the Executive and the Judiciary—Ministries and Departments of the Government; pressure groups and formal/informal associations and their role in the Polity. Salient features of the Representation of People’s Act. Appointment to various Constitutional posts, powers, functions and responsibilities of various Constitutional Bodies.",
+          "micro_themes": [
+            "The President: importance, qualification, election procedure, powers (executive/legislative/emergency/financial/judicial), ordinance-making power, pardon power, impeachment, and misuse of emergency provisions",
+            "Vice-President and Prime Minister: office, functions, appointment, and role vis-a-vis Council of Ministers/President/Lok Sabha/political party/coalition government",
+            "Council of Ministers, Attorney General of India, and Parliament: composition of Lok Sabha/Rajya Sabha, qualification/disqualification, sessions, law-making procedure, officers, motions/resolutions, powers and privileges, financial proceedings, comparison of the two Houses, women's reservation in Parliament, judicial activism vis-a-vis Parliament, and delegated legislation",
+            "The Judiciary: integrated judicial system, Supreme Court composition/independence/jurisdiction/judicial-review/curative-petition, High Courts, lower judiciary, judicial appointments (collegium system, NJAC controversy), judicial accountability and corruption issues, PIL, judicial activism, and alternative dispute-redressal fora (Lok Adalat, family courts, Gram Nyayalayas, NALSA, arbitration)",
+            "Ministries/Departments of government: functioning, central secretariat, cabinet secretary, field organizations, and PMO",
+            "Local government: 73rd/74th Amendment provisions, functions of municipal corporations/councils/nagar panchayats, State Election/Finance Commission roles, Smart City Mission and municipal governance, Model Panchayat Citizens Charter",
+            "The Governor, Chief Minister, Advocate-General, and State Legislature: appointment, discretionary/ordinance/pardoning powers, composition of Vidhan Sabha/Parishad, legislative procedure, and inter-house relationships",
+            "Constitutional bodies: Election Commission, UPSC, State PSC, Finance Commission, GST Council, National Commission for SCs/STs, Special Officer for Linguistic Minorities, National Commission for Backward Classes; Non-Constitutional Bodies: NITI Aayog",
+            "Various constitutional dimensions: co-operative societies and official languages under the Constitution",
+            "Political dynamics: provisions on political parties, rise of regional parties, electoral reforms, importance of NRI votes, and the Tenth Schedule (anti-defection)",
+            "Representation of People's Act: disqualification triggers, criminalization of politics, electoral reform proposals, and electoral bond aftermath",
+            "Constitutional Bodies: appointment transparency (CEC/EC selection process, CAG appointment/functions/powers), tenure security, and functional independence",
+            "Statutory/regulatory/quasi-judicial bodies: CVC, CBI, NHRC ('toothless tiger' critique), SHRC, Central/State Information Commission, NGT, SEBI, IRDA, TRAI, NCLAT, National Consumer Disputes Redressal Commission, Lokpal and Lokayukta, Planning Commission legacy, PMO, Zonal Council",
+            "Contemporary polity themes: NOTA, coalition politics, right to personality, right to vote for undertrials, Article 31C, reservation on the basis of religion/domicile, curative petition, ED and PMLA, Citizenship Amendment Act, parliamentary privileges, Uniform Civil Code, Ladakh's demand for 6th Schedule status, sub-categorisation of SC/OBC, tribunals in India, criminal law reforms, anti-defection reforms, Article 370 verdict, reservation in J&K, All India Judicial Services, electoral bonds, Supreme Court case-burden, special/local laws, contempt of court, freedom of press, women's reservation act, and comparative secularism (Indian vs French models)"
+          ]
+        },
+        {
+          "macro_topic": "Governance, Government Policies and Development Processes",
+          "official_syllabus_line": "Government policies and interventions for development in various sectors and issues arising out of their design and implementation. Development processes and the development industry—the role of NGOs, SHGs, various groups and associations, donors, charities, institutional and other stakeholders.",
+          "micro_themes": [
+            "Need and importance of government policies: growth/development, human capital formation, equality and social justice, unity and integrity, trust between state and citizens; governance meaning/scope and the good-governance debate",
+            "Effective implementation: outcome orientation, programme impact assessment, budget/zero-base-budgeting/cost-benefit analysis, and institution-building (task forces, steering/review committees)",
+            "Government intervention: role of institutions/bureaucrats/stakeholders, transparency and accountability, optimum resource use (targeting, plugging leakages), monitoring and evaluation of outcomes, and interventions in emerging areas (social media, data privacy, social sector)",
+            "Development process and industry: growth vs development, main constraints and stakeholders, SHGs (meaning, importance, institutional structure, funding, women's development linkage, poverty/rural-development linkage), and Micro Finance (meaning, structure, importance)",
+            "NGOs: definition and distinction from INGOs, UN criteria, role in development projects/community development/relief-rehabilitation/disaster management/advocacy",
+            "Important aspects of governance, transparency and accountability: citizen-centric governance, legislative/administrative/judicial accountability, Ombudsman, whistleblower protection, anti-corruption machinery (role of citizens/media/social audit), systemic reforms, decentralisation vs delegation, and bottom-up governance",
+            "e-Governance: introduction, applications, models, successes/limitations/future prospects, dashboards/portals, democracy-and-e-governance linkage, and e-governance in the judiciary/legislature",
+            "Citizens' Charters: introduction, models, features, implementation issues in India, reform needs, and the Sevottam framework",
+            "Role of civil services in a democracy: concept and need for civil services, law-making role (policy formulation/implementation/evaluation), civil services as protector of minorities and promoter of inclusive growth, emerging challenges (lateral entry, capacity building, frequent transfers, cadre policy, performance appraisal, Civil Services Board)",
+            "Pressure groups and formal/informal associations: types, significance, distinction from political parties, politicisation of pressure groups, and their evolving role via new media",
+            "Digital Public Infrastructure: open-source stacks, data-privacy safeguards, and targeted-benefit optimization (e.g. Swachh Bharat Mission's water/sanitation/hygiene delivery synchronised with anticipated outcomes)",
+            "Civil-society organisations' impact on public policy formulation; FCRA compliance tightening and civil-society funding constraints; SHG federated models scaling beyond microfinance into market linkages",
+            "Elections in India: salient features of the Representation of People Acts 1950/1951, electoral reforms, criminalization of politics, negative/neutral voting, state funding of elections, irregularities in polling, and electoral bonds",
+            "Political parties in India: reforms, problems in functioning, casteism and politics, anti-defection strengthening, and coalition-government dynamics",
+            "Local government and governance: issues of funds/functions/functionaries, local government's interface with vulnerable sections and emerging issues (disaster management, technology), localism/neo-localism/subsidiarity",
+            "Vulnerable-sections governance: issues/challenges/solutions/laws/interventions for SC/ST/OBC/migrants/women/disabled/children/refugees/transgenders/LGBT/manual scavengers",
+            "Poverty, hunger and health governance: evaluation of schemes (MGNREGA, PM-POSHAN, Ayushman Bharat) and policies (NHP, NEP) against poverty/hunger/health/malnutrition/unemployment/distress-migration",
+            "Miscellaneous governance themes: 'concern about democracy in the digital age', domestic/international indices and rankings (GHI, NITI Aayog reports, NIRF), internet shutdowns, co-operatives, MSME, One Nation One Ration Card/One District One Product, aspirational districts, SDGs and India, entitlement portability, fake news/hate speech, IT rules on OTT/digital media, and flagship missions (Jal Jeevan, Gati Shakti)"
+          ]
+        },
+        {
+          "macro_topic": "Social Justice: Welfare, Health, Education and Poverty",
+          "official_syllabus_line": "Welfare schemes for vulnerable sections of the population by the Centre and States and the performance of these schemes; mechanisms, laws, institutions and Bodies constituted for the protection and betterment of these vulnerable sections. Issues relating to development and management of Social Sector/Services relating to Health, Education, Human Resources. Issues relating to poverty and hunger.",
+          "micro_themes": [
+            "Welfare schemes by constitutional arrangement: women welfare (gender technology gap, women in the political system, marriageable-age debate), child welfare, SC/ST/OBC welfare, caste census, minorities welfare, old-age welfare, and needed legislative reforms",
+            "Health, education and human-resource services: India's education structure (primary/secondary/higher), GOI education initiatives and reform recommendations, skill-development indicators, private-and-public health structure, NITI Aayog health reports, and SDGs linkage",
+            "Poverty and hunger: definitional debates across committees, poverty data, causes, urban vs rural vs feminized poverty, poverty-alleviation measures and implementation problems, food-security programmes, and controversies in poverty-data estimation",
+            "The National Commission for SCs (constitutional-reservation enforcement including in religious-minority institutions); Rights of Persons with Disabilities Act 2016's administrative-capacity adequacy; National Commission for Women's strategizing capacity; need for an objective outcome-based review of higher-education reservation",
+            "Right to Education Act's access-expansion vs persistent quality challenge; MGNREGA's asset-creation and distress-migration-reduction performance; National Rural Health Mission's implementation challenges; TPDS's effectiveness in reaching 'the poorest of the poor'",
+            "'Health for All' target vs structural health-infrastructure gaps; rising out-of-pocket health expenditure; commercialization of healthcare vs universal affordable public care",
+            "Citizen's Charter and RTI Act: utility/limitations as accountability instruments; RTI's role in redefining accountability beyond mere citizen empowerment; flaws in RTI and improvement recommendations",
+            "The Scheduled and Tribal Areas: 5th/6th Schedule areas, autonomous-council composition/role, Governor's role, tribal sub-plan, and start-up/skill-development linkage for tribal areas",
+            "Flagship schemes for vulnerable groups: Start-Up India ecosystem (Stand-Up India, National Student Startup Policy, PMKVY, Deen Dayal schemes, Atal Innovation Mission), social-security schemes (Atal Pension Yojana, PMJJBY, PMSBY), minorities schemes (Nai Roshni, USTAAD, Nai Manzil), women-and-child schemes (Beti Bachao Beti Padhao, Sukanya Samriddhi, Ujjawala), SC/ST schemes (Vanbandhu Kalyan Yojana, PM Adarsh Gram Yojana), disability schemes (Sugamya Bharat Abhiyan), health schemes (National Health/Ayush Mission, Jan Aushadhi, Mission Indradhanush), education schemes (Padhe Bharat Badhe Bharat, Mid-Day Meal, SWAYAM), and rural/urban development schemes (PMGSY, Swachh Bharat, PMAY, Smart Cities Mission, AMRUT)",
+            "Inclusive growth: measurement criteria, government initiatives, basic amenities (housing/drinking water/sanitation), sustainable and rural development, panchayati raj linkage",
+            "Contemporary social-justice themes: e-pharmacy sector regulation, vehicle scrappage, right to repair, forest rights, right to health, nutrition crisis among adolescent girls/women, land-records modernization, online-gaming regulation, mid-day meal issues, internet shutdowns, workplace sexual harassment, child malnutrition/marriage, internal displacement, food fortification, OTT regulation, start-up ecosystem regulation, gig-worker rights, crypto-asset regulatory framework, right-based development approaches, PVTG welfare, digital inclusion in emerging technologies, universal health coverage, women's basic income proposals, ULB capacity building, consumer protection, and disability-inclusive urban infrastructure"
+          ]
+        },
+        {
+          "macro_topic": "International Relations",
+          "official_syllabus_line": "India and its neighborhood- relations. Bilateral, regional and global groupings and agreements involving India and/or affecting India’s interests. Effect of policies and politics of developed and developing countries on India’s interests, Indian diaspora. Important International institutions, agencies and fora- their structure, mandate.",
+          "micro_themes": [
+            "Evolution and key principles of Indian foreign policy: determinants, NAM/NAM 2.0, Panchsheel, India's nuclear doctrine, neighbourhood-policy evolution, Look/Act East and Look/Act West policies",
+            "Indian diaspora: role played, safety of Indians abroad, and welfare schemes for overseas Indians",
+            "India and neighbours: Nepal (water/hydropower cooperation, contentions, recommendations), Bhutan (economic overview, China issues), Afghanistan (development partnership, post-NATO options, Taliban presence), Bangladesh (development partnership, boundary agreements, Teesta dispute), Maldives (geostrategic importance, security risks), Sri Lanka (commercial relations, fishermen issue), Myanmar (China's role, policy shifts), Pakistan (cooperation, water dispute, terrorism and proxy wars)",
+            "Major powers: Russia (strategic cooperation, Russia-China impact on India), China (economic relations, water disputes, String of Pearls, Maritime Silk Route/BRI implications, border disputes, South China Sea, CBMs), USA (strategic consultations, counter-terrorism, trade, energy/climate, S&T/space, defence cooperation, IPR, Indo-Pacific/QUAD, GSP)",
+            "Security challenges in the Indian Ocean Region: US pivot to Asia, South China Sea mistrust, Somalia piracy, neighbourhood terrorism, energy routes, fisheries/livelihood issues, environmental security, and Indian Ocean 'Zone of Peace' declaration",
+            "India and Asian nations: Central Asian republics (Turkmenistan, Kazakhstan, Tajikistan; China's role; International North-South Transport Corridor; SCO), Mongolia, UAE, Iran (nuclear deal, US geo-economic considerations), Israel-Palestine and India-Israel relations, Saudi Arabia, Asia-Pacific groupings, Southeast Asia (ASEAN steps and security cooperation), Japan, South Korea, Vietnam",
+            "India and other regions: Africa (historical connections, South-South engagement, trade/investment/security cooperation), Australia (diaspora, economic ties, nuclear cooperation), France (strategic partnership), Germany (economic relations), UK (Brexit implications)",
+            "Multilateral relations: WTO (decision-making, Nairobi Package, IPR, reforms, agriculture issues, FTAs), IMF and reforms, nuclear-security architecture (NSG, MTCR, NPT), BRICS/BIMSTEC/IBSA/SAARC, India-ASEAN economic cooperation",
+            "Global institutions: UN structure (UNGA, UNSC and India's candidacy, ECOSOC), ICJ, UN specialised agencies (FAO, ICAO, ILO, IMO, ITU, UNESCO, IFAD, WHO, WMO, WIPO), World Bank",
+            "Important key concepts: New World Order dynamics and 'New Cold War' debates",
+            "Contemporary IR themes: World Migration Report, minilateralism, International Health Regulations amendment, UN peacekeeping and India, BIMSTEC Charter, ICC and the Israel-Hamas dispute, global anti-terrorism efforts (CTTF), Chabahar Port, South China Sea volatility, India-China border dispute (Arunachal Pradesh), Global South leadership, NATO's 75th anniversary, China-Taiwan dispute and India, Bhutan-China relations, UNSC and G4, Neighbourhood First Policy, India-EFTA deal, Raisina Dialogue, INDUS-X Summit, Northern Ireland conflict, Red Sea crisis, WTO reform crises, India-France/UAE/Netherlands/Tanzania/Argentina/Canada/Greece relations, G20 and India, India-Middle-East-Europe Corridor, Saudi Arabia strategic partnership, India's Africa renewable-energy role, Arctic-region engagement, India-US strategic (jet-engine) partnership, Atlantic Declaration, Outer Space Treaty, and the Gujral Doctrine"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "GS_3",
+      "paper_title": "General Studies III",
+      "core_subjects": ["Technology", "Economic Development", "Bio-diversity", "Environment", "Security and Disaster Management"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Indian Economy: Planning, Resource Mobilization and Inclusive Growth",
+          "official_syllabus_line": "Indian Economy and issues relating to planning, mobilization, of resources, growth, development and employment. Inclusive growth and issues arising from it.",
+          "micro_themes": [
+            "Indian economy in the pre-independence period, on the eve of Independence, and post-Independence phases of economic development; Nehruvian socialist economy and the shift via economic reforms",
+            "Planning in India: objectives, history, Five-Year-Plan analysis, and Growth vs Development distinction (national income determination, GDP/GNP/NDP/NNP/per-capita income, HDI, gender-development index, poverty index, MDGs/SDGs)",
+            "Resource mobilization: physical vs finance capital, public vs private sector sources, savings-investment over the plans, budgetary (tax/non-tax) resources, role of public debt, fiscal/monetary-policy roles, and foreign-investment desirability/consequences",
+            "Inclusive growth: meaning and concept of inclusion, India's inclusion experience, social-sector initiatives, ground reality of flagship schemes, rural-economy-based growth, sustainable agriculture/food-security linkage, PDS as a growth tool, financial inclusion, poverty-alleviation-and-employment strategy, PPP models, industrial/sectoral/regional diversification, and flagship schemes (Jan Dhan, MUDRA, SETU, Skill India, MGNREGA, Kisan Card, PMKSY, e-NAM, PMJJBY/PMSBY, Atal Pension, Digital India)",
+            "Structural growth debates: savings rate/investment pattern/capital-output ratio as growth levers, manufacturing's limited capacity to absorb agricultural surplus labour, direct-tax reform and tax-to-GDP widening, GDP's agriculture-to-services shift without a manufacturing base, and the 'jobless growth' debate",
+            "Government budgeting: budget/Economic Survey terminology, types of budgets, outcome budgeting, railway-general budget merger, budgeting flaws, budget analysis, and subsidy design; the FRBM Act's effectiveness in maintaining macroeconomic stability",
+            "Investment models: need for and sources/measures of investment, domestic (public/private/PPP) and foreign (FDI/FII) investment models followed by India, and the role of the state",
+            "Fiscal policy: important budgetary/fiscal terms, government revenue/spending, revenue/fiscal/primary deficits and their financing",
+            "Taxation: principles/objectives, tax system and current policy in India, GST progress, tax reforms, and retrospective taxation debates",
+            "Monetary policy: instruments, pre- and post-1991-reform eras, Urjit Patel Committee, and the Monetary Policy Committee's inflation-targeting framework",
+            "Financial system: components, financial institutions (banking and non-banking), financial assets/markets, and the financial system's pandemic-era resilience",
+            "Banking: structure/functions, RBI and bank types (public/private/foreign/regional-rural/local-area/specialized/small-finance/payments banks), nationalization history, banking-sector reform committees (Narasimhan, Nachiket Mor, P J Nayak), development-finance institutions, new bank-licence criteria, financial inclusion, NPAs, neo-banks, bad-bank concept, insurance-sector reform, bank privatization, and D-SIBs",
+            "Foreign trade and international organisations: trade policy, India's Balance of Payments (current/capital account performance), exchange-rate determination and convertibility, the Bretton Woods twins (World Bank, IMF), WTO and India, regional development banks (ADB, NDB, BRICS Bank, AIIB), and bilateral/regional/global trade groupings",
+            "Contemporary economy themes: inequality and growth, India's manufacturing landscape, economic redistribution, low-wage impact, wealth/income gap, minimum-vs-living-wage debate, Digital Public Infrastructure, universal basic income proposals, GDP-employment linkage, El Nino climate risk to growth, ageing workforce, 'greedflation', critical-mineral economic significance, power-demand growth, demographic dividend, energy security, coastal economy, gaming sector, Indian Railways overhaul, steel imports, 'pink economy', sugar production's groundwater impact, primary agricultural societies, e-technology in agriculture, foreign-investment decline, stock-market factors, clean-energy investment, de-dollarisation, global debt crisis, forex reserves, US-China trade war impact, India-Japan/EaEU FTAs, recession case studies (UK/Japan), Red Sea crisis, RBI surplus transfer/gold reserves, cryptocurrency regulation, disinvestment, bad-loans problem, and RBI liquidity management"
+          ]
+        },
+        {
+          "macro_topic": "Agriculture",
+          "official_syllabus_line": "Major crops-cropping patterns in various parts of the country- different types of irrigation and irrigation systems storage, transport and marketing of agricultural produce and issues and remedies; e-technology in the aid of farmers. Issues related to direct and indirect farm subsidies and minimum support prices; Public Distribution System- objectives, functioning, limitations, revamping; issues of buffer stocks and food security; Technology missions; economics of animal-rearing. Food processing and related industries in India- scope and significance, location, upstream and downstream requirements, supply chain management.",
+          "micro_themes": [
+            "Role of agriculture in the Indian economy: historical background and current status, cropping systems (mono-cropping, crop rotation, sequential/inter/relay cropping), agriculture marketing, conclusive land titling, and the Biotech-KISAN programme",
+            "Land resource issues: land-use and capability classification, causes/impact of land degradation, and sustainable land-management steps",
+            "Land reforms: colonial-era ownership patterns (Zamindari, Ryotwari, Mahalwari), objectives and progress since Independence, ceiling-legislation progress, NITI Aayog's land-leasing report, and the SVAMITVA scheme",
+            "Agricultural finance: features, criteria and sources, problems, measures to improve credit flow, co-operative credit societies, derivative trade in agri-commodities, and institutions (commercial banks, lead-bank scheme, RRBs, NABARD, RBI, KCC, SHG-bank linkage, RIDF)",
+            "Crop insurance in India: historical background, issues, PMFBY, and comparison with earlier schemes",
+            "Agriculture marketing: process and structure in India, importance, government measures (APMC Act analysis, e-NAM)",
+            "Subsidies: farm/fertiliser/power/irrigation subsidies, issues of direct/indirect subsidies and MSP, objectives, gainer-loser resource transfer, buffer-stock/food-security issues, and technology missions",
+            "Public Distribution System: objectives, functioning, limitations, revamping from universal to targeted PDS, cost-benefit analysis, buffer-stock policy, and the Food Security Bill's resource-mobilization/criticism debate",
+            "Agricultural revolutions in India: Green, White (Operation Flood), Yellow, Blue, and Golden Fibre (jute) revolutions, and the future of Indian agriculture",
+            "Technology in agriculture: data revolution, AI applications, social-security schemes for farmers (climate-smart agriculture, precision farming for input-wastage mitigation)",
+            "Cold-chain and price-volatility management: long-term cold-chain solutions for vegetable-price volatility; MSP's role in food security and cropping-pattern impact; farm subsidies' impact on state fiscal health and environmental degradation",
+            "Food processing and related industries: scope and significance, location, upstream/downstream requirements, supply-chain management, Mega Food Parks, FDI policy, notable sector trends, and budget/policy strategies",
+            "Animal husbandry economics: dairy cooperative scaling, livestock disease management, and the economics of animal-rearing",
+            "Wetland conservation and the Ramsar 'wise use' concept with Indian Ramsar-site examples; the 'Organic State' (Sikkim) model's ecological/economic benefits; NavIC's civilian-application significance for agriculture"
+          ]
+        },
+        {
+          "macro_topic": "Industry, Infrastructure and Investment Models",
+          "official_syllabus_line": "Effects of liberalization on the economy, changes in industrial policy and their effects on industrial growth.",
+          "micro_themes": [
+            "Industrial policy and development: Mahalanobis strategy, Industrial Policy Resolutions 1948/1956, New Economic Policy/liberalization/privatization/globalization, phases of industrial development, and effects on different sectors",
+            "Main features of industrial development: role of private/public sectors, investment/employment/productivity trends, disinvestment/privatization strategy, MSME role and government policy, New Manufacturing Policy, industrial corridors, SEZ issues (land use, relocation, tax-income loss vs export gains), industrial sickness and exit-policy mechanisms, sub-prime/sovereign-debt-crisis impact, industrial finance (development/commercial banking, venture/angel capital), Make in India achievements, and MSME-sector transformation",
+            "Venture capital's role in tech-startup growth; IP piracy's impact on creative/tech industries; biotechnology's lab-to-commercial-scale constraints; SEZs vs Chinese industrial models; PLI-scheme execution and labour absorption; stressed-asset management via bad banks",
+            "Infrastructure: economic/social/environmental impact of infrastructure, transport (ports, inland waterways, roads, National Infrastructure Pipeline, Bharatmala, airports, railways, energy pipelines), negative externalities of transport, ownership/financing/pricing of public utilities, PPP project delays and O&M issues in roads/railways/irrigation/power",
+            "Important infrastructure schemes: PM Gati Shakti National Master Plan, PM MITRA textile parks, NaBFID, National Industrial Corridor Development Programme",
+            "Contemporary industry/infrastructure themes: National Monetisation Pipeline, National Mission on Edible Oil, Zero Defect Zero Effect scheme, natural-gas-marketing reforms, G7 corporate-tax deal, telecom-sector issues, shift to green energy, gig economy, virtual-currency taxation, G-SAP securities-acquisition plan, world inequality/employment-outlook reports, fertiliser shortage, e-Gram Swaraj e-financial management"
+          ]
+        },
+        {
+          "macro_topic": "Science and Technology",
+          "official_syllabus_line": "Science and Technology- developments and their applications and effects in everyday life. Achievements of Indians in science & technology; indigenization of technology and developing new technology. Awareness in the fields of IT, Space, Computers, robotics, nano-technology, bio-technology and issues relating to intellectual property rights.",
+          "micro_themes": [
+            "Foundational science: chemistry basics (atomic structure, bonding, metallurgy, acids/bases, electro-chemistry, polymers, pharmaceuticals, biomolecules), physics basics (fundamental forces/particles, energy types, optics, EM spectrum, relativity, thermodynamics, waves), and biology basics (cell biology, genetics, evolution, human physiology/organ systems, nutrition, plant physiology, economic zoology/botany)",
+            "Biotechnology: genetic engineering process/applications, genomics/proteomics, RNA technologies, genome sequencing, environmental applications (bioremediation, carbon-capture tech), plant/animal biotechnology (GM crops, transgenics), food/beverage-industry applications, medical applications (gene editing/therapy, molecular diagnosis, PCR, ELISA, stem cells, biopharmaceuticals), bioethics/biopiracy, biosafety protocols, and IPR in biotechnology",
+            "Human health and diseases: causative agents and classification (nutrient-deficiency, molecular/chromosomal, vector/water-borne, lifestyle diseases), immunity types, vaccination programmes, antibiotics/antivirals, drug pricing, pharmacogenetics, antimicrobial resistance",
+            "Space technology: orbit types, launch-vehicle classification, major agencies (ISRO, NASA, ESA, Roscosmos, JAXA, CNSA) and their missions, ISRO's national-development role, private-sector/PPP participation, cryogenics/nanosatellites/electric propulsion, satellite communication, remote sensing, navigation systems (GPS, Galileo, GLONASS, NavIC/IRNSS) and outer-space geopolitics",
+            "Defence technology: missile classification (ballistic/cruise), India's missile programme, Integrated Guided Missile Programme, robotics/AI in defence, cyber warfare preparedness, drone/UAV and stealth technology, hypersonic glide vehicles/cruise missiles, weapons of mass destruction, defence reforms (CDS), defence platforms (submarines, aircraft carriers, combat aircraft), and defence organisations/exercises",
+            "Nuclear energy: reaction types, civil/military applications, fuel cycle and centrifugation, reactor types, India's nuclear policy, radioactive-waste management, nuclear/radiological disaster preparedness, and institutions (DAE, AERB, BARC, IGCAR)",
+            "Electronics and telecommunications: computer generations and cloud computing, IT-enabled services, display technologies (LCD/LED/OLED/AMOLED), mobile generations, net neutrality, IoT, big-data/privacy issues, cyber-crime and security, and government digital-governance initiatives",
+            "Nanoscience and nanotechnology: basics, nanomaterials, applications (medicine, semiconductors, food, textiles, sustainable energy, environment, transport, space, agriculture) and adverse health/environmental/ethical impacts",
+            "Robotics and AI: classification of robots, advantages/disadvantages, applications across sectors, neural networks, machine learning/deep learning, and AI-robotics convergence",
+            "Intellectual Property Rights: concept, types, international agreements/institutions, IPR regime in India, and the National IPR Policy",
+            "Institutions and S&T policy: India's S&T policy framework, DST, CSIR, Science and Engineering Research Board, Technology Development Board, NABL accreditation, and the Technology Vision Document 2035",
+            "Contemporary S&T themes: PRATUSH lunar telescope, NISAR mission, Aditya-L1, Chandrayaan-3, Indian Space Policy 2023, SSLV-D2, Artemis mission, LIGO/dark-matter search, ILMT, POEM-3 and space debris, AI safety/law developments, deepfakes, facial-recognition tech, National Quantum Mission, graphene applications, nano-urea, CAR T-cell therapy, gene therapy for Hemophilia A, metagenome sequencing, human pan-genome map, mitochondrial-donation treatment, 50 years of Pokhran-I, nuclear-fusion breakthroughs, MIRV technology, and recent Indian achievements in international science awards (Nobel, Shaw Prize, Blavatnik Awards, National Medal of Science)"
+          ]
+        },
+        {
+          "macro_topic": "Environment, Ecology and Bio-diversity",
+          "official_syllabus_line": "Conservation, environmental pollution and degradation, environmental impact assessment.",
+          "micro_themes": [
+            "Ecology fundamentals: types/scope, habitat and ecological niche, ecological principles/community structure, food chains/webs, energy-flow models, ecological pyramids, biomagnification, biological control, organic farming, and ecological succession",
+            "Biogeochemical cycles: carbon, nitrogen, phosphorus, and sulphur cycles",
+            "Biomes and aquatic life zones: forest/grassland/mountain/desert ecosystems, ocean/river/lake/wetland aquatic ecosystems, coral reefs (in India and globally), mangroves, freshwater resources, and the Ramsar Convention/Montreux Record",
+            "Biodiversity basics: kinds and degree of diversity, keystone/indicator/invasive species, allopatric/sympatric speciation, megadiverse countries, biodiversity hotspots, biopiracy, extinction/mass-extinction, and IUCN Red List classification",
+            "Biodiversity conservation: ex-situ vs in-situ conservation, seed banks, zoos/botanical gardens, protected areas, UNESCO Man-and-Biosphere Programme, CBD/Cartagena/Nagoya Protocols, Aichi Targets, Important Bird Areas, Global Tiger Initiative/Project Tiger, Project Elephant, Indian Rhino Vision, and recovery programmes for critically endangered species",
+            "Effect of human activities on the environment: impacts of modern agriculture, housing, power generation, river-valley/mining/transport/tourism projects on ecosystems",
+            "Water-resource degradation: hydrological cycle, groundwater depletion, water-borne/water-induced diseases, fluoride/arsenic contamination in drinking water",
+            "Minerals and environmental degradation: mining's direct/indirect impacts, international mining laws, and sustainable-mining regulation in India",
+            "Deforestation: causes, climate-change implications, wildlife/monsoon/people impacts, economic impacts, reduction strategies, conservation legislation, and community-participation approaches",
+            "Waste management: solid/hazardous/e-waste/biomedical/plastic-waste categories, management methods, poor-disposal effects, and landfill issues",
+            "Sustainable development: principles, measurement of sustainability/equitable resource use, sustainable-lifestyle role of the individual, and international sustainability efforts",
+            "Environmental pollution: air/water/thermal/soil/noise pollution sources-effects-control measures, National Ambient Air Quality Standards, persistent organic pollutants, toxic-substance/carcinogen classification",
+            "Coastal ecosystem management: mangroves, estuaries, coral reefs — importance, threats, and legal/regulatory protection approaches",
+            "Environmental Impact Assessment: executing body, effects analysed, EIA process, and the EIA notification of 1984 (procedural evolution)",
+            "Environmental laws: constitutional provisions and salient features of the Air Act 1981, Water Act 1974, Forest Conservation Act 1980, Wildlife Protection Act 1972, Environment (Protection) Act 1986",
+            "Environment-related institutions and schemes: Pollution Control Boards, NGT, Forest Survey of India, National Board for Wildlife, Ecomark, National Afforestation Programme, National Mission for Clean Ganga, National Air Quality Index, UJALA, Bharat Stage norms, FAME",
+            "International environmental governance: UNEP, UNDP/UNFCCC/UNCCD, IUCN, WWF, Birdlife International, and key international conventions/protocols",
+            "Climate change basics: greenhouse effect and global warming, international efforts to control climate change, ozone-layer depletion, acid rain, El Nino/La Nina",
+            "Urbanization and climate: metro pollution, real-estate-driven degradation, urban heat islands, plastic-bag pollution, methane generation from waste",
+            "Impact of agriculture on climate: emissions from agriculture, monoculture's biodiversity impact, chemical-fertilizer/pesticide pollution, GM-crop environmental impact, and sustainable-agriculture techniques",
+            "Global warming and health: health impacts, mosquito-borne diseases, and ozone-depletion health effects",
+            "Contemporary environment/ecology themes: mangrove-ecosystem IUCN reports, Great Barrier Reef coral bleaching, Arctic Ocean marine heatwaves, coastal erosion, riverine deoxygenation, El Nino's impact on world lakes, turtle/tiger/vulture/Great-Indian-Bustard/leopard conservation, Himalayan-wolf assessment, Project Cheetah, invasive alien species threats, soil-erosion crisis, forest fires, market-based forest-conservation approaches, constructed wetlands, microplastics, single-use-plastics battle, nitrogen pollution, radioactive discharges, acid rain impact, coal-plant SO2 control, GRAP in NCR, metal-mining pollution, e-waste/solar-waste management, plastic-to-fuel conversion, Anthropocene debate, green industrialisation, manufactured sand, Amazon forest fires, desertification, Aravalli mining, carbon farming, electric mobility, urban water crisis, green hydrogen roadmap, BioCNG, climate-engineering ethics, CCUS policy, human-animal conflict, wildlife licensing rules, EU carbon-border-tax impact, greenwashing, Battery Waste Management Rules, Biological Diversity Amendment Bill, Brazzaville Declaration, KAZA Summit and wildlife trade, and major global-climate reports (IPCC, WMO, UNEP Emissions Gap, Global Methane Tracker, World Air Quality Report)"
+          ]
+        },
+        {
+          "macro_topic": "Disaster Management",
+          "official_syllabus_line": "Disaster and disaster management.",
+          "micro_themes": [
+            "Natural and man-made disasters: India's vulnerability profile — earthquakes, tsunamis, landslides, floods, droughts, epidemics, nuclear-reactor explosions, dam collapse, gas leakage, oil spills, volcanic eruptions, forest fires, chemical spills, hazardous-material spills, explosives, chemical/biological attacks, nuclear blasts, rail/airline crashes, groundwater poisoning",
+            "Disaster management, preparedness and mitigation: community-based management, government initiatives, National Disaster Management Act 2005, global DRR frameworks (Sendai vs earlier Hyogo Framework), disaster insurance, media's role, gender-sensitive disaster response, disaster-management cycle, NGO role, and pre-disaster preparation",
+            "Landslide vulnerability of the Western Ghats and Himalayas: causes and mitigation strategies; institutional setups for chemical/industrial disaster management in urban-fringe clusters; cloudburst phenomenon and mountain-ecosystem vulnerability; multi-hazard resource-allocation dilemmas during live disaster response",
+            "Contemporary disaster-management themes: National Disaster Management Plan updates, NDRF App launch, early-warning-system improvements, AI/GIS in disaster prediction, satellite-based monitoring, pandemic-preparedness funding, disaster-induced displacement, urban flood management, disaster-risk financing (G20), India's Atmanirbharta in disaster management, Joshimath crisis case study, Turkiye earthquake case-study lessons, PM's Ten-Point DRR Agenda, and Coalition for Disaster Resilient Infrastructure (CDRI)"
+          ]
+        },
+        {
+          "macro_topic": "Internal Security",
+          "official_syllabus_line": "Linkages between development and spread of extremism. Role of external state and non-state actors in creating challenges to internal security. Challenges to internal security through communication networks, role of media and social networking sites in internal security challenges, basics of cyber security; money-laundering and its prevention. Security challenges and their management in border areas- linkages of organized crime with terrorism.",
+          "micro_themes": [
+            "Internal security challenges: social diversity as a security issue, neighbourhood-origin threats, non-state actors, global vulnerability indices, and the law-and-order vs internal-security distinction",
+            "Terrorism threat to India: changing face of terrorism, threats faced, the broader counter-terrorism framework, and drawbacks in intelligence infrastructure",
+            "Organized crime: types, control challenges, drug trafficking in India, combating strategies, and the terrorism-organized-crime linkage",
+            "Linkage between development and extremism: Left-Wing Extremism's stated purpose, its resonance with common people, Covid-19's effect on Naxalism, why LWE is deemed the biggest internal-security threat, and its nexus with illegal mining in forest tracts",
+            "Insurgency in the North-East: issues/conflicts, Assam insurgency, and resolving the Bodo issue",
+            "Security challenges in border areas: challenges to border management, community-participation approaches, non-demarcated border segments, and eastern-border illegal-migration security challenges",
+            "Basics of cyber security: types of cyber crimes, impact and required steps, ransomware incidents, India's cyber-security infrastructure, and the National Cyber Security Policy 2013",
+            "Cyber warfare: factors aggravating cyber attacks and recent initiatives to tackle cyber warfare; structural/command changes needed for urban asymmetric-warfare threats",
+            "Social media and internal-security threats: regulation challenges, AI's dual role, and monitoring difficulties",
+            "Money laundering and black money: meaning and harmful effects of money laundering, PMLA 2002 provisions as a check on organized crime/terror-financing, parallel economy dimensions, demonetisation's impact on black money, and cross-border money-laundering coordination challenges",
+            "Police reforms in India: organisational structure, duties/responsibilities, Centre's role in policing, traditional vs non-traditional security challenges, and reform recommendations for '21st-century policing'",
+            "Various security forces and their mandate: Assam Rifles, BSF, ITBP, CISF, CRPF, NSG, integrated theatre commands, National Maritime Security Coordinator, and paramilitary-force issues; CAPF deployment-related Centre-State tension and modernization funding gaps",
+            "Data security and the Justice B.N. Srikrishna Committee Report on personal data protection; drug trafficking's linkage to gunrunning/human trafficking; NPAs as a structural drag on the credit cycle for infrastructure",
+            "Contemporary internal-security themes: India-China Ladakh border tensions, India-Pakistan LoC ceasefire, Indo-Pacific/QUAD developments, demographic inversion in border areas from illegal immigration, Naxal-Maoist major encounters, post-Article-370 J&K developments, communal-tension mitigation, geospatial data and internal security, anti-maritime-piracy law, Pegasus-spyware controversy, ransomware (Akira), deepfake threats to social trust, FATF's role in curbing terror financing, indigenization of defence production (Atmanirbhar Bharat), induction of S-400/Tejas Mk1A/indigenous missiles, maritime-security developments in the IOR, drone attacks on merchant vessels, Gaganyaan-linked space security, biological/chemical-warfare preparedness (post-Covid), enhancements in intelligence agencies (RAW/IB/NIA), National Security Act applications, and UAPA amendments"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "GS_4",
+      "paper_title": "General Studies IV",
+      "core_subjects": ["Ethics", "Integrity", "Aptitude"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Ethics and Human Interface",
+          "official_syllabus_line": "Essence, determinants and consequences of Ethics in-human actions; dimensions of ethics; ethics in private and public relationships. Human Values — lessons from the lives and teachings of great leaders, reformers and administrators; role of family, society and educational institutions in inculcating values.",
+          "micro_themes": [
+            "Essence, determinants and consequences of ethics in human actions; approaches to ethical study (Indian vs Western perspectives); basic concepts of morality and value",
+            "Ethics in public life vs economic life; freedom and discipline; duties and rights; virtue ethics; consequences of ethics in human actions",
+            "Values and ethics in government; the family's contribution to value education; role of family/society/educational institutions in inculcating values",
+            "Human values: socialization and individual personality/value formation; values and skill; fundamental vs instrumental values; democratic values",
+            "Role of ethical values in governance and society; significance of value in civil services; society's and educational institutions' contribution to inculcating values; aesthetic values; values in work-life and professional ethics",
+            "Consequentialist vs Deontological (Kantian) moral boundaries in public-administration execution; Utilitarianism's concept and its critique when applied to minority protection",
+            "Significance of public-service values (objectivity, dedication, tolerance) in a multi-cultural society like India; corruption in public life as a systemic failure rather than purely individual moral decay"
+          ]
+        },
+        {
+          "macro_topic": "Human Values — Contributions of Moral Thinkers and Administrative Thinkers",
+          "official_syllabus_line": "Contributions of moral thinkers and philosophers from India and world.",
+          "micro_themes": [
+            "Indian moral/spiritual exemplars used as case anchors: Mahatma Gandhi, Dr S. Radhakrishnan, Rabindranath Tagore, Swami Dayanand Saraswati, Mahadeva Govinda Ranade, Sri Aurobindo, Swami Vivekananda, Sardar Patel, B.R. Ambedkar, Raja Ram Mohan Roy, Chhatrapati Shahu Maharaj, Kautilya's classical administrative-ethics ideals",
+            "Indian administrative-integrity role models used as case anchors: T.N. Seshan, E. Sreedharan",
+            "Western philosophers used as ethics-paper anchors: Plato, Aristotle, Socrates, Jeremy Bentham, J.S. Mill, Thomas Hobbes, John Locke, Jean-Jacques Rousseau, John Rawls, Immanuel Kant (categorical imperative applied to public service), Carol Gilligan, Jean-Paul Sartre, Hegel, Confucius, Rene Descartes, Karl Marx, Adam Smith, Thomas Aquinas, David Hume, Montesquieu, Friedrich Nietzsche",
+            "Administrative-management thinkers used as case anchors: Max Weber, Elton Mayo, Peter Drucker, Chester Barnard, Mary Parker Follett",
+            "Global moral/civic exemplars used as case anchors: Abraham Lincoln, Nelson Mandela, Martin Luther King, Aung San Suu Kyi, Dalai Lama, Mother Teresa, Albert Einstein, J.L. Nehru, Lee Kuan Yew, Henry Ford, Abdul Kalam, Muhammad Yunus, Wangari Maathai, Kofi Annan, Desmond Tutu, Elie Wiesel",
+            "Frequently cited quotation-anchors for ethics answer-writing: Gandhi's 'Seven Sins' and 'the weak can never forgive'; Socrates' 'an unexamined life is not worth living'; Nehru on awakening women as key to awakening the nation; Jefferson's 'honesty is the first chapter in the book of wisdom' (intellectual vs functional honesty); Warren Buffett's 'integrity, intelligence, energy' hiring framework; and comparable Lincoln/Gandhi/Tirukkural anchors"
+          ]
+        },
+        {
+          "macro_topic": "Attitude",
+          "official_syllabus_line": "Attitude: content, structure, function; its influence and relation with thought and behaviour; moral and political attitudes; social influence and persuasion.",
+          "micro_themes": [
+            "Components of attitude: affective, cognitive, and behavioural components",
+            "Functions of attitude: adjustive, ego-defensive, value-expressive, and knowledge functions",
+            "Attitude-formation model, impact of beliefs and values, group and social influences, persuasion tactics and tools",
+            "Moral and political attitude formation; distinguishing 'attitude' from 'belief' and how cognitive dissonance affects internal alignment",
+            "Attitude-behaviour gap in civil-servant decision-making under political pressure; persuasion techniques in public communication and citizen behaviour-change campaigns"
+          ]
+        },
+        {
+          "macro_topic": "Aptitude and Foundational Values for Civil Service",
+          "official_syllabus_line": "Aptitude and foundational values for Civil Service, integrity, impartiality and non-partisanship, objectivity, dedication to public service, empathy, tolerance and compassion towards the weaker-sections.",
+          "micro_themes": [
+            "Essential aptitude for civil servants; foundational values of civil services: neutrality, anonymity, accountability, integrity, humility, adaptability, magnanimity, perseverance, impartiality/non-partisanship, tolerance and compassion for the weaker sections, and contribution to society",
+            "Empathy and compassion as values distinguishing a pro-poor administrator from a status-quoist one; consequences of political alignment by bureaucrats",
+            "Can an administrator succeed on aptitude alone, without integrity? — the integrity-vs-competence debate; impartiality maintenance under political transfer-posting pressures"
+          ]
+        },
+        {
+          "macro_topic": "Emotional Intelligence",
+          "official_syllabus_line": "Emotional intelligence-concepts, and their utilities and application in administration and governance.",
+          "micro_themes": [
+            "Theories associated with emotional intelligence and whether EI can be developed; components of emotional competence",
+            "The self-awareness cluster (understanding feelings, accurate self-assessment) and self-management cluster (managing internal states/impulses/resources)",
+            "The social-awareness cluster (reading people/groups accurately) and relationship-management cluster (inducing desirable responses in others)",
+            "Importance of EI at the workplace and in civil services; components of EI applied to conflict resolution and crisis-time administrative communication"
+          ]
+        },
+        {
+          "macro_topic": "Public/Civil Service Values and Ethics in Public Administration",
+          "official_syllabus_line": "Status and problems; ethical concerns and dilemmas in government and private institutions; laws, rules, regulations and conscience as sources of ethical guidance; accountability and ethical governance; strengthening of ethical and moral values in governance; ethical issues in international relations and funding; corporate governance.",
+          "micro_themes": [
+            "Ethical concerns/dilemmas in public and private institutions; laws/rules/regulations vs conscience as sources of ethical guidance; accountability and ethical-governance strengthening",
+            "Moral judgements in international relations; ethical relation in funding international relations and the concept of moral responsibility; ethics in the working of international organisations",
+            "Corporate governance: concept, models of Corporate Social Responsibility, World Bank steps for good corporate governance, and norms for corporate governance in India; concept of business ethics",
+            "Structural flaws in asset-disclosure regulations for public officials and their effectiveness against illegal wealth generation; whether public asset-declaration has improved governance",
+            "Judicial independence as a democratic prerequisite, and where judicial overreach threatens democratic balance",
+            "Conflict of interest: definition, actual vs potential conflicts, with illustrative examples; administrative value conflicts in maintaining political neutrality while processing sensitive files",
+            "Conscience vs conformity: whistleblowing dilemmas within rule-bound bureaucratic hierarchies (including the Edward Snowden case — legality vs moral obligation to inform the public)",
+            "Corporate ESG auditing: ethical constraints around corporate greenwashing and environmental-accounting metrics"
+          ]
+        },
+        {
+          "macro_topic": "Probity in Governance",
+          "official_syllabus_line": "Concept of public service; Philosophical basis of governance and probity; Information sharing and transparency in government, Right to Information, Codes of Ethics, Codes of Conduct, Citizen’s Charters, Work culture, Quality of service delivery, Utilization of public funds, challenges of corruption.",
+          "micro_themes": [
+            "Concept of public service and the philosophical basis of governance/probity; public servants as 'trustees' of public power and financial resources",
+            "'Constitutional morality': concept and how it is enforced in a democratic system; social auditing as more than financial verification — an instrument of ethical governance",
+            "Distinguishing a 'Code of Conduct' from a 'Code of Ethics'; code of conduct for ministers/legislators/civil servants/regulators/judiciary",
+            "Information sharing, transparency and Right to Information: importance of vigilant citizens, information-sharing/participation, flaws in RTI and improvement recommendations",
+            "Components of a Citizen's Charter and steps in its formulation; concept of work culture, the Indian approach to work, methods of improving work culture, and quality of service delivery",
+            "Accountability vs Responsibility: distinguishing the two with a suitable example; utilisation of public funds and problems in fund release/utilisation; parliamentary control on expenditure",
+            "Corruption in India: extent, dimension, and response; corruption as a social evil; probity in public life; exposing corruption via civil-society initiatives and the Whistleblower Act; tackling and controlling corruption via various institutional approaches"
+          ]
+        },
+        {
+          "macro_topic": "Applied Ethics and Case Studies",
+          "official_syllabus_line": "Case Studies on above issues.",
+          "micro_themes": [
+            "Euthanasia: social/ethical dimensions, arguments for and against",
+            "Surrogacy: ethical issues and the concept of ethical surrogacy",
+            "Ethics in sports: need for sportsmanship, doping, discrimination and sexual harassment, sport-as-business ethics",
+            "Media ethics: role of media, ethical issues faced by reporters, trial by media, media prejudice, ethical dilemmas of photo-journalists, digital-media ethics, paid news",
+            "Business ethics: principles, dimensions within organisations, business ethics and corporate governance, philanthropy-to-CSR journey, and implementation issues",
+            "Ethics related to economic sanctions: why sanctions are placed and the ethics of imposing them",
+            "Refugees and ethics: why migration occurs, the Syria case study, dilemmas of the refugee crisis, and steps needed",
+            "Ethical dilemmas of globalization: free trade, criticism of the global regime, and the way forward",
+            "Ethics of war: war theories and the evils of war",
+            "Environmental ethics: linkage between ethics and environment, relevant theories, and the role of the individual",
+            "Ethical issues in biotechnology: stem cells, cloning, designer babies",
+            "Animal ethics: research on animals, keeping animals as pets, cruelty against animals",
+            "Food adulteration and ethics; abortion (legal status in India, recent Supreme Court verdict, women's-health-vs-fetus dilemma, justification/argument-against, women's/father's rights)",
+            "Honour killing (why it is unethical, role of khap panchayats); marital rape (arguments for/against criminalization and the hurdles); child labour (children's rights, corporate role, solutions, consumer's role)",
+            "Treating juveniles as adults: juvenile-justice-system implications; ethics and old age (issues faced, importance of autonomy); ethics in public vs private relationships and their linkage",
+            "Case-study archetypes: infrastructure-safety cover-up under election-timeline pressure; drought-relief tanker capture by a 'tanker mafia'; digital/biometric exclusion of a genuine welfare beneficiary; whistleblower/suspect pleading humanitarian delay; food/drug-safety-regulator cover-up offer; environmental clearance vs displacement/pollution trade-offs; defence-procurement L1-vs-clean-bidder dilemma; court-ordered demolition vs livelihood/political pressure; welfare-scheme 'ghost beneficiary' fraud amid caste sensitivities; government-doctor private-practice neglect with union-strike threat; clinical-trial consent violations vs public-health urgency; industrial-pollution complaint against a politically-connected employer; workplace-harassment complaint with a confidentiality request; disaster resource-allocation triage (elite vs marginalised site); biometric-mandate exclusion of poor/labour children; law-enforcement bribery from an illegal-mining network; superior's personal-gain conflict-of-interest request; law-and-order vs root-cause balancing (illicit liquor); factory-closure aftermath (unemployment vs environmental enforcement); tax officer's technical-vs-substantial-compliance discretion; and eligibility-criteria strict-rule-vs-humane-exception dilemmas",
+            "Contemporary applied-ethics themes for case-study/essay use: ethics of elections, ethics in Digital Public Infrastructure, drone ethics, AI ethics (in healthcare, creativity, human rights), social-media influencing, parliamentary-privilege ethics, judicial ethics (recusal, majoritarianism), internet-shutdown ethics, ethics in international relations (trade, war, climate finance), manual-scavenging as societal ethics, medical ethics (organ transplant, clinical trials), arbitration ethics, technological ethics (facial recognition, crypto-mining, brain-computer interfaces), paper-leak and examination-malpractice ethics, live-in-relationship ethics, food-service safety ethics, political conflict-of-interest, free speech on social media, moral policing, identity politics and gender justice, sex-workers'/LGBTQIA+ rights, reproductive rights, peacekeeping and humanitarian intervention, labour/worker ethics (working hours), nudge ethics, individual social responsibility, online-gaming/mining ethics, stray-dog-management ethics, student suicides, consumerism, 'wokeism' debates, and ethics of grey-zone warfare"
+          ]
+        }
+      ]
+    }
+  ]
+}
