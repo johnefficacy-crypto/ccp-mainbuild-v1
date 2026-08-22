@@ -350,7 +350,19 @@ def run(args: argparse.Namespace) -> int:
                 exam_phase_id=args.exam_phase_id,
                 topic_id=macro_id,
                 raw_text=official_line or macro,
-                mention_type="explicit",
+                # 'explicit' asserts the text IS a verbatim official syllabus
+                # line. Some macro topics are the curator's groupings with no
+                # official counterpart (UPSC GS1, for instance, has no separate
+                # ancient- or medieval-history entry) and their line is editorial
+                # prose about the syllabus. Those nodes set
+                # official_syllabus_line_is_verbatim=false and are ingested as
+                # 'derived', like the micro-themes. Absent flag means verbatim,
+                # so existing nodes keep their current meaning.
+                mention_type=(
+                    "explicit"
+                    if node.get("official_syllabus_line_is_verbatim", True)
+                    else "derived"
+                ),
                 seen=mentions_seen,
             )
 
