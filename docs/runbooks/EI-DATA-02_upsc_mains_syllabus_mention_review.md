@@ -61,20 +61,37 @@ Global prefix `/api`.
 
 ---
 
-## Phase 0 — Fix the document's provenance first
+## Phase 0 — Know what the reviewer is reading against
 
-The document row currently has **no `source_url`**. Its only anchor is a file in the repo,
-which means a reviewer cannot check the mentions against anything official.
+The document row has **no `source_url`**: the ingest was run without one, and its only
+anchor is a file in the repo.
 
-Promoting the document to `verified` in this state records that someone verified an
-unanchored claim. Set the URL first:
+**There is no way to fix that in place.** `syllabus_documents` has a create endpoint and a
+review endpoint — no PATCH. The ingest resolves the document by `content_hash`, so re-running
+it returns the same row rather than creating one with a URL, and all 393 mentions carry a
+foreign key to that row, so replacing it is not a small operation either.
 
-```
-PATCH /api/admin/exam-intelligence-cms/syllabus-documents/3419ba7c-…
-{"reason": "…", "payload": {"source_url": "<official UPSC CSE syllabus URL>"}}
-```
+Unlike `pyq_papers`, the syllabus document review has **no provenance gate** — `pending →
+verified` checks the transition only. So the missing URL blocks nothing. It is a quality
+gap, not a stopper.
 
-Do not proceed to Phase 1 until a reviewer can open the official syllabus and read along.
+What to do instead:
+
+1. Open the official syllabus text yourself and keep it beside the worksheet. The Mains
+   syllabus is published in the CSE examination notice, e.g.
+   `https://www.upsc.gov.in/sites/default/files/Notif-CSP-2026-Engl-060226Rev.pdf`
+   (Appendix — Main Examination). Confirm the current year's notice from
+   `https://www.upsc.gov.in/examinations/previous-question-papers` or the exam-notification
+   archive rather than assuming that filename is still current.
+2. Name that exact source in the Phase 3 review `reason`. The audit log then records what
+   the mentions were checked against, which is the substance the `source_url` column would
+   have carried.
+
+If the URL column matters later, the fix is a `PATCH /syllabus-documents/{id}` endpoint
+mirroring the `pyq-papers` one (provenance fields, audited, forcing re-review of a verified
+document). That is a code change, not part of this runbook.
+
+Do not proceed to Phase 1 until the reviewer has the official syllabus open.
 
 ---
 
