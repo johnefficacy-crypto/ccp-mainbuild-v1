@@ -1,0 +1,73 @@
+{
+  "_comment": [
+    "Per-year official UPSC source URLs for Civil Services (Main) question papers.",
+    "Used by scripts/backfill_pyq_paper_provenance.py to satisfy the provenance",
+    "gate on POST /pyq-papers/{id}/review (pending -> verified requires a",
+    "non-empty source_url or a source_document_id).",
+    "",
+    "verified=true means the URL was confirmed to exist as an indexed page on",
+    "upsc.gov.in. verified=false means it follows the same URL pattern but was",
+    "NOT confirmed — open it in a browser, correct it if it 404s, and flip the",
+    "flag before using it as provenance. The backfill script refuses to write",
+    "an unverified URL unless --allow-unverified is passed.",
+    "",
+    "One paper row per year holds GS1-4 + Essay, so the anchor is the year's",
+    "exam page (which lists all five PDFs) rather than a single PDF."
+  ],
+  "exam": "UPSC Civil Services (Main) Examination",
+  "years": {
+    "2013": {
+      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2013",
+      "verified": true,
+      "note": "Older years use the question-papers-year-YYYY archive scheme."
+    },
+    "2014": {
+      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2014",
+      "verified": false
+    },
+    "2015": {
+      "url": "https://www.upsc.gov.in/examinations/question-papers/question-papers-year-2015",
+      "verified": false
+    },
+    "2016": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202016",
+      "verified": false
+    },
+    "2017": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202017",
+      "verified": true
+    },
+    "2018": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202018",
+      "verified": false
+    },
+    "2019": {
+      "url": "https://upsc.gov.in/examinations/civil%20services%20(main)%20examination,%202019",
+      "verified": true
+    },
+    "2020": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202020",
+      "verified": true
+    },
+    "2021": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202021",
+      "verified": false
+    },
+    "2022": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202022",
+      "verified": false
+    },
+    "2023": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202023",
+      "verified": true
+    },
+    "2024": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20(Main)%20Examination,%202024",
+      "verified": true
+    },
+    "2025": {
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20%28Main%29%20Examination%2C%202025",
+      "verified": true
+    }
+  }
+}
