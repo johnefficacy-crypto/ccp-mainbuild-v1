@@ -1,7 +1,7 @@
 # EI-DATA-02 — UPSC CSE Mains syllabus mention review
 
 **Type:** Operator / data-review task (SME judgment + live backend). Not a code change.
-**Goal:** Every one of the 393 `syllabus_topic_mentions` on the UPSC CSE Mains syllabus
+**Goal:** Every one of the 456 `syllabus_topic_mentions` on the UPSC CSE Mains syllabus
 document carries a real reviewer decision, and the document itself is promoted or rejected
 on the strength of that review.
 
@@ -21,13 +21,13 @@ distinct claims here and they need different scrutiny.
 | Rows | `mention_type` | The claim | Review question |
 |---|---|---|---|
 | 30 | `explicit` | The macro topic's text **is** an official UPSC syllabus line | Does `raw_text` match the official syllabus verbatim? |
-| 363 | `derived` | This micro-theme falls **within** that macro topic's scope | Is this genuinely in scope, and under the right macro topic? |
+| 426 | `derived` | This micro-theme falls **within** that macro topic's scope | Is this genuinely in scope, and under the right macro topic? |
 
 The 30 explicit rows are a fidelity check against the published UPSC syllabus — objective,
 and the gate for everything else. If the macro lines are wrong, the micro-themes under them
 are wrong too and no amount of micro review saves them.
 
-The 363 derived rows are a scope judgement. They are a curator's decomposition, not UPSC
+The 426 derived rows are a scope judgement. They are a curator's decomposition, not UPSC
 text, and were never claimed otherwise (`mention_type='derived'`, and the ingest deliberately
 did not label them `explicit`). Reviewing one is a yes/no on scope, not a research task.
 
@@ -41,8 +41,19 @@ syllabus. Do not read it as evidence of correctness.
 
 - `exam_id` (UPSC CSE) = `5466e62f-7382-4a38-ba96-2fe5fbfeaba2`
 - `exam_phase_id` (Mains **template** phase, `exam_cycle_id` null) = `626ec667-4bbf-4420-8715-48c5b83e0d11`
-- `syllabus_document_id` (this ingest) = `3419ba7c-e910-4886-8b5b-7b059fedb4fa`
+- `syllabus_document_id` (current — post PR #1013 micro-theme split) = `2bfbc4bb-bad3-4191-a114-f467399ce512`
+  (**superseded**: `3419ba7c-e910-4886-8b5b-7b059fedb4fa`, rejected 2026-08-24 — the ingest
+  resolves the document by content-hash, so editing the source JSON to split 18 oversized
+  micro-themes produced a *new* document row and left the old one's 393 mentions stranded.
+  Review everything against the current id above; do not resume Phase 1/2 progress on the
+  superseded one.)
 - Source file: `docs/reference/syllabus/upsc_cse_mains_gs_micro_themes_v2026.3.json`
+
+**A content-hash gotcha to remember:** any future edit to the source JSON — another
+micro-theme split, a wording fix, anything — changes the content hash and creates a
+*third* document with a full fresh set of mentions, duplicating whatever hasn't changed.
+Before editing the source file again, decide whether to review-then-freeze this document
+first, or accept another supersede-and-duplicate cycle.
 
 ---
 
@@ -68,7 +79,7 @@ anchor is a file in the repo.
 
 **There is no way to fix that in place.** `syllabus_documents` has a create endpoint and a
 review endpoint — no PATCH. The ingest resolves the document by `content_hash`, so re-running
-it returns the same row rather than creating one with a URL, and all 393 mentions carry a
+it returns the same row rather than creating one with a URL, and all mentions on a document carry a
 foreign key to that row, so replacing it is not a small operation either.
 
 Unlike `pyq_papers`, the syllabus document review has **no provenance gate** — `pending →
@@ -102,7 +113,7 @@ Export the worksheet:
 ```
 python scripts/syllabus_mention_review.py export \
   --exam-id 5466e62f-7382-4a38-ba96-2fe5fbfeaba2 \
-  --document-id 3419ba7c-e910-4886-8b5b-7b059fedb4fa \
+  --document-id 2bfbc4bb-bad3-4191-a114-f467399ce512 \
   --out mains_syllabus_review.csv
 ```
 
@@ -121,12 +132,12 @@ Decisions:
 
 **Gate: if more than a handful of the 30 need correction, stop.** That indicates the source
 JSON is not faithful and the fix belongs upstream in the file, followed by a re-ingest — not
-393 individual corrections. Re-ingest is cheap and idempotent
-(`scripts/ingest_upsc_gs_syllabus.py`); 393 hand-corrections are not.
+456 individual corrections. Re-ingest is cheap and idempotent
+(`scripts/ingest_upsc_gs_syllabus.py`); 456 hand-corrections are not.
 
 ---
 
-## Phase 2 — The 363 derived micro-themes
+## Phase 2 — The 426 derived micro-themes
 
 Work **one macro topic at a time** — the worksheet is already grouped that way. Reading ~12
 micro-themes against one official line is far faster and more consistent than reviewing rows
@@ -164,7 +175,7 @@ Re-export at any time to pick up what is still pending (`--status pending`).
 Only after Phases 1–2, and only if Phase 1 passed cleanly:
 
 ```
-POST /api/admin/exam-intelligence-cms/syllabus-documents/3419ba7c-…/review
+POST /api/admin/exam-intelligence-cms/syllabus-documents/2bfbc4bb-bad3-4191-a114-f467399ce512/review
 {"status": "verified", "reason": "<what was checked, against which official source>"}
 ```
 
