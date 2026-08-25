@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      background: oklch(95.5% 0.014 85);
+      color: oklch(24% 0.015 60);
+    }
+    a { color: oklch(52% 0.13 75); text-decoration: none; }
+    a:hover { color: oklch(45% 0.13 75); }
+    .serif { font-family: 'Spectral', Georgia, serif; }
+    .card { cursor: grab; }
+    .card:active { cursor: grabbing; }
+    .navbtn { cursor:pointer; }
+    .navbtn:hover { opacity:0.6; }
+  </style>
+</helmet>
+
+<div style="position:relative; width:1440px; height:900px; overflow:hidden; background:oklch(95.5% 0.014 85); display:flex;">
+
+  <!-- LEFT: calendar -->
+  <div style="flex:0 0 1130px; height:900px; padding:26px 28px 20px; display:flex; flex-direction:column;">
+
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px;">
+      <div>
+        <div style="font-size:12px; letter-spacing:0.03em; color:oklch(50% 0.01 85);">Study Planner</div>
+        <div class="serif" style="font-size:22px; font-weight:500; margin-top:4px; color:oklch(20% 0.015 60);">12-Week Sprint &mdash; Week 3</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="serif" style="font-size:19px; color:oklch(45% 0.11 75);">{{weekPlannedHrs}}h <span style="color:oklch(50% 0.01 85); font-size:13px; font-family:'Manrope';">/ {{weekCapacityHrs}}h this week</span></div>
+        <div style="font-size:11px; color:oklch(50% 0.01 85); margin-top:2px;">
+          <span class="navbtn">&lsaquo; prev</span> &nbsp;&middot;&nbsp; <span class="navbtn">next &rsaquo;</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px; color:oklch(48% 0.01 85); margin-bottom:18px;">Drag a topic from the backlog onto a day, or between days to reschedule.</div>
+
+    <div style="display:flex; gap:10px; flex:1; min-height:0;">
+      <sc-for list="{{days}}" as="day" hint-placeholder-count="7">
+        <div onDragOver="{{allowDrop}}" onDrop="{{day.drop}}" style="flex:1; display:flex; flex-direction:column; min-width:0;">
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px; font-weight:700; color:oklch(30% 0.02 60);">{{day.name}}</div>
+            <div style="font-size:10.5px; color:oklch(52% 0.01 85);">{{day.date}}</div>
+            <div style="display:flex; align-items:center; gap:5px; margin-top:5px;">
+              <div style="flex:1; height:4px; border-radius:3px; background:oklch(88% 0.015 85); overflow:hidden;">
+                <div style="{{day.barStyle}}"></div>
+              </div>
+              <div style="font-size:9.5px; color:{{day.hoursColor}}; white-space:nowrap;">{{day.usedHrs}}/{{day.capHrs}}h</div>
+            </div>
+          </div>
+
+          <div style="flex:1; border-radius:12px; border:1.5px dashed oklch(80% 0.02 85 / 0.7); background:oklch(93% 0.015 85 / 0.4); padding:8px; display:flex; flex-direction:column; gap:7px; overflow-y:auto;">
+            <sc-for list="{{day.blocks}}" as="b" hint-placeholder-count="2">
+              <div draggable="true" onDragStart="{{b.drag}}" class="card" style="background:oklch(98% 0.008 85); border:1px solid oklch(85% 0.02 85); border-radius:9px; padding:9px 10px; box-shadow:0 1px 2px oklch(30% 0.02 60 / 0.06);">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                  <div style="font-size:9.5px; font-weight:700; letter-spacing:0.03em; padding:1px 6px; border-radius:9px; background:{{b.chipBg}}; color:{{b.chipText}};">{{b.gsLabel}}</div>
+                  <div onClick="{{b.remove}}" style="font-size:12px; color:oklch(62% 0.01 85); cursor:pointer;">&times;</div>
+                </div>
+                <div style="font-size:11.5px; line-height:1.3; color:oklch(28% 0.015 60); font-weight:500;">{{b.topic}}</div>
+                <div style="font-size:10px; color:oklch(52% 0.01 85); margin-top:3px;">{{b.hours}}h</div>
+                <sc-if value="{{b.carried}}" hint-placeholder-val="{{false}}">
+                  <div style="font-size:9.5px; color:oklch(50% 0.12 60); margin-top:4px;">&#8635; carried from {{b.carriedFrom}}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- RIGHT: backlog -->
+  <div onDragOver="{{allowDrop}}" onDrop="{{dropBacklog}}" style="flex:1; height:900px; overflow-y:auto; background:oklch(93% 0.012 85); border-left:1px solid oklch(86% 0.015 85); padding:26px 20px 40px;">
+    <div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:oklch(50% 0.01 85); margin-bottom:4px;">Backlog</div>
+    <div style="font-size:11.5px; color:oklch(52% 0.01 85); margin-bottom:16px;">{{backlogCount}} topics not yet scheduled</div>
+
+    <sc-for list="{{backlog}}" as="b" hint-placeholder-count="7">
+      <div draggable="true" onDragStart="{{b.drag}}" class="card" style="background:oklch(98% 0.008 85); border:1px solid oklch(85% 0.02 85); border-radius:10px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px oklch(30% 0.02 60 / 0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
+          <div style="font-size:10px; font-weight:700; letter-spacing:0.03em; padding:2px 7px; border-radius:9px; background:{{b.chipBg}}; color:{{b.chipText}};">{{b.gsLabel}}</div>
+          <div style="font-size:11px; color:oklch(52% 0.01 85);">{{b.hours}}h</div>
+        </div>
+        <div style="font-size:12.5px; line-height:1.4; color:oklch(28% 0.015 60);">{{b.topic}}</div>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+const GS = {
+  1: { label: 'GS I', chipBg: 'oklch(88% 0.05 75 / 0.6)', chipText: 'oklch(42% 0.11 75)' },
+  2: { label: 'GS II', chipBg: 'oklch(88% 0.04 200 / 0.6)', chipText: 'oklch(38% 0.09 200)' },
+  3: { label: 'GS III', chipBg: 'oklch(88% 0.05 300 / 0.6)', chipText: 'oklch(40% 0.09 300)' },
+  4: { label: 'GS IV', chipBg: 'oklch(88% 0.05 20 / 0.6)', chipText: 'oklch(40% 0.09 20)' },
+};
+
+const DAY_META = [
+  { key: 'mon', name: 'Monday', date: 'Aug 24', cap: 2 },
+  { key: 'tue', name: 'Tuesday', date: 'Aug 25', cap: 2 },
+  { key: 'wed', name: 'Wednesday', date: 'Aug 26', cap: 2 },
+  { key: 'thu', name: 'Thursday', date: 'Aug 27', cap: 2 },
+  { key: 'fri', name: 'Friday', date: 'Aug 28', cap: 2 },
+  { key: 'sat', name: 'Saturday', date: 'Aug 29', cap: 4 },
+  { key: 'sun', name: 'Sunday', date: 'Aug 30', cap: 4 },
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      draggedId: null,
+      placement: {
+        b1: 'mon', b5: 'mon',
+        b2: 'tue',
+        b9: 'wed',
+        b13: 'fri',
+        b10: 'sat', b11: 'sat',
+        b3: 'backlog', b4: 'backlog', b6: 'backlog', b7: 'backlog',
+        b8: 'backlog', b12: 'backlog', b14: 'backlog',
+      },
+    };
+  }
+
+  _catalog() {
+    return {
+      b1: { gs: 1, topic: 'Indian Culture — Art, Architecture & Lit.', hours: 2 },
+      b2: { gs: 1, topic: 'Modern History — Freedom Struggle', hours: 2.5, carried: true, carriedFrom: 'Mon' },
+      b3: { gs: 1, topic: 'World History — Revolutions & Wars', hours: 1.5 },
+      b4: { gs: 1, topic: 'Indian Society — Diversity & Social Issues', hours: 2 },
+      b5: { gs: 2, topic: 'Indian Constitution — Historical Roots', hours: 2 },
+      b6: { gs: 2, topic: 'Parliament & State Legislatures', hours: 1.5 },
+      b7: { gs: 2, topic: 'Judiciary & Separation of Powers', hours: 2 },
+      b8: { gs: 2, topic: 'India & Its Neighborhood', hours: 1.5 },
+      b9: { gs: 3, topic: 'Indian Economy — Growth & Development', hours: 2.5 },
+      b10: { gs: 3, topic: 'Agriculture — Land Reforms & Storage', hours: 2 },
+      b11: { gs: 3, topic: 'Environment — Conservation & Pollution', hours: 1.5 },
+      b12: { gs: 3, topic: 'Science & Tech — Indigenization', hours: 2 },
+      b13: { gs: 4, topic: 'Ethics & Human Interface', hours: 1.5 },
+      b14: { gs: 4, topic: 'Aptitude & Foundational Values', hours: 1 },
+    };
+  }
+
+  _move(id, dest) {
+    if (!id) return;
+    this.setState(s => ({ placement: { ...s.placement, [id]: dest }, draggedId: null }));
+  }
+
+  renderVals() {
+    const cat = this._catalog();
+    const s = this.state;
+    const drag = (id) => () => this.setState({ draggedId: id });
+
+    const mkBlock = (id, forDay) => {
+      const c = cat[id];
+      const gs = GS[c.gs];
+      return {
+        topic: c.topic, hours: c.hours, gsLabel: gs.label, chipBg: gs.chipBg, chipText: gs.chipText,
+        carried: forDay && !!c.carried, carriedFrom: c.carriedFrom || '',
+        drag: drag(id),
+        remove: () => this._move(id, 'backlog'),
+      };
+    };
+
+    const days = DAY_META.map(d => {
+      const ids = Object.keys(s.placement).filter(id => s.placement[id] === d.key);
+      const usedHrs = ids.reduce((sum, id) => sum + cat[id].hours, 0);
+      const pct = Math.min(140, Math.round((usedHrs / d.cap) * 100));
+      const over = usedHrs > d.cap;
+      const barColor = over ? 'oklch(55% 0.14 40)' : 'oklch(58% 0.12 75)';
+      return {
+        name: d.name, date: d.date, capHrs: d.cap, usedHrs: Math.round(usedHrs * 10) / 10,
+        hoursColor: over ? 'oklch(50% 0.14 40)' : 'oklch(52% 0.01 85)',
+        barStyle: `height:100%; width:${Math.min(100, pct)}%; background:${barColor};`,
+        blocks: ids.map(id => mkBlock(id, true)),
+        drop: (e) => { e.preventDefault(); this._move(s.draggedId, d.key); },
+      };
+    });
+
+    const backlogIds = Object.keys(s.placement).filter(id => s.placement[id] === 'backlog');
+    const backlog = backlogIds.map(id => mkBlock(id, false));
+
+    const weekPlannedHrs = Math.round(Object.keys(s.placement).filter(id => s.placement[id] !== 'backlog').reduce((sum, id) => sum + cat[id].hours, 0) * 10) / 10;
+    const weekCapacityHrs = DAY_META.reduce((sum, d) => sum + d.cap, 0);
+
+    return {
+      days, backlog, backlogCount: backlog.length, weekPlannedHrs, weekCapacityHrs,
+      allowDrop: (e) => e.preventDefault(),
+      dropBacklog: (e) => { e.preventDefault(); this._move(this.state.draggedId, 'backlog'); },
+    };
+  }
+}
+</script>
+</body>
+</html>

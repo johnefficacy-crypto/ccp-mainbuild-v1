@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; background: oklch(95.5% 0.014 85); color: oklch(24% 0.015 60); }
+    h1, h2, h3 { font-family: 'Spectral', Georgia, serif; margin: 0; }
+    a { color: oklch(55% 0.09 200); }
+    a:hover { color: oklch(45% 0.09 200); }
+    button { font-family: inherit; cursor: pointer; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+  </style>
+</helmet>
+
+<div style="width: 1600px; height: 900px; display: flex; flex-direction: column; padding: 28px 32px; gap: 20px; overflow: hidden;">
+
+  <!-- header -->
+  <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(52% 0.03 60);">UPSC CSE 2027 &middot; Study OS</div>
+      <h1 style="font-size: 30px; font-weight: 600;">Exam study roadmap</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 22px;">
+      <div style="display: flex; gap: 18px; font-size: 13px; color: oklch(40% 0.02 60);">
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+          <span style="font-family: 'Spectral', serif; font-size: 20px; font-weight: 600; color: oklch(30% 0.02 60);">17 wks</span>
+          <span>to Prelims</span>
+        </div>
+        <div style="width: 1px; background: oklch(80% 0.01 60);"></div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+          <span style="font-family: 'Spectral', serif; font-size: 20px; font-weight: 600; color: oklch(30% 0.02 60);">29 wks</span>
+          <span>to Mains</span>
+        </div>
+      </div>
+      <!-- track toggle -->
+      <div style="display: flex; padding: 3px; background: oklch(90% 0.012 70); border-radius: 10px; gap: 2px;">
+        <sc-for list="{{tracks}}" as="t" hint-placeholder-count="3">
+          <button onClick="{{t.pick}}" style="{{t.btnStyle}}">{{t.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- body: path + sidebar -->
+  <div style="flex: 1; display: flex; gap: 24px; min-height: 0;">
+
+    <!-- main path area -->
+    <div style="flex: 1; position: relative; background: oklch(97.2% 0.008 85); border: 1px solid oklch(87% 0.012 70); border-radius: 18px; overflow: hidden;">
+
+      <!-- phase bands -->
+      <sc-for list="{{bands}}" as="b" hint-placeholder-count="5">
+        <div style="position: absolute; left: {{b.left}}px; top: 0; width: {{b.width}}px; height: 100%; background: {{b.bg}}; opacity: {{b.opacity}}; border-right: 1px solid oklch(90% 0.01 70);"></div>
+        <div style="position: absolute; left: {{b.left}}px; top: 16px; width: {{b.width}}px; text-align: center; opacity: {{b.labelOpacity}};">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{b.labelColor}};">{{b.name}}</span>
+        </div>
+      </sc-for>
+
+      <!-- connecting path -->
+      <svg width="1252" height="620" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+        <path d="{{pathD}}" fill="none" stroke="oklch(55% 0.02 60)" stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round" opacity="0.55" />
+      </svg>
+
+      <!-- today marker -->
+      <div style="position: absolute; left: {{today.x}}px; top: {{today.y}}px; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 5;">
+        <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: oklch(30% 0.02 60); color: oklch(97% 0.01 85); padding: 3px 8px; border-radius: 6px; margin-bottom: 6px; white-space: nowrap;">Today &middot; Wk 10</div>
+        <div style="width: 18px; height: 18px; border-radius: 50%; background: oklch(58% 0.16 25); border: 3px solid oklch(97.2% 0.008 85); box-shadow: 0 0 0 3px oklch(58% 0.16 25 / 0.35);"></div>
+      </div>
+
+      <!-- checkpoint nodes -->
+      <sc-for list="{{nodes}}" as="n" hint-placeholder-count="10">
+        <div onClick="{{n.pick}}" style="position: absolute; left: {{n.x}}px; top: {{n.y}}px; transform: translate(-50%, -50%); cursor: pointer; opacity: {{n.opacity}}; z-index: {{n.z}};">
+          <div style="{{n.dotStyle}}">
+            <sc-if value="{{n.isFlag}}" hint-placeholder-val="{{false}}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h13l-3 4 3 4H5"/></svg>
+            </sc-if>
+            <sc-if value="{{n.isMock}}" hint-placeholder-val="{{false}}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+            </sc-if>
+            <sc-if value="{{n.isCheck}}" hint-placeholder-val="{{false}}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </sc-if>
+          </div>
+          <div style="{{n.labelStyle}}">{{n.shortLabel}}</div>
+        </div>
+      </sc-for>
+
+    </div>
+
+    <!-- sidebar detail -->
+    <div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+
+      <div style="background: oklch(97.2% 0.008 85); border: 1px solid oklch(87% 0.012 70); border-radius: 16px; padding: 20px; flex: 1; overflow: auto;">
+        <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(52% 0.03 60); margin-bottom: 6px;">{{detail.kicker}}</div>
+        <h3 style="font-size: 19px; font-weight: 600; margin-bottom: 10px; line-height: 1.25;">{{detail.title}}</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;">
+          <sc-for list="{{detail.tags}}" as="tg" hint-placeholder-count="3">
+            <span class="chip" style="{{tg.style}}">{{tg.label}}</span>
+          </sc-for>
+        </div>
+        <p style="font-size: 13.5px; line-height: 1.6; color: oklch(34% 0.02 60); margin: 0 0 14px 0;">{{detail.blurb}}</p>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid oklch(88% 0.012 70);">
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: oklch(50% 0.02 60);">Status</span>
+            <span style="font-weight: 700; color: {{detail.statusColor}};">{{detail.status}}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: oklch(50% 0.02 60);">Window</span>
+            <span style="font-weight: 600;">{{detail.window}}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- legend -->
+      <div style="background: oklch(97.2% 0.008 85); border: 1px solid oklch(87% 0.012 70); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(52% 0.03 60); margin-bottom: 2px;">Legend</div>
+        <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px;">
+          <div style="width: 15px; height: 15px; border-radius: 50%; background: oklch(58% 0.10 200); flex-shrink: 0;"></div>
+          <span>Syllabus checkpoint</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px;">
+          <div style="width: 15px; height: 15px; border-radius: 50%; background: oklch(58% 0.13 300); flex-shrink: 0;"></div>
+          <span>Mock / practice milestone</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px;">
+          <div style="width: 15px; height: 15px; border-radius: 50%; background: oklch(50% 0.16 25); flex-shrink: 0;"></div>
+          <span>Exam day</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px;">
+          <div style="width: 15px; height: 15px; border-radius: 50%; background: oklch(58% 0.16 25); border: 2px solid white; box-shadow: 0 0 0 2px oklch(58% 0.16 25 / 0.35); flex-shrink: 0;"></div>
+          <span>Today</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { track: "all", selectedId: null };
+  }
+
+  _nodeData() {
+    return [
+      { id: "n1", week: 8,  x: 368,  y: 320, kind: "check", track: "both",    short: "Foundation done",
+        title: "Foundation phase complete", window: "Wk 1 – 8", status: "Done", statusColor: "oklch(50% 0.11 150)",
+        tags: [["GS1","gold"],["GS2","teal"],["GS3","violet"],["GS4","rose"]],
+        blurb: "NCERT base layer across all four GS papers plus CSAT fundamentals. Unlocks first-pass syllabus reading." },
+      { id: "n2", week: 14, x: 584,  y: 460, kind: "check", track: "both",    short: "GS1 syllabus 100%",
+        title: "GS1 syllabus — first pass complete", window: "Wk 9 – 14", status: "Done", statusColor: "oklch(50% 0.11 150)",
+        tags: [["GS1","gold"],["Checkpoint","neutral"]],
+        blurb: "History, geography and society topics read once against the microtopic list, with PYQ tags reviewed per topic." },
+      { id: "n3", week: 18, x: 728,  y: 340, kind: "mock",  track: "both",    short: "First full mock",
+        title: "First full-length prelims mock", window: "Wk 18", status: "Done", statusColor: "oklch(50% 0.11 150)",
+        tags: [["Mock","violet"],["CSAT","neutral"]],
+        blurb: "Baseline attempt — both papers, timed. Score becomes the reference point every later mock is measured against." },
+      { id: "n4", week: 20, x: 800,  y: 420, kind: "check", track: "both",    short: "GS2 syllabus 100%",
+        title: "GS2 syllabus — first pass complete", window: "Wk 15 – 20", status: "In progress", statusColor: "oklch(55% 0.13 55)",
+        tags: [["GS2","teal"],["Checkpoint","neutral"]],
+        blurb: "Polity, governance and IR topics. Running slightly behind Build-phase pace — flagged on this week's plan." },
+      { id: "n5", week: 26, x: 1016, y: 340, kind: "mock",  track: "prelims", short: "Prelims mock #5",
+        title: "Prelims mock #5 — exam conditions", window: "Wk 26", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["Mock","violet"],["Prelims","rose"]],
+        blurb: "Final rehearsal before the real exam: full paper, sectional timing, negative marking applied strictly." },
+      { id: "n6", week: 27, x: 1052, y: 400, kind: "flag",  track: "prelims", short: "PRELIMS",
+        title: "Prelims exam day", window: "Wk 27", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["Exam day","rose"]],
+        blurb: "GS Paper I and CSAT. Everything before this node has been in service of this one day." },
+      { id: "n7", week: 31, x: 1196, y: 460, kind: "check", track: "mains",   short: "Answer writing sprint",
+        title: "Mains answer-writing sprint begins", window: "Wk 28 – 31", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["GS1–GS4","neutral"],["Writing","neutral"]],
+        blurb: "Daily timed answers against real PYQs, evaluated against the mastery rubric while the result is awaited." },
+      { id: "n8", week: 33, x: 1268, y: 360, kind: "check", track: "mains",   short: "Essay themes practice",
+        title: "Essay theme practice block", window: "Wk 32 – 33", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["Essay","gold"],["15 themes","neutral"]],
+        blurb: "One essay drafted per theme across the taxonomy, using the idea canvas and spine builder to structure each." },
+      { id: "n9", week: 36, x: 1376, y: 440, kind: "mock",  track: "mains",   short: "Full Mains mock",
+        title: "Full-length Mains mock (all 9 papers)", window: "Wk 36", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["Mock","violet"],["Mains","neutral"]],
+        blurb: "Complete papers across nine days, real time pressure, evaluated the same week to leave revision runway." },
+      { id: "n10", week: 39, x: 1484, y: 400, kind: "flag", track: "mains",   short: "MAINS",
+        title: "Mains exam", window: "Wk 39", status: "Upcoming", statusColor: "oklch(50% 0.02 60)",
+        tags: [["Exam day","rose"]],
+        blurb: "Nine papers over five days: Essay, GS I–IV, two qualifying languages, two optionals." },
+    ];
+  }
+
+  _tagStyle(hue) {
+    const map = {
+      gold:    { bg: "oklch(90% 0.06 70 / 0.55)",  fg: "oklch(38% 0.08 70)" },
+      teal:    { bg: "oklch(88% 0.05 200 / 0.55)", fg: "oklch(35% 0.07 200)" },
+      violet:  { bg: "oklch(88% 0.06 300 / 0.55)", fg: "oklch(38% 0.08 300)" },
+      rose:    { bg: "oklch(89% 0.06 15 / 0.55)",  fg: "oklch(40% 0.09 15)" },
+      neutral: { bg: "oklch(90% 0.01 70)",         fg: "oklch(38% 0.02 60)" },
+    };
+    const c = map[hue] || map.neutral;
+    return `background:${c.bg}; color:${c.fg};`;
+  }
+
+  _dotColor(kind) {
+    if (kind === "flag") return "oklch(50% 0.16 25)";
+    if (kind === "mock") return "oklch(58% 0.13 300)";
+    return "oklch(58% 0.10 200)";
+  }
+
+  renderVals() {
+    const track = this.state.track;
+    const selectedId = this.state.selectedId;
+    const all = this._nodeData();
+
+    const tracks = [
+      { key: "all", label: "Full journey" },
+      { key: "prelims", label: "Prelims track" },
+      { key: "mains", label: "Mains track" },
+    ].map((t) => ({
+      label: t.label,
+      pick: () => this.setState({ track: t.key }),
+      btnStyle: `padding: 7px 14px; border-radius: 8px; border: none; font-size: 12.5px; font-weight: 600; ` +
+        (t.key === track
+          ? `background: oklch(30% 0.02 60); color: oklch(97% 0.01 85);`
+          : `background: transparent; color: oklch(42% 0.02 60);`),
+    }));
+
+    const bandDefs = [
+      { name: "Foundation",         left: 40,   width: 328,  bg: "oklch(86% 0.05 70 / 0.5)",  track: "both" },
+      { name: "Build",              left: 368,  width: 432,  bg: "oklch(84% 0.045 200 / 0.5)", track: "both" },
+      { name: "Prelims intensive",  left: 800,  width: 252,  bg: "oklch(85% 0.06 15 / 0.5)",  track: "prelims" },
+      { name: "Mains consolidation",left: 1052, width: 432,  bg: "oklch(85% 0.05 300 / 0.5)", track: "mains" },
+      { name: "Interview prep",     left: 1484, width: 128,  bg: "oklch(88% 0.008 70)",       track: "mains" },
+    ];
+    const bands = bandDefs.map((b) => {
+      const dim = track !== "all" && b.track !== "both" && b.track !== track;
+      return {
+        ...b,
+        opacity: dim ? 0.35 : 1,
+        labelOpacity: dim ? 0.4 : 0.85,
+        labelColor: "oklch(30% 0.02 60)",
+      };
+    });
+
+    const nodes = all.map((n) => {
+      const dim = track !== "all" && n.track !== "both" && n.track !== track;
+      const isSel = selectedId === n.id;
+      const size = n.kind === "flag" ? 30 : 24;
+      return {
+        x: n.x, y: n.y,
+        z: isSel ? 10 : 2,
+        opacity: dim ? 0.3 : 1,
+        isFlag: n.kind === "flag",
+        isMock: n.kind === "mock",
+        isCheck: n.kind === "check",
+        shortLabel: n.short,
+        pick: () => this.setState({ selectedId: n.id }),
+        dotStyle: `width:${size}px; height:${size}px; border-radius:${n.kind === "flag" ? "8px" : "50%"}; ` +
+          `background:${this._dotColor(n.kind)}; display:flex; align-items:center; justify-content:center; ` +
+          `border:${isSel ? "3px" : "2px"} solid oklch(97.2% 0.008 85); ` +
+          `box-shadow:${isSel ? `0 0 0 3px oklch(30% 0.02 60 / 0.4)` : "0 1px 3px oklch(30% 0.02 60 / 0.25)"}; margin: 0 auto;`,
+        labelStyle: `margin-top: 6px; font-size: 10.5px; font-weight: 600; text-align: center; white-space: nowrap; ` +
+          `color: oklch(34% 0.02 60); background: oklch(97.2% 0.008 85 / 0.9); padding: 1px 6px; border-radius: 5px;`,
+      };
+    });
+
+    const activeNode = selectedId ? all.find((n) => n.id === selectedId) : null;
+    const detail = activeNode
+      ? {
+          kicker: activeNode.kind === "flag" ? "Exam day" : activeNode.kind === "mock" ? "Practice milestone" : "Syllabus checkpoint",
+          title: activeNode.title,
+          window: activeNode.window,
+          status: activeNode.status,
+          statusColor: activeNode.statusColor,
+          blurb: activeNode.blurb,
+          tags: activeNode.tags.map(([label, hue]) => ({ label, style: this._tagStyle(hue) })),
+        }
+      : {
+          kicker: "Where you are",
+          title: "Week 10 — Build phase",
+          window: "Wk 9 – 20",
+          status: "In progress",
+          statusColor: "oklch(55% 0.13 55)",
+          blurb: "GS2 syllabus first pass is under way. Click any node on the path for its focus, window and status — or switch tracks above to see prelims-only or mains-only milestones.",
+          tags: [["GS2", "teal"], ["Current", "neutral"]].map(([label, hue]) => ({ label, style: this._tagStyle(hue) })),
+        };
+
+    return {
+      tracks,
+      bands,
+      nodes,
+      today: { x: 440, y: 360 },
+      pathD: "M116,400 C220,400 260,320 368,320 C460,320 480,460 584,460 C660,460 660,340 728,340 C780,340 760,420 800,420 C900,420 930,340 1016,340 C1040,340 1040,400 1052,400 C1120,400 1140,460 1196,460 C1240,460 1250,360 1268,360 C1320,360 1340,440 1376,440 C1420,440 1450,400 1484,400",
+      detail,
+    };
+  }
+}
+</script>
+</body>
+</html>

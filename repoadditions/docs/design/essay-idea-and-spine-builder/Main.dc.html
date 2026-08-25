@@ -1,0 +1,339 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      background: oklch(95.5% 0.014 85);
+      color: oklch(24% 0.015 60);
+    }
+    a { color: oklch(52% 0.13 75); text-decoration: none; }
+    a:hover { color: oklch(45% 0.13 75); }
+    .serif { font-family: 'Spectral', Georgia, serif; }
+    .card { cursor: grab; }
+    .card:active { cursor: grabbing; }
+    .chev { cursor: pointer; }
+    .chev:hover { opacity: 0.6; }
+  </style>
+</helmet>
+
+<div style="position:relative; width:1440px; height:900px; overflow:hidden; background:oklch(95.5% 0.014 85); display:flex;">
+
+  <!-- LEFT: spine -->
+  <div style="flex:0 0 900px; height:900px; overflow-y:auto; padding:28px 36px 40px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:12px; letter-spacing:0.03em; color:oklch(50% 0.01 85);">
+      <span>Essay Brainstorm</span>
+      <span style="opacity:0.5;">/</span>
+      <span style="padding:2px 8px; border-radius:5px; background:oklch(88% 0.05 75 / 0.5); color:oklch(42% 0.10 75); font-weight:600; letter-spacing:0.04em;">ECO</span>
+    </div>
+    <div class="serif" style="font-size:24px; font-weight:500; margin-top:8px; color:oklch(20% 0.015 60); max-width:760px; line-height:1.25;">
+      &ldquo;Cash Transfer of Subsidy is Better Than Product Subsidy&rdquo;
+    </div>
+    <div style="font-size:12.5px; margin-top:6px; margin-bottom:18px; color:oklch(48% 0.01 85);">Drag a card from the bank onto the spine, in the order the essay should read.</div>
+
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:26px;">
+      <div style="font-size:12.5px; color:oklch(38% 0.02 60); white-space:nowrap;">Planned length: <b>{{plannedWords}}</b> words <span style="color:oklch(55% 0.01 85);">&middot; target 1000&ndash;1200</span></div>
+      <div style="flex:1; height:6px; border-radius:4px; background:oklch(88% 0.015 85); overflow:hidden;">
+        <div style="{{progressStyle}}"></div>
+      </div>
+    </div>
+
+    <!-- spine line -->
+    <div style="position:relative; padding-left:26px;">
+      <div style="position:absolute; left:5px; top:8px; bottom:8px; width:2px; background:oklch(84% 0.015 85);"></div>
+
+      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:oklch(52% 0.10 75); font-weight:700; margin-bottom:10px; position:relative;">
+        <div style="position:absolute; left:-26px; top:2px; width:10px; height:10px; border-radius:50%; background:oklch(58% 0.14 75);"></div>
+        Introduction
+      </div>
+
+      <div onDragOver="{{allowDrop}}" onDrop="{{dropHook}}" style="{{hookSlot.style}}">
+        <sc-if value="{{hookSlot.filled}}" hint-placeholder-val="{{true}}">
+          <div draggable="true" onDragStart="{{hookSlot.drag}}" class="card" style="{{cardInner}}">
+            <div onClick="{{hookSlot.remove}}" style="position:absolute; top:8px; right:9px; font-size:13px; color:oklch(60% 0.01 85); cursor:pointer;">&times;</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:oklch(52% 0.10 75);">Hook</div>
+              <div style="font-size:10.5px; color:oklch(58% 0.01 85);">~50 words</div>
+            </div>
+            <div style="font-size:13px; line-height:1.45; color:oklch(28% 0.015 60);">{{hookSlot.text}}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{hookSlot.empty}}" hint-placeholder-val="{{false}}">
+          <div style="font-size:12px; color:oklch(58% 0.01 85);">Drop a <b>hook</b> card here to open the essay <span style="opacity:0.7;">(~50 words)</span></div>
+        </sc-if>
+      </div>
+
+      <div onDragOver="{{allowDrop}}" onDrop="{{dropThesis}}" style="{{thesisSlot.style}}">
+        <sc-if value="{{thesisSlot.filled}}" hint-placeholder-val="{{true}}">
+          <div draggable="true" onDragStart="{{thesisSlot.drag}}" class="card" style="{{cardInner}}">
+            <div onClick="{{thesisSlot.remove}}" style="position:absolute; top:8px; right:9px; font-size:13px; color:oklch(60% 0.01 85); cursor:pointer;">&times;</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:oklch(52% 0.10 75);">Thesis</div>
+              <div style="font-size:10.5px; color:oklch(58% 0.01 85);">~50 words</div>
+            </div>
+            <div style="font-size:13px; line-height:1.45; color:oklch(28% 0.015 60);">{{thesisSlot.text}}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{thesisSlot.empty}}" hint-placeholder-val="{{false}}">
+          <div style="font-size:12px; color:oklch(58% 0.01 85);">Drop your <b>thesis</b> card here — the claim the body will argue <span style="opacity:0.7;">(~50 words)</span></div>
+        </sc-if>
+      </div>
+
+      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:oklch(40% 0.07 235); font-weight:700; margin:22px 0 10px; position:relative;">
+        <div style="position:absolute; left:-26px; top:2px; width:10px; height:10px; border-radius:50%; background:oklch(40% 0.07 235);"></div>
+        Body &middot; {{bodyFilledCount}} paragraph{{bodyPluralS}}
+      </div>
+
+      <sc-for list="{{bodySlots}}" as="slot" hint-placeholder-count="3">
+        <div onDragOver="{{allowDrop}}" onDrop="{{slot.drop}}" style="{{slot.style}}">
+          <div style="position:absolute; left:-26px; top:14px; width:18px; height:18px; border-radius:50%; background:oklch(90% 0.02 85); color:oklch(45% 0.01 85); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{slot.num}}</div>
+
+          <sc-if value="{{slot.filled}}" hint-placeholder-val="{{true}}">
+            <div draggable="true" onDragStart="{{slot.drag}}" class="card" style="{{cardInner}}">
+              <div style="position:absolute; top:6px; right:6px; display:flex; gap:2px; align-items:center;">
+                <div class="chev" onClick="{{slot.moveUp}}" style="font-size:11px; color:oklch(55% 0.01 85); padding:2px 4px;">&uarr;</div>
+                <div class="chev" onClick="{{slot.moveDown}}" style="font-size:11px; color:oklch(55% 0.01 85); padding:2px 4px;">&darr;</div>
+                <div onClick="{{slot.remove}}" style="font-size:13px; color:oklch(60% 0.01 85); cursor:pointer; padding:0 2px;">&times;</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <div style="font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:oklch(40% 0.07 235);">{{slot.typeLabel}}</div>
+                <div style="font-size:10.5px; color:oklch(58% 0.01 85);">~175 words</div>
+              </div>
+              <div style="font-size:13px; line-height:1.45; padding-right:56px; color:oklch(28% 0.015 60);">{{slot.text}}</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{slot.empty}}" hint-placeholder-val="{{false}}">
+            <div style="font-size:12px; color:oklch(58% 0.01 85);">Drop an argument, example, quote or counter here <span style="opacity:0.7;">(~175 words)</span></div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div onClick="{{addParagraph}}" style="margin:6px 0 24px; font-size:12.5px; color:oklch(45% 0.09 75); cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+        <span style="font-size:15px;">+</span> Add a paragraph
+      </div>
+
+      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:oklch(38% 0.02 60); font-weight:700; margin-bottom:10px; position:relative;">
+        <div style="position:absolute; left:-26px; top:2px; width:10px; height:10px; border-radius:50%; background:oklch(38% 0.02 60);"></div>
+        Conclusion
+      </div>
+
+      <div onDragOver="{{allowDrop}}" onDrop="{{dropConclusion}}" style="{{conclusionSlot.style}}">
+        <sc-if value="{{conclusionSlot.filled}}" hint-placeholder-val="{{false}}">
+          <div draggable="true" onDragStart="{{conclusionSlot.drag}}" class="card" style="{{cardInner}}">
+            <div onClick="{{conclusionSlot.remove}}" style="position:absolute; top:8px; right:9px; font-size:13px; color:oklch(60% 0.01 85); cursor:pointer;">&times;</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:oklch(38% 0.02 60);">Closing thought</div>
+              <div style="font-size:10.5px; color:oklch(58% 0.01 85);">~100 words</div>
+            </div>
+            <div style="font-size:13px; line-height:1.45; color:oklch(28% 0.015 60);">{{conclusionSlot.text}}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{conclusionSlot.empty}}" hint-placeholder-val="{{true}}">
+          <div style="font-size:12px; color:oklch(58% 0.01 85);">Drop a <b>closing thought</b> to land the essay <span style="opacity:0.7;">(~100 words)</span></div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: bank, grouped by role -->
+  <div onDragOver="{{allowDrop}}" onDrop="{{dropBank}}" style="flex:1; height:900px; overflow-y:auto; background:oklch(93% 0.012 85); border-left:1px solid oklch(86% 0.015 85); padding:28px 24px 40px;">
+    <div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:oklch(50% 0.01 85); margin-bottom:16px;">Card bank</div>
+
+    <sc-for list="{{bankGroups}}" as="grp" hint-placeholder-count="4">
+      <sc-if value="{{grp.hasCards}}" hint-placeholder-val="{{true}}">
+        <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:{{grp.tint}}; margin:16px 0 8px;">{{grp.label}}</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:6px;">
+          <sc-for list="{{grp.cards}}" as="c" hint-placeholder-count="2">
+            <div draggable="true" onDragStart="{{c.drag}}" class="card" style="background:oklch(98% 0.008 85); border:1px solid oklch(84% 0.02 85); border-radius:10px; padding:11px 13px; box-shadow:0 1px 2px oklch(30% 0.02 60 / 0.05);">
+              <div style="font-size:12.5px; line-height:1.42; color:oklch(30% 0.015 60);">{{c.text}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+const GROUPS = [
+  { key: 'hook', label: 'Hooks', tint: 'oklch(48% 0.12 75)' },
+  { key: 'thesis', label: 'Theses', tint: 'oklch(48% 0.12 75)' },
+  { key: 'body', label: 'Arguments, examples & quotes', tint: 'oklch(40% 0.07 235)' },
+  { key: 'closing_thought', label: 'Closing thoughts', tint: 'oklch(35% 0.02 60)' },
+];
+
+const TYPE_LABEL = {
+  example: 'Example', quote: 'Quote', counter_narrative: 'Counter', argument: 'Argument',
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      draggedId: null,
+      hook: 'h1',
+      thesis: 't1',
+      body: ['e1', 'e4', null],
+      conclusion: null,
+      bank: ['e3', 'e5', 'e6', 'e7', 'c1'],
+    };
+  }
+
+  _cardData() {
+    return {
+      h1: { role: 'hook', text: 'Rising fuel queues and ration-shop leakages have made subsidy reform a kitchen-table issue, not just a budget line.' },
+      t1: { role: 'thesis', text: 'This essay argues cash transfers outperform product subsidies on efficiency — but only where financial access is assured.' },
+      e1: { role: 'body', type: 'example', text: 'DBT cuts out middlemen — less leakage than PDS-style subsidies' },
+      e3: { role: 'body', type: 'quote', text: 'Economic Survey: DBT reduced diversion in the PAHAL LPG subsidy' },
+      e4: { role: 'body', type: 'counter_narrative', text: 'Counter: PAHAL also showed targeting gaps for poorer households' },
+      e5: { role: 'body', type: 'example', text: 'A fixed cash transfer loses real value as prices rise' },
+      e6: { role: 'body', type: 'example', text: 'Product subsidy guarantees nutritional intake — cash does not' },
+      e7: { role: 'body', type: 'quote', text: 'Many rural bank accounts remain dormant — financial exclusion persists' },
+      c1: { role: 'closing_thought', text: "The verdict isn't cash vs. product — it's cash transfers plus last-mile banking infrastructure." },
+    };
+  }
+
+  // remove id from every possible location, return the plain (non-frozen) state slices
+  _extract(s, id) {
+    let hook = s.hook, thesis = s.thesis, conclusion = s.conclusion;
+    let body = s.body.slice();
+    let bank = s.bank.filter(x => x !== id);
+    if (hook === id) hook = null;
+    if (thesis === id) thesis = null;
+    if (conclusion === id) conclusion = null;
+    body = body.map(x => (x === id ? null : x));
+    return { hook, thesis, conclusion, body, bank };
+  }
+
+  _place(target, slotIndex) {
+    const id = this.state.draggedId;
+    if (!id) return;
+    const data = this._cardData()[id];
+    if (!data) return;
+
+    // guardrail: only the matching role may occupy hook/thesis/conclusion; body accepts anything but hook/thesis/closing
+    if (target === 'hook' && data.role !== 'hook') return;
+    if (target === 'thesis' && data.role !== 'thesis') return;
+    if (target === 'conclusion' && data.role !== 'closing_thought') return;
+    if (target === 'body' && (data.role === 'hook' || data.role === 'thesis' || data.role === 'closing_thought')) return;
+
+    this.setState(s => {
+      const next = this._extract(s, id);
+      if (target === 'hook') { if (next.hook) next.bank.push(next.hook); next.hook = id; }
+      else if (target === 'thesis') { if (next.thesis) next.bank.push(next.thesis); next.thesis = id; }
+      else if (target === 'conclusion') { if (next.conclusion) next.bank.push(next.conclusion); next.conclusion = id; }
+      else if (target === 'body') {
+        const displaced = next.body[slotIndex];
+        if (displaced) next.bank.push(displaced);
+        next.body[slotIndex] = id;
+      } else if (target === 'bank') {
+        next.bank.push(id);
+      }
+      next.draggedId = null;
+      return next;
+    });
+  }
+
+  _moveBody(i, dir) {
+    this.setState(s => {
+      const body = s.body.slice();
+      const j = i + dir;
+      if (j < 0 || j >= body.length) return {};
+      [body[i], body[j]] = [body[j], body[i]];
+      return { body };
+    });
+  }
+
+  _addParagraph() {
+    this.setState(s => ({ body: [...s.body, null] }));
+  }
+
+  _removeFrom(loc, idx) {
+    this.setState(s => {
+      if (loc === 'hook') return { hook: null, bank: [...s.bank, s.hook].filter(Boolean) };
+      if (loc === 'thesis') return { thesis: null, bank: [...s.bank, s.thesis].filter(Boolean) };
+      if (loc === 'conclusion') return { conclusion: null, bank: [...s.bank, s.conclusion].filter(Boolean) };
+      if (loc === 'body') {
+        const body = s.body.slice();
+        const id = body[idx];
+        body[idx] = null;
+        return { body, bank: id ? [...s.bank, id] : s.bank };
+      }
+      return {};
+    });
+  }
+
+  renderVals() {
+    const data = this._cardData();
+    const s = this.state;
+    const drag = (id) => () => this.setState({ draggedId: id });
+    const emptyStyle = `position:relative; margin-bottom:10px; border-radius:12px; border:1.5px dashed oklch(78% 0.02 85); background:oklch(92% 0.02 85 / 0.5); padding:16px;`;
+    const filledStyle = `position:relative; margin-bottom:10px;`;
+
+    const hookSlot = s.hook
+      ? { filled: true, empty: false, text: data[s.hook].text, drag: drag(s.hook), remove: () => this._removeFrom('hook'), style: filledStyle }
+      : { filled: false, empty: true, text: '', drag: () => {}, remove: () => {}, style: emptyStyle };
+
+    const thesisSlot = s.thesis
+      ? { filled: true, empty: false, text: data[s.thesis].text, drag: drag(s.thesis), remove: () => this._removeFrom('thesis'), style: filledStyle }
+      : { filled: false, empty: true, text: '', drag: () => {}, remove: () => {}, style: emptyStyle };
+
+    const conclusionSlot = s.conclusion
+      ? { filled: true, empty: false, text: data[s.conclusion].text, drag: drag(s.conclusion), remove: () => this._removeFrom('conclusion'), style: filledStyle }
+      : { filled: false, empty: true, text: '', drag: () => {}, remove: () => {}, style: emptyStyle };
+
+    const bodySlots = s.body.map((id, i) => {
+      const base = { num: i + 1, drop: (e) => { e.preventDefault(); this._place('body', i); } };
+      if (id) {
+        return {
+          ...base, filled: true, empty: false, text: data[id].text, typeLabel: TYPE_LABEL[data[id].type] || 'Argument',
+          drag: drag(id), remove: () => this._removeFrom('body', i),
+          moveUp: () => this._moveBody(i, -1), moveDown: () => this._moveBody(i, 1),
+          style: `${filledStyle} padding-left:2px;`,
+        };
+      }
+      return { ...base, filled: false, empty: true, text: '', typeLabel: '', drag: () => {}, remove: () => {}, moveUp: () => {}, moveDown: () => {}, style: emptyStyle };
+    });
+
+    const bankGroups = GROUPS.map(g => {
+      const cards = s.bank.filter(id => {
+        const d = data[id];
+        return g.key === 'body' ? d.role === 'body' : d.role === g.key;
+      }).map(id => ({ text: data[id].text, drag: drag(id) }));
+      return { label: g.label, tint: g.tint, cards, hasCards: cards.length > 0 };
+    });
+
+    const bodyFilledCount = s.body.filter(Boolean).length;
+    const plannedWords = (s.hook ? 50 : 0) + (s.thesis ? 50 : 0) + bodyFilledCount * 175 + (s.conclusion ? 100 : 0);
+    const progressPct = Math.max(2, Math.min(100, Math.round((plannedWords / 1200) * 100)));
+    const progressColor = plannedWords >= 1000 && plannedWords <= 1200 ? 'oklch(58% 0.14 75)' : 'oklch(70% 0.02 85)';
+
+    return {
+      hookSlot, thesisSlot, conclusionSlot, bodySlots, bankGroups,
+      plannedWords,
+      progressStyle: `height:100%; width:${progressPct}%; background:${progressColor}; transition:width 220ms ease;`,
+      bodyFilledCount, bodyPluralS: bodyFilledCount === 1 ? '' : 's',
+      cardInner: `background:oklch(98% 0.008 85); border:1px solid oklch(82% 0.02 85); border-radius:10px; padding:12px 14px; box-shadow:0 1px 2px oklch(30% 0.02 60 / 0.06);`,
+      allowDrop: (e) => e.preventDefault(),
+      dropHook: (e) => { e.preventDefault(); this._place('hook'); },
+      dropThesis: (e) => { e.preventDefault(); this._place('thesis'); },
+      dropConclusion: (e) => { e.preventDefault(); this._place('conclusion'); },
+      dropBank: (e) => { e.preventDefault(); this._place('bank'); },
+      addParagraph: () => this._addParagraph(),
+    };
+  }
+}
+</script>
+</body>
+</html>

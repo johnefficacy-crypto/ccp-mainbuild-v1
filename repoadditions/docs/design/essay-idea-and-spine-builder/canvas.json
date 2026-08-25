@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "IdeaCanvas.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "is_interactive": true },
+    { "file": "Main.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "is_interactive": true }
+  ],
+  "annotations": [
+    { "id": "note-idea", "x": 0, "y": -70, "w": 420, "text": "1. Idea Canvas — mind-map the theme, pull in helpers" },
+    { "id": "note-spine", "x": 1560, "y": -70, "w": 420, "text": "2. Spine — sequence into intro / body / conclusion" }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      background: oklch(95.5% 0.014 85);
+      color: oklch(24% 0.015 60);
+    }
+    a { color: oklch(52% 0.13 75); text-decoration: none; }
+    a:hover { color: oklch(45% 0.13 75); }
+    .serif { font-family: 'Spectral', Georgia, serif; }
+    .sticky { cursor: grab; user-select: none; }
+    .sticky:active { cursor: grabbing; }
+    .addbtn { cursor: pointer; }
+    .addbtn:hover { opacity: 0.7; }
+    .helper-add { cursor: pointer; }
+    .helper-add:hover { background: oklch(88% 0.03 75 / 0.6) !important; }
+  </style>
+</helmet>
+
+<div style="position:relative; width:1440px; height:900px; overflow:hidden; background:oklch(95.5% 0.014 85); display:flex;">
+
+  <!-- LEFT: freeform canvas -->
+  <div
+    onMouseMove="{{canvasMove}}"
+    onMouseUp="{{canvasUp}}"
+    onMouseLeave="{{canvasUp}}"
+    style="position:relative; flex:0 0 1040px; height:900px; background-image:radial-gradient(oklch(85% 0.015 85) 1px, transparent 1px); background-size:22px 22px; overflow:hidden;">
+
+    <div style="position:absolute; top:24px; left:32px; right:32px;">
+      <div style="display:flex; align-items:center; gap:8px; font-size:12px; letter-spacing:0.03em; color:oklch(50% 0.01 85);">
+        <span>Essay Brainstorm</span>
+        <span style="opacity:0.5;">/</span>
+        <span style="padding:2px 8px; border-radius:5px; background:oklch(88% 0.05 75 / 0.5); color:oklch(42% 0.10 75); font-weight:600; letter-spacing:0.04em;">ECO</span>
+      </div>
+      <div class="serif" style="font-size:19px; font-weight:500; margin-top:6px; color:oklch(20% 0.015 60);">Idea Canvas</div>
+      <div style="font-size:12px; color:oklch(48% 0.01 85);">Drag stickies anywhere. &ldquo;+&rdquo; on a branch adds a blank one nearby.</div>
+    </div>
+
+    <!-- spoke lines (fixed) -->
+    <div style="position:absolute; left:530px; top:255px; width:2px; height:170px; background:oklch(82% 0.015 85);"></div>
+    <div style="position:absolute; left:530px; top:470px; width:260px; height:2px; background:oklch(82% 0.015 85); transform:rotate(-28deg); transform-origin:0 50%;"></div>
+    <div style="position:absolute; left:530px; top:470px; width:260px; height:2px; background:oklch(82% 0.015 85); transform:rotate(28deg); transform-origin:0 50%;"></div>
+    <div style="position:absolute; left:530px; top:530px; width:2px; height:170px; background:oklch(82% 0.015 85);"></div>
+    <div style="position:absolute; left:530px; top:470px; width:260px; height:2px; background:oklch(82% 0.015 85); transform:rotate(208deg); transform-origin:0 50%;"></div>
+    <div style="position:absolute; left:530px; top:470px; width:260px; height:2px; background:oklch(82% 0.015 85); transform:rotate(152deg); transform-origin:0 50%;"></div>
+
+    <!-- hub -->
+    <div class="serif" style="position:absolute; left:390px; top:415px; width:280px; padding:18px 20px; background:oklch(98% 0.008 85); border:1.5px solid oklch(58% 0.14 75); border-radius:16px; box-shadow:0 6px 20px oklch(30% 0.02 60 / 0.12); font-size:14.5px; line-height:1.4; text-align:center; color:oklch(24% 0.015 60);">
+      &ldquo;Cash Transfer of Subsidy is Better Than Product Subsidy&rdquo;
+    </div>
+
+    <!-- branch nodes -->
+    <div style="position:absolute; left:440px; top:170px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(50% 0.13 75); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Economic Efficiency</div>
+      <div class="addbtn" onClick="{{addEcon}}" style="font-size:11px; color:oklch(50% 0.13 75); margin-top:4px;">+ add idea</div>
+    </div>
+    <div style="position:absolute; left:770px; top:250px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(48% 0.10 200); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Global &amp; Comparative</div>
+      <div class="addbtn" onClick="{{addGlobal}}" style="font-size:11px; color:oklch(48% 0.10 200); margin-top:4px;">+ add idea</div>
+    </div>
+    <div style="position:absolute; left:770px; top:590px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(48% 0.10 300); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Governance &amp; Implementation</div>
+      <div class="addbtn" onClick="{{addGov}}" style="font-size:11px; color:oklch(48% 0.10 300); margin-top:4px;">+ add idea</div>
+    </div>
+    <div style="position:absolute; left:440px; top:700px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(48% 0.10 20); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Personal &amp; On-ground</div>
+      <div class="addbtn" onClick="{{addPersonal}}" style="font-size:11px; color:oklch(48% 0.10 20); margin-top:4px;">+ add idea</div>
+    </div>
+    <div style="position:absolute; left:110px; top:590px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(45% 0.09 150); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Social Equity &amp; Access</div>
+      <div class="addbtn" onClick="{{addEquity}}" style="font-size:11px; color:oklch(45% 0.09 150); margin-top:4px;">+ add idea</div>
+    </div>
+    <div style="position:absolute; left:110px; top:250px; width:180px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:oklch(42% 0.04 250); background:oklch(96% 0.01 85); display:inline-block; padding:4px 10px; border-radius:20px; border:1px solid oklch(85% 0.02 85);">Historical Precedent</div>
+      <div class="addbtn" onClick="{{addHistorical}}" style="font-size:11px; color:oklch(42% 0.04 250); margin-top:4px;">+ add idea</div>
+    </div>
+
+    <!-- stickies -->
+    <sc-for list="{{stickies}}" as="s" hint-placeholder-count="12">
+      <div onMouseDown="{{s.down}}" class="sticky" style="{{s.style}}">{{s.text}}</div>
+    </sc-for>
+  </div>
+
+  <!-- RIGHT: helpers -->
+  <div style="flex:1; height:900px; overflow-y:auto; background:oklch(93% 0.012 85); border-left:1px solid oklch(86% 0.015 85); padding:26px 22px 40px;">
+    <div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:oklch(50% 0.01 85); margin-bottom:4px;">Helpers</div>
+    <div style="font-size:11.5px; color:oklch(52% 0.01 85); margin-bottom:18px;">Click + to drop one onto the canvas</div>
+
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:oklch(45% 0.09 75); margin-bottom:8px;">Vocabulary</div>
+    <sc-for list="{{vocab}}" as="v" hint-placeholder-count="6">
+      <div class="helper-add" onClick="{{v.add}}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:4px;">
+        <div style="font-size:12.5px; line-height:1.4;"><b>{{v.term}}</b> <span style="color:oklch(50% 0.01 85);">&mdash; {{v.def}}</span></div>
+        <div style="font-size:14px; color:oklch(55% 0.01 85); flex:0 0 auto;">+</div>
+      </div>
+    </sc-for>
+
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:oklch(45% 0.09 75); margin:16px 0 8px;">Quotes</div>
+    <sc-for list="{{quotes}}" as="q" hint-placeholder-count="3">
+      <div class="helper-add" onClick="{{q.add}}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:4px;">
+        <div style="font-size:12.5px; line-height:1.42; font-style:italic;">&ldquo;{{q.text}}&rdquo; <span style="font-style:normal; color:oklch(50% 0.01 85);">&mdash; {{q.author}}</span></div>
+        <div style="font-size:14px; color:oklch(55% 0.01 85); flex:0 0 auto;">+</div>
+      </div>
+    </sc-for>
+
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:oklch(45% 0.09 75); margin:16px 0 8px;">Books &amp; authors</div>
+    <sc-for list="{{books}}" as="b" hint-placeholder-count="4">
+      <div class="helper-add" onClick="{{b.add}}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:4px;">
+        <div style="font-size:12.5px; line-height:1.4;"><i>{{b.title}}</i> <span style="color:oklch(50% 0.01 85);">&mdash; {{b.author}}</span></div>
+        <div style="font-size:14px; color:oklch(55% 0.01 85); flex:0 0 auto;">+</div>
+      </div>
+    </sc-for>
+
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:oklch(45% 0.09 75); margin:16px 0 8px;">Examples</div>
+    <sc-for list="{{examples}}" as="ex" hint-placeholder-count="4">
+      <div class="helper-add" onClick="{{ex.add}}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:4px;">
+        <div style="font-size:12.5px; line-height:1.4;">{{ex.text}}</div>
+        <div style="font-size:14px; color:oklch(55% 0.01 85); flex:0 0 auto;">+</div>
+      </div>
+    </sc-for>
+
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.03em; color:oklch(45% 0.09 75); margin:16px 0 8px;">Stats to verify</div>
+    <sc-for list="{{stats}}" as="st" hint-placeholder-count="3">
+      <div class="helper-add" onClick="{{st.add}}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:4px; background:oklch(90% 0.03 75 / 0.35);">
+        <div style="font-size:12.5px; line-height:1.4; color:oklch(38% 0.02 60);">{{st.text}}</div>
+        <div style="font-size:14px; color:oklch(55% 0.01 85); flex:0 0 auto;">+</div>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+const VOCAB = [
+  { term: 'Leakage', def: 'loss of subsidy value to intermediaries or corruption' },
+  { term: 'Targeting error', def: 'inclusion/exclusion mismatches in welfare delivery' },
+  { term: 'Moral hazard', def: 'incentive distortion created by guaranteed support' },
+  { term: 'Fungibility', def: 'money is interchangeable — hard to trace its final use' },
+  { term: 'Paternalism', def: 'the state deciding what is good for citizens vs. letting them choose' },
+  { term: 'Last-mile delivery', def: 'the final, hardest step of reaching the actual beneficiary' },
+];
+const QUOTES = [
+  { text: 'Poverty is the worst form of violence.', author: 'Mahatma Gandhi' },
+  { text: 'Development is the process of expanding the real freedoms that people enjoy.', author: 'Amartya Sen' },
+  { text: 'Political democracy cannot last unless there lies at the base of it social democracy.', author: 'B. R. Ambedkar' },
+];
+const BOOKS = [
+  { title: 'Development as Freedom', author: 'Amartya Sen' },
+  { title: 'An Uncertain Glory: India and Its Contradictions', author: 'Jean Drèze & Amartya Sen' },
+  { title: "India's Long Road: The Search for Prosperity", author: 'Vijay Joshi' },
+  { title: 'Poor Economics', author: 'Abhijit Banerjee & Esther Duflo' },
+];
+const EXAMPLES = [
+  { text: "PAHAL (DBTL) — India's LPG subsidy direct-transfer scheme, launched 2013" },
+  { text: 'PM-KISAN — direct income support paid to farmers' },
+  { text: 'Bolsa Família (Brazil) — internationally cited conditional cash transfer program' },
+  { text: 'MGNREGA — wage-employment scheme often compared against DBT reform' },
+];
+const STATS = [
+  { text: '[VERIFY] Latest leakage-reduction figure — Economic Survey, most recent edition' },
+  { text: '[VERIFY] PM-KISAN beneficiary count — current year' },
+  { text: '[VERIFY] Rural bank-account penetration rate — latest NFHS/RBI data' },
+];
+
+const BRANCH = {
+  econ: { x: 470, y: 145, tint: 'oklch(88% 0.06 75)' },
+  global: { x: 800, y: 300, tint: 'oklch(88% 0.05 200)' },
+  gov: { x: 800, y: 620, tint: 'oklch(88% 0.05 300)' },
+  personal: { x: 470, y: 735, tint: 'oklch(88% 0.05 20)' },
+  equity: { x: 140, y: 620, tint: 'oklch(88% 0.05 150)' },
+  historical: { x: 140, y: 300, tint: 'oklch(88% 0.03 250)' },
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      dragId: null, lastX: 0, lastY: 0,
+      counters: {},
+      stickies: [
+        { id: 's1', x: 470, y: 130, text: 'DBT reduces leakage vs PDS middlemen', tint: BRANCH.econ.tint },
+        { id: 's2', x: 610, y: 145, text: 'But cash loses real value to inflation over time', tint: BRANCH.econ.tint },
+        { id: 's3', x: 850, y: 250, text: "Brazil's Bolsa Família — often cited as a policy success", tint: BRANCH.global.tint },
+        { id: 's4', x: 900, y: 375, text: 'Compare with UBI pilots — Finland, MP India', tint: BRANCH.global.tint },
+        { id: 's5', x: 900, y: 555, text: 'JAM trinity built the digital rails at scale', tint: BRANCH.gov.tint },
+        { id: 's6', x: 850, y: 675, text: 'Financial exclusion still a real gap in rural areas', tint: BRANCH.gov.tint },
+        { id: 's7', x: 470, y: 800, text: 'Anecdote: ration queue vs instant bank credit — good hook material', tint: BRANCH.personal.tint },
+        { id: 's8', x: 610, y: 810, text: 'Ask: has cash transfer changed one household you know?', tint: BRANCH.personal.tint },
+        { id: 's9', x: 190, y: 675, text: 'Elderly & disabled struggle with bank-linked systems', tint: BRANCH.equity.tint },
+        { id: 's10', x: 140, y: 555, text: "Cash respects the recipient's dignity of choice", tint: BRANCH.equity.tint },
+        { id: 's11', x: 190, y: 250, text: "PAHAL LPG scheme — India's own DBT pilot since 2013", tint: BRANCH.historical.tint },
+        { id: 's12', x: 140, y: 375, text: 'Compare pre-DBT vs post-DBT PDS reform attempts', tint: BRANCH.historical.tint },
+      ],
+    };
+  }
+
+  _addAt(key) {
+    const b = BRANCH[key];
+    this.setState(s => {
+      const n = (s.counters[key] || 0) + 1;
+      const id = `new-${key}-${n}`;
+      return {
+        counters: { ...s.counters, [key]: n },
+        stickies: [...s.stickies, { id, x: b.x + n * 16, y: b.y + n * 16, text: 'New idea — drag & edit', tint: b.tint }],
+      };
+    });
+  }
+
+  _addRef(text) {
+    this.setState(s => {
+      const n = (s.counters.ref || 0) + 1;
+      const id = `ref-${n}`;
+      return {
+        counters: { ...s.counters, ref: n },
+        stickies: [...s.stickies, { id, x: 60 + (n % 6) * 18, y: 150 + (n % 6) * 18, text, tint: 'oklch(90% 0.015 85)' }],
+      };
+    });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const stickies = s.stickies.map(st => ({
+      text: st.text,
+      down: (e) => { this.setState({ dragId: st.id, lastX: e.clientX, lastY: e.clientY }); },
+      style: `position:absolute; left:${st.x}px; top:${st.y}px; width:150px; background:${st.tint}; border-radius:9px; padding:9px 11px; font-size:11.5px; line-height:1.35; color:oklch(24% 0.02 60); box-shadow:0 2px 6px oklch(30% 0.02 60 / 0.14); z-index:${s.dragId === st.id ? 5 : 2};`,
+    }));
+
+    const wrap = (list, mapFn) => list.map(mapFn);
+
+    return {
+      stickies,
+      canvasMove: (e) => {
+        if (!this.state.dragId) return;
+        const dx = e.clientX - this.state.lastX, dy = e.clientY - this.state.lastY;
+        this.setState(st => ({
+          stickies: st.stickies.map(x => x.id === st.dragId ? { ...x, x: x.x + dx, y: x.y + dy } : x),
+          lastX: e.clientX, lastY: e.clientY,
+        }));
+      },
+      canvasUp: () => this.setState({ dragId: null }),
+      addEcon: () => this._addAt('econ'),
+      addGlobal: () => this._addAt('global'),
+      addGov: () => this._addAt('gov'),
+      addPersonal: () => this._addAt('personal'),
+      addEquity: () => this._addAt('equity'),
+      addHistorical: () => this._addAt('historical'),
+      vocab: wrap(VOCAB, v => ({ term: v.term, def: v.def, add: () => this._addRef(`${v.term} — ${v.def}`) })),
+      quotes: wrap(QUOTES, q => ({ text: q.text, author: q.author, add: () => this._addRef(`"${q.text}" — ${q.author}`) })),
+      books: wrap(BOOKS, b => ({ title: b.title, author: b.author, add: () => this._addRef(`${b.title} — ${b.author}`) })),
+      examples: wrap(EXAMPLES, ex => ({ text: ex.text, add: () => this._addRef(ex.text) })),
+      stats: wrap(STATS, st => ({ text: st.text, add: () => this._addRef(st.text) })),
+    };
+  }
+}
+</script>
+</body>
+</html>
