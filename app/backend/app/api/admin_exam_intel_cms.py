@@ -3513,7 +3513,281 @@ def delete_topic_alias(
     )
     return {"ok": True, "audit_id": audit_id, "id": alias_id}
 
+# ════════════════════════════════════════════════════════════════════════
+# Essay theme taxonomy — paste into app/api/admin_exam_intel_cms.py
+#
+# Placement: drop the two field-set + CRUD blocks anywhere after the
+# `topics` block (they follow the exact same pattern as `topics` and
+# `pyq_question_topic_tags`, just re-pointed at the new tables). Drop the
+# two `_IMPORT_CONFIG` entries into the existing `_IMPORT_CONFIG` dict
+# (anywhere — order doesn't matter) so the generic `/bulk-import` endpoint
+# can ingest `essay_themes.json` (15 rows) and `essay_pyq_theme_tags.json`
+# (100 rows) directly, same as every other bulk seed used in this project.
+#
+# Requires migration 265_essay_theme_taxonomy.sql applied first.
+# ════════════════════════════════════════════════════════════════════════
 
+
+# ─── Essay themes ──────────────────────────────────────────────────────
+
+_ESSAY_THEME_FIELDS = {
+    "theme_code", "theme_name", "description", "parent_theme_id",
+    "status", "first_seen_year", "sort_order", "metadata",
+}
+_ESSAY_THEME_STATUSES = ("active", "reserved")
+
+
+@router.get("/essay-themes")
+def list_essay_themes(
+    status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    q = (
+        supabase.table("essay_themes")
+        .select(
+            "id, theme_code, theme_name, description, parent_theme_id, "
+            "status, first_seen_year, sort_order, metadata, created_at, updated_at",
+            count="exact",
+        )
+        .order("sort_order")
+    )
+    if status:
+        q = q.eq("status", status)
+    try:
+        res = q.range(offset, offset + limit - 1).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"List failed: {exc}")
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/essay-themes")
+def create_essay_theme(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _ESSAY_THEME_FIELDS, "essay_themes")
+    row = {k: v for k, v in body.payload.items() if k in _ESSAY_THEME_FIELDS}
+    if not row.get("theme_code") or not row.get("theme_name"):
+        raise HTTPException(status_code=422, detail="theme_code and theme_name are required")
+    if row.get("status") and row["status"] not in _ESSAY_THEME_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {_ESSAY_THEME_STATUSES}")
+    if row.get("parent_theme_id") and not _safe_select(supabase, "essay_themes", id=row["parent_theme_id"]):
+        raise HTTPException(status_code=422, detail="parent_theme_id does not resolve")
+    try:
+        inserted = supabase.table("essay_themes").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    if not inserted:
+        raise HTTPException(status_code=500, detail="No row returned from insert")
+    new = inserted[0]
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.essay_theme.create",
+        entity_type="essay_theme", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/essay-themes/{theme_id}")
+def update_essay_theme(
+    theme_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "essay_themes", id=theme_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Essay theme not found")
+    _reject_unknown(body.payload, _ESSAY_THEME_FIELDS, "essay_themes")
+    patch = {k: v for k, v in body.payload.items() if k in _ESSAY_THEME_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("status") and patch["status"] not in _ESSAY_THEME_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {_ESSAY_THEME_STATUSES}")
+    updated = supabase.table("essay_themes").update(patch).eq("id", theme_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.essay_theme.update",
+        entity_type="essay_theme", entity_id=theme_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ─── Essay PYQ theme tags ──────────────────────────────────────────────
+
+_ESSAY_TAG_FIELDS = {
+    "question_id", "theme_id", "secondary_theme_id", "essay_type",
+    "quote_source_type", "tagging_source", "confidence_score", "metadata",
+}
+_ESSAY_TAG_CREATE_FIELDS = _ESSAY_TAG_FIELDS | {"reviewer_status"}
+_ESSAY_TYPES = ("quote_abstract", "issue_concrete")
+_ESSAY_QUOTE_SOURCE_TYPES = (
+    "indian_thinker", "western_philosopher", "proverb", "literary",
+    "political_leader", "other",
+)
+_ESSAY_TAGGING_SOURCES = ("manual", "admin", "ai", "rule", "imported")
+
+
+@router.get("/essay-pyq-tags")
+def list_essay_pyq_tags(
+    question_id: str | None = Query(default=None),
+    theme_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("essay_pyq_tags").select(
+        "id, question_id, theme_id, secondary_theme_id, essay_type, "
+        "quote_source_type, tagging_source, confidence_score, reviewer_status, "
+        "metadata, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if question_id:
+        query = query.eq("question_id", question_id)
+    if theme_id:
+        query = query.eq("theme_id", theme_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/essay-pyq-tags")
+def create_essay_pyq_tag(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _ESSAY_TAG_CREATE_FIELDS, "essay_pyq_tags")
+    row = {k: v for k, v in body.payload.items() if k in _ESSAY_TAG_FIELDS}
+    if not row.get("question_id") or not row.get("theme_id"):
+        raise HTTPException(status_code=422, detail="question_id and theme_id are required")
+    if row.get("essay_type") and row["essay_type"] not in _ESSAY_TYPES:
+        raise HTTPException(status_code=422, detail=f"essay_type must be one of {_ESSAY_TYPES}")
+    if row.get("quote_source_type") and row["quote_source_type"] not in _ESSAY_QUOTE_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"quote_source_type must be one of {_ESSAY_QUOTE_SOURCE_TYPES}")
+    if row.get("tagging_source") and row["tagging_source"] not in _ESSAY_TAGGING_SOURCES:
+        raise HTTPException(status_code=422, detail=f"tagging_source must be one of {_ESSAY_TAGGING_SOURCES}")
+    if not _safe_select(supabase, "pyq_questions", id=row["question_id"]):
+        raise HTTPException(status_code=422, detail="question_id does not resolve")
+    if not _safe_select(supabase, "essay_themes", id=row["theme_id"]):
+        raise HTTPException(status_code=422, detail="theme_id does not resolve")
+    if row.get("secondary_theme_id") and not _safe_select(supabase, "essay_themes", id=row["secondary_theme_id"]):
+        raise HTTPException(status_code=422, detail="secondary_theme_id does not resolve")
+    # CMS feeds the review queue — a tag can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("essay_pyq_tags").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.essay_tag.create",
+        entity_type="essay_pyq_tag", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/essay-pyq-tags/{tag_id}")
+def update_essay_pyq_tag(
+    tag_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "essay_pyq_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Essay PYQ tag not found")
+    _reject_unknown(body.payload, _ESSAY_TAG_FIELDS, "essay_pyq_tags")
+    patch = {k: v for k, v in body.payload.items() if k in _ESSAY_TAG_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    if patch.get("essay_type") and patch["essay_type"] not in _ESSAY_TYPES:
+        raise HTTPException(status_code=422, detail=f"essay_type must be one of {_ESSAY_TYPES}")
+    if patch.get("quote_source_type") and patch["quote_source_type"] not in _ESSAY_QUOTE_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"quote_source_type must be one of {_ESSAY_QUOTE_SOURCE_TYPES}")
+    updated = supabase.table("essay_pyq_tags").update(patch).eq("id", tag_id).execute().data or []
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.essay_tag.update",
+        entity_type="essay_pyq_tag", entity_id=tag_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+@router.delete("/essay-pyq-tags/{tag_id}")
+def delete_essay_pyq_tag(
+    tag_id: str,
+    reason: str = Query(..., min_length=8, max_length=500),
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "essay_pyq_tags", id=tag_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Essay PYQ tag not found")
+    supabase.table("essay_pyq_tags").delete().eq("id", tag_id).execute()
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.essay_tag.delete",
+        entity_type="essay_pyq_tag", entity_id=tag_id,
+        new_value={"reason": reason, "deleted": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "id": tag_id}
+
+
+# ─── Bulk-import registration ──────────────────────────────────────────
+# Drop these two entries into the existing `_IMPORT_CONFIG` dict. Once
+# deployed, essay_themes.json / essay_pyq_theme_tags.json go in via the
+# generic `POST /bulk-import` endpoint, same as every GS-year seed did
+# through the per-entity endpoints above.
+
+_ESSAY_IMPORT_CONFIG_ENTRIES = {
+    "essay-themes": {
+        "table": "essay_themes",
+        "allowed": _ESSAY_THEME_FIELDS,
+        "required": ["theme_code", "theme_name"],
+        "forced": {},
+        "fks": {},  # parent_theme_id is self-referential; validated in the
+                    # single-row endpoint above, not worth a generic fk_check
+                    # entry since essay_themes.json seeds parents and children
+                    # in the same 15-row batch (parents listed first).
+        "enums": {"status": _ESSAY_THEME_STATUSES},
+        "audit": "exam_intel.cms.essay_theme.bulk_create",
+        "upsert_on": "theme_code",  # idempotent re-import
+    },
+    "essay-pyq-tags": {
+        "table": "essay_pyq_tags",
+        "allowed": _ESSAY_TAG_FIELDS,
+        "required": ["question_id", "theme_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {
+            "question_id": "pyq_questions",
+            "theme_id": "essay_themes",
+            "secondary_theme_id": "essay_themes",
+        },
+        "enums": {
+            "essay_type": _ESSAY_TYPES,
+            "quote_source_type": _ESSAY_QUOTE_SOURCE_TYPES,
+            "tagging_source": _ESSAY_TAGGING_SOURCES,
+        },
+        "audit": "exam_intel.cms.essay_tag.bulk_create",
+        "max_rows": 500,  # 100-row corpus today; default cap is plenty
+    },
+}
+# _IMPORT_CONFIG.update(_ESSAY_IMPORT_CONFIG_ENTRIES)
 # ════════════════════════════════════════════════════════════════════════
 #  Topic prerequisites (taxonomy, migration 029)
 # ════════════════════════════════════════════════════════════════════════
