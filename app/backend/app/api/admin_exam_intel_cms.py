@@ -1580,8 +1580,11 @@ def review_pyq_paper(
             ),
         )
 
-    # Provenance gate: pending → verified requires (a) valid source_type and
-    # (b) at least one anchor — non-empty source_url OR a source_document_id.
+    # Provenance gate: pending → verified requires (a) valid source_type,
+    # (b) at least one anchor — non-empty source_url OR a source_document_id,
+    # and (c) at least one pyq_questions row (an empty paper must never be
+    # verified — see ghost-paper incident 2026-07, same source created two
+    # verified-but-empty rows because nothing checked question count).
     # Document content validation is authoritative in the RPC (under the row
     # lock); Python only gives an early signal on obviously missing anchors.
     if from_status == "pending" and body.status == "verified":
@@ -1591,6 +1594,16 @@ def review_pyq_paper(
         if (not (existing.get("source_url") and str(existing.get("source_url")).strip())
                 and not existing.get("source_document_id")):
             blocking.append("source_url")
+        question_count = (
+            supabase.table("pyq_questions")
+            .select("id", count="exact")
+            .eq("pyq_paper_id", paper_id)
+            .limit(1)
+            .execute()
+            .count
+        ) or 0
+        if question_count == 0:
+            blocking.append("questions")
         if blocking:
             raise HTTPException(
                 status_code=422,
