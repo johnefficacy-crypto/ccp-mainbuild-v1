@@ -36,15 +36,33 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function QuestionCard({ q, onPractice, practicing, practiceDisabled }) {
   const [expanded, setExpanded] = useState(false);
+  // Pair topic_tags with topic_names by index — the same pairing the topic-filter
+  // dropdown uses (q.topic_names[i] belongs to q.topic_tags[i]). Keep only pairs
+  // that resolve cleanly so a length mismatch can never render "undefined", and a
+  // question with 0 tags simply yields no pills.
+  const topicPills = useMemo(() => {
+    const tags = q.topic_tags || [];
+    const names = q.topic_names || [];
+    return tags
+      .map((t, i) => ({ id: t?.topic_id, name: names[i] }))
+      .filter((p) => p.id && p.name);
+  }, [q.topic_tags, q.topic_names]);
   return (
     <div className="rounded-xl border border-clay-100 bg-white p-4 space-y-2" data-testid="pyq-question-card">
       <div className="flex items-start justify-between gap-2">
-        {/* Learner chips: Year · Phase · Subject · Difficulty · Q number.
+        {/* Learner chips: Year · Phase · Subject · Topic(s) · Difficulty · Q number.
+            Topic (specific syllabus micro-topic) uses pill-amber so it reads
+            distinctly from the broad-paper Subject pill (pill-sage).
             Shift/Source/Official are intentionally NOT shown to learners. */}
         <div className="flex items-center gap-2 flex-wrap">
           {q.paper_year ? <span className="pill pill-clay text-[11px]">{q.paper_year}</span> : null}
           {q.phase_name ? <span className="pill pill-dusk text-[11px]">{q.phase_name}</span> : null}
           {q.subject_name ? <span className="pill pill-sage text-[11px]">{q.subject_name}</span> : null}
+          {topicPills.map((tp, i) => (
+            <span key={`${tp.id}-${i}`} className="pill pill-amber text-[11px]" data-testid="pyq-topic-pill">
+              {tp.name}
+            </span>
+          ))}
           {q.difficulty && q.difficulty !== "unknown" ? (
             <span className="pill pill-dusk text-[11px] capitalize">{q.difficulty}</span>
           ) : null}
