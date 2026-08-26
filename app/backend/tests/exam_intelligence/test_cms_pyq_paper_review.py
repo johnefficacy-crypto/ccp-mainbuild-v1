@@ -71,7 +71,15 @@ def _seed(trust_status: str = "pending", **extra) -> dict:
         "source_type": "official",
         **extra,
     }
-    return {"pyq_papers": [paper], "admin_audit_logs": []}
+    # A paper must have >=1 pyq_questions row to pass the pending->verified
+    # provenance gate (empty papers can never be verified — ghost-paper incident
+    # 2026-07). The gate counts rows via count="exact"; only id + matching
+    # pyq_paper_id are needed, not full question content.
+    return {
+        "pyq_papers": [paper],
+        "pyq_questions": [{"id": "q-seed-p1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
+        "admin_audit_logs": [],
+    }
 
 
 def _review(client, paper_id="p1", status="verified", reason="operator verified source docs"):
@@ -202,6 +210,34 @@ def test_pending_to_verified_blocked_when_both_provenance_fields_missing():
     assert r.status_code == 422, r.text
     detail = r.json()["detail"]
     assert set(detail["blocking_fields"]) == {"source_url", "source_type"}
+
+
+def test_pending_to_verified_blocked_when_paper_has_no_questions():
+    """Empty-paper guard (ghost-paper incident 2026-07): a paper with valid
+    source_type + source_url but ZERO pyq_questions rows must NOT be verifiable.
+    This is the dedicated regression for the row-count check added to the
+    provenance gate — without it the check had no coverage."""
+    db = {
+        "pyq_papers": [{
+            "id": "p1", "exam_id": "e1", "year": 2024,
+            "trust_status": "pending",
+            "source_url": "https://upsc.gov.in/2024.pdf",
+            "source_type": "official",
+        }],
+        "pyq_questions": [],  # empty paper — the condition under test
+        "admin_audit_logs": [],
+    }
+    sb = TaxSBStub(db)
+    r = _review(_client(sb), status="verified")
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert detail["error"] == "provenance_incomplete"
+    assert "questions" in detail["blocking_fields"]
+    # source anchors are complete, so "questions" is the ONLY blocker.
+    assert detail["blocking_fields"] == ["questions"]
+    # Atomicity: nothing written, status unchanged.
+    assert len(sb.db.get("admin_audit_logs", [])) == 0
+    assert sb.db["pyq_papers"][0]["trust_status"] == "pending"
 
 
 def test_provenance_gate_does_not_apply_to_rejected():
@@ -429,6 +465,7 @@ def _seed_with_doc(trust_status="pending", doc=None, **extra):
     }
     return {
         "pyq_papers": [paper],
+        "pyq_questions": [{"id": "q-doc-p1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
         "admin_audit_logs": [],
         "document_assets": [doc_row],
     }
@@ -929,6 +966,7 @@ def _seed_with_source(trust_status="pending", source=None, **extra):
     }
     return {
         "pyq_papers": [paper],
+        "pyq_questions": [{"id": "q-src-p1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
         "admin_audit_logs": [],
         "pyq_sources": [src_row],
     }
@@ -966,6 +1004,7 @@ def test_pyq_source_id_with_source_type_and_doc_passes_gate():
             "source_document_id": "doc-1",
             "pyq_source_id": "src-1",
         }],
+        "pyq_questions": [{"id": "q-srcdoc-p1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
         "admin_audit_logs": [],
         "document_assets": [dict(_VALID_DOC)],
         "pyq_sources": [dict(_VALID_SOURCE)],
