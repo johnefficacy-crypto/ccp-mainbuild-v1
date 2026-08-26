@@ -14,6 +14,9 @@ logger = logging.getLogger("career_copilot.exam_intelligence.pyq_papers")
 
 _DIFFICULTY_BUCKETS = ("easy", "medium", "hard", "unknown")
 
+_PAGE = 1000   # rows per pagination page (matches coverage.py / score_snapshots.py)
+_BATCH = 250   # max ids per IN() filter (PostgREST URL-length ceiling)
+
 
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
     try:
@@ -21,6 +24,34 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
     except Exception as exc:  # noqa: BLE001
         logger.warning("pyq_papers read failed: %s", exc)
         return default
+
+
+def _chunks(items: list[Any], n: int) -> list[list[Any]]:
+    return [items[i : i + n] for i in range(0, len(items), n)]
+
+
+def _paginate(build_query: Callable[[int, int], Any]) -> list[dict[str, Any]]:
+    """Fetch every row for *build_query* via deterministic range pagination.
+
+    ``build_query(from_n, to_n)`` returns the rows for the inclusive
+    ``[from_n, to_n]`` slice and MUST carry a stable ``.order(...)`` key so the
+    server-side row cap (Supabase ``db-max-rows``) can never sample an
+    arbitrary, non-overlapping subset between successive pages — the defect
+    that made this module's counts and breakdowns disagree with each other.
+    Stops at the first short page or on a read failure (partial result — same
+    graceful-degradation contract as ``_safe``).
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        rows = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
+        if rows is None:
+            break
+        all_rows.extend(rows)
+        if len(rows) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows
 
 
 def _normalize_difficulty(value: Any) -> str:
@@ -42,8 +73,8 @@ def verified_pyq_papers(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
     """Return verified PYQ papers for ``exam_id`` newest first."""
     if not exam_id:
         return []
-    rows = _safe(
-        lambda: (
+    rows = _paginate(
+        lambda from_n, to_n: (
             supabase.table("pyq_papers")
             .select(
                 "id, exam_id, exam_cycle_id, exam_phase_id, year, "
@@ -51,27 +82,31 @@ def verified_pyq_papers(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
             )
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
-            .limit(500)
+            .order("id")
+            .range(from_n, to_n)
             .execute()
             .data
-        ),
-        default=[],
-    ) or []
+        )
+    )
 
     phase_ids = {r.get("exam_phase_id") for r in rows if r.get("exam_phase_id")}
     phases_by_id: dict[str, dict[str, Any]] = {}
     if phase_ids:
-        phase_rows = _safe(
-            lambda: (
-                supabase.table("exam_phases")
-                .select("id, phase_name, phase_slug")
-                .in_("id", list(phase_ids))
-                .limit(200)
-                .execute()
-                .data
-            ),
-            default=[],
-        ) or []
+        phase_rows: list[dict[str, Any]] = []
+        for chunk in _chunks(list(phase_ids), _BATCH):
+            phase_rows.extend(
+                _paginate(
+                    lambda from_n, to_n, c=chunk: (
+                        supabase.table("exam_phases")
+                        .select("id, phase_name, phase_slug")
+                        .in_("id", c)
+                        .order("id")
+                        .range(from_n, to_n)
+                        .execute()
+                        .data
+                    )
+                )
+            )
         phases_by_id = {p["id"]: p for p in phase_rows if p.get("id")}
 
     out: list[dict[str, Any]] = []
@@ -111,38 +146,53 @@ def difficulty_heatmap(supabase: Any, exam_id: str) -> dict[str, Any]:
           ],
           "verified_question_count": 412
         }
+
+    ``verified_question_count`` is the true total of every verified question on
+    the exam's verified papers. ``rows`` breaks those down by subject using each
+    question's verified **primary** tag, so a verified question with no verified
+    primary tag pointing at an active subject is counted in
+    ``verified_question_count`` but legitimately excluded from ``rows``.
+    Therefore ``sum(row["total"] for row in rows) <= verified_question_count``;
+    the two are equal only when every verified question carries such a tag. Both
+    are now built from fully range-paginated reads, so the old failure mode —
+    the count reflecting one arbitrary truncated sample while ``rows`` reflected
+    a different, non-overlapping one — can no longer occur.
     """
     if not exam_id:
         return {"buckets": list(_DIFFICULTY_BUCKETS), "rows": [], "verified_question_count": 0}
 
-    paper_rows = _safe(
-        lambda: (
+    paper_rows = _paginate(
+        lambda from_n, to_n: (
             supabase.table("pyq_papers")
             .select("id")
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
-            .limit(1000)
+            .order("id")
+            .range(from_n, to_n)
             .execute()
             .data
-        ),
-        default=[],
-    ) or []
+        )
+    )
     paper_ids = [r["id"] for r in paper_rows if r.get("id")]
     if not paper_ids:
         return {"buckets": list(_DIFFICULTY_BUCKETS), "rows": [], "verified_question_count": 0}
 
-    question_rows = _safe(
-        lambda: (
-            supabase.table("pyq_questions")
-            .select("id, pyq_paper_id, observed_difficulty, reviewer_status")
-            .in_("pyq_paper_id", paper_ids)
-            .eq("reviewer_status", "verified")
-            .limit(20000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    question_rows: list[dict[str, Any]] = []
+    for chunk in _chunks(paper_ids, _BATCH):
+        question_rows.extend(
+            _paginate(
+                lambda from_n, to_n, c=chunk: (
+                    supabase.table("pyq_questions")
+                    .select("id, pyq_paper_id, observed_difficulty, reviewer_status")
+                    .in_("pyq_paper_id", c)
+                    .eq("reviewer_status", "verified")
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                )
+            )
+        )
     if not question_rows:
         return {"buckets": list(_DIFFICULTY_BUCKETS), "rows": [], "verified_question_count": 0}
 
@@ -152,19 +202,23 @@ def difficulty_heatmap(supabase: Any, exam_id: str) -> dict[str, Any]:
         for r in question_rows
     }
 
-    tag_rows = _safe(
-        lambda: (
-            supabase.table("pyq_question_topic_tags")
-            .select("question_id, topic_id, tag_role, reviewer_status")
-            .in_("question_id", question_ids)
-            .eq("reviewer_status", "verified")
-            .eq("tag_role", "primary")
-            .limit(40000)
-            .execute()
-            .data
-        ),
-        default=[],
-    ) or []
+    tag_rows: list[dict[str, Any]] = []
+    for chunk in _chunks(question_ids, _BATCH):
+        tag_rows.extend(
+            _paginate(
+                lambda from_n, to_n, c=chunk: (
+                    supabase.table("pyq_question_topic_tags")
+                    .select("question_id, topic_id, tag_role, reviewer_status")
+                    .in_("question_id", c)
+                    .eq("reviewer_status", "verified")
+                    .eq("tag_role", "primary")
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                )
+            )
+        )
 
     # Each question may have multiple primary tags; we keep the first to
     # avoid double-counting subjects against a single question.
@@ -179,17 +233,21 @@ def difficulty_heatmap(supabase: Any, exam_id: str) -> dict[str, Any]:
     topic_ids = list(set(primary_topic_by_qid.values()))
     subject_by_topic: dict[str, str] = {}
     if topic_ids:
-        topic_rows = _safe(
-            lambda: (
-                supabase.table("topics")
-                .select("id, subject_id, is_active")
-                .in_("id", topic_ids)
-                .limit(5000)
-                .execute()
-                .data
-            ),
-            default=[],
-        ) or []
+        topic_rows: list[dict[str, Any]] = []
+        for chunk in _chunks(topic_ids, _BATCH):
+            topic_rows.extend(
+                _paginate(
+                    lambda from_n, to_n, c=chunk: (
+                        supabase.table("topics")
+                        .select("id, subject_id, is_active")
+                        .in_("id", c)
+                        .order("id")
+                        .range(from_n, to_n)
+                        .execute()
+                        .data
+                    )
+                )
+            )
         subject_by_topic = {
             t["id"]: t["subject_id"]
             for t in topic_rows
@@ -199,17 +257,21 @@ def difficulty_heatmap(supabase: Any, exam_id: str) -> dict[str, Any]:
     subject_ids = list(set(subject_by_topic.values()))
     subjects_by_id: dict[str, dict[str, Any]] = {}
     if subject_ids:
-        subj_rows = _safe(
-            lambda: (
-                supabase.table("subjects")
-                .select("id, name, slug, is_active")
-                .in_("id", subject_ids)
-                .limit(500)
-                .execute()
-                .data
-            ),
-            default=[],
-        ) or []
+        subj_rows: list[dict[str, Any]] = []
+        for chunk in _chunks(subject_ids, _BATCH):
+            subj_rows.extend(
+                _paginate(
+                    lambda from_n, to_n, c=chunk: (
+                        supabase.table("subjects")
+                        .select("id, name, slug, is_active")
+                        .in_("id", c)
+                        .order("id")
+                        .range(from_n, to_n)
+                        .execute()
+                        .data
+                    )
+                )
+            )
         subjects_by_id = {
             s["id"]: s
             for s in subj_rows

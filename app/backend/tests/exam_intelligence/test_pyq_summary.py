@@ -9,7 +9,28 @@ from fastapi.testclient import TestClient
 
 from app.api import exam_intelligence as ei_api
 from app.core.auth import get_current_user
+from app.exam_intelligence import pyq_papers
+from tests.exam_intelligence._capping_stub import CappingSB
 from tests.persona_questions._stub import SBStub
+
+
+def _large_pyq_db(n: int) -> dict[str, Any]:
+    """One verified paper carrying ``n`` verified questions, each primary-tagged
+    to one subject. Zero-padded ids give a stable ``.order('id')`` window."""
+    return {
+        "exams": [{"id": "e1", "slug": "upsc-cse"}],
+        "pyq_papers": [{"id": "p1", "exam_id": "e1", "year": 2024, "exam_phase_id": None, "trust_status": "verified"}],
+        "subjects": [{"id": "s1", "name": "General Studies", "is_active": True}],
+        "topics": [{"id": "t1", "subject_id": "s1", "is_active": True}],
+        "pyq_questions": [
+            {"id": f"q{i:06d}", "pyq_paper_id": "p1", "observed_difficulty": "medium", "reviewer_status": "verified"}
+            for i in range(n)
+        ],
+        "pyq_question_topic_tags": [
+            {"question_id": f"q{i:06d}", "topic_id": "t1", "tag_role": "primary", "reviewer_status": "verified"}
+            for i in range(n)
+        ],
+    }
 
 
 def _build_app(sb: SBStub):
@@ -208,6 +229,45 @@ def test_pyq_summary_set_label_falls_back_to_paper_set():
     cards = {p["paper_id"]: p for p in body["papers"]}
     assert cards["p1"]["set_label"] == "Set B"
     assert cards["p2"]["set_label"] is None
+
+
+def test_pyq_summary_totals_survive_server_row_cap(monkeypatch):
+    """The exam's true verified-question total exceeds one server page. A single
+    unordered ``.limit()`` read truncates to the cap (~1000); deterministic
+    ``.order('id').range()`` pagination reports the exact total."""
+    cap = ei_api._PAGE
+    n = cap + 300  # > one page → forces a second range() page
+    sb = CappingSB(_large_pyq_db(n), server_cap=cap)
+    monkeypatch.setattr(ei_api, "get_supabase_admin", lambda: sb)
+
+    body = ei_api.get_exam_pyq_summary("upsc-cse", _user={"id": "u"})
+    assert body["totals"]["questions"] == n  # not truncated to `cap`
+    assert body["totals"]["papers"] == 1
+    # every question is primary-tagged here, so by_subject sums to the total.
+    assert sum(row["questions"] for row in body["by_subject"]) == n
+
+
+def test_all_three_sources_agree_on_verified_count(monkeypatch):
+    """The bug was three endpoints reporting three different verified counts for
+    one exam. On a corpus larger than one server page, the heatmap count and the
+    summary total must now be identical, and the heatmap breakdown must be
+    non-empty and sum to that same number."""
+    cap = ei_api._PAGE
+    assert cap == pyq_papers._PAGE  # both modules page at the same size
+    n = cap + 300
+    db = _large_pyq_db(n)
+
+    heatmap = pyq_papers.difficulty_heatmap(CappingSB(db, server_cap=cap), "e1")
+
+    sb = CappingSB(db, server_cap=cap)
+    monkeypatch.setattr(ei_api, "get_supabase_admin", lambda: sb)
+    summary = ei_api.get_exam_pyq_summary("upsc-cse", _user={"id": "u"})
+
+    assert heatmap["verified_question_count"] == n
+    assert summary["totals"]["questions"] == n
+    assert heatmap["verified_question_count"] == summary["totals"]["questions"]
+    assert heatmap["rows"], "breakdown non-empty whenever the count is > 0"
+    assert sum(r["total"] for r in heatmap["rows"]) == n
 
 
 def test_pyq_list_includes_phase_and_subject_metadata():
