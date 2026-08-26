@@ -229,23 +229,17 @@ export default function ExamIntelligenceTab({ examSlug }) {
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
           Verified PYQ coverage
         </div>
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
+        {/* Single headline card only. This box is a teaser whose job is to
+            prove real verified content exists before sending the aspirant to
+            the full explorer below; "Verified papers" is already surfaced in
+            PyqExplorerSection's own summary a scroll down (redundant here), and
+            "Covered subjects" as a bare count with no subject names was
+            low-value in this teaser. See PR body. */}
+        <div className="mt-3">
+          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3 sm:max-w-xs">
             <div className="text-[10px] uppercase tracking-wider text-clay-700">Verified tagged questions</div>
             <div className="font-heading text-2xl font-semibold mt-1" data-testid="verified-question-count">
               {(data.difficulty_heatmap?.verified_question_count || 0).toLocaleString("en-IN")}
-            </div>
-          </div>
-          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
-            <div className="text-[10px] uppercase tracking-wider text-clay-700">Verified papers</div>
-            <div className="font-heading text-2xl font-semibold mt-1">
-              {(data.pyq_papers?.length || 0).toLocaleString("en-IN")}
-            </div>
-          </div>
-          <div className="rounded-xl bg-clay-50/70 border border-clay-100 p-3">
-            <div className="text-[10px] uppercase tracking-wider text-clay-700">Covered subjects</div>
-            <div className="font-heading text-2xl font-semibold mt-1">
-              {(data.difficulty_heatmap?.rows || []).length.toLocaleString("en-IN")}
             </div>
           </div>
         </div>
