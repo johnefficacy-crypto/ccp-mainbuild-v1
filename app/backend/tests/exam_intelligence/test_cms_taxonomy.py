@@ -954,6 +954,10 @@ def test_review_document_lock_catches_concurrent_status_change():
             "storage_path": "upsc/2024.pdf",
             "metadata": {"exam_id": "e1"},
         }],
+        # >=1 question row so the pending->verified provenance gate (which now
+        # requires a non-empty paper) passes and control reaches the document
+        # lock/status re-check this test exercises.
+        "pyq_questions": [{"id": "q-tax-p1", "pyq_paper_id": "p1", "reviewer_status": "verified"}],
         "admin_audit_logs": [],
     }
     sb = _DocRaceSBStub(db)
