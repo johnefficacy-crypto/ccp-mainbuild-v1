@@ -234,14 +234,6 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
             if s.get("id"):
                 section_label[s["id"]] = s.get("section_label") or s["id"]
 
-    # Route (a): pending pyq_question across the exam, then Mains-scope by paper.
-    pending_q = [
-        it for it in c.all_items(
-            f"{INTEL}/exams/{exam_id}/items",
-            {"kind": QUESTION_KIND, "status": args.status})
-        if it.get("pyq_paper_id") in mains_paper_ids
-    ]
-
     # Route (b): full question rows per Mains paper (for question_text + to build
     # the Mains question-id membership used to scope tags). Fetch every Mains
     # paper so a paper with pending tags but no pending questions is still
@@ -253,13 +245,28 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
                 cms_by_id[row["id"]] = row
     mains_question_ids = set(cms_by_id)
 
+    # Route (a) intentionally NOT used for questions: the exam-wide
+    # /items?kind=pyq_question route paginates via a re-executed
+    # .limit(limit+offset) query ordered only by created_at with no secondary
+    # tiebreaker, which silently drops/duplicates rows when many share an
+    # identical created_at (bulk-imported years) — confirmed live 2026-08-26
+    # (2025: 0/87 returned, 2024: 44/87 returned, both papers verified 87/87
+    # present via the CMS per-paper route). Derive "pending" status directly
+    # from the reliable per-paper CMS fetch instead.
+    pending_q = [
+        row for row in cms_by_id.values()
+        if args.status == "all" or row.get("reviewer_status") == args.status
+    ]
+
     questions = merge_questions(pending_q, cms_by_id, paper_year, section_label)
 
-    # Route (a): pending tags across the exam, Mains-scoped by question membership.
+    # Route (a) skipped for tags too — same backend pagination instability
+    # (confirmed live 2026-08-26: growing-limit re-query with no tiebreak on
+    # created_at silently drops bulk-inserted rows). The CMS list route uses
+    # true fixed-page .range() pagination — reliable.
+    tag_params = {} if args.status == "all" else {"reviewer_status": args.status}
     pending_tags = [
-        t for t in c.all_items(
-            f"{INTEL}/exams/{exam_id}/items",
-            {"kind": TAG_KIND, "status": args.status})
+        t for t in c.all_items(f"{CMS}/pyq-question-topic-tags", tag_params)
         if t.get("question_id") in mains_question_ids
     ]
     tags = [{
@@ -292,8 +299,7 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     t_path.write_text(json.dumps(tags, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nwrote {len(questions)} rows -> {q_path}")
     print(f"wrote {len(tags)} rows -> {t_path}")
-    return 0
-
+    return 0   
 
 # ─── sweep (pure offline) ───────────────────────────────────────────────────
 def normalize_text(s: str | None) -> str:
