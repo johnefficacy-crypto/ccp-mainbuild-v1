@@ -32,6 +32,35 @@ logger = logging.getLogger("career_copilot.api.exam_intelligence")
 
 router = APIRouter(prefix="/exam-intelligence", tags=["exam-intelligence"])
 
+_PAGE = 1000   # rows per pagination page (matches the exam_intelligence package)
+_BATCH = 250   # max ids per IN() filter (PostgREST URL-length ceiling)
+
+
+def _chunks(items: list[Any], n: int) -> list[list[Any]]:
+    return [items[i : i + n] for i in range(0, len(items), n)]
+
+
+def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
+    """Range-paginate a PostgREST read so the server-side row cap (Supabase
+    ``db-max-rows``) can't silently truncate a bulk read to an arbitrary sample.
+
+    ``build_query(from_n, to_n)`` returns the rows for the inclusive
+    ``[from_n, to_n]`` slice and MUST carry a stable ``.order(...)`` key so
+    successive pages partition the result deterministically. Exceptions
+    propagate to the caller's error handler (``get_exam_pyq_summary`` fails
+    closed to empty arrays) rather than returning a silently truncated — and
+    therefore internally inconsistent — page set.
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        rows = build_query(offset, offset + _PAGE - 1) or []
+        all_rows.extend(rows)
+        if len(rows) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows
+
 
 def _pyq_paper_set_label(metadata: Any) -> str | None:
     """Human-safe set label for a PYQ paper card (e.g. ``"Set B"``).
@@ -273,6 +302,14 @@ def list_exam_pyqs(
     exam_id = exam_row["id"]
 
     try:
+        # NOTE (verified-count-fix): the bulk reads below still use unordered
+        # .limit() rather than the deterministic .order("id").range() pagination
+        # applied to difficulty_heatmap / verified_pyq_papers / get_exam_pyq_summary.
+        # This endpoint is the currently-correct source of truth (it fetches within
+        # the server cap for today's corpus and sorts in Python), so it is
+        # intentionally left untouched this pass to keep the fix scoped to the three
+        # disagreeing sources. Convert these to _paginate_all in a follow-up before
+        # the corpus grows past a single server page.
         # 1. Get verified paper ids for this exam, optionally filtered by year/phase/source_type
         paper_q = (
             sb.table("pyq_papers")
@@ -557,15 +594,17 @@ def get_exam_pyq_summary(
     exam_id = exam_row["id"]
 
     try:
-        papers = (
-            sb.table("pyq_papers")
-            .select("id, year, exam_phase_id, paper_code, metadata")
-            .eq("exam_id", exam_id)
-            .eq("trust_status", "verified")
-            .limit(2000)
-            .execute()
-            .data
-            or []
+        papers = _paginate_all(
+            lambda from_n, to_n: (
+                sb.table("pyq_papers")
+                .select("id, year, exam_phase_id, paper_code, metadata")
+                .eq("exam_id", exam_id)
+                .eq("trust_status", "verified")
+                .order("id")
+                .range(from_n, to_n)
+                .execute()
+                .data
+            )
         )
         paper_ids = [p["id"] for p in papers if p.get("id")]
         if not paper_ids:
@@ -577,51 +616,98 @@ def get_exam_pyq_summary(
         phase_ids = list({p.get("exam_phase_id") for p in papers if p.get("exam_phase_id")})
         phase_meta: dict[str, dict] = {}
         if phase_ids:
-            ph_rows = (
-                sb.table("exam_phases").select("id, phase_slug, phase_name").in_("id", phase_ids).limit(500).execute().data
-                or []
-            )
+            ph_rows: list[dict] = []
+            for chunk in _chunks(phase_ids, _BATCH):
+                ph_rows.extend(
+                    _paginate_all(
+                        lambda from_n, to_n, c=chunk: (
+                            sb.table("exam_phases")
+                            .select("id, phase_slug, phase_name")
+                            .in_("id", c)
+                            .order("id")
+                            .range(from_n, to_n)
+                            .execute()
+                            .data
+                        )
+                    )
+                )
             phase_meta = {p["id"]: p for p in ph_rows}
 
         # Verified questions across the exam's verified papers.
-        questions = (
-            sb.table("pyq_questions")
-            .select("id, pyq_paper_id, observed_difficulty")
-            .in_("pyq_paper_id", paper_ids)
-            .eq("reviewer_status", "verified")
-            .limit(20000)
-            .execute()
-            .data
-            or []
-        )
+        questions: list[dict] = []
+        for chunk in _chunks(paper_ids, _BATCH):
+            questions.extend(
+                _paginate_all(
+                    lambda from_n, to_n, c=chunk: (
+                        sb.table("pyq_questions")
+                        .select("id, pyq_paper_id, observed_difficulty")
+                        .in_("pyq_paper_id", c)
+                        .eq("reviewer_status", "verified")
+                        .order("id")
+                        .range(from_n, to_n)
+                        .execute()
+                        .data
+                    )
+                )
+            )
 
         # Primary-tag subject per question (defense: primary tags only).
         primary_subject_by_qid: dict[str, str] = {}
         subj_names: dict[str, str] = {}
         qids = [q["id"] for q in questions]
         if qids:
-            tags = (
-                sb.table("pyq_question_topic_tags")
-                .select("question_id, topic_id, tag_role")
-                .in_("question_id", qids)
-                .eq("reviewer_status", "verified")
-                .limit(100000)
-                .execute()
-                .data
-                or []
-            )
+            tags: list[dict] = []
+            for chunk in _chunks(qids, _BATCH):
+                tags.extend(
+                    _paginate_all(
+                        lambda from_n, to_n, c=chunk: (
+                            sb.table("pyq_question_topic_tags")
+                            .select("question_id, topic_id, tag_role")
+                            .in_("question_id", c)
+                            .eq("reviewer_status", "verified")
+                            .order("id")
+                            .range(from_n, to_n)
+                            .execute()
+                            .data
+                        )
+                    )
+                )
             topic_ids = list({t["topic_id"] for t in tags if t.get("topic_id")})
             topic_subj: dict[str, str] = {}
             if topic_ids:
-                t_rows = (
-                    sb.table("topics").select("id, subject_id").in_("id", topic_ids).limit(20000).execute().data or []
-                )
+                t_rows: list[dict] = []
+                for chunk in _chunks(topic_ids, _BATCH):
+                    t_rows.extend(
+                        _paginate_all(
+                            lambda from_n, to_n, c=chunk: (
+                                sb.table("topics")
+                                .select("id, subject_id")
+                                .in_("id", c)
+                                .order("id")
+                                .range(from_n, to_n)
+                                .execute()
+                                .data
+                            )
+                        )
+                    )
                 topic_subj = {t["id"]: t.get("subject_id") for t in t_rows}
                 subj_ids = list({sid for sid in topic_subj.values() if sid})
                 if subj_ids:
-                    s_rows = (
-                        sb.table("subjects").select("id, name").in_("id", subj_ids).limit(2000).execute().data or []
-                    )
+                    s_rows: list[dict] = []
+                    for chunk in _chunks(subj_ids, _BATCH):
+                        s_rows.extend(
+                            _paginate_all(
+                                lambda from_n, to_n, c=chunk: (
+                                    sb.table("subjects")
+                                    .select("id, name")
+                                    .in_("id", c)
+                                    .order("id")
+                                    .range(from_n, to_n)
+                                    .execute()
+                                    .data
+                                )
+                            )
+                        )
                     subj_names = {s["id"]: s.get("name") for s in s_rows}
             for t in tags:
                 if t.get("tag_role") == "primary" and topic_subj.get(t.get("topic_id")):
