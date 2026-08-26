@@ -37,6 +37,9 @@ class _CountingTable:
     def limit(self, *_a, **_k):
         return self
 
+    def range(self, *_a, **_k):
+        return self
+
     def execute(self):
         self._counter[0] += 1
 
