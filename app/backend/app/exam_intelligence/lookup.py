@@ -23,6 +23,31 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
         return default
 
 
+_PAGE = 1000   # rows per pagination page (matches the exam_intelligence package)
+
+
+def _paginate(build_query: Callable[[int, int], Any]) -> list[dict[str, Any]]:
+    """Fetch every row for *build_query* via deterministic range pagination.
+
+    ``build_query(from_n, to_n)`` returns the rows for the inclusive
+    ``[from_n, to_n]`` slice and MUST carry a stable ``.order(...)`` key so the
+    server-side row cap (Supabase ``db-max-rows``) can never silently truncate
+    the result. Stops at the first short page or on a read failure (partial
+    result — same graceful-degradation contract as ``_safe``).
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        rows = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
+        if rows is None:
+            break
+        all_rows.extend(rows)
+        if len(rows) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows
+
+
 _EXAM_COLS = (
     "id, slug, name, exam_type, default_difficulty_level, "
     "exam_family_id, is_active"
@@ -89,24 +114,37 @@ def resolve_exam_by_id(supabase: Any, exam_id: str) -> dict[str, Any] | None:
     return None if value is _MISSING else value
 
 
-def list_active_exams(supabase: Any, limit: int = 100) -> list[dict[str, Any]]:
-    key = ("active", limit)
+def list_active_exams(supabase: Any, limit: int | None = None) -> list[dict[str, Any]]:
+    """Return **every** active exam, ordered by name.
+
+    Previously capped at ``limit`` rows via a single ``.limit()`` call with no
+    pagination, so any active exam sorting alphabetically past the cap (default
+    100) was silently dropped from every caller — including the catalogue
+    search, which then could not find real exams like UPSC CSE. The read now
+    range-paginates the full set, so the returned list is complete.
+
+    ``limit`` is retained only for source compatibility with existing callers
+    (they passed it as an arbitrary safety cap, never as a deliberate page
+    size) and is **ignored** — the function always returns the complete active
+    set. A bounded/paged view, if ever needed, is a separate, deliberate change
+    to this contract. Because the result no longer varies by ``limit``, the
+    cache key is a single constant.
+    """
+    key = ("active",)
     cached = _EXAM_CACHE.get(key)
     if cached is not None:
         return list(cached)
-    rows = _safe(
-        lambda: (
+    rows = _paginate(
+        lambda from_n, to_n: (
             supabase.table("exams")
             .select(_EXAM_COLS)
             .eq("is_active", True)
             .order("name")
-            .limit(limit)
+            .range(from_n, to_n)
             .execute()
             .data
-        ),
-        default=[],
-    ) or []
-    rows = list(rows)
+        )
+    )
     _EXAM_CACHE[key] = rows
     return list(rows)
 
