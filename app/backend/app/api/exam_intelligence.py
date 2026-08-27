@@ -302,14 +302,6 @@ def list_exam_pyqs(
     exam_id = exam_row["id"]
 
     try:
-        # NOTE (verified-count-fix): the bulk reads below still use unordered
-        # .limit() rather than the deterministic .order("id").range() pagination
-        # applied to difficulty_heatmap / verified_pyq_papers / get_exam_pyq_summary.
-        # This endpoint is the currently-correct source of truth (it fetches within
-        # the server cap for today's corpus and sorts in Python), so it is
-        # intentionally left untouched this pass to keep the fix scoped to the three
-        # disagreeing sources. Convert these to _paginate_all in a follow-up before
-        # the corpus grows past a single server page.
         # 1. Get verified paper ids for this exam, optionally filtered by year/phase/source_type
         paper_q = (
             sb.table("pyq_papers")
@@ -363,52 +355,69 @@ def list_exam_pyqs(
             )
             phase_meta = {p["id"]: p for p in ph_rows}
 
-        # 2. Get verified questions
-        q_query = (
-            sb.table("pyq_questions")
-            .select(
-                "id, pyq_paper_id, question_number, question_text, question_type, "
-                "observed_difficulty, correct_option_id, explanation_text, reviewer_status"
-            )
-            .in_("pyq_paper_id", paper_ids)
-            .eq("reviewer_status", "verified")
-            .limit(10000)
-        )
-        if difficulty is not None:
-            q_query = q_query.eq("observed_difficulty", difficulty)
-
-        all_questions = q_query.execute().data or []
-
-        # topic/subject filter — needs tag join
-        if topic_id or subject_id:
-            tag_rows = (
-                sb.table("pyq_question_topic_tags")
-                .select("question_id, topic_id")
-                .in_("question_id", [q["id"] for q in all_questions])
+        # 2. Get verified questions — batched over paper_ids and range-paginated so
+        # the server db-max-rows cap can't truncate the set to an arbitrary sample
+        # (the same defect class fixed in the three other exam-intelligence readers).
+        def _question_page(chunk: list[str], from_n: int, to_n: int) -> list[dict]:
+            q = (
+                sb.table("pyq_questions")
+                .select(
+                    "id, pyq_paper_id, question_number, question_text, question_type, "
+                    "observed_difficulty, correct_option_id, explanation_text, reviewer_status"
+                )
+                .in_("pyq_paper_id", chunk)
                 .eq("reviewer_status", "verified")
-                .limit(50000)
-                .execute()
-                .data
-                or []
             )
+            if difficulty is not None:
+                q = q.eq("observed_difficulty", difficulty)
+            return q.order("id").range(from_n, to_n).execute().data
+
+        all_questions: list[dict] = []
+        for chunk in _chunks(paper_ids, _BATCH):
+            all_questions.extend(
+                _paginate_all(lambda f, t, c=chunk: _question_page(c, f, t))
+            )
+
+        # topic/subject filter — needs tag join. The tag read is batched by 250
+        # question ids per IN() (PostgREST URL-length ceiling): an unbatched
+        # .in_() over every verified question id overflowed the request, failed,
+        # and surfaced as a false "0 results" for every topic/subject selection.
+        if topic_id or subject_id:
+            question_ids = [q["id"] for q in all_questions]
+            tag_rows: list[dict] = []
+            for chunk in _chunks(question_ids, _BATCH):
+                tag_rows.extend(
+                    _paginate_all(
+                        lambda f, t, c=chunk: (
+                            sb.table("pyq_question_topic_tags")
+                            .select("question_id, topic_id")
+                            .in_("question_id", c)
+                            .eq("reviewer_status", "verified")
+                            .order("id")
+                            .range(f, t)
+                            .execute()
+                            .data
+                        )
+                    )
+                )
             if topic_id:
                 keep_qids = {t["question_id"] for t in tag_rows if t.get("topic_id") == topic_id}
             else:
-                # subject filter: find topics belonging to subject
-                topic_ids_for_subject = set()
-                if tag_rows:
-                    all_topic_ids = list({t["topic_id"] for t in tag_rows if t.get("topic_id")})
+                # subject filter: find topics belonging to subject (IN() batched too).
+                topic_ids_for_subject: set[str] = set()
+                all_topic_ids = list({t["topic_id"] for t in tag_rows if t.get("topic_id")})
+                for chunk in _chunks(all_topic_ids, _BATCH):
                     t_rows = (
                         sb.table("topics")
                         .select("id, subject_id")
-                        .in_("id", all_topic_ids)
+                        .in_("id", chunk)
                         .eq("subject_id", subject_id)
-                        .limit(5000)
+                        .limit(_BATCH)
                         .execute()
                         .data
                         or []
                     )
-                    topic_ids_for_subject = {t["id"] for t in t_rows}
+                    topic_ids_for_subject.update(t["id"] for t in t_rows if t.get("id"))
                 keep_qids = {t["question_id"] for t in tag_rows if t.get("topic_id") in topic_ids_for_subject}
             all_questions = [q for q in all_questions if q["id"] in keep_qids]
 
