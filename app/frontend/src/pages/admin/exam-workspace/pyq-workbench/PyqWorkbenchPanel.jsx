@@ -11,6 +11,7 @@ import AddPyqPaperModal from "./AddPyqPaperModal";
 
 const PyqPaperWorkspace = lazy(() => import("../../studyos/PyqPaperWorkspace"));
 const ScoreSnapshotPanel = lazy(() => import("../score-snapshots/ScoreSnapshotPanel"));
+const CoveragePanel = lazy(() => import("../coverage/CoveragePanel"));
 
 const TRUST_LABEL = {
   verified: "Verified",
@@ -390,6 +391,8 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   const { user } = useAuth();
   const canReview = user?.role === "super_admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.review"));
+  const canManage = user?.role === "super_admin" ||
+    (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.manage"));
   const canEdit = user?.role === "super_admin" ||
     (Array.isArray(user?.permissions) && user.permissions.includes("exam_intelligence.cms"));
 
@@ -514,30 +517,51 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
     }
   }
 
+  // Shared view-switcher row so Papers / Score Snapshots / Coverage stay in
+  // sync across every view. The active view gets the highlighted style.
+  function viewSwitcher() {
+    const tab = (v, label, testid) => (
+      <button
+        type="button"
+        onClick={() => setView(v)}
+        className={
+          "px-3 py-1 text-sm rounded " +
+          (view === v
+            ? "bg-indigo-100 text-indigo-700 font-medium"
+            : "text-gray-600 hover:bg-gray-100")
+        }
+        data-testid={testid}
+        aria-current={view === v ? "true" : undefined}
+      >
+        {label}
+      </button>
+    );
+    return (
+      <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 flex items-center gap-1">
+        {tab("papers", "Papers", "view-papers-btn")}
+        {tab("snapshots", "Score Snapshots", "view-snapshots-btn")}
+        {tab("coverage", "Coverage", "view-coverage-btn")}
+      </div>
+    );
+  }
+
   if (view === "snapshots") {
     return (
       <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
-        <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setView("papers")}
-            className="px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100"
-            data-testid="view-papers-btn"
-          >
-            Papers
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("snapshots")}
-            className="px-3 py-1 text-sm rounded bg-indigo-100 text-indigo-700 font-medium"
-            data-testid="view-snapshots-btn"
-            aria-current="true"
-          >
-            Score Snapshots
-          </button>
-        </div>
+        {viewSwitcher()}
         <Suspense fallback={<div className="p-6 text-sm text-gray-400">Loading…</div>}>
           <ScoreSnapshotPanel canReview={canReview} />
+        </Suspense>
+      </div>
+    );
+  }
+
+  if (view === "coverage") {
+    return (
+      <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
+        {viewSwitcher()}
+        <Suspense fallback={<div className="p-6 text-sm text-gray-400">Loading…</div>}>
+          <CoveragePanel canReview={canReview} canManage={canManage} />
         </Suspense>
       </div>
     );
@@ -546,25 +570,7 @@ export default function PyqWorkbenchPanel({ paperId = null, rowId = null, status
   return (
     <div className="flex flex-col h-full" data-testid="pyq-workbench-panel">
       {/* View switcher */}
-      <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => setView("papers")}
-          className="px-3 py-1 text-sm rounded bg-indigo-100 text-indigo-700 font-medium"
-          data-testid="view-papers-btn"
-          aria-current="true"
-        >
-          Papers
-        </button>
-        <button
-          type="button"
-          onClick={() => setView("snapshots")}
-          className="px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100"
-          data-testid="view-snapshots-btn"
-        >
-          Score Snapshots
-        </button>
-      </div>
+      {viewSwitcher()}
       {/* Paper overview table */}
       <div className="px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
