@@ -274,3 +274,190 @@ React 18 + Tailwind + TanStack Query + recharts, not port.
 - Suggested build order (per README, confirmed against schema): **essay tool
   first** (schema ready, only a blocks endpoint + taxonomy decision needed);
   calendar-planner and roadmap both need new backend tables before a real build.
+
+---
+
+## Part C — Lock mechanism
+
+> Follow-up to Part A. Part A confirmed the pipeline is stuck because nothing
+> promotes `exam_topic_score_snapshots` or `exam_topic_coverage` from `draft`
+> to `locked` (the two gates that let real, prioritised data surface). This
+> section answers the single remaining pre-implementation question: **does a
+> generic promote-to-locked mechanism already exist for these two entities, or
+> must one be built?** Investigation-only, no code changed. Line numbers are
+> against `main @ ff6bccc` unless noted.
+
+### Verdict (one line)
+
+**(a) The mechanism EXISTS at the API level for BOTH entities — it does not
+need to be built from scratch. What's missing is wiring, and it is asymmetric:
+score snapshots are fully wired (API + a complete operator UI); topic coverage
+has the lock API but NO operator UI at all, and its `derive` trigger also has
+no UI.** So this is a "wire the existing routes," not a "build a new lock
+engine," task.
+
+### First: these two are NOT on the generic `_REVIEWABLE` path (and shouldn't be)
+
+The generic reviewable-entity registry
+(`admin_exam_intelligence.py:149`, `_REVIEWABLE`) covers
+`syllabus_topic_mention`, `pyq_question_topic_tag`, `pyq_question`,
+`pyq_option`, `pyq_stimulus`, `pyq_question_stimulus` — and drives the generic
+`PATCH /items/{kind}/{row_id}/review` route (`:953`). Neither
+`score_snapshot`/`exam_topic_score_snapshots` nor `exam_topic_coverage` is
+registered there, **by design**: the generic path's status vocabulary is
+`_ALLOWED_STATUSES = {pending, verified, rejected, needs_correction}`
+(`:214`), whereas both pipeline entities use the *different*
+`draft → reviewed → locked` lifecycle (`_SNAPSHOT_STATUSES` `:2868`,
+`_COVERAGE_STATUSES` `:83`). They are therefore served by **dedicated
+per-entity review routes**, listed next — not by the generic dict. So step-1 of
+the methodology ("is there a `_REVIEWABLE` entry for these tables?") answers
+**no**, but that is not the gap: the dedicated routes are the real mechanism.
+
+### Score snapshots — lock mechanism EXISTS and is FULLY wired (API + UI)
+
+- **API:** `PATCH /score-snapshots/{snapshot_id}/review`
+  (`admin_exam_intelligence.py:2979`). Enforces a transition matrix
+  `draft → reviewed → locked` (`_SNAPSHOT_TRANSITIONS:2869`) and performs the
+  status UPDATE + audit INSERT atomically via the
+  `cms_review_exam_topic_snapshot` RPC (migration 204, `:3033`). Locking is a
+  **two-hop** operation: `draft → reviewed`, then `reviewed → locked` — you
+  cannot jump straight to `locked` (`:2870`).
+- **Compute trigger:** `POST /exams/{id}/score-snapshots/compute` (`:3080`).
+- **Operator UI: it already exists and is complete.**
+  `app/frontend/src/pages/admin/exam-workspace/score-snapshots/ScoreSnapshotPanel.jsx`
+  (embedded in `PyqWorkbenchPanel` as `?view=snapshots`; no standalone route by
+  design) renders: a **Compute snapshots** button (`:516-525`), status-filter
+  chips, and per-row lifecycle buttons — **Approve** (`draft→reviewed`),
+  **Lock** (`reviewed→locked`), Reject, Revert (`actions()` `:396-430`,
+  `review()` `:366-376`). Gated on the `canReview` prop
+  (`exam_intelligence.review` permission).
+- **So an operator can, TODAY, lock the 290 computed snapshots** through the
+  admin UI. **The only gap is ergonomic:** every button acts on **one row** —
+  there is no "approve all / lock all" bulk action, so locking 290 drafts is
+  ~two clicks × 290. `grep` confirms no bulk route or RPC exists
+  (`lock_all`/`bulk…review`/`review_all` → 0 hits in `app/backend/app`), and no
+  dead/unwired `lock_*`/`promote_*` helper exists in `score_snapshots.py`.
+
+### Exam topic coverage — lock API EXISTS, but there is NO operator UI
+
+- **Lock API exists:** `PATCH /topic-coverage/{row_id}/review`
+  (`admin_exam_intelligence.py:855`, body `CoverageReviewBody:845`). Unlike the
+  snapshot route, it is a **plain `.update()`** (`:875-884`) that accepts **any
+  target state directly** — an operator hitting it with
+  `reviewer_status="locked"` on a `draft` row **works in one call** (no
+  two-hop, no transition matrix). Note it is *not* RPC-backed and writes no
+  audit row (only `reviewed_by`/`reviewed_at`), a weaker guarantee than the
+  snapshot route — worth reconciling before relying on it as the lock path.
+- **Derive trigger exists (API):** `POST /exams/{id}/coverage/derive`
+  (`:3128`).
+- **But NO frontend calls either of them.** Exhaustive `grep` of
+  `app/frontend/src`:
+  - `coverage/derive` / a "Derive coverage" control → **0 hits**. Coverage can
+    only be *derived* by hitting the API directly (curl/script); no button
+    exists.
+  - a caller of `PATCH …/topic-coverage/{id}/review` → **0 hits**. Every
+    frontend reference to `topic-coverage` is a **read** (`?status=reviewed`,
+    `?status=pending_review`) or a preview/glossary component
+    (`PlanImpactPreview.jsx:84`, `TopicCoveragePreview.jsx`,
+    `SyllabusMapperPanel.jsx:35`). No lock/promote button.
+  - In the CMS (`ExamIntelCms.jsx`), `exam-topic-coverage` is a **reviewable**
+    entity → it has **no Edit button** (test contract:
+    `ExamIntelCms.edit.test.jsx:368`) and its notice explicitly punts:
+    "CMS feeds the review queue … promote them via the existing review queue,
+    not here" (`ExamIntelCms.jsx:1609-1611`) — but that review queue has no
+    coverage-lock control.
+  - `ReviewActivatePanel.jsx` only **explains** the coverage lifecycle
+    (`:363-404`) and requires a `reviewed`/`locked` coverage row for planner
+    readiness; it renders no derive trigger and no coverage-lock button.
+- No dead/unwired `lock_*`/`promote_*` helper exists in
+  `coverage_derivation.py` either — the per-row `/review` route is the only
+  promotion path.
+
+### What this means end to end (the operator's real blocker)
+
+The four-step chain from Part A maps onto wiring status like this:
+
+| Step | Backend route | Operator UI today |
+|---|---|---|
+| 1. compute snapshots | `POST …/score-snapshots/compute` | ✅ ScoreSnapshotPanel "Compute" |
+| 2. lock snapshots (draft→reviewed→locked) | `PATCH …/score-snapshots/{id}/review` | ✅ per-row Approve+Lock (no bulk) |
+| 3. derive coverage | `POST …/coverage/derive` | ❌ **no UI — API/script only** |
+| 4. lock coverage (draft→locked) | `PATCH …/topic-coverage/{id}/review` | ❌ **no UI — API/script only** |
+
+Steps 3–4 having **no UI** is why, in practice, coverage never gets derived or
+locked through normal operator use — matching Part A's "nothing surfaces."
+Step 2 has a UI but no bulk affordance, so even the snapshot half is painful at
+290 rows.
+
+### Recommended next step (concrete — this is a wire-up, not a new engine)
+
+**Primary (unblocks the pipeline): build the missing coverage operator UI by
+wiring the three routes that already exist** — mirror `ScoreSnapshotPanel`:
+
+1. A **"Derive coverage"** button → `POST /exams/{id}/coverage/derive`
+   (scope-aware, exam-wide by default to match the derive write scope
+   `cycle=null, phase=null` noted in Part A §Preflight #4).
+2. A coverage **list** using the existing `GET /topic-coverage`
+   (`admin_exam_intelligence.py:736`).
+3. A per-row **Lock** button → `PATCH /topic-coverage/{id}/review` with
+   `reviewer_status="locked"` (single-hop; already supported).
+
+   This is pure frontend + no new backend route. Recommended home: a sibling
+   panel in `exam-workspace` (same shell as `ScoreSnapshotPanel`) so it inherits
+   the `canReview` gate and scope selector; **do not** add a new top-level
+   sidebar surface (no-new-surface rule). Read
+   `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` first, since this
+   touches `ExamWorkspace.jsx`/`ReviewActivatePanel.jsx` territory, and keep it
+   serial (single owner) per the routing/AdminShell serial-delivery rule.
+
+**Secondary (ergonomics, optional): a bulk-lock affordance.** Given 290
+snapshots + 456 coverage rows, per-row clicking is impractical. Two options,
+lightest first:
+   - **Frontend-only loop:** an "Approve all / Lock all (current filter+scope)"
+     button that iterates the existing per-row PATCH endpoints. No backend
+     change; honours every existing guard (transition matrix, RPC audit for
+     snapshots). Recommended.
+   - **First-class bulk endpoint:** `POST …/score-snapshots/bulk-review` and a
+     coverage equivalent, each looping the existing RPC/update server-side.
+     Heavier; only if the frontend loop proves too slow or non-atomic. If built,
+     reuse the migration-204 snapshot RPC per row so the audit trail is
+     preserved.
+
+**Do NOT** add auto-lock to `compute`/`derive` — that would bypass the review
+lifecycle the "verified-only reads" governance depends on (Part A already
+rejected this; OD-4 keeps locking manual by design). The fix is to make the
+manual lock **reachable and bulk-able from the operator UI**, not automatic.
+
+### Live checks still owed (restated from Part A — run these to close the loop)
+
+This lock-mechanism finding is confirmed from code and needs no live check.
+But Part A's three queries still need an operator to run them (offline sandbox
+here cannot), to settle the exact `written=456`/empty-read observation
+alongside the lock question:
+
+1. **Coverage rows & scope**
+   ```sql
+   SELECT reviewer_status, source_basis, count(*),
+          exam_cycle_id IS NULL AS cycle_null,
+          exam_phase_id IS NULL AS phase_null
+   FROM exam_topic_coverage
+   WHERE exam_id = '<upsc-cse id>'
+   GROUP BY reviewer_status, source_basis, cycle_null, phase_null;
+   ```
+   456 `draft`/`evidence_derived` exam-wide rows ⇒ derived-but-never-locked
+   (defects 1/2, and now: never lockable via UI); 0 rows ⇒ derive's writes
+   didn't persist at the read's scope.
+2. **Snapshot lock state**
+   ```sql
+   SELECT status, count(*)
+   FROM exam_topic_score_snapshots
+   WHERE exam_id = '<upsc-cse id>' AND model_version = 'v1.0'
+   GROUP BY status;
+   ```
+   Expect ~290 `draft`, 0 `locked` — confirms nothing was locked, so derive saw
+   an empty locked-snapshot set and scored every coverage row priority 0.
+3. **Chart source** — identify the exact backend read behind "By Subject –
+   High-Yield" (frontend `PyqSummaryCharts.jsx` / its endpoint) and confirm
+   whether it reads *locked* `exam_topic_coverage` or falls back to
+   `/pyq-summary` verified-tag counts, and whether it LEFT-joins the topic
+   catalog (the origin of the "null columns" appearance).
