@@ -551,6 +551,70 @@ def _parse_blocks(path: str) -> list[dict]:
 # ── validation ───────────────────────────────────────────────────────────────
 
 
+def _statement_run(q: dict) -> tuple[int, int] | None:
+    """Bounds of an unnumbered statement run in the stem, or None if there is none.
+
+    Read-only, and deliberately so: ``validate`` needs to know whether a statement
+    run exists in order to describe the defect accurately, and it must not renumber
+    the stem as a side effect of reporting on it. ``_number_unmarked`` applies the
+    numbering once these same bounds come back.
+    """
+    parts = q["stem_parts"]
+    if any(re.match(r"^\d+\.\s", line) for line in parts):
+        return None
+    lead = next((i for i, line in enumerate(parts) if LEAD_IN.search(line)), None)
+    if lead is None:
+        return None
+    close = next((i for i in range(lead + 1, len(parts)) if CLOSING.match(parts[i])), None)
+    if close is None or close - lead < 3:
+        return None
+    return lead, close
+
+
+def _index_reference_defect(q: dict) -> str:
+    """Describe the defect behind an index reference with no numbering to match.
+
+    Names the offending option, offers the likelier of the two readings, and says
+    what the operator can actually do — which is never a ``corrections`` entry:
+    ``relabel`` only reorders labels, ``add_options`` refuses a label that already
+    parsed, and ``options_from_stem`` refuses a question that already has options.
+    The remedy is the source document or exclusion, and saying so up front saves
+    the operator discovering it three refusals later.
+    """
+    indexed = [(label, text) for label, text in q["options"] if INDEX_OPTION.match(text)]
+    plain = [text for label, text in q["options"]
+             if not INDEX_OPTION.match(text) and not INDEX_SIBLING.match(text)]
+
+    label, text = indexed[0]
+    more = f" (and {len(indexed) - 1} more)" if len(indexed) > 1 else ""
+    verb = "refer" if len(indexed) > 1 else "refers"
+    parts = [f"option ({label}) {text!r}{more} {verb} to items by number, "
+             f"but the stem carries no numbered list."]
+
+    if len(plain) >= 2:
+        shown = ", ".join(repr(t) for t in plain[:3])
+        parts.append(
+            f"The other options are plain items ({shown}), so the numerals most likely "
+            f"point at the options themselves rather than at statements — a paper that "
+            f"printed numbered options and was retyped with letters."
+        )
+    else:
+        parts.append("The source document most likely lost its list numbering.")
+
+    if _statement_run(q) is None:
+        # No run to restore, so every automated remedy is out. Say so, rather than
+        # let the operator find out through three separate corrections refusals.
+        parts.append("--number-unmarked-statements cannot help: the stem has no "
+                     "statement run to number.")
+        parts.append("No corrections operation repairs this either — relabel only "
+                     "reorders labels, add_options refuses a label that already "
+                     "parsed, options_from_stem refuses a question that already has "
+                     "options. Fix the source document or exclude the question.")
+    else:
+        parts.append("--number-unmarked-statements restores the run by printed order.")
+    return " ".join(parts)
+
+
 def _number_unmarked(q: dict) -> bool:
     """Restore ``1.``/``2.`` on a statement run whose source lost its list numbering.
 
@@ -565,15 +629,11 @@ def _number_unmarked(q: dict) -> bool:
 
     Returns True when it changed the stem.
     """
+    bounds = _statement_run(q)
+    if bounds is None:
+        return False
+    lead, close = bounds
     parts = q["stem_parts"]
-    if any(re.match(r"^\d+\.\s", line) for line in parts):
-        return False
-    lead = next((i for i, line in enumerate(parts) if LEAD_IN.search(line)), None)
-    if lead is None:
-        return False
-    close = next((i for i in range(lead + 1, len(parts)) if CLOSING.match(parts[i])), None)
-    if close is None or close - lead < 3:
-        return False
     for offset, i in enumerate(range(lead + 1, close), start=1):
         parts[i] = f"{offset}. {parts[i]}"
     return True
@@ -618,13 +678,33 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
                 errors.append(f"Q{n}: option ({label}) is empty")
 
         # A stem whose options say "1 and 2 only" must actually carry numbered
-        # statements. Some source documents drop Word's list numbering entirely,
-        # which leaves the statements present but unnumbered and the question
-        # unanswerable. Options that only tally statements ("Only two") are exempt:
+        # statements. Options that only tally statements ("Only two") are exempt:
         # the count runs over the statements as printed, so their numbering is
         # cosmetic. Three stem shapes legitimately satisfy an index reference
         # without a numbered list: a restored "1." list, a table ("how many pairs
         # are correctly matched"), and UPSC's "Statement-I / Statement-II" form.
+        #
+        # Two different defects reach this branch, and the operator needs to know
+        # which one they are looking at:
+        #
+        #   lost numbering    the stem printed a numbered list and the source
+        #                     dropped Word's numbering, leaving the statements
+        #                     present but unmarked. Every option is an index
+        #                     reference ("1 only" / "Both 1 and 2"), and
+        #                     --number-unmarked-statements can restore the run.
+        #
+        #   renumbered options  the paper printed its answer choices as a numbered
+        #                     list, was retyped with letters, and an option still refers
+        #                     back numerically — IFSCA-GA-2023-P2P2-FIN Q5 offers
+        #                     "A. RBI / B. MMTC / C. Banks / D. 1 and 3", where "1
+        #                     and 3" means options (a) and (c). The other options
+        #                     are plain items and there is no statement run at all,
+        #                     so the flag is powerless and numbering the stem would
+        #                     mean inventing statements that were never printed.
+        #
+        # Both stay errors — "1 and 3" read against lettered options is ambiguous
+        # to an aspirant, and which reading is right is not deterministically
+        # recoverable. Only the diagnosis differs.
         stem = "\n".join(q["stem_parts"])
         anchored = (
             re.search(r"^\d+\.\s", stem, re.M)
@@ -632,10 +712,7 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
             or re.search(r"\bStatement[-\s]*(?:I+|[1-9])\b", stem)
         )
         if _names_statement_indices(q["options"]) and not anchored:
-            errors.append(
-                f"Q{n}: options name statements by index but the stem carries no numbering "
-                f"(source document lost its list numbering)"
-            )
+            errors.append(f"Q{n}: {_index_reference_defect(q)}")
 
     numbers = [q["number"] for q in questions]
     if numbers != list(range(1, len(numbers) + 1)):
