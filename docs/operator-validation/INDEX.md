@@ -59,6 +59,14 @@ Owner: Exam Intelligence / operations
 |---|---|---:|---:|---|---|---|---|---|
 | **UPSC CSE first-environment activation (staging)**<br>`exam-intelligence-upsc-cse-staging-activation` | **OPERATOR PENDING** | 2026-07-15 | 2026-07-31T18:00:00Z | — | — | In staging, confirm ADMIN_STUDY_OS_ENABLED and exam_intelligence permissions, then execute the reusable 17-step activation runbook against UPSC CSE (upsc-cse) and attach one evidence record. | [exam-intelligence-operator-activation.md](../../docs/runbooks/exam-intelligence-operator-activation.md) | — |
 
+## Essay Builder (Idea Canvas + Spine) `essay-builder`
+
+Owner: Study OS / Essay
+
+| Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
+|---|---|---:|---:|---|---|---|---|---|
+| **Migration 266 apply + Essay Builder endpoint live validation**<br>`essay-builder-266-live-validation` | **VALIDATION PENDING** | 2026-08-28 | 2026-09-25T18:00:00Z | — | — | Apply migration 266 to the target Supabase database, prove the service-role-only RLS posture over HTTP, then run the two-aspirant CRUD and cross-user isolation proof against the deployed API. | [essay-builder-migration-266-validation.md](../../docs/runbooks/essay-builder-migration-266-validation.md) | — |
+
 ## Update rule
 
 Do not mirror operator status into per-track checklists. Keep implementation contracts where they are, keep runbooks reusable, append immutable evidence records, record defects in the gate, and change status only in `registry.json`.
