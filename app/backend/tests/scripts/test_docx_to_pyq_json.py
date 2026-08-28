@@ -909,3 +909,103 @@ def test_sebi_q1_verbatim_source_wording(tmp_path):
 def test_percentages_and_units_do_not_demand_numbering(name, options):
     """A trailing unit means the digits are a quantity, not a statement pointer."""
     assert mod._names_statement_indices([("x", o) for o in options]) is False
+
+
+# ── index reference with nothing to index: two defects, two diagnoses ────────
+#
+# IFSCA-GA-2023-P2P2-FIN Q5 prints "A. RBI / B. MMTC / C. Banks / D. 1 and 3 /
+# E. All of the above". Option (d) IS an index reference by shape, so the check
+# fires correctly — but the numerals point at options (a) and (c), not at
+# statements, and the stem never carried a numbered list. The old message
+# asserted the stem "lost its list numbering" and pointed at
+# --number-unmarked-statements, which cannot help here and whose only manual
+# equivalent would be inventing statements that were never printed.
+#
+# Both defects still error. Only the diagnosis differs.
+
+
+def _ifsca_q5(tmp_path, name="ifsca.docx"):
+    body = (
+        _para("1. Which of the following entities can participate in the auction of "
+              "gold under the Gold Monetization Scheme (GMS)? (Topic- Bullion)")
+        + _para("A. RBI") + _para("B. MMTC") + _para("C. Banks")
+        + _para("D. 1 and 3") + _para("E. All of the above")
+    )
+    return _question(tmp_path, body, name)
+
+
+def test_ifsca_q5_still_errors(tmp_path):
+    """The paper is defective and must never import silently."""
+    errors = mod.validate(_ifsca_q5(tmp_path), 1)
+    assert len(errors) == 1
+    assert errors[0].startswith("Q1: option (d) '1 and 3' refers to items by number")
+
+
+def test_ifsca_q5_names_the_real_defect(tmp_path):
+    """Quote the option, offer the likelier reading, and give a usable remedy."""
+    error = mod.validate(_ifsca_q5(tmp_path), 1)[0]
+    assert "'RBI', 'MMTC', 'Banks'" in error
+    assert "point at the options themselves" in error
+    assert "--number-unmarked-statements cannot help" in error
+    assert "Fix the source document or exclude the question." in error
+    # The old, wrong diagnosis must not appear on this shape.
+    assert "lost its list numbering" not in error
+
+
+def test_ifsca_q5_options_parse_intact(tmp_path):
+    """The diagnosis change must not disturb parsing — a-e, text unchanged."""
+    assert _ifsca_q5(tmp_path)[0]["options"] == [
+        ("a", "RBI"), ("b", "MMTC"), ("c", "Banks"),
+        ("d", "1 and 3"), ("e", "All of the above"),
+    ]
+
+
+def test_lost_numbering_keeps_its_own_diagnosis(tmp_path):
+    """A real lost-numbering paper is still told it lost its numbering, and that
+    the flag can restore the run — the remedy that actually applies there."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.")
+        + _para("Krishna River directly feeds Kolleru Lake.")
+        + _para("Which of the statements given above is/are correct?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+    )
+    error = mod.validate(_question(tmp_path, body), 1)[0]
+    assert "lost its list numbering" in error
+    assert "--number-unmarked-statements restores the run" in error
+    # The options-referring-to-options reading must not be offered here.
+    assert "point at the options themselves" not in error
+
+
+def test_lost_numbering_without_a_run_says_the_flag_cannot_help(tmp_path):
+    """No lead-in and no closing interrogative: nothing to number, so say so."""
+    body = (
+        _para("1. Which one is correct?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+    )
+    error = mod.validate(_question(tmp_path, body), 1)[0]
+    assert "lost its list numbering" in error
+    assert "--number-unmarked-statements cannot help" in error
+    assert "Fix the source document or exclude the question." in error
+
+
+def test_validate_does_not_renumber_the_stem_as_a_side_effect(tmp_path):
+    """Reporting must be read-only: _statement_run must not mutate what it inspects."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.")
+        + _para("Krishna River directly feeds Kolleru Lake.")
+        + _para("Which of the statements given above is/are correct?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+    )
+    questions = _question(tmp_path, body)
+    before = list(questions[0]["stem_parts"])
+    mod.validate(questions, 1)
+    mod.validate(questions, 1)
+    assert questions[0]["stem_parts"] == before
+    # and the opt-in restoration still works afterwards
+    assert mod._number_unmarked(questions[0]) is True
+    assert questions[0]["stem_parts"][1:3] == [
+        "1. Jhelum River passes through Wular Lake.",
+        "2. Krishna River directly feeds Kolleru Lake.",
+    ]
