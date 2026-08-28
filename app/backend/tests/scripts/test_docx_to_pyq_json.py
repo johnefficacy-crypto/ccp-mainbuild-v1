@@ -397,3 +397,27 @@ def test_provenance_keys_are_ignored(tmp_path):
     """Underscore-prefixed keys carry provenance, not operations."""
     body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
     assert mod.apply_corrections(_question(tmp_path, body), {"_provenance": "..."}) == []
+
+
+def test_add_options_supplies_an_option_the_source_dropped(tmp_path):
+    """The only operation that introduces text, so it is the narrowest."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three")
+    questions = _question(tmp_path, body)
+    applied = mod.apply_corrections(questions, {"1": {"add_options": {"d": "Four"}}})
+    assert questions[0]["options"][-1] == ("d", "Four")
+    assert applied == ["Q1: supplied missing option(s) d"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_add_options_refuses_to_overwrite_a_parsed_option(tmp_path):
+    """A correction must never silently replace text that was actually printed."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    with pytest.raises(ValueError, match="overwrite"):
+        mod.apply_corrections(_question(tmp_path, body), {"1": {"add_options": {"d": "Other"}}})
+
+
+def test_add_options_refuses_to_leave_an_incomplete_set(tmp_path):
+    """Filling one hole of two would look repaired while still being damaged."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two")
+    with pytest.raises(ValueError, match="not a complete a-d"):
+        mod.apply_corrections(_question(tmp_path, body), {"1": {"add_options": {"d": "Four"}}})

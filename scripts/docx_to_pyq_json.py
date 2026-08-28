@@ -495,6 +495,11 @@ def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
     ``options_from_stem``  take the last N numbered lines off the stem and make
                  them options a..d, for a paper that formatted its options as a
                  decimal list so they parsed as statements.
+    ``add_options``  supply the text of an option the source file dropped
+                 entirely. This is the only operation that introduces text rather
+                 than rearranging what was parsed, so it is deliberately the
+                 narrowest: the label must be absent, and the result must be a
+                 complete a-d set.
 
     Returns the notes describing what was applied, for the report.
     """
@@ -518,6 +523,26 @@ def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
             q["options"] = [(label, text) for label, (_, text) in zip(labels, q["options"])]
             q["options"].sort(key=lambda pair: OPTION_LABELS.index(pair[0]))
             applied.append(f"Q{num}: relabelled options {'/'.join(labels)}")
+
+        if "add_options" in spec:
+            existing = {label for label, _ in q["options"]}
+            for label, text in sorted(spec["add_options"].items()):
+                if label in existing:
+                    raise ValueError(
+                        f"correction Q{num}: add_options would overwrite the parsed "
+                        f"option ({label})"
+                    )
+                q["options"].append((label, text))
+            q["options"].sort(key=lambda pair: OPTION_LABELS.index(pair[0]))
+            if [label for label, _ in q["options"]] != list(OPTION_LABELS):
+                raise ValueError(
+                    f"correction Q{num}: add_options leaves the option set "
+                    f"{[label for label, _ in q['options']]}, not a complete a-d"
+                )
+            applied.append(
+                f"Q{num}: supplied missing option(s) "
+                f"{'/'.join(sorted(spec['add_options']))}"
+            )
 
         if "options_from_stem" in spec:
             count = int(spec["options_from_stem"])

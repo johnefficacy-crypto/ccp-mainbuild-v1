@@ -56,7 +56,7 @@ and restores Word's auto-list numbering.
 | 2021 | C | `Q.1)` | `a)` paragraphs | Blocked: Q86 |
 | 2020 | C | `Question 1.` / `Question 5:` / `Question: 6.` | packed `(a)` lines | Blocked: Q40 |
 | 2019 | B | `1.` | lower-letter auto-list | **Converts** 100/100 |
-| 2018 | C | `Q.1)` | packed `(a)` lines | Blocked: Q37 |
+| 2018 | C | `Q.1)` | packed `(a)` lines | **Converts** 100/100 (Q37 corrected; see key conflict) |
 
 ### Operator corrections
 
@@ -69,6 +69,10 @@ an unresolved key at build time. Two positional operations:
 - `relabel` — assign these labels to the parsed options in printed order.
 - `options_from_stem` — take the last N numbered lines off the stem and make them
   options a-d.
+- `add_options` — supply the text of an option the source dropped entirely. The
+  only operation that introduces text rather than rearranging what was parsed, so
+  it is the narrowest: the label must be absent and the result must be a complete
+  a-d set.
 
 Applied so far:
 
@@ -80,29 +84,39 @@ Applied so far:
   parsed as numbered statements. Promoted to a-d in printed order. The key says
   (a) is "environmentally responsible practices in electronics recycling
   industry", which is printed item 1.
+- **2018 Q37** — option (d) was absent from the file. Its text is forced by the
+  other three: `(a) 1 and 2 only`, `(b) 3 only`, `(c) 1 and 3 only` leave
+  "1, 2 and 3" as the only remaining combination.
+
+### ⚠ Unresolved answer conflict — 2018 Q37
+
+The operator key on file gives Q37 = **(c) "1 and 3 only"**. The source that
+supplied the missing option (d) states the correct answer is **(d) "1, 2 and 3"**
+— i.e. that statement 2 is also correct. Both cannot hold.
+
+**The key has not been changed.** The envelope carries (c), so the paper imports
+at `reviewer_status='pending'` with the key as it stands, and nothing reaches a
+learner until review. Resolve against the official UPSC 2018 Set-C answer key
+before this question is promoted to `verified`: the mock projection gates on
+exactly one correct option, so a wrong key here ships a wrong answer silently.
 
 ### Remaining blockers
 
 Each needs a correction in the `.docx` itself; neither is repairable positionally,
 and neither is a parser limitation.
 
-- **2018 Q37** — option `(d)` is absent. A replacement question was offered from a
-  coaching source ("Sthanakvasi sect", answer (b)), but **it is not this paper's
-  Q37**: Set-C Q37 is the coral-reefs statement question, and the operator key
-  gives Q37 = `c` = "1 and 3 only", which is consistent with the coral-reefs
-  question and not with a four-way factual one. Series shuffle question order, so
-  the Sthanakvasi item is presumably Q37 in another set. What is actually needed
-  is the missing fourth option of the coral-reefs question, from the official
-  Set-C paper.
 - **2020 Q40** — the fourth option is labelled `(a)`, which a `relabel` correction
   would fix. But the damage is not only the label: all four statements are merged
   into a single stem line **and the text is itself corrupted** — "'Certificate of
   Deposit is a long-term of India to a corporation" has words dropped mid-clause.
   Relabelling alone would produce a well-formed question whose statements are
-  unreadable, so the stem needs retyping from the official paper first. (A
-  replacement stem was offered from a coaching source — the Alma-Ata / Hague /
-  Talanoa / Under2 pairs question — but like 2018 Q37 that is a different question
-  from this set's Q40, even though its option texts coincide.)
+  unreadable, so the stem needs **retyping from the official Set-C paper**. Two
+  attempts to supply a replacement have not carried that text: the first offered a
+  different question (the Alma-Ata / Hague / Talanoa / Under2 pairs item, whose
+  option texts coincide because both are four-statement questions), the second
+  restated the option labelling and confirmed the key as (c) — which the key on
+  file already gives — without the statements themselves. The key is not the
+  blocker here; the four statement texts are.
 
 ### What the converter repairs, and what it refuses to
 
