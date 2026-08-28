@@ -69,6 +69,68 @@ function StatusBadge({ status }) {
   return <span className={b.cls}>{b.text}</span>;
 }
 
+// ─── Subject-group sectioning ──────────────────────────────────────────────────
+// The scorer pools every verified paper when run exam-wide, so GS Paper I and
+// CSAT Paper II topics arrive in one flat list. subject_group (enriched by the
+// backend from subjects.subject_group) is the paper-level discriminator; we
+// section by it so the two papers read as two papers, not one bucket.
+// Known groups get a friendly, paper-anchored label; anything else falls
+// through to a title-cased label, and rows with no subject land in an explicit
+// "Unclassified" section (never silently merged into another paper).
+const NO_GROUP = "__none__";
+const SUBJECT_GROUP_LABEL = {
+  gs:        "GS Paper I — General Studies",
+  reasoning: "CSAT Paper II — Aptitude",
+};
+// Stable display order: GS first, CSAT second, any other named group next,
+// unclassified always last.
+const SUBJECT_GROUP_ORDER = ["gs", "reasoning"];
+
+function subjectGroupLabel(group) {
+  if (!group) return "Unclassified — no subject";
+  if (SUBJECT_GROUP_LABEL[group]) return SUBJECT_GROUP_LABEL[group];
+  return group.charAt(0).toUpperCase() + group.slice(1);
+}
+
+function groupRank(group) {
+  if (!group || group === NO_GROUP) return Number.MAX_SAFE_INTEGER;
+  const i = SUBJECT_GROUP_ORDER.indexOf(group);
+  return i === -1 ? SUBJECT_GROUP_ORDER.length : i;
+}
+
+// Partition snapshots into ordered [{ group, label, rows }] sections without
+// disturbing within-group order (the backend already sorts by computed_at).
+function groupSnapshots(snaps) {
+  const byGroup = new Map();
+  for (const s of snaps) {
+    const key = s.subject_group || NO_GROUP;
+    if (!byGroup.has(key)) byGroup.set(key, []);
+    byGroup.get(key).push(s);
+  }
+  return [...byGroup.entries()]
+    .sort((a, b) => {
+      const r = groupRank(a[0]) - groupRank(b[0]);
+      return r !== 0 ? r : String(a[0]).localeCompare(String(b[0]));
+    })
+    .map(([group, rows]) => ({
+      group,
+      label: subjectGroupLabel(group === NO_GROUP ? null : group),
+      rows,
+    }));
+}
+
+// A snapshot is a "0-evidence" node when it carries no verified primary tags
+// (evidence_count === 0). By construction (score_snapshots.py: the topic
+// universe is primary-tag topics UNION locked-coverage topics) such a row is
+// present ONLY because a locked coverage row seeded it — a rollup/header node,
+// not a real evidence-backed leaf. A genuinely-new, not-yet-tagged real topic
+// has neither tags nor coverage and so never appears here at all, so this flag
+// cannot hide such a topic. These rows must not be orderable/approvable as
+// peers of real leaves, but stay visible and rejectable.
+function isZeroEvidence(snap) {
+  return snap?.evidence_count === 0;
+}
+
 // ─── Reviewer-notes modal (locked → reviewed) ─────────────────────────────────
 
 function ReviewerNotesModal({ open, onCancel, onConfirm, busy, error, invokerRef }) {
@@ -395,16 +457,30 @@ export default function ScoreSnapshotPanel({ canReview = false }) {
 
   function actions(snap) {
     const busy = reviewAction.busy;
+    const zeroEvidence = isZeroEvidence(snap);
 
     function btn(label, status, variant = "small") {
       const isLockedReversal = snap.status === "locked" && status === "reviewed";
       const isLockWithoutIdentity = status === "locked" && !snap.topic_name;
+      // A 0-evidence rollup/header node must not be promotable as if it were a
+      // real leaf: block Approve (draft→reviewed) and Lock (→locked). Reject
+      // and the walk-back moves (→draft, locked→reviewed) stay enabled so an
+      // operator can consciously reject or unwind it.
+      const isPromotion =
+        status === "locked" || (snap.status === "draft" && status === "reviewed");
+      const blockedZeroEvidence = zeroEvidence && isPromotion;
       return (
         <button
           key={`${snap.id}-${status}`}
           className={`btn ${variant} small`}
-          disabled={busy || isLockWithoutIdentity}
-          title={isLockWithoutIdentity ? "Topic identity not resolved — cannot lock" : undefined}
+          disabled={busy || isLockWithoutIdentity || blockedZeroEvidence}
+          title={
+            blockedZeroEvidence
+              ? "No PYQ evidence (0 verified tags) — reject or add evidence; cannot promote a rollup/header node"
+              : isLockWithoutIdentity
+                ? "Topic identity not resolved — cannot lock"
+                : undefined
+          }
           onClick={(e) => {
             if (isLockedReversal) {
               invokerRef.current = e.currentTarget;
@@ -460,6 +536,92 @@ export default function ScoreSnapshotPanel({ canReview = false }) {
     if (!snap.exam_phase_id) return "Exam-wide";
     const opt = scopeOptions.find((o) => o.id === snap.exam_phase_id);
     return opt?.label || snap.exam_phase_id;
+  }
+
+  // Render one snapshot as its table row (+ evidence drawer when expanded).
+  // Extracted so the tbody can wrap rows in subject-group sections.
+  function renderSnapshotRow(snap) {
+    const expanded = expandedId === snap.id;
+    const zeroEvidence = isZeroEvidence(snap);
+    const out = [
+      <tr key={snap.id} data-testid={`snapshot-row-${snap.id}`}>
+        <td>
+          <div className="row" style={{ gap: 4, alignItems: "flex-start" }}>
+            <button
+              aria-expanded={expanded}
+              aria-label={expanded ? "Hide evidence" : "Show evidence"}
+              className="btn ghost small"
+              onClick={() => setExpandedId(expanded ? null : snap.id)}
+              data-testid={`expand-btn-${snap.id}`}
+              style={{ flexShrink: 0, padding: "0 4px", fontSize: 10 }}
+            >
+              {expanded ? "▲" : "▼"}
+            </button>
+            <div>
+              <div className="row-ttl" style={{ fontSize: 12 }} title={snap.topic_id}>
+                {snap.topic_name || snap.topic_id || "—"}
+                {zeroEvidence && (
+                  <span
+                    className="badge warn no-dot"
+                    style={{ marginLeft: 6, fontSize: 10 }}
+                    title="No PYQ evidence (0 verified primary tags) — present only via a locked coverage row. A rollup/header node, not a real leaf; cannot be approved or locked."
+                    data-testid={`zero-evidence-flag-${snap.id}`}
+                  >
+                    no evidence
+                  </span>
+                )}
+              </div>
+              {snap.topic_path && (
+                <div className="row-sub" style={{ fontSize: 10, color: "var(--ink-mute)" }}>
+                  {snap.topic_path}
+                </div>
+              )}
+            </div>
+          </div>
+        </td>
+        <td>
+          <StatusBadge status={snap.status} />
+        </td>
+        <td className="num">
+          {snap.exam_priority_score != null ? snap.exam_priority_score.toFixed(1) : "—"}
+        </td>
+        <td className="num">
+          {snap.confidence_score != null
+            ? (snap.confidence_score * 100).toFixed(0) + "%"
+            : "—"}
+        </td>
+        <td className="num">{snap.evidence_count ?? "—"}</td>
+        <td>
+          {snap.is_high_yield ? (
+            <span className="badge info no-dot">yes</span>
+          ) : (
+            <span style={{ color: "var(--ink-mute)", fontSize: 12 }}>no</span>
+          )}
+        </td>
+        <td style={{ color: "var(--ink-mute)", fontSize: 12 }}>{fmt(snap.reviewed_at)}</td>
+        <td
+          style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: "var(--ink-mute)" }}
+          title={snap.reviewer_notes || ""}
+        >
+          {snap.reviewer_notes || "—"}
+        </td>
+        <td>
+          <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+            {canReview && actions(snap)}
+          </div>
+        </td>
+      </tr>,
+    ];
+    if (expanded) {
+      out.push(
+        <EvidenceDrawer
+          key={`${snap.id}-drawer`}
+          snap={snap}
+          scopeLabel={snapScopeLabel(snap)}
+        />,
+      );
+    }
+    return out;
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -619,88 +781,32 @@ export default function ScoreSnapshotPanel({ canReview = false }) {
                       ))}
                     </tr>
                   ))
-                : snapshots.flatMap((snap) => {
-                    const expanded = expandedId === snap.id;
-                    const rows = [
+                : groupSnapshots(snapshots).flatMap((section) => {
+                    const header = (
                       <tr
-                        key={snap.id}
-                        data-testid={`snapshot-row-${snap.id}`}
+                        key={`group-${section.group}`}
+                        data-testid={`group-header-${section.group}`}
                       >
-                        <td>
-                          <div className="row" style={{ gap: 4, alignItems: "flex-start" }}>
-                            <button
-                              aria-expanded={expanded}
-                              aria-label={expanded ? "Hide evidence" : "Show evidence"}
-                              className="btn ghost small"
-                              onClick={() => setExpandedId(expanded ? null : snap.id)}
-                              data-testid={`expand-btn-${snap.id}`}
-                              style={{ flexShrink: 0, padding: "0 4px", fontSize: 10 }}
-                            >
-                              {expanded ? "▲" : "▼"}
-                            </button>
-                            <div>
-                              <div
-                                className="row-ttl"
-                                style={{ fontSize: 12 }}
-                                title={snap.topic_id}
-                              >
-                                {snap.topic_name || snap.topic_id || "—"}
-                              </div>
-                              {snap.topic_path && (
-                                <div className="row-sub" style={{ fontSize: 10, color: "var(--ink-mute)" }}>
-                                  {snap.topic_path}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <StatusBadge status={snap.status} />
-                        </td>
-                        <td className="num">
-                          {snap.exam_priority_score != null
-                            ? snap.exam_priority_score.toFixed(1)
-                            : "—"}
-                        </td>
-                        <td className="num">
-                          {snap.confidence_score != null
-                            ? (snap.confidence_score * 100).toFixed(0) + "%"
-                            : "—"}
-                        </td>
-                        <td className="num">{snap.evidence_count ?? "—"}</td>
-                        <td>
-                          {snap.is_high_yield ? (
-                            <span className="badge info no-dot">yes</span>
-                          ) : (
-                            <span style={{ color: "var(--ink-mute)", fontSize: 12 }}>no</span>
-                          )}
-                        </td>
-                        <td style={{ color: "var(--ink-mute)", fontSize: 12 }}>
-                          {fmt(snap.reviewed_at)}
-                        </td>
                         <td
-                          style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: "var(--ink-mute)" }}
-                          title={snap.reviewer_notes || ""}
+                          colSpan={9}
+                          style={{
+                            background: "var(--paper-sunk)",
+                            borderTop: "1px solid var(--rule-soft)",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            letterSpacing: "0.02em",
+                            color: "var(--ink-soft)",
+                            padding: "6px 10px",
+                          }}
                         >
-                          {snap.reviewer_notes || "—"}
+                          {section.label}{" "}
+                          <span style={{ color: "var(--ink-mute)", fontWeight: 400 }}>
+                            ({section.rows.length})
+                          </span>
                         </td>
-                        <td>
-                          <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
-                            {canReview && actions(snap)}
-                          </div>
-                        </td>
-                      </tr>,
-                    ];
-                    if (expanded) {
-                      rows.push(
-                        <EvidenceDrawer
-                          key={`${snap.id}-drawer`}
-                          snap={snap}
-                          scopeLabel={snapScopeLabel(snap)}
-                        />,
-                      );
-                    }
-                    return rows;
+                      </tr>
+                    );
+                    return [header, ...section.rows.flatMap(renderSnapshotRow)];
                   })}
             </tbody>
           </table>

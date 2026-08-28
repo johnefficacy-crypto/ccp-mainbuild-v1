@@ -2883,12 +2883,21 @@ _ENRICH_BATCH = 250  # matches score_snapshots.py _BATCH convention
 
 
 def _enrich_snapshot_topics(sb, rows: list) -> list:
-    """Attach topic_name and topic_path to each snapshot row.
+    """Attach topic_name, topic_path, subject_name and subject_group to each
+    snapshot row.
 
     Batches topic lookups in chunks of _ENRICH_BATCH IDs to stay within
     PostgREST/URL query limits — snapshot history is append-only and can
     accumulate thousands of rows.  topic_path is the parent topic name
     (one level up from the tagged topic).
+
+    ``subject_group`` is the paper-level discriminator (e.g. ``gs`` for GS
+    Paper I vs ``reasoning`` for CSAT Paper II, migration 029). The scorer
+    pools all verified papers when run exam-wide, so without this the panel
+    would show GS and CSAT topics as one flat, undifferentiated list. Carrying
+    ``subject_group``/``subject_name`` here lets the panel section the list by
+    paper without any change to the scoring math (Part D, light fix). Both are
+    read-only display enrichments — they are not stored on the snapshot row.
     """
     if not rows:
         return rows
@@ -2902,7 +2911,7 @@ def _enrich_snapshot_topics(sb, rows: list) -> list:
         try:
             batch = (
                 sb.table("topics")
-                .select("id, name, parent_topic_id")
+                .select("id, name, parent_topic_id, subject_id")
                 .in_("id", chunk)
                 .execute()
                 .data or []
@@ -2933,11 +2942,36 @@ def _enrich_snapshot_topics(sb, rows: list) -> list:
         except Exception:
             pass
 
+    # Subject lookup for the paper-level (subject_group) discriminator. A
+    # subject read failure degrades gracefully to no grouping, never to
+    # dropping rows.
+    subject_by_id: dict = {}
+    subject_ids = list({
+        t.get("subject_id") for t in topic_by_id.values() if t.get("subject_id")
+    })
+    subj_chunks = [subject_ids[i : i + _ENRICH_BATCH] for i in range(0, len(subject_ids), _ENRICH_BATCH)]
+    for chunk in subj_chunks:
+        try:
+            batch = (
+                sb.table("subjects")
+                .select("id, name, subject_group")
+                .in_("id", chunk)
+                .execute()
+                .data or []
+            )
+            for s in batch:
+                subject_by_id[s["id"]] = s
+        except Exception:
+            pass
+
     for r in rows:
         t = topic_by_id.get(r.get("topic_id") or "", {})
         r["topic_name"] = t.get("name")
         parent = topic_by_id.get(t.get("parent_topic_id") or "", {})
         r["topic_path"] = parent.get("name") if parent else None
+        subject = subject_by_id.get(t.get("subject_id") or "", {})
+        r["subject_name"] = subject.get("name")
+        r["subject_group"] = subject.get("subject_group")
     return rows
 
 
