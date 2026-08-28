@@ -78,6 +78,27 @@ OPT = re.compile(r"^\s*\(([a-e])\)\s*(.*)$", re.S)
 # recovered letter is the next one due, so a scrambled marker still fails loudly.
 OPT_LOOSE = re.compile(r"^\s*[\(\{\[\|]?\s*([A-Ea-e])\s*[\)\}\]]\.?\s+(.*)$", re.S)
 
+# SEBI/coaching-format papers print "A. Nariman Point, Mumbai" — an uppercase
+# letter, a period, and NO bracket at all. Both patterns above require a
+# closing bracket, so on those files zero options parse and every question
+# fails validation with "options are none". This is the bracket-less form.
+# The trailing ``\s+`` is required: it is what separates a marker from the
+# "A.Nariman" run-together shape, which is damage rather than a marker.
+OPT_DOT = re.compile(r"^\s*([A-Ea-e])\s*[.)]\s+(.*)$", re.S)
+
+# "A. K. Sen", "B. R. Ambedkar" — an initials run in a stem has exactly the
+# shape of a dot marker. What gives it away is the SECOND initial: no option
+# body legitimately opens with another single letter and a period. Checked
+# against the text following a candidate marker, never against the marker.
+INITIALS_RUN = re.compile(r"^[A-Za-z]\s*\.\s")
+
+# A bare "Options:" / "Options :" label line introduces the option block in the
+# coaching format (182 occurrences across the corpus). It is a label, not
+# content: appending it to the stem would change normalized_question_hash and
+# render in the aspirant UI. Dropping a line that carries no content can never
+# lose information, so this applies to every style.
+OPTIONS_LABEL = re.compile(r"^\s*Options?\s*:\s*$", re.I)
+
 # The label alphabet, in printed order. ``due_label`` walks it, so extending it
 # is what lets a fifth option be recognised at all: before "e" was here, a
 # printed "(e)" matched no marker and was appended to option (d)'s text.
@@ -260,7 +281,59 @@ def detect_marker(lines: list[Line]) -> tuple[str, re.Pattern]:
     return best[1], best[2]
 
 
-def _match_option(text: str, due: str | None) -> tuple[str, str] | None:
+def _raw_option_letter(text: str, style: str) -> str | None:
+    """The label a line would carry under ``style``, ignoring what is due.
+
+    Used only for scoring a style across a document. ``dot`` applies the
+    initials guard here too, so a paper full of "A. K. Sen" cannot inflate the
+    dot score and win a document that is really bracket-style.
+    """
+    if style == "dot":
+        m = OPT_DOT.match(text)
+        if m and not INITIALS_RUN.match(m.group(2)):
+            return m.group(1).lower()
+        return None
+    m = OPT.match(text) or OPT_LOOSE.match(text)
+    return m.group(1).lower() if m else None
+
+
+def detect_option_style(lines: list[Line]) -> str:
+    """Pick the option-marker style this document actually uses.
+
+    Mirrors ``detect_marker``: score each candidate by how much of the paper it
+    segments, and let the winner run alone, rather than trying every pattern on
+    every line. That is what keeps the change additive — a UPSC bracket paper
+    scores far higher on ``bracket`` than on ``dot``, so its stems are never
+    exposed to the bracket-less pattern and cannot drift.
+
+    A style scores one point per line that continues an a-b-c-d(-e) run, with a
+    fresh "a" always allowed to start the next question's block. Out-of-sequence
+    letters score nothing, so prose is not mistaken for a marker.
+    """
+    best = (0, "bracket")
+    for style in ("bracket", "dot"):
+        score = 0
+        i = 0
+        for line in lines:
+            text = line.text.strip()
+            if not text or OPTIONS_LABEL.match(text):
+                continue
+            letter = _raw_option_letter(text, style)
+            if letter is None:
+                continue
+            if letter == OPTION_LABELS[i]:
+                score += 1
+                i = (i + 1) % len(OPTION_LABELS)
+            elif letter == OPTION_LABELS[0]:
+                # A four-option paper restarts at "a" without ever reaching "e".
+                score += 1
+                i = 1
+        if score > best[0]:
+            best = (score, style)
+    return best[1]
+
+
+def _match_option(text: str, due: str | None, style: str = "bracket") -> tuple[str, str] | None:
     """Match one printed option line, repairing a damaged marker when unambiguous.
 
     A well-formed "(b)" is always taken. A damaged or bracket-less marker is
@@ -268,7 +341,24 @@ def _match_option(text: str, due: str | None) -> tuple[str, str] | None:
     b position is repaired, while a marker reading "d" where "b" is due is left
     unmatched and surfaces as a validation error instead of being silently
     reordered, which would be a guess about which option is the answer.
+
+    ``style`` selects the document's own marker family (see ``detect_option_style``)
+    and the two never mix. Under ``dot`` there is no bracket to signal that a
+    letter was meant as a marker, so EVERY dot marker is gated on ``due`` — the
+    same treatment a damaged bracket marker already gets. That single rule is
+    what keeps "B. Ambedkar" in a stem out of the option list: options have not
+    started there, so "a" is due and "b" is refused. The initials guard then
+    covers the one case ``due`` cannot, an "A. K. Sen" sitting where "a" is due.
     """
+    if style == "dot":
+        m = OPT_DOT.match(text)
+        if m and due is not None and m.group(1).lower() == due:
+            body = m.group(2)
+            if INITIALS_RUN.match(body):
+                return None
+            return due, body.strip().lstrip(".:").strip()
+        return None
+
     m = OPT.match(text)
     if m:
         # "(b). Two" — the stray period belongs to the damaged marker, not to the
@@ -298,12 +388,17 @@ def _split_glued(cur: dict, due_label) -> None:
         cur["options"].append((nxt, body[m.end():].strip()))
 
 
-def _parse_lines(lines: list[Line], pattern: re.Pattern) -> list[dict]:
+def _parse_lines(lines: list[Line], pattern: re.Pattern,
+                 option_style: str = "bracket") -> list[dict]:
     """Segment the flattened document into questions.
 
     A new question starts only where the marker's number is exactly ``expected``,
     so a repeated or skipped number fails loudly in ``validate`` rather than
     silently mis-segmenting.
+
+    ``option_style`` defaults to ``bracket``, so every existing caller and the
+    whole UPSC corpus take exactly the path they took before this parameter
+    existed.
     """
     questions: list[dict] = []
     cur: dict | None = None
@@ -322,6 +417,12 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern) -> list[dict]:
     for line in lines:
         text = line.text.strip()
         if not text:
+            continue
+
+        # A bare "Options:" label introduces the block and carries no content.
+        # Dropped before anything else so it can reach neither the stem nor the
+        # option list.
+        if OPTIONS_LABEL.match(text):
             continue
 
         m = pattern.match(text)
@@ -363,10 +464,11 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern) -> list[dict]:
                 cur["options"].append((OPTION_LABELS[idx], text))
             continue
 
-        opt = _match_option(text, due)
+        opt = _match_option(text, due, option_style)
         if opt:
             cur["options"].append(opt)
-            _split_glued(cur, due_label)
+            if option_style == "bracket":
+                _split_glued(cur, due_label)
             active_num_id = None
             continue
 
@@ -377,7 +479,8 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern) -> list[dict]:
             # matchers reject, so re-check for a glued marker after appending.
             label, prev = cur["options"][-1]
             cur["options"][-1] = (label, (prev + " " + text).strip())
-            _split_glued(cur, due_label)
+            if option_style == "bracket":
+                _split_glued(cur, due_label)
             continue
 
         if line.num_id is not None:
@@ -398,10 +501,10 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern) -> list[dict]:
 
 
 def _parse_blocks(path: str) -> list[dict]:
-    """Parse a paper, detecting its question-marker style first."""
+    """Parse a paper, detecting its question-marker and option-marker styles first."""
     lines = _read_lines(path)
     _, pattern = detect_marker(lines)
-    return _parse_lines(lines, pattern)
+    return _parse_lines(lines, pattern, detect_option_style(lines))
 
 
 # ── validation ───────────────────────────────────────────────────────────────
@@ -684,7 +787,8 @@ def main(argv: list[str] | None = None) -> int:
 
     lines = _read_lines(args.docx)
     marker_name, pattern = detect_marker(lines)
-    questions = _parse_lines(lines, pattern)
+    option_style = detect_option_style(lines)
+    questions = _parse_lines(lines, pattern, option_style)
 
     applied: list[str] = []
     if args.corrections:
@@ -720,7 +824,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report:
         print(f"parsed {len(questions)} questions from {args.docx}", file=sys.stderr)
-        print(f"  marker style {marker_name!r}, set {args.set_code}, year {args.year}, "
+        print(f"  marker style {marker_name!r}, option style {option_style!r}, "
+              f"set {args.set_code}, year {args.year}, "
               f"dropped {sorted(dropped) or 'none'}", file=sys.stderr)
         print(f"  answer key: {len(answer_key) or 'ABSENT'}", file=sys.stderr)
         for line in applied:
