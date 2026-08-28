@@ -51,6 +51,7 @@ const StudyProgressHub = lazy(() => import("../pages/study/StudyProgressHub"));
 const AttemptShellRouter = lazy(() => import("../pages/study/mocks/AttemptShellRouter"));
 const MockResult = lazy(() => import("../pages/study/mocks/MockResult"));
 const MockReview = lazy(() => import("../pages/study/mocks/MockReview"));
+const EssaySpine = lazy(() => import("../pages/study/EssaySpine"));
 
 export const appRouteElements = (
   <>
@@ -130,6 +131,7 @@ export const appRouteElements = (
       <Route path="/app/study/subjects" element={<Subjects />} />
       <Route path="/app/study/review" element={<WeeklyReview />} />
       <Route path="/app/study/compare" element={<StudyCompare />} />
+      <Route path="/app/study/essay/spine/:themeId?" element={<EssaySpine />} />
       <Route path="/app/notes" element={<Notes />} />
       <Route path="/app/flashcards" element={<Flashcards />} />
       <Route path="/app/flashcards/:deckId" element={<FlashcardsDeck />} />
