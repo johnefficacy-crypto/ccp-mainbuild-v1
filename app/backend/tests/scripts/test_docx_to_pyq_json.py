@@ -871,3 +871,41 @@ def test_restoration_flag_ignores_a_fill_in_the_blanks_question(tmp_path):
     )
     q = _question(tmp_path, body)[0]
     assert mod._names_statement_indices(q["options"]) is False
+
+
+# ── statement-index: verbatim source wording + percentage shapes ─────────────
+#
+# The predicate is exercised above with a trimmed stem. This pins the SEBI
+# question as it is actually printed — the stem carries "174(1)" and "2013",
+# which are exactly the kind of stray digits the old substring search keyed on.
+# Percentages were required to stay quiet but had no coverage.
+
+
+def test_sebi_q1_verbatim_source_wording(tmp_path):
+    """SEBI-GA-2022-P1-CA Q1 exactly as printed, section number and year included."""
+    body = (
+        _para("1. As per section 174(1) of companies Act, 2013, The quorum for a "
+              "meeting of the board of directors of a company shall be _______ of "
+              "total strength or ___ directors, whichever is higher")
+        + _para("A. 2/3,1") + _para("B. 1/3,2") + _para("C. 1/2,2")
+        + _para("D. 3/4, 1") + _para("E. None of the above")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["options"] == [
+        ("a", "2/3,1"), ("b", "1/3,2"), ("c", "1/2,2"),
+        ("d", "3/4, 1"), ("e", "None of the above"),
+    ]
+    assert mod._names_statement_indices(questions[0]["options"]) is False
+    assert mod.validate(questions, 1) == []
+
+
+@pytest.mark.parametrize("name,options", [
+    ("bare percentages",    ["1%", "2%", "5%", "10%"]),
+    ("percentage pairs",    ["1% and 2%", "3% and 4%", "5% and 6%", "None of the above"]),
+    ("qualified percents",  ["Not more than 1%", "Not more than 2%", "Up to 5%", "None of the above"]),
+    ("spelled percentages", ["10 per cent", "20 per cent", "1 and 2 per cent", "None of the above"]),
+    ("mixed units",         ["1 crore", "2 crore", "1 and 2 lakh", "None of the above"]),
+])
+def test_percentages_and_units_do_not_demand_numbering(name, options):
+    """A trailing unit means the digits are a quantity, not a statement pointer."""
+    assert mod._names_statement_indices([("x", o) for o in options]) is False
