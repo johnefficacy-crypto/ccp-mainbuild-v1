@@ -264,3 +264,128 @@ test("a 409 on launch shows an inline notice and does not navigate", async () =>
   );
   expect(mockNavigate).not.toHaveBeenCalled();
 });
+
+// ─── Topic drill-down (PR #1032 endpoint wiring) ────────────────────────────
+
+// One macro with a high-yield locked child + a null-coverage (not-yet-scored)
+// child, plus a rollup 0-evidence macro — the three coverage states.
+const TOPIC_TREE = [
+  {
+    topic_id: "m1", name: "Ancient India", level: "topic",
+    is_rollup_zero_evidence: false,
+    coverage: { exam_priority_score: 82, is_high_yield: true },
+    children: [
+      {
+        topic_id: "c1", name: "Indus Valley", level: "microtopic",
+        is_rollup_zero_evidence: false,
+        coverage: { exam_priority_score: 60, is_high_yield: false }, children: [],
+      },
+      {
+        topic_id: "c2", name: "Vedic Age", level: "microtopic",
+        is_rollup_zero_evidence: false, coverage: null, children: [],
+      },
+    ],
+  },
+  {
+    topic_id: "r1", name: "General mental ability", level: "topic",
+    is_rollup_zero_evidence: true,
+    coverage: { exam_priority_score: 30, is_high_yield: false }, children: [],
+  },
+];
+
+// Route api.get by URL: the subjects list vs the per-subject topic tree.
+function routeGet(treeResolver = async () => ({ subject_id: "sub-english", topics: TOPIC_TREE })) {
+  mockGet.mockImplementation((url) =>
+    String(url).includes("/topics")
+      ? treeResolver(url)
+      : Promise.resolve({ items: SUBJECTS, count: SUBJECTS.length }),
+  );
+}
+
+test("expanding a subject fetches its topic tree and shows all three coverage states distinctly", async () => {
+  routeGet();
+  renderPage();
+
+  const toggle = await screen.findByTestId("subject-topics-toggle-sub-english");
+  fireEvent.click(toggle);
+
+  await waitFor(() =>
+    expect(mockGet).toHaveBeenCalledWith("/api/study/subjects/sub-english/topics"),
+  );
+
+  // Locked coverage → priority number + high-yield pill.
+  await screen.findByTestId("topic-node-m1");
+  expect(screen.getByTestId("topic-priority-m1").textContent).toMatch(/priority 82/);
+  expect(screen.getByText("high-yield")).toBeTruthy();
+
+  // Rollup 0-evidence → "not yet reliable", NOT a priority number, de-emphasized.
+  expect(screen.getByTestId("topic-rollup-r1")).toBeTruthy();
+  expect(screen.queryByTestId("topic-priority-r1")).toBeNull();
+  // Its row is visually muted (opacity), never styled like a real ranked topic.
+  const rollupRow = screen.getByTestId("topic-node-r1").querySelector("div");
+  expect(rollupRow.className).toMatch(/opacity-55/);
+});
+
+test("macro → microtopic nesting expands and collapses; null-coverage child is 'not yet scored'", async () => {
+  routeGet();
+  renderPage();
+
+  fireEvent.click(await screen.findByTestId("subject-topics-toggle-sub-english"));
+  await screen.findByTestId("topic-node-m1");
+
+  // Children hidden until the macro is expanded.
+  expect(screen.queryByTestId("topic-node-c1")).toBeNull();
+
+  fireEvent.click(screen.getByTestId("topic-toggle-m1"));
+  await screen.findByTestId("topic-node-c1");
+  // Locked child shows its priority; null-coverage child shows "not yet scored"
+  // (no fake placeholder score), never conflated with the locked state.
+  expect(screen.getByTestId("topic-priority-c1").textContent).toMatch(/priority 60/);
+  expect(screen.getByTestId("topic-unscored-c2")).toBeTruthy();
+  expect(screen.queryByTestId("topic-priority-c2")).toBeNull();
+
+  // Collapse hides the children again.
+  fireEvent.click(screen.getByTestId("topic-toggle-m1"));
+  await waitFor(() => expect(screen.queryByTestId("topic-node-c1")).toBeNull());
+});
+
+test("topic tree shows a loading state then the tree", async () => {
+  let resolveTree;
+  routeGet(() => new Promise((res) => { resolveTree = res; }));
+  renderPage();
+
+  fireEvent.click(await screen.findByTestId("subject-topics-toggle-sub-english"));
+  // Loading placeholder appears while the fetch is in flight.
+  expect(await screen.findByTestId("topic-tree-loading")).toBeTruthy();
+
+  resolveTree({ subject_id: "sub-english", topics: TOPIC_TREE });
+  await screen.findByTestId("topic-tree");
+  expect(screen.queryByTestId("topic-tree-loading")).toBeNull();
+});
+
+test("topic tree error state offers a retry that refetches", async () => {
+  let calls = 0;
+  routeGet(() => {
+    calls += 1;
+    return calls === 1
+      ? Promise.reject(new Error("boom"))
+      : Promise.resolve({ subject_id: "sub-english", topics: TOPIC_TREE });
+  });
+  renderPage();
+
+  fireEvent.click(await screen.findByTestId("subject-topics-toggle-sub-english"));
+  const retry = await screen.findByTestId("topic-tree-retry");
+
+  fireEvent.click(retry);
+  await screen.findByTestId("topic-tree");
+  expect(screen.queryByTestId("topic-tree-error")).toBeNull();
+});
+
+test("the current-affairs card has no topic drill-down", async () => {
+  routeGet();
+  renderPage();
+  await screen.findByTestId(`subject-card-${CA_ID}`);
+  expect(screen.queryByTestId(`subject-topics-toggle-${CA_ID}`)).toBeNull();
+  // Real subjects do have it.
+  expect(screen.getByTestId("subject-topics-toggle-sub-english")).toBeTruthy();
+});

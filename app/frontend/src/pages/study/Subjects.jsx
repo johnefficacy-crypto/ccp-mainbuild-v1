@@ -8,6 +8,7 @@ import useApiAction from "../../lib/hooks/useApiAction";
 import useApiCollection from "../../lib/hooks/useApiCollection";
 import { LoadingSkeleton, EmptyState, ErrorState } from "../../shared/ui/core";
 import { TopicRadarChart } from "./components/reports";
+import SubjectTopicTree from "../../features/study/components/SubjectTopicTree";
 
 const TREND_LABEL = { up: "↑ improving", down: "↓ declining", flat: "→ steady" };
 
@@ -42,6 +43,34 @@ function SubjectPracticeCard({ subject }) {
   // GA current-affairs is bundle-driven and has NO mastery (domain rule) — render a
   // cadence subline instead of the mastery/weak/topics summary.
   const isCurrentAffairs = subject.kind === "current_affairs";
+
+  // In-place topic drill-down (no new nav surface, per the no-new-surface rule):
+  // lazily fetch the subject's topic → microtopic tree on first expand from
+  // GET /api/study/subjects/{subject_id}/topics (PR #1032). GA has no topic tree.
+  const canDrillDown = !isCurrentAffairs && !!subject.subject_id;
+  const [showTopics, setShowTopics] = useState(false);
+  const [topicTree, setTopicTree] = useState(null);
+  const [treeStatus, setTreeStatus] = useState("idle"); // idle | loading | ready | error
+
+  const loadTopics = async () => {
+    setTreeStatus("loading");
+    try {
+      const res = await api.get(
+        `/api/study/subjects/${encodeURIComponent(subject.subject_id)}/topics`,
+      );
+      setTopicTree(Array.isArray(res?.topics) ? res.topics : []);
+      setTreeStatus("ready");
+    } catch {
+      setTreeStatus("error");
+    }
+  };
+
+  const toggleTopics = () => {
+    const next = !showTopics;
+    setShowTopics(next);
+    // Fetch once on first open; re-fetch only after a prior error.
+    if (next && (treeStatus === "idle" || treeStatus === "error")) loadTopics();
+  };
 
   const launch = async (mode) => {
     if (busy) return;
@@ -147,6 +176,28 @@ function SubjectPracticeCard({ subject }) {
         >
           {practiceError}
         </p>
+      ) : null}
+
+      {canDrillDown ? (
+        <div className="mt-3 border-t border-slate-100 pt-2">
+          <button
+            type="button"
+            onClick={toggleTopics}
+            aria-expanded={showTopics}
+            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+            data-testid={`subject-topics-toggle-${subjectId}`}
+          >
+            {showTopics ? "Hide topics" : "Show topics"}
+          </button>
+          {showTopics ? (
+            <SubjectTopicTree
+              topics={topicTree}
+              loading={treeStatus === "loading"}
+              error={treeStatus === "error"}
+              onRetry={loadTopics}
+            />
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
