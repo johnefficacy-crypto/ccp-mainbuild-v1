@@ -180,3 +180,154 @@ def test_question_start_requires_the_expected_number(tmp_path):
     questions = _question(tmp_path, body)
     assert len(questions) == 1
     assert "1. Konkani" in questions[0]["stem_parts"]
+
+
+# ── marker detection, line flattening, and damaged-source recovery ────────────
+
+
+def test_detects_q_dot_n_marker_over_bare_numbers(tmp_path):
+    """'Q.1)' papers also carry bare '1.' statement lines; the opener must win."""
+    body = (
+        _para("Q.1) Consider the following:")
+        + _para("1. Alpha")
+        + _para("2. Beta")
+        + _para("Which of the above?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both\n(d) Neither")
+        + _para("Q.2) Second?")
+        + _para("(a) W\n(b) X\n(c) Y\n(d) Z")
+    )
+    lines = mod._read_lines(_docx(tmp_path, body))
+    name, pattern = mod.detect_marker(lines)
+    assert name == "Q.N)"
+    questions = mod._parse_lines(lines, pattern)
+    assert [q["number"] for q in questions] == [1, 2]
+    assert "1. Alpha" in questions[0]["stem_parts"]
+
+
+def test_detects_question_n_marker_with_mixed_separators(tmp_path):
+    """One year prints 'Question 1.', 'Question 2:' and 'Question: 3.' alike."""
+    body = (
+        _para("Question 1. First?")
+        + _para("(a) W\n(b) X\n(c) Y\n(d) Z")
+        + _para("Question 2: Second?")
+        + _para("(a) W\n(b) X\n(c) Y\n(d) Z")
+        + _para("Question: 3. Third?")
+        + _para("(a) W\n(b) X\n(c) Y\n(d) Z")
+    )
+    lines = mod._read_lines(_docx(tmp_path, body))
+    name, pattern = mod.detect_marker(lines)
+    assert name == "Question N."
+    assert [q["number"] for q in mod._parse_lines(lines, pattern)] == [1, 2, 3]
+
+
+def test_whole_question_in_one_paragraph_is_split_into_lines(tmp_path):
+    """Some years pack stem, statements and all four options into one paragraph."""
+    body = _para(
+        "Q.1) Consider the following:\n1. Alpha\n2. Beta\n"
+        "Which of the above?\n(a) 1 only\n(b) 2 only\n(c) Both\n(d) Neither"
+    ) + _para("Q.2) Second?\n(a) W\n(b) X\n(c) Y\n(d) Z")
+    q = _question(tmp_path, body)[0]
+    assert q["stem_parts"][1:3] == ["1. Alpha", "2. Beta"]
+    assert [label for label, _ in q["options"]] == ["a", "b", "c", "d"]
+
+
+def test_lower_letter_list_becomes_the_options(tmp_path):
+    """Word can hold 'a)' in numbering.xml, leaving only option text in the run."""
+    body = (
+        _para("1. Stem?")
+        + _para("First", num_id="9")
+        + _para("Second", num_id="9")
+        + _para("Third", num_id="9")
+        + _para("Fourth", num_id="9")
+    )
+    path = _docx(tmp_path, body, name="lower.docx")
+    with zipfile.ZipFile(path, "a") as z:
+        z.writestr("word/numbering.xml", (
+            f'<w:numbering xmlns:w="{W}">'
+            f'<w:abstractNum w:abstractNumId="3"><w:lvl w:ilvl="0">'
+            f'<w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1)"/></w:lvl></w:abstractNum>'
+            f'<w:num w:numId="9"><w:abstractNumId w:val="3"/></w:num></w:numbering>'
+        ))
+    q = mod._parse_blocks(path)[0]
+    assert q["options"] == [("a", "First"), ("b", "Second"), ("c", "Third"), ("d", "Fourth")]
+
+
+def test_splits_two_options_glued_onto_one_line(tmp_path):
+    """'(c) 3 only d)1 and 3' is two options, split on the label that is due."""
+    body = (
+        _para("1. Stem?")
+        + _para("(a) 1 only")
+        + _para("(b) 2 only")
+        + _para("(c) 3 only d)1 and 3")
+    )
+    q = _question(tmp_path, body)[0]
+    assert q["options"] == [("a", "1 only"), ("b", "2 only"), ("c", "3 only"), ("d", "1 and 3")]
+
+
+def test_does_not_manufacture_an_option_from_a_stray_bracket(tmp_path):
+    """A bracketed letter inside option text is not the next option."""
+    body = (
+        _para("1. Stem?")
+        + _para("(a) One")
+        + _para("(b) Two")
+        + _para("(c) Item (d) of the schedule")
+        + _para("(d) Four")
+    )
+    q = _question(tmp_path, body)[0]
+    assert dict(q["options"])["c"] == "Item (d) of the schedule"
+    assert dict(q["options"])["d"] == "Four"
+
+
+def test_counting_options_do_not_require_stem_numbering(tmp_path):
+    """'Only two' tallies the statements as printed; their numbering is cosmetic."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.")
+        + _para("Krishna River directly feeds Kolleru Lake.")
+        + _para("How many of the statements given above are correct?")
+        + _para("(a) Only one\n(b) Only two\n(c) None\n(d) Cannot say")
+    )
+    assert mod.validate(_question(tmp_path, body), 1) == []
+
+
+def test_indexing_options_still_require_stem_numbering(tmp_path):
+    """'1 only' names a specific statement, so the numbering is load-bearing."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.")
+        + _para("Krishna River directly feeds Kolleru Lake.")
+        + _para("Which of the statements given above is/are correct?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+    )
+    questions = _question(tmp_path, body)
+    assert any("lost its list numbering" in e for e in mod.validate(questions, 1))
+    # opt-in restoration numbers the run by printed order and clears the error
+    assert mod._number_unmarked(questions[0]) is True
+    assert questions[0]["stem_parts"][1:3] == [
+        "1. Jhelum River passes through Wular Lake.",
+        "2. Krishna River directly feeds Kolleru Lake.",
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+def test_restoration_declines_when_the_shape_is_not_a_statement_run(tmp_path):
+    """No lead-in, no closing interrogative: nothing safe to number."""
+    body = (
+        _para("1. Which one is correct?")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+    )
+    assert mod._number_unmarked(_question(tmp_path, body)[0]) is False
+
+
+def test_complete_but_shuffled_options_are_reordered(tmp_path):
+    """a, c, b, d with every label present exactly once — order by label."""
+    q = {"options": [("a", "One"), ("c", "Three"), ("b", "Two"), ("d", "Four")]}
+    assert mod._sort_complete_options(q) is True
+    assert q["options"] == [("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four")]
+
+
+def test_incomplete_option_set_is_left_to_fail(tmp_path):
+    """A duplicated or missing label is source damage, not a sort problem."""
+    q = {"options": [("a", "One"), ("d", "Two"), ("b", "Three"), ("d", "Four")]}
+    assert mod._sort_complete_options(q) is False
+    assert q["options"][1] == ("d", "Two")

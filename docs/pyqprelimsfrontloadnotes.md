@@ -41,31 +41,78 @@ Already populated, leave alone:
 
 ## Source-document verdicts
 
-The supplied `.docx` files are retyped/OCR-derived, not UPSC originals. All three
-contain 100 questions numbered contiguously 1–100, but they use three different
-internal formats and differ sharply in fidelity.
+The supplied `.docx` files are retyped/OCR-derived, not UPSC originals. All seven
+contain 100 questions numbered contiguously 1-100, but **no two years share a
+layout** — question markers, option markers and list numbering all differ.
+`scripts/docx_to_pyq_json.py` normalises this rather than special-casing per year:
+it flattens paragraphs to lines, detects the question-marker style per document,
+and restores Word's auto-list numbering.
 
-| Source | Format | Verdict |
-|---|---|---|
-| 2024 GS-I Set C | Word auto-numbered lists (`numPr`), 8 tables | **Convertible.** 100/100 parse clean. |
-| 2022 GS-I Set A | `numPr` + tab indentation | **Convertible after a source fix.** 99/100; Q50 blocked. |
-| 2023 GS-I Set A | No numbering at all (no `numbering.xml`) | **Unusable as supplied.** 54 questions broken. |
+| Year | Set | Marker | Options as | Verdict |
+|---|---|---|---|---|
+| 2024 | C | `1.` | `(a)` paragraphs | **Converts** 100/100 |
+| 2023 | A | `1.` | `(a)` paragraphs | **Converts** 100/100 (7 statement runs renumbered) |
+| 2022 | A | `1.` | `(a)` paragraphs | Blocked: Q50 |
+| 2021 | C | `Q.1)` | `a)` paragraphs | Blocked: Q86 |
+| 2020 | C | `Question 1.` / `Question 5:` / `Question: 6.` | packed `(a)` lines | Blocked: Q40 |
+| 2019 | B | `1.` | lower-letter auto-list | **Converts** 100/100 |
+| 2018 | C | `Q.1)` | packed `(a)` lines | Blocked: Q37 |
 
-### 2023 — statement numbering is absent, not merely unstyled
+### Remaining blockers — all single-question source damage
 
-The document carries no list numbering of any kind, so "Consider the following
-statements" items appear as bare sentences. 54 questions have options that
-reference numbers ("1 and 2 only") which exist nowhere in the stem. This is not
-recoverable by parsing — the information is not in the file. A replacement 2023
-source is required.
+Each needs a correction in the `.docx`; nothing here is a parser limitation, and
+none is repairable without guessing at answer identity.
 
-### 2022 Q50 — scrambled option markers
+- **2018 Q37** — option `(d)` is absent from the file. Three options only.
+- **2020 Q40** — the fourth option is labelled `(a)`, so the set reads `a, b, c, a`.
+  Its statements are also run together on one line, leaving the stem unnumbered
+  while the options name statements by index.
+- **2021 Q86** — the four options are formatted as a *decimal* auto-list, so they
+  restore as numbered statements rather than options. Relabelling them as a
+  lower-letter list, or printing `a)`-`d)` literally, fixes it. Not inferred: a
+  decimal list under a stem is legitimately a statement run elsewhere in the same
+  paper, and guessing would convert statements into answers.
+- **2022 Q50** — printed `(a)`, `(d).`, `(b)`, `(d)`: two options labelled `d`,
+  none labelled `c`.
 
-Printed as `(a)`, `(d).`, `(b)`, `(d)` — two options labelled `d`, none labelled `c`.
-The converter repairs a damaged marker only when the letter it recovers is the one
-due next, so this fails validation rather than being silently reordered. Reassigning
-labels by position would be a guess about answer identity. Fix the source document,
-then re-run.
+### What the converter repairs, and what it refuses to
+
+Repaired, because the correction is forced and loses no information:
+
+- damaged option markers (`{b)`, `c)`, `(C)`, `(b).`) — only when the recovered
+  letter is the one due next;
+- two options glued onto one line (`(c) 3 only d)1 and 3`) — only where the
+  embedded marker is preceded by space and followed immediately by non-space,
+  the exact shape a normally spaced `(d)` inside option text never takes;
+- a complete but shuffled option set (`a, c, b, d`) — reordered by label, since
+  every label is present exactly once and each keeps its own text.
+
+Refused, because the correction would be a guess about which option is the answer:
+
+- a scrambled marker whose letter is not the one due (2022 Q50);
+- a missing or duplicated label (2018 Q37, 2020 Q40, 2021 Q86).
+
+### Statement numbering
+
+Word keeps auto-list markers out of the text layer while the options refer to them
+("1 and 2 only"), so decimal lists are restored as `1.`/`2.` from their numbering
+instance. Some sources carry no list numbering at all. There the distinction that
+matters is what the options do with it:
+
+- options that **tally** statements ("Only two", "All four") take the count over
+  the statements as printed, so their numbering is cosmetic and its absence is not
+  an error;
+- options that **name** statements by index ("1 only", "Both 1 and 2") make the
+  numbering load-bearing, and the question is unanswerable without it.
+
+`--number-unmarked-statements` restores the latter by printed order, and reports
+which questions it changed. It is opt-in and runs only on an unambiguous shape — a
+lead-in, a run of two or more lines, then the closing interrogative, with nothing
+already numbered. It infers print order only, never answer identity, but a stem
+line misread as a statement would shift every number after it, so the reported
+questions are owed an eye-check before the paper is promoted to `verified`.
+
+Applied so far: 2023 Q53/58/65/71/72/79/100, 2022 Q25, 2019 Q43, 2018 Q77.
 
 ## Answer keys
 
