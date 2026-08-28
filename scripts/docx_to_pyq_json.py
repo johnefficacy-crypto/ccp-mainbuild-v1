@@ -128,7 +128,48 @@ GLUED = {label: re.compile(rf"\s+[\(\{{\[]?\s*{label}\s*[\)\}}\]](?=\S)", re.I)
 # Options that name specific statements by index — "1 and 2 only", "2 only",
 # "Both 1 and 2". These make the stem's numbering load-bearing: without it the
 # reader cannot tell which statement is which, and the question is unanswerable.
-INDEX_REF = re.compile(r"\b\d\s*(?:,|and)\s*\d\b|\b[1-9]\s+only\b", re.I)
+#
+# Matched against the WHOLE option, not searched inside it. Searching for a
+# digit pair was the bug: a fill-in-the-blanks option "2/3,1" contains the
+# substring "3,1" and read as an index list, so SEBI-GA-2022-P1-CA Q1 was
+# rejected for numbering it never needed. An index reference is a shape, not
+# the presence of digits, so the option must consist of nothing else.
+#
+# A statement index is a single digit 1-9 (papers do not number past that), and
+# it must carry index syntax — a keyword, a multi-index list, or "only". A bare
+# "1" is deliberately NOT an index reference: on a quantitative paper the whole
+# option set is bare numbers, and those are answers, not statement pointers.
+_IDX = r"[1-9]"
+_IDX_SEP = r"\s*(?:,|and|nor|&)\s*"
+INDEX_OPTION = re.compile(
+    rf"^\s*(?:"
+    rf"(?:only|both|neither|either)\s+{_IDX}(?:{_IDX_SEP}{_IDX})*"   # "Only 1", "Both 1 and 2"
+    rf"|{_IDX}(?:{_IDX_SEP}{_IDX})+(?:\s+only)?"                     # "1 and 2 only", "1, 2 and 3"
+    rf"|{_IDX}\s+only"                                              # "2 only"
+    rf")\s*\.?\s*$",
+    re.I,
+)
+
+# The wordless members of the same family. On their own they say nothing about
+# numbering — "None of the above" is at home on any question — so they only
+# count alongside a real index reference.
+INDEX_SIBLING = re.compile(
+    r"^\s*(?:none|all|any)\s+of\s+(?:the\s+)?(?:above|these)\s*\.?\s*$", re.I
+)
+
+
+def _names_statement_indices(options) -> bool:
+    """True when this question's options point at numbered statements.
+
+    Requires at least one genuine index reference, and at least two members of
+    the family in total. A real statement question always offers several ("1
+    only", "2 only", "Both 1 and 2", "Neither 1 nor 2"); a single stray match is
+    far more likely to be a value that happens to read like an index.
+    """
+    numeric = sum(1 for _, text in options if INDEX_OPTION.match(text))
+    siblings = sum(1 for _, text in options if INDEX_SIBLING.match(text))
+    return numeric >= 1 and numeric + siblings >= 2
+
 
 # Options that merely tally statements — "Only two", "All four". The count is
 # taken over the statements as printed, so their numbering is cosmetic and its
@@ -590,7 +631,7 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
             or q.get("has_table")
             or re.search(r"\bStatement[-\s]*(?:I+|[1-9])\b", stem)
         )
-        if any(INDEX_REF.search(t) for _, t in q["options"]) and not anchored:
+        if _names_statement_indices(q["options"]) and not anchored:
             errors.append(
                 f"Q{n}: options name statements by index but the stem carries no numbering "
                 f"(source document lost its list numbering)"
@@ -800,7 +841,7 @@ def main(argv: list[str] | None = None) -> int:
     renumbered: list[int] = []
     if args.number_unmarked_statements:
         for q in questions:
-            if any(INDEX_REF.search(t) for _, t in q["options"]) and _number_unmarked(q):
+            if _names_statement_indices(q["options"]) and _number_unmarked(q):
                 renumbered.append(q["number"])
 
     errors = validate(questions, args.expect)
