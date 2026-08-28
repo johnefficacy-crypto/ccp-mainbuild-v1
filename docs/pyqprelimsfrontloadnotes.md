@@ -67,24 +67,42 @@ due next, so this fails validation rather than being silently reordered. Reassig
 labels by position would be a guess about answer identity. Fix the source document,
 then re-run.
 
-## Answer keys — blocked
+## Answer keys
 
-Both supplied official key PDFs are scans and cannot be parsed:
+Operator-typed keys for all seven years (2018–2024) are committed under
+`docs/reference/answer-keys/` as `question_number,correct_option_label` CSV, one row
+per question, blank label for a dropped question. This is the provenance the validated
+CSAT Set-B paper records as `operator_typed_canonical_official_key` — the official key
+PDFs themselves are not machine-readable:
 
-- 2024 GS-I: 1 page, single full-page image, OCR text layer is corrupt (merged rows,
-  `#N/A` columns, `의` artefacts). Its **header is legible and authoritative**:
-  `CSP-2024 / Series C / GS-Paper-I / 100 questions / 3 Dropped / 97 taken for Scoring`
-  — which independently corroborates the dropped set {42, 47, 90}.
+- 2024 GS-I: 1 page, single full-page image, OCR text layer corrupt (merged rows,
+  `#N/A` columns). Its header is legible and authoritative:
+  `CSP-2024 / Series C / 100 questions / 3 Dropped / 97 taken for Scoring`.
 - 2022 GS-I: 4 pages, **zero** extractable words. Pure scan.
 
-The v2 importer requires `correct_option_label` on every `mcq` row, so no paper can
-be committed until an operator types its key. That is the existing convention, not a
-workaround — the validated CSAT Set-B paper records its key authority as
-`operator_typed_canonical_official_key`.
+**Set identity is part of the key.** Each year's series (A/B/C/D) shuffles question
+order, so a key is only valid for the series it was typed from. Keys on file:
 
-Key format consumed by `--answer-key`: a CSV with `question_number,correct_option_label`,
-one row per question, dropped questions omitted (the converter rejects a key that
-asserts a correct option for a dropped question).
+| Year | Series | Keyed | Dropped |
+|---|---|---|---|
+| 2024 | C | 97 | 42, 47, 90 |
+| 2023 | A | 99 | 54 |
+| 2022 | A | 99 | 48 |
+| 2021 | C | 99 | 30 |
+| 2020 | C | 98 | 42, 77 |
+| 2019 | B | 100 | — |
+| 2018 | C | 100 | — |
+
+A paper `.docx` must be the same series as its key, or the answers land on the wrong
+questions with no error raised — the converter can only check that a label resolves to
+one of the four options present, not that the question is the one the key meant.
+
+**Open spot-check.** Machine-reading the 2024 scan recovered 53 of 100
+number→letter pairs; 50 agree with the typed key and 3 disagree (Q9, Q58, Q59).
+The scan's text layer is demonstrably unreliable and Q58/Q59 are adjacent — the
+signature of a row slip — so these are most likely OCR artefacts rather than key
+errors. Confirm those three against the official PDF by eye before the paper is
+promoted to `verified`.
 
 ## Dropped questions
 
@@ -109,7 +127,8 @@ ingested first — same pattern as `scripts/ingest_upsc_gs_syllabus.py`.
 ## Order of work per paper
 
 1. Convert the `.docx`, resolve every validation error at source.
-2. Operator types the official answer key to CSV; re-run with `--answer-key`.
+2. Confirm the paper's printed series matches the key in `docs/reference/answer-keys/`,
+   then re-run with `--answer-key`.
 3. Set paper provenance + set metadata on the existing shell paper id.
 4. `bulk-import/preflight` → inspect → `bulk-import/commit`.
 5. Read questions back by `source_question_ref`, build the tag batch, import tags.
