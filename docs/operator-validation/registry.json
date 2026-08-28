@@ -370,14 +370,15 @@
       "gates": [
         {
           "id": "essay-builder-266-live-validation",
-          "title": "Migration 266 apply + Essay Builder endpoint live validation",
+          "title": "Migrations 266-267 apply + Essay Builder endpoint live validation",
           "status": "validation_pending",
-          "summary": "Essay Builder schema/backend code is merged: migration 266 extends essay_brainstorm_blocks with the Idea Canvas block types and the six lens values and closes 265's RLS gap, and app/api/essay_builder.py serves the aspirant CRUD plus the shared essay-PYQ-tag read. Nothing is applied or exercised live yet.",
+          "summary": "Essay Builder schema/backend code is merged: migration 266 extends essay_brainstorm_blocks with the Idea Canvas block types and the six lens values and closes 265's RLS gap, migration 267 adds the nullable canvas_x/canvas_y free-drag coordinates, and app/api/essay_builder.py serves the aspirant CRUD plus the shared essay-PYQ-tag read. Neither migration is applied or exercised live yet. Kept as one gate rather than split: nothing here has been validated yet, so 267 widens this gate's acceptance contract rather than opening an independent one.",
           "updated_at": "2026-08-28",
           "review_by": "2026-09-25T18:00:00Z",
-          "next_action": "Apply migration 266 to the target Supabase database, prove the service-role-only RLS posture over HTTP, then run the two-aspirant CRUD and cross-user isolation proof against the deployed API.",
+          "next_action": "Apply migrations 266 and 267 to the target Supabase database, prove the service-role-only RLS posture over HTTP (including that it covers the columns 267 adds), then run the two-aspirant CRUD, canvas-position and cross-user isolation proofs against the deployed API.",
           "implementation_refs": [
             "app/supabase/migrations/266_essay_brainstorm_idea_canvas.sql",
+            "app/supabase/migrations/267_essay_brainstorm_canvas_position.sql",
             "app/backend/app/api/essay_builder.py",
             "app/backend/tests/test_essay_builder.py"
           ],
@@ -386,7 +387,7 @@
           "defects_found": [],
           "defects_fixed": [],
           "blockers": [
-            "Migration 266 is not yet applied in the target live environment.",
+            "Migrations 266 and 267 are not yet applied in the target live environment.",
             "Cross-aspirant isolation has only been proven against a stubbed Supabase client in tests, not against the deployed API."
           ],
           "depends_on": []

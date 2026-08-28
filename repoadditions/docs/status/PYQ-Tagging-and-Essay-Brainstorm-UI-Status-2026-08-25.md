@@ -34,9 +34,12 @@ Canvas content model (three new `block_type` values — `vocab_term`,
 `book_reference`, `stat_to_verify` — plus a nullable `lens` column carrying the
 six mind-map branches) and closes 265's RLS gap. `app/backend/app/api/
 essay_builder.py` adds the aspirant-facing CRUD (`/api/essay-brainstorm-blocks`,
-own rows only) and a read-only verified-only `/api/essay-pyq-tags`. Applying
-266 and proving the deployed behaviour is gate
-`essay-builder-266-live-validation` in the operator-validation registry.
+own rows only) and a read-only verified-only `/api/essay-pyq-tags`. Migration
+`267_essay_brainstorm_canvas_position.sql` follows it with the nullable
+`canvas_x` / `canvas_y` coordinates the free-drag mind-map needs (both axes
+move together; null means "not placed yet"). Applying 266 and 267 and proving
+the deployed behaviour is gate `essay-builder-266-live-validation` in the
+operator-validation registry.
 
 Two consequences worth knowing before the UI work:
 - The 100 imported essay PYQ tags were forced to `reviewer_status='pending'` by

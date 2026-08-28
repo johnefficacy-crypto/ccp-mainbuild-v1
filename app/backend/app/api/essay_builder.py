@@ -26,6 +26,7 @@ both "no such block" and "not yours" so existence never leaks.
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
@@ -53,7 +54,8 @@ _BATCH = 250  # max ids per IN() filter (PostgREST URL-length ceiling)
 
 _SELECT = (
     "id, theme_id, block_type, block_text, lens, linked_gs_topic_id, "
-    "source_note, usage_count, created_by, metadata, created_at, updated_at"
+    "canvas_x, canvas_y, source_note, usage_count, created_by, metadata, "
+    "created_at, updated_at"
 )
 
 # Mirrors migration 266's CHECK constraint. Spine stages come from migration
@@ -93,17 +95,22 @@ class BlockCreate(BaseModel):
     block_text: str = Field(min_length=1, max_length=2000)
     lens: Lens | None = None
     linked_gs_topic_id: str | None = None
+    canvas_x: float | None = None
+    canvas_y: float | None = None
 
 
 class BlockPatch(BaseModel):
     """Every field optional. ``exclude_unset`` distinguishes "not supplied"
-    from an explicit ``null``, so a client can clear ``lens`` or
-    ``linked_gs_topic_id`` by sending null without clearing the rest."""
+    from an explicit ``null``, so a client can clear ``lens``,
+    ``linked_gs_topic_id`` or the canvas position by sending null without
+    clearing the rest."""
 
     block_type: BlockType | None = None
     block_text: str | None = Field(default=None, min_length=1, max_length=2000)
     lens: Lens | None = None
     linked_gs_topic_id: str | None = None
+    canvas_x: float | None = None
+    canvas_y: float | None = None
 
 
 def _is_uuid(value: Any) -> bool:
@@ -118,6 +125,57 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# The domain of the canvas_x / canvas_y columns themselves (migration 267:
+# numeric(10,2)) — NOT a canvas bound. Canvas size, pan and zoom are frontend
+# concerns and are deliberately unconstrained; this only keeps a value that
+# the column physically cannot store from reaching Postgres as a 500.
+_CANVAS_COORD_LIMIT = 100_000_000  # exclusive: numeric(10,2) holds < 10^8
+
+
+def _coord(value: Any) -> float | None:
+    """Normalise a stored coordinate for the response.
+
+    PostgREST can hand a ``numeric`` back as a string, so coerce rather than
+    leaking the wire representation into the API. Unparseable values become
+    ``None`` — the same shape as a block that was never placed.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _validate_coord(name: str, value: float | None) -> None:
+    if value is None:
+        return
+    if not math.isfinite(value):
+        raise HTTPException(status_code=422, detail=f"{name} must be a finite number")
+    if abs(value) >= _CANVAS_COORD_LIMIT:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{name} must be between -{_CANVAS_COORD_LIMIT} and {_CANVAS_COORD_LIMIT}",
+        )
+
+
+def _validate_canvas_pair(x: float | None, y: float | None) -> None:
+    """A position is one point, so both axes move together or neither does.
+
+    Nothing in the Idea Canvas moves a single axis — the drag handler updates
+    x and y in the same state write — and a block with only one coordinate
+    set cannot be rendered. Mirrors migration 267's
+    ``essay_brainstorm_blocks_canvas_position_check``.
+    """
+    if (x is None) != (y is None):
+        raise HTTPException(
+            status_code=422,
+            detail="canvas_x and canvas_y must be set together, or both null",
+        )
+    _validate_coord("canvas_x", x)
+    _validate_coord("canvas_y", y)
+
+
 def _shape(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row.get("id"),
@@ -126,6 +184,8 @@ def _shape(row: dict[str, Any]) -> dict[str, Any]:
         "block_text": row.get("block_text"),
         "lens": row.get("lens"),
         "linked_gs_topic_id": row.get("linked_gs_topic_id"),
+        "canvas_x": _coord(row.get("canvas_x")),
+        "canvas_y": _coord(row.get("canvas_y")),
         "source_note": row.get("source_note"),
         "usage_count": row.get("usage_count") or 0,
         "created_at": row.get("created_at"),
@@ -243,6 +303,7 @@ def create_block(
     _require_theme(supabase, body.theme_id)
     if body.linked_gs_topic_id:
         _require_topic(supabase, body.linked_gs_topic_id)
+    _validate_canvas_pair(body.canvas_x, body.canvas_y)
 
     payload = {
         "theme_id": body.theme_id,
@@ -250,6 +311,8 @@ def create_block(
         "block_text": body.block_text,
         "lens": body.lens,
         "linked_gs_topic_id": body.linked_gs_topic_id,
+        "canvas_x": body.canvas_x,
+        "canvas_y": body.canvas_y,
         "created_by": user["id"],
     }
     rows = supabase.table(_TABLE).insert(payload).execute().data or []
@@ -279,6 +342,16 @@ def update_block(
             raise HTTPException(status_code=422, detail=f"{column} cannot be null")
     if patch.get("linked_gs_topic_id"):
         _require_topic(supabase, patch["linked_gs_topic_id"])
+    # Position moves as a pair. Supplying one axis without the other would
+    # leave the row half-placed, so require both keys in the same PATCH —
+    # both numbers to move it, both null to clear it back to unplaced.
+    if ("canvas_x" in patch) != ("canvas_y" in patch):
+        raise HTTPException(
+            status_code=422,
+            detail="canvas_x and canvas_y must be updated together",
+        )
+    if "canvas_x" in patch:
+        _validate_canvas_pair(patch["canvas_x"], patch["canvas_y"])
     patch["updated_at"] = _now_iso()
 
     rows = (
