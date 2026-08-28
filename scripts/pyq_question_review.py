@@ -1,13 +1,36 @@
 #!/usr/bin/env python3
-"""Review and promote UPSC CSE Mains PYQ questions + topic tags — safely.
+"""Review and promote UPSC CSE PYQ questions + topic tags — safely.
 
-The Mains PYQ backlog (GS I–IV + Essay, 2013–2025, ~1,131 questions and their
-topic tags) sits at ``reviewer_status='pending'``. CLAUDE.md locks verified-only
-reads, so a bulk ``UPDATE ... SET reviewer_status='verified'`` is prohibited: it
-would put unreviewed questions in front of aspirants. This tool splits the job
-into three offline-first steps and never promotes a row on its own judgement.
+A PYQ backlog sits at ``reviewer_status='pending'``. CLAUDE.md locks
+verified-only reads, so a bulk ``UPDATE ... SET reviewer_status='verified'`` is
+prohibited: it would put unreviewed questions in front of aspirants. This tool
+splits the job into three offline-first steps and never promotes a row on its
+own judgement.
 
-    export  ->  pull the pending Mains questions + tags from the live API into
+Scope is chosen at ``export`` time and is not baked into the tool: pass
+``--exam-phase-id`` (repeatable) for any phase, or ``--paper-id`` (repeatable)
+to name papers directly. ``--mains-phase-id`` remains as the default phase so
+existing Mains invocations keep working unchanged. ``sweep`` and ``apply``
+operate purely on the exported files and have never had phase-specific
+behaviour — the worksheet shape and the decision semantics are identical for
+every phase.
+
+    PRELIMS CAVEAT — READ BEFORE PROMOTING MCQs. The deterministic sweep was
+    built for Mains, whose questions are descriptive: it checks the stem only.
+    For an MCQ phase (Prelims/CSAT) the substance is in the OPTIONS and the
+    answer key, and this tool sees neither — ``export`` fetches
+    ``pyq_questions`` rows, not ``pyq_options``. The one option-level signal it
+    can give is ``mcq_no_correct_option`` (below), derived from the question
+    row's own ``correct_option_id``. It CANNOT check option count, option text,
+    or that exactly one option carries ``is_correct``. Those are enforced
+    downstream by the PYQ->Mock projection's eligibility gate
+    (``app/backend/app/admin/pyq_mock_projection.py``,
+    ``_check_question_eligibility``; see
+    ``docs/runbooks/EI-DATA-01_upsc_2026_primary_topic_tags.md``). A clean sweep
+    on an MCQ row therefore means "the stem looks sane", NOT "this question is
+    answerable" — the spot-check sample must be read against the paper.
+
+    export  ->  pull the pending in-scope questions + tags from the live API into
                 two flat JSON files (read-only).
 
     sweep   ->  pure offline. Run deterministic checks that only ever FLAG a
@@ -37,7 +60,7 @@ Route contracts this tool depends on (verified against the repo backend):
     GET  /api/admin/exam-intelligence-cms/pyq-questions?pyq_paper_id=...
          -> {items:[...], total, limit, offset}; items include question_text.
     GET  /api/admin/exam-intelligence-cms/pyq-papers?exam_id=...
-         -> paper rows (year, exam_phase_id) used to scope Mains-only.
+         -> paper rows (year, exam_phase_id) used to resolve the scope.
     GET  /api/admin/exam-intelligence-cms/exam-phase-sections?exam_phase_id=...
          -> section_id -> section_label map.
 
@@ -59,8 +82,17 @@ Usage:
     export CCP_ADMIN_JWT=...     # admin/super_admin JWT
 
     # 1. Export (read-only; --apply just means "write the files").
+    #    Mains (unchanged — --mains-phase-id still defaults):
     python scripts/pyq_question_review.py export \
         --exam-id <uuid> --out review_out --apply
+    #    Any other phase, e.g. Prelims:
+    python scripts/pyq_question_review.py export \
+        --exam-id <uuid> --exam-phase-id <prelims-phase-uuid> \
+        --out review_out --apply
+    #    Or name the papers directly (phase filter not applied):
+    python scripts/pyq_question_review.py export \
+        --exam-id <uuid> --paper-id <uuid> --paper-id <uuid> \
+        --out review_out --apply
 
     # 2. Sweep (offline; --apply means "write the worksheet").
     python scripts/pyq_question_review.py sweep \
@@ -164,21 +196,26 @@ class Client:
 
 
 # ─── export ───────────────────────────────────────────────────────────────
-def classify_mains_papers(papers: Iterable[dict], mains_phase_id: str,
-                          paper_ids: set[str] | None) -> list[dict]:
-    """Mains-only, filtered on paper phase metadata (never touch Prelims/CSAT).
+def select_papers(papers: Iterable[dict], phase_ids: set[str] | None,
+                  paper_ids: set[str] | None) -> list[dict]:
+    """Narrow the exam's papers to the operator-chosen scope.
 
-    A paper is Mains iff its ``exam_phase_id`` equals the Mains phase. An
-    explicit ``paper_ids`` override, when supplied, further restricts the set.
+    Exactly one scope applies, and one of the two must be given — this never
+    falls through to "every paper in the exam":
+
+    * ``paper_ids`` — explicit ids ARE the scope, so the phase filter is not
+      also applied. Naming a paper is a deliberate act; requiring it to sit on
+      an expected phase as well only turns a correct request into a confusing
+      "no papers found".
+    * ``phase_ids`` — every paper whose ``exam_phase_id`` is in the set.
+
+    Papers with no ``exam_phase_id`` can only be reached by explicit id.
     """
-    out = []
-    for p in papers:
-        if p.get("exam_phase_id") != mains_phase_id:
-            continue
-        if paper_ids and p.get("id") not in paper_ids:
-            continue
-        out.append(p)
-    return out
+    if paper_ids:
+        return [p for p in papers if p.get("id") in paper_ids]
+    if not phase_ids:
+        return []
+    return [p for p in papers if p.get("exam_phase_id") in phase_ids]
 
 
 def merge_questions(pending_items: list[dict], cms_by_id: dict[str, dict],
@@ -186,14 +223,20 @@ def merge_questions(pending_items: list[dict], cms_by_id: dict[str, dict],
     """Merge route (a) pending pyq_question rows with route (b) CMS rows by id.
 
     Route (a) has no question_text; route (b) supplies it. Only rows present in
-    BOTH the pending set and the Mains CMS set survive (Mains-scoped pending).
+    BOTH the pending set and the in-scope CMS set survive (scope-limited
+    pending).
+
+    ``question_type`` and ``correct_option_id`` are carried through so the
+    offline sweep can raise ``mcq_no_correct_option`` without a second fetch;
+    see the Prelims caveat in the module docstring for what that does and does
+    not cover.
     """
     rows = []
     for it in pending_items:
         qid = it.get("id")
         cms = cms_by_id.get(qid)
         if cms is None:
-            continue  # not a Mains paper's question, or not fetched
+            continue  # not an in-scope paper's question, or not fetched
         paper_id = it.get("pyq_paper_id") or cms.get("pyq_paper_id")
         section_id = it.get("section_id") or cms.get("section_id")
         rows.append({
@@ -206,6 +249,7 @@ def merge_questions(pending_items: list[dict], cms_by_id: dict[str, dict],
             "question_type": cms.get("question_type", it.get("question_type")),
             "question_text": cms.get("question_text", ""),
             "language": it.get("language", cms.get("language")),
+            "correct_option_id": cms.get("correct_option_id", it.get("correct_option_id")),
             "reviewer_status": it.get("reviewer_status", cms.get("reviewer_status")),
         })
     return rows
@@ -215,35 +259,44 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     exam_id = args.exam_id
     override_ids = {p.strip() for p in (args.paper_id or []) if p.strip()} or None
 
-    all_papers = c.all_items(f"{CMS}/pyq-papers", {"exam_id": exam_id})
-    mains_papers = classify_mains_papers(all_papers, args.mains_phase_id, override_ids)
-    skipped = len(all_papers) - len(mains_papers)
-    if not mains_papers:
-        print(f"error: no Mains papers found for exam {exam_id} "
-              f"(phase {args.mains_phase_id}). Checked {len(all_papers)} paper(s).",
-              file=sys.stderr)
-        return 1
-    mains_paper_ids = {p["id"] for p in mains_papers}
-    paper_year = {p["id"]: p.get("year") for p in mains_papers}
-    mains_phase_ids = {p.get("exam_phase_id") for p in mains_papers if p.get("exam_phase_id")}
+    # Explicit --exam-phase-id wins outright; otherwise fall back to
+    # --mains-phase-id, which keeps its historical default so existing Mains
+    # invocations are unchanged. --paper-id, when given, supersedes both.
+    phase_ids = {p.strip() for p in (args.exam_phase_id or []) if p.strip()}
+    if not phase_ids and args.mains_phase_id:
+        phase_ids = {args.mains_phase_id}
 
-    # section_id -> label, across the Mains phase(s).
+    all_papers = c.all_items(f"{CMS}/pyq-papers", {"exam_id": exam_id})
+    scoped_papers = select_papers(all_papers, phase_ids, override_ids)
+    skipped = len(all_papers) - len(scoped_papers)
+    if not scoped_papers:
+        scope_desc = (f"paper id(s) {sorted(override_ids)}" if override_ids
+                      else f"phase(s) {sorted(phase_ids)}" if phase_ids
+                      else "no scope (pass --exam-phase-id or --paper-id)")
+        print(f"error: no papers found for exam {exam_id} matching {scope_desc}. "
+              f"Checked {len(all_papers)} paper(s).", file=sys.stderr)
+        return 1
+    scoped_paper_ids = {p["id"] for p in scoped_papers}
+    paper_year = {p["id"]: p.get("year") for p in scoped_papers}
+    scoped_phase_ids = {p.get("exam_phase_id") for p in scoped_papers if p.get("exam_phase_id")}
+
+    # section_id -> label, across the in-scope phase(s).
     section_label: dict[str, str] = {}
-    for phase_id in mains_phase_ids:
+    for phase_id in scoped_phase_ids:
         for s in c.all_items(f"{CMS}/exam-phase-sections", {"exam_phase_id": phase_id}):
             if s.get("id"):
                 section_label[s["id"]] = s.get("section_label") or s["id"]
 
-    # Route (b): full question rows per Mains paper (for question_text + to build
-    # the Mains question-id membership used to scope tags). Fetch every Mains
+    # Route (b): full question rows per in-scope paper (for question_text + to
+    # build the question-id membership used to scope tags). Fetch every scoped
     # paper so a paper with pending tags but no pending questions is still
     # covered.
     cms_by_id: dict[str, dict] = {}
-    for pid in sorted(mains_paper_ids):
+    for pid in sorted(scoped_paper_ids):
         for row in c.all_items(f"{CMS}/pyq-questions", {"pyq_paper_id": pid}):
             if row.get("id"):
                 cms_by_id[row["id"]] = row
-    mains_question_ids = set(cms_by_id)
+    scoped_question_ids = set(cms_by_id)
 
     # Route (a) intentionally NOT used for questions: the exam-wide
     # /items?kind=pyq_question route paginates via a re-executed
@@ -267,7 +320,7 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     tag_params = {} if args.status == "all" else {"reviewer_status": args.status}
     pending_tags = [
         t for t in c.all_items(f"{CMS}/pyq-question-topic-tags", tag_params)
-        if t.get("question_id") in mains_question_ids
+        if t.get("question_id") in scoped_question_ids
     ]
     tags = [{
         "id": t.get("id"),
@@ -279,8 +332,17 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
         "reviewer_status": t.get("reviewer_status"),
     } for t in pending_tags]
 
-    print(f"Mains papers: {len(mains_papers)} (skipped {skipped} non-Mains). "
+    scope_label = ("explicit paper id(s)" if override_ids
+                   else f"phase(s) {sorted(phase_ids)}")
+    print(f"In-scope papers: {len(scoped_papers)} via {scope_label} "
+          f"(skipped {skipped} out-of-scope). "
           f"Pending questions: {len(questions)}. Pending tags: {len(tags)}.")
+    mcq_count = sum(1 for q in questions if (q.get("question_type") or "") == "mcq")
+    if mcq_count:
+        print(f"  NOTE: {mcq_count} MCQ question(s) in scope. The sweep checks the "
+              f"stem and the question row's correct_option_id only — it does NOT "
+              f"see pyq_options, so option count/text and the exactly-one-correct "
+              f"invariant are NOT validated here. See the module docstring.")
     by_year: dict[Any, int] = {}
     for q in questions:
         by_year[q["year"]] = by_year.get(q["year"], 0) + 1
@@ -332,6 +394,14 @@ def question_flags(q: dict, per_paper_norm_counts: dict[str, int],
 
     if _REPEAT_CHAR.search(text):
         flags.append("suspicious_repeat_char")
+
+    # MCQ-only, and only what the question row itself can tell us: an MCQ with
+    # no correct_option_id can never satisfy the projection's
+    # exactly-one-correct-option gate, so promoting it to verified produces a
+    # question that is verified and still unusable. This does NOT check the
+    # options themselves — see the Prelims caveat in the module docstring.
+    if (q.get("question_type") or "") == "mcq" and not q.get("correct_option_id"):
+        flags.append("mcq_no_correct_option")
 
     return flags
 
@@ -656,14 +726,21 @@ def build_parser() -> argparse.ArgumentParser:
                    help="API base URL (default: $CCP_API_BASE)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    e = sub.add_parser("export", help="pull pending Mains questions + tags (read-only)")
+    e = sub.add_parser("export", help="pull pending questions + tags for a scope (read-only)")
     e.add_argument("--exam-id", default=DEFAULT_EXAM_ID)
     e.add_argument("--out", default="pyq_review_out",
                    help="directory for questions_export.json / tags_export.json")
+    e.add_argument("--exam-phase-id", action="append", default=None,
+                   help="scope to papers on this exam phase; repeatable. Any "
+                        "phase (Prelims, CSAT, Mains). Overrides "
+                        "--mains-phase-id when given.")
     e.add_argument("--mains-phase-id", default=DEFAULT_MAINS_PHASE_ID,
-                   help="only papers on this phase are treated as Mains")
+                   help="default phase scope, kept so existing Mains "
+                        "invocations are unchanged; ignored when "
+                        "--exam-phase-id or --paper-id is supplied")
     e.add_argument("--paper-id", action="append", default=None,
-                   help="restrict to these paper id(s); repeatable")
+                   help="restrict to these paper id(s); repeatable. These ids "
+                        "ARE the scope — no phase filter is also applied.")
     e.add_argument("--status", default="pending")
     e.add_argument("--apply", action="store_true", help="write the export files")
 

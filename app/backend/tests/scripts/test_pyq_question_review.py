@@ -10,7 +10,11 @@ Coverage:
 - sampling picks only from clean rows, flagged rows always appear;
 - apply issues the exact PATCH set (method/url/kind/body), skips blanks;
 - a blank decision on a flagged row does not raise;
-- an over-500-char note is truncated client-side, never sent raw.
+- an over-500-char note is truncated client-side, never sent raw;
+- paper scoping by phase (Mains AND any other phase, e.g. Prelims) and by
+  explicit paper id, including that explicit ids bypass the phase filter;
+- the MCQ-only ``mcq_no_correct_option`` flag, which is the single option-level
+  signal the offline sweep can give for a Prelims/CSAT paper.
 """
 from __future__ import annotations
 
@@ -40,6 +44,37 @@ def test_empty_or_short_true_and_false():
     assert "empty_or_short" in mod.question_flags(_q(question_text="short"), {}, set())
     assert "empty_or_short" in mod.question_flags(_q(question_text="   "), {}, set())
     assert "empty_or_short" not in mod.question_flags(_q(), {}, set())
+
+
+def test_mcq_without_correct_option_is_flagged():
+    """The one option-level signal available offline — MCQ rows only."""
+    flags = mod.question_flags(
+        _q(question_type="mcq", correct_option_id=None), {}, set())
+    assert "mcq_no_correct_option" in flags
+
+
+def test_mcq_with_correct_option_is_not_flagged():
+    flags = mod.question_flags(
+        _q(question_type="mcq", correct_option_id="opt-1"), {}, set())
+    assert "mcq_no_correct_option" not in flags
+    assert flags == []
+
+
+def test_descriptive_question_never_gets_the_mcq_flag():
+    """Mains rows have no options; the flag must not fire on them."""
+    flags = mod.question_flags(
+        _q(question_type="descriptive", correct_option_id=None), {}, set())
+    assert "mcq_no_correct_option" not in flags
+
+
+def test_mcq_flag_is_a_flag_not_a_verdict():
+    """A flagged row is emitted for a human, never auto-decided or sampled."""
+    q = _q(id="q1", question_type="mcq", correct_option_id=None)
+    rows = mod.build_worksheet([q], [], set(), set(), {}, set())
+    assert len(rows) == 1
+    assert "mcq_no_correct_option" in rows[0]["flags"]
+    assert rows[0]["sample_reason"] == "flagged"
+    assert rows[0]["decision"] == ""
 
 
 def test_non_ascii_suspect_true_false_and_hindi_year_exemption():
@@ -267,17 +302,70 @@ def test_apply_rejects_unrecognized_decision(tmp_path):
 
 
 # ─── export helpers (pure) ───────────────────────────────────────────────────
-def test_classify_mains_papers_filters_to_phase():
-    papers = [
-        {"id": "p1", "exam_phase_id": "MAINS", "year": 2020},
-        {"id": "p2", "exam_phase_id": "PRELIMS", "year": 2020},
-        {"id": "p3", "exam_phase_id": "MAINS", "year": 2019},
-    ]
-    got = mod.classify_mains_papers(papers, "MAINS", None)
+_PAPERS = [
+    {"id": "p1", "exam_phase_id": "MAINS", "year": 2020},
+    {"id": "p2", "exam_phase_id": "PRELIMS", "year": 2020},
+    {"id": "p3", "exam_phase_id": "MAINS", "year": 2019},
+    {"id": "p4", "exam_phase_id": "PRELIMS", "year": 2018},
+    {"id": "p5", "year": 2017},  # no phase at all
+]
+
+
+def test_select_papers_by_mains_phase():
+    got = mod.select_papers(_PAPERS, {"MAINS"}, None)
     assert {p["id"] for p in got} == {"p1", "p3"}
-    # explicit override narrows further.
-    got2 = mod.classify_mains_papers(papers, "MAINS", {"p1"})
-    assert {p["id"] for p in got2} == {"p1"}
+
+
+def test_select_papers_by_prelims_phase():
+    """The same scoping mechanism, pointed at a non-Mains phase."""
+    got = mod.select_papers(_PAPERS, {"PRELIMS"}, None)
+    assert {p["id"] for p in got} == {"p2", "p4"}
+
+
+def test_select_papers_accepts_several_phases():
+    got = mod.select_papers(_PAPERS, {"MAINS", "PRELIMS"}, None)
+    assert {p["id"] for p in got} == {"p1", "p2", "p3", "p4"}
+
+
+def test_explicit_paper_ids_bypass_the_phase_filter():
+    """Naming a paper is the scope — a phase mismatch must not empty the run.
+
+    This is the case that used to fail: a Prelims paper id passed while the
+    phase scope still defaulted to Mains returned nothing at all.
+    """
+    got = mod.select_papers(_PAPERS, {"MAINS"}, {"p2", "p4"})
+    assert {p["id"] for p in got} == {"p2", "p4"}
+
+
+def test_explicit_paper_id_reaches_a_paper_with_no_phase():
+    got = mod.select_papers(_PAPERS, {"MAINS"}, {"p5"})
+    assert {p["id"] for p in got} == {"p5"}
+
+
+def test_select_papers_never_falls_through_to_everything():
+    """No scope must mean no papers, never the whole exam."""
+    assert mod.select_papers(_PAPERS, None, None) == []
+    assert mod.select_papers(_PAPERS, set(), None) == []
+
+
+def test_export_parser_accepts_repeatable_exam_phase_id():
+    args = mod.build_parser().parse_args([
+        "export", "--exam-phase-id", "PRELIMS", "--exam-phase-id", "CSAT",
+    ])
+    assert args.exam_phase_id == ["PRELIMS", "CSAT"]
+    # --mains-phase-id keeps its default so Mains invocations are unchanged.
+    assert args.mains_phase_id == mod.DEFAULT_MAINS_PHASE_ID
+
+
+def test_merge_questions_carries_type_and_correct_option():
+    """Both are needed offline so the sweep can raise mcq_no_correct_option."""
+    pending = [{"id": "q1", "pyq_paper_id": "p1", "question_number": 1,
+                "reviewer_status": "pending"}]
+    cms = {"q1": {"id": "q1", "pyq_paper_id": "p1", "question_text": "Stem?",
+                  "question_type": "mcq", "correct_option_id": "opt-2"}}
+    row = mod.merge_questions(pending, cms, {"p1": 2024}, {})[0]
+    assert row["question_type"] == "mcq"
+    assert row["correct_option_id"] == "opt-2"
 
 
 def test_merge_questions_attaches_text_and_drops_non_mains():
