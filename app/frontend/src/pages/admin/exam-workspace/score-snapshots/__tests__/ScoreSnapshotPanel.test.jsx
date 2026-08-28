@@ -460,3 +460,88 @@ describe("ScoreSnapshotPanel — pagination", () => {
     expect(screen.queryByTestId("page-next-btn")).not.toBeInTheDocument();
   });
 });
+
+// ─── Part D: subject-group sectioning + 0-evidence flag ─────────────────────────
+
+// GS Paper I leaf (real evidence), CSAT Paper II leaf (real evidence), and a
+// CSAT rollup/header node with zero evidence — the shape that produced the
+// flat, undifferentiated list before this fix.
+const SNAP_GS = {
+  ...SNAP_DRAFT, id: "snap-gs", topic_name: "Polity", subject_group: "gs",
+  subject_name: "Polity & Governance", evidence_count: 12, status: "draft",
+};
+const SNAP_CSAT = {
+  ...SNAP_DRAFT, id: "snap-csat", topic_name: "Reading Comprehension",
+  subject_group: "reasoning", subject_name: "CSAT (Aptitude)", evidence_count: 8,
+  status: "draft",
+};
+const SNAP_CSAT_ROLLUP = {
+  ...SNAP_DRAFT, id: "snap-rollup", topic_name: "General mental ability",
+  subject_group: "reasoning", subject_name: "CSAT (Aptitude)", evidence_count: 0,
+  status: "draft",
+};
+
+describe("ScoreSnapshotPanel — subject-group sectioning", () => {
+  it("sections GS Paper I and CSAT Paper II under separate, labelled headers", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_GS, SNAP_CSAT], 2));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${SNAP_GS.id}`));
+
+    const gsHead = screen.getByTestId("group-header-gs");
+    const csatHead = screen.getByTestId("group-header-reasoning");
+    expect(gsHead).toHaveTextContent("GS Paper I");
+    expect(csatHead).toHaveTextContent("CSAT Paper II");
+    // GS section renders before CSAT (GS-first ordering).
+    expect(gsHead.compareDocumentPosition(csatHead) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Both leaves still render as normal rows.
+    expect(screen.getByTestId(`snapshot-row-${SNAP_GS.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`snapshot-row-${SNAP_CSAT.id}`)).toBeInTheDocument();
+  });
+
+  it("puts subject-less rows in an explicit Unclassified section, never merged into a paper", async () => {
+    const orphan = { ...SNAP_DRAFT, id: "snap-orphan", subject_group: null, evidence_count: 3 };
+    mockGet.mockResolvedValue(makeListResponse([SNAP_GS, orphan], 2));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${orphan.id}`));
+    expect(screen.getByTestId("group-header-__none__")).toHaveTextContent("Unclassified");
+  });
+});
+
+describe("ScoreSnapshotPanel — 0-evidence rollup flag", () => {
+  it("flags a 0-evidence node visibly and does not silently drop it", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_CSAT_ROLLUP], 1));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${SNAP_CSAT_ROLLUP.id}`));
+    // Still visible…
+    expect(screen.getByText("General mental ability")).toBeInTheDocument();
+    // …and explicitly flagged.
+    expect(screen.getByTestId(`zero-evidence-flag-${SNAP_CSAT_ROLLUP.id}`)).toBeInTheDocument();
+  });
+
+  it("disables Approve on a 0-evidence draft but keeps Reject enabled (consciously rejectable, not approvable)", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_CSAT_ROLLUP], 1));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${SNAP_CSAT_ROLLUP.id}`));
+    expect(screen.getByTestId(`action-${SNAP_CSAT_ROLLUP.id}-reviewed`)).toBeDisabled();
+    expect(screen.getByTestId(`action-${SNAP_CSAT_ROLLUP.id}-rejected`)).not.toBeDisabled();
+  });
+
+  it("blocks Lock on a 0-evidence reviewed node", async () => {
+    const reviewedRollup = { ...SNAP_CSAT_ROLLUP, id: "snap-rev-rollup", status: "reviewed" };
+    mockGet.mockResolvedValue(makeListResponse([reviewedRollup], 1));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${reviewedRollup.id}`));
+    expect(screen.getByTestId(`action-${reviewedRollup.id}-locked`)).toBeDisabled();
+    // Reject and Revert-draft stay available.
+    expect(screen.getByTestId(`action-${reviewedRollup.id}-rejected`)).not.toBeDisabled();
+    expect(screen.getByTestId(`action-${reviewedRollup.id}-draft`)).not.toBeDisabled();
+  });
+
+  it("does not flag or block a real evidence-backed leaf", async () => {
+    mockGet.mockResolvedValue(makeListResponse([SNAP_GS], 1));
+    renderPanel();
+    await waitFor(() => screen.getByTestId(`snapshot-row-${SNAP_GS.id}`));
+    expect(screen.queryByTestId(`zero-evidence-flag-${SNAP_GS.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`action-${SNAP_GS.id}-reviewed`)).not.toBeDisabled();
+  });
+});

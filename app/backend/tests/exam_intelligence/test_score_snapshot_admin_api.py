@@ -265,6 +265,66 @@ def test_list_snapshots_returns_all():
     assert ids == {"s-draft", "s-reviewed", "s-locked", "s-rejected"}
 
 
+def _seed_snapshots_with_subjects():
+    """Two snapshots whose topics resolve to different subject_groups
+    (GS Paper I vs CSAT Paper II), so the list enrichment can carry the
+    paper-level discriminator the panel groups by (Part D light fix)."""
+    seed = {
+        "exams": [
+            {"id": "e1", "slug": "upsc-cse", "name": "UPSC CSE",
+             "exam_type": "recruitment", "is_active": True},
+        ],
+        "subjects": [
+            {"id": "sub-gs", "name": "Polity & Governance", "subject_group": "gs"},
+            {"id": "sub-csat", "name": "CSAT (Aptitude)", "subject_group": "reasoning"},
+        ],
+        "topics": [
+            {"id": "t-gs", "name": "Polity", "subject_id": "sub-gs", "parent_topic_id": None},
+            {"id": "t-csat", "name": "Reading Comprehension", "subject_id": "sub-csat", "parent_topic_id": None},
+        ],
+        "exam_topic_score_snapshots": [
+            {"id": "s-gs", "exam_id": "e1", "topic_id": "t-gs", "status": "draft",
+             "model_version": MODEL_VERSION, "exam_priority_score": 88,
+             "is_high_yield": True, "confidence_score": 0.9, "evidence_count": 12,
+             "score_components": {}, "input_summary": {},
+             "computed_at": "2026-05-04T00:00:00+00:00", "reviewer_notes": None},
+            {"id": "s-csat", "exam_id": "e1", "topic_id": "t-csat", "status": "draft",
+             "model_version": MODEL_VERSION, "exam_priority_score": 60,
+             "is_high_yield": False, "confidence_score": 0.6, "evidence_count": 4,
+             "score_components": {}, "input_summary": {},
+             "computed_at": "2026-05-03T00:00:00+00:00", "reviewer_notes": None},
+        ],
+    }
+    return seed
+
+
+def test_list_enrichment_attaches_subject_group_and_name():
+    """The list endpoint must carry subject_group/subject_name so GS Paper I
+    and CSAT Paper II rows can be sectioned downstream — the scorer pools all
+    papers exam-wide, so this is the only paper-level signal on a snapshot."""
+    sb = _SnapshotSBStub(_seed_snapshots_with_subjects())
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    by_id = {s["id"]: s for s in r.json()["snapshots"]}
+    assert by_id["s-gs"]["subject_group"] == "gs"
+    assert by_id["s-gs"]["subject_name"] == "Polity & Governance"
+    assert by_id["s-csat"]["subject_group"] == "reasoning"
+    assert by_id["s-csat"]["subject_name"] == "CSAT (Aptitude)"
+
+
+def test_list_enrichment_subject_group_none_when_no_subject():
+    """A topic with no resolvable subject degrades to subject_group=None
+    (an explicit Unclassified section downstream), never a dropped row."""
+    sb = _SnapshotSBStub(_seed_snapshots())  # no topics/subjects seeded
+    client = TestClient(_build_app(sb))
+    r = client.get(_LIST_BASE)
+    assert r.status_code == 200
+    snaps = r.json()["snapshots"]
+    assert len(snaps) == 4
+    assert all(s.get("subject_group") is None for s in snaps)
+
+
 def test_list_snapshots_status_filter():
     sb = _SnapshotSBStub(_seed_snapshots())
     client = TestClient(_build_app(sb))
