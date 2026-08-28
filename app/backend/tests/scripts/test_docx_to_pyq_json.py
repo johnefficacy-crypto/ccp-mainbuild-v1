@@ -766,3 +766,108 @@ def test_bracket_shapes_still_detect_as_bracket(tmp_path, name, body_parts):
     body = _para("1. Stem?") + "".join(_para(p) for p in body_parts)
     lines = mod._read_lines(_docx(tmp_path, body, f"{name}.docx"))
     assert mod.detect_option_style(lines) == "bracket"
+
+
+# ── statement-index detection (false positive on fill-in-the-blanks) ─────────
+#
+# The check that a stem carries numbering when its options point at statements
+# used to SEARCH each option for a digit pair. A fill-in-the-blanks option like
+# "2/3,1" contains the substring "3,1", so SEBI-GA-2022-P1-CA Q1 was rejected
+# for numbering it never needed. The predicate now matches the WHOLE option
+# against index SHAPES, and needs two family members before it fires.
+
+
+def _idx(opts):
+    return mod._names_statement_indices([("x", o) for o in opts])
+
+
+def test_fill_in_the_blanks_fractions_are_not_statement_indices(tmp_path):
+    """SEBI-GA-2022-P1-CA Q1: the reported false positive, end to end."""
+    body = (
+        _para("1. The quorum for a meeting shall be _______ of total strength or "
+              "___ directors, whichever is higher.")
+        + _para("A. 2/3,1") + _para("B. 1/3,2") + _para("C. 1/2,2")
+        + _para("D. 3/4, 1") + _para("E. None of the above")
+    )
+    questions = _question(tmp_path, body)
+    assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "d", "e"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_genuine_statement_index_with_unnumbered_stem_still_fails(tmp_path):
+    """The check exists because these import as unanswerable questions. It must bite."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.")
+        + _para("Krishna River directly feeds Kolleru Lake.")
+        + _para("A. 1 only") + _para("B. 2 only")
+        + _para("C. Both 1 and 2") + _para("D. Neither 1 nor 2")
+    )
+    errors = mod.validate(_question(tmp_path, body), 1)
+    assert any("lost its list numbering" in e for e in errors)
+
+
+def test_genuine_statement_index_with_numbering_passes(tmp_path):
+    """Same options, numbering intact — nothing to complain about.
+
+    The statements carry Word list numbering (``num_id``) rather than literal
+    "1."/"2." text: a printed "2. ..." line would be read as question 2 by the
+    ``N.`` opener, which is exactly why the converter restores list numbering
+    from numbering.xml instead of trusting the text layer.
+    """
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Jhelum River passes through Wular Lake.", num_id="1")
+        + _para("Krishna River directly feeds Kolleru Lake.", num_id="1")
+        + _para("Which of the statements given above is/are correct?")
+        + _para("A. 1 only") + _para("B. 2 only")
+        + _para("C. Both 1 and 2") + _para("D. Neither 1 nor 2")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["stem_parts"][1:3] == [
+        "1. Jhelum River passes through Wular Lake.",
+        "2. Krishna River directly feeds Kolleru Lake.",
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+@pytest.mark.parametrize("name,options", [
+    ("fractions",       ["2/3,1", "1/3,2", "1/2,2", "3/4, 1", "None of the above"]),
+    ("bare numbers",    ["1", "2", "3", "4"]),
+    ("years",           ["1991", "1998", "2005 and 2006", "None of the above"]),
+    ("currency",        ["Rs. 1,00,000", "Rs. 2,50,000", "Rs. 5,00,000", "Rs. 10,00,000"]),
+    ("decimals",        ["1.5", "2.75", "3.25 and 4.5", "None of the above"]),
+    ("ratios",          ["1:2", "2:3", "3:4", "None of the above"]),
+    ("two-digit values", ["12 and 15", "18 and 21", "24 and 27", "None of the above"]),
+    ("word counts",     ["Only one", "Only two", "Only three", "All four"]),
+    ("sibling alone",   ["Mumbai", "Delhi", "Chennai", "None of the above"]),
+])
+def test_numeric_option_text_does_not_demand_numbering(name, options):
+    """Digits in an option are not an index reference — the shape is."""
+    assert _idx(options) is False
+
+
+@pytest.mark.parametrize("name,options", [
+    ("only forms",   ["1 only", "2 only", "Both 1 and 2", "Neither 1 nor 2"]),
+    ("list forms",   ["1 and 2 only", "1, 2 and 3", "2 and 3 only", "1 and 3"]),
+    ("keyword-led",  ["Only 1", "Only 1 and 2", "Both 1 and 3", "None of the above"]),
+    ("one + sibling", ["1 and 2 only", "None of the above", "Cannot say", "Data insufficient"]),
+    ("trailing dot", ["1 only.", "2 only.", "Both 1 and 2.", "None of the above."]),
+])
+def test_real_index_reference_shapes_still_detected(name, options):
+    assert _idx(options) is True
+
+
+def test_restoration_flag_ignores_a_fill_in_the_blanks_question(tmp_path):
+    """--number-unmarked-statements shares the predicate, so it does not fire either."""
+    body = (
+        _para("1. Consider the following blanks: the quorum shall be _______ of "
+              "total strength or ___ directors.")
+        + _para("Some clarifying line.")
+        + _para("Another clarifying line.")
+        + _para("Which of the above is correct?")
+        + _para("A. 2/3,1") + _para("B. 1/3,2") + _para("C. 1/2,2")
+        + _para("D. 3/4, 1") + _para("E. None of the above")
+    )
+    q = _question(tmp_path, body)[0]
+    assert mod._names_statement_indices(q["options"]) is False
