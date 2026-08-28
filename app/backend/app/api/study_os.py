@@ -1070,6 +1070,34 @@ async def list_subjects(user: dict = Depends(get_current_user)) -> dict[str, Any
         return {"items": [], "count": 0}
 
 
+# ─────────────────────── Subject topic/microtopic tree ──────────────────────
+@router.get("/subjects/{subject_id}/topics")
+async def subject_topic_tree(
+    subject_id: str,
+    exam_id: str | None = None,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Nested topic → microtopic tree for one subject, with locked-coverage
+    priority attached where it exists.
+
+    Step 1 of 2 for the Topic Study Hub: the read model behind a
+    topic/microtopic breakdown under a subject. Structure comes from the
+    ``topics`` table (so not-yet-scored topics still appear); locked
+    ``exam_topic_coverage`` supplies priority; 0-evidence rollup nodes are
+    flagged (PR #1030 guard). Read-only; no user mastery.
+    """
+    try:
+        tree = subjects_service.subject_topic_tree(
+            get_supabase_admin(), user.get("id"), subject_id, exam_id=exam_id
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("subject topic tree read failed for %s / %s", user.get("id"), subject_id)
+        raise HTTPException(status_code=500, detail="Topic tree is temporarily unavailable.")
+    if tree is None:
+        raise HTTPException(status_code=404, detail="Subject not found.")
+    return tree
+
+
 # ───────────────────────────── Topics tree ──────────────────────────────────
 @router.get("/topics")
 async def get_topics(
