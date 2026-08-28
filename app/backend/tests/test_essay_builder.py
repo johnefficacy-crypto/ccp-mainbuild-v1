@@ -85,6 +85,8 @@ class Q:
             row.setdefault("updated_at", "2026-08-28T00:00:00+00:00")
             row.setdefault("usage_count", 0)
             row.setdefault("source_note", None)
+            row.setdefault("canvas_x", None)
+            row.setdefault("canvas_y", None)
             rows.append(row)
             return Resp([row])
         if self.op == "update":
@@ -147,6 +149,8 @@ def sb(monkeypatch):
                 "block_text": "A's private sticky",
                 "lens": "economic_efficiency",
                 "linked_gs_topic_id": None,
+                "canvas_x": None,
+                "canvas_y": None,
                 "source_note": None,
                 "usage_count": 0,
                 "created_by": "user-a",
@@ -348,6 +352,167 @@ def test_list_filters_combine(sb):
         user=_user("user-a"),
     )
     assert out_other_theme["items"] == []
+
+
+# ── canvas position (migration 267) ──────────────────────────────────
+
+
+def test_create_with_position_round_trips_on_read(sb):
+    created = eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_A,
+            block_type="example",
+            block_text="PAHAL (DBTL)",
+            lens="historical_precedent",
+            canvas_x=190.5,
+            canvas_y=250.25,
+        ),
+        user=_user("user-a"),
+    )
+    assert (created["canvas_x"], created["canvas_y"]) == (190.5, 250.25)
+
+    fetched = eb.get_block(created["id"], user=_user("user-a"))
+    assert (fetched["canvas_x"], fetched["canvas_y"]) == (190.5, 250.25)
+
+    listed = eb.list_blocks(
+        theme_id=THEME_A, lens=None, block_type=None, limit=200, user=_user("user-a")
+    )
+    row = next(i for i in listed["items"] if i["id"] == created["id"])
+    assert (row["canvas_x"], row["canvas_y"]) == (190.5, 250.25)
+
+
+def test_create_without_position_stays_valid_and_unplaced(sb):
+    created = eb.create_block(
+        eb.BlockCreate(theme_id=THEME_A, block_type="thesis", block_text="Cash > kind"),
+        user=_user("user-a"),
+    )
+    assert created["canvas_x"] is None
+    assert created["canvas_y"] is None
+    # Unplaced is a permanent valid state, not a transient one later reads reject.
+    assert eb.get_block(created["id"], user=_user("user-a"))["canvas_x"] is None
+
+
+def test_create_with_negative_and_subpixel_coordinates(sb):
+    # Nothing clamps a drag in the mockup, so a sticky can end up at a negative
+    # coordinate, and clientX deltas make it sub-pixel.
+    created = eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_A,
+            block_type="quote",
+            block_text="dragged off the left edge",
+            canvas_x=-42.75,
+            canvas_y=0.5,
+        ),
+        user=_user("user-a"),
+    )
+    assert (created["canvas_x"], created["canvas_y"]) == (-42.75, 0.5)
+
+
+def test_create_with_only_one_axis_rejected(sb):
+    for kwargs in ({"canvas_x": 10.0}, {"canvas_y": 10.0}):
+        with pytest.raises(HTTPException) as exc:
+            eb.create_block(
+                eb.BlockCreate(
+                    theme_id=THEME_A, block_type="hook", block_text="x", **kwargs
+                ),
+                user=_user("user-a"),
+            )
+        assert exc.value.status_code == 422
+
+
+def test_patch_moves_both_axes_together(sb):
+    out = eb.update_block(
+        BLOCK_A, eb.BlockPatch(canvas_x=470.0, canvas_y=130.0), user=_user("user-a")
+    )
+    assert (out["canvas_x"], out["canvas_y"]) == (470.0, 130.0)
+    # A drag must not disturb the rest of the block.
+    assert out["block_text"] == "A's private sticky"
+    assert out["lens"] == "economic_efficiency"
+
+
+def test_patch_single_axis_rejected(sb):
+    for patch in (eb.BlockPatch(canvas_x=1.0), eb.BlockPatch(canvas_y=1.0)):
+        with pytest.raises(HTTPException) as exc:
+            eb.update_block(BLOCK_A, patch, user=_user("user-a"))
+        assert exc.value.status_code == 422
+    stored = sb.tables["essay_brainstorm_blocks"][0]
+    assert stored["canvas_x"] is None and stored["canvas_y"] is None
+
+
+def test_patch_mixed_null_and_value_rejected(sb):
+    with pytest.raises(HTTPException) as exc:
+        eb.update_block(
+            BLOCK_A, eb.BlockPatch(canvas_x=5.0, canvas_y=None), user=_user("user-a")
+        )
+    assert exc.value.status_code == 422
+
+
+def test_patch_explicit_null_clears_position(sb):
+    placed = eb.update_block(
+        BLOCK_A, eb.BlockPatch(canvas_x=470.0, canvas_y=130.0), user=_user("user-a")
+    )
+    assert placed["canvas_x"] == 470.0
+    cleared = eb.update_block(
+        BLOCK_A, eb.BlockPatch(canvas_x=None, canvas_y=None), user=_user("user-a")
+    )
+    assert cleared["canvas_x"] is None
+    assert cleared["canvas_y"] is None
+    # Same explicit-null-clears semantic lens already had; rest untouched.
+    assert cleared["block_text"] == "A's private sticky"
+    assert cleared["lens"] == "economic_efficiency"
+
+
+def test_patch_omitting_position_leaves_it_alone(sb):
+    eb.update_block(
+        BLOCK_A, eb.BlockPatch(canvas_x=12.0, canvas_y=34.0), user=_user("user-a")
+    )
+    out = eb.update_block(
+        BLOCK_A, eb.BlockPatch(block_text="edited"), user=_user("user-a")
+    )
+    assert out["block_text"] == "edited"
+    assert (out["canvas_x"], out["canvas_y"]) == (12.0, 34.0)
+
+
+def test_non_finite_and_out_of_column_range_coordinates_rejected(sb):
+    for x, y in (
+        (float("nan"), 1.0),
+        (float("inf"), 1.0),
+        (1.0, float("-inf")),
+        (1e9, 1.0),  # beyond numeric(10,2)
+        (1.0, -1e9),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            eb.create_block(
+                eb.BlockCreate(
+                    theme_id=THEME_A,
+                    block_type="hook",
+                    block_text="x",
+                    canvas_x=x,
+                    canvas_y=y,
+                ),
+                user=_user("user-a"),
+            )
+        assert exc.value.status_code == 422
+
+
+def test_coord_coerces_postgrest_numeric_string(sb):
+    # PostgREST can hand a numeric back as a string; that wire representation
+    # must not leak into the API response.
+    sb.tables["essay_brainstorm_blocks"][0]["canvas_x"] = "470.00"
+    sb.tables["essay_brainstorm_blocks"][0]["canvas_y"] = "130.00"
+    out = eb.get_block(BLOCK_A, user=_user("user-a"))
+    assert out["canvas_x"] == 470.0
+    assert out["canvas_y"] == 130.0
+
+
+def test_cross_user_cannot_move_another_aspirants_block(sb):
+    with pytest.raises(HTTPException) as exc:
+        eb.update_block(
+            BLOCK_A, eb.BlockPatch(canvas_x=1.0, canvas_y=2.0), user=_user("user-b")
+        )
+    assert exc.value.status_code == 404
+    stored = sb.tables["essay_brainstorm_blocks"][0]
+    assert stored["canvas_x"] is None and stored["canvas_y"] is None
 
 
 # ── shared essay PYQ tags ──────────────────────────────────────────────────

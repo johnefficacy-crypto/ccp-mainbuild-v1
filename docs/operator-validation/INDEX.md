@@ -65,7 +65,7 @@ Owner: Study OS / Essay
 
 | Gate | Status | Updated | Review by (UTC) | Defects found | Defects fixed | Next action | Runbook | Evidence |
 |---|---|---:|---:|---|---|---|---|---|
-| **Migration 266 apply + Essay Builder endpoint live validation**<br>`essay-builder-266-live-validation` | **VALIDATION PENDING** | 2026-08-28 | 2026-09-25T18:00:00Z | — | — | Apply migration 266 to the target Supabase database, prove the service-role-only RLS posture over HTTP, then run the two-aspirant CRUD and cross-user isolation proof against the deployed API. | [essay-builder-migration-266-validation.md](../../docs/runbooks/essay-builder-migration-266-validation.md) | — |
+| **Migrations 266-267 apply + Essay Builder endpoint live validation**<br>`essay-builder-266-live-validation` | **VALIDATION PENDING** | 2026-08-28 | 2026-09-25T18:00:00Z | — | — | Apply migrations 266 and 267 to the target Supabase database, prove the service-role-only RLS posture over HTTP (including that it covers the columns 267 adds), then run the two-aspirant CRUD, canvas-position and cross-user isolation proofs against the deployed API. | [essay-builder-migration-266-validation.md](../../docs/runbooks/essay-builder-migration-266-validation.md) | — |
 
 ## Update rule
 

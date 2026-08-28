@@ -1,8 +1,9 @@
-# Essay Builder — migration 266 + endpoint live validation
+# Essay Builder — migrations 266-267 + endpoint live validation
 
-Use this runbook after the Essay Builder schema/backend PR is merged and before
-marking `essay-builder-266-live-validation` passed. It covers migration 266
-(`266_essay_brainstorm_idea_canvas.sql`) and the five aspirant-facing endpoints
+Use this runbook after the Essay Builder schema/backend PRs are merged and
+before marking `essay-builder-266-live-validation` passed. It covers migration
+266 (`266_essay_brainstorm_idea_canvas.sql`), migration 267
+(`267_essay_brainstorm_canvas_position.sql`) and the aspirant-facing endpoints
 in `app/backend/app/api/essay_builder.py`.
 
 Code completion is not operator validation. Every step below needs live proof
@@ -17,7 +18,7 @@ captured against the deployed environment.
   are available — the ownership proof needs a second caller, not a second token
   for the same user.
 
-## 1. Apply migration 266
+## 1. Apply migrations 266 and 267
 
 Confirm `266_essay_brainstorm_idea_canvas.sql` is the next unapplied migration
 in the live ledger, then apply it through the normal deployment workflow.
@@ -46,6 +47,25 @@ The migration discovers and drops migration 265's generated `block_type` CHECK
 before adding the replacement. If the query above returns a third CHECK
 mentioning `block_type`, stop — the old constraint survived and new block types
 will be rejected at insert time.
+
+Then apply `267_essay_brainstorm_canvas_position.sql` and confirm the canvas
+columns:
+
+```sql
+select column_name, data_type, numeric_precision, numeric_scale, is_nullable
+  from information_schema.columns
+ where table_schema = 'public'
+   and table_name = 'essay_brainstorm_blocks'
+   and column_name in ('canvas_x', 'canvas_y')
+ order by column_name;
+-- expect two rows: numeric | 10 | 2 | YES
+```
+
+The earlier `pg_constraint` query should now also return
+`essay_brainstorm_blocks_canvas_position_check` as
+`CHECK (((canvas_x IS NULL) = (canvas_y IS NULL)))`. There must be no CHECK
+bounding the coordinate values themselves — canvas size, pan and zoom are
+frontend concerns and are deliberately unconstrained in the database.
 
 ## 2. Prove the RLS / privilege posture
 
@@ -82,6 +102,18 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 A 200 carrying rows is a FAIL. Studio's SQL editor bypasses RLS for the
 dashboard role, so a Studio read proves nothing here — use the HTTP path.
 
+Migration 267 adds columns but no grants, on the expectation that 266's
+TABLE-level privileges already cover columns added later. Confirm that rather
+than assuming it — a column-level grant hiding anywhere would break it:
+
+```sql
+select grantee, privilege_type, column_name
+  from information_schema.column_privileges
+ where table_schema = 'public' and table_name = 'essay_brainstorm_blocks'
+   and grantee in ('anon', 'authenticated');
+-- expect: zero rows
+```
+
 ## 3. Exercise the aspirant CRUD path
 
 As aspirant A, against the deployed API:
@@ -100,6 +132,34 @@ As aspirant A, against the deployed API:
 
 Record the block IDs and the theme ID used.
 
+## 3b. Exercise the canvas position
+
+Still as aspirant A:
+
+1. `POST` a block with `canvas_x` / `canvas_y` — expect them echoed back on the
+   response and on a follow-up `GET`, at full stored precision (send something
+   like `190.5` / `250.25`, not round numbers, so a silent rounding to integer
+   would show).
+2. `POST` a block with no position at all — expect `canvas_x: null`,
+   `canvas_y: null`. Unplaced is a permanently valid state; if this 4xxs, the
+   columns were made required somewhere they should not have been.
+3. `POST` a negative coordinate (e.g. `canvas_x: -42.75`) — expect success.
+   Nothing clamps a drag in the mockup, so negative positions are real.
+4. `PATCH` both axes together — expect the new position, and confirm
+   `block_text` and `lens` are unchanged by the move.
+5. `PATCH` **one** axis alone — expect **422**. A position is one point; a row
+   with x but no y cannot be rendered.
+6. `PATCH` `{"canvas_x": null, "canvas_y": null}` — expect the position cleared
+   back to unplaced, with the rest of the block intact (the same
+   explicit-null-clears semantic `lens` already has).
+7. `PATCH` some other field without mentioning the canvas keys — expect the
+   position preserved.
+8. Try to write a half-placed row directly through the service-role client
+   (`update essay_brainstorm_blocks set canvas_x = 1 where id = ...`) — expect
+   Postgres to reject it with
+   `essay_brainstorm_blocks_canvas_position_check`. This proves the invariant
+   holds below the API, not just in it.
+
 ## 4. Prove cross-aspirant isolation on the deployed API
 
 Using aspirant B's token against a block ID created by aspirant A:
@@ -110,6 +170,8 @@ Using aspirant B's token against a block ID created by aspirant A:
 - `DELETE /api/essay-brainstorm-blocks/{a_block_id}` — expect **404**, and
   re-read as A to confirm the row still exists.
 - `GET /api/essay-brainstorm-blocks` — A's blocks must not appear.
+- `PATCH` a canvas position onto `{a_block_id}` — expect **404**, and confirm
+  as A that the block has not moved.
 
 403 instead of 404 is a FAIL: it confirms the block exists to a caller who does
 not own it.
@@ -133,7 +195,7 @@ not own it.
 ## 6. Record evidence
 
 Write one evidence record under `docs/operator-validation/evidence/` covering
-steps 1–5 with the environment, timestamps, request/response excerpts, and the
+steps 1–5 (3b included) with the environment, timestamps, request/response excerpts, and the
 account IDs used. Then update the gate in `registry.json`, regenerate the index,
 and run:
 
