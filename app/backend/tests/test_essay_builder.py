@@ -610,6 +610,90 @@ def test_essay_pyq_tags_rejects_non_uuid_theme(tags_sb):
     assert exc.value.status_code == 422
 
 
+# ── essay theme catalogue ─────────────────────────────────────────────────
+
+
+@pytest.fixture
+def themes_sb(monkeypatch):
+    fake = SB(
+        essay_themes=[
+            {
+                "id": THEME_A, "theme_code": "ECO", "theme_name": "Economy and development",
+                "description": "Growth, welfare and the state's role.", "status": "active",
+                "sort_order": 1, "first_seen_year": 2013,
+                "metadata": {"internal": "do-not-leak"},
+                "created_at": "2026-08-01T00:00:00+00:00",
+                "updated_at": "2026-08-01T00:00:00+00:00",
+            },
+            {
+                "id": THEME_B, "theme_code": "GOV", "theme_name": "Governance",
+                "description": None, "status": "active", "sort_order": 2,
+                "first_seen_year": 2014, "metadata": {},
+                "created_at": "2026-08-01T00:00:00+00:00",
+                "updated_at": "2026-08-01T00:00:00+00:00",
+            },
+            {
+                "id": "77777777-7777-4777-8777-777777777777", "theme_code": "FUT",
+                "theme_name": "Reserved for a future year", "description": None,
+                "status": "reserved", "sort_order": 99, "first_seen_year": None,
+                "metadata": {}, "created_at": "2026-08-01T00:00:00+00:00",
+                "updated_at": "2026-08-01T00:00:00+00:00",
+            },
+        ],
+    )
+    monkeypatch.setattr(eb, "get_supabase_admin", lambda: fake)
+    return fake
+
+
+def test_theme_catalogue_returns_active_themes_by_default(themes_sb):
+    out = eb.list_essay_themes(include_reserved=False, limit=200, user=_user("user-a"))
+    assert {i["theme_code"] for i in out["items"]} == {"ECO", "GOV"}
+    assert out["count"] == 2
+
+
+def test_theme_catalogue_includes_reserved_only_when_asked(themes_sb):
+    out = eb.list_essay_themes(include_reserved=True, limit=200, user=_user("user-a"))
+    assert {i["theme_code"] for i in out["items"]} == {"ECO", "GOV", "FUT"}
+    assert out["count"] == 3
+
+
+def test_theme_catalogue_exposes_only_the_aspirant_facing_fields(themes_sb):
+    out = eb.list_essay_themes(include_reserved=False, limit=200, user=_user("user-a"))
+    eco = next(i for i in out["items"] if i["theme_code"] == "ECO")
+    assert set(eco.keys()) == {"id", "theme_code", "theme_name", "description", "status"}
+    # Authoring-side columns must not leak through a read-only aspirant route.
+    for authoring_field in ("sort_order", "metadata", "first_seen_year", "created_at", "updated_at"):
+        assert authoring_field not in eco
+    assert eco["theme_name"] == "Economy and development"
+    assert eco["description"] == "Growth, welfare and the state's role."
+
+
+def test_theme_catalogue_is_shared_not_ownership_scoped(themes_sb):
+    # Same rows for any authenticated aspirant — themes are reference data.
+    a = eb.list_essay_themes(include_reserved=False, limit=200, user=_user("user-a"))
+    b = eb.list_essay_themes(include_reserved=False, limit=200, user=_user("user-b"))
+    assert a == b
+    assert a["count"] > 0
+
+
+def test_theme_catalogue_needs_no_permission_gate():
+    import inspect
+
+    from app.core import auth
+
+    dep = inspect.signature(eb.list_essay_themes).parameters["user"].default
+    # Plain authentication only. `require_permission(...)` would return a
+    # closure, not this function — an aspirant must not be gated out.
+    assert getattr(dep, "dependency", None) is auth.get_current_user
+
+
+def test_theme_catalogue_empty_catalogue_reads_cleanly(monkeypatch):
+    fake = SB(essay_themes=[])
+    monkeypatch.setattr(eb, "get_supabase_admin", lambda: fake)
+    out = eb.list_essay_themes(include_reserved=False, limit=200, user=_user("user-a"))
+    assert out == {"items": [], "count": 0}
+
+
 # ── auth wiring ────────────────────────────────────────────────────────────
 
 

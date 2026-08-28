@@ -45,11 +45,13 @@ logger = logging.getLogger("career_copilot.api.essay_builder")
 
 router = APIRouter(prefix="/essay-brainstorm-blocks", tags=["essay-builder"])
 pyq_tags_router = APIRouter(prefix="/essay-pyq-tags", tags=["essay-builder"])
+themes_router = APIRouter(prefix="/essay-themes", tags=["essay-builder"])
 
 _TABLE = "essay_brainstorm_blocks"
 _DEFAULT_LIMIT = 200
 _MAX_LIMIT = 500
 _MAX_TAG_LIMIT = 200
+_MAX_THEME_LIMIT = 200  # the catalogue is ~15 rows; this is headroom, not paging
 _BATCH = 250  # max ids per IN() filter (PostgREST URL-length ceiling)
 
 _SELECT = (
@@ -380,6 +382,53 @@ def delete_block(
     return {"ok": True, "id": block_id}
 
 
+# ── Essay theme catalogue (read-only reference data) ───────────────────────
+
+
+@themes_router.get("")
+def list_essay_themes(
+    include_reserved: bool = Query(default=False),
+    limit: int = Query(default=_MAX_THEME_LIMIT, ge=1, le=_MAX_THEME_LIMIT),
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """The essay-theme catalogue an aspirant picks from.
+
+    Shared reference data, same trust model as ``/essay-pyq-tags``: any
+    authenticated aspirant reads the same rows, there is no ownership scoping
+    and no permission gate. The admin CMS route
+    (``/admin/exam-intelligence-cms/essay-themes``) stays the only way to
+    *write* a theme; this one is read-only and never exposes the authoring
+    fields (``sort_order``, ``metadata``, ``first_seen_year``, timestamps).
+
+    ``status`` defaults to ``'reserved'`` at the column level (migration 265):
+    reserved themes are catalogue scaffolding held for themes that have not
+    appeared in the exam yet, not things an aspirant should be choosing to
+    write about. So the default is active-only, and a caller that genuinely
+    wants the whole catalogue opts in with ``include_reserved=true`` rather
+    than filtering client-side after being handed rows it should not show.
+    """
+    supabase = get_supabase_admin()
+    query = supabase.table("essay_themes").select(
+        "id, theme_code, theme_name, description, status"
+    )
+    if not include_reserved:
+        query = query.eq("status", "active")
+    rows = (
+        query.order("sort_order").order("theme_name").limit(limit).execute().data or []
+    )
+    items = [
+        {
+            "id": row.get("id"),
+            "theme_code": row.get("theme_code"),
+            "theme_name": row.get("theme_name"),
+            "description": row.get("description"),
+            "status": row.get("status"),
+        }
+        for row in rows
+    ]
+    return {"items": items, "count": len(items)}
+
+
 # ── Shared essay PYQ tags (read-only reference data) ───────────────────────
 
 
@@ -467,4 +516,4 @@ def list_essay_pyq_tags(
     return {"items": items, "count": len(items)}
 
 
-__all__ = ["router", "pyq_tags_router", "BLOCK_TYPES", "LENSES"]
+__all__ = ["router", "pyq_tags_router", "themes_router", "BLOCK_TYPES", "LENSES"]
