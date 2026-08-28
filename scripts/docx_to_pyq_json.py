@@ -480,6 +480,67 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
     return errors
 
 
+def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
+    """Apply operator-supplied repairs for source-document damage.
+
+    A correction only changes how options were *formatted* — their labels, or
+    whether a run was printed as a list instead of as options. It never states
+    which option is correct: that stays with the answer key, and a correction that
+    displaced the keyed option would show up as an unresolved key at build time.
+
+    Two operations, both purely positional:
+
+    ``relabel``  assign these labels to the parsed options in printed order, for a
+                 paper that printed them out of sequence or duplicated a letter.
+    ``options_from_stem``  take the last N numbered lines off the stem and make
+                 them options a..d, for a paper that formatted its options as a
+                 decimal list so they parsed as statements.
+
+    Returns the notes describing what was applied, for the report.
+    """
+    by_number = {q["number"]: q for q in questions}
+    applied: list[str] = []
+    for raw_num, spec in sorted(corrections.items()):
+        if raw_num.startswith("_"):
+            continue
+        num = int(raw_num)
+        q = by_number.get(num)
+        if q is None:
+            raise ValueError(f"correction Q{num}: no such question in this paper")
+
+        if "relabel" in spec:
+            labels = spec["relabel"]
+            if len(labels) != len(q["options"]):
+                raise ValueError(
+                    f"correction Q{num}: relabel lists {len(labels)} labels but the "
+                    f"question parsed {len(q['options'])} options"
+                )
+            q["options"] = [(label, text) for label, (_, text) in zip(labels, q["options"])]
+            q["options"].sort(key=lambda pair: OPTION_LABELS.index(pair[0]))
+            applied.append(f"Q{num}: relabelled options {'/'.join(labels)}")
+
+        if "options_from_stem" in spec:
+            count = int(spec["options_from_stem"])
+            if q["options"]:
+                raise ValueError(
+                    f"correction Q{num}: options_from_stem but the question already "
+                    f"parsed {len(q['options'])} options"
+                )
+            tail = q["stem_parts"][-count:]
+            if len(tail) != count or not all(re.match(r"^\d+\.\s", line) for line in tail):
+                raise ValueError(
+                    f"correction Q{num}: the last {count} stem lines are not a numbered run"
+                )
+            q["stem_parts"] = q["stem_parts"][:-count]
+            q["options"] = [
+                (OPTION_LABELS[i], re.sub(r"^\d+\.\s*", "", line))
+                for i, line in enumerate(tail)
+            ]
+            applied.append(f"Q{num}: promoted {count} stem lines to options")
+
+    return applied
+
+
 def _load_answer_key(path: str) -> dict[int, str]:
     """Read a two-column ``question_number,correct_option_label`` CSV.
 
@@ -558,6 +619,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--set-code", required=True, help="Printed series/set, e.g. A or C")
     ap.add_argument("--paper-label", default="GS1", help="source_question_ref prefix (default GS1)")
     ap.add_argument("--answer-key", help="CSV: question_number,correct_option_label")
+    ap.add_argument("--corrections", help="JSON of operator repairs for source-document "
+                                          "damage; see docs/reference/corrections/")
     ap.add_argument("--dropped", default="", help="Comma-separated question numbers dropped by UPSC")
     ap.add_argument("--expect", type=int, default=100, help="Expected question count (default 100)")
     ap.add_argument("--number-unmarked-statements", action="store_true",
@@ -574,6 +637,11 @@ def main(argv: list[str] | None = None) -> int:
     lines = _read_lines(args.docx)
     marker_name, pattern = detect_marker(lines)
     questions = _parse_lines(lines, pattern)
+
+    applied: list[str] = []
+    if args.corrections:
+        with open(args.corrections, encoding="utf-8") as fh:
+            applied = apply_corrections(questions, json.load(fh))
 
     reordered = [q["number"] for q in questions if _sort_complete_options(q)]
 
@@ -607,6 +675,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  marker style {marker_name!r}, set {args.set_code}, year {args.year}, "
               f"dropped {sorted(dropped) or 'none'}", file=sys.stderr)
         print(f"  answer key: {len(answer_key) or 'ABSENT'}", file=sys.stderr)
+        for line in applied:
+            print(f"  correction applied — {line}", file=sys.stderr)
         if reordered:
             print(f"  option order normalised on {len(reordered)} questions: {reordered}",
                   file=sys.stderr)

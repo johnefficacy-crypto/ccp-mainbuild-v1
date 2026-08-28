@@ -331,3 +331,69 @@ def test_incomplete_option_set_is_left_to_fail(tmp_path):
     q = {"options": [("a", "One"), ("d", "Two"), ("b", "Three"), ("d", "Four")]}
     assert mod._sort_complete_options(q) is False
     assert q["options"][1] == ("d", "Two")
+
+
+# ── operator corrections for source-document damage ──────────────────────────
+
+
+def test_relabel_correction_reorders_by_supplied_labels(tmp_path):
+    """Printed a/d/b/c: assign the true labels positionally, then sort."""
+    body = (
+        _para("1. Stem?")
+        + _para("(a) Farming")
+        + _para("(d) Wind")
+        + _para("(b) Gardens")
+        + _para("(d) Forests")
+    )
+    questions = _question(tmp_path, body)
+    applied = mod.apply_corrections(questions, {"1": {"relabel": ["a", "d", "b", "c"]}})
+    assert questions[0]["options"] == [
+        ("a", "Farming"), ("b", "Gardens"), ("c", "Forests"), ("d", "Wind"),
+    ]
+    assert applied == ["Q1: relabelled options a/d/b/c"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_relabel_correction_rejects_a_length_mismatch(tmp_path):
+    """A correction written against a different parse must not apply silently."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    with pytest.raises(ValueError, match="lists 3 labels"):
+        mod.apply_corrections(_question(tmp_path, body), {"1": {"relabel": ["a", "b", "c"]}})
+
+
+def test_options_from_stem_promotes_a_numbered_run(tmp_path):
+    """A paper that formatted its options as a decimal list parses them as statements."""
+    body = (
+        _para("1. Stem promoting the adoption of")
+        + _para("First", num_id="1")
+        + _para("Second", num_id="1")
+        + _para("Third", num_id="1")
+        + _para("Fourth", num_id="1")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["options"] == []
+    mod.apply_corrections(questions, {"1": {"options_from_stem": 4}})
+    assert questions[0]["options"] == [
+        ("a", "First"), ("b", "Second"), ("c", "Third"), ("d", "Fourth"),
+    ]
+    assert questions[0]["stem_parts"] == ["Stem promoting the adoption of"]
+
+
+def test_options_from_stem_refuses_when_options_already_parsed(tmp_path):
+    """Guards against a correction that would duplicate an option set."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    with pytest.raises(ValueError, match="already"):
+        mod.apply_corrections(_question(tmp_path, body), {"1": {"options_from_stem": 4}})
+
+
+def test_correction_for_a_missing_question_is_an_error(tmp_path):
+    """A correction file written for another set must not pass unnoticed."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    with pytest.raises(ValueError, match="no such question"):
+        mod.apply_corrections(_question(tmp_path, body), {"7": {"relabel": ["a"]}})
+
+
+def test_provenance_keys_are_ignored(tmp_path):
+    """Underscore-prefixed keys carry provenance, not operations."""
+    body = _para("1. Stem?") + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    assert mod.apply_corrections(_question(tmp_path, body), {"_provenance": "..."}) == []

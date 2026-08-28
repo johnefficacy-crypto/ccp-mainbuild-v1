@@ -58,22 +58,51 @@ and restores Word's auto-list numbering.
 | 2019 | B | `1.` | lower-letter auto-list | **Converts** 100/100 |
 | 2018 | C | `Q.1)` | packed `(a)` lines | Blocked: Q37 |
 
-### Remaining blockers — all single-question source damage
+### Operator corrections
 
-Each needs a correction in the `.docx`; nothing here is a parser limitation, and
-none is repairable without guessing at answer identity.
+`docs/reference/corrections/*.json`, applied with `--corrections`, repair how
+options were **formatted** — their labels, or a run printed as a list instead of
+as options. A correction never states which option is correct: that stays with
+the answer key, and a correction that displaced the keyed option would surface as
+an unresolved key at build time. Two positional operations:
 
-- **2018 Q37** — option `(d)` is absent from the file. Three options only.
-- **2020 Q40** — the fourth option is labelled `(a)`, so the set reads `a, b, c, a`.
-  Its statements are also run together on one line, leaving the stem unnumbered
-  while the options name statements by index.
-- **2021 Q86** — the four options are formatted as a *decimal* auto-list, so they
-  restore as numbered statements rather than options. Relabelling them as a
-  lower-letter list, or printing `a)`-`d)` literally, fixes it. Not inferred: a
-  decimal list under a stem is legitimately a statement run elsewhere in the same
-  paper, and guessing would convert statements into answers.
-- **2022 Q50** — printed `(a)`, `(d).`, `(b)`, `(d)`: two options labelled `d`,
-  none labelled `c`.
+- `relabel` — assign these labels to the parsed options in printed order.
+- `options_from_stem` — take the last N numbered lines off the stem and make them
+  options a-d.
+
+Applied so far:
+
+- **2022 Q50** — printed `(a)`, `(d).`, `(b)`, `(d)`. Printed order is farming /
+  wind energy / GM gardens / mini forests, whose true labels are `a / d / b / c`.
+  The key says (c) is "Creation of mini forests in urban areas", the fourth
+  printed item, which the relabelling puts at c.
+- **2021 Q86** — the four options were formatted as a decimal auto-list, so they
+  parsed as numbered statements. Promoted to a-d in printed order. The key says
+  (a) is "environmentally responsible practices in electronics recycling
+  industry", which is printed item 1.
+
+### Remaining blockers
+
+Each needs a correction in the `.docx` itself; neither is repairable positionally,
+and neither is a parser limitation.
+
+- **2018 Q37** — option `(d)` is absent. A replacement question was offered from a
+  coaching source ("Sthanakvasi sect", answer (b)), but **it is not this paper's
+  Q37**: Set-C Q37 is the coral-reefs statement question, and the operator key
+  gives Q37 = `c` = "1 and 3 only", which is consistent with the coral-reefs
+  question and not with a four-way factual one. Series shuffle question order, so
+  the Sthanakvasi item is presumably Q37 in another set. What is actually needed
+  is the missing fourth option of the coral-reefs question, from the official
+  Set-C paper.
+- **2020 Q40** — the fourth option is labelled `(a)`, which a `relabel` correction
+  would fix. But the damage is not only the label: all four statements are merged
+  into a single stem line **and the text is itself corrupted** — "'Certificate of
+  Deposit is a long-term of India to a corporation" has words dropped mid-clause.
+  Relabelling alone would produce a well-formed question whose statements are
+  unreadable, so the stem needs retyping from the official paper first. (A
+  replacement stem was offered from a coaching source — the Alma-Ata / Hague /
+  Talanoa / Under2 pairs question — but like 2018 Q37 that is a different question
+  from this set's Q40, even though its option texts coincide.)
 
 ### What the converter repairs, and what it refuses to
 

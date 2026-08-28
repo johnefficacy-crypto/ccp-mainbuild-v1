@@ -1,0 +1,7 @@
+{
+  "_provenance": "Operator-supplied corrections for source-document damage in the 2022 Set-A .docx. Each entry repairs how options were FORMATTED, never which option is correct; the answer key in docs/reference/answer-keys/ remains the only source of correctness, and every correction below was checked to leave the keyed option present and unchanged in text.",
+  "50": {
+    "note": "Printed (a), (d)., (b), (d) — two options labelled d, none labelled c. Printed order is farming / wind energy / GM gardens / mini forests, whose correct labels are a / d / b / c. Key says (c) = 'Creation of mini forests in urban areas', the fourth printed item, which this relabelling puts at c.",
+    "relabel": ["a", "d", "b", "c"]
+  }
+}
