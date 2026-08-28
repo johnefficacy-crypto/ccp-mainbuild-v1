@@ -571,3 +571,198 @@ def test_envelope_carries_all_five_options(tmp_path):
     assert [o["source_label"] for o in options][-1] == "(e)"
     assert [o["display_order"] for o in options] == [1, 2, 3, 4, 5]
     assert envelope["questions"][0]["correct_option_label"] == "e"
+
+
+# ── dot-style option markers (SEBI / coaching format) ────────────────────────
+#
+# These papers print "A. Nariman Point, Mumbai" — uppercase letter, period, no
+# bracket at all. Both bracket patterns require a closing bracket, so before this
+# every question on such a file parsed with zero options and validate() rejected
+# the whole paper with "options are none".
+#
+# The style is chosen per document (detect_option_style), exactly as the
+# question-opener style already is, and the two families never mix. That is what
+# keeps the UPSC corpus byte-identical: a bracket paper never scores as "dot", so
+# its stems are never exposed to the bracket-less pattern.
+
+
+def _dot_question(n, stem, labels="ABCDE", opts=("One", "Two", "Three", "Four", "Five")):
+    body = _para(f"{n}. {stem}")
+    for label, text in zip(labels, opts):
+        body += _para(f"{label}. {text}")
+    return body
+
+
+def test_detects_dot_style_and_parses_five_options(tmp_path):
+    body = _dot_question(1, "Where is the head office?")
+    questions = _question(tmp_path, body)
+    assert mod.detect_option_style(mod._read_lines(_docx(tmp_path, body, "d.docx"))) == "dot"
+    assert questions[0]["options"] == [
+        ("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four"), ("e", "Five"),
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+def test_dot_style_four_option_paper(tmp_path):
+    body = _dot_question(1, "Which one is correct?", labels="ABCD",
+                         opts=("One", "Two", "Three", "Four"))
+    questions = _question(tmp_path, body)
+    assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "d"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_dot_style_lowercase_markers_and_paren_delimiter(tmp_path):
+    """"a." and "a)" are the same family; both normalise to the house lowercase."""
+    body = (
+        _para("1. Stem?")
+        + _para("a. One") + _para("b) Two") + _para("C. Three") + _para("D) Four")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["options"] == [
+        ("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four"),
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+def test_options_label_line_is_dropped(tmp_path):
+    """A bare "Options:" is a label — it must reach neither stem nor option list."""
+    for label_line in ("Options:", "Options :", "OPTIONS:"):
+        body = (
+            _para("1. Where is the head office?")
+            + _para(label_line)
+            + _para("A. One") + _para("B. Two") + _para("C. Three")
+            + _para("D. Four") + _para("E. Five")
+        )
+        questions = _question(tmp_path, body, name=f"{label_line[:7]}.docx")
+        assert questions[0]["stem_parts"] == ["Where is the head office?"]
+        assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "d", "e"]
+        assert mod.validate(questions, 1) == []
+
+
+def test_stem_initials_do_not_become_options(tmp_path):
+    """"B. Ambedkar" sits where "a" is due, so the due-gate refuses it."""
+    body = (
+        _para("1. Who drafted the Constitution of India?")
+        + _para("B. Ambedkar chaired the drafting committee.")
+        + _para("A. One") + _para("B. Two") + _para("C. Three")
+        + _para("D. Four") + _para("E. Five")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["stem_parts"] == [
+        "Who drafted the Constitution of India?",
+        "B. Ambedkar chaired the drafting committee.",
+    ]
+    assert questions[0]["options"] == [
+        ("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four"), ("e", "Five"),
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+def test_stem_initials_run_at_the_due_letter_is_refused(tmp_path):
+    """"A. K. Sen" IS at the due letter — the second initial is what gives it away."""
+    body = (
+        _para("1. Who won the 1998 economics prize?")
+        + _para("A. K. Sen wrote on welfare economics.")
+        + _para("A. One") + _para("B. Two") + _para("C. Three")
+        + _para("D. Four") + _para("E. Five")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["stem_parts"] == [
+        "Who won the 1998 economics prize?",
+        "A. K. Sen wrote on welfare economics.",
+    ]
+    assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "d", "e"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_bracket_paper_never_selects_dot_style(tmp_path):
+    """Detection is what makes this additive — a UPSC file must score as bracket."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+        + _para("2. And this one?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    )
+    assert mod.detect_option_style(mod._read_lines(_docx(tmp_path, body))) == "bracket"
+
+
+def test_bracket_style_envelope_is_byte_identical(tmp_path):
+    """The importer dedupes on normalized_question_hash, so any drift on the UPSC
+    corpus re-imports every question as new. This pins the whole emitted envelope,
+    not just the option labels: stem text, option text, order, and source_label."""
+    body = (
+        _para("1. Consider the following statements:")
+        + _para("Konkani", num_id="1")
+        + _para("Manipuri", num_id="1")
+        + _para("(a) 1 only\n(b) 2 only\n(c) Both 1 and 2\n(d) Neither 1 nor 2")
+        + _para("2. Which one of the following is correct?")
+        + _para("(a) Alpha")
+        + _para("{b) Beta")
+        + _para("(C) Gamma")
+        + _para("(d). Delta")
+    )
+    questions = _question(tmp_path, body)
+    envelope = mod.build_envelope(
+        questions, ref_prefix="GS1", answer_key={1: "a", 2: "c"},
+        dropped=set(), difficulty=None,
+    )
+    assert mod.validate(questions, 2) == []
+    assert envelope == {
+        "format_version": 2,
+        "questions": [
+            {
+                "source_question_ref": "GS1-Q1",
+                "question_number": 1,
+                "display_order": 1,
+                "question_text": "Consider the following statements:\n1. Konkani\n2. Manipuri",
+                "question_type": "mcq",
+                "options": [
+                    {"label": "a", "source_label": "(a)", "text": "1 only", "display_order": 1},
+                    {"label": "b", "source_label": "(b)", "text": "2 only", "display_order": 2},
+                    {"label": "c", "source_label": "(c)", "text": "Both 1 and 2", "display_order": 3},
+                    {"label": "d", "source_label": "(d)", "text": "Neither 1 nor 2", "display_order": 4},
+                ],
+                "correct_option_label": "a",
+            },
+            {
+                "source_question_ref": "GS1-Q2",
+                "question_number": 2,
+                "display_order": 2,
+                "question_text": "Which one of the following is correct?",
+                "question_type": "mcq",
+                "options": [
+                    {"label": "a", "source_label": "(a)", "text": "Alpha", "display_order": 1},
+                    {"label": "b", "source_label": "(b)", "text": "Beta", "display_order": 2},
+                    {"label": "c", "source_label": "(c)", "text": "Gamma", "display_order": 3},
+                    {"label": "d", "source_label": "(d)", "text": "Delta", "display_order": 4},
+                ],
+                "correct_option_label": "c",
+            },
+        ],
+    }
+
+
+def test_dot_style_does_not_weaken_complete_set_validation(tmp_path):
+    """The #1037 gate still bites on a dot paper: a/b/c/e is damage, not a set."""
+    body = (
+        _para("1. Stem?")
+        + _para("A. One") + _para("B. Two") + _para("C. Three") + _para("E. Five")
+    )
+    questions = _question(tmp_path, body)
+    errors = mod.validate(questions, 1)
+    assert any(e.startswith("Q1: options are ['a', 'b', 'c']") for e in errors)
+
+
+@pytest.mark.parametrize("name,body_parts", [
+    ("clean4",   ["(a) One\n(b) Two\n(c) Three\n(d) Four"]),
+    ("clean5",   ["(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five"]),
+    ("damaged",  ["(a) One", "{b) Two", "(C) Three", "(d). Four"]),
+    ("glued",    ["(a) 1 only", "(b) 2 only", "(c) 3 only d)1 and 3", "(d) placeholder"]),
+    ("shuffled", ["(a) One", "(c) Three", "(b) Two", "(d) Four"]),
+])
+def test_bracket_shapes_still_detect_as_bracket(tmp_path, name, body_parts):
+    """Every damaged/glued/shuffled shape the UPSC corpus actually contains must
+    keep scoring as bracket — dot must never win a bracket document."""
+    body = _para("1. Stem?") + "".join(_para(p) for p in body_parts)
+    lines = mod._read_lines(_docx(tmp_path, body, f"{name}.docx"))
+    assert mod.detect_option_style(lines) == "bracket"
