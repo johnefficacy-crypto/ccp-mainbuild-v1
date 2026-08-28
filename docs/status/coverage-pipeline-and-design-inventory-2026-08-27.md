@@ -461,3 +461,189 @@ alongside the lock question:
    whether it reads *locked* `exam_topic_coverage` or falls back to
    `/pyq-summary` verified-tag counts, and whether it LEFT-joins the topic
    catalog (the origin of the "null columns" appearance).
+
+---
+
+## Part D — Prelims/CSAT topic structure
+
+> **Investigation-only.** No code/schema change. Diagnoses why the Score
+> Snapshots panel (`?tab=pyq&view=snapshots`) shows UPSC CSE **Prelims GS
+> Paper I** subject categories (History, Polity, Environment, Geography) as
+> flat siblings of **CSAT Paper II** aptitude sections (General mental
+> ability, Reading Comprehension, Decision making, Quant/DI, Interpersonal &
+> Communication) under one undifferentiated scope, while **Mains is clean**
+> (GS1-4 → macro → micro-theme, real evidence throughout). Confirmed live
+> 2026-08-28: a parent row "General mental ability" reads priority 30.0,
+> evidence 0, expansion "0 primary tags (topic) / 97 corpus total". No live
+> DB here — findings are from code/migrations; the three live queries at the
+> end settle what code can't. Scoped to topic **structure** of the currently
+> loaded Prelims/CSAT data (2025 + 2026), not year completeness. Line numbers
+> against `main @ 9d4feb5`.
+
+### Verdict (one line)
+
+**Both, cleanly split: the data model *can* distinguish GS Paper I from CSAT
+Paper II (`subjects.subject_group`, and a separate `exam_phase` per paper),
+so separating them at the surface is a DISPLAY/SCOPING fix — but the CSAT
+topics themselves were created with NO macro→micro hierarchy (there is no
+Prelims/CSAT syllabus-ingestion script or syllabus source at all, unlike
+Mains), which is a genuine DATA-structure gap. The flat list is a display
+problem layered on a shallow-data problem.**
+
+### 1. How Prelims/CSAT topics were created — there is no ingestion script
+
+- **Mains has a real hierarchy builder.** `scripts/ingest_upsc_gs_syllabus.py`
+  creates macro rows `level='topic'` (`:336`) and micro-theme rows
+  `level='microtopic'` with `parent_topic_id` set (`:380,193`) and
+  `subject_group` (`:164`) — the clean GS1-4 → macro → micro nesting the
+  operator sees for Mains. Its source is
+  `docs/reference/syllabus/upsc_cse_mains_gs_micro_themes_v2026.3.json`.
+- **Prelims/CSAT has no equivalent.** `docs/reference/syllabus/` contains
+  **only** the two Mains files (`upsc_cse_mains_gs_micro_themes_v2026.3.json`,
+  `upsc_cse_mains_paper_sources.json`) — no CSAT/Prelims syllabus JSON. There
+  is **no CSAT/Prelims topic-ingestion script** (`scripts/` has only the
+  Mains ingest, plus `pyq_question_review.py` and `docx_to_pyq_json.py`, which
+  *review* and *convert questions* — neither creates a topic taxonomy).
+- **Migration 228 (the only Prelims/CSAT migration) creates no topics.**
+  `228_pyq_upsc_cse_2025_prelims_csat_canonical.sql` inserts the 2025 CSAT
+  Paper II question corpus (`pyq_sources`/`pyq_papers`/`pyq_questions`/
+  `pyq_options`/`pyq_stimuli`, all `pending`) but **zero** `topics`,
+  `subjects`, or `pyq_question_topic_tags` rows (grep: no `insert into
+  …topics/…subjects` in the file). So the CSAT topic rows the panel shows
+  were **created ad-hoc at runtime** (operator/CMS), with no script enforcing
+  a macro→micro shape — which is exactly why they land flat. The only CSAT
+  topics anywhere in version control are two demo rows in
+  `app/supabase/seeds/exam_intelligence_demo_upsc_cse.sql:111-112`
+  ("Reading Comprehension (CSAT)", "Data Interpretation (CSAT)") — both
+  `level='topic'`, both flat (that insert has no `parent_topic_id` column at
+  all, `:102`).
+
+### 2. What field distinguishes "GS Paper I" from "CSAT Paper II" — two exist, neither on `topics`
+
+Checked every plausible column on `topics`
+(`029_exam_intelligence_taxonomy.sql:29-44`: `subject_id`, `parent_topic_id`,
+`slug`, `name`, `level`, `default_difficulty_level`, `metadata`) and its
+alters (`035_exam_intelligence_rls_indexes.sql` only enables RLS — no column
+added). **`topics` carries no paper/section/phase column of its own.** The
+paper distinction lives one and two hops away:
+
+- **`subjects.subject_group`** — GS subjects are `subject_group='gs'`, CSAT is
+  `subject_group='reasoning'` (`exam_intelligence_demo_upsc_cse.sql:95-99`;
+  `subject_group` defined `029:11`). A topic's paper is therefore recoverable
+  as `topic.subject_id → subjects.subject_group`.
+- **`exam_phases` — GS Paper I and CSAT Paper II are SEPARATE phases.**
+  Migration 228 creates phase `phase_name='Prelims Paper II (CSAT)'`,
+  `phase_slug='prelims-csat'`, `phase_order=2` (`228:73-80`); the GS Paper I
+  papers sit on a distinct `phase_slug='prelims'` phase (per
+  `docs/pyqprelimsfrontloadnotes.md` — the reusable GS-I shells are all on
+  `phase_slug='prelims'`, the CSAT shells on `prelims-csat`). So each tag's
+  paper resolves to a paper→phase that already separates the two papers.
+
+**So the capability to split GS-I from CSAT-II is present in the schema; it is
+simply not carried into the scoring rows or the panel.**
+
+### 3. "General mental ability" (evidence 0, priority 30) — a header scored as a leaf
+
+The scorer scores **every topic flat, keyed on `topic_id` only**, with no
+level filter and no subject/paper grouping:
+`all_topic_ids = set(primary_counts) | set(locked_cov)`
+(`score_snapshots.py:370`); each id gets
+`priority = freq*50 + coverage*40 + evidence_quality*10`
+(`:376-382`). A row with **0 primary tags** (`evidence_count=0`,
+`topic_primary_count=0`) can only enter that universe via a **locked
+`exam_topic_coverage` row** (the `set(locked_cov)` half). With `freq=0` and
+`evidence_quality=0`, its score is `coverage_component*40`; the observed 30.0
+implies a locked coverage `exam_priority_score ≈ 75` for that topic. So
+"General mental ability" is a **CSAT Paper II section header carrying a locked
+coverage row but no direct evidence, being scored and ranked as a peer of
+real evidence-backed leaves** — the same *class* of defect as the 18
+pre-split Mains orphans, but here it is a legitimately-intended category
+node, not a stale one. The scorer has **no exclusion for rollup/parent
+(`level='topic'`) nodes** and **no per-paper or per-subject segregation** —
+it never reads `level`, `subject_id`, or `subject_group`.
+
+Whether "General mental ability" is a **parent** (`level='topic'` with
+`microtopic` children) or a **flat childless row** cannot be settled from
+code (no CSAT rows exist in version control to inspect) — live query 3 below.
+Given §1 (no hierarchy-building script ever ran for CSAT), the most likely
+answer is *flat, childless* — closer to the orphan case than to a real
+two-level hierarchy.
+
+### 4. Display problem vs data problem — determination
+
+- **Display/scoping layer (confirmed a problem):**
+  - The scorer pools papers when run **exam-wide**: paper selection filters by
+    `exam_phase_id` only when a phase is supplied, else takes **all** verified
+    papers for the exam (`score_snapshots.py:190-199`) — so an exam-wide
+    compute mixes GS-I and CSAT-II (and Mains) tags into one flat topic set.
+  - The snapshot **enrichment carries no paper/subject**: `_enrich_snapshot_topics`
+    (`admin_exam_intelligence.py:2885`) adds only `topic_name` and `topic_path`
+    (parent name); it never joins `subject`/`subject_group` or paper/phase. So
+    `ScoreSnapshotPanel.jsx` **physically cannot group by paper today** even
+    though the data to do so exists.
+- **Data-structure layer (also a problem, but shallower than "no distinction
+  exists"):** the per-paper distinction *does* exist (§2), but the CSAT topic
+  **hierarchy** does not — no macro→micro nesting, because no ingestion ever
+  built one (§1). Real per-paper structure is therefore only *partially*
+  present: the subject/phase split exists, the intra-paper topic tree does not.
+
+**Net:** this is **not** "no per-paper structure was ever created" (the
+subject_group + phase split exists) and **not** purely cosmetic either. It is
+a **display/scoping gap** (scorer + enrichment + panel ignore the split that
+exists) **sitting on top of a data gap** (CSAT topics were never given the
+macro→micro hierarchy Mains has).
+
+### 5. Rough fix sizing (not an implementation plan)
+
+- **Lighter — surface & scope the split that already exists (no schema
+  change, no re-tag):** (a) drive the panel by **phase** (compute/list the
+  CSAT phase and the GS-I phase separately) instead of exam-wide, so papers
+  stop pooling — the scorer already supports `exam_phase_id` scoping
+  (`:198`); (b) add `subject_group`/`subject` (and optionally paper/phase) to
+  `_enrich_snapshot_topics` and group the panel table by it; (c) exclude or
+  visually segregate 0-evidence rollup nodes (`level='topic'` with children,
+  or coverage-only rows) from the scored leaf ranking. This is viable **iff**
+  live queries 1-2 confirm the loaded CSAT topics carry `subject_group='reasoning'`
+  and the CSAT papers carry the CSAT `exam_phase_id`. Scope: backend
+  enrichment + one panel, no migration, no data backfill.
+- **Heavier — build the missing CSAT hierarchy (data/content project):**
+  author a CSAT Paper II syllabus source + an ingestion mirroring
+  `ingest_upsc_gs_syllabus.py` (macro `level='topic'` → micro
+  `level='microtopic'`, `subject_group='reasoning'`), then **re-file/re-tag**
+  the already-verified CSAT tags (2025 Set-B 80 q + 2026 Paper A 97 q, and the
+  GS-I years as they land) onto the new leaves. Invasiveness: new syllabus
+  JSON + ingest script + a remap of existing verified `pyq_question_topic_tags`
+  for the loaded prelims papers — a content migration, not a code patch.
+  Needed only if the operator wants CSAT to match Mains' depth; the display
+  fix above resolves the *conflation* reported here without it.
+
+### Live checks an operator must run (code can't settle these)
+
+1. **Subject/level of the flat CSAT rows** (display-fix viability + orphan vs
+   parent):
+   `SELECT t.id, t.name, t.level, t.parent_topic_id, s.slug AS subject_slug,
+    s.subject_group
+    FROM topics t JOIN subjects s ON s.id = t.subject_id
+    WHERE t.name IN ('General mental ability','Reading Comprehension',
+      'Decision making and problem solving','Quant and DI',
+      'Interpersonal and Communication skills');`
+   — `subject_group='reasoning'` on all ⇒ the split is populated (light fix
+   works); any under a `gs`/generic subject ⇒ data problem. `parent_topic_id`
+   / child counts distinguish real parents from flat orphans.
+2. **Which phase each loaded prelims paper sits on:**
+   `SELECT p.id, p.year, p.paper_code, ph.phase_slug, p.trust_status
+    FROM pyq_papers p LEFT JOIN exam_phases ph ON ph.id = p.exam_phase_id
+    WHERE p.exam_id = '<upsc-cse id>'
+      AND ph.phase_slug IN ('prelims','prelims-csat');`
+   — GS-I papers on `prelims` and CSAT on `prelims-csat` (non-null) ⇒
+   phase-scoped compute separates them cleanly; NULL/shared `exam_phase_id`
+   ⇒ data problem blocking the scoping fix.
+3. **"General mental ability" node type & why it scores at 0 evidence:**
+   `SELECT t.level, t.parent_topic_id,
+      (SELECT count(*) FROM topics c WHERE c.parent_topic_id = t.id) AS children,
+      (SELECT count(*) FROM exam_topic_coverage e
+        WHERE e.topic_id = t.id AND e.reviewer_status='locked') AS locked_cov
+    FROM topics t WHERE t.name = 'General mental ability';`
+   — `children=0` ⇒ flat/orphan header; `locked_cov>0` confirms the
+   locked-coverage path (`score_snapshots.py:370`) is why a 0-tag node is
+   scored at all.
