@@ -26,7 +26,8 @@ first and then runs one state machine:
   stem can never be mistaken for a question opener in a ``Question 1.`` paper.
 - **Restored list numbering.** Word keeps auto-list markers out of the text layer,
   but options refer to them ("1 and 2 only"). Decimal lists are restored as
-  ``1.``/``2.``; lower-letter lists are the options themselves and become a-d.
+  ``1.``/``2.``; lower-letter lists are the options themselves and become a-d
+  (a-e on the papers that print a fifth option).
 
 Answer keys are NOT inferred. ``correct_option_label`` is null unless an explicit
 ``--answer-key`` CSV is supplied, and the envelope is marked incomplete without
@@ -67,17 +68,32 @@ MARKER_PATTERNS = (
     ("N.", re.compile(r"^\s*(\d{1,3})\s*\.\s+(.*)$", re.S)),
 )
 
-# Options print as "(a) text". UPSC uses lowercase a-d throughout Prelims GS.
-OPT = re.compile(r"^\s*\(([a-d])\)\s*(.*)$", re.S)
+# Options print as "(a) text". UPSC uses lowercase labels throughout Prelims GS.
+OPT = re.compile(r"^\s*\(([a-e])\)\s*(.*)$", re.S)
 
 # The supplied .docx files are retyped/OCR-derived and carry character-level damage
 # to option markers: "{b)" for "(b)", "c)" for "(c)", "(C)" for "(c)". Some years
 # print "a)" with no opening bracket throughout. This matches a marker with either
 # bracket corrupted or absent and any case; _match_option only accepts it when the
 # recovered letter is the next one due, so a scrambled marker still fails loudly.
-OPT_LOOSE = re.compile(r"^\s*[\(\{\[\|]?\s*([A-Da-d])\s*[\)\}\]]\.?\s+(.*)$", re.S)
+OPT_LOOSE = re.compile(r"^\s*[\(\{\[\|]?\s*([A-Ea-e])\s*[\)\}\]]\.?\s+(.*)$", re.S)
 
-OPTION_LABELS = ("a", "b", "c", "d")
+# The label alphabet, in printed order. ``due_label`` walks it, so extending it
+# is what lets a fifth option be recognised at all: before "e" was here, a
+# printed "(e)" matched no marker and was appended to option (d)'s text.
+OPTION_LABELS = ("a", "b", "c", "d", "e")
+
+# A question carries four options or five — nothing else is a paper, it is
+# damage. Both sets are prefixes of OPTION_LABELS, so a partial set like
+# a/b/c/e is not merely short, it is out of sequence, and is rejected by name.
+VALID_LABEL_SETS = (list(OPTION_LABELS[:4]), list(OPTION_LABELS[:5]))
+_EXPECTED_LABELS = " or ".join(str(labels).replace(" ", "") for labels in VALID_LABEL_SETS)
+
+
+def _is_complete_label_set(labels) -> bool:
+    """True only for a full a-d or a-e run, in order."""
+    return list(labels) in VALID_LABEL_SETS
+
 
 # Two options run together on one line with no separating break — "(c) 3 only
 # d)1 and 3". The marker must be preceded by whitespace and followed immediately
@@ -420,16 +436,18 @@ def _number_unmarked(q: dict) -> bool:
 
 
 def _sort_complete_options(q: dict) -> bool:
-    """Put a full but out-of-sequence option set back in a-b-c-d order.
+    """Put a full but out-of-sequence option set back in alphabetical order.
 
-    Some source lines print the four options shuffled — a, c, b, d — while every
-    label is present exactly once. Ordering by label then loses nothing and infers
+    Some source lines print the options shuffled — a, c, b, d — while every label
+    is present exactly once. Ordering by label then loses nothing and infers
     nothing: each option keeps the text it was printed with, and the label is what
     ties an answer key to an option. A set with a missing or duplicated label is
-    left alone, so it still fails validation rather than being quietly patched.
+    left alone, so it still fails validation rather than being quietly patched —
+    which is also why a five-option set is reordered only when it is complete.
     """
     labels = [label for label, _ in q["options"]]
-    if sorted(labels) != list(OPTION_LABELS) or labels == list(OPTION_LABELS):
+    ordered = sorted(labels)
+    if not _is_complete_label_set(ordered) or labels == ordered:
         return False
     q["options"].sort(key=lambda pair: OPTION_LABELS.index(pair[0]))
     return True
@@ -447,8 +465,10 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
         if not q["stem_parts"]:
             errors.append(f"Q{n}: empty stem")
         labels = [label for label, _ in q["options"]]
-        if labels != list(OPTION_LABELS):
-            errors.append(f"Q{n}: options are {labels or 'none'}, expected ['a','b','c','d']")
+        if not _is_complete_label_set(labels):
+            errors.append(
+                f"Q{n}: options are {labels or 'none'}, expected {_EXPECTED_LABELS}"
+            )
         for label, otext in q["options"]:
             if not otext.strip():
                 errors.append(f"Q{n}: option ({label}) is empty")
@@ -493,13 +513,13 @@ def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
     ``relabel``  assign these labels to the parsed options in printed order, for a
                  paper that printed them out of sequence or duplicated a letter.
     ``options_from_stem``  take the last N numbered lines off the stem and make
-                 them options a..d, for a paper that formatted its options as a
-                 decimal list so they parsed as statements.
+                 them the first N labels, for a paper that formatted its options
+                 as a decimal list so they parsed as statements.
     ``add_options``  supply the text of an option the source file dropped
                  entirely. This is the only operation that introduces text rather
                  than rearranging what was parsed, so it is deliberately the
                  narrowest: the label must be absent, and the result must be a
-                 complete a-d set.
+                 complete a-d or a-e set.
 
     Returns the notes describing what was applied, for the report.
     """
@@ -534,10 +554,10 @@ def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
                     )
                 q["options"].append((label, text))
             q["options"].sort(key=lambda pair: OPTION_LABELS.index(pair[0]))
-            if [label for label, _ in q["options"]] != list(OPTION_LABELS):
+            if not _is_complete_label_set([label for label, _ in q["options"]]):
                 raise ValueError(
                     f"correction Q{num}: add_options leaves the option set "
-                    f"{[label for label, _ in q['options']]}, not a complete a-d"
+                    f"{[label for label, _ in q['options']]}, not {_EXPECTED_LABELS}"
                 )
             applied.append(
                 f"Q{num}: supplied missing option(s) "
@@ -579,7 +599,10 @@ def _load_answer_key(path: str) -> dict[int, str]:
             num = int(str(row["question_number"]).strip())
             label = str(row["correct_option_label"]).strip().lower()
             if label and label not in OPTION_LABELS:
-                raise ValueError(f"answer key Q{num}: label {label!r} is not one of a-d")
+                raise ValueError(
+                    f"answer key Q{num}: label {label!r} is not one of "
+                    f"{'/'.join(OPTION_LABELS)}"
+                )
             if num in key:
                 raise ValueError(f"answer key Q{num}: duplicated")
             if label:
