@@ -6,6 +6,7 @@ import {
   Layers,
   LineChart,
   NotebookPen,
+  PenLine,
   RotateCw,
   Sparkles,
   Trophy,
@@ -32,6 +33,13 @@ const LIVE_CARDS = [
     description: "Review your spaced-repetition decks.",
     to: "/app/flashcards",
     icon: Layers,
+  },
+  {
+    key: "essay",
+    title: "Essay canvas",
+    description: "Brainstorm an essay theme across six thematic lenses.",
+    to: "/app/study/essay",
+    icon: PenLine,
   },
   {
     key: "revision",

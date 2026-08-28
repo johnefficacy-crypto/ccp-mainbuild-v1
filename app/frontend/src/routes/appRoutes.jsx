@@ -24,6 +24,7 @@ const CurrentAffairsAttemptShell = lazy(() => import("../pages/study/CurrentAffa
 const CalculationGymShell = lazy(() => import("../pages/study/CalculationGymShell"));
 const ImprovementLab = lazy(() => import("../pages/study/ImprovementLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
+const EssayIdeaCanvas = lazy(() => import("../pages/study/EssayIdeaCanvas"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
 const Notes = lazy(() => import("../pages/Notes"));
@@ -118,6 +119,12 @@ export const appRouteElements = (
             inside RouteErrorBoundary like the EWP-3 route; absent from the
             sidebar (no-new-surface rule). */}
         <Route path="improvement-lab" element={<ImprovementLab />} />
+        {/* Essay Idea Canvas (Essay Builder step 1): a distinct feature area, but
+            mounted UNDER StudyShell + inside RouteErrorBoundary and ABSENT from
+            the sidebar (no-new-surface rule), entered via an in-app link — the
+            same pattern as Improvement Lab / Calculation Gym. Spine is the
+            deliberate next task this unblocks. */}
+        <Route path="essay" element={<EssayIdeaCanvas />} />
         {/* Backward-compatible alias: the former Error Lab route redirects to
             the canonical Improvement Lab route so existing links keep working. */}
         <Route path="error-lab" element={<Navigate to="/app/study/improvement-lab" replace />} />
