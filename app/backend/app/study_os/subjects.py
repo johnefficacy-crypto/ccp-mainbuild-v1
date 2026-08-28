@@ -18,6 +18,7 @@ from app.study_os.planner import (  # type: ignore  # private helpers reused int
     _load_user_signals,
     _resolve_target_exam,
 )
+from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.current_affairs.bundles import resolve_eligible_bundle
 from app.study_os.pyq_practice import practiceable_topic_ids
 from app.study_os.subject_runtime_policy import (
@@ -301,3 +302,174 @@ def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
     # Stable order: highest weak_count first, then alphabetical.
     items.sort(key=lambda r: (-r["weak_count"], r["subject"].lower()))
     return items
+
+
+def _sort_topic_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Default order: by locked exam_priority_score desc, then name asc.
+
+    A node with no locked coverage (priority absent) or a flagged 0-evidence
+    rollup node sinks below real, scored leaves — the raw fields stay intact
+    so a caller can re-sort differently. Rollup/uncovered nodes are ordered by
+    name among themselves.
+    """
+    def _key(n: dict[str, Any]) -> tuple:
+        cov = n.get("coverage")
+        # Rollup/header contamination and uncovered topics never outrank a real
+        # scored leaf: treat their priority as below any real 0..100 score.
+        if n.get("is_rollup_zero_evidence") or not cov or cov.get("exam_priority_score") is None:
+            return (1, 0.0, (n.get("name") or "").lower())
+        return (0, -float(cov["exam_priority_score"]), (n.get("name") or "").lower())
+
+    return sorted(nodes, key=_key)
+
+
+def subject_topic_tree(
+    supabase: Any,
+    user_id: str,
+    subject_id: str,
+    *,
+    exam_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Topic → microtopic tree for one subject, with locked-coverage priority.
+
+    Read-only. The ``topics`` table is the source of truth for STRUCTURE — every
+    ``level='topic'`` (macro) row for the subject is returned, each with its
+    ``level='microtopic'`` children nested underneath — so a topic appears even
+    when it has no locked coverage yet (that is a legitimate not-yet-scored
+    state, not an omission).
+
+    Coverage priority (``exam_priority_score``, ``is_high_yield``) is attached
+    only where a LOCKED ``exam_topic_coverage`` row exists for the caller's
+    resolved exam; otherwise ``coverage`` is ``null``. ``evidence_count`` is the
+    verified-primary PYQ tag count for the topic (0 when none).
+
+    0-evidence rollup nodes are FLAGGED (``is_rollup_zero_evidence``) and sunk
+    in the default order — the same guard PR #1030 applied to Score Snapshots:
+    a topic that carries a locked coverage row but has zero verified primary
+    tags exists only via coverage seeding (a rollup/header node), never a real
+    evidence-backed leaf, and must not rank as one. It stays visible, never
+    silently dropped.
+
+    Returns ``None`` when ``subject_id`` does not exist (the route maps that to
+    404). A real subject with no topics returns an empty ``topics`` list.
+
+    User-specific mastery (``user_topic_mastery``) is intentionally NOT joined
+    here — this endpoint is structure + coverage priority only.
+    """
+    if not subject_id:
+        return None
+
+    subject_rows = _safe(
+        lambda: (
+            supabase.table("subjects")
+            .select("id, name, slug, subject_group")
+            .eq("id", subject_id)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if not subject_rows:
+        # Distinguish "no such subject" (404) from "subject exists, no topics"
+        # (200 empty). A None default above means the read itself failed — treat
+        # as not-found rather than fabricating an empty success.
+        return None
+    subject = subject_rows[0]
+
+    # Resolve the exam whose locked coverage prioritises these topics: an
+    # explicit override, else the caller's target exam. No exam ⇒ structure with
+    # coverage null throughout (still a valid tree).
+    if not exam_id:
+        target = _resolve_target_exam(supabase, user_id)
+        exam_id = target.get("id") if target else None
+
+    # STRUCTURE — every macro + microtopic row under the subject, from topics.
+    topic_rows = _safe(
+        lambda: (
+            supabase.table("topics")
+            .select("id, name, slug, level, parent_topic_id, is_active")
+            .eq("subject_id", subject_id)
+            .in_("level", ["topic", "microtopic"])
+            .limit(5000)
+            .execute()
+            .data
+        ),
+        default=[],
+    ) or []
+    topic_rows = [t for t in topic_rows if t.get("is_active") is not False]
+
+    # COVERAGE — locked priority indexed by topic_id (LEFT-join semantics).
+    coverage_by_topic: dict[str, dict[str, Any]] = {}
+    evidence_by_topic: dict[str, int] = {}
+    if exam_id:
+        for c in _load_locked_coverage(supabase, exam_id) or []:
+            tid = c.get("topic_id")
+            if tid and str(c.get("subject_id")) == str(subject_id):
+                coverage_by_topic[tid] = c
+        evidence_by_topic = _safe(
+            lambda: verified_pyq_topic_counts(supabase, exam_id), default={}
+        ) or {}
+
+    def _node(t: dict[str, Any]) -> dict[str, Any]:
+        tid = t.get("id")
+        cov = coverage_by_topic.get(tid)
+        evidence = int(evidence_by_topic.get(tid, 0))
+        # PR #1030 definition: a locked-coverage row with zero verified primary
+        # tags is a rollup/header node, not a real leaf. A macro parent with no
+        # locked coverage is just structure (not flagged) — the flag requires an
+        # actual locked coverage row present with 0 evidence.
+        is_rollup = bool(cov) and evidence == 0
+        return {
+            "topic_id": tid,
+            "name": t.get("name") or t.get("slug"),
+            "slug": t.get("slug"),
+            "level": t.get("level"),
+            "parent_topic_id": t.get("parent_topic_id"),
+            "evidence_count": evidence,
+            "is_rollup_zero_evidence": is_rollup,
+            "coverage": (
+                {
+                    "exam_priority_score": _cov_num(cov.get("coverage_priority")),
+                    "is_high_yield": bool(cov.get("is_high_yield")),
+                }
+                if cov
+                else None
+            ),
+            "children": [],
+        }
+
+    nodes_by_id = {t.get("id"): _node(t) for t in topic_rows if t.get("id")}
+
+    # Nest microtopics under their macro parent; keep any orphan (parent not in
+    # this subject's set) at the top level so no topic is dropped.
+    roots: list[dict[str, Any]] = []
+    for t in topic_rows:
+        node = nodes_by_id.get(t.get("id"))
+        if node is None:
+            continue
+        parent_id = t.get("parent_topic_id")
+        if t.get("level") == "microtopic" and parent_id in nodes_by_id:
+            nodes_by_id[parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+
+    for node in nodes_by_id.values():
+        if node["children"]:
+            node["children"] = _sort_topic_nodes(node["children"])
+
+    return {
+        "subject_id": subject.get("id"),
+        "subject": subject.get("name") or subject.get("slug"),
+        "subject_group": subject.get("subject_group"),
+        "exam_id": exam_id,
+        "trust_status": "locked",
+        "topics": _sort_topic_nodes(roots),
+    }
+
+
+def _cov_num(value: Any) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
