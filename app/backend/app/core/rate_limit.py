@@ -19,6 +19,8 @@ from fastapi import HTTPException, status
 _ROUTE_CONFIG: dict[str, tuple[int, int]] = {
     "policy_updates.read": (60, 60),
     "reminders.write": (30, 30),
+    # Idea Canvas drags/creates stickies in bursts; 60/min per aspirant.
+    "essay_blocks.write": (60, 60),
 }
 
 

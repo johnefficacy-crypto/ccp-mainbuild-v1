@@ -28,6 +28,23 @@ recalled against a syllabus point), so they got a separate taxonomy:
 `essay_brainstorm_blocks` exists but is **not seeded** — no content yet,
 schema settled ahead of the UI work below.
 
+**Update (2026-08-28) — schema/backend step done, not yet live-validated.**
+Migration `266_essay_brainstorm_idea_canvas.sql` extends the table for the Idea
+Canvas content model (three new `block_type` values — `vocab_term`,
+`book_reference`, `stat_to_verify` — plus a nullable `lens` column carrying the
+six mind-map branches) and closes 265's RLS gap. `app/backend/app/api/
+essay_builder.py` adds the aspirant-facing CRUD (`/api/essay-brainstorm-blocks`,
+own rows only) and a read-only verified-only `/api/essay-pyq-tags`. Applying
+266 and proving the deployed behaviour is gate
+`essay-builder-266-live-validation` in the operator-validation registry.
+
+Two consequences worth knowing before the UI work:
+- The 100 imported essay PYQ tags were forced to `reviewer_status='pending'` by
+  the CMS bulk-import trust gate, so the aspirant-facing `/api/essay-pyq-tags`
+  read correctly returns an empty list until they are promoted to `verified`.
+- Seed content strategy (system-authored starter blocks vs. aspirant-populated
+  only) is still an open decision; the endpoints work correctly with zero rows.
+
 ## New this session: essay brainstorm UI concept mockup (not built, not wired)
 
 Design exploration for the essay brainstorming tool. Source under
@@ -64,6 +81,7 @@ Flagged while reviewing an unrelated requirements doc against this repo
 
 ## Next step
 
-Nothing queued on PYQ tagging or the essay taxonomy — both complete. If the
-essay brainstorm tool gets picked up for real: wire `essay_brainstorm_blocks`
-for the idea canvas / spine builder concept in `docs/design/`.
+Nothing queued on PYQ tagging or the essay taxonomy — both complete. The
+`essay_brainstorm_blocks` schema/backend step is done (see the update above);
+what remains is the Idea Canvas / Spine frontend against those endpoints, the
+seed-content decision, and the live validation of migration 266.

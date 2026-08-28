@@ -68,6 +68,8 @@ from app.api.notes import router as notes_router
 from app.api.reports import router as reports_router
 from app.api.revision import router as revision_router
 from app.api.exam_intelligence import router as exam_intelligence_router
+from app.api.essay_builder import router as essay_blocks_router
+from app.api.essay_builder import pyq_tags_router as essay_pyq_tags_router
 from app.api.canonical import router as canonical_router
 from app.api.community_runtime import router as community_runtime_router
 from app.api.eligibility import router as eligibility_router
@@ -353,6 +355,8 @@ api.include_router(admin_eligibility_router)  # recompute queue, publish impact,
 api.include_router(admin_persona_router)  # PR4 admin persona controls
 api.include_router(admin_exam_intel_router)  # PR5 admin exam intelligence review
 api.include_router(exam_intelligence_router)  # PR5 verified-only exam intelligence reads
+api.include_router(essay_blocks_router)  # Essay Builder: aspirant-owned Idea Canvas / Spine blocks
+api.include_router(essay_pyq_tags_router)  # Essay Builder: verified-only essay-theme PYQ tags (read-only)
 api.include_router(evidence_router)  # universal evidence-drawer source endpoint
 api.include_router(payments_router)  # razorpay + plans
 api.include_router(persona_router)  # internal aspirant persona v1
