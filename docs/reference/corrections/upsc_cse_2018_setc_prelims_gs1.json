@@ -1,0 +1,8 @@
+{
+  "_provenance": "Operator-supplied corrections for source-document damage in the 2018 Set-C .docx. Each entry repairs how options were FORMATTED or supplies text the source dropped; none states which option is correct. The answer key in docs/reference/answer-keys/ remains the only source of correctness.",
+  "_unresolved": "Q37 ANSWER CONFLICT — the operator key on file gives Q37 = (c) '1 and 3 only'. The source that supplied the missing option (d) states the correct answer is (d) '1, 2 and 3', i.e. that statement 2 is also correct. Both cannot hold. The key has NOT been changed: this envelope still carries (c), so the paper imports at reviewer_status='pending' with the key as it stands. Resolve against the official UPSC 2018 Set-C answer key before this question is promoted to 'verified' — a wrong key here ships a wrong answer to learners through the mock projection's exactly-one-correct-option gate.",
+  "37": {
+    "note": "Option (d) is absent from the source file. Its text is forced by the other three: (a) '1 and 2 only', (b) '3 only', (c) '1 and 3 only' leave '1, 2 and 3' as the only remaining combination, and both the supplied correction and the standard UPSC four-option pattern agree on it. Supplying the option text asserts nothing about which option is correct — see _unresolved above.",
+    "add_options": {"d": "1, 2 and 3"}
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "_provenance": "Operator-supplied corrections for source-document damage in the 2021 Set-C .docx. Each entry repairs how options were FORMATTED, never which option is correct; the answer key in docs/reference/answer-keys/ remains the only source of correctness, and every correction below was checked to leave the keyed option present and unchanged in text.",
+  "86": {
+    "note": "The four options were formatted as a decimal auto-list, so they parse as numbered statements rather than options. Promote them to a-d in printed order. Key says (a) = 'environmentally responsible practices in electronics recycling industry', which is printed item 1.",
+    "options_from_stem": 4
+  }
+}

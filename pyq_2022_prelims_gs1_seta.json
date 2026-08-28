@@ -5,99 +5,99 @@
       "source_question_ref": "GS1-Q1",
       "question_number": 1,
       "display_order": 1,
-      "question_text": "How many delimitation Commissions have been constituted by the Government of India till December 2023?",
+      "question_text": "“Rapid Financing Instrument” and ” Rapid Credit Facility” are related to the provisions of lending by which one of the following?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "One",
+          "text": "Asian Development Bank",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Two",
+          "text": "International Monetary Fund",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Three",
+          "text": "United Nations Environment Programme Finance Initiative",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Four",
+          "text": "World Bank",
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q2",
       "question_number": 2,
       "display_order": 2,
-      "question_text": "The Constitution (71st Amendment) Act, 1992 amends the Eights Schedule to the Constitution to include which of the following languages?\n1. Konkani\n2. Manipuri\n3. Nepali\n4. Maithili\nSelect the correct answer using the code given below:",
+      "question_text": "With reference to the Indian economy, consider the following statements:\n1. An increase in Nominal Effective Exchange Rate (NEER) indicates the appreciation of rupee.\n2. An increase in the Real Effective Exchange Rate (REER) indicates an improvement in trade competitiveness.\n3. An increasing trend in domestic inflation relative to inflation in other countries is likely to cause an increasing divergence between NEER and REER.\nWhich of the above statements are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1, 2 and 3",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1, 2 and 4",
+          "text": "2 and 3 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1, 3 and 4",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "2, 3 and 4",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q3",
       "question_number": 3,
       "display_order": 3,
-      "question_text": "Consider the following pairs:\nParty | Its Leader\nBharatiya Jana Sangh | Dr. Shyama Prasad Mukherjee\nSocialist Party | C. Rajagopalachari\nCongress for Democracy | Jagjivan Ram\nSwatantra Party | Acharya Narendra Dev\nHow many of the above are correctly matched?",
+      "question_text": "With reference to the Indian economy, consider the following statements:\n1. If the inflation is too high, Reserve Bank of India (RBI) is likely to buy government securities.\n2. If the rupee is rapidly depreciating, RBI is likely to sell dollars in the market.\n3. If interest rates in the USA or European Union were to fall, that is likely to induce RBI to buy dollars.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only one",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Only two",
+          "text": "2 and 3 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Only three",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "All four",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
@@ -107,279 +107,75 @@
       "source_question_ref": "GS1-Q4",
       "question_number": 4,
       "display_order": 4,
-      "question_text": "Which of the following statements are correct about the constitution of India?\n1. Powers of the Municipalities are given in Part IX A of the Constitution.\n2. Emergency provisions are given in Part XVIII of the Constitution.\n3. Provisions related to the amendment of the constitution are given in Part XX of the Constitution.\nSelect the answer using the code given below:",
+      "question_text": "With reference to the “G20 Common Framework”, consider the following statements:\n1. It is an initiative endorsed by the G20 together with the Paris Club.\n2. It is an initiative to support Low Income Countries with unsustainable debt.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 and 2 only",
+          "text": "1 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "2 and 3 only",
+          "text": "2 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1 and 3 only",
+          "text": "Both 1 and 2",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1, 2 and 3",
+          "text": "Neither 1 nor 2",
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q5",
       "question_number": 5,
       "display_order": 5,
-      "question_text": "Which one of the following statements is correct as per the Constitution of India?",
+      "question_text": "With reference to the India economy, what are the advantages of “Inflation-Indexed Bonds (IIBs)”?\n1. Government can reduce the coupon rates on its borrowing by way of IIBs.\n2. IIGs provide protection to the investors from uncertainty regarding inflation.\n3. The interest received as well as capital gains on IIBs are not taxable.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Inter-State trade and commerce is a State subject under the State List.",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Inter-State migration is a State subject under the State List.",
+          "text": "2 and 3 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Inter-State quarantine is a Union subject under the Union List.",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Corporation tax is a State subject under the State List.",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q6",
       "question_number": 6,
       "display_order": 6,
-      "question_text": "Under which of the following Articles of the Constitution of India, has the Supreme Court of India placed the Right to Privacy?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Article 15",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Article 16",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Article 19",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Article 21",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q7",
-      "question_number": 7,
-      "display_order": 7,
-      "question_text": "What are the duties of the Chief of Defence Staff (CDS) as Head of the Department of Military Affairs?\n1. Permanent Chairman of Chiefs of Staff Committee\n2. Exercise military command over the three Service Chiefs\n3. Principal Military Advisor to Defence Minister on all tri-service matters\nSelect the correct answer using the code given below:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1, 2 and 3",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1 and 2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "2 and 3 only",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "1 and 3 only",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q8",
-      "question_number": 8,
-      "display_order": 8,
-      "question_text": "Operations undertaken by the Army towards upliftment of the local population in remote areas to include addressing of their basic needs is called:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Operations Sankalp",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Operation Maitri",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Operation Sadbhavana",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Operation Madad",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q9",
-      "question_number": 9,
-      "display_order": 9,
-      "question_text": "The longest border between any two countries in the world is between:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Canada and the United States of America",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Chile and Argentina",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "China and India",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Kazakhstan and Russian Federation",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q10",
-      "question_number": 10,
-      "display_order": 10,
-      "question_text": "Which of the following statements about the Ethics Committee in the Lok Sabha are correct?\n1. Initially it was an ad-hoc Committee.\n2. Only a Member of the Lok Sabha can make a complaint relating to unethical conduct of a member of the Lok Sabha.\n3. This Committee cannot take up any matter which is sub-judice.\nSelect the answer using the code given below:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 and 2 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 and 3 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "1 and 3 only",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "1, 2 and 3",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q11",
-      "question_number": 11,
-      "display_order": 11,
-      "question_text": "Who was the Provisional President of the Constituent Assembly before Dr. Rajendra Prasad took over?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "C. Rajagopalachari",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Dr. B.R. Ambedkar",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "T.T. Krishnamachari",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Dr. Sachchidananda Sinha",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q12",
-      "question_number": 12,
-      "display_order": 12,
-      "question_text": "With reference to the Government of India Act, 1935, consider the following statements:\n1. It provided for the establishment of an All India Federation based on the union of the British Indian Provinces and Princely States.\n2. Defence and Foreign Affairs were kept under the control of the federal legislature.\nWhich of the statements given above is/are correct?",
+      "question_text": "With reference to foreign-owned e-commerce firms operating in India, which of the following statements is/are correct?\n1. They can sell their own goods in addition to offering their platforms as market-places.\n2. The degree to which they can own big sellers on their platforms is limited.\nSelect the correct answer using the code given below:",
       "question_type": "mcq",
       "options": [
         {
@@ -410,112 +206,214 @@
       "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q13",
-      "question_number": 13,
-      "display_order": 13,
-      "question_text": "Which one of the following is a work attributed to playwright Bhasa?",
+      "source_question_ref": "GS1-Q7",
+      "question_number": 7,
+      "display_order": 7,
+      "question_text": "Which of the following activities constitute real sector in the economy?\n1. farmers harvesting their crops\n2. Textile mills converting raw cotton into fabrics\n3. A commercial bank lending money to a trading company\n4. A corporate body issuing Rupee Denominated Bonds overseas\nSelect the correct answer using the code given below:",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Kavyalankara",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Natyashastra",
+          "text": "2,3, and 4 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Madhyama vyayoga",
+          "text": "1, 3, and 4only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Mahabhashya",
+          "text": "1, 2, 3, and 4",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q8",
+      "question_number": 8,
+      "display_order": 8,
+      "question_text": "Which one of the following situations best reflects “Indirect Transfers” often talked about in media recently with reference to India?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "An Indian company investing in a foreign enterprise and paying taxes to the foreign country on the profits arising out of its investment",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "A foreign company investing in India and paying taxes to the country of its base on the profits arising out of its investment",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "An Indian company purchases tangible assets in a foreign country and sells such assets after their value increases and transfers the proceeds to India",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "A foreign company transfers shares and such shares derive their substantial value from assets located in India",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q9",
+      "question_number": 9,
+      "display_order": 9,
+      "question_text": "With reference to the expenditure made by an organization or a company, which of the following statements is/are correct?\n1. Acquiring new technology is capital expenditure.\n2. Debt financing is considered capital expenditure, while equity financing is considered revenue expenditure.\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Both 1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Neither 1 nor 2",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q10",
+      "question_number": 10,
+      "display_order": 10,
+      "question_text": "With reference to the Indian economy, consider the following statements:\n1. A share of the household financial savings goes towards government borrowings.\n2. Dated securities issued at market-related rates in auctions form a large component of internal debt.\nWhich of the above statements is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Both 1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Neither 1 nor 2",
           "display_order": 4
         }
       ],
       "correct_option_label": "c"
     },
     {
-      "source_question_ref": "GS1-Q14",
-      "question_number": 14,
-      "display_order": 14,
-      "question_text": "Sanghabhuti, an Indian Buddhist monk, who travelled to China at the end of the fourth century AD, was the author of a commentary on:",
+      "source_question_ref": "GS1-Q11",
+      "question_number": 11,
+      "display_order": 11,
+      "question_text": "Consider the following statements:\n1. Pursuant to the report of H.N. Sanyal Committee, the Contempt of Courts Act, 1971 was passed.\n2. The Constitution of India empowers the Supreme Court and the High Courts to punish for contempt of themselves.\n3. The Constitution of India defines Civil Contempt and Criminal Contempt.\n4. In India, the Parliament is vested with the powers to make laws on Contempt of Court.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Prajnaparamita Sutra",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Visuddhimagga",
+          "text": "1, 2 and 4 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Sarvastivada Vinaya",
+          "text": "3 and 4 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Lalitavistara",
+          "text": "3 only",
           "display_order": 4
         }
       ],
       "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q15",
-      "question_number": 15,
-      "display_order": 15,
-      "question_text": "Consider the following properties included in the World Heritage List released by UNESCO:\n1. Shantiniketan\n2. Rani-ki-Vav\n3. Sacred Ensembles of the Hoysalas\n4. Mahabodhi Temple Complex at Bodhgaya\nHow many of the above properties were included in 2023?",
+      "source_question_ref": "GS1-Q12",
+      "question_number": 12,
+      "display_order": 12,
+      "question_text": "With reference to India, consider the following statements:\n1. Government law officers and legal firms are recognized as advocates, but corporate lawyers and patent attorneys are excluded from recognition as advocates.\n2. Bar Councils have the power to lay down the rules relating to legal education and recognition of law colleges.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only one",
+          "text": "1 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Only two",
+          "text": "2 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Only three",
+          "text": "Both 1 and 2",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "All four",
+          "text": "Neither 1 nor 2",
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q16",
-      "question_number": 16,
-      "display_order": 16,
-      "question_text": "As per Article 368 of the Constitution of India, the Parliament may amend any provision of the Constitution by way of:\n1. Addition\n2. Variation\n3. Repeal\nSelect the correct answer using the code given below:",
+      "source_question_ref": "GS1-Q13",
+      "question_number": 13,
+      "display_order": 13,
+      "question_text": "Consider the following statements:\n1. A bill amending the Constitution requires a prior recommendation of the President of India.\n2. When a Constitution Amendment Bill is presented to the President of India, it is obligatory for the President of India to give his/her assent.\n3. A Constitution Amendment Bill must be passed by both the Lok Sabha and Rajya Sabha by a special majority and there is no provision for joint sitting.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -539,51 +437,153 @@
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1 2 and 3",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
       "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q17",
-      "question_number": 17,
-      "display_order": 17,
-      "question_text": "Consider the following countries:\n1. Italy\n2. Japan\n3. Nigeria\n4. South Korea\n5. South Africa\nWhich of the above countries are frequently mentioned in the media for their low birth rates, or ageing population or declining population?",
+      "source_question_ref": "GS1-Q14",
+      "question_number": 14,
+      "display_order": 14,
+      "question_text": "Consider the following statements:\n1. The Constitution of India classifies the ministers into four ranks viz. Cabinet Minister, Minister of State with Independent Charge, Minister of State and Deputy Minister.\n2. The total number of ministers in the Union Government, including the Prime Minister, shall not exceed 15 percent of the total number of members in the Lok Sabha.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1, 2 and 4",
+          "text": "1 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1, 3 and 5",
+          "text": "2 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 and 4 only",
+          "text": "Both 1 and 2",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "3 and 5 only",
+          "text": "Neither 1 nor 2",
           "display_order": 4
         }
       ],
       "correct_option_label": "b"
     },
     {
+      "source_question_ref": "GS1-Q15",
+      "question_number": 15,
+      "display_order": 15,
+      "question_text": "Which of the following is/are the exclusive power(s) of Lok Sabha?\n1. To ratify the declaration of Emergency\n2. To pass a motion of no-confidence against the Council of Ministers\n3. To impeach the President of India\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "3 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q16",
+      "question_number": 16,
+      "display_order": 16,
+      "question_text": "With reference to anti-defection law in India, consider the following statements:\n1. The law specifies that a nominated legislator cannot join any political party within six months of being appointed to the House.\n2. The law does not provide any time-frame within which the presiding officer has to decide a defection case.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Both 1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Neither 1 nor 2",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q17",
+      "question_number": 17,
+      "display_order": 17,
+      "question_text": "Consider the following statements:\n1. Attorney General of India and Solicitor General of India are the only officers of the Government who are allowed to participate in the meetings of the Parliament of India.\n2. According to the Constitution of India, the Attorney General of India submits his resignation when the Government which appointed him resigns.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Both 1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Neither 1 nor 2",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
       "source_question_ref": "GS1-Q18",
       "question_number": 18,
       "display_order": 18,
-      "question_text": "Which of the following statements are correct in respect of a Money Bill in the Parliament?\n1. Article 109 mentions special procedure in respect of Money Bills.\n2. A Money Bill shall not be introduced in the Council of States.\n3. The Rajya Sabha can either approve the Bill or suggest changes but cannot reject it.\n4. Amendments to a Money Bill suggested by the Rajya Sabha have to be accepted by the Lok Sabha.\nSelect the answer using the code given below:",
+      "question_text": "With reference to the writs issued by the Courts in India, consider the following statements:\n1. Mandamus will not lie against a private organization unless it is entrusted with a public duty.\n2. Mandamus will not lie against a Company even though it may be a Government Company.\n3. Any public minded person can be a petitioner to move the Court to obtain the writ of Quo Warranto.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -601,41 +601,245 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1, 2 and 3",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1, 3 and 4",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q19",
+      "question_number": 19,
+      "display_order": 19,
+      "question_text": "With reference to Ayushman Bharat Digital Mission, consider the following statements:\n1. Private and public hospitals must adopt it.\n2. As it aims to achieve universal health coverage, every citizen of India should be part of it ultimately.\n3. It has seamless portability across the country.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q19",
-      "question_number": 19,
-      "display_order": 19,
-      "question_text": "Which of the following is/are correctly matched in terms of equivalent rank in the three services of Indian Defence forces?\n| Army | Airforce | Navy\n1. | Brigadier | Air Commodore | Commander\n2. | Major General | Air Vice Marshal | Vice Admiral\n3. | Major | Squadron Leader | Lieutenant commander\n4. | Lieutenant Colonel | Group Captain | Captain\nSelect the correct answer using the code given below:",
+      "source_question_ref": "GS1-Q20",
+      "question_number": 20,
+      "display_order": 20,
+      "question_text": "With reference to Deputy Speaker of Lok Sabha, consider the following statements:\n1. As per the Rules of Procedure and Conduct of Business in Lok Sabha, the election of Deputy Speaker shall be held on such date as the Speaker may fix.\n2. There is a mandatory provision that the election of a candidate as Deputy Speaker of Lok Sabha shall be from either the principal opposition party or the ruling party.\n3. The Deputy Speaker has the same power as of the Speaker when presiding over the sitting of the House and no appeal lies against his rulings.\n4. The well established parliamentary practice regarding the appointment of Deputy Speaker is that the motion is moved by the Speaker and duly seconded by the Prime Minister.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 and 4",
+          "text": "1 and 3 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1 and 3",
+          "text": "1, 2 and 3",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2, 3 and 4",
+          "text": "3 and 4 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "2 and 4 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q21",
+      "question_number": 21,
+      "display_order": 21,
+      "question_text": "Among the following crops, which one is the most important anthropogenic source of both methane and nitrous oxide?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Cotton",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Rice",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Sugarcane",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Wheat",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q22",
+      "question_number": 22,
+      "display_order": 22,
+      "question_text": "“System of Rice Intensification” of cultivation, in which alternate wetting and drying of rice fields is practised, results in:\n1. Reduced seed requirement\n2. Reduced methane production\n3. Reduced electricity consumption\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q23",
+      "question_number": 23,
+      "display_order": 23,
+      "question_text": "Which one of the following lakes of West Africa has become dry and turned into a desert?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Lake Victoria",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Lake Faguibine",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Lake Oguta",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Lake Volta",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q24",
+      "question_number": 24,
+      "display_order": 24,
+      "question_text": "Gandikota canyon of South India was created by which one of the following rivers?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Cauvery",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Manjira",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Pennar",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Tungabhadra",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q25",
+      "question_number": 25,
+      "display_order": 25,
+      "question_text": "Consider the following pairs:\n1. Peak: | Mountains\n2. Namcha Barwa | Garhwal Himalaya\n3. Nanda Devi | Kumaon Himalaya\n4. Nokrek | Sikkim Himalaya\nWhich of the pairs given above is/are correctly matched?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3",
           "display_order": 3
         },
         {
@@ -645,13 +849,81 @@
           "display_order": 4
         }
       ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q26",
+      "question_number": 26,
+      "display_order": 26,
+      "question_text": "The term “Levant” often heard in the news roughly corresponds to which of the following regions?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Region along the eastern Mediterranean shores",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Region along North African shores stretching from Egypt to Morocco",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Region along Persian Gulf and Horn of Africa",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "The entire coastal Mediterranean Sea of areas",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q27",
+      "question_number": 27,
+      "display_order": 27,
+      "question_text": "Consider the following countries:\n1. Azerbaijan\n2. Kyrgyzstan\n3. Tajikistan\n4. Uzbekistan\n5. Turkmenistan\nWhich of the above have borders with Afghanistan?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2 and 5 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "1, 2, 3 and 4 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "3, 4 and 5 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2, 3, 4 and 5",
+          "display_order": 4
+        }
+      ],
       "correct_option_label": "c"
     },
     {
-      "source_question_ref": "GS1-Q20",
-      "question_number": 20,
-      "display_order": 20,
-      "question_text": "The North Eastern Council (NEC) was established by the North Eastern Council Act, 1971. Subsequent to the amendment of NEC Act in 2002, the Council comprises which of the following members?\n1. Governor of the Constituent State\n2. Chief Minister of the Constituent State\n3. Three Members to be nominated by the President of India\n4. The Home Minister of India\nSelect the Correct answer using the code given below:",
+      "source_question_ref": "GS1-Q28",
+      "question_number": 28,
+      "display_order": 28,
+      "question_text": "With reference to India, consider the following statements:\n1. Monazite is a source of rare earths.\n2. Monazite contains thorium.\n3. Monazite occurs naturally in the entire Indian coastal sands in India.\n4. In India, Government bodies only can process or export monazite.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -663,13 +935,13 @@
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1, 3 and 4 only",
+          "text": "1, 2 and 4 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 and 4 only",
+          "text": "3 and 4 only",
           "display_order": 3
         },
         {
@@ -679,217 +951,47 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q21",
-      "question_number": 21,
-      "display_order": 21,
-      "question_text": "Consider the following statements regarding ‘Nari Shakti Vandan Adhiniyam’:\n1. Provisions will come into effect from the 18th Lok Sabha.\n2. This will be in force for 15 years after becoming an Act.\n3. There are provisions for the reservation of seats for scheduled Castes Women within the quota reserved for the Scheduled Castes.\nWhich of the statements given above are correct?",
+      "source_question_ref": "GS1-Q29",
+      "question_number": 29,
+      "display_order": 29,
+      "question_text": "In the northern hemisphere, the longest day of the year normally occurs in the:",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1, 2 and 3",
+          "text": "First half of the month of June",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1 and 2 only",
+          "text": "Second half of the month of June",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 and 3 only",
+          "text": "First half of the month of July",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1 and 3",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q22",
-      "question_number": 22,
-      "display_order": 22,
-      "question_text": "Which of the following statements about ‘Exercise Mitra Shakti-2023’ are correct?\n1. This was a joint military exercise between India and Bangladesh.\n2. It commenced in Aundh (Pune).\n3. Joint response during counter-terrorism operations was a goal of this operation.\n4. Indian Air Force was a part of this exercise\nSelect the answer using the code given below:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1, 2 and 3",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1, 2 and 4",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "1, 3 and 4",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "2, 3 and 4",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q23",
-      "question_number": 23,
-      "display_order": 23,
-      "question_text": "A Writ of Prohibition is an order issued by the Supreme Court or High Courts to:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "a government officer prohibiting him from taking a particular action.",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "the parliament/Legislative Assembly to pass a law on Prohibition.",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "the lower court prohibiting continuation of proceedings in a case",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "the Government prohibiting it from following an unconstitutional policy",
+          "text": "Second half of the month of July",
           "display_order": 4
         }
       ],
       "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q24",
-      "question_number": 24,
-      "display_order": 24,
-      "question_text": "Consider the following statements:\n1. It is the Governor of the State who recognizes and declares any community of that State as a Scheduled Tribe.\n2. A community declared as a Scheduled Tribe in a State need not be so in another State.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q25",
-      "question_number": 25,
-      "display_order": 25,
-      "question_text": "With reference to Union Budget, consider the following statements:\n1. The Union Finance Minister on behalf of the Prime Minister lays the Annual Financial Statement before both the House of Parliament.\n2. At the Union level, no demand for a grant can be made except on the recommendation of the President of India.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q26",
-      "question_number": 26,
-      "display_order": 26,
-      "question_text": "Who of the following is the author of the books “The India Way” and “Why Bharat Matters”?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Bhupender Yadav",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Nalin Mehta",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Shashi Tharoor",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Subrahmanyam Jaishankar",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q27",
-      "question_number": 27,
-      "display_order": 27,
-      "question_text": "Consider the following pairs:\n| Country | Reason for being in the news\n1. | Argentina | Worst economic crisis\n2. | Sudan Forces | War between the country’s regular army and paramilitary\n3. | Turkey | Rescinded its membership of NATO\nHow many of the pairs given above are correctly matched?",
+      "source_question_ref": "GS1-Q30",
+      "question_number": 30,
+      "display_order": 30,
+      "question_text": "Consider the following pairs:\nWetland/Lake: | Location\nHokera Wetland | Punjab\nRenuka Wetland | Himachal Pradesh\nRudrasagar Lake | Tripura\nSasthamkotta Lake | Tamil Nadu\nHow many pairs given above are correctly matched?",
       "question_type": "mcq",
       "options": [
         {
@@ -907,149 +1009,47 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "All three pairs",
+          "text": "Only three pairs",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "None of the pairs",
+          "text": "All four pairs",
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q28",
-      "question_number": 28,
-      "display_order": 28,
-      "question_text": "Consider the following statements:\nStatement-I : Sumed pipeline is a strategic route for Persian Gulf oil and natural gas shipments to Europe.\nStatement-II : Sumed pipeline connects the Red Sea with the Mediterranean Sea.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q29",
-      "question_number": 29,
-      "display_order": 29,
-      "question_text": "Consider the following statements:\n1. The Red Sea receives very little precipitation in any form.\n2. No water enters the Red Sea from rivers.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q30",
-      "question_number": 30,
-      "display_order": 30,
-      "question_text": "According to the Environmental Protection Agency (EPA), which one of the following is the largest source of Sulphur dioxide emissions?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Locomotives using fossil fuels",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Ships using fossil fuels",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Extraction of metals from ores",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Power plants using fossil fuels.",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q31",
       "question_number": 31,
       "display_order": 31,
-      "question_text": "Consider the following statements:\nStatement-I : If the United States of America (USA) were to default on its debt, holders of US Treasury Bonds will not be able to exercise their claims to receive payment.\nStatement-II : The USA Government debt is not backed by any hard assets, but only by the faith of the Government\nWhich one of the following is correct in respect of the above statements?",
+      "question_text": "Consider the following:\n1. Aarogya Setu\n2. COWIN\n3. DigiLocker\n4. DIKSHA\nWhich of the above are built on top of open-source digital platforms?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
+          "text": "2, 3 and 4 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
+          "text": "1, 3 and 4 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
+          "text": "1, 2, 3 and 4",
           "display_order": 4
         }
       ],
@@ -1059,41 +1059,7 @@
       "source_question_ref": "GS1-Q32",
       "question_number": 32,
       "display_order": 32,
-      "question_text": "Consider the following statements:\nStatement-l : Syndicated lending spreads the risk of borrower default across multiple lenders.\nStatement-II : The syndicated loan can be fixed amount/lump sum of funds, but cannot be a credit line\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q33",
-      "question_number": 33,
-      "display_order": 33,
-      "question_text": "Consider the following statements in respect of the digital rupee:\n1. It is a sovereign currency issued by the Reserve Bank of India RBI alignment with its monetary policy.\n2. It appears as a liability on the RBI’s balance sheet.\n3. It is insured against inflation by its very design.\n4. It is freely convertible against commercial bank money and cash.\nWhich of the statements given above are correct?",
+      "question_text": "With reference to Web 3.0 consider the following statements:\n1. Web 3.0 technology enables people to control their own data\n2. In Web 3.0 world, there can be blockchain social networks.\n3. Web 3.0 is operated by users collectivelyrather than a corporation.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -1105,35 +1071,35 @@
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "1 and 3 only",
+          "text": "2 and 3 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 and 4 only",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1, 2 and 4",
+          "text": "1, 2, and 3",
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q34",
-      "question_number": 34,
-      "display_order": 34,
-      "question_text": "With reference to ancient India, Gautama Buddha was generally known by which of the following epithets?\n1. Nayaputta\n2. Shakyamuni\n3. Tathagata\nSelect the correct answer using the code given below:",
+      "source_question_ref": "GS1-Q33",
+      "question_number": 33,
+      "display_order": 33,
+      "question_text": "With reference to “Software as a Service (SaaS)”, consider the following statements:\n1. SaaS buyers can customise the user interface and can change data fields.\n2. SaaS users can access their data through their mobile devices.\n3. Outlook, Hotmail and Yahoo! Mail are forms of SaaS.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 only",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
@@ -1145,47 +1111,81 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1, 2 and 3",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "None of the above are epithets of Gautama Buddha",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q35",
-      "question_number": 35,
-      "display_order": 35,
-      "question_text": "Consider the following information –> Archaeological Site: State Description\n1. Salihundam – Andhra Pradesh Rock-cut cave shrines\n2. Chandraketugarh – Odisha Trading Port town\n3. Inamgaon – Maharashtra Chalcolithic site\n4. Mangadu – Kerala Megalithic site\nIn which of the above rows is the given information correctly matched?",
+      "source_question_ref": "GS1-Q34",
+      "question_number": 34,
+      "display_order": 34,
+      "question_text": "Which one of the following statements best reflects the idea behind the “Fractional Orbital Bombardment System” often talked about in media?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 and 2",
+          "text": "A hypersonic missile is launched into space to counter the asteroid approaching the Earth and explode it in space.",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "2 and 3",
+          "text": "A spacecraft lands on another planet after making several orbital motions.",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "3 and 4",
+          "text": "A missile is put into a stable orbit around the Earth and deorbits over a target on the Earth.",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1 and 4",
+          "text": "A spacecraft moves along a comet with the same surface. speed and places a probe on its",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q35",
+      "question_number": 35,
+      "display_order": 35,
+      "question_text": "Which one of the following is the context in which the term “qubit” is mentioned?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Cloud Services",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Quantum Computing",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Visible Light Communication Technologies",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Wireless Communication Technologies",
           "display_order": 4
         }
       ],
@@ -1195,264 +1195,25 @@
       "source_question_ref": "GS1-Q36",
       "question_number": 36,
       "display_order": 36,
-      "question_text": "Who of the following rulers of medieval India gave permission to the Portuguese to build a fort at Bhatkal?",
+      "question_text": "Consider the following communication technologies:\n1. Closed-circuit Television\n2. Radio Frequency Identification\n3. Wireless Local Area Network\nWhich of the above are considered of the Short-Range devices/technologies?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Krishnadevaraya",
+          "text": "1 and 2 only.",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Narasimha Saluva",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Muhammad Shah III",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Yusuf Adil Shah",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q37",
-      "question_number": 37,
-      "display_order": 37,
-      "question_text": "With reference to revenue collection by Cornwallis, statements: consider the following\n1. Under the Ryotwari Settlement of revenue collection, the peasants were exempted from revenue payment in case of had harvests or natural calamities.\n2. Under the Permanent Settlement in Bengal, if the Zamindar failed to pay his revenues to the state, on or before the fixed date, he would be removed from his Zamindari.\nWhich of the statements given above is ware correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q38",
-      "question_number": 38,
-      "display_order": 38,
-      "question_text": "Consider the following statements:\n1. There are parables in Upanishads.\n2. Upanishads were composed earlier than the Puranas\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither I nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q39",
-      "question_number": 39,
-      "display_order": 39,
-      "question_text": "Consider the following statements:\n1. India is a member of the International Grains Council.\n2. A country needs to be a member of the International Grains Council for exporting or importing rice and wheat.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q40",
-      "question_number": 40,
-      "display_order": 40,
-      "question_text": "Which one of the following was the latest inclusion in the Intangible Cultural Heritage List of UNESCO?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Chhau dance",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Durga puja",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Garba dance",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Kumbh mela",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q41",
-      "question_number": 41,
-      "display_order": 41,
-      "question_text": "Consider the following statements:\nStatement-I : There is instability and worsening security situation in the Sahel region.\nStatement-II : There have been military takeovers/coups d’etat in several countries of the Sahel region in the recent past.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II in correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q42",
-      "question_number": 42,
-      "display_order": 42,
-      "question_text": "Consider the following statements:\nStatement-I : India does not import apples from the United States of America.\nStatement-II : In India, the law prohibits the import of Genetically Modified food without the approval of the competent authority.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": null,
-      "dropped_by_upsc": true
-    },
-    {
-      "source_question_ref": "GS1-Q43",
-      "question_number": 43,
-      "display_order": 43,
-      "question_text": "With reference to the Speaker of the Lok Sabha, consider the following statements:\nWhile any resolution for the removal of the Speaker of the Lok Sabha is under consideration\n1. He She shall not preside\n2. He/She shall not have the right to speak\n3. He She shall not be entitled to vote on the resolution in the first instance.\nWhich of the statements given above is/are correct",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1 and 2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
           "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
@@ -1462,150 +1223,13 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q44",
-      "question_number": 44,
-      "display_order": 44,
-      "question_text": "With reference to the Indian Parliament, consider the following statements:\n1. A bill pending in the Lok Sabha lapses on its dissolution\n2. A bill passed by the Lok Sabha and pending in the Rajya Sabha lapses on the dissolution of the Lok Sabha.\n3. A bill in regard to which the President of India notified his/her intention to summon the Houses to a joint sitting lapses on the dissolution of the Lok Sabha.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1 and 2",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "2 and 3",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "3 only",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q45",
-      "question_number": 45,
-      "display_order": 45,
-      "question_text": "With reference to the Parliament of India, consider the following statements:\n1. Prorogation of a House by the President of India does not require the advice of the Council of Ministers.\n2. Prorogation of a House is generally done after the House is adjourned sine die but there is no bar to the President of India prorogating the House which is in session.\n3. Dissolution of the Lok Sabha is done by the President of India who, save in exceptional circumstances, does so on the advice of the Council of Ministers\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1 and 2",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "2 and 3",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "3 only",
-          "display_order": 4
-        }
-      ],
       "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q46",
-      "question_number": 46,
-      "display_order": 46,
-      "question_text": "Consider the following statements:\nStatement-I: The European Parliament approved The Net-Zero Industry Act recently.\nStatement-II: The European Union intends to achieve carbon neutrality by 2040 and therefore aims to develop all of its own clean technology by that time.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-I Statement-II explains",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q47",
-      "question_number": 47,
-      "display_order": 47,
-      "question_text": "Consider the following statements:\nStatement-I: Recently, Venezuela has achieved a rapid recovery from its economic crisis and succeeded in preventing its people from fleeing/emigrating to other countries.\nStatement-II: Venezuela has the world’s largest oil reserves\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": null,
-      "dropped_by_upsc": true
-    },
-    {
-      "source_question_ref": "GS1-Q48",
-      "question_number": 48,
-      "display_order": 48,
-      "question_text": "With reference to the Digital India Land Records Modernisation Programme, consider the following statements:\n1. To implement the scheme, the Central Government provides 100% funding.\n2. Under the Scheme, Cadastral Maps are digitised.\n3. An initiative has been undertaken to transliterate the Records of Rights from local language to any of the languages recognized by the Constitution of India.\nWhich of the statements given above are correct?",
+      "source_question_ref": "GS1-Q37",
+      "question_number": 37,
+      "display_order": 37,
+      "question_text": "Consider the following statements:\n1. Biofilms can form on medical implants within human tissues.\n2. Biofilms can form on food and food processing surfaces.\n3. Biofilms can exhibit antibiotic resistance.\nWhich of the statements given above are correct ?",
       "question_type": "mcq",
       "options": [
         {
@@ -1633,13 +1257,13 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q49",
-      "question_number": 49,
-      "display_order": 49,
-      "question_text": "With reference to the ‘Pradhan Mantri Surakshit Matritva Abhiyan’, consider the following statements\n1. This scheme guarantees a minimum package of antenatal care services to women in their second and third trimesters of pregnancy and six months post-delivery health care service in any government health facility\n2. Under this scheme, private sector health care providers of certain specialities can volunteer to provide services at nearby government health facilities.\nWhich of the statements given above is/are correct?",
+      "source_question_ref": "GS1-Q38",
+      "question_number": 38,
+      "display_order": 38,
+      "question_text": "Consider the following statements in respect of probiotics:\n1. Probiotics are made of both bacteria and yeast.\n2. The organisms in probiotics are found in foods we ingest but they do not naturally occur in our gut.\n3. Probiotics help in the digestion of milk sugars.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -1657,23 +1281,193 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Both 1 and 2",
+          "text": "1 and 3",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Neither 1 nor 2",
+          "text": "2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q39",
+      "question_number": 39,
+      "display_order": 39,
+      "question_text": "In the context of vaccines manufactured to prevent COVID-19 pandemic, consider the following statements:\n1. The Serum Institute of India produced COVID-19 vaccine named Covishield using mRNA platform.\n2. Sputnik V vaccine is manufactured using vector based platform.\n3. COVAXIN is an inactivated pathogen based vaccine.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q40",
+      "question_number": 40,
+      "display_order": 40,
+      "question_text": "If a major solar storm (solar flare) reaches the Earth, which of the following are the possible effects on the Earth?\n1. GPS and navigation systems could fail.\n2. Tsunamis could occur at equatorial regions.\n3. Power grids could be damaged.\n4. Intense auroras could occur over much of the Earth.\n5. Forest fires could take place over much of the planet.\n6. Orbits of the satellites could be disturbed.\n7. Shortwave radio communication of the aircraft flying over polar regions could be interrupted.\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2, 4 and 5 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2, 3, 5, 6 and 7 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1, 3, 4, 6 and 7 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2, 3, 4, 5, 6 and 7",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q41",
+      "question_number": 41,
+      "display_order": 41,
+      "question_text": "“Climate Action tracker” which monitors the emission reduction pledges of different countries is a:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Database created by coalition of research organisations",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Wings of “International panel of Climate Change”",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Committee under United nations Framework Convention on Climate Change”",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Agency promoted and financed by United Nations Environment Programme and World Bank",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q50",
-      "question_number": 50,
-      "display_order": 50,
-      "question_text": "With reference to the Pradhan Mantri Shram Yogi Maan-dhan (PM-SYM) Yojana, consider the following statements:\n1. The entry age group for enrolment in the scheme is 21 to 40 years.\n2. Age specific contribution shall be made by the beneficiary.\n3. Each subscriber under the scheme shall receive a minimum pension of 3,000 per month after attaining the age of 60 years.\n4. Family pension is applicable to the spouse and unmarried daughters.\nWhich of the statements given above is/are correct?",
+      "source_question_ref": "GS1-Q42",
+      "question_number": 42,
+      "display_order": 42,
+      "question_text": "Consider the following statements:\n1. “The Climate Group” is an international non-profit organization that drives climate action by building large networks and runs them.\n2. The International Energy Agency in partnership with the Climate Group launched a global initiative “EP100”.\n3. EP100 brings together lending companies committee to driving innovation in energy efficiency and increasing competitiveness while delivering on emission reduction goals.\n4. Some Indian companies are members of EP100.\n5. The International Energy Agency is the Secretariat to the “Under2 Coalition”.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2, 4 and 5",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "1,3 and 4 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "2, 3 and 5 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2, 3, 4 and 5",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q43",
+      "question_number": 43,
+      "display_order": 43,
+      "question_text": "“If rainforests and tropical forests are the lungs of the Earth, then surely wetlands function as its kidneys.” Which one of the following functions of wetlands best reflects the above statement?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "The water cycle in wetlands involves surface runoff, subsoil percolation and evaporation.",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Algae form the nutrient base upon which fish, crustaceans, molluscs, birds, reptiles and mammals thrive.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Wetlands play a vital role in maintaining sedimentation balance and soil stabilization.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Aquatic plants absorb heavy metals and excess nutrients.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q44",
+      "question_number": 44,
+      "display_order": 44,
+      "question_text": "In the Guidelines, statements: context of WHO consider the Air Quality following\n1. The 24-hour mean of PM2.5 should not exceed 15 ug/m³ and annual mean of PM 2.5 should not exceed 5 µg/m³.\n2. In a year, the highest levels of ozone pollution occur during the periods of inclement weather.\n3. PM10 can penetrate the lung barrier and enter the bloodstream.\n4. Excessive ozone in the air can trigger asthma.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -1685,13 +1479,252 @@
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "2 and 3 only",
+          "text": "1 and 4 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 only",
+          "text": "2, 3 and 4",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1 and 2 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q45",
+      "question_number": 45,
+      "display_order": 45,
+      "question_text": "With reference to “Gucchi” sometimes mentioned in the news, consider the following statements:\n1. It is a fungus.\n2. It grows in some Himalayan forest areas.\n3. It is commercially cultivated in the Himalayan foothills of north-eastern India.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q46",
+      "question_number": 46,
+      "display_order": 46,
+      "question_text": "With reference to polyethylene terephthalate, the use of which is so widespread in our daily lives, consider the following statements:\n1. Its fibres can be blended with wool and cotton fibres to reinforce their properties.\n2. Containers made of it can be used to store any alcoholic beverage.\n3. Bottles made of it can be recycled into other products.\n4. Articles made of it can be easily disposed of by incineration without causing greenhouse gas emissions.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 3",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 4",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 4",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q47",
+      "question_number": 47,
+      "display_order": 47,
+      "question_text": "Which of the following is not a bird?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Golden Mahseer",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Indian Nightjar",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Spoonbill",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "White Ibis",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q48",
+      "question_number": 48,
+      "display_order": 48,
+      "question_text": "Which of the following are nitrogen-fixing plants?\n1. Alfalfa\n2. Amaranth\n3. Chickpea\n4. Clover\n5. Purslane (Kulfa)\n6. Spinach\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 3 and 4 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "1, 3, 5 and 6 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "2, 4, 5 and 6 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2, 4, 5 and 6",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": null,
+      "dropped_by_upsc": true
+    },
+    {
+      "source_question_ref": "GS1-Q49",
+      "question_number": 49,
+      "display_order": 49,
+      "question_text": "“Biorock technology” is talked about in which one of the following situations?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Restoration of damaged coral reefs",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Development of building materials using plant residues",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Identification of areas for exploration/extraction of shale gas",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Providing salt licks for wild animals in forests/protected areas",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q50",
+      "question_number": 50,
+      "display_order": 50,
+      "question_text": "The “Miyawaki method” is well known for the:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Promotion of commercial farming in arid and semi-arid areas",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Development of gardens genetically modified flora using",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Creation of mini forests in urban areas",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Harvesting wind energy on coastal areas and on sea surfaces",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q51",
+      "question_number": 51,
+      "display_order": 51,
+      "question_text": "In the Government of India Act 1919, the functions of Provincial Government were divided into “Reserved” and “Transferred” subjects. Which of the following were treated as “Reserved” subjects?\n1. Administration of Justice\n2. Local Self-Government\n3. Land Revenue\n4. Police\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2 and 3",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2, 3 and 4",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1, 3 and 4",
           "display_order": 3
         },
         {
@@ -1704,68 +1737,34 @@
       "correct_option_label": "c"
     },
     {
-      "source_question_ref": "GS1-Q51",
-      "question_number": 51,
-      "display_order": 51,
-      "question_text": "Consider the following statements:\nStatement-I: The atmosphere is heated more by incoming solar radiation than by terrestrial radiation.\nStatement-II: Carbon dioxide and other greenhouse gases in the atmosphere are good absorbers of long wave radiation.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct. but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
       "source_question_ref": "GS1-Q52",
       "question_number": 52,
       "display_order": 52,
-      "question_text": "Consider the following statements:\nStatement-I: Thickness of the troposphere at the equator is much greater as compared to poles.\nStatement-II: At the equator, heat is transported to great heights by strong convectional currents.\nWhich one of the following is correct in respect of the above statements?",
+      "question_text": "In Medieval India, the term “Fanam” referred to:",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-I Statement-II explains",
+          "text": "Clothing",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
+          "text": "Coins",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
+          "text": "Ornaments",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
+          "text": "Weapons",
           "display_order": 4
         }
       ],
@@ -1775,31 +1774,31 @@
       "source_question_ref": "GS1-Q53",
       "question_number": 53,
       "display_order": 53,
-      "question_text": "Consider the following:\n1. Pyroclastic debris\n2. Ash and dust\n3. Nitrogen compounds\n4. Sulphur compounds\nHow many of the above are products of volcanic eruptions?",
+      "question_text": "Consider the following freedom fighters:\n1. Barindra Kumar Ghosh\n2. Jogesh Chandra Chatterjee\n3. Rash Behari Bose\nWho of the above was/were actively associated with the Ghadar Party?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only one",
+          "text": "1 and 2",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Only two",
+          "text": "2 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Only three",
+          "text": "1 and 3",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "All four",
+          "text": "3 only",
           "display_order": 4
         }
       ],
@@ -1809,7 +1808,7 @@
       "source_question_ref": "GS1-Q54",
       "question_number": 54,
       "display_order": 54,
-      "question_text": "Which of the following is/are correct inference/inferences from isothermal maps in the month of January?\n1. The isotherms deviate to the north over the ocean and to the south over the continent.\n2. The presence of cold ocean currents, Gulf Stream and North Atlantic Drift make the North Atlantic Ocean colder and the isotherms bend towards the north.\nSelect the answer using the code given below:",
+      "question_text": "With reference to the proposals of Cripps Mission, consider the following statements:\n1. The Constituent Assembly would have members nominated by the Provincial Assemblies as well as the Princely States\n2. Any Province, which is not prepared to accept the new Constitution would have the right to sign a separate agreement with Britain regarding its future status.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -1837,353 +1836,149 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q55",
       "question_number": 55,
       "display_order": 55,
-      "question_text": "Which of the following countries are well known as the two largest cocoa producers in the world?",
+      "question_text": "With reference to Indian History, consider the following texts:\n1. Nettipakarana\n2. Parishishtaparavan\n3. Avadanashataka\n4. Trishashtilakshana Mahapurana\nWhich of the above are Jains texts?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Algeria and Morocco",
+          "text": "1, 2 and 3",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Botswana and Namibia",
+          "text": "2 and 4",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Cote d’ Ivoire Coast and Ghana",
+          "text": "1, 3 and 4",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Madagascar and Mozambique",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q56",
-      "question_number": 56,
-      "display_order": 56,
-      "question_text": "With reference to the Himalayan rivers joining the Ganga downstream of Prayagraj from West to East, which one of the following sequences is correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Ghaghara – Gomati – Gandak – Kosi",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Gomati – Ghaghara – Gandak – Kosi",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Ghaghara – Gomati – Kosi – Gandak",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Gomati – Ghaghara – Kosi – Gandak",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q57",
-      "question_number": 57,
-      "display_order": 57,
-      "question_text": "Consider the following statements:\nStatement-I: Rainfall is one of the reasons for weathering of rocks.\nStatement-II: Rain water contains carbon dioxide in solution.\nStatement-III: Rain water contains atmospheric oxygen.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-II and Statement-III are correct and both of them explain Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-II and Statement-III are correct, but only one of them explains Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only one of the Statements II and III is correct and that explains Statement-I",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither Statement-II nor Statement-III is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q58",
-      "question_number": 58,
-      "display_order": 58,
-      "question_text": "Consider the following countries:\n1. Finland\n2. Germany\n3. Norway\n4. Russia\nHow many of the above countries have a border with the North Sea?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q59",
-      "question_number": 59,
-      "display_order": 59,
-      "question_text": "Consider the following information:\n| Waterfall | Region | River\n1. | Dhuandhar | Malwa | Narmada\n2. | Hundru | Chota Nagpur | Subarnarekha\n3. | Gersoppa | Western Ghats | Netravati\nIn how many of the above rows is the given information correctly matched?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q60",
-      "question_number": 60,
-      "display_order": 60,
-      "question_text": "Consider the following information:\n| Region | Name of the mountain range | Type of mountain\n1. | Central | Vosges | Fold mountain\n2. | Europe | Alps | Block mountain\n3. | North America | Appalachians | Fold mountain\n4. | South America | Andes | Fold mountain\nIn how many of the above rows is the given information correctly matched?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
+          "text": "2, 3 and 4",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q61",
-      "question_number": 61,
-      "display_order": 61,
-      "question_text": "The organisms “Cicada, Froghopper and Pond skater” are:",
+      "source_question_ref": "GS1-Q56",
+      "question_number": 56,
+      "display_order": 56,
+      "question_text": "With reference to Indian history, consider the following pairs:\nHistorical person – Known as\n1. Aryadeva – Jaina scholar\n2. Dignaga – Buddhist scholar\n3. Nathamuni – Vaishnava scholar\nHow many pairs given above are correctly matched?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Birds",
+          "text": "None of the pairs",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Fish",
+          "text": "Only one pairs",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Insects",
+          "text": "Only two pairs",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Reptiles",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q62",
-      "question_number": 62,
-      "display_order": 62,
-      "question_text": "Consider the following statements:\nStatement-I: Many chewing gums found in the market are considered a source of environmental pollution.\nStatement-II: Many chewing gums contain plastic as gum base.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
+          "text": "All three pairs",
           "display_order": 4
         }
       ],
       "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q63",
-      "question_number": 63,
-      "display_order": 63,
-      "question_text": "Consider the following pair:\n| Country | Animal found in its natural habitat\n1. | Brazil | Indri\n2. | Indonesia | Elk\n3. | Madagascar | Bonobo\nHow many of the pairs given above are correctly matched?",
+      "source_question_ref": "GS1-Q57",
+      "question_number": 57,
+      "display_order": 57,
+      "question_text": "With reference to Indian history, consider the following statements:\n1. The first Mongol invasion of India happened during the reign of Jalal-ud-din Khalji.\n2. During the reign of Ala-ud-din Khalji, one Mongol assault marched up to Delhi and besieged the city.\n3. Muhammad-bin-Tughlaq temporarily lost portions of north-west of his kingdom to Mongols.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "All three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q64",
-      "question_number": 64,
-      "display_order": 64,
-      "question_text": "Consider the following statements regarding World Toilet Organization:\n1. It is one of the agencies of the United Nations.\n2. World Toilet Summit, World Toilet Day and World Toilet College are the initiatives of this organization, to inspire action to tackle the global sanitation crisis.\n3. The main focus of its function is to grant funds to the least developed countries and developing countries to achieve the end of open defecation.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "2 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "3 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
           "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "2 and 3",
+          "text": "3 only",
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q65",
-      "question_number": 65,
-      "display_order": 65,
-      "question_text": "Consider the following statements:\n1. Lions do not have a particular breeding season.\n2. Unlike most other big cats, cheetahs do not roar.\n3. Unlike male lions, male leopards do not proclaim their territory by scent marking.\nWhich of the statements given above are correct?",
+      "source_question_ref": "GS1-Q58",
+      "question_number": 58,
+      "display_order": 58,
+      "question_text": "With reference to Indian history, who of the following were known as “Kulah-Daran”?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Arab merchants",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Qalandars",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Persian calligraphists",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Sayyids",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q59",
+      "question_number": 59,
+      "display_order": 59,
+      "question_text": "With reference to Indian history, consider the following statements:\n1. The Dutch established their factories/warehouses on the east coast on lands granted to them by Gajapati rulers.\n2. Alfonso de Albuquerque captured Goa from the Bijapur Sultanate.\n3. The English East India. Company established a factory at Madras on a plot of land leased from a representative of the Vijayanagara empire.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -2214,180 +2009,10 @@
       "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q66",
-      "question_number": 66,
-      "display_order": 66,
-      "question_text": "Which one of the following is the correct description of “100 Million Farmers”?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "It is a platform for accelerating the transition towards food and water systems that are net-zero (carbon), nature-positive and that aims to increase farmer resilience.",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "It is an international alliance and a network of individuals and farming organisations interested in supporting and strengthening the development of the organic animal husbandry.",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "It is a digital platform fully integrated with service providers and built on blockchain that lets buyers, sellers and third parties trade fertilizers quickly and securely.",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "It is a platform with the mission of encouraging the farmers to form Farmer Product Organisations or Agribusiness Consortiums, thus facilitating the access to global open markets to sell their products.",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q67",
-      "question_number": 67,
-      "display_order": 67,
-      "question_text": "Consider the following:\n1. Battery storage\n2. Biomass generators\n3. Fuel cells\n4. Rooftop solar photovoltaic units\nHow many of the above are considered “Distributed Energy Resources”?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q68",
-      "question_number": 68,
-      "display_order": 68,
-      "question_text": "Which one of the following shows a unique relationship with an insect that has coevolved with it and that is the only insect that can pollinate this tree?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Fig",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Mahua",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Sandalwood",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Silk cotton",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q69",
-      "question_number": 69,
-      "display_order": 69,
-      "question_text": "Consider the following:\n1. Butterflies\n2. Fish\n3. Frogs\nHow many of the above have poisonous species among them?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "All three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "None",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q70",
-      "question_number": 70,
-      "display_order": 70,
-      "question_text": "Consider the following:\n1. Cashew\n2. Papaya\n3. Red sanders\nHow many of the above trees are actually native to India?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "All three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "None",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q71",
-      "question_number": 71,
-      "display_order": 71,
-      "question_text": "Consider the following airports:\n1. Donyi Polo Airport\n2. Kushinagar International Airport\n3. Vijayawada International Airport\nIn the recent past, which of the above have been constructed as Greenfield projects?",
+      "source_question_ref": "GS1-Q60",
+      "question_number": 60,
+      "display_order": 60,
+      "question_text": "According to Kautilya’s Arthashastra, which of the following are correct?\n1. A person could be a slave as a result of the judicial punishment.\n2. If a females slave bore her master a son she was legally free.\n3. If a son born to a female slave was fathered by her master, the son was entilted to the legal status of the master’s son.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -2405,7 +2030,7 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "2 and 3 only",
+          "text": "1 and 3 only",
           "display_order": 3
         },
         {
@@ -2415,13 +2040,149 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q72",
-      "question_number": 72,
-      "display_order": 72,
-      "question_text": "With reference to “water vapour”, which of the following statements is/are correct?\n1. It is a gas, the amount of which decreases with altitude.\n2. Its percentage is maximum at the poles.\nSelect the answer using the code given below:",
+      "source_question_ref": "GS1-Q61",
+      "question_number": 61,
+      "display_order": 61,
+      "question_text": "Consider the following statements:\n1. Tight monetary policy of US Federal Reserve could lead to capital flight.\n2. Capital flight may increase the interest cost of firms with existing External Commercial Borrowings (ECBs).\n3. Devaluation of domestic currency decreases the currency risk associated with ECBS.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q62",
+      "question_number": 62,
+      "display_order": 62,
+      "question_text": "Consider the following States:\n1. Andhra Pradesh\n2. Kerala\n3. Himachal Pradesh\n4. Tripura\nHow many of the above are generally known as tea-producing States?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Only one State",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Only two States",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Only three States",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "All four States",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q63",
+      "question_number": 63,
+      "display_order": 63,
+      "question_text": "Consider the following statements:\n1. In India, credit rating agencies are regulated by Reserve Bank of India.\n2. The rating agency popularly known as ICRA is a public limited company.\n3. Brickwork Ratings is an Indian credit rating agency.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q64",
+      "question_number": 64,
+      "display_order": 64,
+      "question_text": "With reference to the ‘Banks Board Bureau (BBB)’, which of the following statements are correct?\n1. The Governor of RBI is the Chairman of\n2. BBB recommends for the selection of heads for Public Sector Banks.\n3. BBB helps the Public Sector Banks in developing strategies and capital raising plans.\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q65",
+      "question_number": 65,
+      "display_order": 65,
+      "question_text": "Convertible Bonds, consider the following statements:\n1. As there is an option to exchange the bond for equity, Convertible Bonds pay a lower rate of interest.\n2. The option to convert to equity affords the bondholder a degree of indexation to rising consumer prices.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -2449,47 +2210,285 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
-      "source_question_ref": "GS1-Q73",
-      "question_number": 73,
-      "display_order": 73,
-      "question_text": "Consider the following description:\n1. Annual and daily range of temperatures is low.\n2. Precipitation occurs throughout the year.\n3. Precipitation varies between 50cm – 250cm.\nWhat is this type of climate?",
+      "source_question_ref": "GS1-Q66",
+      "question_number": 66,
+      "display_order": 66,
+      "question_text": "Consider the following:\n1. Asian Infrastructure Investment Bank\n2. Missile Technology Control Regime\n3. Shanghai Cooperation Organisation\nIndia is a member of which of the above?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Equatorial climate",
+          "text": "1 and 2 only",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "China type climate",
+          "text": "3 only",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Humid subtropical climate",
+          "text": "2 and 3 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Marine West coast climate",
+          "text": "1, 2 and 3",
           "display_order": 4
         }
       ],
       "correct_option_label": "d"
     },
     {
+      "source_question_ref": "GS1-Q67",
+      "question_number": 67,
+      "display_order": 67,
+      "question_text": "Consider the following statements:\n1. Vietnam has been one of the fastest growing economies in the world in the recent years.\n2. Vietnam is led by a multi-party political system.\n3. Vietnam’s economic growth is linked to its integration with global supply chains and focus on exports.\n4. For a long time Vietnam’s low labour costs and stable exchange rates have attracted global manufacturers.\n5. Vietnam has the most productive e-service sector in the Indo-Pacific region.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "2 and 4",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "3 and 5",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 3 and 4",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q68",
+      "question_number": 68,
+      "display_order": 68,
+      "question_text": "In India, which one of the following is responsible for maintaining price stability by controlling inflation?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Department of Consumer Affairs",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Expenditure Management Commission",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Financial Stability and Development Council",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Reserve Bank of India",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q69",
+      "question_number": 69,
+      "display_order": 69,
+      "question_text": "With reference to Non-Fungible Tokens (NFTs), consider the following statements:\n1. They enable the digital representation of physical assets.\n2. They are unique cryptographic tokens that exist on a blockchain.\n3. They can be traded or exchanged at equivalency and therefore can be used as a medium transactions. of commercial\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q70",
+      "question_number": 70,
+      "display_order": 70,
+      "question_text": "Consider the following pairs:\nReservoirs: States\n1. Ghataprabha: Telangana.\n2. Gandhi Sagar: Madhya Pradesh\n3. Indira Sagar: Andhra Pradesh\n4. Maithon: Chhattisgarh\nHow many pairs given above are not correctly matched?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Only one pair",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Only two pairs PAY",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Only three pairs",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "All four pairs",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q71",
+      "question_number": 71,
+      "display_order": 71,
+      "question_text": "In India, which one of the following compiles information on industrial disputes, closeres, retrenchments and lay-offs in factories employing workers?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Central Statistics office",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Department for Promotion of Industry and Internal Trade",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Labour Bureau",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "National technical manpower Information System",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q72",
+      "question_number": 72,
+      "display_order": 72,
+      "question_text": "In India, what is the role of the Coal Controller’s Organisation (CCO)?\n1. CCO is the major source of Coal Statistics in Government Of India.\n2. It monitors process of development of Captive Coal/Lignite blocks.\n3. It hears any objection to the Government’s notofication relating to acquision of coal-bearing areas.\n4. It ensures that coal mining companies deliver the coal to end users in the prescribed time.\nSelect the correct answer using the code given below:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2 and 3",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "3 and 4 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 2 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 4",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q73",
+      "question_number": 73,
+      "display_order": 73,
+      "question_text": "If a particular area is brought under the Fifth Schedule of the Constitution of India, which one of the following statements best reflects the consequence of it?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "This would prevent the transfer of land of tribal people to non-tribal people.",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "This would create a local self-governing body in that area.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "This would convert that area into a Union Territory.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "The State having such areas would be declared a Special Category State.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
       "source_question_ref": "GS1-Q74",
       "question_number": 74,
       "display_order": 74,
-      "question_text": "With reference to “Coriolis force”, which of the following statements is/are correct?\n1. It increases with increase in wind velocity.\n2. It is maximum at the poles and is absent at the equator.\nSelect the answer using the code given below:",
+      "question_text": "Consider the following statements:\n1. The India Sanitation Coalition is a platform to promote sustainable sanitation and is funded by the Government of India and the World health organization.\n2. The National Institute of Urban Affairs is an apex body of the Ministry of Housing and Urban Affairs in Government of India and provides innovative solutions to address the challenge of Urban India.\nWhich of the statement given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -2523,19 +2522,155 @@
       "source_question_ref": "GS1-Q75",
       "question_number": 75,
       "display_order": 75,
-      "question_text": "On June 21 every year, which of the following latitude(s) experience(s) a sunlight of more than 12 hours?\n1. Equator\n2. Tropic of Cancer\n3. Tropic of Capricorn\n4. Arctic Circle\nSelect the correct answer using the code given below:",
+      "question_text": "Which one of the following has been constituted under the Environment (Protection) Act, 1986 ?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 only",
+          "text": "Central Water Commission",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "2 only",
+          "text": "Central Ground Water Board",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Central Ground Water Authority",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "National Water Development Agency",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q76",
+      "question_number": 76,
+      "display_order": 76,
+      "question_text": "With reference to the “United Nations Credentials Committee”, consider the following statements:\n1. It is a committee set up by the UN Security Council and works under its supervision.\n2. it traditionally meets in March, June and September every year.\n3. It assesses the credentials of all UN members before submitting a report to the General Assembly for approval.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "3 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "1 and 3",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "2 and 3",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1 and 2",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q77",
+      "question_number": 77,
+      "display_order": 77,
+      "question_text": "Which of the following statements best describes the ‘Polar Code’?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "It is the international code of safety for ships operating in polar waters.",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "It is the agreement of the countries around the North Pole regarding the demarcation of their territories in the polar region.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "It is set norms to be followed by the countries whose scientists undertake research studies in the North Pole and South Pole.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "It is trade and security agreement of the member countries of the Arctic council.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q78",
+      "question_number": 78,
+      "display_order": 78,
+      "question_text": "With reference to the United Nations General Assembly, consider the following statements:\n1. The UN General Assembly can grant observer status to the no the non-member States.\n2. Inter-governmental organisations can seek observer status in the UN General Assembly.\n3. Permanent Observers in General Assembly can the UN maintain missions at the UN headquarters.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q79",
+      "question_number": 79,
+      "display_order": 79,
+      "question_text": "With reference to the “Tea Board” in India, consider the following statements:\n1. The Tea Board is a statutory body.\n2. It is a regulatory body attached to the Ministry of Agriculture and Farmers Welfare.\n3. The Tea Board’s Head Office is situated in Bengaluru.\n4. The Board has overseas offices at Dubai and Moscow.\nWhich of the statements given above are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 3",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 4",
           "display_order": 2
         },
         {
@@ -2547,51 +2682,187 @@
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "2 and 4",
+          "text": "1 and 4",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q76",
-      "question_number": 76,
-      "display_order": 76,
-      "question_text": "One of the following regions has the world’s largest tropical peatland, which holds about three years worth of global carbon emissions from fossil fuels; and the possible destruction of which can exert detrimental effect on the global climate. Which one of the following denotes that region?",
+      "source_question_ref": "GS1-Q80",
+      "question_number": 80,
+      "display_order": 80,
+      "question_text": "Which one of the following best describes the term “greenwashing”?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Amazon Basin",
+          "text": "Conveying a false impression that a company’s products are eco-friendly and environmentally sound",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Congo Basin",
+          "text": "Non-inclusion of ecological/ environmental costs in the Annual Financial Statements of a country",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Kikori Basin",
+          "text": "Ignoring the consequences disastrous ecological while infrastructure development undertaking",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Rio de la Plata Basin",
+          "text": "Making mandatory provisions for environmental costs in a government project/programme",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q81",
+      "question_number": 81,
+      "display_order": 81,
+      "question_text": "Consider the following statements:\n1. High clouds primarily reflects solar radiation and cool the surface of the Earth.\n2. Low clouds have a high absorption of infrared radiation emanating from the Earth’s surface and thus cause warming effects.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Both 1 and 2",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Neither1 nor 2",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q82",
+      "question_number": 82,
+      "display_order": 82,
+      "question_text": "Consider the following statements:\n1. Bidibidi is a large refugee settlement in north-western Kenya.\n2. Some people who fled from South Sudan civil war live in Bidibidi.\n3. Some people who fled from civil war in Somalia live in Dadaab refugee complex in Kenya.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "2 and 3",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "3 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "c"
+    },
+    {
+      "source_question_ref": "GS1-Q83",
+      "question_number": 83,
+      "display_order": 83,
+      "question_text": "Consider the following countries:\n1. Armenia\n2. Azerbaijan\n3. Croatia\n4. Romania\n5. Uzbekistan\nWhich of the above are members of the Organisation of Turkic States?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1, 2 and 4",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "1 and 3",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "2 and 5",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "3, 4 and 5",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q77",
-      "question_number": 77,
-      "display_order": 77,
-      "question_text": "With reference to perfluoroalkly and polyfluoroalkyl substances (PFAS) that are used in making many consumer products, consider the following statements:\n1. PFAS are found to be widespread in drinking water, food and food packaging materials.\n2. PFAS are not easily degraded in the environment.\n3. Persistent exposure to PFAS can lead to bioaccumulation in animal bodies.\nWhich of the statements given above are correct?",
+      "source_question_ref": "GS1-Q84",
+      "question_number": 84,
+      "display_order": 84,
+      "question_text": "Consider the following statements :\n1. Gujarat has the largest solar park in India\n2. Kerala has a fully solar powered International Airport\n3. Goa has the largest floating solar photovoltaic project in India.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "3 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q85",
+      "question_number": 85,
+      "display_order": 85,
+      "question_text": "With reference to the United Nations Convention on the Law of Sea, consider the following statements:\n1. A coastal state has the right to establish the breadth of its territorial sea up to a limit not exceeding 12 nautical miles, measured from baseline determined in accordance with the convention.\n2. Ships of all states, whether coastal or land-locked, enjoy the right of innocent passage through the territorial sea.\n3. The Exclusive Economic Zone shall not extend beyond 200 nautical miles from the baseline from which the breadth of the territorial sea is measured.\nWhich of the statements given above are correct?",
       "question_type": "mcq",
       "options": [
         {
@@ -2619,155 +2890,427 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
-      "source_question_ref": "GS1-Q78",
-      "question_number": 78,
-      "display_order": 78,
-      "question_text": "Consider the following:\n1. Carabid beetles\n2. Centipedes\n3. Flies\n4. Termites\n5. Wasps\nParasitoid species are found in how many of the above kind of organisms?",
+      "source_question_ref": "GS1-Q86",
+      "question_number": 86,
+      "display_order": 86,
+      "question_text": "Which one of the following statements best reflects the issue with Senkaku Islands, sometimes mentioned in the news?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only two",
+          "text": "It is generally believed that they are artificial islands made by a country around South China Sea.",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Only three",
+          "text": "China and Japan engage in maritime disputes over these islands in East China Sea.",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Only four",
+          "text": "A permanent American military base has been set up there to help Taiwan to increase its defence capabilities.",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "All five",
+          "text": "Though International Court of Justice declared them as no man’s land, some South-East Asian countries claim them.",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q79",
-      "question_number": 79,
-      "display_order": 79,
-      "question_text": "Consider the following plants:\n1. Groundnut\n2. Horse-gram\n3. Soybean\nHow many of the above belong to the pea family?",
+      "source_question_ref": "GS1-Q87",
+      "question_number": 87,
+      "display_order": 87,
+      "question_text": "Consider the following pairs:\nCountry: Important reason for being in the news recently\n1. Chad: Setting up a permanent military base by China\n2. Guinea: Suspension of Constitution and Government by military\n3. Lebanon: Severe and prolonged economic depression\n4. Tunisia: Suspension of Parliament by President\nHow many pairs given above are correctly matched?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Only one",
+          "text": "Only one pair",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Only two",
+          "text": "Only two pairs",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Only three",
+          "text": "Only three pairs",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "None",
+          "text": "All four pairs",
           "display_order": 4
         }
       ],
       "correct_option_label": "c"
     },
     {
-      "source_question_ref": "GS1-Q80",
-      "question_number": 80,
-      "display_order": 80,
-      "question_text": "Consider the following statements:\nStatement-I: The Indian Flying Fox is placed under the “vermin” category in the Wild Life (Protection) Act, 1972.\nStatement-II: The Indian Flying Fox feeds on the blood of other animals.\nWhich one of the following is correct in respect of the above statements?",
+      "source_question_ref": "GS1-Q88",
+      "question_number": 88,
+      "display_order": 88,
+      "question_text": "Consider the following Pairs:\nRegion often mentioned in the news: Country\n1. Anatolia: Turkey\n2. Amhara: Ethiopia.\n3. Cabo Delgado: Spain.\n4. Catalonia: Italy.\nHow many pairs given above are correctly matched?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
+          "text": "Only one pair",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct, but Statement-II does not explain Statement-I",
+          "text": "Only two pairs",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
+          "text": "Only three pairs",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
+          "text": "All four pairs",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q89",
+      "question_number": 89,
+      "display_order": 89,
+      "question_text": "With reference to Indian laws about wildlife protection, consider the following statements :\n1. Wild animals are the sole property of the government.\n2. When a wild animal is declared protected, such animal is entitled for equal protection whether it is found in protected areas or outside.\n3. Apprehension of a protected wild animal becoming a danger to human life is sufficient ground for its capture or killing.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 and 2",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "3 only",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q90",
+      "question_number": 90,
+      "display_order": 90,
+      "question_text": "Certain species of which one of the following organisms are well known as cultivators of fungi?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Ant",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Cockroach",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "crab",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Spider",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q91",
+      "question_number": 91,
+      "display_order": 91,
+      "question_text": "Consider the following pairs:\nSite of Ashoka’s major rock edicts – Location in the State of\n1. Dhauli – Odisha\n2. Erragudi – Andhra Pradesh\n3. Jaugada – Madhya Pradesh\n4. kalsi – Karnataka\nHow many pairs given above are correctly matched?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Only one pair",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Only two pairs",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Only three pairs",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "All four pairs",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q81",
-      "question_number": 81,
-      "display_order": 81,
-      "question_text": "The total fertility rate in an economy is defined as:",
+      "source_question_ref": "GS1-Q92",
+      "question_number": 92,
+      "display_order": 92,
+      "question_text": "Consider the following pairs:\nKing: Dynasty\n1. Nannuka: Chandela.\n2. Jayashakti: Paramara.\n3. Nagabhata II: Gurjara-Pratihara.\n4. Bhoja: Rashtrakuta.\nHow many pairs given above are correctly matched?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "the number of children born per 1000 people in the population in a year.",
+          "text": "Only one pair",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "the number of children born to a couple in their lifetime in a given population.",
+          "text": "Only two pairs",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "the birth rate minus death rate.",
+          "text": "Only three pairs",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "the average number of live births a woman would have by the end of her child-bearing age.",
+          "text": "All four pairs",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q82",
-      "question_number": 82,
-      "display_order": 82,
-      "question_text": "Consider the following statements:\n1. In India, Non-Banking Financial Companies can access the Liquidity Adjustment Facility window of the Reserve Bank of India.\n2. In India, Foreign Institutional Investors can hold the Government Securities (G-Secs).\n3. In India, Stock Exchanges can offer separate trading platforms for debts.\nWhich of the statements given above is/are correct?",
+      "source_question_ref": "GS1-Q93",
+      "question_number": 93,
+      "display_order": 93,
+      "question_text": "Which one of the following statements about Sangam literature in ancient South India is correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Sangam poems are devoid of any reference to material culture.",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "The social classification of Varna was known to Sangam poets.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Sangam poems have no reference to warrior ethic.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Sangam literature refers to magical forces as irrational.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "d"
+    },
+    {
+      "source_question_ref": "GS1-Q94",
+      "question_number": 94,
+      "display_order": 94,
+      "question_text": "“Yogavasistha” was translated into persian by Nizamuddin panipati during the reign of:",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "Akbar",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Humayun",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Shahjahan",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Aurangzeb",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q95",
+      "question_number": 95,
+      "display_order": 95,
+      "question_text": "The world’s second tallest statue in sitting pose of Ramanuja was inaugurated by the Prime Minister of India at Hyderabad recently. Which one of the following statements correctly represents the teachings of Ramanuja?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "The best means of salvation was devotion.",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "Vedas are eternal, self-existent and wholly authoritative.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "Logical arguments were meant for the highest bliss.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "Salvation was to be obtained through meditation.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "b"
+    },
+    {
+      "source_question_ref": "GS1-Q96",
+      "question_number": 96,
+      "display_order": 96,
+      "question_text": "The Prime Minister recently inaugurated the new Circuit House near Somnath temple at Veraval. Which of the following statements are correct regarding Somnath temple?\n1. Somnath Temple is one the Jyotirlinga shrines.\n2. A description of Somnath Temple was given by Al-Biruni.\n3. Pran Pratishtha of Somnath temple (installation of the present day temple) was done by President S. Radhakrishnan.\nSelect the correct answer using the code given below:",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
           "text": "1 and 2 only",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "2 and 3 only",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "1 and 3 only",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "1, 2 and 3",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q97",
+      "question_number": 97,
+      "display_order": 97,
+      "question_text": "Which one of the following statements best describes the role of B cells and T cells in the human body?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "They protect the environmental allergens. body",
+          "display_order": 1
+        },
+        {
+          "label": "b",
+          "source_label": "(b)",
+          "text": "They alleviate the body’s pain and inflammation.",
+          "display_order": 2
+        },
+        {
+          "label": "c",
+          "source_label": "(c)",
+          "text": "They act as immunosuppressants in the body.",
+          "display_order": 3
+        },
+        {
+          "label": "d",
+          "source_label": "(d)",
+          "text": "They protect the body from the diseases caused by pathogens.",
+          "display_order": 4
+        }
+      ],
+      "correct_option_label": "a"
+    },
+    {
+      "source_question_ref": "GS1-Q98",
+      "question_number": 98,
+      "display_order": 98,
+      "question_text": "Consider the following statements:\n1. Other than those made by humans, nanoparticles do not exist in nature.\n2. Nanoparticles of some metallic oxides are used in the manufacture of some cosmetics.\n3. Nanoparticles of some commercial products which enter the environment are unsafe for humans.\nWhich of the statements given above is/are correct?",
+      "question_type": "mcq",
+      "options": [
+        {
+          "label": "a",
+          "source_label": "(a)",
+          "text": "1 only",
           "display_order": 1
         },
         {
@@ -2779,131 +3322,63 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1, 2 and 3",
+          "text": "1 and 2",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "2 and 3 only",
+          "text": "2 and 3",
           "display_order": 4
         }
       ],
       "correct_option_label": "a"
     },
     {
-      "source_question_ref": "GS1-Q83",
-      "question_number": 83,
-      "display_order": 83,
-      "question_text": "In India, which of the following can trade in Corporate Bonds and Government Securities?\n1. Insurance Companies\n2. Pension Funds\n3. Retail Investors\nSelect the correct answer using the code given below:",
+      "source_question_ref": "GS1-Q99",
+      "question_number": 99,
+      "display_order": 99,
+      "question_text": "Consider the following statements: DNA Barcoding can be a tool to:\n1. assess the age of a plant or animal.\n2. distinguish among species that look alike.\n3. identify undesirable animal or plant materials in processed foods.\nWhich of the statements given above is/are correct?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 and 2 only",
+          "text": "1 only.",
           "display_order": 1
         },
         {
           "label": "b",
           "source_label": "(b)",
-          "text": "2 and 3 only",
+          "text": "3 only.",
           "display_order": 2
         },
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1 and 3 only",
+          "text": "1 and 2.",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1, 2 and 3",
+          "text": "2 and 3.",
           "display_order": 4
         }
       ],
       "correct_option_label": "d"
     },
     {
-      "source_question_ref": "GS1-Q84",
-      "question_number": 84,
-      "display_order": 84,
-      "question_text": "Consider the following:\n1. Exchange-Traded Funds (ETF)\n2. Motor vehicls\n3. Currency swap\nWhich of the above is/are considered financial instruments?",
+      "source_question_ref": "GS1-Q100",
+      "question_number": 100,
+      "display_order": 100,
+      "question_text": "Consider the following:\n1. Carbon monoxide\n2. Nitrogen oxide\n3. Ozone\n4. Sulphur dioxide\nExcess of which of the above in the environment is/are cause(s) of acid rain?",
       "question_type": "mcq",
       "options": [
         {
           "label": "a",
           "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 and 3 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
           "text": "1, 2 and 3",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "1 and 3 only",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q85",
-      "question_number": 85,
-      "display_order": 85,
-      "question_text": "With reference to the sectors of the Indian economy, consider the following pairs:\n| Economic activity | Sector\n1. | Storage of agricultural produce | Secondary\n2. | Dairy farm | Primary\n3. | Mineral exploration | Tertiary\n4. | Weaving cloth | Secondary\nHow many of the pairs given above are correctly matched?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q86",
-      "question_number": 86,
-      "display_order": 86,
-      "question_text": "Consider the following materials:\n1. Agricultural residues\n2. Corn grains\n3. Wastewater treatment sludge\n4. Wood mill waste\nWhich of the above can be used as feedstock for producing Sustainable Aviation Fuel?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 and 2 only",
           "display_order": 1
         },
         {
@@ -2915,494 +3390,17 @@
         {
           "label": "c",
           "source_label": "(c)",
-          "text": "1, 2, 3 and 4",
+          "text": "4 only",
           "display_order": 3
         },
         {
           "label": "d",
           "source_label": "(d)",
-          "text": "1, 3 and 4 only",
+          "text": "1, 3 and 4",
           "display_order": 4
         }
       ],
       "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q87",
-      "question_number": 87,
-      "display_order": 87,
-      "question_text": "With reference to physical capital in Indian economy, consider the following pairs:\n| Items | Category\n1. | Farmer’s plough | Working capital\n2. | Computer | Fixed capital\n3. | Yarn used by the weaver | Fixed capital\n4. | Petrol | Working capital\nHow many of the above pairs are correctly matched?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Only three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "All four",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q88",
-      "question_number": 88,
-      "display_order": 88,
-      "question_text": "Which one of the following words/phrases is most appropriately used to denote “an interoperable network of 3D virtual worlds that can be accessed simultaneously by millions of users, who can exert property rights over virtual items.”?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Big data analytics",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Cryptography",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Metaverse",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Virtual matrix",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q89",
-      "question_number": 89,
-      "display_order": 89,
-      "question_text": "With reference to the rule/rules imposed by the Reserve Bank of India while treating foreign banks, consider the following statements:\n1. There is no minimum capital requirement for wholly owned banking subsidiaries in India.\n2. For wholly owned banking subsidiaries in India, at least 50% of the board members should be Indian nationals.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q90",
-      "question_number": 90,
-      "display_order": 90,
-      "question_text": "With reference to Corporate Social Responsibility (CSR) rules in India, consider the following statements:\n1. CSR rules specify that expenditures that benefit the company directly or the employees will not be considered as CSR activities.\n2. CSR rules do not specify minimum spending on CSR activities.\nWhich of the statements given above is/are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Both 1 and 2",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Neither 1 nor 2",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": null,
-      "dropped_by_upsc": true
-    },
-    {
-      "source_question_ref": "GS1-Q91",
-      "question_number": 91,
-      "display_order": 91,
-      "question_text": "With reference to radioisotope thermoelectric generators (RTGs), consider the following statements:\n1. RTGs are miniature fission reactors\n2. RTGs are used for powering the onboard systems of spacecrafts.\n3. RTGs can use Plutonium-238, which is a by-product of weapons development.\nWhich of the statements given above are correct?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 and 2 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "2 and 3 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "1 and 3 only",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "1, 2 and 3",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q92",
-      "question_number": 92,
-      "display_order": 92,
-      "question_text": "Consider the following statements:\nStatement-I: Giant stars live much longer than dwarf stars.\nStatement-II: Compared to dwarf stars, giant stars have a greater rate of nuclear reactions.\nWhich one of the following is correct in respect of the above statements?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Both Statement-I and Statement-II are correct and Statement-II explains Statement-I",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Both Statement-I and Statement-II are correct but and Statement-II does not explains Statement-I",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Statement-I is correct, but Statement-II is incorrect",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Statement-I is incorrect, but Statement-II is correct",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q93",
-      "question_number": 93,
-      "display_order": 93,
-      "question_text": "Which one of the following is synthesised in human body that dilates blood vessels and increase blood flow?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Nitric oxide",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Nitrous oxide",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Nitrogen dioxide",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Nitrogen pentoxide",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "d"
-    },
-    {
-      "source_question_ref": "GS1-Q94",
-      "question_number": 94,
-      "display_order": 94,
-      "question_text": "Consider the following activities:\n1. Identification of narcotics on passengers at airports or in aircraft\n2. Monitoring of precipitation\n3. Tracking the migration of animals\nIn how many of the above activities can the radars be used?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "All three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "None",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q95",
-      "question_number": 95,
-      "display_order": 95,
-      "question_text": "Consider the following aircraft:\n1. Rafael\n2. MiG-29\n3. Tejas MK-1\nHow many of the above are considered fifth generation fighter aircraft?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Only one",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Only two",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "All three",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "None",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "c"
-    },
-    {
-      "source_question_ref": "GS1-Q96",
-      "question_number": 96,
-      "display_order": 96,
-      "question_text": "In which of the following are hydrogels used?\n1. Controlled drug delivery in patients\n2. Mobile air-conditioning systems\n3. Preparation of industrial lubricants.\nSelect the correct answer using the code given below:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "1 only",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "1 and 2 only",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "2 and 3 only",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "1, 2 and 3",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q97",
-      "question_number": 97,
-      "display_order": 97,
-      "question_text": "Which one of the following is the exhaust pipe emission from Fuel Cell Electric Vehicles, powered by hydrogen?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Hydrogen peroxide",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Hydronium",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Oxygen",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Water vapour",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q98",
-      "question_number": 98,
-      "display_order": 98,
-      "question_text": "Recently the term “pumped-storage hydropower” is actually and appropriately discussed in the context of which one of the following?",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Irrigation of terraced crop fields",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Lift irrigation of cereal crops",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Long duration energy storage",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Rainwater harvesting system",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "b"
-    },
-    {
-      "source_question_ref": "GS1-Q99",
-      "question_number": 99,
-      "display_order": 99,
-      "question_text": "“Membrane Bioreactors” are often discussed in the context of",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Assisted reproductive technologies",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Drug delivery nanotechnologies",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Vaccine production technologies",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Wastewater treatment technologies",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
-    },
-    {
-      "source_question_ref": "GS1-Q100",
-      "question_number": 100,
-      "display_order": 100,
-      "question_text": "With reference to the Indian economy, “Collateral Borrowing and Lending Obligations” are the instruments of:",
-      "question_type": "mcq",
-      "options": [
-        {
-          "label": "a",
-          "source_label": "(a)",
-          "text": "Bond market",
-          "display_order": 1
-        },
-        {
-          "label": "b",
-          "source_label": "(b)",
-          "text": "Forex market",
-          "display_order": 2
-        },
-        {
-          "label": "c",
-          "source_label": "(c)",
-          "text": "Money market",
-          "display_order": 3
-        },
-        {
-          "label": "d",
-          "source_label": "(d)",
-          "text": "Stock market",
-          "display_order": 4
-        }
-      ],
-      "correct_option_label": "a"
     }
   ]
 }
