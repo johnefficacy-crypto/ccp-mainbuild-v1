@@ -419,5 +419,155 @@ def test_add_options_refuses_to_overwrite_a_parsed_option(tmp_path):
 def test_add_options_refuses_to_leave_an_incomplete_set(tmp_path):
     """Filling one hole of two would look repaired while still being damaged."""
     body = _para("1. Stem?") + _para("(a) One\n(b) Two")
-    with pytest.raises(ValueError, match="not a complete a-d"):
+    with pytest.raises(ValueError, match=r"not \['a','b','c','d'\]"):
         mod.apply_corrections(_question(tmp_path, body), {"1": {"add_options": {"d": "Four"}}})
+
+
+# ── five-option papers (a-e) ─────────────────────────────────────────────────
+#
+# The converter was the sole layer capping a question at four options, and it
+# capped SILENTLY: "e" was absent from OPTION_LABELS, so a printed "(e)" matched
+# no marker, fell through to the continuation-append, and was glued onto option
+# (d)'s text. Nothing downstream could see that a fifth option had been eaten.
+# These tests pin both halves of the fix: five is parsed, and anything that is
+# neither a complete a-d nor a complete a-e run still fails by question number.
+
+
+def test_four_option_paper_is_unchanged(tmp_path):
+    """The additive half of the change: a-d papers parse and validate as before."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    )
+    questions = _question(tmp_path, body)
+    assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "d"]
+    assert mod.validate(questions, 1) == []
+
+
+def test_five_option_paper_parses_all_five(tmp_path):
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five")
+    )
+    questions = _question(tmp_path, body)
+    assert questions[0]["options"] == [
+        ("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four"), ("e", "Five"),
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+def test_fifth_option_is_never_absorbed_into_option_d(tmp_path):
+    """The exact silent-corruption shape this change exists to kill."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five")
+    )
+    options = dict(_question(tmp_path, body)[0]["options"])
+    assert options["d"] == "Four"
+    assert "Five" not in options["d"]
+
+
+def test_mixed_paper_carries_four_and_five_side_by_side(tmp_path):
+    """Option count is a per-question property, not a per-paper one."""
+    body = (
+        _para("1. First?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+        + _para("2. Second?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five")
+    )
+    questions = _question(tmp_path, body)
+    assert [len(q["options"]) for q in questions] == [4, 5]
+    assert mod.validate(questions, 2) == []
+
+
+def test_partial_label_set_fails_loudly_with_the_question_number(tmp_path):
+    """a/b/c/e is not a short paper, it is a damaged one — never accept it."""
+    body = (
+        _para("1. Stem?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(e) Five")
+    )
+    questions = _question(tmp_path, body)
+    assert [label for label, _ in questions[0]["options"]] == ["a", "b", "c", "e"]
+    errors = mod.validate(questions, 1)
+    assert any(
+        e.startswith("Q1: options are ['a', 'b', 'c', 'e']")
+        and "['a','b','c','d'] or ['a','b','c','d','e']" in e
+        for e in errors
+    )
+
+
+def test_five_options_from_a_lower_letter_auto_list(tmp_path):
+    """Word holds the marker in numbering.xml, so the text layer carries no "(e)"."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("One", num_id="1")
+        + _para("Two", num_id="1")
+        + _para("Three", num_id="1")
+        + _para("Four", num_id="1")
+        + _para("Five", num_id="1")
+    )
+    tmp = tmp_path / "n"
+    tmp.mkdir()
+    path = _docx(tmp, body)
+    with zipfile.ZipFile(path, "a") as z:
+        z.writestr(
+            "word/numbering.xml",
+            f'<w:numbering xmlns:w="{W}"><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num>'
+            f'<w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0">'
+            f'<w:numFmt w:val="lowerLetter"/></w:lvl></w:abstractNum></w:numbering>',
+        )
+    questions = mod._parse_blocks(path)
+    assert questions[0]["options"] == [
+        ("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four"), ("e", "Five"),
+    ]
+    assert mod.validate(questions, 1) == []
+
+
+@pytest.mark.parametrize("marker", ["{e)", "e)", "(E)", "(e)."])
+def test_repairs_a_damaged_fifth_option_marker(tmp_path, marker):
+    """OPT_LOOSE recovers a damaged "(e)" only where e is the label actually due."""
+    body = (
+        _para("1. Stem?")
+        + _para("(a) One")
+        + _para("(b) Two")
+        + _para("(c) Three")
+        + _para("(d) Four")
+        + _para(f"{marker} Five")
+    )
+    assert _question(tmp_path, body)[0]["options"][-1] == ("e", "Five")
+
+
+def test_shuffled_five_option_set_is_reordered(tmp_path):
+    q = {"options": [("a", "One"), ("e", "Five"), ("c", "Three"), ("b", "Two"), ("d", "Four")]}
+    assert mod._sort_complete_options(q) is True
+    assert [label for label, _ in q["options"]] == ["a", "b", "c", "d", "e"]
+
+
+def test_answer_key_accepts_e_and_still_rejects_beyond_it(tmp_path):
+    key_path = tmp_path / "key.csv"
+    key_path.write_text("question_number,correct_option_label\n1,E\n2,e\n", encoding="utf-8")
+    assert mod._load_answer_key(str(key_path)) == {1: "e", 2: "e"}
+
+    bad = tmp_path / "bad.csv"
+    bad.write_text("question_number,correct_option_label\n1,f\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="is not one of a/b/c/d/e"):
+        mod._load_answer_key(str(bad))
+
+
+def test_envelope_carries_all_five_options(tmp_path):
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five")
+    )
+    envelope = mod.build_envelope(
+        _question(tmp_path, body),
+        ref_prefix="GS1",
+        answer_key={1: "e"},
+        dropped=set(),
+        difficulty=None,
+    )
+    options = envelope["questions"][0]["options"]
+    assert [o["label"] for o in options] == ["a", "b", "c", "d", "e"]
+    assert [o["source_label"] for o in options][-1] == "(e)"
+    assert [o["display_order"] for o in options] == [1, 2, 3, 4, 5]
+    assert envelope["questions"][0]["correct_option_label"] == "e"
