@@ -7,6 +7,8 @@ only surface when the PR5 write-back flag (``FF_MOCK_MASTERY_WRITES``) is
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -14,8 +16,23 @@ from app.api import study_os as study_os_api
 from app.core.auth import get_current_user
 from tests.persona_questions._stub import SBStub
 
-RECENT = "2026-05-20T10:00:00+00:00"
-RECENT_2 = "2026-05-21T10:00:00+00:00"
+
+def _days_ago(n: int) -> str:
+    """Timestamp ``n`` days in the past, as the API returns them.
+
+    The endpoint filters on a rolling ``?days=`` window (90 by default),
+    so fixtures that are meant to be inside it must be relative to *now*.
+    Absolute literals silently age out of the window and turn these tests
+    into time bombs.
+    """
+    return (datetime.now(timezone.utc) - timedelta(days=n)).isoformat()
+
+
+# Comfortably inside the 90-day window, not on its edge. RECENT_2 is the
+# newer of the two so the "newest first" ordering assertion stays stable.
+RECENT = _days_ago(10)
+RECENT_2 = _days_ago(9)
+# Deliberately outside every window the endpoint supports.
 OLD = "2020-01-01T00:00:00+00:00"
 
 _REQUIRED_KEYS = {"id", "at", "kind", "reason_code", "reason_human", "trigger", "mastery_delta_db"}

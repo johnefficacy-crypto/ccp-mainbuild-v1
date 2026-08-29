@@ -1,6 +1,7 @@
 """Tests for the aspirant trap-drill builder + endpoint."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import FastAPI
@@ -184,6 +185,18 @@ def test_endpoint_rejects_oversized_request():
 # ─── Adaptive ranking ──────────────────────────────────────────────────────
 
 
+def _days_ago(n: int) -> str:
+    """Timestamp ``n`` days in the past, as Supabase returns them.
+
+    ``_adaptive_history`` only reads attempts inside a rolling
+    ``ADAPTIVE_HISTORY_DAYS`` (90) window, so an attempt that is meant to
+    personalise the drill has to be relative to *now*. An absolute literal
+    eventually falls out of the window and the test starts failing on a
+    calendar date rather than on a code change.
+    """
+    return (datetime.now(timezone.utc) - timedelta(days=n)).isoformat()
+
+
 def _seed_with_attempts(missed_qid: str | None = None) -> dict[str, Any]:
     db = _seed()
     db.setdefault("user_trap_drill_attempts", [])
@@ -197,7 +210,7 @@ def _seed_with_attempts(missed_qid: str | None = None) -> dict[str, Any]:
                 "option_id": None,
                 "is_correct": False,
                 "drill_seed": "1234",
-                "attempted_at": "2026-05-10T12:00:00+00:00",
+                "attempted_at": _days_ago(10),
             }
         )
     return db
