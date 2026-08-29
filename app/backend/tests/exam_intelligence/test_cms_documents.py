@@ -619,3 +619,168 @@ def test_complete_upload_enqueue_failure_non_archive_state_change_returns_409():
     assert "processed" in detail.get("message", "")
     # Asset must remain in the concurrent state — rollback must not have overwritten it.
     assert sb.db["document_assets"][0]["status"] == "processed"
+
+
+# ── 8. .docx upload + selectable processing_policy ────────────────────────
+
+_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def _docx_body(**over) -> dict:
+    base = {"filename": "ifsca-ga-2023.docx", "mime_type": _DOCX,
+            "document_kind": "pyq_paper", "title": "IFSCA GA 2023"}
+    base.update(over)
+    return _upload_body(**base)
+
+
+def test_docx_upload_url_to_complete_upload_stores_without_extraction():
+    """A .docx goes end to end: URL minted, asset created store_only, and
+    complete-upload finalises it to 'processed' with no extraction job."""
+    sb = DocSBStub({**_seed(), "document_processing_jobs": [], "admin_audit_logs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_docx_body())
+    assert up.status_code == 200, up.text
+    assert up.json()["processing_policy"] == "store_only"
+    doc_id = up.json()["document_id"]
+    row = sb.db["document_assets"][0]
+    assert row["mime_type"] == _DOCX
+    assert row["processing_policy"] == "store_only"
+    assert row["status"] == "uploaded"
+
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": doc_id})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["text_extract_enqueued"] is False
+    assert body["document"]["processing_policy"] == "store_only"
+    asset = next(a for a in sb.db["document_assets"] if a["id"] == doc_id)
+    assert asset["status"] == "processed"
+    # Server-computed hash over the stored bytes — never the placeholder.
+    assert asset["content_hash"] and not asset["content_hash"].startswith("pending:")
+    assert sb.db["document_processing_jobs"] == []
+    audit = sb.db["admin_audit_logs"][-1]
+    assert audit["new_value"]["extraction_attempted"] is False
+
+
+def test_docx_upload_url_rejects_pdf_filename():
+    """The extension is checked against the declared mime, not just allowlisted."""
+    sb = DocSBStub(_seed())
+    r = _client(sb).post(f"{_BASE}/upload-url", json=_docx_body(filename="paper.pdf"))
+    assert r.status_code == 400, r.text
+    assert "docx" in str(r.json().get("detail")).lower()
+
+
+def test_docx_cannot_request_extraction():
+    """No extractor exists for .docx, so anything but store_only is refused at
+    the door rather than left to fail inside a job."""
+    sb = DocSBStub(_seed())
+    r = _client(sb).post(f"{_BASE}/upload-url", json=_docx_body(processing_policy="extract_text"))
+    assert r.status_code == 422, r.text
+    assert "store_only" in str(r.json().get("detail"))
+    assert sb.db.get("document_assets", []) == []
+
+
+def test_pdf_default_policy_unchanged_when_omitted():
+    """Regression guard for existing clients: a PDF upload that sends no
+    processing_policy still gets extract_text and still enqueues extraction."""
+    sb = DocSBStub({**_seed(), "document_processing_jobs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body())
+    assert up.status_code == 200, up.text
+    assert up.json()["processing_policy"] == "extract_text"
+    assert sb.db["document_assets"][0]["processing_policy"] == "extract_text"
+
+    doc_id = up.json()["document_id"]
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": doc_id})
+    assert r.status_code == 200, r.text
+    assert r.json()["text_extract_enqueued"] is True
+    jobs = [j for j in sb.db["document_processing_jobs"] if j["document_id"] == doc_id]
+    assert len(jobs) == 1 and jobs[0]["job_type"] == "text_extract"
+
+
+def test_pdf_store_only_skips_extraction():
+    """store_only is opt-in for PDF: no job, no extractor run, straight to
+    'processed'."""
+    sb = DocSBStub({**_seed(), "document_processing_jobs": [], "admin_audit_logs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body(processing_policy="store_only"))
+    assert up.status_code == 200, up.text
+    doc_id = up.json()["document_id"]
+    assert sb.db["document_assets"][0]["processing_policy"] == "store_only"
+
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": doc_id})
+    assert r.status_code == 200, r.text
+    assert r.json()["text_extract_enqueued"] is False
+    asset = next(a for a in sb.db["document_assets"] if a["id"] == doc_id)
+    assert asset["status"] == "processed"
+    assert sb.db["document_processing_jobs"] == []
+
+
+def test_complete_upload_can_override_policy_to_store_only():
+    """An operator who minted the URL with the PDF default can still stop the
+    extraction at complete-upload time."""
+    sb = DocSBStub({**_seed(), "document_processing_jobs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body())
+    doc_id = up.json()["document_id"]
+    r = _client(sb).post(
+        f"{_BASE}/complete-upload",
+        json={"document_id": doc_id, "processing_policy": "store_only"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["text_extract_enqueued"] is False
+    asset = next(a for a in sb.db["document_assets"] if a["id"] == doc_id)
+    assert asset["processing_policy"] == "store_only"
+    assert asset["status"] == "processed"
+    assert sb.db["document_processing_jobs"] == []
+
+
+def test_unsupported_mime_still_rejected_at_both_ends():
+    """Widening the allowlist to two entries must not open it to anything else."""
+    sb = DocSBStub(_seed())
+    r = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body(mime_type="image/png", filename="x.png"))
+    assert r.status_code == 400, r.text
+    assert sb.db.get("document_assets", []) == []
+
+    sb2 = DocSBStub({
+        **_seed(),
+        "document_assets": [
+            {"id": "d1", "scope": "admin_exam_intelligence", "document_kind": "pyq_paper",
+             "status": "uploaded", "mime_type": "image/png",
+             "storage_bucket": "b", "storage_path": "p1.png", "content_hash": "pending:x"}
+        ],
+    })
+    r2 = _client(sb2).post(f"{_BASE}/complete-upload", json={"document_id": "d1"})
+    assert r2.status_code == 400, r2.text
+    assert sb2.db["document_assets"][0]["status"] == "uploaded"
+
+
+def test_processing_policy_outside_check_set_rejected():
+    """A value outside the document_assets CHECK never reaches the insert."""
+    sb = DocSBStub(_seed())
+    r = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body(processing_policy="transcribe"))
+    assert r.status_code == 422, r.text
+    assert "processing_policy" in str(r.json().get("detail"))
+    assert sb.db.get("document_assets", []) == []
+
+
+def test_complete_upload_rejects_processing_policy_outside_check_set():
+    sb = DocSBStub({**_seed(), "document_processing_jobs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body())
+    doc_id = up.json()["document_id"]
+    r = _client(sb).post(
+        f"{_BASE}/complete-upload",
+        json={"document_id": doc_id, "processing_policy": "transcribe"},
+    )
+    assert r.status_code == 422, r.text
+    asset = next(a for a in sb.db["document_assets"] if a["id"] == doc_id)
+    # Nothing mutated: still awaiting a valid completion.
+    assert asset["status"] == "uploaded"
+    assert sb.db["document_processing_jobs"] == []
+
+
+def test_deep_parse_accepted_for_pdf_and_still_extracts():
+    """deep_parse is in the CHECK set and PDF is extractable, so it is accepted
+    and keeps the extraction path."""
+    sb = DocSBStub({**_seed(), "document_processing_jobs": []})
+    up = _client(sb).post(f"{_BASE}/upload-url", json=_upload_body(processing_policy="deep_parse"))
+    assert up.status_code == 200, up.text
+    assert sb.db["document_assets"][0]["processing_policy"] == "deep_parse"
+    r = _client(sb).post(f"{_BASE}/complete-upload", json={"document_id": up.json()["document_id"]})
+    assert r.status_code == 200, r.text
+    assert r.json()["text_extract_enqueued"] is True

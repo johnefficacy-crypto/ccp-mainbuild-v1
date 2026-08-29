@@ -63,7 +63,64 @@ _SYLLABUS_DOCTYPE = {
 }
 
 _PDF_MIME = "application/pdf"
+_DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+# Accepted upload types, mapped to the filename extension each requires. The
+# extension is checked as well as the mime because the mime is client-asserted
+# and the storage path is built from the filename.
+ACCEPTED_UPLOAD_MIMES: dict[str, str] = {
+    _PDF_MIME: "pdf",
+    _DOCX_MIME: "docx",
+}
+
+# document_assets.processing_policy CHECK (migration 111).
+PROCESSING_POLICIES = ("store_only", "extract_text", "deep_parse", "ocr_required")
+
+# Only PDFs have an extractor: text_extract refuses anything else with
+# unsupported_mime (library/text_extract.py). A type outside this set may only
+# be stored, so asking for any other policy on one is refused at the door
+# rather than left to fail later inside a job.
+EXTRACTABLE_MIMES = frozenset({_PDF_MIME})
+
+# Default policy when the caller omits processing_policy.
+#
+# PDF keeps extract_text. This route hardcoded it from the day it was written,
+# and both existing callers — DocumentsPanel.jsx and the PYQ workbench upload —
+# send no policy and then poll for extraction status and page counts. Defaulting
+# them to store_only would leave those affordances permanently empty without a
+# single caller changing, so store_only is opt-in for PDF.
+#
+# docx has no existing callers and no extractor, so store_only is the only
+# honest default for it.
+DEFAULT_PROCESSING_POLICY: dict[str, str] = {
+    _PDF_MIME: "extract_text",
+    _DOCX_MIME: "store_only",
+}
+
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _resolve_processing_policy(mime_type: str, requested: str | None) -> str:
+    """Validate a requested policy, or supply the per-type default.
+
+    Raises HTTPException on a value outside the column CHECK, or on any policy
+    but store_only for a type with no extractor.
+    """
+    policy = requested or DEFAULT_PROCESSING_POLICY.get(mime_type, "store_only")
+    if policy not in PROCESSING_POLICIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"processing_policy must be one of {list(PROCESSING_POLICIES)}",
+        )
+    if policy != "store_only" and mime_type not in EXTRACTABLE_MIMES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"processing_policy {policy!r} is not available for mime_type "
+                f"{mime_type!r}; only 'store_only' is supported for it"
+            ),
+        )
+    return policy
 
 
 def _bucket() -> str:
@@ -158,6 +215,7 @@ def _shape(row: dict) -> dict:
         "content_hash": row.get("content_hash"),
         "page_count": row.get("page_count"),
         "visibility": row.get("visibility"),
+        "processing_policy": row.get("processing_policy"),
         "status": row.get("status"),
         "exam_identity": row.get("exam_identity"),
         "structural_format": row.get("structural_format"),
@@ -187,11 +245,17 @@ class DocUploadUrlRequest(BaseModel):
     structural_format: str | None = Field(default=None, max_length=60)
     source_kind: str | None = Field(default=None, max_length=40)
     sanitized_from_document_id: str | None = None
+    # Omitted -> DEFAULT_PROCESSING_POLICY for the mime type. Validated against
+    # the document_assets CHECK, not free text.
+    processing_policy: str | None = Field(default=None, max_length=40)
 
 
 class DocCompleteUploadRequest(BaseModel):
     document_id: str = Field(min_length=1)
     client_hash: str | None = Field(default=None, max_length=128)
+    # Late override: lets an operator change their mind between minting the URL
+    # and finalising. Omitted keeps whatever upload-url stored.
+    processing_policy: str | None = Field(default=None, max_length=40)
 
 
 class LinkSyllabusRequest(BaseModel):
@@ -216,10 +280,18 @@ def create_document_upload_url(
 ) -> dict[str, Any]:
     if body.document_kind not in ADMIN_DOC_KINDS:
         raise HTTPException(status_code=422, detail=f"document_kind must be one of {sorted(ADMIN_DOC_KINDS)}")
-    if body.mime_type != _PDF_MIME:
-        raise HTTPException(status_code=400, detail="Only application/pdf is accepted")
-    if _extension(body.filename) != "pdf":
-        raise HTTPException(status_code=400, detail="filename must be a .pdf")
+    if body.mime_type not in ACCEPTED_UPLOAD_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"mime_type must be one of {sorted(ACCEPTED_UPLOAD_MIMES)}",
+        )
+    expected_ext = ACCEPTED_UPLOAD_MIMES[body.mime_type]
+    if _extension(body.filename) != expected_ext:
+        raise HTTPException(
+            status_code=400,
+            detail=f"filename must be a .{expected_ext} for mime_type {body.mime_type!r}",
+        )
+    processing_policy = _resolve_processing_policy(body.mime_type, body.processing_policy)
     if body.size_bytes > _max_bytes():
         raise HTTPException(status_code=400, detail={"code": "file_too_large", "max_bytes": _max_bytes()})
 
@@ -283,7 +355,7 @@ def create_document_upload_url(
         # Real hash is computed at complete-upload; the column is NOT NULL so
         # a unique placeholder holds the slot until then.
         "content_hash": f"pending:{uuid4().hex}",
-        "processing_policy": "extract_text",
+        "processing_policy": processing_policy,
         "visibility": "admin_only",
         "status": "uploaded",
         "exam_identity": exam_identity_val,
@@ -309,10 +381,12 @@ def create_document_upload_url(
             "exam_identity": exam_identity_val,
             "structural_format": structural_format_val,
             "source_kind": source_kind_val,
+            "processing_policy": processing_policy,
         },
     )
     return {
         "document_id": row.get("id"),
+        "processing_policy": processing_policy,
         "storage_bucket": bucket,
         "storage_path": path,
         "upload_url": upload_url,
@@ -330,8 +404,17 @@ def complete_document_upload(
     row = _load_admin_asset(sb, body.document_id)
     if not row:
         raise HTTPException(status_code=404, detail="Document not found")
-    if row.get("mime_type") != _PDF_MIME:
-        raise HTTPException(status_code=400, detail="Only application/pdf documents can be processed")
+    if row.get("mime_type") not in ACCEPTED_UPLOAD_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"mime_type must be one of {sorted(ACCEPTED_UPLOAD_MIMES)}",
+        )
+    # A late override is validated on the same terms as at upload-url; omitted
+    # keeps whatever that call stored.
+    processing_policy = _resolve_processing_policy(
+        row.get("mime_type"),
+        body.processing_policy or row.get("processing_policy"),
+    )
     # Only allow completion from the initial 'uploaded' state.
     current_status = row.get("status")
     if current_status != "uploaded":
@@ -357,8 +440,18 @@ def complete_document_upload(
     else:
         raise HTTPException(status_code=400, detail="content_hash unavailable: storage read failed and no client_hash provided")
 
-    patch = {"content_hash": content_hash, "file_size_bytes": size, "status": "processing"}
-    # CAS: only flip to processing if status is still uploaded (archive race guard).
+    # store_only registers the file as provenance and stops there: no job is
+    # enqueued and no extractor runs, so the document is complete the moment its
+    # hash is known and goes straight to 'processed'. Anything else keeps the
+    # original uploaded -> processing -> extract path untouched.
+    store_only = processing_policy == "store_only"
+    patch = {
+        "content_hash": content_hash,
+        "file_size_bytes": size,
+        "processing_policy": processing_policy,
+        "status": "processed" if store_only else "processing",
+    }
+    # CAS: only flip off 'uploaded' if status is still uploaded (archive race guard).
     cas_result = (
         sb.table("document_assets")
         .update(patch)
@@ -374,6 +467,20 @@ def complete_document_upload(
         if refreshed and refreshed.get("status") == "archived":
             raise HTTPException(status_code=409, detail={"error": "document_archived", "message": "document was archived before processing could begin"})
         raise HTTPException(status_code=409, detail={"error": "concurrent_state_change", "message": "document status changed concurrently; reload and retry"})
+
+    if store_only:
+        _audit(
+            sb, admin, "exam_intel.cms.document.complete_upload",
+            entity_type="document_asset", entity_id=row["id"],
+            new_value={
+                "content_hash": content_hash,
+                "processing_policy": processing_policy,
+                "enqueued": False,
+                "extraction_attempted": False,
+            },
+        )
+        final_row = _load_admin_asset(sb, row["id"]) or {**row, **patch}
+        return {"ok": True, "document": _shape(final_row), "text_extract_enqueued": False}
 
     enqueued = False
     job_id: str | None = None
@@ -440,6 +547,7 @@ def complete_document_upload(
         entity_type="document_asset", entity_id=row["id"],
         new_value={
             "content_hash": content_hash,
+            "processing_policy": processing_policy,
             "enqueued": enqueued,
             "extraction_attempted": job_id is not None,
         },
