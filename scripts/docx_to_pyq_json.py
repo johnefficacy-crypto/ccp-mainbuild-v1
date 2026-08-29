@@ -657,8 +657,18 @@ def _sort_complete_options(q: dict) -> bool:
     return True
 
 
-def validate(questions: list[dict], expected_count: int | None) -> list[str]:
-    """Structural checks. Every failure is a hard error, never a silent repair."""
+def validate(questions: list[dict], expected_count: int | None,
+             descriptive: bool = False) -> list[str]:
+    """Structural checks. Every failure is a hard error, never a silent repair.
+
+    ``descriptive`` switches off the option checks for a Phase II English paper —
+    essay topics, precis passages and comprehension questions carry no options at
+    all, so a complete a-d/a-e label set is the wrong thing to demand. It does not
+    switch off checking: an empty stem, a non-contiguous question run and a wrong
+    question count are all still errors, and a descriptive paper that DID parse
+    options is itself an error, because that is an MCQ paper converted under the
+    wrong flag and its options would be silently discarded.
+    """
     errors: list[str] = []
 
     if expected_count is not None and len(questions) != expected_count:
@@ -668,6 +678,18 @@ def validate(questions: list[dict], expected_count: int | None) -> list[str]:
         n = q["number"]
         if not q["stem_parts"]:
             errors.append(f"Q{n}: empty stem")
+        if descriptive:
+            # The one option check a descriptive paper keeps, inverted: options here
+            # mean the paper is an MCQ one and --descriptive would throw them away.
+            if q["options"]:
+                labels = [label for label, _ in q["options"]]
+                errors.append(
+                    f"Q{n}: --descriptive was given but the question parsed "
+                    f"{len(q['options'])} options {labels} — convert this paper "
+                    f"without --descriptive, or its options would be discarded"
+                )
+            continue
+
         labels = [label for label, _ in q["options"]]
         if not _is_complete_label_set(labels):
             errors.append(
@@ -841,12 +863,18 @@ def build_envelope(
     answer_key: dict[int, str],
     dropped: set[int],
     difficulty: str | None,
+    descriptive: bool = False,
 ) -> dict:
     """Emit the v2 bulk-import envelope.
 
     ``question_number`` and ``display_order`` both carry the printed number: each
     is uniquely indexed per paper (migration 223), and keeping them equal means
     the printed order survives a re-import.
+
+    ``descriptive`` emits ``question_type="descriptive"`` rows carrying only the
+    stem: no ``options`` key at all, and no ``correct_option_label``. A Phase II
+    English paper has neither, and emitting them empty would assert a shape the
+    paper does not have.
     """
     rows = []
     for q in questions:
@@ -856,8 +884,10 @@ def build_envelope(
             "question_number": n,
             "display_order": n,
             "question_text": "\n".join(q["stem_parts"]).strip(),
-            "question_type": "mcq",
-            "options": [
+            "question_type": "descriptive" if descriptive else "mcq",
+        }
+        if not descriptive:
+            row["options"] = [
                 {
                     "label": label,
                     "source_label": f"({label})",
@@ -865,9 +895,8 @@ def build_envelope(
                     "display_order": i + 1,
                 }
                 for i, (label, otext) in enumerate(q["options"])
-            ],
-            "correct_option_label": answer_key.get(n),
-        }
+            ]
+            row["correct_option_label"] = answer_key.get(n)
         if difficulty:
             row["observed_difficulty"] = difficulty
         if n in dropped:
@@ -900,8 +929,19 @@ def main(argv: list[str] | None = None) -> int:
                     help="observed_difficulty for every row; the mock projection only "
                          "honours these three values (migration 183)")
     ap.add_argument("-o", "--out", help="Write envelope JSON here")
+    ap.add_argument("--descriptive", action="store_true",
+                    help="Phase II English paper: emit question_type='descriptive' rows "
+                         "carrying only the stem. No options, no answer key.")
     ap.add_argument("--report", action="store_true", help="Print a parse summary to stderr")
     args = ap.parse_args(argv)
+
+    if args.descriptive and args.answer_key:
+        # A descriptive paper has no correct option to key, so a key supplied
+        # alongside --descriptive means one of the two is wrong about the paper.
+        # Refuse rather than silently ignore whichever the operator meant.
+        print("--answer-key cannot be combined with --descriptive: a descriptive "
+              "paper has no correct option to key", file=sys.stderr)
+        return 2
 
     lines = _read_lines(args.docx)
     marker_name, pattern = detect_marker(lines)
@@ -921,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
             if _names_statement_indices(q["options"]) and _number_unmarked(q):
                 renumbered.append(q["number"])
 
-    errors = validate(questions, args.expect)
+    errors = validate(questions, args.expect, descriptive=args.descriptive)
 
     dropped = {int(x) for x in args.dropped.split(",") if x.strip()}
     unknown = sorted(d for d in dropped if d > len(questions) or d < 1)
@@ -942,6 +982,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report:
         print(f"parsed {len(questions)} questions from {args.docx}", file=sys.stderr)
+        if args.descriptive:
+            print("  descriptive mode: question_type='descriptive', no options, no key",
+                  file=sys.stderr)
         print(f"  marker style {marker_name!r}, option style {option_style!r}, "
               f"set {args.set_code}, year {args.year}, "
               f"dropped {sorted(dropped) or 'none'}", file=sys.stderr)
@@ -968,9 +1011,14 @@ def main(argv: list[str] | None = None) -> int:
         answer_key=answer_key,
         dropped=dropped,
         difficulty=args.difficulty,
+        descriptive=args.descriptive,
     )
 
-    if not answer_key:
+    if not answer_key and not args.descriptive:
+        # Silent under --descriptive: that envelope has no correct_option_label
+        # to be null, and it is not bound for the v2 preflight at all. Warning
+        # about both would send the operator looking for a key that does not
+        # exist for this paper.
         print(
             "warning: no --answer-key supplied; correct_option_label is null on every row "
             "and preflight will reject this envelope",
