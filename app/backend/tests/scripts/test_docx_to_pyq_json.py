@@ -1009,3 +1009,128 @@ def test_validate_does_not_renumber_the_stem_as_a_side_effect(tmp_path):
         "1. Jhelum River passes through Wular Lake.",
         "2. Krishna River directly feeds Kolleru Lake.",
     ]
+
+
+# ── descriptive mode (Phase II English papers) ───────────────────────────────
+#
+# Five PFRDA/IFSCA Phase II English papers carry essay topics, precis passages
+# and comprehension questions — no options, no answer key. The converter is
+# MCQ-only, so every question failed the complete-label-set gate and the papers
+# emitted nothing usable. --descriptive turns off the OPTION checks only; empty
+# stems, a broken question run and a wrong count remain errors.
+
+
+def _descriptive_paper(tmp_path, name="desc.docx"):
+    body = (
+        _para("1. Write an essay in about 300 words on: The role of pension "
+              "regulation in a developing economy.")
+        + _para("2. Make a precis of the following passage in about one-third of "
+                "its length and suggest a suitable title.")
+        + _para("3. Read the passage above and answer: what does the author "
+                "identify as the principal constraint on coverage?")
+    )
+    return _question(tmp_path, body, name)
+
+
+def test_descriptive_paper_validates_with_no_options(tmp_path):
+    questions = _descriptive_paper(tmp_path)
+    assert len(questions) == 3
+    assert all(q["options"] == [] for q in questions)
+    assert mod.validate(questions, 3, descriptive=True) == []
+
+
+def test_descriptive_paper_fails_without_the_flag(tmp_path):
+    """Without --descriptive these are just questions with no options."""
+    errors = mod.validate(_descriptive_paper(tmp_path), 3)
+    assert len(errors) == 3
+    assert all("options are none" in e for e in errors)
+
+
+def test_descriptive_envelope_omits_options_and_key(tmp_path):
+    envelope = mod.build_envelope(
+        _descriptive_paper(tmp_path), ref_prefix="P2P1", answer_key={},
+        dropped=set(), difficulty=None, descriptive=True,
+    )
+    row = envelope["questions"][0]
+    assert envelope["format_version"] == 2
+    assert row["question_type"] == "descriptive"
+    assert "options" not in row
+    assert "correct_option_label" not in row
+    assert row["question_number"] == 1 and row["display_order"] == 1
+    assert row["source_question_ref"] == "P2P1-Q1"
+    assert row["question_text"].startswith("Write an essay in about 300 words")
+
+
+def test_descriptive_still_reports_an_empty_stem(tmp_path):
+    """Turning off the option checks must not turn off the rest."""
+    q = [{"number": 1, "stem_parts": [], "options": [], "has_table": False}]
+    assert any("empty stem" in e for e in mod.validate(q, 1, descriptive=True))
+
+
+def test_descriptive_still_reports_a_broken_question_run(tmp_path):
+    q = [
+        {"number": 1, "stem_parts": ["a"], "options": [], "has_table": False},
+        {"number": 3, "stem_parts": ["b"], "options": [], "has_table": False},
+    ]
+    errors = mod.validate(q, 2, descriptive=True)
+    assert any("not a contiguous" in e for e in errors)
+
+
+def test_descriptive_still_reports_a_wrong_question_count(tmp_path):
+    errors = mod.validate(_descriptive_paper(tmp_path), 5, descriptive=True)
+    assert any("parsed 3 questions, expected 5" in e for e in errors)
+
+
+def test_descriptive_refuses_a_paper_that_parsed_options(tmp_path):
+    """An MCQ paper converted under --descriptive would lose its options silently."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    )
+    errors = mod.validate(_question(tmp_path, body), 1, descriptive=True)
+    assert len(errors) == 1
+    assert "--descriptive was given but the question parsed 4 options" in errors[0]
+    assert "would be discarded" in errors[0]
+
+
+def test_answer_key_is_rejected_with_descriptive(tmp_path, capsys):
+    key = tmp_path / "key.csv"
+    key.write_text("question_number,correct_option_label\n1,a\n", encoding="utf-8")
+    body = _para("1. Write an essay.")
+    rc = mod.main([_docx(tmp_path, body, "k.docx"), "--year", "2023", "--set-code", "A",
+                   "--descriptive", "--answer-key", str(key)])
+    assert rc == 2
+    assert "--answer-key cannot be combined with --descriptive" in capsys.readouterr().err
+
+
+# ── MCQ behaviour is untouched ───────────────────────────────────────────────
+
+
+def test_mcq_envelope_unchanged_when_descriptive_not_given(tmp_path):
+    """The default path must emit exactly what it emitted before the flag existed."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    )
+    questions = _question(tmp_path, body)
+    assert mod.validate(questions, 1) == []
+    assert mod.build_envelope(
+        questions, ref_prefix="GS1", answer_key={1: "b"},
+        dropped=set(), difficulty=None,
+    ) == {
+        "format_version": 2,
+        "questions": [{
+            "source_question_ref": "GS1-Q1",
+            "question_number": 1,
+            "display_order": 1,
+            "question_text": "Which one of the following is correct?",
+            "question_type": "mcq",
+            "options": [
+                {"label": "a", "source_label": "(a)", "text": "One", "display_order": 1},
+                {"label": "b", "source_label": "(b)", "text": "Two", "display_order": 2},
+                {"label": "c", "source_label": "(c)", "text": "Three", "display_order": 3},
+                {"label": "d", "source_label": "(d)", "text": "Four", "display_order": 4},
+            ],
+            "correct_option_label": "b",
+        }],
+    }
