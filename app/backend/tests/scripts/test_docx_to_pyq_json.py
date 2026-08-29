@@ -12,6 +12,7 @@ Coverage targets the two pieces of logic that can silently corrupt a paper:
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import zipfile
 
@@ -1159,3 +1160,221 @@ def test_mcq_still_warns_when_no_answer_key_is_given(tmp_path, capsys):
                    "--expect", "1", "-o", str(out)])
     assert rc == 0
     assert "no --answer-key supplied" in capsys.readouterr().err
+
+
+# ── the document's own answer-key table ──────────────────────────────────────
+#
+# Four SEBI Phase 1 Commerce papers print their key as a trailing
+# "Question | Answer" table. _parse_lines appends every table row to the open
+# stem, so the whole key landed on the paper's FINAL question. The key itself
+# imported correctly (pyq_options carried exactly one is_correct per question);
+# what leaked was the text — an aspirant served that last question was shown the
+# answers to the entire paper. The four stems were stripped in the database by
+# hand; these tests are what stops the next import from recreating them.
+
+
+def _cells(values):
+    return "".join(
+        f"<w:tc><w:p><w:r><w:t>{v}</w:t></w:r></w:p></w:tc>" for v in values
+    )
+
+
+def _key_table(rows, header=("Question", "Answer")):
+    trs = f"<w:tr>{_cells(header)}</w:tr>"
+    trs += "".join(f"<w:tr>{_cells(row)}</w:tr>" for row in rows)
+    return f"<w:tbl>{trs}</w:tbl>"
+
+
+def _mcq(n, labels="abcd"):
+    opts = "\n".join(f"({label}) Option {label.upper()}" for label in labels)
+    return _para(f"{n}. Stem {n}?") + _para(opts)
+
+
+def _paper(count, labels="abcd"):
+    return "".join(_mcq(n, labels) for n in range(1, count + 1))
+
+
+def _envelope(tmp_path, body, *, name="k.docx", extra=(), expect=None):
+    out = tmp_path / f"{name}.json"
+    argv = [_docx(tmp_path, body, name), "--year", "2023", "--set-code", "A",
+            "--expect", str(expect if expect is not None else 1),
+            "-o", str(out), *extra]
+    rc = mod.main(argv)
+    return rc, (json.loads(out.read_text(encoding="utf-8")) if rc == 0 else None)
+
+
+def test_trailing_key_table_is_excluded_from_the_final_question_stem(tmp_path):
+    """The leak itself: the key table must not reach the last question's text."""
+    body = _paper(3) + _key_table([("1", "A"), ("2", "C"), ("3", "B")])
+    questions, key = mod._parse_document(_docx(tmp_path, body, "leak.docx"))
+
+    assert [q["stem_parts"] for q in questions] == [["Stem 1?"], ["Stem 2?"], ["Stem 3?"]]
+    # Not merely "the answers are absent" — no trace of the table at all.
+    assert "|" not in "\n".join(questions[-1]["stem_parts"])
+    assert questions[-1]["has_table"] is False
+    assert key == {1: "a", 2: "c", 3: "b"}
+
+
+def test_key_table_is_emitted_as_correct_option_label_without_an_answer_key_csv(tmp_path):
+    """Structured emission: a document carrying its own key needs no --answer-key."""
+    body = _paper(2) + _key_table([("1", "D"), ("2", "B")])
+    rc, envelope = _envelope(tmp_path, body, name="emit.docx", expect=2)
+
+    assert rc == 0
+    assert [row["correct_option_label"] for row in envelope["questions"]] == ["d", "b"]
+    assert [row["question_text"] for row in envelope["questions"]] == ["Stem 1?", "Stem 2?"]
+
+
+def test_key_table_with_trailing_empty_rows_keys_only_the_filled_rows(tmp_path):
+    """Authors pad the table past the paper: "11 |", "12 |" under a 10-question
+    paper. Padding is skipped, and it does not disqualify the table."""
+    rows = [(str(n), "ABCD"[(n - 1) % 4]) for n in range(1, 11)]
+    rows += [("11", ""), ("12", "")]
+    body = _paper(10) + _key_table(rows)
+
+    questions, key = mod._parse_document(_docx(tmp_path, body, "pad.docx"))
+    assert sorted(key) == list(range(1, 11))
+    assert 11 not in key and 12 not in key
+    assert questions[-1]["stem_parts"] == ["Stem 10?"]
+
+    rc, envelope = _envelope(tmp_path, body, name="pad2.docx", expect=10)
+    assert rc == 0
+    assert [row["correct_option_label"] for row in envelope["questions"]] == [
+        "a", "b", "c", "d", "a", "b", "c", "d", "a", "b",
+    ]
+
+
+def test_five_option_key_table_normalises_uppercase_labels_to_lowercase(tmp_path):
+    """Printed keys are uppercase; pyq_options.option_label is lowercase. The
+    case is normalised at the boundary, so an "E" key matches option ("e")."""
+    body = _paper(2, labels="abcde") + _key_table([("1", "E"), ("2", "e")])
+    rc, envelope = _envelope(tmp_path, body, name="five.docx", expect=2)
+
+    assert rc == 0
+    for row in envelope["questions"]:
+        assert row["correct_option_label"] == "e"
+        # The key resolves against an option that actually exists on the row.
+        assert row["correct_option_label"] in [o["label"] for o in row["options"]]
+    assert [o["label"] for o in envelope["questions"][0]["options"]] == list("abcde")
+
+
+def test_document_with_no_key_table_is_left_completely_untouched(tmp_path):
+    """Byte-identical output is the contract: pyq_bulk_import dedupes on
+    normalized_question_hash, so a stem that drifts re-imports as a new question.
+    The line stream is returned unchanged — the same object, not merely an equal
+    one — so nothing downstream can differ."""
+    body = _paper(2)
+    lines = mod._read_lines(_docx(tmp_path, body, "plain.docx"))
+    kept, key = mod._split_embedded_answer_key(lines)
+
+    assert kept is lines
+    assert key == {}
+
+    rc, envelope = _envelope(tmp_path, body, name="plain2.docx", expect=2)
+    assert rc == 0
+    assert [row["question_text"] for row in envelope["questions"]] == ["Stem 1?", "Stem 2?"]
+    assert [row["correct_option_label"] for row in envelope["questions"]] == [None, None]
+
+
+def test_a_trailing_content_table_is_not_read_as_a_key(tmp_path):
+    """Shape-gating, from the other side: a pairs table printed last is content
+    and still belongs to the stem it was printed under."""
+    tbl = f"<w:tbl><w:tr>{_cells(('Party', 'Leader'))}</w:tr>" \
+          f"<w:tr>{_cells(('Swatantra', 'Rajagopalachari'))}</w:tr></w:tbl>"
+    body = _para("1. Consider the following pairs:") + tbl + _para(
+        "(a) One\n(b) Two\n(c) Three\n(d) Four")
+
+    lines = mod._read_lines(_docx(tmp_path, body, "pairs.docx"))
+    kept, key = mod._split_embedded_answer_key(lines)
+    assert kept is lines
+    assert key == {}
+
+    questions = mod._parse_blocks(_docx(tmp_path, body, "pairs2.docx"))
+    assert "Swatantra | Rajagopalachari" in questions[0]["stem_parts"]
+
+
+def test_key_table_naming_more_questions_than_the_paper_fails_loudly(tmp_path, capsys):
+    """Truncating to the questions that exist would key the rest against a
+    document nobody checked."""
+    rows = [(str(n), "A") for n in range(1, 13)]
+    body = _paper(10) + _key_table(rows)
+    rc, _ = _envelope(tmp_path, body, name="over.docx", expect=10)
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "names questions outside the paper's 1..10: [11, 12]" in err
+    assert "answer-key table" in err
+
+
+def test_key_table_short_of_the_question_count_fails_loudly(tmp_path, capsys):
+    """The other direction: a key that stops early must not import a paper whose
+    tail silently carries no correct option."""
+    body = _paper(10) + _key_table([(str(n), "A") for n in range(1, 9)])
+    rc, _ = _envelope(tmp_path, body, name="short.docx", expect=10)
+
+    assert rc == 1
+    assert "is missing non-dropped questions: [9, 10]" in capsys.readouterr().err
+
+
+def test_key_table_disagreeing_with_an_answer_key_csv_is_an_error(tmp_path, capsys):
+    """Two keys that differ is not a tie to break — neither is trustworthy."""
+    key_path = tmp_path / "key.csv"
+    key_path.write_text("question_number,correct_option_label\n1,a\n2,b\n", encoding="utf-8")
+    body = _paper(2) + _key_table([("1", "A"), ("2", "C")])
+    rc, _ = _envelope(tmp_path, body, name="clash.docx", expect=2,
+                      extra=["--answer-key", str(key_path)])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "disagrees with the key table printed in the document" in err
+    assert "Q2 (CSV 'b', document 'c')" in err
+    assert "Q1" not in err
+
+
+def test_key_table_keying_a_question_twice_is_an_error(tmp_path):
+    """A question keyed twice is source damage; picking a winner is inference."""
+    body = _paper(2) + _key_table([("1", "A"), ("1", "C"), ("2", "B")])
+    with pytest.raises(ValueError, match=r"Q1 is keyed twice"):
+        mod._parse_document(_docx(tmp_path, body, "dup.docx"))
+
+
+def test_key_split_across_two_trailing_tables_is_read_as_one_key(tmp_path):
+    """Long papers print the key in two columns of table. Both are excluded."""
+    body = (
+        _paper(4)
+        + _key_table([("1", "A"), ("2", "B")])
+        + _key_table([("3", "C"), ("4", "D")])
+    )
+    questions, key = mod._parse_document(_docx(tmp_path, body, "split.docx"))
+
+    assert key == {1: "a", 2: "b", 3: "c", 4: "d"}
+    assert questions[-1]["stem_parts"] == ["Stem 4?"]
+
+
+def test_descriptive_paper_drops_the_key_but_still_excludes_the_table(tmp_path):
+    """A descriptive row has no correct_option_label to carry — but the leak is
+    the stem, and the stem is cleaned either way."""
+    body = (
+        _para("1. Write an essay on pension regulation.")
+        + _para("2. Precis the passage below.")
+        + _key_table([("1", "A"), ("2", "B")])
+    )
+    rc, envelope = _envelope(tmp_path, body, name="desc.docx", expect=2,
+                             extra=["--descriptive"])
+
+    assert rc == 0
+    assert [row["question_text"] for row in envelope["questions"]] == [
+        "Write an essay on pension regulation.",
+        "Precis the passage below.",
+    ]
+    assert all("correct_option_label" not in row for row in envelope["questions"])
+
+
+def test_report_names_the_document_as_the_key_source(tmp_path, capsys):
+    body = _paper(2) + _key_table([("1", "A"), ("2", "B")])
+    rc, _ = _envelope(tmp_path, body, name="report.docx", expect=2, extra=["--report"])
+
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "answer key: 2 (read from the document's own key table)" in err
+    assert "no --answer-key supplied" not in err

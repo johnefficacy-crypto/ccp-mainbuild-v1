@@ -29,10 +29,18 @@ first and then runs one state machine:
   ``1.``/``2.``; lower-letter lists are the options themselves and become a-d
   (a-e on the papers that print a fifth option).
 
-Answer keys are NOT inferred. ``correct_option_label`` is null unless an explicit
-``--answer-key`` CSV is supplied, and the envelope is marked incomplete without
-one. The v2 importer rejects an ``mcq`` row with no ``correct_option_label``, so
-an unkeyed envelope fails preflight by design rather than importing a guess.
+Answer keys are NOT inferred, and there are exactly two ways one can be read.
+An explicit ``--answer-key`` CSV, or a key table the document prints itself: a
+trailing "Question | Answer" table is transcribed verbatim, the same way every
+stem is, so it is a reading rather than a guess. Such a table is also EXCLUDED
+from the final question's stem, which is where it otherwise lands — appended to
+the last question, it shows an aspirant the answers to the whole paper. With
+neither source ``correct_option_label`` is null and the envelope is marked
+incomplete; the v2 importer rejects an ``mcq`` row with no
+``correct_option_label``, so an unkeyed envelope fails preflight by design.
+
+A CSV and a printed table that disagree is a hard error — determinism over
+picking a winner — and so is a key that names questions the paper does not have.
 
 Usage::
 
@@ -256,16 +264,24 @@ def _table_lines(tbl: ET.Element) -> list[str]:
 
 
 class Line:
-    """One logical line: text plus the list identity it inherited, if any."""
+    """One logical line: text plus the list identity it inherited, if any.
 
-    __slots__ = ("text", "num_id", "num_fmt", "table")
+    ``table_id`` is the index of the table a row came from, so the rows of one
+    table can be regrouped after flattening. Without it a table is indistinguishable
+    from any other run of ``table=True`` lines and a trailing answer key cannot be
+    told apart from the pairs table two questions above it.
+    """
+
+    __slots__ = ("text", "num_id", "num_fmt", "table", "table_id")
 
     def __init__(self, text: str, num_id: str | None = None,
-                 num_fmt: str | None = None, table: bool = False) -> None:
+                 num_fmt: str | None = None, table: bool = False,
+                 table_id: int | None = None) -> None:
         self.text = text
         self.num_id = num_id
         self.num_fmt = num_fmt
         self.table = table
+        self.table_id = table_id
 
 
 def _read_lines(path: str) -> list[Line]:
@@ -283,6 +299,7 @@ def _read_lines(path: str) -> list[Line]:
         raise ValueError(f"{path}: no <w:body>")
 
     lines: list[Line] = []
+    table_id = 0
     for child in body:
         if child.tag == W + "p":
             num_id = _num_id(child)
@@ -295,8 +312,106 @@ def _read_lines(path: str) -> list[Line]:
                                       fmt if i == 0 else None))
         elif child.tag == W + "tbl":
             for row in _table_lines(child):
-                lines.append(Line(row, table=True))
+                lines.append(Line(row, table=True, table_id=table_id))
+            table_id += 1
     return lines
+
+
+# ── the document's own answer key ────────────────────────────────────────────
+
+# Some papers print their key as a trailing two-column table: a "Question | Answer"
+# header, then one "<n> | <letter>" row per question. It belongs to no question, but
+# _parse_lines appends every table row to the open stem, so it lands on the FINAL
+# question of the paper. That is a content leak, not a lost key — the key itself
+# imports correctly from pyq_options — and an aspirant served that last question is
+# shown the answers to the whole paper. Four SEBI Phase 1 Commerce papers were
+# imported this way and had to be stripped in the database by hand.
+#
+# Detection is shape-gated rather than positional guesswork: the header must match,
+# and EVERY remaining row must be a key row or blank-answer padding. A table that is
+# anything else is content and stays in the stem exactly where it was printed.
+ANSWER_KEY_HEADER = re.compile(
+    r"^\s*q(?:\.|uestion)?s?\.?\s*(?:no\.?|number|nos\.?)?\s*\|"
+    r"\s*(?:ans(?:wer)?s?\.?|keys?|correct(?:\s+(?:option|answer))?)\s*$",
+    re.I,
+)
+
+# "12 | B". The label is uppercase in every printed key seen; pyq_options.option_label
+# is lowercase, so the case is normalised here, at the boundary, and nothing
+# downstream has to know the two conventions differ.
+ANSWER_KEY_ROW = re.compile(r"^\s*(\d{1,3})\s*\|\s*([A-Ea-e])\s*$")
+
+# Key tables are routinely padded with rows the author numbered and never filled
+# ("11 |", "12 |" under a 10-question paper). They assert no key, so they are
+# skipped — but they do not disqualify the table, which is the whole point of
+# matching them explicitly instead of falling through to "this is content".
+ANSWER_KEY_BLANK_ROW = re.compile(r"^\s*(?:\d{1,3})?\s*\|\s*$")
+
+
+def _read_answer_key_table(rows: list[str]) -> dict[int, str] | None:
+    """Parse pipe-joined table rows as a paper's own answer key, else None.
+
+    Returns ``None`` — never a partial key — for anything that is not
+    unambiguously a key table, so the caller leaves the table in the stem. A
+    table that IS a key table but is internally inconsistent raises instead:
+    a question keyed twice is source damage, and guessing which row wins is
+    exactly the inference this converter refuses to do.
+    """
+    if len(rows) < 2 or not ANSWER_KEY_HEADER.match(rows[0]):
+        return None
+    key: dict[int, str] = {}
+    for row in rows[1:]:
+        m = ANSWER_KEY_ROW.match(row)
+        if m:
+            num = int(m.group(1))
+            label = m.group(2).lower()
+            if num in key:
+                raise ValueError(
+                    f"embedded answer-key table: Q{num} is keyed twice "
+                    f"({key[num]!r} then {label!r})"
+                )
+            key[num] = label
+        elif not ANSWER_KEY_BLANK_ROW.match(row):
+            return None
+    return key or None
+
+
+def _split_embedded_answer_key(lines: list[Line]) -> tuple[list[Line], dict[int, str]]:
+    """Split a trailing answer-key table off the line stream.
+
+    Returns the lines with the key table's rows removed and the key it carried,
+    or the lines unchanged and an empty key.
+
+    Only the trailing RUN of tables is considered, walking backwards and stopping
+    at the first table that is not a key table. That covers a key split across two
+    tables (1-20, then 21-37) while leaving a key table printed mid-document alone:
+    a table in the middle of a paper is being read as content by every question
+    around it, and removing it there would change stems this defect never touched.
+    """
+    ids: list[int] = []
+    for ln in lines:
+        if ln.table_id is not None and (not ids or ids[-1] != ln.table_id):
+            ids.append(ln.table_id)
+    if not ids:
+        return lines, {}
+
+    key: dict[int, str] = {}
+    key_tables: set[int] = set()
+    for tid in reversed(ids):
+        part = _read_answer_key_table([ln.text for ln in lines if ln.table_id == tid])
+        if part is None:
+            break
+        clash = sorted(set(part) & set(key))
+        if clash:
+            raise ValueError(
+                f"embedded answer-key table: {clash} keyed by more than one key table"
+            )
+        key.update(part)
+        key_tables.add(tid)
+
+    if not key:
+        return lines, {}
+    return [ln for ln in lines if ln.table_id not in key_tables], key
 
 
 # ── parsing ──────────────────────────────────────────────────────────────────
@@ -541,11 +656,23 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern,
     return questions
 
 
+def _parse_document(path: str) -> tuple[list[dict], dict[int, str]]:
+    """Parse a paper into questions plus whatever key the document carried itself.
+
+    A trailing answer-key table is removed BEFORE style detection so it can reach
+    neither the marker scan nor a question's stem. On a document with no such table
+    the line stream is untouched and the parse is the one it always was — which is
+    what keeps output byte-identical, and matters because ``pyq_bulk_import`` dedupes
+    on ``normalized_question_hash``: a stem that drifts re-imports as a new question.
+    """
+    lines, embedded_key = _split_embedded_answer_key(_read_lines(path))
+    _, pattern = detect_marker(lines)
+    return _parse_lines(lines, pattern, detect_option_style(lines)), embedded_key
+
+
 def _parse_blocks(path: str) -> list[dict]:
     """Parse a paper, detecting its question-marker and option-marker styles first."""
-    lines = _read_lines(path)
-    _, pattern = detect_marker(lines)
-    return _parse_lines(lines, pattern, detect_option_style(lines))
+    return _parse_document(path)[0]
 
 
 # ── validation ───────────────────────────────────────────────────────────────
@@ -943,7 +1070,7 @@ def main(argv: list[str] | None = None) -> int:
               "paper has no correct option to key", file=sys.stderr)
         return 2
 
-    lines = _read_lines(args.docx)
+    lines, embedded_key = _split_embedded_answer_key(_read_lines(args.docx))
     marker_name, pattern = detect_marker(lines)
     option_style = detect_option_style(lines)
     questions = _parse_lines(lines, pattern, option_style)
@@ -968,17 +1095,44 @@ def main(argv: list[str] | None = None) -> int:
     if unknown:
         errors.append(f"--dropped names questions outside 1..{len(questions)}: {unknown}")
 
-    answer_key = _load_answer_key(args.answer_key) if args.answer_key else {}
+    csv_key = _load_answer_key(args.answer_key) if args.answer_key else {}
+    # A key the document printed itself is not an inferred key: it is transcribed
+    # verbatim from the source, the same way every stem is, so a paper that carries
+    # one needs no --answer-key. --descriptive keeps none: those rows have no
+    # correct_option_label to carry, and the table is excluded from the stem either way.
+    embedded_key = {} if args.descriptive else embedded_key
+    disagree = sorted(
+        n for n in set(embedded_key) & set(csv_key) if embedded_key[n] != csv_key[n]
+    )
+    if disagree:
+        errors.append(
+            "--answer-key disagrees with the key table printed in the document on "
+            + ", ".join(f"Q{n} (CSV {csv_key[n]!r}, document {embedded_key[n]!r})"
+                        for n in disagree)
+        )
+    answer_key = {**embedded_key, **csv_key}
+    key_source = "answer key" if csv_key else "the document's own answer-key table"
     if answer_key:
+        paper_numbers = {q["number"] for q in questions}
+        outside = sorted(n for n in answer_key if n not in paper_numbers)
+        if outside:
+            # Never truncated to the questions that happen to exist: a key that
+            # names questions this paper does not have means the key and the
+            # document are not the same paper, and silently dropping the surplus
+            # would key the rest against a document nobody checked.
+            errors.append(
+                f"{key_source} names questions outside the paper's "
+                f"1..{len(questions)}: {outside}"
+            )
         missing = sorted(
             q["number"] for q in questions
             if q["number"] not in answer_key and q["number"] not in dropped
         )
         if missing:
-            errors.append(f"answer key is missing non-dropped questions: {missing}")
+            errors.append(f"{key_source} is missing non-dropped questions: {missing}")
         keyed_dropped = sorted(dropped & set(answer_key))
         if keyed_dropped:
-            errors.append(f"answer key asserts a correct option for dropped questions: {keyed_dropped}")
+            errors.append(f"{key_source} asserts a correct option for dropped questions: {keyed_dropped}")
 
     if args.report:
         print(f"parsed {len(questions)} questions from {args.docx}", file=sys.stderr)
@@ -988,7 +1142,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  marker style {marker_name!r}, option style {option_style!r}, "
               f"set {args.set_code}, year {args.year}, "
               f"dropped {sorted(dropped) or 'none'}", file=sys.stderr)
-        print(f"  answer key: {len(answer_key) or 'ABSENT'}", file=sys.stderr)
+        key_origin = " (read from the document's own key table)" if embedded_key and not csv_key else ""
+        print(f"  answer key: {len(answer_key) or 'ABSENT'}{key_origin}", file=sys.stderr)
         for line in applied:
             print(f"  correction applied — {line}", file=sys.stderr)
         if reordered:
@@ -1020,8 +1175,9 @@ def main(argv: list[str] | None = None) -> int:
         # about both would send the operator looking for a key that does not
         # exist for this paper.
         print(
-            "warning: no --answer-key supplied; correct_option_label is null on every row "
-            "and preflight will reject this envelope",
+            "warning: no --answer-key supplied and the document carries no key table; "
+            "correct_option_label is null on every row and preflight will reject "
+            "this envelope",
             file=sys.stderr,
         )
 
