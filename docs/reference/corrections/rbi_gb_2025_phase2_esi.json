@@ -1,0 +1,17 @@
+{
+  "_unresolved": {
+    "ESI-Q11..Q15": {
+      "paper_id": "4009c3fe-f7ac-4468-bf6f-862d488509e0",
+      "paper_code": "RBI-GB-2025-P2-ESI",
+      "question_numbers": [17, 18, 19, 20, 21],
+      "source_question_refs": ["ESI-Q11", "ESI-Q12", "ESI-Q13", "ESI-Q14", "ESI-Q15"],
+      "issue": "A PMDDKY (Pradhan Mantri Dhan-Dhaanya Krishi Yojana) passage is prepended to five questions whose sub-questions concern MSMEs, the Udyam Portal, SIDBI and a fintech MoU. The passage does not match the questions. ESI-Q15 ('what will come in place of the blank provided in the paragraph given above') is the only one the PMDDKY passage fits, since that passage contains two blanks; this implies the correct MSME passage was dropped and the prior passage carried forward across a passage boundary during import.",
+      "evidence": "All five rows share a byte-identical PMDDKY passage prefix. Q11 asks which fintech signed an MoU with MSME Ministry and SIDBI; Q12-Q13 concern a 2020 MSME formalisation platform and its regulator; Q14 cites MSME statistics from Economic Survey 2024-25. None relate to PMDDKY.",
+      "action_needed": "Retrieve the correct MSME passage from the source document RBIGradeBPYQ2025Phase2.pdf and re-attach it to questions 17-20. Verify question 21 (ESI-Q15) legitimately retains the PMDDKY passage.",
+      "blocks": "Question-level promotion for these five questions only. The paper is otherwise sound: 36 questions, contiguous numbering, all options and keys intact.",
+      "not_fixable_by_corrections_ops": "The three correction operations (relabel, options_from_stem, add_options) all operate on options, not stem text. This defect requires either a source-document fix and re-import, or a direct stem edit through the CMS.",
+      "found": "2026-08-29",
+      "found_during": "RBI Grade B 2025 Phase II paper split (ENG/ESI/FM) from combined paper 7b3716c6-bc39-41b5-8a77-5b71bb6a1d65"
+    }
+  }
+}
