@@ -1014,7 +1014,11 @@ def main(argv: list[str] | None = None) -> int:
         descriptive=args.descriptive,
     )
 
-    if not answer_key:
+    if not answer_key and not args.descriptive:
+        # Silent under --descriptive: that envelope has no correct_option_label
+        # to be null, and it is not bound for the v2 preflight at all. Warning
+        # about both would send the operator looking for a key that does not
+        # exist for this paper.
         print(
             "warning: no --answer-key supplied; correct_option_label is null on every row "
             "and preflight will reject this envelope",

@@ -1134,3 +1134,28 @@ def test_mcq_envelope_unchanged_when_descriptive_not_given(tmp_path):
             "correct_option_label": "b",
         }],
     }
+
+
+def test_descriptive_suppresses_the_answer_key_warning(tmp_path, capsys):
+    """The warning names correct_option_label and the v2 preflight, neither of
+    which applies to a descriptive paper — it would send the operator hunting a
+    key that does not exist for this paper."""
+    body = _para("1. Write an essay in about 300 words on pension regulation.")
+    out = tmp_path / "env.json"
+    rc = mod.main([_docx(tmp_path, body, "d.docx"), "--year", "2023", "--set-code", "A",
+                   "--descriptive", "--expect", "1", "-o", str(out)])
+    assert rc == 0
+    assert "no --answer-key supplied" not in capsys.readouterr().err
+
+
+def test_mcq_still_warns_when_no_answer_key_is_given(tmp_path, capsys):
+    """Unchanged for MCQ: there the warning is true and load-bearing."""
+    body = (
+        _para("1. Which one of the following is correct?")
+        + _para("(a) One\n(b) Two\n(c) Three\n(d) Four")
+    )
+    out = tmp_path / "env.json"
+    rc = mod.main([_docx(tmp_path, body, "m.docx"), "--year", "2023", "--set-code", "A",
+                   "--expect", "1", "-o", str(out)])
+    assert rc == 0
+    assert "no --answer-key supplied" in capsys.readouterr().err
