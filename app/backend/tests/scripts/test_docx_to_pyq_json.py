@@ -1378,3 +1378,233 @@ def test_report_names_the_document_as_the_key_source(tmp_path, capsys):
     err = capsys.readouterr().err
     assert "answer key: 2 (read from the document's own key table)" in err
     assert "no --answer-key supplied" not in err
+
+
+# ── shared directions blocks (reasoning / DI / comprehension sets) ────────────
+#
+# One instruction block governs a RANGE of questions and is printed between the
+# previous question's last option and the next question's marker — exactly where
+# the trailing-note branch appends to the last option. Before this was handled,
+# the whole block landed inside option (e) of the question BEFORE the set, and
+# every question in the set lost the constraints it needed.
+
+
+def _ranged(tmp_path, body, name="dir.docx"):
+    """Parse collecting stimuli, the way main() does."""
+    path = _docx(tmp_path, body, name)
+    lines, _ = mod._split_embedded_answer_key(mod._read_lines(path))
+    _, pattern = mod.detect_marker(lines)
+    stimuli: list[dict] = []
+    questions = mod._parse_lines(lines, pattern, mod.detect_option_style(lines),
+                                 stimuli_out=stimuli)
+    return questions, stimuli
+
+
+_SET_BODY = (
+    "1. Who is an immediate neighbour of Alice?",
+    "(a) Emily\n(b) Carol\n(c) Frank\n(d) George\n(e) Bob",
+    "Directions (2-3): Study the information carefully and answer the question.",
+    "Ten persons X, Y and Z are staying in two different flats.",
+    "Z stays on an odd-numbered floor in Flat Alpha, two floors above R.",
+    "2. Who stays immediately above N?",
+    "(a) S\n(b) R\n(c) X\n(d) Y\n(e) None of these",
+    "3. On which floor does P stay?",
+    "(a) One\n(b) Two\n(c) Three\n(d) Four\n(e) Five",
+)
+
+
+def test_directions_block_does_not_land_in_the_previous_option(tmp_path):
+    """The defect itself: the block was appended to option (e) of question 1."""
+    questions, _ = _ranged(tmp_path, "".join(_para(p) for p in _SET_BODY))
+    assert questions[0]["options"][-1] == ("e", "Bob")
+    assert all("Directions" not in text for _, text in questions[0]["options"])
+
+
+def test_directions_block_becomes_a_stimulus_governing_its_range(tmp_path):
+    questions, stimuli = _ranged(tmp_path, "".join(_para(p) for p in _SET_BODY))
+    assert len(stimuli) == 1
+    s = stimuli[0]
+    assert s["ref"] == "directions-2-3"
+    assert s["governs"] == [2, 3]
+    assert s["content_text"].startswith("Study the information carefully")
+    assert "Z stays on an odd-numbered floor" in s["content_text"]
+    assert questions[1]["stimulus_refs"] == ["directions-2-3"]
+    assert questions[2]["stimulus_refs"] == ["directions-2-3"]
+    # The question BEFORE the block is not governed by it.
+    assert "stimulus_refs" not in questions[0]
+
+
+@pytest.mark.parametrize("line,expected", [
+    ("Directions (6-10): Study the information", (6, 10)),
+    ("Directions (6--10): Answer the questions", (6, 10)),
+    ("Direction (46-50): Study the following", (46, 50)),
+    ("Instruction (6-12): Read the given passage", (6, 12)),
+    ("Directions (11-15) Study the following", (11, 15)),
+    ("Directions (16 - 20): What value comes", (16, 20)),
+    ("Directions: (11-13) In each question", (11, 13)),
+    ("6-10) Direction: Study the information", (6, 10)),
+    ("Direction (6-9) Find the missing term", (6, 9)),
+])
+def test_every_printed_directions_shape_in_the_corpus_is_recognised(line, expected):
+    """Nine shapes occur across SEBI/PFRDA/IFSCA — word first and range first,
+    one hyphen or two, spaced or not, colon frequently absent."""
+    got = mod._match_directions(line)
+    assert got is not None and got[:2] == expected
+
+
+@pytest.mark.parametrize("line", [
+    "Directions: In the question below, two statements are given.",  # no range
+    "Directions (10-6): a reversed range is damage, not a range",
+    "(a) Some ordinary option text",
+    "1. An ordinary question stem",
+    "The instructions were clear to every candidate.",
+])
+def test_lines_that_are_not_ranged_directions_are_left_alone(line):
+    """A block naming no questions cannot be linked or bounded, so it keeps the
+    behaviour it had rather than being guessed at."""
+    assert mod._match_directions(line) is None
+
+
+def test_a_paper_with_no_directions_block_parses_byte_identically(tmp_path):
+    """The constraint that matters: pyq_bulk_import dedupes on
+    normalized_question_hash, so any drift re-imports as new questions."""
+    body = "".join(
+        _para(f"{n}. Question {n} stem?")
+        + _para(f"(a) A{n}\n(b) B{n}\n(c) C{n}\n(d) D{n}")
+        for n in range(1, 11)
+    )
+    path = _docx(tmp_path, body, "plain.docx")
+    lines, key = mod._split_embedded_answer_key(mod._read_lines(path))
+    _, pattern = mod.detect_marker(lines)
+    style = mod.detect_option_style(lines)
+
+    without = mod.build_envelope(
+        mod._parse_lines(lines, pattern, style),
+        ref_prefix="GS1", answer_key=key, dropped=set(), difficulty=None)
+    collected: list[dict] = []
+    with_out = mod.build_envelope(
+        mod._parse_lines(lines, pattern, style, stimuli_out=collected),
+        ref_prefix="GS1", answer_key=key, dropped=set(), difficulty=None,
+        stimuli=collected)
+
+    assert collected == []
+    assert json.dumps(without, sort_keys=False) == json.dumps(with_out, sort_keys=False)
+    # An empty array is still a key; the envelope must not grow one.
+    assert "stimuli" not in with_out
+    assert all("stimulus_refs" not in row for row in with_out["questions"])
+
+
+def test_envelope_carries_stimuli_and_refs_in_the_v2_shape(tmp_path):
+    questions, stimuli = _ranged(tmp_path, "".join(_para(p) for p in _SET_BODY))
+    env = mod.build_envelope(questions, ref_prefix="P1", answer_key={},
+                             dropped=set(), difficulty=None, stimuli=stimuli)
+    assert env["stimuli"] == [{
+        "ref": "directions-2-3",
+        "stimulus_type": "caselet",
+        "content_text": stimuli[0]["content_text"],
+        "display_order": 1,
+    }]
+    assert env["questions"][1]["stimulus_refs"] == ["directions-2-3"]
+    # Every declared ref must resolve, or preflight rejects the batch.
+    declared = {s["ref"] for s in env["stimuli"]}
+    for row in env["questions"]:
+        assert set(row.get("stimulus_refs", [])) <= declared
+
+
+def test_a_comprehension_block_is_typed_as_a_passage(tmp_path):
+    """stimulus_type is decided by evidence in the source, not inferred from
+    content: the word 'passage' in the instruction is what marks one."""
+    body = (
+        _para("1. A standalone question?")
+        + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("Instruction (2-2): Read the given passage and answer the question.")
+        + _para("The rise of technology has reshaped industries and daily routines.")
+        + _para("2. What has technology reshaped?")
+        + _para("(a) Industries\n(b) Nothing\n(c) Costs\n(d) Nobody")
+    )
+    _, stimuli = _ranged(tmp_path, body, "passage.docx")
+    assert stimuli[0]["stimulus_type"] == "passage"
+
+
+def test_two_blocks_in_one_paper_each_govern_their_own_range(tmp_path):
+    body = (
+        _para("Directions (1-2): First block text here.")
+        + _para("Constraints for the first set.")
+        + _para("1. First?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("2. Second?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("Directions (3-4): Second block text here.")
+        + _para("Constraints for the second set.")
+        + _para("3. Third?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("4. Fourth?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+    )
+    questions, stimuli = _ranged(tmp_path, body, "two.docx")
+    assert [s["governs"] for s in stimuli] == [[1, 2], [3, 4]]
+    assert [q.get("stimulus_refs") for q in questions] == [
+        ["directions-1-2"], ["directions-1-2"], ["directions-3-4"], ["directions-3-4"]]
+    assert mod._validate_stimuli(stimuli, questions) == []
+
+
+def test_a_block_before_question_one_is_still_captured(tmp_path):
+    """Front matter is skipped, but a block that governs question 1 is not front
+    matter — it is the instruction for the first set on the paper."""
+    body = (
+        _para("Directions (1-1): Study the information carefully.")
+        + _para("Some shared constraints.")
+        + _para("1. A question?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+    )
+    questions, stimuli = _ranged(tmp_path, body, "front.docx")
+    assert stimuli[0]["governs"] == [1]
+    assert questions[0]["stimulus_refs"] == ["directions-1-1"]
+
+
+def test_a_block_naming_absent_questions_links_to_nothing_and_is_reported(tmp_path):
+    body = (
+        _para("1. Only question?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("Directions (7-9): Instructions for questions that are not here.")
+        + _para("Constraints nobody can use.")
+    )
+    questions, stimuli = _ranged(tmp_path, body, "absent.docx")
+    assert stimuli[0]["governs"] == []
+    errors = mod._validate_stimuli(stimuli, questions)
+    assert any("does not have" in e for e in errors)
+    # An unlinked block is never emitted: a dangling ref fails preflight.
+    env = mod.build_envelope(questions, ref_prefix="P", answer_key={},
+                             dropped=set(), difficulty=None, stimuli=stimuli)
+    assert "stimuli" not in env
+
+
+def test_overlapping_blocks_are_reported_rather_than_silently_doubled(tmp_path):
+    body = (
+        _para("Directions (1-2): First block.")
+        + _para("First constraints.")
+        + _para("1. One?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("Directions (2-3): Second block overlapping the first.")
+        + _para("Second constraints.")
+        + _para("2. Two?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+        + _para("3. Three?") + _para("(a) A\n(b) B\n(c) C\n(d) D")
+    )
+    questions, stimuli = _ranged(tmp_path, body, "overlap.docx")
+    errors = mod._validate_stimuli(stimuli, questions)
+    assert any("claimed by two directions blocks" in e for e in errors)
+
+
+def test_an_empty_block_is_reported(tmp_path):
+    """The range line matched but the block that should follow never arrived."""
+    body = (
+        _para("Directions (2-2):")
+        + _para("2. A question with no shared text above it?")
+        + _para("(a) A\n(b) B\n(c) C\n(d) D")
+    )
+    # numbering starts at 2, so parse from a paper that opens at 1
+    body = _para("1. First?") + _para("(a) A\n(b) B\n(c) C\n(d) D") + body
+    questions, stimuli = _ranged(tmp_path, body, "empty.docx")
+    assert any("carries no text" in e for e in mod._validate_stimuli(stimuli, questions))
+
+
+def test_options_of_governed_questions_are_untouched_by_the_block(tmp_path):
+    """The set's own questions parse exactly as they would standalone — the block
+    is collected beside them, not merged into them."""
+    questions, _ = _ranged(tmp_path, "".join(_para(p) for p in _SET_BODY))
+    assert [t for _, t in questions[1]["options"]] == ["S", "R", "X", "Y", "None of these"]
+    assert [t for _, t in questions[2]["options"]] == ["One", "Two", "Three", "Four", "Five"]
+    assert questions[1]["stem_parts"] == ["Who stays immediately above N?"]

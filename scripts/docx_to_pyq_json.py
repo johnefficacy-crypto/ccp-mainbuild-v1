@@ -186,6 +186,64 @@ COUNT_REF = re.compile(
     r"\bonly one\b|\bonly two\b|\bonly three\b|\ball (?:three|four)\b|\bnone\b", re.I
 )
 
+# ── shared directions blocks ─────────────────────────────────────────────────
+#
+# Reasoning, DI and comprehension sets print one instruction block that governs a
+# RANGE of questions — "Directions (6-10): ... Ten persons X, Y, Z ...". The block
+# sits between the previous question's last option and the next question's marker,
+# which is precisely where _parse_lines' trailing-note branch appends to the last
+# option. The whole block, constraints and all, therefore lands inside option (e)
+# of the question BEFORE the set, and the five questions it governs are left
+# unanswerable.
+#
+# The block is not option text and not stem text: it is a stimulus shared by a
+# range of questions, which pyq_stimuli/pyq_question_stimuli already model and the
+# v2 envelope already carries. Recognising it here is what lets it be emitted as
+# one rather than glued to an option.
+#
+# Two printed orders occur, so both are matched: the word first ("Directions
+# (6-10):") and the range first ("6-10) Direction:"). Separators vary — one hyphen
+# or two, en/em dash, or "to" — and the colon is frequently absent.
+_RANGE = r"(\d{1,3})\s*(?:-{1,2}|\u2013|\u2014|to)\s*(\d{1,3})"
+_DIRECTIONS_WORD = r"(?:directions?|instructions?)"
+
+# A RANGE IS REQUIRED. A bare "Directions:" names no questions, so there is
+# nothing to link it to and no way to tell where it stops applying; those keep
+# their existing behaviour rather than being guessed at.
+DIRECTIONS_LEADING = re.compile(
+    rf"^\s*{_DIRECTIONS_WORD}\s*:?\s*[\(\[]?\s*{_RANGE}\s*[\)\]]?\s*[:.\-]?\s*(.*)$",
+    re.I | re.S,
+)
+DIRECTIONS_TRAILING = re.compile(
+    rf"^\s*[\(\[]?\s*{_RANGE}\s*[\)\]]\s*{_DIRECTIONS_WORD}\s*[:.\-]?\s*(.*)$",
+    re.I | re.S,
+)
+
+# Which stimulus_type to emit. The importer accepts passage/caselet/table
+# (_STIMULUS_TYPES_V2_SUPPORTED); the value is a display and grouping hint, not a
+# correctness gate, so each branch is decided by explicit evidence in the source
+# rather than inferred from the content.
+DIRECTIONS_PASSAGE = re.compile(r"\bpassage\b|\bcomprehension\b", re.I)
+
+
+def _match_directions(text: str) -> tuple[int, int, str] | None:
+    """Return ``(first, last, trailing_text)`` for a ranged directions line.
+
+    ``None`` for everything else, which is every line in a paper that prints no
+    such block — that is what keeps those papers byte-identical.
+    """
+    for pattern, groups in ((DIRECTIONS_LEADING, (1, 2, 3)), (DIRECTIONS_TRAILING, (1, 2, 3))):
+        m = pattern.match(text)
+        if m:
+            first, last = int(m.group(groups[0])), int(m.group(groups[1]))
+            if first < 1 or last < first:
+                # "Directions (10-6)" is damage, not a range. Falling through
+                # leaves the line to the existing branches unchanged.
+                return None
+            return first, last, m.group(groups[2]).strip()
+    return None
+
+
 # A statement run sits between a lead-in and the interrogative that closes the
 # stem. Used only by --number-unmarked-statements; see _number_unmarked().
 LEAD_IN = re.compile(r"consider the following|following (?:statements|pairs)|statements\s*:\s*$", re.I)
@@ -545,7 +603,8 @@ def _split_glued(cur: dict, due_label) -> None:
 
 
 def _parse_lines(lines: list[Line], pattern: re.Pattern,
-                 option_style: str = "bracket") -> list[dict]:
+                 option_style: str = "bracket",
+                 stimuli_out: list[dict] | None = None) -> list[dict]:
     """Segment the flattened document into questions.
 
     A new question starts only where the marker's number is exactly ``expected``,
@@ -555,12 +614,23 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern,
     ``option_style`` defaults to ``bracket``, so every existing caller and the
     whole UPSC corpus take exactly the path they took before this parameter
     existed.
+
+    ``stimuli_out``, when given, receives one record per ranged directions block
+    and the governed questions gain a ``stimulus_refs`` list. It is an out-param
+    rather than a second return value so that every existing caller — and every
+    test that calls this directly — still gets exactly a list of questions. A
+    paper printing no such block appends nothing and sets no key, so its parse
+    is byte-for-byte the one it was before.
     """
     questions: list[dict] = []
     cur: dict | None = None
     expected = 1
     counters: dict[str, int] = {}
     active_num_id: str | None = None
+    # The directions block currently being collected, or None. While it is open
+    # every line belongs to it, which is what keeps the block out of the previous
+    # question's last option.
+    stim: dict | None = None
 
     def due_label() -> str | None:
         if cur is None:
@@ -594,7 +664,28 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern,
             expected += 1
             counters.clear()
             active_num_id = None
+            # The next question's marker ends the block: a directions block runs
+            # from its own line to the first question it governs.
+            stim = None
             continue
+
+        if stimuli_out is not None:
+            d = _match_directions(text)
+            if d is not None:
+                first, last, rest = d
+                stim = {"first": first, "last": last,
+                        "parts": [rest] if rest else [], "has_table": False}
+                stimuli_out.append(stim)
+                continue
+
+            if stim is not None:
+                # Inside an open block. This is the branch that previously fell
+                # through to "text after the options began" and glued the whole
+                # block onto the preceding question's last option.
+                stim["parts"].append(text)
+                if line.table:
+                    stim["has_table"] = True
+                continue
 
         if cur is None:
             # Front matter before question 1 (instructions, headers).
@@ -653,7 +744,34 @@ def _parse_lines(lines: list[Line], pattern: re.Pattern,
             cur["stem_parts"].append(text)
             active_num_id = None
 
+    if stimuli_out is not None:
+        _finalise_stimuli(stimuli_out, questions)
     return questions
+
+
+def _finalise_stimuli(stimuli: list[dict], questions: list[dict]) -> None:
+    """Give each block a ref and content, and link it to the questions it names.
+
+    A block naming questions the paper does not have keeps its record — the range
+    is what the source printed — but links to nothing, so it cannot silently
+    attach itself to the wrong question. ``validate`` reports it.
+    """
+    by_number = {q["number"]: q for q in questions}
+    for s in stimuli:
+        s["ref"] = f"directions-{s['first']}-{s['last']}"
+        s["content_text"] = "\n".join(s["parts"]).strip()
+        s["stimulus_type"] = (
+            "table" if s["has_table"]
+            else "passage" if DIRECTIONS_PASSAGE.search(s["content_text"])
+            else "caselet"
+        )
+        s["governs"] = []
+        for n in range(s["first"], s["last"] + 1):
+            q = by_number.get(n)
+            if q is None:
+                continue
+            q.setdefault("stimulus_refs", []).append(s["ref"])
+            s["governs"].append(n)
 
 
 def _parse_document(path: str) -> tuple[list[dict], dict[int, str]]:
@@ -870,6 +988,41 @@ def validate(questions: list[dict], expected_count: int | None,
     return errors
 
 
+def _validate_stimuli(stimuli: list[dict], questions: list[dict]) -> list[str]:
+    """Report directions blocks that do not describe this paper.
+
+    Three ways a block can be wrong, each of which means the parse mis-read
+    something rather than that the paper is unusual:
+
+    - it names questions the paper does not have;
+    - two blocks claim the same question, so a question would carry two
+      contradictory instruction sets;
+    - it carries no text, which means the range line matched but the block that
+      should follow it did not arrive.
+    """
+    errors: list[str] = []
+    numbers = {q["number"] for q in questions}
+    claimed: dict[int, str] = {}
+
+    for s in stimuli:
+        missing = [n for n in range(s["first"], s["last"] + 1) if n not in numbers]
+        if missing:
+            errors.append(
+                f"directions block {s['first']}-{s['last']} names questions this paper "
+                f"does not have: {missing}"
+            )
+        if not s["content_text"]:
+            errors.append(f"directions block {s['first']}-{s['last']} carries no text")
+        for n in s.get("governs", []):
+            if n in claimed:
+                errors.append(
+                    f"Q{n} is claimed by two directions blocks ({claimed[n]} and {s['ref']})"
+                )
+            else:
+                claimed[n] = s["ref"]
+    return errors
+
+
 def apply_corrections(questions: list[dict], corrections: dict) -> list[str]:
     """Apply operator-supplied repairs for source-document damage.
 
@@ -991,6 +1144,7 @@ def build_envelope(
     dropped: set[int],
     difficulty: str | None,
     descriptive: bool = False,
+    stimuli: list[dict] | None = None,
 ) -> dict:
     """Emit the v2 bulk-import envelope.
 
@@ -1002,6 +1156,11 @@ def build_envelope(
     stem: no ``options`` key at all, and no ``correct_option_label``. A Phase II
     English paper has neither, and emitting them empty would assert a shape the
     paper does not have.
+
+    ``stimuli`` adds the v2 envelope's top-level ``stimuli`` array and the
+    per-question ``stimulus_refs`` that point into it. Both keys are OMITTED
+    entirely when the paper printed no directions block — an empty array is still
+    a key, and the envelope is compared byte-for-byte across runs.
     """
     rows = []
     for q in questions:
@@ -1013,6 +1172,8 @@ def build_envelope(
             "question_text": "\n".join(q["stem_parts"]).strip(),
             "question_type": "descriptive" if descriptive else "mcq",
         }
+        if q.get("stimulus_refs"):
+            row["stimulus_refs"] = list(q["stimulus_refs"])
         if not descriptive:
             row["options"] = [
                 {
@@ -1034,7 +1195,24 @@ def build_envelope(
             row["dropped_by_upsc"] = True
         rows.append(row)
 
-    return {"format_version": 2, "questions": rows}
+    envelope: dict = {"format_version": 2}
+    linked = [s for s in (stimuli or []) if s.get("governs")]
+    if linked:
+        # Emitted before ``questions`` to match the documented v2 shape. Only
+        # blocks that actually govern a question in this paper are carried: an
+        # unlinked ref would fail preflight ("does not match any declared
+        # stimulus") on the question side, or dangle unreferenced on this one.
+        envelope["stimuli"] = [
+            {
+                "ref": s["ref"],
+                "stimulus_type": s["stimulus_type"],
+                "content_text": s["content_text"],
+                "display_order": i + 1,
+            }
+            for i, s in enumerate(linked)
+        ]
+    envelope["questions"] = rows
+    return envelope
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1073,7 +1251,8 @@ def main(argv: list[str] | None = None) -> int:
     lines, embedded_key = _split_embedded_answer_key(_read_lines(args.docx))
     marker_name, pattern = detect_marker(lines)
     option_style = detect_option_style(lines)
-    questions = _parse_lines(lines, pattern, option_style)
+    stimuli: list[dict] = []
+    questions = _parse_lines(lines, pattern, option_style, stimuli_out=stimuli)
 
     applied: list[str] = []
     if args.corrections:
@@ -1089,6 +1268,7 @@ def main(argv: list[str] | None = None) -> int:
                 renumbered.append(q["number"])
 
     errors = validate(questions, args.expect, descriptive=args.descriptive)
+    errors.extend(_validate_stimuli(stimuli, questions))
 
     dropped = {int(x) for x in args.dropped.split(",") if x.strip()}
     unknown = sorted(d for d in dropped if d > len(questions) or d < 1)
@@ -1167,6 +1347,7 @@ def main(argv: list[str] | None = None) -> int:
         dropped=dropped,
         difficulty=args.difficulty,
         descriptive=args.descriptive,
+        stimuli=stimuli,
     )
 
     if not answer_key and not args.descriptive:
