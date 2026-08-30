@@ -17,9 +17,14 @@ Three pieces, run in order:
 3. **Writer** — emits a JSONL record per question and a SQL file of upserts
    into ``pyq_question_topic_tags``.
 
-Nothing here connects to a database or to a model provider by itself. The model
-client is injected, and ``--dry-run`` replays a fixture of canned responses
-through the real parser, so the whole pipeline is exercisable with no network.
+Nothing here touches a database, ever. A model provider is reached only when
+``--live`` asks for it: the client is injected through a single
+``Callable[[str], str]`` seam, ``--dry-run`` replays a fixture of canned
+responses through the real parser, and a run with neither flag still makes no
+network call. ``--live`` reads its key from ``ANTHROPIC_API_KEY`` (never an
+argument or a literal), retries rate limits and transient errors with
+exponential backoff honouring ``Retry-After``, and aborts the whole run if a
+batch is still failing — questions are never silently dropped from the output.
 
 Governance
 ----------
@@ -65,14 +70,25 @@ Usage::
         --batch-size 10 \\
         --dry-run --fixture responses.json \\
         --out-jsonl proposals.jsonl --out-sql proposals.sql
+
+Live, against the provider::
+
+    export ANTHROPIC_API_KEY=...
+    python scripts/propose_pyq_topic_tags.py \\
+        --questions questions.jsonl --catalogue catalogue.jsonl \\
+        --alias-map subject_aliases.json \\
+        --batch-size 10 --live --model claude-opus-5 \\
+        --out-jsonl proposals.jsonl --out-sql proposals.sql
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
+import time
 from typing import Any, Callable, Iterable, Sequence
 
 # ── constants ────────────────────────────────────────────────────────────────
@@ -103,6 +119,23 @@ RATIONALE_WORD_CAP = 20
 # estimating. Below this many mapped proposals, identical values are plausible
 # by chance and are not treated as degenerate.
 MIN_BATCH_FOR_VARIANCE_CHECK = 4
+
+# ── live provider defaults ───────────────────────────────────────────────────
+#
+# Anthropic is the repo's established provider: it is the only one of the three
+# pinned SDKs (anthropic, openai, google-genai) that any module actually
+# imports, and app/study_os/writing_practice/semantic_evaluator.py is the
+# pattern this adapter follows — deferred import, key resolved from the
+# environment by the SDK, and a getattr-based transient classifier so neither
+# this module nor its tests hard-depend on the package being installed.
+API_KEY_ENV = "ANTHROPIC_API_KEY"
+DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MAX_TOKENS = 8192
+DEFAULT_TIMEOUT_S = 120.0
+DEFAULT_MAX_RETRIES = 4
+DEFAULT_BACKOFF_BASE_S = 1.0
+# Ceiling on one backoff sleep, including a Retry-After the provider asks for.
+MAX_BACKOFF_S = 60.0
 
 
 class ProposerError(RuntimeError):
@@ -562,9 +595,179 @@ def fixture_client(path: str) -> Callable[[str], str]:
 def no_client(_prompt: str) -> str:
     raise ProposerError(
         "no model client configured. This script does not open a network "
-        "connection on its own: run with --dry-run --fixture <file>, or supply "
-        "a client programmatically."
+        "connection on its own: run with --dry-run --fixture <file>, --live to "
+        "call the provider, or supply a client programmatically."
     )
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """Retryable: rate limit, timeout, connection failure, or a 5xx.
+
+    Mirrors ``semantic_evaluator._is_transient``. Types are looked up with
+    ``getattr`` so a missing or older SDK degrades to "not retryable" instead of
+    raising during error handling.
+    """
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    try:
+        import anthropic
+    except ImportError:
+        return False
+    transient_types = tuple(
+        t for t in (
+            getattr(anthropic, "RateLimitError", None),
+            getattr(anthropic, "APITimeoutError", None),
+            getattr(anthropic, "APIConnectionError", None),
+            getattr(anthropic, "InternalServerError", None),
+        ) if t is not None
+    )
+    if transient_types and isinstance(exc, transient_types):
+        return True
+    status_exc = getattr(anthropic, "APIStatusError", None)
+    if status_exc is not None and isinstance(exc, status_exc):
+        return int(getattr(exc, "status_code", 0) or 0) >= 500
+    return False
+
+
+def _retry_after_s(exc: BaseException) -> float | None:
+    """The provider's own Retry-After, in seconds, when it sent one.
+
+    A 429 usually carries the wait it wants; honouring it beats guessing.
+    """
+    headers = getattr(getattr(exc, "response", None), "headers", None)
+    if headers is None:
+        return None
+    try:
+        raw = headers.get("retry-after")
+    except Exception:  # noqa: BLE001 - a header mapping that does not behave
+        return None
+    if raw is None:
+        return None
+    try:
+        value = float(str(raw).strip())
+    except (TypeError, ValueError):
+        return None  # HTTP-date form; fall back to exponential backoff
+    return value if value >= 0 else None
+
+
+def _backoff_s(attempt: int, base_s: float, exc: BaseException) -> float:
+    """Seconds to wait before retry ``attempt`` (1-based)."""
+    asked = _retry_after_s(exc)
+    if asked is not None:
+        return min(asked, MAX_BACKOFF_S)
+    return min(base_s * (2 ** (attempt - 1)), MAX_BACKOFF_S)
+
+
+def _response_text(response: Any) -> str:
+    """Concatenate the text blocks of a Messages response.
+
+    Refusals and ``max_tokens`` truncation are named here rather than left to
+    surface downstream as a confusing parse failure — a truncated batch is a
+    provider-side abort, not a malformed model reply.
+    """
+    stop_reason = getattr(response, "stop_reason", None)
+    if stop_reason == "refusal":
+        raise ProposerError(
+            "the provider declined this batch (stop_reason='refusal'); nothing "
+            "was proposed for it"
+        )
+    if stop_reason == "max_tokens":
+        raise ProposerError(
+            f"the response hit max_tokens ({DEFAULT_MAX_TOKENS}) and is truncated; "
+            f"re-run with a smaller --batch-size"
+        )
+    parts = [
+        getattr(block, "text", "")
+        for block in (getattr(response, "content", None) or [])
+        if getattr(block, "type", None) == "text"
+    ]
+    text = "".join(parts).strip()
+    if not text:
+        raise ProposerError("the provider returned a response with no text content")
+    return text
+
+
+def anthropic_client(
+    *,
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    backoff_base_s: float = DEFAULT_BACKOFF_BASE_S,
+    client_factory: Callable[[], Any] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> Callable[[str], str]:
+    """A live client callable over the Anthropic Messages API.
+
+    Satisfies the same ``Callable[[str], str]`` seam ``propose`` takes, so the
+    parser, writer and ``--dry-run`` path are untouched by this being live.
+
+    The key is read from ``ANTHROPIC_API_KEY`` in the environment and is never
+    passed as a literal; its absence is raised **here**, at construction, so a
+    misconfigured run fails before a single batch is sent rather than partway
+    through the corpus.
+
+    Retries are this function's own: the SDK's built-in retry is switched off
+    (``max_retries=0``) so one backoff policy governs, and it is observable in
+    tests through the injected ``sleep``. A batch that is still failing after
+    ``max_retries`` raises ``ProposerError``, which aborts the run — a dropped
+    batch would silently leave those questions untagged with an exit code of 0.
+    """
+    if not (os.environ.get(API_KEY_ENV) or "").strip():
+        raise ProposerError(
+            f"{API_KEY_ENV} is not set. Export the key before running --live; "
+            f"this script never accepts one as an argument or a literal."
+        )
+
+    def _build():
+        if client_factory is not None:
+            return client_factory()
+        import anthropic  # deferred: --dry-run must not need the SDK installed
+
+        # Key comes from ANTHROPIC_API_KEY via the SDK's own environment
+        # resolution — checked above so the failure is ours and is early.
+        # max_retries=0: the retry loop below is the single authority.
+        return anthropic.Anthropic(timeout=timeout_s, max_retries=0)
+
+    try:
+        client = _build()
+    except ProposerError:
+        raise
+    except ImportError as exc:
+        raise ProposerError(
+            f"the anthropic SDK is not installed ({exc}); install it or run "
+            f"with --dry-run --fixture <file>"
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 - bad config must not reach a batch
+        raise ProposerError(f"could not build the provider client: {exc}") from exc
+
+    def _client(prompt: str) -> str:
+        attempt = 0
+        while True:
+            try:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return _response_text(response)
+            except ProposerError:
+                raise  # refusal / truncation / empty: not retryable, abort now
+            except Exception as exc:  # noqa: BLE001 - classify, then retry or abort
+                if _is_transient(exc) and attempt < max_retries:
+                    attempt += 1
+                    sleep(_backoff_s(attempt, backoff_base_s, exc))
+                    continue
+                kind = "transient" if _is_transient(exc) else "non-retryable"
+                raise ProposerError(
+                    f"model call failed after {attempt} retr"
+                    f"{'y' if attempt == 1 else 'ies'} "
+                    f"({kind} {exc.__class__.__name__}: {str(exc)[:200]}). "
+                    f"Aborting: the questions in this batch would otherwise be "
+                    f"dropped from the output without any tag."
+                ) from exc
+
+    return _client
 
 
 # ── 3. writer ────────────────────────────────────────────────────────────────
@@ -757,6 +960,16 @@ def main(argv: list[str] | None = None) -> int:
                     help="Replay --fixture instead of calling a model. No network, "
                          "no database; the parser and writer run for real.")
     ap.add_argument("--fixture", help="JSON list of raw model responses, for --dry-run")
+    ap.add_argument("--live", action="store_true",
+                    help=f"Call the provider for real. Requires {API_KEY_ENV} in the "
+                         f"environment. Without this and without --dry-run the run "
+                         f"still makes no network call.")
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help=f"Model id for --live (default {DEFAULT_MODEL})")
+    ap.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES,
+                    help=f"Retries per batch on rate limits and transient errors "
+                         f"(default {DEFAULT_MAX_RETRIES}). A batch still failing "
+                         f"after these aborts the run.")
     ap.add_argument("--report", action="store_true", help="Parse summary to stderr")
     args = ap.parse_args(argv)
 
@@ -766,12 +979,25 @@ def main(argv: list[str] | None = None) -> int:
     if args.fixture and not args.dry_run:
         print("--fixture is only meaningful with --dry-run", file=sys.stderr)
         return 2
+    if args.live and args.dry_run:
+        print("--live and --dry-run are mutually exclusive", file=sys.stderr)
+        return 2
+    if args.max_retries < 0:
+        print("--max-retries cannot be negative", file=sys.stderr)
+        return 2
 
     try:
         alias_map = load_alias_map(args.alias_map)
         catalogue = load_catalogue(args.catalogue)
         questions = load_questions(args.questions, alias_map)
-        client = fixture_client(args.fixture) if args.dry_run else no_client
+        if args.dry_run:
+            client = fixture_client(args.fixture)
+        elif args.live:
+            # Built before the first batch: a missing key fails here, not
+            # halfway through the corpus.
+            client = anthropic_client(model=args.model, max_retries=args.max_retries)
+        else:
+            client = no_client
         proposals = propose(
             questions, catalogue, client=client, batch_size=args.batch_size
         )
@@ -788,9 +1014,13 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         print(f"  {rows} mapped, {len(unmapped)} unmapped, "
               f"{len(empty)} with no candidates", file=sys.stderr)
-        print(f"  batch size {args.batch_size}"
-              f"{' (dry run, fixture-driven)' if args.dry_run else ''}",
-              file=sys.stderr)
+        if args.dry_run:
+            mode = " (dry run, fixture-driven)"
+        elif args.live:
+            mode = f" (live, model {args.model})"
+        else:
+            mode = ""
+        print(f"  batch size {args.batch_size}{mode}", file=sys.stderr)
 
     print(f"wrote {written} proposal(s) to {args.out_jsonl} and {rows} upsert(s) "
           f"to {args.out_sql}", file=sys.stderr)

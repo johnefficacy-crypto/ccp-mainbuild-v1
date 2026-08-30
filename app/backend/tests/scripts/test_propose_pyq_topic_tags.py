@@ -564,3 +564,260 @@ def test_generated_sql_parses_under_the_real_postgres_grammar(tmp_path):
     statements = pglast.parse_sql(out.read_text())
     kinds = [type(s.stmt).__name__ for s in statements]
     assert kinds == ["TransactionStmt", "InsertStmt", "InsertStmt", "TransactionStmt"]
+
+
+# ── 4. live provider adapter ─────────────────────────────────────────────────
+#
+# The adapter is exercised through injected `client_factory` and `sleep`, so
+# nothing here opens a socket or waits in real time.
+
+
+class _Block:
+    def __init__(self, text):
+        self.type = "text"
+        self.text = text
+
+
+class _Response:
+    def __init__(self, text, stop_reason="end_turn"):
+        self.content = [_Block(text)] if text is not None else []
+        self.stop_reason = stop_reason
+
+
+class _Messages:
+    """Replays a scripted sequence: an exception is raised, anything else returned."""
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        if not self.script:
+            raise AssertionError("the adapter made more calls than the script allows")
+        item = self.script.pop(0)
+        if isinstance(item, BaseException):
+            raise item
+        return item
+
+
+class _FakeSDKClient:
+    def __init__(self, script):
+        self.messages = _Messages(script)
+
+
+def _rate_limit_error(retry_after=None):
+    """A real anthropic.RateLimitError, so the transient classifier is tested
+    against the type it will actually meet rather than a stand-in."""
+    import anthropic
+    import httpx
+
+    headers = {"retry-after": str(retry_after)} if retry_after is not None else {}
+    response = httpx.Response(
+        429, headers=headers, request=httpx.Request("POST", "https://api.test/v1/messages")
+    )
+    return anthropic.RateLimitError("rate limited", response=response, body=None)
+
+
+def _live(monkeypatch, script, *, key="sk-test-not-a-real-key", **kw):
+    """Build the adapter over a scripted fake SDK client, recording sleeps."""
+    if key is None:
+        monkeypatch.delenv(mod.API_KEY_ENV, raising=False)
+    else:
+        monkeypatch.setenv(mod.API_KEY_ENV, key)
+    fake = _FakeSDKClient(script)
+    slept = []
+    client = mod.anthropic_client(
+        client_factory=lambda: fake, sleep=slept.append, **kw
+    )
+    return client, fake, slept
+
+
+def test_live_client_retries_a_rate_limit_then_succeeds(monkeypatch):
+    """A 429 is retried with backoff and the batch still returns its response —
+    the run must not lose questions to a transient provider failure."""
+    client, fake, slept = _live(
+        monkeypatch,
+        [_rate_limit_error(), _rate_limit_error(), _Response("the batch reply")],
+        backoff_base_s=1.0,
+    )
+    assert client("a prompt") == "the batch reply"
+    assert len(fake.messages.calls) == 3
+    assert slept == [1.0, 2.0]  # exponential, not a fixed pause
+
+
+def test_live_client_retries_a_connection_error(monkeypatch):
+    """Transient is not only rate limits: a dropped connection retries too."""
+    client, fake, slept = _live(
+        monkeypatch, [ConnectionError("reset by peer"), _Response("ok")]
+    )
+    assert client("a prompt") == "ok"
+    assert len(slept) == 1
+
+
+def test_live_client_honours_retry_after(monkeypatch):
+    """When the provider says how long to wait, wait that long, not our guess."""
+    client, _fake, slept = _live(
+        monkeypatch, [_rate_limit_error(retry_after=7), _Response("ok")],
+        backoff_base_s=1.0,
+    )
+    assert client("a prompt") == "ok"
+    assert slept == [7.0]
+
+
+def test_live_client_caps_a_hostile_retry_after(monkeypatch):
+    """A provider asking for an hour must not hang the run for an hour."""
+    client, _fake, slept = _live(
+        monkeypatch, [_rate_limit_error(retry_after=99999), _Response("ok")]
+    )
+    assert client("a prompt") == "ok"
+    assert slept == [mod.MAX_BACKOFF_S]
+
+
+def test_live_client_aborts_when_retries_are_exhausted(monkeypatch):
+    """Exhausted retries raise rather than return — a dropped batch would leave
+    its questions untagged with a successful exit code."""
+    client, fake, slept = _live(
+        monkeypatch, [_rate_limit_error() for _ in range(3)], max_retries=2,
+    )
+    with pytest.raises(mod.ProposerError, match=r"failed after 2 retries"):
+        client("a prompt")
+    assert len(fake.messages.calls) == 3  # the original call plus two retries
+    assert len(slept) == 2
+
+
+def test_an_exhausted_batch_aborts_the_whole_run(monkeypatch, tmp_path):
+    """End to end: the abort propagates out of propose() and nothing is written.
+    A partial proposal file would be the silent drop this guards against."""
+    monkeypatch.setenv(mod.API_KEY_ENV, "sk-test-not-a-real-key")
+    questions, catalogue = _loaded(
+        tmp_path, questions=[_question(QID_1), _question(QID_2)]
+    )
+    fake = _FakeSDKClient([_rate_limit_error() for _ in range(2)])
+    client = mod.anthropic_client(
+        client_factory=lambda: fake, sleep=lambda _s: None, max_retries=1
+    )
+    out_jsonl = tmp_path / "o.jsonl"
+
+    with pytest.raises(mod.ProposerError, match=r"Aborting"):
+        mod.propose(questions, catalogue, client=client, batch_size=1)
+    assert not out_jsonl.exists()
+
+
+def test_a_non_transient_error_is_not_retried(monkeypatch):
+    """A bad request will fail identically on every attempt; burning retries on
+    it only delays the error."""
+    client, fake, slept = _live(monkeypatch, [ValueError("malformed request")])
+    with pytest.raises(mod.ProposerError, match=r"non-retryable ValueError"):
+        client("a prompt")
+    assert len(fake.messages.calls) == 1
+    assert slept == []
+
+
+def test_missing_api_key_fails_before_any_batch_is_sent(monkeypatch):
+    """Construction raises, so a misconfigured run stops before the first call
+    rather than partway through the corpus."""
+    monkeypatch.delenv(mod.API_KEY_ENV, raising=False)
+    with pytest.raises(mod.ProposerError, match=r"ANTHROPIC_API_KEY is not set"):
+        mod.anthropic_client(client_factory=lambda: _FakeSDKClient([]))
+
+
+def test_a_blank_api_key_is_treated_as_missing(monkeypatch):
+    monkeypatch.setenv(mod.API_KEY_ENV, "   ")
+    with pytest.raises(mod.ProposerError, match=r"ANTHROPIC_API_KEY is not set"):
+        mod.anthropic_client(client_factory=lambda: _FakeSDKClient([]))
+
+
+def test_missing_key_stops_main_before_the_first_batch(monkeypatch, tmp_path, capsys):
+    """The CLI surfaces the same failure: exit 1, nothing written."""
+    monkeypatch.delenv(mod.API_KEY_ENV, raising=False)
+    q_path = _write_jsonl(tmp_path / "q.jsonl", [_question()])
+    c_path = _write_jsonl(tmp_path / "c.jsonl", _catalogue())
+    a_path = _write_json(tmp_path / "a.json", ALIAS_MAP)
+    out_jsonl = tmp_path / "o.jsonl"
+
+    rc = mod.main(["--questions", q_path, "--catalogue", c_path,
+                   "--alias-map", a_path, "--live",
+                   "--out-jsonl", str(out_jsonl), "--out-sql", str(tmp_path / "o.sql")])
+    assert rc == 1
+    assert "ANTHROPIC_API_KEY is not set" in capsys.readouterr().err
+    assert not out_jsonl.exists()
+
+
+def test_the_key_is_never_passed_as_an_argument(monkeypatch):
+    """The key is read from the environment by the SDK. It must not appear in
+    the request kwargs, where it could reach a log or a traceback."""
+    client, fake, _slept = _live(monkeypatch, [_Response("ok")])
+    client("a prompt")
+    assert "api_key" not in fake.messages.calls[0]
+    assert "sk-test-not-a-real-key" not in json.dumps(fake.messages.calls[0])
+
+
+def test_model_flag_reaches_the_call(monkeypatch):
+    client, fake, _slept = _live(
+        monkeypatch, [_Response("ok")], model="claude-haiku-4-5"
+    )
+    client("a prompt")
+    assert fake.messages.calls[0]["model"] == "claude-haiku-4-5"
+
+
+def test_default_model_is_used_when_the_flag_is_omitted(monkeypatch):
+    client, fake, _slept = _live(monkeypatch, [_Response("ok")])
+    client("a prompt")
+    assert fake.messages.calls[0]["model"] == mod.DEFAULT_MODEL
+
+
+def test_the_prompt_is_sent_verbatim_as_the_user_message(monkeypatch):
+    """The adapter is transport only — it must not reshape the built prompt."""
+    client, fake, _slept = _live(monkeypatch, [_Response("ok")])
+    client("PROMPT BODY")
+    assert fake.messages.calls[0]["messages"] == [
+        {"role": "user", "content": "PROMPT BODY"}
+    ]
+
+
+def test_a_refusal_aborts_rather_than_returning_empty(monkeypatch):
+    client, _fake, _slept = _live(
+        monkeypatch, [_Response("", stop_reason="refusal")]
+    )
+    with pytest.raises(mod.ProposerError, match=r"declined this batch"):
+        client("a prompt")
+
+
+def test_a_truncated_response_is_named_not_left_to_the_parser(monkeypatch):
+    """max_tokens truncation yields invalid JSON; saying so beats a parse error
+    that reads like the model misbehaved."""
+    client, _fake, _slept = _live(
+        monkeypatch, [_Response('{"proposals": [', stop_reason="max_tokens")]
+    )
+    with pytest.raises(mod.ProposerError, match=r"max_tokens"):
+        client("a prompt")
+
+
+def test_an_empty_response_aborts(monkeypatch):
+    client, _fake, _slept = _live(monkeypatch, [_Response(None)])
+    with pytest.raises(mod.ProposerError, match=r"no text content"):
+        client("a prompt")
+
+
+def test_live_and_dry_run_are_mutually_exclusive(tmp_path, capsys):
+    rc = mod.main(["--questions", "x", "--catalogue", "y", "--alias-map", "z",
+                   "--out-jsonl", "a", "--out-sql", "b",
+                   "--dry-run", "--fixture", "f", "--live"])
+    assert rc == 2
+    assert "mutually exclusive" in capsys.readouterr().err
+
+
+def test_the_live_path_reuses_the_injection_seam(monkeypatch, tmp_path):
+    """propose() takes the adapter unchanged — the parser and writer cannot
+    tell a live client from the fixture one."""
+    monkeypatch.setenv(mod.API_KEY_ENV, "sk-test-not-a-real-key")
+    questions, catalogue = _loaded(tmp_path)
+    fake = _FakeSDKClient([
+        _Response(_response([_mapped(questions[0]["id"], "money-market-instruments")]))
+    ])
+    client = mod.anthropic_client(client_factory=lambda: fake, sleep=lambda _s: None)
+
+    proposals = mod.propose(questions, catalogue, client=client, batch_size=10)
+    assert [p["status"] for p in proposals] == ["MAPPED"]
+    assert proposals[0]["topic_slug"] == "money-market-instruments"
