@@ -176,6 +176,15 @@ def _claim_token(sb, *, token: str, paper_id: str) -> dict | None:
 
 _CORRECT_OPTIONS = {"A", "B", "C", "D"}
 _QUESTION_TYPES = frozenset(("mcq", "numerical", "descriptive", "caselet", "matching", "other"))
+
+# observed_difficulty canonical set. This is the ONLY set the downstream
+# projection to mock_question_bank recognises: migration 239's
+# project_pyq_question_to_bank() coerces anything else to 'medium' silently,
+# so an out-of-set value is a value that means one thing here and another by
+# the time a learner sees it. Nullable — the regulatory corpus carries no
+# difficulty at all and must keep importing.
+_OBSERVED_DIFFICULTIES = frozenset(("easy", "medium", "hard"))
+
 _CSV_REQUIRED = {
     "question_number", "question_text",
     "option_a", "option_b", "option_c", "option_d",
@@ -257,6 +266,29 @@ def parse_bytes(content: bytes, content_type: str) -> dict:
     return {"format_version": 1, "is_csv": True, "stimuli": [], "rows": norm_rows}
 
 
+def _parse_observed_difficulty(raw: dict, errors: list[str]) -> str | None:
+    """Validate ``observed_difficulty`` for one row. Shared by v1 and v2.
+
+    Absent, ``None``, and blank/whitespace-only all mean NULL — that is how a
+    CSV encodes "no difficulty recorded", and the regulatory corpus is 100%
+    NULL. Anything else is normalised (``strip().lower()``) and must land in
+    ``_OBSERVED_DIFFICULTIES``; a case or whitespace variant is stored in its
+    normalised form, never as typed. Mirrors the authored-question importer's
+    check in ``app/admin/mock_import.py``, minus its default-to-medium (a PYQ
+    with no recorded difficulty stays NULL rather than being invented).
+    """
+    diff_raw = raw.get("observed_difficulty")
+    if diff_raw is None or not str(diff_raw).strip():
+        return None
+    normalized = str(diff_raw).strip().lower()
+    if normalized not in _OBSERVED_DIFFICULTIES:
+        errors.append(
+            f"observed_difficulty must be easy|medium|hard; got {diff_raw!r}"
+        )
+        return None
+    return normalized
+
+
 def _validate_row(raw: dict, seen_numbers: set[int]) -> tuple[dict | None, list[str]]:
     """Validate one raw v1 row. Returns (parsed, errors). observed_difficulty may be None."""
     errors: list[str] = []
@@ -296,11 +328,8 @@ def _validate_row(raw: dict, seen_numbers: set[int]) -> tuple[dict | None, list[
     if qtype not in _QUESTION_TYPES:
         errors.append(f"question_type must be one of {sorted(_QUESTION_TYPES)}; got {qtype!r}")
 
-    # observed_difficulty — nullable
-    diff_raw = raw.get("observed_difficulty")
-    observed_difficulty: str | None = None
-    if diff_raw is not None and str(diff_raw).strip():
-        observed_difficulty = str(diff_raw).strip()
+    # observed_difficulty — nullable, canonical easy|medium|hard
+    observed_difficulty = _parse_observed_difficulty(raw, errors)
 
     if errors:
         return None, errors
@@ -436,11 +465,8 @@ def _validate_row_v2(
             f"only 'mcq' is currently supported"
         )
 
-    # observed_difficulty — nullable
-    diff_raw = raw.get("observed_difficulty")
-    observed_difficulty: str | None = None
-    if diff_raw is not None and str(diff_raw).strip():
-        observed_difficulty = str(diff_raw).strip()
+    # observed_difficulty — nullable, canonical easy|medium|hard
+    observed_difficulty = _parse_observed_difficulty(raw, errors)
 
     # section_ref — optional, resolved against exam_phase_sections scoped to
     # the paper's exam_phase_id (section_lookup keys are lower-cased labels,

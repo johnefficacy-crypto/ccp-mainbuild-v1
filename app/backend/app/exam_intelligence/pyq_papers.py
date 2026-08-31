@@ -55,6 +55,26 @@ def _paginate(build_query: Callable[[int, int], Any]) -> list[dict[str, Any]]:
 
 
 def _normalize_difficulty(value: Any) -> str:
+    """Bucket a stored ``observed_difficulty`` for the read-side heatmap.
+
+    The canonical write set is easy/medium/hard — enforced at every writer
+    (``admin_exam_intel_cms.py``, ``pyq_bulk_import.py``, both admin
+    dropdowns). Nothing can write the aliases below any more.
+
+    They are kept deliberately, as read-side tolerance for rows written
+    before that enforcement landed: the corpus still holds at least one
+    ``medium_high`` and may hold ``very_hard``. Dropping the aliases would
+    not make those rows canonical, it would move them into ``unknown`` and
+    lose the operator's stated judgement for no gain — this heatmap
+    describes the PYQ corpus as reviewed, not the projected practice bank.
+
+    Note the aliases do NOT agree with migration 239's projection, which
+    coerces every non-canonical value to ``medium``. That disagreement is
+    the reason the write set was narrowed; it is not resolvable here
+    without editing the projection, which is inside the content hash.
+    Delete this whole alias block once the corpus holds no non-canonical
+    value and ``pyq_questions.observed_difficulty`` carries a CHECK.
+    """
     if not value:
         return "unknown"
     text = str(value).strip().lower()

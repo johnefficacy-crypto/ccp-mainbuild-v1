@@ -224,7 +224,7 @@ insert into public.pyq_questions
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 'dddddddd-dddd-dddd-dddd-ddddddddddd1',
    11, 'An article sold at 15% profit; had it been sold for Rs 60 more...', 'mcq', 'medium', 75, 'verified'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3', 'dddddddd-dddd-dddd-dddd-ddddddddddd1',
-   22, 'The pie chart shows expenditure — find the central angle for...', 'mcq', 'medium_high', 90, 'verified'),
+   22, 'The pie chart shows expenditure — find the central angle for...', 'mcq', 'hard', 90, 'verified'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4', 'dddddddd-dddd-dddd-dddd-ddddddddddd2',
    7, 'A can do a work in 12 days, B in 18 days — together?', 'mcq', 'medium', 70, 'verified'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee5', 'dddddddd-dddd-dddd-dddd-ddddddddddd2',

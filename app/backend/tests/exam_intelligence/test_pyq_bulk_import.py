@@ -419,6 +419,98 @@ class TestCommit:
         assert len(sb.db["pyq_questions"]) == 0
 
 
+# ── observed_difficulty vocabulary ───────────────────────────────────────────
+
+class TestObservedDifficultyVocabulary:
+    """The canonical set is easy|medium|hard — the only three values
+    migration 239's projection to mock_question_bank recognises. Everything
+    else it silently rewrites to 'medium', so the importer's job here is to
+    REJECT, not to coerce. These tests are about what does not get through.
+    """
+
+    @pytest.mark.parametrize("bad", [
+        "very_hard",    # was offered by the PyqPaperWorkspace dropdown
+        "medium_high",  # present in the corpus; no surface ever offered it
+        "moderate",     # was offered by the generic ExamIntelCms dropdown
+        "tough",
+        "easy_low",
+        "1",
+        "Hard!",
+    ])
+    def test_non_canonical_value_rejected(self, bad):
+        sb = TaxSBStub(_seed())
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1, observed_difficulty=bad)])
+        assert pf["summary"]["error"] == 1
+        bad_row = pf["rows"][0]
+        assert bad_row["status"] == "error"
+        # The message must name the field AND the offending value — an
+        # operator hand-labelling 597 questions needs to know which cell.
+        msg = next(m for m in bad_row["messages"] if "observed_difficulty" in m)
+        assert repr(bad) in msg
+
+    @pytest.mark.parametrize("good", ["easy", "medium", "hard"])
+    def test_canonical_values_accepted(self, good):
+        sb = TaxSBStub(_seed())
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1, observed_difficulty=good)])
+        assert pf["summary"]["error"] == 0
+        assert pf["rows"][0]["status"] == "ok"
+
+    def test_null_and_blank_accepted_as_null(self):
+        """The regulatory corpus is 100% NULL and must keep importing. A CSV
+        encodes NULL as an empty cell, so blank and absent both mean NULL.
+        """
+        sb = TaxSBStub(_seed())
+        client = _client(sb)
+        rows = [
+            _clean_row(1, observed_difficulty=""),
+            _clean_row(2, observed_difficulty=None),
+            _clean_row(3, observed_difficulty="   "),
+        ]
+        pf = _preflight(client, rows)
+        assert pf["summary"]["error"] == 0
+        assert all(r["status"] == "ok" for r in pf["rows"])
+
+    @pytest.mark.parametrize("variant", ["HARD", "Hard", " hard ", "\thard\n", "MEDIUM"])
+    def test_case_and_whitespace_variants_are_normalised_not_stored_raw(self, variant):
+        """Asserted disposition: case/whitespace variants are NORMALISED, not
+        rejected — matching mock_import.py, which lower()/strip()s before
+        checking. What must never happen is the variant reaching the database
+        as typed, because an exact-match read (exam_intelligence.py's
+        difficulty= filter) would then miss it.
+        """
+        sb = TaxSBStub(_seed())
+        rows = [_clean_row(1, observed_difficulty=variant)]
+        TestCommit()._do_preflight_and_commit(sb, rows)
+        stored = sb.db["pyq_questions"][0]["observed_difficulty"]
+        assert stored == variant.strip().lower()
+        assert stored in ("easy", "medium", "hard")
+
+    def test_rejected_row_writes_nothing(self):
+        """A rejected value must not reach the table at all — not as the bad
+        value, and not silently downgraded to NULL or 'medium'.
+        """
+        sb = TaxSBStub(_seed())
+        client = _client(sb)
+        pf = _preflight(client, [_clean_row(1, observed_difficulty="very_hard")])
+        r = client.post(
+            f"{_BASE}/pyq-papers/paper-1/bulk-import/commit",
+            json={"import_token": pf["import_token"], "override_errors": False,
+                  "reason": "test commit"},
+        )
+        assert r.status_code == 200, r.text
+        assert sb.db["pyq_questions"] == []
+
+    def test_json_payload_rejected_too(self):
+        """Not a CSV-only guard — the JSON v1 array path shares the check."""
+        sb = TaxSBStub(_seed())
+        client = _client(sb)
+        pf = _preflight_json(client, [_clean_row(1, observed_difficulty="very_hard")])
+        assert pf["summary"]["error"] == 1
+        assert any("observed_difficulty" in m for m in pf["rows"][0]["messages"])
+
+
 # ── Parity test ───────────────────────────────────────────────────────────────
 
 class TestHashParity:

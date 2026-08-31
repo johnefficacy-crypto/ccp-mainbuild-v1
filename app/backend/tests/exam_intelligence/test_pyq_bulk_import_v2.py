@@ -276,6 +276,74 @@ class TestV2RowValidation:
         assert pf["rows"][0]["status"] == "error"
 
 
+# ── observed_difficulty vocabulary (v2 shares v1's check) ──────────────────
+
+
+class TestV2ObservedDifficultyVocabulary:
+    """v1 and v2 must reject the same vocabulary — one helper backs both, and
+    this class exists so a future divergence in either parser fails here.
+    """
+
+    @pytest.mark.parametrize("bad", ["very_hard", "medium_high", "moderate", "tough"])
+    def test_non_canonical_rejected_json(self, bad):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        pf = _preflight_json_v2(client, _v2_payload([_q(observed_difficulty=bad)]))
+        assert pf["summary"]["error"] == 1
+        msg = next(m for m in pf["rows"][0]["messages"] if "observed_difficulty" in m)
+        assert repr(bad) in msg
+        _commit(client, pf["import_token"])
+        assert sb.db["pyq_questions"] == []
+
+    @pytest.mark.parametrize("bad", ["very_hard", "medium_high"])
+    def test_non_canonical_rejected_csv(self, bad):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        csv_bytes = _make_csv_v2([{
+            "question_text": "Which conclusion follows?",
+            "question_type": "mcq",
+            "observed_difficulty": bad,
+            "options_json": [
+                {"label": "1", "text": "Alpha", "display_order": 1},
+                {"label": "2", "text": "Beta", "display_order": 2},
+            ],
+            "correct_option_label": "1",
+        }])
+        pf = _preflight_csv_v2(client, csv_bytes)
+        assert pf["summary"]["error"] == 1
+        assert any("observed_difficulty" in m for m in pf["rows"][0]["messages"])
+
+    @pytest.mark.parametrize("good", ["easy", "medium", "hard"])
+    def test_canonical_accepted(self, good):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        pf = _preflight_json_v2(client, _v2_payload([_q(observed_difficulty=good)]))
+        assert pf["summary"]["error"] == 0
+        _commit(client, pf["import_token"])
+        assert sb.db["pyq_questions"][0]["observed_difficulty"] == good
+
+    def test_absent_and_blank_accepted_as_null(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        pf = _preflight_json_v2(client, _v2_payload([
+            _q(question_text="No difficulty key at all?"),
+            _q(question_text="Blank difficulty?", observed_difficulty=""),
+            _q(question_text="Null difficulty?", observed_difficulty=None),
+        ]))
+        assert pf["summary"]["error"] == 0
+        _commit(client, pf["import_token"])
+        assert len(sb.db["pyq_questions"]) == 3
+        assert all(q.get("observed_difficulty") is None for q in sb.db["pyq_questions"])
+
+    def test_case_variant_normalised_not_stored_raw(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        pf = _preflight_json_v2(client, _v2_payload([_q(observed_difficulty=" HARD ")]))
+        assert pf["summary"]["error"] == 0
+        _commit(client, pf["import_token"])
+        assert sb.db["pyq_questions"][0]["observed_difficulty"] == "hard"
+
+
 # ── 5/6. section_ref resolution ─────────────────────────────────────────────
 
 
