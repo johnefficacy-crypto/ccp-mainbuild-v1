@@ -36,10 +36,48 @@ every phase.
     sweep   ->  pure offline. Run deterministic checks that only ever FLAG a
                 row — they never decide it. Clean rows are sorted from flagged
                 rows and a spread spot-check sample is picked per paper. Writes
-                one worksheet.csv with a blank ``decision`` column.
+                one worksheet.csv with blank ``decision``, ``assign_topic_id``
+                and ``difficulty`` columns.
 
-    apply   ->  read the worksheet back and PATCH one review call per decided
-                row. Blank decisions are skipped. Requires ``--apply --confirm``.
+    apply   ->  read the worksheet back and issue one call per non-blank field
+                per row. Blank fields are skipped. Requires ``--apply --confirm``.
+
+WORKSHEET COLUMNS the operator fills (all blank on write, all independent — a
+row may carry any combination, and a blank one is skipped exactly as a blank
+decision always has been):
+
+    decision         verified|rejected|needs_correction — the review verdict,
+                     PATCHed to the review queue. Unchanged.
+    assign_topic_id  a topic id from --topic-catalog. QUESTION ROWS ONLY.
+                     Creates a NEW primary topic tag for that question
+                     (tag_role='primary', tagging_source='manual'). The new tag
+                     is born ``pending`` server-side — assigning it does not
+                     verify it; it comes back in the next export for review.
+    difficulty       easy|medium|hard. QUESTION ROWS ONLY. Writes
+                     ``pyq_questions.observed_difficulty``.
+
+    ``very_hard`` IS NOT ACCEPTED and cannot be written through this tool. The
+    column is bare ``text`` (migration 032, no CHECK), and migration 239's
+    projection to ``mock_question_bank`` recognises only easy|medium|hard —
+    anything else is silently rewritten to ``medium`` there, so a ``very_hard``
+    would read as ``hard`` in the PYQ heatmap and ``medium`` in the projected
+    bank. The CMS route rejects it with a 422; this tool rejects it offline,
+    naming the row, before any network call.
+
+    NEW FLAG — ``no_primary_tag``. The sweep's other checks are presence checks
+    on the question row; this one is an ABSENCE check across the exported tag
+    set: a question with no tag carrying ``tag_role='primary'`` is flagged, so
+    it is emitted for a human and is never eligible for the clean/spot-check
+    path. It is a named flag like every other — NOT a verdict. Without it a
+    paper whose questions have zero tags produced zero tag rows and swept
+    entirely clean, which is precisely the state of the 597 verified UPSC
+    Prelims GS questions.
+
+    SCOPE CAVEAT for ``no_primary_tag``: it is computed from the tags file the
+    export produced, and ``export`` filters tags by ``--status`` (default
+    ``pending``). A question whose primary tag is already ``verified`` will
+    therefore flag against a pending-only export. Run ``export --status all``
+    when you want this flag to describe the corpus rather than the backlog.
 
 Every row that ends up ``verified`` must trace back to EITHER a passed
 deterministic check AND a clean batch a human signed off after eyeballing its
@@ -76,6 +114,19 @@ Route contracts this tool depends on (verified against the repo backend):
          The tool sends reviewer_notes anyway (harmless, forward-compatible) but
          does NOT claim it was persisted.
 
+    POST  /api/admin/exam-intelligence-cms/pyq-question-topic-tags
+         body {"reason": "...", "payload": {"question_id", "topic_id",
+               "tag_role": "primary", "tagging_source": "manual"}}
+         (the CMS {reason, payload} envelope — reason is required, 8-500 chars).
+         Both FKs are resolved server-side; reviewer_status is FORCED to
+         'pending' by the route, so this can never mint a verified tag.
+         Unique key is (question_id, topic_id, tag_role) — re-assigning the same
+         topic to the same question returns a 409, reported per row, not fatal.
+    PATCH /api/admin/exam-intelligence-cms/pyq-questions/{question_id}
+         body {"reason": "...", "payload": {"observed_difficulty": "easy"}}
+         Same envelope. The route is the ONLY enforcement point for the
+         easy|medium|hard vocabulary (no DB CHECK on the column).
+
 Usage:
 
     export CCP_API_BASE=...      # e.g. https://<host>
@@ -101,16 +152,23 @@ Usage:
         --topic-catalog <path/to/topic_catalog.json> \
         --out worksheet.csv --apply
 
-    # ... a human opens worksheet.csv and fills the decision (+ notes) column ...
+    # ... a human opens worksheet.csv and fills decision / assign_topic_id /
+    #     difficulty (+ notes) ...
 
     # 3. Apply (dry-run by default; needs BOTH flags to write).
+    #    --topic-catalog is REQUIRED: every non-blank assign_topic_id is
+    #    validated against it, and an unknown id aborts the whole run before
+    #    the first network call.
     python scripts/pyq_question_review.py apply --worksheet worksheet.csv \
-        --exam-id <uuid>
+        --exam-id <uuid> --topic-catalog <path/to/topic_catalog.json>
     python scripts/pyq_question_review.py apply --worksheet worksheet.csv \
-        --exam-id <uuid> --apply --confirm
+        --exam-id <uuid> --topic-catalog <path/to/topic_catalog.json> \
+        --apply --confirm
 
 export needs ``exam_intelligence.review`` (items route) + ``exam_intelligence.cms``
-(pyq-questions / pyq-papers / sections). apply needs ``exam_intelligence.review``.
+(pyq-questions / pyq-papers / sections). apply needs ``exam_intelligence.review``
+for decisions, plus ``exam_intelligence.cms`` when any row carries an
+assign_topic_id or a difficulty.
 """
 from __future__ import annotations
 
@@ -139,13 +197,39 @@ DEFAULT_MAINS_PHASE_ID = "626ec667-4bbf-4420-8715-48c5b83e0d11"  # Mains phase
 
 DECISIONS = {"verified", "rejected", "needs_correction"}
 NOTE_MAX = 500  # ReviewBody.reviewer_notes max_length; over this the API 422s.
+REASON_MAX = 500  # WriteEnvelope.reason max_length (min 8); over this the CMS 422s.
+
+# The ONLY values accepted in the ``difficulty`` column. This mirrors
+# ``_OBSERVED_DIFFICULTIES`` in app/backend/app/api/admin_exam_intel_cms.py,
+# which is the sole enforcement point for the column (migration 032 declares
+# ``pyq_questions.observed_difficulty`` bare ``text``, with no CHECK).
+# ``very_hard`` is deliberately absent and must stay absent: migration 239's
+# projection to mock_question_bank recognises only these three and silently
+# rewrites anything else to 'medium', so a ``very_hard`` would mean "hard" in
+# the PYQ heatmap and "medium" in the practice bank. It cannot be written
+# through this tool — the offline check below rejects the run.
+DIFFICULTIES = {"easy", "medium", "hard"}
 
 QUESTION_KIND = "pyq_question"
 TAG_KIND = "pyq_question_topic_tag"
+QUESTION_ROW = "question"
 
+# tag_role/tagging_source for a tag this tool creates. The point of the
+# ``no_primary_tag`` flag is a MISSING primary tag, and the worksheet is typed
+# by a human, so both are fixed rather than operator-settable.
+ASSIGN_TAG_ROLE = "primary"
+ASSIGN_TAGGING_SOURCE = "manual"
+
+_TAG_CREATE_REASON = "pyq_question_review worksheet: assign primary topic tag"
+_DIFFICULTY_REASON = "pyq_question_review worksheet: set observed_difficulty"
+
+# ``decision`` stays first among the operator-filled columns and the columns
+# that existed before keep their order — the two new ones are APPENDED, so a
+# worksheet written by an older run still reads back cleanly.
 WORKSHEET_FIELDS = [
     "row_type", "row_id", "paper_year", "question_number_or_topic_id",
     "text_preview", "flags", "sample_reason", "decision", "notes",
+    "assign_topic_id", "difficulty",
 ]
 
 # Printable ASCII the sweep treats as clean; \t \n \r are allowed whitespace.
@@ -178,6 +262,14 @@ class Client:
         r = self.session.patch(f"{self.base}{path}", data=data, timeout=self.timeout)
         if r.status_code >= 400:
             raise RuntimeError(f"PATCH {path} -> {r.status_code}: {r.text[:300]}")
+        return r.json() or {}
+
+    def post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Used only by ``apply`` for the CMS tag-create route."""
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        r = self.session.post(f"{self.base}{path}", data=data, timeout=self.timeout)
+        if r.status_code >= 400:
+            raise RuntimeError(f"POST {path} -> {r.status_code}: {r.text[:300]}")
         return r.json() or {}
 
     def all_items(self, path: str, params: dict[str, Any] | None = None,
@@ -406,6 +498,24 @@ def question_flags(q: dict, per_paper_norm_counts: dict[str, int],
     return flags
 
 
+def index_tags_by_question(tags: list[dict]) -> dict[Any, list[dict]]:
+    """question_id -> its tag rows, for the absence check below.
+
+    ``tag_flags`` can only ever speak about a tag that EXISTS. A question with
+    no tags at all produces no tag row, so before this index the sweep was
+    structurally blind to it: an entirely untagged paper swept clean.
+    """
+    index: dict[Any, list[dict]] = {}
+    for t in tags:
+        index.setdefault(t.get("question_id"), []).append(t)
+    return index
+
+
+def has_primary_tag(question_id: Any, tags_by_question: dict[Any, list[dict]]) -> bool:
+    return any((t.get("tag_role") or "") == "primary"
+               for t in tags_by_question.get(question_id, ()))
+
+
 def tag_flags(t: dict, valid_ids: set[str], orphan_ids: set[str]) -> list[str]:
     """Deterministic tag checks — named flags only, never a verdict."""
     topic_id = t.get("topic_id")
@@ -496,6 +606,13 @@ def build_worksheet(questions: list[dict], tags: list[dict],
     """Sort every row into clean vs flagged, pick spot-checks, emit worksheet
     rows. Flagged rows are ALWAYS emitted and are NEVER eligible for the
     spot-check (clean-batch) path.
+
+    Question rows additionally carry ``no_primary_tag`` — an ABSENCE check
+    against the question_id -> tags index, deliberately parallel to the
+    presence checks in ``question_flags``. It is a named flag, not a verdict:
+    a flagged question is emitted for a human exactly like any other flagged
+    row, and is excluded from the clean/spot-check path. See the module
+    docstring for the ``export --status`` caveat.
     """
     # Per-paper normalized-text counts, scoped so identical text in DIFFERENT
     # papers does not flag as duplicate.
@@ -508,8 +625,14 @@ def build_worksheet(questions: list[dict], tags: list[dict],
 
     id_to_year = {q.get("id"): q.get("year") for q in questions}
 
-    q_flags = {q["id"]: question_flags(q, per_paper.get(q.get("paper_id"), {}), hindi_years)
-               for q in questions}
+    tags_by_question = index_tags_by_question(tags)
+
+    q_flags: dict[Any, list[str]] = {}
+    for q in questions:
+        flags = question_flags(q, per_paper.get(q.get("paper_id"), {}), hindi_years)
+        if not has_primary_tag(q["id"], tags_by_question):
+            flags.append("no_primary_tag")
+        q_flags[q["id"]] = flags
     t_flags = {t["id"]: tag_flags(t, valid_ids, orphan_ids) for t in tags}
 
     # Spot-check sample from CLEAN rows only, per paper, per row type.
@@ -561,6 +684,8 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 "sample_reason": sample_reason(q["id"], flags),
                 "decision": "",
                 "notes": "",
+                "assign_topic_id": "",
+                "difficulty": "",
             })
         for t in sorted(t_by_year.get(yr, []), key=lambda t: str(t.get("topic_id"))):
             flags = t_flags[t["id"]]
@@ -575,6 +700,10 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 "sample_reason": sample_reason(t["id"], flags),
                 "decision": "",
                 "notes": "",
+                # Blank on tag rows too, so the CSV stays rectangular; both are
+                # rejected on apply if a tag row carries one.
+                "assign_topic_id": "",
+                "difficulty": "",
             })
     return out
 
@@ -622,43 +751,141 @@ def do_sweep(args: argparse.Namespace) -> int:
         w.writerows(rows)
     print(f"\nwrote {len(rows)} rows -> {out}")
     print("Fill 'decision' (verified|rejected|needs_correction) for every row you "
-          "promote; blanks stay pending. This CSV is the audit trail — keep it.")
+          "promote; blanks stay pending. On QUESTION rows you may also fill "
+          "'assign_topic_id' (a topic id from the catalog -> creates a pending "
+          "primary tag) and 'difficulty' (easy|medium|hard). This CSV is the "
+          "audit trail — keep it.")
     return 0
 
 
 # ─── apply ──────────────────────────────────────────────────────────────────
 def _kind_for(row_type: str) -> str:
-    return QUESTION_KIND if row_type == "question" else TAG_KIND
+    return QUESTION_KIND if row_type == QUESTION_ROW else TAG_KIND
+
+
+def _cell(row: dict, key: str) -> str:
+    """Read one worksheet cell. Missing key == blank, which is what makes a
+    worksheet written before ``assign_topic_id``/``difficulty`` existed apply
+    exactly as it did then."""
+    return (row.get(key) or "").strip()
+
+
+def _write_reason(base: str, note: str) -> str:
+    """Build a CMS WriteEnvelope.reason (required, 8-500 chars).
+
+    ``base`` alone always clears the 8-char floor; the operator's note is
+    appended when present so the audit row carries their words, and the whole
+    thing is capped at the API's limit.
+    """
+    reason = f"{base} — {note}" if note else base
+    return reason[:REASON_MAX]
+
+
+def _validate_worksheet(rows: list[dict], valid_topic_ids: set[str]) -> list[str]:
+    """Every offline check apply makes, run BEFORE the first network call.
+
+    Returns a list of human-readable errors. A non-empty list aborts the whole
+    run — a half-applied worksheet with an unknown topic id partway through is
+    worse than one that never started.
+    """
+    errors: list[str] = []
+
+    bad_decision = [r for r in rows
+                    if _cell(r, "decision") and _cell(r, "decision").lower() not in DECISIONS]
+    for r in bad_decision:
+        errors.append(f"row {_cell(r, 'row_id') or '(no row_id)'}: decision "
+                      f"{_cell(r, 'decision')!r} is not one of {sorted(DECISIONS)}")
+
+    for r in rows:
+        row_id = _cell(r, "row_id") or "(no row_id)"
+        row_type = _cell(r, "row_type").lower()
+        topic_id = _cell(r, "assign_topic_id")
+        difficulty = _cell(r, "difficulty").lower()
+
+        # Both new columns are question-only. A value typed on a tag row is an
+        # operator mistake that would otherwise vanish silently, so it aborts.
+        if row_type != QUESTION_ROW:
+            if topic_id:
+                errors.append(f"row {row_id}: assign_topic_id is only meaningful on "
+                              f"question rows (row_type={row_type or '(blank)'!s})")
+            if difficulty:
+                errors.append(f"row {row_id}: difficulty is only meaningful on "
+                              f"question rows (row_type={row_type or '(blank)'!s})")
+            continue
+
+        if difficulty and difficulty not in DIFFICULTIES:
+            hint = ""
+            if difficulty == "very_hard":
+                hint = (" — 'very_hard' is NOT a valid observed_difficulty: the "
+                        "PYQ->mock projection rewrites it to 'medium' while the "
+                        "heatmap reads it as 'hard'. Use 'hard'.")
+            errors.append(f"row {row_id}: difficulty {_cell(r, 'difficulty')!r} is not "
+                          f"one of {sorted(DIFFICULTIES)}{hint}")
+
+        if topic_id and topic_id not in valid_topic_ids:
+            errors.append(f"row {row_id}: assign_topic_id {topic_id!r} is not in the "
+                          f"topic catalog")
+
+    return errors
 
 
 def do_apply(c: Client, args: argparse.Namespace) -> int:
+    # The valid-topic-id list is never derived, on apply exactly as on sweep
+    # (Preflight #2). Required even when no row carries an assign_topic_id —
+    # the operator should not discover the requirement mid-run.
+    catalog_path = getattr(args, "topic_catalog", None)
+    if not catalog_path:
+        print("error: --topic-catalog is required on apply; every assign_topic_id "
+              "is validated against it before any network call.", file=sys.stderr)
+        return 2
+    try:
+        valid_topic_ids, _orphan_ids, _names = load_topic_catalog(catalog_path)
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot read topic catalog — {exc}", file=sys.stderr)
+        return 2
+
     with Path(args.worksheet).open(newline="", encoding="utf-8-sig") as fh:
         rows = list(csv.DictReader(fh))
 
-    decided = [r for r in rows if (r.get("decision") or "").strip()]
-    bad = [r for r in decided if r["decision"].strip().lower() not in DECISIONS]
-    if bad:
-        print(f"error: {len(bad)} row(s) have an unrecognized decision. "
-              f"Allowed: {sorted(DECISIONS)}", file=sys.stderr)
-        for r in bad[:5]:
-            print(f"  {r.get('row_id')}: {r.get('decision')!r}", file=sys.stderr)
+    errors = _validate_worksheet(rows, valid_topic_ids)
+    if errors:
+        print(f"error: {len(errors)} invalid worksheet cell(s) — nothing was sent.",
+              file=sys.stderr)
+        for e in errors[:20]:
+            print(f"  {e}", file=sys.stderr)
+        if len(errors) > 20:
+            print(f"  ... and {len(errors) - 20} more", file=sys.stderr)
         return 2
+
+    def actions(r: dict) -> tuple[str, str, str]:
+        """(decision, assign_topic_id, difficulty), each canonical or blank."""
+        return (_cell(r, "decision").lower(),
+                _cell(r, "assign_topic_id"),
+                _cell(r, "difficulty").lower())
+
+    acting = [r for r in rows if any(actions(r))]
 
     # Group by paper_year so a bad batch is visible mid-run, not only at the end.
     def batch_key(r: dict) -> str:
         return (r.get("paper_year") or "").strip() or "(unknown)"
 
     ordered = sorted(rows, key=batch_key)
-    skipped_blank = len(rows) - len(decided)
-    print(f"{len(decided)} decided of {len(rows)} rows "
+    skipped_blank = len(rows) - len(acting)
+    print(f"{len(acting)} actionable of {len(rows)} rows "
           f"({skipped_blank} blank -> skipped, stay pending).")
 
     if not (args.apply and args.confirm):
         # Dry-run default: report exactly what WOULD happen, write nothing.
         plan: dict[str, dict[str, int]] = {}
-        for r in decided:
-            plan.setdefault(batch_key(r), {}).setdefault(r["decision"].strip().lower(), 0)
-            plan[batch_key(r)][r["decision"].strip().lower()] += 1
+        for r in acting:
+            decision, topic_id, difficulty = actions(r)
+            bucket = plan.setdefault(batch_key(r), {})
+            for key in ([decision] if decision else []):
+                bucket[key] = bucket.get(key, 0) + 1
+            if topic_id:
+                bucket["assign_topic_id"] = bucket.get("assign_topic_id", 0) + 1
+            if difficulty:
+                bucket[f"difficulty:{difficulty}"] = bucket.get(f"difficulty:{difficulty}", 0) + 1
         for yr in sorted(plan):
             print(f"  year {yr}: {dict(sorted(plan[yr].items()))}")
         print("\nDRY RUN — nothing written. Re-run with --apply --confirm to PATCH.")
@@ -666,13 +893,20 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
 
     ok = failed = 0
     cur_year = None
-    counts = {"verified": 0, "rejected": 0, "needs_correction": 0, "skipped": 0}
+    counts = {"verified": 0, "rejected": 0, "needs_correction": 0,
+              "tagged": 0, "difficulty": 0, "skipped": 0}
 
     def flush(year: Any) -> None:
         print(f"  year {year}: verified={counts['verified']} "
               f"rejected={counts['rejected']} "
               f"needs_correction={counts['needs_correction']} "
+              f"tagged={counts['tagged']} "
+              f"difficulty={counts['difficulty']} "
               f"skipped={counts['skipped']}")
+
+    def pause() -> None:
+        if args.sleep:
+            time.sleep(args.sleep)
 
     for r in ordered:
         yr = batch_key(r)
@@ -682,32 +916,69 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
                 counts[k] = 0
         cur_year = yr
 
-        decision = (r.get("decision") or "").strip().lower()
-        if not decision:
+        decision, topic_id, difficulty = actions(r)
+        if not (decision or topic_id or difficulty):
             counts["skipped"] += 1
             continue
 
-        kind = _kind_for((r.get("row_type") or "").strip().lower())
-        row_id = (r.get("row_id") or "").strip()
-        body: dict[str, Any] = {"reviewer_status": decision}
-        note = (r.get("notes") or "").strip()
-        if note:
-            if len(note) > NOTE_MAX:
-                print(f"  warning: note on {row_id} exceeds {NOTE_MAX} chars — "
-                      f"truncated client-side.", file=sys.stderr)
-                note = note[:NOTE_MAX]
-            # Sent for forward-compatibility; the API drops it for both kinds.
-            body["reviewer_notes"] = note
+        kind = _kind_for(_cell(r, "row_type").lower())
+        row_id = _cell(r, "row_id")
+        note = _cell(r, "notes")
+        row_failed = False
 
-        try:
-            c.patch(f"{INTEL}/items/{kind}/{row_id}/review", body)
-            counts[decision] += 1
-            ok += 1
-        except RuntimeError as exc:
-            print(f"  {row_id}: {exc}", file=sys.stderr)
-            failed += 1
-        if args.sleep:
-            time.sleep(args.sleep)
+        # Content edits run BEFORE the verdict: a decision is the promotion, so
+        # a question whose difficulty or tag write failed must not be verified
+        # on the strength of a worksheet row that only half landed.
+        if difficulty:
+            try:
+                c.patch(f"{CMS}/pyq-questions/{row_id}",
+                        {"reason": _write_reason(_DIFFICULTY_REASON, note),
+                         "payload": {"observed_difficulty": difficulty}})
+                counts["difficulty"] += 1
+                ok += 1
+            except RuntimeError as exc:
+                print(f"  {row_id}: difficulty — {exc}", file=sys.stderr)
+                failed += 1
+                row_failed = True
+            pause()
+
+        if topic_id and not row_failed:
+            try:
+                c.post(f"{CMS}/pyq-question-topic-tags",
+                       {"reason": _write_reason(_TAG_CREATE_REASON, note),
+                        "payload": {"question_id": row_id, "topic_id": topic_id,
+                                    "tag_role": ASSIGN_TAG_ROLE,
+                                    "tagging_source": ASSIGN_TAGGING_SOURCE}})
+                counts["tagged"] += 1
+                ok += 1
+            except RuntimeError as exc:
+                print(f"  {row_id}: assign_topic_id — {exc}", file=sys.stderr)
+                failed += 1
+                row_failed = True
+            pause()
+
+        if decision and not row_failed:
+            body: dict[str, Any] = {"reviewer_status": decision}
+            if note:
+                sent = note
+                if len(sent) > NOTE_MAX:
+                    print(f"  warning: note on {row_id} exceeds {NOTE_MAX} chars — "
+                          f"truncated client-side.", file=sys.stderr)
+                    sent = sent[:NOTE_MAX]
+                # Sent for forward-compatibility; the API drops it for both kinds.
+                body["reviewer_notes"] = sent
+            try:
+                c.patch(f"{INTEL}/items/{kind}/{row_id}/review", body)
+                counts[decision] += 1
+                ok += 1
+            except RuntimeError as exc:
+                print(f"  {row_id}: {exc}", file=sys.stderr)
+                failed += 1
+            pause()
+        elif decision:
+            print(f"  {row_id}: decision {decision!r} SKIPPED — an earlier write on "
+                  f"this row failed; the row stays pending.", file=sys.stderr)
+            counts["skipped"] += 1
 
     if cur_year is not None:
         flush(cur_year)
@@ -757,9 +1028,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "export before trusting a year (e.g. 2023) — never hardcoded.")
     s.add_argument("--apply", action="store_true", help="write the worksheet CSV")
 
-    a = sub.add_parser("apply", help="apply worksheet decisions via the review API")
+    a = sub.add_parser("apply", help="apply worksheet decisions, tag assignments "
+                                     "and difficulty via the review + CMS APIs")
     a.add_argument("--worksheet", required=True)
     a.add_argument("--exam-id", default=DEFAULT_EXAM_ID)
+    a.add_argument("--topic-catalog", required=True,
+                   help="operator-supplied valid-topic-id list (never derived); "
+                        "every assign_topic_id is checked against it before any "
+                        "network call and an unknown id aborts the whole run")
     a.add_argument("--sleep", type=float, default=0.1,
                    help="delay in seconds between review calls (rate-limit friendly)")
     a.add_argument("--apply", action="store_true")

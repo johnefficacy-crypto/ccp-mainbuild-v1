@@ -14,7 +14,17 @@ Coverage:
 - paper scoping by phase (Mains AND any other phase, e.g. Prelims) and by
   explicit paper id, including that explicit ids bypass the phase filter;
 - the MCQ-only ``mcq_no_correct_option`` flag, which is the single option-level
-  signal the offline sweep can give for a Prelims/CSAT paper.
+  signal the offline sweep can give for a Prelims/CSAT paper;
+- the ``no_primary_tag`` ABSENCE flag, firing and not firing;
+- ``difficulty`` vocabulary enforcement, including that ``very_hard`` can never
+  be written through this tool;
+- an unknown ``assign_topic_id`` aborting the whole run before any call;
+- a worksheet written before the two new columns existed applying unchanged;
+- rows carrying any mix of decision / assign_topic_id / difficulty.
+
+No test here constructs a ``Client``: the fakes below implement only the verbs
+``do_apply`` calls, so the suite stays fully offline and ``requests`` is never
+needed.
 """
 from __future__ import annotations
 
@@ -159,21 +169,109 @@ def test_load_topic_catalog_orphan_markers(tmp_path):
     assert names["clean"] == "Clean topic"
 
 
+# ─── sweep: no_primary_tag (the ABSENCE check) ───────────────────────────────
+def test_no_primary_tag_fires_on_a_question_with_no_tags_at_all():
+    """The regression this flag exists for: an untagged paper used to sweep
+    clean, because a question with no tags produces no tag row to flag."""
+    rows = mod.build_worksheet([_q(id="q1")], [], set(), set(), {}, set())
+    assert len(rows) == 1
+    assert "no_primary_tag" in rows[0]["flags"]
+    # A named flag, not a verdict — emitted for a human, never auto-decided,
+    # and never eligible for the clean/spot-check path.
+    assert rows[0]["sample_reason"] == "flagged"
+    assert rows[0]["decision"] == ""
+
+
+def test_no_primary_tag_fires_when_every_tag_is_non_primary():
+    tags = [_t(id="t1", question_id="q1", tag_role="secondary"),
+            _t(id="t2", question_id="q1", tag_role="trap")]
+    rows = mod.build_worksheet([_q(id="q1")], tags, {"TID"}, set(), {}, set())
+    q_row = next(r for r in rows if r["row_type"] == "question")
+    assert "no_primary_tag" in q_row["flags"]
+
+
+def test_no_primary_tag_does_not_fire_when_a_primary_tag_exists():
+    tags = [_t(id="t1", question_id="q1", tag_role="primary")]
+    rows = mod.build_worksheet([_q(id="q1")], tags, {"TID"}, set(), {}, set())
+    q_row = next(r for r in rows if r["row_type"] == "question")
+    assert q_row["flags"] == ""
+    assert "no_primary_tag" not in q_row["flags"]
+
+
+def test_no_primary_tag_is_scoped_to_its_own_question():
+    """Another question's primary tag must not clear this question's flag."""
+    tags = [_t(id="t1", question_id="q1", tag_role="primary")]
+    rows = mod.build_worksheet(
+        [_q(id="q1", question_number=1), _q(id="q2", question_number=2)],
+        tags, {"TID"}, set(), {}, set())
+    by_id = {r["row_id"]: r for r in rows if r["row_type"] == "question"}
+    assert "no_primary_tag" not in by_id["q1"]["flags"]
+    assert "no_primary_tag" in by_id["q2"]["flags"]
+
+
+def test_no_primary_tag_never_appears_on_tag_rows():
+    tags = [_t(id="t1", question_id="q1", tag_role="secondary")]
+    rows = mod.build_worksheet([_q(id="q1")], tags, {"TID"}, set(), {}, set())
+    tag_row = next(r for r in rows if r["row_type"] == "tag")
+    assert "no_primary_tag" not in tag_row["flags"]
+
+
+def test_no_primary_tag_composes_with_the_other_flags():
+    """Flags accumulate — the absence check does not replace the presence ones."""
+    rows = mod.build_worksheet(
+        [_q(id="q1", question_text="x", question_type="mcq", correct_option_id=None)],
+        [], set(), set(), {}, set())
+    flags = rows[0]["flags"].split(";")
+    assert set(flags) >= {"empty_or_short", "mcq_no_correct_option", "no_primary_tag"}
+
+
+def test_index_tags_by_question_and_has_primary_tag():
+    tags = [_t(id="t1", question_id="q1", tag_role="primary"),
+            _t(id="t2", question_id="q1", tag_role="secondary"),
+            _t(id="t3", question_id="q2", tag_role="secondary")]
+    index = mod.index_tags_by_question(tags)
+    assert len(index["q1"]) == 2 and len(index["q2"]) == 1
+    assert mod.has_primary_tag("q1", index) is True
+    assert mod.has_primary_tag("q2", index) is False
+    assert mod.has_primary_tag("q_absent", index) is False
+
+
+# ─── sweep: the two new worksheet columns ────────────────────────────────────
+def test_new_columns_are_appended_and_blank_on_write():
+    # Appended, not reordered — an existing consumer reading by position is safe.
+    assert mod.WORKSHEET_FIELDS[-2:] == ["assign_topic_id", "difficulty"]
+    assert mod.WORKSHEET_FIELDS[:9] == [
+        "row_type", "row_id", "paper_year", "question_number_or_topic_id",
+        "text_preview", "flags", "sample_reason", "decision", "notes",
+    ]
+    rows = mod.build_worksheet([_q(id="q1")], [_t(id="t1", question_id="q1")],
+                               {"TID"}, set(), {}, set())
+    assert len(rows) == 2
+    for r in rows:
+        assert r["assign_topic_id"] == ""
+        assert r["difficulty"] == ""
+
+
 # ─── sweep: sampling ─────────────────────────────────────────────────────────
 def test_sampling_from_clean_only_and_flagged_always_present():
-    # 10 clean questions + 1 flagged (too short) in one paper.
+    # 10 clean questions + 1 flagged (too short) in one paper. Each clean
+    # question carries a primary tag, otherwise no_primary_tag flags them all
+    # and nothing is left to sample — which is the point of the new flag.
     clean = [_q(id=f"c{i}", paper_id="p1", question_number=i,
                 question_text=f"Valid unique clean question number {i} here.")
              for i in range(10)]
     flagged = _q(id="bad", paper_id="p1", question_number=99, question_text="x")
-    rows = mod.build_worksheet(clean + [flagged], [], set(), set(), {}, set())
+    tags = [_t(id=f"pt{i}", question_id=f"c{i}", topic_id="TID") for i in range(10)]
+    tags.append(_t(id="ptbad", question_id="bad", topic_id="TID"))
+    rows = mod.build_worksheet(clean + [flagged], tags, {"TID"}, set(), {}, set())
+    q_rows = [r for r in rows if r["row_type"] == "question"]
 
-    by_id = {r["row_id"]: r for r in rows}
+    by_id = {r["row_id"]: r for r in q_rows}
     # Flagged row is present, marked flagged, never a spot_check.
     assert by_id["bad"]["sample_reason"] == "flagged"
     assert "empty_or_short" in by_id["bad"]["flags"]
-    # Spot-check rows are all clean.
-    spot = [r for r in rows if r["sample_reason"] == "spot_check"]
+    # Spot-check question rows are all clean.
+    spot = [r for r in q_rows if r["sample_reason"] == "spot_check"]
     assert spot, "expected at least one spot-check sample"
     for r in spot:
         assert r["flags"] == ""
@@ -193,12 +291,30 @@ def test_spread_sample_is_bounded_and_spread():
 
 # ─── apply ───────────────────────────────────────────────────────────────────
 class FakeClient:
-    def __init__(self):
+    """Only the verbs ``do_apply`` uses. Never a real ``mod.Client``."""
+
+    def __init__(self, fail_on=None):
         self.calls = []
+        self._fail_on = fail_on or ()
+
+    def _record(self, method, path, body):
+        self.calls.append({"method": method, "path": path, "body": body})
+        if any(token in path for token in self._fail_on):
+            raise RuntimeError(f"{method} {path} -> 500: boom")
+        return {"ok": True}
 
     def patch(self, path, body):
-        self.calls.append({"method": "PATCH", "path": path, "body": body})
-        return {"ok": True}
+        return self._record("PATCH", path, body)
+
+    def post(self, path, body):
+        return self._record("POST", path, body)
+
+
+def _catalog(tmp_path, ids=("TID", "TID2")):
+    p = tmp_path / "catalog.json"
+    p.write_text(json.dumps([{"id": i, "text": f"Topic {i}"} for i in ids]),
+                 encoding="utf-8")
+    return p
 
 
 def _write_worksheet(tmp_path, rows):
@@ -216,9 +332,10 @@ def _row(**kw):
     return base
 
 
-def _apply_args(worksheet, **kw):
+def _apply_args(worksheet, catalog, **kw):
     parser = mod.build_parser()
-    argv = ["apply", "--worksheet", str(worksheet), "--sleep", "0"]
+    argv = ["apply", "--worksheet", str(worksheet), "--sleep", "0",
+            "--topic-catalog", str(catalog)]
     for k, v in kw.items():
         if v is True:
             argv.append(f"--{k}")
@@ -235,7 +352,7 @@ def test_apply_issues_exact_patch_set_and_skips_blanks(tmp_path):
     ]
     ws = _write_worksheet(tmp_path, rows)
     fake = FakeClient()
-    args = _apply_args(ws, apply=True, confirm=True)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
     rc = mod.do_apply(fake, args)
     assert rc == 0
 
@@ -257,7 +374,7 @@ def test_apply_dry_run_writes_nothing(tmp_path):
     rows = [_row(row_type="question", row_id="q1", paper_year="2020", decision="verified")]
     ws = _write_worksheet(tmp_path, rows)
     fake = FakeClient()
-    args = _apply_args(ws)  # no --apply/--confirm -> dry run
+    args = _apply_args(ws, _catalog(tmp_path))  # no --apply/--confirm -> dry run
     rc = mod.do_apply(fake, args)
     assert rc == 0
     assert fake.calls == []
@@ -271,7 +388,7 @@ def test_apply_blank_on_flagged_row_does_not_raise(tmp_path):
     ]
     ws = _write_worksheet(tmp_path, rows)
     fake = FakeClient()
-    args = _apply_args(ws, apply=True, confirm=True)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
     rc = mod.do_apply(fake, args)  # must not raise on the flagged-but-blank row
     assert rc == 0
     assert len(fake.calls) == 1
@@ -284,7 +401,7 @@ def test_apply_truncates_over_length_note(tmp_path, capsys):
                  decision="verified", notes=long_note)]
     ws = _write_worksheet(tmp_path, rows)
     fake = FakeClient()
-    args = _apply_args(ws, apply=True, confirm=True)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
     rc = mod.do_apply(fake, args)
     assert rc == 0
     sent = fake.calls[0]["body"]["reviewer_notes"]
@@ -296,9 +413,240 @@ def test_apply_rejects_unrecognized_decision(tmp_path):
     rows = [_row(row_type="question", row_id="q1", paper_year="2020", decision="maybe")]
     ws = _write_worksheet(tmp_path, rows)
     fake = FakeClient()
-    args = _apply_args(ws, apply=True, confirm=True)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
     assert mod.do_apply(fake, args) == 2
     assert fake.calls == []
+
+
+# ─── apply: difficulty vocabulary ────────────────────────────────────────────
+def test_apply_refuses_very_hard_and_sends_nothing(tmp_path, capsys):
+    """It must be impossible to write very_hard through this tool.
+
+    The column has no DB CHECK; the CMS route is the enforcement point and the
+    PYQ->mock projection silently rewrites anything outside easy|medium|hard to
+    'medium'. This aborts offline, before the first call.
+    """
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 difficulty="very_hard")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 2
+    assert fake.calls == []
+    err = capsys.readouterr().err
+    assert "q1" in err                      # the offending row is named
+    assert "very_hard" in err
+    assert "'hard'" in err                  # and the correct value suggested
+
+
+def test_very_hard_is_absent_from_the_accepted_vocabulary():
+    assert mod.DIFFICULTIES == {"easy", "medium", "hard"}
+    assert "very_hard" not in mod.DIFFICULTIES
+
+
+@pytest.mark.parametrize("bad", ["medium_high", "moderate", "tough", "unknown", "1"])
+def test_apply_rejects_every_other_non_canonical_difficulty(tmp_path, bad):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020", difficulty=bad)]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 2
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize("good", ["easy", "medium", "hard", "HARD", " medium "])
+def test_apply_accepts_the_three_canonical_difficulties(tmp_path, good):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020", difficulty=good)]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert len(fake.calls) == 1
+    call = fake.calls[0]
+    assert call["method"] == "PATCH"
+    assert call["path"] == "/api/admin/exam-intelligence-cms/pyq-questions/q1"
+    assert call["body"]["payload"] == {"observed_difficulty": good.strip().lower()}
+    assert 8 <= len(call["body"]["reason"]) <= mod.REASON_MAX
+
+
+# ─── apply: assign_topic_id ──────────────────────────────────────────────────
+def test_apply_aborts_on_unknown_assign_topic_id_before_any_call(tmp_path, capsys):
+    rows = [
+        _row(row_type="question", row_id="q1", paper_year="2020", assign_topic_id="TID"),
+        _row(row_type="question", row_id="q2", paper_year="2020", assign_topic_id="GHOST"),
+        _row(row_type="question", row_id="q3", paper_year="2021", decision="verified"),
+    ]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 2
+    # The WHOLE run aborts — the valid rows are not half-applied either.
+    assert fake.calls == []
+    err = capsys.readouterr().err
+    assert "q2" in err and "GHOST" in err
+    assert "q1" not in err
+
+
+def test_apply_creates_a_primary_tag_via_the_cms_route(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 assign_topic_id="TID", notes="matches syllabus node 3.2")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert len(fake.calls) == 1
+    call = fake.calls[0]
+    assert call["method"] == "POST"
+    assert call["path"] == "/api/admin/exam-intelligence-cms/pyq-question-topic-tags"
+    assert call["body"]["payload"] == {
+        "question_id": "q1", "topic_id": "TID",
+        "tag_role": "primary", "tagging_source": "manual",
+    }
+    # CMS WriteEnvelope.reason: required, 8-500 chars, carries the operator note.
+    reason = call["body"]["reason"]
+    assert 8 <= len(reason) <= mod.REASON_MAX
+    assert "matches syllabus node 3.2" in reason
+    # reviewer_status is NEVER sent — the route forces 'pending'.
+    assert "reviewer_status" not in call["body"]["payload"]
+
+
+def test_apply_reason_is_capped_at_the_envelope_limit(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 assign_topic_id="TID", notes="y" * 900)]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert len(fake.calls[0]["body"]["reason"]) == mod.REASON_MAX
+
+
+def test_apply_rejects_new_columns_on_a_tag_row(tmp_path, capsys):
+    """Both columns are question-only; a value on a tag row would otherwise be
+    silently dropped, losing the operator's typed intent."""
+    rows = [_row(row_type="tag", row_id="t1", paper_year="2020", assign_topic_id="TID"),
+            _row(row_type="tag", row_id="t2", paper_year="2020", difficulty="easy")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 2
+    assert fake.calls == []
+    err = capsys.readouterr().err
+    assert "t1" in err and "t2" in err
+
+
+def test_apply_requires_a_topic_catalog(tmp_path, capsys):
+    """Programmatic callers get the same refusal argparse gives the CLI."""
+    ws = _write_worksheet(tmp_path, [_row(row_type="question", row_id="q1",
+                                          paper_year="2020", decision="verified")])
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    args.topic_catalog = None
+    fake = FakeClient()
+    assert mod.do_apply(fake, args) == 2
+    assert fake.calls == []
+    assert "--topic-catalog is required" in capsys.readouterr().err
+
+
+# ─── apply: mixed fields, and backward compatibility ─────────────────────────
+def test_apply_handles_any_mix_of_the_three_fields(tmp_path):
+    rows = [
+        # decision only — unchanged behaviour.
+        _row(row_type="question", row_id="q1", paper_year="2020", decision="verified"),
+        # difficulty only.
+        _row(row_type="question", row_id="q2", paper_year="2020", difficulty="hard"),
+        # assign_topic_id only.
+        _row(row_type="question", row_id="q3", paper_year="2020", assign_topic_id="TID"),
+        # all three at once.
+        _row(row_type="question", row_id="q4", paper_year="2020", decision="verified",
+             assign_topic_id="TID2", difficulty="easy"),
+        # entirely blank — skipped, exactly as a blank decision always was.
+        _row(row_type="question", row_id="q5", paper_year="2020"),
+        # tag row, decision only.
+        _row(row_type="tag", row_id="t1", paper_year="2020", decision="rejected"),
+    ]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+
+    assert [c["path"] for c in fake.calls if "/items/" in c["path"] and "/q1/" in c["path"]] == [
+        "/api/admin/exam-intelligence/items/pyq_question/q1/review"]
+    # q2: difficulty only, no review call.
+    q2 = [c for c in fake.calls if c["path"].endswith("/pyq-questions/q2")]
+    assert len(q2) == 1 and q2[0]["body"]["payload"] == {"observed_difficulty": "hard"}
+    assert not [c for c in fake.calls if "/q2/review" in c["path"]]
+    # q3: tag create only.
+    q3 = [c for c in fake.calls
+          if c["method"] == "POST" and c["body"]["payload"]["question_id"] == "q3"]
+    assert len(q3) == 1
+    assert not [c for c in fake.calls if "/q3/review" in c["path"]]
+    # q4: all three, content edits first, the verdict last.
+    q4 = [c for c in fake.calls
+          if "/q4" in c["path"] or c["body"].get("payload", {}).get("question_id") == "q4"]
+    assert [c["method"] for c in q4] == ["PATCH", "POST", "PATCH"]
+    assert q4[0]["path"].endswith("/pyq-questions/q4")
+    assert q4[1]["path"].endswith("/pyq-question-topic-tags")
+    assert q4[2]["path"] == "/api/admin/exam-intelligence/items/pyq_question/q4/review"
+    # q5: untouched.
+    assert not [c for c in fake.calls if "q5" in json.dumps(c)]
+    # t1: unchanged review PATCH on the tag kind.
+    assert [c for c in fake.calls if "/t1/" in c["path"]][0]["body"] == {
+        "reviewer_status": "rejected"}
+
+
+def test_a_failed_content_write_does_not_promote_the_row(tmp_path, capsys):
+    """A decision is the promotion. If the difficulty write failed, the row
+    must not be verified on the strength of a half-applied worksheet row."""
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 decision="verified", difficulty="hard")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient(fail_on=("/pyq-questions/q1",))
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 1
+    assert len(fake.calls) == 1                    # the review PATCH never ran
+    assert not [c for c in fake.calls if "/review" in c["path"]]
+    assert "SKIPPED" in capsys.readouterr().err
+
+
+def test_an_old_worksheet_without_the_new_columns_applies_unchanged(tmp_path):
+    """A CSV written before assign_topic_id/difficulty existed must behave
+    exactly as it did then — the missing keys read as blank."""
+    old_fields = ["row_type", "row_id", "paper_year", "question_number_or_topic_id",
+                  "text_preview", "flags", "sample_reason", "decision", "notes"]
+    ws = tmp_path / "old_worksheet.csv"
+    with ws.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=old_fields)
+        w.writeheader()
+        w.writerow({k: "" for k in old_fields} | {
+            "row_type": "question", "row_id": "q1", "paper_year": "2020",
+            "decision": "verified"})
+        w.writerow({k: "" for k in old_fields} | {
+            "row_type": "tag", "row_id": "t1", "paper_year": "2020",
+            "decision": "needs_correction", "notes": "wrong topic"})
+        w.writerow({k: "" for k in old_fields} | {
+            "row_type": "question", "row_id": "q2", "paper_year": "2020"})
+
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert [(c["method"], c["path"], c["body"]) for c in fake.calls] == [
+        ("PATCH", "/api/admin/exam-intelligence/items/pyq_question/q1/review",
+         {"reviewer_status": "verified"}),
+        ("PATCH", "/api/admin/exam-intelligence/items/pyq_question_topic_tag/t1/review",
+         {"reviewer_status": "needs_correction", "reviewer_notes": "wrong topic"}),
+    ]
+
+
+def test_dry_run_validates_and_reports_the_new_fields_without_writing(tmp_path, capsys):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 decision="verified", assign_topic_id="TID", difficulty="hard")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path))  # dry run
+    assert mod.do_apply(fake, args) == 0
+    assert fake.calls == []
+    out = capsys.readouterr().out
+    assert "DRY RUN" in out
+    assert "assign_topic_id" in out and "difficulty:hard" in out and "verified" in out
 
 
 # ─── export helpers (pure) ───────────────────────────────────────────────────
