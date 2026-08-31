@@ -40,7 +40,12 @@ const SOURCE_KIND_COLORS = {
 };
 
 const QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching", "other"];
-const DIFFICULTY_OPTIONS = ["easy", "medium", "hard", "very_hard"];
+// Canonical observed_difficulty set. Backed by admin_exam_intel_cms.py
+// (_OBSERVED_DIFFICULTIES) and by the same three values in migration 239's
+// projection to mock_question_bank. "very_hard" was offered here until it
+// was found to project as "medium" — a fourth option cannot be added to
+// this list without the projection learning to carry it.
+const DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
 const REJECT_REASONS = ["incomplete", "duplicate", "out_of_scope", "illegible", "other"];
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
 // Creatable stimulus types from this surface: text/shared-grouping only, matching
@@ -821,6 +826,18 @@ function QuestionEditor({
               {DIFFICULTY_OPTIONS.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
+              {/* A row written before the canonical set was enforced can hold a
+                  value this list no longer offers (e.g. very_hard). Show it
+                  rather than rendering blank — a blank select over a non-null
+                  stored value is the same read/write mismatch this list was
+                  narrowed to close. Saving without changing it is rejected by
+                  the CMS endpoint, which is the intended signal. */}
+              {form.observed_difficulty
+                && !DIFFICULTY_OPTIONS.includes(form.observed_difficulty) && (
+                <option value={form.observed_difficulty}>
+                  {form.observed_difficulty} (legacy — not accepted on save)
+                </option>
+              )}
             </select>
           </WsField>
         </div>

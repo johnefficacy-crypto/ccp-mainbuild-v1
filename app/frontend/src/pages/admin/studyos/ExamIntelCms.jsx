@@ -173,9 +173,13 @@ const PYQ_SOURCE_TYPES = ["official", "memory_based", "coaching", "community", "
 const PYQ_TAG_ROLES = ["primary", "secondary", "prerequisite", "trap", "calculation_layer", "conceptual_layer"];
 const PYQ_TAGGING_SOURCES = ["manual", "admin", "ai", "rule", "imported"];
 const PYQ_QUESTION_TYPES = ["mcq", "numerical", "descriptive", "caselet", "matching", "other"];
-// observed_difficulty + option_label have no DB CHECK (migration 032) — these
-// are UI conveniences, not enforced enums.
-const PYQ_OBSERVED_DIFFICULTY = ["easy", "moderate", "hard"];
+// option_label has no DB CHECK (migration 032) — it is a UI convenience.
+// observed_difficulty likewise has no DB CHECK, but it IS enforced
+// server-side by _OBSERVED_DIFFICULTIES in admin_exam_intel_cms.py, and
+// these three are the only values migration 239's projection to
+// mock_question_bank recognises. "moderate" used to be offered here and
+// is not one of them — it projected as "medium".
+const PYQ_OBSERVED_DIFFICULTY = ["easy", "medium", "hard"];
 const PYQ_OPTION_LABELS = ["A", "B", "C", "D", "E"];
 const COMPETITION_SOURCE_BASES = ["manual", "official", "reviewed_analysis", "derived", "model_generated"];
 // exam_policy_updates.claim_status CHECK (migration 056).

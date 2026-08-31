@@ -340,7 +340,7 @@ fail-fast):
 | `option_a`..`option_d` | string | yes (all 4) | non-empty after strip — **exactly 4 options, always A-D** |
 | `correct_option` | string | yes | one of `A`/`B`/`C`/`D` |
 | `question_type` | string | yes | one of `mcq`, `numerical`, `descriptive`, `caselet`, `matching`, `other` |
-| `observed_difficulty` | string | no | any non-empty string; `null`/blank allowed |
+| `observed_difficulty` | string | no | one of `easy`, `medium`, `hard`, matched after `strip().lower()`; `null`/absent/blank all mean NULL and are accepted. Any other value is a row error — these three are the only values migration 239's projection to `mock_question_bank` recognises, and it rewrites anything else to `medium` without warning. |
 
 #### v2 — variable option count, sections, shared stimuli
 
@@ -404,7 +404,7 @@ Per-row fields (`_validate_row_v2`):
 | `display_order` | int | no | ≥1; must not repeat within the upload (preflight-time UX check only — the DB unique index is the real backstop) |
 | `question_text` | string | yes | non-empty after strip |
 | `question_type` | string | yes | **only `mcq` is currently importable** — any other value (`numerical`, `descriptive`, `caselet`, `matching`, `other`) is rejected with `"question_type '<x>' is not yet supported by the v2 importer; only 'mcq' is currently supported"` |
-| `observed_difficulty` | string | no | any non-empty string |
+| `observed_difficulty` | string | no | one of `easy`, `medium`, `hard`, matched after `strip().lower()`; `null`/absent/blank all mean NULL and are accepted (same rule as v1) |
 | `section_ref` | string | no | resolved case-insensitively against `exam_phase_sections.section_label` scoped to the paper's `exam_phase_id`; no match → error; 2+ matches (same label, different subject) → `"...is ambiguous..."` error |
 | `stimulus_refs` | array of string | no | each ref must appear in the batch's own top-level `stimuli` array; duplicate refs within one question are rejected |
 | `options` | array of object | yes | **2 or more** entries (not fixed at 4); each needs a non-empty, unique-within-question `label` and non-empty `text`; `display_order` optional (defaults to 1-based array position); `source_label` optional |

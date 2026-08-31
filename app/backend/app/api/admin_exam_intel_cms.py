@@ -1991,6 +1991,14 @@ _QUESTION_FIELDS = {
     "section_id", "source_question_ref", "display_order",
 }
 _QUESTION_TYPES = ("mcq", "numerical", "descriptive", "caselet", "matching", "other")
+# observed_difficulty has no DB CHECK (migration 032 declares it bare ``text``),
+# so this endpoint is the enforcement point for every question written through
+# the CMS — including the PyqPaperWorkspace difficulty dropdown. The three
+# values are the only ones migration 239's projection to mock_question_bank
+# recognises; anything else is silently rewritten to 'medium' there, so an
+# unconstrained write here means a value that changes meaning downstream.
+# NULL stays legal — a question with no recorded difficulty is a real state.
+_OBSERVED_DIFFICULTIES = ("easy", "medium", "hard")
 _OPTION_FIELDS = {
     "option_label", "option_text", "normalized_option_hash", "normalized_value",
     "is_correct", "metadata",
@@ -2056,6 +2064,11 @@ def create_pyq_question(
         raise HTTPException(status_code=422, detail="pyq_paper_id and question_text are required")
     if row.get("question_type") and row["question_type"] not in _QUESTION_TYPES:
         raise HTTPException(status_code=422, detail=f"question_type must be one of {_QUESTION_TYPES}")
+    if row.get("observed_difficulty") and row["observed_difficulty"] not in _OBSERVED_DIFFICULTIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"observed_difficulty must be one of {_OBSERVED_DIFFICULTIES}",
+        )
     row["reviewer_status"] = "pending"
     if not row.get("normalized_question_hash"):
         q_hash = question_hash(row.get("question_text"))
@@ -2132,6 +2145,11 @@ def update_pyq_question(
         raise HTTPException(status_code=422, detail="No allowed fields in payload")
     if patch.get("question_type") and patch["question_type"] not in _QUESTION_TYPES:
         raise HTTPException(status_code=422, detail=f"question_type must be one of {_QUESTION_TYPES}")
+    if patch.get("observed_difficulty") and patch["observed_difficulty"] not in _OBSERVED_DIFFICULTIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"observed_difficulty must be one of {_OBSERVED_DIFFICULTIES}",
+        )
     # Re-hash the question text if it changed and the caller didn't supply a hash.
     if patch.get("question_text") and not patch.get("normalized_question_hash"):
         q_hash = question_hash(patch["question_text"])
@@ -4630,7 +4648,10 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "required": ["pyq_paper_id", "question_text"],
         "forced": {"reviewer_status": "pending"},
         "fks": {"pyq_paper_id": "pyq_papers"},
-        "enums": {"question_type": _QUESTION_TYPES},
+        "enums": {
+            "question_type": _QUESTION_TYPES,
+            "observed_difficulty": _OBSERVED_DIFFICULTIES,
+        },
         "audit": "exam_intel.cms.pyq_question.bulk_create",
         "max_rows": 2000,
         # Each question row may carry an inline ``options`` array; children are
