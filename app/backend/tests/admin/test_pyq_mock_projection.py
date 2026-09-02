@@ -25,6 +25,7 @@ from app.admin.pyq_mock_projection import (
     compute_content_hash,
     get_paper_projection_status,
     preview_paper_projection,
+    resolve_primary_topic_split,
     sync_paper_projection,
 )
 from app.admin.mock_questions import create_question
@@ -38,6 +39,9 @@ PAPER_ID  = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 EXAM_ID   = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
 Q_ID      = "11111111-1111-1111-1111-111111111111"
 TOPIC_ID  = "tttttttt-tttt-tttt-tttt-tttttttttttt"
+# Migration 268: a microtopic is a topics row whose parent_topic_id is TOPIC_ID.
+MICROTOPIC_ID = "mmmmmmmm-mmmm-mmmm-mmmm-mmmmmmmmmmmm"
+SUBJECT_ID = "ssssssss-ssss-ssss-ssss-ssssssssssss"
 ACTOR_ID  = "actor-001"
 
 
@@ -153,6 +157,34 @@ def _primary_tag(reviewer_status: str = "verified") -> list[dict]:
     ]
 
 
+def _topic_row(
+    topic_id: str = TOPIC_ID,
+    parent_topic_id: str | None = None,
+    subject_id: str = SUBJECT_ID,
+) -> dict:
+    """A ``topics`` row. ``parent_topic_id=None`` is a top-level topic; a set
+    parent makes it a microtopic (migration 268 level resolution)."""
+    return {
+        "id": topic_id,
+        "parent_topic_id": parent_topic_id,
+        "subject_id": subject_id,
+        "is_active": True,
+    }
+
+
+def _microtopic_tag(reviewer_status: str = "verified") -> list[dict]:
+    """A verified primary tag pointing at a MICROTOPIC (child of TOPIC_ID)."""
+    return [
+        {
+            "id": "tag-1",
+            "question_id": Q_ID,
+            "topic_id": MICROTOPIC_ID,
+            "tag_role": "primary",
+            "reviewer_status": reviewer_status,
+        }
+    ]
+
+
 def _seed_sb(
     paper: dict | None = None,
     questions: list[dict] | None = None,
@@ -161,6 +193,7 @@ def _seed_sb(
     projections: list[dict] | None = None,
     stimuli: list[dict] | None = None,
     question_stimuli: list[dict] | None = None,
+    topics: list[dict] | None = None,
 ) -> SBStub:
     sb = SBStub()
     sb.db["pyq_papers"] = [paper or _paper()]
@@ -170,6 +203,9 @@ def _seed_sb(
     sb.db["pyq_mock_question_projections"] = projections or []
     sb.db["pyq_stimuli"] = stimuli or []
     sb.db["pyq_question_stimuli"] = question_stimuli or []
+    # Migration 268: the preview resolves the primary tag's level from
+    # topics.parent_topic_id. Default fixture is a top-level topic.
+    sb.db["topics"] = topics if topics is not None else [_topic_row()]
     return sb
 
 
@@ -414,6 +450,122 @@ class TestComputeContentHash:
         )
         assert compute_content_hash(_question(), _options(), stimuli=s_unverified_stim) == h_none
         assert compute_content_hash(_question(), _options(), stimuli=s_unverified_link) == h_none
+
+
+# ─── Unit: microtopic split (migration 268) ──────────────────────────────────
+
+class TestPrimaryTopicSplit:
+    """The projection wrote only ``topic_id``, so a primary tag pointing at a
+    microtopic was flattened and ``microtopic_id`` stayed NULL. Migration 268
+    resolves the tag's level from ``topics.parent_topic_id`` and splits it;
+    ``resolve_primary_topic_split`` is the Python mirror of that logic."""
+
+    # ── Case 1: primary tag is a MICROTOPIC ──────────────────────────────────
+
+    def test_microtopic_tag_splits_into_parent_and_microtopic(self):
+        topic_id, microtopic_id = resolve_primary_topic_split(
+            _microtopic_tag(),
+            _topic_row(topic_id=MICROTOPIC_ID, parent_topic_id=TOPIC_ID),
+        )
+        assert topic_id == TOPIC_ID
+        assert microtopic_id == MICROTOPIC_ID
+
+    def test_microtopic_tag_changes_the_hash(self):
+        """A tag moving from a top-level topic to a microtopic must re-hash, or
+        the RPC returns 'unchanged' and the bank row keeps the stale level."""
+        h_topic = compute_content_hash(
+            _question(), _options(), primary_microtopic_id=None
+        )
+        h_micro = compute_content_hash(
+            _question(), _options(), primary_microtopic_id=MICROTOPIC_ID
+        )
+        assert h_topic != h_micro
+
+    def test_hash_distinguishes_two_microtopics_under_one_parent(self):
+        """Both rows project the same topic_id, so only microtopic_id in the
+        hash separates them."""
+        h_a = compute_content_hash(_question(), _options(), primary_microtopic_id="micro-a")
+        h_b = compute_content_hash(_question(), _options(), primary_microtopic_id="micro-b")
+        assert h_a != h_b
+
+    def test_preview_hash_matches_resolved_microtopic(self):
+        """End-to-end: preview must resolve the microtopic the same way the RPC
+        does, or every microtopic-tagged row shows a permanent would_update."""
+        sb = _seed_sb(
+            tags=_microtopic_tag(),
+            topics=[_topic_row(topic_id=MICROTOPIC_ID, parent_topic_id=TOPIC_ID)],
+        )
+        out = preview_paper_projection(sb, PAPER_ID)
+        entry = out["questions"][0]
+        assert entry["eligible"] is True
+        expected = compute_content_hash(
+            _question(),
+            _options(),
+            paper=_paper(),
+            all_verified_tags=_microtopic_tag(),
+            stimuli=[],
+            primary_microtopic_id=MICROTOPIC_ID,
+        )
+        assert entry["content_hash"] == expected
+
+    # ── Case 2: primary tag is a TOP-LEVEL TOPIC ─────────────────────────────
+
+    def test_top_level_tag_keeps_topic_and_nulls_microtopic(self):
+        topic_id, microtopic_id = resolve_primary_topic_split(
+            _primary_tag(),
+            _topic_row(topic_id=TOPIC_ID, parent_topic_id=None),
+        )
+        assert topic_id == TOPIC_ID
+        assert microtopic_id is None
+
+    def test_top_level_tag_hash_is_null_safe(self):
+        """coalesce-to-'' parity with the SQL: a NULL microtopic must produce a
+        real digest, and the same one whether it arrives as None or ''."""
+        h_none = compute_content_hash(_question(), _options(), primary_microtopic_id=None)
+        h_empty = compute_content_hash(_question(), _options(), primary_microtopic_id="")
+        assert h_none == h_empty
+        assert len(h_none) == 64
+
+    def test_preview_hash_for_top_level_tag_carries_no_microtopic(self):
+        sb = _seed_sb()  # default fixture: TOPIC_ID with parent_topic_id=None
+        out = preview_paper_projection(sb, PAPER_ID)
+        entry = out["questions"][0]
+        assert entry["eligible"] is True
+        assert entry["content_hash"] == compute_content_hash(
+            _question(),
+            _options(),
+            paper=_paper(),
+            all_verified_tags=_primary_tag(),
+            stimuli=[],
+            primary_microtopic_id=None,
+        )
+
+    # ── Case 3: NO primary tag ───────────────────────────────────────────────
+
+    def test_no_primary_tag_resolves_to_nothing(self):
+        assert resolve_primary_topic_split([], _topic_row()) == (None, None)
+
+    def test_unverified_primary_tag_resolves_to_nothing(self):
+        assert resolve_primary_topic_split(
+            _primary_tag(reviewer_status="pending"), _topic_row()
+        ) == (None, None)
+
+    def test_two_primary_tags_resolve_to_nothing(self):
+        """The RPC blocks on primary_topic_tag_count_not_one before it writes,
+        so there is no level to resolve."""
+        tags = _primary_tag() + _microtopic_tag()
+        assert resolve_primary_topic_split(tags, _topic_row()) == (None, None)
+
+    def test_missing_topic_row_resolves_to_nothing(self):
+        """A dangling tag — the RPC blocks on primary_topic_invalid_or_inactive."""
+        assert resolve_primary_topic_split(_primary_tag(), None) == (None, None)
+
+    def test_preview_leaves_untagged_question_ineligible_and_unhashed(self):
+        sb = _seed_sb(tags=[])
+        out = preview_paper_projection(sb, PAPER_ID)
+        entry = out["questions"][0]
+        assert entry["eligible"] is False
+        assert entry["content_hash"] is None
 
 
 # ─── Unit: _check_question_eligibility ────────────────────────────────────────
