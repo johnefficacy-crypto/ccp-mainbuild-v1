@@ -49,6 +49,38 @@ _MODES: dict[str, tuple[str, str]] = {
 # modes whose learner experience must follow the source paper's printed order.
 _SOURCE_ORDERED_MODES = frozenset({"paper", "section"})
 
+# ── Level-aware topic matching (migration 270) ────────────────────────────────
+# `mock_question_bank` carries a topic AND a microtopic column, and a projected
+# row's shape depends on whether migration 270 had run when it was last synced:
+#
+#   pre-270  (flattened)   topic_id = the TAGGED id (top-level OR microtopic),
+#                          microtopic_id = NULL
+#   post-270 (split)       microtopic-tagged: topic_id = PARENT, microtopic_id = tag
+#                          top-level-tagged:  topic_id = tag,    microtopic_id = NULL
+#
+# Both shapes coexist indefinitely: a pre-270 row keeps its flattened topic_id
+# until that question is re-synced through the projection RPC, and nothing
+# backfills them. So a target id must be matched against EITHER column —
+# `topic_id = target OR microtopic_id = target` — which resolves every
+# combination of {target level} x {row shape}. Matching only `topic_id` (the
+# pre-270 behaviour) silently returns an EMPTY set for a microtopic target once
+# 270 is applied, not an error.
+_TOPIC_MATCH_COLUMNS = ("topic_id", "microtopic_id")
+
+
+def _matched_target_ids(row: dict, requested: frozenset[str]) -> list[str]:
+    """Which requested target ids this bank row satisfies, in column order.
+
+    A row can satisfy TWO requested targets at once post-270 — its parent topic
+    (via ``topic_id``) and its own microtopic (via ``microtopic_id``) — when both
+    are locked in coverage. It then counts toward the availability of both.
+    """
+    return [
+        str(row[col])
+        for col in _TOPIC_MATCH_COLUMNS
+        if row.get(col) and str(row[col]) in requested
+    ]
+
 
 class PracticeInputError(ValueError):
     """Bad practice request — mapped to HTTP 422 by the endpoint."""
@@ -133,6 +165,14 @@ def select_practice_rows(
 
     Returns bank rows (not just ids), ordered by the source printed order for
     paper/section modes and newest-year-first for topic mode, capped to ``limit``.
+
+    Topic mode is LEVEL-AWARE (migration 270): ``target_id`` matches either
+    ``topic_id`` or ``microtopic_id``, so a microtopic target resolves under both
+    the pre-270 flattened and post-270 split row shapes. Note the post-270
+    consequence for a TOP-LEVEL target: its microtopic children now carry it in
+    their ``topic_id``, so they are included — topic practice on a parent is
+    subtree-wide, where pre-270 it matched only questions tagged at exactly that
+    id. See ``_TOPIC_MATCH_COLUMNS``.
     """
     if mode not in _MODES:
         raise PracticeInputError(f"unknown practice mode: {mode!r}")
@@ -140,10 +180,22 @@ def select_practice_rows(
     now_iso = _now_iso()
     q = (
         sb.table("mock_question_bank")
-        .select("id,pyq_question_id,pyq_paper_id,section_id,topic_id,exam_id,reviewer_status,valid_until,pyq_year")
+        .select(
+            "id,pyq_question_id,pyq_paper_id,section_id,topic_id,microtopic_id,"
+            "exam_id,reviewer_status,valid_until,pyq_year"
+        )
         .in_("reviewer_status", list(_SELECTABLE))
-        .eq(filter_col, target_id)
     )
+    if filter_col == "topic_id":
+        # Level-aware: match the target against topic_id OR microtopic_id, so the
+        # same id resolves whether the row is pre-270 flattened or post-270 split.
+        # target_id is UUID-validated by the caller; re-assert it here because this
+        # value is interpolated into a PostgREST filter string rather than passed
+        # as an encoded parameter.
+        _require_uuid(target_id, "target_id")
+        q = q.or_(f"topic_id.eq.{target_id},microtopic_id.eq.{target_id}")
+    else:
+        q = q.eq(filter_col, target_id)
     q = q.not_.is_("pyq_question_id", "null")
     if exam_id:
         q = q.eq("exam_id", exam_id)
@@ -289,24 +341,42 @@ def practiceable_topic_ids(
     aborts (500) if any selected row lacks options/``correct_option_id``, a topic
     with a malformed row must not advertise a ``topic_pyq`` mode (it would fail the
     click instead of showing the calm "no verified practice set yet" state).
-    Fail-closed: any read/load error yields no availability, never a false positive."""
+    Fail-closed: any read/load error yields no availability, never a false positive.
+
+    Level-aware (migration 270), mirroring ``select_practice_rows``: a requested id
+    matches either ``topic_id`` or ``microtopic_id``, and availability is grouped by
+    the REQUESTED id rather than the row's own ``topic_id``."""
     ids = [str(t) for t in dict.fromkeys(topic_ids) if t]
     if not ids or not exam_id:
         return set()
+    requested = frozenset(ids)
     now_iso = _now_iso()
-    res = safe_required(
-        lambda: sb.table("mock_question_bank")
-        .select("id,topic_id,valid_until,pyq_year")
-        .in_("reviewer_status", list(_SELECTABLE))
-        .in_("topic_id", ids)
-        .eq("exam_id", exam_id)
-        .not_.is_("pyq_question_id", "null")
-        .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
-        .execute(),
-        op="pyq_practice.practiceable_topics",
-        log=logger,
-        allow_empty=True,
-    )
+
+    def _probe(column: str) -> list[dict] | None:
+        return safe_required(
+            lambda: sb.table("mock_question_bank")
+            .select("id,topic_id,microtopic_id,valid_until,pyq_year")
+            .in_("reviewer_status", list(_SELECTABLE))
+            .in_(column, ids)
+            .eq("exam_id", exam_id)
+            .not_.is_("pyq_question_id", "null")
+            .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+            .execute(),
+            op="pyq_practice.practiceable_topics",
+            log=logger,
+            allow_empty=True,
+        )
+
+    # Level-aware, as one read per matchable column rather than an `or=` group:
+    # this list can hold hundreds of locked ids (the live UPSC exam locks 426
+    # microtopics), and an `in.(...)` inside an or-group would put every id in
+    # the URL twice. The two result sets are unioned on row id.
+    rows_by_id: dict[str, dict] = {}
+    for column in _TOPIC_MATCH_COLUMNS:
+        for r in _probe(column) or []:
+            if r.get("id"):
+                rows_by_id[str(r["id"])] = r
+    res = list(rows_by_id.values())
     if not res:
         return set()
     candidates = [r for r in res if (not r.get("valid_until") or str(r["valid_until"]) > now_iso)]
@@ -317,17 +387,27 @@ def practiceable_topic_ids(
     except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
         logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
         return set()
-    pool = [r for r in candidates if r["id"] in active and r.get("topic_id")]
+    pool = [
+        r for r in candidates
+        if r["id"] in active and _matched_target_ids(r, requested)
+    ]
     if not pool:
         return set()
 
-    # Group by topic, then pick the SAME rows the launch would freeze: newest PYQ
-    # year first, then id, capped at `limit` (topic-mode ordering in
-    # select_practice_rows). Readiness is judged over exactly that selected slice.
+    # Group by the REQUESTED id each row satisfies — not by the row's own
+    # topic_id. Post-270 a microtopic-locked target's rows carry the PARENT in
+    # topic_id, so keying on topic_id would report availability for a topic that
+    # was never asked about and none for the one that was. A row satisfying both
+    # a locked parent and a locked microtopic counts toward both.
+    #
+    # Then pick the SAME rows the launch would freeze: newest PYQ year first,
+    # then id, capped at `limit` (topic-mode ordering in select_practice_rows).
+    # Readiness is judged over exactly that selected slice.
     limit = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
     by_topic: dict[str, list[dict]] = {}
     for r in pool:
-        by_topic.setdefault(str(r["topic_id"]), []).append(r)
+        for tid in _matched_target_ids(r, requested):
+            by_topic.setdefault(tid, []).append(r)
     selected_by_topic: dict[str, list[str]] = {}
     selected_ids: list[str] = []
     for tid, rows in by_topic.items():
@@ -335,6 +415,8 @@ def practiceable_topic_ids(
         chosen = [str(r["id"]) for r in rows[:limit]]
         selected_by_topic[tid] = chosen
         selected_ids.extend(chosen)
+    # A row can be selected for two targets; load each question once.
+    selected_ids = list(dict.fromkeys(selected_ids))
 
     try:
         questions_by_id = _load_questions(sb, selected_ids)

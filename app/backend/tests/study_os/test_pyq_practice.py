@@ -25,6 +25,11 @@ PHASE = "22222222-2222-2222-2222-222222222222"
 SECTION = "33333333-3333-3333-3333-333333333333"
 PAPER = "44444444-4444-4444-4444-444444444444"
 TOPIC = "55555555-5555-5555-5555-555555555555"
+# Two microtopics under TOPIC, plus an id that is locked in coverage but has no
+# projected rows (migration 270 level-awareness).
+MICRO_A = "66666666-6666-6666-6666-6666666666aa"
+MICRO_B = "66666666-6666-6666-6666-6666666666bb"
+UNRELATED_TOPIC = "88888888-8888-8888-8888-888888888888"
 
 
 def _opt(qid: str, i: int, correct: bool) -> dict:
@@ -40,7 +45,23 @@ def _opt(qid: str, i: int, correct: bool) -> dict:
     }
 
 
-def _q(qid: str, *, paper: str = PAPER, section: str = SECTION, topic: str = TOPIC, year: int = 2024, exam: str = EXAM) -> dict:
+def _q(
+    qid: str,
+    *,
+    paper: str = PAPER,
+    section: str = SECTION,
+    topic: str = TOPIC,
+    microtopic: str | None = None,
+    year: int = 2024,
+    exam: str = EXAM,
+) -> dict:
+    """A projected bank row.
+
+    ``microtopic=None`` is BOTH a top-level-tagged row (either side of migration
+    270) and a pre-270 flattened microtopic row — the two are indistinguishable
+    in the bank, which is exactly why matching must consider both columns. Pass
+    ``topic=<parent>, microtopic=<child>`` for a post-270 split row.
+    """
     return {
         "id": qid,
         "question_text": f"Question {qid}",
@@ -53,6 +74,7 @@ def _q(qid: str, *, paper: str = PAPER, section: str = SECTION, topic: str = TOP
         "pyq_paper_id": paper,
         "section_id": section,
         "topic_id": topic,
+        "microtopic_id": microtopic,
         "pyq_year": year,
         "difficulty": "medium",
     }
@@ -144,6 +166,162 @@ def test_topic_practice_does_not_mix_exams():
     assert res["exam_id"] == EXAM
     state = engine.get_attempt(sb, "u1", res["attempt_id"])
     assert [q["question_id"] for q in state["questions"]] == ["q1"]
+
+
+# ─── Migration 270: level-aware topic matching ────────────────────────────────
+#
+# Before 270 the projection flattened a microtopic tag into `topic_id`. After it,
+# a microtopic-tagged row carries the PARENT in `topic_id` and the tag in
+# `microtopic_id`. The ~800 already-projected rows keep the flattened shape until
+# each is re-synced, so both shapes coexist and a target id must match EITHER
+# column. Matching `topic_id` alone would return an EMPTY set — silently, as a
+# 409 empty_pool rather than an error — for every microtopic-locked target
+# (426 of the 469 locks on the live UPSC exam).
+
+def test_microtopic_target_matches_post_270_split_row():
+    # post-270: topic_id = parent, microtopic_id = the tag.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_A, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    assert [q["question_id"] for q in state["questions"]] == ["q1"]
+
+
+def test_microtopic_target_matches_pre_270_flattened_row():
+    # pre-270: the microtopic id sits in topic_id and microtopic_id is NULL.
+    sb = _db([_q("q1", topic=MICRO_A)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_A, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+
+
+def test_microtopic_target_matches_both_row_shapes_in_one_pool():
+    # The state during rollout: some rows re-synced, some not. One target, both.
+    sb = _db([
+        _q("q1", topic=MICRO_A),                        # not yet re-synced
+        _q("q2", topic=TOPIC, microtopic=MICRO_A),      # re-synced under 270
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_A, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 2
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    assert sorted(q["question_id"] for q in state["questions"]) == ["q1", "q2"]
+
+
+def test_top_level_target_still_matches_its_own_rows():
+    sb = _db([_q("q1", topic=TOPIC)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+
+
+def test_top_level_target_sweeps_in_child_microtopic_rows_post_270():
+    """IMPLEMENTED BEHAVIOUR, and a deliberate change from pre-270.
+
+    Pre-270 `topic_id` held the tagged id verbatim, so a top-level target matched
+    ONLY questions tagged at exactly that id — never its children. Post-270 a
+    child's row carries the parent in `topic_id`, so `topic_id = target` pulls the
+    whole subtree in. Topic practice on a parent is therefore subtree-wide.
+    Pinned here so the widening is a visible decision, not a silent drift.
+    """
+    sb = _db([
+        _q("q1", topic=TOPIC),                          # tagged at the parent
+        _q("q2", topic=TOPIC, microtopic=MICRO_A),      # tagged at a child
+        _q("q3", topic=TOPIC, microtopic=MICRO_B),      # tagged at another child
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 3
+
+
+def test_sibling_microtopic_target_does_not_match():
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_B, exam_id=EXAM)
+    assert res["outcome"] == "empty_pool"
+    assert res["question_count"] == 0
+    assert sb.db["mock_attempts"] == []
+
+
+def test_topic_target_with_no_projected_rows_is_still_empty_pool():
+    # Empty case unchanged: level-awareness must not invent a match.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=UNRELATED_TOPIC, exam_id=EXAM)
+    assert res["outcome"] == "empty_pool"
+    assert res["question_count"] == 0
+    assert sb.db["mock_attempts"] == []
+    assert sb.db["mock_attempt_responses"] == []
+
+
+def test_microtopic_match_still_scoped_to_one_exam():
+    # The single-exam invariant holds on the new match path too.
+    sb = _db([
+        _q("q1", topic=TOPIC, microtopic=MICRO_A, exam=EXAM),
+        _q("q2", topic=TOPIC, microtopic=MICRO_A, exam=EXAM_B),
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_A, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+    assert res["exam_id"] == EXAM
+
+
+def test_section_mode_is_not_level_matched():
+    # Only topic mode gains the OR; section/paper still match their own column.
+    # A row whose microtopic_id happens to equal the requested section id must
+    # NOT be pulled into a section set.
+    sb = _db([_q("q1", section=SECTION, topic=TOPIC, microtopic=SECTION)], pyq_order={"q1": 1})
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="section", target_id=SECTION, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1  # matched by section_id, once — not twice
+
+
+# ─── practiceable_topic_ids: same matching, keyed on the REQUESTED id ──────────
+
+def _practiceable(sb, ids: list[str]) -> set[str]:
+    return svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=ids)
+
+
+def test_practiceable_reports_microtopic_target_post_270_split_row():
+    # The row's own topic_id is the PARENT; availability must be reported for the
+    # requested MICROTOPIC, not for a parent nobody asked about.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    assert _practiceable(sb, [MICRO_A]) == {MICRO_A}
+
+
+def test_practiceable_reports_microtopic_target_pre_270_flattened_row():
+    sb = _db([_q("q1", topic=MICRO_A)])
+    assert _practiceable(sb, [MICRO_A]) == {MICRO_A}
+
+
+def test_practiceable_reports_top_level_target():
+    sb = _db([_q("q1", topic=TOPIC)])
+    assert _practiceable(sb, [TOPIC]) == {TOPIC}
+
+
+def test_practiceable_counts_one_row_for_both_locked_levels():
+    # Parent and child both locked in coverage: the split row satisfies both.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    assert _practiceable(sb, [TOPIC, MICRO_A]) == {TOPIC, MICRO_A}
+
+
+def test_practiceable_omits_a_target_with_no_rows():
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    ready = _practiceable(sb, [MICRO_A, MICRO_B, UNRELATED_TOPIC])
+    assert ready == {MICRO_A}
+
+
+def test_practiceable_never_returns_an_unrequested_id():
+    # The contract is "a subset of topic_ids". Keying on the row's own topic_id
+    # would leak the parent TOPIC into the result for a microtopic-only request.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO_A)])
+    ready = _practiceable(sb, [MICRO_A])
+    assert ready <= {MICRO_A}
+    assert TOPIC not in ready
+
+
+def test_practiceable_empty_when_nothing_projected():
+    sb = _db([])
+    assert _practiceable(sb, [TOPIC, MICRO_A]) == set()
 
 
 def test_timed_practice_freezes_server_owned_countdown():
