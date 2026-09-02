@@ -1,4 +1,4 @@
--- 268_pyq_projection_microtopic_fidelity.sql
+-- 270_pyq_projection_microtopic_fidelity.sql
 -- PYQ -> mock_question_bank projection: stop losing the microtopic.
 --
 -- BUG: project_pyq_question_to_mock_bank wrote only `topic_id`, set from the

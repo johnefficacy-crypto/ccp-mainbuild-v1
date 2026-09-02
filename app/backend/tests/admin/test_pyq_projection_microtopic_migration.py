@@ -1,23 +1,23 @@
-"""Regression schema-contract tests for migration 268
+"""Regression schema-contract tests for Migration 270
 (PYQ -> mock_question_bank projection: microtopic fidelity).
 
 The projection RPC wrote only ``topic_id``, set verbatim from the verified
 primary tag. ``public.topics`` is a parent/child tree, so a tag pointing at a
 MICROTOPIC was flattened into ``topic_id`` and ``mock_question_bank.microtopic_id``
-(present since migration 135) stayed NULL. Migration 268 ``create or replace``s
+(present since migration 135) stayed NULL. Migration 270 ``create or replace``s
 the RPC to resolve the tag's level from ``topics.parent_topic_id`` and split it
 across both columns, and appends the resolved microtopic to the content hash.
 
 Following the repo convention (no live-DB migration harness): assert against the
 migration SQL text. Migrations 183/184/186/187/229/239/252 are MERGED +
-IMMUTABLE — the fix lives only in the forward migration (268). The executable
-behavioural proof is ``app/supabase/tests/regression_268_pyq_projection_microtopic.sql``.
+IMMUTABLE — the fix lives only in the forward migration (270). The executable
+behavioural proof is ``app/supabase/tests/regression_270_pyq_projection_microtopic.sql``.
 """
 from pathlib import Path
 
 _MIGRATIONS = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
 
-MIGRATION = (_MIGRATIONS / "268_pyq_projection_microtopic_fidelity.sql").read_text()
+MIGRATION = (_MIGRATIONS / "270_pyq_projection_microtopic_fidelity.sql").read_text()
 MIG_239 = (_MIGRATIONS / "239_pyq_projection_null_separator_fix.sql").read_text()
 
 
@@ -124,7 +124,7 @@ def test_hash_microtopic_is_null_safe():
 
 
 def test_hash_is_239_plus_exactly_one_appended_field():
-    # Pure append: the 239 expression must be a prefix of the 268 expression,
+    # Pure append: the 239 expression must be a prefix of the 270 expression,
     # with only the new trailing GS + microtopic field after it. This proves no
     # existing projected field was reordered, added, or dropped.
     expr_239 = _hash_expression(MIG_239).rstrip()

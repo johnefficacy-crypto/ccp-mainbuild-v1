@@ -1,9 +1,9 @@
--- regression_268_pyq_projection_microtopic.sql
+-- regression_270_pyq_projection_microtopic.sql
 --
--- Manual PostgreSQL regression tests for migration 268
+-- Manual PostgreSQL regression tests for Migration 270
 -- (project_pyq_question_to_mock_bank: microtopic fidelity).
 --
--- Before 268 the projection wrote only `topic_id`, set verbatim from the
+-- Before 270 the projection wrote only `topic_id`, set verbatim from the
 -- verified primary tag, so a tag pointing at a MICROTOPIC was flattened into
 -- `topic_id` and `mock_question_bank.microtopic_id` stayed NULL.
 --
@@ -21,7 +21,7 @@
 --      topic_id stays the parent.
 --
 --      Honest scope note: the content hash already carried every verified
---      tag's topic_id before 268, so a tag MOVE was already detected. What
+--      tag's topic_id Before 270, so a tag MOVE was already detected. What
 --      the appended microtopic_id adds is that the hash now commits to the
 --      value actually written to `mock_question_bank.microtopic_id`. It does
 --      NOT cover a topics-tree RE-PARENT (the tag is unchanged, so the tag
@@ -32,10 +32,10 @@
 --      settled row returns 'unchanged' and the same mock_question_id.
 --
 -- Prerequisites:
---   Migrations up to and including 268 must be applied.
+--   Migrations up to and including 270 must be applied.
 --
 -- Usage:
---   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f regression_268_pyq_projection_microtopic.sql
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f regression_270_pyq_projection_microtopic.sql
 --
 -- Expected output: six NOTICE "PASS" lines, no unexpected errors.
 -- Rollback-only; leaves no data behind. Never run this against production.
@@ -54,29 +54,29 @@ values ('cccccccc-0000-0000-0000-000000000001'::uuid,
 on conflict (id) do nothing;
 
 insert into public.exam_families (id, slug, name)
-values ('cccccccc-0000-0000-0000-000000000002'::uuid, 'rg268-family', 'Regression 268 Family');
+values ('cccccccc-0000-0000-0000-000000000002'::uuid, 'rg268-family', 'regression 270 Family');
 
 insert into public.exams (id, exam_family_id, slug, name)
 values ('cccccccc-0000-0000-0000-000000000003'::uuid,
-        'cccccccc-0000-0000-0000-000000000002'::uuid, 'rg268-exam', 'Regression 268 Exam');
+        'cccccccc-0000-0000-0000-000000000002'::uuid, 'rg268-exam', 'regression 270 Exam');
 
 insert into public.subjects (id, slug, name)
-values ('cccccccc-0000-0000-0000-000000000004'::uuid, 'rg268-subject', 'Regression 268 Subject');
+values ('cccccccc-0000-0000-0000-000000000004'::uuid, 'rg268-subject', 'regression 270 Subject');
 
 -- Two-level taxonomy: one top-level topic with two microtopic children.
 insert into public.topics (id, subject_id, parent_topic_id, slug, name, level)
 values
   ('cccccccc-0000-0000-0000-000000000010'::uuid,
    'cccccccc-0000-0000-0000-000000000004'::uuid, null,
-   'rg268-parent', 'Regression 268 Parent Topic', 'topic'),
+   'rg268-parent', 'regression 270 Parent Topic', 'topic'),
   ('cccccccc-0000-0000-0000-000000000011'::uuid,
    'cccccccc-0000-0000-0000-000000000004'::uuid,
    'cccccccc-0000-0000-0000-000000000010'::uuid,
-   'rg268-micro-a', 'Regression 268 Microtopic A', 'microtopic'),
+   'rg268-micro-a', 'regression 270 Microtopic A', 'microtopic'),
   ('cccccccc-0000-0000-0000-000000000012'::uuid,
    'cccccccc-0000-0000-0000-000000000004'::uuid,
    'cccccccc-0000-0000-0000-000000000010'::uuid,
-   'rg268-micro-b', 'Regression 268 Microtopic B', 'microtopic');
+   'rg268-micro-b', 'regression 270 Microtopic B', 'microtopic');
 
 insert into public.pyq_papers (id, exam_id, year, trust_status, source_type)
 values ('cccccccc-0000-0000-0000-000000000020'::uuid,
@@ -88,18 +88,18 @@ insert into public.pyq_questions
 values
   ('cccccccc-0000-0000-0000-000000000031'::uuid,
    'cccccccc-0000-0000-0000-000000000020'::uuid, 1,
-   'Regression 268 question tagged at microtopic level.', 'mcq', 'verified'),
+   'regression 270 question tagged at microtopic level.', 'mcq', 'verified'),
   ('cccccccc-0000-0000-0000-000000000032'::uuid,
    'cccccccc-0000-0000-0000-000000000020'::uuid, 2,
-   'Regression 268 question tagged at top-level topic.', 'mcq', 'verified'),
+   'regression 270 question tagged at top-level topic.', 'mcq', 'verified'),
   ('cccccccc-0000-0000-0000-000000000033'::uuid,
    'cccccccc-0000-0000-0000-000000000020'::uuid, 3,
-   'Regression 268 question with no primary tag.', 'mcq', 'verified');
+   'regression 270 question with no primary tag.', 'mcq', 'verified');
 
 -- Two verified options each, exactly one correct (the RPC's projection gate).
 insert into public.pyq_options
   (question_id, option_label, option_text, is_correct, reviewer_status)
-select q.id, l.label, 'Regression 268 option ' || l.label, (l.label = 'A'), 'verified'
+select q.id, l.label, 'regression 270 option ' || l.label, (l.label = 'A'), 'verified'
 from (values
         ('cccccccc-0000-0000-0000-000000000031'::uuid),
         ('cccccccc-0000-0000-0000-000000000032'::uuid),
@@ -140,7 +140,7 @@ declare
 begin
   -- ── Test 1: microtopic tag splits into parent topic + microtopic ─────────
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_micro, v_actor, 'regression 268 microtopic projection');
+    v_q_micro, v_actor, 'regression 270 microtopic projection');
 
   if v_res ->> 'outcome' <> 'created' then
     raise exception 'FAIL test 1: expected outcome=created, got %', v_res;
@@ -163,7 +163,7 @@ begin
 
   -- ── Test 2: top-level tag keeps topic_id and leaves microtopic_id NULL ───
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_topic, v_actor, 'regression 268 top-level topic projection');
+    v_q_topic, v_actor, 'regression 270 top-level topic projection');
 
   if v_res ->> 'outcome' <> 'created' then
     raise exception 'FAIL test 2: expected outcome=created, got %', v_res;
@@ -183,7 +183,7 @@ begin
 
   -- ── Test 3: no verified primary tag blocks, and writes no bank row ───────
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_untagged, v_actor, 'regression 268 untagged projection');
+    v_q_untagged, v_actor, 'regression 270 untagged projection');
 
   if v_res ->> 'outcome' <> 'blocked'
      or v_res ->> 'reason' <> 'primary_topic_tag_count_not_one' then
@@ -196,7 +196,7 @@ begin
 
   -- ── Test 4: unchanged microtopic question stays idempotent ───────────────
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_micro, v_actor, 'regression 268 idempotent re-projection');
+    v_q_micro, v_actor, 'regression 270 idempotent re-projection');
 
   if v_res ->> 'outcome' <> 'unchanged' then
     raise exception 'FAIL test 4: expected outcome=unchanged, got %', v_res;
@@ -209,15 +209,15 @@ begin
   -- ── Test 5: moving the tag to a SIBLING microtopic re-projects ───────────
   -- The projected topic_id does not change (same parent), so only
   -- microtopic_id distinguishes the two states on the bank row. The hash
-  -- changes on two counts after 268 — the verified-tag aggregate (which
-  -- already carried the tag's topic_id before 268) and the appended
+  -- changes on two counts after 270 — the verified-tag aggregate (which
+  -- already carried the tag's topic_id Before 270) and the appended
   -- microtopic_id — and the row must land on the NEW microtopic.
   update public.pyq_question_topic_tags
   set topic_id = v_micro_b
   where question_id = v_q_micro and tag_role = 'primary';
 
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_micro, v_actor, 'regression 268 microtopic re-tag re-projection');
+    v_q_micro, v_actor, 'regression 270 microtopic re-tag re-projection');
 
   if v_res ->> 'outcome' <> 'updated' then
     raise exception 'FAIL test 5: expected outcome=updated after a microtopic re-tag, got %', v_res;
@@ -242,7 +242,7 @@ begin
 
   -- ── Test 6: settled row is idempotent again, same mock question id ───────
   v_res := public.project_pyq_question_to_mock_bank(
-    v_q_micro, v_actor, 'regression 268 post-retag idempotency');
+    v_q_micro, v_actor, 'regression 270 post-retag idempotency');
 
   if v_res ->> 'outcome' <> 'unchanged' then
     raise exception 'FAIL test 6: expected outcome=unchanged, got %', v_res;

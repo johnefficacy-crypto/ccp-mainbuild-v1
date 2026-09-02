@@ -39,7 +39,7 @@ PAPER_ID  = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 EXAM_ID   = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
 Q_ID      = "11111111-1111-1111-1111-111111111111"
 TOPIC_ID  = "tttttttt-tttt-tttt-tttt-tttttttttttt"
-# Migration 268: a microtopic is a topics row whose parent_topic_id is TOPIC_ID.
+# Migration 270: a microtopic is a topics row whose parent_topic_id is TOPIC_ID.
 MICROTOPIC_ID = "mmmmmmmm-mmmm-mmmm-mmmm-mmmmmmmmmmmm"
 SUBJECT_ID = "ssssssss-ssss-ssss-ssss-ssssssssssss"
 ACTOR_ID  = "actor-001"
@@ -163,7 +163,7 @@ def _topic_row(
     subject_id: str = SUBJECT_ID,
 ) -> dict:
     """A ``topics`` row. ``parent_topic_id=None`` is a top-level topic; a set
-    parent makes it a microtopic (migration 268 level resolution)."""
+    parent makes it a microtopic (Migration 270 level resolution)."""
     return {
         "id": topic_id,
         "parent_topic_id": parent_topic_id,
@@ -203,7 +203,7 @@ def _seed_sb(
     sb.db["pyq_mock_question_projections"] = projections or []
     sb.db["pyq_stimuli"] = stimuli or []
     sb.db["pyq_question_stimuli"] = question_stimuli or []
-    # Migration 268: the preview resolves the primary tag's level from
+    # Migration 270: the preview resolves the primary tag's level from
     # topics.parent_topic_id. Default fixture is a top-level topic.
     sb.db["topics"] = topics if topics is not None else [_topic_row()]
     return sb
@@ -452,11 +452,11 @@ class TestComputeContentHash:
         assert compute_content_hash(_question(), _options(), stimuli=s_unverified_link) == h_none
 
 
-# ─── Unit: microtopic split (migration 268) ──────────────────────────────────
+# ─── Unit: microtopic split (Migration 270) ──────────────────────────────────
 
 class TestPrimaryTopicSplit:
     """The projection wrote only ``topic_id``, so a primary tag pointing at a
-    microtopic was flattened and ``microtopic_id`` stayed NULL. Migration 268
+    microtopic was flattened and ``microtopic_id`` stayed NULL. Migration 270
     resolves the tag's level from ``topics.parent_topic_id`` and splits it;
     ``resolve_primary_topic_split`` is the Python mirror of that logic."""
 
