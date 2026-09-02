@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+2,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,ok
+3,ace3fd37-5231-432d-87c4-5dde90a2be6b,Oceans: temperature and salinity,ok
+4,8e834bd5-5d64-4d60-b105-14b2a0dce8cc,"Agricultural marketing, MSP and procurement",check
+5,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+6,0cabc0e9-b5c9-42c3-8974-34134ec5bf8f,Physiography of India,ok
+7,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,check
+8,b9fd43a1-0e8c-48ca-907e-b20610c889ff,Environment Protection Act and pollution control bodies,check
+9,87041523-91f5-4bee-ab8b-efd9c53fdae9,Atmospheric circulation and weather systems,ok
+10,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+11,42380d00-29fa-4012-ab52-e75b7ca0a93f,Wildlife Protection Act,ok
+12,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,ok
+13,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+14,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,ok
+15,741b1b26-bb16-4931-96bb-2459aa06a661,Carbon markets and climate metrics,ok
+16,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+17,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+18,75ca9347-8351-48c9-ad9a-237adcdd675e,Renewable energy,ok
+19,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,check
+20,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+21,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,check
+22,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+23,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+24,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+25,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+26,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,check
+27,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+28,3c34cf1b-ee02-4ba1-b7c7-ab4bbf92ed60,Infrastructure and public-private partnership,check
+29,5a9e3e5b-e8ed-4fa4-86ca-97fa0dc33f7c,Toxic metals and industrial pollution,ok
+30,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+31,8e834bd5-5d64-4d60-b105-14b2a0dce8cc,"Agricultural marketing, MSP and procurement",check
+32,4ae1a175-886d-4559-b1e2-a201b7207b33,Commercial banking and asset classification,check
+33,8e834bd5-5d64-4d60-b105-14b2a0dce8cc,"Agricultural marketing, MSP and procurement",ok
+34,803e588e-6423-4725-a93f-3aebf0c6e313,International trade and WTO,ok
+35,bbf61f1e-1977-4182-8381-ff7d99aae278,Plurilateral and strategic groupings,ok
+36,9b05314d-2680-45b3-ac5b-c4b69a2a4f28,Financial inclusion and microfinance,ok
+37,10e4c33b-8f2e-485f-bf8c-dd9187544d33,Inflation — types and measurement,ok
+38,6b2ca3a8-9659-48cb-9006-9d984b6da076,World physical features and landmarks,ok
+39,8e834bd5-5d64-4d60-b105-14b2a0dce8cc,"Agricultural marketing, MSP and procurement",ok
+40,26c18d07-ca5a-4a33-96bc-66b027666f50,Money market instruments,ok
+41,77b2c28a-d30e-4d63-826b-954b2db54477,Foreign investment — FDI and FPI,ok
+42,803e588e-6423-4725-a93f-3aebf0c6e313,International trade and WTO,ok
+43,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,ok
+44,48f9772e-159d-4733-afb6-436f5db3af10,Government borrowing and public debt,check
+45,edb85caf-ff68-4e7e-88c4-8a2352a2c1f4,Export control and non-proliferation regimes,ok
+46,803e588e-6423-4725-a93f-3aebf0c6e313,International trade and WTO,ok
+47,f5ad1028-8843-46a9-a884-4b896581d7dc,Money and banking: RBI and monetary policy,ok
+48,7889a551-2986-465c-84ad-1ad29751858c,Economic growth and development indicators,check
+49,071d0c52-3db8-42eb-8f00-b9bc98183c54,Cooperative banks and regional rural banks,ok
+50,9ae14a1c-b352-469a-a214-faf0770d16fa,Cybersecurity and cyber threats,ok
+51,814ac6fd-babe-49b4-821e-576dbc465f65,Nanotechnology,ok
+52,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+53,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+54,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+55,a4d2c72a-9cac-4f2e-8f95-35f5ac8b8bd8,Immunity and vaccines,ok
+56,e5a97b06-21bf-48f8-97cc-ff70ec70164d,Data protection and digital governance,ok
+57,cea3c9c5-28f6-4169-8f35-573ac83ee43c,Cell structure and human physiology,ok
+58,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,check
+59,71716840-b028-4707-bea4-2fd3ea3b8830,Balance of payments,check
+60,5767d76c-0a59-49ea-98f1-1aac9634f311,Money supply and the multiplier,ok
+61,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+62,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,ok
+63,1f90fbbf-7550-43c7-8127-5292227908c1,Colonial land revenue systems,check
+64,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,ok
+65,69b0ea72-cbd3-4936-81c0-3aa90ea17775,"Peasant, tribal and labour movements",ok
+66,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,ok
+67,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+68,5858c30e-210b-42f7-8865-e9f37e3dd77b,Artificial intelligence and machine learning,ok
+69,3e99163e-c43b-4d4d-8963-1eea850b6288,Telecom and networks,ok
+70,e2e8bf83-c61e-4d97-92b3-3b4e89f05d1c,"Blockchain, cryptocurrency and Web3",ok
+71,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,check
+72,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+73,1f90fbbf-7550-43c7-8127-5292227908c1,Colonial land revenue systems,check
+74,93929d93-b7fa-405b-b294-fd328cdffbf5,Early medieval dynasties,ok
+75,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,check
+76,3e240607-c748-46ee-8239-85cecb1a0d39,Early nationalism and the moderate phase,ok
+77,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+78,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,check
+79,93e92dcb-b8d4-4779-b77e-c5a2ffcdc46b,Gupta period,check
+80,1cd9949b-3424-4350-a5eb-073f4d251c31,Mauryan empire,ok
+81,da25c547-22e0-4588-9da6-394acc65d1ba,Comparative government and constitutions,ok
+82,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,ok
+83,63ae071a-bf31-4a07-92a2-b052ffb61f91,Judicial review and basic structure,ok
+84,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,check
+85,4961002d-8d40-4fc2-a1df-bf161af98c88,"Governance, transparency and accountability",ok
+86,7110e9d8-f86c-4a73-ab97-fdf622665b8e,Making of the Constitution,check
+87,faae405c-380a-493e-b12d-aff5f9409b89,International economic institutions,ok
+88,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,ok
+89,07d0f9f8-16f2-4982-be84-689c069d5ba0,Prime Minister and Council of Ministers,check
+90,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,ok
+91,e5a97b06-21bf-48f8-97cc-ff70ec70164d,Data protection and digital governance,ok
+92,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,ok
+93,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,check
+94,c84898db-ce5a-4ae9-9bc5-219f81fac0e6,Fundamental Rights,ok
+95,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,ok
+96,9f62ad97-ead4-45d1-9fd3-5da8f919ba63,Fiscal deficit and FRBM,ok
+97,da25c547-22e0-4588-9da6-394acc65d1ba,Comparative government and constitutions,check
+98,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,check
+99,6fe2005c-d962-4ba5-b43c-6bb5342d52d0,Legal profession and access to justice,ok
+100,9287d12d-472f-48c4-8b53-30ae06729a8a,"Global summits, declarations and compacts",ok

@@ -1,0 +1,401 @@
+question_number,option_label,option_id,question_id,option_text
+1,a,b9ce3d47-f552-41fc-a75e-ddf69b214e47,54e8305d-a038-4099-bb86-d1fb5e925b3e,"1, 2 and 3 only"
+1,b,a2c2812f-6ca8-4a91-9d43-ce25d2768968,54e8305d-a038-4099-bb86-d1fb5e925b3e,"1, 2 and 4 only"
+1,c,50c44e06-3d5f-4c04-945a-e78acabd1493,54e8305d-a038-4099-bb86-d1fb5e925b3e,"1,3 and 4 only"
+1,d,c03a996f-ba3f-4479-ac77-50fbc042f526,54e8305d-a038-4099-bb86-d1fb5e925b3e,"2, 3 and 4 only"
+2,a,45c36ed3-6b07-4dc4-8c2c-acda6966f386,1b396279-3e99-4ea2-becb-efbe2179f5d9,1 and 2 only
+2,b,492d0bfa-3271-4545-8f0d-f386b7d7e07f,1b396279-3e99-4ea2-becb-efbe2179f5d9,4 only
+2,c,e4e9ae92-65a3-4459-b416-f7d3ae4624b4,1b396279-3e99-4ea2-becb-efbe2179f5d9,1 and 3 only
+2,d,bdf29861-71c0-4594-821b-b6699c1e0c42,1b396279-3e99-4ea2-becb-efbe2179f5d9,"2, 3 and 4 only"
+3,a,4b3a1a3a-187a-4e2b-b807-02e893b121ff,d4647efe-2a93-42c5-9859-74a87c83ee81,1 only
+3,b,9e7b7e16-baf4-44c9-bffe-2e4a929db2f3,d4647efe-2a93-42c5-9859-74a87c83ee81,2 only
+3,c,ca988c42-c876-473d-bee5-c990ebaadcb1,d4647efe-2a93-42c5-9859-74a87c83ee81,Both 1 and 2
+3,d,c7418cdc-43aa-4838-b8ad-b06369f82e50,d4647efe-2a93-42c5-9859-74a87c83ee81,Neither 1 nor 2
+4,a,a08b9c48-e493-42ac-9e92-69d94d8854ed,d2892ad6-97a9-43e2-abe9-13b75adb8c11,1 only
+4,b,77c0833c-98b2-44c7-bee9-f0496c7eeca2,d2892ad6-97a9-43e2-abe9-13b75adb8c11,2 and 3 only
+4,c,5969f840-5b7d-4c32-ab33-33d920fd4c65,d2892ad6-97a9-43e2-abe9-13b75adb8c11,2 only
+4,d,09b0ee5d-a579-4b9c-9712-54905f096944,d2892ad6-97a9-43e2-abe9-13b75adb8c11,"1, 2 and 3"
+5,a,58ace364-2ba8-4f06-a8c2-97500abcae54,c3924051-cf9a-46dc-8963-0b5dfa227a7d,1 and 2 only
+5,b,3fe460b8-b57b-450a-8da1-12c7004b46b2,c3924051-cf9a-46dc-8963-0b5dfa227a7d,2 and 3 only
+5,c,3487a15c-49c5-4c54-9162-f5aa5579347f,c3924051-cf9a-46dc-8963-0b5dfa227a7d,1 and 3 only
+5,d,fe357e95-9ee9-4532-bd31-f75f454a5c12,c3924051-cf9a-46dc-8963-0b5dfa227a7d,"1, 2 and 3"
+6,a,066c5ace-4383-410b-937d-c9447964598e,7aba3f5e-a58d-43d4-a9c8-04ab69524196,East of Aksai Chin
+6,b,21eec929-bff3-4d44-85c1-d1d82e98fa41,7aba3f5e-a58d-43d4-a9c8-04ab69524196,East of Leh
+6,c,aca19c97-21d4-4638-9bf7-b3ecce664e2a,7aba3f5e-a58d-43d4-a9c8-04ab69524196,North of Gilgit
+6,d,d88f6124-27c4-4bd4-9a59-6039ca9666a3,7aba3f5e-a58d-43d4-a9c8-04ab69524196,North of Nubra Valley
+7,a,1fb836d3-cb55-403c-a955-16693cd07a54,fcd92c55-173f-4320-bc08-5f4320d44bcc,1 and 3 only
+7,b,6baebb2d-b573-4b9c-9b9c-bb7a1b444d05,fcd92c55-173f-4320-bc08-5f4320d44bcc,1 and 4 only
+7,c,f51fb067-91a9-4e90-bc6b-afe6cff83270,fcd92c55-173f-4320-bc08-5f4320d44bcc,2 and 3 only
+7,d,75ae7a44-ecbf-43d7-8dbe-caf87bc45e90,fcd92c55-173f-4320-bc08-5f4320d44bcc,2 and 4 only
+8,a,b1764660-e743-42f4-94b6-1394c706e0c3,8da41853-f145-4f61-9596-0357d4b7005e,1 only
+8,b,37bc065c-85a1-49c0-9481-08ed2a7ecdca,8da41853-f145-4f61-9596-0357d4b7005e,2 and 3 only
+8,c,5336ab43-4f0f-49bb-8059-c949cca1ca7d,8da41853-f145-4f61-9596-0357d4b7005e,2 only
+8,d,8902e76f-02d1-49a7-8e37-f20133051995,8da41853-f145-4f61-9596-0357d4b7005e,1 and 3 only
+9,a,a914290d-db70-45e5-aec7-767e17e195f6,f66c200b-bf27-4d68-98d4-89e41ed23fa4,1 only
+9,b,f8877f75-646f-46c5-bf95-3c86b7a477e1,f66c200b-bf27-4d68-98d4-89e41ed23fa4,2 and 3 only
+9,c,5b489322-f659-4c61-bfb7-0234dbc6282b,f66c200b-bf27-4d68-98d4-89e41ed23fa4,2 only
+9,d,7f6aad63-e046-482e-9c88-23600c894280,f66c200b-bf27-4d68-98d4-89e41ed23fa4,1 and 3 only
+10,a,46719c8b-5110-4018-829b-33c2bf41f885,c2bc25a6-ec83-4ded-bc78-bbbe7a4866c0,Corbett
+10,b,b44e885e-617d-4313-b321-31100fdc95d5,c2bc25a6-ec83-4ded-bc78-bbbe7a4866c0,Ranthambore
+10,c,f6b4d809-3255-4e5e-9633-72005db2dfee,c2bc25a6-ec83-4ded-bc78-bbbe7a4866c0,Nagarjunsagar-Srisailam
+10,d,d1192633-1873-410b-ac94-5c365951fa48,c2bc25a6-ec83-4ded-bc78-bbbe7a4866c0,Sunderbans
+11,a,20e755a1-ff6d-4b62-8303-07f9aa9d038f,a0f2bd55-c8f7-4153-98f6-fa91752557dc,A licence is required to cultivate that plant.
+11,b,627ae4a0-ce8d-43b1-bac5-308c1049ee70,a0f2bd55-c8f7-4153-98f6-fa91752557dc,Such a plant cannot be cultivated under any circumstances.
+11,c,5b307b73-ee34-4d28-919a-96b16c89ea2a,a0f2bd55-c8f7-4153-98f6-fa91752557dc,It is a Genetically Modified crop plant.
+11,d,16ac15e1-5d8c-4ec0-8661-47453298339f,a0f2bd55-c8f7-4153-98f6-fa91752557dc,Such a plant is invasive and harmful to the ecosystem
+12,a,d9bad4c9-af94-4e22-b1a9-c8167b4df5ba,a4499e0b-57d5-423a-b68b-f1fcdd751edb,ports handling foreign trade
+12,b,50934818-5947-4fc3-868a-01c3c4a4c03d,a4499e0b-57d5-423a-b68b-f1fcdd751edb,capitals of powerful kingdoms
+12,c,dc9b8d87-873a-44d9-bd4d-e6b5819dc834,a4499e0b-57d5-423a-b68b-f1fcdd751edb,places of exquisite stone art and architecture
+12,d,2a33dcff-463c-4a64-ab59-be1304de5491,a4499e0b-57d5-423a-b68b-f1fcdd751edb,important Buddhist pilgrimage centres
+13,a,8a7d4cac-546e-48c5-b5d4-81733f1c82c2,b1cb882e-e0d6-43e2-899d-544e3f2126f3,1 and 2 only
+13,b,285feb4f-89ea-42f7-aa8b-dae50f613e4e,b1cb882e-e0d6-43e2-899d-544e3f2126f3,2 and 3 only
+13,c,020f048a-68f0-4fcc-8550-ac1ece889d90,b1cb882e-e0d6-43e2-899d-544e3f2126f3,3 only
+13,d,07adb156-0927-4fb6-bbe2-56b44756ff5b,b1cb882e-e0d6-43e2-899d-544e3f2126f3,"1, 2 and 3"
+14,a,76fcebc1-e643-4687-a069-8fdd444678f6,9c7e455b-742a-4f5b-a656-552c39af2e04,"1, 2, 5 and 6 only"
+14,b,5a43e066-57fb-4fcd-b745-31ac134889a5,9c7e455b-742a-4f5b-a656-552c39af2e04,"1, 3, 4 and 6 only"
+14,c,ed9c0b01-6bb2-429b-a9f2-1cfa7adc118e,9c7e455b-742a-4f5b-a656-552c39af2e04,"2, 3, 4 and 5 only"
+14,d,d5582370-5970-473b-a61b-09afa365467a,9c7e455b-742a-4f5b-a656-552c39af2e04,"1, 2, 3, 4, 5 and 6"
+15,a,75622399-9482-4f57-9583-9e517e2d8a04,7c5d0cea-a366-48a6-b0aa-d3889da9edb8,long-term damage done by a tonne of CO2 emissions in a given year.
+15,b,82ee8687-b6e6-44ad-9918-8e2492a61ccf,7c5d0cea-a366-48a6-b0aa-d3889da9edb8,"requirement of fossil fuels for a country to provide goods and services to its citizens, based on the burning of those fuels."
+15,c,7368b936-d48e-4b81-ac12-cafba5438f0c,7c5d0cea-a366-48a6-b0aa-d3889da9edb8,efforts put in by a climate refugee to adapt to live in a new place.
+15,d,0ae92690-2637-4a84-8eb7-106d9e926033,7c5d0cea-a366-48a6-b0aa-d3889da9edb8,contribution of an individual person to the carbon footprint on the planet Earth.
+16,a,8e0fe206-1517-4ca8-8257-dd41144bb60d,f1bf2ba6-b47e-4f99-8f02-7abe2126d427,1 only
+16,b,07f22bb6-34b4-4b1c-9ea7-7a8a5562e717,f1bf2ba6-b47e-4f99-8f02-7abe2126d427,2 and 3 only
+16,c,93941f90-0de8-4c4f-9237-76eea75017a2,f1bf2ba6-b47e-4f99-8f02-7abe2126d427,2 only
+16,d,8118ed0a-8306-4f85-9c03-af3973861753,f1bf2ba6-b47e-4f99-8f02-7abe2126d427,"1, 2 and 3"
+17,a,6d5998a0-706b-4def-b623-62d2395a7f83,0dac6259-4710-4183-840f-5aecf8383b8f,Cotton
+17,b,bcc371fa-4bf3-4483-8cf5-162153d566f9,0dac6259-4710-4183-840f-5aecf8383b8f,Jute
+17,c,0e3fe8d7-7d54-4d6b-850a-c2115e7fc49c,0dac6259-4710-4183-840f-5aecf8383b8f,Sugarcane
+17,d,0e6389ed-b77e-4b6a-98cd-310afbf3450f,0dac6259-4710-4183-840f-5aecf8383b8f,Tea
+18,a,72c08bd6-2655-43a1-a588-87bd297b4deb,3692e405-bdb5-4bfc-9a94-96fc9cf83294,1 only
+18,b,4197f24a-c270-403e-ba93-1fd17ba46d8e,3692e405-bdb5-4bfc-9a94-96fc9cf83294,2 only
+18,c,0b3276cd-1e73-40af-817f-133258509d69,3692e405-bdb5-4bfc-9a94-96fc9cf83294,Both 1 and 2
+18,d,5c882281-8b24-40f4-9a6e-1cc009823c15,3692e405-bdb5-4bfc-9a94-96fc9cf83294,Neither 1 nor 2
+19,a,37b5662c-be51-4bdb-b22d-02aeec877938,e4b96246-3ebc-4cf9-970a-8bdb861faacc,1 and 2 only
+19,b,0f233495-a791-428a-a57e-3cf0fd822cd6,e4b96246-3ebc-4cf9-970a-8bdb861faacc,3 only
+19,c,024ac08b-7477-48b3-a538-a48c013ac361,e4b96246-3ebc-4cf9-970a-8bdb861faacc,1 and 4 only
+19,d,e48bc0bf-e6db-4cb1-8daf-a3bdeb85fb21,e4b96246-3ebc-4cf9-970a-8bdb861faacc,"2, 3 and 4 only"
+20,a,55f82bb8-f6de-4cf2-82ae-b33948845890,8e9356a4-06be-48bf-a2f6-69680627d0f1,"1, 2 and 3 only"
+20,b,c8df836c-1e2d-41f8-9620-de83afbf0c15,8e9356a4-06be-48bf-a2f6-69680627d0f1,3 only
+20,c,a66b5b20-8446-4ac5-a9fd-85c4d09db595,8e9356a4-06be-48bf-a2f6-69680627d0f1,4 only
+20,d,b7dffc6d-af09-4175-a0a4-050056659558,8e9356a4-06be-48bf-a2f6-69680627d0f1,"1, 2, 3 and 4"
+21,a,16724870-b12d-49ff-8866-fd16885acda7,e56621bd-a5f0-404b-980e-336f981a476c,1 and 2 only
+21,b,9ac9dbbd-a793-42cd-8a5b-b9ba86edaf27,e56621bd-a5f0-404b-980e-336f981a476c,1 and 3 only
+21,c,4fa333a5-497e-4bd6-aa99-618d340f042e,e56621bd-a5f0-404b-980e-336f981a476c,2 and 3 only
+21,d,a45534ba-0ff1-4832-bc1e-24b1327bd54a,e56621bd-a5f0-404b-980e-336f981a476c,"1, 2 and 3"
+22,a,119b0277-9ba8-4b8d-b9c4-4efe4f3bf204,5f43c16e-a29d-4959-8893-94a7dc45798a,1 and 2 only
+22,b,c990910c-67f9-45d7-86dc-1b92392fc648,5f43c16e-a29d-4959-8893-94a7dc45798a,2 and 4 only
+22,c,77c9958a-cc31-4bde-a03b-85e272fffa05,5f43c16e-a29d-4959-8893-94a7dc45798a,3 only
+22,d,145b10d8-d93e-4ce5-b5f8-6ca11e3cfe8b,5f43c16e-a29d-4959-8893-94a7dc45798a,"1, 3 and 4 only"
+23,a,c980ae8a-308d-4623-8ef5-13b0ad6954ee,2553704a-cc22-406e-a86f-6ec71cab6b4a,1 and 2 only
+23,b,2221d9f9-6981-4602-ac50-42cb83d15bf5,2553704a-cc22-406e-a86f-6ec71cab6b4a,3 and 4 only
+23,c,1ecd6a67-b825-4e64-b1a9-1c859781cba3,2553704a-cc22-406e-a86f-6ec71cab6b4a,"1,3 and 4 only"
+23,d,3343f1a6-10a3-4be8-bb19-32e3d74b7a91,2553704a-cc22-406e-a86f-6ec71cab6b4a,"1, 2, 3 and 4"
+24,a,9b4c732d-0220-401a-98f7-65b4d358abbd,baf66cd4-0d10-4b83-8753-dc2f6884e317,Birds
+24,b,d012ee9d-9f48-4fd7-9d6e-fe3bd4c2729e,baf66cd4-0d10-4b83-8753-dc2f6884e317,Primates
+24,c,c177ae36-2e59-477a-b16b-a7cb04b1fea3,baf66cd4-0d10-4b83-8753-dc2f6884e317,Reptiles
+24,d,652f485c-a7ce-4a53-99a4-940a35464abc,baf66cd4-0d10-4b83-8753-dc2f6884e317,Amphibians
+25,a,11f8af0e-cddd-405b-9540-628e44fc0057,bde6ce8e-2e57-4d43-9c23-c1024e040b73,Kanha National Park
+25,b,98d284bc-282f-413c-bae4-6bad24d52509,bde6ce8e-2e57-4d43-9c23-c1024e040b73,Manas National Park
+25,c,892bdfbe-ed30-42d0-a7b2-2b48a69cddb6,bde6ce8e-2e57-4d43-9c23-c1024e040b73,Mudumalai Wildlife Sanctuary
+25,d,bc0c9bbc-3996-4e86-99ff-2f46eb07a525,bde6ce8e-2e57-4d43-9c23-c1024e040b73,Tal Chhapar Wildlife Sanctuary
+26,a,127ecaec-6490-4fa7-9d8d-c1bff29bbd67,a84bd717-ee65-485d-aa57-f910d42ce553,1 and 2 only
+26,b,1f7437d5-a01b-4944-9407-a21a332782eb,a84bd717-ee65-485d-aa57-f910d42ce553,2 and 3 only
+26,c,eef4cef3-e8c9-47bd-802e-9e2db2d8f243,a84bd717-ee65-485d-aa57-f910d42ce553,1 and 3 only
+26,d,80d1c442-3b31-4baa-9dd5-1f91cd573d16,a84bd717-ee65-485d-aa57-f910d42ce553,"1, 2 and 3"
+27,a,a743638a-0972-49c6-afcc-614cbfc5c46f,6bfa8f1d-1eec-431b-a756-01b9b8eb56ae,1 and 2 only
+27,b,24590fc1-1749-43c1-8ad1-8b3ab5aa8a9a,6bfa8f1d-1eec-431b-a756-01b9b8eb56ae,2 and 3 only
+27,c,2291bf29-e805-492a-97a8-05a08e4fa889,6bfa8f1d-1eec-431b-a756-01b9b8eb56ae,3 and 4 only
+27,d,fa277583-9851-4a76-bdaa-83f3996dc44b,6bfa8f1d-1eec-431b-a756-01b9b8eb56ae,1 and 4 only
+28,a,06356bf2-4471-44c4-a57a-e5724c55c770,5115b1b3-b6f6-4e12-b407-39737b88ad73,"1, 2 and 3 only"
+28,b,91a99541-4663-48d8-9600-c649f0282c36,5115b1b3-b6f6-4e12-b407-39737b88ad73,"2, 3 and 4 only"
+28,c,8cd53b93-99c1-407c-99ab-0583efffaf48,5115b1b3-b6f6-4e12-b407-39737b88ad73,4 and 5 only
+28,d,16cf3510-1594-45f2-9b0a-c3307b6c71b8,5115b1b3-b6f6-4e12-b407-39737b88ad73,1 and 5 only
+29,a,8b9c74f3-1375-48a3-bc37-303da7756fe0,0c7077a7-3830-4f3f-89fa-364252f747ec,1 only
+29,b,2ab6a77d-aec7-4561-a88c-372437c35a36,0c7077a7-3830-4f3f-89fa-364252f747ec,2 and 3 only
+29,c,e51ec468-c296-45ff-9251-6b6122f93003,0c7077a7-3830-4f3f-89fa-364252f747ec,3 only
+29,d,cc167eb3-0738-4ab7-be1a-911a3a33c7bd,0c7077a7-3830-4f3f-89fa-364252f747ec,"1, 2 and 3"
+30,a,a474956e-3f9e-4d06-99b5-a0441a8b820f,0ee2f03b-b719-4878-877e-3a0c05ab9df8,1 and 2 only
+30,b,5356fe87-83df-4043-bd8a-6b9e180751e2,0ee2f03b-b719-4878-877e-3a0c05ab9df8,2 only
+30,c,54e55645-03d2-47f2-8169-6571efd9ca91,0ee2f03b-b719-4878-877e-3a0c05ab9df8,1 and 3 only
+30,d,852c2a7c-ac94-4a8d-b86b-50f20afeb7ec,0ee2f03b-b719-4878-877e-3a0c05ab9df8,"1, 2 and 3"
+31,a,cb2d6703-0c74-4595-8275-8b7978445e6d,fcadc9e6-300c-4fbd-af4a-2c83814ade09,"1, 2 and 5 only"
+31,b,da2a89eb-6a3e-408b-9901-d781a9f4625b,fcadc9e6-300c-4fbd-af4a-2c83814ade09,"1, 3, 4 and 5 only"
+31,c,778d554c-6ee7-4830-813b-99189dae6b91,fcadc9e6-300c-4fbd-af4a-2c83814ade09,"2, 3 and 6 only"
+31,d,a2d9191a-6e19-4165-b35d-67a10f0266c5,fcadc9e6-300c-4fbd-af4a-2c83814ade09,"1, 2, 3, 4, 5 and 6"
+32,a,2145cc8d-b8fe-429c-a21c-ed2dd6d137ce,c56fb969-b220-4517-9ce2-efa1de75c29a,1 and 2 only
+32,b,12eec38b-45b6-4a84-9371-6f2d723939af,c56fb969-b220-4517-9ce2-efa1de75c29a,2 only
+32,c,5f21216b-5f5f-4454-82ed-b79788204507,c56fb969-b220-4517-9ce2-efa1de75c29a,1 and 3 only
+32,d,cdad4189-1a1e-495f-b6cf-0943342cc479,c56fb969-b220-4517-9ce2-efa1de75c29a,"1, 2 and 3"
+33,a,23be7b3c-1a05-4179-bbe2-37240ed01f16,665f7270-fd72-4159-a3be-6b7a5cfc2dc4,"1, 2 and 4 only"
+33,b,904245b0-9244-4849-a95b-f7e62e85f307,665f7270-fd72-4159-a3be-6b7a5cfc2dc4,"1, 3 and 4 only"
+33,c,226ad430-6d97-4942-8d1f-d0075c77e832,665f7270-fd72-4159-a3be-6b7a5cfc2dc4,2 and 3 only
+33,d,5f4923ed-23d4-4f3f-92cb-b00bfdf0e8a5,665f7270-fd72-4159-a3be-6b7a5cfc2dc4,"1, 2, 3 and 4"
+34,a,c63f7b39-7660-4c98-a443-5daa75978c56,b8d43fdd-4d9d-4323-a8ca-d1cef94412bf,1 and 2 only
+34,b,aaefe9f0-d483-47f4-8168-1bd556ca2d45,b8d43fdd-4d9d-4323-a8ca-d1cef94412bf,2 only
+34,c,66d3d092-a201-45c7-abc2-9f16e03d23e2,b8d43fdd-4d9d-4323-a8ca-d1cef94412bf,3 only
+34,d,aa512bce-cca7-4c2e-9566-3156f978ba51,b8d43fdd-4d9d-4323-a8ca-d1cef94412bf,"1, 2 and 3"
+35,a,adfb4ba5-97d7-46a0-aa7f-fe8914af6b3d,eaa9fc54-ffaf-4666-a9ab-30f74a4cfad1,"Argentina, Mexico, South Africa and Turkey"
+35,b,894a8445-2b08-46cf-bb97-066e912ce1ae,eaa9fc54-ffaf-4666-a9ab-30f74a4cfad1,"Australia, Canada, Malaysia New Zealand and"
+35,c,cd8ee084-a8de-4a40-859b-3059693c7713,eaa9fc54-ffaf-4666-a9ab-30f74a4cfad1,"Brazil, Iran, Saudi Arabia and Vietnam"
+35,d,32aaac05-ae0b-464d-865e-5b7b1c40cdf6,eaa9fc54-ffaf-4666-a9ab-30f74a4cfad1,"Indonesia, Japan, Singapore and South Korea"
+36,a,1d094a3a-6020-45d6-92b8-c3c1125a2963,d8d76598-a6e5-4ff1-84e8-c797d9e16a18,"1, 2 and 5 only"
+36,b,c041fb27-77be-4b9b-a5b4-1ed64fcd78fe,d8d76598-a6e5-4ff1-84e8-c797d9e16a18,"1, 3 and 4 only"
+36,c,795ae0a2-e77c-4a95-a4b6-6ba79166a19d,d8d76598-a6e5-4ff1-84e8-c797d9e16a18,"2,3,4 and 5 only"
+36,d,6ad9706d-4350-4470-8623-97616b2ca2f7,d8d76598-a6e5-4ff1-84e8-c797d9e16a18,"1, 2, 3, 4 and 5"
+37,a,a1ed689a-aac4-4cd5-b5bf-dc979e42e695,a6aa0068-62eb-4d66-8a04-28cd3558bef5,1 and 2 only
+37,b,5e0298ed-ee99-4097-bc85-7f9faaf06c6e,a6aa0068-62eb-4d66-8a04-28cd3558bef5,2 only
+37,c,cff27705-c9a4-4a6d-a815-4d957b8d026a,a6aa0068-62eb-4d66-8a04-28cd3558bef5,3 only
+37,d,526226d7-0bb2-45cd-96fc-6d466a5862c8,a6aa0068-62eb-4d66-8a04-28cd3558bef5,"1, 2 and 3"
+38,a,fe27cd5f-f497-437c-b0e4-756b366d9bd2,35f67d99-fd34-4ef9-b10e-2cf73df955b7,1 and 2 only
+38,b,7fbb5af5-74e3-4ed4-bb50-459b3058645e,35f67d99-fd34-4ef9-b10e-2cf73df955b7,3 only
+38,c,337e6ed2-cf33-4311-b255-03bc68238e32,35f67d99-fd34-4ef9-b10e-2cf73df955b7,3 and 4 only
+38,d,e93c88f0-32fc-4c48-8aae-6f9bbb85e9e7,35f67d99-fd34-4ef9-b10e-2cf73df955b7,"1, 2 and 4 only"
+39,a,11e07782-d455-4ce9-ab6c-b1e8b9179854,3eb2a1cb-1647-4b69-a44a-c4c7d97c6b6f,1 only
+39,b,9387e3e7-81d6-4766-a7f3-54d259607957,3eb2a1cb-1647-4b69-a44a-c4c7d97c6b6f,2 only
+39,c,12345850-3d8f-4d86-84f2-8cc9b669d737,3eb2a1cb-1647-4b69-a44a-c4c7d97c6b6f,Both 1 and 2
+39,d,76712240-57de-475a-a411-b6a03caa81d3,3eb2a1cb-1647-4b69-a44a-c4c7d97c6b6f,Neither 1 nor 2
+40,a,d8092dd2-b362-4dcc-bd2f-55db18b1e998,c4caf2e1-78a2-432a-baa2-b39ba05245e7,1 and 2 only
+40,b,8dddcfa9-733c-4fd0-8a2b-74b7defeb068,c4caf2e1-78a2-432a-baa2-b39ba05245e7,4 only
+40,c,949107e1-07a1-430c-8e97-b9e48b6c1107,c4caf2e1-78a2-432a-baa2-b39ba05245e7,1 and 3 only
+40,d,39637563-b5e9-4cf9-b99e-b465211b824a,c4caf2e1-78a2-432a-baa2-b39ba05245e7,"2, 3 and 4 only"
+41,a,b2380e1b-06f4-40b9-aa88-faee5d90d34c,c6b2224c-bdbc-410e-acd7-99214a5a47ce,It is the investment through capital instruments essentially in a listed company.
+41,b,ccac96b4-f397-48fd-8ab7-9f1a2ec86416,c6b2224c-bdbc-410e-acd7-99214a5a47ce,It is a largely non-debt creating capital flow.
+41,c,2696aab2-79bb-402b-a440-fb30f7c32c65,c6b2224c-bdbc-410e-acd7-99214a5a47ce,It is the investment which involves debt-servicing
+41,d,db1f7987-25be-4f13-b0b6-ca2f36f65e53,c6b2224c-bdbc-410e-acd7-99214a5a47ce,It is the investment made by foreign institutional investors in the Government securities.
+42,a,1b97a421-5ad9-4919-b381-506cbaf283ca,84e876c4-4765-4334-8985-fe37ea63ec9f,1 and 2 only
+42,b,28c868c8-9602-4a8d-99d4-02e29bfe8fb0,84e876c4-4765-4334-8985-fe37ea63ec9f,2 and 4 only
+42,c,c300645f-2df6-472f-b0c3-31be98783d7e,84e876c4-4765-4334-8985-fe37ea63ec9f,. 3 only
+42,d,13c04e3e-e893-4ac6-8e82-79faf37db4d9,84e876c4-4765-4334-8985-fe37ea63ec9f,"1, 3 and 4 only"
+43,a,ff3cdbc7-6759-42a9-b738-fe0aa39e244c,5fce46a1-488d-44c6-8335-1c2c9e5023f3,Crude oil
+43,b,a6f5fd1e-663d-4662-8a0d-6bf3f38a17b0,5fce46a1-488d-44c6-8335-1c2c9e5023f3,Bullion
+43,c,86e88bb7-b335-41b4-a06b-e28c0e1a3b46,5fce46a1-488d-44c6-8335-1c2c9e5023f3,Rare earth elements
+43,d,1d389bf9-a448-46b8-88e4-b876e42139e3,5fce46a1-488d-44c6-8335-1c2c9e5023f3,Uranium
+44,a,06a76b01-ee68-487f-8572-dc8a62519863,c701e982-9ac4-41fd-93d5-a3251dc0174f,1 only
+44,b,7c5f6fc7-43f6-401d-8493-ed7acc8c7a56,c701e982-9ac4-41fd-93d5-a3251dc0174f,1 and 2 only
+44,c,02b7a14b-4368-41d3-b156-48e088a3dc25,c701e982-9ac4-41fd-93d5-a3251dc0174f,3 only
+44,d,55f6d5d7-cf23-4f8f-9f56-c6170413ceb1,c701e982-9ac4-41fd-93d5-a3251dc0174f,"1, 2 and 3"
+45,a,682564d4-8466-48a9-a67f-04d6d7ba2da7,08052d86-a3cb-4afc-9067-e92185dcc786,Some use uranium and others use thorium
+45,b,ba8b7e50-f781-4e3b-a32a-9507e64e4c97,08052d86-a3cb-4afc-9067-e92185dcc786,Some use imported uranium and others use domestic supplies
+45,c,7772cbd1-65ed-4dab-9f83-bd6cf1e588fe,08052d86-a3cb-4afc-9067-e92185dcc786,Some are operated by foreign enterprises and others are operated by domestic enterprises
+45,d,790bf2a0-99bb-45c0-9b3c-e892adb5860b,08052d86-a3cb-4afc-9067-e92185dcc786,Some are State-owned and others are privately-owned
+46,a,353f2a25-81fc-40ed-aa4f-a6c050376ebe,2ddc41ea-7954-49ad-96b9-4bfca23de596,1 and 2 only
+46,b,b032d7fb-4af1-4272-a067-74d989747600,2ddc41ea-7954-49ad-96b9-4bfca23de596,2 only
+46,c,85ea8dca-b005-47e1-8a07-e8b60d07d514,2ddc41ea-7954-49ad-96b9-4bfca23de596,1 and 3 only
+46,d,fe0c06e5-f2cf-494f-8dfe-3b46137fd24f,2ddc41ea-7954-49ad-96b9-4bfca23de596,"1, 2 and 3"
+47,a,cbfd508a-fd49-4e6c-92a8-14258c25fa20,a8c900ae-5914-4a86-8b69-5c4fff47af7c,1 and 2 only
+47,b,82a23431-1c51-4345-93f9-0915bc295ecb,a8c900ae-5914-4a86-8b69-5c4fff47af7c,2 only
+47,c,520efdcf-4f40-4530-9e8a-13d0f80b0f81,a8c900ae-5914-4a86-8b69-5c4fff47af7c,1 and 3 only
+47,d,de65a704-44fa-4621-ac10-964b56a0df41,a8c900ae-5914-4a86-8b69-5c4fff47af7c,"1, 2 and 3"
+48,a,1f2d1696-0072-4bd8-aa3b-cfe1783fd6ef,4bed944b-dffd-4fac-859d-fdac09fa66be,1 and 2 only
+48,b,9d20cf1b-d4c5-42b3-9357-f83da9214b4b,4bed944b-dffd-4fac-859d-fdac09fa66be,3 and 4 only
+48,c,1fbb0e91-19ac-4515-819e-d16401c26076,4bed944b-dffd-4fac-859d-fdac09fa66be,3 only
+48,d,01072263-59f7-47ad-bda6-cff27fc466e0,4bed944b-dffd-4fac-859d-fdac09fa66be,"1, 2 and 4 only"
+49,a,280a4cdd-0e40-425f-8268-e3c3dadc8e5a,b374b04f-94a6-4f74-8cd2-ad831d96ed46,1 only
+49,b,56e4f4e6-6a1c-42a1-b75b-f2b7ee96d3d1,b374b04f-94a6-4f74-8cd2-ad831d96ed46,2 only
+49,c,1e158bd3-7bf3-48da-ba2a-9bbdc92b340f,b374b04f-94a6-4f74-8cd2-ad831d96ed46,Both 1 and 2
+49,d,ee9f54f3-a4e9-4e0f-b895-e967a1617e9d,b374b04f-94a6-4f74-8cd2-ad831d96ed46,Neither 1 nor 2
+50,a,7e7b11fc-2647-4d01-a1f7-8676004d241b,a69b69b0-34b3-4b46-b4a3-7ca78eafd349,"1, 2 and 4 only"
+50,b,f3c544ad-c96f-49e4-a5c3-b9d86480c620,a69b69b0-34b3-4b46-b4a3-7ca78eafd349,1.3 and 4 only
+50,c,2fd92cc0-09b1-40d1-b770-4afc306cbf71,a69b69b0-34b3-4b46-b4a3-7ca78eafd349,2 and 3 only
+50,d,15f66e72-2f86-454f-acee-2a72c91865f9,a69b69b0-34b3-4b46-b4a3-7ca78eafd349,"1, 2, 3 and 4"
+51,a,41136830-8ada-4b20-9767-a4d66acc4d6a,1da61e0a-8889-4b7f-bb2a-9b046a7fbfc3,1 and 2 only
+51,b,af82b613-109f-46bf-b45c-ad01bdc12834,1da61e0a-8889-4b7f-bb2a-9b046a7fbfc3,"2, 3 and 4 only"
+51,c,e11b23c1-0f69-46d2-b30a-959fc4e0c671,1da61e0a-8889-4b7f-bb2a-9b046a7fbfc3,"1, 3 and 4 only"
+51,d,aa197c5e-94d8-4239-b2df-7f57f8dbe837,1da61e0a-8889-4b7f-bb2a-9b046a7fbfc3,"1, 2, 3 and 4"
+52,a,077303d1-5510-48c8-91e0-c28766f8ea9d,b1ce30b2-5dde-4c57-afe9-f3ca408208ac,1 and 2 only
+52,b,41eef9d6-e3a4-4c96-b6b5-4615a2aed17c,b1ce30b2-5dde-4c57-afe9-f3ca408208ac,2 and 3 only
+52,c,39de0247-6862-4e0c-9dbc-b72deb8d4e1b,b1ce30b2-5dde-4c57-afe9-f3ca408208ac,1 and 3 only
+52,d,29867155-cdd0-46da-9d92-a3619eae19e7,b1ce30b2-5dde-4c57-afe9-f3ca408208ac,"1, 2 and 3"
+53,a,fbc30857-51f1-43c3-a505-d7f9cd63af40,1ba0a212-a09f-4e24-a274-3360e01d9454,Voyager-2
+53,b,f66cefa8-26b3-4cee-8ed1-ed7b3e401b06,1ba0a212-a09f-4e24-a274-3360e01d9454,New Horizons
+53,c,16502de7-9270-46db-ab3a-c6e6dc85e484,1ba0a212-a09f-4e24-a274-3360e01d9454,LISA Pathfinder
+53,d,0b37ddf6-899a-4688-a3f6-4846573c89d5,1ba0a212-a09f-4e24-a274-3360e01d9454,Evolved LISA
+54,a,70872f65-4ff2-42ce-8e5b-c7e44fe2afc8,899a3e91-0514-4792-b7ee-0f8b66bc31f1,1 only
+54,b,526d3b24-0d2a-4d55-ab09-0395df0e8afc,899a3e91-0514-4792-b7ee-0f8b66bc31f1,2 and 3 only
+54,c,79148604-254d-4852-a8c3-7b69825bc5e3,899a3e91-0514-4792-b7ee-0f8b66bc31f1,2 only
+54,d,37eb8449-fba6-4c41-bffc-053ec0b91428,899a3e91-0514-4792-b7ee-0f8b66bc31f1,"1, 2 and 3"
+55,a,24a99b4a-30ca-4274-a393-b04a7809dfbb,785eb850-8fa9-4783-9306-a63ace6ae9d7,Car 1 only
+55,b,e8f9cf22-edb8-423c-8620-e366d9ab6877,785eb850-8fa9-4783-9306-a63ace6ae9d7,1 and 2 only
+55,c,ede072c2-e0f2-4dbf-94e2-d2267fe0a8e9,785eb850-8fa9-4783-9306-a63ace6ae9d7,3 only
+55,d,b5d65955-9c77-4575-ba4b-7bd9d0f2f769,785eb850-8fa9-4783-9306-a63ace6ae9d7,1.2 and 3
+56,a,9f035f40-a51d-46ac-b983-bc7cec09c07b,bdac99c9-67b1-47ea-b212-9080c395fa94,Digital security infrastructure
+56,b,20c8244e-299c-4d63-baee-1c8319030f6d,bdac99c9-67b1-47ea-b212-9080c395fa94,Food security infrastructure
+56,c,9fb5dc03-d88e-4b37-9c03-26ced59a5043,bdac99c9-67b1-47ea-b212-9080c395fa94,Health care and education infrastructure
+56,d,c6c1660c-cd9a-457c-a69f-816f8828ee61,bdac99c9-67b1-47ea-b212-9080c395fa94,Telecommunication and transportation infrastructure
+57,a,eff9d166-1b10-4470-a912-a491a5a917db,02226499-918b-48ef-8705-25d2289d22ea,1 and 2 only
+57,b,9adcf215-d7f8-4e4a-bbb7-2521fa0a0c41,02226499-918b-48ef-8705-25d2289d22ea,2 and 3 only
+57,c,b0dca320-76b5-4cde-ad03-88d962760244,02226499-918b-48ef-8705-25d2289d22ea,1 and 3 only
+57,d,169c8ac9-31e5-41da-a481-bbd2a0b711c4,02226499-918b-48ef-8705-25d2289d22ea,"1, 2 and 3"
+58,a,87aeac9e-90b2-4940-a150-86c48e5586e0,4a14d545-314f-4ae6-b873-b7da18caa76b,"1, 2 and 3 only"
+58,b,35880693-f23e-4a27-bd69-1082755b87c9,4a14d545-314f-4ae6-b873-b7da18caa76b,2 and 4 only
+58,c,bcced8f7-fcc1-48fa-b7c3-d23d2aa6c1e3,4a14d545-314f-4ae6-b873-b7da18caa76b,"1, 3 and 4 only"
+58,d,2f465acf-7224-4336-959f-89657fe819a9,4a14d545-314f-4ae6-b873-b7da18caa76b,"1, 2, 3, 4 and 5"
+59,a,0216d519-b5fa-4042-afda-6ab53f0939ba,cd53c932-0d21-4ba0-b579-d681a7d1c85a,1 only
+59,b,9e79fca7-558e-4efb-b867-7eb7e60744f4,cd53c932-0d21-4ba0-b579-d681a7d1c85a,1 and 2 only
+59,c,30f97aa1-a857-43b7-9cb1-d8d9e3198e9e,cd53c932-0d21-4ba0-b579-d681a7d1c85a,3 only
+59,d,cf7a426a-5c12-4210-bd20-afaaad0577c1,cd53c932-0d21-4ba0-b579-d681a7d1c85a,"1, 2 and 3"
+60,a,733cd250-6432-4e69-baef-682be7b3d8db,98137db9-4d8c-4b35-bee2-97fb534817f3,"to reduce it by 1,00,000"
+60,b,c91d998c-a916-4ea0-859a-320e118d4312,98137db9-4d8c-4b35-bee2-97fb534817f3,"to increase it by 1,00,000"
+60,c,180668e2-18fb-49ca-9c82-ff295c9a6ec2,98137db9-4d8c-4b35-bee2-97fb534817f3,"to increase it by more than 1,00,000"
+60,d,77c78608-69f5-499e-a631-91ff21c1a984,98137db9-4d8c-4b35-bee2-97fb534817f3,to leave it unchanged
+61,a,9b29975e-64f2-48d3-808a-21b038e7e774,fa88904b-434c-406e-954f-1534723204b4,The earliest Dharmashastra texts written in aphoristic (sutra) style
+61,b,eff6d429-bb31-429b-9e23-abc0d8a254e4,fa88904b-434c-406e-954f-1534723204b4,Philosophical schools that did not accept the authority of Vedas
+61,c,c2689297-a0af-4e4c-9c04-227e80b70cda,fa88904b-434c-406e-954f-1534723204b4,Förfections whose attainment led to the Bodhisattva path
+61,d,43f2cbfe-5b59-4778-b18d-d1e3194dcced,fa88904b-434c-406e-954f-1534723204b4,Powerful merchant guilds of early medieval South India
+62,a,b7efda92-6e79-4cbe-be6b-63613bce6408,92af1ea0-e912-4fe0-9a72-bd028e0117e1,1 and 2 only
+62,b,72cc2a9e-a98a-47b5-ac56-31c50c9b4997,92af1ea0-e912-4fe0-9a72-bd028e0117e1,2 and 3 only
+62,c,eef8bb34-b9ef-4336-ba87-ab342a50d328,92af1ea0-e912-4fe0-9a72-bd028e0117e1,1 and 3 only
+62,d,5ea82f4c-3073-4529-a09a-d6d6d629b1e1,92af1ea0-e912-4fe0-9a72-bd028e0117e1,"1, 2 and 3"
+63,a,4e8016f1-ed7f-4367-8f51-d62bd97348f7,84b16f58-5d94-454e-a0cd-6a71e73aec34,peasant resistance to the oppressive conduct of planters
+63,b,3567a079-2222-49c1-8c09-87588ece2f32,84b16f58-5d94-454e-a0cd-6a71e73aec34,its unprofitability in the world market because of new inventions
+63,c,318c50fa-0992-4e3b-85ac-7032caa838ec,84b16f58-5d94-454e-a0cd-6a71e73aec34,national leaders’ opposition to the cultivation of indigo
+63,d,0fd8d5a6-e35f-4bd4-a6ae-ceff22a221c2,84b16f58-5d94-454e-a0cd-6a71e73aec34,Government control over the planters
+64,a,3cdc223c-2c19-4850-982b-bdcaa42dc58a,0521b6b7-433b-4da7-bb53-a1b1cc30ccef,he was asked by the Board of Directors at London to do so
+64,b,38463c6c-984c-48a2-88cd-df92299cb851,0521b6b7-433b-4da7-bb53-a1b1cc30ccef,he wanted to revive interest in oriental learning in India
+64,c,d20e7404-adea-4e80-ace9-9b6e4e5f4df4,0521b6b7-433b-4da7-bb53-a1b1cc30ccef,he wanted to provide William Carey and his associates with employment
+64,d,cebd6599-0581-4264-9bd4-d88586af2533,0521b6b7-433b-4da7-bb53-a1b1cc30ccef,he wanted to train British civilians for administrative purpose in India
+65,a,4e6a87aa-d0e7-4dd9-bfc9-9faaa665d241,7ea81d0f-4148-4fb7-829f-f121f032477e,The Revolt of 1857
+65,b,22c9f419-5bc1-402a-b613-6e3db4083a99,7ea81d0f-4148-4fb7-829f-f121f032477e,The Mappila Rebellion of 1921
+65,c,ae775e77-a185-4e8b-99eb-fb1e2b5bc0f9,7ea81d0f-4148-4fb7-829f-f121f032477e,The Indigo Revolt of 1859 – 60
+65,d,55786c87-9bf5-4806-8ea6-a723346f7db4,7ea81d0f-4148-4fb7-829f-f121f032477e,Birsa Munda’s Revolt of 1899-1900
+66,a,09856bbc-9c03-4259-97dd-cdbe6416e30e,538b55a8-7847-44ed-aeb4-79ac397840b3,1 and 2 only
+66,b,8a32aaf3-f6b6-4a7b-8a05-eaac5bee0c27,538b55a8-7847-44ed-aeb4-79ac397840b3,2 and 3 only
+66,c,d74d6e4e-0a49-419b-b4ca-47f5f76f91a0,538b55a8-7847-44ed-aeb4-79ac397840b3,3 only
+66,d,946d46e7-483e-4d55-8874-aeda3784b38b,538b55a8-7847-44ed-aeb4-79ac397840b3,"1, 2 and 3"
+67,a,bf28c9f7-c82c-4651-bad9-16262f265760,a57d77dc-e64a-4db0-89c1-5a66599a53ef,fertilization of egg in vitro by the donor sperm
+67,b,561ce35c-fa21-4959-bc73-c5c98aa137cf,a57d77dc-e64a-4db0-89c1-5a66599a53ef,genetic modification of sperm producing cells
+67,c,4546d5d2-d247-4a36-a764-3cc64fc04734,a57d77dc-e64a-4db0-89c1-5a66599a53ef,development of stem cells into functional embryos
+67,d,ec87dd57-3b53-4a25-99cb-63b783bbab58,a57d77dc-e64a-4db0-89c1-5a66599a53ef,prevention of mitochondrial diseases in offspring
+68,a,06881eea-f1d5-47e5-9375-fe9ddee1a233,b026b038-56ac-4c5e-a5ef-cfcc30a11699,"1,2,3 and 5 only"
+68,b,d8661621-a251-4378-8071-47153580b795,b026b038-56ac-4c5e-a5ef-cfcc30a11699,"1, 3 and 4 only"
+68,c,9f6cb333-4ad7-499e-a460-1064cfd90198,b026b038-56ac-4c5e-a5ef-cfcc30a11699,"2, 4 and 5 only"
+68,d,4c96d8e1-f2b5-43a2-9cf5-a793b8d30694,b026b038-56ac-4c5e-a5ef-cfcc30a11699,"1, 2, 3, 4 and 5"
+69,a,fdc48608-28c1-4a50-96af-be35c7ccd5e3,ff3f2cb7-276d-4705-95ec-700fd3e20ecc,"1, 2 and 3 only"
+69,b,30acfee9-7d72-44d9-8c27-67f349052e9e,ff3f2cb7-276d-4705-95ec-700fd3e20ecc,"1, 2 and 4 only"
+69,c,41471396-5e7c-4b6a-9804-8b98a6974f56,ff3f2cb7-276d-4705-95ec-700fd3e20ecc,"1, 3 and 4 only"
+69,d,a2375776-62b7-425e-9992-e71a576ce36d,ff3f2cb7-276d-4705-95ec-700fd3e20ecc,"2, 3 and 4 only"
+70,a,42f04fb5-9dbf-4d11-9892-889cb4eeae92,3c7f59ef-a535-4c6a-bc0c-92b73d702ed7,1 only
+70,b,bf634bfb-e3f8-4397-aa94-cf85312b3225,3c7f59ef-a535-4c6a-bc0c-92b73d702ed7,1 and 2 only
+70,c,c50fedb7-b06f-4fdb-b358-85e337ae4bd8,3c7f59ef-a535-4c6a-bc0c-92b73d702ed7,2 only
+70,d,a8c861fb-875e-439c-b024-94df44d20679,3c7f59ef-a535-4c6a-bc0c-92b73d702ed7,1 and 3 only
+71,a,53d04f37-1480-4abb-b312-dd1831890ff6,2e1f5091-3061-4097-9fd1-744b2dc9e736,1 and 2 only
+71,b,ad8c6152-d6f9-47d9-92f8-e6ac1ddea38b,2e1f5091-3061-4097-9fd1-744b2dc9e736,2 and 3 only
+71,c,a8ec0255-2437-4c6b-8fd9-496bad82c9e7,2e1f5091-3061-4097-9fd1-744b2dc9e736,3 only
+71,d,85555b43-b00d-45cb-aeca-3a179405eaa5,2e1f5091-3061-4097-9fd1-744b2dc9e736,"1, 2 and 3"
+72,a,d58ec4bf-3b51-42bd-9f9a-2b2346144f03,2202f9de-cbff-41cc-9a54-cdb5ccac2bbb,1 and 2 only
+72,b,63ec1c86-2e49-46a2-9be4-5674de400939,2202f9de-cbff-41cc-9a54-cdb5ccac2bbb,2 and 3 only
+72,c,8821fc9f-7072-4ec5-9e3c-07b12e622242,2202f9de-cbff-41cc-9a54-cdb5ccac2bbb,3 only
+72,d,15ac5299-e3a5-40f3-9ece-938cf3627241,2202f9de-cbff-41cc-9a54-cdb5ccac2bbb,"1, 2 and 3"
+73,a,bbebfc36-4864-432c-9c13-2c7a0329f363,62c192da-5df7-4f79-aacb-b55819c788b0,Indian handicrafts were ruined.
+73,b,b46c127c-dcce-402a-921d-0d0e59f20d4b,62c192da-5df7-4f79-aacb-b55819c788b0,Machines were introduced in the Indian textile industry in large numbers.
+73,c,5c436275-42a6-4d52-86cd-8e0d2a8742a7,62c192da-5df7-4f79-aacb-b55819c788b0,Railway lines were laid in many parts of the country.
+73,d,90087621-4cbe-46ef-9b0e-d866f2b06d4f,62c192da-5df7-4f79-aacb-b55819c788b0,Heavy duties were imposed on the imports of British manufactures.
+74,a,477b185e-aee7-4741-ae6d-40371f131fea,5db566ba-f959-4aa0-97c9-cbba7c1c5d97,2-1-4-3
+74,b,fcf691c0-21c9-49c0-aecf-6a22c5a1a78c,5db566ba-f959-4aa0-97c9-cbba7c1c5d97,3-1-4-2
+74,c,57dcc0e7-9531-4377-bf81-6829b37f41ab,5db566ba-f959-4aa0-97c9-cbba7c1c5d97,2-4-1-3
+74,d,b66e68f2-1cfe-4ae3-b617-20134452b992,5db566ba-f959-4aa0-97c9-cbba7c1c5d97,3-4-1-2
+75,a,085efd30-458e-46c4-8d67-223c460e10ac,06ac4820-0c31-4979-b5de-7bc55fdf84c8,An advisory issued by the king to his subordinates
+75,b,fe6eeaa4-e2b5-4780-ba5e-5eefa8e185b8,06ac4820-0c31-4979-b5de-7bc55fdf84c8,A bill of exchange
+75,c,ae766cd5-5a7c-4e5b-a26e-8506419892f3,06ac4820-0c31-4979-b5de-7bc55fdf84c8,A diary to be maintained for daily accounts
+75,d,f18c60f5-d8dc-4d9c-b567-1579caeb890c,06ac4820-0c31-4979-b5de-7bc55fdf84c8,An order from the feudal lord to his subordinates
+76,a,58456d16-ea4f-4db9-8622-7bec367b1cd1,6509b366-42a6-42ba-9881-084bff3d7489,1 and 2 only
+76,b,bbc0471e-7c8d-4ac5-bde8-e342f27796d0,6509b366-42a6-42ba-9881-084bff3d7489,2 and 3 only
+76,c,d143466d-1819-4170-8919-d49895588e16,6509b366-42a6-42ba-9881-084bff3d7489,1 and 3 only
+76,d,b69b8ac6-aaf9-43e1-9645-97d426898e9c,6509b366-42a6-42ba-9881-084bff3d7489,"1, 2 and 3"
+77,a,54dfcde8-ade0-4449-b4a6-b38538b7b73a,b2ab3c54-1152-4fcd-b270-9b98f7f757bf,1 only
+77,b,9aaa6265-bddb-4f9a-a52c-5b1e0fa957cb,b2ab3c54-1152-4fcd-b270-9b98f7f757bf,"1, 2 and 4 only"
+77,c,7bf311bb-c73c-4309-be54-19cc06343de6,b2ab3c54-1152-4fcd-b270-9b98f7f757bf,3 only
+77,d,ed990409-c532-4dd3-a79f-7f740040c589,b2ab3c54-1152-4fcd-b270-9b98f7f757bf,"2, 3 and 4 only"
+78,a,907ce1e3-130b-4c74-a445-516a24cdd0c0,9423c52f-5b55-48a6-a07a-ec866f7d35e3,Gopal Baba Walangkar
+78,b,3bc8de16-a0db-4725-baac-e0a3edb3b3cd,9423c52f-5b55-48a6-a07a-ec866f7d35e3,Jyotiba Phule
+78,c,15d5a5d5-38ac-475d-8076-02222fe5aec2,9423c52f-5b55-48a6-a07a-ec866f7d35e3,Mohandas Karamchand Gandhi
+78,d,20190169-a673-470c-9484-a2771928ef62,9423c52f-5b55-48a6-a07a-ec866f7d35e3,Bhimrao Ramji Ambedkar
+79,a,29431168-0ffa-458d-aa5a-1c98913876f3,858f8fdc-7583-4ee6-b339-fd7c9351a840,measurement of land
+79,b,15ec41c3-00bf-40b3-b9f1-129a59db81f8,858f8fdc-7583-4ee6-b339-fd7c9351a840,coins of different monetary value
+79,c,1bbbbb6b-9409-4073-8169-1ef7811b939b,858f8fdc-7583-4ee6-b339-fd7c9351a840,classification of urban land
+79,d,32999753-3e6b-4803-9a00-dec647474d2a,858f8fdc-7583-4ee6-b339-fd7c9351a840,religious rituals
+80,a,a5fcda73-e407-4015-bbed-6b7f2f290bd4,a4826f58-4081-4ff1-9295-ee16461d77ac,Ashoka
+80,b,c47ba06e-4f31-492c-8a27-8736b7b5cd5c,a4826f58-4081-4ff1-9295-ee16461d77ac,Samudragupta
+80,c,70908961-0166-4f4f-aa29-51a67e2044c4,a4826f58-4081-4ff1-9295-ee16461d77ac,Harshavardhana
+80,d,ca69d2d5-425d-4b29-8afc-3e3feb06357b,a4826f58-4081-4ff1-9295-ee16461d77ac,Krishnadeva Raya
+81,a,76abfe1b-b1f7-4bd5-9bac-8881c13c41bf,6b02c9a7-7cfc-474c-bc10-f5ff0d7d5be3,all political parties in the Parliament are represented in the Government
+81,b,276d2757-255b-4b87-a70b-f2f64d230c97,6b02c9a7-7cfc-474c-bc10-f5ff0d7d5be3,the Government is responsible to the Parliament and can be removed by it
+81,c,ea73579c-4f36-49e8-9db9-cb8aa603e8e4,6b02c9a7-7cfc-474c-bc10-f5ff0d7d5be3,the Government is elected by the people and can be removed by them
+81,d,e365a43a-f749-4d35-997c-191e88a0d7e6,6b02c9a7-7cfc-474c-bc10-f5ff0d7d5be3,the Government is chosen by the Parliament but cannot be removed by it before completion of a fixed term
+82,a,45fa1dc5-afbb-4dd4-9002-c5182fd1dab3,7678c9d9-369c-420d-8c34-20f375bb4113,Directive Principles of State Policy
+82,b,d0f799e5-b81f-496e-a62a-072dda995672,7678c9d9-369c-420d-8c34-20f375bb4113,Fundamental Rights
+82,c,ba5852fb-3f25-4c97-97eb-d5fc83319ae4,7678c9d9-369c-420d-8c34-20f375bb4113,Preamble
+82,d,3b3714ac-2cbc-4b06-8d8b-3e2933ca413a,7678c9d9-369c-420d-8c34-20f375bb4113,Seventh Schedule
+83,a,290b20b2-4d77-45c0-8436-92f75e8cf21c,1115f9c5-f253-4501-a891-f352cfc4030b,1 only
+83,b,3cd6df23-ef7a-44b2-a231-1b7a21fc54e0,1115f9c5-f253-4501-a891-f352cfc4030b,2 only
+83,c,09ca99b7-44ce-4545-a6c4-42e31ac64eb7,1115f9c5-f253-4501-a891-f352cfc4030b,Both 1 and 2
+83,d,a5a04656-9c17-4672-9e62-f0dd117aea3c,1115f9c5-f253-4501-a891-f352cfc4030b,Neither 1 nor 2
+84,a,06d62c04-dd53-44e6-a083-dfebb5194283,0caaffdf-9450-4b45-affb-2181717f6a7f,the final goal of a stateless society
+84,b,f3ee2050-c087-4d1f-88b6-1fc0c54f65d5,0caaffdf-9450-4b45-affb-2181717f6a7f,class struggle
+84,c,dea6c793-87a6-4946-84ec-ebc331e1b26a,0caaffdf-9450-4b45-affb-2181717f6a7f,abolition of private property –
+84,d,12304e86-207c-4cbd-8248-94fbc1823197,0caaffdf-9450-4b45-affb-2181717f6a7f,economic determinism
+85,a,366cd1c5-9bcb-47c0-b0d2-fd3eb827a994,bde1c129-8ef0-480a-b90c-8ad92376f5fd,An agency for widening the scope of parliamentary democracy
+85,b,80d72387-c0d7-4b1f-bb41-b3bf58b3c81d,bde1c129-8ef0-480a-b90c-8ad92376f5fd,an agency for strengthening structure of federalism
+85,c,ebb71c05-3dc9-4351-b3e1-c4d9c26b651b,bde1c129-8ef0-480a-b90c-8ad92376f5fd,political an agency for facilitating stability and economic growth
+85,d,74410ea1-d38a-4e3a-9eef-4fce21c04ac5,bde1c129-8ef0-480a-b90c-8ad92376f5fd,An agency for the implementation of public policy
+86,a,ceaec0bf-5736-4757-addf-e09597d91b10,0f868ff0-00f0-44c2-a552-fb0b22bfd574,a part of the Constitution but has no legal effect
+86,b,c66a5d84-df4d-4776-b146-04801dca4d55,0f868ff0-00f0-44c2-a552-fb0b22bfd574,not a part of the Constitution and has no legal effect either
+86,c,58f08d9e-b900-422c-a344-2b3b0f192cbd,0f868ff0-00f0-44c2-a552-fb0b22bfd574,a part of the Constitution and has the same legal effect as any other part
+86,d,df6724e7-2730-4d0d-b86b-541cb7096ee9,0f868ff0-00f0-44c2-a552-fb0b22bfd574,a part of the Constitution but has no legal effect independently of other parts
+87,a,f40fb2d8-87db-4a92-a118-8dc2dbadb02d,3fc1f385-fc13-457c-bdf2-fb722ad8a403,a loan system of the World Bank
+87,b,f5e9a5ec-fab2-4095-be8c-7b1c6363a235,3fc1f385-fc13-457c-bdf2-fb722ad8a403,one of the operations of a Central Bank
+87,c,2e4f3ae0-04a0-4acc-8434-3afdb5626980,3fc1f385-fc13-457c-bdf2-fb722ad8a403,a credit system granted by WTO to its members
+87,d,df7f2f85-1315-48d5-acfd-d33035a8e50a,3fc1f385-fc13-457c-bdf2-fb722ad8a403,a credit system granted by IMF to its members
+88,a,6794b973-1c83-436d-904a-c6a267e7189a,ca9d82e1-3c83-4b55-bf3c-59823981ba35,1 only
+88,b,f1ea9088-cc93-43ed-a50e-75c2998c8975,ca9d82e1-3c83-4b55-bf3c-59823981ba35,2 only
+88,c,56c140fc-ed64-42bf-a3b9-20b99f78e428,ca9d82e1-3c83-4b55-bf3c-59823981ba35,1 and 3 only
+88,d,5230652c-100b-4d92-a721-1f8a5f2968dd,ca9d82e1-3c83-4b55-bf3c-59823981ba35,2 and 3 only
+89,a,1b4e0770-d877-4f55-a6a0-d00101871ac7,eb91c74c-7467-4ce2-9880-159cd59d3da9,1 only
+89,b,d02f7384-fcd5-458e-a055-2119967e1fef,eb91c74c-7467-4ce2-9880-159cd59d3da9,2 only
+89,c,f65cbfb8-f401-4c7e-83ff-376fe9e0d1c1,eb91c74c-7467-4ce2-9880-159cd59d3da9,Both 1 and 2
+89,d,33837b5a-64ff-4384-a066-cd5e516d2cf0,eb91c74c-7467-4ce2-9880-159cd59d3da9,Neither 1 nor 2
+90,a,8e232c8c-2f15-4913-b40a-7782b72fbd87,c9b2ce8e-1f63-4dcd-b7eb-d077fad24031,1 only
+90,b,d2ab377f-6943-4153-8ab8-00107c71a40c,c9b2ce8e-1f63-4dcd-b7eb-d077fad24031,2 only
+90,c,16429ccc-eacf-417c-bbcc-7dea9f7530a7,c9b2ce8e-1f63-4dcd-b7eb-d077fad24031,1 and 3 only
+90,d,c3b86fe0-ded7-4a7c-a6a0-c269a7773a8c,c9b2ce8e-1f63-4dcd-b7eb-d077fad24031,2 and 3 only
+91,a,9932f266-6299-49d3-9b41-8afcfa5a63da,86fd0e13-5e22-41ba-9e9c-5565bd8cc713,1 and 4 only
+91,b,31d0e4cb-2f48-41a8-8101-454d82959c3f,86fd0e13-5e22-41ba-9e9c-5565bd8cc713,2 and 4 only
+91,c,50120d9d-251a-49ba-a9ba-5da7b66a3b39,86fd0e13-5e22-41ba-9e9c-5565bd8cc713,3 only
+91,d,2f7f22af-5f92-485a-99e0-7edb98bbd025,86fd0e13-5e22-41ba-9e9c-5565bd8cc713,"1, 2 and 3 only"
+92,a,c6d5c785-5613-49d4-9e1d-6124e4f181e8,05250453-3c59-42e4-8d17-a6a1d65885ac,the matter of creating new All India Services
+92,b,16412bad-77b4-4c62-aa89-ea64563b61f7,05250453-3c59-42e4-8d17-a6a1d65885ac,amending the Constitution
+92,c,a51f15f4-1ea8-4b26-aed1-5ff9d69d27c1,05250453-3c59-42e4-8d17-a6a1d65885ac,the removal of the government
+92,d,ea781ada-4bb3-418c-8032-7c02e0f19356,05250453-3c59-42e4-8d17-a6a1d65885ac,making cut motions
+93,a,535966e0-f760-49f7-8fb0-e68f003286c7,fb79ba0d-ccb1-41bf-a803-e5cb3a5ff8b8,1 and 2 only
+93,b,680d1556-8ac2-448b-bbe4-5930a4093972,fb79ba0d-ccb1-41bf-a803-e5cb3a5ff8b8,3 and 4 only
+93,c,f4866814-fd61-42de-973c-8686ddc0c96e,fb79ba0d-ccb1-41bf-a803-e5cb3a5ff8b8,"1, 2 and 3 only"
+93,d,19a474fe-f935-4c42-a4da-87153ce8b742,fb79ba0d-ccb1-41bf-a803-e5cb3a5ff8b8,"1, 2 and 4 only"
+94,a,cf08e46a-af55-4d81-ab23-4dd732112def,4ce02dce-e75a-4904-98f0-9f21ae0df47d,Right against Exploitation
+94,b,f4ca6b56-5b31-4b46-9f77-bf6775765ee8,4ce02dce-e75a-4904-98f0-9f21ae0df47d,Right to Freedom
+94,c,20fb38c3-099e-4fe3-b54b-34d54e0d77d6,4ce02dce-e75a-4904-98f0-9f21ae0df47d,Right to Constitutional Remedies
+94,d,52d8915c-ba30-4b99-a56b-f0afacca9d11,4ce02dce-e75a-4904-98f0-9f21ae0df47d,Right to Equality
+95,a,d46c36cd-730a-420d-8c4b-8a440cf33b17,63971d23-068e-4c96-87fb-1e607b2951d4,the Preamble of the Constitution
+95,b,e8eb485c-9a5d-41ba-b8b9-7bb10822d3f5,63971d23-068e-4c96-87fb-1e607b2951d4,a Directive Principle of State Policy
+95,c,66c07454-ba8d-4862-844c-d902bef8494f,63971d23-068e-4c96-87fb-1e607b2951d4,the Seventh Schedule
+95,d,d7eff11b-0c78-4257-a487-bf9e743e3434,63971d23-068e-4c96-87fb-1e607b2951d4,the conventional practice
+96,a,475c9579-1648-4b29-9ecf-e23f431b12ae,0349bbbc-e3d9-440b-9e77-ea880238b630,Long standing parliamentary convention
+96,b,d06e5972-a4bc-48b6-843e-e150f7ec595e,0349bbbc-e3d9-440b-9e77-ea880238b630,Article 112 and Article 110 (1) of the Constitution of India
+96,c,2c8fc100-6a02-406f-b125-c124c805b8c6,0349bbbc-e3d9-440b-9e77-ea880238b630,Article 113 of the Constitution of India
+96,d,3de669d0-a2e4-4e49-a3d9-ee0b5384cd18,0349bbbc-e3d9-440b-9e77-ea880238b630,"Provisions of the Fiscal Responsibility and Budget Management Act, 2003"
+97,a,3256ae9c-f2ad-437a-8d7e-8fb0f8ef2dc3,b5a471ff-359e-4276-8a5d-23a81e9cb2a4,government by legislature
+97,b,5208b0ee-6063-418b-a982-530393ffa027,b5a471ff-359e-4276-8a5d-23a81e9cb2a4,popular government
+97,c,323be294-30ed-4baf-9d9b-8fc6dee58635,b5a471ff-359e-4276-8a5d-23a81e9cb2a4,multi-party government
+97,d,d9239d45-725d-47f6-880f-ed8507229580,b5a471ff-359e-4276-8a5d-23a81e9cb2a4,limited government
+98,a,e72ba95a-92be-4ca9-bfaf-24776761c92a,e51a8516-2470-4f82-959d-eb7986276a44,1 and 2 only
+98,b,2850379b-7a40-4412-af61-cc94629f97f4,e51a8516-2470-4f82-959d-eb7986276a44,2 only
+98,c,d8409803-a405-454c-85d5-cc274972ad10,e51a8516-2470-4f82-959d-eb7986276a44,1 and 3 only
+98,d,5038ae39-d914-45c0-b458-d2052ec7c858,e51a8516-2470-4f82-959d-eb7986276a44,"1, 2 and 3"
+99,a,82dbb61b-cc3c-4ee5-b43c-ace34c952776,4ec32727-dc5c-445c-a744-4c99ad403fc2,1 and 2 only
+99,b,e4371b53-98e1-4248-92e0-75f220c9fb4f,4ec32727-dc5c-445c-a744-4c99ad403fc2,3 and 4 only
+99,c,3198ae10-90ff-4aff-85dd-39a2a76a2254,4ec32727-dc5c-445c-a744-4c99ad403fc2,2 and 3 only
+99,d,3fb261a0-1094-4326-a65c-e9a5c8450aca,4ec32727-dc5c-445c-a744-4c99ad403fc2,1 and 4 only
+100,a,76add30f-351b-45c0-9702-7a3ca13b1268,0f6ee510-c8f8-4f71-9411-73a52cd46b93,1 and 2 only
+100,b,5f447e8e-e10f-46ea-a0ed-e19c35fbb381,0f6ee510-c8f8-4f71-9411-73a52cd46b93,4 only
+100,c,a7e9eccf-db58-4242-9a11-b8e55608eb69,0f6ee510-c8f8-4f71-9411-73a52cd46b93,1 and 3 only
+100,d,889e2cde-6f8a-4a27-a598-d80a6693063b,0f6ee510-c8f8-4f71-9411-73a52cd46b93,"2, 3 and 4 only"

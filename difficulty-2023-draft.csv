@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,medium,"Wular, Kolleru, Kanwar — geography detail",high
+2,hard,"Kamaraj, Mundra, Visakhapatnam port claims — detail",high
+3,medium,"Jackfruit, mahua, teak as deciduous — botany",high
+4,medium,"India vs China arable area and productivity — Economic Survey",high
+5,hard,"Marshland from repeated sea-level fall — niche geomorphology",high
+6,medium,"Ilmenite and rutile as titanium ores — standard",high
+7,medium,"DRC and cobalt — general plus news",high
+8,medium,"Congo Basin — atlas",high
+9,hard,"Amarkantak, Biligirirangan, Seshachalam — detail",high
+10,medium,"Golden Quadrilateral and Trilateral Highway — news/standard",high
+11,medium,"Uranium enrichment and coal dependence — standard S&T",high
+12,medium,"Marsupials not native to India — general biology",high
+13,medium,"Invasive Species Specialist Group, IUCN — Shankar IAS",high
+14,hard,"Nocturnality of specific Indian fauna — detail",high
+15,easy,"Waggle dance — NCERT biology",high
+16,medium,"Mushroom properties — general biology",high
+17,hard,"Indian squirrel nesting and diet — detail",high
+18,medium,"Extremophiles — NCERT biology",high
+19,medium,"Tool use in birds — general biology",high
+20,medium,"HFC applications — Shankar IAS plus Kigali news",high
+21,hard,"InvIT interest and dividend taxation — detail",high
+22,easy,"Central bank rate hikes — prominent 2022 news",high
+23,medium,"Carbon markets — news and Shankar IAS",high
+24,medium,"Sterilisation by the RBI — standard economics",high
+25,medium,"What counts as capital market — NCERT/standard",high
+26,hard,"Small Farmer Large Field — niche",high
+27,hard,"Niger seed MSP and tribal use — detail",high
+28,medium,"Intangible assets — conceptual",high
+29,medium,"Fifteenth Finance Commission criteria — standard plus news",high
+30,hard,"UNOPS S3i initiative — obscure",high
+31,easy,"Due process of law — Laxmikanth",high
+32,medium,"Prison administration by States — Laxmikanth/general",high
+33,medium,"Purpose of a Constitution — conceptual",high
+34,medium,"Amendment overcoming judicial interpretation — Laxmikanth",high
+35,medium,"Which bodies are statutory — Laxmikanth",high
+36,medium,"Acts of a President whose election is void — Laxmikanth detail",high
+37,medium,"Finance Bill vs Money Bill — Laxmikanth",high
+38,medium,"Community Reserve — Shankar IAS",high
+39,medium,"Scheduled Areas — Laxmikanth",high
+40,hard,"Article 16(4) read with Article 335 — Laxmikanth detail",high
+41,hard,"Dhanyakataka and the Mahasanghikas — obscure",high
+42,easy,"Stupa as Buddhist and votive — NCERT/standard",high
+43,medium,"Korkai, Poompuhar, Muchiri as ports — standard ancient",high
+44,hard,"Vattakirutal in Sangam poems — obscure",high
+45,hard,"Dating Hoysala, Gahadavala, Kakatiya, Yadava — detail",high
+46,hard,"Literary work and author pairs — obscure",high
+47,easy,"Souls in rocks and water, Jainism — NCERT/standard",high
+48,hard,"Vijayanagara ruler who built the Tungabhadra dam — detail",high
+49,hard,"Gujarat ruler who surrendered Diu — detail",high
+50,easy,"Charter Act 1833 and the Governor General of India — Spectrum",high
+51,medium,"Janani Suraksha Yojana — standard schemes",high
+52,hard,"Anaemia Mukt Bharat components — detail",high
+53,medium,"Carbon fibres and recyclability — general science",high
+54,medium,"Accelerometers in airbags and laptops — general technology",high
+55,hard,"Biofilters in recirculating aquaculture — niche",high
+56,medium,"Cepheids, nebulae, pulsars — general astronomy",high
+57,easy,"Countries with own navigation systems — general/news",high
+58,medium,"Ballistic vs cruise missiles, Agni-V — standard defence",high
+59,medium,"Mercury pollution sources — Shankar IAS",high
+60,easy,"Green hydrogen uses — prominent 2022-23 news",high
+61,easy,"Ukraine's land neighbours — atlas plus prominent news",high
+62,medium,"Atmospheric composition — NCERT geography",high
+63,medium,"Rainforest soil nutrients — NCERT biology",high
+64,medium,"Continental vs oceanic temperature contrast — NCERT geography",high
+65,easy,"P and S waves — NCERT geography",high
+66,hard,"Seawater use and ownership of thermal plants — detail",high
+67,medium,"Wolbachia method — news, niche",high
+68,medium,"Basalt spreading and ocean alkalinity — geoengineering",high
+69,hard,"Aerial metagenomics — obscure",high
+70,medium,"Microsatellite DNA — niche biotechnology",high
+71,medium,"MSMED Act thresholds — detail",high
+72,easy,"Central bank digital currency — prominent news",high
+73,medium,"Beta in finance — standard finance",high
+74,medium,"Self-Help Group origins and joint liability — standard",high
+75,medium,"Curative bias in public health — Economic Survey/conceptual",high
+76,medium,"India's groundwater withdrawal share — 2022 news",high
+77,medium,"Centre's duty on internal disturbance, legal aid — Laxmikanth",high
+78,medium,"Country with famine and civil strife — news",high
+79,medium,"Biodiversity Management Committees — Shankar IAS",high
+80,medium,"Nominated members in Presidential election — Laxmikanth",high
+81,hard,"Rea, Longhurst, Sewell, Burgess, Elliot — obscure",high
+82,medium,"Besnagar, Bhaja, Sittanavasal — art and culture detail",high
+83,medium,"National Handloom Day and 1905 — news/general",high
+84,hard,"Flag Code dimensions — detail",high
+85,easy,"Constitution Day, 26 November — general",high
+86,hard,"Swiss gold exports and reserves — obscure",high
+87,hard,"US-EU Trade and Technology Council — niche",high
+88,hard,"India's 3.2% share of global goods exports — Economic Survey",high
+89,hard,"Stability and Growth Pact — niche",high
+90,medium,"Global Compact for Migration — news, niche",high
+91,hard,"Home Guards Act and role — detail",high
+92,hard,"Official Secrets Act coverage of uniforms — detail",high
+93,easy,"North Kivu, Nagorno-Karabakh, Kherson — prominent 2022 news",high
+94,medium,"Israel-Arab normalisation — news",high
+95,medium,"Khel Ratna and Arjuna criteria — general/news",high
+96,easy,"44th Chess Olympiad — prominent 2022 news",high
+97,easy,"Donbas, Kachin, Tigray — prominent news",high
+98,easy,"Chad, Guinea, Mali, Sudan coups — prominent news",high
+99,medium,"Green hydrogen in heavy industry — news plus reasoning",high
+100,easy,"G20 origins and remit — prominent 2023 news",high

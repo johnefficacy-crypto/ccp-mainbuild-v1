@@ -33,7 +33,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q2",
@@ -101,7 +101,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q4",
@@ -441,7 +441,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q14",
@@ -645,7 +645,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q20",
@@ -815,7 +815,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q25",
@@ -1121,7 +1121,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q34",
@@ -1155,7 +1155,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q35",
@@ -1223,7 +1223,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q37",
@@ -1325,7 +1325,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q40",
@@ -1461,7 +1461,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q44",
@@ -1631,7 +1631,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": null,
+      "correct_option_label": "a",
       "dropped_by_upsc": true
     },
     {
@@ -1768,7 +1768,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q53",
@@ -1836,7 +1836,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q55",
@@ -1870,7 +1870,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q56",
@@ -1904,7 +1904,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q57",
@@ -1938,7 +1938,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q58",
@@ -2006,7 +2006,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q60",
@@ -2040,7 +2040,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q61",
@@ -2074,7 +2074,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": null
     },
     {
       "source_question_ref": "GS1-Q62",
@@ -2516,7 +2516,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q75",
@@ -2550,7 +2550,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q76",
@@ -2618,7 +2618,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q78",
@@ -2652,7 +2652,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q79",
@@ -2686,7 +2686,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q80",
@@ -2720,7 +2720,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q81",
@@ -2754,7 +2754,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q82",
@@ -2822,7 +2822,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q84",
@@ -2890,7 +2890,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q86",
@@ -2924,7 +2924,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q87",
@@ -3060,7 +3060,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q91",
@@ -3094,7 +3094,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q92",
@@ -3128,7 +3128,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q93",
@@ -3162,7 +3162,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q94",
@@ -3230,7 +3230,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q96",
@@ -3298,7 +3298,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q98",
@@ -3332,7 +3332,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q99",
@@ -3400,7 +3400,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     }
   ]
 }

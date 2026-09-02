@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,a4b0c3b7-ea6c-4748-9a96-8cab0fc63c8d,Music traditions and composers,ok
+2,1f90fbbf-7550-43c7-8127-5292227908c1,Colonial land revenue systems,check
+3,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,ok
+4,8b8d195d-6b48-48c4-9621-ebaa3c8d83cb,Temple architecture,ok
+5,88219a6b-fff2-49a9-9336-092e31533444,Jainism,ok
+6,4ff96891-ea5e-40e2-808c-dacc04c5a1f8,Painting traditions and schools,ok
+7,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,check
+8,512e8c00-e3c4-4351-b04b-05f26ba8140e,Harappan civilisation,ok
+9,69b0ea72-cbd3-4936-81c0-3aa90ea17775,"Peasant, tribal and labour movements",ok
+10,4af21078-e111-4375-8976-d6538d1e26ed,Vedic age,ok
+11,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,check
+12,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+13,4af21078-e111-4375-8976-d6538d1e26ed,Vedic age,check
+14,ae7b07ac-7a87-4183-b467-8924abb7d13f,Buddhist and Jain rock-cut architecture,check
+15,64bfe1f1-083a-4c78-8227-a8f5f89deef4,Post-Mauryan period and the Sangam age,ok
+16,971a22b9-040e-4dea-804f-a3799312b6d7,Revolutionary movements and armed struggle,check
+17,daa689f2-76b9-4bc2-9f2e-b9f41d9fda18,East India Company expansion and subsidiary alliance,check
+18,8c060e1c-e55a-481b-9676-6d0d49874acb,Constitutional reforms and Government of India Acts,ok
+19,a4b0c3b7-ea6c-4748-9a96-8cab0fc63c8d,Music traditions and composers,ok
+20,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,ok
+21,69f5f696-e1f0-4a23-95e0-447297437ac3,"Climate treaties, institutions and initiatives",ok
+22,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+23,e9f28928-5171-442f-b919-74f878d15888,Marine ecosystems and coral reefs,check
+24,5a8bc4f5-ab1e-4cf1-9ae4-280d9f161b07,Ports and inland waterways,ok
+25,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+26,84bc27b9-0cd8-4469-97cb-2c4678d19382,International boundaries and border disputes,check
+27,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+28,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+29,cb6b1afa-b744-469c-8c44-f7556b14ae31,Services sector and e-commerce,check
+30,ac36747a-56a7-4b84-801c-411f44514efb,"Seas, straits and maritime chokepoints",ok
+31,93e6b74b-1946-433e-b10d-5a62a3c85844,Volcanism,ok
+32,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+33,7f80d70d-e525-46db-b404-cb612d427d34,Climate of India,ok
+34,0cabc0e9-b5c9-42c3-8974-34134ec5bf8f,Physiography of India,ok
+35,5a8bc4f5-ab1e-4cf1-9ae4-280d9f161b07,Ports and inland waterways,ok
+36,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+37,6be63a96-7edb-4661-a99e-30af18094385,UNESCO heritage listings,ok
+38,e9f28928-5171-442f-b919-74f878d15888,Marine ecosystems and coral reefs,check
+39,e468d421-7bcb-4a30-96f3-3ee9be1d69f3,"Lakes, waterfalls and inland water bodies",check
+40,4ab9045f-0e0a-491d-a57c-252cf06d9b3e,Deforestation and afforestation,ok
+41,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+42,5858c30e-210b-42f7-8865-e9f37e3dd77b,Artificial intelligence and machine learning,ok
+43,cd941d98-386c-4a64-a3b8-492266101979,Defence hardware and platforms,ok
+44,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+45,de8ab3b1-b68c-4a58-9083-55a1eb325737,Hydrogen and fuel cells,ok
+46,e57ad5b3-4576-482b-91f0-0bdfc6339454,Space technology and launch vehicles,ok
+47,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+48,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+49,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+50,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+51,,ETHICS CASE STUDY — no microtopic; verify this belongs in GS-I,gap
+52,,ETHICS CASE STUDY — no microtopic; verify this belongs in GS-I,gap
+53,,ETHICS CASE STUDY — no microtopic; verify this belongs in GS-I,gap
+54,c84898db-ce5a-4ae9-9bc5-219f81fac0e6,Fundamental Rights,ok
+55,7110e9d8-f86c-4a73-ab97-fdf622665b8e,Making of the Constitution,ok
+56,c84898db-ce5a-4ae9-9bc5-219f81fac0e6,Fundamental Rights,check
+57,520ffe2a-eabf-4d28-bb1f-af3d3fdc0716,Special provisions for states and areas,ok
+58,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,ok
+59,c04bfe17-b535-4178-b5c6-f40b4baf19e6,Parliamentary committees,ok
+60,47eba1b6-51b8-46c4-a5e5-727343167cce,Missile systems and strategic weapons,ok
+61,e3cf11b7-f0b6-4f01-9689-2a1fc1ec94f8,Transport and communication,check
+62,835acb19-80b7-41b0-8878-65dce65aaabf,Criminal justice and prison administration,ok
+63,66a6ed8a-da45-4316-91bd-76b02672e6bc,Statutory and regulatory bodies,check
+64,fa11b813-bdaa-4873-b94e-3667973490de,UN conventions and international law,ok
+65,9287d12d-472f-48c4-8b53-30ae06729a8a,"Global summits, declarations and compacts",ok
+66,6c1b6671-b0aa-4be3-8427-e5dbfca61817,Connectivity and development partnerships,ok
+67,6c1b6671-b0aa-4be3-8427-e5dbfca61817,Connectivity and development partnerships,ok
+68,cd941d98-386c-4a64-a3b8-492266101979,Defence hardware and platforms,ok
+69,49b4790b-c8f2-44dc-a33e-ce1776fc0b8a,"Diaspora, consular and migration policy",ok
+70,f87ee241-ecd1-4344-b690-e70b1bfedba7,United Nations system and principal organs,ok
+71,f87ee241-ecd1-4344-b690-e70b1bfedba7,United Nations system and principal organs,ok
+72,1af4be87-f327-4d7e-831d-98b4571d5858,Regional groupings and economic blocs,ok
+73,fca7b5dd-2ae8-4169-99e6-12d6961699b1,Armed forces structure and ranks,ok
+74,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,ok
+75,ef2163b5-bdc8-403b-a01e-d8cb279b69df,World political geography and regions in news,check
+76,e1a5612a-0fdc-4789-8bb6-9b0962f1ac75,Internal security administration,check
+77,9b419dbd-411b-464c-9d3d-cc10e5845a20,Natural vegetation,check
+78,ffb14933-4689-4278-85f9-7d24f701f7eb,India and major powers,ok
+79,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+80,cd941d98-386c-4a64-a3b8-492266101979,Defence hardware and platforms,check
+81,b56a807c-ff2c-4fed-a65a-3b39dad23211,"Awards, honours and civilian decorations",ok
+82,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok
+83,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+84,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+85,2d384e36-6a77-4fb9-b501-4b6ba66448c4,"Books, authors and personalities in news",check
+86,e2e8bf83-c61e-4d97-92b3-3b4e89f05d1c,"Blockchain, cryptocurrency and Web3",ok
+87,cb6b1afa-b744-469c-8c44-f7556b14ae31,Services sector and e-commerce,ok
+88,9b05314d-2680-45b3-ac5b-c4b69a2a4f28,Financial inclusion and microfinance,ok
+89,cb6b1afa-b744-469c-8c44-f7556b14ae31,Services sector and e-commerce,ok
+90,3b0a64fd-7626-420a-9d4e-5a4c3ead2aff,Central bank digital currency,ok
+91,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,check
+92,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+93,e50a7e81-80f6-46ce-8d0a-e3ab7ed6ce81,Industrial policy and MSMEs,ok
+94,9f62ad97-ead4-45d1-9fd3-5da8f919ba63,Fiscal deficit and FRBM,ok
+95,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,check
+96,8f03c3e9-d885-45fa-b2e4-aeebe1422591,Financial regulation and investor protection,check
+97,8f03c3e9-d885-45fa-b2e4-aeebe1422591,Financial regulation and investor protection,check
+98,8f03c3e9-d885-45fa-b2e4-aeebe1422591,Financial regulation and investor protection,check
+99,624b9c56-25d9-492d-af2e-2465d7d48a62,Non-banking financial companies,ok
+100,3ea83231-4fbc-4785-9513-c4b004cca118,Poverty and its estimation,ok

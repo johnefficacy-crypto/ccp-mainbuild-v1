@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,ok
+2,7125cf43-14da-4d26-afd2-99ba4482bb6d,Right to Property,ok
+3,7110e9d8-f86c-4a73-ab97-fdf622665b8e,Making of the Constitution,ok
+4,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,ok
+5,0a2e418a-424d-4fdf-8e46-254493318c5e,Official languages and the Eighth Schedule,ok
+6,03bdd74d-9a63-4d29-836b-51ab10a66f03,"National symbols, honours and awards",ok
+7,b56a807c-ff2c-4fed-a65a-3b39dad23211,"Awards, honours and civilian decorations",check
+8,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok
+9,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok
+10,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok
+11,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,check
+12,835acb19-80b7-41b0-8878-65dce65aaabf,Criminal justice and prison administration,ok
+13,835acb19-80b7-41b0-8878-65dce65aaabf,Criminal justice and prison administration,ok
+14,7a9ef97f-03cf-491f-a0f4-01851b3df797,Forest laws and forest rights,ok
+15,c84898db-ce5a-4ae9-9bc5-219f81fac0e6,Fundamental Rights,ok
+16,347ca3d5-2c4c-416c-98e1-7895c3d7e9f8,Federalism in India,ok
+17,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,check
+18,1dd4bd6f-633a-4a2b-aeb1-672574aacb30,Supreme Court: jurisdiction and composition,ok
+19,796be476-da1a-4b24-bae6-a6bd5eb01591,Citizenship and domicile,ok
+20,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,ok
+21,47dcedf5-5a6e-4d5c-9611-8faedbae02eb,States of matter and material properties,ok
+22,a7c38826-f412-45d2-b9ac-37e5061961ac,Electricity and magnetism,ok
+23,cc133a7d-9327-4e1f-9434-34844bb4494a,Human health and disease,ok
+24,50c227c7-107c-44c0-9348-6d42a6ceb531,Persistent pollutants and their effects,ok
+25,50c227c7-107c-44c0-9348-6d42a6ceb531,Persistent pollutants and their effects,ok
+26,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+27,da25c547-22e0-4588-9da6-394acc65d1ba,Comparative government and constitutions,ok
+28,4961002d-8d40-4fc2-a1df-bf161af98c88,"Governance, transparency and accountability",ok
+29,0ad674a9-0694-42e8-ac87-a79e85e9f5b1,Right to life and personal liberty,ok
+30,1afc4357-2858-4c3e-96df-b2edce2ef62c,Election and representation,ok
+31,acd9d6ba-7f75-4e78-84a1-f7f451ad9ede,Ecosystems and their types,ok
+32,b93c6ca1-167d-4776-b505-f34281fb6053,Water in the atmosphere,check
+33,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+34,8b0d90c2-009e-4981-8476-fd7114ba06ec,Soils of India,ok
+35,a4d2c72a-9cac-4f2e-8f95-35f5ac8b8bd8,Immunity and vaccines,ok
+36,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+37,21c46069-e9a1-419f-8dba-5cca10bf64e3,Biotechnology and its applications,ok
+38,5b00d743-fa29-4ce8-be7e-b0966a6048a6,"Motion, force and thermodynamics",ok
+39,59a26ffc-714a-49b3-8857-63d46e05d3ea,Microbes and biological classification,ok
+40,59a26ffc-714a-49b3-8857-63d46e05d3ea,Microbes and biological classification,ok
+41,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+42,58c3f676-0979-42f8-bd47-14f7ed00fb8b,World agricultural and mineral producers,check
+43,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+44,e468d421-7bcb-4a30-96f3-3ee9be1d69f3,"Lakes, waterfalls and inland water bodies",ok
+45,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+46,e336caf3-60a3-41b4-b9fc-bb480e2ff2cc,International maritime and polar governance,ok
+47,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+48,9d62b3a9-8c7a-494d-a68c-5677d73c9e84,Movements of ocean water,ok
+49,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+50,acd9d6ba-7f75-4e78-84a1-f7f451ad9ede,Ecosystems and their types,ok
+51,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,ok
+52,8c060e1c-e55a-481b-9676-6d0d49874acb,Constitutional reforms and Government of India Acts,ok
+53,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+54,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,check
+55,586d5666-e394-4e7f-ad73-d7fff0d6bf28,Delhi Sultanate — administration and revenue,check
+56,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,ok
+57,971a22b9-040e-4dea-804f-a3799312b6d7,Revolutionary movements and armed struggle,ok
+58,bb64c318-f0cb-4a14-be0c-ef8002917484,Regional kingdoms and the Marathas,ok
+59,,UNASSIGNABLE — stem carries no subject,gap
+60,ca4c910c-cf91-411d-813a-1d1ac0a56a4b,"Days, observances and commemorations",ok
+61,8b8d195d-6b48-48c4-9621-ebaa3c8d83cb,Temple architecture,ok
+62,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,check
+63,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,ok
+64,93929d93-b7fa-405b-b294-fd328cdffbf5,Early medieval dynasties,ok
+65,4d279345-05cf-4af0-b92f-32adf7b78927,Vijayanagara empire,ok
+66,03bdd74d-9a63-4d29-836b-51ab10a66f03,"National symbols, honours and awards",check
+67,512e8c00-e3c4-4351-b04b-05f26ba8140e,Harappan civilisation,check
+68,f75261c6-ec9d-40a3-a5bd-d51951cb0f37,Delhi Sultanate — rulers and campaigns,ok
+69,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,check
+70,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,check
+71,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,check
+72,f0f5a7e3-c23f-456c-b5ac-84b999fb3319,Energy flow and ecological pyramids,ok
+73,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",ok
+74,4ab9045f-0e0a-491d-a57c-252cf06d9b3e,Deforestation and afforestation,ok
+75,5a9e3e5b-e8ed-4fa4-86ca-97fa0dc33f7c,Toxic metals and industrial pollution,ok
+76,f0f5a7e3-c23f-456c-b5ac-84b999fb3319,Energy flow and ecological pyramids,check
+77,01d8cbbc-7b45-453e-973c-4b4d487e88e0,Nutrient cycles and decomposition,ok
+78,f0f5a7e3-c23f-456c-b5ac-84b999fb3319,Energy flow and ecological pyramids,ok
+79,741b1b26-bb16-4931-96bb-2459aa06a661,Carbon markets and climate metrics,ok
+80,cf0855dd-18dc-458d-988a-dbc790225c96,Population interactions,ok
+81,5767d76c-0a59-49ea-98f1-1aac9634f311,Money supply and the multiplier,ok
+82,10e4c33b-8f2e-485f-bf8c-dd9187544d33,Inflation — types and measurement,ok
+83,26c18d07-ca5a-4a33-96bc-66b027666f50,Money market instruments,ok
+84,9b05314d-2680-45b3-ac5b-c4b69a2a4f28,Financial inclusion and microfinance,ok
+85,f5ad1028-8843-46a9-a884-4b896581d7dc,Money and banking: RBI and monetary policy,ok
+86,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,ok
+87,5a9e3e5b-e8ed-4fa4-86ca-97fa0dc33f7c,Toxic metals and industrial pollution,ok
+88,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,check
+89,9b6155ff-703a-45ba-956b-96845914c396,Carbon sinks and sequestration,ok
+90,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",check
+91,f5ad1028-8843-46a9-a884-4b896581d7dc,Money and banking: RBI and monetary policy,ok
+92,5d61a8fd-e008-4617-b000-3006e86061bc,"Social security, pensions and labour welfare",ok
+93,7889a551-2986-465c-84ad-1ad29751858c,Economic growth and development indicators,check
+94,2707150a-38fa-4972-9585-30195bfb6e9f,"Demand, supply and market equilibrium",ok
+95,071d0c52-3db8-42eb-8f00-b9bc98183c54,Cooperative banks and regional rural banks,ok
+96,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+97,77b2c28a-d30e-4d63-826b-954b2db54477,Foreign investment — FDI and FPI,ok
+98,d6152647-1846-42cf-9c2f-7c75de72ba33,Foreign exchange rate,ok
+99,0e80d2a1-69d8-42b6-b305-8f6cbec1a798,Taxation — direct and indirect,check
+100,10e4c33b-8f2e-485f-bf8c-dd9187544d33,Inflation — types and measurement,ok

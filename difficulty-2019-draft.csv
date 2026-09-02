@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,medium,"Reactive nitrogen — Shankar IAS",high
+2,hard,"Aliyar/Isapur/Kangsabati — obscure reservoir names",high
+3,medium,"H-CNG — 2018 news, technical",high
+4,easy,"Dew formation — NCERT geography",high
+5,medium,"44th and 99th Amendments — Laxmikanth plus NJAC news",high
+6,medium,"Judges (Inquiry) Act — Laxmikanth detail",high
+7,medium,"Ninth Schedule under Nehru — Spectrum/Laxmikanth",high
+8,medium,"Coal nationalisation and allocation — standard plus news",high
+9,hard,"Number of amendments to the 1959 Act — detail",high
+10,medium,"Fifth Schedule land transfer — Laxmikanth",high
+11,hard,"Himalayan nettle — obscure",high
+12,easy,"Remote sensing applications — inferable",high
+13,hard,"State-wise forest cover percentages — ISFR data",high
+14,medium,"Methane hydrate — Shankar IAS",high
+15,easy,"Crop residue burning — sustained 2017-18 news",high
+16,easy,"Sea and bordering country — atlas",high
+17,medium,"Largest rice exporter — general knowledge",high
+18,hard,"Glacier to river pairs — geography detail",high
+19,medium,"Pesticide names — inferable from context",high
+20,medium,"Ramsar obligations — Shankar IAS",high
+21,medium,"Kalyana Mandapa, Vijayanagara — art and culture",high
+22,medium,"Amil and Iqta — Satish Chandra",high
+23,hard,"Nimbarka and Sirhindi chronology — detail",high
+24,medium,"Indentured labour and War Conference — Spectrum",high
+25,hard,"Sapru, Neogy, Ananda Charlu — obscure",high
+26,medium,"Tansen — art and culture detail",high
+27,medium,"Jahangir and album painting — art and culture",high
+28,hard,"Temperate alpine national park — detail",high
+29,easy,"Atal Innovation Mission — prominent scheme",high
+30,easy,"Solstice — NCERT geography",high
+31,medium,"Jagirdar vs Zamindar — Satish Chandra",high
+32,medium,"Land reforms — NCERT Class 11 IED",high
+33,easy,"Global Competitiveness Report, WEF — news",high
+34,easy,"Charter Act 1813 — Spectrum core",high
+35,easy,"Swadeshi Movement — Spectrum core",high
+36,medium,"Movement and leader pairs — Spectrum",high
+37,easy,"Harappan sites — NCERT",high
+38,hard,"Ranyo Ashoka relief inscription — obscure",high
+39,easy,"Mahayana features — NCERT/standard",high
+40,medium,"Vishti in Gupta period — old NCERT",high
+41,medium,"New World crop domestication — general",low
+42,easy,"Asiatic lion, camel, rhino — Shankar IAS",high
+43,medium,"Place and river pairs — geography",high
+44,medium,"State-wise poverty lines — NCERT IED",high
+45,hard,"Cirrus thinning and sulphate aerosol — geoengineering, niche",high
+46,medium,"Pyrolysis and plasma gasification — waste technology",high
+47,medium,"Agasthyamala Biosphere Reserve — Shankar IAS",high
+48,medium,"Herbivory and viviparity — NCERT biology reasoning",high
+49,hard,"Mahseer, Irrawaddy Dolphin, Rusty-spotted Cat — detail",high
+50,easy,"Microbeads — Shankar IAS plus news",high
+51,easy,"AR vs VR — general",high
+52,medium,"Denisovan — 2018-19 news, niche",high
+53,medium,"Stem carries no subject — cannot assess",low
+54,medium,"Digital signature — IT Act standard",high
+55,easy,"Wearable devices — general",high
+56,medium,"RNA interference — NCERT biotech plus news",high
+57,easy,"Black hole merger — sustained news",high
+58,easy,"Multi-drug resistance — NCERT and Shankar IAS",high
+59,easy,"Cas9 — prominent 2018 news",high
+60,medium,"Stem carries no subject — cannot assess",low
+61,medium,"High Court and central law — Laxmikanth",high
+62,medium,"PPP exchange rates — NCERT plus Economic Survey",high
+63,hard,"Kharif area statistics — agriculture data",high
+64,hard,"Highest-value agricultural import — Economic Survey",high
+65,medium,"Definition of liberty — conceptual Polity",high
+66,medium,"Measures against rupee depreciation — standard economics",high
+67,easy,"RBI data localisation — prominent 2018 news",high
+68,easy,"GDPR — prominent 2018 news",high
+69,medium,"Nuclear cooperation action plan — news, niche",high
+70,medium,"Money multiplier — NCERT macroeconomics",high
+71,hard,"Service Area Approach — obscure",high
+72,medium,"Sand as minor mineral — Shankar IAS plus news",high
+73,medium,"External debt composition — Economic Survey",high
+74,medium,"Bank assets — standard banking",high
+75,medium,"Currency crisis risk factors — standard economics",high
+76,medium,"Sarkaria on Governor — Laxmikanth",high
+77,medium,"Participatory notes — standard plus news",high
+78,medium,"CAMPA — Shankar IAS",high
+79,hard,"Who reviews independent regulators — Laxmikanth detail",high
+80,medium,"Five-Year Plans — NCERT IED",high
+81,hard,"PVTGs in 18 States — detail",high
+82,medium,"Article 142 — Laxmikanth",high
+83,medium,"Governor's address to Assembly — Laxmikanth",high
+84,hard,"UNCAC and the smuggling protocol — detail",high
+85,medium,"Indian Forest Act bamboo amendment — 2017-18 news",high
+86,easy,"Right to marry under Article 21 — Laxmikanth plus news",high
+87,hard,"Patents Act, IPAB, plant varieties — detail",high
+88,medium,"EPA public participation — Shankar IAS",high
+89,medium,"Solid Waste Management Rules 2016 — Shankar IAS",high
+90,medium,"Fixed-term employment rules 2018 — news, niche",high
+91,medium,"AIIB membership and shareholding — news",high
+92,medium,"Inter-Creditor Agreement — 2018 news, niche",high
+93,medium,"Banks Board Bureau — news plus standard",high
+94,hard,"PNGRB as first regulatory body — detail",high
+95,medium,"LTE vs VoLTE — general technology",high
+96,easy,"Maternity Benefit Amendment 2017 — prominent news",high
+97,medium,"Ease of Doing Business sub-indices — news plus detail",high
+98,medium,"Extended producer responsibility — Shankar IAS",high
+99,medium,"Economic cost to FCI — Economic Survey",high
+100,medium,"Social capital — conceptual",high

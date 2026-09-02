@@ -203,7 +203,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q7",
@@ -849,7 +849,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q26",
@@ -883,7 +883,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q27",
@@ -1087,7 +1087,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "a"
     },
     {
       "source_question_ref": "GS1-Q33",
@@ -1155,7 +1155,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": null
     },
     {
       "source_question_ref": "GS1-Q35",
@@ -1291,7 +1291,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q39",
@@ -1461,7 +1461,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q44",
@@ -1835,7 +1835,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": null,
+      "correct_option_label": "c",
       "dropped_by_upsc": true
     },
     {
@@ -2006,7 +2006,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q60",
@@ -2958,7 +2958,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "b"
+      "correct_option_label": "c"
     },
     {
       "source_question_ref": "GS1-Q88",
@@ -3264,7 +3264,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q97",

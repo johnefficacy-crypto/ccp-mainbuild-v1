@@ -1496,7 +1496,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q45",
@@ -1837,7 +1837,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q55",
@@ -2007,7 +2007,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "c"
+      "correct_option_label": "d"
     },
     {
       "source_question_ref": "GS1-Q60",
@@ -2925,7 +2925,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "d"
+      "correct_option_label": "b"
     },
     {
       "source_question_ref": "GS1-Q87",
@@ -3402,7 +3402,7 @@
           "display_order": 4
         }
       ],
-      "correct_option_label": "a"
+      "correct_option_label": "b"
     }
   ]
 }

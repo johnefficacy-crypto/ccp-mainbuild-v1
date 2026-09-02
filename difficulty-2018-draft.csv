@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,medium,"Post-1947 chronology — Spectrum, not NCERT",high
+2,easy,"Puttaswamy 2017, prominent news + Laxmikanth",high
+3,hard,"Exact MSP crop list — not in any standard text",high
+4,medium,"Sanctuary location — Shankar IAS / atlas",high
+5,easy,"PSLV vs GSLV — standard S&T, widely covered",high
+6,easy,"SBI merger and recapitalisation — prominent 2017 news",high
+7,medium,"GST 2017 prominent, but item-level exemption detail",high
+8,medium,"FRA and Critical Wildlife Habitat — Shankar IAS; Baiga case niche",high
+9,medium,"General biology reasoning, no single source",low
+10,medium,"NPOP/APEDA — standard agriculture, Sikkim organic in news",high
+11,easy,"Money Bill — Laxmikanth core",high
+12,easy,"Presidential election value of vote — Laxmikanth core",high
+13,medium,"IAEA Additional Protocol — standard IR, moderate prominence",high
+14,hard,"ASEAN free-trade partner list — not in standard texts",high
+15,hard,"GACSA — obscure institution, low news prominence",high
+16,easy,"Digital India — prominent flagship scheme",high
+17,easy,"Aleppo, Kirkuk, Mosul — sustained 2016-17 news + atlas",high
+18,easy,"GoI Act 1935 — Spectrum / Laxmikanth core",high
+19,easy,"Speaker vacating office — Laxmikanth",high
+20,medium,"Law and liberty — conceptual, standard Polity",high
+21,easy,"Governor immunity and emoluments — Laxmikanth",high
+22,easy,"Bani Thani, Kishangarh — Nitin Singhania core",high
+23,easy,"THAAD — prominent 2017 news",high
+24,medium,"Tyagaraja and Annamacharya — art and culture, moderate depth",high
+25,medium,"Rule of Law features — conceptual Polity",high
+26,easy,"Charter Act 1813 and English education — Spectrum core",high
+27,medium,"Artificial vs natural lakes — standard geography",high
+28,medium,"PMKVY prominent, but nodal ministry is detail",high
+29,medium,"Home Rule League renamed 1920 — Spectrum detail",high
+30,medium,"Chronology of 19th-century reform events — Spectrum",high
+31,medium,"Sand mining impacts — Shankar IAS plus reasoning",high
+32,easy,"Soil organic matter and sulphur cycle — NCERT",high
+33,hard,"PAGE — obscure UN mechanism, low prominence",high
+34,medium,"3D printing applications — general science and news",high
+35,medium,"Barren Island — standard geography, erupted 2017",high
+36,medium,"Prosopis juliflora — Shankar IAS invasive species",high
+37,easy,"Coral reefs — NCERT and Shankar IAS",high
+38,hard,"Momentum for Change — obscure UNFCCC initiative",high
+39,medium,"Colonial education institutions and founders — Spectrum detail",high
+40,easy,"Catalonia, Crimea, Mindanao — prominent 2017 news",high
+41,medium,"IRNSS specifics — standard S&T, orbit detail",high
+42,easy,"General relativity predictions — NCERT physics",high
+43,easy,"GM mustard — prominent 2017 news + NCERT biotech",high
+44,hard,"Belle II experiment — outside any standard source",high
+45,medium,"Carbon fertilization — Shankar IAS, niche",high
+46,easy,"IoT scenario — inferable, widely discussed",high
+47,medium,"Silicon wafer rank and SECI — detail-heavy",low
+48,medium,"EIC staple exports from Bengal — old NCERT / Spectrum",high
+49,easy,"Champaran Satyagraha — Spectrum core",high
+50,hard,"Hind Mazdoor Sabha founders — obscure",high
+51,medium,"Sthanakvasi sect — Jain sub-sects, art and culture",high
+52,medium,"Fatehpur Sikri and Lucknow building materials — detail",high
+53,medium,"Tavernier — travellers' accounts, standard medieval",high
+54,easy,"Maitreya — NCERT and standard Buddhism",high
+55,easy,"Subsidiary Alliance — Spectrum core",high
+56,medium,"Legal tender — standard economics",high
+57,easy,"Opportunity cost — NCERT microeconomics",high
+58,easy,"GNP and development — NCERT macroeconomics",high
+59,easy,"Human capital formation — NCERT Class 11 IED chapter",high
+60,medium,"Capital-output ratio — NCERT plus reasoning",high
+61,medium,"Santhal Paraganas — Spectrum, moderate depth",high
+62,easy,"Commercialisation of agriculture — Spectrum core",high
+63,easy,"Article 356 consequences — Laxmikanth core",high
+64,hard,"Puthukkuli, Sujni, Uppada Jamdani — GI craft detail",high
+65,easy,"GPS applications — general knowledge",high
+66,medium,"Treasury bills and G-Secs — standard economics",high
+67,hard,"54% oxygen in early atmosphere — obscure figure",high
+68,easy,"WannaCry and Petya — prominent 2017 news",high
+69,medium,"Conservation Agriculture — Shankar IAS",high
+70,easy,"Sixth mass extinction — Shankar IAS and NCERT",high
+71,medium,"Capital Adequacy Ratio — standard banking",high
+72,medium,"Aadhaar APIs — news plus inference",high
+73,easy,"Yemen and South Sudan famine — prominent 2017 news",high
+74,easy,"Wood's Dispatch — Spectrum core",high
+75,medium,"Committee on Subordinate Legislation — Laxmikanth detail",high
+76,medium,"RTE teacher eligibility — statistic in statement 3 is detail",high
+77,hard,"Chapchar Kut, Khongjom Parba, Thang-Ta — regional detail",high
+78,medium,"FSSAI administrative placement — detail",high
+79,easy,"Two-state solution — sustained news",high
+80,medium,"NFSA entitlements — standard, calorie figure is detail",high
+81,medium,"GI Act and WTO TRIPS — standard economics",high
+82,hard,"State auction powers and gold mine locations — detail",high
+83,easy,"BHIM and UPI — prominent 2016-17 news",high
+84,medium,"Longitude comparison — atlas work",high
+85,hard,"ILO Convention numbers 138 and 182 — obscure",high
+86,medium,"Leader of Opposition recognition 1969 — Laxmikanth detail",high
+87,easy,"Desert leaf modifications — NCERT biology",high
+88,hard,"NSSO 70th Round percentages — survey detail",high
+89,medium,"NGT vs CPCB — Shankar IAS",high
+90,easy,"Ninth Schedule — Laxmikanth core",high
+91,medium,"Merchant Discount Rate — post-demonetisation news, technical",high
+92,easy,"NSG membership — prominent 2016-17 news",high
+93,medium,"Equalisation levy — niche tax measure in news",high
+94,hard,"FRBM 60/40/20 debt ratio figures — Economic Survey detail",high
+95,hard,"Edible oil import volumes and duty — detail",high
+96,medium,"Lala Lajpat Rai biographies — Spectrum detail",high
+97,easy,"Aadhaar not proof of citizenship — prominent",high
+98,easy,"Aral Sea — Shankar IAS and geography",high
+99,hard,"Rule of Law Index publisher — obscure",high
+100,medium,"NPCI role — standard economics",high

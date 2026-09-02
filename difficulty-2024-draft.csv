@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,hard,"Number of Delimitation Commissions — detail",high
+2,medium,"71st Amendment and the Eighth Schedule — Laxmikanth",high
+3,hard,"Party and founder pairs, post-1947 — detail",high
+4,medium,"Parts IX A, XVIII, XX — Laxmikanth",high
+5,medium,"General constitutional statement — conceptual",high
+6,easy,"Right to Privacy under Article 21 — Laxmikanth plus news",high
+7,medium,"Duties of the CDS — news plus standard",high
+8,hard,"Army civic action nomenclature — niche",high
+9,easy,"Longest international border — general",high
+10,medium,"Ethics Committee of Lok Sabha — Laxmikanth plus 2023 news",high
+11,medium,"Provisional President of the Constituent Assembly — Laxmikanth",high
+12,easy,"Government of India Act 1935 — Spectrum core",high
+13,hard,"Work attributed to Bhasa — art and culture detail",high
+14,hard,"Sanghabhuti's commentary — obscure",high
+15,medium,"UNESCO 2023 inscriptions — news",high
+16,medium,"Article 368 modes of amendment — Laxmikanth",high
+17,easy,"Countries with low birth rates — general",high
+18,medium,"Money Bill and Article 109 — Laxmikanth",high
+19,hard,"Equivalent ranks across three services — detail",high
+20,hard,"Composition of the North Eastern Council — detail",high
+21,easy,"Nari Shakti Vandan Adhiniyam — prominent 2023 news",high
+22,hard,"Exercise Mitra Shakti particulars — niche",high
+23,easy,"Writ of Prohibition — Laxmikanth",high
+24,medium,"Who declares a Scheduled Tribe — Laxmikanth detail",high
+25,medium,"Annual Financial Statement and demands for grants — Laxmikanth",high
+26,easy,"Author of The India Way — prominent news",high
+27,medium,"Argentina, Sudan, Turkey in news — 2023 news",high
+28,hard,"Sumed pipeline — niche",high
+29,medium,"Red Sea precipitation and rivers — geography",high
+30,hard,"EPA's largest SO2 source — detail",high
+31,medium,"US debt default and Treasury Bonds — 2023 news",high
+32,medium,"Syndicated lending — standard finance",high
+33,easy,"Digital rupee — prominent news",high
+34,medium,"Epithets of the Buddha — standard ancient",high
+35,hard,"Salihundam, Chandraketugarh, Inamgaon, Mangadu — detail",high
+36,hard,"Ruler who permitted the Bhatkal fort — obscure",high
+37,easy,"Permanent Settlement and Ryotwari — Spectrum core",high
+38,medium,"Upanishads and Puranas — standard ancient",high
+39,hard,"International Grains Council membership — obscure",high
+40,medium,"Latest ICH inscription — 2023 news",high
+41,easy,"Sahel coups — news",high
+42,hard,"US apple imports and GM food law — detail",high
+43,medium,"Speaker during a removal resolution — Laxmikanth",high
+44,medium,"Lapsing of bills on dissolution — Laxmikanth",high
+45,medium,"Prorogation — Laxmikanth detail",high
+46,hard,"EU Net-Zero Industry Act — niche",high
+47,medium,"Venezuela's economy and emigration — news",high
+48,hard,"Digital India Land Records Modernisation — niche scheme",high
+49,medium,"Pradhan Mantri Surakshit Matritva Abhiyan — standard schemes",high
+50,hard,"PM-SYM entry age and pension terms — detail",high
+51,easy,"Terrestrial vs solar heating of the atmosphere — NCERT geography",high
+52,easy,"Troposphere thickness at the equator — NCERT geography",high
+53,medium,"Products of volcanic eruptions — NCERT geography",high
+54,medium,"January isotherms — NCERT geography",high
+55,medium,"Largest cocoa producers — general",high
+56,medium,"Himalayan tributaries east of Prayagraj — geography detail",high
+57,easy,"Rainwater, carbon dioxide and weathering — NCERT geography",high
+58,medium,"North Sea littoral states — atlas",high
+59,medium,"Dhuandhar, Hundru, Gersoppa — geography detail",high
+60,medium,"Fold and block mountains — NCERT geography",high
+61,hard,"Cicada, froghopper, pond skater as insects — detail",high
+62,medium,"Chewing gum and plastic — news plus Shankar IAS",high
+63,easy,"Indri, elk, bonobo habitats — general biology",high
+64,hard,"World Toilet Organization — niche",high
+65,medium,"Big cat behaviour — general biology",high
+66,hard,"100 Million Farmers initiative — obscure",high
+67,medium,"Distributed Energy Resources — niche but inferable",high
+68,medium,"Fig and fig wasp — NCERT biology",high
+69,medium,"Poisonous butterflies, fish, frogs — general biology",high
+70,hard,"Native status of cashew, papaya, red sanders — detail",high
+71,medium,"Greenfield airports — news plus detail",high
+72,easy,"Water vapour with altitude — NCERT geography",high
+73,medium,"Climate type from description — NCERT geography",high
+74,easy,"Coriolis force — NCERT geography",high
+75,easy,"Sunlight hours on 21 June — NCERT geography",high
+76,medium,"Congo tropical peatland — news plus Shankar IAS",high
+77,medium,"PFAS — Shankar IAS plus news",high
+78,hard,"Parasitoids across insect orders — detail",high
+79,medium,"Pea family membership — NCERT biology",high
+80,hard,"Flying fox as vermin under the WPA — detail",high
+81,easy,"Total fertility rate — NCERT/standard",high
+82,hard,"NBFC access to LAF, FII holdings of G-Secs — detail",high
+83,medium,"Who may trade in corporate bonds and G-Secs — standard",high
+84,medium,"What counts as a financial instrument — standard",high
+85,medium,"Primary, secondary, tertiary classification — NCERT economics",high
+86,medium,"Sustainable Aviation Fuel feedstock — news plus reasoning",high
+87,easy,"Working vs fixed capital — NCERT economics",high
+88,easy,"Metaverse — prominent news",high
+89,hard,"RBI rules for wholly owned foreign bank subsidiaries — detail",high
+90,medium,"CSR expenditure rules — standard plus detail",high
+91,medium,"Radioisotope thermoelectric generators — niche S&T",high
+92,medium,"Giant vs dwarf star lifetimes — general astronomy",high
+93,medium,"Nitric oxide and vasodilation — NCERT biology",high
+94,easy,"Uses of radar — general",high
+95,easy,"Fifth generation fighter aircraft — news plus general",high
+96,medium,"Hydrogels — niche but inferable",high
+97,easy,"Fuel cell vehicle exhaust — general",high
+98,medium,"Pumped-storage hydropower — news",high
+99,hard,"Membrane bioreactors — niche",high
+100,hard,"Collateralised Borrowing and Lending Obligation — detail",high

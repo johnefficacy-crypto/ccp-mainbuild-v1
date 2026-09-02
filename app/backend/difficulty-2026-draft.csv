@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,hard,"Raga equivalence across Carnatic and Hindustani — specialist detail",high
+2,hard,"Hilton-Young Commission exchange rate rationale — detail",high
+3,hard,"Kahapana, nikkha, kamsa in Pali texts — specialist",high
+4,medium,"Nagara shikhara temples — Nitin Singhania art and culture",high
+5,hard,"Four forms of existence in Jainism — specialist",high
+6,hard,"Hallisalasya painting, Bagh Caves — obscure",high
+7,hard,"Mankani plates and the place-value system — specialist",high
+8,medium,"Harappan spindle-whorls and weights — NCERT/standard",high
+9,medium,"Eka Movement and Bardoli — Spectrum",high
+10,medium,"Rigvedic irrigation and settlement — old NCERT",high
+11,hard,"Pleistocene palaeo-drainage of Yamuna and Sutlej — specialist",high
+12,medium,"Empty seat in aniconic Buddhist art — standard art and culture",high
+13,medium,"Vedic river names — old NCERT",high
+14,medium,"Amaravati Stupa — Nitin Singhania",high
+15,medium,"Chera, Chola, Pandya kings — standard Sangam",high
+16,medium,"Formation of the Forward Bloc — Spectrum",high
+17,hard,"Awadh taluqdars and the Summary Settlement — Spectrum detail",high
+18,medium,"Communal electorates under 1919 reforms — Spectrum",high
+19,hard,"Mallikarjun Mansur's gharana — specialist",high
+20,hard,"Kshetra-patni — specialist textual detail",high
+21,medium,"LT-LEDS and net-zero 2070 — Shankar IAS plus news",high
+22,medium,"Western Hoolock Gibbon — Shankar IAS",high
+23,medium,"Mangroves and climate resilience — Shankar IAS",high
+24,medium,"Vizhinjam Seaport — 2024-25 news",high
+25,medium,"Antecedent drainage, three countries — NCERT geography",high
+26,medium,"State boundaries and border lengths — atlas",high
+27,easy,"Amur Falcons at Doyang — recurring conservation story",high
+28,medium,"Rainfed Area Development under NMSA — scheme detail",high
+29,hard,"Oeko-Tex certification for Eri Silk — niche",high
+30,easy,"Strait of Hormuz littorals — atlas",high
+31,hard,"Tungurahua Geopark, 2025 — niche current affairs",low
+32,medium,"Madhav National Park as Tiger Reserve, 2025 — news",low
+33,medium,"Andaman and Nicobar climate — NCERT geography",high
+34,medium,"Peninsular Block features — NCERT geography",high
+35,medium,"Sagarmala objectives — standard scheme",high
+36,hard,"Foxtail orchid endemism and State flower — detail",high
+37,medium,"Moidams, UNESCO 2024 — news",high
+38,hard,"FAO at UNOC 2025 — niche current affairs",low
+39,hard,"Lake Turkana location and features — detail",high
+40,hard,"First Plan Vivo REDD+ project in India — niche",high
+41,medium,"Genetic medicine — standard S&T plus news",high
+42,easy,"How LLMs predict next tokens — widely covered",high
+43,medium,"Stealth and radar cross-section — standard defence",high
+44,medium,"Flight recorders — general knowledge",high
+45,easy,"Green hydrogen definition — prominent news",high
+46,medium,"IN-SPACe and private space participation — news",high
+47,hard,"Drone swarm communication bands — specialist",high
+48,medium,"GenomeIndia Project — news",high
+49,medium,"National Quantum Mission targets — news plus detail",high
+50,medium,"Deep Ocean Mission and Matsya-6000 — news",high
+51,medium,"Ethics case study — cannot assess under this rubric",low
+52,medium,"Ethics case study — cannot assess under this rubric",low
+53,medium,"Ethics case study — cannot assess under this rubric",low
+54,medium,"Definition of law under Article 13 — Laxmikanth",high
+55,medium,"Naming of the Constitution — Laxmikanth detail",high
+56,medium,"Rights of Persons with Disabilities Act — standard plus detail",high
+57,medium,"Sixth Schedule tribal areas — Laxmikanth",high
+58,easy,"Starred vs unstarred questions — Laxmikanth core",high
+59,medium,"Committee on Welfare of SC and ST — Laxmikanth detail",high
+60,hard,"Mission Sudarshan Chakra — recent, niche",low
+61,medium,"Maitri Setu and Jhulaghat bridges — news",high
+62,medium,"Zero FIR under BNSS — 2023-24 news plus law",high
+63,hard,"Bureau and controlling ministry pairs — detail",high
+64,hard,"Which ILO conventions India has not ratified — detail",high
+65,medium,"AI Impact Summit 2026, New Delhi — prominent recent news",low
+66,easy,"Kaladan, IMT Highway, Agartala-Akhaura — recurring news",high
+67,medium,"India-supported projects and countries — news",high
+68,medium,"Indigenous manufacture of Su-30, T-90, Akula — standard defence",high
+69,hard,"Colombo Process and Abu Dhabi Dialogue — niche",high
+70,medium,"UN agencies — standard IR",high
+71,hard,"UN peacekeeping missions and periods — detail",high
+72,hard,"BIMSTEC centre locations — detail",high
+73,hard,"Army Corps headquarters — detail",high
+74,medium,"Revamped RGSA — scheme detail",high
+75,easy,"EU membership — general",high
+76,hard,"INTERPOL notice colours including Silver — detail",high
+77,hard,"NIRANTAR platform — recent, niche",low
+78,hard,"Outcomes of the January 2026 German Chancellor visit — recent",low
+79,hard,"DHRUV64 under DIR-V — recent, niche",low
+80,hard,"BIS bomb disposal standard — niche",low
+81,medium,"Nobel Prize 2025 laureate — prominent news",low
+82,medium,"Grand Slam governance — general sport",high
+83,medium,"Semiconductor plant locations — 2024-25 news",high
+84,medium,"Bharat Forecast System — 2025 news",low
+85,hard,"Film 'Boong' and its BAFTA — niche",low
+86,easy,"Blockchain properties — widely covered",high
+87,medium,"Dropshipping — general commerce",high
+88,hard,"RBI FI-Index sub-indices — detail",high
+89,easy,"ONDC objective — prominent news",high
+90,medium,"UPI vs Digital Rupee — news plus standard",high
+91,medium,"Real-world asset tokenisation — recent finance news",high
+92,medium,"Sustainability bond definition — standard finance",high
+93,hard,"M1xchange and TReDS — niche",high
+94,medium,"Crowding out — NCERT macroeconomics",high
+95,easy,"Rare earths and critical minerals — prominent news",high
+96,hard,"Aviation hull insurance and Montreal Convention — niche",high
+97,medium,"Crowdfunding — standard finance",high
+98,hard,"Committee and objective pairs — detail",high
+99,medium,"NBFC regulation — standard economics",high
+100,medium,"MPI methodology and NITI Aayog indicators — standard plus detail",high

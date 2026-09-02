@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,1afc4357-2858-4c3e-96df-b2edce2ef62c,Election and representation,ok
+2,0a2e418a-424d-4fdf-8e46-254493318c5e,Official languages and the Eighth Schedule,ok
+3,7f08042b-edc7-4906-a2ff-59baa3b96176,Political parties and anti-defection,check
+4,0ebbb2b4-5582-46ed-88d2-5e2f88ad76d7,Parts and Schedules of the Constitution,ok
+5,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,check
+6,0ad674a9-0694-42e8-ac87-a79e85e9f5b1,Right to life and personal liberty,ok
+7,fca7b5dd-2ae8-4169-99e6-12d6961699b1,Armed forces structure and ranks,ok
+8,fca7b5dd-2ae8-4169-99e6-12d6961699b1,Armed forces structure and ranks,check
+9,84bc27b9-0cd8-4469-97cb-2c4678d19382,International boundaries and border disputes,ok
+10,c04bfe17-b535-4178-b5c6-f40b4baf19e6,Parliamentary committees,ok
+11,7110e9d8-f86c-4a73-ab97-fdf622665b8e,Making of the Constitution,ok
+12,8c060e1c-e55a-481b-9676-6d0d49874acb,Constitutional reforms and Government of India Acts,ok
+13,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,ok
+14,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+15,6be63a96-7edb-4661-a99e-30af18094385,UNESCO heritage listings,ok
+16,ef19b179-017a-4b69-8d81-c9b245ca681f,Constitutional amendment procedure,ok
+17,d824c6e9-cf89-4e2a-90be-48ede7da25b2,Population and demography,ok
+18,8c9499a4-5221-4f79-ac73-e151581dd97c,Types of bills and the legislative process,ok
+19,fca7b5dd-2ae8-4169-99e6-12d6961699b1,Armed forces structure and ranks,ok
+20,7633e848-2d87-4cdd-b7d6-3d5b37bf3351,Centre-State relations,check
+21,e4c262b4-aaf0-4b27-8a6e-fffe80da2484,Reservation of seats and representation,ok
+22,40bf511c-f48a-4cce-80d5-4c5e517894cb,Joint exercises and defence cooperation,ok
+23,601b76a3-2ece-408a-8212-84b3c02e6a37,Writs and constitutional remedies,ok
+24,74a4adff-6ef9-415c-80eb-60a9173e8c47,Tribal and vulnerable group welfare,check
+25,b2f1e8ea-7618-49b1-8d6c-c0674850ab25,Union Budget and the budget process,ok
+26,2d384e36-6a77-4fb9-b501-4b6ba66448c4,"Books, authors and personalities in news",ok
+27,93bda482-3640-4157-bbc5-0abf576df936,Country situations in news,ok
+28,ac36747a-56a7-4b84-801c-411f44514efb,"Seas, straits and maritime chokepoints",ok
+29,ace3fd37-5231-432d-87c4-5dde90a2be6b,Oceans: temperature and salinity,ok
+30,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,ok
+31,48f9772e-159d-4733-afb6-436f5db3af10,Government borrowing and public debt,check
+32,4ae1a175-886d-4559-b1e2-a201b7207b33,Commercial banking and asset classification,ok
+33,3b0a64fd-7626-420a-9d4e-5a4c3ead2aff,Central bank digital currency,ok
+34,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+35,512e8c00-e3c4-4351-b04b-05f26ba8140e,Harappan civilisation,check
+36,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,ok
+37,1f90fbbf-7550-43c7-8127-5292227908c1,Colonial land revenue systems,ok
+38,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,ok
+39,803e588e-6423-4725-a93f-3aebf0c6e313,International trade and WTO,check
+40,6be63a96-7edb-4661-a99e-30af18094385,UNESCO heritage listings,ok
+41,ee6c5c2b-4f64-4b08-b3aa-7fdb0954d281,"Political instability, coups and transitions",ok
+42,21c46069-e9a1-419f-8dba-5cca10bf64e3,Biotechnology and its applications,check
+43,33a6cc51-e142-4304-bf79-757e88586701,"Presiding officers, privileges and office of profit",ok
+44,8c9499a4-5221-4f79-ac73-e151581dd97c,Types of bills and the legislative process,ok
+45,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,ok
+46,69f5f696-e1f0-4a23-95e0-447297437ac3,"Climate treaties, institutions and initiatives",ok
+47,93bda482-3640-4157-bbc5-0abf576df936,Country situations in news,ok
+48,035b028c-885a-4567-98ad-dc3df320acac,Land reforms and land records,ok
+49,07148e1a-a353-4179-9d0e-aafa3359fb1c,Health system and public health programmes,ok
+50,5d61a8fd-e008-4617-b000-3006e86061bc,"Social security, pensions and labour welfare",ok
+51,6cfd3c3c-80c4-4cce-8ab5-0a037a8b9dbe,"Solar radiation, heat balance and temperature",ok
+52,7556e6ac-71df-4dd1-b2e9-94c7e525bab5,Composition and structure of atmosphere,ok
+53,93e6b74b-1946-433e-b10d-5a62a3c85844,Volcanism,ok
+54,6cfd3c3c-80c4-4cce-8ab5-0a037a8b9dbe,"Solar radiation, heat balance and temperature",check
+55,58c3f676-0979-42f8-bd47-14f7ed00fb8b,World agricultural and mineral producers,ok
+56,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+57,9a055491-035b-48ef-8f6c-987fc4c9f417,Geomorphic processes and landforms,ok
+58,84bc27b9-0cd8-4469-97cb-2c4678d19382,International boundaries and border disputes,check
+59,e468d421-7bcb-4a30-96f3-3ee9be1d69f3,"Lakes, waterfalls and inland water bodies",ok
+60,2f44b4db-8b0d-4504-8161-5a04ea33a707,Plate tectonics,ok
+61,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",check
+62,4bb3306d-a193-4967-8bdb-782a4e92e468,Plastic waste and microplastics,ok
+63,ef4941c2-a5b2-4a96-9b77-6888ec722344,World fauna and biogeography,ok
+64,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,check
+65,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",ok
+66,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+67,75ca9347-8351-48c9-ad9a-237adcdd675e,Renewable energy,ok
+68,cf0855dd-18dc-458d-988a-dbc790225c96,Population interactions,ok
+69,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",ok
+70,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+71,e3cf11b7-f0b6-4f01-9689-2a1fc1ec94f8,Transport and communication,ok
+72,b93c6ca1-167d-4776-b505-f34281fb6053,Water in the atmosphere,ok
+73,aa8350fa-27b5-47ba-b2a8-a640f18cdbe9,World climate and climate change,ok
+74,eaacf60f-ac56-470b-a169-e563d7282ff6,Planetary winds and Coriolis effect,ok
+75,1d225731-6fe5-4a1d-9a82-b95b85e6e1c1,Motions of the earth,ok
+76,9b6155ff-703a-45ba-956b-96845914c396,Carbon sinks and sequestration,ok
+77,50c227c7-107c-44c0-9348-6d42a6ceb531,Persistent pollutants and their effects,ok
+78,cf0855dd-18dc-458d-988a-dbc790225c96,Population interactions,ok
+79,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,check
+80,42380d00-29fa-4012-ab52-e75b7ca0a93f,Wildlife Protection Act,ok
+81,d824c6e9-cf89-4e2a-90be-48ede7da25b2,Population and demography,ok
+82,624b9c56-25d9-492d-af2e-2465d7d48a62,Non-banking financial companies,ok
+83,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+84,c06dd0e0-b36c-4c67-8348-91ff8b833eb8,"Mutual funds, ETFs and investment trusts",check
+85,2192efc2-2ac8-4f3c-be2b-e6bf539e90dd,National income and its aggregates,check
+86,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,ok
+87,a8939b7e-951c-4784-bdcd-598340f7d32c,Capital formation and human capital,ok
+88,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+89,4ae1a175-886d-4559-b1e2-a201b7207b33,Commercial banking and asset classification,check
+90,4961002d-8d40-4fc2-a1df-bf161af98c88,"Governance, transparency and accountability",check
+91,692609bc-f1b8-41d5-abb7-31db3a3ec72e,Nuclear energy technology,ok
+92,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+93,cea3c9c5-28f6-4169-8f35-573ac83ee43c,Cell structure and human physiology,ok
+94,3e99163e-c43b-4d4d-8963-1eea850b6288,Telecom and networks,check
+95,cd941d98-386c-4a64-a3b8-492266101979,Defence hardware and platforms,ok
+96,47dcedf5-5a6e-4d5c-9611-8faedbae02eb,States of matter and material properties,ok
+97,de8ab3b1-b68c-4a58-9083-55a1eb325737,Hydrogen and fuel cells,ok
+98,75ca9347-8351-48c9-ad9a-237adcdd675e,Renewable energy,ok
+99,564b065b-0338-4ad3-ac93-839a6f7b882d,Water pollution and its control,ok
+100,26c18d07-ca5a-4a33-96bc-66b027666f50,Money market instruments,ok

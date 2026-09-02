@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,01d8cbbc-7b45-453e-973c-4b4d487e88e0,Nutrient cycles and decomposition,check
+2,e468d421-7bcb-4a30-96f3-3ee9be1d69f3,"Lakes, waterfalls and inland water bodies",ok
+3,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,ok
+4,b93c6ca1-167d-4776-b505-f34281fb6053,Water in the atmosphere,ok
+5,ef19b179-017a-4b69-8d81-c9b245ca681f,Constitutional amendment procedure,ok
+6,1dd4bd6f-633a-4a2b-aeb1-672574aacb30,Supreme Court: jurisdiction and composition,ok
+7,0ebbb2b4-5582-46ed-88d2-5e2f88ad76d7,Parts and Schedules of the Constitution,ok
+8,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,ok
+9,33a6cc51-e142-4304-bf79-757e88586701,"Presiding officers, privileges and office of profit",ok
+10,520ffe2a-eabf-4d28-bb1f-af3d3fdc0716,Special provisions for states and areas,ok
+11,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+12,bd9085aa-698b-4f52-bdab-6642e877c562,Map work and remote sensing,ok
+13,9b419dbd-411b-464c-9d3d-cc10e5845a20,Natural vegetation,check
+14,98ad1c9d-e1be-46d2-a1b2-0646cda1ffff,Greenhouse effect and global warming,ok
+15,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,ok
+16,ac36747a-56a7-4b84-801c-411f44514efb,"Seas, straits and maritime chokepoints",ok
+17,58c3f676-0979-42f8-bd47-14f7ed00fb8b,World agricultural and mineral producers,ok
+18,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+19,9cb05e22-4838-47b4-82b9-0c2440d20f97,Agro-chemicals and their effects,ok
+20,be78492d-94b8-4869-9927-9662511b8cf3,Wetlands and Ramsar sites,ok
+21,4d279345-05cf-4af0-b92f-32adf7b78927,Vijayanagara empire,ok
+22,586d5666-e394-4e7f-ad73-d7fff0d6bf28,Delhi Sultanate — administration and revenue,ok
+23,11f635d2-5609-4ad9-8a5e-213a185b9254,Bhakti movement,ok
+24,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+25,3e240607-c748-46ee-8239-85cecb1a0d39,Early nationalism and the moderate phase,ok
+26,a4b0c3b7-ea6c-4748-9a96-8cab0fc63c8d,Music traditions and composers,ok
+27,4ff96891-ea5e-40e2-808c-dacc04c5a1f8,Painting traditions and schools,ok
+28,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+29,e50a7e81-80f6-46ce-8d0a-e3ab7ed6ce81,Industrial policy and MSMEs,check
+30,1d225731-6fe5-4a1d-9a82-b95b85e6e1c1,Motions of the earth,ok
+31,a1896442-ff32-49a9-92bc-60e904efce28,Mughal administration and land revenue,ok
+32,035b028c-885a-4567-98ad-dc3df320acac,Land reforms and land records,ok
+33,cebc029d-90b8-402b-8076-e5e2f980fe32,International indices and rankings,ok
+34,8c060e1c-e55a-481b-9676-6d0d49874acb,Constitutional reforms and Government of India Acts,ok
+35,3e240607-c748-46ee-8239-85cecb1a0d39,Early nationalism and the moderate phase,ok
+36,69b0ea72-cbd3-4936-81c0-3aa90ea17775,"Peasant, tribal and labour movements",check
+37,512e8c00-e3c4-4351-b04b-05f26ba8140e,Harappan civilisation,ok
+38,1cd9949b-3424-4350-a5eb-073f4d251c31,Mauryan empire,ok
+39,5cd4d5a6-5d34-47e7-8f8d-f465541a446f,Buddhism,ok
+40,93e92dcb-b8d4-4779-b77e-c5a2ffcdc46b,Gupta period,ok
+41,58c3f676-0979-42f8-bd47-14f7ed00fb8b,World agricultural and mineral producers,check
+42,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+43,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+44,3ea83231-4fbc-4785-9513-c4b004cca118,Poverty and its estimation,ok
+45,9a41122b-247f-4aae-a0fd-ad55ddfcdfb8,Geoengineering,ok
+46,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,ok
+47,99998dde-a7ad-4cba-aea4-5149d5d7d140,In-situ conservation: parks and sanctuaries,ok
+48,fe6538f3-2110-4ae8-a43d-713659cb14b9,"Habitat, niche and adaptations",check
+49,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+50,4bb3306d-a193-4967-8bdb-782a4e92e468,Plastic waste and microplastics,ok
+51,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+52,7a4dac12-2c5f-4bb5-97d1-b7527fa22460,Human evolution and prehistory,ok
+53,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+54,e5a97b06-21bf-48f8-97cc-ff70ec70164d,Data protection and digital governance,ok
+55,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+56,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+57,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+58,cc133a7d-9327-4e1f-9434-34844bb4494a,Human health and disease,ok
+59,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+60,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+61,63ae071a-bf31-4a07-92a2-b052ffb61f91,Judicial review and basic structure,ok
+62,d6152647-1846-42cf-9c2f-7c75de72ba33,Foreign exchange rate,ok
+63,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+64,803e588e-6423-4725-a93f-3aebf0c6e313,International trade and WTO,check
+65,b75efc14-0e32-4fc1-9fcb-bf313d91cb28,Philosophy of the Constitution,ok
+66,d6152647-1846-42cf-9c2f-7c75de72ba33,Foreign exchange rate,ok
+67,f21ab90d-a213-49d9-a5d5-208eef7255b6,Digital payments and payment systems,ok
+68,e5a97b06-21bf-48f8-97cc-ff70ec70164d,Data protection and digital governance,ok
+69,ffb14933-4689-4278-85f9-7d24f701f7eb,India and major powers,ok
+70,5767d76c-0a59-49ea-98f1-1aac9634f311,Money supply and the multiplier,ok
+71,9b05314d-2680-45b3-ac5b-c4b69a2a4f28,Financial inclusion and microfinance,ok
+72,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,check
+73,9831ee26-c1b7-42d5-b4d7-7d62cc0cbd0d,External debt and sovereign borrowing,ok
+74,4ae1a175-886d-4559-b1e2-a201b7207b33,Commercial banking and asset classification,ok
+75,71716840-b028-4707-bea4-2fd3ea3b8830,Balance of payments,ok
+76,89f9867d-8ca9-4782-9182-cb76d16c1eb3,Governor and the state executive,ok
+77,77b2c28a-d30e-4d63-826b-954b2db54477,Foreign investment — FDI and FPI,ok
+78,7a9ef97f-03cf-491f-a0f4-01851b3df797,Forest laws and forest rights,ok
+79,c04bfe17-b535-4178-b5c6-f40b4baf19e6,Parliamentary committees,ok
+80,aff25979-b5ca-473d-9d53-92bfaf7c43b9,Economic planning and NITI Aayog,ok
+81,74a4adff-6ef9-415c-80eb-60a9173e8c47,Tribal and vulnerable group welfare,ok
+82,1dd4bd6f-633a-4a2b-aeb1-672574aacb30,Supreme Court: jurisdiction and composition,ok
+83,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,check
+84,fa11b813-bdaa-4873-b94e-3667973490de,UN conventions and international law,ok
+85,7a9ef97f-03cf-491f-a0f4-01851b3df797,Forest laws and forest rights,ok
+86,0ad674a9-0694-42e8-ac87-a79e85e9f5b1,Right to life and personal liberty,ok
+87,26983991-4a86-4e37-9253-0fd49b0ca39b,Intellectual property rights,ok
+88,b9fd43a1-0e8c-48ca-907e-b20610c889ff,Environment Protection Act and pollution control bodies,ok
+89,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,ok
+90,5d61a8fd-e008-4617-b000-3006e86061bc,"Social security, pensions and labour welfare",ok
+91,faae405c-380a-493e-b12d-aff5f9409b89,International economic institutions,ok
+92,4ae1a175-886d-4559-b1e2-a201b7207b33,Commercial banking and asset classification,ok
+93,3d5f609a-e595-44bf-9c51-1ee9272153b6,Public sector banks and governance,ok
+94,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,ok
+95,3e99163e-c43b-4d4d-8963-1eea850b6288,Telecom and networks,ok
+96,5d61a8fd-e008-4617-b000-3006e86061bc,"Social security, pensions and labour welfare",ok
+97,cebc029d-90b8-402b-8076-e5e2f980fe32,International indices and rankings,ok
+98,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,ok
+99,ee473b0f-8abe-444c-9a1b-3cd229423467,Food security and public distribution,ok
+100,a8939b7e-951c-4784-bdcd-598340f7d32c,Capital formation and human capital,ok

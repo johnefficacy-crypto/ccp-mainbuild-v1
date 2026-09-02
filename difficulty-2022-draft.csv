@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,medium,"IMF lending facilities — COVID-era news",high
+2,medium,"NEER and REER — standard economics",high
+3,medium,"RBI response to inflation — NCERT macroeconomics reasoning",high
+4,hard,"G20 Common Framework — niche",high
+5,medium,"Inflation-Indexed Bonds — standard finance",high
+6,medium,"E-commerce FDI rules — prominent news, detail",high
+7,easy,"Real sector activities — NCERT macroeconomics",high
+8,hard,"Indirect Transfers — tax niche",high
+9,medium,"Capital expenditure — conceptual accounting",high
+10,hard,"Household savings and dated securities — detail",high
+11,medium,"Sanyal Committee and Contempt Act — Laxmikanth detail",high
+12,hard,"Recognition of advocates, Bar Council — detail",high
+13,medium,"Amendment Bill and Presidential assent — Laxmikanth",high
+14,medium,"Ranks and strength of Council of Ministers — Laxmikanth",high
+15,easy,"Exclusive powers of Lok Sabha — Laxmikanth core",high
+16,medium,"Anti-defection and nominated members — Laxmikanth detail",high
+17,medium,"Attorney General in Parliament — Laxmikanth detail",high
+18,medium,"Mandamus — Laxmikanth",high
+19,easy,"Ayushman Bharat Digital Mission — prominent 2021 news",high
+20,medium,"Deputy Speaker election — Laxmikanth plus 2021 news",high
+21,medium,"Rice as methane and nitrous oxide source — Shankar IAS",high
+22,medium,"System of Rice Intensification — standard agriculture",high
+23,medium,"Lake Chad — Shankar IAS and geography",high
+24,hard,"Gandikota canyon and the Penna — detail",high
+25,medium,"Peak and range pairs — geography",high
+26,easy,"Levant — news and atlas",high
+27,easy,"Afghanistan's neighbours — atlas",high
+28,medium,"Monazite and thorium — standard",high
+29,easy,"Longest day, northern hemisphere — NCERT geography",high
+30,hard,"Hokera, Renuka, Rudrasagar, Sasthamkotta — detail",high
+31,medium,"Aarogya Setu and CoWIN as open source — news, detail",high
+32,easy,"Web 3.0 — news",high
+33,easy,"Software as a Service — general technology",high
+34,hard,"Fractional Orbital Bombardment System — niche",high
+35,easy,"Qubit and quantum computing — news/general",high
+36,medium,"Short-range communication technologies — general",high
+37,medium,"Biofilms — NCERT/standard microbiology",high
+38,medium,"Probiotics — general biology",high
+39,easy,"Covishield and Sputnik V platforms — prominent news",high
+40,medium,"Solar storm effects — general science plus news",high
+41,hard,"Climate Action Tracker — niche",high
+42,hard,"The Climate Group and IEA initiative — obscure",high
+43,easy,"Wetlands as kidneys — Shankar IAS",high
+44,hard,"WHO air quality figures — detail",high
+45,medium,"Gucchi — 2021 news, niche",high
+46,medium,"Polyethylene terephthalate — standard chemistry",high
+47,easy,"Golden Mahseer is a fish — general",high
+48,medium,"Nitrogen-fixing plants — NCERT biology",high
+49,hard,"Biorock technology — niche",high
+50,easy,"Miyawaki method — prominent news",high
+51,medium,"Reserved and Transferred subjects, 1919 — Spectrum",high
+52,hard,"Fanam as a coin — obscure",high
+53,medium,"Ghadar Party members — Spectrum detail",high
+54,medium,"Cripps Mission proposals — Spectrum",high
+55,hard,"Identifying Jain texts — detail",high
+56,hard,"Aryadeva, Dignaga, Nathamuni — detail",high
+57,medium,"Mongol assaults under the Khaljis — Satish Chandra",high
+58,hard,"Kulah-Daran — obscure",high
+59,medium,"Dutch factories and Albuquerque — standard medieval",high
+60,hard,"Arthashastra on slavery — detail",high
+61,medium,"Capital flight and ECB costs — standard economics",high
+62,easy,"Tea-producing States — general geography",high
+63,hard,"ICRA and Brickwork specifics — detail",high
+64,medium,"Banks Board Bureau — news plus standard",high
+65,medium,"Convertible bonds — standard finance",high
+66,easy,"India in AIIB, MTCR, SCO — news and standard",high
+67,medium,"Vietnam's economy and polity — news/general",high
+68,easy,"RBI and price stability — NCERT",high
+69,easy,"Non-Fungible Tokens — prominent 2021 news",high
+70,medium,"Reservoir and State pairs — geography detail",high
+71,hard,"Compiler of industrial dispute data — obscure",high
+72,hard,"Coal Controller's Organisation — obscure",high
+73,medium,"Fifth Schedule consequences — Laxmikanth",high
+74,hard,"India Sanitation Coalition and NIUA — obscure",high
+75,medium,"Bodies under the EPA 1986 — Shankar IAS",high
+76,hard,"UN Credentials Committee — niche",high
+77,hard,"Polar Code — niche",high
+78,medium,"UNGA observer status — standard IR detail",high
+79,medium,"Tea Board — detail",high
+80,easy,"Greenwashing — news and standard",high
+81,medium,"High and low cloud radiation effects — NCERT geography",high
+82,hard,"Bidibidi settlement location — detail",high
+83,hard,"Organisation of Turkic States membership — niche",high
+84,medium,"Solar park, solar airport, floating solar — news detail",high
+85,medium,"UNCLOS territorial sea — standard IR",high
+86,easy,"Senkaku Islands — news",high
+87,medium,"Chad, Guinea, Lebanon in news — 2021 news",high
+88,medium,"Anatolia, Amhara, Cabo Delgado — news and atlas",high
+89,medium,"Wildlife ownership and protection — Shankar IAS",high
+90,medium,"Fungus-cultivating termites — NCERT biology, niche",high
+91,medium,"Ashokan rock edict locations — standard ancient",high
+92,hard,"Nannuka, Jayashakti, Nagabhata, Bhoja — detail",high
+93,medium,"Sangam literature — standard ancient",high
+94,hard,"Yogavasistha translation under Akbar — detail",high
+95,medium,"Ramanuja's teachings — standard plus 2022 statue news",high
+96,medium,"Somnath temple — news plus standard",high
+97,easy,"B cells and T cells — NCERT biology",high
+98,medium,"Nanoparticles in nature and cosmetics — standard science",high
+99,medium,"DNA barcoding — NCERT plus news",high
+100,easy,"Acid rain gases — NCERT and Shankar IAS",high

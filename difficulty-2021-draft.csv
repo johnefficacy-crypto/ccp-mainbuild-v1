@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,easy,"Concentration of wealth, Article 39 — Laxmikanth",high
+2,easy,"Right to Property status — Laxmikanth",high
+3,medium,"Constitutional status on 26 Jan 1950 — Laxmikanth",high
+4,medium,"Constitutional government — conceptual",high
+5,hard,"Halbi, Ho, Kui as languages — detail",high
+6,easy,"Bharat Ratna and Article 18 — Laxmikanth plus general",high
+7,medium,"Tree City of the World — 2021 news, low prominence",high
+8,hard,"Laureus award history — detail",high
+9,easy,"Tokyo Olympics — prominent 2021 news",high
+10,easy,"ICC World Test Championship final — prominent 2021 news",high
+11,hard,"Right to the City and UN-Habitat — niche",high
+12,medium,"Judicial custody — legal procedure",high
+13,hard,"Parole rules and State variation — detail",high
+14,medium,"Nodal ministry for FRA — standard",high
+15,medium,"Article 14 and arbitrary discretion — Laxmikanth",high
+16,medium,"Essential federal feature — Laxmikanth",high
+17,medium,"Definition of State — conceptual Polity",high
+18,medium,"Article 128, retired judges — Laxmikanth detail",high
+19,medium,"Single citizenship and domicile — Laxmikanth",high
+20,medium,"Safeguard of liberty — conceptual",high
+21,easy,"Water as universal solvent — NCERT chemistry",high
+22,medium,"Sodium vs LED street lighting — general science",high
+23,easy,"ACE2 — prominent COVID-era news",high
+24,medium,"Bisphenol A — Shankar IAS",high
+25,medium,"Triclosan — Shankar IAS, niche",high
+26,easy,"Light-year as distance — NCERT/general",high
+27,medium,"British vs Indian parliamentary model — Laxmikanth",high
+28,hard,"Gopalaswami Iyengar Committee — obscure",high
+29,easy,"Right to Privacy under Article 21 — prominent",high
+30,hard,"Devi Lal 1991 three constituencies — detail",high
+31,medium,"Savannah vegetation controls — NCERT geography",high
+32,easy,"Distribution of Earth's water — NCERT geography",high
+33,hard,"Moringa and tamarind botany — detail",high
+34,easy,"Black cotton soil from basalt — NCERT geography",high
+35,medium,"Recombinant vector vaccines — COVID news plus NCERT",high
+36,hard,"Mitochondrial replacement therapy — niche",high
+37,medium,"Bollgard I and II — standard GM cotton",high
+38,easy,"Pressure cooker physics — NCERT",high
+39,easy,"Culturing bacteria, fungi, virus — NCERT biology",high
+40,medium,"Adenovirus vs retrovirus — NCERT plus COVID news",high
+41,hard,"Permaculture vs chemical farming — niche",high
+42,medium,"Palm oil — NMEO-OP news plus general",high
+43,medium,"Indus tributary joining directly — NCERT geography",high
+44,hard,"Didwana, Kuchaman, Sargol, Khatu — detail",high
+45,medium,"Rivers rising from Eastern Ghats — geography",high
+46,hard,"Global Ocean Commission and seabed licences — obscure",high
+47,medium,"Least water-efficient crop — general agriculture",high
+48,medium,"Trade winds and ocean warmth — NCERT geography",high
+49,hard,"Climate-Smart Village and CCAFS — niche",high
+50,medium,"Leaf litter and tropical rainforest — NCERT biology",high
+51,hard,"Bhavabhuti, Hastimalla, Kshemeshvara — obscure",high
+52,medium,"Montagu-Chelmsford and women's franchise — Spectrum detail",high
+53,easy,"8 August 1942, Quit India — Spectrum core",high
+54,hard,"Songs from Prison — obscure",high
+55,hard,"Medieval administrative units by size — obscure",high
+56,hard,"Bethune School secretary — detail",high
+57,easy,"INA trials, Shah Nawaz Khan — Spectrum",high
+58,medium,"Arcot, Mysore, Rohilkhand origins — medieval detail",high
+59,medium,"Stem carries no subject — cannot assess",low
+60,medium,"Mother Language Day and Bangla demand — detail",high
+61,hard,"Chausath Yogini Temple, Morena — niche",high
+62,medium,"Dholavira water harvesting — NCERT/standard",high
+63,hard,"EIC factories at Broach, Chicacole — detail",high
+64,medium,"Post-Gupta kingdoms — old NCERT",high
+65,hard,"Nuniz on Vijayanagara women — detail",high
+66,hard,"Madanapalle and the national anthem — obscure",high
+67,medium,"Burzahom, Chandraketugarh, Ganeshwar — standard archaeology",high
+68,medium,"Mongol invasions under the Sultanate — Satish Chandra",high
+69,medium,"St Francis Xavier — general plus detail",high
+70,medium,"Mitakshara and Dayabhaga — standard ancient law",high
+71,medium,"Natural mosquito repellent — general",low
+72,medium,"Ocean primary producers — NCERT biology",high
+73,medium,"Rolling up as defence — general biology",high
+74,hard,"New York Declaration on Forests — niche",high
+75,hard,"Magnetite particles as pollutant — obscure",high
+76,medium,"Filter feeders — NCERT biology",high
+77,medium,"Phosphorus cycle and weathering — NCERT biology",high
+78,easy,"Detritivores — NCERT biology",high
+79,hard,"Common Carbon Metric — obscure",high
+80,medium,"Symbiosis in cnidarians, fungi, protozoa — NCERT biology",high
+81,medium,"Money multiplier — NCERT macroeconomics",high
+82,medium,"Demand-pull inflation — NCERT macroeconomics",high
+83,hard,"NDS-OM retail access — detail",high
+84,hard,"WaterCredit — obscure",high
+85,easy,"Lender of last resort — NCERT/standard",high
+86,hard,"R2 Code of Practices — obscure",high
+87,medium,"Copper smelting — Shankar IAS plus Sterlite news",high
+88,medium,"Furnace oil — standard",high
+89,medium,"Blue carbon — Shankar IAS",high
+90,medium,"Lichens on bare surfaces — NCERT biology",high
+91,medium,"RBI Governor appointment and directions — standard",high
+92,hard,"Casual workers and EPF entitlement — detail",high
+93,medium,"Recession response — NCERT macroeconomics",high
+94,easy,"Demand and substitutes — NCERT microeconomics",high
+95,medium,"Urban Cooperative Banks — 2020-21 news plus standard",high
+96,medium,"Bond yield drivers — standard finance",high
+97,hard,"What counts within FDI — detail",high
+98,medium,"Devaluation effects — NCERT macroeconomics",high
+99,medium,"Black money consequences — standard",high
+100,medium,"Most inflationary measure — NCERT macroeconomics",high

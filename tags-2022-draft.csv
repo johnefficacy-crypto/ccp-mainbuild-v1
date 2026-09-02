@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,faae405c-380a-493e-b12d-aff5f9409b89,International economic institutions,ok
+2,d6152647-1846-42cf-9c2f-7c75de72ba33,Foreign exchange rate,ok
+3,3860384c-12b3-48de-9185-9a559938f36d,Liquidity instruments and open market operations,ok
+4,9831ee26-c1b7-42d5-b4d7-7d62cc0cbd0d,External debt and sovereign borrowing,ok
+5,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+6,cb6b1afa-b744-469c-8c44-f7556b14ae31,Services sector and e-commerce,ok
+7,2192efc2-2ac8-4f3c-be2b-e6bf539e90dd,National income and its aggregates,ok
+8,0e80d2a1-69d8-42b6-b305-8f6cbec1a798,Taxation — direct and indirect,ok
+9,a8939b7e-951c-4784-bdcd-598340f7d32c,Capital formation and human capital,check
+10,48f9772e-159d-4733-afb6-436f5db3af10,Government borrowing and public debt,ok
+11,b0e9c565-803b-46e0-a963-a918a302c609,Contempt of court and judicial accountability,ok
+12,6fe2005c-d962-4ba5-b43c-6bb5342d52d0,Legal profession and access to justice,ok
+13,ef19b179-017a-4b69-8d81-c9b245ca681f,Constitutional amendment procedure,ok
+14,07d0f9f8-16f2-4982-be84-689c069d5ba0,Prime Minister and Council of Ministers,ok
+15,21e5e3a1-56af-4abf-87a3-cc41422f1351,Parliament: composition and procedure,ok
+16,7f08042b-edc7-4906-a2ff-59baa3b96176,Political parties and anti-defection,ok
+17,3fcb6de8-01c5-4837-a3d4-f5aff2b2f300,Constitutional bodies,check
+18,601b76a3-2ece-408a-8212-84b3c02e6a37,Writs and constitutional remedies,ok
+19,07148e1a-a353-4179-9d0e-aafa3359fb1c,Health system and public health programmes,ok
+20,33a6cc51-e142-4304-bf79-757e88586701,"Presiding officers, privileges and office of profit",ok
+21,98ad1c9d-e1be-46d2-a1b2-0646cda1ffff,Greenhouse effect and global warming,ok
+22,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,ok
+23,06a15ece-6f4d-4f95-a19d-e0a0a0251586,Degradation of lakes and inland water bodies,ok
+24,ebe20275-2b75-4a64-9871-ff700a0487e3,Drainage system of India,ok
+25,0cabc0e9-b5c9-42c3-8974-34134ec5bf8f,Physiography of India,ok
+26,ef2163b5-bdc8-403b-a01e-d8cb279b69df,World political geography and regions in news,ok
+27,84bc27b9-0cd8-4469-97cb-2c4678d19382,International boundaries and border disputes,ok
+28,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,ok
+29,1d225731-6fe5-4a1d-9a82-b95b85e6e1c1,Motions of the earth,ok
+30,be78492d-94b8-4869-9927-9662511b8cf3,Wetlands and Ramsar sites,ok
+31,e5a97b06-21bf-48f8-97cc-ff70ec70164d,Data protection and digital governance,ok
+32,e2e8bf83-c61e-4d97-92b3-3b4e89f05d1c,"Blockchain, cryptocurrency and Web3",ok
+33,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+34,47eba1b6-51b8-46c4-a5e5-727343167cce,Missile systems and strategic weapons,ok
+35,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+36,3e99163e-c43b-4d4d-8963-1eea850b6288,Telecom and networks,ok
+37,59a26ffc-714a-49b3-8857-63d46e05d3ea,Microbes and biological classification,ok
+38,59a26ffc-714a-49b3-8857-63d46e05d3ea,Microbes and biological classification,ok
+39,a4d2c72a-9cac-4f2e-8f95-35f5ac8b8bd8,Immunity and vaccines,ok
+40,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+41,69f5f696-e1f0-4a23-95e0-447297437ac3,"Climate treaties, institutions and initiatives",ok
+42,69f5f696-e1f0-4a23-95e0-447297437ac3,"Climate treaties, institutions and initiatives",ok
+43,be78492d-94b8-4869-9927-9662511b8cf3,Wetlands and Ramsar sites,ok
+44,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,ok
+45,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+46,4bb3306d-a193-4967-8bdb-782a4e92e468,Plastic waste and microplastics,ok
+47,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+48,01d8cbbc-7b45-453e-973c-4b4d487e88e0,Nutrient cycles and decomposition,ok
+49,e9f28928-5171-442f-b919-74f878d15888,Marine ecosystems and coral reefs,ok
+50,1e6c07b8-b818-49ad-894e-9bdbdbed9080,Sustainable agriculture practices,check
+51,8c060e1c-e55a-481b-9676-6d0d49874acb,Constitutional reforms and Government of India Acts,ok
+52,4d279345-05cf-4af0-b92f-32adf7b78927,Vijayanagara empire,check
+53,971a22b9-040e-4dea-804f-a3799312b6d7,Revolutionary movements and armed struggle,ok
+54,8713e217-9921-44f4-a1d7-b99bbc4178cf,"Partition, integration and independence",check
+55,88219a6b-fff2-49a9-9336-092e31533444,Jainism,ok
+56,1722f5df-cc06-4998-9c1d-f06bdfbde0ed,Ancient Indian literature and authors,check
+57,f75261c6-ec9d-40a3-a5bd-d51951cb0f37,Delhi Sultanate — rulers and campaigns,ok
+58,f75261c6-ec9d-40a3-a5bd-d51951cb0f37,Delhi Sultanate — rulers and campaigns,check
+59,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,ok
+60,1cd9949b-3424-4350-a5eb-073f4d251c31,Mauryan empire,ok
+61,77b2c28a-d30e-4d63-826b-954b2db54477,Foreign investment — FDI and FPI,check
+62,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+63,2c510a52-d73c-4674-84bc-fcc5802dd07b,Credit rating agencies,ok
+64,3d5f609a-e595-44bf-9c51-1ee9272153b6,Public sector banks and governance,ok
+65,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+66,bbf61f1e-1977-4182-8381-ff7d99aae278,Plurilateral and strategic groupings,check
+67,93bda482-3640-4157-bbc5-0abf576df936,Country situations in news,ok
+68,f5ad1028-8843-46a9-a884-4b896581d7dc,Money and banking: RBI and monetary policy,ok
+69,e2e8bf83-c61e-4d97-92b3-3b4e89f05d1c,"Blockchain, cryptocurrency and Web3",ok
+70,e468d421-7bcb-4a30-96f3-3ee9be1d69f3,"Lakes, waterfalls and inland water bodies",ok
+71,5d61a8fd-e008-4617-b000-3006e86061bc,"Social security, pensions and labour welfare",ok
+72,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,ok
+73,520ffe2a-eabf-4d28-bb1f-af3d3fdc0716,Special provisions for states and areas,ok
+74,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,check
+75,b9fd43a1-0e8c-48ca-907e-b20610c889ff,Environment Protection Act and pollution control bodies,ok
+76,f87ee241-ecd1-4344-b690-e70b1bfedba7,United Nations system and principal organs,ok
+77,e336caf3-60a3-41b4-b9fc-bb480e2ff2cc,International maritime and polar governance,ok
+78,f87ee241-ecd1-4344-b690-e70b1bfedba7,United Nations system and principal organs,ok
+79,8e834bd5-5d64-4d60-b105-14b2a0dce8cc,"Agricultural marketing, MSP and procurement",check
+80,741b1b26-bb16-4931-96bb-2459aa06a661,Carbon markets and climate metrics,ok
+81,6cfd3c3c-80c4-4cce-8ab5-0a037a8b9dbe,"Solar radiation, heat balance and temperature",ok
+82,f087e4aa-804e-435a-98d1-c682e268f4b5,Refugee and humanitarian crises,ok
+83,1af4be87-f327-4d7e-831d-98b4571d5858,Regional groupings and economic blocs,ok
+84,75ca9347-8351-48c9-ad9a-237adcdd675e,Renewable energy,ok
+85,fa11b813-bdaa-4873-b94e-3667973490de,UN conventions and international law,ok
+86,f732797f-5c48-4b11-96a1-4fcd587edfcc,Territorial and maritime disputes,ok
+87,93bda482-3640-4157-bbc5-0abf576df936,Country situations in news,ok
+88,ef2163b5-bdc8-403b-a01e-d8cb279b69df,World political geography and regions in news,ok
+89,42380d00-29fa-4012-ab52-e75b7ca0a93f,Wildlife Protection Act,ok
+90,cf0855dd-18dc-458d-988a-dbc790225c96,Population interactions,ok
+91,1cd9949b-3424-4350-a5eb-073f4d251c31,Mauryan empire,ok
+92,93929d93-b7fa-405b-b294-fd328cdffbf5,Early medieval dynasties,ok
+93,64bfe1f1-083a-4c78-8227-a8f5f89deef4,Post-Mauryan period and the Sangam age,ok
+94,cb50b194-a05d-4d69-8e98-d5a0e121ecfb,Mughal empire — rulers and succession,check
+95,11f635d2-5609-4ad9-8a5e-213a185b9254,Bhakti movement,ok
+96,8b8d195d-6b48-48c4-9621-ebaa3c8d83cb,Temple architecture,ok
+97,a4d2c72a-9cac-4f2e-8f95-35f5ac8b8bd8,Immunity and vaccines,ok
+98,814ac6fd-babe-49b4-821e-576dbc465f65,Nanotechnology,ok
+99,a218d1ba-5fc6-4346-a1d9-cd5e40ec2f80,Molecular basis of inheritance,ok
+100,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,ok

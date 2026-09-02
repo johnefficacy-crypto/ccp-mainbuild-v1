@@ -1,0 +1,101 @@
+question_number,difficulty,basis,confidence
+1,medium,"Fertigation — standard agriculture",high
+2,hard,"Which minerals are officially 'major' — detail",high
+3,hard,"Ocean Mean Temperature — niche oceanography",high
+4,medium,"Fertiliser pricing and subsidy — standard economics",high
+5,medium,"Desert National Park — Shankar IAS",high
+6,easy,"Siachen location — general geography",high
+7,hard,"Bhilsa, Dwarasamudra, Girinagar, Sthanesvara — detail",high
+8,medium,"CGWA and groundwater status — Shankar IAS plus news",high
+9,medium,"Jet streams and cyclone eye — NCERT geography",high
+10,hard,"Largest Critical Tiger Habitat — detail",high
+11,medium,"Schedule VI of the WPA — Shankar IAS detail",high
+12,hard,"Ghantasala, Kadura, Chaul — detail",high
+13,medium,"Zero tillage — standard agriculture",high
+14,medium,"National Policy on Biofuels feedstock — 2018 news",high
+15,medium,"Social Cost of Carbon — Shankar IAS, niche",high
+16,hard,"Pulse production shares — agriculture statistics",high
+17,medium,"Crop from climatic description — NCERT geography",high
+18,medium,"Solar pump types — reasoning",high
+19,hard,"Bud chip settlings in sugarcane — niche agronomy",high
+20,medium,"Eco-friendly agriculture practices — reasoning",high
+21,medium,"Parivrajaka, Shramana, Upasaka — standard ancient",high
+22,medium,"Elephant biology — general",high
+23,hard,"Protected areas in the Cauvery basin — detail",high
+24,hard,"Ceylon frogmouth and other birds — detail",high
+25,medium,"Hard-ground Barasingha, Kanha — Shankar IAS",high
+26,hard,"Steel slag applications — niche",high
+27,hard,"Musk deer habitat — detail",high
+28,hard,"Low-carbon rural road materials — niche",high
+29,easy,"Coal ash and thermal plant emissions — Shankar IAS",high
+30,medium,"Biochar — Shankar IAS, niche",high
+31,medium,"Public investment in agriculture — NCERT IED",high
+32,medium,"Interest Coverage Ratio — standard finance",high
+33,medium,"Factors in rice pricing — standard economics",high
+34,hard,"Indo-Sri Lanka and Bangladesh trade composition — Economic Survey",high
+35,easy,"G20 membership — general",high
+36,medium,"Kisan Credit Card scope — standard",high
+37,easy,"CPI vs WPI — NCERT/standard",high
+38,easy,"Mekong, Thames, Volga, Zambezi — atlas",high
+39,medium,"MSP procurement limits — standard",high
+40,medium,"Money market instruments — standard economics",high
+41,easy,"FDI characteristics — NCERT/standard",high
+42,medium,"Merchandise trade balance — Economic Survey",high
+43,easy,"West Texas Intermediate — news/general",high
+44,hard,"What counts as non-financial debt — detail",high
+45,medium,"IAEA safeguards on civilian reactors — standard IR",high
+46,hard,"TRIMS provisions — niche WTO",high
+47,medium,"Expansionary monetary policy tools — NCERT macroeconomics",high
+48,hard,"Post-1991 worker productivity figures — Economic Survey detail",high
+49,hard,"DCCB vs SCB credit shares — detail",high
+50,hard,"Cyber insurance coverage — niche",high
+51,medium,"Carbon nanotubes — general science",high
+52,easy,"Drone applications — general and news",high
+53,hard,"LISA-style laser interferometry — niche",high
+54,medium,"Germline and embryo editing — 2018-19 news",high
+55,medium,"Pneumococcal conjugate vaccines — health news",high
+56,medium,"Public Key Infrastructure — standard IT",high
+57,easy,"Plant vs animal cells — NCERT biology",high
+58,medium,"Benzene exposure sources — Shankar IAS plus reasoning",high
+59,medium,"Insulation from a financial crisis — standard economics",high
+60,medium,"Cash withdrawal and money supply — NCERT macroeconomics",high
+61,medium,"Paramitas — standard Buddhism",high
+62,hard,"Rakhmabai case, 1884 — Spectrum detail",high
+63,medium,"Decline of indigo — Spectrum",high
+64,medium,"Wellesley and Fort William College — Spectrum",high
+65,easy,"Ulgulan and Birsa Munda — Spectrum core",high
+66,hard,"Panini, Amarasimha, Kalidasa patronage — detail",high
+67,hard,"Pronuclear transfer — niche",high
+68,easy,"What AI can currently do — general and news",high
+69,hard,"Visible Light Communication specifics — niche",high
+70,easy,"Blockchain — news",high
+71,hard,"Aurang, Banian, Mirasidar — detail",high
+72,hard,"Sthaviravadin and Lokottaravadin sects — detail",high
+73,medium,"Industrial Revolution's impact on India — Spectrum",high
+74,hard,"Chronology of Pratihara, Pallava, Chola, Pala — detail",high
+75,hard,"Hundi in post-Harsha sources — detail",high
+76,hard,"Desher Katha by Deuskar — obscure",high
+77,easy,"Gandhi-Irwin Pact terms — Spectrum core",high
+78,hard,"Vital-Vidhvansak journal — obscure",high
+79,hard,"Kulyavapa and dronavapa — detail",high
+80,medium,"Ashokan edict on religious tolerance — standard ancient",high
+81,easy,"Parliamentary system — Laxmikanth core",high
+82,easy,"Welfare State in Part IV — Laxmikanth",high
+83,medium,"Basic structure and judicial review — Laxmikanth",high
+84,medium,"Gandhism and Marxism — conceptual",high
+85,medium,"Characteristics of bureaucracy — conceptual",high
+86,easy,"Nature of the Preamble — Laxmikanth core",high
+87,medium,"Gold/Reserve Tranche at the IMF — standard economics",high
+88,easy,"Enforceability of Part IV — Laxmikanth",high
+89,medium,"Non-member as minister for six months — Laxmikanth",high
+90,medium,"Summoning and sessions of Parliament — Laxmikanth",high
+91,medium,"Aadhaar judgment provisions — 2018 news",high
+92,medium,"Where Rajya Sabha has equal powers — Laxmikanth",high
+93,medium,"MPLADS rules — standard",high
+94,easy,"Untouchability under Right to Equality — Laxmikanth",high
+95,medium,"Separation of judiciary — Laxmikanth DPSP",high
+96,hard,"Macro Economic Framework Statement under FRBM — detail",high
+97,medium,"Constitutional government — conceptual",high
+98,medium,"UDHR reflected in Preamble and DPSP — Laxmikanth",high
+99,medium,"Legal Services Authorities eligibility — detail",high
+100,hard,"Alma-Ata, Hague, Talanoa pairs — detail",high
