@@ -154,6 +154,64 @@ def _fetch_all_verified_tags(sb: Any, question_id: str) -> list[dict]:
     ) or []
 
 
+def _fetch_topic_row(sb: Any, topic_id: str | None) -> dict | None:
+    """The ``topics`` row for a tag, or ``None``. ``parent_topic_id`` is what
+    tells a microtopic from a top-level topic (migration 268)."""
+    if not topic_id:
+        return None
+    rows = (
+        sb.table("topics")
+        .select("id, parent_topic_id, subject_id, is_active")
+        .eq("id", topic_id)
+        .limit(1)
+        .execute()
+        .data
+    ) or []
+    return rows[0] if rows else None
+
+
+def _verified_primary_topic_id(primary_tags: list[dict]) -> str | None:
+    """The topic id of the single verified primary tag, or ``None``."""
+    verified_primary = [
+        t for t in primary_tags
+        if t.get("reviewer_status") == _VERIFIED_TAG
+        and t.get("tag_role") == _PRIMARY_TAG_ROLE
+    ]
+    if len(verified_primary) != 1:
+        return None
+    return verified_primary[0].get("topic_id")
+
+
+def resolve_primary_topic_split(
+    primary_tags: list[dict],
+    topic_row: dict | None,
+) -> tuple[str | None, str | None]:
+    """Split the single verified primary tag into ``(topic_id, microtopic_id)``.
+
+    Mirrors the level resolution in ``project_pyq_question_to_mock_bank``
+    (migration 268): ``topics.parent_topic_id IS NULL`` means the tag is a
+    top-level topic (microtopic_id stays NULL); otherwise the tag IS the
+    microtopic and its parent becomes the topic.
+
+    Returns ``(None, None)`` when there is not exactly one verified primary tag,
+    or when its topic row is missing — the RPC blocks those cases before it ever
+    reaches the projection write, so there is nothing to hash.
+    """
+    verified_primary = [
+        t for t in primary_tags
+        if t.get("reviewer_status") == _VERIFIED_TAG
+        and t.get("tag_role") == _PRIMARY_TAG_ROLE
+    ]
+    if len(verified_primary) != 1 or not topic_row:
+        return None, None
+
+    tag_topic_id = verified_primary[0].get("topic_id")
+    parent_id = topic_row.get("parent_topic_id")
+    if parent_id:
+        return parent_id, tag_topic_id
+    return tag_topic_id, None
+
+
 def _fetch_existing_projection(sb: Any, question_id: str) -> dict | None:
     rows = (
         sb.table("pyq_mock_question_projections")
@@ -172,13 +230,15 @@ def compute_content_hash(
     paper: dict | None = None,
     all_verified_tags: list[dict] | None = None,
     stimuli: list[dict] | None = None,
+    primary_microtopic_id: str | None = None,
 ) -> str:
     """Stable SHA-256 hash of ALL fields projected to mock_question_bank.
 
     Mirrors the hash computed inside ``project_pyq_question_to_mock_bank``
-    (latest authoritative body: migration 239, which swapped the NUL top-level
-    separator to GS/chr(29); base formula from migration 183 Section D + 229
-    PR-4 additions).  Keep in sync when the RPC hash formula changes.
+    (latest authoritative body: migration 268, which appends the resolved
+    microtopic_id; separator posture from 239, base formula from migration 183
+    Section D + 229 PR-4 additions).  Keep in sync when the RPC hash formula
+    changes.
 
     Formula (GS = \\x1d between top-level fields, FS = \\x1f between items in a
     list, RS = \\x1e within item):
@@ -187,6 +247,9 @@ def compute_content_hash(
         GS verified_opt_label RS opt_text (joined by FS, sorted by label then id)
         GS correct_opt_text
         GS verified_tag_topic_id RS tag_role (joined by FS, sorted by topic_id then role)
+        GS section_id GS opt_source_label RS opt_display_order (joined by FS)
+        GS stimulus_type RS content_text RS language RS link_display_order (joined by FS)
+        GS resolved_microtopic_id
 
     All projected fields are included so that changing explanation, difficulty,
     language, expected time, paper year, option ordering (label), or any verified
@@ -278,11 +341,24 @@ def compute_content_hash(
         for s in verified_stims
     )
 
+    # ── Migration 268 appended field — lockstep with the SQL hash ─────────────
+    # The resolved microtopic_id (NULL/'' when the primary tag is a top-level
+    # topic), appended AFTER every existing field so the hash commits to every
+    # value written to mock_question_bank. (The tag aggregate above already
+    # carried the tag's own topic_id, so a tag MOVE was detected before 268;
+    # what this adds is that the written microtopic is itself hashed. A
+    # topics-tree re-parent remains undetected — see the 268 header.)
+    # Appending a field appends a GS separator, so already-projected rows do NOT
+    # reproduce their pre-268 hash even when the microtopic is NULL — that is a
+    # one-time re-projection, documented in the migration header.
+    microtopic_id = str(primary_microtopic_id or "")
+
     raw = GS.join([
         q_text, expl, diff, language, exp_time, paper_id,
         paper_year, paper_exam, paper_src_url, paper_src_type, paper_src_doc_id,
         opt_parts, correct_opt, tag_parts,
         section_id, opt_meta_parts, stim_parts,
+        microtopic_id,
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -394,8 +470,21 @@ def preview_paper_projection(sb: Any, paper_id: str) -> dict:
         projection = _fetch_existing_projection(sb, qid)
 
         eligible, reason = _check_question_eligibility(paper, q, options, p_tags, stimuli)
+        # Migration 268: the hash carries the resolved microtopic, so the preview
+        # must resolve it the same way or every microtopic-tagged row would show
+        # a permanent false "would_update".
+        _, microtopic_id = (
+            resolve_primary_topic_split(
+                p_tags,
+                _fetch_topic_row(sb, _verified_primary_topic_id(p_tags)),
+            )
+            if eligible else (None, None)
+        )
         content_hash = (
-            compute_content_hash(q, options, paper=paper, all_verified_tags=all_tags, stimuli=stimuli)
+            compute_content_hash(
+                q, options, paper=paper, all_verified_tags=all_tags, stimuli=stimuli,
+                primary_microtopic_id=microtopic_id,
+            )
             if eligible else None
         )
 
