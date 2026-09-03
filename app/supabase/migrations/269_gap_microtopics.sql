@@ -20,6 +20,30 @@
 -- Naming and study_sources follow the convention set by the rename migration:
 -- NCERT chapter titles where a textbook covers the topic, exam vocabulary and
 -- an honest non-NCERT source where none does.
+--
+-- EDITED AFTER LANDING — a deliberate, documented exception to the
+-- migration-immutability rule in AGENTS.md. Read this before assuming the rule
+-- was ignored.
+--
+-- As first written, this migration hardcoded a `subject_id` and eleven
+-- `parent_topic_id` values that no migration creates. Those rows exist only in
+-- the production database, where they were made outside the migration set, so
+-- the INSERT succeeded there and raised `topics_subject_id_fkey` on every clean
+-- `supabase db reset`. Because a failing statement aborts the whole run, NO
+-- migration numbered above this one had ever executed on a fresh database —
+-- 270_pyq_projection_microtopic_fidelity.sql among them — and CI's e2e job died
+-- during database setup, before any test body ran.
+--
+-- A forward migration cannot repair that: on a clean database this file itself
+-- raises, so nothing after it is reached. The guard has to be inside this file.
+--
+-- The fix adds a WHERE clause and changes nothing else. Every inserted value,
+-- the slug expression, the metadata merge and the ON CONFLICT behaviour are
+-- byte-for-byte what they were. The rows are inserted when the referenced
+-- subject and parent topic exist, and the statement no-ops when they do not.
+-- Against production, where all twelve rows are present and this migration has
+-- already run, it is a no-op twice over: every row passes the guard, and
+-- ON CONFLICT DO NOTHING still absorbs the re-insert.
 
 BEGIN;
 
@@ -85,6 +109,18 @@ FROM (VALUES
    '{"study_sources":[{"type":"ncert","ref":"Class 11 Indian Economic Development — Indian Economy 1950-1990"},{"type":"standard","ref":"Ramesh Singh"}]}'::jsonb)
 
 ) AS v(parent, name, sources)
+-- Guard, added post-landing (see the header): insert only when the referenced
+-- rows exist. On a database that lacks them — any clean `supabase db reset` —
+-- this yields zero rows instead of a foreign-key violation, so the migration
+-- run continues instead of aborting here.
+WHERE EXISTS (
+        SELECT 1 FROM public.subjects
+        WHERE id = '09db7afb-0864-46c9-b900-1510b60c0011'::uuid
+      )
+  AND EXISTS (
+        SELECT 1 FROM public.topics
+        WHERE id = v.parent::uuid
+      )
 ON CONFLICT DO NOTHING;
 
 COMMIT;
