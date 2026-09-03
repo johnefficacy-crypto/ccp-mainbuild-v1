@@ -367,3 +367,52 @@ def test_practiceable_top_level_lock_not_carried_by_child_rows_alone():
     sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
     assert svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=[TOPIC]) == set()
     assert svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=[MICRO]) == {MICRO}
+
+
+# ── level-aware matching: cases carried over from the parallel PR #1056 ───────
+# #1056 implemented the same fix independently and was closed in favour of the
+# exact-level semantics on main. These four cases are level-agnostic — they hold
+# under either semantic — so they are kept rather than lost with the branch.
+
+
+def test_sibling_microtopic_target_does_not_match():
+    # A split row belongs to ITS microtopic. A sibling under the same parent is a
+    # different lock and must not be served that row.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_B, exam_id=EXAM)
+    assert res["outcome"] == "empty_pool"
+    assert res["question_count"] == 0
+    assert sb.db["mock_attempts"] == []
+
+
+def test_microtopic_match_still_scoped_to_one_exam():
+    # The single-exam invariant holds on the microtopic_id match path too, not
+    # just the topic_id one it was originally written against.
+    sb = _db([
+        _q("q1", topic=TOPIC, microtopic=MICRO, exam=EXAM),
+        _q("q2", topic=TOPIC, microtopic=MICRO, exam=EXAM_B),
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+    assert res["exam_id"] == EXAM
+
+
+def test_section_mode_is_not_level_matched():
+    # Only topic mode matches across level columns. A row whose microtopic_id
+    # happens to equal the requested section id must be matched by section_id
+    # alone — once, not twice, and never on the strength of the microtopic.
+    sb = _db([_q("q1", section=SECTION, topic=TOPIC, microtopic=SECTION)], pyq_order={"q1": 1})
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="section", target_id=SECTION, exam_id=EXAM)
+    assert res["outcome"] == "ready"
+    assert res["question_count"] == 1
+
+
+def test_practiceable_never_returns_an_unrequested_id():
+    # The documented contract is "a subset of topic_ids". A split row carries its
+    # PARENT in topic_id, so a naive key on that column would report availability
+    # for a topic the caller never asked about.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
+    ready = svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=[MICRO])
+    assert ready <= {MICRO}
+    assert TOPIC not in ready

@@ -208,6 +208,11 @@ def select_practice_rows(
     if mode == "topic":
         # Level-aware: match the target against EITHER level column, then narrow
         # to the exact level in Python (see _row_matches_topic_target).
+        # `start_pyq_practice` already UUID-validates target_id, but this function
+        # is callable on its own and the value is interpolated into a PostgREST
+        # filter STRING rather than passed as an encoded parameter — so re-assert
+        # it here, where the interpolation happens.
+        _require_uuid(target_id, "target_id")
         q = q.or_(_topic_target_or_filter(target_id))
     else:
         q = q.eq(filter_col, target_id)
