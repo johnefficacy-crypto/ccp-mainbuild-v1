@@ -32,12 +32,23 @@
 -- Usage:
 --   psql "$DATABASE_URL" -f regression_271_review_pyq_paper_question_count.sql
 --
+--   Or paste the whole file into a SQL editor (Supabase Studio and the
+--   like). The single `\set` below is a psql client directive; every other
+--   line is plain SQL, so an editor can run the file with that one line
+--   removed. Each check reports through RAISE NOTICE rather than \echo
+--   precisely so it stays readable outside psql — the first cut used \echo
+--   and failed with `syntax error at or near "\"` in a non-psql client.
+--
+--   Whichever client you use, run the file AS A WHOLE. It is one
+--   transaction: the fixtures, the audit rows the RPC writes, and the paper
+--   status changes are all undone by the final ROLLBACK. Running it
+--   statement-by-statement would leave those rows behind.
+--
 -- The whole script runs inside one transaction and ROLLS BACK at the end, so
 -- it leaves no rows behind. Each RPC call that is expected to raise is wrapped
 -- in a savepoint block so the script continues past it.
 
 \set ON_ERROR_STOP on
-\pset pager off
 
 BEGIN;
 
@@ -69,8 +80,6 @@ VALUES ('dddddddd-0000-4000-8000-00000271d1d1',
         1, 'A question, so this paper is not empty.');
 
 -- ── 1. Empty paper is refused, and stays pending ─────────────────────────────
-\echo ''
-\echo '1. empty paper, pending -> verified  (expect: no_questions)'
 DO $$
 DECLARE v_msg text;
 BEGIN
@@ -97,8 +106,6 @@ BEGIN
 END $$;
 
 -- ── 2. A populated paper still verifies ──────────────────────────────────────
-\echo ''
-\echo '2. paper with a question, pending -> verified  (expect: ok)'
 DO $$
 DECLARE v_res jsonb;
 BEGIN
@@ -118,8 +125,6 @@ BEGIN
 END $$;
 
 -- ── 3. Checks compose, in step order ─────────────────────────────────────────
-\echo ''
-\echo '3. paper with nothing  (expect: source_type,source_url,no_questions)'
 DO $$
 DECLARE v_msg text;
 BEGIN
@@ -137,8 +142,6 @@ EXCEPTION WHEN SQLSTATE 'P0422' THEN
 END $$;
 
 -- ── 4. The gate is verify-only ───────────────────────────────────────────────
-\echo ''
-\echo '4. empty paper: pending -> rejected -> pending  (expect: both ok)'
 DO $$
 BEGIN
     IF (public.review_pyq_paper(
@@ -159,8 +162,6 @@ BEGIN
 END $$;
 
 -- ── 5. Adding a question unblocks the verify ─────────────────────────────────
-\echo ''
-\echo '5. add a question to the empty paper, then verify  (expect: ok)'
 INSERT INTO public.pyq_questions (id, pyq_paper_id, question_number, question_text)
 VALUES ('dddddddd-0000-4000-8000-00000271d2d2',
         'cccccccc-0000-4000-8000-00000271e0e0',
@@ -179,8 +180,6 @@ BEGIN
 END $$;
 
 -- ── 6. Everything else is untouched ──────────────────────────────────────────
-\echo ''
-\echo '6a. transition table: verified -> pending  (expect: transition_not_allowed)'
 DO $$
 DECLARE v_msg text;
 BEGIN
@@ -197,8 +196,6 @@ EXCEPTION WHEN SQLSTATE 'P0422' THEN
     RAISE NOTICE 'PASS: %', v_msg;
 END $$;
 
-\echo ''
-\echo '6b. reason length  (expect: invalid_reason)'
 DO $$
 DECLARE v_msg text;
 BEGIN
@@ -215,8 +212,6 @@ EXCEPTION WHEN SQLSTATE 'P0422' THEN
     RAISE NOTICE 'PASS: %', v_msg;
 END $$;
 
-\echo ''
-\echo '6c. concurrent-modification guard  (expect: concurrent_modification)'
 DO $$
 DECLARE v_msg text;
 BEGIN
@@ -230,8 +225,6 @@ EXCEPTION WHEN SQLSTATE 'P0409' THEN
     RAISE NOTICE 'PASS: %', v_msg;
 END $$;
 
-\echo ''
-\echo '6d. audit trail: one row per successful transition, none for refusals'
 DO $$
 DECLARE v_count int;
 BEGIN
@@ -246,6 +239,14 @@ BEGIN
     RAISE NOTICE 'PASS: 4 audit rows, none written for the refused calls';
 END $$;
 
-\echo ''
-\echo 'All regression checks passed. Rolling back.'
+DO $$
+BEGIN
+    RAISE NOTICE 'All regression checks passed. Rolling back.';
+END $$;
+
+DO $$
+BEGIN
+    RAISE NOTICE 'All regression checks passed. Rolling back.';
+END $$;
+
 ROLLBACK;
