@@ -14,6 +14,7 @@ import {
 import { ArrowRight, BarChart3, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import OptionInsightsCard from "./OptionInsightsCard";
+import ReachabilityTrendCard from "./ReachabilityTrendCard";
 import TrapDrillLauncher from "./TrapDrillLauncher";
 
 const CATEGORY_LABELS = {
@@ -381,6 +382,16 @@ export default function ExamIntelligenceTab({ examSlug }) {
           )}
         </div>
       </div>
+
+      {/* Reachability trend sits immediately under the "Difficulty distribution"
+          table on purpose. Two things labelled difficulty on one page is a
+          hazard, so they are adjacent rather than separated: the table counts
+          every verified question's observed_difficulty INCLUDING the
+          bulk-defaulted 'medium' from import, while this card plots only papers
+          that went through a judging pass and says so in its own provenance
+          line. See the PR body for the collision and the proposed resolution —
+          the table is deliberately left untouched here. */}
+      <ReachabilityTrendCard examId={data.exam?.slug || data.exam?.id} />
 
       <div className="soft-card rounded-2xl p-5" data-testid="pyq-papers-card">
         <div className="flex items-center gap-2">
