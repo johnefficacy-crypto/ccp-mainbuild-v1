@@ -1,0 +1,101 @@
+question_number,assign_topic_id,microtopic_name,confidence
+1,c06dd0e0-b36c-4c67-8348-91ff8b833eb8,"Mutual funds, ETFs and investment trusts",ok
+2,f5ad1028-8843-46a9-a884-4b896581d7dc,Money and banking: RBI and monetary policy,ok
+3,66a6ed8a-da45-4316-91bd-76b02672e6bc,Statutory and regulatory bodies,ok
+4,8f03c3e9-d885-45fa-b2e4-aeebe1422591,Financial regulation and investor protection,ok
+5,0e80d2a1-69d8-42b6-b305-8f6cbec1a798,Taxation — direct and indirect,ok
+6,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,ok
+7,64bfd004-4a03-4e2c-832f-e2277f58cede,Capital market instruments and bonds,ok
+8,598d7ce8-2a57-4f7f-a16a-e65c4b40d0bb,Equity markets and market participants,ok
+9,cb0b98ec-6f66-4710-96e1-caba6a18dbc3,Solid wastes and e-waste,check
+10,b2f1e8ea-7618-49b1-8d6c-c0674850ab25,Union Budget and the budget process,ok
+11,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,ok
+12,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+13,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,check
+14,93929d93-b7fa-405b-b294-fd328cdffbf5,Early medieval dynasties,ok
+15,93e92dcb-b8d4-4779-b77e-c5a2ffcdc46b,Gupta period,ok
+16,93929d93-b7fa-405b-b294-fd328cdffbf5,Early medieval dynasties,ok
+17,9ef945d6-6176-4099-94e8-8ca04fc4dbed,Early trade and urban centres,check
+18,a4b0c3b7-ea6c-4748-9a96-8cab0fc63c8d,Music traditions and composers,ok
+19,1cd9949b-3424-4350-a5eb-073f4d251c31,Mauryan empire,ok
+20,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+21,1af4be87-f327-4d7e-831d-98b4571d5858,Regional groupings and economic blocs,ok
+22,6b2ca3a8-9659-48cb-9006-9d984b6da076,World physical features and landmarks,ok
+23,6b2ca3a8-9659-48cb-9006-9d984b6da076,World physical features and landmarks,check
+24,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,ok
+25,2f44b4db-8b0d-4504-8161-5a04ea33a707,Plate tectonics,ok
+26,7556e6ac-71df-4dd1-b2e9-94c7e525bab5,Composition and structure of atmosphere,ok
+27,6cfd3c3c-80c4-4cce-8ab5-0a037a8b9dbe,"Solar radiation, heat balance and temperature",ok
+28,523f626e-1464-4bcf-bf5b-2d1b0e019531,Minerals and rocks,check
+29,98ad1c9d-e1be-46d2-a1b2-0646cda1ffff,Greenhouse effect and global warming,check
+30,913b826e-eebe-412a-a39e-4b6766e14a0b,Land resources and agriculture,check
+31,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,check
+32,69f5f696-e1f0-4a23-95e0-447297437ac3,"Climate treaties, institutions and initiatives",ok
+33,2f1b7047-23c4-4d42-8c18-7bcd43c81785,Space science,ok
+34,741b1b26-bb16-4931-96bb-2459aa06a661,Carbon markets and climate metrics,ok
+35,9287d12d-472f-48c4-8b53-30ae06729a8a,"Global summits, declarations and compacts",check
+36,9b6155ff-703a-45ba-956b-96845914c396,Carbon sinks and sequestration,ok
+37,90933549-63ac-42c3-907b-4642292ebe14,Indian fauna and endemic species,ok
+38,98ad1c9d-e1be-46d2-a1b2-0646cda1ffff,Greenhouse effect and global warming,ok
+39,2acb3c6d-cd9f-4426-bb07-28a61b9b0c4e,Indian flora and forest produce,ok
+40,f0f5a7e3-c23f-456c-b5ac-84b999fb3319,Energy flow and ecological pyramids,check
+41,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,ok
+42,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,check
+43,1abf068e-3a8e-45d9-a239-54987dee3085,Batteries and energy storage,ok
+44,4bb3306d-a193-4967-8bdb-782a4e92e468,Plastic waste and microplastics,ok
+45,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,ok
+46,47eba1b6-51b8-46c4-a5e5-727343167cce,Missile systems and strategic weapons,check
+47,ae80b3ab-d22a-4224-bfc7-07144b78637e,Emerging technologies,ok
+48,a4d2c72a-9cac-4f2e-8f95-35f5ac8b8bd8,Immunity and vaccines,ok
+49,59a26ffc-714a-49b3-8857-63d46e05d3ea,Microbes and biological classification,ok
+50,564b065b-0338-4ad3-ac93-839a6f7b882d,Water pollution and its control,ok
+51,758fb132-d14b-4c86-b117-eed7728d7d04,The President and the Union Executive,check
+52,520ffe2a-eabf-4d28-bb1f-af3d3fdc0716,Special provisions for states and areas,check
+53,3fcb6de8-01c5-4837-a3d4-f5aff2b2f300,Constitutional bodies,check
+54,89f9867d-8ca9-4782-9182-cb76d16c1eb3,Governor and the state executive,ok
+55,05a42bff-7b96-4847-896a-b18711d64ae0,Directive Principles and Fundamental Duties,ok
+56,520ffe2a-eabf-4d28-bb1f-af3d3fdc0716,Special provisions for states and areas,ok
+57,66a6ed8a-da45-4316-91bd-76b02672e6bc,Statutory and regulatory bodies,ok
+58,ef19b179-017a-4b69-8d81-c9b245ca681f,Constitutional amendment procedure,ok
+59,89f9867d-8ca9-4782-9182-cb76d16c1eb3,Governor and the state executive,ok
+60,61e36414-bbb9-44f8-895a-eba8665b29c4,Energy and mineral sector economics,ok
+61,9f62ad97-ead4-45d1-9fd3-5da8f919ba63,Fiscal deficit and FRBM,ok
+62,6c1b6671-b0aa-4be3-8427-e5dbfca61817,Connectivity and development partnerships,ok
+63,db700d76-f035-44c5-ad88-5c7272ea41d5,Alternative and cleaner fuels,check
+64,98ad1c9d-e1be-46d2-a1b2-0646cda1ffff,Greenhouse effect and global warming,ok
+65,9f62ad97-ead4-45d1-9fd3-5da8f919ba63,Fiscal deficit and FRBM,ok
+66,61120bdd-8061-4267-820f-e7a862164e8c,Finance Commission and tax devolution,ok
+67,faae405c-380a-493e-b12d-aff5f9409b89,International economic institutions,ok
+68,f21ab90d-a213-49d9-a5d5-208eef7255b6,Digital payments and payment systems,ok
+69,f21ab90d-a213-49d9-a5d5-208eef7255b6,Digital payments and payment systems,ok
+70,75ca9347-8351-48c9-ad9a-237adcdd675e,Renewable energy,ok
+71,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+72,512e8c00-e3c4-4351-b04b-05f26ba8140e,Harappan civilisation,ok
+73,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,check
+74,29af2935-31ad-4498-8d5f-9bb5040484a3,Gandhian mass movements,ok
+75,be28bc4d-75ae-4092-b74d-b51b580d0d8c,European arrival and trading companies,ok
+76,1d225731-6fe5-4a1d-9a82-b95b85e6e1c1,Motions of the earth,ok
+77,1d225731-6fe5-4a1d-9a82-b95b85e6e1c1,Motions of the earth,ok
+78,31cf0e35-2872-42be-81da-39e73517a6cb,Colonial education and social reform,check
+79,58c3f676-0979-42f8-bd47-14f7ed00fb8b,World agricultural and mineral producers,ok
+80,ef2163b5-bdc8-403b-a01e-d8cb279b69df,World political geography and regions in news,ok
+81,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,check
+82,e3cf11b7-f0b6-4f01-9689-2a1fc1ec94f8,Transport and communication,ok
+83,15936c3d-59e5-45de-8658-162a6d11c3aa,Space missions,ok
+84,cd941d98-386c-4a64-a3b8-492266101979,Defence hardware and platforms,ok
+85,89b9d2cb-b90b-4cb3-9df9-16b8b47c3317,Air pollution and its control,ok
+86,758fb132-d14b-4c86-b117-eed7728d7d04,The President and the Union Executive,ok
+87,33a6cc51-e142-4304-bf79-757e88586701,"Presiding officers, privileges and office of profit",ok
+88,7f08042b-edc7-4906-a2ff-59baa3b96176,Political parties and anti-defection,ok
+89,ca69ea82-a1ed-4dd3-a47e-d54de9ccc96f,Mineral and energy resources,check
+90,1af4be87-f327-4d7e-831d-98b4571d5858,Regional groupings and economic blocs,check
+91,fdc986d4-cd5f-4d73-8d34-7f1d7f281131,Local governments,ok
+92,1af4be87-f327-4d7e-831d-98b4571d5858,Regional groupings and economic blocs,ok
+93,b56a807c-ff2c-4fed-a65a-3b39dad23211,"Awards, honours and civilian decorations",ok
+94,ede5a5e1-d0e7-4faa-9db5-192f0e761124,Satellites and navigation,ok
+95,9287d12d-472f-48c4-8b53-30ae06729a8a,"Global summits, declarations and compacts",ok
+96,ca4c910c-cf91-411d-813a-1d1ac0a56a4b,"Days, observances and commemorations",ok
+97,bbf61f1e-1977-4182-8381-ff7d99aae278,Plurilateral and strategic groupings,ok
+98,66a6ed8a-da45-4316-91bd-76b02672e6bc,Statutory and regulatory bodies,ok
+99,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok
+100,69cb3017-786c-4b2f-81a0-5606fc936547,Sporting events and championships,ok

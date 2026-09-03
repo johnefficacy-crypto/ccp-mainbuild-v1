@@ -1,0 +1,1214 @@
+﻿{
+    "import_token":  "13176d5aa5086b11480b6ff7f6b0c60b",
+    "paper_id":  "c82f3e64-dd2c-4aec-96b5-e7305747e173",
+    "total":  100,
+    "format_version":  1,
+    "summary":  {
+                    "ok":  100,
+                    "error":  0,
+                    "duplicate":  0,
+                    "fuzzy":  0
+                },
+    "rows":  [
+                 {
+                     "row":  1,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  1,
+                     "question_text":  "With reference to investments, consider the following :\nI. Bonds\nII. Hedge Funds\nIII. Stocks\nIV. Venture Capital\nHow manâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  2,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  2,
+                     "question_text":  "Which of the following are the sources of income for the Reserve Bank of India?\nI. Buying and selling Government bonds\nIâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  3,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  3,
+                     "question_text":  "With reference to the Government of India, consider the following information :\n\nOrganization | Some of its functions | â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  4,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  4,
+                     "question_text":  "Consider the following statements :\nI. The Reserve Bank of India mandates all the listed companies in India to submit a â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  5,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  5,
+                     "question_text":  "Consider the following statements :\nStatement I : In India, income from allied agricultural activities like poultry farmâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  6,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  6,
+                     "question_text":  "Consider the following statements :\nI. India has joined the Minerals Security Partnership as a member.\nII. India is a reâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  7,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  7,
+                     "question_text":  "Consider the following statements :\nStatement I : As regards returns from an investment in a company, generally, bondholâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  8,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  8,
+                     "question_text":  "Consider the following statements :\nI. India accounts for a very large portion of all equity option contracts traded gloâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  9,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  9,
+                     "question_text":  "Consider the following statements :\nStatement I : Circular economy reduces the emissions of greenhouse gases.\nStatement â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  10,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  10,
+                     "question_text":  "Consider the following statements :\nI. Capital receipts create a liability or cause a reduction in the assets of the Govâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  11,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  11,
+                     "question_text":  "Consider the following statements about Raja Ram Mohan Roy :\nI. He possessed great love and respect for the traditional â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  12,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  12,
+                     "question_text":  "Consider the following subjects with regard to Non-Cooperation Programme :\nI. Boycott of law-courts and foreign cloth\nIIâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  13,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  13,
+                     "question_text":  "The irrigation device called \u0027Araghatta\u0027 was",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  14,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  14,
+                     "question_text":  "Who among the following rulers in ancient India had assumed the titles \u0027Mattavilasa\u0027, \u0027Vichitrachitta\u0027 and \u0027Gunabhara\u0027?",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  15,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  15,
+                     "question_text":  "Fa-hien (Faxian), the Chinese pilgrim, travelled to India during the reign of",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  16,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  16,
+                     "question_text":  "Who among the following led a successful military campaign against the kingdom of Srivijaya, the powerful maritime Stateâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  17,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  17,
+                     "question_text":  "With reference to ancient India (600â322 BC), consider the following pairs :\n\nTerritorial region | River flowing in the â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  18,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  18,
+                     "question_text":  "The first Gandharva Mahavidyalaya, a music training school, was set up in 1901 by Vishnu Digambar Paluskar in",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  19,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  19,
+                     "question_text":  "Ashokan inscriptions suggest that the \u0027Pradeshika\u0027, \u0027Rajuka\u0027 and \u0027Yukta\u0027 were important officers at the",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  20,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  20,
+                     "question_text":  "Consider the following statements in respect of the Non-Cooperation Movement :\nI. The Congress declared the attainment oâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  21,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  21,
+                     "question_text":  "Consider the following countries :\nI. Austria\nII. Bulgaria\nIII. Croatia\nIV. Serbia\nV. Sweden\nVI. North Macedonia\nHow manâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  22,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  22,
+                     "question_text":  "Consider the following countries :\nI. Bolivia\nII. Brazil\nIII. Colombia\nIV. Ecuador\nV. Paraguay\nVI. Venezuela\nAndes mountâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  23,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  23,
+                     "question_text":  "Consider the following water bodies :\nI. Lake Tanganyika\nII. Lake TonlÃ© Sap\nIII. Patos Lagoon\nThrough how many of them dâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  24,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  24,
+                     "question_text":  "Consider the following statements about turmeric during the year 2022â23 :\nI. India is the largest producer and exporterâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  25,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  25,
+                     "question_text":  "Which of the following are the evidences of the phenomenon of continental drift?\nI. The belt of ancient rocks from Braziâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  26,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  26,
+                     "question_text":  "Consider the following statements :\nStatement I : The amount of dust particles in the atmosphere is more in subtropical â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  27,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  27,
+                     "question_text":  "Consider the following statements :\nStatement I : In January, in the Northern Hemisphere, the isotherms bend equatorwardâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  28,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  28,
+                     "question_text":  "Consider the following statements :\nStatement I : In the context of effect of water on rocks, chalk is known as a very pâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  29,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  29,
+                     "question_text":  "Consider the following statements :\nI. Without the atmosphere, temperature would be well below freezing point everywhereâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  30,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  30,
+                     "question_text":  "Consider the following statements about the Rashtriya Gokul Mission :\nI. It is important for the upliftment of rural pooâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  31,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  31,
+                     "question_text":  "Consider the following statements :\nStatement I : Studies indicate that carbon dioxide emissions from cement industry acâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  32,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  32,
+                     "question_text":  "Consider the following statements :\nStatement I : At the 28th United Nations Climate Change Conference (COP28), India reâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  33,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  33,
+                     "question_text":  "Consider the following statements :\nStatement I : Scientific studies suggest that a shift is taking place in the Earth\u0027sâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  34,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  34,
+                     "question_text":  "Consider the following statements :\nStatement I : Article 6 of the Paris Agreement on climate change is frequently discuâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  35,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  35,
+                     "question_text":  "Which one of the following launched the \u0027Nature Solutions Finance Hub for Asia and the Pacific\u0027?",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  36,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  36,
+                     "question_text":  "With reference to \u0027Direct Air Capture\u0027, an emerging technology, which of the following statements is/are correct?\nI. It â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  37,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  37,
+                     "question_text":  "Regarding Peacock tarantula (Gooty tarantula), consider the following statements :\nI. It is an omnivorous crustacean.\nIIâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  38,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  38,
+                     "question_text":  "Consider the following statements :\nI. Carbon dioxide (CO2) emissions in India are less than 0Â·5 t CO2/capita.\nII. In teâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  39,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  39,
+                     "question_text":  "Consider the following pairs :\n\nPlant | Description\nI. Cassava : Woody shrub\nII. Ginger : Herb with pseudostem\nIII. Malaâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  40,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  40,
+                     "question_text":  "With reference to the planet Earth, consider the following statements :\nI. Rain forests produce more oxygen than that prâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  41,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  41,
+                     "question_text":  "Consider the following types of vehicles :\nI. Full battery electric vehicles\nII. Hydrogen fuel cell vehicles\nIII. Fuel câ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  42,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  42,
+                     "question_text":  "With reference to Unmanned Aerial Vehicles (UAVs), consider the following statements :\nI. All types of UAVs can do vertiâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  43,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  43,
+                     "question_text":  "In the context of electric vehicle batteries, consider the following elements :\nI. Cobalt\nII. Graphite\nIII. Lithium\nIV. â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  44,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  44,
+                     "question_text":  "Consider the following :\nI. Cigarette butts\nII. Eyeglass lenses\nIII. Car tyres\nHow many of them contain plastic?",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  45,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  45,
+                     "question_text":  "Consider the following substances :\nI. Ethanol\nII. Nitroglycerine\nIII. Urea\nCoal gasification technology can be used in â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  46,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  46,
+                     "question_text":  "What is the common characteristic of the chemical substances generally known as CL-20, HMX and LLM-105, which are sometiâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  47,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  47,
+                     "question_text":  "Consider the following statements :\nI. It is expected that Majorana 1 chip will enable quantum computing.\nII. Majorana 1â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  48,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  48,
+                     "question_text":  "With reference to monoclonal antibodies, often mentioned in news, consider the following statements :\nI. They are man-maâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  49,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  49,
+                     "question_text":  "Consider the following statements :\nI. No virus can survive in ocean waters.\nII. No virus can infect bacteria.\nIII. No vâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  50,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  50,
+                     "question_text":  "Consider the following statements :\nStatement I : Activated carbon is a good and an attractive tool to remove pollutantsâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  51,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  51,
+                     "question_text":  "With reference to the Indian polity, consider the following statements :\nI. An Ordinance can amend any Central Act.\nII. â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  52,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  52,
+                     "question_text":  "Consider the following pairs :\n\nState | Description\nI. Arunachal Pradesh : The capital is named after a fort, and the Stâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  53,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  53,
+                     "question_text":  "With reference to India, consider the following :\nI. The Inter-State Council\nII. The National Security Council\nIII. Zonaâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  54,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  54,
+                     "question_text":  "Consider the following statements :\nI. The Constitution of India explicitly mentions that in certain spheres the Governoâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  55,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  55,
+                     "question_text":  "Consider the following pairs :\n\nProvision in the Constitution of India | Stated under\nI. Separation of Judiciary from thâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  56,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  56,
+                     "question_text":  "Consider the following statements :\nWith reference to the Constitution of India, if an area in a State is declared as Scâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  57,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  57,
+                     "question_text":  "With reference to India, consider the following pairs :\n\nOrganization | Union Ministry\nI. The National Automotive Board â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  58,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  58,
+                     "question_text":  "Consider the following subjects under the Constitution of India :\nI. List IâUnion List, in the Seventh Schedule\nII. Exteâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  59,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  59,
+                     "question_text":  "With reference to the Indian polity, consider the following statements :\nI. The Governor of a State is not answerable toâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  60,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  60,
+                     "question_text":  "Consider the following activities :\nI. Production of crude oil\nII. Refining, storage and distribution of petroleum\nIII. â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  61,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  61,
+                     "question_text":  "Suppose the revenue expenditure is â¹80,000 crores and the revenue receipts of the Government are â¹60,000 crores. The Govâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  62,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  62,
+                     "question_text":  "India is one of the founding members of the International North-South Transport Corridor (INSTC), a multimodal transportâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  63,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  63,
+                     "question_text":  "Consider the following statements :\nStatement I : Of the two major ethanol producers in the world, i.e., Brazil and the â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  64,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  64,
+                     "question_text":  "The World Bank warned that India could become one of the first places where wet-bulb temperatures routinely exceed 35 Â°Câ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  65,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  65,
+                     "question_text":  "A country\u0027s fiscal deficit stands at â¹50,000 crores. It is receiving â¹10,000 crores through non-debt creating capital reâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  66,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  66,
+                     "question_text":  "Which of the following statements with regard to recommendations of the 15th Finance Commission of India are correct?\nI.â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  67,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  67,
+                     "question_text":  "Consider the following statements in respect of the International Bank for Reconstruction and Development (IBRD) :\nI. Itâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  68,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  68,
+                     "question_text":  "Consider the following statements in respect of RTGS and NEFT :\nI. In RTGS, the settlement time is instantaneous while iâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  69,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  69,
+                     "question_text":  "Consider the following countries :\nI. United Arab Emirates\nII. France\nIII. Germany\nIV. Singapore\nV. Bangladesh\nHow many â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  70,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  70,
+                     "question_text":  "Consider the following statements about \u0027PM Surya Ghar Muft Bijli Yojana\u0027 :\nI. It targets installation of one crore solaâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  71,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  71,
+                     "question_text":  "\"Sedition has become my religion\" was the famous statement given by Gandhiji at the time of",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  72,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  72,
+                     "question_text":  "The famous female figurine known as \u0027Dancing Girl\u0027, found at Mohenjo-daro, is made of",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  73,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  73,
+                     "question_text":  "Who provided legal defence to the people arrested in the aftermath of Chauri Chaura incident?",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  74,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  74,
+                     "question_text":  "Subsequent to which one of the following events, Gandhiji, who consistently opposed untouchability and appealed for its â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  75,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  75,
+                     "question_text":  "Consider the following fruits :\nI. Papaya\nII. Pineapple\nIII. Guava\nHow many of the above were introduced in India by theâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  76,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  76,
+                     "question_text":  "Consider the following countries :\nI. United Kingdom\nII. Denmark\nIII. New Zealand\nIV. Australia\nV. Brazil\nHow many of thâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  77,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  77,
+                     "question_text":  "Consider the following statements :\nI. Anadyr in Siberia and Nome in Alaska are a few kilometers from each other, but whâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  78,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  78,
+                     "question_text":  "Who among the following was the founder of the \u0027Self-Respect Movement\u0027?",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  79,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  79,
+                     "question_text":  "Consider the following pairs :\n\nCountry | Resource-rich in\nI. Botswana : Diamond\nII. Chile : Lithium\nIII. Indonesia : Niâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  80,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  80,
+                     "question_text":  "Consider the following pairs :\n\nRegion | Country\nI. Mallorca : Italy\nII. Normandy : Spain\nIII. Sardinia : France\n\nIn howâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  81,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  81,
+                     "question_text":  "Consider the following statements :\nStatement I : Some rare earth elements are used in the manufacture of flat televisioâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  82,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  82,
+                     "question_text":  "Consider the following statements :\nI. Indian Railways have prepared a National Rail Plan (NRP) to create a \u0027future readâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  83,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  83,
+                     "question_text":  "Consider the following space missions :\nI. Axiom-4\nII. SpaDeX\nIII. Gaganyaan\nHow many of the space missions given above â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  84,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  84,
+                     "question_text":  "With reference to India\u0027s defence, consider the following pairs :\n\nAircraft type | Description\nI. Dornier-228 : Maritimeâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  85,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  85,
+                     "question_text":  "Artificial way of causing rainfall to reduce air pollution makes use of",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  86,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  86,
+                     "question_text":  "Consider the following statements with regard to pardoning power of the President of India :\nI. The exercise of this powâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  87,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  87,
+                     "question_text":  "Consider the following statements :\nI. On the dissolution of the House of the People, the Speaker shall not vacate his/hâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  88,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  88,
+                     "question_text":  "Consider the following statements :\nI. If any question arises as to whether a Member of the House of the People has becoâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  89,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  89,
+                     "question_text":  "Consider the following statements :\nStatement I : In India, State Governments have no power for making rules for grant oâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  90,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  90,
+                     "question_text":  "Which organization has enacted the Nature Restoration Law (NRL) to tackle climate change and biodiversity loss?",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  91,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  91,
+                     "question_text":  "Consider the following statements :\nI. Panchayats at the intermediate level exist in all States.\nII. To be eligible to bâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  92,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  92,
+                     "question_text":  "Consider the following statements in respect of BIMSTEC :\nI. It is a regional organization consisting of seven member Stâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  93,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  93,
+                     "question_text":  "Who amongst the following are members of the Jury to select the recipient of \u0027Gandhi Peace Prize\u0027?\nI. The President of Iâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "C",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  94,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  94,
+                     "question_text":  "GPS-Aided Geo Augmented Navigation (GAGAN) uses a system of ground stations to provide necessary augmentation. Which of â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  95,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  95,
+                     "question_text":  "Consider the following statements regarding AI Action Summit held in Grand Palais, Paris in February 2025 :\nI. Co-chaireâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  96,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  96,
+                     "question_text":  "Consider the following pairs :\nI. International Year of the Woman Farmer : 2026\nII. International Year of Sustainable anâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "D",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  97,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  97,
+                     "question_text":  "Consider the following statements with regard to BRICS :\nI. 16th BRICS Summit was held under the Chairship of Russia in â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  98,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  98,
+                     "question_text":  "Consider the following statements about Lokpal :\nI. The power of Lokpal applies to public servants of India, but not to â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  99,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  99,
+                     "question_text":  "Consider the following statements in respect of the first Kho Kho World Cup :\nI. The event was held in Delhi, India.\nII.â¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "A",
+                     "observed_difficulty":  null
+                 },
+                 {
+                     "row":  100,
+                     "status":  "ok",
+                     "messages":  [
+
+                                  ],
+                     "question_number":  100,
+                     "question_text":  "Consider the following statements :\nI. In the finals of the 45th Chess Olympiad held in 2024, Gukesh Dommaraju became thâ¦",
+                     "question_type":  "mcq",
+                     "correct_option":  "B",
+                     "observed_difficulty":  null
+                 }
+             ]
+}

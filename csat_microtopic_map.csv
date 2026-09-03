@@ -1,0 +1,316 @@
+year,paper_id,question_number,microtopic,topic_id,stem
+2023,586d515e-2d3d-485d-a944-3983e4569e53,1,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,2,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2023,586d515e-2d3d-485d-a944-3983e4569e53,3,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,4,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,5,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,6,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,"A box contains 14 black balls, 20 blue balls, 26 green balls"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,7,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,"If 'ZERO' is written as 'CHUR', then how is 'PLAYER' written"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,8,"Ages — present, past and future",cd574056-f811-4f7b-8fdd-a4e37d0c9772,Consider the following statements: 1. A is older than B. 2. 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,9,Family tree puzzle with generations,652eb8c7-a25a-48c1-b51d-ddf64f8ede1b,Consider the following including the Question and the Statem
+2023,586d515e-2d3d-485d-a944-3983e4569e53,10,Odd one out from a list,ebb5aad8-4088-4f4f-b2a9-0506b1a55072,Choose the group which is different from the others:
+2023,586d515e-2d3d-485d-a944-3983e4569e53,11,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,12,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following statements best reflects the logical 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,13,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,14,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"If 7  9  10 = 8, 9  11  30 = 5, 11  17  21 = 13, what "
+2023,586d515e-2d3d-485d-a944-3983e4569e53,15,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Let x be a positive integer such that 7x + 96 is divisible b
+2023,586d515e-2d3d-485d-a944-3983e4569e53,16,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"If p, q, r and s are distinct single digit positive numbers,"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,17,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,A number N is formed by writing 9 for 99 times. What is the 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,18,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Each digit of a 9-digit number is 1. It is multiplied by its
+2023,586d515e-2d3d-485d-a944-3983e4569e53,19,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the sum of all digits which appear in all the intege
+2023,586d515e-2d3d-485d-a944-3983e4569e53,20,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,ABCD is a square. One point on each of AB and CD; and two di
+2023,586d515e-2d3d-485d-a944-3983e4569e53,21,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the cruc
+2023,586d515e-2d3d-485d-a944-3983e4569e53,22,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,Which one of the following statements best implies the most 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,23,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2023,586d515e-2d3d-485d-a944-3983e4569e53,24,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,"Three of the five positive integers p, q, r, s, t are even a"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,25,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Consider the following in respect of prime number p and comp
+2023,586d515e-2d3d-485d-a944-3983e4569e53,26,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"A 3-digit number ABC, on multiplication with D gives 37DD wh"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,27,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"For any choices of values of X, Y and Z, the 6 digit number "
+2023,586d515e-2d3d-485d-a944-3983e4569e53,28,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,125 identical cubes are arranged in the form of cubical bloc
+2023,586d515e-2d3d-485d-a944-3983e4569e53,29,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,How many distinct 8-digit numbers can be formed by rearrangi
+2023,586d515e-2d3d-485d-a944-3983e4569e53,30,Individual and combined work rates,9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22,"A, B, C working independently can do a piece of work in 8, 1"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,31,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,32,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one the following statements best reflects what is imp
+2023,586d515e-2d3d-485d-a944-3983e4569e53,33,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,34,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,"Raj has ten pairs of red, nine pairs of white and eight pair"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,35,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,In how many ways can a batsman score exactly 25 runs by scor
+2023,586d515e-2d3d-485d-a944-3983e4569e53,36,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,There are four letters and four envelopes and exactly one le
+2023,586d515e-2d3d-485d-a944-3983e4569e53,37,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the remainder when 85 × 87 × 89 × 91 × 95 × 96 is di
+2023,586d515e-2d3d-485d-a944-3983e4569e53,38,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the unit digit in the expansion of (57242)9×7×5×3×1 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,39,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"If ABC and DEF are both 3-digit numbers such that A, B, C, D"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,40,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,D is a 3-digit number such that the ratio of the number to t
+2023,586d515e-2d3d-485d-a944-3983e4569e53,41,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which one of the following statements most likely reflects a
+2023,586d515e-2d3d-485d-a944-3983e4569e53,42,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,43,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,"Based on the above passage, which one of the following terms"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,44,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the remainder if 2192 is divided by 6?
+2023,586d515e-2d3d-485d-a944-3983e4569e53,45,Alphanumeric and mixed series,ba50fea4-a0f8-4254-9e5c-dbd2046eacdc,Consider the sequence ABC_ _ABC_DABBCD_ABCD that follows a c
+2023,586d515e-2d3d-485d-a944-3983e4569e53,46,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,AB and CD are 2-digit numbers. Multiplying AB with CD result
+2023,586d515e-2d3d-485d-a944-3983e4569e53,47,Category and attribute matching puzzle,da8b77aa-4e53-4876-be17-f8f96e1f2913,Consider the following statements in respect of five candida
+2023,586d515e-2d3d-485d-a944-3983e4569e53,48,Statement and inference,75d64ae7-691e-4226-9c46-05d217805e7d,"Let P, Q, R, S and T be five statements such that: I. If P i"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,49,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,"A cuboid of dimensions 7cm × 5cm × 3cm is painted red, green"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,50,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,"The letters of the word ""INCOMPREHENSIBILITIES"" are arranged"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,51,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,52,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,"Regarding the financialization of household savings, which o"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,53,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,54,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,55,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,"In an examination, the maximum marks for each of the four pa"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,56,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,A flag has to be designed with 4 horizontal strips using som
+2023,586d515e-2d3d-485d-a944-3983e4569e53,57,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,A rectangular floor measures 4 m in length and 2.2m in bread
+2023,586d515e-2d3d-485d-a944-3983e4569e53,58,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,"There are five persons, P, Q, R, S and T each one of whom ha"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,59,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,"There are large number of silver coins weighing 2gm, 5gm, 10"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,60,Symbol-substitution inequality,ed3eadd3-5574-4043-a2e4-2bfde047b9c1,Consider the following: I. A + B means A is neither smaller 
+2023,586d515e-2d3d-485d-a944-3983e4569e53,61,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,62,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,63,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2023,586d515e-2d3d-485d-a944-3983e4569e53,64,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,40 children are standing in a circle and one of them (say ch
+2023,586d515e-2d3d-485d-a944-3983e4569e53,65,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,"What is the middle terms of the sequence Z, Z, Y, Y, Y, X, X"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,66,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,Questions: Is p greater than q? Statement-1: p × q is greate
+2023,586d515e-2d3d-485d-a944-3983e4569e53,67,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,"Questions: Is (p + q- r) greater than (p – q + r), where p, "
+2023,586d515e-2d3d-485d-a944-3983e4569e53,68,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,"In a party, 75 persons took tea, 60 persons took coffee and "
+2023,586d515e-2d3d-485d-a944-3983e4569e53,69,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,Consider a 3-digit number. Question: What is the number? Sta
+2023,586d515e-2d3d-485d-a944-3983e4569e53,70,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,For five children with ages a < b < c < d < e; any two succe
+2023,586d515e-2d3d-485d-a944-3983e4569e53,71,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,72,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,73,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflects the most
+2023,586d515e-2d3d-485d-a944-3983e4569e53,74,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,A principal P becomes Q in 1 year when compounded half-yearl
+2023,586d515e-2d3d-485d-a944-3983e4569e53,75,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,How many natural numbers are there which given a remainder o
+2023,586d515e-2d3d-485d-a944-3983e4569e53,76,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"Let pp, qq and rr be 2 digit numbers where p < q < r. If pp "
+2023,586d515e-2d3d-485d-a944-3983e4569e53,77,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the sum of all 4-digit numbers less than 2000 formed
+2023,586d515e-2d3d-485d-a944-3983e4569e53,78,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,What is the number of selections of 10 consecutive things ou
+2023,586d515e-2d3d-485d-a944-3983e4569e53,79,Clocks and calendars,484fbb39-85bd-4c88-88b3-9426befa6b49,"If today is Sunday, then which day is it exactly on 1010th d"
+2023,586d515e-2d3d-485d-a944-3983e4569e53,80,Clocks and calendars,484fbb39-85bd-4c88-88b3-9426befa6b49,There are three traffic signals. Each signal changes colour 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,1,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following statements best reflect the most logi
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,2,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,3,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following statements best reflects/reflect the 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,4,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,5,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,What is the least possible number of cuts required to cut a 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,6,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"In the expression 5 * 4* 3* 2* 1, * is chosen from +, -, × e"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,7,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,A certain number of men can complete a piece of work in 6k d
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,8,Individual and combined work rates,9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22,"X, Y and Z can complete a piece of work individually in 6 ho"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,9,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,How many consecutive zeros are there at the end of the integ
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,10,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,"On January 1st, 2023, a person saved Rs 1. On January 2nd, 2"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,11,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the most
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,12,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,13,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the cent
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,14,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,15,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,222333 + 333222 is divisible by which of the following numbe
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,16,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,What percent of water must be mixed with honey so as to gain
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,17,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,What is the rightmost digit preceding the zeros in the value
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,18,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"421 and 427, when divided by the same number, leave the same"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,19,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,A can X contains 399 litres of petrol and a can Y contains 5
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,20,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Consider the following statements in respect of the sum S = 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,21,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,22,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the cent
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,23,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which one of the following statements best reflects the thin
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,24,Alphanumeric and mixed series,ba50fea4-a0f8-4254-9e5c-dbd2046eacdc,Consider the sequence A_BCD_BBCDABC_DABC_D that follows a ce
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,25,"Cost price, selling price and margin",716450be-826f-428c-a51e-57101be2e9f9,"Two persons P and Q enter into a business. P puts ₹ 14,000 m"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,26,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,P’s salary is 20% lower than Q’s salary which is 20% lower t
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,27,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,A number is mistakenly divided by 4 instead of multiplying b
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,28,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,"In an examination, 80% of students passed in English, 70% of"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,29,Family tree puzzle with generations,652eb8c7-a25a-48c1-b51d-ddf64f8ede1b,"A father said to his son, “n years back I was as old as you "
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,30,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,Consider the following : 1. 1000 litres = 1m3 2. 1 metric to
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,31,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which of the following is/are emphatically conveyed by the a
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,32,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,33,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,"When we meet other people while we travel, we learn to diffe"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,34,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,35,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Let X be a two-digit number and Y be another two-digit numbe
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,36,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,Consider the following : Weight of 6 boys = Weight of 7 girl
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,37,Clocks and calendars,484fbb39-85bd-4c88-88b3-9426befa6b49,How many times the hour hand and the minute hand coincide in
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,38,Clocks and calendars,484fbb39-85bd-4c88-88b3-9426befa6b49,The calendar for the year 2025 is same for
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,39,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,"Let p, q, r and s be distinct positive integers. Let p, q be"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,40,Clocks and calendars,484fbb39-85bd-4c88-88b3-9426befa6b49,What is the angle between the minute hand and hour hand when
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,41,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following statements best reflects/reflect the 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,42,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,43,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,44,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the cent
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,45,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,What is the number of fives used in numbering a 260-page boo
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,46,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,What is the sum of the first 28 terms in the following seque
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,47,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,"A person buys three articles P, Q and R for ₹ 3,330. If P co"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,48,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,If the sum of the two-digit numbers AB and CD is the three-d
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,50,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"The total cost of 4 oranges, 6 mangoes and 8 apples is equal"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,51,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the most
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,52,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,53,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements best reflect the most 
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,54,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,325 + 227 is divisible by
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,59,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,60,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,61,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,62,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the most
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,63,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,64,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,65,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,66,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,67,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,68,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question if given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,69,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statement I and II. Cons
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,70,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A Question is given followed by two Statements I and II. Con
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,71,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the most
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,72,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"Based on the above passage, the following assumptions have b"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,73,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,Question is given followed by two Statements I and II. Consi
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,74,Statement and inference,75d64ae7-691e-4226-9c46-05d217805e7d,"Main Statement is followed by four Statements labelled P, Q,"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,75,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,a + b means a – b; a – b means a x b; a x b means a ÷ b; a ÷
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,76,Symbol-substitution inequality,ed3eadd3-5574-4043-a2e4-2bfde047b9c1,If P means ‘greater than (>)’; Q means ‘less than (<)’; R me
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,77,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,"If in a certain code, ‘ABCD’ is written as 24 and ‘EFGH’ is "
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,78,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,"If in a certain code, 'POT' is written as ATOP and 'TRAP' is"
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,79,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,"What will come in place of * in the sequence 3, 14, 39, 84, "
+2024,9e191ae4-68b9-47bf-9121-6d9d468a7bc5,80,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"In some code, letters P, Q, R, S, T represent numbers 4, 5, "
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,1,Inequalities and relationship determination,0683c41f-da6e-4738-872a-f2cd424de015,"For 1/3 < x < y < 2, which of the following statements is/ar"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,2,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,What is the minimum number of times one needs to measure to 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,3,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,"There are four types of weights, namely 1 kg, 2 kg, 5 kg and"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,4,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,A cut on a solid object divides the object into two parts wh
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,5,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,The class average x in a test increases by 4 when the score 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,6,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions is/are valid? Though SARS
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,7,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which of the following reflect the intent of the writer in t
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,8,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following statements reflect the logical and ra
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,9,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,"Three variables x, y and z take values 2, 3, 4 or 5 such tha"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,10,Simple and compound ratio,74799854-a84e-4607-844e-afb8c50b7bc0,"Suppose x, y and z are variables taking positive real number"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,11,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,Which of the following assumptions is/are valid? Agricultura
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,12,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are not correct? Tech-s
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,13,Position from either end,daa9cd63-0fdb-4798-8969-5ce292b31a76,"P, Q, R, S and T are ranked 1 to 5 (not necessarily in that "
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,14,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,Two identical straight rods are painted in five distinct col
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,15,Category and attribute matching puzzle,da8b77aa-4e53-4876-be17-f8f96e1f2913,"Seven persons A, B, C, D, E, F and G travel by three cars X,"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,16,Statement and inference,75d64ae7-691e-4226-9c46-05d217805e7d,"There are four statements X, Y, Z and W. Their relations are"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,17,Relative speed and meeting problems,f5c68108-e718-4a7e-b546-d07e543534b5,X and Y are two runners who run for the same duration of tim
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,18,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"In an objective type question paper, 5 marks are awarded for"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,19,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions is/are valid? Only a seri
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,20,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? If an offe
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,21,Relative speed and meeting problems,f5c68108-e718-4a7e-b546-d07e543534b5,An explosion takes place at a certain distance from an army 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,22,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,The digit in the unit place of the number 6129 × 7307 is
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,23,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,A person saves 10% of his salary every month. If his salary 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,24,Family tree puzzle with generations,652eb8c7-a25a-48c1-b51d-ddf64f8ede1b,P has a son and a daughter. S is the mother of T. S is R's s
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,25,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,How many three-digit numbers can be expressed as an integral
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,26,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following inferences is/are correct? The source
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,27,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? Thermal po
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,28,Two-statement syllogism,e8565eaf-c332-47da-97ab-b50aff00ac13,Consider the following statements: Every red is blue. Every 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,29,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,How many times does 5 appear in all two-digit positive integ
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,30,Path tracing and final position,c2de8b3d-f79b-47b4-9b9e-5199a2230dbf,X travels 6 km on a bicycle with average speeds of 5 km per 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,31,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,"Seven cubes are identical in shape. Out of these, the weight"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,32,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Which one among the following statements most appropriately 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,33,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,"Which of the following conclusions, made on the basis of the"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,34,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions is/are correct? All landl
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,35,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements are not correct? The landh
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,36,Path tracing and final position,c2de8b3d-f79b-47b4-9b9e-5199a2230dbf,A person facing the East travels 4 km straight and then turn
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,37,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,"In a sequence of numbers, each number other than the first t"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,38,Simple and compound ratio,74799854-a84e-4607-844e-afb8c50b7bc0,The ratio of male to female workers in two companies A and B
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,39,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,If the product of the HCF and LCM of two distinct numbers is
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,40,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,If x and y are two digits and the number 4x5y790 is divisibl
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,41,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? Radical ac
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,42,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? Hugh Grant
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,43,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions are correct? In the break
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,44,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? The conver
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,45,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,An alloy P contains 20% copper and 80% zinc by weight. Anoth
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,46,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,A is a 2-digit number with different digits. B is also a 2-d
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,47,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,"If ZERO is encoded as ADSN, then how do you encode STOP?"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,48,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,"There are three types of rectangular tiles: 3' × 3', 3' × 7'"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,49,Relative speed and meeting problems,f5c68108-e718-4a7e-b546-d07e543534b5,A train has to complete a journey of 800 km. If it meets a m
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,50,Tabular data interpretation,ce23f17b-f621-46b0-bb72-fc926a0be3d4,"In a recruitment process, the selection of candidates is bas"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,51,Statement and inference,75d64ae7-691e-4226-9c46-05d217805e7d,"Consider the following three statements, namely S1, S2 and S"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,52,Communication register by relationship,3a0004f6-d89a-4f5f-b858-0dca53d6f277,Match List-I with List-II and select the answer using the co
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,53,Tools of communication and their purpose,2416c0e0-a68f-45a9-9d66-9b8910ac3e9e,Match List-I with List-II and select the answer using the co
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,54,Course of action,eccadce1-2c9a-4672-9eef-65ee4bfaeb84,Which among the following actions would constitute the most 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,55,Barriers to communication,fa2ead71-59b9-4417-b71f-1f623d2c02c9,Match List-I with List-II and select the answer using the co
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,56,Tools of communication and their purpose,2416c0e0-a68f-45a9-9d66-9b8910ac3e9e,You are required to design a 'questionnaire' to be filled on
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,57,Tools of communication and their purpose,2416c0e0-a68f-45a9-9d66-9b8910ac3e9e,"With reference to 'circular letters', which of the following"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,58,"Cost price, selling price and margin",716450be-826f-428c-a51e-57101be2e9f9,"Three partners A, B and C entered into a business. A investe"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,59,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,There are two chemicals which do not react with each other. 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,60,"Cost price, selling price and margin",716450be-826f-428c-a51e-57101be2e9f9,A shopkeeper employs a delivery boy and gives him a motorcyc
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,61,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,Question: X receives three coins of different denominations:
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,62,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,"Question: For two distinct real numbers x and y, which of th"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,63,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,"Question: If x and y are integers, then is x even? Statement"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,64,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,Question: X is a collection of certain odd numbers whereas Y
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,65,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,"Question: If x, y and z are integers, each greater than 1, t"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,66,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions are valid? Seven Sanskrit
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,67,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which one of the following statements is not correct?
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,68,Multi-chain inequality with linked variables,15e7768f-f126-4030-a227-218a815ea259,"The weight of X, in kg, is denoted by X. The weights of A, B"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,69,Sets of consecutive and patterned numbers,16630438-beb1-473f-b251-baccce8cd86a,How many words can one form by shuffling the letters of the 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,70,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"X, Y and Z jump forward 4', 6' and 5', respectively. At 8 AM"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,71,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which of the following conclusions are valid? Sport is more 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,72,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? Parents ar
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,73,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"A toy T jumps forward or backward. In each forward jump, it "
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,74,Circular arrangement — facing centre,49d20336-ad3d-48c7-b172-fdd9c3d17e7f,"Eight persons P, Q, R, S, T, U, V and W sit around a round t"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,75,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,The top of a table is rectangular and its dimensions are 6' 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,76,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,Which of the following statements is/are correct? Real value
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,77,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,Which of the following assumptions is/are valid? Deflation s
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,78,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,A pattern formed by two characters a and b is repeated more 
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,79,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"If 10m × 1000 × n = 7525 × 2532 × 3275, where n is not divis"
+2026,b06305ad-cc93-4c27-b309-1b590f0a3247,80,Relative speed and meeting problems,f5c68108-e718-4a7e-b546-d07e543534b5,The speed of a train T is 100 km per hour and the speed of a
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,1,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Directions for the following 4 (Four) items : Read the follo
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,2,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,3,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Which one of the following statements best reflects the crux
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,4,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,5,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the maximum value of n such that 7 × 343 × 385 × 100
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,6,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,"What is X in the sequence 24, X, 12, 18, 36, 90?"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,7,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,P and Q walk along a circular track. They start at 5:00 am. 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,8,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,"If P = +, Q = –, R = ×, S = +, then insert the proper notati"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,9,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,A tram overtakes 2 persons X and Y walking at an average spe
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,10,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"If N2 = 12345678987654321, then how many digits does the num"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,11,Inference and implied meaning,420312ba-2e38-4e16-a836-7e6764a05535,Which one of the following statements best reflects the coro
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,12,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the passage, the following assumptions hav"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,13,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,"Passage-2 In our country, handlooms are equated with a cultu"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,14,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,15,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Consider the first 100 natural numbers. How many of them are
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,16,Simple and compound ratio,74799854-a84e-4607-844e-afb8c50b7bc0,"If 4 ≤ x ≤ 8 and 2 ≤ y ≤ 7, then what is the ratio of maximu"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,17,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Let both p and k be prime numbers such that (p² + k) is also
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,18,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,There are n sets of numbers each having only three positive 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,19,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"Let PQR be a 3-digit number, PPT be a 3-digit number and PS "
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,20,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,Consider the sequence AB_CC_A_BCCC_BBC_C that follows a cert
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,21,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Directions for the following 4 (four) items : Read the follo
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,22,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the passage, the following assumptions hav"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,23,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,If the social inequality is the most acutely felt social pro
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,24,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,25,"Area and perimeter — rectangle, square, triangle",424d99d5-720f-409e-ba66-8660ac95a486,A solid cube is painted yellow on all its faces. The cube is
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,26,Number and digit coding,a4dddc0f-e194-4eb6-bfc6-078240c8d4f0,"If 7 * 24 = 25 and 12 * 16 = 20, then what is 16 * 63 equal "
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,27,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,The petrol price shot up by 10% as a result of the hike in c
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,28,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"A 4-digit number N is such that when divided by 3, 5, 6, 9 i"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,29,Symbol-substitution inequality,ed3eadd3-5574-4043-a2e4-2bfde047b9c1,Consider the following statements: I. If A ≤ B > C < D > E >
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,30,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the unit digit in the multiplication of 1 × 3 × 5 × 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,31,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Directions for the following 4 (four) items: Read the follow
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,32,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,33,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Passage – 2 The history of renewable energy suggests there i
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,34,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,35,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,A natural number N is such that it can be expressed as N = p
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,36,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"Three prime numbers p, q, and r, each less than 20, are such"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,37,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,How many possible values of (p + q + r) are there satisfying
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,38,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,What comes at X and Y respectively in the following sequence
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,39,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,Team X scored a total of N runs in 20 overs. Team Y tied the
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,40,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,"The price (p) of a commodity is first increased by k%, then "
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,41,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Passage -1 A single number for inflation is an aggregate acr
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,42,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Passage-2 Trust stands commonly defined as being vulnerable 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,43,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,44,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,45,Simple and compound ratio,74799854-a84e-4607-844e-afb8c50b7bc0,"In a T20 cricket match, three players X, Y and Z scored a to"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,46,Linear equations in one and two variables,5194061c-a0ed-423e-aa9d-b3c774115dc8,"Let p + q = 10, where p, q are integers. Value-I = Maximum v"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,47,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,Consider a set of 11 numbers: Value-I = Minimum value of the
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,48,Averages — simple and weighted,528ffbb5-94cb-438d-a875-c854d0f65ec5,"The average of three numbers p, q and r is k. p is as much m"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,49,Inequalities and relationship determination,0683c41f-da6e-4738-872a-f2cd424de015,Let x be a real number between 0 and 1. Which of the followi
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,50,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,The difference between any two natural numbers is 10. What c
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,51,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,Directions for the following 3 (three) items: Read the follo
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,52,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"existence. 52. With reference to the above passage, the foll"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,53,Explicit detail retrieval,342ec4bb-5625-4398-9b44-2963d65062a4,"Passage – 2 ""A network of voluntary associations stands as a"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,54,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Consider the following statements: I. There exists a natural
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,55,Direction of one point relative to another,55cde475-d4af-4ff7-b347-b51066736cab,"There are 7 places A, B, C, D, E, F and G in a city connecte"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,56,Letter shifting and alphabet position,2ba3fb21-1709-4d8b-9059-bbfee5264d8f,In a certain code if 64 is written as 343 and 216 is written
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,57,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,What is the remainder when 9³ + 9⁴ + 9⁵ + 9⁶ + ... + 9¹⁰⁰ is
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,58,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,59,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,60,Data sufficiency,f0e0d76d-38ed-4b29-85db-ae678611b715,A question is given followed by two Statements I and II. Con
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,61,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Directions for the following 4 (Four) items : Read the follo
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,62,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,cultivation practices. 62. With reference to the above passa
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,63,"Author tone, attitude and purpose",ebdd3a2a-f038-4775-9684-647b6cbbdcbb,"Passage-2 “A good statesman, like any other sensible. human "
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,64,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"good governance. 64. With reference to the above passage, th"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,65,Family tree puzzle with generations,652eb8c7-a25a-48c1-b51d-ddf64f8ede1b,P is the brother of Q and R. S is R's mother. T is P's fathe
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,66,Number and digit coding,a4dddc0f-e194-4eb6-bfc6-078240c8d4f0,"If NO is coded as 210, NOT is coded as 4200 and NOTE is code"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,67,Number and digit coding,a4dddc0f-e194-4eb6-bfc6-078240c8d4f0,If FRANCE is coded as 654321 and GERMANY is coded as 9158437
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,68,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,The 5-digit number PQRST (all distinct digits) is such that 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,69,Individual and combined work rates,9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22,"X can complete one-third of a certain work in 6 days, Y can "
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,70,Number series — arithmetic and difference patterns,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,"What is X in the sequence 1, 3, 6, 11, 18, X, 42 ?"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,71,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,Directions for the following 4 (four) items: Read the follow
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,72,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"subsidies. 72. With reference to the above passage, the foll"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,73,Main idea and central theme,baf763bb-6d36-4a25-b1ba-6419e3b26852,"Passage-2 In only 50 years, the world's consumption of raw m"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,74,Statement and assumption,fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a,"With reference to the above passage, the following assumptio"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,75,Percentage increase and decrease,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,A set (X) of 20 pipes can fill 70% of a tank in 14 minutes. 
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,76,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,"If n is a natural number, then what is the number of distinc"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,77,"LCM, HCF and divisibility",14c51cd0-d60f-42bb-a584-89639d2306fa,Let P = QQQ be a 3-digit number. What is the HCF of P and 48
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,78,"Permutations, combinations and counting",de0e24eb-5c25-4e0f-8eeb-325b8732f9cc,What is the 489th digit in the number 123456789101112...?
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,79,Category and attribute matching puzzle,da8b77aa-4e53-4876-be17-f8f96e1f2913,"A mobile phone has been stolen. There are 3 suspects P, Q an"
+2025,505b29a0-0d4d-5230-88aa-3bbc525a6db5,80,"Cost price, selling price and margin",716450be-826f-428c-a51e-57101be2e9f9,"Three teams P, Q, R participated in a tournament in which th"

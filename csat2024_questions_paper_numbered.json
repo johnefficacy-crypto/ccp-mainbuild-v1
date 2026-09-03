@@ -1,0 +1,2027 @@
+[
+ {
+  "question_number": 1,
+  "question_text": "Which of the following statements best reflect the most logical and rational inferences that can be made from the passage? The current methods of food distribution are solely responsible for the loss and wastage of food. Land productivity is adversely affected by the prevailing trend of food loss and wastage. Reduction in the loss and wastage of food results in lesser carbon footprint. Post-harvest technologies to prevent or reduce the loss and wattage of food are not available. Select the correct answer using the code given below :",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1, 2 and 3",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 and 3 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1, 3 and 4",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "1, 2 and 4",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 2,
+  "question_text": "Based on the above passage, the following assumptions have been made : 1.The food distribution mechanism needs to be reimagined and made effective to reduce the loss and wastage of food. 2.Ensuring the reduction of wastage and loss of food is a social and moral responsibility of all citizens. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 3,
+  "question_text": "Which of the following statements best reflects/reflect the most logical and rational inference/inferences that can be made from the passage? Central banks cannot bring down inflation without budgetary backing. The effects of monetary policy depend on the fiscal policies pursued by the government. Select the correct answer using the code given below :",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 4,
+  "question_text": "Based on the above passage, the following assumptions have been made : 1. Fiscal policies of governments are solely responsible for higher prices. 2. Higher prices do not affect the long-term government bonds. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 5,
+  "question_text": "What is the least possible number of cuts required to cut a cube into 64 identical pieces?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "8",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "9",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "12",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "16",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 6,
+  "question_text": "In the expression 5 * 4* 3* 2* 1, * is chosen from +, -, × each at most two times. What is the smallest non-negative value of the expression?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "3",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "0",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 7,
+  "question_text": "A certain number of men can complete a piece of work in 6k days, where k is a natural number. By what percent should the number of men be increased so that the work can be completed in 5k days?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "10%",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "(50/3)%",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "20%",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "25%",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 8,
+  "question_text": "X, Y and Z can complete a piece of work individually in 6 hours, 8 hours and 8 hours respectively. However, only one person at a time can work in each hour and nobody can work for two consecutive hours. All are engaged to finish the work. What is the minimum amount of time that they will take to finish the work.",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "6 hours 15 minutes",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "6 hours 30 minutes",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "6 hours 45 minutes",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "7 hours",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 9,
+  "question_text": "How many consecutive zeros are there at the end of the integer obtained in the product 12 × 24 × 36 × 48 ×.... × 2550?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "50",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "55",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "100",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "200",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 10,
+  "question_text": "On January 1st, 2023, a person saved Rs 1. On January 2nd, 2023, he saved Rs. 2 more than that on the previous day. On January 3rd, 2023, he saved Rs. 2 more than that on the previous day and so on. At the end of which date was his total savings a perfect square as well a perfect cube?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "7th January, 2023",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "8th January, 2023",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "9th January, 2023",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Not possible",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 11,
+  "question_text": "Which one of the following statements best reflects the most logical and rational inference that can be made from the above passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Curriculum for urban planning courses should have diverse and interdisciplinary approach.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "In India, city administration is under bureaucracy which lacks formal training in urban planning and management.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "In India, the management of urban areas is a local affair with a chronic problem of insufficient funds.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "With high density of population and widespread poverty in our urban areas, planned development in them is very difficult.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 12,
+  "question_text": "Based on the above passage, the following assumptions have been made : India needs a new generation of urban professionals with knowledge relevant to modern urban practice. Indian universities at present have no capacity or potential to impart training in systems approach. Which of the assumptions given above is/are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 13,
+  "question_text": "Which one of the following statements best reflects the central idea of the above passage ?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Constructed as a marketplace of views, social media ensures instant access to information.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Social media are not ideal or moral institutions but the products built by companies to make profits.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Social media have been created to strengthen democracies.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "In today's world, social media are inevitable for well-informed social life.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 14,
+  "question_text": "Based on the above passage, the following assumptions have been made : 1. Internet is not inclusive enough. 2. Internet can adversely affect the quality of policies in a country. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 15,
+  "question_text": "222333 + 333222 is divisible by which of the following numbers ?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "2 and 3 but not 37",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "3 and 37 but not 2",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "2 and 37 but not 3",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "2, 3 and 37",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 16,
+  "question_text": "What percent of water must be mixed with honey so as to gain 20% by selling the mixture at the cost price of honey ?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "20%",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "10%",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "5%",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "4%",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 17,
+  "question_text": "What is the rightmost digit preceding the zeros in the value of 3030?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "3",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "7",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "9",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 18,
+  "question_text": "421 and 427, when divided by the same number, leave the same remainder 1. How many numbers can be used as the divisor in order to get the same remainder 1 ?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "3",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "4",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 19,
+  "question_text": "A can X contains 399 litres of petrol and a can Y contains 532 litres of diesel. They are to be bottled in bottles of equal size so that whole of petrol and diesel would be separately bottled. The bottle capacity in terms of litres is an integer. How many different bottle sizes are possible?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "3",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "4",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "5",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "6",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 20,
+  "question_text": "Consider the following statements in respect of the sum S = x + y + z, where x, y and z are distinct prime numbers each less than 10 : 1. The unit digit of S can be 0. 2. The unit digit of S can be 9. 3. The unit digit of S can be 5. Which of the statements given above are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 and 2 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 and 3 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1 and 3 only",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "1, 2 and 3",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 21,
+  "question_text": "Based on the above passage, the following assumptions have been made : For effective school education, parents have greater role than the governments. School curriculum that conforms to today’s requirements and is uniform for the entire country may address the issues brought out. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 22,
+  "question_text": "Which one of the following statements best reflects the central idea conveyed by the passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Total eradication of poverty in the country will resolve the issue of under-performance of our school-children.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Monetary incentives to parents and teachers is a strategy to improve the children’s academic performance.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Public policy should ensure that competencies and achievements of young people are aligned with their expectations.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "India is not going to take advantage of the demographic dividend unless some school passouts go back to agriculture.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 23,
+  "question_text": "Which one of the following statements best reflects the thinking of the author about the science?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Science must value the commitment of the scientists.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Science is a product of civilized society and must be used for the promotion of scientific awareness in people.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Industrial revolution was made possible by the advancements in science.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Science must pursue truth but be responsible for social welfare.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 24,
+  "question_text": "Consider the sequence A_BCD_BBCDABC_DABC_D that follows a certain pattern. Which one of the following completes the sequence?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "B, A, D, C",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "B, A, C, D",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "A, A, C, D",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "A, A, D, C",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 25,
+  "question_text": "Two persons P and Q enter into a business. P puts ₹ 14,000 more than Q, but P has invested for 8 months and Q has invested for 10 months. If P's share is ₹ 400 more than Q's share out of the total profit of ₹ 2,000, what is the capital contributed by P?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "₹ 30,000",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "₹ 26,000",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "₹ 24,000",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "₹ 20,000",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 26,
+  "question_text": "P’s salary is 20% lower than Q’s salary which is 20% lower than R’s salary. By how much percent is R’s salary more than P’s salary?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "48.75%",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "56.25%",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "60.50%",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "62.25%",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 27,
+  "question_text": "A number is mistakenly divided by 4 instead of multiplying by 4. What is the percentage change in the result due to this mistake?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "25%",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "50%",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "72.75%",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "93.75%",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 28,
+  "question_text": "In an examination, 80% of students passed in English, 70% of students passed in Hindi and 15% failed in both the subjects. What is the percentage of students who failed in only one subject?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "15%",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "20%",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "25%",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "35%",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 29,
+  "question_text": "A father said to his son, “n years back I was as old as you are now. My present age is four times your age n years back”. If the sum of the present ages of the father and the son is 130 years, what is the difference of their ages?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "30 years",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "32 years",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "34 years",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "36 years",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 30,
+  "question_text": "Consider the following : 1. 1000 litres = 1m3 2. 1 metric ton = 1000 kg 3. 1 hectare = 10000 m2 Which of the above are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 and 2 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 and 3 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1 and 3 only",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "1, 2 and 3",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 31,
+  "question_text": "Which of the following is/are emphatically conveyed by the author of the passage? 1. Without science, mankind could not have continued to exist till today. 2. It is the science that will ultimately determine the destiny of mankind. Select the correct answer using the code given below.",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 32,
+  "question_text": "Based on the above passage, the following assumptions have been made: 1. The horrors of modern life are the inevitable result of the progress of science. 2. The aspect of truth likely to be overlooked is that science is what man has made it. Which of the assumptions given above is/are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 33,
+  "question_text": "When we meet other people while we travel, we learn to differentiate between",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "imagination and understanding",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "communities and nationalities",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "local values and universal values",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "friends and foes",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 34,
+  "question_text": "With reference to the above passage, the following assumptions have been made : 1. Travel leads to an understanding of humans. 2. Travel helps those who wish to learn fundamental common values. 3. A person with long experience in travel can resolve differences amongst people. Which of the assumptions given above are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 and 2 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 and 3 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1 and 3 only",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "1, 2 and 3",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 35,
+  "question_text": "Let X be a two-digit number and Y be another two-digit number formed by interchanging the digits of X. If (X + Y) is the greatest two-digit number, then what is the number of possible values of X?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "2",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "4",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "6",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "8",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 36,
+  "question_text": "Consider the following : Weight of 6 boys = Weight of 7 girls = Weight of 3 men = Weight of 4 women If the average weight of the women is 63 kg, then what is the average weight of the boys?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "40 kg",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "42 kg",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "45 kg",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "63 kg",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 37,
+  "question_text": "How many times the hour hand and the minute hand coincide in a clock between 10:00 a.m. and 2.00 p.m. (same day)?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "3 times",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "4 times",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "5 times",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "6 times",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 38,
+  "question_text": "The calendar for the year 2025 is same for",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "2029",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2030",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "2031",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "2033",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 39,
+  "question_text": "Let p, q, r and s be distinct positive integers. Let p, q be odd and r, s be even. Consider the following statements : (p-r)2 (qs) is even. (q-s)q2 s is even. (q + r)2 (p + s) is odd. Which of the statements given above are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 and 2 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 and 3 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "1 and 3 only",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "1, 2 and 3",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 40,
+  "question_text": "What is the angle between the minute hand and hour hand when the clock shows 4:25 hours?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "12.5°",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "15°",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "17.5°",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "20°",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 41,
+  "question_text": "Which of the following statements best reflects/reflect the most logical and rational inference/inferences that can be made from the passage? In conventional classroom learning, the central goal is duration of learning rather than attainment of competency. Conventional classrooms encourage one-size-fits-all approach and stamp out all differentiation. Select the correct answer using the code given below.",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 42,
+  "question_text": "Based on the above passage, the following assumptions have been made : As a large number of workers in our country are employed in unorganized sector, India does not need to change its present conventional classroom system of education. Even with its present conventional classroom system of education, India produces sufficient number of skilled workers to fully realize the benefits of demographic dividend. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 43,
+  "question_text": "Based on the above passage, the following assumptions have been made : The adolescent does not feel comfortable with his parents because they tend to be dominating and assertive. The adolescent of modern times does not have much respect for parents. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 44,
+  "question_text": "Which one of the following statements best reflects the central idea of the above passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Parents in general may not be of much help when children are on their way to becoming adults.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "When children reach adolescence, involvement of parents in their lives is unnecessary.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Modern-day nuclear families are not capable of bringing up children properly.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "In modern societies, adolescents tend to be stubborn, disobedient and careless.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 45,
+  "question_text": "What is the number of fives used in numbering a 260-page book?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "55",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "56",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "57",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "60",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 46,
+  "question_text": "What is the sum of the first 28 terms in the following sequence? 1, 1, 2, 1, 3, 2, 1, 4, 3, 2, 1, 5, 4, 3, 2,......",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "83",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "84",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "85",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "86",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 47,
+  "question_text": "A person buys three articles P, Q and R for ₹ 3,330. If P costs 25% more than R and R costs 20% more than Q, then what is the cost of P?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "₹ 1,000",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "₹ 1,200",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "₹ 1,250",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "₹ 1,350",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 48,
+  "question_text": "If the sum of the two-digit numbers AB and CD is the three-digit number 1CE, where the letters A, B, C, D, E denote distinct digits, then what is the value of A?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "9",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "8",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "7",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Cannot be determined due to insufficient data",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 50,
+  "question_text": "The total cost of 4 oranges, 6 mangoes and 8 apples is equal to twice the total cost of 1 orange, 2 mangoes and 5 apples. Consider the following statements : 1. The total cost of 3 oranges, 5 mangoes and 9 apples is equal to the total cost of 4 oranges, 6 mangoes and 8 apples. 2. The total cost of one orange and one mango is equal to the cost of one apple. Which of the statements given above is/are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 51,
+  "question_text": "Which one of the following statements best reflects the most logical, rational and practical suggestion implied by the passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "It is a cheap and practical method to produce limestone at commercial level for building purposes.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "This can be used as one of the methods of carbon sequestration.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Basalt rock can be made a good source of calcium and magnesium minerals by this method.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Good rock-dissolving acid can be produced by mixing carbon dioxide and water.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 52,
+  "question_text": "Based on the above passage, the following assumptions have been made : 1. Giant icebergs have a bearing on primary productivity and food chains of the Southern Ocean. 2. Melting of giant icebergs can produce climate change effects and impact world fisheries. Which of the assumptions given above is/ are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 53,
+  "question_text": "Which one of the following statements best reflect the most logical and rational and practical message conveyed by the passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Farmers can use caterpillars to feed on weeds in their crop fields/plantations.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "This finding can help in the development of clinically useful antimicrobial compounds.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "This finding can help in the development of organic, ecologically sustainable pesticides.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Caterpillars can be genetically modified to be predators of the other plant pests.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 54,
+  "question_text": "325 + 227 is divisible by",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "3",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "7",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "10",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "11",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 59,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Questions and the Statements. Question : What are the values of m and n, where m and n are natural numbers? Statement-I : m + n > mn and m > n. Statement-II : The product of m and n is 24. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 60,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Questions and the Statements. Question : What is the time required to download the software? Statement-I : The size of the software is 12 megabytes. Statement-II : The transfer rate is 2.4 kilobytes per second. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 61,
+  "question_text": "Which one of the following statements best reflects the crux of the above passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Responsible media should not distort the real in an ideal democracy.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Fake news seems inherent in the life of an ideal democracy.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "There should not be any kind of restrictions on the freedom of expression in an ideal democracy.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Irresponsible media and political leaders cannot be effectively controlled in an ideal democracy.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 62,
+  "question_text": "Which one of the following statements best reflects the most logical, rational and practical message implied by the passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Knowledge of consumer behaviour leads to more capital expenditure in manufacturing sector.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Knowledge of consumer behaviour stimulates the growth of commerce and trade and thus helps in the overall economic development of the country.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Interconnected devices give a lot of comfort to home users and improve the overall quality of life.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Interconnected devices can be at security risk and home users may have privacy risk.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 63,
+  "question_text": "Which one of the following statements best reflects the crux of the above passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "Environmental sustainability is inimical to our objective of achieving a high rate of GDP growth.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Poverty eradication is not possible without a rapid economic growth and the consequent environmental degradation.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Maintaining high environmental standards is now a prerequisite for achieving a steady, sufficient and inclusive growth.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "With large populations, rampant poverty and limited resources of today's world, environmental degradation cannot be prevented and inequalities are inevitable.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 64,
+  "question_text": "A question is given followed by two Statements I and II. Consider the Question and the Statements. Question : What are the unique values of x and y, where x, y are distinct natural numbers? Statement-I : x/y is odd. Statement-II : xy = 12 Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 65,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Question and the Statements. A certain amount was distributed among X, Y and Z. Question : Who received the least amount? Statement-I : X received 4/5 of what Y and Z together received. Statement-II: Y received 2/7 of what X and Z together received. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 66,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Question and the Statements. Question : If the average marks in a class are 60, them what is the number of students in the class? Statement-I : The highest marks in the class are 70 and the lowest marks are 50. Statement-II : Exclusion of highest and lowest marks from the class does not change the average. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 67,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Question and the Statements. There are three distinct prime numbers whose sum is a prime number. Question : What are those three numbers? Statement-I : Their sum is less than 23. Statement-II : One of the numbers is 5. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 68,
+  "question_text": "A Question if given followed by two Statements I and II. Consider the Question and the Statements. Question : Is (x+y) an integer? Statement-I : (2x+y) is an integer. Statement-II : (x+2y) is an integer. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 69,
+  "question_text": "A Question is given followed by two Statement I and II. Consider the Question and the Statements. A person buys three articles p, q and r for ₹50. The price of the article q is ₹16 which is the least. Question : What is the price of the article p? Statement-I : The cost of p is not more than that of r. Statement-II : The cost of r is not more than that of p. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 70,
+  "question_text": "A Question is given followed by two Statements I and II. Consider the Question and the Statements. P, Q, R and S appeared in a test. Question : Has P scored more marks than Q ? Statement-I : The sum of the marks scored by P and Q is equal to the sum of the marks scored by R and S. Statement-II : The sum of the marks scored by P and S is more than the sum of the marks scored by Q and R. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 71,
+  "question_text": "Which one of the following statements best reflects the most logical and rational message conveyed by the above passage?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "It is the poetry, not science or religion, which recognizes and accepts imperfections in humans.",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "Truth is revealed through science or religion and poetry is anathema to truth.",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Poetry is romantic, imaginary and is about feeling whereas science and religion are about truth.",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "In a world of violence, tyranny and bigotry, poetry is a form of dynamic resistance.",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 72,
+  "question_text": "Based on the above passage, the following assumptions have been made : 1. The author of the passage believes that flowers are creations of Nature's luxury. 2. The author of the passage does not believe in the usefulness of flowers except as things of beauty. Which of the assumptions given above is/are valid?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 73,
+  "question_text": "Question is given followed by two Statements I and II. Consider the Question and the Statements. Age of each of P and Q is less than 100 years but more than 10 years. If you interchange the digits of the age of P, the number represents the age of Q. Question : What is the difference of their ages? Statement-I : The age of P is greater than the age of Q. Statement-II : The sum of their ages is 11/6 times their difference. Which one of the following is correct in respect of the above Question and the Statements?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "The Question can be answered by using one of the Statements alone, but cannot be answered using the other Statement alone",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "The Question can be answered by using either Statement alone",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "The Question can be answered by using both the Statements together, but cannot be answered using either Statement alone",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "The Question cannot be answered even by using both the Statements together",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 74,
+  "question_text": "Main Statement is followed by four Statements labelled P, Q, R and S. Choose the ordered pair of the Statements where the first Statement implies the second, and the two Statements are logically consistent with the Main Statement. Main Statement : Pradeep becomes either a Director or a Producer. Statement P : Pradeep is a Director. Statement Q : Pradeep is a Producer. Statement R : Pradeep is not a Director. Statement S : Pradeep is not a Producer. Select the correct answer.",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "SP only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "RQ only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both SP and RQ",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither SP nor RQ",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "c"
+ },
+ {
+  "question_number": 75,
+  "question_text": "a + b means a – b; a – b means a x b; a x b means a ÷ b; a ÷ b; means a + b, then what is the value of 10 + 30 – 100 x 50 ÷ 25? (Operations are to be replaced simultaneously)",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "15",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "0",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "–15",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "–25",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 76,
+  "question_text": "If P means ‘greater than (>)’; Q means ‘less than (<)’; R means ‘not greater than ( )’; S means ‘not less than ( )’ and T means ‘equal to (=)’, then consider the following statements : 1. If 2x(S)3y and 3x(T)4z, then 9y(P)8z. 2. If x(Q)2y and y(R)z, then x(R)z. Which of the statements given above is/are correct?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1 only",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2 only",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "Both 1 and 2",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Neither 1 nor 2",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 77,
+  "question_text": "If in a certain code, ‘ABCD’ is written as 24 and ‘EFGH’ is written as 1680, then how is ‘IJKL’ written in that code?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "11880",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "11240",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "7920",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "5940",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "a"
+ },
+ {
+  "question_number": 78,
+  "question_text": "If in a certain code, 'POT' is written as ATOP and 'TRAP' is written as APART, then how is 'ARENA' written in that code?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "AARENA",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "AANREA",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "AANEAR",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "AANERA",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "d"
+ },
+ {
+  "question_number": 79,
+  "question_text": "What will come in place of * in the sequence 3, 14, 39, 84, *, 258?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "150",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "155",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "160",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "176",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ },
+ {
+  "question_number": 80,
+  "question_text": "In some code, letters P, Q, R, S, T represent numbers 4, 5, 10, 12, 15. It is not known which letter represents which number. If Q – S = 2S and T = R + S + 3, then what is the value of P + R – T?",
+  "options": [
+   {
+    "option_label": "a",
+    "option_text": "1",
+    "display_order": 1
+   },
+   {
+    "option_label": "b",
+    "option_text": "2",
+    "display_order": 2
+   },
+   {
+    "option_label": "c",
+    "option_text": "3",
+    "display_order": 3
+   },
+   {
+    "option_label": "d",
+    "option_text": "Cannot be determined due to insufficient data",
+    "display_order": 4
+   }
+  ],
+  "correct_option_label": "b"
+ }
+]
