@@ -21,6 +21,7 @@ import {
   SHARED_MEASURE_LINE,
   Y_AXIS_LABEL,
   Y_AXIS_MAX,
+  Y_AXIS_TICKS,
   reachabilityConfigFor,
 } from "./reachabilityConfig";
 
@@ -190,6 +191,8 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
   }
 
   const lastIndex = rows.length - 1;
+  const xDomainStart = rows[0].year;
+  const xDomainEnd = rows[lastIndex].year;
 
   return (
     <div className="soft-card rounded-2xl p-5" data-testid="reachability-trend-card">
@@ -205,8 +208,17 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 8, right: 78, bottom: 4, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD3" vertical={false} />
+              {/* Numeric, not categorical. The series skips 2025 — there is no
+                  judged paper for that year — and a category axis would draw
+                  2024→2026 the same width as 2023→2024, flattening a two-year
+                  gap into a one-year step and overstating how fast the trend
+                  moved. A number axis puts each paper at its true distance. */}
               <XAxis
                 dataKey="year"
+                type="number"
+                domain={[xDomainStart, xDomainEnd]}
+                ticks={rows.map((r) => r.year)}
+                allowDecimals={false}
                 stroke="#7A6A55"
                 fontSize={11}
                 tickLine={false}
@@ -214,6 +226,9 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
               />
               <YAxis
                 domain={[0, Y_AXIS_MAX]}
+                // Without explicit ticks the 0-65 domain ends on an uneven
+                // 40 → 65 step, which reads as a broken scale.
+                ticks={Y_AXIS_TICKS}
                 stroke="#7A6A55"
                 fontSize={11}
                 tickLine={false}

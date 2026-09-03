@@ -76,6 +76,8 @@ export const PROVENANCE_SOURCE =
 /** Y axis is fixed so papers stay comparable across exams and across reloads. */
 export const Y_AXIS_MAX = 65;
 export const Y_AXIS_LABEL = "Questions out of 100";
+/** Explicit, so the 0-65 domain does not end on an uneven 40 → 65 step. */
+export const Y_AXIS_TICKS = [0, 20, 40, 60];
 
 /**
  * Per-exam config, keyed by exam slug. `bandCopy` is per-exam because what
