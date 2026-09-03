@@ -25,6 +25,9 @@ PHASE = "22222222-2222-2222-2222-222222222222"
 SECTION = "33333333-3333-3333-3333-333333333333"
 PAPER = "44444444-4444-4444-4444-444444444444"
 TOPIC = "55555555-5555-5555-5555-555555555555"
+# A microtopic under TOPIC, and a second one, for the level-aware topic tests.
+MICRO = "66666666-6666-6666-6666-666666666661"
+MICRO_B = "66666666-6666-6666-6666-666666666662"
 
 
 def _opt(qid: str, i: int, correct: bool) -> dict:
@@ -40,7 +43,16 @@ def _opt(qid: str, i: int, correct: bool) -> dict:
     }
 
 
-def _q(qid: str, *, paper: str = PAPER, section: str = SECTION, topic: str = TOPIC, year: int = 2024, exam: str = EXAM) -> dict:
+def _q(
+    qid: str,
+    *,
+    paper: str = PAPER,
+    section: str = SECTION,
+    topic: str = TOPIC,
+    microtopic: str | None = None,
+    year: int = 2024,
+    exam: str = EXAM,
+) -> dict:
     return {
         "id": qid,
         "question_text": f"Question {qid}",
@@ -53,6 +65,7 @@ def _q(qid: str, *, paper: str = PAPER, section: str = SECTION, topic: str = TOP
         "pyq_paper_id": paper,
         "section_id": section,
         "topic_id": topic,
+        "microtopic_id": microtopic,
         "pyq_year": year,
         "difficulty": "medium",
     }
@@ -266,3 +279,91 @@ def test_api_rejects_unknown_mode_and_bad_uuid():
     client = _client(sb)
     assert client.post("/api/study/mocks/practice/start", json={"mode": "essay", "target_id": PAPER}).status_code == 422
     assert client.post("/api/study/mocks/practice/start", json={"mode": "paper", "target_id": "nope", "exam_id": EXAM}).status_code == 422
+
+
+# ── level-aware topic selection (migration 270 row-shape split) ──────────────
+# `project_pyq_question_to_mock_bank` used to flatten the primary tag's topic id
+# into `topic_id` whatever its level. Migration 270 splits it: a microtopic tag
+# writes `microtopic_id` = the tag and `topic_id` = the tag's PARENT. 270 re-splits
+# a row only when that row is re-synced, so BOTH shapes coexist in the bank
+# indefinitely and topic-mode selection must be correct under each.
+#
+# `exam_topic_coverage` locks a topic at ONE level (the live UPSC exam holds locks
+# at both), and the runtime policy launches practice against exactly one locked id
+# — so selection is level-PRESERVING: a top-level target matches its own rows and
+# never sweeps in its children's.
+
+
+def test_topic_practice_matches_microtopic_lock_on_unsynced_row():
+    # pre-270 shape: the microtopic id is flattened into topic_id.
+    sb = _db([_q("q1", topic=MICRO, microtopic=None)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO, exam_id=EXAM)
+    assert res["outcome"] == "ready" and res["question_count"] == 1
+
+
+def test_topic_practice_matches_microtopic_lock_on_resynced_row():
+    # post-270 shape: topic_id holds the PARENT, microtopic_id holds the tag. This
+    # is the regression — a `topic_id = target` filter matches nothing here and the
+    # learner gets a silent empty set, not an error.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO, exam_id=EXAM)
+    assert res["outcome"] == "ready" and res["question_count"] == 1
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    assert [q["question_id"] for q in state["questions"]] == ["q1"]
+
+
+def test_topic_practice_spans_both_row_shapes_for_one_microtopic():
+    # A half-re-synced bank: the same locked microtopic must serve BOTH its rows.
+    sb = _db([
+        _q("q1", topic=MICRO, microtopic=None),   # not yet re-synced
+        _q("q2", topic=TOPIC, microtopic=MICRO),  # re-synced under 270
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO, exam_id=EXAM)
+    assert res["outcome"] == "ready" and res["question_count"] == 2
+
+
+def test_topic_practice_top_level_target_keeps_its_own_rows_only():
+    # A top-level lock serves the questions tagged AT the top level, under either
+    # shape — and must NOT inherit its children's re-synced rows just because 270
+    # now writes the parent into their topic_id.
+    sb = _db([
+        _q("q1", topic=TOPIC, microtopic=None),     # top-level tagged
+        _q("q2", topic=TOPIC, microtopic=MICRO),    # child, re-synced
+        _q("q3", topic=TOPIC, microtopic=MICRO_B),  # another child, re-synced
+    ])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=TOPIC, exam_id=EXAM)
+    assert res["outcome"] == "ready" and res["question_count"] == 1
+    state = engine.get_attempt(sb, "u1", res["attempt_id"])
+    assert [q["question_id"] for q in state["questions"]] == ["q1"]
+
+
+def test_topic_practice_still_empty_when_no_row_matches_either_level():
+    # The empty case is unchanged: a locked topic with no projected row at its own
+    # level yields empty_pool (409 at the endpoint), never a widened set.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
+    res = svc.start_pyq_practice(sb, user_id="u1", mode="topic", target_id=MICRO_B, exam_id=EXAM)
+    assert res == {"outcome": "empty_pool", "question_count": 0}
+
+
+def test_practiceable_topic_ids_is_level_aware_under_both_shapes():
+    # The subjects readiness probe mirrors the selection, so it must report the same
+    # levels: both microtopic shapes are practiceable, the top-level lock is
+    # practiceable on its own row, and a lock with no own-level row is not.
+    sb = _db([
+        _q("q1", topic=MICRO, microtopic=None),     # microtopic, not re-synced
+        _q("q2", topic=TOPIC, microtopic=MICRO_B),  # microtopic, re-synced
+        _q("q3", topic=TOPIC, microtopic=None),     # top-level's own row
+    ])
+    ready = svc.practiceable_topic_ids(
+        sb, exam_id=EXAM, topic_ids=[MICRO, MICRO_B, TOPIC, SECTION]
+    )
+    assert ready == {MICRO, MICRO_B, TOPIC}
+
+
+def test_practiceable_top_level_lock_not_carried_by_child_rows_alone():
+    # A top-level lock whose only projected rows are its children's (re-synced, so
+    # they carry the parent in topic_id) must NOT advertise topic practice — the
+    # launch would select nothing and 409.
+    sb = _db([_q("q1", topic=TOPIC, microtopic=MICRO)])
+    assert svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=[TOPIC]) == set()
+    assert svc.practiceable_topic_ids(sb, exam_id=EXAM, topic_ids=[MICRO]) == {MICRO}

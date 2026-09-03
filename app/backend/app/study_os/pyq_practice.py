@@ -40,7 +40,10 @@ _MAX_LIMIT = 200
 _MARKS_PER_CORRECT = 1.0
 _MARKS_PER_WRONG = 0.0
 
-# mode -> (blueprint source tag, mock_question_bank filter column)
+# mode -> (blueprint source tag, mock_question_bank filter column).
+# The topic column is nominal: topic mode does not filter on it directly, because
+# the projected level lives in `topic_id` OR `microtopic_id` depending on whether
+# the row has been re-synced under migration 270 (see _topic_target_or_filter).
 _MODES: dict[str, tuple[str, str]] = {
     "paper": ("pyq_practice_paper", "pyq_paper_id"),
     "section": ("pyq_practice_section", "section_id"),
@@ -126,6 +129,62 @@ def _num(v) -> tuple[int, float]:
         return (1, 0.0)
 
 
+def _topic_target_or_filter(target_id: str) -> str:
+    """PostgREST OR group for a single topic-mode target, level-agnostic.
+
+    ``mock_question_bank`` carries the projected level in TWO shapes that coexist
+    indefinitely (migration 270 re-splits a row only when it is re-synced):
+
+      * pre-270  — the primary tag's topic id is flattened into ``topic_id``
+                   whatever its level; ``microtopic_id`` is NULL.
+      * post-270 — a microtopic tag writes ``microtopic_id`` = the tag and
+                   ``topic_id`` = the tag's PARENT; a top-level tag still writes
+                   ``topic_id`` = the tag with ``microtopic_id`` NULL.
+
+    So a locked microtopic target matches ``topic_id`` on unsynced rows and
+    ``microtopic_id`` on re-synced ones. This group is deliberately a SUPERSET —
+    it cannot express "``topic_id`` = target AND ``microtopic_id`` IS NULL"
+    without a nested ``and()`` group — and ``_row_matches_topic_target`` narrows
+    it in Python, the same filter-then-re-check posture this module already uses
+    for ``valid_until``.
+    """
+    return f"topic_id.eq.{target_id},microtopic_id.eq.{target_id}"
+
+
+def _row_matches_topic_target(row: dict, target_id: str) -> bool:
+    """Exact-level topic match for one bank row, correct under BOTH row shapes.
+
+    A row that carries a ``microtopic_id`` is a post-270 split row: it belongs to
+    that microtopic and to no other level, so it matches only when the target IS
+    that microtopic. A row without one is self-describing at whatever level its
+    ``topic_id`` names (post-270 top-level, or either level pre-270), so it
+    matches its own id.
+
+    Level is PRESERVED, not widened: a top-level target keeps matching its own
+    rows and does NOT sweep in its children's. That is the pre-270 behaviour —
+    `exam_topic_coverage` locks a topic AT one level, `subjects.py` buckets and
+    scores mastery per locked id, and the runtime policy launches practice
+    against exactly one locked id — so a top-level lock has never served its
+    children's questions, and post-270 (where those children's rows now carry
+    the parent in ``topic_id``) is where a naive ``topic_id = target`` would
+    start silently doing so.
+    """
+    return _row_level_id(row) == str(target_id)
+
+
+def _row_level_id(row: dict) -> str | None:
+    """The single coverage-lock id a bank row belongs to, under either shape.
+
+    ``microtopic_id`` when the row carries one (post-270 split row), else its
+    ``topic_id``. Never both — a row is practised at exactly one level.
+    """
+    microtopic_id = row.get("microtopic_id")
+    if microtopic_id:
+        return str(microtopic_id)
+    topic_id = row.get("topic_id")
+    return str(topic_id) if topic_id else None
+
+
 def select_practice_rows(
     sb, *, mode: str, exam_id: str | None, target_id: str, limit: int
 ) -> list[dict]:
@@ -140,10 +199,18 @@ def select_practice_rows(
     now_iso = _now_iso()
     q = (
         sb.table("mock_question_bank")
-        .select("id,pyq_question_id,pyq_paper_id,section_id,topic_id,exam_id,reviewer_status,valid_until,pyq_year")
+        .select(
+            "id,pyq_question_id,pyq_paper_id,section_id,topic_id,microtopic_id,"
+            "exam_id,reviewer_status,valid_until,pyq_year"
+        )
         .in_("reviewer_status", list(_SELECTABLE))
-        .eq(filter_col, target_id)
     )
+    if mode == "topic":
+        # Level-aware: match the target against EITHER level column, then narrow
+        # to the exact level in Python (see _row_matches_topic_target).
+        q = q.or_(_topic_target_or_filter(target_id))
+    else:
+        q = q.eq(filter_col, target_id)
     q = q.not_.is_("pyq_question_id", "null")
     if exam_id:
         q = q.eq("exam_id", exam_id)
@@ -161,6 +228,7 @@ def select_practice_rows(
         r for r in res
         if r.get("pyq_question_id")
         and (not r.get("valid_until") or str(r["valid_until"]) > now_iso)
+        and (mode != "topic" or _row_matches_topic_target(r, target_id))
     ]
     if not candidates:
         return []
@@ -296,12 +364,12 @@ def practiceable_topic_ids(
     now_iso = _now_iso()
     res = safe_required(
         lambda: sb.table("mock_question_bank")
-        .select("id,topic_id,valid_until,pyq_year")
+        .select("id,topic_id,microtopic_id,valid_until,pyq_year")
         .in_("reviewer_status", list(_SELECTABLE))
-        .in_("topic_id", ids)
         .eq("exam_id", exam_id)
         .not_.is_("pyq_question_id", "null")
         .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+        .limit(50000)
         .execute(),
         op="pyq_practice.practiceable_topics",
         log=logger,
@@ -317,7 +385,24 @@ def practiceable_topic_ids(
     except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
         logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
         return set()
-    pool = [r for r in candidates if r["id"] in active and r.get("topic_id")]
+    wanted = set(ids)
+    # Narrow to the requested locks HERE rather than in the query. A locked target
+    # can sit in `topic_id` or in `microtopic_id` depending on whether its row has
+    # been re-synced under migration 270, so a server-side predicate would need
+    # both columns listed — and this probe is called with EVERY locked coverage id
+    # for the exam (hundreds on UPSC), which would put two id lists of that size
+    # into one request URL. The read is already exam-scoped, so the bounded
+    # whole-exam read + this filter is the cheaper and more robust shape (the same
+    # posture `practice_ready_counts_by_paper` already uses).
+    #
+    # Level is preserved, not widened: post-270 a child microtopic's row carries
+    # its PARENT in topic_id, and a locked parent must not inherit it (see
+    # `_row_matches_topic_target`).
+    pool = [
+        r
+        for r in candidates
+        if r["id"] in active and (_row_level_id(r) or "") in wanted
+    ]
     if not pool:
         return set()
 
@@ -327,7 +412,7 @@ def practiceable_topic_ids(
     limit = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
     by_topic: dict[str, list[dict]] = {}
     for r in pool:
-        by_topic.setdefault(str(r["topic_id"]), []).append(r)
+        by_topic.setdefault(str(_row_level_id(r)), []).append(r)
     selected_by_topic: dict[str, list[str]] = {}
     selected_ids: list[str] = []
     for tid, rows in by_topic.items():
