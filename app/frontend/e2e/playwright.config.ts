@@ -40,10 +40,17 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // Serve the production build unless a server is already running (or the
   // caller opts out, e.g. when pointing E2E_BASE_URL at a deployed preview).
+  //
+  // `serve` is a pinned devDependency rather than an `npx --yes` fetch. Resolved
+  // at run time it was the only network-dependent step inside the 120s window,
+  // and when that fetch fails there is no server to poll — the job then times
+  // out here having produced no test output at all, which is how it read on
+  // main from 3c9f65c onward. Installed by `npm ci` alongside everything else,
+  // it binds in well under a second.
   webServer: process.env.E2E_NO_WEBSERVER
     ? undefined
     : {
-        command: "npx --yes serve -s ../build -l 3000",
+        command: "npx serve -s ../build -l 3000",
         url: BASE_URL,
         timeout: 120_000,
         reuseExistingServer: !process.env.CI,
