@@ -27,7 +27,6 @@ import {
   subjectSplitRows,
   taggedPapers,
   topicRows,
-  untaggedPapers,
 } from "./csatCompositionConfig";
 
 /**
@@ -270,7 +269,6 @@ export default function CsatCompositionSection({ examSlug = null }) {
     [payload]
   );
   const drawable = useMemo(() => taggedPapers(papers), [papers]);
-  const pending = useMemo(() => untaggedPapers(papers), [papers]);
 
   const subjectId =
     activeSubject ||
@@ -320,6 +318,12 @@ export default function CsatCompositionSection({ examSlug = null }) {
   // should not carry a heading claiming one.
   if (papers.length === 0) return null;
 
+  // Said once, at the bottom, and only when it applies. The reader is told what
+  // the charts are based on, never what is missing from the corpus or why.
+  const covered = drawable.reduce((n, p) => n + (p.tagged_questions || 0), 0);
+  const corpus = papers.reduce((n, p) => n + (p.total_questions || 0), 0);
+  const partial = corpus > 0 && covered < corpus;
+
   const paperSeries = drawable.map((p) => ({
     key: p.paper_id,
     name: paperLabel(p),
@@ -345,24 +349,6 @@ export default function CsatCompositionSection({ examSlug = null }) {
 
   return (
     <SectionShell testId="csat-composition-section">
-      <div className="mt-2 text-xs text-muted-foreground" data-testid="csat-composition-counts">
-        {drawable.length} papers · {drawable.reduce((n, p) => n + p.tagged_questions, 0)}{" "}
-        questions carrying a primary topic tag · {overallTopics.length} distinct
-        topics.
-      </div>
-
-      {pending.length > 0 ? (
-        <p
-          className="mt-2 text-xs text-muted-foreground"
-          data-testid="csat-composition-untagged-papers"
-        >
-          {pending.map((p) => paperLabel(p)).join(", ")}{" "}
-          {pending.length === 1 ? "carries" : "carry"} no primary topic tags yet,
-          so {pending.length === 1 ? "it is" : "they are"} not broken down here.
-          Tagging is per paper.
-        </p>
-      ) : null}
-
       {drawable.length === 0 ? null : (
         <>
           {/* View 1 — subject split, one bar per paper. */}
@@ -457,6 +443,15 @@ export default function CsatCompositionSection({ examSlug = null }) {
           </div>
         </>
       )}
+
+      {partial ? (
+        <p
+          className="mt-4 text-[11px] leading-relaxed text-muted-foreground"
+          data-testid="csat-composition-basis"
+        >
+          Based on {covered} of {corpus} questions.
+        </p>
+      ) : null}
 
       {analysis.length > 0 ? (
         <div

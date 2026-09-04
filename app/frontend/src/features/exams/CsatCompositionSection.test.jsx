@@ -211,11 +211,22 @@ describe("the four CSAT papers", () => {
     );
   });
 
-  it("counts four papers and 315 tagged questions", async () => {
+  it("shows no tagging coverage or verification state anywhere", async () => {
     const section = await renderSection();
-    const counts = within(section).getByTestId("csat-composition-counts");
-    expect(counts).toHaveTextContent("4 papers");
-    expect(counts).toHaveTextContent("315");
+    expect(within(section).queryByTestId("csat-composition-counts")).toBeNull();
+    const text = section.textContent;
+    expect(text).not.toMatch(/untagged/i);
+    expect(text).not.toMatch(/verified/i);
+    expect(text).not.toMatch(/microtopic/i);
+    expect(text).not.toMatch(/parent topic/i);
+    // The provenance line names the source of the grouping, which is what the
+    // chart IS; it must not become a report on how much of the corpus is tagged.
+    expect(text).not.toMatch(/carry(ing)? a primary (topic )?tag/i);
+  });
+
+  it("says nothing about coverage when every paper is fully covered", async () => {
+    const section = await renderSection();
+    expect(within(section).queryByTestId("csat-composition-basis")).toBeNull();
   });
 
   it("never shows the rejected 2026 paper the endpoint filtered out", async () => {
@@ -352,8 +363,8 @@ describe("difficulty never appears", () => {
 });
 
 describe("eligibility", () => {
-  it("gives a paper with no primary tags an empty state, not an empty chart", async () => {
-    const untagged = {
+  it("leaves an uncovered paper out and states the basis once, quietly", async () => {
+    const uncovered = {
       paper_id: "p-csat-2022",
       year: 2022,
       phase_id: "phase-a",
@@ -366,15 +377,21 @@ describe("eligibility", () => {
       multi_tagged_questions: 0,
       by_subject: { [QUANT]: 0, [REASONING]: 0, [ENGLISH]: 0 },
     };
-    const section = await renderSection(payload({ papers: [untagged, ...PAPERS] }));
+    const section = await renderSection(payload({ papers: [uncovered, ...PAPERS] }));
 
-    const note = within(section).getByTestId("csat-composition-untagged-papers");
-    expect(note).toHaveTextContent("2022");
-    expect(note).toHaveTextContent(/no primary topic tags yet/);
-
-    // And it is not drawn as a bar with nothing in it.
+    // It is not drawn as a bar with nothing in it, and it is not named as a
+    // gap either — which paper is uncovered, and why, is the platform's
+    // business.
     const chart = within(section).getByTestId("csat-subject-split-chart");
     expect(within(chart).queryByText("2022")).toBeNull();
+    expect(
+      within(section).queryByTestId("csat-composition-untagged-papers")
+    ).toBeNull();
+    expect(section.textContent).not.toMatch(/2022/);
+
+    const basis = within(section).getByTestId("csat-composition-basis");
+    expect(basis).toHaveTextContent("Based on 315 of 395 questions.");
+    expect(basis).not.toHaveTextContent(/untagged/i);
   });
 
   it("renders no section at all when no CSAT paper qualifies", async () => {

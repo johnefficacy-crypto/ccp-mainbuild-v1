@@ -127,6 +127,9 @@ Stack:
 - Collections use `useCollection` pattern — no ad-hoc array state.
 - Initial bundle chunk ≤ 220 KB gzipped. Admin/prototype/study code must not leak into public entry surfaces via static imports.
 - Frontend uses `exam` for display labels; backend FK columns use explicit `exam_id` / `recruitment_id`.
+- **No internal state on learner surfaces.** Do not show tagging coverage, untagged counts, verification status, or how the topic tree is structured. "63 of 97 verified questions carry a primary tag · 34 untagged" is the platform's to-do list, not something an aspirant can use.
+  - A chart built on partial data says so once, quietly, at the bottom: "Based on 63 of 97 questions." No count of what is missing, no explanation of why, no description of tag roles or tree levels.
+  - No explanatory banner about microtopics or parent topics. If the grouping is not self-evident from the chart, fix the chart.
 
 ---
 

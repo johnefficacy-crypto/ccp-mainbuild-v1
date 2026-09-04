@@ -29,11 +29,16 @@ import { api } from "../../lib/api";
  * whole. A paper's topic mix is what happened to be asked, not a budget someone
  * allocated, so nothing here should imply the parts were chosen to sum to one.
  *
- * TAG LEVEL IS STATED, NEVER ASSUMED. `topics` is a two-level tree and tags sit
- * at either level: the nine GS-I papers are tagged to microtopics, whereas 2025
- * CSAT's eighty tags are all top-level topics. A top-level breakdown built from
- * microtopic tags and one built from top-level tags look identical on screen
- * and mean different things, so the card says which it is showing.
+ * NO INTERNAL STATE. Tagging coverage, tag roles and the shape of the topic
+ * tree are the platform's to-do list, not something an aspirant can act on, so
+ * none of it is rendered. A paper whose breakdown covers only part of it says
+ * so once, quietly, at the bottom — how many questions the chart is based on,
+ * and nothing about what is missing or why.
+ *
+ * The two-level tree shows itself: microtopics sit indented under the parent
+ * they belong to, and a paper tagged only at top level simply has no children
+ * to expand. That is the grouping made visible in the chart, which is where it
+ * belongs — not in a banner explaining it.
  */
 
 const PARENT_COLOR = "#54794E";
@@ -41,20 +46,6 @@ const CHILD_COLOR = "#94B28A";
 const ROW_HEIGHT = 30;
 const MIN_CHART_HEIGHT = 140;
 
-const TAG_LEVEL_COPY = {
-  microtopic:
-    "Tagged at microtopic level — the finest level of the topic tree. " +
-    "Microtopics are grouped under their parent topic below; expand a topic " +
-    "to see them.",
-  topic:
-    "Tagged at top-level topic only, not at microtopic level. This is a " +
-    "coarser breakdown than a microtopic-tagged paper's and the two are not " +
-    "directly comparable.",
-  mixed:
-    "Tagged at a mix of top-level topics and microtopics. The two levels are " +
-    "not equivalent, so a group built from a top-level tag is not the same " +
-    "kind of count as one built from its microtopics.",
-};
 
 /**
  * Category axes key on the label string, so two topics that happen to share a
@@ -184,9 +175,8 @@ export default function PaperCompositionCard({ paperId = null, paperLabel = null
     return (
       <CardShell testId="paper-composition-empty">
         <p className="mt-4 text-sm text-muted-foreground">
-          {paperLabel ? `${paperLabel} has ` : "This paper has "}
-          no verified topic tags yet, so there is no breakdown to show. Tagging
-          is per paper — a paper elsewhere in this exam may already be tagged.
+          No topic breakdown is available for{" "}
+          {paperLabel ? paperLabel : "this paper"} yet.
         </p>
       </CardShell>
     );
@@ -203,30 +193,16 @@ export default function PaperCompositionCard({ paperId = null, paperLabel = null
   const allExpanded =
     expandable.length > 0 && expandable.every((g) => expanded.has(g.topic_id));
 
+  // Said once, at the bottom, and only when it applies. Never what is missing.
+  const partial =
+    payload.total_questions > 0 &&
+    payload.tagged_questions < payload.total_questions;
+
   const chartHeight = Math.max(MIN_CHART_HEIGHT, rows.length * ROW_HEIGHT + 32);
   const maxQuestions = rows.reduce((m, r) => Math.max(m, r.questions), 0);
 
   return (
     <CardShell testId="paper-composition-card">
-      <p
-        className="mt-3 text-xs leading-relaxed text-clay-700 bg-clay-50/70 border border-clay-100 rounded-lg px-3 py-2"
-        data-testid="paper-composition-tag-level"
-      >
-        {TAG_LEVEL_COPY[payload.tag_level] || TAG_LEVEL_COPY.topic}
-      </p>
-
-      <div className="mt-2 text-xs text-muted-foreground" data-testid="paper-composition-counts">
-        {payload.tagged_questions} of {payload.total_questions} verified
-        questions carry a primary tag
-        {payload.untagged_questions > 0
-          ? ` · ${payload.untagged_questions} untagged`
-          : ""}
-        {payload.multi_tagged_questions > 0
-          ? ` · ${payload.multi_tagged_questions} counted once despite multiple primary tags`
-          : ""}
-        .
-      </div>
-
       <div
         className="mt-4"
         style={{ height: chartHeight }}
@@ -324,9 +300,6 @@ export default function PaperCompositionCard({ paperId = null, paperLabel = null
                         <ChevronRight className="h-3.5 w-3.5 shrink-0" />
                       )}
                       <span className="truncate font-medium">{name}</span>
-                      <span className="text-muted-foreground shrink-0">
-                        · {children.length} microtopics
-                      </span>
                     </span>
                     <span className="shrink-0 text-muted-foreground">{g.questions}</span>
                   </button>
@@ -337,10 +310,15 @@ export default function PaperCompositionCard({ paperId = null, paperLabel = null
         </div>
       ) : null}
 
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Counts verified questions carrying a verified primary topic tag. A
-        question is counted once, under one topic.
-      </p>
+      {partial ? (
+        <p
+          className="mt-3 text-[11px] leading-relaxed text-muted-foreground"
+          data-testid="paper-composition-basis"
+        >
+          Based on {payload.tagged_questions} of {payload.total_questions}{" "}
+          questions.
+        </p>
+      ) : null}
     </CardShell>
   );
 }
