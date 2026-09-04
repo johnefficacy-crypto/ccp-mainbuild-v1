@@ -14,6 +14,7 @@ import {
 import { ArrowRight, BarChart3, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import OptionInsightsCard from "./OptionInsightsCard";
+import PaperCompositionCard from "./PaperCompositionCard";
 import ReachabilityTrendCard from "./ReachabilityTrendCard";
 import TrapDrillLauncher from "./TrapDrillLauncher";
 
@@ -56,6 +57,10 @@ function EmptyState({ icon: Icon, title, body }) {
       <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">{body}</p>
     </div>
   );
+}
+
+function paperOptionLabel(p) {
+  return [p.year, p.phase_name, p.paper_code].filter(Boolean).join(" · ") || p.id;
 }
 
 function PaperRow({ p }) {
@@ -119,11 +124,15 @@ export default function ExamIntelligenceTab({ examSlug }) {
   // Lifted out of OptionInsightsCard so the same selection drives the
   // drill launcher below — one topic picker, two consumers.
   const [selectedTopicId, setSelectedTopicId] = useState(null);
+  // Composition is a per-PAPER question, so the card needs one paper chosen.
+  // null means "not chosen yet" and resolves to the newest paper below.
+  const [selectedPaperId, setSelectedPaperId] = useState(null);
 
   useEffect(() => {
     // Reset when the user switches exams so a leftover t1 from UPSC
     // doesn't bleed into SSC's launcher.
     setSelectedTopicId(null);
+    setSelectedPaperId(null);
   }, [examSlug]);
 
   useEffect(() => {
@@ -159,6 +168,18 @@ export default function ExamIntelligenceTab({ examSlug }) {
   const vacancyData = useMemo(
     () => (data?.vacancy_series?.total || []).map((p) => ({ year: p.year, vacancies: p.count })),
     [data]
+  );
+  // pyq_papers arrives newest-first from verified_pyq_papers().
+  const compositionPapers = useMemo(
+    () => (data?.pyq_papers || []).filter((p) => p?.id),
+    [data]
+  );
+  const activePaper = useMemo(
+    () =>
+      compositionPapers.find((p) => p.id === selectedPaperId) ||
+      compositionPapers[0] ||
+      null,
+    [compositionPapers, selectedPaperId]
   );
   const heatmapMax = useMemo(() => {
     const rows = data?.difficulty_heatmap?.rows || [];
@@ -391,7 +412,43 @@ export default function ExamIntelligenceTab({ examSlug }) {
           that went through a judging pass and says so in its own provenance
           line. See the PR body for the collision and the proposed resolution —
           the table is deliberately left untouched here. */}
-      <ReachabilityTrendCard examId={data.exam?.slug || data.exam?.id} />
+      <ReachabilityTrendCard examSlug={examSlug} />
+
+      {/* Composition is a second, separate question about a SINGLE paper, off
+          a different column (topic tags, not difficulty) and with its own
+          eligibility — a paper can be tagged without ever being assessed, and
+          most of Mains and three of the four CSAT papers are neither. It sits
+          under the trend rather than inside it so the two are never read as
+          two views of one dataset. */}
+      {compositionPapers.length > 0 ? (
+        <div className="space-y-2" data-testid="paper-composition-section">
+          <label
+            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+            htmlFor="paper-composition-picker"
+          >
+            <span className="font-semibold uppercase tracking-[0.18em] text-[11px]">
+              Paper
+            </span>
+            <select
+              id="paper-composition-picker"
+              data-testid="paper-composition-picker"
+              className="rounded-lg border border-clay-200 bg-white px-2 py-1 text-xs"
+              value={activePaper?.id || ""}
+              onChange={(e) => setSelectedPaperId(e.target.value || null)}
+            >
+              {compositionPapers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {paperOptionLabel(p)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <PaperCompositionCard
+            paperId={activePaper?.id || null}
+            paperLabel={activePaper ? paperOptionLabel(activePaper) : null}
+          />
+        </div>
+      ) : null}
 
       <div className="soft-card rounded-2xl p-5" data-testid="pyq-papers-card">
         <div className="flex items-center gap-2">
