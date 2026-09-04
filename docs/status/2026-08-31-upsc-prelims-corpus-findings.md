@@ -138,7 +138,7 @@ chapters to 13 in the rationalised edition and *Environmental Issues* moved.
 Being user-facing, it needs an owner: a pointer to a chapter that no longer
 exists misleads, where a stale provenance note would merely be inert.
 
-`topic_catalog.json` exports microtopic ids only. With the seven parents
+`workbench/catalogs/topic_catalog.json` exports microtopic ids only. With the seven parents
 excluded, any tag written at topic level fires `unknown_topic` in the sweep —
 giving the level check the projection currently lacks, one layer earlier.
 

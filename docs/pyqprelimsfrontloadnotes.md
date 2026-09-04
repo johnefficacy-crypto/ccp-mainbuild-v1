@@ -207,7 +207,7 @@ Known dropped sets: **2024 Set C — 42, 47, 90** (confirmed by the official key
 
 ## Topic tagging — blocked on a missing tree
 
-`all_topics.json` holds 474 topics across 4 subjects, all Mains GS I–IV. There is no
+`workbench/catalogs/all_topics.json` holds 474 topics across 4 subjects, all Mains GS I–IV. There is no
 Prelims GS or CSAT topic tree. Tags are a second pass anyway (they key on
 `question_id`, which only exists post-commit) via
 `POST /admin/exam-intelligence-cms/bulk-import` with `entity='pyq-question-topic-tags'`

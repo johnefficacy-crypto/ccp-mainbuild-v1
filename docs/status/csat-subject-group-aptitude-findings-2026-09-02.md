@@ -38,7 +38,7 @@ A full-tree grep (excluding `.git`, `node_modules`, `graphify-out`) finds `aptit
 | `app/backend/app/study_os/subject_runtime_policy.py:87` | `_SLUG_FAMILY` key | `"quantitative-aptitude": FAMILY_QUANT` — a **slug**, not a group |
 | `app/frontend/.../ScoreSnapshotPanel.jsx:83` | UI label | `reasoning: "CSAT Paper II — Aptitude"` |
 | `app/supabase/seeds/pilot_content_ssc_cgl_banking.sql`, `migrations/135`, `e2e_fixtures.sql` | section/content labels | `Quantitative Aptitude` |
-| `mains_syllabus_review_verified.csv`, `topic_catalog.json`, `pyq_2014_mains_questions.json`, `spot_check_review.txt` | GS4 ethics syllabus text | `"integrity and aptitude"` — unrelated |
+| `workbench/catalogs/mains_syllabus_review_verified.csv`, `workbench/catalogs/topic_catalog.json`, `workbench/pyq/mains/pyq_2014_mains_questions.json`, `workbench/reports/spot_check_review.txt` | GS4 ethics syllabus text | `"integrity and aptitude"` — unrelated |
 
 `git log -S'aptitude'` across all history surfaces only the GS4 ethics content bulk-review
 commits (`5d70eef`, `f8ed700`, `adffc5c`). No commit has ever written `'aptitude'` as a
