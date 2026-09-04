@@ -29,6 +29,7 @@ from app.core.auth import get_current_user
 from app.exam_intelligence.reachability import (
     ELIGIBLE,
     NOT_ASSESSED,
+    OFF_SUBJECT,
     UNIFORM,
     UNRECOGNISED,
     classify_paper,
@@ -85,6 +86,16 @@ GS1 = {
 PHASE_OLD = "715de35f"
 PHASE_2026 = "6566d50e"
 
+#: General Studies Paper I. The series the reachability trend is about, and the
+#: discriminator that keeps CSAT off it — see REACHABILITY_SERIES_SUBJECT.
+GS1_SUBJECT = "09db7afb-0864-46c9-b900-1510b60c0011"
+GS1_SECTION = "sec-gs1"
+
+#: The three shared subjects the CSAT corpus is tagged into.
+CSAT_QUANT = "55555555-5555-5555-5555-555555555551"
+CSAT_ENGLISH = "55555555-5555-5555-5555-555555555552"
+CSAT_REASONING = "55555555-5555-5555-5555-555555555553"
+
 
 def _paper(pid, year, phase, code="GS-1", metadata=None):
     return {
@@ -98,13 +109,14 @@ def _paper(pid, year, phase, code="GS-1", metadata=None):
     }
 
 
-def _questions(pid, spec):
+def _questions(pid, spec, section_id=None):
     """`spec` is a list of observed_difficulty values, one per question."""
     return [
         {
             "id": f"{pid}-q{i:04d}",
             "pyq_paper_id": pid,
             "observed_difficulty": d,
+            "section_id": section_id,
             "reviewer_status": "verified",
         }
         for i, d in enumerate(spec)
@@ -121,18 +133,80 @@ def _upsc_db():
     for year, counts in GS1.items():
         pid = f"p-gs1-{year}"
         papers.append(_paper(pid, year, PHASE_2026 if year == 2026 else PHASE_OLD))
-        questions.extend(_questions(pid, _bands(counts)))
+        questions.extend(_questions(pid, _bands(counts), section_id=GS1_SECTION))
     return {
         "exams": [{"id": "e1", "slug": "upsc-cse"}],
         "exam_phases": [
             {"id": PHASE_OLD, "phase_name": "Prelims", "phase_slug": "prelims"},
             {"id": PHASE_2026, "phase_name": "Prelims", "phase_slug": "prelims-2026"},
         ],
+        # The GS-I questions carry a section, which is what attributes them to
+        # the GS-I subject. section_label is deliberately absent from every
+        # fixture here: it is not a discriminator (the CSAT papers carry three
+        # spellings of it and two carry NULL) and nothing may start using it.
+        "exam_phase_sections": [
+            {"id": GS1_SECTION, "subject_id": GS1_SUBJECT},
+            {"id": "sec-csat", "subject_id": CSAT_QUANT},
+        ],
+        "subjects": [
+            {"id": GS1_SUBJECT, "name": "General Studies Paper I", "slug": "gs-1"},
+            {"id": CSAT_QUANT, "name": "Quantitative Aptitude", "slug": "quant"},
+            {"id": CSAT_ENGLISH, "name": "English Language", "slug": "english"},
+            {"id": CSAT_REASONING, "name": "General Intelligence & Reasoning", "slug": "reasoning"},
+        ],
         "pyq_papers": papers,
         "pyq_questions": questions,
         "pyq_question_topic_tags": [],
         "topics": [],
     }
+
+
+#: The CSAT years that collide with the GS-I series on the x axis.
+CSAT_YEARS = {2023: 80, 2024: 75, 2025: 80, 2026: 80}
+
+
+def _with_csat(db):
+    """Add the four CSAT papers, with the NON-UNIFORM observed_difficulty that
+    made them pass reachability eligibility and land on the chart.
+
+    This is the defect: 2023 and 2024 then held two papers each, so the trend
+    drew twelve points at nine x-positions and jumped vertically where the pairs
+    sat. Their difficulty was assigned by keyword rule, never judged against the
+    reachability rubric, so eligibility alone cannot tell them apart from GS-I —
+    only the subject can.
+    """
+    for i, (year, size) in enumerate(CSAT_YEARS.items()):
+        pid = f"p-csat-{year}"
+        db["pyq_papers"].append(_paper(pid, year, f"phase-csat-{i}", code="CSAT"))
+        spec = ["easy"] * (size // 3) + ["medium"] * (size // 3)
+        spec += ["hard"] * (size - len(spec))
+        qs = _questions(pid, spec)
+        db["pyq_questions"].extend(qs)
+        for j, q in enumerate(qs):
+            subject = [CSAT_QUANT, CSAT_REASONING, CSAT_ENGLISH][j % 3]
+            topic_id = f"t-csat-{subject[-1]}"
+            db["pyq_question_topic_tags"].append(
+                {
+                    "id": f"tag-{q['id']}",
+                    "question_id": q["id"],
+                    "topic_id": topic_id,
+                    "tag_role": "primary",
+                    "reviewer_status": "verified",
+                }
+            )
+            if not any(t["id"] == topic_id for t in db["topics"]):
+                db["topics"].append(
+                    {
+                        "id": topic_id,
+                        "name": f"CSAT topic {subject[-1]}",
+                        "subject_id": subject,
+                        "parent_topic_id": None,
+                    }
+                )
+        db["exam_phases"].append(
+            {"id": f"phase-csat-{i}", "phase_name": "Prelims", "phase_slug": f"prelims-csat-{i}"}
+        )
+    return db
 
 
 def _client(db):
@@ -303,6 +377,136 @@ def test_reachability_endpoint_on_an_unknown_exam():
     client, _ = _client(_upsc_db())
     body = client.get("/api/exam-intelligence/exams/nope/reachability").json()
     assert body["exam_id"] is None
+    assert body["papers"] == []
+
+
+# ── Subject scoping: keeping CSAT off the GS-I trend ─────────────────────────
+
+
+def test_without_a_subject_csat_lands_on_the_trend():
+    """The defect, reproduced. Eligibility alone stopped separating the papers
+    once CSAT acquired non-uniform observed_difficulty, so the CSAT papers
+    qualify alongside the nine GS-I ones and land at x-positions the GS-I
+    series already occupies. A line chart keyed on year then draws two points
+    per collided year and jumps vertically between them."""
+    out = exam_reachability(PagedSB(_with_csat(_upsc_db())), "e1")
+    years = [p["year"] for p in out["papers"]]
+    assert len(years) == 13
+    collided = {y for y in years if years.count(y) > 1}
+    assert collided == set(CSAT_YEARS)
+
+
+def test_pinning_the_subject_leaves_exactly_nine_points():
+    out = exam_reachability(PagedSB(_with_csat(_upsc_db())), "e1", None, GS1_SUBJECT)
+    years = [p["year"] for p in out["papers"]]
+    assert years == list(range(2018, 2027))
+    assert len(years) == len(set(years))
+    assert out["excluded"][OFF_SUBJECT] == 4
+    assert out["subject_id"] == GS1_SUBJECT
+
+
+def test_the_section_attributes_a_gs1_paper():
+    """GS-I questions carry no topic tags in this fixture — the section alone
+    identifies them, which is the discriminator available for an untagged
+    paper."""
+    db = _with_csat(_upsc_db())
+    assert not any(t["question_id"].startswith("p-gs1") for t in db["pyq_question_topic_tags"])
+    out = exam_reachability(PagedSB(db), "e1", None, GS1_SUBJECT)
+    assert len(out["papers"]) == 9
+
+
+def test_the_primary_tag_attributes_a_paper_with_no_section():
+    """And the tag alone identifies a paper whose questions carry no section."""
+    db = _with_csat(_upsc_db())
+    for q in db["pyq_questions"]:
+        if q["pyq_paper_id"].startswith("p-gs1"):
+            q["section_id"] = None
+    for q in db["pyq_questions"]:
+        if q["pyq_paper_id"].startswith("p-gs1"):
+            db["pyq_question_topic_tags"].append(
+                {
+                    "id": f"tag-{q['id']}",
+                    "question_id": q["id"],
+                    "topic_id": "m-gs1",
+                    "tag_role": "primary",
+                    "reviewer_status": "verified",
+                }
+            )
+    db["topics"].append(
+        {
+            "id": "m-gs1",
+            "name": "Fundamental Rights",
+            "subject_id": GS1_SUBJECT,
+            "parent_topic_id": None,
+        }
+    )
+    out = exam_reachability(PagedSB(db), "e1", None, GS1_SUBJECT)
+    assert [p["year"] for p in out["papers"]] == list(range(2018, 2027))
+
+
+def test_a_paper_attributable_to_nothing_is_not_the_series():
+    """Neither section nor tag: the paper cannot be shown to belong to this
+    series, so it is excluded and counted rather than assumed in."""
+    db = _upsc_db()
+    for q in db["pyq_questions"]:
+        if q["pyq_paper_id"] == "p-gs1-2020":
+            q["section_id"] = None
+    out = exam_reachability(PagedSB(db), "e1", None, GS1_SUBJECT)
+    assert 2020 not in [p["year"] for p in out["papers"]]
+    assert out["excluded"][OFF_SUBJECT] == 1
+
+
+def test_secondary_tags_never_attribute_a_question():
+    """Every CSAT question also carries a SECONDARY tag to the coarse
+    upsc-csat topic. If secondary tags counted, that topic's subject would
+    decide attribution and every count downstream would double."""
+    db = _upsc_db()
+    for q in db["pyq_questions"]:
+        if q["pyq_paper_id"] == "p-gs1-2021":
+            q["section_id"] = None
+            db["pyq_question_topic_tags"].append(
+                {
+                    "id": f"tag2-{q['id']}",
+                    "question_id": q["id"],
+                    "topic_id": "t-csat-coarse",
+                    "tag_role": "secondary",
+                    "reviewer_status": "verified",
+                }
+            )
+    db["topics"].append(
+        {
+            "id": "t-csat-coarse",
+            "name": "CSAT",
+            "subject_id": CSAT_QUANT,
+            "parent_topic_id": None,
+        }
+    )
+    out = exam_reachability(PagedSB(db), "e1", None, GS1_SUBJECT)
+    # The secondary tag is ignored, so 2021 is attributable to nothing and is
+    # excluded — never attributed to the CSAT subject the secondary tag names.
+    assert 2021 not in [p["year"] for p in out["papers"]]
+    assert out["excluded"][OFF_SUBJECT] == 1
+
+
+def test_reachability_endpoint_plots_nine_points_with_csat_in_the_corpus():
+    """The endpoint pins UPSC's series to GS-I without the caller asking, so a
+    chart drawn straight off this payload cannot pick CSAT back up."""
+    client, _ = _client(_with_csat(_upsc_db()))
+    body = client.get("/api/exam-intelligence/exams/upsc-cse/reachability").json()
+    assert len(body["papers"]) == 9
+    assert [p["year"] for p in body["papers"]] == list(range(2018, 2027))
+    assert body["subject_id"] == GS1_SUBJECT
+    assert body["excluded"]["off_subject"] == 4
+    assert all(p["paper_code"] == "GS-1" for p in body["papers"])
+
+
+def test_reachability_endpoint_takes_an_explicit_subject_override():
+    client, _ = _client(_with_csat(_upsc_db()))
+    body = client.get(
+        f"/api/exam-intelligence/exams/upsc-cse/reachability?subject_id={CSAT_QUANT}"
+    ).json()
+    # The CSAT papers are mixed-subject, so none of them is the Quant series
+    # either — pinning any single subject leaves the mixed papers out.
     assert body["papers"] == []
 
 

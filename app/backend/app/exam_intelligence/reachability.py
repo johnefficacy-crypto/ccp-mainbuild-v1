@@ -66,6 +66,7 @@ BANDS: tuple[str, ...] = ("easy", "medium", "hard")
 NOT_ASSESSED = "not_assessed"
 UNIFORM = "uniform"
 UNRECOGNISED = "unrecognised"
+OFF_SUBJECT = "off_subject"
 ELIGIBLE = "eligible"
 
 
@@ -204,8 +205,154 @@ def _phase_names(supabase: Any, phase_ids: list[str]) -> dict[str, dict[str, Any
     return {r["id"]: r for r in rows if r.get("id")}
 
 
+def _primary_tag_topics(
+    supabase: Any, question_ids: list[str]
+) -> tuple[dict[str, str], set[str]]:
+    """{question_id → topic_id} from its VERIFIED PRIMARY tags, lowest id wins,
+    plus the set of questions that carried more than one.
+
+    Primary only. Every CSAT question also carries a secondary tag to the
+    coarse upsc-csat topic, so counting both roles would attribute one question
+    to two subjects and double every figure downstream.
+    """
+    tags: list[dict[str, Any]] = []
+    for chunk in _chunks(question_ids, _BATCH):
+        tags.extend(
+            _paginate_all(
+                lambda from_n, to_n, c=chunk: (
+                    supabase.table("pyq_question_topic_tags")
+                    .select("id, question_id, topic_id, tag_role")
+                    .in_("question_id", c)
+                    .eq("tag_role", "primary")
+                    .eq("reviewer_status", "verified")
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                )
+            )
+        )
+    chosen: dict[str, str] = {}
+    twice: set[str] = set()
+    for t in sorted(tags, key=lambda r: str(r.get("id") or "")):
+        qid, tid = t.get("question_id"), t.get("topic_id")
+        if not qid or not tid:
+            continue
+        if qid in chosen:
+            twice.add(qid)
+            continue
+        chosen[qid] = tid
+    return chosen, twice
+
+
+def _topic_rows(supabase: Any, topic_ids: list[str]) -> dict[str, dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for chunk in _chunks(sorted(set(topic_ids)), _BATCH):
+        rows.extend(
+            _paginate_all(
+                lambda from_n, to_n, c=chunk: (
+                    supabase.table("topics")
+                    .select("id, name, subject_id, parent_topic_id")
+                    .in_("id", c)
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                )
+            )
+        )
+    return {r["id"]: r for r in rows if r.get("id")}
+
+
+def _section_subjects(supabase: Any, section_ids: list[str]) -> dict[str, str]:
+    """{section_id → subject_id} for ``exam_phase_sections``."""
+    ids = sorted({s for s in section_ids if s})
+    if not ids:
+        return {}
+    rows: list[dict[str, Any]] = []
+    for chunk in _chunks(ids, _BATCH):
+        rows.extend(
+            _paginate_all(
+                lambda from_n, to_n, c=chunk: (
+                    supabase.table("exam_phase_sections")
+                    .select("id, subject_id")
+                    .in_("id", c)
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                )
+            )
+        )
+    return {r["id"]: r["subject_id"] for r in rows if r.get("id") and r.get("subject_id")}
+
+
+def resolve_question_subjects(
+    supabase: Any, questions: list[dict[str, Any]]
+) -> dict[str, str]:
+    """{question_id → subject_id} for the questions that can be attributed.
+
+    Section first, primary tag second. Those are the two reliable
+    discriminators; ``exam_phase_sections.section_label`` is NOT one — the CSAT
+    papers carry three different labels ("CSAT (Paper II)", "General Studies
+    Paper II / CSAT", …) and two of them carry NULL, so a label match would
+    silently keep or drop papers depending on which spelling an operator typed.
+
+    A question that resolves to neither is simply absent from the map. Callers
+    decide what that means; nothing here guesses a subject for it.
+    """
+    qids = [q["id"] for q in questions if q.get("id")]
+    if not qids:
+        return {}
+
+    by_section = _section_subjects(
+        supabase, [q.get("section_id") for q in questions if q.get("section_id")]
+    )
+    tag_topics, _ = _primary_tag_topics(supabase, qids)
+    topics = _topic_rows(supabase, list(tag_topics.values()))
+
+    out: dict[str, str] = {}
+    for q in questions:
+        qid = q.get("id")
+        if not qid:
+            continue
+        subject = by_section.get(q.get("section_id") or "")
+        if not subject:
+            topic = topics.get(tag_topics.get(qid) or "")
+            subject = (topic or {}).get("subject_id")
+        if subject:
+            out[qid] = subject
+    return out
+
+
+def _is_subject_paper(
+    questions: list[dict[str, Any]],
+    question_subjects: dict[str, str],
+    subject_id: str,
+) -> bool:
+    """Is this whole paper the ``subject_id`` paper?
+
+    Judged over the paper, not per question, for the same reason eligibility is:
+    a per-question filter would keep the attributable half of a mixed paper and
+    plot it as a complete one. So every question that resolves to a subject must
+    resolve to THIS subject, and at least one must resolve at all. A paper whose
+    questions resolve to nothing is not identifiable as this series and is
+    excluded — CSAT's three subjects make its papers fail the first test, and an
+    untagged, unsectioned paper fails the second.
+    """
+    resolved = {
+        question_subjects[q["id"]]
+        for q in questions
+        if q.get("id") and q["id"] in question_subjects
+    }
+    return resolved == {subject_id}
+
+
 def exam_reachability(
-    supabase: Any, exam_id: str, phase_id: str | None = None
+    supabase: Any,
+    exam_id: str,
+    phase_id: str | None = None,
+    subject_id: str | None = None,
 ) -> dict[str, Any]:
     """Per-paper band counts for every ASSESSED paper of ``exam_id``.
 
@@ -213,13 +360,26 @@ def exam_reachability(
     excluded so the caller can render a specific empty state instead of a blank
     one. Never raises: a read failure degrades to zero eligible papers, which
     renders the empty state rather than a chart built on a partial read.
+
+    ``subject_id`` PINS THE SERIES TO ONE PAPER. Without it this read plots
+    every eligible paper of the exam, and eligibility alone stopped separating
+    them once CSAT acquired non-uniform ``observed_difficulty``: three CSAT
+    papers then qualified alongside the nine Prelims GS-I ones and landed at
+    the same x-positions, so 2023 and 2024 each drew two points and the header
+    read "12 assessed papers". Passing the series' subject keeps a paper only
+    when every question of it that can be attributed at all attributes to that
+    subject — see ``resolve_question_subjects`` for why the discriminator is
+    the section or the primary tag and never ``section_label``. A paper holding
+    a foreign subject, or holding nothing attributable, is excluded and counted
+    under ``off_subject`` rather than dropped silently.
     """
     out: dict[str, Any] = {
         "exam_id": exam_id,
         "verified_only": True,
         "bands": list(BANDS),
+        "subject_id": subject_id,
         "papers": [],
-        "excluded": {NOT_ASSESSED: 0, UNIFORM: 0, UNRECOGNISED: 0},
+        "excluded": {NOT_ASSESSED: 0, UNIFORM: 0, UNRECOGNISED: 0, OFF_SUBJECT: 0},
         "papers_considered": 0,
     }
     if not exam_id:
@@ -233,7 +393,11 @@ def exam_reachability(
 
         paper_ids = [p["id"] for p in papers if p.get("id")]
         questions = _verified_questions(
-            supabase, paper_ids, "id, pyq_paper_id, observed_difficulty"
+            supabase,
+            paper_ids,
+            "id, pyq_paper_id, observed_difficulty, section_id"
+            if subject_id
+            else "id, pyq_paper_id, observed_difficulty",
         )
 
         by_paper: dict[str, list[dict[str, Any]]] = {pid: [] for pid in paper_ids}
@@ -242,6 +406,12 @@ def exam_reachability(
             if pid in by_paper:
                 by_paper[pid].append(q)
 
+        # Resolved once for the whole exam, not per paper: one section read and
+        # one tag read, rather than two per paper.
+        q_subjects = (
+            resolve_question_subjects(supabase, questions) if subject_id else {}
+        )
+
         phase_meta = _phase_names(
             supabase, list({p.get("exam_phase_id") for p in papers if p.get("exam_phase_id")})
         )
@@ -249,7 +419,13 @@ def exam_reachability(
         eligible: list[dict[str, Any]] = []
         for p in papers:
             pid = p["id"]
-            counts = tally_paper(by_paper.get(pid, []))
+            paper_questions = by_paper.get(pid, [])
+            if subject_id and not _is_subject_paper(
+                paper_questions, q_subjects, subject_id
+            ):
+                out["excluded"][OFF_SUBJECT] += 1
+                continue
+            counts = tally_paper(paper_questions)
             verdict = classify_paper(counts)
             if verdict != ELIGIBLE:
                 out["excluded"][verdict] = out["excluded"].get(verdict, 0) + 1

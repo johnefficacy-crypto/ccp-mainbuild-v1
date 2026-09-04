@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { ArrowRight, BarChart3, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
+import CsatCompositionSection from "./CsatCompositionSection";
 import OptionInsightsCard from "./OptionInsightsCard";
 import PaperCompositionCard from "./PaperCompositionCard";
 import ReachabilityTrendCard from "./ReachabilityTrendCard";
@@ -413,6 +414,17 @@ export default function ExamIntelligenceTab({ examSlug }) {
           line. See the PR body for the collision and the proposed resolution —
           the table is deliberately left untouched here. */}
       <ReachabilityTrendCard examSlug={examSlug} />
+
+      {/* Immediately beneath the trend, and deliberately NOT on it. The
+          reachability rubric was written for GS-I and does not transfer to
+          CSAT — "reachable from an NCERT textbook" is meaningless for a
+          percentages question — and CSAT's stored observed_difficulty was
+          assigned by keyword rule rather than judged. So CSAT is excluded from
+          the trend above and appears here instead, answering a different
+          question off a different column: what each paper was MADE OF. This
+          section presents no difficulty at all. It renders nothing for an exam
+          with no CSAT series. */}
+      <CsatCompositionSection examSlug={examSlug} />
 
       {/* Composition is a second, separate question about a SINGLE paper, off
           a different column (topic tags, not difficulty) and with its own
