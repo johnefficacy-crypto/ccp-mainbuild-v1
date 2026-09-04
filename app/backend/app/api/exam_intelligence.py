@@ -20,6 +20,11 @@ from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.lookup import list_active_exams
 from app.study_os.pyq_practice import practice_ready_counts_by_paper
 from app.exam_intelligence.option_insights import option_insights
+from app.exam_intelligence.reachability import (
+    BANDS as REACHABILITY_BANDS,
+    exam_reachability,
+    paper_composition,
+)
 from app.exam_intelligence.status import exam_intelligence_summary
 from app.exam_intelligence.trap_drill import (
     build_trap_drill,
@@ -829,6 +834,83 @@ def get_exam_pyq_summary(
     except Exception as exc:  # noqa: BLE001
         logger.exception("pyq-summary failed for %s", slug)
         return {**empty, "exam_id": exam_id, "error": str(exc)[:200]}
+
+
+@router.get("/exams/{slug}/reachability")
+def get_exam_reachability(
+    slug: str,
+    phase_id: str | None = Query(
+        None,
+        description=(
+            "Optional NARROWING filter. exam_phases has no unique constraint "
+            "and UPSC's GS-I series spans two phase ids, so passing one here "
+            "splits a continuous series."
+        ),
+    ),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Per-paper reachability band counts for the exam's ASSESSED papers.
+
+    Eligibility is computed per paper, never allowlisted: every verified
+    question must carry a non-NULL ``observed_difficulty`` and the paper must
+    hold more than one distinct band. A paper that is entirely NULL was never
+    assessed; a uniform one carries the August 2026 bulk-import default. Both
+    are excluded and counted in ``excluded`` so the caller can say which.
+
+    Fails closed to an empty ``papers`` list — the caller renders an empty
+    state rather than a chart built on a partial read.
+    """
+    sb = get_supabase_admin()
+    empty = {
+        "exam_id": None,
+        "exam_slug": slug,
+        "verified_only": True,
+        "bands": list(REACHABILITY_BANDS),
+        "papers": [],
+        "excluded": {"not_assessed": 0, "uniform": 0, "unrecognised": 0},
+        "papers_considered": 0,
+    }
+    try:
+        rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data or []
+        )
+        exam_row = rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("reachability exam lookup failed for %s: %s", slug, exc)
+        return empty
+    if not exam_row or not exam_row.get("id"):
+        return empty
+
+    payload = exam_reachability(sb, exam_row["id"], phase_id)
+    payload["exam_slug"] = slug
+    for paper in payload.get("papers", []):
+        paper["set_label"] = _pyq_paper_set_label(
+            {"set_code": paper.pop("set_code", None), "paper_set": paper.pop("paper_set", None)}
+        )
+    return payload
+
+
+@router.get("/pyq-papers/{paper_id}/composition")
+def get_pyq_paper_composition(
+    paper_id: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Verified primary-tag topic distribution for one verified paper.
+
+    A different question from reachability, off a different column, with its
+    own eligibility: a paper qualifies here when its questions carry primary
+    topic tags, whether or not difficulty was ever assessed. ``tag_level`` says
+    whether those tags sit at microtopic or top-level topic, because the two
+    are not equivalent and must not be presented as if they were.
+    """
+    sb = get_supabase_admin()
+    payload = paper_composition(sb, paper_id)
+    payload["set_label"] = _pyq_paper_set_label(
+        {"set_code": payload.pop("set_code", None), "paper_set": payload.pop("paper_set", None)}
+    )
+    if not payload.get("found"):
+        raise HTTPException(status_code=404, detail="verified pyq_paper not found")
+    return payload
 
 
 @router.get("/exams/{slug}/trap-drill")

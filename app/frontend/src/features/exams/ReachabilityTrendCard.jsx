@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   LabelList,
@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { BarChart3, Info } from "lucide-react";
 import PropTypes from "prop-types";
+
+import { api } from "../../lib/api";
 import {
   BAND_COLOR,
   BAND_LABEL,
@@ -22,7 +24,7 @@ import {
   Y_AXIS_LABEL,
   Y_AXIS_MAX,
   Y_AXIS_TICKS,
-  reachabilityConfigFor,
+  reachabilityCopyFor,
 } from "./reachabilityConfig";
 
 /**
@@ -35,21 +37,18 @@ import {
  * distinction in front of the reader, so none of them is optional and none is
  * behind a disclosure.
  *
+ * Counts come from the reachability endpoint, which decides eligibility per
+ * paper by computing it: every verified question must carry a non-NULL
+ * observed_difficulty and the paper must hold more than one distinct band. An
+ * exam whose corpus is entirely NULL (never assessed) or uniformly 'medium'
+ * (the August 2026 bulk-import default) returns no papers and renders the empty
+ * state, because charting either would be a chart of an import artefact dressed
+ * as a finding. Only the per-exam editorial is local — see reachabilityConfig.
+ *
  * Bands render as the stored `pyq_questions.observed_difficulty` enum —
  * Easy/Medium/Hard — with no display mapping layer. The Hard copy says
- * "not reachable", never "difficult": that word is what separates this chart
- * from the difficulty curve it would otherwise be mistaken for.
+ * "not reachable", never "difficult".
  */
-
-/** Only papers that have been through a judging pass reach this component. */
-function toChartRows(papers) {
-  return papers.map((p) => ({
-    year: p.year,
-    easy: p.easy,
-    medium: p.medium,
-    hard: p.hard,
-  }));
-}
 
 /**
  * Direct end-label for one series. The categorical palette clears the CVD
@@ -115,89 +114,148 @@ BandInfo.propTypes = {
   copy: PropTypes.string.isRequired,
 };
 
-/**
- * The observation beneath the chart.
- *
- * Deliberately an observation about this corpus, never advice. No study plans,
- * no book lists, no second person. A test asserts the absence of imperative
- * study language, because the line between "here is what the corpus shows" and
- * "here is what you should do about it" is exactly what makes this publishable.
- */
-function AnalysisProse() {
+function CardShell({ testId, subtitle, children }) {
   return (
-    <div
-      className="mt-5 space-y-3 text-sm leading-relaxed text-muted-foreground"
-      data-testid="reachability-analysis"
-    >
-      <p>
-        Across all eight papers the Medium band barely moves — it sits close to
-        53 questions every year. What changed sits either side of it. Easy fell
-        from 39 in 2018 to 10 in 2026, while Hard roughly doubled over the same
-        span. On this classification those are one movement, not two: questions
-        once reachable from a textbook or a newspaper have become questions
-        reachable from no standard source at all.
-      </p>
-      <p>
-        The reachable pool — Easy plus Medium together — has averaged about 70
-        questions per paper in recent years. Cutoffs have needed roughly 40 to
-        45 net correct once negative marking is applied.
-      </p>
-      <p>
-        Placing those two figures side by side, one observation follows from
-        this corpus: the reachable pool alone clears the cutoff, and a paper's
-        Hard band can be left entirely unanswered without the arithmetic
-        failing. That is a property of how these papers were classified, not a
-        prediction about any individual attempt.
-      </p>
+    <div className="soft-card rounded-2xl p-5" data-testid={testId}>
+      <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
+        {subtitle}
+      </div>
+      <div className="font-heading text-lg font-semibold mt-0.5">
+        Reachability trend
+      </div>
+      {children}
     </div>
   );
 }
 
-export default function ReachabilityTrendCard({ examId = null, phaseId = null }) {
-  const config = useMemo(
-    () => reachabilityConfigFor(examId, phaseId),
-    [examId, phaseId]
-  );
-  const rows = useMemo(
-    () => (config ? toChartRows(config.papers) : []),
-    [config]
-  );
-
-  // No judged papers for this exam. The corpus almost certainly HAS rows for
-  // it — bulk-defaulted to 'medium' at import — and charting those would be a
-  // chart of the import default dressed as a finding. Empty state instead.
-  if (!config || rows.length === 0) {
+/**
+ * The empty state names WHICH exclusion applied. "Not assessed" and "assessed
+ * but uniform" are different facts about the corpus, and collapsing them into
+ * "no data" hides that the second one has rows an operator might mistake for
+ * results.
+ */
+function emptyReason(excluded) {
+  const notAssessed = excluded?.not_assessed || 0;
+  const uniform = excluded?.uniform || 0;
+  if (uniform > 0 && notAssessed === 0) {
     return (
-      <div
-        className="soft-card rounded-2xl p-5"
-        data-testid="reachability-trend-empty"
+      "Its papers carry a single difficulty value across every question — the " +
+      "bulk-import default, not a judgement — so there is nothing to plot."
+    );
+  }
+  if (uniform > 0) {
+    return (
+      "Its papers have either not been read against the reachability rubric, " +
+      "or carry a single bulk-imported difficulty value across every " +
+      "question, so there is nothing to plot."
+    );
+  }
+  return (
+    "Its papers have not yet been read against the reachability rubric, so " +
+    "there is nothing to plot."
+  );
+}
+
+export default function ReachabilityTrendCard({ examSlug = null, phaseId = null }) {
+  const [payload, setPayload] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!examSlug) {
+      setPayload(null);
+      return undefined;
+    }
+    setLoading(true);
+    const qs = phaseId ? `?phase_id=${encodeURIComponent(phaseId)}` : "";
+    api
+      .get(`/api/exam-intelligence/exams/${examSlug}/reachability${qs}`)
+      .then((d) => {
+        if (cancelled) return;
+        setPayload(d);
+        setError("");
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setPayload(null);
+        setError(e?.message || "Failed to load the reachability trend.");
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [examSlug, phaseId]);
+
+  const copy = useMemo(() => reachabilityCopyFor(examSlug), [examSlug]);
+  const rows = useMemo(() => {
+    const papers = payload?.papers;
+    return Array.isArray(papers) ? papers : [];
+  }, [payload]);
+
+  if (!examSlug) return null;
+
+  if (loading) {
+    return (
+      <CardShell
+        testId="reachability-trend-loading"
+        subtitle="Question reachability · by paper"
       >
-        <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
-          Question reachability · by paper
+        <div className="mt-4 text-sm text-muted-foreground" aria-busy="true">
+          Loading the reachability trend…
         </div>
-        <div className="font-heading text-lg font-semibold mt-0.5">
-          Reachability trend
-        </div>
+      </CardShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <CardShell
+        testId="reachability-trend-error"
+        subtitle="Question reachability · by paper"
+      >
+        <p className="mt-4 text-sm text-muted-foreground" role="alert">
+          {error}
+        </p>
+      </CardShell>
+    );
+  }
+
+  // No assessed papers for this exam. The corpus almost certainly HAS rows for
+  // it — bulk-defaulted to 'medium' at import, or never assessed at all — and
+  // charting those would be a chart of the import default dressed as a finding.
+  if (rows.length === 0) {
+    return (
+      <CardShell
+        testId="reachability-trend-empty"
+        subtitle="Question reachability · by paper"
+      >
         <div className="mt-4 flex items-start gap-3">
           <BarChart3 className="h-5 w-5 text-clay-500 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            Difficulty assessment is pending for this exam. Its papers have not
-            yet been read against the reachability rubric, so there is nothing
-            to plot. {SHARED_MEASURE_LINE}
+            Difficulty assessment is pending for this exam.{" "}
+            {emptyReason(payload?.excluded)} {SHARED_MEASURE_LINE}
           </p>
         </div>
-      </div>
+      </CardShell>
     );
   }
 
   const lastIndex = rows.length - 1;
   const xDomainStart = rows[0].year;
   const xDomainEnd = rows[lastIndex].year;
+  // The prose is editorial, written against a corpus of a known size. If the
+  // endpoint now returns a different number of papers, say so rather than
+  // letting stale sentences sit silently under fresh counts.
+  const proseStale =
+    copy.analysis &&
+    copy.analysisPaperCount != null &&
+    copy.analysisPaperCount !== rows.length;
 
   return (
     <div className="soft-card rounded-2xl p-5" data-testid="reachability-trend-card">
       <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-semibold">
-        Question reachability · {config.seriesLabel} · {rows.length} judged papers
+        Question reachability · {copy.seriesLabel} · {rows.length} assessed papers
       </div>
       <div className="font-heading text-lg font-semibold mt-0.5">
         Reachability trend
@@ -208,11 +266,11 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 8, right: 78, bottom: 4, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD3" vertical={false} />
-              {/* Numeric, not categorical. The series skips 2025 — there is no
-                  judged paper for that year — and a category axis would draw
-                  2024→2026 the same width as 2023→2024, flattening a two-year
-                  gap into a one-year step and overstating how fast the trend
-                  moved. A number axis puts each paper at its true distance. */}
+              {/* Numeric, not categorical. The series can skip a year whenever
+                  a paper is unassessed, and a category axis would draw a
+                  two-year gap the same width as a one-year step, overstating
+                  how fast the trend moved. A number axis puts each paper at its
+                  true distance. */}
               <XAxis
                 dataKey="year"
                 type="number"
@@ -277,20 +335,40 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
           </p>
           <div className="space-y-2.5 pt-1">
             {REACHABILITY_BANDS.map((band) => (
-              <BandInfo key={band} band={band} copy={config.bandCopy[band]} />
+              <BandInfo key={band} band={band} copy={copy.bandCopy[band]} />
             ))}
           </div>
         </div>
       </div>
 
-      <AnalysisProse />
+      {copy.analysis ? (
+        <div
+          className="mt-5 space-y-3 text-sm leading-relaxed text-muted-foreground"
+          data-testid="reachability-analysis"
+        >
+          {copy.analysis.map((para) => (
+            <p key={para.slice(0, 40)}>{para}</p>
+          ))}
+          {proseStale ? (
+            <p
+              className="text-[11px] text-clay-700"
+              data-testid="reachability-analysis-stale"
+            >
+              Written against {copy.analysisPaperCount} papers; {rows.length} are
+              now assessed. The figures quoted above have not been revisited.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
-      <p
-        className="mt-4 text-xs leading-relaxed text-clay-700 bg-clay-50/70 border border-clay-100 rounded-lg px-3 py-2"
-        data-testid="reachability-caveat"
-      >
-        {config.caveat}
-      </p>
+      {copy.caveat ? (
+        <p
+          className="mt-4 text-xs leading-relaxed text-clay-700 bg-clay-50/70 border border-clay-100 rounded-lg px-3 py-2"
+          data-testid="reachability-caveat"
+        >
+          {copy.caveat}
+        </p>
+      ) : null}
 
       <p
         className="mt-3 text-[11px] leading-relaxed text-muted-foreground"
@@ -304,12 +382,12 @@ export default function ReachabilityTrendCard({ examId = null, phaseId = null })
 }
 
 ReachabilityTrendCard.propTypes = {
-  /** Exam id or slug. Resolved against the per-exam reachability config. */
-  examId: PropTypes.string,
+  /** Exam slug. Resolved server-side; counts are never held in the frontend. */
+  examSlug: PropTypes.string,
   /**
    * Optional narrowing filter. Read the phase-scoping note in
    * reachabilityConfig.js first — `exam_phases` has no unique constraint and
-   * UPSC's eight judged papers span two phase ids, so passing one here splits
+   * UPSC's nine assessed papers span two phase ids, so passing one here splits
    * a continuous series.
    */
   phaseId: PropTypes.string,
