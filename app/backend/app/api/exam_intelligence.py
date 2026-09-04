@@ -25,6 +25,10 @@ from app.exam_intelligence.reachability import (
     exam_reachability,
     paper_composition,
 )
+from app.exam_intelligence.subject_composition import (
+    CSAT_SERIES_BY_EXAM_SLUG,
+    subject_composition_series,
+)
 from app.exam_intelligence.status import exam_intelligence_summary
 from app.exam_intelligence.trap_drill import (
     build_trap_drill,
@@ -836,6 +840,25 @@ def get_exam_pyq_summary(
         return {**empty, "exam_id": exam_id, "error": str(exc)[:200]}
 
 
+#: Which subject each exam's reachability series is about.
+#:
+#: The trend is one paper's series, not the exam's. Without this, eligibility
+#: alone decided membership — and it stopped separating the papers once CSAT
+#: acquired non-uniform observed_difficulty, so three CSAT papers joined the
+#: nine Prelims GS-I ones, two of them landing on years the GS-I series already
+#: occupied. The chart then drew twelve points at nine x-positions and jumped
+#: vertically at 2023 and 2024.
+#:
+#: The value is a subject id because that is what the reliable discriminators
+#: resolve to — the question's section, or its primary tag's topic. NOT
+#: section_label: the CSAT papers carry three different spellings of it and two
+#: carry NULL.
+REACHABILITY_SERIES_SUBJECT: dict[str, str] = {
+    # UPSC CSE — General Studies Paper I.
+    "upsc-cse": "09db7afb-0864-46c9-b900-1510b60c0011",
+}
+
+
 @router.get("/exams/{slug}/reachability")
 def get_exam_reachability(
     slug: str,
@@ -845,6 +868,14 @@ def get_exam_reachability(
             "Optional NARROWING filter. exam_phases has no unique constraint "
             "and UPSC's GS-I series spans two phase ids, so passing one here "
             "splits a continuous series."
+        ),
+    ),
+    subject_id: str | None = Query(
+        None,
+        description=(
+            "Pins the series to one subject, overriding the per-exam default. "
+            "Papers holding a foreign subject are excluded and counted under "
+            "excluded.off_subject."
         ),
     ),
     _user: dict = Depends(get_current_user),
@@ -866,8 +897,14 @@ def get_exam_reachability(
         "exam_slug": slug,
         "verified_only": True,
         "bands": list(REACHABILITY_BANDS),
+        "subject_id": None,
         "papers": [],
-        "excluded": {"not_assessed": 0, "uniform": 0, "unrecognised": 0},
+        "excluded": {
+            "not_assessed": 0,
+            "uniform": 0,
+            "unrecognised": 0,
+            "off_subject": 0,
+        },
         "papers_considered": 0,
     }
     try:
@@ -881,7 +918,68 @@ def get_exam_reachability(
     if not exam_row or not exam_row.get("id"):
         return empty
 
-    payload = exam_reachability(sb, exam_row["id"], phase_id)
+    payload = exam_reachability(
+        sb,
+        exam_row["id"],
+        phase_id,
+        subject_id or REACHABILITY_SERIES_SUBJECT.get(slug),
+    )
+    payload["exam_slug"] = slug
+    for paper in payload.get("papers", []):
+        paper["set_label"] = _pyq_paper_set_label(
+            {"set_code": paper.pop("set_code", None), "paper_set": paper.pop("paper_set", None)}
+        )
+    return payload
+
+
+@router.get("/exams/{slug}/csat-composition")
+def get_exam_csat_composition(
+    slug: str,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """What each CSAT paper of this exam was made of, by topic.
+
+    COMPOSITION, NOT DIFFICULTY. The reachability trend measures how reachable
+    a question was from standard preparation, against a rubric written for
+    UPSC GS-I; it does not transfer to CSAT, and CSAT's stored
+    ``observed_difficulty`` was assigned by keyword rule rather than judged
+    against any rubric. Nothing in this payload reports difficulty.
+
+    The series is scoped by the subject of each question's verified PRIMARY tag
+    — never by ``exam_phase_id`` (the four papers sit on three phases) and never
+    by ``section_label`` (three spellings, two NULLs). Papers that are not
+    verified never appear, which is what excludes the rejected 2026 paper
+    superseded by another.
+
+    Returns ``papers: []`` for an exam with no CSAT series, so the caller
+    renders no section at all rather than an empty one.
+    """
+    sb = get_supabase_admin()
+    subject_ids = CSAT_SERIES_BY_EXAM_SLUG.get(slug, ())
+    empty = {
+        "exam_id": None,
+        "exam_slug": slug,
+        "verified_only": True,
+        "subject_ids": list(subject_ids),
+        "subjects": [],
+        "papers": [],
+        "topics": [],
+        "papers_considered": 0,
+    }
+    if not subject_ids:
+        return empty
+    try:
+        rows = (
+            sb.table("exams").select("id, slug").eq("slug", slug).limit(1).execute().data or []
+        )
+        exam_row = rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("csat composition exam lookup failed for %s: %s", slug, exc)
+        return empty
+    if not exam_row or not exam_row.get("id"):
+        return empty
+
+    payload = subject_composition_series(sb, exam_row["id"], subject_ids)
     payload["exam_slug"] = slug
     for paper in payload.get("papers", []):
         paper["set_label"] = _pyq_paper_set_label(

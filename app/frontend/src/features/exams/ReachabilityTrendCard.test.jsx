@@ -89,6 +89,42 @@ describe("assessed papers", () => {
     );
   });
 
+  it("draws exactly nine points, 2018-2026, with no CSAT paper among them", async () => {
+    // The defect this replaced: CSAT acquired non-uniform observed_difficulty,
+    // three of its papers passed reachability eligibility, and the card read
+    // "12 assessed papers" while plotting two papers at the same x-position —
+    // so the line jumped vertically at 2023 and 2024. The endpoint now pins the
+    // series to GS Paper I and reports what it left out.
+    mockGet(payload(NINE_PAPERS, { off_subject: 3 }));
+    render(<ReachabilityTrendCard examSlug={UPSC} />);
+    const card = await screen.findByTestId("reachability-trend-card");
+
+    expect(within(card).getByText(/9 assessed papers/)).toBeInTheDocument();
+    expect(within(card).queryByText(/12 assessed papers/)).toBeNull();
+
+    // The x axis carries one tick per plotted paper, so a twelfth paper shows
+    // up here — as a twelfth tick, and as a duplicate of a year already on the
+    // axis. Nine ticks, 2018 through 2026, no repeats.
+    const ticks = Array.from(
+      card.querySelectorAll(".recharts-xAxis .recharts-cartesian-axis-tick-value")
+    ).map((t) => t.textContent);
+    expect(ticks).toEqual([
+      "2018",
+      "2019",
+      "2020",
+      "2021",
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+      "2026",
+    ]);
+    expect(new Set(ticks).size).toBe(ticks.length);
+    // One line per band, no more.
+    expect(card.querySelectorAll(".recharts-line-curve")).toHaveLength(3);
+    expect(within(card).queryByText(/CSAT/i)).toBeNull();
+  });
+
   it("plots the years in ascending order, so the chart reads as a trend", async () => {
     mockGet(payload(NINE_PAPERS));
     render(<ReachabilityTrendCard examSlug={UPSC} />);
