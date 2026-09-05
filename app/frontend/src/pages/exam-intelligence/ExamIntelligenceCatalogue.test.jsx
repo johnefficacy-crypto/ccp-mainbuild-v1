@@ -76,3 +76,44 @@ test("exam links target the top-level Exam Intelligence detail route", async () 
   // Must NOT point back into the eligibility funnel.
   expect(link.getAttribute("href")).not.toContain("/app/eligibility/");
 });
+
+// ── search predicate: mirrors app/backend/app/exam_intelligence/lookup.py ──
+
+const { examMatchesQuery } = ExamIntelligenceCatalogueModule;
+
+test("a slug pasted verbatim matches — the query is normalized too, not just the text", () => {
+  const exam = { name: "IFSCA Grade A Officer", slug: "ifsca-grade-a", exam_type: "recruitment" };
+  for (const q of ["ifsca", "IFSCA", "ifsca-grade-a", "IFSCA Grade A", "ifsca_grade_a", "ifscagradea"]) {
+    expect(examMatchesQuery(exam, q)).toBe(true);
+  }
+});
+
+test("a body-specific query excludes the other bodies", () => {
+  const rbi = { name: "RBI Grade B Officer", slug: "rbi-grade-b", exam_type: "recruitment" };
+  const sebi = { name: "SEBI Grade A Officer", slug: "sebi-grade-a", exam_type: "recruitment" };
+  expect(examMatchesQuery(rbi, "rbi")).toBe(true);
+  expect(examMatchesQuery(sebi, "rbi")).toBe(false);
+  expect(examMatchesQuery(rbi, "nabard")).toBe(false);
+});
+
+test("a blank query means no filter, never no results", () => {
+  const exam = { name: "PFRDA Grade A Officer", slug: "pfrda-grade-a" };
+  for (const q of ["", "   ", null, undefined]) {
+    expect(examMatchesQuery(exam, q)).toBe(true);
+  }
+});
+
+test("searching a regulatory slug finds its card and does not report no-match", async () => {
+  api.get.mockResolvedValue({
+    items: [
+      { id: "1", slug: "rbi-grade-b", name: "RBI Grade B Officer", exam_type: "recruitment" },
+      { id: "2", slug: "ifsca-grade-a", name: "IFSCA Grade A Officer", exam_type: "recruitment" },
+    ],
+  });
+  renderPage();
+  await screen.findByTestId("exam-intel-card-ifsca-grade-a");
+  fireEvent.change(screen.getByTestId("exam-intelligence-search"), { target: { value: "ifsca-grade-a" } });
+  expect(screen.getByTestId("exam-intel-card-ifsca-grade-a")).toBeTruthy();
+  expect(screen.queryByTestId("exam-intel-card-rbi-grade-b")).toBeNull();
+  expect(screen.queryByTestId("exam-intelligence-no-match")).toBeNull();
+});

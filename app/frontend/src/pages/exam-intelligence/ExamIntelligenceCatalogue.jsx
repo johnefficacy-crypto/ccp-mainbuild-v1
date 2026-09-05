@@ -17,18 +17,43 @@ const DIFFICULTY_LABELS = {
   hard: "Hard",
 };
 
+// Normalize free text for search: lowercase, flatten `-`/`_` to spaces, and
+// collapse runs of whitespace. Applied to BOTH the exam text and the typed
+// query, so a learner can paste a slug verbatim (`upsc-cse`) and still match a
+// haystack that stores it separator-flattened.
+function normalizeSearchText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Build the searchable text for an exam. The deployed `name` frequently omits
 // the acronym learners type (e.g. "UPSC"), while the `slug` carries it
 // (`upsc-cse`). Searching name + slug (with separators flattened to spaces) so
 // "UPSC" resolves to upsc-cse, plus exam_type for family-ish matches.
+//
+// Kept in step with `exam_search_haystack` in
+// `app/backend/app/exam_intelligence/lookup.py`, which backs the server-side
+// `?q=` filter on `/api/exam-intelligence/exams`. The two must agree: a query
+// that matches here must match there.
 export function examSearchHaystack(exam) {
   const parts = [exam?.name, exam?.slug, exam?.exam_type]
-    .filter(Boolean)
-    .map((v) => String(v).toLowerCase().replace(/[-_]+/g, " "));
+    .map((v) => normalizeSearchText(v))
+    .filter(Boolean);
   // Keep both the separated and collapsed forms so "upsccse" and "upsc cse"
   // both hit `upsc-cse`.
   const joined = parts.join(" ");
   return `${joined} ${joined.replace(/\s+/g, "")}`;
+}
+
+// An empty query means "no filter", never "nothing found".
+export function examMatchesQuery(exam, query) {
+  const needle = normalizeSearchText(query);
+  if (!needle) return true;
+  const haystack = examSearchHaystack(exam);
+  return haystack.includes(needle) || haystack.includes(needle.replace(/\s+/g, ""));
 }
 
 function ExamCard({ exam }) {
@@ -96,11 +121,10 @@ export default function ExamIntelligenceCatalogue() {
   }, [reloadKey]);
 
   const exams = useMemo(() => (Array.isArray(data?.items) ? data.items : []), [data]);
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return exams;
-    return exams.filter((e) => examSearchHaystack(e).includes(q));
-  }, [exams, query]);
+  const filtered = useMemo(
+    () => exams.filter((e) => examMatchesQuery(e, query)),
+    [exams, query],
+  );
 
   return (
     <section data-testid="exam-intelligence-page" aria-labelledby="exam-intelligence-heading">

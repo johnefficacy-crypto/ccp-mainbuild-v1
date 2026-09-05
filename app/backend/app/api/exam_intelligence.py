@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
-from app.exam_intelligence.lookup import list_active_exams
+from app.exam_intelligence.lookup import filter_exams_by_query, list_active_exams
 from app.study_os.pyq_practice import practice_ready_counts_by_paper
 from app.exam_intelligence.option_insights import option_insights
 from app.exam_intelligence.reachability import (
@@ -93,16 +93,51 @@ def _pyq_paper_set_label(metadata: Any) -> str | None:
 
 @router.get("/exams")
 def list_exams(
+    q: str | None = Query(
+        default=None,
+        description=(
+            "Free-text catalogue search over exam name, slug, and exam_type. "
+            "Separators are flattened, so 'upsc', 'upsc cse', 'upsc-cse', and "
+            "'upsccse' all match the exam whose slug is 'upsc-cse'. Omit (or "
+            "pass blank) for the full catalogue."
+        ),
+    ),
     limit: int = Query(100, ge=1, le=200),
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """Active-exam catalogue for the Exam Intelligence landing page.
+
+    ``q`` filters in-process against the cached full active set rather than
+    via a PostgREST ``ilike``: the catalogue is small, already cached by
+    :func:`list_active_exams`, and the match has to span three columns in both
+    separated and collapsed form — which one ``ilike`` cannot express, and
+    which a per-keystroke DB round-trip would not earn. The predicate is
+    shared with the frontend's in-page filter so both agree on what matches.
+
+    ``limit`` is accepted for source compatibility only; ``list_active_exams``
+    ignores it and always returns the complete active set (see its docstring).
+
+    ``verified_only`` is a MODULE-WIDE contract marker asserting that this
+    router never serves unreviewed content. It is **not** a filter on this
+    route: ``exams`` carries no ``reviewer_status`` column, and which exams
+    appear here is gated by ``exams.is_active`` alone. An exam with
+    ``is_active=false`` is absent regardless of what it has published.
+    """
     sb = get_supabase_admin()
     try:
         items = list_active_exams(sb, limit=limit)
     except Exception as exc:  # noqa: BLE001
         logger.warning("exam_intelligence list_exams failed: %s", exc)
         items = []
-    return {"items": items, "count": len(items), "verified_only": True}
+    items = filter_exams_by_query(items, q)
+    # Echo the applied query so a caller can tell a real empty result from a
+    # silently-dropped parameter — the failure mode this route shipped with.
+    return {
+        "items": items,
+        "count": len(items),
+        "verified_only": True,
+        "query": (q or "").strip() or None,
+    }
 
 
 @router.get("/exams/{slug}")
