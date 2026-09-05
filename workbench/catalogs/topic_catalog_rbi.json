@@ -1,0 +1,2030 @@
+[
+  {
+    "id": "baf763bb-6d36-4a25-b1ba-6419e3b26852",
+    "text": "Main idea and central theme",
+    "slug": "eng-main-idea-and-central-theme-59263450",
+    "subject": "english-language"
+  },
+  {
+    "id": "342ec4bb-5625-4398-9b44-2963d65062a4",
+    "text": "Explicit detail retrieval",
+    "slug": "eng-explicit-detail-retrieval-5825931a",
+    "subject": "english-language"
+  },
+  {
+    "id": "420312ba-2e38-4e16-a836-7e6764a05535",
+    "text": "Inference and implied meaning",
+    "slug": "eng-inference-and-implied-meaning-a005bcd3",
+    "subject": "english-language"
+  },
+  {
+    "id": "ebdd3a2a-f038-4775-9684-647b6cbbdcbb",
+    "text": "Author tone, attitude and purpose",
+    "slug": "eng-author-tone-attitude-and-purpose-87729e1a",
+    "subject": "english-language"
+  },
+  {
+    "id": "dbed7599-7bab-45e3-ab53-cb8cbb8a1c55",
+    "text": "Vocabulary from context within a passage",
+    "slug": "eng-vocabulary-from-context-within-a-passage-b55df114",
+    "subject": "english-language"
+  },
+  {
+    "id": "bf06f202-6d47-497c-a4e2-5f7f377d0fbb",
+    "text": "Passage-based synonym and antonym",
+    "slug": "eng-passage-based-synonym-and-antonym-b6b1d1e6",
+    "subject": "english-language"
+  },
+  {
+    "id": "3f2a57b9-ea87-4d0e-9296-6651b115c149",
+    "text": "Written answers to a passage",
+    "slug": "eng-written-answers-to-a-passage-9e9204f6",
+    "subject": "english-language"
+  },
+  {
+    "id": "4b44f9f1-8d13-4977-be4b-aa5108b10ead",
+    "text": "Single-blank contextual cloze",
+    "slug": "eng-single-blank-contextual-cloze-cd934632",
+    "subject": "english-language"
+  },
+  {
+    "id": "4d511b04-901c-8fb4-06a9-a1efe500e4f6",
+    "text": "Simple Sentences",
+    "slug": "simple-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "5f033e03-98a8-9e1e-f503-3d837e169983",
+    "text": "Compound Sentences",
+    "slug": "compound-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "5194a509-d374-28d7-24f8-7a49f7a308b8",
+    "text": "Complex Sentences",
+    "slug": "complex-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "text": "Sentence Transformation",
+    "slug": "sentence-transformation",
+    "subject": "english-language"
+  },
+  {
+    "id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "text": "Sentence Structure",
+    "slug": "sentence-structure",
+    "subject": "english-language"
+  },
+  {
+    "id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "text": "Subject-Verb Agreement",
+    "slug": "subject-verb-agreement",
+    "subject": "english-language"
+  },
+  {
+    "id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "text": "Tense",
+    "slug": "tense",
+    "subject": "english-language"
+  },
+  {
+    "id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "text": "Articles",
+    "slug": "articles",
+    "subject": "english-language"
+  },
+  {
+    "id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "text": "Prepositions",
+    "slug": "prepositions",
+    "subject": "english-language"
+  },
+  {
+    "id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "text": "Pronoun Reference",
+    "slug": "pronoun-reference",
+    "subject": "english-language"
+  },
+  {
+    "id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "text": "Modifiers",
+    "slug": "modifiers",
+    "subject": "english-language"
+  },
+  {
+    "id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "text": "Punctuation",
+    "slug": "punctuation",
+    "subject": "english-language"
+  },
+  {
+    "id": "22591465-673a-c375-3460-2702125f6fc3",
+    "text": "Spelling",
+    "slug": "spelling",
+    "subject": "english-language"
+  },
+  {
+    "id": "d24db813-295b-cb39-e6b3-327409910c6f",
+    "text": "Word Choice",
+    "slug": "word-choice",
+    "subject": "english-language"
+  },
+  {
+    "id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+    "text": "Collocations",
+    "slug": "collocations",
+    "subject": "english-language"
+  },
+  {
+    "id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+    "text": "Formal Vocabulary",
+    "slug": "formal-vocabulary",
+    "subject": "english-language"
+  },
+  {
+    "id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+    "text": "Redundancy",
+    "slug": "redundancy",
+    "subject": "english-language"
+  },
+  {
+    "id": "42954cdb-5339-b7b2-9424-c0569960244b",
+    "text": "Topic Sentence",
+    "slug": "topic-sentence",
+    "subject": "english-language"
+  },
+  {
+    "id": "f911f68b-418c-d7bb-37e3-00499792e022",
+    "text": "Cohesion",
+    "slug": "cohesion",
+    "subject": "english-language"
+  },
+  {
+    "id": "b2b889f0-5310-23a4-a50c-daa504f0afe7",
+    "text": "Logical Order",
+    "slug": "logical-order",
+    "subject": "english-language"
+  },
+  {
+    "id": "b2d49393-0e86-3521-fc2d-c5ec26e286e9",
+    "text": "Conclusion",
+    "slug": "conclusion",
+    "subject": "english-language"
+  },
+  {
+    "id": "0e4fdd22-0bfe-ee0a-c0bc-d74b9518afeb",
+    "text": "Content Relevance",
+    "slug": "content-relevance",
+    "subject": "english-language"
+  },
+  {
+    "id": "50e8c0d4-60b5-7d43-4c12-33a386b0bbe5",
+    "text": "Word Limit",
+    "slug": "word-limit",
+    "subject": "english-language"
+  },
+  {
+    "id": "8a436650-6e75-79db-904f-e60bd0f7abaf",
+    "text": "Format Rules",
+    "slug": "format-rules",
+    "subject": "english-language"
+  },
+  {
+    "id": "47d00077-5f85-ba3b-fc49-cf7405914aa2",
+    "text": "Précis Writing",
+    "slug": "precis-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "63d9ed95-155f-b31b-acd8-3bb63b0bbb76",
+    "text": "Essay Writing",
+    "slug": "essay-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "eb5019d6-aa0e-23f3-dabd-d507596cf97a",
+    "text": "Letter and Report Writing",
+    "slug": "letter-report-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "70b4fc2f-cf07-d8ef-fb7e-3025342ba94d",
+    "text": "Comprehension and Summary",
+    "slug": "comprehension-summary-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "c91ecdcc-7fc9-4d23-b3b7-9122ce81cf9a",
+    "text": "Multi-blank passage cloze",
+    "slug": "eng-multi-blank-passage-cloze-85f89037",
+    "subject": "english-language"
+  },
+  {
+    "id": "53bf9a36-47c0-4473-b677-29a66d1a7bdb",
+    "text": "Double-blank sentence completion",
+    "slug": "eng-double-blank-sentence-completion-86aae4e4",
+    "subject": "english-language"
+  },
+  {
+    "id": "de6aaf4c-db6e-4c5c-b2bd-fc3d1880cc21",
+    "text": "Connector and transition cloze",
+    "slug": "eng-connector-and-transition-cloze-adcb36dd",
+    "subject": "english-language"
+  },
+  {
+    "id": "7c71b869-e50a-4ebd-aea1-fe291dbee5ed",
+    "text": "Subject-verb agreement",
+    "slug": "eng-subject-verb-agreement-07be8ac5",
+    "subject": "english-language"
+  },
+  {
+    "id": "f146f9b5-b13d-47c0-8aca-c80a6566b4fe",
+    "text": "Tense and sequence of tenses",
+    "slug": "eng-tense-and-sequence-of-tenses-7e82f0cb",
+    "subject": "english-language"
+  },
+  {
+    "id": "f9c12eec-a497-4d10-b219-2da6b28a92f7",
+    "text": "Preposition and article errors",
+    "slug": "eng-preposition-and-article-errors-000b76d8",
+    "subject": "english-language"
+  },
+  {
+    "id": "ee103c0c-a9fa-4ae8-98dd-78cdc4378732",
+    "text": "Pronoun reference and agreement",
+    "slug": "eng-pronoun-reference-and-agreement-d6412298",
+    "subject": "english-language"
+  },
+  {
+    "id": "e5efcb86-127f-460d-83fb-9faa38ee400c",
+    "text": "Correlative conjunctions and parallelism",
+    "slug": "eng-correlative-conjunctions-and-parallelism-ff6bd046",
+    "subject": "english-language"
+  },
+  {
+    "id": "10b21db7-8b86-4fa9-a1f6-8cd7d21085da",
+    "text": "Segment-marked error identification",
+    "slug": "eng-segment-marked-error-identification-8879fab9",
+    "subject": "english-language"
+  },
+  {
+    "id": "cbb196b4-3325-4af1-80f9-a4280d592e9f",
+    "text": "Single-word contextual fit",
+    "slug": "eng-single-word-contextual-fit-601cbc5c",
+    "subject": "english-language"
+  },
+  {
+    "id": "0b53297b-0109-4334-b1ee-e56a18137969",
+    "text": "Word-pair fit",
+    "slug": "eng-word-pair-fit-32a9e377",
+    "subject": "english-language"
+  },
+  {
+    "id": "613e6076-97c1-4a2b-b932-8831642cf075",
+    "text": "Preposition and phrasal completion",
+    "slug": "eng-preposition-and-phrasal-completion-5c07ccb9",
+    "subject": "english-language"
+  },
+  {
+    "id": "fd797be4-4857-4885-a456-52d9ce38df94",
+    "text": "Connector-based completion",
+    "slug": "eng-connector-based-completion-cbecd4db",
+    "subject": "english-language"
+  },
+  {
+    "id": "57e9ec9c-c979-437a-b1e8-90580921f096",
+    "text": "Phrase replacement",
+    "slug": "eng-phrase-replacement-623032a6",
+    "subject": "english-language"
+  },
+  {
+    "id": "c18d927f-2eab-49db-b302-a017cf1f2193",
+    "text": "Word interchange within a sentence",
+    "slug": "eng-word-interchange-within-a-sentence-e4c29104",
+    "subject": "english-language"
+  },
+  {
+    "id": "e6e0700f-0130-49e0-961d-89cbe5eab3f8",
+    "text": "Redundancy and wordiness",
+    "slug": "eng-redundancy-and-wordiness-1787d0ac",
+    "subject": "english-language"
+  },
+  {
+    "id": "3ab068c5-397c-4189-913f-0d26569b3899",
+    "text": "Word order and modifier placement",
+    "slug": "eng-word-order-and-modifier-placement-1b73c44c",
+    "subject": "english-language"
+  },
+  {
+    "id": "d5881d53-754a-4f95-a6a2-38d2bbd55162",
+    "text": "No-improvement-required cases",
+    "slug": "eng-no-improvement-required-cases-ede5f5eb",
+    "subject": "english-language"
+  },
+  {
+    "id": "bb17b54f-b233-4c9d-9bad-4526b5ce2f87",
+    "text": "Synonyms",
+    "slug": "eng-synonyms-6113204e",
+    "subject": "english-language"
+  },
+  {
+    "id": "b56cb48c-f85b-4158-8e71-f954f48a8c10",
+    "text": "Antonyms",
+    "slug": "eng-antonyms-af017948",
+    "subject": "english-language"
+  },
+  {
+    "id": "e6f14cb6-df7f-4e3a-9aa4-5efbf45b7946",
+    "text": "One-word substitution",
+    "slug": "eng-one-word-substitution-13964bb4",
+    "subject": "english-language"
+  },
+  {
+    "id": "0df7dc1f-8059-4012-a9a4-59b8bc8b7181",
+    "text": "Commonly confused word pairs",
+    "slug": "eng-commonly-confused-word-pairs-f6bc9a52",
+    "subject": "english-language"
+  },
+  {
+    "id": "eeed4b11-c9a3-4c0d-9f08-e31d6d8bcdac",
+    "text": "Formal and business register",
+    "slug": "eng-formal-and-business-register-f2975b74",
+    "subject": "english-language"
+  },
+  {
+    "id": "f4ab61e2-cadf-4686-a1c5-50554463f230",
+    "text": "Meaning of an idiom in context",
+    "slug": "eng-meaning-of-an-idiom-in-context-afcdf0c3",
+    "subject": "english-language"
+  },
+  {
+    "id": "37a65bc7-1c55-43e7-b59a-c25f3bc3232f",
+    "text": "Phrasal verbs",
+    "slug": "eng-phrasal-verbs-00cf2c93",
+    "subject": "english-language"
+  },
+  {
+    "id": "f03f944a-8afa-487a-ad73-975b87bacd7f",
+    "text": "Trade deficit",
+    "slug": "econ-trade-deficit-ca284702",
+    "subject": "economics"
+  },
+  {
+    "id": "3a0004f6-d89a-4f5f-b858-0dca53d6f277",
+    "text": "Communication register by relationship",
+    "slug": "communication-registers",
+    "subject": "english-language"
+  },
+  {
+    "id": "93b328ed-90df-4dc1-8976-d6fa576781c5",
+    "text": "Law of demand and exceptional demand",
+    "slug": "econ-law-of-demand-and-exceptional-demand-4c31a6e4",
+    "subject": "economics"
+  },
+  {
+    "id": "8a9fc4ad-753c-441e-924f-059764c75ca3",
+    "text": "Law of supply and market equilibrium",
+    "slug": "econ-law-of-supply-and-market-equilibrium-454c8325",
+    "subject": "economics"
+  },
+  {
+    "id": "40b9a2e9-38ea-49ef-8323-a4044c43f87e",
+    "text": "Equilibrium from demand and supply functions",
+    "slug": "econ-equilibrium-from-demand-and-supply-functions-426a9def",
+    "subject": "economics"
+  },
+  {
+    "id": "e9f510cb-ab55-455c-834a-9f8a77620518",
+    "text": "Price and income elasticity of demand",
+    "slug": "econ-price-and-income-elasticity-of-demand-2787a511",
+    "subject": "economics"
+  },
+  {
+    "id": "986946fd-7591-4bd6-9196-88d8c42f3f8a",
+    "text": "Tax incidence and elasticity",
+    "slug": "econ-tax-incidence-and-elasticity-9cecfc89",
+    "subject": "economics"
+  },
+  {
+    "id": "1ddab268-35bd-4838-98fc-8dbf86c847a0",
+    "text": "Consumer surplus and producer surplus",
+    "slug": "econ-consumer-surplus-and-producer-surplus-e7d272df",
+    "subject": "economics"
+  },
+  {
+    "id": "7260f618-7771-4cbd-861b-3f7c490194ab",
+    "text": "Bandwagon, snob and Veblen effects",
+    "slug": "econ-bandwagon-snob-and-veblen-effects-a10ab797",
+    "subject": "economics"
+  },
+  {
+    "id": "f562773b-4f07-4b89-8895-373d1fe1a524",
+    "text": "Perfect competition",
+    "slug": "econ-perfect-competition-dbbd6859",
+    "subject": "economics"
+  },
+  {
+    "id": "01e31a7c-88dc-4f9f-9bd4-5e31dc600b54",
+    "text": "Monopoly",
+    "slug": "econ-monopoly-f89c1e9a",
+    "subject": "economics"
+  },
+  {
+    "id": "81287df5-8747-4039-99ec-68893e93f057",
+    "text": "Monopolistic competition and product differentiation",
+    "slug": "econ-monopolistic-competition-and-product-differentiation-8c9229cb",
+    "subject": "economics"
+  },
+  {
+    "id": "2f2bff1f-6f0d-4b17-93e6-6c7dd636466b",
+    "text": "Oligopoly",
+    "slug": "econ-oligopoly-9b41669d",
+    "subject": "economics"
+  },
+  {
+    "id": "836be8e4-f1ea-41e6-b092-a3f68e53902b",
+    "text": "Cournot's oligopoly model",
+    "slug": "econ-cournot-s-oligopoly-model-a42a7bab",
+    "subject": "economics"
+  },
+  {
+    "id": "205e1363-f785-4571-bed0-d9c85e38896e",
+    "text": "Kinked demand curve and price rigidity",
+    "slug": "econ-kinked-demand-curve-and-price-rigidity-8858faca",
+    "subject": "economics"
+  },
+  {
+    "id": "3b99d1e4-a26b-4bb9-8754-9cee350bd157",
+    "text": "GDP, GNP, NNP and NDP concepts",
+    "slug": "econ-gdp-gnp-nnp-and-ndp-concepts-f27e4274",
+    "subject": "economics"
+  },
+  {
+    "id": "9f8e2bbf-1911-485d-8e6d-9d7051be4f55",
+    "text": "GVA at basic price vs GDP",
+    "slug": "econ-gva-at-basic-price-vs-gdp-1a663a89",
+    "subject": "economics"
+  },
+  {
+    "id": "e34d5731-c322-48a2-be12-7bdf7730c780",
+    "text": "Factor cost vs market price",
+    "slug": "econ-factor-cost-vs-market-price-cb46f465",
+    "subject": "economics"
+  },
+  {
+    "id": "c2ed046b-2177-4913-bef8-acb009ab53ef",
+    "text": "NNP at factor cost — computation",
+    "slug": "econ-nnp-at-factor-cost-computation-b2d7994e",
+    "subject": "economics"
+  },
+  {
+    "id": "2c353c7f-8bd9-42bc-85d2-11774785126e",
+    "text": "Personal income and disposable income — derivation",
+    "slug": "econ-personal-income-and-disposable-income-derivation-a90c9643",
+    "subject": "economics"
+  },
+  {
+    "id": "f779e3de-96b0-43c3-808c-ba39793625af",
+    "text": "Per capita income",
+    "slug": "econ-per-capita-income-bfbac7da",
+    "subject": "economics"
+  },
+  {
+    "id": "67d37b2c-817d-44d9-ae33-a795612fc581",
+    "text": "Real vs nominal income; GDP deflator",
+    "slug": "econ-real-vs-nominal-income-gdp-deflator-8f056508",
+    "subject": "economics"
+  },
+  {
+    "id": "73c004a2-00b5-4fc9-8e71-b289c0147752",
+    "text": "Measurement methods — income, expenditure, product",
+    "slug": "econ-measurement-methods-income-expenditure-product-87140e4a",
+    "subject": "economics"
+  },
+  {
+    "id": "3bbabf89-e66d-4bf1-a8e5-c0241b5b9262",
+    "text": "Limitations of national income accounting",
+    "slug": "econ-limitations-of-national-income-accounting-4fb5eb2c",
+    "subject": "economics"
+  },
+  {
+    "id": "2be9da34-f0a8-4147-b758-553a6c53b153",
+    "text": "Say's law of markets",
+    "slug": "econ-say-s-law-of-markets-fc37e1d5",
+    "subject": "economics"
+  },
+  {
+    "id": "951a6794-2f87-44da-bdb0-e2989813a725",
+    "text": "Keynesian effective demand",
+    "slug": "econ-keynesian-effective-demand-ba834e09",
+    "subject": "economics"
+  },
+  {
+    "id": "ce779631-c54b-447b-aeec-db0275554946",
+    "text": "Two-sector model",
+    "slug": "econ-two-sector-model-4f6d0739",
+    "subject": "economics"
+  },
+  {
+    "id": "8cdde817-38d0-403c-adb9-03dd9a38a9c9",
+    "text": "Consumption function and marginal propensity to consume",
+    "slug": "econ-consumption-function-and-marginal-propensity-to-consume-e3a17eb7",
+    "subject": "economics"
+  },
+  {
+    "id": "68e9bbfe-51b8-4f5f-b8cc-50a97feba87d",
+    "text": "Investment function and marginal efficiency of capital",
+    "slug": "econ-investment-function-and-marginal-efficiency-of-capital-2c978015",
+    "subject": "economics"
+  },
+  {
+    "id": "bf5d831d-3bc8-45f6-987e-4fc570fec7de",
+    "text": "Multiplier",
+    "slug": "econ-multiplier-56da938c",
+    "subject": "economics"
+  },
+  {
+    "id": "65f408cd-5ffb-433f-8e27-057f9442379d",
+    "text": "Accelerator",
+    "slug": "econ-accelerator-3b5f1b3b",
+    "subject": "economics"
+  },
+  {
+    "id": "7b3b2b30-eb02-40e1-a3b9-f12024dbb089",
+    "text": "Unemployment types — structural, frictional, cyclical",
+    "slug": "econ-unemployment-types-structural-frictional-cyclical-8ec365f1",
+    "subject": "economics"
+  },
+  {
+    "id": "d0fa9467-c144-44fa-b3bd-1db99d63f976",
+    "text": "Money supply measures M1 to M4",
+    "slug": "econ-money-supply-measures-m1-to-m4-e25a9cdc",
+    "subject": "economics"
+  },
+  {
+    "id": "47935f56-4fa5-4bfc-96aa-7bf7ece9da45",
+    "text": "Monetary base and high-powered money",
+    "slug": "econ-monetary-base-and-high-powered-money-9cd8d4bf",
+    "subject": "economics"
+  },
+  {
+    "id": "0f8dda0c-7fa0-428e-8a1a-15054c2c30f3",
+    "text": "Money multiplier",
+    "slug": "econ-money-multiplier-316a5984",
+    "subject": "economics"
+  },
+  {
+    "id": "c18b82b3-f8b9-4334-99b2-1ea1dba6aed4",
+    "text": "Fisher equation of exchange",
+    "slug": "econ-fisher-equation-of-exchange-2488e304",
+    "subject": "economics"
+  },
+  {
+    "id": "0fa91fea-2271-4b8d-83e2-d66253286bba",
+    "text": "Demand for money — transactions, precautionary, speculative",
+    "slug": "econ-demand-for-money-transactions-precautionary-speculative-0c364c3e",
+    "subject": "economics"
+  },
+  {
+    "id": "3a9ca80e-2fd2-42a7-a9e6-040e2654bb8b",
+    "text": "Opportunity cost of holding currency",
+    "slug": "econ-opportunity-cost-of-holding-currency-b04f6a39",
+    "subject": "economics"
+  },
+  {
+    "id": "a5f18325-af4e-4040-95ca-5007d0ed75ab",
+    "text": "Direct vs indirect monetary instruments — OMO, CRR, SLR, repo, MSF",
+    "slug": "econ-direct-vs-indirect-monetary-instruments-omo-crr-slr-repo-msf-5acdce3b",
+    "subject": "economics"
+  },
+  {
+    "id": "da0909d7-d3f4-4b3e-a31b-aa03ebfe1670",
+    "text": "IS curve derivation",
+    "slug": "econ-is-curve-derivation-9817e34a",
+    "subject": "economics"
+  },
+  {
+    "id": "a6ad1ade-bd70-4cce-b712-9d2aaa770846",
+    "text": "LM curve derivation",
+    "slug": "econ-lm-curve-derivation-0cd643c1",
+    "subject": "economics"
+  },
+  {
+    "id": "26ed398f-2437-495b-8925-9b53dc3f1303",
+    "text": "Shifts in the IS and LM curves",
+    "slug": "econ-shifts-in-the-is-and-lm-curves-73c1f4ef",
+    "subject": "economics"
+  },
+  {
+    "id": "490f7d10-c9d2-4c90-a404-0ee5c89dff9d",
+    "text": "Equilibrium in goods and money markets",
+    "slug": "econ-equilibrium-in-goods-and-money-markets-2e0d3115",
+    "subject": "economics"
+  },
+  {
+    "id": "6a0b5c7e-1586-4919-a881-6c084fc75283",
+    "text": "Liquidity trap",
+    "slug": "econ-liquidity-trap-dbe474fb",
+    "subject": "economics"
+  },
+  {
+    "id": "aabe4710-ba4f-4a0c-b36c-59d33753882b",
+    "text": "Demand-pull inflation",
+    "slug": "econ-demand-pull-inflation-031d3f14",
+    "subject": "economics"
+  },
+  {
+    "id": "35a95c33-0e7a-43fc-8ed3-1b79a7609209",
+    "text": "Cost-push inflation",
+    "slug": "econ-cost-push-inflation-40733bbb",
+    "subject": "economics"
+  },
+  {
+    "id": "e6e06ca6-432a-4cea-b2e1-da743833fd6f",
+    "text": "Stagflation",
+    "slug": "econ-stagflation-8fbd70f5",
+    "subject": "economics"
+  },
+  {
+    "id": "38570226-9451-435b-a9ee-ee5b19c91fec",
+    "text": "Phillips curve — short run and long run",
+    "slug": "econ-phillips-curve-short-run-and-long-run-35035ce8",
+    "subject": "economics"
+  },
+  {
+    "id": "b6e22913-d4a4-4e20-b2f7-05615084718c",
+    "text": "Supply shocks and the Phillips curve",
+    "slug": "econ-supply-shocks-and-the-phillips-curve-320755af",
+    "subject": "economics"
+  },
+  {
+    "id": "fbfff264-c421-4b05-96da-071a02ee172f",
+    "text": "Business cycle phases",
+    "slug": "econ-business-cycle-phases-ce29f12d",
+    "subject": "economics"
+  },
+  {
+    "id": "a5b4857a-6bf4-4a05-97f4-7476a3f405a2",
+    "text": "Leading and lagging economic indicators",
+    "slug": "econ-leading-and-lagging-economic-indicators-220577bc",
+    "subject": "economics"
+  },
+  {
+    "id": "5b7a61a8-c69b-45fd-adcb-d929eab4d3dc",
+    "text": "Fiscal deficit — definition and components",
+    "slug": "econ-fiscal-deficit-definition-and-components-b87d5782",
+    "subject": "economics"
+  },
+  {
+    "id": "f3082dfe-12cf-4635-8f83-a8d021b078f0",
+    "text": "Revenue vs capital expenditure",
+    "slug": "econ-revenue-vs-capital-expenditure-a4a84a94",
+    "subject": "economics"
+  },
+  {
+    "id": "5e3f8952-3acb-45fa-8e28-b4e5ed0e3dc8",
+    "text": "Non-tax sources of revenue",
+    "slug": "econ-non-tax-sources-of-revenue-51f889af",
+    "subject": "economics"
+  },
+  {
+    "id": "0a3778a1-aa66-4cad-805e-beb8ef4a9b2b",
+    "text": "Plan and non-plan expenditure",
+    "slug": "econ-plan-and-non-plan-expenditure-42c887d5",
+    "subject": "economics"
+  },
+  {
+    "id": "6b804126-1dae-4221-aba6-7896579a048a",
+    "text": "Government borrowings classification",
+    "slug": "econ-government-borrowings-classification-b7561916",
+    "subject": "economics"
+  },
+  {
+    "id": "1a76204b-2bc4-416c-8897-7782a77ee0ae",
+    "text": "Automatic stabilisers",
+    "slug": "econ-automatic-stabilisers-702efc98",
+    "subject": "economics"
+  },
+  {
+    "id": "deb7e551-014c-4491-9f5d-c5c3d1db7968",
+    "text": "Countercyclical fiscal policy",
+    "slug": "econ-countercyclical-fiscal-policy-8353b9d6",
+    "subject": "economics"
+  },
+  {
+    "id": "5f286da2-e0b7-4c2c-a5c2-28958c9576c2",
+    "text": "Indian fiscal year and budget calendar",
+    "slug": "econ-indian-fiscal-year-and-budget-calendar-9fa29275",
+    "subject": "economics"
+  },
+  {
+    "id": "35d2d884-83ef-474c-93d3-7114e70887b3",
+    "text": "Objectives and functions of monetary policy",
+    "slug": "econ-objectives-and-functions-of-monetary-policy-679838c6",
+    "subject": "economics"
+  },
+  {
+    "id": "b0342814-c623-4615-a2aa-e9f6ad1c3df0",
+    "text": "Inflation targeting framework and the MPC",
+    "slug": "econ-inflation-targeting-framework-and-the-mpc-692592a1",
+    "subject": "economics"
+  },
+  {
+    "id": "93b13ab8-fb10-433a-a1d5-40fc7acc4428",
+    "text": "Monetary policy transmission mechanism",
+    "slug": "econ-monetary-policy-transmission-mechanism-c33ffb07",
+    "subject": "economics"
+  },
+  {
+    "id": "e60d7e6f-aacf-4600-baa3-8c572e09e23a",
+    "text": "Monetary and fiscal policy mix",
+    "slug": "econ-monetary-and-fiscal-policy-mix-a8b549e2",
+    "subject": "economics"
+  },
+  {
+    "id": "147643da-a998-4a56-928b-961aef10a6f3",
+    "text": "Balance of payments — current and capital account",
+    "slug": "econ-balance-of-payments-current-and-capital-account-45c3f9c0",
+    "subject": "economics"
+  },
+  {
+    "id": "b64377d2-7fc4-4c96-aa9e-f1451560bf35",
+    "text": "Why the balance of payments always balances",
+    "slug": "econ-why-the-balance-of-payments-always-balances-7ac28b17",
+    "subject": "economics"
+  },
+  {
+    "id": "f9c1e603-1539-46b1-a717-2918a51037e8",
+    "text": "Current account deficit",
+    "slug": "econ-current-account-deficit-ab1a55a9",
+    "subject": "economics"
+  },
+  {
+    "id": "2478c31b-5922-41fd-815e-b9e7dc9e5426",
+    "text": "Exchange rate regimes",
+    "slug": "econ-exchange-rate-regimes-1e2fe487",
+    "subject": "economics"
+  },
+  {
+    "id": "0a2bea54-898e-44df-9325-48b7239e0baa",
+    "text": "Foreign direct investment — modes and routes",
+    "slug": "econ-foreign-direct-investment-modes-and-routes-07866e15",
+    "subject": "economics"
+  },
+  {
+    "id": "15b1c8bf-2c56-4614-927b-04549e9a64bd",
+    "text": "Purchasing power parity",
+    "slug": "econ-purchasing-power-parity-8041dedc",
+    "subject": "economics"
+  },
+  {
+    "id": "10b706be-98cb-4f80-bd45-ff7f2baefdf6",
+    "text": "Currency depreciation vs devaluation",
+    "slug": "econ-currency-depreciation-vs-devaluation-19af4d8b",
+    "subject": "economics"
+  },
+  {
+    "id": "ebff9225-240b-4f49-8716-356e97765194",
+    "text": "International Monetary Fund — quota, SDR, facilities",
+    "slug": "econ-international-monetary-fund-quota-sdr-facilities-15695c49",
+    "subject": "economics"
+  },
+  {
+    "id": "77790f2f-b298-45f0-928c-431206477d2e",
+    "text": "World Bank group",
+    "slug": "econ-world-bank-group-d956b2ca",
+    "subject": "economics"
+  },
+  {
+    "id": "ddc8d3cc-428b-4552-b4cc-8826bde503ba",
+    "text": "Bank for International Settlements",
+    "slug": "econ-bank-for-international-settlements-454ffa6e",
+    "subject": "economics"
+  },
+  {
+    "id": "39d52a33-db2e-4a93-bc85-68187e892e5e",
+    "text": "IOSCO",
+    "slug": "econ-iosco-9b4330e4",
+    "subject": "economics"
+  },
+  {
+    "id": "49c9d54f-46bb-4d22-9035-b88ed046f581",
+    "text": "Structure of the Indian financial system",
+    "slug": "bank-structure-of-the-indian-financial-system-13b6f828",
+    "subject": "banking"
+  },
+  {
+    "id": "c52d49bf-ea8c-4820-8592-8626ce94b18c",
+    "text": "Functions of financial institutions",
+    "slug": "bank-functions-of-financial-institutions-d20703e4",
+    "subject": "banking"
+  },
+  {
+    "id": "f13a2d53-15d9-4b39-8eca-7196c17dfbfc",
+    "text": "Financial intermediation",
+    "slug": "bank-financial-intermediation-68d07263",
+    "subject": "banking"
+  },
+  {
+    "id": "15085ba6-68f0-4229-aa47-310d9e56dda6",
+    "text": "RBI as monetary authority",
+    "slug": "bank-rbi-as-monetary-authority-0f68006e",
+    "subject": "banking"
+  },
+  {
+    "id": "014c784e-b2ee-421b-af28-002ecfe991b1",
+    "text": "Issuer of currency and note issue",
+    "slug": "bank-issuer-of-currency-and-note-issue-1fb8b54a",
+    "subject": "banking"
+  },
+  {
+    "id": "8002af44-9424-46d0-8021-abcd3e3a817e",
+    "text": "Banker to government and to banks",
+    "slug": "bank-banker-to-government-and-to-banks-310d716c",
+    "subject": "banking"
+  },
+  {
+    "id": "9f346d77-0424-4f95-aaaa-8c72f7e278b1",
+    "text": "Regulator and supervisor of the banking system",
+    "slug": "bank-regulator-and-supervisor-of-the-banking-system-21331e15",
+    "subject": "banking"
+  },
+  {
+    "id": "92bea86e-002f-444a-acc0-4c7df5a60bd4",
+    "text": "Scheduled and non-scheduled banks",
+    "slug": "bank-scheduled-and-non-scheduled-banks-3aca4409",
+    "subject": "banking"
+  },
+  {
+    "id": "7b1597fa-987e-4ed6-868e-2ffeb25a8283",
+    "text": "Public sector, private and foreign banks",
+    "slug": "bank-public-sector-private-and-foreign-banks-813bb1aa",
+    "subject": "banking"
+  },
+  {
+    "id": "2ea7e518-e193-4bdc-ad24-ac7f7c48c7d5",
+    "text": "Small finance banks and payment banks",
+    "slug": "bank-small-finance-banks-and-payment-banks-f44209ce",
+    "subject": "banking"
+  },
+  {
+    "id": "f9621775-9204-4c09-a0ee-429147ec688e",
+    "text": "Cooperative and regional rural banks",
+    "slug": "bank-cooperative-and-regional-rural-banks-2432272d",
+    "subject": "banking"
+  },
+  {
+    "id": "eebda368-5528-43fb-98ed-3e8133db2e3c",
+    "text": "SIDBI",
+    "slug": "bank-sidbi-9613dd45",
+    "subject": "banking"
+  },
+  {
+    "id": "c5da761e-c526-4a50-aedf-fc606beacb14",
+    "text": "EXIM Bank",
+    "slug": "bank-exim-bank-ea0d349a",
+    "subject": "banking"
+  },
+  {
+    "id": "c3e38d45-b2f4-48f6-be65-3080a44d8fc3",
+    "text": "NABARD",
+    "slug": "bank-nabard-8206896b",
+    "subject": "banking"
+  },
+  {
+    "id": "64926994-9dbc-45f2-9e98-7efef362c601",
+    "text": "National Housing Bank",
+    "slug": "bank-national-housing-bank-fa1efb41",
+    "subject": "banking"
+  },
+  {
+    "id": "d20510d1-ae14-48a4-8fe6-2a062ccaa30d",
+    "text": "NaBFID",
+    "slug": "bank-nabfid-47688c4d",
+    "subject": "banking"
+  },
+  {
+    "id": "d8d86a60-b013-4575-a0ed-14c0dee15923",
+    "text": "Recent developments in the global financial system",
+    "slug": "bank-recent-developments-in-the-global-financial-system-9c3f3dd7",
+    "subject": "banking"
+  },
+  {
+    "id": "9525570d-d1e1-4cb9-970c-d4fceb98513b",
+    "text": "Impact on the Indian financial system",
+    "slug": "bank-impact-on-the-indian-financial-system-4b5734d6",
+    "subject": "banking"
+  },
+  {
+    "id": "5712cf90-ec73-4fb5-a149-8f2e8163d3bd",
+    "text": "Core banking and digital channels",
+    "slug": "bank-core-banking-and-digital-channels-42cbcd3c",
+    "subject": "banking"
+  },
+  {
+    "id": "e6a40283-f365-4c96-aee9-07b9d1e8b316",
+    "text": "Cyber security in banking",
+    "slug": "bank-cyber-security-in-banking-626d2046",
+    "subject": "banking"
+  },
+  {
+    "id": "bfcd3438-2dde-4371-8006-165ec2f5f8a2",
+    "text": "Artificial intelligence and analytics in banking",
+    "slug": "bank-artificial-intelligence-and-analytics-in-banking-d7a4a3d0",
+    "subject": "banking"
+  },
+  {
+    "id": "91288b32-bdf0-4648-a531-95dc54757cac",
+    "text": "NBFC categories and classification",
+    "slug": "bank-nbfc-categories-and-classification-0fa1af7e",
+    "subject": "banking"
+  },
+  {
+    "id": "43af1e60-ef5e-43aa-b06b-fd7aa0878edc",
+    "text": "NBFC vs bank — distinction",
+    "slug": "bank-nbfc-vs-bank-distinction-38bd7cea",
+    "subject": "banking"
+  },
+  {
+    "id": "0dced790-4243-4656-9de2-9dd2eea40e01",
+    "text": "Scale-based regulation",
+    "slug": "bank-scale-based-regulation-79196047",
+    "subject": "banking"
+  },
+  {
+    "id": "0f211030-66de-4568-a9ad-54efc37df2f3",
+    "text": "Housing finance companies",
+    "slug": "bank-housing-finance-companies-92920c15",
+    "subject": "banking"
+  },
+  {
+    "id": "7e2c2bd2-745f-4482-9651-8e05f2c9f09d",
+    "text": "UPI and its evolution",
+    "slug": "bank-upi-and-its-evolution-fab78a87",
+    "subject": "banking"
+  },
+  {
+    "id": "c1eba886-99a9-4852-8fb6-20fc4969c572",
+    "text": "IMPS, NEFT and RTGS",
+    "slug": "bank-imps-neft-and-rtgs-20f74e74",
+    "subject": "banking"
+  },
+  {
+    "id": "377a51c1-d980-4551-adc0-b099030bd5c5",
+    "text": "Central Bank Digital Currency",
+    "slug": "bank-central-bank-digital-currency-a8a1870c",
+    "subject": "banking"
+  },
+  {
+    "id": "7928e95f-bc53-4369-8e0c-398396cdd432",
+    "text": "Prepaid instruments and wallets",
+    "slug": "bank-prepaid-instruments-and-wallets-ff127251",
+    "subject": "banking"
+  },
+  {
+    "id": "9085a196-842c-4077-9c62-479c0d5d468f",
+    "text": "Payment system oversight and the PSS Act",
+    "slug": "bank-payment-system-oversight-and-the-pss-act-9810ee97",
+    "subject": "banking"
+  },
+  {
+    "id": "40202415-3cfd-4fdd-a1a4-743bf33acaa6",
+    "text": "Role and functions of SEBI",
+    "slug": "cmkt-role-and-functions-of-sebi-e01afbf7",
+    "subject": "capital-market"
+  },
+  {
+    "id": "d64661c1-57a7-4470-84bd-49d37d4833b2",
+    "text": "Market infrastructure institutions",
+    "slug": "cmkt-market-infrastructure-institutions-91db44c3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "859519df-1c9a-4431-b558-858c87a22dbb",
+    "text": "Investor protection framework",
+    "slug": "cmkt-investor-protection-framework-95c221af",
+    "subject": "capital-market"
+  },
+  {
+    "id": "e8cc3ad5-8340-4ee8-b949-6763525b1ee6",
+    "text": "Primary market — instruments and issuance",
+    "slug": "cmkt-primary-market-instruments-and-issuance-8ba43032",
+    "subject": "capital-market"
+  },
+  {
+    "id": "42d0c90e-84ec-4600-a6e6-0715cec1b3a8",
+    "text": "Secondary market — trading and settlement",
+    "slug": "cmkt-secondary-market-trading-and-settlement-2b16bcfe",
+    "subject": "capital-market"
+  },
+  {
+    "id": "d02c9f8e-743b-45ac-8645-34dc2fcd299b",
+    "text": "Equity market",
+    "slug": "cmkt-equity-market-53a7746c",
+    "subject": "capital-market"
+  },
+  {
+    "id": "cd9fab65-ed26-468a-a4ad-22da8a45e9fc",
+    "text": "Bond market",
+    "slug": "cmkt-bond-market-adeb5345",
+    "subject": "capital-market"
+  },
+  {
+    "id": "9406df4b-e5ce-4980-b2d0-98f437f25765",
+    "text": "Money market instruments",
+    "slug": "cmkt-money-market-instruments-114ad13f",
+    "subject": "capital-market"
+  },
+  {
+    "id": "70ed5360-ea49-4f3e-86b1-e54475f13763",
+    "text": "Foreign exchange market",
+    "slug": "cmkt-foreign-exchange-market-c6c0e8b8",
+    "subject": "capital-market"
+  },
+  {
+    "id": "0b4563c7-3223-4faf-b7de-009a91681eee",
+    "text": "Forward contracts",
+    "slug": "cmkt-forward-contracts-1a9bf1c2",
+    "subject": "capital-market"
+  },
+  {
+    "id": "be82d7a2-22ad-4de3-adaf-499ef1814f73",
+    "text": "Futures contracts",
+    "slug": "cmkt-futures-contracts-d88707e3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "1b7ede71-0cb5-4f69-a2e6-13d6ac2c0e40",
+    "text": "Swaps",
+    "slug": "cmkt-swaps-7de751c9",
+    "subject": "capital-market"
+  },
+  {
+    "id": "041055ea-ec61-400a-84be-5b0e75f54d8e",
+    "text": "Margining and clearing",
+    "slug": "cmkt-margining-and-clearing-088228e3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "c61b4104-fe42-4be8-aaa0-bd6d95c19590",
+    "text": "India International Bullion Exchange",
+    "slug": "cmkt-india-international-bullion-exchange-4e63b4bd",
+    "subject": "capital-market"
+  },
+  {
+    "id": "a6b830c7-928b-4bf0-83d9-82209fddd711",
+    "text": "Bullion depository receipts",
+    "slug": "cmkt-bullion-depository-receipts-efc11410",
+    "subject": "capital-market"
+  },
+  {
+    "id": "c3670114-1765-496f-80c7-8e5bc1f6580d",
+    "text": "Qualified jewellers and eligibility",
+    "slug": "cmkt-qualified-jewellers-and-eligibility-1e384edf",
+    "subject": "capital-market"
+  },
+  {
+    "id": "13a82036-de27-4a3c-b21b-96393b5ec3ee",
+    "text": "Gold Monetization Scheme and gold deposits",
+    "slug": "cmkt-gold-monetization-scheme-and-gold-deposits-ed2394d6",
+    "subject": "capital-market"
+  },
+  {
+    "id": "ff5fba8b-e90b-46e0-846c-8456487705d1",
+    "text": "MCX gold contracts and lot sizes",
+    "slug": "cmkt-mcx-gold-contracts-and-lot-sizes-9b7aec4a",
+    "subject": "capital-market"
+  },
+  {
+    "id": "dbf5ff73-47b3-490b-9a19-b0832fe4da7b",
+    "text": "History of Indian insurance",
+    "slug": "ins-history-of-indian-insurance-b9107de3",
+    "subject": "insurance"
+  },
+  {
+    "id": "5aad7b00-f39f-4f1e-8616-2737d2774da6",
+    "text": "Principles of insurance",
+    "slug": "ins-principles-of-insurance-a051a416",
+    "subject": "insurance"
+  },
+  {
+    "id": "51293e15-7e64-41ce-834e-5ab889402a7d",
+    "text": "Risk and uncertainty",
+    "slug": "ins-risk-and-uncertainty-53f2fed3",
+    "subject": "insurance"
+  },
+  {
+    "id": "a6b3a2c9-d075-4f28-a42e-e206b08e7f2a",
+    "text": "Pooling and diversification of risk",
+    "slug": "ins-pooling-and-diversification-of-risk-9723c358",
+    "subject": "insurance"
+  },
+  {
+    "id": "7483577e-a7e1-4add-a8ff-a2c745233a09",
+    "text": "Indemnity and insurable interest",
+    "slug": "ins-indemnity-and-insurable-interest-740bd357",
+    "subject": "insurance"
+  },
+  {
+    "id": "7776dd30-9ec6-43ce-b9b1-dbe897604104",
+    "text": "Legal foundations of insurance",
+    "slug": "ins-legal-foundations-of-insurance-a270a6a3",
+    "subject": "insurance"
+  },
+  {
+    "id": "864b6288-73c0-42cf-bd72-67e0e80b923f",
+    "text": "Role of intermediation in mobilising savings",
+    "slug": "ins-role-of-intermediation-in-mobilising-savings-82fd4ac6",
+    "subject": "insurance"
+  },
+  {
+    "id": "f9bbff3d-12ad-4c33-85f9-6c4b1e71b8a9",
+    "text": "Types and evolution of intermediaries",
+    "slug": "ins-types-and-evolution-of-intermediaries-c0292ff7",
+    "subject": "insurance"
+  },
+  {
+    "id": "6acb3dbb-e24e-484d-acac-be712f295bec",
+    "text": "Bancassurance in India",
+    "slug": "ins-bancassurance-in-india-cd9dcbc5",
+    "subject": "insurance"
+  },
+  {
+    "id": "9d936e80-9f60-4342-9788-f57dca121812",
+    "text": "Product design",
+    "slug": "ins-product-design-d7249def",
+    "subject": "insurance"
+  },
+  {
+    "id": "263d8b96-85bb-4653-906a-e802e11dc9b2",
+    "text": "Pricing",
+    "slug": "ins-pricing-8383e2b8",
+    "subject": "insurance"
+  },
+  {
+    "id": "842fd329-f1c1-4ed2-8e11-0538069d3ed0",
+    "text": "Distribution",
+    "slug": "ins-distribution-aa968722",
+    "subject": "insurance"
+  },
+  {
+    "id": "ef9a86a1-195b-4be5-aa5c-b010e7db4fdc",
+    "text": "Underwriting",
+    "slug": "ins-underwriting-d9d6fe9e",
+    "subject": "insurance"
+  },
+  {
+    "id": "471d51d4-ca3e-4705-8f46-000457b5d042",
+    "text": "Claims management",
+    "slug": "ins-claims-management-a12995fb",
+    "subject": "insurance"
+  },
+  {
+    "id": "1c1baab2-f591-4339-963a-926846182e92",
+    "text": "Investment of insurance funds",
+    "slug": "ins-investment-of-insurance-funds-7189a3d7",
+    "subject": "insurance"
+  },
+  {
+    "id": "d6a7e1f4-1163-4afc-87dd-3c18a13937fb",
+    "text": "Reinsurance",
+    "slug": "ins-reinsurance-ceb34ae5",
+    "subject": "insurance"
+  },
+  {
+    "id": "7f29a8bb-6ef5-41af-b75d-93a2bc9cca65",
+    "text": "Property and liability insurance",
+    "slug": "ins-property-and-liability-insurance-6a7bf4c0",
+    "subject": "insurance"
+  },
+  {
+    "id": "e3ac9a58-2cb2-4dde-815c-54edb8cbf435",
+    "text": "Life insurance and annuities",
+    "slug": "ins-life-insurance-and-annuities-64457bd8",
+    "subject": "insurance"
+  },
+  {
+    "id": "509a2040-85a5-490a-b31b-001fcae4a090",
+    "text": "Health insurance",
+    "slug": "ins-health-insurance-bae001d6",
+    "subject": "insurance"
+  },
+  {
+    "id": "19ed7d9d-144a-43cd-a1be-559713192165",
+    "text": "Group insurance and pensions",
+    "slug": "ins-group-insurance-and-pensions-3671f200",
+    "subject": "insurance"
+  },
+  {
+    "id": "b6274271-99d5-4993-9fed-e94769bf75b2",
+    "text": "Valuation and solvency requirements",
+    "slug": "ins-valuation-and-solvency-requirements-3a08dd24",
+    "subject": "insurance"
+  },
+  {
+    "id": "a91ae85c-9a36-400b-84d5-2be30725ecfe",
+    "text": "Agricultural and export credit guarantee insurance",
+    "slug": "ins-agricultural-and-export-credit-guarantee-insurance-def404c6",
+    "subject": "insurance"
+  },
+  {
+    "id": "6745261d-5bf9-49a2-9dcc-91000b284e1a",
+    "text": "GIC of India, obligatory cessions and retention",
+    "slug": "ins-gic-of-india-obligatory-cessions-and-retention-578d0b33",
+    "subject": "insurance"
+  },
+  {
+    "id": "be6e1583-c0db-46a9-88f9-08d28bd9375f",
+    "text": "IIO and IIIO framework",
+    "slug": "ins-iio-and-iiio-framework-2d377080",
+    "subject": "insurance"
+  },
+  {
+    "id": "ff2f711b-6bcc-4f4d-9a77-b0579b2d25c5",
+    "text": "Reinsurance in IFSC",
+    "slug": "ins-reinsurance-in-ifsc-e91d5203",
+    "subject": "insurance"
+  },
+  {
+    "id": "13219829-87b8-4102-86aa-634e55ab0e86",
+    "text": "FDI norms in the insurance sector",
+    "slug": "ins-fdi-norms-in-the-insurance-sector-2c787977",
+    "subject": "insurance"
+  },
+  {
+    "id": "8b7921cf-e18e-489a-b064-521439563b66",
+    "text": "Measurement of growth — national income and per capita income",
+    "slug": "fawa-measurement-of-growth-national-income-and-per-capita-income-cea20e3f",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "a3da90af-8bfa-457f-94d6-fa7d072fa042",
+    "text": "Poverty alleviation and employment generation in India",
+    "slug": "fawa-poverty-alleviation-and-employment-generation-in-india-e61c9d7c",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "1e50481a-ff13-4e4c-a0d8-40ab0b6fd807",
+    "text": "Sustainable development and environmental issues",
+    "slug": "fawa-sustainable-development-and-environmental-issues-61921a20",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "f8a59260-adac-47f2-8f43-7e3a17416784",
+    "text": "Multiculturalism",
+    "slug": "fawa-multiculturalism-f88b425a",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "9f8bf02d-9a4f-441b-953b-2c7e16bd1ae5",
+    "text": "Demographic trends",
+    "slug": "fawa-demographic-trends-792cb226",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "4c625f60-1f43-4a4e-89b3-3b2de5a57a0f",
+    "text": "Urbanisation and migration",
+    "slug": "fawa-urbanisation-and-migration-851c595d",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "34f30d5e-67f3-4769-92d9-fa9109201d13",
+    "text": "Gender issues and social justice",
+    "slug": "fawa-gender-issues-and-social-justice-174008b3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "3cce1ed9-2cf1-4bcc-9d21-a121db409aaa",
+    "text": "Budget concepts and approach",
+    "slug": "fawa-budget-concepts-and-approach-b54f95f0",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "9ce26fd0-9787-4ed3-b02e-003d2c78327f",
+    "text": "Broad trends in the Union Budget",
+    "slug": "fawa-broad-trends-in-the-union-budget-b2c68805",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "efd7de44-a236-4f45-ad92-35940425d2ac",
+    "text": "Budget documents and the budget process",
+    "slug": "fawa-budget-documents-and-the-budget-process-5ca0ed20",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "c3e98f2d-20c7-4771-aebd-912d750c6054",
+    "text": "Structure of the Economic Survey",
+    "slug": "fawa-structure-of-the-economic-survey-2a149d29",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "e2ed0952-3f31-409c-a5c3-617d9dfa7640",
+    "text": "Themes and findings of the latest Economic Survey",
+    "slug": "fawa-themes-and-findings-of-the-latest-economic-survey-b1a9212a",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "b15890c8-9099-4526-bcee-4599579ce183",
+    "text": "Financial inclusion schemes",
+    "slug": "fawa-financial-inclusion-schemes-27af35a3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "398e64eb-a793-4921-98a3-50bbdaf6976e",
+    "text": "Credit guarantee and MSME schemes",
+    "slug": "fawa-credit-guarantee-and-msme-schemes-2505b01d",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "06786998-4834-4197-b8ac-20b6cd4f6991",
+    "text": "Insurance and pension schemes",
+    "slug": "fawa-insurance-and-pension-schemes-1ae3ac8e",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "71b06075-f4d6-4b04-8921-30d18492f18a",
+    "text": "Current events of national importance",
+    "slug": "fawa-current-events-of-national-importance-f7f0ab39",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "1326ca6c-e981-4960-8229-e3e61c4b91ab",
+    "text": "Current events of international importance",
+    "slug": "fawa-current-events-of-international-importance-25417bd3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "d1b7a3f9-84e1-4832-8d3f-ca851b844ce6",
+    "text": "Approximation with decimals and surds",
+    "slug": "qa-approximation-with-decimals-and-surds-5e910263",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7e9de247-a854-4388-a44a-597c50de043a",
+    "text": "Missing-term simplification (find ?)",
+    "slug": "qa-missing-term-simplification-find-47d869c3",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "5d6007fc-1b29-498d-bd19-6a50b296f041",
+    "text": "BODMAS and order of operations",
+    "slug": "qa-bodmas-and-order-of-operations-eaf71d19",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "3a54536e-35fe-4c7a-949c-382476120f62",
+    "text": "Square roots, cube roots and powers",
+    "slug": "qa-square-roots-cube-roots-and-powers-f19808cb",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "48ff8201-3db5-4210-98f1-c89b35d5d955",
+    "text": "Fraction and percentage equivalents",
+    "slug": "qa-fraction-and-percentage-equivalents-475121ec",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a",
+    "text": "Number series — arithmetic and difference patterns",
+    "slug": "qa-number-series-arithmetic-and-difference-patterns-130693e5",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "89b27d9f-7081-4930-9186-c41b93349e1a",
+    "text": "Number series — multiplicative and mixed patterns",
+    "slug": "qa-number-series-multiplicative-and-mixed-patterns-340f34bd",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7571611f-335f-419f-bb07-46408833d294",
+    "text": "Wrong-term series",
+    "slug": "qa-wrong-term-series-af3f2c81",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "14c51cd0-d60f-42bb-a584-89639d2306fa",
+    "text": "LCM, HCF and divisibility",
+    "slug": "qa-lcm-hcf-and-divisibility-bad12219",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "16630438-beb1-473f-b251-baccce8cd86a",
+    "text": "Sets of consecutive and patterned numbers",
+    "slug": "qa-sets-of-consecutive-and-patterned-numbers-57029c73",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d98cdd8a-6f6a-420a-a477-e5385f96f029",
+    "text": "Remainders and factors",
+    "slug": "qa-remainders-and-factors-0faad1db",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "01f2ee8f-c655-4c2e-912e-e0f18a2d3201",
+    "text": "Quadratic equations — root comparison (x vs y)",
+    "slug": "qa-quadratic-equations-root-comparison-x-vs-y-03936368",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "5194061c-a0ed-423e-aa9d-b3c774115dc8",
+    "text": "Linear equations in one and two variables",
+    "slug": "qa-linear-equations-in-one-and-two-variables-dbd6b335",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "a5ece133-4cad-4641-8caa-5e593c34e888",
+    "text": "Simultaneous equations from word conditions",
+    "slug": "qa-simultaneous-equations-from-word-conditions-29e84158",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "0683c41f-da6e-4738-872a-f2cd424de015",
+    "text": "Inequalities and relationship determination",
+    "slug": "qa-inequalities-and-relationship-determination-a6a6a638",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "e1fecd85-fe0d-4594-a851-40691666a7b4",
+    "text": "Algebraic identities and factorisation",
+    "slug": "qa-algebraic-identities-and-factorisation-e8595f7a",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "61f760f9-681d-4ec9-9c5c-bfe750fcf5fe",
+    "text": "Percentage increase and decrease",
+    "slug": "qa-percentage-increase-and-decrease-85f661e1",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2ab2e850-22d2-4286-8b8e-5e40767657e3",
+    "text": "Successive percentage change",
+    "slug": "qa-successive-percentage-change-8a4031e7",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "ff082708-c649-46b6-980f-4a66363e6eab",
+    "text": "Percentage comparison — what percent of / more than",
+    "slug": "qa-percentage-comparison-what-percent-of-more-than-b5ef5d48",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "10d8610d-9dbd-4f47-b301-1ed3c0d2dce6",
+    "text": "Income, expenditure and savings",
+    "slug": "qa-income-expenditure-and-savings-20025343",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "82ebea06-9d87-40af-b539-2a37c6024b12",
+    "text": "Population, strength and quantity change",
+    "slug": "qa-population-strength-and-quantity-change-e737e151",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "716450be-826f-428c-a51e-57101be2e9f9",
+    "text": "Cost price, selling price and margin",
+    "slug": "qa-cost-price-selling-price-and-margin-fa9cf244",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f6a36919-07e6-46a8-ae43-e3c13d549c98",
+    "text": "Discount and marked price",
+    "slug": "qa-discount-and-marked-price-feadd5c6",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "fa8a4cb7-7670-4f67-b933-9e9e0d4ace77",
+    "text": "Combined transactions and overall gain",
+    "slug": "qa-combined-transactions-and-overall-gain-229905cb",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "aca7c90a-40a6-436a-98f2-92b678f173ba",
+    "text": "Equal profit and loss conditions",
+    "slug": "qa-equal-profit-and-loss-conditions-cdaceb4b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9ea559c5-2c7b-49b4-8ab0-98938fd471df",
+    "text": "Simple and compound interest",
+    "slug": "qa-simple-and-compound-interest-ee6f76e4",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "74799854-a84e-4607-844e-afb8c50b7bc0",
+    "text": "Simple and compound ratio",
+    "slug": "qa-simple-and-compound-ratio-ae9a2833",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7d94ff40-34f9-47fe-9caa-9eae0dc38116",
+    "text": "Mixtures and alligation",
+    "slug": "qa-mixtures-and-alligation-921971ac",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "bb343a30-e26e-474a-9ab7-6ecab8e6931b",
+    "text": "Partnership and profit sharing",
+    "slug": "qa-partnership-and-profit-sharing-055fa70d",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "cd574056-f811-4f7b-8fdd-a4e37d0c9772",
+    "text": "Ages — present, past and future",
+    "slug": "qa-ages-present-past-and-future-0a8b95a2",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "528ffbb5-94cb-438d-a875-c854d0f65ec5",
+    "text": "Averages — simple and weighted",
+    "slug": "qa-averages-simple-and-weighted-1f479970",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c2079ba4-41e3-4db0-908b-a6fd4a550cab",
+    "text": "Proportional division of quantities",
+    "slug": "qa-proportional-division-of-quantities-14622c51",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f5c68108-e718-4a7e-b546-d07e543534b5",
+    "text": "Relative speed and meeting problems",
+    "slug": "qa-relative-speed-and-meeting-problems-4f10cb81",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d1979e85-7942-4fdd-a5fa-b1d2e29f5977",
+    "text": "Boats and streams",
+    "slug": "qa-boats-and-streams-652dae37",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9a417628-ca65-4a32-bac1-87c365f40334",
+    "text": "Trains — crossing platforms and each other",
+    "slug": "qa-trains-crossing-platforms-and-each-other-fbf3e1f2",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "e2fc8cb4-eb3e-41dc-b14d-70ea45e8ad4d",
+    "text": "Average speed and journey segments",
+    "slug": "qa-average-speed-and-journey-segments-5db28484",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "caab5701-fc1c-40ff-8286-aa93175b0233",
+    "text": "Races and circular tracks",
+    "slug": "qa-races-and-circular-tracks-ee936ee3",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22",
+    "text": "Individual and combined work rates",
+    "slug": "qa-individual-and-combined-work-rates-f1d3f896",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d8355e58-6c85-48c8-9878-318ba0a41772",
+    "text": "Efficiency comparison and relative capacity",
+    "slug": "qa-efficiency-comparison-and-relative-capacity-7ef5386a",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "21fb2f26-ef41-477c-a8eb-2717f20b6083",
+    "text": "Pipes and cisterns",
+    "slug": "qa-pipes-and-cisterns-567ce8e0",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c31985e0-3cff-4a90-b5ac-438e656ee509",
+    "text": "Partial work and remaining-work problems",
+    "slug": "qa-partial-work-and-remaining-work-problems-3868d723",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "424d99d5-720f-409e-ba66-8660ac95a486",
+    "text": "Area and perimeter — rectangle, square, triangle",
+    "slug": "qa-area-and-perimeter-rectangle-square-triangle-e23db61d",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "a704c46a-26db-43f5-9ece-3e339a15ac3b",
+    "text": "Circle — area, circumference and sectors",
+    "slug": "qa-circle-area-circumference-and-sectors-e98b662b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c2384cfd-529f-4f48-8d67-33fb2e5ce9fb",
+    "text": "Reshaping and equal-perimeter problems",
+    "slug": "qa-reshaping-and-equal-perimeter-problems-ef477223",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c5d44e15-072a-4557-ad7d-f61221fe61c7",
+    "text": "Volume and surface area of solids",
+    "slug": "qa-volume-and-surface-area-of-solids-42588cef",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2677eb4d-bfd9-4bb5-a369-169601b4014c",
+    "text": "Coordinate and line geometry",
+    "slug": "qa-coordinate-and-line-geometry-eb041f58",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "ce23f17b-f621-46b0-bb72-fc926a0be3d4",
+    "text": "Tabular data interpretation",
+    "slug": "qa-tabular-data-interpretation-e6e4b3de",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "598ad90c-f128-40b5-a67b-42de3bbf993d",
+    "text": "Pie chart interpretation",
+    "slug": "qa-pie-chart-interpretation-32cf3346",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "50745fc5-924b-470a-bee7-27cf2f458521",
+    "text": "Bar and line graph interpretation",
+    "slug": "qa-bar-and-line-graph-interpretation-35302e14",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2fd766ca-2573-4fee-99c2-fa88df93628f",
+    "text": "Caselet data interpretation",
+    "slug": "qa-caselet-data-interpretation-372ea92b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "1c2f9218-9361-4ee9-84cd-f830a30c648a",
+    "text": "Mixed and combined DI",
+    "slug": "qa-mixed-and-combined-di-4edc5bb5",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f0e0d76d-38ed-4b29-85db-ae678611b715",
+    "text": "Data sufficiency",
+    "slug": "qa-data-sufficiency-0fd64dd8",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "cd48d660-2fee-415a-8bd5-e6e78324d73c",
+    "text": "Linear row — single row, one direction",
+    "slug": "reas-linear-row-single-row-one-direction-3c93ae0f",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c7ccbff3-da69-4369-90fe-f5f8b13ff7b9",
+    "text": "Linear row — facing both directions",
+    "slug": "reas-linear-row-facing-both-directions-08c55ceb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "49d20336-ad3d-48c7-b172-fdd9c3d17e7f",
+    "text": "Circular arrangement — facing centre",
+    "slug": "reas-circular-arrangement-facing-centre-49054cf2",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "b2e396d9-e67b-4242-904e-7424662e7615",
+    "text": "Circular arrangement — mixed facing",
+    "slug": "reas-circular-arrangement-mixed-facing-5596b070",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "8f2e1cb0-8b2b-4ffc-a0fb-9cfec07c69c9",
+    "text": "Row with unknown number of persons",
+    "slug": "reas-row-with-unknown-number-of-persons-cb13e578",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "fbcc6e0e-45b8-4e93-88ab-38bb435e0ec8",
+    "text": "Square and rectangular arrangement",
+    "slug": "reas-square-and-rectangular-arrangement-18e7b720",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "de689596-235b-4ead-8ba1-3431e1189e98",
+    "text": "Floor puzzle",
+    "slug": "reas-floor-puzzle-1df93898",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c26f0386-26ac-4035-96d6-3522f658cb19",
+    "text": "Floor and flat double-variable puzzle",
+    "slug": "reas-floor-and-flat-double-variable-puzzle-fd87d2ea",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "93f445b2-4db4-45b1-acc5-b1bb8c21dc17",
+    "text": "Box and stack puzzle",
+    "slug": "reas-box-and-stack-puzzle-60988bfb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "6e107aa5-c9e0-4888-a7e9-862e98bea935",
+    "text": "Month and date scheduling puzzle",
+    "slug": "reas-month-and-date-scheduling-puzzle-3404d95a",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "cefdf13b-9b68-489e-b5b2-e3d171d70f2c",
+    "text": "Day and week scheduling puzzle",
+    "slug": "reas-day-and-week-scheduling-puzzle-076b2549",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "da8b77aa-4e53-4876-be17-f8f96e1f2913",
+    "text": "Category and attribute matching puzzle",
+    "slug": "reas-category-and-attribute-matching-puzzle-e5f2f3ac",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "0140aef7-82c3-45de-be0d-e9286820ee7f",
+    "text": "Odd-one-out within an arrangement",
+    "slug": "reas-odd-one-out-within-an-arrangement-8a59afe3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e8565eaf-c332-47da-97ab-b50aff00ac13",
+    "text": "Two-statement syllogism",
+    "slug": "reas-two-statement-syllogism-7f65e035",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ee63d21f-3ff5-4193-975f-7e6c04a59c89",
+    "text": "Three or more statement syllogism",
+    "slug": "reas-three-or-more-statement-syllogism-e8800438",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "993efa09-2f9d-42be-a0b3-b6c912e0f07c",
+    "text": "Possibility conclusions",
+    "slug": "reas-possibility-conclusions-b7cd9da3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "b46402a0-947a-4fed-a122-1e655785e683",
+    "text": "Only and only-a-few statements",
+    "slug": "reas-only-and-only-a-few-statements-d42e0ef7",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "a75da08f-fca8-421c-85ce-65d1b6e2c3a5",
+    "text": "Either-or and complementary pairs",
+    "slug": "reas-either-or-and-complementary-pairs-52508ad3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "08bdcee9-fc28-4eb1-a2de-75a99969f042",
+    "text": "Direct coded inequality",
+    "slug": "reas-direct-coded-inequality-4e115de6",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "15e7768f-f126-4030-a227-218a815ea259",
+    "text": "Multi-chain inequality with linked variables",
+    "slug": "reas-multi-chain-inequality-with-linked-variables-26ae9265",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "22d83867-ab62-406d-830c-79336e4e5aeb",
+    "text": "Either-or conclusions in inequality",
+    "slug": "reas-either-or-conclusions-in-inequality-0a9ae6c4",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ed3eadd3-5574-4043-a2e4-2bfde047b9c1",
+    "text": "Symbol-substitution inequality",
+    "slug": "reas-symbol-substitution-inequality-92327ea2",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7c2c5a3a-3a83-479b-9814-8f1dab3d5a35",
+    "text": "Direct relation from a description",
+    "slug": "reas-direct-relation-from-a-description-e0847737",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "652eb8c7-a25a-48c1-b51d-ddf64f8ede1b",
+    "text": "Family tree puzzle with generations",
+    "slug": "reas-family-tree-puzzle-with-generations-78d7886d",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "258d7491-2b80-469d-84c9-6f9ee74b1e4d",
+    "text": "Coded blood relation",
+    "slug": "reas-coded-blood-relation-c6693c9c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "f62fb498-ea86-49f8-8bc3-4f77c9a485d6",
+    "text": "Relation with gender ambiguity",
+    "slug": "reas-relation-with-gender-ambiguity-0d4e3334",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e7dfdb22-8ee7-445d-9f0a-e27ccf215314",
+    "text": "Letter-to-symbol coding",
+    "slug": "reas-letter-to-symbol-coding-35896380",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "2ba3fb21-1709-4d8b-9059-bbfee5264d8f",
+    "text": "Letter shifting and alphabet position",
+    "slug": "reas-letter-shifting-and-alphabet-position-e476a433",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "a4dddc0f-e194-4eb6-bfc6-078240c8d4f0",
+    "text": "Number and digit coding",
+    "slug": "reas-number-and-digit-coding-722eaafb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "388d6536-63d3-4012-9f98-4adbf51dbb67",
+    "text": "Conditional coding with rules",
+    "slug": "reas-conditional-coding-with-rules-0b7eaac9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "479587ab-2cef-4046-9da4-c0ca924e8ef6",
+    "text": "Word formation from given letters",
+    "slug": "reas-word-formation-from-given-letters-3a6e82a0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c2de8b3d-f79b-47b4-9b9e-5199a2230dbf",
+    "text": "Path tracing and final position",
+    "slug": "reas-path-tracing-and-final-position-11904573",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "09eef279-390d-4889-a8fb-81c6961bee8a",
+    "text": "Shortest distance by Pythagoras",
+    "slug": "reas-shortest-distance-by-pythagoras-3a8e0d2c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "55cde475-d4af-4ff7-b347-b51066736cab",
+    "text": "Direction of one point relative to another",
+    "slug": "reas-direction-of-one-point-relative-to-another-783ac0e9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "86416829-056a-4934-aa07-ef7d78cd9171",
+    "text": "Two-person path problems",
+    "slug": "reas-two-person-path-problems-c50164bd",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "daa9cd63-0fdb-4798-8969-5ce292b31a76",
+    "text": "Position from either end",
+    "slug": "reas-position-from-either-end-8ab86a4c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "bf9142fc-f9fd-49e5-85ba-1431680791e5",
+    "text": "Comparison and ordering by attribute",
+    "slug": "reas-comparison-and-ordering-by-attribute-d24d90e3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "d6719f2f-0906-4aab-a3f7-7348c1e4fd5b",
+    "text": "Total-count deduction from positions",
+    "slug": "reas-total-count-deduction-from-positions-8130a2b3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "beb3ca2b-9796-4686-89bd-e643ebb270b1",
+    "text": "Age and height ordering",
+    "slug": "reas-age-and-height-ordering-9e5c27d9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "4990ee6f-b419-42e9-8ee0-e52d5630d3a4",
+    "text": "Shifting and rearrangement machine",
+    "slug": "reas-shifting-and-rearrangement-machine-9b0cb8fb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "dad69132-676d-4a7b-be3d-1da364bd36f9",
+    "text": "Arithmetic operation machine",
+    "slug": "reas-arithmetic-operation-machine-258cf421",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "4ba00176-6b3d-4873-ae98-62b2fb33fecf",
+    "text": "Step count and intermediate-step questions",
+    "slug": "reas-step-count-and-intermediate-step-questions-790ddbf0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7d5a08c1-a3ac-4337-8f3e-28b5762b1857",
+    "text": "Alphabet series",
+    "slug": "reas-alphabet-series-b3b70d39",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ba50fea4-a0f8-4254-9e5c-dbd2046eacdc",
+    "text": "Alphanumeric and mixed series",
+    "slug": "reas-alphanumeric-and-mixed-series-74351adc",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "90a4700b-5c25-481c-a0b0-07b51e1dc28c",
+    "text": "Letter and digit pair counting",
+    "slug": "reas-letter-and-digit-pair-counting-8acc9fe0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "951e2be1-ea05-4684-8264-3f38ccf9bf97",
+    "text": "Word and meaning analogy",
+    "slug": "reas-word-and-meaning-analogy-101b7b75",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e380c325-7879-4dca-9efc-a587a9499da0",
+    "text": "Number and letter analogy",
+    "slug": "reas-number-and-letter-analogy-2d75e3a9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ebb5aad8-4088-4f4f-b2a9-0506b1a55072",
+    "text": "Odd one out from a list",
+    "slug": "reas-odd-one-out-from-a-list-f44030fa",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "71faffff-a24e-49ae-918e-1216b65553d8",
+    "text": "Statement and argument — strong or weak",
+    "slug": "reas-statement-and-argument-strong-or-weak-c34d0b36",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a",
+    "text": "Statement and assumption",
+    "slug": "reas-statement-and-assumption-f8aa8582",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7a2c2e52-c0f0-4a62-bb28-69fe43fbd971",
+    "text": "Cause and effect",
+    "slug": "reas-cause-and-effect-645e5e25",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "eccadce1-2c9a-4672-9eef-65ee4bfaeb84",
+    "text": "Course of action",
+    "slug": "reas-course-of-action-3f7e5981",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "75d64ae7-691e-4226-9c46-05d217805e7d",
+    "text": "Statement and inference",
+    "slug": "reas-statement-and-inference-65cdc759",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "3b2102a2-bd53-42bb-82c5-a617816fa09b",
+    "text": "Strengthening and weakening an argument",
+    "slug": "reas-strengthening-and-weakening-an-argument-d884876b",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "6a36422b-68e6-409f-863a-bb3812a9ff7c",
+    "text": "Figure series and pattern completion",
+    "slug": "reas-figure-series-and-pattern-completion-f9140d07",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "dbcd498e-6fc8-4e93-a950-c3309a430a27",
+    "text": "Mirror, water image and paper folding",
+    "slug": "reas-mirror-water-image-and-paper-folding-a18a0c58",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "2416c0e0-a68f-45a9-9d66-9b8910ac3e9e",
+    "text": "Tools of communication and their purpose",
+    "slug": "communication-tools",
+    "subject": "english-language"
+  },
+  {
+    "id": "fa2ead71-59b9-4417-b71f-1f623d2c02c9",
+    "text": "Barriers to communication",
+    "slug": "communication-barriers",
+    "subject": "english-language"
+  },
+  {
+    "id": "de0e24eb-5c25-4e0f-8eeb-325b8732f9cc",
+    "text": "Permutations, combinations and counting",
+    "slug": "permutations-and-combinations",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "484fbb39-85bd-4c88-88b3-9426befa6b49",
+    "text": "Clocks and calendars",
+    "slug": "clocks-and-calendars",
+    "subject": "quantitative-aptitude"
+  }
+]

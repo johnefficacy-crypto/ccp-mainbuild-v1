@@ -1,0 +1,176 @@
+﻿slug | id | name
+english-language | b56cb48c-f85b-4158-8e71-f954f48a8c10 | Antonyms
+english-language | b790ab2c-17e8-9025-f313-2c44d24dac8d | Articles
+english-language | ebdd3a2a-f038-4775-9684-647b6cbbdcbb | Author tone, attitude and purpose
+english-language | fa2ead71-59b9-4417-b71f-1f623d2c02c9 | Barriers to communication
+english-language | f911f68b-418c-d7bb-37e3-00499792e022 | Cohesion
+english-language | 1ea65bf4-15e7-e99a-3687-b3e324f4b5b9 | Collocations
+english-language | 0df7dc1f-8059-4012-a9a4-59b8bc8b7181 | Commonly confused word pairs
+english-language | 3a0004f6-d89a-4f5f-b858-0dca53d6f277 | Communication register by relationship
+english-language | 5194a509-d374-28d7-24f8-7a49f7a308b8 | Complex Sentences
+english-language | 5f033e03-98a8-9e1e-f503-3d837e169983 | Compound Sentences
+english-language | 70b4fc2f-cf07-d8ef-fb7e-3025342ba94d | Comprehension and Summary
+english-language | b2d49393-0e86-3521-fc2d-c5ec26e286e9 | Conclusion
+english-language | de6aaf4c-db6e-4c5c-b2bd-fc3d1880cc21 | Connector and transition cloze
+english-language | fd797be4-4857-4885-a456-52d9ce38df94 | Connector-based completion
+english-language | 0e4fdd22-0bfe-ee0a-c0bc-d74b9518afeb | Content Relevance
+english-language | e5efcb86-127f-460d-83fb-9faa38ee400c | Correlative conjunctions and parallelism
+english-language | 53bf9a36-47c0-4473-b677-29a66d1a7bdb | Double-blank sentence completion
+english-language | 63d9ed95-155f-b31b-acd8-3bb63b0bbb76 | Essay Writing
+english-language | 342ec4bb-5625-4398-9b44-2963d65062a4 | Explicit detail retrieval
+english-language | eeed4b11-c9a3-4c0d-9f08-e31d6d8bcdac | Formal and business register
+english-language | 640b124b-d77a-5052-7d60-c5263b23bbd8 | Formal Vocabulary
+english-language | 8a436650-6e75-79db-904f-e60bd0f7abaf | Format Rules
+english-language | 420312ba-2e38-4e16-a836-7e6764a05535 | Inference and implied meaning
+english-language | eb5019d6-aa0e-23f3-dabd-d507596cf97a | Letter and Report Writing
+english-language | b2b889f0-5310-23a4-a50c-daa504f0afe7 | Logical Order
+english-language | baf763bb-6d36-4a25-b1ba-6419e3b26852 | Main idea and central theme
+english-language | f4ab61e2-cadf-4686-a1c5-50554463f230 | Meaning of an idiom in context
+english-language | aca53761-13fc-65c9-bd3c-9f324e9a589f | Modifiers
+english-language | c91ecdcc-7fc9-4d23-b3b7-9122ce81cf9a | Multi-blank passage cloze
+english-language | d5881d53-754a-4f95-a6a2-38d2bbd55162 | No-improvement-required cases
+english-language | e6f14cb6-df7f-4e3a-9aa4-5efbf45b7946 | One-word substitution
+english-language | bf06f202-6d47-497c-a4e2-5f7f377d0fbb | Passage-based synonym and antonym
+english-language | 37a65bc7-1c55-43e7-b59a-c25f3bc3232f | Phrasal verbs
+english-language | 57e9ec9c-c979-437a-b1e8-90580921f096 | Phrase replacement
+english-language | 47d00077-5f85-ba3b-fc49-cf7405914aa2 | Précis Writing
+english-language | f9c12eec-a497-4d10-b219-2da6b28a92f7 | Preposition and article errors
+english-language | 613e6076-97c1-4a2b-b932-8831642cf075 | Preposition and phrasal completion
+english-language | 5db857e5-5b9d-2f80-0046-1978c199ed85 | Prepositions
+english-language | c6beb287-3fef-397f-e204-57f8e4053328 | Pronoun Reference
+english-language | ee103c0c-a9fa-4ae8-98dd-78cdc4378732 | Pronoun reference and agreement
+english-language | c777f14a-2058-a3ec-1208-bb4b36e2a19a | Punctuation
+english-language | 84fae1ba-f1d4-98da-1c09-45c51ceb2e22 | Redundancy
+english-language | e6e0700f-0130-49e0-961d-89cbe5eab3f8 | Redundancy and wordiness
+english-language | 10b21db7-8b86-4fa9-a1f6-8cd7d21085da | Segment-marked error identification
+english-language | 1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc | Sentence Structure
+english-language | 386a7e56-8043-74cf-4bfb-43aa9a845c9c | Sentence Transformation
+english-language | 4d511b04-901c-8fb4-06a9-a1efe500e4f6 | Simple Sentences
+english-language | 4b44f9f1-8d13-4977-be4b-aa5108b10ead | Single-blank contextual cloze
+english-language | cbb196b4-3325-4af1-80f9-a4280d592e9f | Single-word contextual fit
+english-language | 22591465-673a-c375-3460-2702125f6fc3 | Spelling
+english-language | 7c71b869-e50a-4ebd-aea1-fe291dbee5ed | Subject-verb agreement
+english-language | b9facc82-38d7-f725-7c97-8b5894c157f0 | Subject-Verb Agreement
+english-language | bb17b54f-b233-4c9d-9bad-4526b5ce2f87 | Synonyms
+english-language | aa680736-24d9-abb2-d7f2-ad3bcb2acb77 | Tense
+english-language | f146f9b5-b13d-47c0-8aca-c80a6566b4fe | Tense and sequence of tenses
+english-language | 2416c0e0-a68f-45a9-9d66-9b8910ac3e9e | Tools of communication and their purpose
+english-language | 42954cdb-5339-b7b2-9424-c0569960244b | Topic Sentence
+english-language | dbed7599-7bab-45e3-ab53-cb8cbb8a1c55 | Vocabulary from context within a passage
+english-language | d24db813-295b-cb39-e6b3-327409910c6f | Word Choice
+english-language | c18d927f-2eab-49db-b302-a017cf1f2193 | Word interchange within a sentence
+english-language | 50e8c0d4-60b5-7d43-4c12-33a386b0bbe5 | Word Limit
+english-language | 3ab068c5-397c-4189-913f-0d26569b3899 | Word order and modifier placement
+english-language | 0b53297b-0109-4334-b1ee-e56a18137969 | Word-pair fit
+english-language | 3f2a57b9-ea87-4d0e-9296-6651b115c149 | Written answers to a passage
+general-intelligence-reasoning | beb3ca2b-9796-4686-89bd-e643ebb270b1 | Age and height ordering
+general-intelligence-reasoning | 7d5a08c1-a3ac-4337-8f3e-28b5762b1857 | Alphabet series
+general-intelligence-reasoning | ba50fea4-a0f8-4254-9e5c-dbd2046eacdc | Alphanumeric and mixed series
+general-intelligence-reasoning | dad69132-676d-4a7b-be3d-1da364bd36f9 | Arithmetic operation machine
+general-intelligence-reasoning | 93f445b2-4db4-45b1-acc5-b1bb8c21dc17 | Box and stack puzzle
+general-intelligence-reasoning | da8b77aa-4e53-4876-be17-f8f96e1f2913 | Category and attribute matching puzzle
+general-intelligence-reasoning | 7a2c2e52-c0f0-4a62-bb28-69fe43fbd971 | Cause and effect
+general-intelligence-reasoning | 49d20336-ad3d-48c7-b172-fdd9c3d17e7f | Circular arrangement — facing centre
+general-intelligence-reasoning | b2e396d9-e67b-4242-904e-7424662e7615 | Circular arrangement — mixed facing
+general-intelligence-reasoning | 258d7491-2b80-469d-84c9-6f9ee74b1e4d | Coded blood relation
+general-intelligence-reasoning | bf9142fc-f9fd-49e5-85ba-1431680791e5 | Comparison and ordering by attribute
+general-intelligence-reasoning | 388d6536-63d3-4012-9f98-4adbf51dbb67 | Conditional coding with rules
+general-intelligence-reasoning | eccadce1-2c9a-4672-9eef-65ee4bfaeb84 | Course of action
+general-intelligence-reasoning | cefdf13b-9b68-489e-b5b2-e3d171d70f2c | Day and week scheduling puzzle
+general-intelligence-reasoning | 08bdcee9-fc28-4eb1-a2de-75a99969f042 | Direct coded inequality
+general-intelligence-reasoning | 7c2c5a3a-3a83-479b-9814-8f1dab3d5a35 | Direct relation from a description
+general-intelligence-reasoning | 55cde475-d4af-4ff7-b347-b51066736cab | Direction of one point relative to another
+general-intelligence-reasoning | a75da08f-fca8-421c-85ce-65d1b6e2c3a5 | Either-or and complementary pairs
+general-intelligence-reasoning | 22d83867-ab62-406d-830c-79336e4e5aeb | Either-or conclusions in inequality
+general-intelligence-reasoning | 652eb8c7-a25a-48c1-b51d-ddf64f8ede1b | Family tree puzzle with generations
+general-intelligence-reasoning | 6a36422b-68e6-409f-863a-bb3812a9ff7c | Figure series and pattern completion
+general-intelligence-reasoning | c26f0386-26ac-4035-96d6-3522f658cb19 | Floor and flat double-variable puzzle
+general-intelligence-reasoning | de689596-235b-4ead-8ba1-3431e1189e98 | Floor puzzle
+general-intelligence-reasoning | 90a4700b-5c25-481c-a0b0-07b51e1dc28c | Letter and digit pair counting
+general-intelligence-reasoning | 2ba3fb21-1709-4d8b-9059-bbfee5264d8f | Letter shifting and alphabet position
+general-intelligence-reasoning | e7dfdb22-8ee7-445d-9f0a-e27ccf215314 | Letter-to-symbol coding
+general-intelligence-reasoning | c7ccbff3-da69-4369-90fe-f5f8b13ff7b9 | Linear row — facing both directions
+general-intelligence-reasoning | cd48d660-2fee-415a-8bd5-e6e78324d73c | Linear row — single row, one direction
+general-intelligence-reasoning | dbcd498e-6fc8-4e93-a950-c3309a430a27 | Mirror, water image and paper folding
+general-intelligence-reasoning | 6e107aa5-c9e0-4888-a7e9-862e98bea935 | Month and date scheduling puzzle
+general-intelligence-reasoning | 15e7768f-f126-4030-a227-218a815ea259 | Multi-chain inequality with linked variables
+general-intelligence-reasoning | a4dddc0f-e194-4eb6-bfc6-078240c8d4f0 | Number and digit coding
+general-intelligence-reasoning | e380c325-7879-4dca-9efc-a587a9499da0 | Number and letter analogy
+general-intelligence-reasoning | ebb5aad8-4088-4f4f-b2a9-0506b1a55072 | Odd one out from a list
+general-intelligence-reasoning | 0140aef7-82c3-45de-be0d-e9286820ee7f | Odd-one-out within an arrangement
+general-intelligence-reasoning | b46402a0-947a-4fed-a122-1e655785e683 | Only and only-a-few statements
+general-intelligence-reasoning | c2de8b3d-f79b-47b4-9b9e-5199a2230dbf | Path tracing and final position
+general-intelligence-reasoning | daa9cd63-0fdb-4798-8969-5ce292b31a76 | Position from either end
+general-intelligence-reasoning | 993efa09-2f9d-42be-a0b3-b6c912e0f07c | Possibility conclusions
+general-intelligence-reasoning | f62fb498-ea86-49f8-8bc3-4f77c9a485d6 | Relation with gender ambiguity
+general-intelligence-reasoning | 8f2e1cb0-8b2b-4ffc-a0fb-9cfec07c69c9 | Row with unknown number of persons
+general-intelligence-reasoning | 4990ee6f-b419-42e9-8ee0-e52d5630d3a4 | Shifting and rearrangement machine
+general-intelligence-reasoning | 09eef279-390d-4889-a8fb-81c6961bee8a | Shortest distance by Pythagoras
+general-intelligence-reasoning | fbcc6e0e-45b8-4e93-88ab-38bb435e0ec8 | Square and rectangular arrangement
+general-intelligence-reasoning | 71faffff-a24e-49ae-918e-1216b65553d8 | Statement and argument — strong or weak
+general-intelligence-reasoning | fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a | Statement and assumption
+general-intelligence-reasoning | 75d64ae7-691e-4226-9c46-05d217805e7d | Statement and inference
+general-intelligence-reasoning | 4ba00176-6b3d-4873-ae98-62b2fb33fecf | Step count and intermediate-step questions
+general-intelligence-reasoning | 3b2102a2-bd53-42bb-82c5-a617816fa09b | Strengthening and weakening an argument
+general-intelligence-reasoning | ed3eadd3-5574-4043-a2e4-2bfde047b9c1 | Symbol-substitution inequality
+general-intelligence-reasoning | ee63d21f-3ff5-4193-975f-7e6c04a59c89 | Three or more statement syllogism
+general-intelligence-reasoning | d6719f2f-0906-4aab-a3f7-7348c1e4fd5b | Total-count deduction from positions
+general-intelligence-reasoning | 86416829-056a-4934-aa07-ef7d78cd9171 | Two-person path problems
+general-intelligence-reasoning | e8565eaf-c332-47da-97ab-b50aff00ac13 | Two-statement syllogism
+general-intelligence-reasoning | 951e2be1-ea05-4684-8264-3f38ccf9bf97 | Word and meaning analogy
+general-intelligence-reasoning | 479587ab-2cef-4046-9da4-c0ca924e8ef6 | Word formation from given letters
+quantitative-aptitude | cd574056-f811-4f7b-8fdd-a4e37d0c9772 | Ages — present, past and future
+quantitative-aptitude | e1fecd85-fe0d-4594-a851-40691666a7b4 | Algebraic identities and factorisation
+quantitative-aptitude | d1b7a3f9-84e1-4832-8d3f-ca851b844ce6 | Approximation with decimals and surds
+quantitative-aptitude | 424d99d5-720f-409e-ba66-8660ac95a486 | Area and perimeter — rectangle, square, triangle
+quantitative-aptitude | e2fc8cb4-eb3e-41dc-b14d-70ea45e8ad4d | Average speed and journey segments
+quantitative-aptitude | 528ffbb5-94cb-438d-a875-c854d0f65ec5 | Averages — simple and weighted
+quantitative-aptitude | 50745fc5-924b-470a-bee7-27cf2f458521 | Bar and line graph interpretation
+quantitative-aptitude | d1979e85-7942-4fdd-a5fa-b1d2e29f5977 | Boats and streams
+quantitative-aptitude | 5d6007fc-1b29-498d-bd19-6a50b296f041 | BODMAS and order of operations
+quantitative-aptitude | 2fd766ca-2573-4fee-99c2-fa88df93628f | Caselet data interpretation
+quantitative-aptitude | a704c46a-26db-43f5-9ece-3e339a15ac3b | Circle — area, circumference and sectors
+quantitative-aptitude | 484fbb39-85bd-4c88-88b3-9426befa6b49 | Clocks and calendars
+quantitative-aptitude | fa8a4cb7-7670-4f67-b933-9e9e0d4ace77 | Combined transactions and overall gain
+quantitative-aptitude | 2677eb4d-bfd9-4bb5-a369-169601b4014c | Coordinate and line geometry
+quantitative-aptitude | 716450be-826f-428c-a51e-57101be2e9f9 | Cost price, selling price and margin
+quantitative-aptitude | f0e0d76d-38ed-4b29-85db-ae678611b715 | Data sufficiency
+quantitative-aptitude | f6a36919-07e6-46a8-ae43-e3c13d549c98 | Discount and marked price
+quantitative-aptitude | d8355e58-6c85-48c8-9878-318ba0a41772 | Efficiency comparison and relative capacity
+quantitative-aptitude | aca7c90a-40a6-436a-98f2-92b678f173ba | Equal profit and loss conditions
+quantitative-aptitude | 48ff8201-3db5-4210-98f1-c89b35d5d955 | Fraction and percentage equivalents
+quantitative-aptitude | 10d8610d-9dbd-4f47-b301-1ed3c0d2dce6 | Income, expenditure and savings
+quantitative-aptitude | 9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22 | Individual and combined work rates
+quantitative-aptitude | 0683c41f-da6e-4738-872a-f2cd424de015 | Inequalities and relationship determination
+quantitative-aptitude | 14c51cd0-d60f-42bb-a584-89639d2306fa | LCM, HCF and divisibility
+quantitative-aptitude | 5194061c-a0ed-423e-aa9d-b3c774115dc8 | Linear equations in one and two variables
+quantitative-aptitude | 7e9de247-a854-4388-a44a-597c50de043a | Missing-term simplification (find ?)
+quantitative-aptitude | 1c2f9218-9361-4ee9-84cd-f830a30c648a | Mixed and combined DI
+quantitative-aptitude | 7d94ff40-34f9-47fe-9caa-9eae0dc38116 | Mixtures and alligation
+quantitative-aptitude | b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a | Number series — arithmetic and difference patterns
+quantitative-aptitude | 89b27d9f-7081-4930-9186-c41b93349e1a | Number series — multiplicative and mixed patterns
+quantitative-aptitude | c31985e0-3cff-4a90-b5ac-438e656ee509 | Partial work and remaining-work problems
+quantitative-aptitude | bb343a30-e26e-474a-9ab7-6ecab8e6931b | Partnership and profit sharing
+quantitative-aptitude | ff082708-c649-46b6-980f-4a66363e6eab | Percentage comparison — what percent of / more than
+quantitative-aptitude | 61f760f9-681d-4ec9-9c5c-bfe750fcf5fe | Percentage increase and decrease
+quantitative-aptitude | de0e24eb-5c25-4e0f-8eeb-325b8732f9cc | Permutations, combinations and counting
+quantitative-aptitude | 598ad90c-f128-40b5-a67b-42de3bbf993d | Pie chart interpretation
+quantitative-aptitude | 21fb2f26-ef41-477c-a8eb-2717f20b6083 | Pipes and cisterns
+quantitative-aptitude | 82ebea06-9d87-40af-b539-2a37c6024b12 | Population, strength and quantity change
+quantitative-aptitude | c2079ba4-41e3-4db0-908b-a6fd4a550cab | Proportional division of quantities
+quantitative-aptitude | 01f2ee8f-c655-4c2e-912e-e0f18a2d3201 | Quadratic equations — root comparison (x vs y)
+quantitative-aptitude | caab5701-fc1c-40ff-8286-aa93175b0233 | Races and circular tracks
+quantitative-aptitude | f5c68108-e718-4a7e-b546-d07e543534b5 | Relative speed and meeting problems
+quantitative-aptitude | d98cdd8a-6f6a-420a-a477-e5385f96f029 | Remainders and factors
+quantitative-aptitude | c2384cfd-529f-4f48-8d67-33fb2e5ce9fb | Reshaping and equal-perimeter problems
+quantitative-aptitude | 16630438-beb1-473f-b251-baccce8cd86a | Sets of consecutive and patterned numbers
+quantitative-aptitude | 9ea559c5-2c7b-49b4-8ab0-98938fd471df | Simple and compound interest
+quantitative-aptitude | 74799854-a84e-4607-844e-afb8c50b7bc0 | Simple and compound ratio
+quantitative-aptitude | a5ece133-4cad-4641-8caa-5e593c34e888 | Simultaneous equations from word conditions
+quantitative-aptitude | 3a54536e-35fe-4c7a-949c-382476120f62 | Square roots, cube roots and powers
+quantitative-aptitude | 2ab2e850-22d2-4286-8b8e-5e40767657e3 | Successive percentage change
+quantitative-aptitude | ce23f17b-f621-46b0-bb72-fc926a0be3d4 | Tabular data interpretation
+quantitative-aptitude | 9a417628-ca65-4a32-bac1-87c365f40334 | Trains — crossing platforms and each other
+quantitative-aptitude | c5d44e15-072a-4557-ad7d-f61221fe61c7 | Volume and surface area of solids
+quantitative-aptitude | 7571611f-335f-419f-bb07-46408833d294 | Wrong-term series
+(174 rows)
