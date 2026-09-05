@@ -181,17 +181,17 @@ question,dcec4c18-bcad-452b-9622-9bbc950b6899,2022,2,"Calculate Net Profit from 
 question,266c191f-e810-4762-98cd-9c0b37d6e719,2022,2,Ind-AS 18 related to revenue recognition is dealing with ___________,suspicious_repeat_char,flagged,,,,easy
 question,ca262100-8adb-469e-bd05-86505b5589e1,2022,2,Which of the following does not classify semi variable costs into fixed and variable costs?,,,,,,easy
 question,0e4523e0-d554-4d12-b74b-bcb72e77270d,2022,2,Which of the following is not a part of the 5S? Options:,,spot_check,,,,easy
-question,bace4bd7-7d9d-4c5d-8d26-d131e817fdbf,2022,2,"Recently, SEBI has launched the mobile app ______ with a view to empower investors with knowledge about the securities market.",suspicious_repeat_char,flagged,,,,medium
+question,bace4bd7-7d9d-4c5d-8d26-d131e817fdbf,2022,2,"Recently, SEBI has launched the mobile app ______ with a view to empower investors with knowledge about the securities market.",suspicious_repeat_char,flagged,,,,hard
 question,b76baa2a-4f7b-4557-8f76-9baa1d1079bc,2022,2,Non-Plan Expenditure constitutes the biggest proportion of the government’s total expenditure. Which of the following is not a non-planned e,non_ascii_suspect,flagged,,,,easy
 question,a3bab94d-3b20-41b3-8576-34503f23522f,2022,2,Which of one of the following statement w.r.t LM curve is not correct?,,spot_check,,,,easy
 question,75f3afea-e564-4be2-8ce3-ebecd8d542a7,2022,2,"The tenure of independent directors is for ________consecutive years and if he is to be appointed for second term, special resolution needs ",suspicious_repeat_char,flagged,,,,easy
-question,efe0470b-8a06-4127-869f-77cd4e31f14c,2022,3,The RBI pays interest on the CRR balance to the banks at ___________?,suspicious_repeat_char,flagged,,,,medium
+question,efe0470b-8a06-4127-869f-77cd4e31f14c,2022,3,The RBI pays interest on the CRR balance to the banks at ___________?,suspicious_repeat_char,flagged,,,,hard
 question,1c931ee5-b299-42f8-aefa-fd56b3f2e5bd,2022,3,Identify the leadership style where a leader has inspirational and Charismatic Approach?,,,,,,easy
 question,2b076268-21d0-4d29-bd6b-6f3b005c71ce,2022,3,"Using the information given below, calculate the Interest Coverage Ratio. Net Profit After Tax - Rs. 60,000 Tax Rate - 40% 15% Long Term Deb",,,,,,medium
 question,d4d48f91-1e66-488c-9d38-d8903753bb52,2022,3,Which of the following is a Capital Expenditure? Options:,,,,,,easy
 question,8513f6a2-0f42-4436-b87a-3661e61a9609,2022,3,"Calculate the Prime Cost using the information given below: Direct Material Cost– Rs 1,00,000 Direct Labour Cost– Rs 68,000 Fixed Overheads ",non_ascii_suspect,flagged,,,,medium
 question,fa522e4e-ced4-4f71-83b1-16d0be061ef3,2022,3,Which of the following is an example of an Indirect Cost?,,,,,,easy
-question,7e38b886-1c36-4dff-8a9c-546f93060699,2022,3,Where any trade receivables are financed through a Trade Receivables Discounting System (TReDS); the concerned TReDS on behalf of the Factor,,,,,,medium
+question,7e38b886-1c36-4dff-8a9c-546f93060699,2022,3,Where any trade receivables are financed through a Trade Receivables Discounting System (TReDS); the concerned TReDS on behalf of the Factor,,,,,,hard
 question,3bea8ff8-92ea-409a-9412-af3bcc47ed71,2022,3,Which of the following defines the monetary base?,,spot_check,,,,easy
 question,6ce1d660-80de-4f43-b137-36745aadae24,2022,3,"D= 12 – P; S= -3 + 4P, what is the equilibrium Point?",non_ascii_suspect,flagged,,,,medium
 question,5ccc06b0-bdf1-4766-ada7-2e2a248d263d,2022,3,"Under Section 124 of the Companies’ act, if the money is not paid to the shareholders and lying idle for ____ years, it is transferred to in",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
@@ -201,7 +201,7 @@ question,c4b96fc7-e2d2-4828-b2bf-60443a0b8620,2022,4,"Calculate the Book value p
 question,d398943d-21a7-4e3c-965a-c12564b282f8,2022,4,Which of the following is correct about buy back rules?,,,,,,easy
 question,7b47b147-2dd7-4fa5-bc89-dc01f8908b39,2022,4,Calculate the Breakeven point (BEP) from the following information. Sale - ₹30 per unit Trade Discount – 10% Direct Material - ₹12 per unit ,non_ascii_suspect,flagged,,,,medium
 question,2890d1c0-47df-4ae3-a4e9-82a4d89c840f,2022,4,Change for better and continuous improvement is termed as ______________?,suspicious_repeat_char,flagged,,,,easy
-question,d06816d9-1763-4b12-805b-d03a49b22510,2022,4,Which of the following is applicable on Dynamic QR code on B2C invoices under GST applicable from 1st July 2021?,,,,,,medium
+question,d06816d9-1763-4b12-805b-d03a49b22510,2022,4,Which of the following is applicable on Dynamic QR code on B2C invoices under GST applicable from 1st July 2021?,,,,,,hard
 question,2f70d311-e6ee-4181-a0ee-9116e7e33140,2022,4,Calculate National Income or NNP at Factor Cost (FC): Particulars Rs in Crores GNP at Market Price 5069 Indirect Taxes 495 Subsidies 69 Cons,,,,,,medium
 question,47fa61de-db30-4330-9a37-3901cb76d5f8,2022,4,"If the producers bear the tax, What is the elasticity of Demand and Supply?",,,,,,easy
 question,f50df923-dc61-4b25-b762-4202e65b6e7c,2022,4,"According to Section 141 of Companies Act, who is eligible to be appointed as an auditor of the company?",,spot_check,,,,easy
@@ -211,7 +211,7 @@ question,b5cf60b9-586f-45e9-8beb-131eb5fc417a,2022,5,"Calculate the Gross profit
 question,4fba9b5d-7bed-4a33-b59e-846770a497ec,2022,5,"If the due date of a bill is after the date of closing the account, then we write the interest from the date of closing as ____________ in t",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
 question,98a0fbfd-c274-4ffe-b28c-3e27cfef6105,2022,5,Which of the following is incorrect with reference to Marginal Costing?,,,,,,easy
 question,887296e6-b251-43ba-85ff-1c3ff3031ee0,2022,5,Which of the following is not part of Lean system?,,,,,,easy
-question,49e3ab84-1b94-414d-bac1-98fc6c94aade,2022,5,"As per the recommendations of the 15th Finance Commission, which of the following is not one of the four themes mentioned in devolution of P",,,,,,medium
+question,49e3ab84-1b94-414d-bac1-98fc6c94aade,2022,5,"As per the recommendations of the 15th Finance Commission, which of the following is not one of the four themes mentioned in devolution of P",,,,,,hard
 question,041b922e-4199-429c-bc35-374624278a98,2022,5,Which of the following statements is incorrect regarding Phillips Curve?,,,,,,easy
 question,d35def86-4654-4da5-b68b-50b4c91da1a4,2022,5,"In 1991, if the GDP of America is = $5766 and the given GNP is $5796, then what are the possible reason",,,,,,medium
 question,856e9980-fe61-4de2-954e-24e65b9dde89,2022,5,"A company shall not register a transfer of partly paid shares, unless the company has given a notice to the transferee and the transferee ha",suspicious_repeat_char,flagged,,,,easy
@@ -224,13 +224,13 @@ question,0c6f6a44-b6c5-4fe1-95ff-98b06e42358a,2022,6,Which of the following stat
 question,4fc784ed-57e9-4af0-8d48-b58acf25e714,2022,6,Which of the following statements is incorrect regarding Monopolistic Competition?,,,,,,easy
 question,4716a5ff-415f-4850-996a-eb8afbf99e46,2022,6,“If Balance of payment is always balanced”. What it means?,non_ascii_suspect,flagged,,,,easy
 question,e565ede5-9725-455c-94b1-643cc477fce4,2022,6,"Every listed company, may upon notice of not less than one thousand small shareholders or one-tenth of the total number of such shareholders",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
-question,5bad5beb-1dd6-43ac-a10c-6a1428978ad3,2022,7,"With respect to, Alternative Investment Fund (AIF), no scheme shall have more than _______ angel investors.",suspicious_repeat_char,flagged,,,,medium
+question,5bad5beb-1dd6-43ac-a10c-6a1428978ad3,2022,7,"With respect to, Alternative Investment Fund (AIF), no scheme shall have more than _______ angel investors.",suspicious_repeat_char,flagged,,,,hard
 question,aa4b1836-eb5a-40ea-9e3f-862654c27c55,2022,7,"Value of Machine is Rs 12,00,000 for 10 years and its residual value is nil. After 5 years, the remaining machine life is increased by 3 yea",,,,,,medium
 question,56a0bf1e-c511-4573-b2f5-b2e1f080cfd5,2022,7,The rights are sold to somebody else at a price by the shareholder. What is this called?,,spot_check,,,,easy
 question,d396e1c2-a69f-43e1-8724-af17bcd9bcef,2022,7,"A company produced 60,000 units in the accounting period. It sold 50,000 units with 10,000 still in inventory. It sold each unit for Rs. 100",,spot_check,,,,medium
 question,9bcb6691-84e0-4a50-a849-493760751109,2022,7,TPM does not include which of the following component? Options,,spot_check,,,,easy
 question,ea10e2d7-4756-4d89-8465-31cfc907136f,2022,7,Which of the following statements is correct if the demand function is D = 18 – 3P?,non_ascii_suspect,flagged,,,,easy
-question,cf942127-47af-4dcc-826d-471c1650ee04,2022,7,NBFCs can accept public deposits up to how many months?,no_primary_tag,flagged,,,,medium
+question,cf942127-47af-4dcc-826d-471c1650ee04,2022,7,NBFCs can accept public deposits up to how many months?,no_primary_tag,flagged,,,,hard
 question,3cb22d76-6076-4956-89f1-82e76ab2fd03,2022,7,"As per provisions of the Companies Act, 2013, the board shall be called by giving not less than _______ days' notice in writing to every dir",suspicious_repeat_char,flagged,,,,easy
 question,b346d272-1feb-4f0f-97eb-2e06fc4287ab,2022,8,Company ABC limited took a loan of $10 million dollars for 3 months on 1st January 2021.,,,,,,
 question,384b8a72-8b97-47db-8873-8a335466c700,2022,8,Which of the following is not exceptional item in P&L Account?,,,,,,easy
@@ -238,7 +238,7 @@ question,88f7e9b3-4a7a-4494-b233-d587043d2329,2022,8,Which of the following is a
 question,0276faf1-679b-46ce-999c-9986b7710b0a,2022,8,Which of the following statement is incorrect regarding KANBAN? Options,,,,,,easy
 question,cc478c5d-5e90-4eb1-b068-6cac991ce64e,2022,8,Find the incorrect option regarding the elasticity of commodities?,,spot_check,,,,easy
 question,a8f2a575-46ed-4f2b-a32c-69a15febd8ef,2022,8,Which of the following is not the characteristic of NBFCs?,no_primary_tag,flagged,,,,easy
-question,beaac740-830a-44c1-95ba-794d2c435447,2022,8,Recently SEBI has directed the mutual fund (MF) industry to set up an audit committee at the asset management company (AMC) level. As per th,,,,,,medium
+question,beaac740-830a-44c1-95ba-794d2c435447,2022,8,Recently SEBI has directed the mutual fund (MF) industry to set up an audit committee at the asset management company (AMC) level. As per th,,,,,,hard
 question,738afe62-9386-44e3-b502-6a3ad9c019a6,2022,9,Which of the following statements is incorrect w.r.t Cash and Cash equivalents? Options,,,,,,easy
 question,8d2bfc47-3ff0-4595-9a0a-86e5aa9c5d4c,2022,9,Which of the following is an intangible asset?,,,,,,easy
 question,57b5361e-f8b4-4852-bd2c-b993f1b41567,2022,9,Calculate the value of closing stock using Simple price moving average method. 1st December - purchased 100 units @ Rs. 20 2nd December - pu,,,,,,medium
@@ -355,7 +355,7 @@ question,f217b304-1775-44bf-96e6-01ea13572e97,2024,3,Which measure describes the
 question,139d8a96-c788-4260-a1bf-ebd162027a53,2024,3,What does organizing mean in the context of management functions?,,,,,,easy
 question,fa5ebeb7-be9d-4da1-a639-26a224a62800,2024,3,______ is a group technology that is a subsection of lean and JIT (Just-In-Time)?,suspicious_repeat_char,flagged,,,,easy
 question,a979afc8-c72d-4dd7-b300-891d2d006632,2024,3,What is the effect of a negative supply shock on the Philips curve?,,,,,,easy
-question,671bc775-d1ab-4a42-9802-21d7b8d56edc,2024,3,"Under the SEBI (Issue of Capital and Disclosure Requirements) Regulations, what is the maximum amount that an individual retail investor can",,,,,,medium
+question,671bc775-d1ab-4a42-9802-21d7b8d56edc,2024,3,"Under the SEBI (Issue of Capital and Disclosure Requirements) Regulations, what is the maximum amount that an individual retail investor can",,,,,,hard
 question,c40f40c1-feb1-49e7-a1f1-f94fa5b9b6cc,2024,3,Who regulates microfinance in India?,,,,,,easy
 question,2500a179-f41a-44d9-924b-8dc3fe61300c,2024,3,"If an organization is being conservative while preparing its Profit and Loss account, which accounting concept is being followed?",,,,,,easy
 question,34772795-86c3-4a66-9607-edabee415b5a,2024,3,Which of the following methods is a public company not allowed to use to issue shares?,,,,,,easy
@@ -378,7 +378,7 @@ question,093693b0-693f-44b5-b8ed-96a584de9a1e,2024,5,Which school of management 
 question,efb2bc41-5eb6-43c1-a16f-8d03852b9699,2024,5,"If the P/V ratio is 30% of sales, then what accounts for the remaining 70% of sales?",,spot_check,,,,easy
 question,e32408ce-adbc-4d3a-9d93-b347fd01f6b5,2024,5,Which of the following statements best defines the trade deficit?,,,,,,easy
 question,6366ae01-4477-4735-b12f-89ca4634e15f,2024,5,The Bank for International Settlements (BIS) primarily serves which of the following entities?,,spot_check,,,,easy
-question,04d163d4-1226-42c0-a31d-d0592a836734,2024,5,"Company issuing commercial paper, what is the net worth required for the company?",,spot_check,,,,medium
+question,04d163d4-1226-42c0-a31d-d0592a836734,2024,5,"Company issuing commercial paper, what is the net worth required for the company?",,spot_check,,,,hard
 question,12b0ab8e-5618-453d-a2b4-a6d7b6f8dd32,2024,5,"If 2,00,000 right shares of face value Rs 10 are being issued at a 20% premium, what will be the correct journal entry for this transaction?",,spot_check,,,,medium
 question,519f5205-ec87-4242-9df9-038da737b19b,2024,5,Every company shall inform the Registrar within ___ many days of the receipt of the Director Identification Number (DIN).,,spot_check,,,,easy
 question,feff85f3-cf86-43d8-bcfb-ddf42fddcabe,2024,5,For which of the following companies is the consolidation of financial statements necessary?,,spot_check,,,,easy
@@ -388,7 +388,7 @@ question,99602bab-f00c-4e7a-aeef-39f335e7986e,2024,6,IS – LM model Shows the e
 question,8643d71a-958d-43a7-b1ad-c2dc54aa8da0,2024,6,Which type of competency is measured by organizations to define and assess the technical and specialized abilities required for specific rol,,,,,,easy
 question,b99ad059-791e-4e45-a68e-c66580fcf23d,2024,6,"In ABC (Activity-Based Costing), costs are allocated based on what?",,,,,,easy
 question,f263def7-24d3-41ab-870d-58be825666bf,2024,6,Which of the following clearly defines the fiscal deficit?,,,,,,easy
-question,243dd230-2618-4e37-9c1f-b048e4b544b2,2024,6,The Finance Commission of India assigned a 12.5% weightage to which of the following criteria for determining the devolution of funds to sta,,,,,,medium
+question,243dd230-2618-4e37-9c1f-b048e4b544b2,2024,6,The Finance Commission of India assigned a 12.5% weightage to which of the following criteria for determining the devolution of funds to sta,,,,,,hard
 question,58af24fd-3f33-4fd4-aee3-5b2bb373309b,2024,6,What is a Forward Rate Agreement (FRA)?,,,,,,easy
 question,016b7db1-c450-4eff-b759-9ed634fe4560,2024,6,Which of the following is an application of funds as per the Fund Flow Statement?,,,,,,easy
 question,b91e3789-9d4a-4c9c-9fcb-f022a8849afc,2024,6,"What is the age limit for directors of a company as per the Companies Act, 2013?",,,,,,easy
@@ -408,7 +408,7 @@ question,107bc2ac-0d8c-4518-aefb-7c3d4c07205f,2024,7,What is the maximum age for
 question,915aafbd-29c5-4442-87b1-625e89be2979,2024,8,"In a cycle manufacturing business, which method of costing is most appropriate?",,,,,,easy
 question,18ab2f9f-05b9-4a33-ae47-351c8f9c4ad3,2024,8,"What is the result of increased training and skills development of members, leading to tangible benefits to benefit the bottom line of the o",,,,,,easy
 question,2a8f61fb-9b7e-4ef6-a737-0d68121c3966,2024,8,Which of the following is considered as automatic stabilizer in the fiscal policy?,,,,,,easy
-question,fd5ad694-7cde-46b3-a1c8-41f41dc26fde,2024,8,"In the latest Union Budget, what is the amount of the standard deduction allowed for salaried individuals?",,,,,,medium
+question,fd5ad694-7cde-46b3-a1c8-41f41dc26fde,2024,8,"In the latest Union Budget, what is the amount of the standard deduction allowed for salaried individuals?",,,,,,hard
 question,886f7e5c-74d3-4752-b9e4-0fe05390c5f8,2024,8,What is the standard used to calculate bond days in India?,,spot_check,,,,easy
 question,f4f20834-b417-449d-86a8-dbdd303c51bd,2024,8,"As per Ind AS 21, non-monetary items measured in terms of historical cost in a foreign currency shall be translated using the exchange rate:",,,,,,easy
 question,1520b85b-8a20-4f7f-9be3-e42ed330ff8b,2024,8,"As per Section 125 of the Companies Act, which fund is constituted?",,,,,,easy
@@ -416,7 +416,7 @@ question,182bca5e-9eae-48e0-b9f2-3df84c1af40d,2024,8,A listed company may appoin
 question,6976d694-ce89-44ef-961b-f02b3fa22308,2024,9,Calculate the Labour Rate Variance using the following data: • Standard Rate = Rs 2.5 • Actual Rate = Rs 2.2 • Actual Hours = 500 • Standard,non_ascii_suspect,flagged,,,,medium
 question,7f95b35d-5233-4279-8b83-556e6e9aa7d6,2024,9,What is the term used for defining the start and ending of work in a project or task in management context?,,,,,,easy
 question,c01068d5-2778-459f-b178-6fbbfc80ce49,2024,9,Which of the following is an economic indicator of growth?,,,,,,easy
-question,5ee407cb-d46b-4001-a622-34b194a64516,2024,9,"Which tax, often criticized by startups for hindering their growth, was removed in the recent Union Budget?",,spot_check,,,,medium
+question,5ee407cb-d46b-4001-a622-34b194a64516,2024,9,"Which tax, often criticized by startups for hindering their growth, was removed in the recent Union Budget?",,spot_check,,,,hard
 question,1b0be8f3-114c-4268-ad32-79e908e3ba14,2024,9,"When the Reserve Bank of India (RBI) is raising loans for states, it should consult the Ministry of Finance and with which other entity?",,,,,,easy
 question,6518b6ec-3caf-4f95-8bac-233fa8e99968,2024,9,Ind AS 105 relates to?,,spot_check,,,,easy
 question,a492ea6c-6e80-41e0-9d39-a3d1e5ed127f,2024,9,An appeal to the Supreme Court from the National Company Law Appellate Tribunal (NCLAT) can be made within how many days?,,,,,,easy
@@ -435,15 +435,15 @@ question,0ff7bd0f-95ac-409e-ab3c-f9cd4081e28a,2024,11,What will be the impact of
 question,1ab9d295-bb0f-4e84-ab3d-2214ade3a14b,2024,11,"In a special case, an auditor of a company can be removed by an order from which authority?",,,,,,easy
 question,6cfa2786-a66f-47f7-ac9f-773c0e1efea1,2024,12,How is the effectiveness of Total Productive Maintenance (TPM) measured?,,,,,,easy
 question,7734159d-1eea-4128-8419-f291a94ce9b3,2024,12,Which of the following causes the demand-pull inflation?,,,,,,easy
-question,e65dc70f-6d69-413f-8138-81e78c59352d,2024,12,"As per RBI guidelines, how many working days should the Key Fact Statement (KFS) specify as the minimum validity period for loans with a ten",,,,,,medium
+question,e65dc70f-6d69-413f-8138-81e78c59352d,2024,12,"As per RBI guidelines, how many working days should the Key Fact Statement (KFS) specify as the minimum validity period for loans with a ten",,,,,,hard
 question,0439fd6f-3ed1-4d53-96b7-89d281d00c43,2024,12,"If the net working capital is Rs 20 lakhs and sales are Rs 120 lakhs, calculate the Working Capital Turnover Ratio.",,,,,,medium
 question,44ce61b7-9f81-445c-800e-19b6cdc99511,2024,12,A firm shall be eligible for appointment as an auditor of a company provided that a firm whereof ________ practicing in India are qualified ,suspicious_repeat_char,flagged,,,,easy
 question,f825bec6-c74c-41ff-bce0-f0b023d88b8b,2024,13,Which of the following models considers economic growth depends on the availability of resources?,,,,,,easy
-question,20805755-b9ec-4725-99fb-7fda92ede3ea,2024,13,"Under the RBI’s incentive scheme for Business Correspondents (BCs) operating in hilly areas, what is the additional monthly incentive provid",non_ascii_suspect,flagged,,,,medium
+question,20805755-b9ec-4725-99fb-7fda92ede3ea,2024,13,"Under the RBI’s incentive scheme for Business Correspondents (BCs) operating in hilly areas, what is the additional monthly incentive provid",non_ascii_suspect,flagged,,,,hard
 question,f1f6e834-9cf2-42c9-a2c8-9a675c209409,2024,13,An increase in the Debt Service Coverage Ratio (DSCR) indicates:,,spot_check,,,,easy
 question,a3ab13a9-dea8-4093-8ff9-cb1f64a83d70,2024,13,Dividend should be transferred to a separate bank account from how many days after the declaration of the dividend?,,,,,,easy
-question,fa03be05-d7a3-419f-b5f6-82bdea15ef2b,2024,14,"According to the Economic Survey 2023-24, which of the following areas saw a sharp rise?",,,,,,medium
-question,3bc522e5-2aef-4ab9-98c4-c38897283b88,2024,14,"Upon receiving credit advice or a statement of a Nostro account, in compliance with FEMA guidelines, within how many working days must bank ",,,,,,medium
+question,fa03be05-d7a3-419f-b5f6-82bdea15ef2b,2024,14,"According to the Economic Survey 2023-24, which of the following areas saw a sharp rise?",,,,,,hard
+question,3bc522e5-2aef-4ab9-98c4-c38897283b88,2024,14,"Upon receiving credit advice or a statement of a Nostro account, in compliance with FEMA guidelines, within how many working days must bank ",,,,,,hard
 question,002b2b1a-04dc-4aef-ad3f-c493ddd513d6,2024,14,"What does ""cum-right"" shares represent?",,,,,,easy
 question,5aa8ea1f-f211-43c6-a8df-419c8cdc749d,2024,14,"As per Section 71 of the Companies Act, if a company wants to issue debentures to more than 500 members, it must appoint a _______________ b",suspicious_repeat_char,flagged,,,,easy
 question,11665923-fcba-411c-a24e-662f8630f1b8,2024,15,Scarce factor is also known as ______,suspicious_repeat_char;no_primary_tag,flagged,,,,easy
@@ -454,7 +454,7 @@ question,e3e2d182-20f1-462d-b110-549462feed3f,2024,16,"When inflation rises, it 
 question,b63219ca-2d7b-4cd5-b64e-48169e294cef,2024,16,"What is the term used for an investment made by an Indian company, which is owned or controlled by foreign investors, into another Indian co",,,,,,easy
 question,93e14d45-2e9d-4750-ba85-68689c2273ea,2024,16,Which of the following terms is used when the data is unavailable in the financial reports?,,,,,,easy
 question,8ffceb95-111a-443c-b79b-d4a8ce0b27b5,2024,16,No company shall directly or indirectly — give any loan to any person or other body corporate; or give any guarantee or provide security in ,non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
-question,db8a19f1-3839-46a7-9533-211ae2f93156,2024,17,What is the minimum face value prescribed by SEBI for Non-Convertible Redeemable Preference Shares (NCRPS) and Non-Convertible Debentures (N,,,,,,medium
+question,db8a19f1-3839-46a7-9533-211ae2f93156,2024,17,What is the minimum face value prescribed by SEBI for Non-Convertible Redeemable Preference Shares (NCRPS) and Non-Convertible Debentures (N,,,,,,hard
 question,ed2b3ef9-41f4-48fc-ac46-c6edc0140ebc,2024,17,A higher dividend yield ratio means that the company is ______,suspicious_repeat_char,flagged,,,,easy
 question,1efc0ee0-a75d-4244-aba9-06cfc7eb6680,2024,17,Public offers of securities must be in _______________.,suspicious_repeat_char,flagged,,,,easy
 question,a65821a3-cbb0-4a4b-8fe9-53e72965fad7,2024,18,A rise in the underlying asset's price accompanied by an increase in open interest (OI) for the corresponding derivative generally indicates,,,,,,easy
@@ -606,7 +606,7 @@ question,6706a58f-7e30-4c2d-a09d-172f0c04f841,2025,2,Depreciation begins when an
 question,7de234af-ed47-4400-972c-e861544cf751,2025,2,"As per Section 144 of the Companies Act, 2013, an auditor appointed under the Act shall not directly or indirectly render any of the followi",,,,,,easy
 question,1552ce51-0480-4339-b49a-8f0a4f328967,2025,2,"Which of the following costs is not included in the cost of Property, Plant and Equipment as per AS-10?",,,,,,easy
 question,9005856e-538a-44bc-b4e0-65b3c43c0ee0,2025,2,"The P/V ratio of a product is 0.3 and the profit earned is Rs 12,000. What is the Margin of Safety?",,,,,,medium
-question,eab264c4-bd6b-42cb-a72f-eab6942a4f73,2025,2,Budget 2026 proposed several reforms for development in financial sector. It proposed that Foreign Direct Investment FDI limit for insurance,non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
+question,eab264c4-bd6b-42cb-a72f-eab6942a4f73,2025,2,Budget 2026 proposed several reforms for development in financial sector. It proposed that Foreign Direct Investment FDI limit for insurance,non_ascii_suspect;suspicious_repeat_char,flagged,,,,hard
 question,c6ea680a-c4f0-4826-82b3-f47d947d53e6,2025,2,"Under the provisions of the Central Goods and Services Tax (CGST) Act, 2017, a registered recipient is required to pay the supplier the valu",suspicious_repeat_char,flagged,,,,medium
 question,31ee06ea-5ef9-4ced-871b-4b29fb362ffa,2025,2,A bank offers the following facilities to its customers: 1. Basic Savings Bank Deposit Account (BSBDA) 2. Exclusive premium credit card bene,non_ascii_suspect,flagged,,,,medium
 question,5467a633-0c49-496f-be25-10fa47f49e25,2025,2,"As per Henri Fayol, which activity is related to harmonizing all tasks in an organization?",,,,,,easy
@@ -618,7 +618,7 @@ question,4b330eae-2ac7-4603-8524-063c9017b8bc,2025,3,"As per the provisions of t
 question,abcf3c3d-2d55-4385-9572-b296be4862fb,2025,3,"As per Accounting Standard 10 Property, Plant and Equipment, what is included in AS 10? 1. Normal plants and machinery 2. Bearer plants 3. M",,,,,,easy
 question,8e5534ab-089c-4f92-96f1-abac75df3b10,2025,3,Cost reduction is a ______ function and operates even when an efficient cost control system exists.,suspicious_repeat_char,flagged,,,,easy
 question,cb17f457-bff1-4e3e-b949-0338b6740227,2025,3,Match the following components with their correct definitions: Component | Definition GDP | a. Value of final goods and services produced by,non_ascii_suspect,flagged,,,,medium
-question,3abfd021-3410-4dc5-b692-50bb2f26e0c6,2025,3,"As per the provisions of the SEBI (Alternative Investment Funds) Regulations, the maximum investment that an Angel Fund may make in an inves",non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
+question,3abfd021-3410-4dc5-b692-50bb2f26e0c6,2025,3,"As per the provisions of the SEBI (Alternative Investment Funds) Regulations, the maximum investment that an Angel Fund may make in an inves",non_ascii_suspect;suspicious_repeat_char,flagged,,,,hard
 question,53bd1b99-ccc8-4a99-9c36-74a23030827e,2025,3,"Highly structured work and organization setup Autocratic, as per Path–Goal Theory, this statement indicates which leadership style?",non_ascii_suspect,flagged,,,,easy
 question,eff56d86-aa4b-470b-a36d-5ca8818b3735,2025,3,"As per Vrooms Expectancy Theory, instrumentality refers to:",,,,,,easy
 question,1ae1e7f8-a8e1-4280-a4f3-4d85583bb1d3,2025,3,Every company shall have a board of directors consisting of individuals as directors and shall have minimum number of ________ in the case o,suspicious_repeat_char,flagged,,,,medium
@@ -632,7 +632,7 @@ question,7c5cafca-2926-4a9b-b5ba-b0940ef380b7,2025,4,Calculate the Nominal GDP g
 question,bb02483f-f335-4300-aca6-4f68fa8d4ea3,2025,4,Consider the following statements: 1. A forward contract is a customized agreement between two parties to buy or sell an asset at a specifie,,spot_check,,,,easy
 question,a887b26a-e0d8-4cad-8927-c3c5533dcf6f,2025,4,"As per NADLER, which of the following is not the function of HRD?",,,,,,easy
 question,a4f079ef-ad07-4a50-92a1-15fc967d57a3,2025,4,"Front-line managers mainly supervise day-to-day operations and directly manage workers on the shop floor. In this context, which of the foll",non_ascii_suspect,flagged,,,,easy
-question,6ddf69cd-c8c5-425b-8d4e-faa81b795292,2025,4,"As per Fiscal Responsibility and Budget Management (FRBM), 2003, Fiscal Deficit means excess of total disbursement from the consolidated fun",non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
+question,6ddf69cd-c8c5-425b-8d4e-faa81b795292,2025,4,"As per Fiscal Responsibility and Budget Management (FRBM), 2003, Fiscal Deficit means excess of total disbursement from the consolidated fun",non_ascii_suspect;suspicious_repeat_char,flagged,,,,hard
 question,c8b2d0a6-268b-4390-9643-f9faaadd8d4c,2025,4,Contribution means:,,,,,,easy
 question,66ab867f-f51d-42f0-88c1-086bc6593a1f,2025,4,Currency in hand has an opportunity cost of:,,,,,,easy
 question,01c71bd3-fbc7-4199-97b2-cf0042267594,2025,5,"XYZ Ltd. has an item of plant and machinery with an initial cost of Rs 10,00,000. At the date of revaluation, accumulated depreciation amoun",,spot_check,,,,medium
@@ -647,7 +647,7 @@ question,06593360-6a4e-4788-9c44-f9c9b610660f,2025,5,Every company shall hold 1s
 question,0e15a87a-e1a9-42e8-bddd-5979ae23c233,2025,5,Lean manufacturing identifies how many types of waste?,,,,,,easy
 question,4559fcaf-7869-4cd8-9b46-e10fb7abb31c,2025,5,Consider the following situations and identify the correct match: 1. The Reserve Bank of India increases the Repo Rate. 2. The Government de,,spot_check,,,,medium
 question,20513502-3a5b-4a4d-90fa-24506e1418de,2025,6,Which accounting information is particularly relevant to creditors?,,,,,,easy
-question,e5dad356-58a0-491a-9135-fa820b1a545a,2025,6,A company proposes to raise Rs 150 crore through an Initial Public Offer in accordance with the SEBI Issue of Capital and Disclosure Require,,spot_check,,,,medium
+question,e5dad356-58a0-491a-9135-fa820b1a545a,2025,6,A company proposes to raise Rs 150 crore through an Initial Public Offer in accordance with the SEBI Issue of Capital and Disclosure Require,,spot_check,,,,hard
 question,4e3360fa-12ed-43e9-8bd6-339963c78a78,2025,6,Match the following Functions of Accounting with their correct meaning: List I (Functions of Accounting) List II (Meaning) 1. Identification,,,,,,easy
 question,73e38ecf-9880-47b0-b5a4-b8f93f3b433a,2025,6,_____ is a production and inventory management philosophy that originated in Japan and is widely used in manufacturing and other industries.,suspicious_repeat_char,flagged,,,,easy
 question,c82688bb-61d3-4d0d-a022-db84bbc9aade,2025,6,An instrument issued by the Government with short-term maturity is sold at a discount to its face value and redeemed at par on maturity. The,,,,,,easy
@@ -697,7 +697,7 @@ question,a033b416-c4d3-402e-8d2e-48243e27c26c,2025,11,"In banking terminology, s
 question,e3251e71-20df-4cb2-bb64-09fd695f27e5,2025,11,"As per Tuckman’s stages of group development, the following stages are given with short descriptive phrases. Two stages have interchanged (s",non_ascii_suspect,flagged,,,,medium
 question,0763d8b6-1fd1-4b10-b49a-d0864b4f7d36,2025,11,What is a Budget?,,,,,,easy
 question,4e09be1f-b89e-44d7-9e00-7e7eb67d6026,2025,12,Revaluation surplus arising on revaluation of fixed assets in a banking company is generally credited to which of the following?,,,,,,easy
-question,a3a5c1ab-2ef9-41f4-a7a4-aa9383fae5b8,2025,12,"As per the recent SEBI regulations on mutual funds, the maximum Basic Expense Ratio (TER) that can be charged by Exchange Traded Funds (ETFs",suspicious_repeat_char,flagged,,,,medium
+question,a3a5c1ab-2ef9-41f4-a7a4-aa9383fae5b8,2025,12,"As per the recent SEBI regulations on mutual funds, the maximum Basic Expense Ratio (TER) that can be charged by Exchange Traded Funds (ETFs",suspicious_repeat_char,flagged,,,,hard
 question,19cc8e13-31ca-414c-ac51-d1f09507dbb1,2025,12,How is management both a science and an art?,,spot_check,,,,easy
 question,2290cb91-2dd4-4c4e-bfcc-d961b5374adf,2025,12,How has the role of a Management Accountant changed in modern organizations?,,,,,,easy
 question,a9449754-1b7f-4649-a0d8-06cf9dfbdd6d,2025,13,"Recently, a Japanese credit rating agency upgraded India’s long-term sovereign credit rating. The agency upgraded India’s rating to ______ .",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
@@ -720,16 +720,16 @@ question,3464f9ac-9599-412b-992f-35245d4285f2,2025,19,RBI performs different fun
 question,633fddca-1fa2-48a4-b5c9-f9c7ed43c17f,2025,19,Which of the following is not considered a desirable trait of an effective leader or manager?,,,,,,easy
 question,4985b5bb-8c7c-4075-b703-a5d2d26e9cd0,2025,20,Financial Benchmarks India Pvt. Ltd. (FBIL) is responsible for publishing various financial benchmark rates in India. Consider the following,,,,,,easy
 question,ed9709a3-9468-405f-9f5f-ec76319c4188,2025,20,Which of the following options correctly lists all the primary functions of management?,,,,,,easy
-question,6be4c398-bdab-4a7e-9b96-a20ce6a60297,2025,21,What is the minimum investment amount required for subscribing to Non-Convertible Preference Shares (NCPs)?,,,,,,medium
+question,6be4c398-bdab-4a7e-9b96-a20ce6a60297,2025,21,What is the minimum investment amount required for subscribing to Non-Convertible Preference Shares (NCPs)?,,,,,,hard
 question,3df74d90-6d8d-4168-896a-3744a16691bb,2025,22,"An investor buys a financial contract under which he pays a periodic premium to another party, and in return receives compensation if a spec",,,,,,easy
 question,ddfa411a-62d0-4a20-bec8-4e45861c8c04,2025,23,"When goods or services are supplied by an Indian supplier to a foreign recipient, which type of GST is applicable?",,,,,,easy
 question,9ac6d556-6bbc-4fe7-9419-b920c7184362,2025,24,Which of the following statements best describes callable securities?,,spot_check,,,,easy
 question,58216a0f-55bb-427a-8a85-b883d80fc087,2025,25,"Under the Coinage rules in India, 50 paise coin is legal tender up to what maximum amount?",,,,,,medium
 question,5ca98fbe-7f6c-4d55-9c51-97ef4b1b1bfb,2025,26,Which of the following statements correctly distinguishes between fixed securities and floating securities?,,,,,,easy
 question,d9b3c410-397e-490c-9640-4e5e33b6ed8b,2025,27,"Under the Income Tax provisions relating to political contributions, what is the maximum amount that can be donated in cash to a political p",,,,,,medium
-question,d4774e13-e9c2-4dea-9097-cbc049f38c14,2025,28,"With reference to the RBI Master Direction – Foreign Investment in India issued under FEMA, consider the following statements regarding fore",non_ascii_suspect,flagged,,,,medium
+question,d4774e13-e9c2-4dea-9097-cbc049f38c14,2025,28,"With reference to the RBI Master Direction – Foreign Investment in India issued under FEMA, consider the following statements regarding fore",non_ascii_suspect,flagged,,,,hard
 question,16537eee-3b8f-493d-9b9f-b9fa2a700af1,2025,29,A forward contract on a financial asset is priced at ₹432 for delivery after 6 months. The annual bank borrowing rate is 9% per annum (simpl,non_ascii_suspect,flagged,,,,medium
-question,ec6cf916-7153-4017-91b3-b3ca59492cc5,2025,30,"Two companies, Umbrella Ltd. and Raincoat Ltd., have issued Certificates of Deposit (CDs). Their practices are as follows: Provision / Pract",non_ascii_suspect,flagged,,,,medium
+question,ec6cf916-7153-4017-91b3-b3ca59492cc5,2025,30,"Two companies, Umbrella Ltd. and Raincoat Ltd., have issued Certificates of Deposit (CDs). Their practices are as follows: Provision / Pract",non_ascii_suspect,flagged,,,,hard
 question,24e7acb5-5664-41de-8136-784669bca7c0,2025,31,"With reference to Credit Default Swaps (CDS), consider the following statements: 1. A Credit Default Swap is a derivative contract in which ",,,,,,easy
 tag,c1c377d1-d76e-4390-9eb1-2af442119b3c,2025,00d3f0d6-79a3-4c9b-a019-d0ac728fbb19,Digital Public Infrastructure and India Stack,,spot_check,,,,
 tag,f5e62909-4300-4b29-8b71-868620aa30e2,2025,00d3f0d6-79a3-4c9b-a019-d0ac728fbb19,Digital Public Infrastructure and India Stack,,,,,,
