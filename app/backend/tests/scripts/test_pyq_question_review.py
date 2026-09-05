@@ -239,7 +239,9 @@ def test_index_tags_by_question_and_has_primary_tag():
 # ─── sweep: the two new worksheet columns ────────────────────────────────────
 def test_new_columns_are_appended_and_blank_on_write():
     # Appended, not reordered — an existing consumer reading by position is safe.
-    assert mod.WORKSHEET_FIELDS[-2:] == ["assign_topic_id", "difficulty"]
+    # (stimulus_preview was appended after these two by the stimulus/option pass;
+    # what this test pins is that they kept their slots, not that they are last.)
+    assert mod.WORKSHEET_FIELDS[9:11] == ["assign_topic_id", "difficulty"]
     assert mod.WORKSHEET_FIELDS[:9] == [
         "row_type", "row_id", "paper_year", "question_number_or_topic_id",
         "text_preview", "flags", "sample_reason", "decision", "notes",
@@ -992,3 +994,363 @@ def test_timeout_defaults_to_180_on_every_subcommand():
 def test_timeout_is_overridable_and_reaches_the_client():
     args = mod.build_parser().parse_args(["--timeout", "300", "catalog", "--body", "rbi"])
     assert args.timeout == 300
+
+
+# ─── option flags ────────────────────────────────────────────────────────────
+def _opt(text="Option text", correct=False, label="a"):
+    return {"question_id": "q1", "option_label": label, "option_text": text,
+            "is_correct": correct}
+
+
+def _mcq(**kw):
+    base = {"id": "q1", "question_type": "mcq", "correct_option_id": "opt-2",
+            "question_text": "A properly long and valid question stem here?"}
+    base.update(kw)
+    return base
+
+
+def _four(correct_at=1):
+    return [_opt(f"Choice {i}", correct=(i == correct_at), label=chr(97 + i))
+            for i in range(4)]
+
+
+def test_a_well_formed_mcq_raises_no_option_flag():
+    assert mod.option_flags(_mcq(), _four()) == []
+
+
+@pytest.mark.parametrize("n", [0, 1, 2, 3, 6, 7])
+def test_option_count_outside_the_expected_range_flags(n):
+    opts = [_opt(f"Choice {i}", correct=(i == 0), label=chr(97 + i)) for i in range(n)]
+    assert "option_count_unexpected" in mod.option_flags(_mcq(), opts)
+
+
+@pytest.mark.parametrize("n", [4, 5])
+def test_four_and_five_options_are_accepted(n):
+    opts = [_opt(f"Choice {i}", correct=(i == 0), label=chr(97 + i)) for i in range(n)]
+    assert "option_count_unexpected" not in mod.option_flags(_mcq(), opts)
+
+
+def test_no_option_marked_correct_flags():
+    opts = [_opt(f"Choice {i}", correct=False, label=chr(97 + i)) for i in range(4)]
+    flags = mod.option_flags(_mcq(), opts)
+    assert "no_option_marked_correct" in flags
+    assert "multiple_options_marked_correct" not in flags
+
+
+def test_more_than_one_correct_flags():
+    opts = _four()
+    opts[2]["is_correct"] = True
+    flags = mod.option_flags(_mcq(), opts)
+    assert "multiple_options_marked_correct" in flags
+    assert "no_option_marked_correct" not in flags
+
+
+def test_duplicate_option_text_flags_once():
+    opts = _four()
+    opts[3]["option_text"] = opts[0]["option_text"]
+    flags = mod.option_flags(_mcq(), opts)
+    assert flags.count("duplicate_option_text") == 1
+
+
+def test_duplicate_detection_normalises_whitespace_and_case():
+    opts = _four()
+    opts[3]["option_text"] = "  " + opts[0]["option_text"].upper() + " "
+    assert "duplicate_option_text" in mod.option_flags(_mcq(), opts)
+
+
+def test_blank_option_texts_are_not_duplicates_of_each_other():
+    """Two empty options are a count/content problem, not a duplicate claim."""
+    opts = _four()
+    opts[2]["option_text"] = ""
+    opts[3]["option_text"] = "   "
+    assert "duplicate_option_text" not in mod.option_flags(_mcq(), opts)
+
+
+def test_option_flags_never_fire_on_a_descriptive_question():
+    q = _mcq(question_type="descriptive", correct_option_id=None)
+    assert mod.option_flags(q, []) == []
+
+
+def test_absent_options_file_runs_no_option_checks():
+    """None means 'did not look', and must not read as 'looked and passed'."""
+    assert mod.option_flags(_mcq(), None) == []
+
+
+def test_option_flags_compose_rather_than_short_circuit():
+    opts = [_opt("Same", correct=True, label="a"), _opt("Same", correct=True, label="b")]
+    flags = mod.option_flags(_mcq(), opts)
+    assert set(flags) == {"option_count_unexpected", "multiple_options_marked_correct",
+                          "duplicate_option_text"}
+
+
+def test_index_options_by_question_preserves_the_none_distinction():
+    assert mod.index_options_by_question(None) is None
+    idx = mod.index_options_by_question([_opt(), {**_opt(), "question_id": "q2"}])
+    assert set(idx) == {"q1", "q2"}
+
+
+# ─── stimuli ─────────────────────────────────────────────────────────────────
+def _stim(sid="s1", qids=("q1",), text="Seven people sit in a row facing north.",
+          kind="passage", order=1):
+    return {"id": sid, "stimulus_type": kind, "content_text": text,
+            "display_order": order, "question_ids": list(qids)}
+
+
+def test_index_stimuli_by_question_fans_one_stimulus_across_its_members():
+    idx = mod.index_stimuli_by_question([_stim(qids=("q1", "q2", "q3"))])
+    assert set(idx) == {"q1", "q2", "q3"}
+    assert idx["q2"][0]["id"] == "s1"
+
+
+def test_index_stimuli_handles_no_stimuli():
+    assert mod.index_stimuli_by_question(None) == {}
+    assert mod.index_stimuli_by_question([]) == {}
+
+
+def test_stimulus_preview_shows_the_setup_and_its_type():
+    out = mod.stimulus_preview([_stim()])
+    assert out.startswith("[passage] ")
+    assert "Seven people sit in a row" in out
+
+
+def test_stimulus_preview_joins_several_in_display_order():
+    out = mod.stimulus_preview([
+        _stim(sid="s2", text="Second thing", kind="table", order=2),
+        _stim(sid="s1", text="First thing", kind="passage", order=1),
+    ])
+    assert out.index("First thing") < out.index("Second thing")
+    assert "[table]" in out and "[passage]" in out
+
+
+def test_stimulus_preview_is_blank_without_a_stimulus():
+    assert mod.stimulus_preview([]) == ""
+
+
+# ─── worksheet integration ───────────────────────────────────────────────────
+def _wq(qid, **kw):
+    base = {"id": qid, "paper_id": "p1", "year": 2024, "question_number": 1,
+            "question_type": "mcq", "correct_option_id": "opt-2",
+            "question_text": "A properly long and valid question stem here?"}
+    base.update(kw)
+    return base
+
+
+def _primary(qid):
+    return {"id": f"t-{qid}", "question_id": qid, "topic_id": "TID",
+            "tag_role": "primary", "reviewer_status": "verified"}
+
+
+def test_worksheet_carries_the_stimulus_next_to_each_set_member():
+    qs = [_wq("q1", question_number=1), _wq("q2", question_number=2)]
+    stimuli = [_stim(qids=("q1", "q2"), text="Table: sales by month.", kind="table")]
+    rows = mod.build_worksheet(qs, [_primary("q1"), _primary("q2")], {"TID"}, set(),
+                               {"TID": "T"}, set(), stimuli=stimuli)
+    qrows = [r for r in rows if r["row_type"] == "question"]
+    assert len(qrows) == 2
+    assert all("Table: sales by month." in r["stimulus_preview"] for r in qrows)
+
+
+def test_worksheet_stimulus_column_is_blank_without_the_file():
+    rows = mod.build_worksheet([_wq("q1")], [_primary("q1")], {"TID"}, set(),
+                               {"TID": "T"}, set())
+    assert [r["stimulus_preview"] for r in rows if r["row_type"] == "question"] == [""]
+
+
+def test_tag_rows_never_carry_a_stimulus_preview():
+    rows = mod.build_worksheet([_wq("q1")], [_primary("q1")], {"TID"}, set(),
+                               {"TID": "T"}, set(),
+                               stimuli=[_stim(qids=("q1",))])
+    assert all(r["stimulus_preview"] == "" for r in rows if r["row_type"] == "tag")
+
+
+def test_an_option_defect_flags_the_row_and_bars_it_from_the_clean_path():
+    """Same contract as every existing check: flagged rows go to a human."""
+    opts = [{**o, "question_id": "q1"} for o in _four(correct_at=0)]
+    opts[1]["is_correct"] = True          # two correct
+    rows = mod.build_worksheet([_wq("q1")], [_primary("q1")], {"TID"}, set(),
+                               {"TID": "T"}, set(), options=opts)
+    q = [r for r in rows if r["row_type"] == "question"][0]
+    assert "multiple_options_marked_correct" in q["flags"]
+    assert q["sample_reason"] == "flagged"
+    assert q["sample_reason"] != "spot_check"
+
+
+def test_a_clean_mcq_with_good_options_stays_eligible_for_spot_check():
+    opts = [{**o, "question_id": "q1"} for o in _four()]
+    rows = mod.build_worksheet([_wq("q1")], [_primary("q1")], {"TID"}, set(),
+                               {"TID": "T"}, set(), options=opts)
+    q = [r for r in rows if r["row_type"] == "question"][0]
+    assert q["flags"] == ""
+    assert q["sample_reason"] == "spot_check"
+
+
+def test_worksheet_without_options_does_not_flag_a_broken_mcq():
+    """Proves the checks are genuinely off, not silently passing."""
+    rows = mod.build_worksheet([_wq("q1")], [_primary("q1")], {"TID"}, set(),
+                               {"TID": "T"}, set())
+    q = [r for r in rows if r["row_type"] == "question"][0]
+    assert "no_option_marked_correct" not in q["flags"]
+
+
+def test_new_column_is_appended_so_older_worksheets_still_read():
+    assert mod.WORKSHEET_FIELDS[-1] == "stimulus_preview"
+    assert mod.WORKSHEET_FIELDS[:11] == [
+        "row_type", "row_id", "paper_year", "question_number_or_topic_id",
+        "text_preview", "flags", "sample_reason", "decision", "notes",
+        "assign_topic_id", "difficulty"]
+
+
+# ─── export fetch shapes ─────────────────────────────────────────────────────
+def test_options_page_matches_the_routes_lower_limit_cap():
+    """/pyq-options is le=50; paging it at the usual 200 would 422."""
+    assert mod._OPTIONS_PAGE == 50
+
+
+class ExportClient:
+    """Serves only the routes `do_export` calls, recording how it called them."""
+
+    PAPER = "p1"
+    PHASE = "ph1"
+
+    def __init__(self, options_by_q=None, stimuli=None, links=None):
+        self.calls = []
+        self._options = options_by_q or {}
+        self._stimuli = stimuli or []
+        self._links = links or {}
+
+    def all_items(self, path, params=None, page=200):
+        params = dict(params or {})
+        self.calls.append({"path": path, "params": params, "page": page})
+        if path.endswith("/pyq-papers"):
+            return [{"id": self.PAPER, "year": 2024, "exam_phase_id": self.PHASE}]
+        if path.endswith("/exam-phase-sections"):
+            return [{"id": "sec1", "section_label": "Reasoning"}]
+        if path.endswith("/pyq-questions"):
+            return [{"id": "q1", "question_number": 1, "question_type": "mcq",
+                     "question_text": "Who sits immediate right of R?",
+                     "pyq_paper_id": self.PAPER, "correct_option_id": "o2",
+                     "section_id": "sec1"}]
+        if path.endswith("/items"):
+            kind = params.get("kind")
+            if kind == "pyq_question":
+                return [{"id": "q1", "pyq_paper_id": self.PAPER, "question_number": 1}]
+            return []
+        if path.endswith("/pyq-question-topic-tags"):
+            return []
+        if path.endswith("/pyq-stimuli"):
+            return [s for s in self._stimuli if s["pyq_paper_id"] == params.get("pyq_paper_id")]
+        if path.endswith("/pyq-question-stimuli"):
+            return self._links.get(params.get("stimulus_id"), [])
+        if path.endswith("/pyq-options"):
+            return self._options.get(params.get("question_id"), [])
+        raise AssertionError(f"unexpected route {path}")
+
+
+def _export_args(out, **kw):
+    argv = ["export", "--exam-id", "e1", "--paper-id", ExportClient.PAPER,
+            "--out", str(out)]
+    for k, v in kw.items():
+        if v is True:
+            argv.append(f"--{k}")
+    return mod.build_parser().parse_args(argv)
+
+
+def _export_fixture():
+    stim = {"id": "s1", "pyq_paper_id": ExportClient.PAPER, "section_id": "sec1",
+            "stimulus_type": "passage", "content_text": "Seven people sit in a row.",
+            "language": "en", "display_order": 1, "reviewer_status": "verified"}
+    links = {"s1": [{"id": "l1", "question_id": "q1", "stimulus_id": "s1",
+                     "reviewer_status": "pending"}]}
+    opts = {"q1": [{"id": f"o{i}", "option_label": chr(97 + i),
+                    "option_text": f"Choice {i}", "is_correct": i == 2,
+                    "display_order": i, "reviewer_status": "verified"}
+                   for i in range(4)]}
+    return stim, links, opts
+
+
+def test_export_writes_all_four_files(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    assert mod.do_export(c, _export_args(tmp_path, apply=True)) == 0
+    for name in ("questions_export.json", "tags_export.json",
+                 "stimuli_export.json", "options_export.json"):
+        assert (tmp_path / name).exists(), name
+
+
+def test_export_keys_stimuli_on_paper_and_links_on_stimulus(tmp_path):
+    """The routes allow nothing else: /pyq-stimuli filters by paper only, and
+    /pyq-question-stimuli takes no paper filter."""
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    st_calls = [x for x in c.calls if x["path"].endswith("/pyq-stimuli")]
+    lk_calls = [x for x in c.calls if x["path"].endswith("/pyq-question-stimuli")]
+    assert [x["params"] for x in st_calls] == [{"pyq_paper_id": ExportClient.PAPER}]
+    assert [x["params"] for x in lk_calls] == [{"stimulus_id": "s1"}]
+
+
+def test_export_pages_options_at_the_routes_cap(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    opt_calls = [x for x in c.calls if x["path"].endswith("/pyq-options")]
+    assert opt_calls, "options were never fetched"
+    assert all(x["page"] == 50 for x in opt_calls)
+    assert [x["params"] for x in opt_calls] == [{"question_id": "q1"}]
+
+
+def test_exported_stimulus_resolves_its_question_ids_and_link_status(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    got = json.loads((tmp_path / "stimuli_export.json").read_text(encoding="utf-8"))
+    assert len(got) == 1
+    assert got[0]["question_ids"] == ["q1"]
+    # The LINK's own reviewer_status is preserved, not the stimulus's.
+    assert got[0]["reviewer_status"] == "verified"
+    assert got[0]["link_status_by_question"] == {"q1": "pending"}
+
+
+def test_exported_options_carry_the_correctness_marker(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    got = json.loads((tmp_path / "options_export.json").read_text(encoding="utf-8"))
+    assert len(got) == 4
+    assert all(o["question_id"] == "q1" for o in got)
+    assert sum(1 for o in got if o["is_correct"]) == 1
+
+
+def test_export_links_are_scoped_to_the_exported_questions(tmp_path):
+    """A stimulus shared with an out-of-scope question must not leak that id."""
+    stim, links, opts = _export_fixture()
+    links["s1"].append({"id": "l2", "question_id": "q-other", "stimulus_id": "s1",
+                        "reviewer_status": "verified"})
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    got = json.loads((tmp_path / "stimuli_export.json").read_text(encoding="utf-8"))
+    assert got[0]["question_ids"] == ["q1"]
+
+
+def test_export_writes_empty_files_when_there_are_none(tmp_path):
+    """An empty file says 'we looked'; an absent one says nothing."""
+    c = ExportClient(options_by_q={}, stimuli=[], links={})
+    assert mod.do_export(c, _export_args(tmp_path, apply=True)) == 0
+    assert json.loads((tmp_path / "stimuli_export.json").read_text(encoding="utf-8")) == []
+    assert json.loads((tmp_path / "options_export.json").read_text(encoding="utf-8")) == []
+
+
+def test_export_dry_run_writes_nothing(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    assert mod.do_export(c, _export_args(tmp_path)) == 0
+    assert not (tmp_path / "stimuli_export.json").exists()
+    assert not (tmp_path / "options_export.json").exists()
+
+
+def test_export_makes_no_write_calls(tmp_path):
+    """export is read-only: the fake client has no patch/post at all."""
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    mod.do_export(c, _export_args(tmp_path, apply=True))
+    assert not hasattr(c, "patch") and not hasattr(c, "post")

@@ -15,20 +15,43 @@ operate purely on the exported files and have never had phase-specific
 behaviour — the worksheet shape and the decision semantics are identical for
 every phase.
 
-    PRELIMS CAVEAT — READ BEFORE PROMOTING MCQs. The deterministic sweep was
-    built for Mains, whose questions are descriptive: it checks the stem only.
-    For an MCQ phase (Prelims/CSAT) the substance is in the OPTIONS and the
-    answer key, and this tool sees neither — ``export`` fetches
-    ``pyq_questions`` rows, not ``pyq_options``. The one option-level signal it
-    can give is ``mcq_no_correct_option`` (below), derived from the question
-    row's own ``correct_option_id``. It CANNOT check option count, option text,
-    or that exactly one option carries ``is_correct``. Those are enforced
-    downstream by the PYQ->Mock projection's eligibility gate
+    MCQ COVERAGE — READ BEFORE PROMOTING MCQs. ``export`` now fetches
+    ``pyq_options`` and ``pyq_stimuli`` alongside the question rows, so the
+    sweep sees more than the stem. What it checks, and what it still cannot:
+
+      CHECKED, when ``sweep --options`` is given the exported options file:
+        * option count outside 4-5              -> option_count_unexpected
+        * no option carries is_correct          -> no_option_marked_correct
+        * more than one does                    -> multiple_options_marked_correct
+        * two options share normalised text     -> duplicate_option_text
+      plus ``mcq_no_correct_option`` from the question row's own
+      ``correct_option_id`` — a DIFFERENT source, which can disagree with the
+      option rows; that disagreement is itself worth a look.
+
+      NOT CHECKED, and no amount of fetching fixes it: whether the option
+      marked correct IS correct. The key is a claim about the world, not a
+      structural property, and on a memory-based corpus it is a claim about
+      what an aspirant recalled. Only a human with the source paper settles it.
+
+    ABSENCE IS NOT A PASS. ``--options`` is optional; run without it and the
+    four checks above do not run at all. The sweep says so on stdout rather
+    than letting a clean sheet imply they were evaluated.
+
+    STIMULI. Set questions (DI tables, caselets, comprehension passages,
+    arrangement puzzles) share a setup held in ``pyq_stimuli`` and linked
+    through ``pyq_question_stimuli``. Without it a member's stem reads as a
+    bare question — "Who sits immediate right of R?" — which can be neither
+    reviewed nor graded for difficulty. ``export`` resolves the links and
+    ``sweep --stimuli`` renders the shared setup into the worksheet's
+    ``stimulus_preview`` column, beside each member.
+
+    A clean sweep on an MCQ row therefore means "the stem and the option
+    STRUCTURE look sane", NOT "this question is answerable". Answerability is
+    enforced downstream by the PYQ->Mock projection's eligibility gate
     (``app/backend/app/admin/pyq_mock_projection.py``,
     ``_check_question_eligibility``; see
-    ``docs/runbooks/EI-DATA-01_upsc_2026_primary_topic_tags.md``). A clean sweep
-    on an MCQ row therefore means "the stem looks sane", NOT "this question is
-    answerable" — the spot-check sample must be read against the paper.
+    ``docs/runbooks/EI-DATA-01_upsc_2026_primary_topic_tags.md``), and
+    correctness is settled only by the spot-check read against the paper.
 
     catalog ->  build the ``--topic-catalog`` file from the taxonomy: MICROTOPIC
                 rows whose ``topics.metadata.exams`` lists any of the
@@ -39,8 +62,9 @@ every phase.
                 and a row listing several of them is emitted once. Read-only;
                 ``--apply`` writes the file.
 
-    export  ->  pull the pending in-scope questions + tags from the live API into
-                two flat JSON files (read-only).
+    export  ->  pull the pending in-scope questions + tags, plus the options and
+                shared stimuli they depend on, from the live API into four flat
+                JSON files (read-only).
 
     sweep   ->  pure offline. Run deterministic checks that only ever FLAG a
                 row — they never decide it. Clean rows are sorted from flagged
@@ -115,6 +139,20 @@ Route contracts this tool depends on (verified against the repo backend):
          IS a server-side filter, so only leaves cross the wire.
 
   export reads:
+    GET  /api/admin/exam-intelligence-cms/pyq-stimuli?pyq_paper_id=...
+         -> {items, total, limit, offset}. Filters by PAPER only — there is no
+         question-id filter — so the fetch is per in-scope paper.
+    GET  /api/admin/exam-intelligence-cms/pyq-question-stimuli?stimulus_id=...
+         -> the question<->stimulus join rows (migration 223). The route
+         requires question_id OR stimulus_id (422 without either) and takes no
+         paper filter, so it is walked per STIMULUS: one call per passage
+         rather than one per question. Each link carries its OWN
+         reviewer_status — a link is 'pending' until an operator confirms this
+         passage belongs to this question — which the export preserves.
+    GET  /api/admin/exam-intelligence-cms/pyq-options?question_id=...
+         -> {items, total}. Filters by question only, and caps `limit` at 50
+         (le=50), unlike every other CMS list route's 200. Paged at 50.
+
     GET  /api/admin/exam-intelligence/exams/{exam_id}/items
          ?kind=pyq_question|pyq_question_topic_tag&status=pending&limit&offset
          -> {items:[...], count}. pyq_question items carry NO question_text.
@@ -181,6 +219,8 @@ Usage:
     python scripts/pyq_question_review.py sweep \
         --questions review_out/questions_export.json \
         --tags review_out/tags_export.json \
+        --stimuli review_out/stimuli_export.json \
+        --options review_out/options_export.json \
         --topic-catalog <path/to/topic_catalog.json> \
         --out worksheet.csv --apply
 
@@ -279,7 +319,22 @@ WORKSHEET_FIELDS = [
     "row_type", "row_id", "paper_year", "question_number_or_topic_id",
     "text_preview", "flags", "sample_reason", "decision", "notes",
     "assign_topic_id", "difficulty",
+    # APPENDED (stimulus/option pass): the shared passage, caselet or DI table a
+    # set member depends on. Blank when the question has no stimulus, and blank
+    # for every row when `sweep` is run without --stimuli, so a worksheet from
+    # an older export still reads back cleanly.
+    "stimulus_preview",
 ]
+
+# Expected option count for an MCQ in these papers. Four is the norm; five
+# appears in RBI/SEBI sets that carry an "all of the above"/"none" choice.
+# Outside this range is FLAGGED for a human, never corrected here.
+_MCQ_OPTION_RANGE = (4, 5)
+
+# `/pyq-options` caps `limit` at 50 (le=50 in admin_exam_intel_cms.py:2188),
+# unlike every other CMS list route, which allows 200. Paging it at the usual
+# 200 returns a 422, so the option fetch pages at this value instead.
+_OPTIONS_PAGE = 50
 
 # Printable ASCII the sweep treats as clean; \t \n \r are allowed whitespace.
 _PRINTABLE = set(chr(c) for c in range(0x20, 0x7F)) | {"\t", "\n", "\r"}
@@ -480,6 +535,64 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
         "reviewer_status": t.get("reviewer_status"),
     } for t in pending_tags]
 
+    # ── stimuli + their question links ──────────────────────────────────────
+    # `/pyq-stimuli` filters by pyq_paper_id ONLY (no question filter), so the
+    # fetch is per in-scope paper. The question<->stimulus link is a join table,
+    # `pyq_question_stimuli`, whose route requires question_id OR stimulus_id
+    # and takes no paper filter — so it is walked per STIMULUS, which is one
+    # call per passage rather than one per question.
+    stimuli: list[dict] = []
+    link_rows: list[dict] = []
+    for pid in sorted(scoped_paper_ids):
+        for st in c.all_items(f"{CMS}/pyq-stimuli", {"pyq_paper_id": pid}):
+            if not st.get("id"):
+                continue
+            links = [
+                lk for lk in c.all_items(f"{CMS}/pyq-question-stimuli",
+                                         {"stimulus_id": st["id"]})
+                if lk.get("question_id") in scoped_question_ids
+            ]
+            link_rows.extend(links)
+            stimuli.append({
+                "id": st.get("id"),
+                "paper_id": st.get("pyq_paper_id"),
+                "section_id": st.get("section_id"),
+                "stimulus_type": st.get("stimulus_type"),
+                "content_text": st.get("content_text"),
+                "language": st.get("language"),
+                "display_order": st.get("display_order"),
+                "reviewer_status": st.get("reviewer_status"),
+                # Resolved here so the file is self-describing and the sweep
+                # needs no second join. Scoped to the exported questions.
+                "question_ids": sorted({lk["question_id"] for lk in links}),
+                # The LINK carries its own reviewer_status (migration 223): a
+                # link is 'pending' until an operator confirms this passage is
+                # the right one for this question. Kept per question so a
+                # reviewer can see an unverified association.
+                "link_status_by_question": {
+                    lk["question_id"]: lk.get("reviewer_status") for lk in links
+                },
+            })
+
+    # ── options ─────────────────────────────────────────────────────────────
+    # `/pyq-options` filters by question_id only — no paper or bulk filter — so
+    # this is one call per in-scope question, paged at _OPTIONS_PAGE (the route
+    # caps limit at 50, not the usual 200).
+    options: list[dict] = []
+    for qid in sorted(scoped_question_ids):
+        for o in c.all_items(f"{CMS}/pyq-options", {"question_id": qid},
+                             page=_OPTIONS_PAGE):
+            options.append({
+                "id": o.get("id"),
+                "question_id": qid,
+                "option_label": o.get("option_label"),
+                "option_text": o.get("option_text"),
+                "is_correct": o.get("is_correct"),
+                "display_order": o.get("display_order"),
+                "source_label": o.get("source_label"),
+                "reviewer_status": o.get("reviewer_status"),
+            })
+
     scope_label = ("explicit paper id(s)" if override_ids
                    else f"phase(s) {sorted(phase_ids)}")
     print(f"In-scope papers: {len(scoped_papers)} via {scope_label} "
@@ -487,10 +600,20 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
           f"Pending questions: {len(questions)}. Pending tags: {len(tags)}.")
     mcq_count = sum(1 for q in questions if (q.get("question_type") or "") == "mcq")
     if mcq_count:
-        print(f"  NOTE: {mcq_count} MCQ question(s) in scope. The sweep checks the "
-              f"stem and the question row's correct_option_id only — it does NOT "
-              f"see pyq_options, so option count/text and the exactly-one-correct "
-              f"invariant are NOT validated here. See the module docstring.")
+        with_opts = len({o["question_id"] for o in options})
+        print(f"  {mcq_count} MCQ question(s) in scope; {len(options)} option row(s) "
+              f"across {with_opts} question(s). Pass options_export.json to `sweep "
+              f"--options` to run the option checks.")
+    if stimuli:
+        covered = len({q for st in stimuli for q in st["question_ids"]})
+        unverified = sum(
+            1 for st in stimuli
+            for stt in st["link_status_by_question"].values() if stt != "verified"
+        )
+        print(f"  {len(stimuli)} stimulus/stimuli covering {covered} question(s); "
+              f"{len(link_rows)} link(s), {unverified} not yet verified.")
+    else:
+        print("  no stimuli on the in-scope paper(s).")
     by_year: dict[Any, int] = {}
     for q in questions:
         by_year[q["year"]] = by_year.get(q["year"], 0) + 1
@@ -498,16 +621,26 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
 
     if not args.apply:
         print("\nDRY RUN — no files written. Re-run with --apply to write "
-              "questions_export.json and tags_export.json.")
+              "questions_export.json, tags_export.json, stimuli_export.json "
+              "and options_export.json.")
         return 0
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     q_path = out_dir / "questions_export.json"
     t_path = out_dir / "tags_export.json"
+    s_path = out_dir / "stimuli_export.json"
+    o_path = out_dir / "options_export.json"
     q_path.write_text(json.dumps(questions, ensure_ascii=False, indent=2), encoding="utf-8")
     t_path.write_text(json.dumps(tags, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nwrote {len(questions)} rows -> {q_path}")
+    # Written unconditionally, empty list included: an absent file and an empty
+    # one mean different things to `sweep`, and only the empty file says "we
+    # looked and there were none".
+    s_path.write_text(json.dumps(stimuli, ensure_ascii=False, indent=2), encoding="utf-8")
+    o_path.write_text(json.dumps(options, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nwrote {len(stimuli)} rows -> {s_path}")
+    print(f"wrote {len(options)} rows -> {o_path}")
+    print(f"wrote {len(questions)} rows -> {q_path}")
     print(f"wrote {len(tags)} rows -> {t_path}")
     return 0   
 
@@ -552,6 +685,90 @@ def question_flags(q: dict, per_paper_norm_counts: dict[str, int],
         flags.append("mcq_no_correct_option")
 
     return flags
+
+
+def option_flags(q: dict, options: list[dict]) -> list[str]:
+    """Option-level checks for one question. NAMED FLAGS, never verdicts.
+
+    MCQ-only. A descriptive question legitimately carries no options, so
+    running these against one would flag the whole descriptive corpus.
+
+    Callers pass the options for THIS question only. An empty list is
+    meaningful (an MCQ with no option rows) and is reported as
+    ``option_count_unexpected`` — the count is zero, which is outside the
+    expected range like any other wrong count.
+
+    None of these can fire when ``sweep`` runs without ``--options``: the
+    caller passes ``None`` and this returns ``[]``, so a worksheet built from
+    an older export is unchanged rather than silently under-flagged.
+    """
+    if (q.get("question_type") or "") != "mcq" or options is None:
+        return []
+    flags: list[str] = []
+
+    lo, hi = _MCQ_OPTION_RANGE
+    if not (lo <= len(options) <= hi):
+        flags.append("option_count_unexpected")
+
+    correct = [o for o in options if o.get("is_correct") is True]
+    if not correct:
+        flags.append("no_option_marked_correct")
+    elif len(correct) > 1:
+        flags.append("multiple_options_marked_correct")
+
+    seen: set[str] = set()
+    for o in options:
+        norm = normalize_text(o.get("option_text"))
+        if not norm:
+            continue
+        if norm in seen:
+            flags.append("duplicate_option_text")
+            break
+        seen.add(norm)
+
+    return flags
+
+
+def index_options_by_question(options: list[dict] | None) -> dict[str, list[dict]] | None:
+    """``question_id -> [option rows]``. ``None`` in, ``None`` out, so the
+    "no --options supplied" case stays distinguishable from "no options"."""
+    if options is None:
+        return None
+    by_q: dict[str, list[dict]] = {}
+    for o in options:
+        qid = o.get("question_id")
+        if qid:
+            by_q.setdefault(qid, []).append(o)
+    return by_q
+
+
+def index_stimuli_by_question(stimuli: list[dict] | None) -> dict[str, list[dict]]:
+    """``question_id -> [stimulus rows]``, read from each stimulus's
+    ``question_ids`` list (which ``export`` resolves through
+    ``pyq_question_stimuli``). Empty dict when no stimuli were supplied."""
+    by_q: dict[str, list[dict]] = {}
+    for st in (stimuli or []):
+        for qid in (st.get("question_ids") or []):
+            by_q.setdefault(qid, []).append(st)
+    return by_q
+
+
+def stimulus_preview(stimuli_for_q: list[dict], width: int = 220) -> str:
+    """One cell a human can read next to the member question.
+
+    A set member's stem is often meaningless alone ("Who sits immediate right
+    of R?"); the shared setup is what makes it gradeable. Several stimuli are
+    joined in display order, each tagged with its type so a passage and a chart
+    are distinguishable.
+    """
+    if not stimuli_for_q:
+        return ""
+    parts = []
+    for st in sorted(stimuli_for_q, key=lambda s: (
+            s.get("display_order") is None, s.get("display_order") or 0, str(s.get("id")))):
+        kind = str(st.get("stimulus_type") or "stimulus")
+        parts.append(f"[{kind}] {_preview(st.get('content_text') or '', width)}")
+    return " || ".join(parts)
 
 
 def index_tags_by_question(tags: list[dict]) -> dict[Any, list[dict]]:
@@ -792,7 +1009,9 @@ def _preview(text: str, width: int = 140) -> str:
 
 def build_worksheet(questions: list[dict], tags: list[dict],
                     valid_ids: set[str], orphan_ids: set[str],
-                    topic_names: dict[str, str], hindi_years: set) -> list[dict]:
+                    topic_names: dict[str, str], hindi_years: set,
+                    stimuli: list[dict] | None = None,
+                    options: list[dict] | None = None) -> list[dict]:
     """Sort every row into clean vs flagged, pick spot-checks, emit worksheet
     rows. Flagged rows are ALWAYS emitted and are NEVER eligible for the
     spot-check (clean-batch) path.
@@ -816,12 +1035,18 @@ def build_worksheet(questions: list[dict], tags: list[dict],
     id_to_year = {q.get("id"): q.get("year") for q in questions}
 
     tags_by_question = index_tags_by_question(tags)
+    opts_by_question = index_options_by_question(options)
+    stim_by_question = index_stimuli_by_question(stimuli)
 
     q_flags: dict[Any, list[str]] = {}
     for q in questions:
         flags = question_flags(q, per_paper.get(q.get("paper_id"), {}), hindi_years)
         if not has_primary_tag(q["id"], tags_by_question):
             flags.append("no_primary_tag")
+        # Option-level flags join the same list, so an option defect excludes
+        # the row from the clean/spot-check path exactly like a stem defect.
+        flags.extend(option_flags(
+            q, None if opts_by_question is None else opts_by_question.get(q["id"], [])))
         q_flags[q["id"]] = flags
     t_flags = {t["id"]: tag_flags(t, valid_ids, orphan_ids) for t in tags}
 
@@ -876,6 +1101,7 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 "notes": "",
                 "assign_topic_id": "",
                 "difficulty": "",
+                "stimulus_preview": stimulus_preview(stim_by_question.get(q["id"], [])),
             })
         for t in sorted(t_by_year.get(yr, []), key=lambda t: str(t.get("topic_id"))):
             flags = t_flags[t["id"]]
@@ -894,6 +1120,8 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 # rejected on apply if a tag row carries one.
                 "assign_topic_id": "",
                 "difficulty": "",
+                # A stimulus belongs to a question, never to a tag.
+                "stimulus_preview": "",
             })
     return out
 
@@ -907,12 +1135,21 @@ def do_sweep(args: argparse.Namespace) -> int:
         questions = json.loads(Path(args.questions).read_text(encoding="utf-8"))
         tags = json.loads(Path(args.tags).read_text(encoding="utf-8"))
         valid_ids, orphan_ids, topic_names = load_topic_catalog(args.topic_catalog)
+        # Both optional: a worksheet built from an older export (no stimuli or
+        # options files) is byte-identical to what it was, minus an empty new
+        # column. Absent options means the option checks do not run — NOT that
+        # they ran and passed.
+        stimuli = (json.loads(Path(args.stimuli).read_text(encoding="utf-8"))
+                   if args.stimuli else None)
+        options = (json.loads(Path(args.options).read_text(encoding="utf-8"))
+                   if args.options else None)
     except (OSError, ValueError) as exc:
         print(f"error: cannot read inputs — {exc}", file=sys.stderr)
         return 2
     hindi_years = {y.strip() for y in (args.hindi_year or []) if str(y).strip()}
 
-    rows = build_worksheet(questions, tags, valid_ids, orphan_ids, topic_names, hindi_years)
+    rows = build_worksheet(questions, tags, valid_ids, orphan_ids, topic_names,
+                           hindi_years, stimuli=stimuli, options=options)
 
     flagged = sum(1 for r in rows if r["flags"])
     spot = sum(1 for r in rows if r["sample_reason"] == "spot_check")
@@ -929,6 +1166,19 @@ def do_sweep(args: argparse.Namespace) -> int:
         print(f"  catalog carries {len(orphan_ids)} orphan-marked topic(s).")
     else:
         print("  catalog has no orphan distinction — only unknown_topic can fire.")
+
+    mcqs = sum(1 for q in questions if (q.get("question_type") or "") == "mcq")
+    if options is None:
+        print(f"  NO --options supplied: the option checks did NOT run for "
+              f"{mcqs} MCQ(s). Absent is not the same as passed.")
+    else:
+        print(f"  option checks ran over {len(options)} option row(s) for {mcqs} MCQ(s).")
+    if stimuli is None:
+        print("  NO --stimuli supplied: stimulus_preview is blank on every row, "
+              "so a set member's shared setup is not visible to the grader.")
+    else:
+        linked = len({qid for st in stimuli for qid in (st.get("question_ids") or [])})
+        print(f"  {len(stimuli)} stimulus/stimuli covering {linked} question(s).")
 
     if not args.apply:
         print(f"\nDRY RUN — worksheet not written. Re-run with --apply to write {args.out}.")
@@ -1239,6 +1489,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--tags", required=True)
     s.add_argument("--topic-catalog", required=True,
                    help="operator-supplied valid-topic-id list (never derived)")
+    s.add_argument("--stimuli", default=None,
+                   help="stimuli_export.json from `export`. Supplies the shared "
+                        "passage/caselet/DI table a set member depends on, shown "
+                        "in the worksheet's stimulus_preview column. Optional: "
+                        "without it that column is blank on every row.")
+    s.add_argument("--options", default=None,
+                   help="options_export.json from `export`. Enables the "
+                        "option-level checks (count, exactly-one-correct, "
+                        "duplicate text). Optional, and its ABSENCE means those "
+                        "checks did not run — not that they passed.")
     s.add_argument("--out", default="worksheet.csv")
     s.add_argument("--hindi-year", action="append", default=None,
                    help="year(s) whose questions legitimately carry non-ASCII "
