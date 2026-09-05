@@ -1,12 +1,12 @@
-﻿row_type,row_id,paper_year,question_number_or_topic_id,text_preview,flags,sample_reason,decision,notes,assign_topic_id,difficulty
+row_type,row_id,paper_year,question_number_or_topic_id,text_preview,flags,sample_reason,decision,notes,assign_topic_id,difficulty
 question,8bb0f9da-4162-4183-bde9-3d9644f5587c,2021,1,Calculate the current ratio from the following given information.,,spot_check,,,,
 question,deb6d499-633d-46a7-94df-4e9b1fc60edc,2021,1,Write an Essay of about 250 words on any one of the following topics: - (30 Marks) 1. Role of Financial Literacy in Building an Inclusive Ec,,spot_check,,,,
-question,ed1d0a8d-39a5-401f-8fb0-4a01075043c6,2021,2,"From the given information calculate the Asset Coverage Ratio Cash & Equivalents = $50m Accounts Receivable = $30m Property, Plant & Equipme",,,,,,
+question,ed1d0a8d-39a5-401f-8fb0-4a01075043c6,2021,2,"From the given information calculate the Asset Coverage Ratio Cash & Equivalents = $50m Accounts Receivable = $30m Property, Plant & Equipme",,,,,,medium
 question,fdb17fe3-9bad-474a-918c-eca53a70d953,2021,2,Make a Précis of the following passage in 120 words and give it a suitable title. (30 Marks) The concept of a circular economy is fast emerg,non_ascii_suspect,flagged,,,,
-question,b032411c-0a71-410e-a4a1-091ba3888ef0,2021,3,Company X has reported the below figures: Equity Share Capital: ₹500000 Preference Share Capital: ₹600000 Long Term Debentures: ₹200000 EBIT,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
+question,b032411c-0a71-410e-a4a1-091ba3888ef0,2021,3,Company X has reported the below figures: Equity Share Capital: ₹500000 Preference Share Capital: ₹600000 Long Term Debentures: ₹200000 EBIT,non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
 question,c38c6d3c-9e7c-4161-99af-45440612b9b5,2021,3,Reading Comprehension (40 Marks) Read the passage carefully and answer the questions in your own words. India’s urban population is rapidly ,non_ascii_suspect,flagged,,,,
-question,1b50786a-d6ad-4e13-8e9d-825d08b28e93,2021,4,EBIT to Sales Ratio is also known as _________,suspicious_repeat_char,flagged,,,,
-question,f16ca3d2-1f75-4265-946f-e692c8b16d97,2021,5,"Given, Credit Sales = ₹72,00,000 Average Accounts Receivable = ₹12,00,000 Calculate the Average age of Receivables",non_ascii_suspect,flagged,,,,
+question,1b50786a-d6ad-4e13-8e9d-825d08b28e93,2021,4,EBIT to Sales Ratio is also known as _________,suspicious_repeat_char,flagged,,,,easy
+question,f16ca3d2-1f75-4265-946f-e692c8b16d97,2021,5,"Given, Credit Sales = ₹72,00,000 Average Accounts Receivable = ₹12,00,000 Calculate the Average age of Receivables",non_ascii_suspect,flagged,,,,medium
 question,137d2d1c-fd0f-4b9e-a973-2aaa69a4a726,2021,6,The depreciable amount of a depreciable asset should be allocated on a _________ basis to each accounting period during the useful life of t,suspicious_repeat_char,flagged,,,,
 tag,81171945-3456-48cd-a07a-56be5d3c20c0,2021,092d9550-09b4-4f5a-a5b2-c1add1aac460,"Profitability ratios ΓÇö GP, NP, EBIT margin, ROE, ROCE",,spot_check,,,,
 tag,138fd7c7-91a9-4eb5-8aec-9f3d16bed301,2021,092d9550-09b4-4f5a-a5b2-c1add1aac460,"Profitability ratios ΓÇö GP, NP, EBIT margin, ROE, ROCE",,,,,,
@@ -17,91 +17,91 @@ tag,a53ce786-e77b-4ca2-9a47-5b482b65c797,2021,500ed241-df0d-4f73-8472-409748326e
 tag,6596d4fe-017c-4153-874d-db0e874f6143,2021,63d9ed95-155f-b31b-acd8-3bb63b0bbb76,Essay Writing,,,,,,
 tag,f76d3e8b-37c0-42bd-81bd-90599740e10e,2021,640cfa6f-a758-40c4-9657-b719bd6ce6b5,"Turnover ratios ΓÇö receivables, working capital, inventory",,,,,,
 tag,c57409ab-a446-4d28-8633-edaea28b1bb1,2021,6d24067a-2f6d-4b56-8814-9176219d4de4,"Depreciation ΓÇö methods, change in estimate, commencement",,,,,,
-question,faf07ba1-fb56-4037-9238-40ef4a0ab7e5,2022,1,"Identify the role of leader or manager, wherein the manager constantly collects information about those factors which may affect his activit",,spot_check,,,,
+question,faf07ba1-fb56-4037-9238-40ef4a0ab7e5,2022,1,"Identify the role of leader or manager, wherein the manager constantly collects information about those factors which may affect his activit",,spot_check,,,,easy
 question,21a7dfbc-6bdc-4e1a-83fb-242ef85634d1,2022,1,"Currently a public company has issued 2,00,000 shares in the open market and on 31st march the company decided to further issue additional 2",,spot_check,,,,
-question,7cb5998e-c2d4-4c2e-bf4d-63375ee4f670,2022,1,"As per section 123 of the companies act, companies are required to deposit the amount of dividend, including the interim dividend, in the ba",,spot_check,,,,
-question,41c4d3fa-14fa-4715-8e48-c02e517c0077,2022,1,Which of the following mechanism is used to bring price stability in the share price during the Initial Public Offer (IPO) ?,,spot_check,,,,
+question,7cb5998e-c2d4-4c2e-bf4d-63375ee4f670,2022,1,"As per section 123 of the companies act, companies are required to deposit the amount of dividend, including the interim dividend, in the ba",,spot_check,,,,easy
+question,41c4d3fa-14fa-4715-8e48-c02e517c0077,2022,1,Which of the following mechanism is used to bring price stability in the share price during the Initial Public Offer (IPO) ?,,spot_check,,,,easy
 question,66a88c6e-a4bb-4260-b2ac-bb08a20797c8,2022,1,"Loss expected in the next or coming year = Rs. 30,000 Options:",no_primary_tag,flagged,,,,
-question,e8f71c16-eb41-4024-a4bf-e312114cec39,2022,1,"With the digitization of the pension sector, the processing time for NPS to transfer and remit funds to the trustee bank is done on the foll",,spot_check,,,,
+question,e8f71c16-eb41-4024-a4bf-e312114cec39,2022,1,"With the digitization of the pension sector, the processing time for NPS to transfer and remit funds to the trustee bank is done on the foll",,spot_check,,,,medium
 question,9c36d1b3-05de-4f67-9cec-09c5bdb22e50,2022,1,Write an Essay of about 250 words on any one of the following topics: - (30 Marks) 1. The rich cultural heritage of India. 2. Highlight the ,,spot_check,,,,
-question,29595ce8-cdf8-4e53-83e4-459f29895d59,2022,1,"Suppose a company named as XYZ LTD took the loan of amount $2,00,000 on 1st December. Currently the exchange rate between Dollar and Rupee i",,spot_check,,,,
-question,dd0baf16-aec1-4f2d-bb69-9ae342a602f1,2022,1,"As per section 44 of the Companies Act 2013, the shares or debentures belonging to any of the member of the company should be a movable prop",,spot_check,,,,
-question,257576f6-5d10-484f-875d-d458006f503b,2022,1,"In the most general language, as per supply law curve, what is the relationship between supply and prices of a particular commodity ?",,spot_check,,,,
-question,08d387c7-0680-4799-a540-c568ccd0a2b8,2022,1,Pradhan Mantri Vaya Vandana Yojana (PMVVY) is an insurance policy-cum-pension scheme that provides security to senior citizens. In the same ,,spot_check,,,,
-question,39ab9472-cece-41bc-b76f-0c82fd8a09e7,2022,1,"Leadership can be defined as the process to guide the employees towards the achievement of organisational goal. In the same regard, which of",,spot_check,,,,
-question,3a35865f-1aa2-4da0-b53a-44c7a146ffd6,2022,1,"Generally, the financial and Fiscal year for the Indian government ends on ? Options:",,spot_check,,,,
-question,286025f9-8390-4291-a9c3-d9d58c986e77,2022,2,"From the following given option identify the theory of management, which explains that Organizations are social entities that are purpose-or",,,,,,
-question,85c6ff7a-b90d-495a-a6ad-3f571dfeb7ed,2022,2,The central government accepted the 15th Finance Commission’s recommendation to maintain the States’ share in the divisible pool of taxes to,non_ascii_suspect,flagged,,,,
-question,67ac432a-db67-4336-9489-9e4452e395c5,2022,2,"As per section 39 of the companies Act, 2013 what is the minimum application money which a company should receive on the issue of security o",,,,,,
-question,10f78d5a-0505-4df9-9cdf-03d449837afa,2022,2,Which of the following body regulates the unlisted companies working in the corporate sector of India ?,,,,,,
-question,158a34ef-9d32-4a33-8712-08350a6c83e0,2022,2,"Budgetary control is a system for monitoring an organization's process in monetary terms. In the same regard, which of the following stateme",,spot_check,,,,
-question,52e01a8b-7c9c-49ea-9722-7f1a6132b5d0,2022,2,Which of the following persons are not eligible to apply for the National Pension Scheme (NPS),,,,,,
+question,29595ce8-cdf8-4e53-83e4-459f29895d59,2022,1,"Suppose a company named as XYZ LTD took the loan of amount $2,00,000 on 1st December. Currently the exchange rate between Dollar and Rupee i",,spot_check,,,,medium
+question,dd0baf16-aec1-4f2d-bb69-9ae342a602f1,2022,1,"As per section 44 of the Companies Act 2013, the shares or debentures belonging to any of the member of the company should be a movable prop",,spot_check,,,,easy
+question,257576f6-5d10-484f-875d-d458006f503b,2022,1,"In the most general language, as per supply law curve, what is the relationship between supply and prices of a particular commodity ?",,spot_check,,,,easy
+question,08d387c7-0680-4799-a540-c568ccd0a2b8,2022,1,Pradhan Mantri Vaya Vandana Yojana (PMVVY) is an insurance policy-cum-pension scheme that provides security to senior citizens. In the same ,,spot_check,,,,easy
+question,39ab9472-cece-41bc-b76f-0c82fd8a09e7,2022,1,"Leadership can be defined as the process to guide the employees towards the achievement of organisational goal. In the same regard, which of",,spot_check,,,,easy
+question,3a35865f-1aa2-4da0-b53a-44c7a146ffd6,2022,1,"Generally, the financial and Fiscal year for the Indian government ends on ? Options:",,spot_check,,,,easy
+question,286025f9-8390-4291-a9c3-d9d58c986e77,2022,2,"From the following given option identify the theory of management, which explains that Organizations are social entities that are purpose-or",,,,,,easy
+question,85c6ff7a-b90d-495a-a6ad-3f571dfeb7ed,2022,2,The central government accepted the 15th Finance Commission’s recommendation to maintain the States’ share in the divisible pool of taxes to,non_ascii_suspect,flagged,,,,medium
+question,67ac432a-db67-4336-9489-9e4452e395c5,2022,2,"As per section 39 of the companies Act, 2013 what is the minimum application money which a company should receive on the issue of security o",,,,,,easy
+question,10f78d5a-0505-4df9-9cdf-03d449837afa,2022,2,Which of the following body regulates the unlisted companies working in the corporate sector of India ?,,,,,,easy
+question,158a34ef-9d32-4a33-8712-08350a6c83e0,2022,2,"Budgetary control is a system for monitoring an organization's process in monetary terms. In the same regard, which of the following stateme",,spot_check,,,,medium
+question,52e01a8b-7c9c-49ea-9722-7f1a6132b5d0,2022,2,Which of the following persons are not eligible to apply for the National Pension Scheme (NPS),,,,,,easy
 question,8cfef1b2-0dc4-4bf3-b9d1-65cfd24cf7e5,2022,2,Make a Précis of the following passage within 120 words and give it a suitable title. (30 Marks) Everything we do leaves a digital footprint,non_ascii_suspect,flagged,,,,
-question,7edb1251-49bc-42b3-993e-b610541d8813,2022,2,"The ex-rights price is the price of the shares trading in the market post the issue of new rights share. In the same regard, calculate the e",,,,,,
-question,16b5b437-04ec-46b6-92b4-71aaf3481c62,2022,2,"As per Companies Act 2013, The red herring prospectus has to be filed with the Registrar of Companies (RoC) at least how many days before th",,,,,,
-question,0a3740a7-012a-46d3-a6d7-8b7ba8da293f,2022,2,"In the field of economics, what is the correct formula to calculate Net National Product ?",,,,,,
-question,c9bec934-e077-4762-b37c-96ebac831b87,2022,2,"Under Employee Pension Scheme (EPS), on the event of death of the subscriber. Pension is paid directly to the spouse of the person, addition",,,,,,
-question,d1df03c1-adb3-4edb-901a-6ccada5f43ed,2022,2,"Although Motivation and Morale are closely related concepts, however there exist some different between morale and motivation. In the same r",,,,,,
-question,7719d9f3-eeee-4092-8ff3-54360430a699,2022,2,"Government of India (GOI) has various sources of Income, in the same regard, which of the following is not an example of Non-Tax source of r",,,,,,
-question,775635bd-ef79-4dd2-8ea4-4a8a6d3fbf46,2022,3,From the following given options identify the leadership style wherein a leader creates harmony in the workplace and make employees happy. T,,,,,,
-question,54e3c283-baa8-4381-8f87-3a584d52e079,2022,3,Social Stock Exchange (SSE) is a bourse meant to serve the private and non-profit sectors and will help them in raising funds through the ex,,,,,,
-question,6966b13e-d792-4a92-9651-f82fcac0c6d7,2022,3,"As per companies act 2013 (Section 152), a person can be appointed as the director of the company until and unless he or she gives his or he",,,,,,
-question,171cfd2b-c926-4c38-a45c-fab916c303bd,2022,3,A bank giro transfer is a method of transferring money by instructing a bank to directly transfer funds from one bank account to another wit,,,,,,
+question,7edb1251-49bc-42b3-993e-b610541d8813,2022,2,"The ex-rights price is the price of the shares trading in the market post the issue of new rights share. In the same regard, calculate the e",,,,,,medium
+question,16b5b437-04ec-46b6-92b4-71aaf3481c62,2022,2,"As per Companies Act 2013, The red herring prospectus has to be filed with the Registrar of Companies (RoC) at least how many days before th",,,,,,easy
+question,0a3740a7-012a-46d3-a6d7-8b7ba8da293f,2022,2,"In the field of economics, what is the correct formula to calculate Net National Product ?",,,,,,easy
+question,c9bec934-e077-4762-b37c-96ebac831b87,2022,2,"Under Employee Pension Scheme (EPS), on the event of death of the subscriber. Pension is paid directly to the spouse of the person, addition",,,,,,easy
+question,d1df03c1-adb3-4edb-901a-6ccada5f43ed,2022,2,"Although Motivation and Morale are closely related concepts, however there exist some different between morale and motivation. In the same r",,,,,,medium
+question,7719d9f3-eeee-4092-8ff3-54360430a699,2022,2,"Government of India (GOI) has various sources of Income, in the same regard, which of the following is not an example of Non-Tax source of r",,,,,,medium
+question,775635bd-ef79-4dd2-8ea4-4a8a6d3fbf46,2022,3,From the following given options identify the leadership style wherein a leader creates harmony in the workplace and make employees happy. T,,,,,,easy
+question,54e3c283-baa8-4381-8f87-3a584d52e079,2022,3,Social Stock Exchange (SSE) is a bourse meant to serve the private and non-profit sectors and will help them in raising funds through the ex,,,,,,medium
+question,6966b13e-d792-4a92-9651-f82fcac0c6d7,2022,3,"As per companies act 2013 (Section 152), a person can be appointed as the director of the company until and unless he or she gives his or he",,,,,,easy
+question,171cfd2b-c926-4c38-a45c-fab916c303bd,2022,3,A bank giro transfer is a method of transferring money by instructing a bank to directly transfer funds from one bank account to another wit,,,,,,easy
 question,e6c91c6d-c398-4c84-bcd1-ef8eac62c586,2022,3,"In an organisation, there are 4 employees receiving Rs. 20,000 each for a specific job. Moreover, the overall overheads were valued at Rs. 4",,,,,,
-question,a3a70e9a-64ac-4fd5-a336-6c99caaf4156,2022,3,"Pension Fund Managers can invest the collected amount in variety of asset categories, however under NPS, Pension Fund Managers cannot invest",,,,,,
+question,a3a70e9a-64ac-4fd5-a336-6c99caaf4156,2022,3,"Pension Fund Managers can invest the collected amount in variety of asset categories, however under NPS, Pension Fund Managers cannot invest",,,,,,easy
 question,a7853486-4711-4915-8bdf-42450818f82c,2022,3,Read the given passage and answer the following questions based on the passage in your own words. (40 Marks) Some of the misplaced economic ,non_ascii_suspect,flagged,,,,
-question,0ca8a041-fd68-4008-9506-056177d315d6,2022,3,"There are multiple accounting concepts and principles which brings uniformity in various accounting procedure. In the same manner, which of ",,,,,,
-question,97fd3554-bf9d-475f-8450-9950332ea6f6,2022,3,Interim Dividend can only be declared by the company out of which of the following components ?,,,,,,
-question,479fbc8e-cc1f-4f79-a1e4-ce40a06662d5,2022,3,"Its generally said that, too much money chasing too few goods will the reason of increase in",,,,,,
-question,2e0b9b8f-12a5-4bd5-bdaa-77c68579fd5c,2022,3,"The EPS (Employee pension scheme) is a scheme run by the Employee’s Provident Fund Organization (EPFO), which aims at social security. In th",non_ascii_suspect,flagged,,,,
-question,bcb64165-9825-4af2-9345-7ff490ad1f10,2022,3,Which of the following function of Human Resource Management (HRM) explains that employees should be given enough freedom in their respectiv,,,,,,
-question,a96d84a2-d383-4e99-8165-d0f4ab4d6b68,2022,3,"In the most general language, an increase in the MPC will result in multiplier Options:",,,,,,
+question,0ca8a041-fd68-4008-9506-056177d315d6,2022,3,"There are multiple accounting concepts and principles which brings uniformity in various accounting procedure. In the same manner, which of ",,,,,,easy
+question,97fd3554-bf9d-475f-8450-9950332ea6f6,2022,3,Interim Dividend can only be declared by the company out of which of the following components ?,,,,,,easy
+question,479fbc8e-cc1f-4f79-a1e4-ce40a06662d5,2022,3,"Its generally said that, too much money chasing too few goods will the reason of increase in",,,,,,easy
+question,2e0b9b8f-12a5-4bd5-bdaa-77c68579fd5c,2022,3,"The EPS (Employee pension scheme) is a scheme run by the Employee’s Provident Fund Organization (EPFO), which aims at social security. In th",non_ascii_suspect,flagged,,,,easy
+question,bcb64165-9825-4af2-9345-7ff490ad1f10,2022,3,Which of the following function of Human Resource Management (HRM) explains that employees should be given enough freedom in their respectiv,,,,,,easy
+question,a96d84a2-d383-4e99-8165-d0f4ab4d6b68,2022,3,"In the most general language, an increase in the MPC will result in multiplier Options:",,,,,,easy
 question,c44f6ddd-d67f-4e5a-9c2e-e797950a1051,2022,4,"Leadership is the art of motivating a group of people to act toward achieving a common goal. There are different leadership styles, in the s",,spot_check,,,,
 question,ef76956c-ee4a-49f9-af7c-cdb682654d44,2022,4,"As per RBI directions, banks are required to disclose the divergence when the Gross Non Performing Assets (GNPA) as accessed by the RBI exce",,,,,,
 question,25694ed9-c7ba-4c12-bfa8-757ee23db041,2022,4,"The Central Government has constituted National Company Law Tribunal (NCLT) under section 408 of the Companies Act, 2013. In the same regard",,spot_check,,,,
-question,b6cf9bfb-9aa5-4cb5-9a1c-1a8f54b26880,2022,4,"From the following options identify the act, which is associated with the act of playing safe and exporters wants to reduce the risk of loss",,,,,,
+question,b6cf9bfb-9aa5-4cb5-9a1c-1a8f54b26880,2022,4,"From the following options identify the act, which is associated with the act of playing safe and exporters wants to reduce the risk of loss",,,,,,easy
 question,8ff97c04-fda1-404a-8e5f-6ebea034a92a,2022,4,Initial installation cost or set-up cost = Rs 1000 Options:,no_primary_tag,flagged,,,,
-question,52391257-4534-4869-a4d8-aecfe2e4b8aa,2022,4,"Under Atal Pension Yojana, an unmarried subscriber has to nominate which of the following person as nominee ?",,,,,,
-question,be9a76f4-13a5-4959-9e7c-7ad7c29bceb6,2022,4,"The objective of IND-AS 16 Standard is to prescribe the accounting treatment for property, plant and equipment so that users of the financia",,,,,,
-question,3364cd74-93dd-4944-8b62-b9e6184a2507,2022,4,"As per section 139, the auditor of the company can be removed by the shareholders of the company after taking the approval from ?",,,,,,
-question,27692a8a-ed88-4a53-89fb-78c0d52b53ba,2022,4,"IS-LM curve can be derived from the Keynesian theory from its analysis of money market equilibrium. In the same regard, there will be a righ",,spot_check,,,,
-question,262df99e-cb13-430d-8677-4b91d1f7c893,2022,4,"Under Atal Pension Yojana, if a subscriber wants to change the tenure and mode of auto debit facility, then he or she can do so, how many ti",,,,,,
-question,23f22717-7b07-43b8-a0b0-7d06ef2acd4e,2022,4,"Leadership is the art of motivating a group of people to act toward achieving a common goal. There are different leadership styles, in the s",,,,,,
-question,e4766a23-d50d-4444-a4a3-2cd70f362265,2022,4,"In the most general language, what is the relationship between income and investment?",,,,,,
-question,d3802814-84e2-4760-aaab-862b4e5baceb,2022,5,"From the following given options identify the leadership style wherein a leader focuses on supervision, organization and performance and suc",,,,,,
-question,cb4ddc54-6e1f-4f0c-ac7a-bc836f1cccce,2022,5,"For a company registered in India, book value of the share is more than the market value of the share and currently, the Price to Book Value",,spot_check,,,,
+question,52391257-4534-4869-a4d8-aecfe2e4b8aa,2022,4,"Under Atal Pension Yojana, an unmarried subscriber has to nominate which of the following person as nominee ?",,,,,,easy
+question,be9a76f4-13a5-4959-9e7c-7ad7c29bceb6,2022,4,"The objective of IND-AS 16 Standard is to prescribe the accounting treatment for property, plant and equipment so that users of the financia",,,,,,easy
+question,3364cd74-93dd-4944-8b62-b9e6184a2507,2022,4,"As per section 139, the auditor of the company can be removed by the shareholders of the company after taking the approval from ?",,,,,,easy
+question,27692a8a-ed88-4a53-89fb-78c0d52b53ba,2022,4,"IS-LM curve can be derived from the Keynesian theory from its analysis of money market equilibrium. In the same regard, there will be a righ",,spot_check,,,,medium
+question,262df99e-cb13-430d-8677-4b91d1f7c893,2022,4,"Under Atal Pension Yojana, if a subscriber wants to change the tenure and mode of auto debit facility, then he or she can do so, how many ti",,,,,,easy
+question,23f22717-7b07-43b8-a0b0-7d06ef2acd4e,2022,4,"Leadership is the art of motivating a group of people to act toward achieving a common goal. There are different leadership styles, in the s",,,,,,easy
+question,e4766a23-d50d-4444-a4a3-2cd70f362265,2022,4,"In the most general language, what is the relationship between income and investment?",,,,,,medium
+question,d3802814-84e2-4760-aaab-862b4e5baceb,2022,5,"From the following given options identify the leadership style wherein a leader focuses on supervision, organization and performance and suc",,,,,,easy
+question,cb4ddc54-6e1f-4f0c-ac7a-bc836f1cccce,2022,5,"For a company registered in India, book value of the share is more than the market value of the share and currently, the Price to Book Value",,spot_check,,,,medium
 question,6886326b-adef-4c30-a188-f386572c249c,2022,5,can sign for the LLP. Options:,no_primary_tag,flagged,,,,
-question,0f0f533c-ab2a-49e1-8c49-9c284cc7f43d,2022,5,Bank of India has opened an account with CITI bank (operating in USA) in USD. Now Bank of Baroda account held by CITI bank will be referred ,,spot_check,,,,
-question,f7180866-c60a-40f7-9ad1-5e08e0986aaa,2022,5,Total Productive Maintenance (TPM) started as a method of physical asset management focused on maintaining and improving manufacturing machi,,,,,,
-question,574ab732-427c-4cf3-ad94-5074668735b0,2022,5,"If a subscriber wants to opt for upgradation of pension contribution under Atal Pension Yojana, then the subscriber has to pay a differentia",,spot_check,,,,
-question,0f22d1dc-0ce3-4784-bb69-946f0a5b893c,2022,5,Indian Accounting Standard 113 (Ind-AS 113) helps companies with a unified procedure to define the fair value of assets while declaring thei,non_ascii_suspect,flagged,,,,
-question,428ad608-1b71-4330-a935-2a0c7494e7ee,2022,5,"The Comptroller and Auditor-General of India shall, in respect of a financial year, appoint an auditor duly qualified to be appointed as an ",,spot_check,,,,
+question,0f0f533c-ab2a-49e1-8c49-9c284cc7f43d,2022,5,Bank of India has opened an account with CITI bank (operating in USA) in USD. Now Bank of Baroda account held by CITI bank will be referred ,,spot_check,,,,easy
+question,f7180866-c60a-40f7-9ad1-5e08e0986aaa,2022,5,Total Productive Maintenance (TPM) started as a method of physical asset management focused on maintaining and improving manufacturing machi,,,,,,medium
+question,574ab732-427c-4cf3-ad94-5074668735b0,2022,5,"If a subscriber wants to opt for upgradation of pension contribution under Atal Pension Yojana, then the subscriber has to pay a differentia",,spot_check,,,,medium
+question,0f22d1dc-0ce3-4784-bb69-946f0a5b893c,2022,5,Indian Accounting Standard 113 (Ind-AS 113) helps companies with a unified procedure to define the fair value of assets while declaring thei,non_ascii_suspect,flagged,,,,easy
+question,428ad608-1b71-4330-a935-2a0c7494e7ee,2022,5,"The Comptroller and Auditor-General of India shall, in respect of a financial year, appoint an auditor duly qualified to be appointed as an ",,spot_check,,,,easy
 question,537a72b1-5c61-4736-927f-0a757de6aff3,2022,5,"Assume that, currently there is a very high level of unemployment in the economy and there is an upward pressure on the prices of the commod",,,,,,
-question,9f45f3bd-0f0f-4778-b9c0-e4ab852b5c4c,2022,5,"In the most general sense, the gratuity shall be payable to an employee only if an employee has rendered a continuous service for years.",,spot_check,,,,
-question,183a4eb0-483b-4887-a960-26e0891ff14b,2022,5,"Which of the following role does a manager plays in Human Resource Development, when the manager helps the employee to handle the problems o",,spot_check,,,,
-question,b4727bea-8ce3-4f0b-aaf9-3950f0af5a86,2022,5,Which of the following formula gives the correct representation of Fisher equation of money?,,spot_check,,,,
-question,f6128dc2-4be7-46cb-9ddc-b53ef4440f35,2022,6,"Identify the barrier to communication, wherein word which is used commonly in a particular field but not in other fields. As a result, there",,,,,,
-question,f9c6fa8e-eff9-41e6-9890-820d4fa19965,2022,6,"The Reserve Bank of India (RBI) uses headline inflation for Inflation Targeting Framework. In the same regard, headline inflation is based o",,,,,,
-question,693b995f-c370-48a3-9cf2-f55aaca4c237,2022,6,"As per Companies Act, 2013, when can any third person be termed as the beneficial owner of the company ?",,,,,,
-question,52d10634-cf9a-47f7-88d9-7b816a5eacdf,2022,6,"In August 2022, SEBI has allowed Alternate investment Funds (AIF) are now allowed to invest in",,,,,,
-question,54f190d8-70f7-4912-aee9-88d965d697da,2022,6,"In the field of costing, which of the following type of cost is/are categorized on behavioral basis.",,,,,,
-question,8d475ef0-337c-4cec-bc23-9c4577c866b2,2022,6,Which of the following portal acts as grievances redressal cell for the pensioners? Options:,,,,,,
+question,9f45f3bd-0f0f-4778-b9c0-e4ab852b5c4c,2022,5,"In the most general sense, the gratuity shall be payable to an employee only if an employee has rendered a continuous service for years.",,spot_check,,,,easy
+question,183a4eb0-483b-4887-a960-26e0891ff14b,2022,5,"Which of the following role does a manager plays in Human Resource Development, when the manager helps the employee to handle the problems o",,spot_check,,,,easy
+question,b4727bea-8ce3-4f0b-aaf9-3950f0af5a86,2022,5,Which of the following formula gives the correct representation of Fisher equation of money?,,spot_check,,,,easy
+question,f6128dc2-4be7-46cb-9ddc-b53ef4440f35,2022,6,"Identify the barrier to communication, wherein word which is used commonly in a particular field but not in other fields. As a result, there",,,,,,easy
+question,f9c6fa8e-eff9-41e6-9890-820d4fa19965,2022,6,"The Reserve Bank of India (RBI) uses headline inflation for Inflation Targeting Framework. In the same regard, headline inflation is based o",,,,,,easy
+question,693b995f-c370-48a3-9cf2-f55aaca4c237,2022,6,"As per Companies Act, 2013, when can any third person be termed as the beneficial owner of the company ?",,,,,,easy
+question,52d10634-cf9a-47f7-88d9-7b816a5eacdf,2022,6,"In August 2022, SEBI has allowed Alternate investment Funds (AIF) are now allowed to invest in",,,,,,medium
+question,54f190d8-70f7-4912-aee9-88d965d697da,2022,6,"In the field of costing, which of the following type of cost is/are categorized on behavioral basis.",,,,,,easy
+question,8d475ef0-337c-4cec-bc23-9c4577c866b2,2022,6,Which of the following portal acts as grievances redressal cell for the pensioners? Options:,,,,,,easy
 question,657a5900-8bb8-41d9-9d31-c9e427a84052,2022,6,"Assuming that a company took one single asset on operating lease and the company paid an amount of Rs. 1,00,000 straightforwardly. The lease",,,,,,
-question,4c17a7d2-c6c2-4f25-a6f2-c1bf59b0968f,2022,6,"As per Companies Act, 2013, in case of public companies, what should be the maximum time gap between two consecutive meetings of the Board?",,,,,,
+question,4c17a7d2-c6c2-4f25-a6f2-c1bf59b0968f,2022,6,"As per Companies Act, 2013, in case of public companies, what should be the maximum time gap between two consecutive meetings of the Board?",,,,,,easy
 question,1a71b584-34c1-4894-94fa-53dafd969e26,2022,6,"In which of the following market model, a person can assume that change in the pricing strategy of the rival/ competitor company will lead t",,,,,,
-question,32d14c83-38ab-43b5-b338-9a5151e6ae6a,2022,6,"is a biometric enabled Aadhaar-based Digital Life Certificate for pensioners. Pensioners of Central Government, State Government or any othe",,,,,,
-question,f6497a4d-5801-445a-be78-9a2332088d1e,2022,6,Which of the following theories of management talks about the integration of core concepts of the classical model with social/behavioral sci,,,,,,
-question,81544803-02c0-4bde-b176-eb78a3c6c234,2022,6,The Phillips curve shows relation between Options:,,,,,,
-question,95da4941-0329-4b9a-b350-44d47b6e0e08,2022,7,"As per the recent regulations released by RBI for regulation of NBFCs, Non-Deposit Taking NBFC (wherein the asset size is more than 1000 cro",,,,,,
-question,d7a942a5-cd7e-4d7d-a5f2-23e25dbe280c,2022,7,"Capital in business refers to the sum of financial assets that are required to produce goods or services. In the same regard, which of the f",,,,,,
-question,ecc22bd3-0e45-473f-88f0-2a44c8d4e556,2022,7,Which of the following is not the component of core inflation Options:,,,,,,
-question,996e61fb-a8ae-4984-944f-83612d9e14a2,2022,7,"In an organisation, total units produced in an organisation is 16000 and 18000 units respectively, therefore the total cost incurred increas",,,,,,
-question,3c4e50ea-695a-4be0-b7ee-1f669557dc6b,2022,7,Which of the following option represents the maximum age to enroll under Pradhan Mantri Vaya Vandana Yojana (PMVVY),,,,,,
-question,eda6ac6a-089f-4bb1-ab8c-59a08f514178,2022,7,"As per Companies Act 2013, How many independent directors should be there in a listed company?",,,,,,
-question,bce7a1b2-c043-43a4-bee9-ff1a59cd76bf,2022,7,"Pradhan Mantri Vaya Vandana Yojana (PMVVY) was launched in the year 2017, PMVVY aims to protect elderly persons aged 60 years and above, aga",,,,,,
-question,be81cfa4-549a-4efb-a20a-3dc5ebc160ff,2022,7,"Suppose in an organisation, employees have good communication skills, there is a high level of mutual trust and every employee respects the ",,,,,,
-question,6aaf2251-ad95-4001-9200-baeb4e2b6ca1,2022,7,"As per the two-sector model, income and employment is based on which of the following component?",,,,,,
-question,cd3fb691-9354-4f89-b012-c7f5be94688b,2022,8,"Identify the role of the leader, wherein the leader established a two-way communication between Management and employees and the manager mot",,,,,,
+question,32d14c83-38ab-43b5-b338-9a5151e6ae6a,2022,6,"is a biometric enabled Aadhaar-based Digital Life Certificate for pensioners. Pensioners of Central Government, State Government or any othe",,,,,,easy
+question,f6497a4d-5801-445a-be78-9a2332088d1e,2022,6,Which of the following theories of management talks about the integration of core concepts of the classical model with social/behavioral sci,,,,,,easy
+question,81544803-02c0-4bde-b176-eb78a3c6c234,2022,6,The Phillips curve shows relation between Options:,,,,,,easy
+question,95da4941-0329-4b9a-b350-44d47b6e0e08,2022,7,"As per the recent regulations released by RBI for regulation of NBFCs, Non-Deposit Taking NBFC (wherein the asset size is more than 1000 cro",,,,,,medium
+question,d7a942a5-cd7e-4d7d-a5f2-23e25dbe280c,2022,7,"Capital in business refers to the sum of financial assets that are required to produce goods or services. In the same regard, which of the f",,,,,,easy
+question,ecc22bd3-0e45-473f-88f0-2a44c8d4e556,2022,7,Which of the following is not the component of core inflation Options:,,,,,,easy
+question,996e61fb-a8ae-4984-944f-83612d9e14a2,2022,7,"In an organisation, total units produced in an organisation is 16000 and 18000 units respectively, therefore the total cost incurred increas",,,,,,medium
+question,3c4e50ea-695a-4be0-b7ee-1f669557dc6b,2022,7,Which of the following option represents the maximum age to enroll under Pradhan Mantri Vaya Vandana Yojana (PMVVY),,,,,,easy
+question,eda6ac6a-089f-4bb1-ab8c-59a08f514178,2022,7,"As per Companies Act 2013, How many independent directors should be there in a listed company?",,,,,,medium
+question,bce7a1b2-c043-43a4-bee9-ff1a59cd76bf,2022,7,"Pradhan Mantri Vaya Vandana Yojana (PMVVY) was launched in the year 2017, PMVVY aims to protect elderly persons aged 60 years and above, aga",,,,,,easy
+question,be81cfa4-549a-4efb-a20a-3dc5ebc160ff,2022,7,"Suppose in an organisation, employees have good communication skills, there is a high level of mutual trust and every employee respects the ",,,,,,medium
+question,6aaf2251-ad95-4001-9200-baeb4e2b6ca1,2022,7,"As per the two-sector model, income and employment is based on which of the following component?",,,,,,medium
+question,cd3fb691-9354-4f89-b012-c7f5be94688b,2022,8,"Identify the role of the leader, wherein the leader established a two-way communication between Management and employees and the manager mot",,,,,,easy
 tag,c59459b6-3ac2-4ff2-8b7e-fbc3580659c5,2022,00a2b878-d8d9-42c4-88ff-c3557a6465a2,"Going concern, conservatism, matching, consistency",,spot_check,,,,
 tag,592458da-a7cd-485c-9cdb-fb9b94739720,2022,069fdcf6-30e5-4be7-9ef2-6ae4f9631ca6,Social Stock Exchange and Social Impact Funds,,,,,,
 tag,a0fefe4e-9c02-49c3-b365-cdc7602faea6,2022,06c6dc13-3a3f-4af1-96a7-869e8708004e,"Kurt Lewin styles ΓÇö autocratic, democratic, laissez-faire",,,,,,
@@ -185,98 +185,98 @@ tag,25e89afa-d3b7-472f-a988-13ab656a7e41,2022,f711665c-2d94-490d-83c3-92dece0f48
 tag,a74bc89d-2a94-45f0-912a-e0bd2345403b,2022,fb118ab0-dd76-4198-b100-b690834c337a,Status and coverage of the pension sector,,,,,,
 tag,b667962a-8c6c-4dfc-b527-d7e5573e5222,2022,ffdc4541-194f-4155-a578-d0fc9d7d4c91,Financial Inclusion Index and schemes,,,,,,
 question,e8b20c5e-b2c8-4851-9436-8f3af2b4234f,2025,1,How many persons live before Priya?,no_primary_tag,flagged,,,,
-question,579d1e53-7bca-421a-af19-6680a8509f7c,2025,1,"While determining the share of States in vertical devolution, the Finance Commission primarily operates with which guiding principle?",,spot_check,,,,
-question,0e81627c-3d88-4590-8995-830c6f3da969,2025,1,What is the other name for Laissez-faire leadership?,,spot_check,,,,
-question,d76fe560-3622-48b7-a01a-7900a92a30bc,2025,1,"The scheme launched for workers in the unorganised sector, not covered under any Central or State Government pension scheme, where the Gover",non_ascii_suspect,flagged,,,,
-question,35c02be5-f102-4511-be43-0aa9e568ec1f,2025,1,What is the Law of Demand?,,spot_check,,,,
+question,579d1e53-7bca-421a-af19-6680a8509f7c,2025,1,"While determining the share of States in vertical devolution, the Finance Commission primarily operates with which guiding principle?",,spot_check,,,,medium
+question,0e81627c-3d88-4590-8995-830c6f3da969,2025,1,What is the other name for Laissez-faire leadership?,,spot_check,,,,easy
+question,d76fe560-3622-48b7-a01a-7900a92a30bc,2025,1,"The scheme launched for workers in the unorganised sector, not covered under any Central or State Government pension scheme, where the Gover",non_ascii_suspect,flagged,,,,easy
+question,35c02be5-f102-4511-be43-0aa9e568ec1f,2025,1,What is the Law of Demand?,,spot_check,,,,easy
 question,58c4740a-4902-4c13-8146-2f18fa9bde3e,2025,1,Write an Essay of about 250 -270 words on any one of the following topics: (30 Marks) (i) Benefits of mandatory internships in universities ,non_ascii_suspect,flagged,,,,
-question,ed61bb20-099d-4383-a45d-eee24f3466a6,2025,1,Self-esteem is under which level of Maslow's hierarchy?,,spot_check,,,,
-question,380ef6d0-5f09-4b6f-bb80-39f4351129b4,2025,1,A company has a current market price of Rs 125 per share. It issues Right Shares at Rs 50 each at 20% premium in the ratio of 1:5. Calculate,,spot_check,,,,
-question,a07de6ca-efc2-4639-b563-84b22d96c5f9,2025,1,(I) x2 - 13x + 36 = 0 (II) y2 - 15y + 54 = 0,,spot_check,,,,
+question,ed61bb20-099d-4383-a45d-eee24f3466a6,2025,1,Self-esteem is under which level of Maslow's hierarchy?,,spot_check,,,,easy
+question,380ef6d0-5f09-4b6f-bb80-39f4351129b4,2025,1,A company has a current market price of Rs 125 per share. It issues Right Shares at Rs 50 each at 20% premium in the ratio of 1:5. Calculate,,spot_check,,,,medium
+question,a07de6ca-efc2-4639-b563-84b22d96c5f9,2025,1,(I) x2 - 13x + 36 = 0 (II) y2 - 15y + 54 = 0,,spot_check,,,,medium
 question,73337080-32e0-46ab-8344-693a52d6b2d3,2025,1,Which of the following BEST completes the blank?,no_primary_tag,flagged,,,,
-question,7efc5015-6179-4620-8638-61dd6decb597,2025,1,Which of the following is NOT a feature of a Lean System?,,spot_check,,,,
-question,1d9f687b-031d-47f5-98e7-4663a2229147,2025,1,"In the accounting process, which of the following represents the final step?",,spot_check,,,,
-question,c242d11d-4538-48c3-b956-468d55086375,2025,1,"As per the Companies Act, 2013, when an auditor resigns, to whom must the auditor intimate their resignation?",,spot_check,,,,
+question,7efc5015-6179-4620-8638-61dd6decb597,2025,1,Which of the following is NOT a feature of a Lean System?,,spot_check,,,,medium
+question,1d9f687b-031d-47f5-98e7-4663a2229147,2025,1,"In the accounting process, which of the following represents the final step?",,spot_check,,,,easy
+question,c242d11d-4538-48c3-b956-468d55086375,2025,1,"As per the Companies Act, 2013, when an auditor resigns, to whom must the auditor intimate their resignation?",,spot_check,,,,easy
 question,6408407c-04c3-4330-be30-6c3ee879e04a,2025,2,Four of the following five are based on a certain way to form a group. Who among the following doesn't belong to the group?,no_primary_tag,flagged,,,,
-question,d9a14085-a647-4e0e-bac1-a7da4c533778,2025,2,In which of the following markets are the treasury bills issued?,,,,,,
-question,d8a9c9b9-e0e9-40f0-bd04-66342c60ccc0,2025,2,Which of the following are two factors of Herzberg’s Two-Factor Theory of Motivation?,non_ascii_suspect,flagged,,,,
-question,bf39165f-5722-443b-8f74-afadbb674f2f,2025,2,"As per PFRDA (Redressal of Subscriber Grievance) Regulations, 2015, every intermediary (such as CRA, POP, Trustee Bank, etc.) must resolve o",,spot_check,,,,
-question,4856b840-5587-4351-b11c-05ecc265e2ae,2025,2,Manufacturing comes under which of the following sectors of the economy?,,,,,,
+question,d9a14085-a647-4e0e-bac1-a7da4c533778,2025,2,In which of the following markets are the treasury bills issued?,,,,,,easy
+question,d8a9c9b9-e0e9-40f0-bd04-66342c60ccc0,2025,2,Which of the following are two factors of Herzberg’s Two-Factor Theory of Motivation?,non_ascii_suspect,flagged,,,,easy
+question,bf39165f-5722-443b-8f74-afadbb674f2f,2025,2,"As per PFRDA (Redressal of Subscriber Grievance) Regulations, 2015, every intermediary (such as CRA, POP, Trustee Bank, etc.) must resolve o",,spot_check,,,,easy
+question,4856b840-5587-4351-b11c-05ecc265e2ae,2025,2,Manufacturing comes under which of the following sectors of the economy?,,,,,,easy
 question,06e3ded3-0307-4586-b76b-5810b132e25d,2025,2,Make a Précis of the following passage in 140 - 160 words and give it a suitable title. (30 Marks) Japan’s demographic curve has bent decisi,non_ascii_suspect,flagged,,,,
-question,463d9dcb-a3a9-430d-96aa-0c465953ff10,2025,2,The process of laying objectives and goals is associated with which function of management?,,,,,,
-question,97098263-bc0b-4f1c-b554-d9945882fe06,2025,2,Which of the following is considered an asset covered under Accounting Standard (AS) 2 Valuation of Inventories?,,,,,,
-question,a92f9740-c15d-4c84-b429-a09079166df0,2025,2,I. x2 + 19x + 90 = 0 II. 3y - 16 = 8y + 24,,,,,,
+question,463d9dcb-a3a9-430d-96aa-0c465953ff10,2025,2,The process of laying objectives and goals is associated with which function of management?,,,,,,easy
+question,97098263-bc0b-4f1c-b554-d9945882fe06,2025,2,Which of the following is considered an asset covered under Accounting Standard (AS) 2 Valuation of Inventories?,,,,,,easy
+question,a92f9740-c15d-4c84-b429-a09079166df0,2025,2,I. x2 + 19x + 90 = 0 II. 3y - 16 = 8y + 24,,,,,,medium
 question,9b8ba100-0d3f-4918-b600-98bbd8dea827,2025,2,The paradox in the passage refers to:,no_primary_tag,flagged,,,,
-question,245fc804-6c0c-44fa-97b1-b3bafa0142a2,2025,2,"In Six Sigma methodology, employees who handle Six Sigma projects along with their regular job responsibilities are known as:",,,,,,
-question,9693d7e7-f490-42a0-8ef3-98fc209b4916,2025,2,"Calculate Current Ratio from the following: • Cash= 1,00,000 • Disposable Investments (less than 1 year)= 50,000 • Inventory= 75,000 • Credi",non_ascii_suspect,flagged,,,,
-question,b35e7301-524b-469f-82c5-c8909cfd2fdf,2025,2,"Under Section 125 of the Companies Act, 2013, the funds accumulated in the Investor Education and Protection Fund (IEPF) cannot be used for ",,,,,,
+question,245fc804-6c0c-44fa-97b1-b3bafa0142a2,2025,2,"In Six Sigma methodology, employees who handle Six Sigma projects along with their regular job responsibilities are known as:",,,,,,easy
+question,9693d7e7-f490-42a0-8ef3-98fc209b4916,2025,2,"Calculate Current Ratio from the following: • Cash= 1,00,000 • Disposable Investments (less than 1 year)= 50,000 • Inventory= 75,000 • Credi",non_ascii_suspect,flagged,,,,medium
+question,b35e7301-524b-469f-82c5-c8909cfd2fdf,2025,2,"Under Section 125 of the Companies Act, 2013, the funds accumulated in the Investor Education and Protection Fund (IEPF) cannot be used for ",,,,,,easy
 question,89166401-322a-490c-9027-00b4cf4fe531,2025,3,Which of the following statements is correct?,no_primary_tag,flagged,,,,
-question,251b4859-79e6-4c41-ab6e-e1e592adac26,2025,3,Why did the Reserve Bank of India (RBI) intensify its use of forward and spot foreign exchange (FX) interventions during the Russia–Ukraine ,non_ascii_suspect,flagged,,,,
-question,85a0eb2f-ed12-48e9-88b9-3473d436ae8b,2025,3,"According to Douglas McGregor’s Theory X, what assumption is made about people?",non_ascii_suspect,flagged,,,,
-question,35e9be36-c2e8-40da-8c5a-3056f0ce80f3,2025,3,"As per the PFRDA (Redressal of Subscriber Grievance) Regulations, 2015 (as amended), the NPS Trust must resolve or reply to a grievance rece",,,,,,
-question,366d83bd-d870-4133-8a9f-73948abee181,2025,3,Which of the following is not a non-tax revenue receipt?,,,,,,
+question,251b4859-79e6-4c41-ab6e-e1e592adac26,2025,3,Why did the Reserve Bank of India (RBI) intensify its use of forward and spot foreign exchange (FX) interventions during the Russia–Ukraine ,non_ascii_suspect,flagged,,,,medium
+question,85a0eb2f-ed12-48e9-88b9-3473d436ae8b,2025,3,"According to Douglas McGregor’s Theory X, what assumption is made about people?",non_ascii_suspect,flagged,,,,easy
+question,35e9be36-c2e8-40da-8c5a-3056f0ce80f3,2025,3,"As per the PFRDA (Redressal of Subscriber Grievance) Regulations, 2015 (as amended), the NPS Trust must resolve or reply to a grievance rece",,,,,,easy
+question,366d83bd-d870-4133-8a9f-73948abee181,2025,3,Which of the following is not a non-tax revenue receipt?,,,,,,medium
 question,1c3e2576-127e-450f-921d-e00c8055dfbf,2025,3,Read the passage given below and answer the questions based on the passage in your own words. (40 Marks) Humans evolved over hundreds of tho,non_ascii_suspect,flagged,,,,
-question,bbf3f8f9-97c4-4f27-9d5a-29060d3c0134,2025,3,Which of the following is the developmental role of HRD?,,,,,,
-question,ab3a09d2-ca0e-4090-8b61-990b33f50e02,2025,3,What is the effect of issuing bonus shares by a company?,,,,,,
-question,7441aefe-fc75-4ac4-babd-f4eceb1a2fc2,2025,3,I. 6x2 - 17x + 12 = 0 II. 15y2 - 17y + 4 = 0,,,,,,
+question,bbf3f8f9-97c4-4f27-9d5a-29060d3c0134,2025,3,Which of the following is the developmental role of HRD?,,,,,,medium
+question,ab3a09d2-ca0e-4090-8b61-990b33f50e02,2025,3,What is the effect of issuing bonus shares by a company?,,,,,,medium
+question,7441aefe-fc75-4ac4-babd-f4eceb1a2fc2,2025,3,I. 6x2 - 17x + 12 = 0 II. 15y2 - 17y + 4 = 0,,,,,,medium
 question,3f962835-d0e3-443c-80c7-b3d350b291b7,2025,3,The word autonomy as used in the passage is closest in meaning to:,no_primary_tag,flagged,,,,
-question,53cb12ef-8c60-4de0-89a7-6b75d4b9857f,2025,3,Total Sales – Break Even Sales = _____________,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,60474406-be56-4da0-8e90-0f2d522c4057,2025,3,Which of the following activities is classified as a financing activity in the cash flow statement?,,,,,,
-question,f123a344-c518-45c1-9d06-db82ede563e1,2025,3,"Under Section 44 of the Indian Companies Act, 2013, shares and debentures are classified as:",,,,,,
+question,53cb12ef-8c60-4de0-89a7-6b75d4b9857f,2025,3,Total Sales – Break Even Sales = _____________,non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,60474406-be56-4da0-8e90-0f2d522c4057,2025,3,Which of the following activities is classified as a financing activity in the cash flow statement?,,,,,,easy
+question,f123a344-c518-45c1-9d06-db82ede563e1,2025,3,"Under Section 44 of the Indian Companies Act, 2013, shares and debentures are classified as:",,,,,,easy
 question,e32141db-751a-4baf-9d6e-e1bb00eaa1da,2025,4,"How many floors are between Komal and the floor of a person, who likes Cricket?",no_primary_tag,flagged,,,,
-question,eb122c86-8080-450b-9f7f-133f0102a87e,2025,4,Which of the following is considered a zero-rated supply under GST?,,,,,,
+question,eb122c86-8080-450b-9f7f-133f0102a87e,2025,4,Which of the following is considered a zero-rated supply under GST?,,,,,,easy
 question,14cab782-ae14-4855-bdbd-a31f12f00b4f,2025,4,Which of the following is an example of upward communication?,,,,,,
-question,ca8e3291-e59c-4033-a5df-539819c0b699,2025,4,"As per PFRDA guidelines, who among the following is eligible to join the National Pension System (NPS) All Citizens Model in terms of age an",,,,,,
+question,ca8e3291-e59c-4033-a5df-539819c0b699,2025,4,"As per PFRDA guidelines, who among the following is eligible to join the National Pension System (NPS) All Citizens Model in terms of age an",,,,,,easy
 question,18bc9d24-7b4d-4ef9-9c02-9dd01c07a1cb,2025,4,What distinguishes Keynesâ€™ Consumption Function from Friedmanâ€™s Permanent Income Hypothesis?,non_ascii_suspect,flagged,,,,
-question,f466ce8d-1435-4715-a1e5-2cb9cb46f662,2025,4,"There is a theory given by Goleman, which says 'do as I instruct', identify it?",,spot_check,,,,
-question,c3f342ae-f1ff-468c-a33b-3bfb07866139,2025,4,Which of the following statements about non-integrated foreign operations is incorrect according to Accounting Standard 11 (AS 11)?,,spot_check,,,,
-question,ef00aecf-7eca-4c24-8fa1-44e8b7db7e98,2025,4,I: x2 - 29x + 210 = 0 II: y2 - 27y + 182 = 0,,,,,,
+question,f466ce8d-1435-4715-a1e5-2cb9cb46f662,2025,4,"There is a theory given by Goleman, which says 'do as I instruct', identify it?",,spot_check,,,,easy
+question,c3f342ae-f1ff-468c-a33b-3bfb07866139,2025,4,Which of the following statements about non-integrated foreign operations is incorrect according to Accounting Standard 11 (AS 11)?,,spot_check,,,,easy
+question,ef00aecf-7eca-4c24-8fa1-44e8b7db7e98,2025,4,I: x2 - 29x + 210 = 0 II: y2 - 27y + 182 = 0,,,,,,medium
 question,c832b5e8-8df6-4816-93d5-231e3926ccb0,2025,4,Which of the following is an inference that can be drawn but is NOT explicitly stated?,no_primary_tag,flagged,,,,
-question,201e7c60-e0ff-4699-b7f4-9716c0c7e4d4,2025,4,"A company planned to produce 200 units. The normal loss is 10%, and the actual output is 150 units. The abnormal gain or loss is:",,,,,,
-question,f54fb914-c79d-43ff-b6b5-fd6336d6abfd,2025,4,"Calculate net profit ratio from the following: • Revenue From Operations = 5,00,000 • Other Income = 50,000 • Stock in trade = 2,00,000 • Em",non_ascii_suspect,flagged,,,,
-question,dce6ef5e-9f98-48e6-acb1-19843069cfed,2025,4,"As per the Companies Act, 2013, when a public issue is made, the company must inform which of the following?",,spot_check,,,,
+question,201e7c60-e0ff-4699-b7f4-9716c0c7e4d4,2025,4,"A company planned to produce 200 units. The normal loss is 10%, and the actual output is 150 units. The abnormal gain or loss is:",,,,,,medium
+question,f54fb914-c79d-43ff-b6b5-fd6336d6abfd,2025,4,"Calculate net profit ratio from the following: • Revenue From Operations = 5,00,000 • Other Income = 50,000 • Stock in trade = 2,00,000 • Em",non_ascii_suspect,flagged,,,,medium
+question,dce6ef5e-9f98-48e6-acb1-19843069cfed,2025,4,"As per the Companies Act, 2013, when a public issue is made, the company must inform which of the following?",,spot_check,,,,easy
 question,9438a52e-502c-49a4-a1e1-3e73f4512859,2025,5,"Person, who lives immediately above Shalu, likes ________.",suspicious_repeat_char;no_primary_tag,flagged,,,,
 question,3fc7c267-f616-4d2f-9c87-5a5d238bdc9a,2025,5,Why is the Reserve Bank of India (RBI) relying more on the Standing Deposit Facility (SDF) instead of the Reverse Repo Rate?,,,,,,
-question,fcca5b3e-8457-40db-9923-7eb15a99ee84,2025,5,"Under the Atal Pension Yojana (APY), a subscriber aged 18 years wishes to receive a minimum guaranteed pension of Rs 5,000 per month after a",,,,,,
-question,7db806b7-8abf-48f7-9905-7779001cdedc,2025,5,The World Bank classifies countries as per capita income into different categories. Which of the following categories is not included?,,,,,,
-question,d1bf69e7-79ec-41f9-8897-897eaf6fe753,2025,5,"Which of the following correctly represents the meanings of E, S, and L in the PESTEL analysis framework?",,,,,,
-question,9579e5bf-cc5d-49cc-b88b-a4bafb056a1d,2025,5,Classify each of the following as either a source of fund (A) or an application of fund (B): 1. Redemption of debentures with premium 2. Fun,,,,,,
-question,17a20b31-4e60-45de-adcc-9242afbca4c8,2025,5,I: x2 - 4x - 117 = 0 II: y2 + 3y - 180 = 0,,,,,,
+question,fcca5b3e-8457-40db-9923-7eb15a99ee84,2025,5,"Under the Atal Pension Yojana (APY), a subscriber aged 18 years wishes to receive a minimum guaranteed pension of Rs 5,000 per month after a",,,,,,medium
+question,7db806b7-8abf-48f7-9905-7779001cdedc,2025,5,The World Bank classifies countries as per capita income into different categories. Which of the following categories is not included?,,,,,,medium
+question,d1bf69e7-79ec-41f9-8897-897eaf6fe753,2025,5,"Which of the following correctly represents the meanings of E, S, and L in the PESTEL analysis framework?",,,,,,easy
+question,9579e5bf-cc5d-49cc-b88b-a4bafb056a1d,2025,5,Classify each of the following as either a source of fund (A) or an application of fund (B): 1. Redemption of debentures with premium 2. Fun,,,,,,medium
+question,17a20b31-4e60-45de-adcc-9242afbca4c8,2025,5,I: x2 - 4x - 117 = 0 II: y2 + 3y - 180 = 0,,,,,,medium
 question,b195d4bd-bc6a-45ba-94f1-20ed30b08740,2025,5,The authorâ€™s discussion of â€œscreen-free retreatsâ€ and â€œbranded challengesâ€ primarily serves to highlight:,non_ascii_suspect;no_primary_tag,flagged,,,,
-question,4c0772fd-0a2c-48f7-aff0-65b107bfe660,2025,5,Which of the following is an incorrect interpretation of DMAIC?,,,,,,
+question,4c0772fd-0a2c-48f7-aff0-65b107bfe660,2025,5,Which of the following is an incorrect interpretation of DMAIC?,,,,,,easy
 question,a863a3fd-641d-4445-bc9d-0e8b5086c112,2025,5,"In the context of Employee Stock Options (ESOPs), which of the following is a pre requisite for an employee to exercise the right to purchas",,,,,,
-question,88d5d6f3-2c2b-4754-aa3f-04b53e193e81,2025,5,"Under the Companies Act, 2013, who is primarily responsible for addressing the grievances of shareholders?",,,,,,
+question,88d5d6f3-2c2b-4754-aa3f-04b53e193e81,2025,5,"Under the Companies Act, 2013, who is primarily responsible for addressing the grievances of shareholders?",,,,,,easy
 question,33fcd64e-7c50-46d1-9308-4095d84c133b,2025,6,Which of the following is a key benefit of stablecoins?,,spot_check,,,,
-question,9d80988d-2dce-463f-9eda-fbe4fa96da71,2025,6,"A person has a corpus of Rs 2,450,000 in their NPS account. Upon retirement, the individual decides to withdraw the entire corpus. As per th",,spot_check,,,,
-question,b24f56fd-a2e6-43fd-a687-4ce4813bec62,2025,6,Which of the following best describes the Pygmalion effect?,,,,,,
+question,9d80988d-2dce-463f-9eda-fbe4fa96da71,2025,6,"A person has a corpus of Rs 2,450,000 in their NPS account. Upon retirement, the individual decides to withdraw the entire corpus. As per th",,spot_check,,,,medium
+question,b24f56fd-a2e6-43fd-a687-4ce4813bec62,2025,6,Which of the following best describes the Pygmalion effect?,,,,,,easy
 question,751f629f-9082-47e7-a654-e5be590c6ca9,2025,6,"A company purchased inventory for Rs 35 lakhs. It sold 60% of it. The remaining inventory is now expected to be sold for Rs 16 lakhs, but a ",,,,,,
 question,ebe2a721-6c82-4ebb-a901-fbbe702b9606,2025,6,Average per kg price of Kiwi in all 3 shops together is what percent of the average per kg price of Banana in all 3 shops together?,no_primary_tag,flagged,,,,
 question,e6389574-a22d-47f4-b0bb-2f259fc992ef,2025,6,Which of the following is the MOST suitable antonym for abstinence (as used in the passage)?,no_primary_tag,flagged,,,,
-question,9f862c73-1d40-46b7-b8e3-f2ee7891de2e,2025,6,Batch costing is classified under which type of costing?,,spot_check,,,,
-question,b4e8cc4e-0e87-431c-92fa-d47292a3a6b5,2025,6,"Under the Companies Act, 2013, who is considered a ""small shareholder"" based on the value of shares held?",,,,,,
-question,90e0a40c-336f-48fd-9c8c-f4f40abda007,2025,7,How many people celebrate between B and the one who Acer?,,spot_check,,,,
+question,9f862c73-1d40-46b7-b8e3-f2ee7891de2e,2025,6,Batch costing is classified under which type of costing?,,spot_check,,,,easy
+question,b4e8cc4e-0e87-431c-92fa-d47292a3a6b5,2025,6,"Under the Companies Act, 2013, who is considered a ""small shareholder"" based on the value of shares held?",,,,,,easy
+question,90e0a40c-336f-48fd-9c8c-f4f40abda007,2025,7,How many people celebrate between B and the one who Acer?,,spot_check,,,,medium
 question,d0e1c7bc-6aa5-4f1c-bf4b-68e5a33e4a6e,2025,7,What is the role of SEBI in implementing the guidelines of Business Responsibility and Sustainability Reporting (BRSR)?,,,,,,
-question,3348c013-b514-4511-a14e-83b5bf063dc8,2025,7,"Upon making a contribution to your NPS account, how many working days does it typically take for the amount to reflect in your account?",,,,,,
+question,3348c013-b514-4511-a14e-83b5bf063dc8,2025,7,"Upon making a contribution to your NPS account, how many working days does it typically take for the amount to reflect in your account?",,,,,,medium
 question,3d884edf-91b2-4102-adb4-78cc3fb07a63,2025,7,Match the following Substances Elements 1. Business can beat competitors through,no_primary_tag,flagged,,,,
 question,945e65ef-d63c-440c-828e-f228dc6e548a,2025,7,"If Karan bought 1 kg each of each type of fruit from shop Q and his friend Harish bought 2 kg of each type of fruit from shop R, then what i",no_primary_tag,flagged,,,,
-question,b63fd8f0-dff0-41d3-855c-8496ff4d3b9f,2025,7,Hardly had the negotiations concluded (A)/ when the delegates (B)/ was asked to sign (C)/ the preliminary agreement. (D),,spot_check,,,,
-question,9fca5a5e-3b72-49c3-971a-d94a88b20113,2025,7,Which of the following types of costing includes both variable and fixed costs in the cost of all products and services?,,,,,,
+question,b63fd8f0-dff0-41d3-855c-8496ff4d3b9f,2025,7,Hardly had the negotiations concluded (A)/ when the delegates (B)/ was asked to sign (C)/ the preliminary agreement. (D),,spot_check,,,,easy
+question,9fca5a5e-3b72-49c3-971a-d94a88b20113,2025,7,Which of the following types of costing includes both variable and fixed costs in the cost of all products and services?,,,,,,easy
 question,a9cebbf6-e6b4-4ef8-906e-37103385d726,2025,7,"Which of the following criteria best defines a ""startup"" as per the standard definition? 1. Age of the business (less than 7 years) 2. Profi",no_primary_tag,flagged,,,,
-question,1323449c-67e2-4f2b-afce-aed87cbba863,2025,8,Which of the following is correct?,,,,,,
-question,15780ef5-4544-4d2f-80c0-e9d2107c561a,2025,8,What is the paid-up capital of the Reserve Bank of India (RBI)?,,,,,,
+question,1323449c-67e2-4f2b-afce-aed87cbba863,2025,8,Which of the following is correct?,,,,,,medium
+question,15780ef5-4544-4d2f-80c0-e9d2107c561a,2025,8,What is the paid-up capital of the Reserve Bank of India (RBI)?,,,,,,easy
 question,bd207052-f21c-4f39-b0c3-1de691e73f28,2025,8,"Regarding the Atal Pension Yojana (APY), which of the following statements is/are correct? 1. The Government provides a guaranteed minimum p",,,,,,
 question,fc144020-5220-4db7-98ce-4f649eca8dcb,2025,8,Sum of per kg prices of Banana and Kiwi together at shop R is what percent of sum of per kg prices of Banana and Kiwi together at shop P ?,no_primary_tag,flagged,,,,
-question,e78a05cd-8beb-424e-afef-63002265404d,2025,8,"The committee, along with the advisors, (A)/ are scheduled to meet next week (B)/ to finalize the guidelines (C)/ for the upcoming policy dr",,,,,,
-question,a3384832-880f-427b-bc1b-9c117762b340,2025,8,"Under Kaizen, which type of improvement is emphasized?",,,,,,
-question,9493f208-b993-4f1c-8d56-404cbf702e47,2025,9,Which of the following laptops has the one who celebrates on 13th May?,,,,,,
+question,e78a05cd-8beb-424e-afef-63002265404d,2025,8,"The committee, along with the advisors, (A)/ are scheduled to meet next week (B)/ to finalize the guidelines (C)/ for the upcoming policy dr",,,,,,easy
+question,a3384832-880f-427b-bc1b-9c117762b340,2025,8,"Under Kaizen, which type of improvement is emphasized?",,,,,,easy
+question,9493f208-b993-4f1c-8d56-404cbf702e47,2025,9,Which of the following laptops has the one who celebrates on 13th May?,,,,,,medium
 question,9b2bf9aa-c09b-4c88-ad3d-aafd2af969d3,2025,9,What is the main outcome of the GENIUS Act (Guiding and Establishing National Innovation for U.S. Stablecoins)?,,,,,,
 question,dbfd7f6f-0598-45a3-8ab8-91e93d9227e7,2025,9,Cost per kg of Kiwi at shop R is what percent more than the average cost per kg of Kiwi at shops P and Q?,no_primary_tag,flagged,,,,
-question,21482721-ceca-467c-9eeb-16978d046eca,2025,9,"Neither the CEO nor the managers (A)/ appears willing to take responsibility (B)/ for the decline in sales, (C)/ despite repeated inquiries.",,,,,,
+question,21482721-ceca-467c-9eeb-16978d046eca,2025,9,"Neither the CEO nor the managers (A)/ appears willing to take responsibility (B)/ for the decline in sales, (C)/ despite repeated inquiries.",,,,,,easy
 question,5d1983e4-ed16-43f9-867b-64caae00a761,2025,9,"In production and service management, the maximum time allowed to serve a customer or produce a unit is referred to as:",,,,,,
-question,9711c2d3-6fb2-4f64-bc6c-94bec3f53344,2025,10,Which of the following combinations is true with respect to the final arrangement?,,,,,,
+question,9711c2d3-6fb2-4f64-bc6c-94bec3f53344,2025,10,Which of the following combinations is true with respect to the final arrangement?,,,,,,medium
 question,836d24de-a4a4-42d6-87ae-89d508b86304,2025,10,Sum of prices per kg of all 5 fruits together at shop Q is what percent more than the sum of prices per kg of all 5 fruits together at shop ,no_primary_tag,flagged,,,,
-question,edf00c9c-bc4f-4674-b6f4-2904e8b0be3e,2025,10,The speaker emphasized (A)/ that honesty and integrity (B)/ is the cornerstone (C)/ of a successful career. (D),,,,,,
-question,023df684-a039-49a5-9934-cfe8b7e5a961,2025,11,How many steps are required to obtain the final output?,,spot_check,,,,
+question,edf00c9c-bc4f-4674-b6f4-2904e8b0be3e,2025,10,The speaker emphasized (A)/ that honesty and integrity (B)/ is the cornerstone (C)/ of a successful career. (D),,,,,,easy
+question,023df684-a039-49a5-9934-cfe8b7e5a961,2025,11,How many steps are required to obtain the final output?,,spot_check,,,,medium
 question,59f31669-7079-4752-b8de-dc9c84c2eda9,2025,11,Which of the following should be the FIRST sentence after rearrangement?,,spot_check,,,,
 question,fec7d98a-90fc-40a3-8e8e-5cbae54ae78b,2025,12,Which of the following numbers is fourth from the right in the penultimate step?,,,,,,
 question,97186d05-4d35-4f24-a869-ef6b78317ae5,2025,12,Which of the following should be the FOURTH sentence after reshuffling?,,,,,,
@@ -284,13 +284,13 @@ question,a5d7c19a-7f42-4695-a484-877f7a84171f,2025,13,What is the sum of the thi
 question,2d4a7183-0d2d-4e50-9339-cdc6cb24baf8,2025,13,"The economist argued that excessive speculation (A) distorted markets, while insufficient volatility (B) restricted innovation and monetary ",,,,,,
 question,3c1c9326-f66d-42dc-be0d-71129b43c68c,2025,14,What is the difference of the third number from the left end in step 1 and second number from the right end in step 2 of the given input?,,,,,,
 question,18d31323-09a7-4095-a663-6d6153bde0c0,2025,14,"The playwrightâ€™s allegory (A) was lauded for its subversion (B) of tradition, but critics claimed the narrativeâ€™s authenticity (C) colla",non_ascii_suspect,flagged,,,,
-question,ffb6d5a3-0888-4f0a-90cd-f1ec4e3e65a7,2025,15,Which among the following is the fifth element from the right end in the final step?,,,,,,
-question,96ee11f5-c59f-404f-98a0-13bb8b64341b,2025,15,"The biologist demonstrated how adaptation (A) in ecosystems is driven not by hierarchy (B), but by cooperation (C) and evolutionary continge",,,,,,
-question,ad034028-d3c7-49bb-9036-618a325a4e52,2025,16,Statements: Only a few Blue is Yellow All Yellow is Pink No Pink is Grey Conclusions: I. All Grey can be Blue II. All Yellow can be Grey,,spot_check,,,,
-question,d5234a99-a8a4-45c5-8832-5904dc85f464,2025,17,Statement: All Pens are Pencils. Some Pencils are Books. No Book is Eraser. Conclusions: I. All Pen being Eraser is a possibility. II. No Pe,,,,,,
+question,ffb6d5a3-0888-4f0a-90cd-f1ec4e3e65a7,2025,15,Which among the following is the fifth element from the right end in the final step?,,,,,,medium
+question,96ee11f5-c59f-404f-98a0-13bb8b64341b,2025,15,"The biologist demonstrated how adaptation (A) in ecosystems is driven not by hierarchy (B), but by cooperation (C) and evolutionary continge",,,,,,easy
+question,ad034028-d3c7-49bb-9036-618a325a4e52,2025,16,Statements: Only a few Blue is Yellow All Yellow is Pink No Pink is Grey Conclusions: I. All Grey can be Blue II. All Yellow can be Grey,,spot_check,,,,medium
+question,d5234a99-a8a4-45c5-8832-5904dc85f464,2025,17,Statement: All Pens are Pencils. Some Pencils are Books. No Book is Eraser. Conclusions: I. All Pen being Eraser is a possibility. II. No Pe,,,,,,medium
 question,b5968cc8-861a-4a5a-bf56-56ceed934155,2025,18,Statements: Only Apple is Mango. Only a few Apple is Guava. All Kiwi are Guava. Conclusions: I. Some Apple are Kiwi. II. All Mango being Kiw,,,,,,
 question,fcb502b9-2ad2-4399-980c-8f4b25700907,2025,19,Statements:,empty_or_short;no_primary_tag,flagged,,,,
-question,85fafe94-978a-4475-a2e3-9a43e77c9587,2025,20,"Statement: The government should impose a heavy tax on junk food. This will discourage people from buying it, leading to better public healt",,,,,,
+question,85fafe94-978a-4475-a2e3-9a43e77c9587,2025,20,"Statement: The government should impose a heavy tax on junk food. This will discourage people from buying it, leading to better public healt",,,,,,medium
 tag,91718ab6-21b8-4833-a9fb-31b13092f59c,2025,01f2ee8f-c655-4c2e-912e-e0f18a2d3201,Quadratic equations ΓÇö root comparison (x vs y),,spot_check,,,,
 tag,d84c2fb1-b2e8-4948-9497-438ce55ab7a3,2025,01f2ee8f-c655-4c2e-912e-e0f18a2d3201,Quadratic equations ΓÇö root comparison (x vs y),,,,,,
 tag,570474cf-9509-4d85-b657-d3aa3eca7617,2025,01f2ee8f-c655-4c2e-912e-e0f18a2d3201,Quadratic equations ΓÇö root comparison (x vs y),,,,,,

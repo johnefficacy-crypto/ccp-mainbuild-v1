@@ -1,89 +1,89 @@
-﻿row_type,row_id,paper_year,question_number_or_topic_id,text_preview,flags,sample_reason,decision,notes,assign_topic_id,difficulty
+row_type,row_id,paper_year,question_number_or_topic_id,text_preview,flags,sample_reason,decision,notes,assign_topic_id,difficulty
 question,c32c55d4-24dd-4d3d-b23c-ee2140bf4aca,2020,1,Which of the following campaigns is aimed to improve the efficiency of welfare services intended for girls in India?,no_primary_tag,flagged,,,,
-question,1124baae-5f40-45ec-b8ed-84a94d0e9e9e,2020,1,"During the registration of a company, the CRC issues _________",suspicious_repeat_char,flagged,,,,
-question,5fdd7f50-8633-4e3b-8d94-6975391333ce,2020,1,Which of the following does not appear in Cash Budget?,,spot_check,,,,
-question,f5b67d9b-39b4-4491-970a-0415102251f0,2020,1,Calculate the amount of net profit from the following. The Nifty Option Contract has 75 shares per lot. A person bought a call option on Nif,,spot_check,,,,
-question,bf1d05ba-9989-4444-a462-62fac7c20250,2020,1,JIT is used in _________,suspicious_repeat_char,flagged,,,,
-question,1f5bf81a-813a-4234-8ad8-c9ad82b40fd6,2020,1,What kind of a role the manager is performing when he is representing the company in all the industry meetings?,,spot_check,,,,
-question,768b1806-62f6-40ee-862e-e6a148341634,2020,1,Tally Software is used for ____________,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,a205b1ef-8920-486d-a363-8fc1d660dfa6,2020,1,Who among the following appoints the special auditor?,,spot_check,,,,
-question,bc6a3eb1-32df-44df-aa02-79983adaa3ea,2020,1,Performance approach through rewards and punishment is called _________,suspicious_repeat_char,flagged,,,,
-question,b26786f2-6768-46de-a9c3-025927366173,2020,1,"If demand curve is negatively sloped, then Law of demand says that quantity demanded is related with _______________",suspicious_repeat_char,flagged,,,,
-question,cbdd50c0-ed24-4128-ad9e-f60815f1f27c,2020,1,BSE is headquartered at __________,suspicious_repeat_char,flagged,,,,
+question,1124baae-5f40-45ec-b8ed-84a94d0e9e9e,2020,1,"During the registration of a company, the CRC issues _________",suspicious_repeat_char,flagged,,,,easy
+question,5fdd7f50-8633-4e3b-8d94-6975391333ce,2020,1,Which of the following does not appear in Cash Budget?,,spot_check,,,,easy
+question,f5b67d9b-39b4-4491-970a-0415102251f0,2020,1,Calculate the amount of net profit from the following. The Nifty Option Contract has 75 shares per lot. A person bought a call option on Nif,,spot_check,,,,medium
+question,bf1d05ba-9989-4444-a462-62fac7c20250,2020,1,JIT is used in _________,suspicious_repeat_char,flagged,,,,easy
+question,1f5bf81a-813a-4234-8ad8-c9ad82b40fd6,2020,1,What kind of a role the manager is performing when he is representing the company in all the industry meetings?,,spot_check,,,,easy
+question,768b1806-62f6-40ee-862e-e6a148341634,2020,1,Tally Software is used for ____________,non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,a205b1ef-8920-486d-a363-8fc1d660dfa6,2020,1,Who among the following appoints the special auditor?,,spot_check,,,,easy
+question,bc6a3eb1-32df-44df-aa02-79983adaa3ea,2020,1,Performance approach through rewards and punishment is called _________,suspicious_repeat_char,flagged,,,,easy
+question,b26786f2-6768-46de-a9c3-025927366173,2020,1,"If demand curve is negatively sloped, then Law of demand says that quantity demanded is related with _______________",suspicious_repeat_char,flagged,,,,easy
+question,cbdd50c0-ed24-4128-ad9e-f60815f1f27c,2020,1,BSE is headquartered at __________,suspicious_repeat_char,flagged,,,,easy
 question,df85f85f-0c82-4295-aba9-bb7e768b17ba,2020,2,Statistics of population is known as _______________,suspicious_repeat_char;no_primary_tag,flagged,,,,
-question,4ad4bdd1-2f01-47d3-a947-d9eb1065ae47,2020,2,"What is the total number of schedules in the Companies Act,2013?",,spot_check,,,,
-question,f8844f67-ea63-44ac-b5b2-c8fc3ae66b10,2020,2,8000 units were introduced in the process. 5% is the normal loss. 6600 units were transferred to next process. WIP is 1000 units which is 60,,,,,,
-question,fb6e0328-bf77-4518-93ff-164d00c26f4a,2020,2,"If a hotel provides complimentary breakfast to its guests, then what kind of supply is this in the context of GST?",,,,,,
-question,1624f665-24f2-4b0b-aba2-16cc9e6df28a,2020,2,"If the Contribution is = Rs 40,000; Sales is = Rs 2,00,000. What is the P/V Ratio?",,spot_check,,,,
-question,5d179f8d-d46f-4492-bdee-83304cc5619e,2020,2,"If a manager informs employees of policies and related stuff, then the role played by him is that of a ___________",suspicious_repeat_char,flagged,,,,
-question,e7a8997b-1d43-494c-84ad-d9d9b9f1c024,2020,2,Bill of exchange drawn in parts is known as __________,suspicious_repeat_char,flagged,,,,
-question,c30c5094-1317-4374-863f-99954ac1a0e3,2020,2,The Auditor can be removed before expiry of his term by which of the following?,,,,,,
-question,3f001dba-a1ab-4484-909e-51808ae6576a,2020,2,O in SWOT Stands for __________,suspicious_repeat_char,flagged,,,,
-question,9e24fbf3-7303-4948-86ba-c4789dfb15c1,2020,2,The Phillips Curve is a relationship between ___________,suspicious_repeat_char,flagged,,,,
-question,31ce0bbd-2cbf-4255-a22a-dc3f40c774bd,2020,2,DT in DTAA stands for __________,suspicious_repeat_char,flagged,,,,
+question,4ad4bdd1-2f01-47d3-a947-d9eb1065ae47,2020,2,"What is the total number of schedules in the Companies Act,2013?",,spot_check,,,,easy
+question,f8844f67-ea63-44ac-b5b2-c8fc3ae66b10,2020,2,8000 units were introduced in the process. 5% is the normal loss. 6600 units were transferred to next process. WIP is 1000 units which is 60,,,,,,medium
+question,fb6e0328-bf77-4518-93ff-164d00c26f4a,2020,2,"If a hotel provides complimentary breakfast to its guests, then what kind of supply is this in the context of GST?",,,,,,easy
+question,1624f665-24f2-4b0b-aba2-16cc9e6df28a,2020,2,"If the Contribution is = Rs 40,000; Sales is = Rs 2,00,000. What is the P/V Ratio?",,spot_check,,,,medium
+question,5d179f8d-d46f-4492-bdee-83304cc5619e,2020,2,"If a manager informs employees of policies and related stuff, then the role played by him is that of a ___________",suspicious_repeat_char,flagged,,,,easy
+question,e7a8997b-1d43-494c-84ad-d9d9b9f1c024,2020,2,Bill of exchange drawn in parts is known as __________,suspicious_repeat_char,flagged,,,,easy
+question,c30c5094-1317-4374-863f-99954ac1a0e3,2020,2,The Auditor can be removed before expiry of his term by which of the following?,,,,,,easy
+question,3f001dba-a1ab-4484-909e-51808ae6576a,2020,2,O in SWOT Stands for __________,suspicious_repeat_char,flagged,,,,easy
+question,9e24fbf3-7303-4948-86ba-c4789dfb15c1,2020,2,The Phillips Curve is a relationship between ___________,suspicious_repeat_char,flagged,,,,easy
+question,31ce0bbd-2cbf-4255-a22a-dc3f40c774bd,2020,2,DT in DTAA stands for __________,suspicious_repeat_char,flagged,,,,easy
 question,ef8a4cc4-dbf6-47f8-9272-ee3a8cdb24a1,2020,3,Which animal is displayed in the Make in India logo?,no_primary_tag,flagged,,,,
-question,020f4397-57d1-45e5-8fa9-9b8cfc681fcc,2020,3,"If there is charge against company properties, it is registered with _______",suspicious_repeat_char,flagged,,,,
-question,f74e9a64-e1b9-4825-95e2-80601ac55e7a,2020,3,Sales unit is 162500. Total Actual Cost is Rs 3 lakhs. Actual Fixed Cost is Rs 87000 (in line with budgeted cost). Total Actual Cost is Rs 1,,,,,,
-question,d76cf58b-105b-41c6-88c7-95af5c9f6dcc,2020,3,Open Interest indicates ___________,suspicious_repeat_char,flagged,,,,
-question,9dccabb3-206b-49b6-a725-6a083de0c15d,2020,3,Labour Turnover = ________________,suspicious_repeat_char,flagged,,,,
-question,2e4f51aa-269f-443d-a2f1-626095553db1,2020,3,"The role played by a HR manager in the career planning, training and development of a worker is __________",suspicious_repeat_char,flagged,,,,
-question,653b8379-7430-45bc-bde4-89cc93b34bf2,2020,3,"If partnership deed is not there, then how the profit is distributed among partners?",,spot_check,,,,
-question,035d0deb-9c7b-41e6-83c9-22af128184b1,2020,3,Which section of the Companies Act gives power to SEBI to issue of capital and transfer of shares? Options:,,,,,,
-question,402fe1d1-2b7c-4835-a669-be742149e527,2020,3,What is the full form of CPM?,,spot_check,,,,
-question,a4bb3bb7-3374-4f76-9a75-6fbb917b77b8,2020,3,"From the following, select the correct phase of business cycle.",,spot_check,,,,
-question,0e137159-5f41-4965-abdd-25e24f2e4973,2020,3,NBFCs are regulated by ___________,suspicious_repeat_char,flagged,,,,
+question,020f4397-57d1-45e5-8fa9-9b8cfc681fcc,2020,3,"If there is charge against company properties, it is registered with _______",suspicious_repeat_char,flagged,,,,easy
+question,f74e9a64-e1b9-4825-95e2-80601ac55e7a,2020,3,Sales unit is 162500. Total Actual Cost is Rs 3 lakhs. Actual Fixed Cost is Rs 87000 (in line with budgeted cost). Total Actual Cost is Rs 1,,,,,,medium
+question,d76cf58b-105b-41c6-88c7-95af5c9f6dcc,2020,3,Open Interest indicates ___________,suspicious_repeat_char,flagged,,,,easy
+question,9dccabb3-206b-49b6-a725-6a083de0c15d,2020,3,Labour Turnover = ________________,suspicious_repeat_char,flagged,,,,easy
+question,2e4f51aa-269f-443d-a2f1-626095553db1,2020,3,"The role played by a HR manager in the career planning, training and development of a worker is __________",suspicious_repeat_char,flagged,,,,easy
+question,653b8379-7430-45bc-bde4-89cc93b34bf2,2020,3,"If partnership deed is not there, then how the profit is distributed among partners?",,spot_check,,,,easy
+question,035d0deb-9c7b-41e6-83c9-22af128184b1,2020,3,Which section of the Companies Act gives power to SEBI to issue of capital and transfer of shares? Options:,,,,,,easy
+question,402fe1d1-2b7c-4835-a669-be742149e527,2020,3,What is the full form of CPM?,,spot_check,,,,easy
+question,a4bb3bb7-3374-4f76-9a75-6fbb917b77b8,2020,3,"From the following, select the correct phase of business cycle.",,spot_check,,,,easy
+question,0e137159-5f41-4965-abdd-25e24f2e4973,2020,3,NBFCs are regulated by ___________,suspicious_repeat_char,flagged,,,,easy
 question,b4922cd7-318c-45b8-87f4-fa7518942607,2020,4,Which of the following can be considered as FDI apart from investing in one’s home currency? Options:,non_ascii_suspect,flagged,,,,
-question,605c3a8f-b1c1-404a-bddb-004e6078bf81,2020,4,"The Selling price per unit is Rs 40. The P/V Ratio is 40%. The amount of fixed costs = Rs 60,000. Find the BEP in units.",,spot_check,,,,
-question,a1171fef-d726-49c0-ac48-9a5686d83f66,2020,4,Roles and Responsibilities of Forward Market Commission duties are transferred to ____________,suspicious_repeat_char,flagged,,,,
-question,906c835b-92c4-4551-9376-c72b079aadf6,2020,4,"In trait approach theory, intelligence, emotion, knowledge form which trait of the leader?",,,,,,
-question,17243816-9c29-478b-b480-fbe07d39a069,2020,4,Rent Expenses were charged to the books of accounts for 11 months but it was not charged in the 12th month. Which type of error is this?,,,,,,
-question,6895879c-72f7-4647-94c6-a17f6be3a344,2020,4,Reduction of share capital can be done with the approval of _________,suspicious_repeat_char,flagged,,,,
-question,0b11d219-40c7-4cb3-bae5-12763a18f3e6,2020,4,Which of the following would be best for process improvement?,,,,,,
-question,b4955810-c055-4bef-a45c-8dacd94149a5,2020,4,What is difference between M1 and M3 in money supply in India?,,,,,,
-question,d0835745-7485-4349-80f2-d1fc31b94fca,2020,4,Which type of Tax is handled by the CBDT?,,spot_check,,,,
+question,605c3a8f-b1c1-404a-bddb-004e6078bf81,2020,4,"The Selling price per unit is Rs 40. The P/V Ratio is 40%. The amount of fixed costs = Rs 60,000. Find the BEP in units.",,spot_check,,,,medium
+question,a1171fef-d726-49c0-ac48-9a5686d83f66,2020,4,Roles and Responsibilities of Forward Market Commission duties are transferred to ____________,suspicious_repeat_char,flagged,,,,easy
+question,906c835b-92c4-4551-9376-c72b079aadf6,2020,4,"In trait approach theory, intelligence, emotion, knowledge form which trait of the leader?",,,,,,easy
+question,17243816-9c29-478b-b480-fbe07d39a069,2020,4,Rent Expenses were charged to the books of accounts for 11 months but it was not charged in the 12th month. Which type of error is this?,,,,,,easy
+question,6895879c-72f7-4647-94c6-a17f6be3a344,2020,4,Reduction of share capital can be done with the approval of _________,suspicious_repeat_char,flagged,,,,easy
+question,0b11d219-40c7-4cb3-bae5-12763a18f3e6,2020,4,Which of the following would be best for process improvement?,,,,,,easy
+question,b4955810-c055-4bef-a45c-8dacd94149a5,2020,4,What is difference between M1 and M3 in money supply in India?,,,,,,easy
+question,d0835745-7485-4349-80f2-d1fc31b94fca,2020,4,Which type of Tax is handled by the CBDT?,,spot_check,,,,easy
 question,a72fe8f2-ac5d-4b89-a609-8d7ec54b8667,2020,5,"The ____________ states that other factors being constant, price and quantity demand of any good and service are inversely related to each o",suspicious_repeat_char,flagged,,,,
-question,a00259ed-fcd0-42fa-928e-f79e3c224035,2020,5,MRP II is a type of __________,suspicious_repeat_char,flagged,,,,
-question,55a2534b-eea5-447d-9342-3588a44f615b,2020,5,Stock Price is Rs 60. The Initial Margin is 40% and Maintenance Margin is 20%. At what price the Margin Call would be made?,,,,,,
-question,66589e04-84cc-40bc-a88f-1e52e999bbad,2020,5,Which of the following are qualities of an effective leader?,,,,,,
+question,a00259ed-fcd0-42fa-928e-f79e3c224035,2020,5,MRP II is a type of __________,suspicious_repeat_char,flagged,,,,easy
+question,55a2534b-eea5-447d-9342-3588a44f615b,2020,5,Stock Price is Rs 60. The Initial Margin is 40% and Maintenance Margin is 20%. At what price the Margin Call would be made?,,,,,,medium
+question,66589e04-84cc-40bc-a88f-1e52e999bbad,2020,5,Which of the following are qualities of an effective leader?,,,,,,easy
 question,912ed088-db33-4742-86aa-e6a7c836194b,2020,5,"While calculating income from house property, Municipal Taxes are treated on _______basis",suspicious_repeat_char;no_primary_tag,flagged,,,,
-question,7430fe64-0144-4c00-a10a-10efd00e5f25,2020,5,As per law what is this company called when 1 partner has 999 shares and another has 1 share? Options:,,,,,,
-question,57c8b486-0caa-48a0-a355-f30b9c38392c,2020,5,Income and employment as per Keynes theory is determined by _____________,suspicious_repeat_char,flagged,,,,
-question,7b4e072b-3823-4d15-b072-cd895bca0e89,2020,5,GSTIN is allotted based on _______,suspicious_repeat_char,flagged,,,,
-question,b42c8f00-c489-4268-985a-5ac5664f39b1,2020,6,Which of the following is a technique of Inventory Management?,,,,,,
-question,2b8ad1e5-7f64-40c2-addd-3f25a22e81c2,2020,6,"When the company dissolves, which of the following the debenture holders have the right to receive?",,,,,,
-question,c0d1fdd2-71c6-44a2-a280-851ec95ae369,2020,6,"What is considered as the life spark of management and includes motivating, guiding, etc. to the employees?",,,,,,
-question,843d579c-095f-4da9-b8e8-09bba8d7b219,2020,6,"If the total Assets are – Rs 36,000; Liabilities are – Rs 16,000; What is the amount of Equity?",non_ascii_suspect,flagged,,,,
-question,78c1930c-46b3-4298-a37e-4b44d0bdeffb,2020,6,Which section of the Companies Act 2013 deals with the removal of the name of the company from the register of the companies?,,,,,,
-question,67ef98d1-4bc8-4387-971a-3ac672c8f121,2020,6,Which of the following constitutes fiscal deficit?,,,,,,
-question,8e335c71-b334-4c27-bec9-f0536b9f3901,2020,6,"As per the Constitution of India, when a bill is presented in the Parliament of India, who decides whether a Financial Bill is a money bill ",,,,,,
-question,e36af9c4-fb54-44f2-9c12-8e08ca925964,2020,7,Over and Under Absorption of Overheads due to Normal Factors are ___________,suspicious_repeat_char,flagged,,,,
-question,949a16f7-6126-4f0b-806c-e8cc5f5e464c,2020,7,Which instrument is used by foreign entities not registered with SEBI to invest in India markets via registered brokers?,,spot_check,,,,
-question,c5adaa53-e129-41c2-af30-a18744dc36e3,2020,7,Which of the following is a psychological barrier? Options:,,spot_check,,,,
-question,c0b85906-6854-49ef-a064-7c2051aba5cd,2020,7,The partner will open a current account when partner has __________,suspicious_repeat_char,flagged,,,,
-question,c97d8f48-1698-4d46-844f-521c3363bad7,2020,7,What is the difference between GVA at Basic Price and GDP?,,,,,,
-question,e0cc303d-d9f7-4b62-9c13-3ee3b7ebb472,2020,7,"Which section of IT Act, 1961 act is known as charging section?",,,,,,
-question,836b68bd-fe37-4246-b131-31cd93172ff9,2020,8,Which of the following is aimed at eliminating waste and increasing efficiency?,,,,,,
-question,c986bc3e-7655-4336-a67c-3ca58fd3377b,2020,8,Which of the following is not a part of the Money Market?,,,,,,
-question,67982a30-5a81-4ba7-a330-07095fca4ad1,2020,8,What is the difference between morale and motivation?,,,,,,
-question,3060fbc0-0404-4653-9bde-e3376b18e754,2020,8,Provision of tax is under which sub-head in balance sheet __________,suspicious_repeat_char,flagged,,,,
-question,cd6c36b0-bb36-4b57-a583-b7918c915425,2020,8,Which of the following will not affect Current Account Deficit?,,,,,,
-question,fe83a90e-9c5f-499c-86ac-d6f89cd21f9f,2020,8,Which of the following is a non-negotiable instrument?,,,,,,
-question,6d6e6f5b-8303-48ab-a7d3-b307eb0c4426,2020,9,Which of the following is the most volatile investment?,,,,,,
-question,1fc77083-bfc9-4de5-a2ef-5dda328035f8,2020,9,Which of the following is true about Oral Communication?,,,,,,
-question,c371cd37-f963-47e1-b830-6faff3e28e28,2020,9,"Debit what comes in, credit what goes _______",suspicious_repeat_char,flagged,,,,
-question,a883a55a-72d1-4341-be4a-e91d52feb324,2020,9,Market for Gold and silver is known as __________,suspicious_repeat_char,flagged,,,,
-question,32b98021-7845-4f59-9a82-72892bc35ba7,2020,10,Financial goods and services is provided to economically weaker sections at affordable price by financial institutions then it is called? Op,,,,,,
-question,9aab886b-abd1-4af3-9624-e458e3f57c3a,2020,10,Current assets are assets expected to be realized within ________,suspicious_repeat_char,flagged,,,,
-question,7d32ef07-cf55-4985-81f3-fc8587f41206,2020,10,Which of the following is also known as lender of last resort?,,spot_check,,,,
-question,0061d07b-b5e5-41f8-b8ff-68d1d4317b58,2020,11,Which of the following organisation is responsible for promotion and financing of MSMEs?,,,,,,
-question,6dcfdf24-2be9-4929-8704-d0ce57ed7f58,2020,12,GST is applicable to ____________,suspicious_repeat_char,flagged,,,,
-question,744a7653-51ca-48c2-9116-9d3db7b3372b,2020,13,Which of the following would be given least priority at the time of liquidation of company?,,,,,,
-question,53754c71-bac9-4d1d-adfa-bd0ad913a588,2020,14,ITNS 281 challan form is used for __________,suspicious_repeat_char,flagged,,,,
-question,f742c03f-e3f9-4cb5-a449-1c5fa220af89,2020,15,Debenture holders are paid ____________,suspicious_repeat_char,flagged,,,,
-question,d8e1963a-5db1-43ec-946d-00cec99be734,2020,16,Full form of NAV is terms of Mutual Fund is __________,suspicious_repeat_char,flagged,,,,
-question,c539b393-58a5-4580-9b80-f4f1176afa6d,2020,17,What is the meaning of C in LCR?,,,,,,
-question,58338963-0994-44f9-9d41-2facb0c8bc8c,2020,18,Which of the following can be considered as FDI apart from investing in one’s home currency?,non_ascii_suspect,flagged,,,,
-question,5a5dff2c-938b-43a6-a44f-3da88de85e20,2020,19,What kind of ratio is the Current Ratio?,,,,,,
+question,7430fe64-0144-4c00-a10a-10efd00e5f25,2020,5,As per law what is this company called when 1 partner has 999 shares and another has 1 share? Options:,,,,,,easy
+question,57c8b486-0caa-48a0-a355-f30b9c38392c,2020,5,Income and employment as per Keynes theory is determined by _____________,suspicious_repeat_char,flagged,,,,easy
+question,7b4e072b-3823-4d15-b072-cd895bca0e89,2020,5,GSTIN is allotted based on _______,suspicious_repeat_char,flagged,,,,easy
+question,b42c8f00-c489-4268-985a-5ac5664f39b1,2020,6,Which of the following is a technique of Inventory Management?,,,,,,easy
+question,2b8ad1e5-7f64-40c2-addd-3f25a22e81c2,2020,6,"When the company dissolves, which of the following the debenture holders have the right to receive?",,,,,,easy
+question,c0d1fdd2-71c6-44a2-a280-851ec95ae369,2020,6,"What is considered as the life spark of management and includes motivating, guiding, etc. to the employees?",,,,,,easy
+question,843d579c-095f-4da9-b8e8-09bba8d7b219,2020,6,"If the total Assets are – Rs 36,000; Liabilities are – Rs 16,000; What is the amount of Equity?",non_ascii_suspect,flagged,,,,medium
+question,78c1930c-46b3-4298-a37e-4b44d0bdeffb,2020,6,Which section of the Companies Act 2013 deals with the removal of the name of the company from the register of the companies?,,,,,,easy
+question,67ef98d1-4bc8-4387-971a-3ac672c8f121,2020,6,Which of the following constitutes fiscal deficit?,,,,,,easy
+question,8e335c71-b334-4c27-bec9-f0536b9f3901,2020,6,"As per the Constitution of India, when a bill is presented in the Parliament of India, who decides whether a Financial Bill is a money bill ",,,,,,easy
+question,e36af9c4-fb54-44f2-9c12-8e08ca925964,2020,7,Over and Under Absorption of Overheads due to Normal Factors are ___________,suspicious_repeat_char,flagged,,,,easy
+question,949a16f7-6126-4f0b-806c-e8cc5f5e464c,2020,7,Which instrument is used by foreign entities not registered with SEBI to invest in India markets via registered brokers?,,spot_check,,,,easy
+question,c5adaa53-e129-41c2-af30-a18744dc36e3,2020,7,Which of the following is a psychological barrier? Options:,,spot_check,,,,easy
+question,c0b85906-6854-49ef-a064-7c2051aba5cd,2020,7,The partner will open a current account when partner has __________,suspicious_repeat_char,flagged,,,,easy
+question,c97d8f48-1698-4d46-844f-521c3363bad7,2020,7,What is the difference between GVA at Basic Price and GDP?,,,,,,easy
+question,e0cc303d-d9f7-4b62-9c13-3ee3b7ebb472,2020,7,"Which section of IT Act, 1961 act is known as charging section?",,,,,,easy
+question,836b68bd-fe37-4246-b131-31cd93172ff9,2020,8,Which of the following is aimed at eliminating waste and increasing efficiency?,,,,,,easy
+question,c986bc3e-7655-4336-a67c-3ca58fd3377b,2020,8,Which of the following is not a part of the Money Market?,,,,,,easy
+question,67982a30-5a81-4ba7-a330-07095fca4ad1,2020,8,What is the difference between morale and motivation?,,,,,,easy
+question,3060fbc0-0404-4653-9bde-e3376b18e754,2020,8,Provision of tax is under which sub-head in balance sheet __________,suspicious_repeat_char,flagged,,,,easy
+question,cd6c36b0-bb36-4b57-a583-b7918c915425,2020,8,Which of the following will not affect Current Account Deficit?,,,,,,easy
+question,fe83a90e-9c5f-499c-86ac-d6f89cd21f9f,2020,8,Which of the following is a non-negotiable instrument?,,,,,,easy
+question,6d6e6f5b-8303-48ab-a7d3-b307eb0c4426,2020,9,Which of the following is the most volatile investment?,,,,,,easy
+question,1fc77083-bfc9-4de5-a2ef-5dda328035f8,2020,9,Which of the following is true about Oral Communication?,,,,,,easy
+question,c371cd37-f963-47e1-b830-6faff3e28e28,2020,9,"Debit what comes in, credit what goes _______",suspicious_repeat_char,flagged,,,,easy
+question,a883a55a-72d1-4341-be4a-e91d52feb324,2020,9,Market for Gold and silver is known as __________,suspicious_repeat_char,flagged,,,,easy
+question,32b98021-7845-4f59-9a82-72892bc35ba7,2020,10,Financial goods and services is provided to economically weaker sections at affordable price by financial institutions then it is called? Op,,,,,,easy
+question,9aab886b-abd1-4af3-9624-e458e3f57c3a,2020,10,Current assets are assets expected to be realized within ________,suspicious_repeat_char,flagged,,,,easy
+question,7d32ef07-cf55-4985-81f3-fc8587f41206,2020,10,Which of the following is also known as lender of last resort?,,spot_check,,,,easy
+question,0061d07b-b5e5-41f8-b8ff-68d1d4317b58,2020,11,Which of the following organisation is responsible for promotion and financing of MSMEs?,,,,,,easy
+question,6dcfdf24-2be9-4929-8704-d0ce57ed7f58,2020,12,GST is applicable to ____________,suspicious_repeat_char,flagged,,,,easy
+question,744a7653-51ca-48c2-9116-9d3db7b3372b,2020,13,Which of the following would be given least priority at the time of liquidation of company?,,,,,,easy
+question,53754c71-bac9-4d1d-adfa-bd0ad913a588,2020,14,ITNS 281 challan form is used for __________,suspicious_repeat_char,flagged,,,,easy
+question,f742c03f-e3f9-4cb5-a449-1c5fa220af89,2020,15,Debenture holders are paid ____________,suspicious_repeat_char,flagged,,,,easy
+question,d8e1963a-5db1-43ec-946d-00cec99be734,2020,16,Full form of NAV is terms of Mutual Fund is __________,suspicious_repeat_char,flagged,,,,easy
+question,c539b393-58a5-4580-9b80-f4f1176afa6d,2020,17,What is the meaning of C in LCR?,,,,,,easy
+question,58338963-0994-44f9-9d41-2facb0c8bc8c,2020,18,Which of the following can be considered as FDI apart from investing in one’s home currency?,non_ascii_suspect,flagged,,,,easy
+question,5a5dff2c-938b-43a6-a44f-3da88de85e20,2020,19,What kind of ratio is the Current Ratio?,,,,,,easy
 tag,391c87bf-8679-4036-b38d-4b1d5b16031e,2020,027ddbab-051d-45f4-a7c7-b2c25673391c,Risk-free instruments and risk categories,,spot_check,,,,
 tag,abc0e2ea-0397-4526-9508-33bcadd215e4,2020,033fa30b-ae86-4b44-8a16-5b64de7eb0e3,Income-tax — assessment and rectification,,,,,,
 tag,b9513664-7850-4349-8cf0-1599f863fece,2020,033fa30b-ae86-4b44-8a16-5b64de7eb0e3,Income-tax — assessment and rectification,,,,,,
@@ -165,89 +165,89 @@ tag,41d9796e-0eba-49bc-bcf2-d1ac8e5060ff,2020,f9c1e603-1539-46b1-a717-2918a51037
 tag,5505f3af-c0aa-420b-93ac-0dee6a26ef45,2020,fbfff264-c421-4b05-96da-071a02ee172f,Business cycle phases,,,,,,
 tag,635d39f2-7d8a-40e4-a153-29d214ca5b2d,2020,fc31d10b-cacf-4c18-9855-6c36558e0ca5,CPM and PERT,,,,,,
 tag,0afa7b72-49ea-4dd5-b66d-756473f35c00,2020,ffdc4541-194f-4155-a578-d0fc9d7d4c91,Financial Inclusion Index and schemes,,,,,,
-question,5333da30-023a-4442-b554-aabd9d848e0e,2022,1,"If the strike price is higher than the market price under call option, that one will be called as?",,spot_check,,,,
-question,0e18f47a-ad6f-43ce-bb05-fb60303da173,2022,1,Which of the following is true for organizational Morale but not for motivation?,,spot_check,,,,
-question,ff76a627-3730-45d4-b569-2b7edecd9918,2022,1,Which of the following statement is incorrect regarding provisions?,,spot_check,,,,
-question,ba3e547a-05aa-4051-bdfc-246bf69ab914,2022,1,Which of the following is not a qualitative characteristic of accounting information?,,spot_check,,,,
-question,8408867a-f42c-4b07-b7ab-0b60f313af95,2022,1,Which of the following is a modern management accounting technique?,,spot_check,,,,
-question,64b040d5-966c-466a-aa00-538b75b35aef,2022,1,Imputed Cost is also known as ___________,suspicious_repeat_char,flagged,,,,
-question,f7d8cb55-241d-4e6b-b9f5-1e2420330f88,2022,1,Which of the following is not a method of quantitative control by RBI?,,spot_check,,,,
+question,5333da30-023a-4442-b554-aabd9d848e0e,2022,1,"If the strike price is higher than the market price under call option, that one will be called as?",,spot_check,,,,easy
+question,0e18f47a-ad6f-43ce-bb05-fb60303da173,2022,1,Which of the following is true for organizational Morale but not for motivation?,,spot_check,,,,easy
+question,ff76a627-3730-45d4-b569-2b7edecd9918,2022,1,Which of the following statement is incorrect regarding provisions?,,spot_check,,,,easy
+question,ba3e547a-05aa-4051-bdfc-246bf69ab914,2022,1,Which of the following is not a qualitative characteristic of accounting information?,,spot_check,,,,easy
+question,8408867a-f42c-4b07-b7ab-0b60f313af95,2022,1,Which of the following is a modern management accounting technique?,,spot_check,,,,easy
+question,64b040d5-966c-466a-aa00-538b75b35aef,2022,1,Imputed Cost is also known as ___________,suspicious_repeat_char,flagged,,,,easy
+question,f7d8cb55-241d-4e6b-b9f5-1e2420330f88,2022,1,Which of the following is not a method of quantitative control by RBI?,,spot_check,,,,easy
 question,8610fa6b-fe0e-43a5-8515-072996757745,2022,1,Identify the Incorrect statement regarding NBFC.,no_primary_tag,flagged,,,,
-question,e3877597-5e0c-4bf3-8241-4e9c8a1a75cf,2022,1,Which of the following is correct regarding Cournot’s Oligopoly Model?,non_ascii_suspect,flagged,,,,
-question,df99dcd8-630b-4fc1-ba47-68e956b8b67b,2022,1,"The president of NCLT, chairperson of NCLAT and Judicial members are appointed by the government in consultation with ________.",suspicious_repeat_char,flagged,,,,
-question,a0b094d7-212d-46a2-bc84-0502d4e765cc,2022,2,The value of derivative ____________?,suspicious_repeat_char,flagged,,,,
-question,fd61a02f-cc08-4b2d-a8b3-7a6d80cf0a78,2022,2,Identify the HRD Subsystem where in employee performance is increased with increase in his ability and Knowledge?,,,,,,
-question,dcec4c18-bcad-452b-9622-9bbc950b6899,2022,2,"Calculate Net Profit from below cash basis of accounting for 31/03/2021 Particulars Amount Sales Credit - 90,000 Cash paid in salary - 25,00",,,,,,
-question,266c191f-e810-4762-98cd-9c0b37d6e719,2022,2,Ind-AS 18 related to revenue recognition is dealing with ___________,suspicious_repeat_char,flagged,,,,
-question,ca262100-8adb-469e-bd05-86505b5589e1,2022,2,Which of the following does not classify semi variable costs into fixed and variable costs?,,,,,,
-question,0e4523e0-d554-4d12-b74b-bcb72e77270d,2022,2,Which of the following is not a part of the 5S? Options:,,spot_check,,,,
-question,bace4bd7-7d9d-4c5d-8d26-d131e817fdbf,2022,2,"Recently, SEBI has launched the mobile app ______ with a view to empower investors with knowledge about the securities market.",suspicious_repeat_char,flagged,,,,
-question,b76baa2a-4f7b-4557-8f76-9baa1d1079bc,2022,2,Non-Plan Expenditure constitutes the biggest proportion of the government’s total expenditure. Which of the following is not a non-planned e,non_ascii_suspect,flagged,,,,
-question,a3bab94d-3b20-41b3-8576-34503f23522f,2022,2,Which of one of the following statement w.r.t LM curve is not correct?,,spot_check,,,,
-question,75f3afea-e564-4be2-8ce3-ebecd8d542a7,2022,2,"The tenure of independent directors is for ________consecutive years and if he is to be appointed for second term, special resolution needs ",suspicious_repeat_char,flagged,,,,
-question,efe0470b-8a06-4127-869f-77cd4e31f14c,2022,3,The RBI pays interest on the CRR balance to the banks at ___________?,suspicious_repeat_char,flagged,,,,
+question,e3877597-5e0c-4bf3-8241-4e9c8a1a75cf,2022,1,Which of the following is correct regarding Cournot’s Oligopoly Model?,non_ascii_suspect,flagged,,,,easy
+question,df99dcd8-630b-4fc1-ba47-68e956b8b67b,2022,1,"The president of NCLT, chairperson of NCLAT and Judicial members are appointed by the government in consultation with ________.",suspicious_repeat_char,flagged,,,,easy
+question,a0b094d7-212d-46a2-bc84-0502d4e765cc,2022,2,The value of derivative ____________?,suspicious_repeat_char,flagged,,,,easy
+question,fd61a02f-cc08-4b2d-a8b3-7a6d80cf0a78,2022,2,Identify the HRD Subsystem where in employee performance is increased with increase in his ability and Knowledge?,,,,,,easy
+question,dcec4c18-bcad-452b-9622-9bbc950b6899,2022,2,"Calculate Net Profit from below cash basis of accounting for 31/03/2021 Particulars Amount Sales Credit - 90,000 Cash paid in salary - 25,00",,,,,,medium
+question,266c191f-e810-4762-98cd-9c0b37d6e719,2022,2,Ind-AS 18 related to revenue recognition is dealing with ___________,suspicious_repeat_char,flagged,,,,easy
+question,ca262100-8adb-469e-bd05-86505b5589e1,2022,2,Which of the following does not classify semi variable costs into fixed and variable costs?,,,,,,easy
+question,0e4523e0-d554-4d12-b74b-bcb72e77270d,2022,2,Which of the following is not a part of the 5S? Options:,,spot_check,,,,easy
+question,bace4bd7-7d9d-4c5d-8d26-d131e817fdbf,2022,2,"Recently, SEBI has launched the mobile app ______ with a view to empower investors with knowledge about the securities market.",suspicious_repeat_char,flagged,,,,medium
+question,b76baa2a-4f7b-4557-8f76-9baa1d1079bc,2022,2,Non-Plan Expenditure constitutes the biggest proportion of the government’s total expenditure. Which of the following is not a non-planned e,non_ascii_suspect,flagged,,,,easy
+question,a3bab94d-3b20-41b3-8576-34503f23522f,2022,2,Which of one of the following statement w.r.t LM curve is not correct?,,spot_check,,,,easy
+question,75f3afea-e564-4be2-8ce3-ebecd8d542a7,2022,2,"The tenure of independent directors is for ________consecutive years and if he is to be appointed for second term, special resolution needs ",suspicious_repeat_char,flagged,,,,easy
+question,efe0470b-8a06-4127-869f-77cd4e31f14c,2022,3,The RBI pays interest on the CRR balance to the banks at ___________?,suspicious_repeat_char,flagged,,,,medium
 question,1c931ee5-b299-42f8-aefa-fd56b3f2e5bd,2022,3,Identify the leadership style where a leader has inspirational and Charismatic Approach?,,,,,,
 question,2b076268-21d0-4d29-bd6b-6f3b005c71ce,2022,3,"Using the information given below, calculate the Interest Coverage Ratio. Net Profit After Tax - Rs. 60,000 Tax Rate - 40% 15% Long Term Deb",,,,,,
-question,d4d48f91-1e66-488c-9d38-d8903753bb52,2022,3,Which of the following is a Capital Expenditure? Options:,,,,,,
-question,8513f6a2-0f42-4436-b87a-3661e61a9609,2022,3,"Calculate the Prime Cost using the information given below: Direct Material Cost– Rs 1,00,000 Direct Labour Cost– Rs 68,000 Fixed Overheads ",non_ascii_suspect,flagged,,,,
-question,fa522e4e-ced4-4f71-83b1-16d0be061ef3,2022,3,Which of the following is an example of an Indirect Cost?,,,,,,
-question,7e38b886-1c36-4dff-8a9c-546f93060699,2022,3,Where any trade receivables are financed through a Trade Receivables Discounting System (TReDS); the concerned TReDS on behalf of the Factor,,,,,,
+question,d4d48f91-1e66-488c-9d38-d8903753bb52,2022,3,Which of the following is a Capital Expenditure? Options:,,,,,,easy
+question,8513f6a2-0f42-4436-b87a-3661e61a9609,2022,3,"Calculate the Prime Cost using the information given below: Direct Material Cost– Rs 1,00,000 Direct Labour Cost– Rs 68,000 Fixed Overheads ",non_ascii_suspect,flagged,,,,medium
+question,fa522e4e-ced4-4f71-83b1-16d0be061ef3,2022,3,Which of the following is an example of an Indirect Cost?,,,,,,easy
+question,7e38b886-1c36-4dff-8a9c-546f93060699,2022,3,Where any trade receivables are financed through a Trade Receivables Discounting System (TReDS); the concerned TReDS on behalf of the Factor,,,,,,medium
 question,3bea8ff8-92ea-409a-9412-af3bcc47ed71,2022,3,Which of the following defines the monetary base?,,spot_check,,,,
-question,6ce1d660-80de-4f43-b137-36745aadae24,2022,3,"D= 12 – P; S= -3 + 4P, what is the equilibrium Point?",non_ascii_suspect,flagged,,,,
-question,5ccc06b0-bdf1-4766-ada7-2e2a248d263d,2022,3,"Under Section 124 of the Companies’ act, if the money is not paid to the shareholders and lying idle for ____ years, it is transferred to in",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,749435ae-f6d1-413c-ad22-6c6c2ae8de07,2022,4,Identify the open mutual fund scheme where there is a 3-year lock-in period,,,,,,
-question,d2e3c61c-fc1d-4ae1-ba17-29391d7fccbf,2022,4,"Identify the Role of Manager where manager solves the problem, provides feedback, duly recognizes his employees, provides training and devel",,,,,,
-question,c4b96fc7-e2d2-4828-b2bf-60443a0b8620,2022,4,"Calculate the Book value per share of ABC limited using the information given below: Profit After Tax Rs 1,75,000 Issued Share Capital 70,00",,,,,,
-question,d398943d-21a7-4e3c-965a-c12564b282f8,2022,4,Which of the following is correct about buy back rules?,,,,,,
-question,7b47b147-2dd7-4fa5-bc89-dc01f8908b39,2022,4,Calculate the Breakeven point (BEP) from the following information. Sale - ₹30 per unit Trade Discount – 10% Direct Material - ₹12 per unit ,non_ascii_suspect,flagged,,,,
-question,2890d1c0-47df-4ae3-a4e9-82a4d89c840f,2022,4,Change for better and continuous improvement is termed as ______________?,suspicious_repeat_char,flagged,,,,
-question,d06816d9-1763-4b12-805b-d03a49b22510,2022,4,Which of the following is applicable on Dynamic QR code on B2C invoices under GST applicable from 1st July 2021?,,,,,,
-question,2f70d311-e6ee-4181-a0ee-9116e7e33140,2022,4,Calculate National Income or NNP at Factor Cost (FC): Particulars Rs in Crores GNP at Market Price 5069 Indirect Taxes 495 Subsidies 69 Cons,,,,,,
-question,47fa61de-db30-4330-9a37-3901cb76d5f8,2022,4,"If the producers bear the tax, What is the elasticity of Demand and Supply?",,,,,,
-question,f50df923-dc61-4b25-b762-4202e65b6e7c,2022,4,"According to Section 141 of Companies Act, who is eligible to be appointed as an auditor of the company?",,spot_check,,,,
-question,e06a92b2-3fa0-4c7f-b08a-00a2bb03f824,2022,5,Which of the following is not correctly matched?,,,,,,
-question,30a40020-62b7-45c4-ae39-137caef3c7b3,2022,5,Which of the following is an incentive and not a reward? Options:,,,,,,
-question,b5cf60b9-586f-45e9-8beb-131eb5fc417a,2022,5,"Calculate the Gross profit Ratio from the given information. Particulars Amount Sales Rs 1,00,000 Purchase Rs 75,000 Carriage Inward Rs 2000",,spot_check,,,,
-question,4fba9b5d-7bed-4a33-b59e-846770a497ec,2022,5,"If the due date of a bill is after the date of closing the account, then we write the interest from the date of closing as ____________ in t",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,98a0fbfd-c274-4ffe-b28c-3e27cfef6105,2022,5,Which of the following is incorrect with reference to Marginal Costing?,,,,,,
-question,887296e6-b251-43ba-85ff-1c3ff3031ee0,2022,5,Which of the following is not part of Lean system?,,,,,,
-question,49e3ab84-1b94-414d-bac1-98fc6c94aade,2022,5,"As per the recommendations of the 15th Finance Commission, which of the following is not one of the four themes mentioned in devolution of P",,,,,,
-question,041b922e-4199-429c-bc35-374624278a98,2022,5,Which of the following statements is incorrect regarding Phillips Curve?,,,,,,
-question,d35def86-4654-4da5-b68b-50b4c91da1a4,2022,5,"In 1991, if the GDP of America is = $5766 and the given GNP is $5796, then what are the possible reason",,,,,,
-question,856e9980-fe61-4de2-954e-24e65b9dde89,2022,5,"A company shall not register a transfer of partly paid shares, unless the company has given a notice to the transferee and the transferee ha",suspicious_repeat_char,flagged,,,,
-question,7cce489f-dcac-41aa-8dfd-ee49e0ac5c00,2022,6,"Securities and Exchange Board of India (SEBI) has unveiled a framework for making operational gold exchange, which will facilitate trading o",suspicious_repeat_char,flagged,,,,
-question,6c8ffae8-70bd-450c-9925-e6ce7910b9ea,2022,6,A company purchased inventory 1000 units@1200 per unit from outside vendors. Vendor allowed a trade discount of 5%. Vendors offered a cash d,,,,,,
-question,043d5623-84b9-4533-a1ab-8097c4907264,2022,6,Which of the following is not a feature of debenture? Options,,,,,,
-question,d572b7e2-0676-4554-88ef-d94828629317,2022,6,Which of the following is not a feature of cellular manufacturing system?,,,,,,
-question,f529ba4e-0864-4ba8-b000-61d423b99de2,2022,6,Which of the following is not the feature of budgetary control?,,,,,,
-question,0c6f6a44-b6c5-4fe1-95ff-98b06e42358a,2022,6,Which of the following statement regarding the Interest rate parity is true?,,,,,,
-question,4fc784ed-57e9-4af0-8d48-b58acf25e714,2022,6,Which of the following statements is incorrect regarding Monopolistic Competition?,,,,,,
-question,4716a5ff-415f-4850-996a-eb8afbf99e46,2022,6,“If Balance of payment is always balanced”. What it means?,non_ascii_suspect,flagged,,,,
-question,e565ede5-9725-455c-94b1-643cc477fce4,2022,6,"Every listed company, may upon notice of not less than one thousand small shareholders or one-tenth of the total number of such shareholders",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,5bad5beb-1dd6-43ac-a10c-6a1428978ad3,2022,7,"With respect to, Alternative Investment Fund (AIF), no scheme shall have more than _______ angel investors.",suspicious_repeat_char,flagged,,,,
-question,aa4b1836-eb5a-40ea-9e3f-862654c27c55,2022,7,"Value of Machine is Rs 12,00,000 for 10 years and its residual value is nil. After 5 years, the remaining machine life is increased by 3 yea",,,,,,
-question,56a0bf1e-c511-4573-b2f5-b2e1f080cfd5,2022,7,The rights are sold to somebody else at a price by the shareholder. What is this called?,,spot_check,,,,
-question,d396e1c2-a69f-43e1-8724-af17bcd9bcef,2022,7,"A company produced 60,000 units in the accounting period. It sold 50,000 units with 10,000 still in inventory. It sold each unit for Rs. 100",,spot_check,,,,
-question,9bcb6691-84e0-4a50-a849-493760751109,2022,7,TPM does not include which of the following component? Options,,spot_check,,,,
-question,ea10e2d7-4756-4d89-8465-31cfc907136f,2022,7,Which of the following statements is correct if the demand function is D = 18 – 3P?,non_ascii_suspect,flagged,,,,
+question,6ce1d660-80de-4f43-b137-36745aadae24,2022,3,"D= 12 – P; S= -3 + 4P, what is the equilibrium Point?",non_ascii_suspect,flagged,,,,medium
+question,5ccc06b0-bdf1-4766-ada7-2e2a248d263d,2022,3,"Under Section 124 of the Companies’ act, if the money is not paid to the shareholders and lying idle for ____ years, it is transferred to in",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,749435ae-f6d1-413c-ad22-6c6c2ae8de07,2022,4,Identify the open mutual fund scheme where there is a 3-year lock-in period,,,,,,easy
+question,d2e3c61c-fc1d-4ae1-ba17-29391d7fccbf,2022,4,"Identify the Role of Manager where manager solves the problem, provides feedback, duly recognizes his employees, provides training and devel",,,,,,easy
+question,c4b96fc7-e2d2-4828-b2bf-60443a0b8620,2022,4,"Calculate the Book value per share of ABC limited using the information given below: Profit After Tax Rs 1,75,000 Issued Share Capital 70,00",,,,,,medium
+question,d398943d-21a7-4e3c-965a-c12564b282f8,2022,4,Which of the following is correct about buy back rules?,,,,,,easy
+question,7b47b147-2dd7-4fa5-bc89-dc01f8908b39,2022,4,Calculate the Breakeven point (BEP) from the following information. Sale - ₹30 per unit Trade Discount – 10% Direct Material - ₹12 per unit ,non_ascii_suspect,flagged,,,,medium
+question,2890d1c0-47df-4ae3-a4e9-82a4d89c840f,2022,4,Change for better and continuous improvement is termed as ______________?,suspicious_repeat_char,flagged,,,,easy
+question,d06816d9-1763-4b12-805b-d03a49b22510,2022,4,Which of the following is applicable on Dynamic QR code on B2C invoices under GST applicable from 1st July 2021?,,,,,,medium
+question,2f70d311-e6ee-4181-a0ee-9116e7e33140,2022,4,Calculate National Income or NNP at Factor Cost (FC): Particulars Rs in Crores GNP at Market Price 5069 Indirect Taxes 495 Subsidies 69 Cons,,,,,,medium
+question,47fa61de-db30-4330-9a37-3901cb76d5f8,2022,4,"If the producers bear the tax, What is the elasticity of Demand and Supply?",,,,,,easy
+question,f50df923-dc61-4b25-b762-4202e65b6e7c,2022,4,"According to Section 141 of Companies Act, who is eligible to be appointed as an auditor of the company?",,spot_check,,,,easy
+question,e06a92b2-3fa0-4c7f-b08a-00a2bb03f824,2022,5,Which of the following is not correctly matched?,,,,,,easy
+question,30a40020-62b7-45c4-ae39-137caef3c7b3,2022,5,Which of the following is an incentive and not a reward? Options:,,,,,,easy
+question,b5cf60b9-586f-45e9-8beb-131eb5fc417a,2022,5,"Calculate the Gross profit Ratio from the given information. Particulars Amount Sales Rs 1,00,000 Purchase Rs 75,000 Carriage Inward Rs 2000",,spot_check,,,,medium
+question,4fba9b5d-7bed-4a33-b59e-846770a497ec,2022,5,"If the due date of a bill is after the date of closing the account, then we write the interest from the date of closing as ____________ in t",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,98a0fbfd-c274-4ffe-b28c-3e27cfef6105,2022,5,Which of the following is incorrect with reference to Marginal Costing?,,,,,,easy
+question,887296e6-b251-43ba-85ff-1c3ff3031ee0,2022,5,Which of the following is not part of Lean system?,,,,,,easy
+question,49e3ab84-1b94-414d-bac1-98fc6c94aade,2022,5,"As per the recommendations of the 15th Finance Commission, which of the following is not one of the four themes mentioned in devolution of P",,,,,,medium
+question,041b922e-4199-429c-bc35-374624278a98,2022,5,Which of the following statements is incorrect regarding Phillips Curve?,,,,,,easy
+question,d35def86-4654-4da5-b68b-50b4c91da1a4,2022,5,"In 1991, if the GDP of America is = $5766 and the given GNP is $5796, then what are the possible reason",,,,,,medium
+question,856e9980-fe61-4de2-954e-24e65b9dde89,2022,5,"A company shall not register a transfer of partly paid shares, unless the company has given a notice to the transferee and the transferee ha",suspicious_repeat_char,flagged,,,,easy
+question,7cce489f-dcac-41aa-8dfd-ee49e0ac5c00,2022,6,"Securities and Exchange Board of India (SEBI) has unveiled a framework for making operational gold exchange, which will facilitate trading o",suspicious_repeat_char,flagged,,,,medium
+question,6c8ffae8-70bd-450c-9925-e6ce7910b9ea,2022,6,A company purchased inventory 1000 units@1200 per unit from outside vendors. Vendor allowed a trade discount of 5%. Vendors offered a cash d,,,,,,medium
+question,043d5623-84b9-4533-a1ab-8097c4907264,2022,6,Which of the following is not a feature of debenture? Options,,,,,,easy
+question,d572b7e2-0676-4554-88ef-d94828629317,2022,6,Which of the following is not a feature of cellular manufacturing system?,,,,,,easy
+question,f529ba4e-0864-4ba8-b000-61d423b99de2,2022,6,Which of the following is not the feature of budgetary control?,,,,,,easy
+question,0c6f6a44-b6c5-4fe1-95ff-98b06e42358a,2022,6,Which of the following statement regarding the Interest rate parity is true?,,,,,,easy
+question,4fc784ed-57e9-4af0-8d48-b58acf25e714,2022,6,Which of the following statements is incorrect regarding Monopolistic Competition?,,,,,,easy
+question,4716a5ff-415f-4850-996a-eb8afbf99e46,2022,6,“If Balance of payment is always balanced”. What it means?,non_ascii_suspect,flagged,,,,easy
+question,e565ede5-9725-455c-94b1-643cc477fce4,2022,6,"Every listed company, may upon notice of not less than one thousand small shareholders or one-tenth of the total number of such shareholders",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,5bad5beb-1dd6-43ac-a10c-6a1428978ad3,2022,7,"With respect to, Alternative Investment Fund (AIF), no scheme shall have more than _______ angel investors.",suspicious_repeat_char,flagged,,,,medium
+question,aa4b1836-eb5a-40ea-9e3f-862654c27c55,2022,7,"Value of Machine is Rs 12,00,000 for 10 years and its residual value is nil. After 5 years, the remaining machine life is increased by 3 yea",,,,,,medium
+question,56a0bf1e-c511-4573-b2f5-b2e1f080cfd5,2022,7,The rights are sold to somebody else at a price by the shareholder. What is this called?,,spot_check,,,,easy
+question,d396e1c2-a69f-43e1-8724-af17bcd9bcef,2022,7,"A company produced 60,000 units in the accounting period. It sold 50,000 units with 10,000 still in inventory. It sold each unit for Rs. 100",,spot_check,,,,medium
+question,9bcb6691-84e0-4a50-a849-493760751109,2022,7,TPM does not include which of the following component? Options,,spot_check,,,,easy
+question,ea10e2d7-4756-4d89-8465-31cfc907136f,2022,7,Which of the following statements is correct if the demand function is D = 18 – 3P?,non_ascii_suspect,flagged,,,,easy
 question,cf942127-47af-4dcc-826d-471c1650ee04,2022,7,NBFCs can accept public deposits up to how many months?,no_primary_tag,flagged,,,,
-question,3cb22d76-6076-4956-89f1-82e76ab2fd03,2022,7,"As per provisions of the Companies Act, 2013, the board shall be called by giving not less than _______ days' notice in writing to every dir",suspicious_repeat_char,flagged,,,,
+question,3cb22d76-6076-4956-89f1-82e76ab2fd03,2022,7,"As per provisions of the Companies Act, 2013, the board shall be called by giving not less than _______ days' notice in writing to every dir",suspicious_repeat_char,flagged,,,,easy
 question,b346d272-1feb-4f0f-97eb-2e06fc4287ab,2022,8,Company ABC limited took a loan of $10 million dollars for 3 months on 1st January 2021.,,,,,,
 question,384b8a72-8b97-47db-8873-8a335466c700,2022,8,Which of the following is not exceptional item in P&L Account?,,,,,,
 question,88f7e9b3-4a7a-4494-b233-d587043d2329,2022,8,Which of the following is a Notional Cost?,,,,,,
-question,0276faf1-679b-46ce-999c-9986b7710b0a,2022,8,Which of the following statement is incorrect regarding KANBAN? Options,,,,,,
-question,cc478c5d-5e90-4eb1-b068-6cac991ce64e,2022,8,Find the incorrect option regarding the elasticity of commodities?,,spot_check,,,,
+question,0276faf1-679b-46ce-999c-9986b7710b0a,2022,8,Which of the following statement is incorrect regarding KANBAN? Options,,,,,,easy
+question,cc478c5d-5e90-4eb1-b068-6cac991ce64e,2022,8,Find the incorrect option regarding the elasticity of commodities?,,spot_check,,,,easy
 question,a8f2a575-46ed-4f2b-a32c-69a15febd8ef,2022,8,Which of the following is not the characteristic of NBFCs?,no_primary_tag,flagged,,,,
-question,beaac740-830a-44c1-95ba-794d2c435447,2022,8,Recently SEBI has directed the mutual fund (MF) industry to set up an audit committee at the asset management company (AMC) level. As per th,,,,,,
-question,738afe62-9386-44e3-b502-6a3ad9c019a6,2022,9,Which of the following statements is incorrect w.r.t Cash and Cash equivalents? Options,,,,,,
-question,8d2bfc47-3ff0-4595-9a0a-86e5aa9c5d4c,2022,9,Which of the following is an intangible asset?,,,,,,
+question,beaac740-830a-44c1-95ba-794d2c435447,2022,8,Recently SEBI has directed the mutual fund (MF) industry to set up an audit committee at the asset management company (AMC) level. As per th,,,,,,medium
+question,738afe62-9386-44e3-b502-6a3ad9c019a6,2022,9,Which of the following statements is incorrect w.r.t Cash and Cash equivalents? Options,,,,,,easy
+question,8d2bfc47-3ff0-4595-9a0a-86e5aa9c5d4c,2022,9,Which of the following is an intangible asset?,,,,,,easy
 question,57b5361e-f8b4-4852-bd2c-b993f1b41567,2022,9,Calculate the value of closing stock using Simple price moving average method. 1st December - purchased 100 units @ Rs. 20 2nd December - pu,,,,,,
-question,df384da6-b234-4b3d-94ed-86ef95dfad32,2022,9,Which of the following is not correct with respect to DMAIC,,,,,,
-question,a629801f-735b-4695-9750-484ac4f472c5,2022,9,Economic theory and good practice suggest that a government should run deficits during recessions — when tax revenues are low and government,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,f27a8222-c0d7-4f28-b9fd-99575f8a78e0,2022,9,"Application money is the money received by the company when it issues shares to the public, once the application money is received then allo",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,22eed49f-c02f-41d6-8eb7-a500cb60cc26,2022,10,Which of the following is an example of Commitment Item in the Balance Sheet?,,,,,,
-question,abe62588-3bf8-48b4-9b42-e47ce5b90771,2022,10,Which of the following is not the reason for demand pull inflation?,,,,,,
-question,4416bd89-634d-4302-8f25-2baba3f52b0c,2022,11,Which of the following is not correct w.r.t to monopoly?,,,,,,
+question,df384da6-b234-4b3d-94ed-86ef95dfad32,2022,9,Which of the following is not correct with respect to DMAIC,,,,,,easy
+question,a629801f-735b-4695-9750-484ac4f472c5,2022,9,Economic theory and good practice suggest that a government should run deficits during recessions — when tax revenues are low and government,non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,f27a8222-c0d7-4f28-b9fd-99575f8a78e0,2022,9,"Application money is the money received by the company when it issues shares to the public, once the application money is received then allo",non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,22eed49f-c02f-41d6-8eb7-a500cb60cc26,2022,10,Which of the following is an example of Commitment Item in the Balance Sheet?,,,,,,easy
+question,abe62588-3bf8-48b4-9b42-e47ce5b90771,2022,10,Which of the following is not the reason for demand pull inflation?,,,,,,easy
+question,4416bd89-634d-4302-8f25-2baba3f52b0c,2022,11,Which of the following is not correct w.r.t to monopoly?,,,,,,easy
 tag,c6f49ca6-2f65-4280-96a2-0518b65144eb,2022,01e31a7c-88dc-4f9f-9bd4-5e31dc600b54,Monopoly,,spot_check,,,,
 tag,ad6cd886-7e0e-4599-ae84-47ef827b1dad,2022,025a36aa-e8da-426c-a9b7-44f678eb17be,Cash and cash equivalents — the three-month test,,,,,,
 tag,83dfb562-3258-447c-bbf4-d68cbbde44b0,2022,092d9550-09b4-4f5a-a5b2-c1add1aac460,"Profitability ratios — GP, NP, EBIT margin, ROE, ROCE",,,,,,
@@ -328,138 +328,138 @@ tag,05cf335a-2439-4b32-b8f7-be5f4dc4e3c1,2022,e8fccc09-a2c9-4076-a001-ad1c2378a2
 tag,c7d08f50-0f35-43dc-bf75-6973d07ba95c,2022,e9f510cb-ab55-455c-834a-9f8a77620518,Price and income elasticity of demand,,,,,,
 tag,73fadf52-caf5-4f86-85b1-8c589d612b2a,2022,ebcf318b-3512-45ee-8449-68ac08265b0e,Incentives vs rewards,,,,,,
 tag,20e59f9f-e3f7-456e-b934-dd7f5ba72027,2022,f09fe982-a28f-4a96-a5bc-9c5dfcb28a28,Buy-back — conditions and section 68,,,,,,
-question,c0aca59d-7017-479d-82bb-5305cc113d02,2024,1,Calculate the Cost of Production with the following information: • Material Cost: Rs 600 • Labour Cost: Rs 150 • Set Up Cost: Rs 200 • Manuf,non_ascii_suspect,flagged,,,,
-question,e6eab792-3cab-499f-ab06-76114be1ea60,2024,1,Which of the following is the formula for Per-capita Income?,,spot_check,,,,
-question,0a99f034-166e-492d-9bb6-63607f73d830,2024,1,Which types of barriers arise when people have different mindsets due to different backgrounds?,,spot_check,,,,
-question,7dc47578-4355-4e00-84bd-aaeb238f0b55,2024,1,_________ is an approach to equipment maintenance and productivity improvement?,suspicious_repeat_char,flagged,,,,
-question,b17ff3e9-e9d5-413e-8ac3-fa39730caaa8,2024,1,Which of the following accurately describes the Say’s Law of Market?,non_ascii_suspect,flagged,,,,
-question,76cb57b1-73ce-4ab6-8a08-b41b67ea0e81,2024,1,The Rule of 72 is a financial principle used to estimate the time it takes for an investment to achieve a certain growth target. Which of th,,spot_check,,,,
-question,4ce9d5cc-54e1-453f-a575-640eb0551909,2024,1,"Identify the component of Money market, where the money is lent more than 1 day and less than 15 days.",,spot_check,,,,
-question,b5823274-ce2c-456a-b93c-4de3b54280ef,2024,1,Which of the following is not a qualitative characteristic of accounting information?,,spot_check,,,,
-question,21bb691d-80fd-4fe0-b843-19a699cf7b9d,2024,1,Which of the following is/are not eligible to be an independent director?,,spot_check,,,,
-question,005ba362-e615-484d-a75b-a06da653a81c,2024,1,Which of the following is a limitation of the Fund Flow Statement?,,spot_check,,,,
-question,bf6f7fdf-d8f5-47e7-9af4-b4c0a00ebae4,2024,1,Within how many days should money be deposited in a Special Account (unpaid dividend account) after the expiry of 30 days from the date of d,,spot_check,,,,
-question,26f01a95-bb08-42ea-9a91-fbedee96d162,2024,2,"Calculate the differential cost if the cost at 70% activity level is Rs 30,000 and at 85% activity level is Rs 39,000.",,spot_check,,,,
-question,63945515-c67a-4cc7-96b2-636786fe109b,2024,2,Which of the following shows the relationship between price and quantity demanded?,,,,,,
-question,b5c5a5a6-65ba-482a-a84d-3086bc4273bb,2024,2,"Which type of leader inspires and motivates, and sets a vision for achieving goals?",,,,,,
-question,0b781c92-7897-4033-afab-ded99d80bdd7,2024,2,Waste elimination is the aim of_________,suspicious_repeat_char,flagged,,,,
-question,12cc7df7-6dc7-4b5e-9c38-76a37ba5426c,2024,2,Which of the following best describes the definition of National Income?,,spot_check,,,,
-question,155422a6-54bc-4a98-be90-341099052cdf,2024,2,"When an investor takes advantage of price differences in separate markets by simultaneously buying and selling an asset, which financial str",,,,,,
-question,64992c89-aac5-4213-86b4-3664efee2434,2024,2,"Calculate bond yield of the debenture of 10%, face value of Rs. 100, currently bought or priced at Rs. 80?",,,,,,
-question,e0cce12e-81b1-40a6-bf26-6e806f44d4a8,2024,2,"Which of the following statements defines the ""Going Concern"" concept correctly?",,,,,,
-question,f7fd9091-c8bf-4dcc-9663-5ab612768ae9,2024,2,NCLT (National Company Law Tribunal) is constituted by:,,,,,,
-question,4370a5b2-5067-466f-bc8b-273d46fd9d93,2024,2,Which of the following is included in investing activity under cash flow statement?,,,,,,
-question,7546df13-21e4-4001-a599-4b5facc8a9c0,2024,2,Within how many days can a person appeal against the order of the National Company Law Tribunal (NCLT) to the National Company Law Appellate,,,,,,
-question,399fb440-efcc-427a-9b32-798a1eb2d1f8,2024,3,Canteen expense for factory workers is classified as:,,,,,,
-question,f217b304-1775-44bf-96e6-01ea13572e97,2024,3,Which measure describes the total value of Goods and services produced in a time period in the domestic territory?,,,,,,
-question,139d8a96-c788-4260-a1bf-ebd162027a53,2024,3,What does organizing mean in the context of management functions?,,,,,,
-question,fa5ebeb7-be9d-4da1-a639-26a224a62800,2024,3,______ is a group technology that is a subsection of lean and JIT (Just-In-Time)?,suspicious_repeat_char,flagged,,,,
-question,a979afc8-c72d-4dd7-b300-891d2d006632,2024,3,What is the effect of a negative supply shock on the Philips curve?,,,,,,
-question,671bc775-d1ab-4a42-9802-21d7b8d56edc,2024,3,"Under the SEBI (Issue of Capital and Disclosure Requirements) Regulations, what is the maximum amount that an individual retail investor can",,,,,,
-question,c40f40c1-feb1-49e7-a1f1-f94fa5b9b6cc,2024,3,Who regulates microfinance in India?,,,,,,
-question,2500a179-f41a-44d9-924b-8dc3fe61300c,2024,3,"If an organization is being conservative while preparing its Profit and Loss account, which accounting concept is being followed?",,,,,,
-question,34772795-86c3-4a66-9607-edabee415b5a,2024,3,Which of the following methods is a public company not allowed to use to issue shares?,,,,,,
-question,8ff237d2-6022-46a2-ade3-3ada126eadcd,2024,3,"If current assets are Rs. 8,00,000, current liabilities are Rs. 4,80,000, and stock is Rs. 2,00,000, what is the Quick Ratio?",,,,,,
-question,d56f95f9-13e1-4d2d-be80-60acea1b7b03,2024,3,"Under Section 54 of companies act, what is the lock-in period for Sweat Equity shares?",,,,,,
-question,9c3c5cf3-22f7-4248-a889-02379e99673b,2024,4,"If the input units are 300, with a normal loss of 30%, and units produced are 190, the abnormal gain or loss will be:",,,,,,
-question,847bc0ce-4654-470a-a403-7df84bead86e,2024,4,Stagflation shows the relationship between _______________,suspicious_repeat_char,flagged,,,,
-question,241c9d52-163f-42cc-91a3-0cdbb4b09493,2024,4,"What kind of leader listens to subordinates, analyses information, conducts research, and makes informed decisions for the organization?",,,,,,
-question,acb1b378-4691-499c-9937-6bcc95f0eb54,2024,4,"In standard costing, costs that are ascertained before production are called as ______",suspicious_repeat_char,flagged,,,,
-question,3a21079c-c433-4877-bbfc-17d4a0c8002a,2024,4,Which of the following is the major determinant of Keynes’ Consumption Function?,non_ascii_suspect,flagged,,,,
-question,9fe529e0-cd1a-41df-aa57-116845875eb6,2024,4,"Under the Depositories Act of 1996, what process must shares undergo to be held in an electronic format?",,,,,,
-question,d4958a91-0b93-4c48-9d60-febefe6e9ab6,2024,4,NABARD supervises which of the following organisation?,,,,,,
-question,ae7b57d4-36a3-4cf4-a28f-4a6c086a7815,2024,4,"The face value of a share is Rs 10. If 1,00,000 shares are issued at a premium of 10%, what amount will be transferred to the Securities Pre",,,,,,
-question,762d54a8-6764-40d5-b2b0-89b7ac9ea9e1,2024,4,"What is the maximum time limit for preference shares as per the Companies Act, 2013?",,,,,,
-question,6060c1eb-559d-42c9-8d82-8c65a5207d02,2024,4,What system is predominantly used in accounting to ensure accuracy and completeness in financial record-keeping?,,,,,,
-question,043acc13-b83c-4330-aae1-e876a4fdbb2c,2024,4,"Under Section 186(4) of the Companies Act, which of the following is NOT covered?",,,,,,
-question,e0143dda-9b79-4c95-a367-734176a07586,2024,5,"If the Break-Even Point (BEP) is Rs 20 lakhs and Fixed Cost is Rs 5 lakhs, calculate the Profit/Volume (P/V) Ratio.",,,,,,
-question,ffff40c0-ade2-44b2-9f5f-4f0b55c1e02d,2024,5,"Out of the following options, which one is the correct characteristic of perfect competition?",,,,,,
-question,093693b0-693f-44b5-b8ed-96a584de9a1e,2024,5,Which school of management focuses on addressing and integrating current global or modern issues and challenges?,,spot_check,,,,
-question,efb2bc41-5eb6-43c1-a16f-8d03852b9699,2024,5,"If the P/V ratio is 30% of sales, then what accounts for the remaining 70% of sales?",,spot_check,,,,
-question,e32408ce-adbc-4d3a-9d93-b347fd01f6b5,2024,5,Which of the following statements best defines the trade deficit?,,,,,,
-question,6366ae01-4477-4735-b12f-89ca4634e15f,2024,5,The Bank for International Settlements (BIS) primarily serves which of the following entities?,,spot_check,,,,
-question,04d163d4-1226-42c0-a31d-d0592a836734,2024,5,"Company issuing commercial paper, what is the net worth required for the company?",,spot_check,,,,
-question,12b0ab8e-5618-453d-a2b4-a6d7b6f8dd32,2024,5,"If 2,00,000 right shares of face value Rs 10 are being issued at a 20% premium, what will be the correct journal entry for this transaction?",,spot_check,,,,
-question,519f5205-ec87-4242-9df9-038da737b19b,2024,5,Every company shall inform the Registrar within ___ many days of the receipt of the Director Identification Number (DIN).,,spot_check,,,,
-question,feff85f3-cf86-43d8-bcfb-ddf42fddcabe,2024,5,For which of the following companies is the consolidation of financial statements necessary?,,spot_check,,,,
-question,fd7d88a7-d089-4f0e-b236-daabcd05d27e,2024,5,The auditor appointed for a company (government or non-government) may be removed from his office before the expiry of his term only by a sp,suspicious_repeat_char,flagged,,,,
-question,8cbb6280-3ce6-49a8-8c18-233cc7c20eca,2024,6,"Given a P/V Ratio of 30%, Fixed Cost of Rs 90,000, and a Selling Price of Rs 100 per unit, find the Break-Even Point (BEP) in units.",,,,,,
+question,c0aca59d-7017-479d-82bb-5305cc113d02,2024,1,Calculate the Cost of Production with the following information: • Material Cost: Rs 600 • Labour Cost: Rs 150 • Set Up Cost: Rs 200 • Manuf,non_ascii_suspect,flagged,,,,medium
+question,e6eab792-3cab-499f-ab06-76114be1ea60,2024,1,Which of the following is the formula for Per-capita Income?,,spot_check,,,,easy
+question,0a99f034-166e-492d-9bb6-63607f73d830,2024,1,Which types of barriers arise when people have different mindsets due to different backgrounds?,,spot_check,,,,easy
+question,7dc47578-4355-4e00-84bd-aaeb238f0b55,2024,1,_________ is an approach to equipment maintenance and productivity improvement?,suspicious_repeat_char,flagged,,,,easy
+question,b17ff3e9-e9d5-413e-8ac3-fa39730caaa8,2024,1,Which of the following accurately describes the Say’s Law of Market?,non_ascii_suspect,flagged,,,,easy
+question,76cb57b1-73ce-4ab6-8a08-b41b67ea0e81,2024,1,The Rule of 72 is a financial principle used to estimate the time it takes for an investment to achieve a certain growth target. Which of th,,spot_check,,,,easy
+question,4ce9d5cc-54e1-453f-a575-640eb0551909,2024,1,"Identify the component of Money market, where the money is lent more than 1 day and less than 15 days.",,spot_check,,,,easy
+question,b5823274-ce2c-456a-b93c-4de3b54280ef,2024,1,Which of the following is not a qualitative characteristic of accounting information?,,spot_check,,,,easy
+question,21bb691d-80fd-4fe0-b843-19a699cf7b9d,2024,1,Which of the following is/are not eligible to be an independent director?,,spot_check,,,,easy
+question,005ba362-e615-484d-a75b-a06da653a81c,2024,1,Which of the following is a limitation of the Fund Flow Statement?,,spot_check,,,,easy
+question,bf6f7fdf-d8f5-47e7-9af4-b4c0a00ebae4,2024,1,Within how many days should money be deposited in a Special Account (unpaid dividend account) after the expiry of 30 days from the date of d,,spot_check,,,,easy
+question,26f01a95-bb08-42ea-9a91-fbedee96d162,2024,2,"Calculate the differential cost if the cost at 70% activity level is Rs 30,000 and at 85% activity level is Rs 39,000.",,spot_check,,,,medium
+question,63945515-c67a-4cc7-96b2-636786fe109b,2024,2,Which of the following shows the relationship between price and quantity demanded?,,,,,,easy
+question,b5c5a5a6-65ba-482a-a84d-3086bc4273bb,2024,2,"Which type of leader inspires and motivates, and sets a vision for achieving goals?",,,,,,easy
+question,0b781c92-7897-4033-afab-ded99d80bdd7,2024,2,Waste elimination is the aim of_________,suspicious_repeat_char,flagged,,,,easy
+question,12cc7df7-6dc7-4b5e-9c38-76a37ba5426c,2024,2,Which of the following best describes the definition of National Income?,,spot_check,,,,easy
+question,155422a6-54bc-4a98-be90-341099052cdf,2024,2,"When an investor takes advantage of price differences in separate markets by simultaneously buying and selling an asset, which financial str",,,,,,easy
+question,64992c89-aac5-4213-86b4-3664efee2434,2024,2,"Calculate bond yield of the debenture of 10%, face value of Rs. 100, currently bought or priced at Rs. 80?",,,,,,medium
+question,e0cce12e-81b1-40a6-bf26-6e806f44d4a8,2024,2,"Which of the following statements defines the ""Going Concern"" concept correctly?",,,,,,easy
+question,f7fd9091-c8bf-4dcc-9663-5ab612768ae9,2024,2,NCLT (National Company Law Tribunal) is constituted by:,,,,,,easy
+question,4370a5b2-5067-466f-bc8b-273d46fd9d93,2024,2,Which of the following is included in investing activity under cash flow statement?,,,,,,easy
+question,7546df13-21e4-4001-a599-4b5facc8a9c0,2024,2,Within how many days can a person appeal against the order of the National Company Law Tribunal (NCLT) to the National Company Law Appellate,,,,,,easy
+question,399fb440-efcc-427a-9b32-798a1eb2d1f8,2024,3,Canteen expense for factory workers is classified as:,,,,,,easy
+question,f217b304-1775-44bf-96e6-01ea13572e97,2024,3,Which measure describes the total value of Goods and services produced in a time period in the domestic territory?,,,,,,easy
+question,139d8a96-c788-4260-a1bf-ebd162027a53,2024,3,What does organizing mean in the context of management functions?,,,,,,easy
+question,fa5ebeb7-be9d-4da1-a639-26a224a62800,2024,3,______ is a group technology that is a subsection of lean and JIT (Just-In-Time)?,suspicious_repeat_char,flagged,,,,easy
+question,a979afc8-c72d-4dd7-b300-891d2d006632,2024,3,What is the effect of a negative supply shock on the Philips curve?,,,,,,easy
+question,671bc775-d1ab-4a42-9802-21d7b8d56edc,2024,3,"Under the SEBI (Issue of Capital and Disclosure Requirements) Regulations, what is the maximum amount that an individual retail investor can",,,,,,medium
+question,c40f40c1-feb1-49e7-a1f1-f94fa5b9b6cc,2024,3,Who regulates microfinance in India?,,,,,,easy
+question,2500a179-f41a-44d9-924b-8dc3fe61300c,2024,3,"If an organization is being conservative while preparing its Profit and Loss account, which accounting concept is being followed?",,,,,,easy
+question,34772795-86c3-4a66-9607-edabee415b5a,2024,3,Which of the following methods is a public company not allowed to use to issue shares?,,,,,,easy
+question,8ff237d2-6022-46a2-ade3-3ada126eadcd,2024,3,"If current assets are Rs. 8,00,000, current liabilities are Rs. 4,80,000, and stock is Rs. 2,00,000, what is the Quick Ratio?",,,,,,medium
+question,d56f95f9-13e1-4d2d-be80-60acea1b7b03,2024,3,"Under Section 54 of companies act, what is the lock-in period for Sweat Equity shares?",,,,,,easy
+question,9c3c5cf3-22f7-4248-a889-02379e99673b,2024,4,"If the input units are 300, with a normal loss of 30%, and units produced are 190, the abnormal gain or loss will be:",,,,,,medium
+question,847bc0ce-4654-470a-a403-7df84bead86e,2024,4,Stagflation shows the relationship between _______________,suspicious_repeat_char,flagged,,,,easy
+question,241c9d52-163f-42cc-91a3-0cdbb4b09493,2024,4,"What kind of leader listens to subordinates, analyses information, conducts research, and makes informed decisions for the organization?",,,,,,easy
+question,acb1b378-4691-499c-9937-6bcc95f0eb54,2024,4,"In standard costing, costs that are ascertained before production are called as ______",suspicious_repeat_char,flagged,,,,easy
+question,3a21079c-c433-4877-bbfc-17d4a0c8002a,2024,4,Which of the following is the major determinant of Keynes’ Consumption Function?,non_ascii_suspect,flagged,,,,easy
+question,9fe529e0-cd1a-41df-aa57-116845875eb6,2024,4,"Under the Depositories Act of 1996, what process must shares undergo to be held in an electronic format?",,,,,,easy
+question,d4958a91-0b93-4c48-9d60-febefe6e9ab6,2024,4,NABARD supervises which of the following organisation?,,,,,,easy
+question,ae7b57d4-36a3-4cf4-a28f-4a6c086a7815,2024,4,"The face value of a share is Rs 10. If 1,00,000 shares are issued at a premium of 10%, what amount will be transferred to the Securities Pre",,,,,,medium
+question,762d54a8-6764-40d5-b2b0-89b7ac9ea9e1,2024,4,"What is the maximum time limit for preference shares as per the Companies Act, 2013?",,,,,,easy
+question,6060c1eb-559d-42c9-8d82-8c65a5207d02,2024,4,What system is predominantly used in accounting to ensure accuracy and completeness in financial record-keeping?,,,,,,easy
+question,043acc13-b83c-4330-aae1-e876a4fdbb2c,2024,4,"Under Section 186(4) of the Companies Act, which of the following is NOT covered?",,,,,,easy
+question,e0143dda-9b79-4c95-a367-734176a07586,2024,5,"If the Break-Even Point (BEP) is Rs 20 lakhs and Fixed Cost is Rs 5 lakhs, calculate the Profit/Volume (P/V) Ratio.",,,,,,medium
+question,ffff40c0-ade2-44b2-9f5f-4f0b55c1e02d,2024,5,"Out of the following options, which one is the correct characteristic of perfect competition?",,,,,,easy
+question,093693b0-693f-44b5-b8ed-96a584de9a1e,2024,5,Which school of management focuses on addressing and integrating current global or modern issues and challenges?,,spot_check,,,,easy
+question,efb2bc41-5eb6-43c1-a16f-8d03852b9699,2024,5,"If the P/V ratio is 30% of sales, then what accounts for the remaining 70% of sales?",,spot_check,,,,easy
+question,e32408ce-adbc-4d3a-9d93-b347fd01f6b5,2024,5,Which of the following statements best defines the trade deficit?,,,,,,easy
+question,6366ae01-4477-4735-b12f-89ca4634e15f,2024,5,The Bank for International Settlements (BIS) primarily serves which of the following entities?,,spot_check,,,,easy
+question,04d163d4-1226-42c0-a31d-d0592a836734,2024,5,"Company issuing commercial paper, what is the net worth required for the company?",,spot_check,,,,medium
+question,12b0ab8e-5618-453d-a2b4-a6d7b6f8dd32,2024,5,"If 2,00,000 right shares of face value Rs 10 are being issued at a 20% premium, what will be the correct journal entry for this transaction?",,spot_check,,,,medium
+question,519f5205-ec87-4242-9df9-038da737b19b,2024,5,Every company shall inform the Registrar within ___ many days of the receipt of the Director Identification Number (DIN).,,spot_check,,,,easy
+question,feff85f3-cf86-43d8-bcfb-ddf42fddcabe,2024,5,For which of the following companies is the consolidation of financial statements necessary?,,spot_check,,,,easy
+question,fd7d88a7-d089-4f0e-b236-daabcd05d27e,2024,5,The auditor appointed for a company (government or non-government) may be removed from his office before the expiry of his term only by a sp,suspicious_repeat_char,flagged,,,,easy
+question,8cbb6280-3ce6-49a8-8c18-233cc7c20eca,2024,6,"Given a P/V Ratio of 30%, Fixed Cost of Rs 90,000, and a Selling Price of Rs 100 per unit, find the Break-Even Point (BEP) in units.",,,,,,medium
 question,99602bab-f00c-4e7a-aeef-39f335e7986e,2024,6,IS – LM model Shows the equilibrium in _________________,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,8643d71a-958d-43a7-b1ad-c2dc54aa8da0,2024,6,Which type of competency is measured by organizations to define and assess the technical and specialized abilities required for specific rol,,,,,,
-question,b99ad059-791e-4e45-a68e-c66580fcf23d,2024,6,"In ABC (Activity-Based Costing), costs are allocated based on what?",,,,,,
-question,f263def7-24d3-41ab-870d-58be825666bf,2024,6,Which of the following clearly defines the fiscal deficit?,,,,,,
-question,243dd230-2618-4e37-9c1f-b048e4b544b2,2024,6,The Finance Commission of India assigned a 12.5% weightage to which of the following criteria for determining the devolution of funds to sta,,,,,,
+question,8643d71a-958d-43a7-b1ad-c2dc54aa8da0,2024,6,Which type of competency is measured by organizations to define and assess the technical and specialized abilities required for specific rol,,,,,,easy
+question,b99ad059-791e-4e45-a68e-c66580fcf23d,2024,6,"In ABC (Activity-Based Costing), costs are allocated based on what?",,,,,,easy
+question,f263def7-24d3-41ab-870d-58be825666bf,2024,6,Which of the following clearly defines the fiscal deficit?,,,,,,easy
+question,243dd230-2618-4e37-9c1f-b048e4b544b2,2024,6,The Finance Commission of India assigned a 12.5% weightage to which of the following criteria for determining the devolution of funds to sta,,,,,,medium
 question,58af24fd-3f33-4fd4-aee3-5b2bb373309b,2024,6,What is a Forward Rate Agreement (FRA)?,,,,,,
-question,016b7db1-c450-4eff-b759-9ed634fe4560,2024,6,Which of the following is an application of funds as per the Fund Flow Statement?,,,,,,
-question,b91e3789-9d4a-4c9c-9fcb-f022a8849afc,2024,6,"What is the age limit for directors of a company as per the Companies Act, 2013?",,,,,,
-question,5200c76b-6614-4d5e-9e6c-30470357eb74,2024,6,"As per Ind-AS 36, what does ""impairment of assets"" mean?",,,,,,
-question,b21c5e13-7e0f-41d8-924c-fa842964f7cd,2024,6,"As per the Companies Act, a meeting of the board shall be called by giving notice to directors at their registered address a minimum of how ",,spot_check,,,,
-question,89f59b7c-dfe9-4c49-8659-885e67fe52e8,2024,7,"If the desired profit is Rs 20,000, Fixed Costs are Rs 150,000, and the P/V Ratio is 50%, what will be the required Sales?",,spot_check,,,,
-question,b28c6704-84a6-4f33-82f1-a4d6891fc963,2024,7,Structural Unemployment is caused by which of the following options?,,,,,,
-question,1966b40d-44f8-40dd-97b1-50e90bd223b6,2024,7,What is the process of identifying and improving the skills of individuals with potential for promotions and organizational development?,,,,,,
-question,039cadd2-d082-42d9-8f68-a70238bd1dad,2024,7,Royalty paid to the state government based on production will be considered as:,,,,,,
-question,f244396e-ed9f-49d1-b291-92c5297e66ec,2024,7,Which of the following is the main function of Monetary Policy?,,spot_check,,,,
-question,d407ef8e-516f-4e0a-b9f9-3f8254781a02,2024,7,"According to the FRBM Act, what is the targeted limit for central government borrowing as a percentage of GDP by the year 2025?",,,,,,
-question,5a35e559-86d8-4ebb-aee4-102765ea8d6d,2024,7,Securities are issued under a dematerialized form by complying with the provisions of which act?,,,,,,
-question,765498e9-c784-419f-9713-26d3b7e88416,2024,7,The aggregate cash flows arising from obtaining or losing control of subsidiaries or other businesses shall be presented separately and clas,,,,,,
-question,6e188a75-7b6a-45cb-b24c-586f490d9fda,2024,7,"If a company or director wants to create a mechanism for the resolution of matters involving 1,000 stakeholders or more, what is this mechan",,,,,,
-question,9a7c1423-3b31-41f1-9427-b34c5b3cc567,2024,7,For how many days should the offer for a rights issue be open for investors?,,,,,,
-question,107bc2ac-0d8c-4518-aefb-7c3d4c07205f,2024,7,What is the maximum age for a Chairperson in the National Company Law Appellate Tribunal (NCLAT) as per the guidelines?,,,,,,
-question,915aafbd-29c5-4442-87b1-625e89be2979,2024,8,"In a cycle manufacturing business, which method of costing is most appropriate?",,,,,,
-question,18ab2f9f-05b9-4a33-ae47-351c8f9c4ad3,2024,8,"What is the result of increased training and skills development of members, leading to tangible benefits to benefit the bottom line of the o",,,,,,
-question,2a8f61fb-9b7e-4ef6-a737-0d68121c3966,2024,8,Which of the following is considered as automatic stabilizer in the fiscal policy?,,,,,,
-question,fd5ad694-7cde-46b3-a1c8-41f41dc26fde,2024,8,"In the latest Union Budget, what is the amount of the standard deduction allowed for salaried individuals?",,,,,,
-question,886f7e5c-74d3-4752-b9e4-0fe05390c5f8,2024,8,What is the standard used to calculate bond days in India?,,spot_check,,,,
-question,f4f20834-b417-449d-86a8-dbdd303c51bd,2024,8,"As per Ind AS 21, non-monetary items measured in terms of historical cost in a foreign currency shall be translated using the exchange rate:",,,,,,
-question,1520b85b-8a20-4f7f-9be3-e42ed330ff8b,2024,8,"As per Section 125 of the Companies Act, which fund is constituted?",,,,,,
-question,182bca5e-9eae-48e0-b9f2-3df84c1af40d,2024,8,A listed company may appoint one director as a _________ shareholder director.,suspicious_repeat_char,flagged,,,,
-question,6976d694-ce89-44ef-961b-f02b3fa22308,2024,9,Calculate the Labour Rate Variance using the following data: • Standard Rate = Rs 2.5 • Actual Rate = Rs 2.2 • Actual Hours = 500 • Standard,non_ascii_suspect,flagged,,,,
-question,7f95b35d-5233-4279-8b83-556e6e9aa7d6,2024,9,What is the term used for defining the start and ending of work in a project or task in management context?,,,,,,
-question,c01068d5-2778-459f-b178-6fbbfc80ce49,2024,9,Which of the following is an economic indicator of growth?,,,,,,
-question,5ee407cb-d46b-4001-a622-34b194a64516,2024,9,"Which tax, often criticized by startups for hindering their growth, was removed in the recent Union Budget?",,spot_check,,,,
-question,1b0be8f3-114c-4268-ad32-79e908e3ba14,2024,9,"When the Reserve Bank of India (RBI) is raising loans for states, it should consult the Ministry of Finance and with which other entity?",,,,,,
-question,6518b6ec-3caf-4f95-8bac-233fa8e99968,2024,9,Ind AS 105 relates to?,,spot_check,,,,
-question,a492ea6c-6e80-41e0-9d39-a3d1e5ed127f,2024,9,An appeal to the Supreme Court from the National Company Law Appellate Tribunal (NCLAT) can be made within how many days?,,,,,,
-question,3b6e4499-5830-452a-b43c-ffb730eec941,2024,9,"A company cannot issue shares at a discount, but there are some exceptions. Which of the following is an exception that allows a company to ",,,,,,
-question,9f108ad8-630d-4701-a8cb-6e89948593a3,2024,10,Who is responsible if raw material purchases are more expensive than expected?,,,,,,
-question,86a5551d-9472-4424-a60f-a01bd5fce055,2024,10,Which of the following institution provides financial assistance to Government of member countries?,,spot_check,,,,
-question,8794dfab-eeab-4f5a-b937-a24fd7a7fedf,2024,10,Which of the following investment vehicles is considered a passive investment strategy?,,,,,,
-question,810d0f24-c68c-41dd-bbc1-7ea5a23a9e70,2024,10,The International Organization of Securities Commissions (IOSCO) is a global organization. What is the primary function of IOSCO?,,,,,,
-question,dc8e4030-ef5e-46c3-b640-c2742acd621d,2024,10,Which Ind AS delas with the cash flow statement?,,,,,,
-question,cab8bf24-a2dc-47cb-a1ef-7152fa49fa56,2024,10,"Transfer of Securities related to equity, debt and other securities must be delivered within ___ maximum days of execution of the company.",,spot_check,,,,
-question,bca3ec6e-3632-473a-b17c-121e556dd40a,2024,11,"What term describes the implementation of a new or significantly improved production or delivery method, including significant changes in te",,,,,,
-question,20d8be3a-3874-4f5f-99f6-b212adeea570,2024,11,"In Monopolistic competition, product differentiation is done with the aim of ________",suspicious_repeat_char,flagged,,,,
-question,5bda5f9e-1f32-4827-9b3b-12329f476114,2024,11,Which of the following financial instruments is not transferable?,,,,,,
-question,c99f06c1-6a6b-4ce7-a3f7-1841033aab97,2024,11,Which of the following is considered a risk-free instrument?,,,,,,
-question,0ff7bd0f-95ac-409e-ab3c-f9cd4081e28a,2024,11,What will be the impact of a Bonus Issue on shareholders and on the entity?,,,,,,
-question,1ab9d295-bb0f-4e84-ab3d-2214ade3a14b,2024,11,"In a special case, an auditor of a company can be removed by an order from which authority?",,,,,,
-question,6cfa2786-a66f-47f7-ac9f-773c0e1efea1,2024,12,How is the effectiveness of Total Productive Maintenance (TPM) measured?,,,,,,
-question,7734159d-1eea-4128-8419-f291a94ce9b3,2024,12,Which of the following causes the demand-pull inflation?,,,,,,
-question,e65dc70f-6d69-413f-8138-81e78c59352d,2024,12,"As per RBI guidelines, how many working days should the Key Fact Statement (KFS) specify as the minimum validity period for loans with a ten",,,,,,
-question,0439fd6f-3ed1-4d53-96b7-89d281d00c43,2024,12,"If the net working capital is Rs 20 lakhs and sales are Rs 120 lakhs, calculate the Working Capital Turnover Ratio.",,,,,,
-question,44ce61b7-9f81-445c-800e-19b6cdc99511,2024,12,A firm shall be eligible for appointment as an auditor of a company provided that a firm whereof ________ practicing in India are qualified ,suspicious_repeat_char,flagged,,,,
-question,f825bec6-c74c-41ff-bce0-f0b023d88b8b,2024,13,Which of the following models considers economic growth depends on the availability of resources?,,,,,,
-question,20805755-b9ec-4725-99fb-7fda92ede3ea,2024,13,"Under the RBI’s incentive scheme for Business Correspondents (BCs) operating in hilly areas, what is the additional monthly incentive provid",non_ascii_suspect,flagged,,,,
-question,f1f6e834-9cf2-42c9-a2c8-9a675c209409,2024,13,An increase in the Debt Service Coverage Ratio (DSCR) indicates:,,spot_check,,,,
-question,a3ab13a9-dea8-4093-8ff9-cb1f64a83d70,2024,13,Dividend should be transferred to a separate bank account from how many days after the declaration of the dividend?,,,,,,
-question,fa03be05-d7a3-419f-b5f6-82bdea15ef2b,2024,14,"According to the Economic Survey 2023-24, which of the following areas saw a sharp rise?",,,,,,
-question,3bc522e5-2aef-4ab9-98c4-c38897283b88,2024,14,"Upon receiving credit advice or a statement of a Nostro account, in compliance with FEMA guidelines, within how many working days must bank ",,,,,,
-question,002b2b1a-04dc-4aef-ad3f-c493ddd513d6,2024,14,"What does ""cum-right"" shares represent?",,,,,,
-question,5aa8ea1f-f211-43c6-a8df-419c8cdc749d,2024,14,"As per Section 71 of the Companies Act, if a company wants to issue debentures to more than 500 members, it must appoint a _______________ b",suspicious_repeat_char,flagged,,,,
+question,016b7db1-c450-4eff-b759-9ed634fe4560,2024,6,Which of the following is an application of funds as per the Fund Flow Statement?,,,,,,easy
+question,b91e3789-9d4a-4c9c-9fcb-f022a8849afc,2024,6,"What is the age limit for directors of a company as per the Companies Act, 2013?",,,,,,easy
+question,5200c76b-6614-4d5e-9e6c-30470357eb74,2024,6,"As per Ind-AS 36, what does ""impairment of assets"" mean?",,,,,,easy
+question,b21c5e13-7e0f-41d8-924c-fa842964f7cd,2024,6,"As per the Companies Act, a meeting of the board shall be called by giving notice to directors at their registered address a minimum of how ",,spot_check,,,,easy
+question,89f59b7c-dfe9-4c49-8659-885e67fe52e8,2024,7,"If the desired profit is Rs 20,000, Fixed Costs are Rs 150,000, and the P/V Ratio is 50%, what will be the required Sales?",,spot_check,,,,medium
+question,b28c6704-84a6-4f33-82f1-a4d6891fc963,2024,7,Structural Unemployment is caused by which of the following options?,,,,,,easy
+question,1966b40d-44f8-40dd-97b1-50e90bd223b6,2024,7,What is the process of identifying and improving the skills of individuals with potential for promotions and organizational development?,,,,,,easy
+question,039cadd2-d082-42d9-8f68-a70238bd1dad,2024,7,Royalty paid to the state government based on production will be considered as:,,,,,,easy
+question,f244396e-ed9f-49d1-b291-92c5297e66ec,2024,7,Which of the following is the main function of Monetary Policy?,,spot_check,,,,easy
+question,d407ef8e-516f-4e0a-b9f9-3f8254781a02,2024,7,"According to the FRBM Act, what is the targeted limit for central government borrowing as a percentage of GDP by the year 2025?",,,,,,medium
+question,5a35e559-86d8-4ebb-aee4-102765ea8d6d,2024,7,Securities are issued under a dematerialized form by complying with the provisions of which act?,,,,,,easy
+question,765498e9-c784-419f-9713-26d3b7e88416,2024,7,The aggregate cash flows arising from obtaining or losing control of subsidiaries or other businesses shall be presented separately and clas,,,,,,easy
+question,6e188a75-7b6a-45cb-b24c-586f490d9fda,2024,7,"If a company or director wants to create a mechanism for the resolution of matters involving 1,000 stakeholders or more, what is this mechan",,,,,,easy
+question,9a7c1423-3b31-41f1-9427-b34c5b3cc567,2024,7,For how many days should the offer for a rights issue be open for investors?,,,,,,easy
+question,107bc2ac-0d8c-4518-aefb-7c3d4c07205f,2024,7,What is the maximum age for a Chairperson in the National Company Law Appellate Tribunal (NCLAT) as per the guidelines?,,,,,,easy
+question,915aafbd-29c5-4442-87b1-625e89be2979,2024,8,"In a cycle manufacturing business, which method of costing is most appropriate?",,,,,,easy
+question,18ab2f9f-05b9-4a33-ae47-351c8f9c4ad3,2024,8,"What is the result of increased training and skills development of members, leading to tangible benefits to benefit the bottom line of the o",,,,,,easy
+question,2a8f61fb-9b7e-4ef6-a737-0d68121c3966,2024,8,Which of the following is considered as automatic stabilizer in the fiscal policy?,,,,,,easy
+question,fd5ad694-7cde-46b3-a1c8-41f41dc26fde,2024,8,"In the latest Union Budget, what is the amount of the standard deduction allowed for salaried individuals?",,,,,,medium
+question,886f7e5c-74d3-4752-b9e4-0fe05390c5f8,2024,8,What is the standard used to calculate bond days in India?,,spot_check,,,,easy
+question,f4f20834-b417-449d-86a8-dbdd303c51bd,2024,8,"As per Ind AS 21, non-monetary items measured in terms of historical cost in a foreign currency shall be translated using the exchange rate:",,,,,,easy
+question,1520b85b-8a20-4f7f-9be3-e42ed330ff8b,2024,8,"As per Section 125 of the Companies Act, which fund is constituted?",,,,,,easy
+question,182bca5e-9eae-48e0-b9f2-3df84c1af40d,2024,8,A listed company may appoint one director as a _________ shareholder director.,suspicious_repeat_char,flagged,,,,easy
+question,6976d694-ce89-44ef-961b-f02b3fa22308,2024,9,Calculate the Labour Rate Variance using the following data: • Standard Rate = Rs 2.5 • Actual Rate = Rs 2.2 • Actual Hours = 500 • Standard,non_ascii_suspect,flagged,,,,medium
+question,7f95b35d-5233-4279-8b83-556e6e9aa7d6,2024,9,What is the term used for defining the start and ending of work in a project or task in management context?,,,,,,easy
+question,c01068d5-2778-459f-b178-6fbbfc80ce49,2024,9,Which of the following is an economic indicator of growth?,,,,,,easy
+question,5ee407cb-d46b-4001-a622-34b194a64516,2024,9,"Which tax, often criticized by startups for hindering their growth, was removed in the recent Union Budget?",,spot_check,,,,medium
+question,1b0be8f3-114c-4268-ad32-79e908e3ba14,2024,9,"When the Reserve Bank of India (RBI) is raising loans for states, it should consult the Ministry of Finance and with which other entity?",,,,,,easy
+question,6518b6ec-3caf-4f95-8bac-233fa8e99968,2024,9,Ind AS 105 relates to?,,spot_check,,,,easy
+question,a492ea6c-6e80-41e0-9d39-a3d1e5ed127f,2024,9,An appeal to the Supreme Court from the National Company Law Appellate Tribunal (NCLAT) can be made within how many days?,,,,,,easy
+question,3b6e4499-5830-452a-b43c-ffb730eec941,2024,9,"A company cannot issue shares at a discount, but there are some exceptions. Which of the following is an exception that allows a company to ",,,,,,easy
+question,9f108ad8-630d-4701-a8cb-6e89948593a3,2024,10,Who is responsible if raw material purchases are more expensive than expected?,,,,,,easy
+question,86a5551d-9472-4424-a60f-a01bd5fce055,2024,10,Which of the following institution provides financial assistance to Government of member countries?,,spot_check,,,,easy
+question,8794dfab-eeab-4f5a-b937-a24fd7a7fedf,2024,10,Which of the following investment vehicles is considered a passive investment strategy?,,,,,,easy
+question,810d0f24-c68c-41dd-bbc1-7ea5a23a9e70,2024,10,The International Organization of Securities Commissions (IOSCO) is a global organization. What is the primary function of IOSCO?,,,,,,easy
+question,dc8e4030-ef5e-46c3-b640-c2742acd621d,2024,10,Which Ind AS delas with the cash flow statement?,,,,,,easy
+question,cab8bf24-a2dc-47cb-a1ef-7152fa49fa56,2024,10,"Transfer of Securities related to equity, debt and other securities must be delivered within ___ maximum days of execution of the company.",,spot_check,,,,easy
+question,bca3ec6e-3632-473a-b17c-121e556dd40a,2024,11,"What term describes the implementation of a new or significantly improved production or delivery method, including significant changes in te",,,,,,easy
+question,20d8be3a-3874-4f5f-99f6-b212adeea570,2024,11,"In Monopolistic competition, product differentiation is done with the aim of ________",suspicious_repeat_char,flagged,,,,easy
+question,5bda5f9e-1f32-4827-9b3b-12329f476114,2024,11,Which of the following financial instruments is not transferable?,,,,,,easy
+question,c99f06c1-6a6b-4ce7-a3f7-1841033aab97,2024,11,Which of the following is considered a risk-free instrument?,,,,,,easy
+question,0ff7bd0f-95ac-409e-ab3c-f9cd4081e28a,2024,11,What will be the impact of a Bonus Issue on shareholders and on the entity?,,,,,,easy
+question,1ab9d295-bb0f-4e84-ab3d-2214ade3a14b,2024,11,"In a special case, an auditor of a company can be removed by an order from which authority?",,,,,,easy
+question,6cfa2786-a66f-47f7-ac9f-773c0e1efea1,2024,12,How is the effectiveness of Total Productive Maintenance (TPM) measured?,,,,,,easy
+question,7734159d-1eea-4128-8419-f291a94ce9b3,2024,12,Which of the following causes the demand-pull inflation?,,,,,,easy
+question,e65dc70f-6d69-413f-8138-81e78c59352d,2024,12,"As per RBI guidelines, how many working days should the Key Fact Statement (KFS) specify as the minimum validity period for loans with a ten",,,,,,medium
+question,0439fd6f-3ed1-4d53-96b7-89d281d00c43,2024,12,"If the net working capital is Rs 20 lakhs and sales are Rs 120 lakhs, calculate the Working Capital Turnover Ratio.",,,,,,medium
+question,44ce61b7-9f81-445c-800e-19b6cdc99511,2024,12,A firm shall be eligible for appointment as an auditor of a company provided that a firm whereof ________ practicing in India are qualified ,suspicious_repeat_char,flagged,,,,easy
+question,f825bec6-c74c-41ff-bce0-f0b023d88b8b,2024,13,Which of the following models considers economic growth depends on the availability of resources?,,,,,,easy
+question,20805755-b9ec-4725-99fb-7fda92ede3ea,2024,13,"Under the RBI’s incentive scheme for Business Correspondents (BCs) operating in hilly areas, what is the additional monthly incentive provid",non_ascii_suspect,flagged,,,,medium
+question,f1f6e834-9cf2-42c9-a2c8-9a675c209409,2024,13,An increase in the Debt Service Coverage Ratio (DSCR) indicates:,,spot_check,,,,easy
+question,a3ab13a9-dea8-4093-8ff9-cb1f64a83d70,2024,13,Dividend should be transferred to a separate bank account from how many days after the declaration of the dividend?,,,,,,easy
+question,fa03be05-d7a3-419f-b5f6-82bdea15ef2b,2024,14,"According to the Economic Survey 2023-24, which of the following areas saw a sharp rise?",,,,,,medium
+question,3bc522e5-2aef-4ab9-98c4-c38897283b88,2024,14,"Upon receiving credit advice or a statement of a Nostro account, in compliance with FEMA guidelines, within how many working days must bank ",,,,,,medium
+question,002b2b1a-04dc-4aef-ad3f-c493ddd513d6,2024,14,"What does ""cum-right"" shares represent?",,,,,,easy
+question,5aa8ea1f-f211-43c6-a8df-419c8cdc749d,2024,14,"As per Section 71 of the Companies Act, if a company wants to issue debentures to more than 500 members, it must appoint a _______________ b",suspicious_repeat_char,flagged,,,,easy
 question,11665923-fcba-411c-a24e-662f8630f1b8,2024,15,Scarce factor is also known as ______,suspicious_repeat_char;no_primary_tag,flagged,,,,
-question,5b26484d-1cb4-44c9-9196-7c3d201f1d04,2024,15,"Who manages the Fund of Funds for Startups (FFS), established under the AIF framework regulated by SEBI to support startups in India?",,spot_check,,,,
-question,b0724dbb-655f-4431-827e-2c47e7e0c560,2024,15,A low Cash Conversion Cycle (CCC) implies:,,,,,,
-question,231cc702-038d-4102-9b8f-dc50fe2addf8,2024,15,Which of the following services are auditors permitted to render?,,,,,,
-question,e3e2d182-20f1-462d-b110-549462feed3f,2024,16,"When inflation rises, it implies that ____",suspicious_repeat_char,flagged,,,,
-question,b63219ca-2d7b-4cd5-b64e-48169e294cef,2024,16,"What is the term used for an investment made by an Indian company, which is owned or controlled by foreign investors, into another Indian co",,,,,,
-question,93e14d45-2e9d-4750-ba85-68689c2273ea,2024,16,Which of the following terms is used when the data is unavailable in the financial reports?,,,,,,
-question,8ffceb95-111a-443c-b79b-d4a8ce0b27b5,2024,16,No company shall directly or indirectly — give any loan to any person or other body corporate; or give any guarantee or provide security in ,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,db8a19f1-3839-46a7-9533-211ae2f93156,2024,17,What is the minimum face value prescribed by SEBI for Non-Convertible Redeemable Preference Shares (NCRPS) and Non-Convertible Debentures (N,,,,,,
-question,ed2b3ef9-41f4-48fc-ac46-c6edc0140ebc,2024,17,A higher dividend yield ratio means that the company is ______,suspicious_repeat_char,flagged,,,,
-question,1efc0ee0-a75d-4244-aba9-06cfc7eb6680,2024,17,Public offers of securities must be in _______________.,suspicious_repeat_char,flagged,,,,
-question,a65821a3-cbb0-4a4b-8fe9-53e72965fad7,2024,18,A rise in the underlying asset's price accompanied by an increase in open interest (OI) for the corresponding derivative generally indicates,,,,,,
-question,0375c927-afad-4196-acc9-ba718534f69c,2024,18,An Alternate Director can be appointed for a director during his absence from India for a period not less than ____.,suspicious_repeat_char,flagged,,,,
-question,6a52b53a-4051-48ae-b442-9435e2dbd9b2,2024,19,"The Tribunal may, at any time within ____ from the date of the order, with a view to rectifying any mistake apparent from the record, amend ",suspicious_repeat_char,flagged,,,,
+question,5b26484d-1cb4-44c9-9196-7c3d201f1d04,2024,15,"Who manages the Fund of Funds for Startups (FFS), established under the AIF framework regulated by SEBI to support startups in India?",,spot_check,,,,easy
+question,b0724dbb-655f-4431-827e-2c47e7e0c560,2024,15,A low Cash Conversion Cycle (CCC) implies:,,,,,,easy
+question,231cc702-038d-4102-9b8f-dc50fe2addf8,2024,15,Which of the following services are auditors permitted to render?,,,,,,easy
+question,e3e2d182-20f1-462d-b110-549462feed3f,2024,16,"When inflation rises, it implies that ____",suspicious_repeat_char,flagged,,,,easy
+question,b63219ca-2d7b-4cd5-b64e-48169e294cef,2024,16,"What is the term used for an investment made by an Indian company, which is owned or controlled by foreign investors, into another Indian co",,,,,,easy
+question,93e14d45-2e9d-4750-ba85-68689c2273ea,2024,16,Which of the following terms is used when the data is unavailable in the financial reports?,,,,,,easy
+question,8ffceb95-111a-443c-b79b-d4a8ce0b27b5,2024,16,No company shall directly or indirectly — give any loan to any person or other body corporate; or give any guarantee or provide security in ,non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
+question,db8a19f1-3839-46a7-9533-211ae2f93156,2024,17,What is the minimum face value prescribed by SEBI for Non-Convertible Redeemable Preference Shares (NCRPS) and Non-Convertible Debentures (N,,,,,,medium
+question,ed2b3ef9-41f4-48fc-ac46-c6edc0140ebc,2024,17,A higher dividend yield ratio means that the company is ______,suspicious_repeat_char,flagged,,,,easy
+question,1efc0ee0-a75d-4244-aba9-06cfc7eb6680,2024,17,Public offers of securities must be in _______________.,suspicious_repeat_char,flagged,,,,easy
+question,a65821a3-cbb0-4a4b-8fe9-53e72965fad7,2024,18,A rise in the underlying asset's price accompanied by an increase in open interest (OI) for the corresponding derivative generally indicates,,,,,,easy
+question,0375c927-afad-4196-acc9-ba718534f69c,2024,18,An Alternate Director can be appointed for a director during his absence from India for a period not less than ____.,suspicious_repeat_char,flagged,,,,easy
+question,6a52b53a-4051-48ae-b442-9435e2dbd9b2,2024,19,"The Tribunal may, at any time within ____ from the date of the order, with a view to rectifying any mistake apparent from the record, amend ",suspicious_repeat_char,flagged,,,,easy
 tag,d0308cae-4854-45ca-b55a-75213f262289,2024,00a2b878-d8d9-42c4-88ff-c3557a6465a2,"Going concern, conservatism, matching, consistency",,spot_check,,,,
 tag,7232f32b-5e20-46d4-9b46-60d171f7539a,2024,00a2b878-d8d9-42c4-88ff-c3557a6465a2,"Going concern, conservatism, matching, consistency",,,,,,
 tag,f0736fc5-544c-4a9a-ac2f-564a3b011a51,2024,015f7b09-a074-4d23-ad1c-be1e4826c881,Transfer to the Unpaid Dividend Account,,,,,,
@@ -591,146 +591,146 @@ tag,1cccb70a-c8f8-4967-ae15-bfe98e0be5b4,2024,f779e3de-96b0-43c3-808c-ba39793625
 tag,b5b7dcea-1ea1-4e15-bd13-17c544543e28,2024,fac7bc30-f104-43f4-87c1-d4abe817ab11,Retail application limits under ICDR,,,,,,
 tag,78e7c50d-5ac5-40d6-afec-a6d60a4715e5,2024,fc31d10b-cacf-4c18-9855-6c36558e0ca5,CPM and PERT,,,,,,
 tag,b16efd22-fb9f-4ec9-be14-62394aef66b8,2024,ff802acc-4a13-46e0-9d0d-ded14ef55b87,Business correspondents,,,,,,
-question,552ba031-c7e2-4dfd-b078-0cf17ec0a377,2025,1,Money received before it is called is shown as ______ in the books of accounts.,suspicious_repeat_char,flagged,,,,
+question,552ba031-c7e2-4dfd-b078-0cf17ec0a377,2025,1,Money received before it is called is shown as ______ in the books of accounts.,suspicious_repeat_char,flagged,,,,easy
 question,d2e521a7-3ad4-4d44-b36d-de0785081415,2025,1,"Under Section 125 of the Companies Act, 2013, the amounts credited to the Investor Education and Protection Fund shall be utilized for which",,spot_check,,,,
-question,047344e0-208f-4df6-a6bb-4ebe90e8de21,2025,1,"As per Accounting Standard 2 Valuation of Inventories, inventories can be defined as which of the following? 1. Inventories held for sale in",,spot_check,,,,
-question,4279175a-5476-473f-b521-8c8a2cfc4c1d,2025,1,"The 5S Japanese technique Seiri (Sort), Seiton (Set in Order/Straighten), Seiso (Shine/Sweep), Seiketsu (Standardize), and Shitsuke (Sustain",,spot_check,,,,
-question,8fb4363a-d669-43a5-944c-3e9b56031e63,2025,1,"The demand curve slopes ______ because there is an _____ b/w price and demand. However, _____ when there is exceptional demand.",suspicious_repeat_char,flagged,,,,
-question,b2ffbbc8-d149-4a06-ac0d-74beeafd41ed,2025,1,"In the context of digital financial inclusion, DPI stands for ______, which refers to foundational digital systems that enable efficient and",suspicious_repeat_char,flagged,,,,
-question,7b516795-3609-45c1-8055-a715a5e267a3,2025,1,"A team works under two different managers. Manager 1 only gives instructions, does not invite input, and ignores feedback from team members.",,spot_check,,,,
-question,b3d0a285-da76-4ead-b333-17000e042b0f,2025,1,Which of the statement correctly differentiates between staffing and organizing.,,spot_check,,,,
-question,b4513ca5-864e-4daf-9c3c-99a698346eb7,2025,1,The format of the company’s financial statement is governed by_________.,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,419e461f-ca89-4866-8778-a16ad9b3da18,2025,1,Calculate Labour Rate Variance. 1. Standard Hours equal to 500 hours 2. Actual Hours equal to 475 hours 3. Actual Rate equal to Rs 2 per hou,,spot_check,,,,
-question,606b607a-691a-4d11-8eca-ed64e8647328,2025,1,Which of the following statements is or are correct regarding Monopolistic Competition? 1. There is only one seller and significant barriers,,spot_check,,,,
-question,6706a58f-7e30-4c2d-a09d-172f0c04f841,2025,2,Depreciation begins when an asset is —,non_ascii_suspect,flagged,,,,
-question,7de234af-ed47-4400-972c-e861544cf751,2025,2,"As per Section 144 of the Companies Act, 2013, an auditor appointed under the Act shall not directly or indirectly render any of the followi",,,,,,
-question,1552ce51-0480-4339-b49a-8f0a4f328967,2025,2,"Which of the following costs is not included in the cost of Property, Plant and Equipment as per AS-10?",,,,,,
-question,9005856e-538a-44bc-b4e0-65b3c43c0ee0,2025,2,"The P/V ratio of a product is 0.3 and the profit earned is Rs 12,000. What is the Margin of Safety?",,,,,,
-question,eab264c4-bd6b-42cb-a72f-eab6942a4f73,2025,2,Budget 2026 proposed several reforms for development in financial sector. It proposed that Foreign Direct Investment FDI limit for insurance,non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,c6ea680a-c4f0-4826-82b3-f47d947d53e6,2025,2,"Under the provisions of the Central Goods and Services Tax (CGST) Act, 2017, a registered recipient is required to pay the supplier the valu",suspicious_repeat_char,flagged,,,,
-question,31ee06ea-5ef9-4ced-871b-4b29fb362ffa,2025,2,A bank offers the following facilities to its customers: 1. Basic Savings Bank Deposit Account (BSBDA) 2. Exclusive premium credit card bene,non_ascii_suspect,flagged,,,,
-question,5467a633-0c49-496f-be25-10fa47f49e25,2025,2,"As per Henri Fayol, which activity is related to harmonizing all tasks in an organization?",,,,,,
+question,047344e0-208f-4df6-a6bb-4ebe90e8de21,2025,1,"As per Accounting Standard 2 Valuation of Inventories, inventories can be defined as which of the following? 1. Inventories held for sale in",,spot_check,,,,easy
+question,4279175a-5476-473f-b521-8c8a2cfc4c1d,2025,1,"The 5S Japanese technique Seiri (Sort), Seiton (Set in Order/Straighten), Seiso (Shine/Sweep), Seiketsu (Standardize), and Shitsuke (Sustain",,spot_check,,,,easy
+question,8fb4363a-d669-43a5-944c-3e9b56031e63,2025,1,"The demand curve slopes ______ because there is an _____ b/w price and demand. However, _____ when there is exceptional demand.",suspicious_repeat_char,flagged,,,,easy
+question,b2ffbbc8-d149-4a06-ac0d-74beeafd41ed,2025,1,"In the context of digital financial inclusion, DPI stands for ______, which refers to foundational digital systems that enable efficient and",suspicious_repeat_char,flagged,,,,easy
+question,7b516795-3609-45c1-8055-a715a5e267a3,2025,1,"A team works under two different managers. Manager 1 only gives instructions, does not invite input, and ignores feedback from team members.",,spot_check,,,,medium
+question,b3d0a285-da76-4ead-b333-17000e042b0f,2025,1,Which of the statement correctly differentiates between staffing and organizing.,,spot_check,,,,easy
+question,b4513ca5-864e-4daf-9c3c-99a698346eb7,2025,1,The format of the company’s financial statement is governed by_________.,non_ascii_suspect;suspicious_repeat_char,flagged,,,,easy
+question,419e461f-ca89-4866-8778-a16ad9b3da18,2025,1,Calculate Labour Rate Variance. 1. Standard Hours equal to 500 hours 2. Actual Hours equal to 475 hours 3. Actual Rate equal to Rs 2 per hou,,spot_check,,,,medium
+question,606b607a-691a-4d11-8eca-ed64e8647328,2025,1,Which of the following statements is or are correct regarding Monopolistic Competition? 1. There is only one seller and significant barriers,,spot_check,,,,medium
+question,6706a58f-7e30-4c2d-a09d-172f0c04f841,2025,2,Depreciation begins when an asset is —,non_ascii_suspect,flagged,,,,easy
+question,7de234af-ed47-4400-972c-e861544cf751,2025,2,"As per Section 144 of the Companies Act, 2013, an auditor appointed under the Act shall not directly or indirectly render any of the followi",,,,,,easy
+question,1552ce51-0480-4339-b49a-8f0a4f328967,2025,2,"Which of the following costs is not included in the cost of Property, Plant and Equipment as per AS-10?",,,,,,easy
+question,9005856e-538a-44bc-b4e0-65b3c43c0ee0,2025,2,"The P/V ratio of a product is 0.3 and the profit earned is Rs 12,000. What is the Margin of Safety?",,,,,,medium
+question,eab264c4-bd6b-42cb-a72f-eab6942a4f73,2025,2,Budget 2026 proposed several reforms for development in financial sector. It proposed that Foreign Direct Investment FDI limit for insurance,non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
+question,c6ea680a-c4f0-4826-82b3-f47d947d53e6,2025,2,"Under the provisions of the Central Goods and Services Tax (CGST) Act, 2017, a registered recipient is required to pay the supplier the valu",suspicious_repeat_char,flagged,,,,medium
+question,31ee06ea-5ef9-4ced-871b-4b29fb362ffa,2025,2,A bank offers the following facilities to its customers: 1. Basic Savings Bank Deposit Account (BSBDA) 2. Exclusive premium credit card bene,non_ascii_suspect,flagged,,,,medium
+question,5467a633-0c49-496f-be25-10fa47f49e25,2025,2,"As per Henri Fayol, which activity is related to harmonizing all tasks in an organization?",,,,,,easy
 question,9c5a5193-4836-4515-8a87-3c404790045f,2025,2,The ______ which identifies individual uniquely on the basis of demographic information and biometric gives individual the means to clearly ,suspicious_repeat_char;no_primary_tag,flagged,,,,
-question,245fe5d0-646c-43c5-a44d-83d37b7b8a8e,2025,2,Cost of conversion means:,,,,,,
-question,a1554657-34a1-4fdb-8275-5132792570e5,2025,2,Calculate the Money Multiplier with the given data: 1. Cash Reserve Ratio 12 percent 2. Demand Deposits Rs 1100 billion 3. Currency in Circu,,,,,,
-question,1606a4c2-bfb3-4af2-8895-e2fdcf482aed,2025,3,"As per AS 2, abnormal wastage loss in valuation of inventories is —",non_ascii_suspect,flagged,,,,
-question,4b330eae-2ac7-4603-8524-063c9017b8bc,2025,3,"As per the provisions of the Companies Act, 2013, if the dividend declared by a company has not been paid or claimed within (i) ______ days ",suspicious_repeat_char,flagged,,,,
-question,abcf3c3d-2d55-4385-9572-b296be4862fb,2025,3,"As per Accounting Standard 10 Property, Plant and Equipment, what is included in AS 10? 1. Normal plants and machinery 2. Bearer plants 3. M",,,,,,
-question,8e5534ab-089c-4f92-96f1-abac75df3b10,2025,3,Cost reduction is a ______ function and operates even when an efficient cost control system exists.,suspicious_repeat_char,flagged,,,,
-question,cb17f457-bff1-4e3e-b949-0338b6740227,2025,3,Match the following components with their correct definitions: Component | Definition GDP | a. Value of final goods and services produced by,non_ascii_suspect,flagged,,,,
-question,3abfd021-3410-4dc5-b692-50bb2f26e0c6,2025,3,"As per the provisions of the SEBI (Alternative Investment Funds) Regulations, the maximum investment that an Angel Fund may make in an inves",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
+question,245fe5d0-646c-43c5-a44d-83d37b7b8a8e,2025,2,Cost of conversion means:,,,,,,easy
+question,a1554657-34a1-4fdb-8275-5132792570e5,2025,2,Calculate the Money Multiplier with the given data: 1. Cash Reserve Ratio 12 percent 2. Demand Deposits Rs 1100 billion 3. Currency in Circu,,,,,,medium
+question,1606a4c2-bfb3-4af2-8895-e2fdcf482aed,2025,3,"As per AS 2, abnormal wastage loss in valuation of inventories is —",non_ascii_suspect,flagged,,,,easy
+question,4b330eae-2ac7-4603-8524-063c9017b8bc,2025,3,"As per the provisions of the Companies Act, 2013, if the dividend declared by a company has not been paid or claimed within (i) ______ days ",suspicious_repeat_char,flagged,,,,medium
+question,abcf3c3d-2d55-4385-9572-b296be4862fb,2025,3,"As per Accounting Standard 10 Property, Plant and Equipment, what is included in AS 10? 1. Normal plants and machinery 2. Bearer plants 3. M",,,,,,easy
+question,8e5534ab-089c-4f92-96f1-abac75df3b10,2025,3,Cost reduction is a ______ function and operates even when an efficient cost control system exists.,suspicious_repeat_char,flagged,,,,easy
+question,cb17f457-bff1-4e3e-b949-0338b6740227,2025,3,Match the following components with their correct definitions: Component | Definition GDP | a. Value of final goods and services produced by,non_ascii_suspect,flagged,,,,medium
+question,3abfd021-3410-4dc5-b692-50bb2f26e0c6,2025,3,"As per the provisions of the SEBI (Alternative Investment Funds) Regulations, the maximum investment that an Angel Fund may make in an inves",non_ascii_suspect;suspicious_repeat_char,flagged,,,,medium
 question,53bd1b99-ccc8-4a99-9c36-74a23030827e,2025,3,"Highly structured work and organization setup Autocratic, as per Path–Goal Theory, this statement indicates which leadership style?",non_ascii_suspect,flagged,,,,
-question,eff56d86-aa4b-470b-a36d-5ca8818b3735,2025,3,"As per Vrooms Expectancy Theory, instrumentality refers to:",,,,,,
-question,1ae1e7f8-a8e1-4280-a4f3-4d85583bb1d3,2025,3,Every company shall have a board of directors consisting of individuals as directors and shall have minimum number of ________ in the case o,suspicious_repeat_char,flagged,,,,
-question,7d1d6c88-ff7e-49af-9eff-95afeef07f9b,2025,3,Spoilage which occurs due to inefficient process and can be controlled during the ordinary course of business is called:,,,,,,
-question,ed81940c-966f-4659-b95d-cd22960d6ffd,2025,3,"Which of the statements given below are correct? 1. The demand curve for a normal good is generally downward sloping from left to right, ind",,,,,,
-question,19c810eb-4ad1-4057-92bd-8cd844853835,2025,4,Two fundamental characteristics of financial statements are their —,non_ascii_suspect,flagged,,,,
-question,8bed2ac7-0756-4a1e-a375-444d3b2fdbc8,2025,4,"As per Companies Act, 2013, the securities premium account of a company may be applied for which of the following purposes?",,,,,,
+question,eff56d86-aa4b-470b-a36d-5ca8818b3735,2025,3,"As per Vrooms Expectancy Theory, instrumentality refers to:",,,,,,easy
+question,1ae1e7f8-a8e1-4280-a4f3-4d85583bb1d3,2025,3,Every company shall have a board of directors consisting of individuals as directors and shall have minimum number of ________ in the case o,suspicious_repeat_char,flagged,,,,medium
+question,7d1d6c88-ff7e-49af-9eff-95afeef07f9b,2025,3,Spoilage which occurs due to inefficient process and can be controlled during the ordinary course of business is called:,,,,,,easy
+question,ed81940c-966f-4659-b95d-cd22960d6ffd,2025,3,"Which of the statements given below are correct? 1. The demand curve for a normal good is generally downward sloping from left to right, ind",,,,,,medium
+question,19c810eb-4ad1-4057-92bd-8cd844853835,2025,4,Two fundamental characteristics of financial statements are their —,non_ascii_suspect,flagged,,,,easy
+question,8bed2ac7-0756-4a1e-a375-444d3b2fdbc8,2025,4,"As per Companies Act, 2013, the securities premium account of a company may be applied for which of the following purposes?",,,,,,easy
 question,937c3d1a-07f6-4624-a338-9eca99045a07,2025,4,Which of the following sections deals with buyback?,,,,,,
-question,b1e6ec8b-4a21-43d7-9f78-3afc453652be,2025,4,Pareto Analysis is also known as which of the following inventory control techniques?,,,,,,
-question,7c5cafca-2926-4a9b-b5ba-b0940ef380b7,2025,4,Calculate the Nominal GDP given the following information: • Real GDP = 1200 • Price Index = 110,non_ascii_suspect,flagged,,,,
-question,bb02483f-f335-4300-aca6-4f68fa8d4ea3,2025,4,Consider the following statements: 1. A forward contract is a customized agreement between two parties to buy or sell an asset at a specifie,,spot_check,,,,
-question,a887b26a-e0d8-4cad-8927-c3c5533dcf6f,2025,4,"As per NADLER, which of the following is not the function of HRD?",,,,,,
-question,a4f079ef-ad07-4a50-92a1-15fc967d57a3,2025,4,"Front-line managers mainly supervise day-to-day operations and directly manage workers on the shop floor. In this context, which of the foll",non_ascii_suspect,flagged,,,,
+question,b1e6ec8b-4a21-43d7-9f78-3afc453652be,2025,4,Pareto Analysis is also known as which of the following inventory control techniques?,,,,,,easy
+question,7c5cafca-2926-4a9b-b5ba-b0940ef380b7,2025,4,Calculate the Nominal GDP given the following information: • Real GDP = 1200 • Price Index = 110,non_ascii_suspect,flagged,,,,medium
+question,bb02483f-f335-4300-aca6-4f68fa8d4ea3,2025,4,Consider the following statements: 1. A forward contract is a customized agreement between two parties to buy or sell an asset at a specifie,,spot_check,,,,easy
+question,a887b26a-e0d8-4cad-8927-c3c5533dcf6f,2025,4,"As per NADLER, which of the following is not the function of HRD?",,,,,,easy
+question,a4f079ef-ad07-4a50-92a1-15fc967d57a3,2025,4,"Front-line managers mainly supervise day-to-day operations and directly manage workers on the shop floor. In this context, which of the foll",non_ascii_suspect,flagged,,,,easy
 question,6ddf69cd-c8c5-425b-8d4e-faa81b795292,2025,4,"As per Fiscal Responsibility and Budget Management (FRBM), 2003, Fiscal Deficit means excess of total disbursement from the consolidated fun",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
-question,c8b2d0a6-268b-4390-9643-f9faaadd8d4c,2025,4,Contribution means:,,,,,,
-question,66ab867f-f51d-42f0-88c1-086bc6593a1f,2025,4,Currency in hand has an opportunity cost of:,,,,,,
+question,c8b2d0a6-268b-4390-9643-f9faaadd8d4c,2025,4,Contribution means:,,,,,,easy
+question,66ab867f-f51d-42f0-88c1-086bc6593a1f,2025,4,Currency in hand has an opportunity cost of:,,,,,,easy
 question,01c71bd3-fbc7-4199-97b2-cf0042267594,2025,5,"XYZ Ltd. has an item of plant and machinery with an initial cost of Rs 10,00,000. At the date of revaluation, accumulated depreciation amoun",,spot_check,,,,
-question,7791f93a-8d77-48b3-8317-cd15937ab867,2025,5,"Under which section of the Companies Act, 2013 are the provisions relating to the Securities Premium Account and its permitted applications ",,,,,,
-question,bb16c3f9-7df1-4a28-9820-c2b5f149379b,2025,5,Insurance companies should present their cash flow via which method?,,spot_check,,,,
-question,b0fe832f-841e-4274-880f-f4d85c96db97,2025,5,"Interest on funds generated internally, for which no actual payment is made, is an example of —",non_ascii_suspect,flagged,,,,
-question,823db366-31c9-4634-9fac-c7b80dbee5d8,2025,5,"Calculate M3 in Money Supply: Components Amount (Rs in crores) Money in circulation 37,24,448 Currency with public 36,30,751 Other deposits ",non_ascii_suspect,flagged,,,,
-question,7afd2596-d76f-4b5e-a356-17623aa5c220,2025,5,"A proposed digital platform in India aims to create a unified online marketplace for insurance products, enabling customers to compare, purc",,,,,,
-question,bf223f25-6057-4d2e-9fcb-d52f1bd64843,2025,5,A manager lists the following steps involved in the planning process: 1. Developing Premises 2. Evaluating Alternative Courses 3. Setting Ob,,,,,,
-question,c7e4148f-ed8e-4323-9eab-81ba9122b948,2025,5,"According to Hersey–Blanchard Situational Leadership Theory, which leadership style is most appropriate when followers are competent but not",non_ascii_suspect,flagged,,,,
+question,7791f93a-8d77-48b3-8317-cd15937ab867,2025,5,"Under which section of the Companies Act, 2013 are the provisions relating to the Securities Premium Account and its permitted applications ",,,,,,easy
+question,bb16c3f9-7df1-4a28-9820-c2b5f149379b,2025,5,Insurance companies should present their cash flow via which method?,,spot_check,,,,easy
+question,b0fe832f-841e-4274-880f-f4d85c96db97,2025,5,"Interest on funds generated internally, for which no actual payment is made, is an example of —",non_ascii_suspect,flagged,,,,easy
+question,823db366-31c9-4634-9fac-c7b80dbee5d8,2025,5,"Calculate M3 in Money Supply: Components Amount (Rs in crores) Money in circulation 37,24,448 Currency with public 36,30,751 Other deposits ",non_ascii_suspect,flagged,,,,medium
+question,7afd2596-d76f-4b5e-a356-17623aa5c220,2025,5,"A proposed digital platform in India aims to create a unified online marketplace for insurance products, enabling customers to compare, purc",,,,,,easy
+question,bf223f25-6057-4d2e-9fcb-d52f1bd64843,2025,5,A manager lists the following steps involved in the planning process: 1. Developing Premises 2. Evaluating Alternative Courses 3. Setting Ob,,,,,,medium
+question,c7e4148f-ed8e-4323-9eab-81ba9122b948,2025,5,"According to Hersey–Blanchard Situational Leadership Theory, which leadership style is most appropriate when followers are competent but not",non_ascii_suspect,flagged,,,,medium
 question,06593360-6a4e-4788-9c44-f9c9b610660f,2025,5,Every company shall hold 1st meeting of the Board of Directors within _____ days of the date of incorporation and thereafter hold a minimum ,suspicious_repeat_char,flagged,,,,
-question,0e15a87a-e1a9-42e8-bddd-5979ae23c233,2025,5,Lean manufacturing identifies how many types of waste?,,,,,,
-question,4559fcaf-7869-4cd8-9b46-e10fb7abb31c,2025,5,Consider the following situations and identify the correct match: 1. The Reserve Bank of India increases the Repo Rate. 2. The Government de,,spot_check,,,,
-question,20513502-3a5b-4a4d-90fa-24506e1418de,2025,6,Which accounting information is particularly relevant to creditors?,,,,,,
+question,0e15a87a-e1a9-42e8-bddd-5979ae23c233,2025,5,Lean manufacturing identifies how many types of waste?,,,,,,easy
+question,4559fcaf-7869-4cd8-9b46-e10fb7abb31c,2025,5,Consider the following situations and identify the correct match: 1. The Reserve Bank of India increases the Repo Rate. 2. The Government de,,spot_check,,,,medium
+question,20513502-3a5b-4a4d-90fa-24506e1418de,2025,6,Which accounting information is particularly relevant to creditors?,,,,,,easy
 question,e5dad356-58a0-491a-9135-fa820b1a545a,2025,6,A company proposes to raise Rs 150 crore through an Initial Public Offer in accordance with the SEBI Issue of Capital and Disclosure Require,,spot_check,,,,
-question,4e3360fa-12ed-43e9-8bd6-339963c78a78,2025,6,Match the following Functions of Accounting with their correct meaning: List I (Functions of Accounting) List II (Meaning) 1. Identification,,,,,,
-question,73e38ecf-9880-47b0-b5a4-b8f93f3b433a,2025,6,_____ is a production and inventory management philosophy that originated in Japan and is widely used in manufacturing and other industries.,suspicious_repeat_char,flagged,,,,
-question,c82688bb-61d3-4d0d-a022-db84bbc9aade,2025,6,An instrument issued by the Government with short-term maturity is sold at a discount to its face value and redeemed at par on maturity. The,,,,,,
-question,1f174d8e-e2a3-4e97-ada0-5264ee04a47a,2025,6,"As per Herzberg’s Two-Factor Theory, which of the following factors creates satisfaction but does not reduce dissatisfaction?",non_ascii_suspect,flagged,,,,
-question,1cf104f9-e1ae-4779-9c22-b37b07281270,2025,6,Which of the following statements correctly distinguishes a leader from a manager?,,spot_check,,,,
-question,01add834-b4f5-4268-9e4c-51eb12e8a3c5,2025,6,"As per section 409 of the companies Act (qualification of president and member of tribunal), the president shall be a person who is or has b",suspicious_repeat_char,flagged,,,,
-question,b8716d36-abb8-4bfe-93aa-b276e7b77f29,2025,6,"Lean system originally had 5S. Later, an additional S was added. What is the sixth S?",,spot_check,,,,
-question,05c23b96-e594-43ee-8e1e-ad9d4342734a,2025,6,Calculate National Income and Personal Income from the following data: 1. NNP at Market Price Rs 1000 2. Subsidy Rs 50 3. Direct Tax Rs 80 4,,,,,,
-question,518fa85f-a54b-4cf7-ae58-9e3d0ea9783b,2025,7,Identified and measured economic events should be recorded in the books of accounts in monetary terms and in an ______ order.,suspicious_repeat_char,flagged,,,,
-question,2bb086e5-3e65-445c-b61a-9695a01c15fd,2025,7,A company fraudulently issued duplicate share certificates having an aggregate face value of Rs 1 crore. As per Section 46 of the Companies ,suspicious_repeat_char,flagged,,,,
-question,ec4073ef-4164-484c-9c7e-2a17147db1a1,2025,7,A company has goods in work in progress valued at Rs 15000 at the end of the current financial year. To complete and convert them into finis,suspicious_repeat_char,flagged,,,,
-question,ad0d7805-d9ed-42c3-9d4f-4f37a08aa987,2025,7,"______ of cost means the degree of relationship between cost and the option. Direct costs are directly assigned to the option, whereas indir",suspicious_repeat_char,flagged,,,,
-question,fe61b295-551c-4bb2-9853-2db13d40eece,2025,7,Which of the following instruments is classified as a money market instrument?,,,,,,
-question,487be3f3-ca24-4891-b606-8927a1a46ffc,2025,7,“You view things as you want to see them.” This statement best represents which of the following concepts?,non_ascii_suspect,flagged,,,,
-question,cc5278f4-e58d-407b-bdd2-916f2b8b2501,2025,7,Why is planning considered a prerequisite function of management?,,,,,,
-question,5b7896d1-7f1b-43ee-99a0-13c7c7bb60a8,2025,7,"If the company spends any amount as a CSR in a year in excess of the requirements provided under section 135 (5), such excess amount may be ",suspicious_repeat_char,flagged,,,,
-question,c31aa276-4be1-4f6d-af12-8ed8c24ad429,2025,7,Which of the following statements is incorrect about Kaizen Costing?,,,,,,
-question,a3a59276-6024-4e18-997b-e903a69b5214,2025,7,Which of the statements given below is or are correct in regard to economic indicators? 1. Leading indicators are variables that tend to cha,,,,,,
-question,30cfaee4-6b4a-4b1a-8965-6397308f6ab9,2025,8,Disclosure of share capital is given in —,non_ascii_suspect,flagged,,,,
-question,b3f1fa4a-8763-48b0-b9b6-b1840423886b,2025,8,"A general meeting of a company is scheduled to be held at Faridabad on 19 September 2026. However, the required quorum is not present within",,,,,,
-question,fbeba944-2c72-427d-a91e-9e2acc8f9e89,2025,8,Due to which of the following the financial statements will not remain reliable?,,,,,,
-question,b8fec438-f6fe-4fb5-b2e4-1c6a10b86be1,2025,8,"Japanese techniques for inventory management focus on improving efficiency, reducing waste, and optimizing stock levels. Select the correct ",,,,,,
-question,bd3367f0-20a7-464e-8434-c1c33e4e61ac,2025,8,"Under the provisions of the Central Goods and Services Tax (CGST) Act, 2017, every electronic commerce operator required to collect Tax Coll",,,,,,
-question,769f0c98-07bb-49cd-88d2-ed8bb97cd946,2025,8,Which of the following is not a feature of formal organization?,,,,,,
-question,ade48abb-b321-4f0b-8c41-7fdeeac70828,2025,8,What is the primary role of a manager as a disseminator in an organization?,,,,,,
-question,11522b4c-062e-4693-b4db-e58b2587d854,2025,8,"As per section 32 of companies act 2013, a company proposing to make an offer of security may issue a Red Herring Prospectus (RHP) prior to ",suspicious_repeat_char,flagged,,,,
+question,4e3360fa-12ed-43e9-8bd6-339963c78a78,2025,6,Match the following Functions of Accounting with their correct meaning: List I (Functions of Accounting) List II (Meaning) 1. Identification,,,,,,easy
+question,73e38ecf-9880-47b0-b5a4-b8f93f3b433a,2025,6,_____ is a production and inventory management philosophy that originated in Japan and is widely used in manufacturing and other industries.,suspicious_repeat_char,flagged,,,,easy
+question,c82688bb-61d3-4d0d-a022-db84bbc9aade,2025,6,An instrument issued by the Government with short-term maturity is sold at a discount to its face value and redeemed at par on maturity. The,,,,,,easy
+question,1f174d8e-e2a3-4e97-ada0-5264ee04a47a,2025,6,"As per Herzberg’s Two-Factor Theory, which of the following factors creates satisfaction but does not reduce dissatisfaction?",non_ascii_suspect,flagged,,,,easy
+question,1cf104f9-e1ae-4779-9c22-b37b07281270,2025,6,Which of the following statements correctly distinguishes a leader from a manager?,,spot_check,,,,easy
+question,01add834-b4f5-4268-9e4c-51eb12e8a3c5,2025,6,"As per section 409 of the companies Act (qualification of president and member of tribunal), the president shall be a person who is or has b",suspicious_repeat_char,flagged,,,,easy
+question,b8716d36-abb8-4bfe-93aa-b276e7b77f29,2025,6,"Lean system originally had 5S. Later, an additional S was added. What is the sixth S?",,spot_check,,,,easy
+question,05c23b96-e594-43ee-8e1e-ad9d4342734a,2025,6,Calculate National Income and Personal Income from the following data: 1. NNP at Market Price Rs 1000 2. Subsidy Rs 50 3. Direct Tax Rs 80 4,,,,,,medium
+question,518fa85f-a54b-4cf7-ae58-9e3d0ea9783b,2025,7,Identified and measured economic events should be recorded in the books of accounts in monetary terms and in an ______ order.,suspicious_repeat_char,flagged,,,,easy
+question,2bb086e5-3e65-445c-b61a-9695a01c15fd,2025,7,A company fraudulently issued duplicate share certificates having an aggregate face value of Rs 1 crore. As per Section 46 of the Companies ,suspicious_repeat_char,flagged,,,,medium
+question,ec4073ef-4164-484c-9c7e-2a17147db1a1,2025,7,A company has goods in work in progress valued at Rs 15000 at the end of the current financial year. To complete and convert them into finis,suspicious_repeat_char,flagged,,,,medium
+question,ad0d7805-d9ed-42c3-9d4f-4f37a08aa987,2025,7,"______ of cost means the degree of relationship between cost and the option. Direct costs are directly assigned to the option, whereas indir",suspicious_repeat_char,flagged,,,,easy
+question,fe61b295-551c-4bb2-9853-2db13d40eece,2025,7,Which of the following instruments is classified as a money market instrument?,,,,,,easy
+question,487be3f3-ca24-4891-b606-8927a1a46ffc,2025,7,“You view things as you want to see them.” This statement best represents which of the following concepts?,non_ascii_suspect,flagged,,,,easy
+question,cc5278f4-e58d-407b-bdd2-916f2b8b2501,2025,7,Why is planning considered a prerequisite function of management?,,,,,,easy
+question,5b7896d1-7f1b-43ee-99a0-13c7c7bb60a8,2025,7,"If the company spends any amount as a CSR in a year in excess of the requirements provided under section 135 (5), such excess amount may be ",suspicious_repeat_char,flagged,,,,easy
+question,c31aa276-4be1-4f6d-af12-8ed8c24ad429,2025,7,Which of the following statements is incorrect about Kaizen Costing?,,,,,,easy
+question,a3a59276-6024-4e18-997b-e903a69b5214,2025,7,Which of the statements given below is or are correct in regard to economic indicators? 1. Leading indicators are variables that tend to cha,,,,,,medium
+question,30cfaee4-6b4a-4b1a-8965-6397308f6ab9,2025,8,Disclosure of share capital is given in —,non_ascii_suspect,flagged,,,,easy
+question,b3f1fa4a-8763-48b0-b9b6-b1840423886b,2025,8,"A general meeting of a company is scheduled to be held at Faridabad on 19 September 2026. However, the required quorum is not present within",,,,,,medium
+question,fbeba944-2c72-427d-a91e-9e2acc8f9e89,2025,8,Due to which of the following the financial statements will not remain reliable?,,,,,,easy
+question,b8fec438-f6fe-4fb5-b2e4-1c6a10b86be1,2025,8,"Japanese techniques for inventory management focus on improving efficiency, reducing waste, and optimizing stock levels. Select the correct ",,,,,,easy
+question,bd3367f0-20a7-464e-8434-c1c33e4e61ac,2025,8,"Under the provisions of the Central Goods and Services Tax (CGST) Act, 2017, every electronic commerce operator required to collect Tax Coll",,,,,,easy
+question,769f0c98-07bb-49cd-88d2-ed8bb97cd946,2025,8,Which of the following is not a feature of formal organization?,,,,,,easy
+question,ade48abb-b321-4f0b-8c41-7fdeeac70828,2025,8,What is the primary role of a manager as a disseminator in an organization?,,,,,,easy
+question,11522b4c-062e-4693-b4db-e58b2587d854,2025,8,"As per section 32 of companies act 2013, a company proposing to make an offer of security may issue a Red Herring Prospectus (RHP) prior to ",suspicious_repeat_char,flagged,,,,easy
 question,11502047-66c9-499f-b68b-8af13f5882a5,2025,8,BPR uses which cycle or framework to identify inefficient processes?,,,,,,
-question,962fc710-9a71-4249-bd44-5e645aabea8b,2025,8,Government borrowings can be considered __________ and surplus or deficit can be considered as __________.,suspicious_repeat_char,flagged,,,,
-question,443b0aab-c695-4e2b-b3d8-0cf14b6e9215,2025,9,Vertical analysis expresses each line item as a percentage of —,non_ascii_suspect,flagged,,,,
-question,1aa77b1f-1c1d-48b0-a4a5-6dc9c2c9994e,2025,9,"As per the provisions of the Companies Act, 2013, the appointment of directors and Key Managerial Personnel is to be recommended by the (i) ",suspicious_repeat_char,flagged,,,,
-question,88ed663f-f940-4103-a617-9faa06b6792a,2025,9,"As per Accounting Standard 9, interest is recognized as __________.",suspicious_repeat_char,flagged,,,,
-question,06dc9830-df27-4835-8da6-204371104c51,2025,9,What is the full form of BOT in infrastructure projects?,,spot_check,,,,
+question,962fc710-9a71-4249-bd44-5e645aabea8b,2025,8,Government borrowings can be considered __________ and surplus or deficit can be considered as __________.,suspicious_repeat_char,flagged,,,,easy
+question,443b0aab-c695-4e2b-b3d8-0cf14b6e9215,2025,9,Vertical analysis expresses each line item as a percentage of —,non_ascii_suspect,flagged,,,,easy
+question,1aa77b1f-1c1d-48b0-a4a5-6dc9c2c9994e,2025,9,"As per the provisions of the Companies Act, 2013, the appointment of directors and Key Managerial Personnel is to be recommended by the (i) ",suspicious_repeat_char,flagged,,,,medium
+question,88ed663f-f940-4103-a617-9faa06b6792a,2025,9,"As per Accounting Standard 9, interest is recognized as __________.",suspicious_repeat_char,flagged,,,,easy
+question,06dc9830-df27-4835-8da6-204371104c51,2025,9,What is the full form of BOT in infrastructure projects?,,spot_check,,,,easy
 question,beeeb6cf-de21-4970-b67f-e6b119624d1b,2025,9,Identify whether the following statements relate to Administration or Management (in the same order): 1. It focuses on setting long-term vis,,,,,,
 question,c2eae8e3-334a-4e82-bc30-e831ae6f9074,2025,9,"Under Section 115JB of the Income Tax Act, 1961, ""Book Profit"" means the net profit as shown in the Statement of Profit and Loss for the rel",,spot_check,,,,
-question,332feae6-33f0-43c2-8306-70a552b611ff,2025,9,What is the defect level at Six Sigma quality?,,,,,,
-question,60fe809e-0ab8-465d-bb77-520f64156d27,2025,9,Consider the following Monetary Policy tools and identify the correct match as Direct or Indirect instruments: 1. OMO 2. CRR 3. SLR 4. Repo ,,,,,,
-question,40c39060-36a3-4c1f-8afc-51ed11e67a47,2025,10,The term “XBRL” stands for —,non_ascii_suspect,flagged,,,,
-question,0f79cd6b-8996-4c4f-be1b-a888207cc433,2025,10,"Under a Share Purchase Agreement, what can be issued by a company?",,,,,,
-question,2ba3a40e-f89b-4572-8be1-d5bafc451eb3,2025,10,"Revaluation of the Property, Plant and Equipment happens __________.",suspicious_repeat_char,flagged,,,,
-question,c6111cdd-fe3e-4711-8b93-4a49ea10bb54,2025,10,An investor earns a nominal rate of interest of 10% per annum on an investment. If the inflation rate during the same period is 6% per annum,,,,,,
-question,20601dfe-832a-42a5-89fd-5fd57012dce6,2025,10,"As per Fiedler’s Contingency Theory, where will a task-oriented leader perform better as compared to a relationship-oriented leader?",non_ascii_suspect,flagged,,,,
-question,23e2b244-7f92-4df8-88de-42cffe796494,2025,10,Batch costing is an extension of:,,spot_check,,,,
-question,d712b518-425e-4514-bec2-6afb1f365b30,2025,10,"As per consumer theory, consider the following statements: 1. Bandwagon Effect refers to a situation where the demand for a good increases b",non_ascii_suspect,flagged,,,,
+question,332feae6-33f0-43c2-8306-70a552b611ff,2025,9,What is the defect level at Six Sigma quality?,,,,,,easy
+question,60fe809e-0ab8-465d-bb77-520f64156d27,2025,9,Consider the following Monetary Policy tools and identify the correct match as Direct or Indirect instruments: 1. OMO 2. CRR 3. SLR 4. Repo ,,,,,,medium
+question,40c39060-36a3-4c1f-8afc-51ed11e67a47,2025,10,The term “XBRL” stands for —,non_ascii_suspect,flagged,,,,easy
+question,0f79cd6b-8996-4c4f-be1b-a888207cc433,2025,10,"Under a Share Purchase Agreement, what can be issued by a company?",,,,,,easy
+question,2ba3a40e-f89b-4572-8be1-d5bafc451eb3,2025,10,"Revaluation of the Property, Plant and Equipment happens __________.",suspicious_repeat_char,flagged,,,,easy
+question,c6111cdd-fe3e-4711-8b93-4a49ea10bb54,2025,10,An investor earns a nominal rate of interest of 10% per annum on an investment. If the inflation rate during the same period is 6% per annum,,,,,,medium
+question,20601dfe-832a-42a5-89fd-5fd57012dce6,2025,10,"As per Fiedler’s Contingency Theory, where will a task-oriented leader perform better as compared to a relationship-oriented leader?",non_ascii_suspect,flagged,,,,medium
+question,23e2b244-7f92-4df8-88de-42cffe796494,2025,10,Batch costing is an extension of:,,spot_check,,,,easy
+question,d712b518-425e-4514-bec2-6afb1f365b30,2025,10,"As per consumer theory, consider the following statements: 1. Bandwagon Effect refers to a situation where the demand for a good increases b",non_ascii_suspect,flagged,,,,medium
 question,dc50b078-85f6-44df-af3e-48e84f19f482,2025,11,"Under the Companies Act, 2013, who appoints a Registered Valuer to determine the valuation of assets, shares, or liabilities of a company?",,,,,,
-question,1a5d005b-4e53-45f1-bf73-d8c64c456ef2,2025,11,A company declares a bonus issue in the ratio of 2 to 5. A shareholder holds 5000 shares. What will be the total number of shares after the ,,,,,,
-question,a033b416-c4d3-402e-8d2e-48243e27c26c,2025,11,"In banking terminology, short-term credit facilities such as cash credit, overdraft and discount bills are generally classified as bank adva",suspicious_repeat_char,flagged,,,,
-question,e3251e71-20df-4cb2-bb64-09fd695f27e5,2025,11,"As per Tuckman’s stages of group development, the following stages are given with short descriptive phrases. Two stages have interchanged (s",non_ascii_suspect,flagged,,,,
-question,0763d8b6-1fd1-4b10-b49a-d0864b4f7d36,2025,11,What is a Budget?,,,,,,
-question,4e09be1f-b89e-44d7-9e00-7e7eb67d6026,2025,12,Revaluation surplus arising on revaluation of fixed assets in a banking company is generally credited to which of the following?,,,,,,
+question,1a5d005b-4e53-45f1-bf73-d8c64c456ef2,2025,11,A company declares a bonus issue in the ratio of 2 to 5. A shareholder holds 5000 shares. What will be the total number of shares after the ,,,,,,medium
+question,a033b416-c4d3-402e-8d2e-48243e27c26c,2025,11,"In banking terminology, short-term credit facilities such as cash credit, overdraft and discount bills are generally classified as bank adva",suspicious_repeat_char,flagged,,,,easy
+question,e3251e71-20df-4cb2-bb64-09fd695f27e5,2025,11,"As per Tuckman’s stages of group development, the following stages are given with short descriptive phrases. Two stages have interchanged (s",non_ascii_suspect,flagged,,,,medium
+question,0763d8b6-1fd1-4b10-b49a-d0864b4f7d36,2025,11,What is a Budget?,,,,,,easy
+question,4e09be1f-b89e-44d7-9e00-7e7eb67d6026,2025,12,Revaluation surplus arising on revaluation of fixed assets in a banking company is generally credited to which of the following?,,,,,,easy
 question,a3a5c1ab-2ef9-41f4-a7a4-aa9383fae5b8,2025,12,"As per the recent SEBI regulations on mutual funds, the maximum Basic Expense Ratio (TER) that can be charged by Exchange Traded Funds (ETFs",suspicious_repeat_char,flagged,,,,
-question,19cc8e13-31ca-414c-ac51-d1f09507dbb1,2025,12,How is management both a science and an art?,,spot_check,,,,
-question,2290cb91-2dd4-4c4e-bfcc-d961b5374adf,2025,12,How has the role of a Management Accountant changed in modern organizations?,,,,,,
+question,19cc8e13-31ca-414c-ac51-d1f09507dbb1,2025,12,How is management both a science and an art?,,spot_check,,,,easy
+question,2290cb91-2dd4-4c4e-bfcc-d961b5374adf,2025,12,How has the role of a Management Accountant changed in modern organizations?,,,,,,easy
 question,a9449754-1b7f-4649-a0d8-06cf9dfbdd6d,2025,13,"Recently, a Japanese credit rating agency upgraded India’s long-term sovereign credit rating. The agency upgraded India’s rating to ______ .",non_ascii_suspect;suspicious_repeat_char,flagged,,,,
 question,b7e06349-156b-4c61-a997-ecced652af93,2025,13,Read the following statements about leadership and identify the correct statement(s): 1. Leadership is a personal skill. 2. Leadership is fi,,,,,,
-question,4042da27-c605-4d6e-aaa5-6432200eed0f,2025,13,"__________ is a performance benchmark set under perfect conditions, assuming no wastage, no idle time, and maximum efficiency.",suspicious_repeat_char,flagged,,,,
-question,2ba4b1ea-50d8-47e1-8cb7-5d71e754acd0,2025,14,"The use of innovative technology to improve, automate, and expand the delivery of financial services and to create a digital ecosystem for p",,,,,,
-question,331b6814-9e32-455b-ac13-b54d584d6e92,2025,14,What is the full form of SMART in goal setting?,,,,,,
-question,3b48eb25-f102-4173-95da-9e359cf6fcb6,2025,14,Cost control mainly includes which of the following?,,,,,,
-question,5fbcd315-44b3-43b5-9874-087942983d38,2025,15,"An Assessing Officer passes an order under the Income-tax Act, 1961. Subsequently, he notices a mistake apparent from the record and seeks t",,,,,,
-question,63f54e0d-6bb9-4074-bbd5-6b881f5a8925,2025,15,"According to Burns, what is the key difference between transactional and transformational leadership?",,,,,,
+question,4042da27-c605-4d6e-aaa5-6432200eed0f,2025,13,"__________ is a performance benchmark set under perfect conditions, assuming no wastage, no idle time, and maximum efficiency.",suspicious_repeat_char,flagged,,,,easy
+question,2ba4b1ea-50d8-47e1-8cb7-5d71e754acd0,2025,14,"The use of innovative technology to improve, automate, and expand the delivery of financial services and to create a digital ecosystem for p",,,,,,easy
+question,331b6814-9e32-455b-ac13-b54d584d6e92,2025,14,What is the full form of SMART in goal setting?,,,,,,easy
+question,3b48eb25-f102-4173-95da-9e359cf6fcb6,2025,14,Cost control mainly includes which of the following?,,,,,,easy
+question,5fbcd315-44b3-43b5-9874-087942983d38,2025,15,"An Assessing Officer passes an order under the Income-tax Act, 1961. Subsequently, he notices a mistake apparent from the record and seeks t",,,,,,medium
+question,63f54e0d-6bb9-4074-bbd5-6b881f5a8925,2025,15,"According to Burns, what is the key difference between transactional and transformational leadership?",,,,,,easy
 question,c2a1f95e-695c-45fd-a0f6-f2fec47c3b1a,2025,15,TPM is the system of maintaining and improving the __________ of the production and quality system.,suspicious_repeat_char,flagged,,,,
-question,91614453-c5da-4938-a84c-3a337371c2b0,2025,16,"Under the provisions of the Income-tax Act, 1961, a person fails to comply with the requirement relating to the quoting or authentication of",,,,,,
-question,f70359e3-0f31-4613-bc2f-fe7b37a84313,2025,16,What is the meaning of Esprit De Corps?,,spot_check,,,,
-question,cc2f1590-2e10-4851-b0fb-f2c5a979949c,2025,16,Just in Time JIT is an inventory management technique aimed at minimizing inventory levels by receiving materials only when required for pro,,,,,,
+question,91614453-c5da-4938-a84c-3a337371c2b0,2025,16,"Under the provisions of the Income-tax Act, 1961, a person fails to comply with the requirement relating to the quoting or authentication of",,,,,,medium
+question,f70359e3-0f31-4613-bc2f-fe7b37a84313,2025,16,What is the meaning of Esprit De Corps?,,spot_check,,,,easy
+question,cc2f1590-2e10-4851-b0fb-f2c5a979949c,2025,16,Just in Time JIT is an inventory management technique aimed at minimizing inventory levels by receiving materials only when required for pro,,,,,,easy
 question,737e3dd0-cfd2-4d6c-bb05-8b2ac2dfdeb2,2025,17,"In statistics, what do we call the difference between the maximum value and the minimum value in a data set?",no_primary_tag,flagged,,,,
-question,ff74ffd5-2eb7-4378-a4a1-6fb9dc8124cd,2025,17,"According to Peter F. Drucker, management should focus primarily on what?",,,,,,
-question,a5c44c2e-71c5-4d55-9350-740b5788e7bd,2025,18,"In a BOT (Build–Operate–Transfer) project, identify who bears the risks related to design, construction, finance, and ownership (in the same",non_ascii_suspect,flagged,,,,
+question,ff74ffd5-2eb7-4378-a4a1-6fb9dc8124cd,2025,17,"According to Peter F. Drucker, management should focus primarily on what?",,,,,,easy
+question,a5c44c2e-71c5-4d55-9350-740b5788e7bd,2025,18,"In a BOT (Build–Operate–Transfer) project, identify who bears the risks related to design, construction, finance, and ownership (in the same",non_ascii_suspect,flagged,,,,easy
 question,2dcbd74c-9977-41da-b3d7-247f58d70800,2025,18,The linking function of a manager is best described by which of the following statements?,,,,,,
-question,3464f9ac-9599-412b-992f-35245d4285f2,2025,19,RBI performs different functions under various laws and regulations. Which of the following pairs is not correctly matched?,,spot_check,,,,
-question,633fddca-1fa2-48a4-b5c9-f9c7ed43c17f,2025,19,Which of the following is not considered a desirable trait of an effective leader or manager?,,,,,,
-question,4985b5bb-8c7c-4075-b703-a5d2d26e9cd0,2025,20,Financial Benchmarks India Pvt. Ltd. (FBIL) is responsible for publishing various financial benchmark rates in India. Consider the following,,,,,,
-question,ed9709a3-9468-405f-9f5f-ec76319c4188,2025,20,Which of the following options correctly lists all the primary functions of management?,,,,,,
-question,6be4c398-bdab-4a7e-9b96-a20ce6a60297,2025,21,What is the minimum investment amount required for subscribing to Non-Convertible Preference Shares (NCPs)?,,,,,,
-question,3df74d90-6d8d-4168-896a-3744a16691bb,2025,22,"An investor buys a financial contract under which he pays a periodic premium to another party, and in return receives compensation if a spec",,,,,,
-question,ddfa411a-62d0-4a20-bec8-4e45861c8c04,2025,23,"When goods or services are supplied by an Indian supplier to a foreign recipient, which type of GST is applicable?",,,,,,
-question,9ac6d556-6bbc-4fe7-9419-b920c7184362,2025,24,Which of the following statements best describes callable securities?,,spot_check,,,,
-question,58216a0f-55bb-427a-8a85-b883d80fc087,2025,25,"Under the Coinage rules in India, 50 paise coin is legal tender up to what maximum amount?",,,,,,
-question,5ca98fbe-7f6c-4d55-9c51-97ef4b1b1bfb,2025,26,Which of the following statements correctly distinguishes between fixed securities and floating securities?,,,,,,
-question,d9b3c410-397e-490c-9640-4e5e33b6ed8b,2025,27,"Under the Income Tax provisions relating to political contributions, what is the maximum amount that can be donated in cash to a political p",,,,,,
+question,3464f9ac-9599-412b-992f-35245d4285f2,2025,19,RBI performs different functions under various laws and regulations. Which of the following pairs is not correctly matched?,,spot_check,,,,easy
+question,633fddca-1fa2-48a4-b5c9-f9c7ed43c17f,2025,19,Which of the following is not considered a desirable trait of an effective leader or manager?,,,,,,easy
+question,4985b5bb-8c7c-4075-b703-a5d2d26e9cd0,2025,20,Financial Benchmarks India Pvt. Ltd. (FBIL) is responsible for publishing various financial benchmark rates in India. Consider the following,,,,,,easy
+question,ed9709a3-9468-405f-9f5f-ec76319c4188,2025,20,Which of the following options correctly lists all the primary functions of management?,,,,,,easy
+question,6be4c398-bdab-4a7e-9b96-a20ce6a60297,2025,21,What is the minimum investment amount required for subscribing to Non-Convertible Preference Shares (NCPs)?,,,,,,medium
+question,3df74d90-6d8d-4168-896a-3744a16691bb,2025,22,"An investor buys a financial contract under which he pays a periodic premium to another party, and in return receives compensation if a spec",,,,,,easy
+question,ddfa411a-62d0-4a20-bec8-4e45861c8c04,2025,23,"When goods or services are supplied by an Indian supplier to a foreign recipient, which type of GST is applicable?",,,,,,easy
+question,9ac6d556-6bbc-4fe7-9419-b920c7184362,2025,24,Which of the following statements best describes callable securities?,,spot_check,,,,easy
+question,58216a0f-55bb-427a-8a85-b883d80fc087,2025,25,"Under the Coinage rules in India, 50 paise coin is legal tender up to what maximum amount?",,,,,,medium
+question,5ca98fbe-7f6c-4d55-9c51-97ef4b1b1bfb,2025,26,Which of the following statements correctly distinguishes between fixed securities and floating securities?,,,,,,easy
+question,d9b3c410-397e-490c-9640-4e5e33b6ed8b,2025,27,"Under the Income Tax provisions relating to political contributions, what is the maximum amount that can be donated in cash to a political p",,,,,,medium
 question,d4774e13-e9c2-4dea-9097-cbc049f38c14,2025,28,"With reference to the RBI Master Direction – Foreign Investment in India issued under FEMA, consider the following statements regarding fore",non_ascii_suspect,flagged,,,,
-question,16537eee-3b8f-493d-9b9f-b9fa2a700af1,2025,29,A forward contract on a financial asset is priced at ₹432 for delivery after 6 months. The annual bank borrowing rate is 9% per annum (simpl,non_ascii_suspect,flagged,,,,
-question,ec6cf916-7153-4017-91b3-b3ca59492cc5,2025,30,"Two companies, Umbrella Ltd. and Raincoat Ltd., have issued Certificates of Deposit (CDs). Their practices are as follows: Provision / Pract",non_ascii_suspect,flagged,,,,
-question,24e7acb5-5664-41de-8136-784669bca7c0,2025,31,"With reference to Credit Default Swaps (CDS), consider the following statements: 1. A Credit Default Swap is a derivative contract in which ",,,,,,
+question,16537eee-3b8f-493d-9b9f-b9fa2a700af1,2025,29,A forward contract on a financial asset is priced at ₹432 for delivery after 6 months. The annual bank borrowing rate is 9% per annum (simpl,non_ascii_suspect,flagged,,,,medium
+question,ec6cf916-7153-4017-91b3-b3ca59492cc5,2025,30,"Two companies, Umbrella Ltd. and Raincoat Ltd., have issued Certificates of Deposit (CDs). Their practices are as follows: Provision / Pract",non_ascii_suspect,flagged,,,,medium
+question,24e7acb5-5664-41de-8136-784669bca7c0,2025,31,"With reference to Credit Default Swaps (CDS), consider the following statements: 1. A Credit Default Swap is a derivative contract in which ",,,,,,easy
 tag,c1c377d1-d76e-4390-9eb1-2af442119b3c,2025,00d3f0d6-79a3-4c9b-a019-d0ac728fbb19,Digital Public Infrastructure and India Stack,,spot_check,,,,
 tag,f5e62909-4300-4b29-8b71-868620aa30e2,2025,00d3f0d6-79a3-4c9b-a019-d0ac728fbb19,Digital Public Infrastructure and India Stack,,,,,,
 tag,2314aac7-1fc1-4c7d-9c4d-361436ca9d23,2025,00d3f0d6-79a3-4c9b-a019-d0ac728fbb19,Digital Public Infrastructure and India Stack,,,,,,
