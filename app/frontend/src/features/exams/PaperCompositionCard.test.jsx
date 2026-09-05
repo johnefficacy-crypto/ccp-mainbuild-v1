@@ -85,29 +85,33 @@ function mount(body, props = {}) {
   return render(<PaperCompositionCard paperId={body.paper_id} {...props} />);
 }
 
-describe("tag level is always stated", () => {
-  it("says microtopic when the tags sit at microtopic level", async () => {
+describe("no internal state reaches the reader", () => {
+  it("shows no tagging coverage, tag role or topic-tree explanation", async () => {
     mount(MICROTOPIC_PAPER);
-    const note = await screen.findByTestId("paper-composition-tag-level");
-    expect(note).toHaveTextContent(/microtopic level/i);
-    expect(note).toHaveTextContent(/grouped under their parent topic/i);
+    const card = await screen.findByTestId("paper-composition-card");
+    expect(screen.queryByTestId("paper-composition-tag-level")).toBeNull();
+    expect(screen.queryByTestId("paper-composition-counts")).toBeNull();
+    const text = card.textContent;
+    expect(text).not.toMatch(/untagged/i);
+    expect(text).not.toMatch(/primary tag/i);
+    expect(text).not.toMatch(/microtopic/i);
+    expect(text).not.toMatch(/parent topic/i);
+    expect(text).not.toMatch(/verified/i);
   });
 
-  it("says top-level, and that the two are not comparable, for CSAT", async () => {
-    mount(TOPIC_PAPER);
-    const note = await screen.findByTestId("paper-composition-tag-level");
-    expect(note).toHaveTextContent(/top-level topic only/i);
-    expect(note).toHaveTextContent(/not\s+directly comparable/i);
-    // It may mention microtopics to say what this is NOT; it must never
-    // claim the tags sit at that level.
-    expect(note).not.toHaveTextContent(/tagged at microtopic level/i);
+  it("says nothing at all when the breakdown covers the whole paper", async () => {
+    mount(MICROTOPIC_PAPER);
+    await screen.findByTestId("paper-composition-card");
+    expect(screen.queryByTestId("paper-composition-basis")).toBeNull();
   });
 
-  it("reports the tagged/untagged split", async () => {
+  it("states what a partial breakdown is based on, once, and nothing more", async () => {
     mount({ ...MICROTOPIC_PAPER, tagged_questions: 90, untagged_questions: 10 });
-    const counts = await screen.findByTestId("paper-composition-counts");
-    expect(counts).toHaveTextContent("90 of 100");
-    expect(counts).toHaveTextContent("10 untagged");
+    const basis = await screen.findByTestId("paper-composition-basis");
+    expect(basis).toHaveTextContent("Based on 90 of 100 questions.");
+    // Not what is missing, not why.
+    expect(basis).not.toHaveTextContent(/untagged/i);
+    expect(basis).not.toHaveTextContent(/missing|pending|tag/i);
   });
 });
 
@@ -172,8 +176,9 @@ describe("empty states", () => {
   it("renders the empty state for a paper with no tags", async () => {
     mount(UNTAGGED_PAPER, { paperLabel: "2024 · Mains · GS-1" });
     const empty = await screen.findByTestId("paper-composition-empty");
-    expect(empty).toHaveTextContent(/no verified topic tags yet/i);
+    expect(empty).toHaveTextContent(/no topic breakdown is available/i);
     expect(empty).toHaveTextContent("2024 · Mains · GS-1");
+    expect(empty.textContent).not.toMatch(/tag/i);
     expect(screen.queryByTestId("paper-composition-chart")).toBeNull();
   });
 

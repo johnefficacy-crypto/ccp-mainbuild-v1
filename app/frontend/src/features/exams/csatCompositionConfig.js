@@ -67,14 +67,14 @@ export const TRUNCATED_SUBJECTS = new Set([DEFAULT_SUBJECT_ID]);
 const PROVENANCE_SOURCE = "GET /api/exam-intelligence/exams/{slug}/csat-composition";
 export { PROVENANCE_SOURCE };
 
-/** Papers that carry at least one primary tag — the ones with a chart to draw. */
+/**
+ * Papers with a chart to draw. A paper the series covers but has nothing for is
+ * simply absent from the charts — how many such papers there are, and why, is
+ * the platform's business, not the reader's. The section states what it is
+ * based on once, at the bottom, and nothing about what is missing.
+ */
 export function taggedPapers(papers) {
   return (papers || []).filter((p) => (p.tagged_questions || 0) > 0);
-}
-
-/** Papers in the series that carry no primary tag at all — an empty state each. */
-export function untaggedPapers(papers) {
-  return (papers || []).filter((p) => (p.tagged_questions || 0) === 0);
 }
 
 export function paperLabel(paper) {
