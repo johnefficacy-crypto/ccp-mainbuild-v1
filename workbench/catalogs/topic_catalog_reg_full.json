@@ -1,0 +1,4658 @@
+[
+  {
+    "id": "baf763bb-6d36-4a25-b1ba-6419e3b26852",
+    "text": "Main idea and central theme",
+    "slug": "eng-main-idea-and-central-theme-59263450",
+    "subject": "english-language"
+  },
+  {
+    "id": "342ec4bb-5625-4398-9b44-2963d65062a4",
+    "text": "Explicit detail retrieval",
+    "slug": "eng-explicit-detail-retrieval-5825931a",
+    "subject": "english-language"
+  },
+  {
+    "id": "420312ba-2e38-4e16-a836-7e6764a05535",
+    "text": "Inference and implied meaning",
+    "slug": "eng-inference-and-implied-meaning-a005bcd3",
+    "subject": "english-language"
+  },
+  {
+    "id": "ebdd3a2a-f038-4775-9684-647b6cbbdcbb",
+    "text": "Author tone, attitude and purpose",
+    "slug": "eng-author-tone-attitude-and-purpose-87729e1a",
+    "subject": "english-language"
+  },
+  {
+    "id": "dbed7599-7bab-45e3-ab53-cb8cbb8a1c55",
+    "text": "Vocabulary from context within a passage",
+    "slug": "eng-vocabulary-from-context-within-a-passage-b55df114",
+    "subject": "english-language"
+  },
+  {
+    "id": "bf06f202-6d47-497c-a4e2-5f7f377d0fbb",
+    "text": "Passage-based synonym and antonym",
+    "slug": "eng-passage-based-synonym-and-antonym-b6b1d1e6",
+    "subject": "english-language"
+  },
+  {
+    "id": "3f2a57b9-ea87-4d0e-9296-6651b115c149",
+    "text": "Written answers to a passage",
+    "slug": "eng-written-answers-to-a-passage-9e9204f6",
+    "subject": "english-language"
+  },
+  {
+    "id": "4b44f9f1-8d13-4977-be4b-aa5108b10ead",
+    "text": "Single-blank contextual cloze",
+    "slug": "eng-single-blank-contextual-cloze-cd934632",
+    "subject": "english-language"
+  },
+  {
+    "id": "4d511b04-901c-8fb4-06a9-a1efe500e4f6",
+    "text": "Simple Sentences",
+    "slug": "simple-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "5f033e03-98a8-9e1e-f503-3d837e169983",
+    "text": "Compound Sentences",
+    "slug": "compound-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "5194a509-d374-28d7-24f8-7a49f7a308b8",
+    "text": "Complex Sentences",
+    "slug": "complex-sentences",
+    "subject": "english-language"
+  },
+  {
+    "id": "386a7e56-8043-74cf-4bfb-43aa9a845c9c",
+    "text": "Sentence Transformation",
+    "slug": "sentence-transformation",
+    "subject": "english-language"
+  },
+  {
+    "id": "1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc",
+    "text": "Sentence Structure",
+    "slug": "sentence-structure",
+    "subject": "english-language"
+  },
+  {
+    "id": "b9facc82-38d7-f725-7c97-8b5894c157f0",
+    "text": "Subject-Verb Agreement",
+    "slug": "subject-verb-agreement",
+    "subject": "english-language"
+  },
+  {
+    "id": "aa680736-24d9-abb2-d7f2-ad3bcb2acb77",
+    "text": "Tense",
+    "slug": "tense",
+    "subject": "english-language"
+  },
+  {
+    "id": "b790ab2c-17e8-9025-f313-2c44d24dac8d",
+    "text": "Articles",
+    "slug": "articles",
+    "subject": "english-language"
+  },
+  {
+    "id": "5db857e5-5b9d-2f80-0046-1978c199ed85",
+    "text": "Prepositions",
+    "slug": "prepositions",
+    "subject": "english-language"
+  },
+  {
+    "id": "c6beb287-3fef-397f-e204-57f8e4053328",
+    "text": "Pronoun Reference",
+    "slug": "pronoun-reference",
+    "subject": "english-language"
+  },
+  {
+    "id": "aca53761-13fc-65c9-bd3c-9f324e9a589f",
+    "text": "Modifiers",
+    "slug": "modifiers",
+    "subject": "english-language"
+  },
+  {
+    "id": "c777f14a-2058-a3ec-1208-bb4b36e2a19a",
+    "text": "Punctuation",
+    "slug": "punctuation",
+    "subject": "english-language"
+  },
+  {
+    "id": "22591465-673a-c375-3460-2702125f6fc3",
+    "text": "Spelling",
+    "slug": "spelling",
+    "subject": "english-language"
+  },
+  {
+    "id": "d24db813-295b-cb39-e6b3-327409910c6f",
+    "text": "Word Choice",
+    "slug": "word-choice",
+    "subject": "english-language"
+  },
+  {
+    "id": "1ea65bf4-15e7-e99a-3687-b3e324f4b5b9",
+    "text": "Collocations",
+    "slug": "collocations",
+    "subject": "english-language"
+  },
+  {
+    "id": "640b124b-d77a-5052-7d60-c5263b23bbd8",
+    "text": "Formal Vocabulary",
+    "slug": "formal-vocabulary",
+    "subject": "english-language"
+  },
+  {
+    "id": "84fae1ba-f1d4-98da-1c09-45c51ceb2e22",
+    "text": "Redundancy",
+    "slug": "redundancy",
+    "subject": "english-language"
+  },
+  {
+    "id": "42954cdb-5339-b7b2-9424-c0569960244b",
+    "text": "Topic Sentence",
+    "slug": "topic-sentence",
+    "subject": "english-language"
+  },
+  {
+    "id": "f911f68b-418c-d7bb-37e3-00499792e022",
+    "text": "Cohesion",
+    "slug": "cohesion",
+    "subject": "english-language"
+  },
+  {
+    "id": "b2b889f0-5310-23a4-a50c-daa504f0afe7",
+    "text": "Logical Order",
+    "slug": "logical-order",
+    "subject": "english-language"
+  },
+  {
+    "id": "b2d49393-0e86-3521-fc2d-c5ec26e286e9",
+    "text": "Conclusion",
+    "slug": "conclusion",
+    "subject": "english-language"
+  },
+  {
+    "id": "0e4fdd22-0bfe-ee0a-c0bc-d74b9518afeb",
+    "text": "Content Relevance",
+    "slug": "content-relevance",
+    "subject": "english-language"
+  },
+  {
+    "id": "50e8c0d4-60b5-7d43-4c12-33a386b0bbe5",
+    "text": "Word Limit",
+    "slug": "word-limit",
+    "subject": "english-language"
+  },
+  {
+    "id": "8a436650-6e75-79db-904f-e60bd0f7abaf",
+    "text": "Format Rules",
+    "slug": "format-rules",
+    "subject": "english-language"
+  },
+  {
+    "id": "47d00077-5f85-ba3b-fc49-cf7405914aa2",
+    "text": "Pr├⌐cis Writing",
+    "slug": "precis-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "63d9ed95-155f-b31b-acd8-3bb63b0bbb76",
+    "text": "Essay Writing",
+    "slug": "essay-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "eb5019d6-aa0e-23f3-dabd-d507596cf97a",
+    "text": "Letter and Report Writing",
+    "slug": "letter-report-writing-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "70b4fc2f-cf07-d8ef-fb7e-3025342ba94d",
+    "text": "Comprehension and Summary",
+    "slug": "comprehension-summary-general",
+    "subject": "english-language"
+  },
+  {
+    "id": "abf57bec-5615-4320-a666-ff980779a0c2",
+    "text": "Argument evaluation in a passage",
+    "slug": "eng-argument-evaluation-in-a-passage-3f8c21ba",
+    "subject": "english-language"
+  },
+  {
+    "id": "9cc0f630-ab4f-4a0a-b5b2-9212f18af346",
+    "text": "Sentence-level correctness selection",
+    "slug": "eng-sentence-level-correctness-selection-9d4e07c1",
+    "subject": "english-language"
+  },
+  {
+    "id": "e452f72a-bd16-4faa-87c0-ca8608723b7c",
+    "text": "Clock-time scheduling puzzle",
+    "slug": "reas-clock-time-scheduling-puzzle-6b2a94df",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "05f68c0c-9a50-48b6-b713-7393fdf49bfa",
+    "text": "Set-based data interpretation",
+    "slug": "qa-set-based-data-interpretation-8e13c5a7",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c91ecdcc-7fc9-4d23-b3b7-9122ce81cf9a",
+    "text": "Multi-blank passage cloze",
+    "slug": "eng-multi-blank-passage-cloze-85f89037",
+    "subject": "english-language"
+  },
+  {
+    "id": "53bf9a36-47c0-4473-b677-29a66d1a7bdb",
+    "text": "Double-blank sentence completion",
+    "slug": "eng-double-blank-sentence-completion-86aae4e4",
+    "subject": "english-language"
+  },
+  {
+    "id": "de6aaf4c-db6e-4c5c-b2bd-fc3d1880cc21",
+    "text": "Connector and transition cloze",
+    "slug": "eng-connector-and-transition-cloze-adcb36dd",
+    "subject": "english-language"
+  },
+  {
+    "id": "7c71b869-e50a-4ebd-aea1-fe291dbee5ed",
+    "text": "Subject-verb agreement",
+    "slug": "eng-subject-verb-agreement-07be8ac5",
+    "subject": "english-language"
+  },
+  {
+    "id": "f146f9b5-b13d-47c0-8aca-c80a6566b4fe",
+    "text": "Tense and sequence of tenses",
+    "slug": "eng-tense-and-sequence-of-tenses-7e82f0cb",
+    "subject": "english-language"
+  },
+  {
+    "id": "f9c12eec-a497-4d10-b219-2da6b28a92f7",
+    "text": "Preposition and article errors",
+    "slug": "eng-preposition-and-article-errors-000b76d8",
+    "subject": "english-language"
+  },
+  {
+    "id": "ee103c0c-a9fa-4ae8-98dd-78cdc4378732",
+    "text": "Pronoun reference and agreement",
+    "slug": "eng-pronoun-reference-and-agreement-d6412298",
+    "subject": "english-language"
+  },
+  {
+    "id": "e5efcb86-127f-460d-83fb-9faa38ee400c",
+    "text": "Correlative conjunctions and parallelism",
+    "slug": "eng-correlative-conjunctions-and-parallelism-ff6bd046",
+    "subject": "english-language"
+  },
+  {
+    "id": "10b21db7-8b86-4fa9-a1f6-8cd7d21085da",
+    "text": "Segment-marked error identification",
+    "slug": "eng-segment-marked-error-identification-8879fab9",
+    "subject": "english-language"
+  },
+  {
+    "id": "cbb196b4-3325-4af1-80f9-a4280d592e9f",
+    "text": "Single-word contextual fit",
+    "slug": "eng-single-word-contextual-fit-601cbc5c",
+    "subject": "english-language"
+  },
+  {
+    "id": "0b53297b-0109-4334-b1ee-e56a18137969",
+    "text": "Word-pair fit",
+    "slug": "eng-word-pair-fit-32a9e377",
+    "subject": "english-language"
+  },
+  {
+    "id": "613e6076-97c1-4a2b-b932-8831642cf075",
+    "text": "Preposition and phrasal completion",
+    "slug": "eng-preposition-and-phrasal-completion-5c07ccb9",
+    "subject": "english-language"
+  },
+  {
+    "id": "fd797be4-4857-4885-a456-52d9ce38df94",
+    "text": "Connector-based completion",
+    "slug": "eng-connector-based-completion-cbecd4db",
+    "subject": "english-language"
+  },
+  {
+    "id": "57e9ec9c-c979-437a-b1e8-90580921f096",
+    "text": "Phrase replacement",
+    "slug": "eng-phrase-replacement-623032a6",
+    "subject": "english-language"
+  },
+  {
+    "id": "c18d927f-2eab-49db-b302-a017cf1f2193",
+    "text": "Word interchange within a sentence",
+    "slug": "eng-word-interchange-within-a-sentence-e4c29104",
+    "subject": "english-language"
+  },
+  {
+    "id": "e6e0700f-0130-49e0-961d-89cbe5eab3f8",
+    "text": "Redundancy and wordiness",
+    "slug": "eng-redundancy-and-wordiness-1787d0ac",
+    "subject": "english-language"
+  },
+  {
+    "id": "3ab068c5-397c-4189-913f-0d26569b3899",
+    "text": "Word order and modifier placement",
+    "slug": "eng-word-order-and-modifier-placement-1b73c44c",
+    "subject": "english-language"
+  },
+  {
+    "id": "d5881d53-754a-4f95-a6a2-38d2bbd55162",
+    "text": "No-improvement-required cases",
+    "slug": "eng-no-improvement-required-cases-ede5f5eb",
+    "subject": "english-language"
+  },
+  {
+    "id": "bb17b54f-b233-4c9d-9bad-4526b5ce2f87",
+    "text": "Synonyms",
+    "slug": "eng-synonyms-6113204e",
+    "subject": "english-language"
+  },
+  {
+    "id": "b56cb48c-f85b-4158-8e71-f954f48a8c10",
+    "text": "Antonyms",
+    "slug": "eng-antonyms-af017948",
+    "subject": "english-language"
+  },
+  {
+    "id": "e6f14cb6-df7f-4e3a-9aa4-5efbf45b7946",
+    "text": "One-word substitution",
+    "slug": "eng-one-word-substitution-13964bb4",
+    "subject": "english-language"
+  },
+  {
+    "id": "0df7dc1f-8059-4012-a9a4-59b8bc8b7181",
+    "text": "Commonly confused word pairs",
+    "slug": "eng-commonly-confused-word-pairs-f6bc9a52",
+    "subject": "english-language"
+  },
+  {
+    "id": "eeed4b11-c9a3-4c0d-9f08-e31d6d8bcdac",
+    "text": "Formal and business register",
+    "slug": "eng-formal-and-business-register-f2975b74",
+    "subject": "english-language"
+  },
+  {
+    "id": "f4ab61e2-cadf-4686-a1c5-50554463f230",
+    "text": "Meaning of an idiom in context",
+    "slug": "eng-meaning-of-an-idiom-in-context-afcdf0c3",
+    "subject": "english-language"
+  },
+  {
+    "id": "37a65bc7-1c55-43e7-b59a-c25f3bc3232f",
+    "text": "Phrasal verbs",
+    "slug": "eng-phrasal-verbs-00cf2c93",
+    "subject": "english-language"
+  },
+  {
+    "id": "4da202f1-6f6a-4260-b734-4dedaefb615a",
+    "text": "Cost accounting vs financial accounting",
+    "slug": "cost-cost-accounting-vs-financial-accounting-2f4381c6",
+    "subject": "costing"
+  },
+  {
+    "id": "f03f944a-8afa-487a-ad73-975b87bacd7f",
+    "text": "Trade deficit",
+    "slug": "econ-trade-deficit-ca284702",
+    "subject": "economics"
+  },
+  {
+    "id": "d95f0b2c-8f75-49ef-8ce3-2b41ad8ef200",
+    "text": "Objectives and scope of cost and management accounting",
+    "slug": "cost-objectives-and-scope-of-cost-and-management-accounting-2711c3c3",
+    "subject": "costing"
+  },
+  {
+    "id": "539e43d7-73e6-4a2a-a03f-fe99dcb282f6",
+    "text": "Introduction to cost and management accounting",
+    "slug": "cost-introduction-to-cost-and-management-accounting-a93049ae",
+    "subject": "costing"
+  },
+  {
+    "id": "3837dacd-cfd3-4432-8e4b-6a0961279185",
+    "text": "Cost classification by behaviour ΓÇö fixed, variable, semi-variable",
+    "slug": "cost-cost-classification-by-behaviour-fixed-variable-semi-variabl-e25ab568",
+    "subject": "costing"
+  },
+  {
+    "id": "962bf11d-354a-46f9-b143-7b877f1dd115",
+    "text": "Direct vs indirect costs",
+    "slug": "cost-direct-vs-indirect-costs-6ceb3aa3",
+    "subject": "costing"
+  },
+  {
+    "id": "db05f548-fef6-4ac7-ae25-bcf4b0901d5c",
+    "text": "Imputed and notional costs",
+    "slug": "cost-imputed-and-notional-costs-dc36d546",
+    "subject": "costing"
+  },
+  {
+    "id": "3296b37a-2381-43b1-8d1b-9318ebd22458",
+    "text": "Sunk, differential, opportunity and relevant costs",
+    "slug": "cost-sunk-differential-opportunity-and-relevant-costs-52aa27f3",
+    "subject": "costing"
+  },
+  {
+    "id": "497f4d2b-bb23-445e-a094-5826fdc35a38",
+    "text": "Cost control vs cost reduction",
+    "slug": "cost-cost-control-vs-cost-reduction-539c755e",
+    "subject": "costing"
+  },
+  {
+    "id": "abe17c1b-eac6-429d-b021-7c40e7a60feb",
+    "text": "Role of the management accountant",
+    "slug": "cost-role-of-the-management-accountant-bb3480a3",
+    "subject": "costing"
+  },
+  {
+    "id": "311cae6d-8e65-4437-a7c4-97cd02792d29",
+    "text": "Single output / unit costing",
+    "slug": "cost-single-output-unit-costing-2222baee",
+    "subject": "costing"
+  },
+  {
+    "id": "b65d24b6-0f30-43e0-8149-2f8f56f8f392",
+    "text": "Job costing",
+    "slug": "cost-job-costing-ae284897",
+    "subject": "costing"
+  },
+  {
+    "id": "9bfc64dc-3820-49a5-894d-0512bfde4bbd",
+    "text": "Batch costing and economic batch quantity",
+    "slug": "cost-batch-costing-and-economic-batch-quantity-3984e50e",
+    "subject": "costing"
+  },
+  {
+    "id": "923b92bb-97fd-40d1-9333-a114ba4ae2ed",
+    "text": "Contract costing ΓÇö WIP, retention, profit on incomplete contracts",
+    "slug": "cost-contract-costing-wip-retention-profit-on-incomplete-contract-102b6dcd",
+    "subject": "costing"
+  },
+  {
+    "id": "d6246251-b168-4972-9322-4ebcbd4c87bf",
+    "text": "Equivalent production ΓÇö FIFO and weighted average",
+    "slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+    "subject": "costing"
+  },
+  {
+    "id": "88e0caf1-d3c1-472c-ba4a-4251f3fe97fb",
+    "text": "Inter-process profit",
+    "slug": "cost-inter-process-profit-1b0952cf",
+    "subject": "costing"
+  },
+  {
+    "id": "31892b66-83af-4b55-8895-936606413969",
+    "text": "Joint products and by-products ΓÇö apportionment bases",
+    "slug": "cost-joint-products-and-by-products-apportionment-bases-a6a74b59",
+    "subject": "costing"
+  },
+  {
+    "id": "e61d07dd-9af2-4ba8-8b01-26d35b7e7ff0",
+    "text": "Operating / service sector costing ΓÇö transport, hotel, healthcare",
+    "slug": "cost-operating-service-sector-costing-transport-hotel-healthcare-ad2bb07c",
+    "subject": "costing"
+  },
+  {
+    "id": "51647430-90d5-410b-b819-858f07b6683c",
+    "text": "Standard costing ΓÇö types of standards and ideal standard",
+    "slug": "cost-standard-costing-types-of-standards-and-ideal-standard-4097314a",
+    "subject": "costing"
+  },
+  {
+    "id": "3938fbb2-3914-4303-8c5b-3cd10171861a",
+    "text": "Material variances ΓÇö price, usage, mix, yield",
+    "slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+    "subject": "costing"
+  },
+  {
+    "id": "25a29f87-d2f6-40d8-a129-ce8261b22117",
+    "text": "Labour variances ΓÇö rate and efficiency",
+    "slug": "cost-labour-variances-rate-and-efficiency-71d9cffe",
+    "subject": "costing"
+  },
+  {
+    "id": "cb52594d-78f3-448d-a1ee-8c4eb5d6f2fd",
+    "text": "Overhead variances ΓÇö variable and fixed",
+    "slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
+    "subject": "costing"
+  },
+  {
+    "id": "ca912f5e-9d89-4d70-84ba-038d75901383",
+    "text": "Sales variances ΓÇö price, volume, mix",
+    "slug": "cost-sales-variances-price-volume-mix-cc222e43",
+    "subject": "costing"
+  },
+  {
+    "id": "c5d38f58-d1bd-4514-a2b6-535e56f0d91d",
+    "text": "Disposal of variances",
+    "slug": "cost-disposal-of-variances-05e3c04b",
+    "subject": "costing"
+  },
+  {
+    "id": "d7552288-cec8-4bf0-a99a-1f546c81ad0c",
+    "text": "Marginal costing ΓÇö contribution and P/V ratio",
+    "slug": "cost-marginal-costing-contribution-and-p-v-ratio-5dbaee83",
+    "subject": "costing"
+  },
+  {
+    "id": "82d92984-3129-4d68-b68d-bbc6c2442bb2",
+    "text": "Break-even point in units and value",
+    "slug": "cost-break-even-point-in-units-and-value-69b99c6d",
+    "subject": "costing"
+  },
+  {
+    "id": "308c9fd7-83fd-4fa7-ac7d-6dd132598da7",
+    "text": "Margin of safety and angle of incidence",
+    "slug": "cost-margin-of-safety-and-angle-of-incidence-611056b6",
+    "subject": "costing"
+  },
+  {
+    "id": "2da39435-a7a7-4a85-a58e-27a7e0f85191",
+    "text": "Target-profit sales",
+    "slug": "cost-target-profit-sales-ac606b44",
+    "subject": "costing"
+  },
+  {
+    "id": "8ae22500-d6b0-4477-9480-d7199e784b1b",
+    "text": "Which costing method suits which industry",
+    "slug": "cost-method-selection-by-industry-c24f9d77",
+    "subject": "costing"
+  },
+  {
+    "id": "12d0d3f7-2c54-4842-bf73-6b88b195d776",
+    "text": "Absorption vs marginal costing ΓÇö profit reconciliation",
+    "slug": "cost-absorption-vs-marginal-costing-profit-reconciliation-3c2b2d47",
+    "subject": "costing"
+  },
+  {
+    "id": "4ebc0cd8-1c7c-46e1-a05a-0b7b21882d12",
+    "text": "Make-or-buy and shutdown decisions",
+    "slug": "cost-make-or-buy-and-shutdown-decisions-91b4aa14",
+    "subject": "costing"
+  },
+  {
+    "id": "5011a781-b0f9-4aaa-87f8-e83a19b9edf6",
+    "text": "Key factor and product mix decisions",
+    "slug": "cost-key-factor-and-product-mix-decisions-c1f23dd7",
+    "subject": "costing"
+  },
+  {
+    "id": "3ed821a4-b6bb-481a-959c-f97478564db3",
+    "text": "Budget concept and budgetary control",
+    "slug": "cost-budget-concept-and-budgetary-control-617c62f3",
+    "subject": "costing"
+  },
+  {
+    "id": "ea14557c-d684-4ba3-aa2c-4173869a3a32",
+    "text": "Fixed vs flexible budgets",
+    "slug": "cost-fixed-vs-flexible-budgets-abb5d990",
+    "subject": "costing"
+  },
+  {
+    "id": "b5f03bdc-9ac4-4d44-a315-4da15a93ba36",
+    "text": "Cash budget preparation",
+    "slug": "cost-cash-budget-preparation-879c8489",
+    "subject": "costing"
+  },
+  {
+    "id": "b55966ab-107a-4e5d-8740-a54ca3f2b7e0",
+    "text": "Zero-base and performance budgeting",
+    "slug": "cost-zero-base-and-performance-budgeting-dfb7b882",
+    "subject": "costing"
+  },
+  {
+    "id": "93172e4d-0ec1-437b-9165-a4da8584b949",
+    "text": "Introduction to lean system and the wastes",
+    "slug": "cost-introduction-to-lean-system-and-the-wastes-688e6065",
+    "subject": "costing"
+  },
+  {
+    "id": "585243ac-4681-4b22-8891-b2fdb8e0253c",
+    "text": "Just-in-Time and pull systems",
+    "slug": "cost-just-in-time-and-pull-systems-f89f17ff",
+    "subject": "costing"
+  },
+  {
+    "id": "1ac3d9ff-cd96-446c-b0b2-29033d5e5baa",
+    "text": "KANBAN",
+    "slug": "cost-kanban-3f102146",
+    "subject": "costing"
+  },
+  {
+    "id": "d8f39c01-afc3-4b9e-86dd-719af5298a9b",
+    "text": "Kaizen and Kaizen costing",
+    "slug": "cost-kaizen-and-kaizen-costing-af2ced2a",
+    "subject": "costing"
+  },
+  {
+    "id": "35b08297-73eb-4538-872c-4c46518eebf6",
+    "text": "5S and the sixth S",
+    "slug": "cost-5s-and-the-sixth-s-12ee6222",
+    "subject": "costing"
+  },
+  {
+    "id": "49ba0646-ce84-4931-b7f9-ceb31f43f40d",
+    "text": "Total Productive Maintenance and OEE",
+    "slug": "cost-total-productive-maintenance-and-oee-a1de98b7",
+    "subject": "costing"
+  },
+  {
+    "id": "756bd372-5226-4127-b3e6-a0ed35747f80",
+    "text": "Cellular manufacturing / one-piece flow",
+    "slug": "cost-cellular-manufacturing-one-piece-flow-cf3a35ef",
+    "subject": "costing"
+  },
+  {
+    "id": "477e5dfd-2a09-4e42-9704-e6d82082e24d",
+    "text": "Six Sigma ΓÇö DMAIC, belts, defect level",
+    "slug": "cost-six-sigma-dmaic-belts-defect-level-af9d959b",
+    "subject": "costing"
+  },
+  {
+    "id": "80431c8b-edaf-43bc-9179-ac4ddb667a6b",
+    "text": "Process innovation and Business Process Re-engineering",
+    "slug": "cost-process-innovation-and-business-process-re-engineering-b894f4ac",
+    "subject": "costing"
+  },
+  {
+    "id": "22a68051-abbc-4424-9f8a-bca3e1a70a77",
+    "text": "Takt time",
+    "slug": "cost-takt-time-980eeda3",
+    "subject": "costing"
+  },
+  {
+    "id": "ebc74bab-ff51-46a2-a559-37d2267351ca",
+    "text": "MRP II",
+    "slug": "cost-mrp-ii-f6fb71bc",
+    "subject": "costing"
+  },
+  {
+    "id": "be831cf9-ae29-4979-945e-dc13b82cedc0",
+    "text": "Target costing and life-cycle costing",
+    "slug": "cost-target-costing-and-life-cycle-costing-4c0e5dfb",
+    "subject": "costing"
+  },
+  {
+    "id": "e9072dd5-21a3-4e0f-908f-f3cbc69c07c2",
+    "text": "Economic order quantity and ordering/carrying trade-off",
+    "slug": "cost-economic-order-quantity-and-ordering-carrying-trade-off-e36a354f",
+    "subject": "costing"
+  },
+  {
+    "id": "89d2eb6c-a94d-4d39-aa37-a5801ab55e8b",
+    "text": "Material valuation ΓÇö FIFO and moving average",
+    "slug": "cost-material-valuation-fifo-and-moving-average-b84d56ab",
+    "subject": "costing"
+  },
+  {
+    "id": "3faa19c8-0f16-4b61-ba30-6a127399c3a8",
+    "text": "ABC and Pareto analysis for inventory control",
+    "slug": "cost-abc-and-pareto-analysis-for-inventory-control-e0bc1f51",
+    "subject": "costing"
+  },
+  {
+    "id": "0a1b5d12-e642-49a7-be68-9b545ac5e829",
+    "text": "Waste, scrap, spoilage and defectives ΓÇö treatment",
+    "slug": "cost-waste-scrap-spoilage-and-defectives-treatment-8068f1c3",
+    "subject": "costing"
+  },
+  {
+    "id": "8fb8f286-0b96-4b9d-9710-5b47fb5895b4",
+    "text": "Labour turnover ΓÇö causes and measurement",
+    "slug": "cost-labour-turnover-causes-and-measurement-d4cb4ea3",
+    "subject": "costing"
+  },
+  {
+    "id": "0a3e91cf-c759-47ac-b7fc-9207bdc1e447",
+    "text": "Idle time and overtime ΓÇö normal vs abnormal treatment",
+    "slug": "cost-idle-time-and-overtime-normal-vs-abnormal-treatment-08bfcf6d",
+    "subject": "costing"
+  },
+  {
+    "id": "350a1410-578d-485f-91d6-a2f4f666d9e9",
+    "text": "Overhead absorption ΓÇö bases and rates",
+    "slug": "cost-overhead-absorption-bases-and-rates-65feb5ec",
+    "subject": "costing"
+  },
+  {
+    "id": "bde1f682-75ac-478a-8ff1-1ba2845ff0f8",
+    "text": "Under- and over-absorption ΓÇö normal vs abnormal factors",
+    "slug": "cost-under-and-over-absorption-normal-vs-abnormal-factors-c4746f5e",
+    "subject": "costing"
+  },
+  {
+    "id": "72ee041b-2cf9-49e9-b1b5-3d4f355b33ca",
+    "text": "Activity-based costing ΓÇö cost pools and drivers",
+    "slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+    "subject": "costing"
+  },
+  {
+    "id": "64a0d03a-4bc1-4d43-9e1a-4fe2e748dc32",
+    "text": "Cost concepts ΓÇö prime, production, conversion cost",
+    "slug": "cost-cost-concepts-prime-production-conversion-cost-adcadb60",
+    "subject": "costing"
+  },
+  {
+    "id": "440c8813-032d-4fab-955f-99dd9a3acde3",
+    "text": "Process costing ΓÇö normal loss, abnormal loss, abnormal gain",
+    "slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
+    "subject": "costing"
+  },
+  {
+    "id": "56272686-677d-46a9-a852-e2c00371bbba",
+    "text": "Users and objectives of accounting",
+    "slug": "comm-users-and-objectives-of-accounting-a793b4e6",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "00a2b878-d8d9-42c4-88ff-c3557a6465a2",
+    "text": "Going concern, conservatism, matching, consistency",
+    "slug": "comm-going-concern-conservatism-matching-consistency-8d9199ad",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "b416791b-fcf7-4c7e-9e6e-3fcff96bb52d",
+    "text": "Qualitative characteristics of financial information",
+    "slug": "comm-qualitative-characteristics-of-financial-information-9f277e61",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "6eba8a76-9b03-481b-a27e-10f18c8c5eca",
+    "text": "Accounting equation",
+    "slug": "comm-accounting-equation-d0b1fd5c",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "056a48dc-4269-4973-8cd8-946badaf7689",
+    "text": "Double entry and rules of debit and credit",
+    "slug": "comm-double-entry-and-rules-of-debit-and-credit-bec6e100",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "bc9252cc-da4c-4975-bfba-c9d9ec1a914e",
+    "text": "Capital vs revenue expenditure",
+    "slug": "comm-capital-vs-revenue-expenditure-a623e332",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "9a3d5d30-7b6d-4220-8e29-3bd4251eedfc",
+    "text": "Accrual vs cash basis",
+    "slug": "comm-accrual-vs-cash-basis-3f45df7d",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "5da19d19-73f7-461d-8a93-1b1d84fd4600",
+    "text": "Rectification of errors",
+    "slug": "comm-rectification-of-errors-738e85fe",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "a52b4230-bec5-4a76-812b-f0fe45cd1d58",
+    "text": "Stages of the accounting process",
+    "slug": "comm-stages-of-the-accounting-process-2eeb4442",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "9de63513-d031-468b-920d-f0ea7d84fe40",
+    "text": "Accounting software and XBRL",
+    "slug": "comm-accounting-software-and-xbrl-8e8956b1",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "22f081a2-6718-436e-ac55-594bcf98fb5a",
+    "text": "AS 2 ΓÇö inventories, NRV, abnormal wastage",
+    "slug": "comm-as-2-inventories-nrv-abnormal-wastage-49107646",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "29113dfe-5091-4e5a-a635-737ad71bb894",
+    "text": "AS 3 ΓÇö cash flow classification",
+    "slug": "comm-as-3-cash-flow-classification-a6724448",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "445936e7-578a-4756-a0aa-ad240a9ef4a8",
+    "text": "AS 9 ΓÇö revenue recognition",
+    "slug": "comm-as-9-revenue-recognition-09897109",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "4bec3262-4880-4023-8d36-35f6619f9caf",
+    "text": "AS 10 ΓÇö property, plant and equipment; revaluation",
+    "slug": "comm-as-10-property-plant-and-equipment-revaluation-fb287c47",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "6d24067a-2f6d-4b56-8814-9176219d4de4",
+    "text": "Depreciation ΓÇö methods, change in estimate, commencement",
+    "slug": "comm-depreciation-methods-change-in-estimate-commencement-f82e6d00",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "893c3058-a22f-46b8-818b-768a6d7bdeb5",
+    "text": "AS 11 ΓÇö foreign exchange, FCMITDA, non-integrated operations",
+    "slug": "comm-as-11-foreign-exchange-fcmitda-non-integrated-operations-37e9937e",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "ec330902-c759-4057-81ce-7c7b8dea6f1c",
+    "text": "AS 13 ΓÇö investments",
+    "slug": "comm-as-13-investments-dfe9a43a",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "21f3b2ff-b5f0-42b1-83b5-d7b983fe3116",
+    "text": "Applicability framework and enterprise levels",
+    "slug": "comm-applicability-framework-and-enterprise-levels-b4ffed7e",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "9f1b83f6-5c62-4c3f-a859-1a95d03caf99",
+    "text": "Ind AS 7 ΓÇö statement of cash flows",
+    "slug": "comm-ind-as-7-statement-of-cash-flows-b102076c",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "f711665c-2d94-490d-83c3-92dece0f4800",
+    "text": "Ind AS 16 ΓÇö property, plant and equipment",
+    "slug": "comm-ind-as-16-property-plant-and-equipment-03ea51c0",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "ac8f41f0-78d6-46d6-9938-57b5778ecab9",
+    "text": "Ind AS 21 ΓÇö translation of non-monetary items",
+    "slug": "comm-ind-as-21-translation-of-non-monetary-items-ea4ffcab",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "3158483a-772c-4c02-81e6-602e4f943897",
+    "text": "Ind AS 36 ΓÇö impairment of assets",
+    "slug": "comm-ind-as-36-impairment-of-assets-8b33d129",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "22e6e517-14fc-4f79-9b19-cbb121681c15",
+    "text": "Ind AS 105 ΓÇö non-current assets held for sale",
+    "slug": "comm-ind-as-105-non-current-assets-held-for-sale-6362ca63",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "93669c53-13c1-40d0-8b2b-51b9d67f2b06",
+    "text": "Ind AS 113 ΓÇö fair value hierarchy",
+    "slug": "comm-ind-as-113-fair-value-hierarchy-8df0d07d",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "f7a27972-711a-40a0-9e03-0d6dc7f98bd3",
+    "text": "AS vs Ind AS convergence",
+    "slug": "comm-as-vs-ind-as-convergence-60228e09",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "41a1e4c0-7341-49ce-8574-50943dcd1292",
+    "text": "Liquidity ratios ΓÇö current and quick",
+    "slug": "comm-liquidity-ratios-current-and-quick-e5512198",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "bdc504eb-8d08-466c-954c-f8705705f53c",
+    "text": "Leverage ratios ΓÇö debt-equity and capital gearing",
+    "slug": "comm-leverage-ratios-debt-equity-and-capital-gearing-c8273948",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "500ed241-df0d-4f73-8472-409748326e55",
+    "text": "Coverage ratios ΓÇö interest, DSCR, asset coverage",
+    "slug": "comm-coverage-ratios-interest-dscr-asset-coverage-a722be92",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "092d9550-09b4-4f5a-a5b2-c1add1aac460",
+    "text": "Profitability ratios ΓÇö GP, NP, EBIT margin, ROE, ROCE",
+    "slug": "comm-profitability-ratios-gp-np-ebit-margin-roe-roce-451f2443",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "640cfa6f-a758-40c4-9657-b719bd6ce6b5",
+    "text": "Turnover ratios ΓÇö receivables, working capital, inventory",
+    "slug": "comm-turnover-ratios-receivables-working-capital-inventory-04cc4369",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "7c7ba47b-59c8-4bd1-bf85-be8d1f7fa7ce",
+    "text": "Cash conversion cycle",
+    "slug": "comm-cash-conversion-cycle-1a57e782",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "61fcfac5-b29c-4a0a-a9bc-32e33563312a",
+    "text": "Market ratios ΓÇö EPS, book value per share, dividend yield, P/E",
+    "slug": "comm-market-ratios-eps-book-value-per-share-dividend-yield-p-e-02edf471",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "5f979c8c-4b12-44e5-b646-93c099d53423",
+    "text": "Limitations of ratio analysis",
+    "slug": "comm-limitations-of-ratio-analysis-9d034626",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "f4e477a4-fd16-44ef-82c4-86adb47255ce",
+    "text": "Operating, investing and financing classification",
+    "slug": "comm-operating-investing-and-financing-classification-a4e54550",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "025a36aa-e8da-426c-a9b7-44f678eb17be",
+    "text": "Cash and cash equivalents ΓÇö the three-month test",
+    "slug": "comm-cash-and-cash-equivalents-the-three-month-test-49487a8d",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "82fe9e27-0e99-46f5-b261-1478470c0b76",
+    "text": "Direct vs indirect method",
+    "slug": "comm-direct-vs-indirect-method-c89cd305",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "8174cb02-9611-4073-9192-531634615ff0",
+    "text": "Control of subsidiaries ΓÇö separate presentation",
+    "slug": "comm-control-of-subsidiaries-separate-presentation-945d7aec",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "69cdc941-3ceb-4237-a49f-35d9407e4d12",
+    "text": "Fund flow ΓÇö sources and applications",
+    "slug": "comm-fund-flow-sources-and-applications-24cfb293",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "4fc9dd96-0c21-4166-b2b2-f8c59545f095",
+    "text": "Statement of changes in working capital",
+    "slug": "comm-statement-of-changes-in-working-capital-803aa45a",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "9b08d718-5a40-4ea9-9d9a-8aa95644add5",
+    "text": "Limitations of fund flow",
+    "slug": "comm-limitations-of-fund-flow-e44bc95a",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "156078da-9928-460b-9635-d17ef5db7483",
+    "text": "Issue at premium; securities premium reserve",
+    "slug": "comm-issue-at-premium-securities-premium-reserve-efe50f5a",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "d1db3271-6528-4029-9d1c-ae1a597380a2",
+    "text": "Calls in advance and calls in arrears",
+    "slug": "comm-calls-in-advance-and-calls-in-arrears-f2113a14",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "6376eec0-d336-4b65-9274-f5f8ee5b0a17",
+    "text": "Rights issue ΓÇö ex-right price and value of right",
+    "slug": "comm-rights-issue-ex-right-price-and-value-of-right-028d888c",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "6590b2ac-7891-4b88-9a99-4c5295ad946d",
+    "text": "Fayol's functions; coordination",
+    "slug": "mgmt-fayol-s-functions-coordination-dc798bc4",
+    "subject": "management"
+  },
+  {
+    "id": "c378a9dd-5680-4e1d-9419-9a7b7ea4f5fd",
+    "text": "Rights issue ΓÇö offer period and procedure",
+    "slug": "comm-rights-issue-offer-period-and-procedure-4255a1f2",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "0e0ec77a-1cc5-439c-9901-332a7879934c",
+    "text": "Bonus issue ΓÇö effect on shareholders and entity",
+    "slug": "comm-bonus-issue-effect-on-shareholders-and-entity-75ceb504",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "a087d0ef-97d5-42ab-a2ed-2270151859b8",
+    "text": "Journal entries for share issues",
+    "slug": "comm-journal-entries-for-share-issues-09312013",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "f09fe982-a28f-4a96-a5bc-9c5dfcb28a28",
+    "text": "Buy-back ΓÇö conditions and section 68",
+    "slug": "comm-buy-back-conditions-and-section-68-e0437e31",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "550e4f33-4f30-4218-88ff-d3b92df7b26b",
+    "text": "Debentures ΓÇö features and classification",
+    "slug": "comm-debentures-features-and-classification-ceaec689",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "c78caf6e-07f8-4601-95f0-e521e33395e9",
+    "text": "Redemption of preference shares",
+    "slug": "comm-redemption-of-preference-shares-9fdf7d70",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "ace20924-961e-4cb7-b0fa-af1bfb4a65b9",
+    "text": "ESOP ΓÇö vesting and exercise conditions",
+    "slug": "comm-esop-vesting-and-exercise-conditions-888af080",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "e150a45a-9706-47a3-b57a-a2768913db7e",
+    "text": "ESOP valuation methods",
+    "slug": "comm-esop-valuation-methods-341f6e0a",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "f040a651-41d8-48d4-8dec-655befd1ac52",
+    "text": "Sweat equity",
+    "slug": "comm-sweat-equity-045d7da5",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "20d46b1a-d0d4-4211-8d9c-829a9e68c15f",
+    "text": "Schedule III ΓÇö Balance Sheet heads and sub-heads",
+    "slug": "comm-schedule-iii-balance-sheet-heads-and-sub-heads-b645c8b7",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "e8ae8d78-f3a7-4a17-b7ed-82f309604f44",
+    "text": "Statement of Profit and Loss; exceptional items",
+    "slug": "comm-statement-of-profit-and-loss-exceptional-items-58baa453",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "47c349ea-b81e-4411-8e63-7a7b17466aee",
+    "text": "Provisions vs contingent liabilities",
+    "slug": "comm-provisions-vs-contingent-liabilities-7f9abd08",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "74180ebf-be07-40a6-8d28-ef0e0a20ff06",
+    "text": "Commitments and disclosure",
+    "slug": "comm-commitments-and-disclosure-cd467aeb",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "186ba6e8-19e4-478f-9d5a-b3acf8d1f9cf",
+    "text": "Consolidation ΓÇö when required",
+    "slug": "comm-consolidation-when-required-fc8549a1",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "3c1ec32d-d5c0-496f-b259-b761659803e8",
+    "text": "Amalgamation and internal reconstruction",
+    "slug": "comm-amalgamation-and-internal-reconstruction-f6cf65aa",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "45fdd5a8-54b2-4f57-86f8-e3dbcb964dd9",
+    "text": "AS 22 ΓÇö deferred tax",
+    "slug": "comm-as-22-deferred-tax-57e93280",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "0c404c89-75ad-4fe6-9d45-3ed00b5e9804",
+    "text": "Leases ΓÇö operating and finance",
+    "slug": "comm-leases-operating-and-finance-3fc7f587",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "5ccd5a20-bc3e-446f-9ae6-f2714ae925ac",
+    "text": "Partnership accounts ΓÇö deed absent, profit sharing, current account",
+    "slug": "comm-partnership-accounts-deed-absent-profit-sharing-current-acco-d617a5b2",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "252bebff-0ce7-4dab-933a-fafb4c2719c7",
+    "text": "Bills of exchange and account current",
+    "slug": "comm-bills-of-exchange-and-account-current-7827b77d",
+    "subject": "commerce-accountancy"
+  },
+  {
+    "id": "06c6dc13-3a3f-4af1-96a7-869e8708004e",
+    "text": "Kurt Lewin styles ΓÇö autocratic, democratic, laissez-faire",
+    "slug": "mgmt-kurt-lewin-styles-autocratic-democratic-laissez-faire-6f5e8f58",
+    "subject": "management"
+  },
+  {
+    "id": "bff56ed0-87bb-469d-9054-d64a8f4f47ad",
+    "text": "Goleman's leadership styles",
+    "slug": "mgmt-goleman-s-leadership-styles-4dcd3f45",
+    "subject": "management"
+  },
+  {
+    "id": "afd4a13d-c570-493d-8b6a-3923c701219f",
+    "text": "Trait approach ΓÇö personality, intelligence, emotion",
+    "slug": "mgmt-trait-approach-personality-intelligence-emotion-4fd09f0e",
+    "subject": "management"
+  },
+  {
+    "id": "ee76fe04-1401-4094-bf17-82bf3dee3a04",
+    "text": "Fiedler's contingency theory",
+    "slug": "mgmt-fiedler-s-contingency-theory-58030378",
+    "subject": "management"
+  },
+  {
+    "id": "66dc2fd4-86f0-4ef5-a5cb-beb282194223",
+    "text": "HerseyΓÇôBlanchard situational leadership",
+    "slug": "mgmt-hersey-blanchard-situational-leadership-082ac8ad",
+    "subject": "management"
+  },
+  {
+    "id": "e715c8be-8171-414c-bb32-e3a159f40848",
+    "text": "PathΓÇôGoal theory",
+    "slug": "mgmt-path-goal-theory-a09f2b6b",
+    "subject": "management"
+  },
+  {
+    "id": "575399ce-f540-4e33-9f24-06eded66c5ca",
+    "text": "Transactional vs transformational leadership (Burns)",
+    "slug": "mgmt-transactional-vs-transformational-leadership-burns-68232741",
+    "subject": "management"
+  },
+  {
+    "id": "e667ef72-f948-4aff-b1d8-6533fa7f0bd5",
+    "text": "Charismatic and inspirational leadership",
+    "slug": "mgmt-charismatic-and-inspirational-leadership-1c99952e",
+    "subject": "management"
+  },
+  {
+    "id": "4e158637-cac6-4973-85d1-5b763f30fa3d",
+    "text": "Affiliative and coaching styles",
+    "slug": "mgmt-affiliative-and-coaching-styles-270b508d",
+    "subject": "management"
+  },
+  {
+    "id": "d27a11ec-2154-4311-bc6e-2e1cc659fab6",
+    "text": "Leader vs manager",
+    "slug": "mgmt-leader-vs-manager-3c77b920",
+    "subject": "management"
+  },
+  {
+    "id": "555afbb3-49e1-4092-9c0f-9809e3b79a87",
+    "text": "Successful leader vs effective leader",
+    "slug": "mgmt-successful-leader-vs-effective-leader-a7a5b5ba",
+    "subject": "management"
+  },
+  {
+    "id": "a7a09fca-f711-4126-8309-e83452689c36",
+    "text": "Qualities and traits of an effective leader",
+    "slug": "mgmt-qualities-and-traits-of-an-effective-leader-b8cf8ffc",
+    "subject": "management"
+  },
+  {
+    "id": "a2fd859f-b648-4bf2-96f5-1bade330b04f",
+    "text": "Mintzberg interpersonal roles ΓÇö figurehead, leader, liaison",
+    "slug": "mgmt-mintzberg-interpersonal-roles-figurehead-leader-liaison-49fc125c",
+    "subject": "management"
+  },
+  {
+    "id": "abf5bb02-a95c-415c-b96d-3fe7872b9adc",
+    "text": "Mintzberg informational roles ΓÇö monitor, disseminator, spokesperson",
+    "slug": "mgmt-mintzberg-informational-roles-monitor-disseminator-spokesper-baf36484",
+    "subject": "management"
+  },
+  {
+    "id": "6923d908-0bbd-4456-a4d1-d2c9418acb18",
+    "text": "Mintzberg decisional roles",
+    "slug": "mgmt-mintzberg-decisional-roles-4baa053e",
+    "subject": "management"
+  },
+  {
+    "id": "0a64b1dd-dbcc-41a0-a7a7-7c6d7bcabe63",
+    "text": "Linking function of the manager",
+    "slug": "mgmt-linking-function-of-the-manager-b80962d9",
+    "subject": "management"
+  },
+  {
+    "id": "9d49be7e-b784-4b8a-a469-3bf272bf77dd",
+    "text": "Manager's role in HRD and employee support",
+    "slug": "mgmt-manager-s-role-in-hrd-and-employee-support-25b21b1a",
+    "subject": "management"
+  },
+  {
+    "id": "cd2697fb-dd5c-4afd-98a4-3128223a3a9e",
+    "text": "Planning ΓÇö steps and sequence",
+    "slug": "mgmt-planning-steps-and-sequence-6bfbdfe2",
+    "subject": "management"
+  },
+  {
+    "id": "c1eb7815-50ba-46e1-ac59-75fa6cd35b98",
+    "text": "Planning premises",
+    "slug": "mgmt-planning-premises-bc03fd6f",
+    "subject": "management"
+  },
+  {
+    "id": "1436482d-86b1-46ff-8ee7-521cbd1ed3f7",
+    "text": "Planning as a prerequisite function",
+    "slug": "mgmt-planning-as-a-prerequisite-function-eaddfc36",
+    "subject": "management"
+  },
+  {
+    "id": "46d3aced-cf67-4c05-b1c1-674912681c57",
+    "text": "Organising ΓÇö meaning and scope",
+    "slug": "mgmt-organising-meaning-and-scope-0ae6aa0f",
+    "subject": "management"
+  },
+  {
+    "id": "9dbb5e85-0642-48e8-9d79-7423dec67e7c",
+    "text": "Formal vs informal organisation",
+    "slug": "mgmt-formal-vs-informal-organisation-3300d5e1",
+    "subject": "management"
+  },
+  {
+    "id": "21deac38-f77c-4230-a9ee-3c1dc6a66fd2",
+    "text": "Staffing vs organising",
+    "slug": "mgmt-staffing-vs-organising-3a8aafb7",
+    "subject": "management"
+  },
+  {
+    "id": "739fd346-89a9-4087-a724-3a7f4cb957b9",
+    "text": "Directing as the life spark of management",
+    "slug": "mgmt-directing-as-the-life-spark-of-management-b54a5366",
+    "subject": "management"
+  },
+  {
+    "id": "87d209e9-dc7e-4bda-ab68-45774ff65364",
+    "text": "Controlling and supervision of day-to-day activities",
+    "slug": "mgmt-controlling-and-supervision-of-day-to-day-activities-0e74943a",
+    "subject": "management"
+  },
+  {
+    "id": "a50be932-a146-4925-8a89-bf7342ebfed9",
+    "text": "Primary functions of management",
+    "slug": "mgmt-primary-functions-of-management-131b8158",
+    "subject": "management"
+  },
+  {
+    "id": "041bffcf-8994-47b0-877e-d0d29ddde75d",
+    "text": "Management as science and art",
+    "slug": "mgmt-management-as-science-and-art-ff675366",
+    "subject": "management"
+  },
+  {
+    "id": "a3a6d7c0-afac-4a57-90a9-e451dcc27960",
+    "text": "Administration vs management",
+    "slug": "mgmt-administration-vs-management-3cc17734",
+    "subject": "management"
+  },
+  {
+    "id": "a5db4da4-d1a1-423a-8fa3-388181f3ef4f",
+    "text": "Levels of management",
+    "slug": "mgmt-levels-of-management-b6b7841a",
+    "subject": "management"
+  },
+  {
+    "id": "5a9b61eb-b1be-4bbe-acd5-ae322ac8d56a",
+    "text": "Katz's managerial skills ΓÇö technical, human, conceptual",
+    "slug": "mgmt-katz-s-managerial-skills-technical-human-conceptual-5726a053",
+    "subject": "management"
+  },
+  {
+    "id": "050b2b61-b9eb-428a-8abd-bba50bc74ed8",
+    "text": "Fayol's 14 principles; Esprit de Corps",
+    "slug": "mgmt-fayol-s-14-principles-esprit-de-corps-7aa00129",
+    "subject": "management"
+  },
+  {
+    "id": "3a0004f6-d89a-4f5f-b858-0dca53d6f277",
+    "text": "Communication register by relationship",
+    "slug": "communication-registers",
+    "subject": "english-language"
+  },
+  {
+    "id": "13785b33-e6ef-4cb5-839e-94394ed1ff49",
+    "text": "Taylor's scientific management",
+    "slug": "mgmt-taylor-s-scientific-management-1319b8f7",
+    "subject": "management"
+  },
+  {
+    "id": "2a199c59-c80c-46a5-8d46-b5c5bb952311",
+    "text": "Classical, neoclassical, behavioural and modern schools",
+    "slug": "mgmt-classical-neoclassical-behavioural-and-modern-schools-f37fa47a",
+    "subject": "management"
+  },
+  {
+    "id": "d50b1145-01c8-46bc-b6d5-c835f4d71d6c",
+    "text": "Drucker on management",
+    "slug": "mgmt-drucker-on-management-7e314c22",
+    "subject": "management"
+  },
+  {
+    "id": "63d77db8-f362-4083-86f3-74293a2f5b78",
+    "text": "Koontz and O'Donnell on the manager's function",
+    "slug": "mgmt-koontz-and-o-donnell-on-the-manager-s-function-1f231aca",
+    "subject": "management"
+  },
+  {
+    "id": "c600822b-0006-4bd6-a14f-43c83a717e78",
+    "text": "Maslow's hierarchy of needs",
+    "slug": "mgmt-maslow-s-hierarchy-of-needs-da8c774d",
+    "subject": "management"
+  },
+  {
+    "id": "ea4a8537-7ec6-4b55-8370-cf46944e9e7f",
+    "text": "Herzberg two-factor theory ΓÇö motivators vs hygiene",
+    "slug": "mgmt-herzberg-two-factor-theory-motivators-vs-hygiene-36490ed2",
+    "subject": "management"
+  },
+  {
+    "id": "aed378cb-e6de-419c-890c-4adefc54d12e",
+    "text": "McGregor Theory X and Theory Y",
+    "slug": "mgmt-mcgregor-theory-x-and-theory-y-28580774",
+    "subject": "management"
+  },
+  {
+    "id": "2fe2dab9-4e8f-40b0-98f6-68c19bc64180",
+    "text": "Vroom expectancy theory ΓÇö valence, instrumentality, expectancy",
+    "slug": "mgmt-vroom-expectancy-theory-valence-instrumentality-expectancy-68fb804d",
+    "subject": "management"
+  },
+  {
+    "id": "6d09d638-45a9-4749-b17b-fca94a956667",
+    "text": "McClelland's needs theory",
+    "slug": "mgmt-mcclelland-s-needs-theory-bac953f8",
+    "subject": "management"
+  },
+  {
+    "id": "9195d788-91e8-4891-9f9a-669d74c29cbf",
+    "text": "Financial vs non-financial incentives",
+    "slug": "mgmt-financial-vs-non-financial-incentives-f0022b20",
+    "subject": "management"
+  },
+  {
+    "id": "ebcf318b-3512-45ee-8449-68ac08265b0e",
+    "text": "Incentives vs rewards",
+    "slug": "mgmt-incentives-vs-rewards-36bad494",
+    "subject": "management"
+  },
+  {
+    "id": "3ed40431-0199-47c0-be2a-2f90dc092ff7",
+    "text": "Reward and punishment approach",
+    "slug": "mgmt-reward-and-punishment-approach-8108401a",
+    "subject": "management"
+  },
+  {
+    "id": "7afdeee6-b2a7-46b6-99cf-fe1f23970ac7",
+    "text": "Concept and goals of HRD",
+    "slug": "mgmt-concept-and-goals-of-hrd-dca1d2bc",
+    "subject": "management"
+  },
+  {
+    "id": "2e8ad9b9-a0ff-4451-b791-cb45e2ee11c7",
+    "text": "HRD subsystems",
+    "slug": "mgmt-hrd-subsystems-201f9c61",
+    "subject": "management"
+  },
+  {
+    "id": "b04d31f5-95b1-4930-81e9-a553b2c55328",
+    "text": "Nadler's HRD functions",
+    "slug": "mgmt-nadler-s-hrd-functions-f80a8958",
+    "subject": "management"
+  },
+  {
+    "id": "29439db3-323c-4aa1-9e65-313a22c6a8d3",
+    "text": "Drucker on HRD interventions",
+    "slug": "mgmt-drucker-on-hrd-interventions-a055f82e",
+    "subject": "management"
+  },
+  {
+    "id": "66fd5cd7-6930-45cd-8428-92c65dac5de3",
+    "text": "Developmental role of HRD",
+    "slug": "mgmt-developmental-role-of-hrd-9360217b",
+    "subject": "management"
+  },
+  {
+    "id": "6ac81505-9840-4714-8fc3-b92114f6cd2e",
+    "text": "Competency mapping ΓÇö technical and behavioural",
+    "slug": "mgmt-competency-mapping-technical-and-behavioural-f79927c5",
+    "subject": "management"
+  },
+  {
+    "id": "32864739-8555-4fed-86f3-01c0e267b86a",
+    "text": "Succession planning and potential appraisal",
+    "slug": "mgmt-succession-planning-and-potential-appraisal-66945317",
+    "subject": "management"
+  },
+  {
+    "id": "940f9e3a-85bf-4f8f-a81a-bae630a62dfe",
+    "text": "Training outcomes and organisational benefit",
+    "slug": "mgmt-training-outcomes-and-organisational-benefit-bea31ae3",
+    "subject": "management"
+  },
+  {
+    "id": "29ff5136-1138-4fef-bc46-9501d0b655ff",
+    "text": "Steps in the communication process",
+    "slug": "mgmt-steps-in-the-communication-process-ed152e55",
+    "subject": "management"
+  },
+  {
+    "id": "eee49054-ca21-469d-8da7-7386c4e8e6fd",
+    "text": "Communication channels and channel richness",
+    "slug": "mgmt-communication-channels-and-channel-richness-df471aaa",
+    "subject": "management"
+  },
+  {
+    "id": "3a832583-6e5b-41c8-9af7-7e3e8d73781d",
+    "text": "Upward, downward and lateral communication",
+    "slug": "mgmt-upward-downward-and-lateral-communication-330b22b2",
+    "subject": "management"
+  },
+  {
+    "id": "a9872c62-632f-4005-ab0e-439fc03d14db",
+    "text": "Oral vs written communication",
+    "slug": "mgmt-oral-vs-written-communication-1dc286da",
+    "subject": "management"
+  },
+  {
+    "id": "f99a5f86-7b21-4036-8de3-2c5f633fff73",
+    "text": "Verbal vs non-verbal communication",
+    "slug": "mgmt-verbal-vs-non-verbal-communication-d8ec7c6b",
+    "subject": "management"
+  },
+  {
+    "id": "8003eb93-8b12-4a0b-8d02-30bcc64eb70b",
+    "text": "Semantic barriers ΓÇö jargon and terminology",
+    "slug": "mgmt-semantic-barriers-jargon-and-terminology-fcabceac",
+    "subject": "management"
+  },
+  {
+    "id": "ac3da1f3-1a00-4666-ba67-1e02a8eb32f1",
+    "text": "Psychological barriers",
+    "slug": "mgmt-psychological-barriers-f15aef7b",
+    "subject": "management"
+  },
+  {
+    "id": "62a98a2a-8a53-400f-b38e-ed5d845c1df8",
+    "text": "Cultural and background barriers",
+    "slug": "mgmt-cultural-and-background-barriers-85f1c437",
+    "subject": "management"
+  },
+  {
+    "id": "144f9660-2ac4-416f-bd2d-aae52c0e2dee",
+    "text": "Role of information technology in communication",
+    "slug": "mgmt-role-of-information-technology-in-communication-82c70812",
+    "subject": "management"
+  },
+  {
+    "id": "ba588c32-a329-4290-9eed-4ac3978f8209",
+    "text": "Concept of morale",
+    "slug": "mgmt-concept-of-morale-7268f612",
+    "subject": "management"
+  },
+  {
+    "id": "a833010e-25da-4ed8-a779-984cc4920040",
+    "text": "Morale vs motivation",
+    "slug": "mgmt-morale-vs-motivation-520a1930",
+    "subject": "management"
+  },
+  {
+    "id": "3c2f17fe-23a1-4be9-9799-082ecf57db81",
+    "text": "Factors determining morale",
+    "slug": "mgmt-factors-determining-morale-3ca96153",
+    "subject": "management"
+  },
+  {
+    "id": "a5b8c2c0-6c35-4a09-bda7-51e0dbb86063",
+    "text": "Role of incentives in building morale",
+    "slug": "mgmt-role-of-incentives-in-building-morale-d8240a6e",
+    "subject": "management"
+  },
+  {
+    "id": "a4718ddd-719c-4223-85d8-35c67265b958",
+    "text": "SWOT analysis",
+    "slug": "mgmt-swot-analysis-7cc6b065",
+    "subject": "management"
+  },
+  {
+    "id": "76297f97-4f7f-4429-9a31-b60d1fddbd39",
+    "text": "PESTEL analysis",
+    "slug": "mgmt-pestel-analysis-dd98b34e",
+    "subject": "management"
+  },
+  {
+    "id": "c1fa98af-2c17-4db9-a426-37e68c2b271b",
+    "text": "SMART goal setting",
+    "slug": "mgmt-smart-goal-setting-4bc18c16",
+    "subject": "management"
+  },
+  {
+    "id": "d6492134-a657-4e78-9188-0b580d090053",
+    "text": "Tuckman's stages of group development",
+    "slug": "mgmt-tuckman-s-stages-of-group-development-14ed76f4",
+    "subject": "management"
+  },
+  {
+    "id": "e56a7181-1d23-4ba7-a73d-e7c056d702fc",
+    "text": "Pygmalion effect",
+    "slug": "mgmt-pygmalion-effect-e43fef9d",
+    "subject": "management"
+  },
+  {
+    "id": "4c7a95b5-d140-442c-81bf-f03d9a0544bf",
+    "text": "Perception and selective perception",
+    "slug": "mgmt-perception-and-selective-perception-174dc7bc",
+    "subject": "management"
+  },
+  {
+    "id": "fc31d10b-cacf-4c18-9855-6c36558e0ca5",
+    "text": "CPM and PERT",
+    "slug": "mgmt-cpm-and-pert-146c6078",
+    "subject": "management"
+  },
+  {
+    "id": "c3f45149-5b60-442a-a1de-917f2d39dfb6",
+    "text": "Process improvement approaches",
+    "slug": "mgmt-process-improvement-approaches-1d8ad304",
+    "subject": "management"
+  },
+  {
+    "id": "cd4fb6ad-ad93-464a-a936-40a8e9427b07",
+    "text": "Concept and principles of corporate governance",
+    "slug": "mgmt-concept-and-principles-of-corporate-governance-fdd171aa",
+    "subject": "management"
+  },
+  {
+    "id": "0e5b478f-5048-4be2-a4da-997415ef0843",
+    "text": "Internal vs external factors affecting governance",
+    "slug": "mgmt-internal-vs-external-factors-affecting-governance-8f37de11",
+    "subject": "management"
+  },
+  {
+    "id": "2639183b-6d54-45d7-abed-52c1977edbe8",
+    "text": "Mechanisms ΓÇö board, audit committee, disclosure",
+    "slug": "mgmt-mechanisms-board-audit-committee-disclosure-5b828720",
+    "subject": "management"
+  },
+  {
+    "id": "d82a2b25-119f-4552-88b1-d53dd525f8a1",
+    "text": "Committees and codes ΓÇö Birla, Narayana Murthy, Kotak",
+    "slug": "mgmt-committees-and-codes-birla-narayana-murthy-kotak-e606753b",
+    "subject": "management"
+  },
+  {
+    "id": "455cd87e-1988-4a78-a145-e3aa299f6f7a",
+    "text": "SEBI LODR governance requirements",
+    "slug": "mgmt-sebi-lodr-governance-requirements-4678f1e4",
+    "subject": "management"
+  },
+  {
+    "id": "93b328ed-90df-4dc1-8976-d6fa576781c5",
+    "text": "Law of demand and exceptional demand",
+    "slug": "econ-law-of-demand-and-exceptional-demand-4c31a6e4",
+    "subject": "economics"
+  },
+  {
+    "id": "8a9fc4ad-753c-441e-924f-059764c75ca3",
+    "text": "Law of supply and market equilibrium",
+    "slug": "econ-law-of-supply-and-market-equilibrium-454c8325",
+    "subject": "economics"
+  },
+  {
+    "id": "40b9a2e9-38ea-49ef-8323-a4044c43f87e",
+    "text": "Equilibrium from demand and supply functions",
+    "slug": "econ-equilibrium-from-demand-and-supply-functions-426a9def",
+    "subject": "economics"
+  },
+  {
+    "id": "e9f510cb-ab55-455c-834a-9f8a77620518",
+    "text": "Price and income elasticity of demand",
+    "slug": "econ-price-and-income-elasticity-of-demand-2787a511",
+    "subject": "economics"
+  },
+  {
+    "id": "986946fd-7591-4bd6-9196-88d8c42f3f8a",
+    "text": "Tax incidence and elasticity",
+    "slug": "econ-tax-incidence-and-elasticity-9cecfc89",
+    "subject": "economics"
+  },
+  {
+    "id": "1ddab268-35bd-4838-98fc-8dbf86c847a0",
+    "text": "Consumer surplus and producer surplus",
+    "slug": "econ-consumer-surplus-and-producer-surplus-e7d272df",
+    "subject": "economics"
+  },
+  {
+    "id": "7260f618-7771-4cbd-861b-3f7c490194ab",
+    "text": "Bandwagon, snob and Veblen effects",
+    "slug": "econ-bandwagon-snob-and-veblen-effects-a10ab797",
+    "subject": "economics"
+  },
+  {
+    "id": "f562773b-4f07-4b89-8895-373d1fe1a524",
+    "text": "Perfect competition",
+    "slug": "econ-perfect-competition-dbbd6859",
+    "subject": "economics"
+  },
+  {
+    "id": "01e31a7c-88dc-4f9f-9bd4-5e31dc600b54",
+    "text": "Monopoly",
+    "slug": "econ-monopoly-f89c1e9a",
+    "subject": "economics"
+  },
+  {
+    "id": "81287df5-8747-4039-99ec-68893e93f057",
+    "text": "Monopolistic competition and product differentiation",
+    "slug": "econ-monopolistic-competition-and-product-differentiation-8c9229cb",
+    "subject": "economics"
+  },
+  {
+    "id": "2f2bff1f-6f0d-4b17-93e6-6c7dd636466b",
+    "text": "Oligopoly",
+    "slug": "econ-oligopoly-9b41669d",
+    "subject": "economics"
+  },
+  {
+    "id": "836be8e4-f1ea-41e6-b092-a3f68e53902b",
+    "text": "Cournot's oligopoly model",
+    "slug": "econ-cournot-s-oligopoly-model-a42a7bab",
+    "subject": "economics"
+  },
+  {
+    "id": "205e1363-f785-4571-bed0-d9c85e38896e",
+    "text": "Kinked demand curve and price rigidity",
+    "slug": "econ-kinked-demand-curve-and-price-rigidity-8858faca",
+    "subject": "economics"
+  },
+  {
+    "id": "3b99d1e4-a26b-4bb9-8754-9cee350bd157",
+    "text": "GDP, GNP, NNP and NDP concepts",
+    "slug": "econ-gdp-gnp-nnp-and-ndp-concepts-f27e4274",
+    "subject": "economics"
+  },
+  {
+    "id": "9f8e2bbf-1911-485d-8e6d-9d7051be4f55",
+    "text": "GVA at basic price vs GDP",
+    "slug": "econ-gva-at-basic-price-vs-gdp-1a663a89",
+    "subject": "economics"
+  },
+  {
+    "id": "e34d5731-c322-48a2-be12-7bdf7730c780",
+    "text": "Factor cost vs market price",
+    "slug": "econ-factor-cost-vs-market-price-cb46f465",
+    "subject": "economics"
+  },
+  {
+    "id": "c2ed046b-2177-4913-bef8-acb009ab53ef",
+    "text": "NNP at factor cost ΓÇö computation",
+    "slug": "econ-nnp-at-factor-cost-computation-b2d7994e",
+    "subject": "economics"
+  },
+  {
+    "id": "2c353c7f-8bd9-42bc-85d2-11774785126e",
+    "text": "Personal income and disposable income ΓÇö derivation",
+    "slug": "econ-personal-income-and-disposable-income-derivation-a90c9643",
+    "subject": "economics"
+  },
+  {
+    "id": "f779e3de-96b0-43c3-808c-ba39793625af",
+    "text": "Per capita income",
+    "slug": "econ-per-capita-income-bfbac7da",
+    "subject": "economics"
+  },
+  {
+    "id": "67d37b2c-817d-44d9-ae33-a795612fc581",
+    "text": "Real vs nominal income; GDP deflator",
+    "slug": "econ-real-vs-nominal-income-gdp-deflator-8f056508",
+    "subject": "economics"
+  },
+  {
+    "id": "73c004a2-00b5-4fc9-8e71-b289c0147752",
+    "text": "Measurement methods ΓÇö income, expenditure, product",
+    "slug": "econ-measurement-methods-income-expenditure-product-87140e4a",
+    "subject": "economics"
+  },
+  {
+    "id": "3bbabf89-e66d-4bf1-a8e5-c0241b5b9262",
+    "text": "Limitations of national income accounting",
+    "slug": "econ-limitations-of-national-income-accounting-4fb5eb2c",
+    "subject": "economics"
+  },
+  {
+    "id": "2be9da34-f0a8-4147-b758-553a6c53b153",
+    "text": "Say's law of markets",
+    "slug": "econ-say-s-law-of-markets-fc37e1d5",
+    "subject": "economics"
+  },
+  {
+    "id": "951a6794-2f87-44da-bdb0-e2989813a725",
+    "text": "Keynesian effective demand",
+    "slug": "econ-keynesian-effective-demand-ba834e09",
+    "subject": "economics"
+  },
+  {
+    "id": "ce779631-c54b-447b-aeec-db0275554946",
+    "text": "Two-sector model",
+    "slug": "econ-two-sector-model-4f6d0739",
+    "subject": "economics"
+  },
+  {
+    "id": "8cdde817-38d0-403c-adb9-03dd9a38a9c9",
+    "text": "Consumption function and marginal propensity to consume",
+    "slug": "econ-consumption-function-and-marginal-propensity-to-consume-e3a17eb7",
+    "subject": "economics"
+  },
+  {
+    "id": "68e9bbfe-51b8-4f5f-b8cc-50a97feba87d",
+    "text": "Investment function and marginal efficiency of capital",
+    "slug": "econ-investment-function-and-marginal-efficiency-of-capital-2c978015",
+    "subject": "economics"
+  },
+  {
+    "id": "bf5d831d-3bc8-45f6-987e-4fc570fec7de",
+    "text": "Multiplier",
+    "slug": "econ-multiplier-56da938c",
+    "subject": "economics"
+  },
+  {
+    "id": "65f408cd-5ffb-433f-8e27-057f9442379d",
+    "text": "Accelerator",
+    "slug": "econ-accelerator-3b5f1b3b",
+    "subject": "economics"
+  },
+  {
+    "id": "7b3b2b30-eb02-40e1-a3b9-f12024dbb089",
+    "text": "Unemployment types ΓÇö structural, frictional, cyclical",
+    "slug": "econ-unemployment-types-structural-frictional-cyclical-8ec365f1",
+    "subject": "economics"
+  },
+  {
+    "id": "d0fa9467-c144-44fa-b3bd-1db99d63f976",
+    "text": "Money supply measures M1 to M4",
+    "slug": "econ-money-supply-measures-m1-to-m4-e25a9cdc",
+    "subject": "economics"
+  },
+  {
+    "id": "47935f56-4fa5-4bfc-96aa-7bf7ece9da45",
+    "text": "Monetary base and high-powered money",
+    "slug": "econ-monetary-base-and-high-powered-money-9cd8d4bf",
+    "subject": "economics"
+  },
+  {
+    "id": "0f8dda0c-7fa0-428e-8a1a-15054c2c30f3",
+    "text": "Money multiplier",
+    "slug": "econ-money-multiplier-316a5984",
+    "subject": "economics"
+  },
+  {
+    "id": "c18b82b3-f8b9-4334-99b2-1ea1dba6aed4",
+    "text": "Fisher equation of exchange",
+    "slug": "econ-fisher-equation-of-exchange-2488e304",
+    "subject": "economics"
+  },
+  {
+    "id": "0fa91fea-2271-4b8d-83e2-d66253286bba",
+    "text": "Demand for money ΓÇö transactions, precautionary, speculative",
+    "slug": "econ-demand-for-money-transactions-precautionary-speculative-0c364c3e",
+    "subject": "economics"
+  },
+  {
+    "id": "3a9ca80e-2fd2-42a7-a9e6-040e2654bb8b",
+    "text": "Opportunity cost of holding currency",
+    "slug": "econ-opportunity-cost-of-holding-currency-b04f6a39",
+    "subject": "economics"
+  },
+  {
+    "id": "a5f18325-af4e-4040-95ca-5007d0ed75ab",
+    "text": "Direct vs indirect monetary instruments ΓÇö OMO, CRR, SLR, repo, MSF",
+    "slug": "econ-direct-vs-indirect-monetary-instruments-omo-crr-slr-repo-msf-5acdce3b",
+    "subject": "economics"
+  },
+  {
+    "id": "da0909d7-d3f4-4b3e-a31b-aa03ebfe1670",
+    "text": "IS curve derivation",
+    "slug": "econ-is-curve-derivation-9817e34a",
+    "subject": "economics"
+  },
+  {
+    "id": "a6ad1ade-bd70-4cce-b712-9d2aaa770846",
+    "text": "LM curve derivation",
+    "slug": "econ-lm-curve-derivation-0cd643c1",
+    "subject": "economics"
+  },
+  {
+    "id": "26ed398f-2437-495b-8925-9b53dc3f1303",
+    "text": "Shifts in the IS and LM curves",
+    "slug": "econ-shifts-in-the-is-and-lm-curves-73c1f4ef",
+    "subject": "economics"
+  },
+  {
+    "id": "490f7d10-c9d2-4c90-a404-0ee5c89dff9d",
+    "text": "Equilibrium in goods and money markets",
+    "slug": "econ-equilibrium-in-goods-and-money-markets-2e0d3115",
+    "subject": "economics"
+  },
+  {
+    "id": "6a0b5c7e-1586-4919-a881-6c084fc75283",
+    "text": "Liquidity trap",
+    "slug": "econ-liquidity-trap-dbe474fb",
+    "subject": "economics"
+  },
+  {
+    "id": "aabe4710-ba4f-4a0c-b36c-59d33753882b",
+    "text": "Demand-pull inflation",
+    "slug": "econ-demand-pull-inflation-031d3f14",
+    "subject": "economics"
+  },
+  {
+    "id": "35a95c33-0e7a-43fc-8ed3-1b79a7609209",
+    "text": "Cost-push inflation",
+    "slug": "econ-cost-push-inflation-40733bbb",
+    "subject": "economics"
+  },
+  {
+    "id": "e6e06ca6-432a-4cea-b2e1-da743833fd6f",
+    "text": "Stagflation",
+    "slug": "econ-stagflation-8fbd70f5",
+    "subject": "economics"
+  },
+  {
+    "id": "38570226-9451-435b-a9ee-ee5b19c91fec",
+    "text": "Phillips curve ΓÇö short run and long run",
+    "slug": "econ-phillips-curve-short-run-and-long-run-35035ce8",
+    "subject": "economics"
+  },
+  {
+    "id": "b6e22913-d4a4-4e20-b2f7-05615084718c",
+    "text": "Supply shocks and the Phillips curve",
+    "slug": "econ-supply-shocks-and-the-phillips-curve-320755af",
+    "subject": "economics"
+  },
+  {
+    "id": "fbfff264-c421-4b05-96da-071a02ee172f",
+    "text": "Business cycle phases",
+    "slug": "econ-business-cycle-phases-ce29f12d",
+    "subject": "economics"
+  },
+  {
+    "id": "a5b4857a-6bf4-4a05-97f4-7476a3f405a2",
+    "text": "Leading and lagging economic indicators",
+    "slug": "econ-leading-and-lagging-economic-indicators-220577bc",
+    "subject": "economics"
+  },
+  {
+    "id": "5b7a61a8-c69b-45fd-adcb-d929eab4d3dc",
+    "text": "Fiscal deficit ΓÇö definition and components",
+    "slug": "econ-fiscal-deficit-definition-and-components-b87d5782",
+    "subject": "economics"
+  },
+  {
+    "id": "f3082dfe-12cf-4635-8f83-a8d021b078f0",
+    "text": "Revenue vs capital expenditure",
+    "slug": "econ-revenue-vs-capital-expenditure-a4a84a94",
+    "subject": "economics"
+  },
+  {
+    "id": "5e3f8952-3acb-45fa-8e28-b4e5ed0e3dc8",
+    "text": "Non-tax sources of revenue",
+    "slug": "econ-non-tax-sources-of-revenue-51f889af",
+    "subject": "economics"
+  },
+  {
+    "id": "0a3778a1-aa66-4cad-805e-beb8ef4a9b2b",
+    "text": "Plan and non-plan expenditure",
+    "slug": "econ-plan-and-non-plan-expenditure-42c887d5",
+    "subject": "economics"
+  },
+  {
+    "id": "6b804126-1dae-4221-aba6-7896579a048a",
+    "text": "Government borrowings classification",
+    "slug": "econ-government-borrowings-classification-b7561916",
+    "subject": "economics"
+  },
+  {
+    "id": "1a76204b-2bc4-416c-8897-7782a77ee0ae",
+    "text": "Automatic stabilisers",
+    "slug": "econ-automatic-stabilisers-702efc98",
+    "subject": "economics"
+  },
+  {
+    "id": "deb7e551-014c-4491-9f5d-c5c3d1db7968",
+    "text": "Countercyclical fiscal policy",
+    "slug": "econ-countercyclical-fiscal-policy-8353b9d6",
+    "subject": "economics"
+  },
+  {
+    "id": "5f286da2-e0b7-4c2c-a5c2-28958c9576c2",
+    "text": "Indian fiscal year and budget calendar",
+    "slug": "econ-indian-fiscal-year-and-budget-calendar-9fa29275",
+    "subject": "economics"
+  },
+  {
+    "id": "35d2d884-83ef-474c-93d3-7114e70887b3",
+    "text": "Objectives and functions of monetary policy",
+    "slug": "econ-objectives-and-functions-of-monetary-policy-679838c6",
+    "subject": "economics"
+  },
+  {
+    "id": "b0342814-c623-4615-a2aa-e9f6ad1c3df0",
+    "text": "Inflation targeting framework and the MPC",
+    "slug": "econ-inflation-targeting-framework-and-the-mpc-692592a1",
+    "subject": "economics"
+  },
+  {
+    "id": "93b13ab8-fb10-433a-a1d5-40fc7acc4428",
+    "text": "Monetary policy transmission mechanism",
+    "slug": "econ-monetary-policy-transmission-mechanism-c33ffb07",
+    "subject": "economics"
+  },
+  {
+    "id": "e60d7e6f-aacf-4600-baa3-8c572e09e23a",
+    "text": "Monetary and fiscal policy mix",
+    "slug": "econ-monetary-and-fiscal-policy-mix-a8b549e2",
+    "subject": "economics"
+  },
+  {
+    "id": "147643da-a998-4a56-928b-961aef10a6f3",
+    "text": "Balance of payments ΓÇö current and capital account",
+    "slug": "econ-balance-of-payments-current-and-capital-account-45c3f9c0",
+    "subject": "economics"
+  },
+  {
+    "id": "b64377d2-7fc4-4c96-aa9e-f1451560bf35",
+    "text": "Why the balance of payments always balances",
+    "slug": "econ-why-the-balance-of-payments-always-balances-7ac28b17",
+    "subject": "economics"
+  },
+  {
+    "id": "f9c1e603-1539-46b1-a717-2918a51037e8",
+    "text": "Current account deficit",
+    "slug": "econ-current-account-deficit-ab1a55a9",
+    "subject": "economics"
+  },
+  {
+    "id": "2478c31b-5922-41fd-815e-b9e7dc9e5426",
+    "text": "Exchange rate regimes",
+    "slug": "econ-exchange-rate-regimes-1e2fe487",
+    "subject": "economics"
+  },
+  {
+    "id": "0a2bea54-898e-44df-9325-48b7239e0baa",
+    "text": "Foreign direct investment ΓÇö modes and routes",
+    "slug": "econ-foreign-direct-investment-modes-and-routes-07866e15",
+    "subject": "economics"
+  },
+  {
+    "id": "15b1c8bf-2c56-4614-927b-04549e9a64bd",
+    "text": "Purchasing power parity",
+    "slug": "econ-purchasing-power-parity-8041dedc",
+    "subject": "economics"
+  },
+  {
+    "id": "10b706be-98cb-4f80-bd45-ff7f2baefdf6",
+    "text": "Currency depreciation vs devaluation",
+    "slug": "econ-currency-depreciation-vs-devaluation-19af4d8b",
+    "subject": "economics"
+  },
+  {
+    "id": "ebff9225-240b-4f49-8716-356e97765194",
+    "text": "International Monetary Fund ΓÇö quota, SDR, facilities",
+    "slug": "econ-international-monetary-fund-quota-sdr-facilities-15695c49",
+    "subject": "economics"
+  },
+  {
+    "id": "77790f2f-b298-45f0-928c-431206477d2e",
+    "text": "World Bank group",
+    "slug": "econ-world-bank-group-d956b2ca",
+    "subject": "economics"
+  },
+  {
+    "id": "ddc8d3cc-428b-4552-b4cc-8826bde503ba",
+    "text": "Bank for International Settlements",
+    "slug": "econ-bank-for-international-settlements-454ffa6e",
+    "subject": "economics"
+  },
+  {
+    "id": "39d52a33-db2e-4a93-bc85-68187e892e5e",
+    "text": "IOSCO",
+    "slug": "econ-iosco-9b4330e4",
+    "subject": "economics"
+  },
+  {
+    "id": "15e5b403-5be3-49c4-a4c5-8c3805cc2694",
+    "text": "RBI, SEBI, IRDAI, PFRDA ΓÇö mandate boundaries",
+    "slug": "fin-rbi-sebi-irdai-pfrda-mandate-boundaries-10d10c48",
+    "subject": "finance"
+  },
+  {
+    "id": "b23d73d0-f433-4321-8232-e15eda5d1582",
+    "text": "FSDC and regulatory coordination",
+    "slug": "fin-fsdc-and-regulatory-coordination-4c2d899f",
+    "subject": "finance"
+  },
+  {
+    "id": "7aa6a5c3-2e2a-46c9-b5cf-d8a2168f4f88",
+    "text": "Development financial institutions ΓÇö NABARD, SIDBI, NHB, NaBFID, EXIM",
+    "slug": "fin-development-financial-institutions-nabard-sidbi-nhb-nabfid-e-95bc9803",
+    "subject": "finance"
+  },
+  {
+    "id": "bd20e212-5d6f-44c3-bddf-daede6e0516f",
+    "text": "Credit rating agencies and sovereign ratings",
+    "slug": "fin-credit-rating-agencies-and-sovereign-ratings-a4f09f50",
+    "subject": "finance"
+  },
+  {
+    "id": "3b2daf4c-ec9b-45cd-a101-ebe08e55f530",
+    "text": "International bodies ΓÇö IOSCO, BIS, FATF",
+    "slug": "fin-international-bodies-iosco-bis-fatf-f5166db0",
+    "subject": "finance"
+  },
+  {
+    "id": "8fa1dcd2-aabb-4340-b70a-c98ab28a6679",
+    "text": "Call, notice and term money",
+    "slug": "fin-call-notice-and-term-money-4a0be84f",
+    "subject": "finance"
+  },
+  {
+    "id": "4623fffb-b9ec-4558-90d5-f3f24d504e06",
+    "text": "Treasury bills",
+    "slug": "fin-treasury-bills-9d386486",
+    "subject": "finance"
+  },
+  {
+    "id": "aa771f11-bf97-4208-865b-e85f784f6c9a",
+    "text": "Commercial paper ΓÇö eligibility and net worth",
+    "slug": "fin-commercial-paper-eligibility-and-net-worth-b032568c",
+    "subject": "finance"
+  },
+  {
+    "id": "aadffd0f-e754-42e1-9395-bb2589fa1c37",
+    "text": "Certificates of deposit ΓÇö denomination and maturity",
+    "slug": "fin-certificates-of-deposit-denomination-and-maturity-49b00cd6",
+    "subject": "finance"
+  },
+  {
+    "id": "57fb49b3-fff9-4874-b1fc-232ce7be0044",
+    "text": "Repo, tri-party repo and CROMS",
+    "slug": "fin-repo-tri-party-repo-and-croms-1c997504",
+    "subject": "finance"
+  },
+  {
+    "id": "177b68be-4bce-4c12-bc99-f7fabcbc1de6",
+    "text": "Bank advances ΓÇö cash credit, overdraft, bill discounting",
+    "slug": "fin-bank-advances-cash-credit-overdraft-bill-discounting-5a3cb714",
+    "subject": "finance"
+  },
+  {
+    "id": "3976cecf-b912-4229-8e77-757f89f96360",
+    "text": "IPO process and book building",
+    "slug": "fin-ipo-process-and-book-building-07cc98a0",
+    "subject": "finance"
+  },
+  {
+    "id": "d5730793-96f4-40bb-92b5-ff3a27a73d89",
+    "text": "Anchor investors and lock-in",
+    "slug": "fin-anchor-investors-and-lock-in-9c556998",
+    "subject": "finance"
+  },
+  {
+    "id": "fac7bc30-f104-43f4-87c1-d4abe817ab11",
+    "text": "Retail application limits under ICDR",
+    "slug": "fin-retail-application-limits-under-icdr-05f11c66",
+    "subject": "finance"
+  },
+  {
+    "id": "a9883304-de94-409d-9982-1321b6035395",
+    "text": "Underwriting and devolvement",
+    "slug": "fin-underwriting-and-devolvement-c959bb29",
+    "subject": "finance"
+  },
+  {
+    "id": "b03e876a-c647-4e6f-943b-b01260398c35",
+    "text": "Price stabilisation and the green shoe option",
+    "slug": "fin-price-stabilisation-and-the-green-shoe-option-80adc8a5",
+    "subject": "finance"
+  },
+  {
+    "id": "069fdcf6-30e5-4be7-9ef2-6ae4f9631ca6",
+    "text": "Social Stock Exchange and Social Impact Funds",
+    "slug": "fin-social-stock-exchange-and-social-impact-funds-f82c5058",
+    "subject": "finance"
+  },
+  {
+    "id": "1959fdbb-aa4d-4d2b-ad00-2ba2ba1da295",
+    "text": "Minimum face value ΓÇö NCD and NCRPS",
+    "slug": "fin-minimum-face-value-ncd-and-ncrps-2e2e3e87",
+    "subject": "finance"
+  },
+  {
+    "id": "567b9717-73ac-46ef-bd37-671acc8420b0",
+    "text": "Depositories and dematerialisation",
+    "slug": "fin-depositories-and-dematerialisation-0a3e7f01",
+    "subject": "finance"
+  },
+  {
+    "id": "b3d81d2c-a6e7-40d0-84dc-eea66c22bee7",
+    "text": "Clearing corporations and settlement",
+    "slug": "fin-clearing-corporations-and-settlement-469ecd05",
+    "subject": "finance"
+  },
+  {
+    "id": "6004727f-31a9-4a63-a609-693a26becfa8",
+    "text": "Circuit breakers and trading halts",
+    "slug": "fin-circuit-breakers-and-trading-halts-3d39e4dd",
+    "subject": "finance"
+  },
+  {
+    "id": "ba164b72-afb0-458f-87f4-b413e45719e7",
+    "text": "NDS-OM and the G-sec auction platform",
+    "slug": "fin-nds-om-and-the-g-sec-auction-platform-6747540b",
+    "subject": "finance"
+  },
+  {
+    "id": "ed452a5c-75d7-4e2c-847d-7dff14a6b022",
+    "text": "FBIL benchmark rates",
+    "slug": "fin-fbil-benchmark-rates-fbb2b6a6",
+    "subject": "finance"
+  },
+  {
+    "id": "dd67a013-938d-4ae2-b9bc-816d6a072d65",
+    "text": "Bond yield and pricing",
+    "slug": "fin-bond-yield-and-pricing-d8b6d50e",
+    "subject": "finance"
+  },
+  {
+    "id": "76530f7f-d60e-4188-bacb-25428a3ef2b1",
+    "text": "Day-count conventions",
+    "slug": "fin-day-count-conventions-468761e5",
+    "subject": "finance"
+  },
+  {
+    "id": "8d46438f-2c09-44b0-bd59-d09e248e1217",
+    "text": "Callable and puttable securities",
+    "slug": "fin-callable-and-puttable-securities-f888d9aa",
+    "subject": "finance"
+  },
+  {
+    "id": "1cefdf19-0cb1-4bad-a0f3-d5cde6ee8c46",
+    "text": "Fixed vs floating rate securities",
+    "slug": "fin-fixed-vs-floating-rate-securities-3be5a34d",
+    "subject": "finance"
+  },
+  {
+    "id": "89bb1536-fd50-4ef9-aa73-a28cf8923927",
+    "text": "RBI Retail Direct",
+    "slug": "fin-rbi-retail-direct-9f0a1628",
+    "subject": "finance"
+  },
+  {
+    "id": "aee552d1-1abc-4a29-8f6c-b8228db54a60",
+    "text": "Municipal and revenue bonds",
+    "slug": "fin-municipal-and-revenue-bonds-edd0ed06",
+    "subject": "finance"
+  },
+  {
+    "id": "c7ea1e13-578a-4977-a08e-df0a6d689f16",
+    "text": "Forwards vs futures",
+    "slug": "fin-forwards-vs-futures-234bb6d4",
+    "subject": "finance"
+  },
+  {
+    "id": "d6708edc-a145-436a-8a30-1a207ad0640a",
+    "text": "Forward pricing and cost of carry",
+    "slug": "fin-forward-pricing-and-cost-of-carry-3de99e51",
+    "subject": "finance"
+  },
+  {
+    "id": "687cef2d-6b65-48cd-8b60-bba595cd730f",
+    "text": "Options basics and payoff",
+    "slug": "fin-options-basics-and-payoff-6614b298",
+    "subject": "finance"
+  },
+  {
+    "id": "b8aa6c4d-7880-4c5a-a78d-134faa5d6749",
+    "text": "Swaps ΓÇö interest rate and currency",
+    "slug": "fin-swaps-interest-rate-and-currency-1b32b9ba",
+    "subject": "finance"
+  },
+  {
+    "id": "2e28f6c8-b8c9-44da-b67a-1055d1906c27",
+    "text": "Credit default swaps",
+    "slug": "fin-credit-default-swaps-7725a2ef",
+    "subject": "finance"
+  },
+  {
+    "id": "3140dd31-8735-45e8-a6c9-2eb30216fdca",
+    "text": "Open interest interpretation",
+    "slug": "fin-open-interest-interpretation-18d89ac0",
+    "subject": "finance"
+  },
+  {
+    "id": "96a29b61-265f-45da-ac54-b7fc2abbf95b",
+    "text": "Contango and backwardation",
+    "slug": "fin-contango-and-backwardation-591fb9ff",
+    "subject": "finance"
+  },
+  {
+    "id": "8725d916-ccfc-4b37-8cc8-ce931ec98592",
+    "text": "Margining ΓÇö initial and variation",
+    "slug": "fin-margining-initial-and-variation-efc94546",
+    "subject": "finance"
+  },
+  {
+    "id": "4b0f91f3-b058-4977-92ba-470bb7e6a44c",
+    "text": "Hedging vs arbitrage vs speculation",
+    "slug": "fin-hedging-vs-arbitrage-vs-speculation-29034d21",
+    "subject": "finance"
+  },
+  {
+    "id": "a3ea6cd9-eb80-4bf0-a4fd-3043d8749d00",
+    "text": "FEMA framework and Master Directions",
+    "slug": "fin-fema-framework-and-master-directions-abd75bc6",
+    "subject": "finance"
+  },
+  {
+    "id": "d07b71e7-488b-4546-9b22-29b47798c224",
+    "text": "Nostro, vostro and loro accounts",
+    "slug": "fin-nostro-vostro-and-loro-accounts-faa40f55",
+    "subject": "finance"
+  },
+  {
+    "id": "c4012952-1df1-4ce4-a6ce-f54083541fd6",
+    "text": "FDI caps and sectoral limits",
+    "slug": "fin-fdi-caps-and-sectoral-limits-402d73ba",
+    "subject": "finance"
+  },
+  {
+    "id": "297ad27e-8c0b-4d60-aa9c-14356fb9f86d",
+    "text": "NRI and OCI investment ΓÇö repatriation basis",
+    "slug": "fin-nri-and-oci-investment-repatriation-basis-26df9864",
+    "subject": "finance"
+  },
+  {
+    "id": "bb62f21b-3994-4ad3-88ad-a1ed61e52944",
+    "text": "Currency risk and settlement risk",
+    "slug": "fin-currency-risk-and-settlement-risk-b4c402da",
+    "subject": "finance"
+  },
+  {
+    "id": "26aeb1e5-1491-4618-bba6-bf43e884ea89",
+    "text": "Export credit and trade finance",
+    "slug": "fin-export-credit-and-trade-finance-7f162ab0",
+    "subject": "finance"
+  },
+  {
+    "id": "ffdc4541-194f-4155-a578-d0fc9d7d4c91",
+    "text": "Financial Inclusion Index and schemes",
+    "slug": "fin-financial-inclusion-index-and-schemes-f4ae2435",
+    "subject": "finance"
+  },
+  {
+    "id": "ff802acc-4a13-46e0-9d0d-ded14ef55b87",
+    "text": "Business correspondents",
+    "slug": "fin-business-correspondents-a0d54848",
+    "subject": "finance"
+  },
+  {
+    "id": "39c359f9-b85b-4c3e-9a0b-e67ed39d8c4c",
+    "text": "Priority sector lending and microfinance",
+    "slug": "fin-priority-sector-lending-and-microfinance-625bb69e",
+    "subject": "finance"
+  },
+  {
+    "id": "00d3f0d6-79a3-4c9b-a019-d0ac728fbb19",
+    "text": "Digital Public Infrastructure and India Stack",
+    "slug": "fin-digital-public-infrastructure-and-india-stack-28615c13",
+    "subject": "finance"
+  },
+  {
+    "id": "a8461a82-de1a-43d1-b7b1-6c98ce68ec4d",
+    "text": "Alternate sources of finance",
+    "slug": "fin-alternate-sources-of-finance-1d5feb9c",
+    "subject": "finance"
+  },
+  {
+    "id": "71f03314-b4c8-49df-8928-07dbb10c5d7f",
+    "text": "Private vs social cost-benefit analysis",
+    "slug": "fin-private-vs-social-cost-benefit-analysis-aab4b0e5",
+    "subject": "finance"
+  },
+  {
+    "id": "d17a9a7b-d3dd-4b7f-910c-160c168fa6a3",
+    "text": "PPP models and the project sponsoring authority",
+    "slug": "fin-ppp-models-and-the-project-sponsoring-authority-b3d134ec",
+    "subject": "finance"
+  },
+  {
+    "id": "74e6d821-069d-4ff1-a058-425ca8b5ba58",
+    "text": "BOT variants and risk allocation",
+    "slug": "fin-bot-variants-and-risk-allocation-0ed2c252",
+    "subject": "finance"
+  },
+  {
+    "id": "53bf1e3b-881b-44cd-9dc7-f385d16ae13c",
+    "text": "InvITs and REITs",
+    "slug": "fin-invits-and-reits-90f0d91e",
+    "subject": "finance"
+  },
+  {
+    "id": "b041bc06-7b41-46ec-b04a-01a1c05e7e74",
+    "text": "Direct vs indirect taxes",
+    "slug": "fin-direct-vs-indirect-taxes-66414170",
+    "subject": "finance"
+  },
+  {
+    "id": "a12eba70-4052-45d0-b197-137c9647c0c3",
+    "text": "Non-tax sources of revenue",
+    "slug": "fin-non-tax-sources-of-revenue-5b5c78d4",
+    "subject": "finance"
+  },
+  {
+    "id": "eedab1ad-56e1-4f9a-bf27-e6b077af1760",
+    "text": "GST ΓÇö supply, input tax credit, zero-rated, exports",
+    "slug": "fin-gst-supply-input-tax-credit-zero-rated-exports-9d84554b",
+    "subject": "finance"
+  },
+  {
+    "id": "d9a02e25-72e3-4938-bfb8-287f7e5b5710",
+    "text": "GST returns and TCS by e-commerce operators",
+    "slug": "fin-gst-returns-and-tcs-by-e-commerce-operators-3f6313c9",
+    "subject": "finance"
+  },
+  {
+    "id": "033fa30b-ae86-4b44-8a16-5b64de7eb0e3",
+    "text": "Income-tax ΓÇö assessment and rectification",
+    "slug": "fin-income-tax-assessment-and-rectification-15ac02be",
+    "subject": "finance"
+  },
+  {
+    "id": "08143302-6a31-4d6c-9957-83d1948aa124",
+    "text": "Income-tax ΓÇö penalties and PAN provisions",
+    "slug": "fin-income-tax-penalties-and-pan-provisions-1532a8d7",
+    "subject": "finance"
+  },
+  {
+    "id": "db73c66b-e804-4699-9eec-a6aa331edce8",
+    "text": "Finance Commission and devolution criteria",
+    "slug": "fin-finance-commission-and-devolution-criteria-911108f5",
+    "subject": "finance"
+  },
+  {
+    "id": "0c61f5f4-a798-4f91-ba11-c8d3e9755f5c",
+    "text": "Fiscal policy ΓÇö instruments and stance",
+    "slug": "fin-fiscal-policy-instruments-and-stance-20eb50f6",
+    "subject": "finance"
+  },
+  {
+    "id": "b949d516-56c7-4bd0-ab45-ef6d16dd2c84",
+    "text": "FRBM Act targets and fiscal rules",
+    "slug": "fin-frbm-act-targets-and-fiscal-rules-dfa55a55",
+    "subject": "finance"
+  },
+  {
+    "id": "8c29c222-524d-4175-8579-8701719ded98",
+    "text": "DTAA and tax administration bodies",
+    "slug": "fin-dtaa-and-tax-administration-bodies-7f30b2fa",
+    "subject": "finance"
+  },
+  {
+    "id": "61065d31-ea6d-492e-8e75-59edbea0c12f",
+    "text": "WPI components and trends",
+    "slug": "fin-wpi-components-and-trends-0439691e",
+    "subject": "finance"
+  },
+  {
+    "id": "49ee5e32-38df-46ab-981f-e9c9761a5ef3",
+    "text": "CPI components and trends",
+    "slug": "fin-cpi-components-and-trends-4bb0a8ea",
+    "subject": "finance"
+  },
+  {
+    "id": "65f1de15-8b6b-4d54-9218-2b0f70b6f17d",
+    "text": "Inflation estimates and consequences",
+    "slug": "fin-inflation-estimates-and-consequences-12c2c0cb",
+    "subject": "finance"
+  },
+  {
+    "id": "43d533a5-ae90-4a39-b7fa-107652ead280",
+    "text": "Cost audit",
+    "slug": "cos-cost-audit-e84ebed0",
+    "subject": "companies-act"
+  },
+  {
+    "id": "d9c2c92c-fa59-4247-ac5f-b09bbb692b75",
+    "text": "Inflation control measures",
+    "slug": "fin-inflation-control-measures-b89775e0",
+    "subject": "finance"
+  },
+  {
+    "id": "e6131d05-0cf1-41d5-8c50-35690886d42f",
+    "text": "Market, credit and operational risk",
+    "slug": "fin-market-credit-and-operational-risk-f4059a66",
+    "subject": "finance"
+  },
+  {
+    "id": "8da4c974-95c4-4c50-8c79-9eca0f102a80",
+    "text": "Risk identification and mitigation",
+    "slug": "fin-risk-identification-and-mitigation-9991df02",
+    "subject": "finance"
+  },
+  {
+    "id": "e6ae56a5-8fb5-4dab-a838-59ac2c665fc0",
+    "text": "Basel norms and capital adequacy",
+    "slug": "fin-basel-norms-and-capital-adequacy-2a0b56cf",
+    "subject": "finance"
+  },
+  {
+    "id": "7e1e6fc8-4e40-4e18-bfb7-660c80143603",
+    "text": "RBI Act 1934 ΓÇö constitution, note issue, functions",
+    "slug": "fin-rbi-act-1934-constitution-note-issue-functions-5fdbce16",
+    "subject": "finance"
+  },
+  {
+    "id": "357d442c-52db-40ef-af2d-b5616e316756",
+    "text": "Banking Regulation Act 1949 ΓÇö licensing, s.35A, scheduled banks",
+    "slug": "fin-banking-regulation-act-1949-licensing-s-35a-scheduled-banks-bc585c11",
+    "subject": "finance"
+  },
+  {
+    "id": "bad0e283-9954-4173-82e8-29efa9aa37a5",
+    "text": "Monetary policy operations ΓÇö SDF, VRRR, LAF",
+    "slug": "fin-monetary-policy-operations-sdf-vrrr-laf-96922ebe",
+    "subject": "finance"
+  },
+  {
+    "id": "f56288ef-a26d-402b-9dc1-f1d4e141968e",
+    "text": "Payment banks and differentiated banks",
+    "slug": "fin-payment-banks-and-differentiated-banks-d45fa86b",
+    "subject": "finance"
+  },
+  {
+    "id": "83767c6b-bfac-4384-8dc1-2deeff9d5b83",
+    "text": "Capital and leverage norms; D-SIBs",
+    "slug": "fin-capital-and-leverage-norms-d-sibs-c1201623",
+    "subject": "finance"
+  },
+  {
+    "id": "e8fccc09-a2c9-4076-a001-ad1c2378a23f",
+    "text": "NBFC categories ΓÇö IFC, Factor, P2P",
+    "slug": "fin-nbfc-categories-ifc-factor-p2p-5f0e69e2",
+    "subject": "finance"
+  },
+  {
+    "id": "7bf9193a-dfbb-4626-8876-d7821016029b",
+    "text": "Scale-based regulation of NBFCs",
+    "slug": "fin-scale-based-regulation-of-nbfcs-f023576c",
+    "subject": "finance"
+  },
+  {
+    "id": "d189707d-212b-4d57-a1b7-5a240aeb97cb",
+    "text": "Asset classification, NPA and divergence disclosure",
+    "slug": "fin-asset-classification-npa-and-divergence-disclosure-bce36906",
+    "subject": "finance"
+  },
+  {
+    "id": "a96131f1-d6e5-473a-9950-49bff7b7a514",
+    "text": "Key Fact Statement and fair lending practices",
+    "slug": "fin-key-fact-statement-and-fair-lending-practices-11ff92a5",
+    "subject": "finance"
+  },
+  {
+    "id": "4d85c12a-062f-461e-874b-a7456e8afa65",
+    "text": "SEBI Act 1992 ΓÇö establishment, powers, penalties",
+    "slug": "fin-sebi-act-1992-establishment-powers-penalties-56fa085c",
+    "subject": "finance"
+  },
+  {
+    "id": "835240f5-a788-417d-8d13-4c1ce9cf0f61",
+    "text": "Securities Contracts (Regulation) Act 1956",
+    "slug": "fin-securities-contracts-regulation-act-1956-28650bf5",
+    "subject": "finance"
+  },
+  {
+    "id": "02b4dbdd-768a-4293-9414-f92460fcfe85",
+    "text": "Depositories Act 1996",
+    "slug": "fin-depositories-act-1996-10c812ac",
+    "subject": "finance"
+  },
+  {
+    "id": "0a50b1a0-199a-490d-b09b-f4d110cdd9c1",
+    "text": "ICDR Regulations ΓÇö essentials",
+    "slug": "fin-icdr-regulations-essentials-f95c9cd4",
+    "subject": "finance"
+  },
+  {
+    "id": "b40455eb-5470-4a6a-a540-db75843698ba",
+    "text": "Research analyst and investment adviser regulations",
+    "slug": "fin-research-analyst-and-investment-adviser-regulations-be8fea4c",
+    "subject": "finance"
+  },
+  {
+    "id": "739faf06-bd8e-464f-8035-5927c492ca7a",
+    "text": "Scheme types and fund of funds",
+    "slug": "fin-scheme-types-and-fund-of-funds-b80a5695",
+    "subject": "finance"
+  },
+  {
+    "id": "afedc75c-5124-4bac-8651-2d3004cd8c4e",
+    "text": "Total expense ratio limits and ETFs",
+    "slug": "fin-total-expense-ratio-limits-and-etfs-be1f75cd",
+    "subject": "finance"
+  },
+  {
+    "id": "8a030c8d-9bd6-4018-915b-ba862c670467",
+    "text": "Active vs passive investment strategies",
+    "slug": "fin-active-vs-passive-investment-strategies-9a451e96",
+    "subject": "finance"
+  },
+  {
+    "id": "70c3de96-dbae-425f-806f-ef5ae35eacd8",
+    "text": "AIF categories and Angel Funds",
+    "slug": "fin-aif-categories-and-angel-funds-0084a9f3",
+    "subject": "finance"
+  },
+  {
+    "id": "4d006fea-73a6-4926-bd63-2d02b64af242",
+    "text": "Fund of Funds for Startups",
+    "slug": "fin-fund-of-funds-for-startups-e2f3469f",
+    "subject": "finance"
+  },
+  {
+    "id": "390cb8c4-537c-469c-b3d1-14d9194d8cea",
+    "text": "NPCI systems ΓÇö UPI, IMPS, NEFT, RTGS",
+    "slug": "fin-npci-systems-upi-imps-neft-rtgs-a9d4f5a2",
+    "subject": "finance"
+  },
+  {
+    "id": "eab5fa38-2696-4ec6-ac94-9da924086f92",
+    "text": "Account Aggregator framework",
+    "slug": "fin-account-aggregator-framework-54211b31",
+    "subject": "finance"
+  },
+  {
+    "id": "1b09d755-6303-4c32-84b6-caae5d7f5b94",
+    "text": "Cheque Truncation System",
+    "slug": "fin-cheque-truncation-system-df558b7f",
+    "subject": "finance"
+  },
+  {
+    "id": "84bc7a94-9656-46c9-9de1-fd3340e27473",
+    "text": "CBDC, stablecoins and crypto policy",
+    "slug": "fin-cbdc-stablecoins-and-crypto-policy-9476ef9a",
+    "subject": "finance"
+  },
+  {
+    "id": "4ac5fc1d-9fcf-4772-bd60-d9cfa9f8e673",
+    "text": "RBI Payments Vision and the 4Es",
+    "slug": "fin-rbi-payments-vision-and-the-4es-b5483387",
+    "subject": "finance"
+  },
+  {
+    "id": "9dd7c31e-abab-4cdb-b52c-6e5063cf2d1d",
+    "text": "Unified Lending Interface",
+    "slug": "fin-unified-lending-interface-4474fd8d",
+    "subject": "finance"
+  },
+  {
+    "id": "76a71b12-9a2a-46ab-a75d-81ef300e8c3b",
+    "text": "Time value of money and the Rule of 72",
+    "slug": "fin-time-value-of-money-and-the-rule-of-72-c032b971",
+    "subject": "finance"
+  },
+  {
+    "id": "71bea6ca-785f-4374-81fd-3bca679fbcdd",
+    "text": "Nominal vs real interest rate",
+    "slug": "fin-nominal-vs-real-interest-rate-47973262",
+    "subject": "finance"
+  },
+  {
+    "id": "9044d257-b50a-4e24-8ef1-f69b59b78a91",
+    "text": "Valuation ratios ΓÇö price to book, price to earnings",
+    "slug": "fin-valuation-ratios-price-to-book-price-to-earnings-7ae43126",
+    "subject": "finance"
+  },
+  {
+    "id": "027ddbab-051d-45f4-a7c7-b2c25673391c",
+    "text": "Risk-free instruments and risk categories",
+    "slug": "fin-risk-free-instruments-and-risk-categories-474a4296",
+    "subject": "finance"
+  },
+  {
+    "id": "2f212655-56e8-44f1-a4ff-04dd298e8a61",
+    "text": "Dilution and further issue of capital",
+    "slug": "fin-dilution-and-further-issue-of-capital-41a71d2a",
+    "subject": "finance"
+  },
+  {
+    "id": "c1374d3d-477d-4ab0-ae2c-722e85293570",
+    "text": "Appointment, rotation and tenure of auditors",
+    "slug": "cos-appointment-rotation-and-tenure-of-auditors-d3cef3ad",
+    "subject": "companies-act"
+  },
+  {
+    "id": "b6f2b279-067c-4a86-8390-00344fe3bc2a",
+    "text": "Removal by special resolution with Central Government approval",
+    "slug": "cos-removal-by-special-resolution-with-central-government-approv-d019da30",
+    "subject": "companies-act"
+  },
+  {
+    "id": "84c2bc3e-7e4a-4dc2-9e33-93eebe8a9533",
+    "text": "Resignation and intimation of resignation",
+    "slug": "cos-resignation-and-intimation-of-resignation-d30efe66",
+    "subject": "companies-act"
+  },
+  {
+    "id": "e4e3c7a2-c1be-4b3f-bb64-90b5758ab04e",
+    "text": "Casual vacancy in the office of auditor",
+    "slug": "cos-casual-vacancy-in-the-office-of-auditor-a68d141c",
+    "subject": "companies-act"
+  },
+  {
+    "id": "19991d61-9aef-4be2-ba6b-1c28fb6a554b",
+    "text": "s.141 eligibility and disqualification",
+    "slug": "cos-s-141-eligibility-and-disqualification-d8425679",
+    "subject": "companies-act"
+  },
+  {
+    "id": "a680ce6d-3b3d-470f-b145-982baabe761f",
+    "text": "Eligibility of a firm as auditor",
+    "slug": "cos-eligibility-of-a-firm-as-auditor-98009b64",
+    "subject": "companies-act"
+  },
+  {
+    "id": "d8eaf9b7-3522-48ba-8b50-9dd4306f4e17",
+    "text": "Powers, duties and the auditor's report",
+    "slug": "cos-powers-duties-and-the-auditor-s-report-ed39c15d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "4ef6fa96-f770-4055-a47c-b6167761fdfa",
+    "text": "s.144 prohibited non-audit services",
+    "slug": "cos-s-144-prohibited-non-audit-services-59190ee1",
+    "subject": "companies-act"
+  },
+  {
+    "id": "e1ef8b37-74c3-487d-ad0c-651b121d0713",
+    "text": "Services an auditor may render",
+    "slug": "cos-services-an-auditor-may-render-c7012cb4",
+    "subject": "companies-act"
+  },
+  {
+    "id": "9f6729e1-0e64-4f17-91f3-1ab35de406f3",
+    "text": "Reporting of fraud by the auditor",
+    "slug": "cos-reporting-of-fraud-by-the-auditor-747e37c1",
+    "subject": "companies-act"
+  },
+  {
+    "id": "db11308c-3372-41e3-a584-d32523710c31",
+    "text": "CAG appointment of auditors and the appointment window",
+    "slug": "cos-cag-appointment-of-auditors-and-the-appointment-window-a18b0420",
+    "subject": "companies-act"
+  },
+  {
+    "id": "6df5a213-940b-4151-9138-2c92b0c6d81f",
+    "text": "Special auditor ΓÇö who appoints",
+    "slug": "cos-special-auditor-who-appoints-ab384079",
+    "subject": "companies-act"
+  },
+  {
+    "id": "ba9dd251-c02c-4c5e-83de-3192e75e8bd9",
+    "text": "Tribunal-ordered removal of an auditor",
+    "slug": "cos-tribunal-ordered-removal-of-an-auditor-9d6be110",
+    "subject": "companies-act"
+  },
+  {
+    "id": "bee942a1-547c-4e90-a51e-ec85d7929b5c",
+    "text": "Board composition ΓÇö minimum and maximum directors",
+    "slug": "cos-board-composition-minimum-and-maximum-directors-81ee33dd",
+    "subject": "companies-act"
+  },
+  {
+    "id": "daaeaa47-b122-4e39-9e90-fe4fa0ef6cbf",
+    "text": "Woman director and resident director",
+    "slug": "cos-woman-director-and-resident-director-1a248713",
+    "subject": "companies-act"
+  },
+  {
+    "id": "64c13fc5-76e1-4e82-91ff-b7fff31de44b",
+    "text": "Independent directors ΓÇö criteria and tenure",
+    "slug": "cos-independent-directors-criteria-and-tenure-4a63ab88",
+    "subject": "companies-act"
+  },
+  {
+    "id": "906206f1-b7c1-4171-96c6-e84f14a30cb0",
+    "text": "Independent director eligibility and exclusions",
+    "slug": "cos-independent-director-eligibility-and-exclusions-44e8bff4",
+    "subject": "companies-act"
+  },
+  {
+    "id": "0f381565-240a-4029-9e7b-4418da0abb5a",
+    "text": "Appointment, DIN and intimation to the Registrar",
+    "slug": "cos-appointment-din-and-intimation-to-the-registrar-020c8577",
+    "subject": "companies-act"
+  },
+  {
+    "id": "ba371dfc-c9b2-4de2-b2aa-5c27fba523f6",
+    "text": "Disqualifications for appointment as director",
+    "slug": "cos-disqualifications-for-appointment-as-director-f45b8a22",
+    "subject": "companies-act"
+  },
+  {
+    "id": "77d743c4-4f42-40d4-a57b-b25d3eec49dd",
+    "text": "Vacation of office, resignation and removal",
+    "slug": "cos-vacation-of-office-resignation-and-removal-d74dfbe4",
+    "subject": "companies-act"
+  },
+  {
+    "id": "77aff4d3-f62e-4409-991c-7d48414e5de1",
+    "text": "Duties of directors",
+    "slug": "cos-duties-of-directors-066c0810",
+    "subject": "companies-act"
+  },
+  {
+    "id": "3f72271f-8dc4-49f3-8b14-cea71e851c19",
+    "text": "Maximum number of directorships",
+    "slug": "cos-maximum-number-of-directorships-c4a0d44e",
+    "subject": "companies-act"
+  },
+  {
+    "id": "551d1a4c-3b8d-45aa-ab3f-871145b1f41a",
+    "text": "Age limits for directors",
+    "slug": "cos-age-limits-for-directors-afb4a3c2",
+    "subject": "companies-act"
+  },
+  {
+    "id": "a8f6c87c-c917-4f9a-a5f6-521077772353",
+    "text": "Small shareholders' director",
+    "slug": "cos-small-shareholders-director-6ce7c901",
+    "subject": "companies-act"
+  },
+  {
+    "id": "812979dc-d8a3-4b9f-be98-83ed6600d82d",
+    "text": "Alternate director",
+    "slug": "cos-alternate-director-b721cc85",
+    "subject": "companies-act"
+  },
+  {
+    "id": "8e1b57f5-f304-4e3c-8ca4-80e87ae2ae99",
+    "text": "Kinds of share capital",
+    "slug": "cos-kinds-of-share-capital-f0d25eb8",
+    "subject": "companies-act"
+  },
+  {
+    "id": "c26cce26-114d-45df-9196-76f835d198f3",
+    "text": "s.44 shares and debentures as movable property",
+    "slug": "cos-s-44-shares-and-debentures-as-movable-property-0ae16328",
+    "subject": "companies-act"
+  },
+  {
+    "id": "7df7e466-6207-4f14-a7e1-69914aa5cc11",
+    "text": "Preference shares ΓÇö issue, redemption and maximum tenure",
+    "slug": "cos-preference-shares-issue-redemption-and-maximum-tenure-a36ad927",
+    "subject": "companies-act"
+  },
+  {
+    "id": "9c0439dc-895a-486c-8ebc-f5ac6055eb71",
+    "text": "Further issue of capital and rights issue",
+    "slug": "cos-further-issue-of-capital-and-rights-issue-6997c3f1",
+    "subject": "companies-act"
+  },
+  {
+    "id": "73329123-a8d8-45f1-b085-b7f357eb498d",
+    "text": "Bonus shares ΓÇö conditions",
+    "slug": "cos-bonus-shares-conditions-81a5d883",
+    "subject": "companies-act"
+  },
+  {
+    "id": "9819dd19-eba4-4ec7-b821-c6463a0e4630",
+    "text": "ESOP and sweat equity ΓÇö s.54 lock-in",
+    "slug": "cos-esop-and-sweat-equity-s-54-lock-in-ce77fa51",
+    "subject": "companies-act"
+  },
+  {
+    "id": "cb6ce678-0190-48be-975b-bef3b053a4b3",
+    "text": "s.52 securities premium ΓÇö permitted applications",
+    "slug": "cos-s-52-securities-premium-permitted-applications-e2c9f050",
+    "subject": "companies-act"
+  },
+  {
+    "id": "afba73a7-118a-4364-8352-b7d533120706",
+    "text": "Buy-back of securities ΓÇö s.68 conditions and limits",
+    "slug": "cos-buy-back-of-securities-s-68-conditions-and-limits-78870170",
+    "subject": "companies-act"
+  },
+  {
+    "id": "de324eb9-23fb-4116-aa88-264bcbeed1cb",
+    "text": "Reduction of share capital",
+    "slug": "cos-reduction-of-share-capital-dfd7d905",
+    "subject": "companies-act"
+  },
+  {
+    "id": "4f190aeb-0d39-4b1d-af55-f36b309ed039",
+    "text": "Transfer and transmission; partly paid shares",
+    "slug": "cos-transfer-and-transmission-partly-paid-shares-3ad10f34",
+    "subject": "companies-act"
+  },
+  {
+    "id": "eb488d1b-ce82-46e1-905e-0e561053c404",
+    "text": "Delivery timeline for transfer of securities",
+    "slug": "cos-delivery-timeline-for-transfer-of-securities-9e7bf1bf",
+    "subject": "companies-act"
+  },
+  {
+    "id": "2383c38c-1bdc-4d2d-8e25-0aac4c542723",
+    "text": "s.46 duplicate share certificate and penalty",
+    "slug": "cos-s-46-duplicate-share-certificate-and-penalty-3d5946a0",
+    "subject": "companies-act"
+  },
+  {
+    "id": "e8250cac-5c8c-441a-9910-94b0d715fa98",
+    "text": "s.71 debentures and debenture trustee",
+    "slug": "cos-s-71-debentures-and-debenture-trustee-aa8bacb1",
+    "subject": "companies-act"
+  },
+  {
+    "id": "a53a2319-80c8-4102-ab38-e076b82b1680",
+    "text": "Issue of shares at a discount ΓÇö exceptions",
+    "slug": "cos-issue-of-shares-at-a-discount-exceptions-6e4d64ca",
+    "subject": "companies-act"
+  },
+  {
+    "id": "cb41b075-5454-49e4-aa25-66cc0beaf8f3",
+    "text": "s.408 constitution of the NCLT",
+    "slug": "cos-s-408-constitution-of-the-nclt-bb987696",
+    "subject": "companies-act"
+  },
+  {
+    "id": "ae25495d-0911-4ab0-b861-d78303b08aef",
+    "text": "s.409 qualification of president and members",
+    "slug": "cos-s-409-qualification-of-president-and-members-3f689af9",
+    "subject": "companies-act"
+  },
+  {
+    "id": "e4043a67-5d46-43ed-b386-74775ea88289",
+    "text": "Constitution and powers of the NCLAT",
+    "slug": "cos-constitution-and-powers-of-the-nclat-7d3f5096",
+    "subject": "companies-act"
+  },
+  {
+    "id": "bbf89bc7-a311-4d7e-b032-be8ab0bb0b7d",
+    "text": "NCLAT chairperson ΓÇö age limit",
+    "slug": "cos-nclat-chairperson-age-limit-ef26c89a",
+    "subject": "companies-act"
+  },
+  {
+    "id": "1fe0aca8-570d-408d-b423-fc96ff776da8",
+    "text": "Appeal window to the NCLAT",
+    "slug": "cos-appeal-window-to-the-nclat-3546149a",
+    "subject": "companies-act"
+  },
+  {
+    "id": "edb4d0d6-9e7b-48f0-b6e2-959f5e3d0d27",
+    "text": "Appeal to the Supreme Court",
+    "slug": "cos-appeal-to-the-supreme-court-989ea1bf",
+    "subject": "companies-act"
+  },
+  {
+    "id": "a5a897fe-3683-4945-b8d3-e7a65428d4fa",
+    "text": "Tribunal's power to rectify its own order",
+    "slug": "cos-tribunal-s-power-to-rectify-its-own-order-424b3b8c",
+    "subject": "companies-act"
+  },
+  {
+    "id": "309ce6a3-b01e-4797-bd1a-11ce5e84663e",
+    "text": "Appointment consultation process",
+    "slug": "cos-appointment-consultation-process-ba864eaa",
+    "subject": "companies-act"
+  },
+  {
+    "id": "93ff6426-7de4-4449-90f6-dd91562297cb",
+    "text": "s.123 sources of dividend",
+    "slug": "cos-s-123-sources-of-dividend-ac8b492e",
+    "subject": "companies-act"
+  },
+  {
+    "id": "1fa97223-1ca0-4648-942a-fedd3a466d3f",
+    "text": "Interim dividend ΓÇö permitted sources",
+    "slug": "cos-interim-dividend-permitted-sources-29ad1710",
+    "subject": "companies-act"
+  },
+  {
+    "id": "b80626e8-69e4-46d2-9066-163b603f98d2",
+    "text": "Deposit in a scheduled bank within five days",
+    "slug": "cos-deposit-in-a-scheduled-bank-within-five-days-a03d922d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "dedec727-d56b-49f7-85b1-7791be6c3961",
+    "text": "Payment of dividend within thirty days",
+    "slug": "cos-payment-of-dividend-within-thirty-days-22df5de4",
+    "subject": "companies-act"
+  },
+  {
+    "id": "015f7b09-a074-4d23-ad1c-be1e4826c881",
+    "text": "Transfer to the Unpaid Dividend Account",
+    "slug": "cos-transfer-to-the-unpaid-dividend-account-076df915",
+    "subject": "companies-act"
+  },
+  {
+    "id": "b2306dca-e886-4b95-9a66-063afdc4b44e",
+    "text": "s.124 seven-year transfer to the IEPF",
+    "slug": "cos-s-124-seven-year-transfer-to-the-iepf-abca0f11",
+    "subject": "companies-act"
+  },
+  {
+    "id": "41de6b70-bf9b-4c37-ab4d-6f9e32ff9468",
+    "text": "s.125 constitution of the IEPF",
+    "slug": "cos-s-125-constitution-of-the-iepf-ef99b222",
+    "subject": "companies-act"
+  },
+  {
+    "id": "83bd9251-f493-4860-8e39-d6df81d7c929",
+    "text": "IEPF ΓÇö permitted and prohibited uses",
+    "slug": "cos-iepf-permitted-and-prohibited-uses-238257fd",
+    "subject": "companies-act"
+  },
+  {
+    "id": "8c4cd355-e87e-4c9d-a4c9-fa00e19c3d51",
+    "text": "Punishment for failure to distribute dividend",
+    "slug": "cos-punishment-for-failure-to-distribute-dividend-370783bd",
+    "subject": "companies-act"
+  },
+  {
+    "id": "9780c7bb-c428-4dbc-958c-cd88b49eddb0",
+    "text": "Public offer, private placement and rights or bonus issue",
+    "slug": "cos-public-offer-private-placement-and-rights-or-bonus-issue-56111832",
+    "subject": "companies-act"
+  },
+  {
+    "id": "6557930d-b856-447f-9b1f-6e3c248497f0",
+    "text": "s.32 red herring prospectus and filing window",
+    "slug": "cos-s-32-red-herring-prospectus-and-filing-window-5e4b0142",
+    "subject": "companies-act"
+  },
+  {
+    "id": "c48e538b-6d57-4bf9-b8df-0269bc6bd9d0",
+    "text": "Prospectus ΓÇö matters to be stated",
+    "slug": "cos-prospectus-matters-to-be-stated-32a01360",
+    "subject": "companies-act"
+  },
+  {
+    "id": "2edea598-475f-47b3-9a50-953eadea28a8",
+    "text": "Shelf prospectus and abridged prospectus",
+    "slug": "cos-shelf-prospectus-and-abridged-prospectus-e6df180d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "939d0aed-cd37-46da-bc38-0da589bfd48e",
+    "text": "Misstatement in prospectus ΓÇö civil and criminal liability",
+    "slug": "cos-misstatement-in-prospectus-civil-and-criminal-liability-a76a4447",
+    "subject": "companies-act"
+  },
+  {
+    "id": "7071a3b2-1324-47c1-a870-94ebcd189d9e",
+    "text": "Private placement ΓÇö procedure and limits",
+    "slug": "cos-private-placement-procedure-and-limits-6dfbad90",
+    "subject": "companies-act"
+  },
+  {
+    "id": "8ba25aca-2ae9-4173-bdf8-516e21723828",
+    "text": "s.39 minimum application money",
+    "slug": "cos-s-39-minimum-application-money-7fd524e1",
+    "subject": "companies-act"
+  },
+  {
+    "id": "6e9c3b33-a36e-4816-ac7f-f4867572655e",
+    "text": "Public offers to be in dematerialised form",
+    "slug": "cos-public-offers-to-be-in-dematerialised-form-39dc6b59",
+    "subject": "companies-act"
+  },
+  {
+    "id": "24a8a157-a476-485e-b0fe-b9040993d4b6",
+    "text": "Beneficial owner ΓÇö when a third person qualifies",
+    "slug": "cos-beneficial-owner-when-a-third-person-qualifies-90e3acff",
+    "subject": "companies-act"
+  },
+  {
+    "id": "1d4e91aa-069c-4ceb-af39-59aa6819dc70",
+    "text": "Board meetings ΓÇö frequency and first meeting timing",
+    "slug": "cos-board-meetings-frequency-and-first-meeting-timing-612ad98e",
+    "subject": "companies-act"
+  },
+  {
+    "id": "63e270e0-cf86-4645-b61c-e046660afad2",
+    "text": "Notice period for a Board meeting",
+    "slug": "cos-notice-period-for-a-board-meeting-dccb5a18",
+    "subject": "companies-act"
+  },
+  {
+    "id": "97febe25-4c84-4cdf-a705-20178439146c",
+    "text": "Maximum gap between consecutive Board meetings",
+    "slug": "cos-maximum-gap-between-consecutive-board-meetings-a0608bc2",
+    "subject": "companies-act"
+  },
+  {
+    "id": "cd22058b-18c8-49ac-87d9-a56faf3b687a",
+    "text": "Quorum for a Board meeting",
+    "slug": "cos-quorum-for-a-board-meeting-eaaed9ee",
+    "subject": "companies-act"
+  },
+  {
+    "id": "be916486-4f69-4f6b-83e0-adcd9643465e",
+    "text": "Participation by video conferencing",
+    "slug": "cos-participation-by-video-conferencing-111c3385",
+    "subject": "companies-act"
+  },
+  {
+    "id": "d6fbe501-5c9d-42dc-9e63-db08783e02da",
+    "text": "Resolutions passed by circulation",
+    "slug": "cos-resolutions-passed-by-circulation-61c1b2bb",
+    "subject": "companies-act"
+  },
+  {
+    "id": "83935d3b-fe54-47ec-aa59-ff4a4e8ec5a3",
+    "text": "Audit Committee ΓÇö composition and role",
+    "slug": "cos-audit-committee-composition-and-role-a4e5f01c",
+    "subject": "companies-act"
+  },
+  {
+    "id": "1fc9c1fa-d329-4776-afdc-38f2f6f0c1ab",
+    "text": "Nomination and Remuneration Committee",
+    "slug": "cos-nomination-and-remuneration-committee-a611f525",
+    "subject": "companies-act"
+  },
+  {
+    "id": "6cb3b2f0-3c99-42ee-a562-d4d84b27df6a",
+    "text": "Stakeholders Relationship Committee",
+    "slug": "cos-stakeholders-relationship-committee-964ed50d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "784c2c9a-60e3-4e43-b790-add462e1c1c2",
+    "text": "Powers exercisable only at a Board meeting",
+    "slug": "cos-powers-exercisable-only-at-a-board-meeting-190320e6",
+    "subject": "companies-act"
+  },
+  {
+    "id": "a4ad5214-6ac5-49ac-a96e-eeb11eadad0e",
+    "text": "s.186 loans and investments by a company",
+    "slug": "cos-s-186-loans-and-investments-by-a-company-451c33a6",
+    "subject": "companies-act"
+  },
+  {
+    "id": "9bfd6297-73f9-4c5b-a88b-6c01908aea1a",
+    "text": "Related party transactions",
+    "slug": "cos-related-party-transactions-68181697",
+    "subject": "companies-act"
+  },
+  {
+    "id": "438b6570-43e2-407a-87a1-7fd992023b5c",
+    "text": "Loans to directors",
+    "slug": "cos-loans-to-directors-f33d3460",
+    "subject": "companies-act"
+  },
+  {
+    "id": "0b69e931-462a-45ae-a993-fcc71df11dfa",
+    "text": "Central Registration Centre and certificate of incorporation",
+    "slug": "cos-central-registration-centre-and-certificate-of-incorporation-952d214d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "5e163aac-f27a-4fd2-af0c-c66585baf15f",
+    "text": "Types of companies; One Person Company",
+    "slug": "cos-types-of-companies-one-person-company-ace862e4",
+    "subject": "companies-act"
+  },
+  {
+    "id": "1b4a4381-e321-42ae-aca3-59c2ef411043",
+    "text": "Registration of charges",
+    "slug": "cos-registration-of-charges-73e3ea5e",
+    "subject": "companies-act"
+  },
+  {
+    "id": "8a4404f9-fddb-4bcd-88e7-4c0a1859acbe",
+    "text": "Schedules of the Companies Act 2013",
+    "slug": "cos-schedules-of-the-companies-act-2013-5eddaf0e",
+    "subject": "companies-act"
+  },
+  {
+    "id": "807ee256-d2aa-4804-8c21-bf4deaf30dc3",
+    "text": "Removal of name from the register of companies",
+    "slug": "cos-removal-of-name-from-the-register-of-companies-02ef9f3b",
+    "subject": "companies-act"
+  },
+  {
+    "id": "90f7f2a8-037f-459f-9631-6c21d095ef30",
+    "text": "Quorum requirements for a general meeting",
+    "slug": "cos-quorum-requirements-for-a-general-meeting-f1ef188d",
+    "subject": "companies-act"
+  },
+  {
+    "id": "50662a87-d194-4c34-abb3-955d30386c0a",
+    "text": "Adjournment when quorum is absent",
+    "slug": "cos-adjournment-when-quorum-is-absent-efcc1098",
+    "subject": "companies-act"
+  },
+  {
+    "id": "3d5f6cd3-9ade-43c2-945a-89dc9f9d13f4",
+    "text": "Format of financial statements governed by Schedule III",
+    "slug": "cos-format-of-financial-statements-governed-by-schedule-iii-5a5a1914",
+    "subject": "companies-act"
+  },
+  {
+    "id": "5211a81e-73c4-4ba5-ba2f-9bc24112d5f7",
+    "text": "Divisible profits and managerial remuneration",
+    "slug": "cos-divisible-profits-and-managerial-remuneration-3e7deff3",
+    "subject": "companies-act"
+  },
+  {
+    "id": "5dd5b7aa-d3b7-451d-afbf-a909507504b1",
+    "text": "s.135 CSR obligation and excess set-off",
+    "slug": "cos-s-135-csr-obligation-and-excess-set-off-727f6a06",
+    "subject": "companies-act"
+  },
+  {
+    "id": "14761fb5-8f1d-42d2-8f94-722690dddd6d",
+    "text": "Appointment of a registered valuer",
+    "slug": "cos-appointment-of-a-registered-valuer-ecf180fe",
+    "subject": "companies-act"
+  },
+  {
+    "id": "240b3255-ba41-4eb3-b5e6-9333183abc5b",
+    "text": "Who may sign for an LLP",
+    "slug": "cos-who-may-sign-for-an-llp-1f241269",
+    "subject": "companies-act"
+  },
+  {
+    "id": "fb118ab0-dd76-4198-b100-b690834c337a",
+    "text": "Status and coverage of the pension sector",
+    "slug": "pens-status-and-coverage-of-the-pension-sector-46881bda",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "e6b5c1de-5627-4b7e-9805-e96f9109756f",
+    "text": "Old Pension Scheme vs NPS",
+    "slug": "pens-old-pension-scheme-vs-nps-2364f496",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "db2d5615-3eb6-4db0-80d1-3ff897cf4513",
+    "text": "Pension coverage in the unorganised sector",
+    "slug": "pens-pension-coverage-in-the-unorganised-sector-8a5dc779",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "70fa5683-5a58-4192-920a-b1ef0a27b8b4",
+    "text": "Pension reform timeline",
+    "slug": "pens-pension-reform-timeline-2f4d72e2",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "a3a46ed8-70dd-4651-800e-37e03f6d7b5e",
+    "text": "Types and features of retirement schemes in India",
+    "slug": "pens-types-and-features-of-retirement-schemes-in-india-f30754fa",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "013c3239-7b82-4bce-9e03-48c5ee614cef",
+    "text": "Defined benefit vs defined contribution",
+    "slug": "pens-defined-benefit-vs-defined-contribution-c7d2fff0",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "6735a994-56c5-4566-aab1-8befccbc1309",
+    "text": "Superannuation funds",
+    "slug": "pens-superannuation-funds-58851364",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "97ecb58f-8832-411a-819a-fc97faac2928",
+    "text": "NPS tiers and account types",
+    "slug": "pens-nps-tiers-and-account-types-a51052e1",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "21e793da-4dc7-4ac6-a5d9-0d435e731f34",
+    "text": "Central and State Government model",
+    "slug": "pens-central-and-state-government-model-d8ec37c6",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "16db14f0-8803-4c24-8754-e52267b91978",
+    "text": "Corporate model",
+    "slug": "pens-corporate-model-3aa044a8",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "9da07a27-3e79-4b90-a203-a18816266499",
+    "text": "All-Citizen model",
+    "slug": "pens-all-citizen-model-53c81ea3",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "136aaa1c-a7a3-461c-94fd-2ff3e358ae57",
+    "text": "NPS Lite and Swavalamban",
+    "slug": "pens-nps-lite-and-swavalamban-ce67e70a",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "f4879e9b-bc31-41f7-b698-4831c4afad08",
+    "text": "NPS Vatsalya",
+    "slug": "pens-nps-vatsalya-b3779e3d",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "1ef2f19a-fc69-4cb8-9018-1fe593a6d2b0",
+    "text": "Unified Pension Scheme",
+    "slug": "pens-unified-pension-scheme-85c06c15",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "93fc5e89-4d60-4670-bb0d-7237768ab820",
+    "text": "APY eligibility and contribution",
+    "slug": "pens-apy-eligibility-and-contribution-e3ee5fe2",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "fdc5bb1d-5db1-4ed2-af97-9ef85bf45a19",
+    "text": "Guaranteed pension slabs",
+    "slug": "pens-guaranteed-pension-slabs-d9e73178",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "238a6af6-dff0-4c02-b9c8-0d8806f8554f",
+    "text": "APY exit and withdrawal",
+    "slug": "pens-apy-exit-and-withdrawal-0cd28171",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "64d294e5-55a2-4874-bae2-8bdfe240518b",
+    "text": "Annuity variants and options",
+    "slug": "pens-annuity-variants-and-options-4f965dd3",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "24228ed5-05ae-484c-b26f-4c33e9041945",
+    "text": "Annuity Service Providers",
+    "slug": "pens-annuity-service-providers-05364659",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "023e18bf-9868-4996-a2c3-24a2382589b0",
+    "text": "Withdrawal, exit and deferment rules",
+    "slug": "pens-withdrawal-exit-and-deferment-rules-82785c16",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "2c0f28df-6ad1-4702-9008-5e671511e626",
+    "text": "Asset classes E, C, G and A",
+    "slug": "pens-asset-classes-e-c-g-and-a-930fe7d7",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "03199a50-4f65-4689-ae44-6cf8ad57a5b8",
+    "text": "Active Choice vs Auto Choice",
+    "slug": "pens-active-choice-vs-auto-choice-122166cd",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "30e32a35-34d0-48f9-9284-23f9b1451d5d",
+    "text": "Exposure and single-industry limits",
+    "slug": "pens-exposure-and-single-industry-limits-760f20bc",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "71529471-1594-4d0c-8daf-3d02111c981c",
+    "text": "NAV, returns and charges structure",
+    "slug": "pens-nav-returns-and-charges-structure-b3d2e630",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "ae3d406e-d3f7-43df-95e5-78a621cfc421",
+    "text": "PFRDA Act 2013 ΓÇö powers and functions",
+    "slug": "pens-pfrda-act-2013-powers-and-functions-27c40e29",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "dfa493be-d63f-40fe-b98b-da3c998a3aef",
+    "text": "NPS Trust",
+    "slug": "pens-nps-trust-04d38859",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "e36fe7d1-24c8-44a7-833c-faf3a2e6feff",
+    "text": "Central Recordkeeping Agency",
+    "slug": "pens-central-recordkeeping-agency-238d08fc",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "970269b7-0d99-4a0b-a239-fb4d5a6b26eb",
+    "text": "Pension Fund Managers",
+    "slug": "pens-pension-fund-managers-b61c6ba7",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "67a65ae8-fb5b-497d-8bdc-851d9472ec60",
+    "text": "Point of Presence",
+    "slug": "pens-point-of-presence-78fefc01",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "67a1336c-4f6c-4d01-a27a-c3936f3b7bee",
+    "text": "Trustee Bank and Custodian",
+    "slug": "pens-trustee-bank-and-custodian-1e85d3cc",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "6db79991-4a19-40f5-b45b-7f7fe7626fd8",
+    "text": "Retirement Advisors",
+    "slug": "pens-retirement-advisors-f455e781",
+    "subject": "pension-sector"
+  },
+  {
+    "id": "b77e7e84-163c-4a38-95b3-6c6ba6729d6d",
+    "text": "IFSCA Act 2019 ΓÇö establishment and composition",
+    "slug": "ifsc-ifsca-act-2019-establishment-and-composition-6acb11c9",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "af47c6ee-252a-4618-acde-f828e5cbdd84",
+    "text": "Unified powers over RBI, SEBI, IRDAI and PFRDA domains",
+    "slug": "ifsc-unified-powers-over-rbi-sebi-irdai-and-pfrda-domains-d116ed15",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "8048c86a-2b08-4a18-93bd-fe86a501d527",
+    "text": "IFSCA committees and consultation papers",
+    "slug": "ifsc-ifsca-committees-and-consultation-papers-89c7c18b",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "c5601368-743b-44df-80e0-353aeb680835",
+    "text": "IFSC framework and unified regulation",
+    "slug": "ifsc-ifsc-framework-and-unified-regulation-18ef40da",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "ba7baa6e-c6aa-4961-9163-0f9ef870cd7c",
+    "text": "GIFT City ecosystem",
+    "slug": "ifsc-gift-city-ecosystem-ef935cdc",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "c7c1cc2d-564a-44f5-b03e-283e18998034",
+    "text": "Special Economic Zone Act linkage",
+    "slug": "ifsc-special-economic-zone-act-linkage-c0de43f9",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "dccb1322-42f6-42e0-abf6-869b0b7594c5",
+    "text": "Entities operating in GIFT IFSC",
+    "slug": "ifsc-entities-operating-in-gift-ifsc-a0f540b3",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "67cbcf15-b007-4ffe-b2cc-2ba4458f0759",
+    "text": "IFSCA Banking Regulations",
+    "slug": "ifsc-ifsca-banking-regulations-f04b7818",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "1af08d43-cdee-4c13-bdcd-ac7ef28b7b08",
+    "text": "IFSCA Capital Market Regulations",
+    "slug": "ifsc-ifsca-capital-market-regulations-fcc9be96",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "1892be54-1958-4b9b-b058-bb8918801d6d",
+    "text": "Fund Management Regulations and FME categories",
+    "slug": "ifsc-fund-management-regulations-and-fme-categories-77ec2e02",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "37885df2-1edd-4c28-8e8d-04a34c86e1d7",
+    "text": "IFSCA Insurance Regulations",
+    "slug": "ifsc-ifsca-insurance-regulations-502c4444",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "c31308fe-8e6a-408b-aaa2-dd6f57b2fcd8",
+    "text": "IFSCA Bullion Regulations",
+    "slug": "ifsc-ifsca-bullion-regulations-08ac9f8c",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "ad8d452b-77de-4b25-ba89-5a5704a46cea",
+    "text": "Comparison with DIFC, Singapore, Hong Kong and London",
+    "slug": "ifsc-comparison-with-difc-singapore-hong-kong-and-london-38b4e6dd",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "c56b9226-8d21-415a-a4a2-c0bd03d817ed",
+    "text": "Global Financial Centres Index rankings",
+    "slug": "ifsc-global-financial-centres-index-rankings-63efc314",
+    "subject": "ifsca-gift-city"
+  },
+  {
+    "id": "49c9d54f-46bb-4d22-9035-b88ed046f581",
+    "text": "Structure of the Indian financial system",
+    "slug": "bank-structure-of-the-indian-financial-system-13b6f828",
+    "subject": "banking"
+  },
+  {
+    "id": "c52d49bf-ea8c-4820-8592-8626ce94b18c",
+    "text": "Functions of financial institutions",
+    "slug": "bank-functions-of-financial-institutions-d20703e4",
+    "subject": "banking"
+  },
+  {
+    "id": "f13a2d53-15d9-4b39-8eca-7196c17dfbfc",
+    "text": "Financial intermediation",
+    "slug": "bank-financial-intermediation-68d07263",
+    "subject": "banking"
+  },
+  {
+    "id": "15085ba6-68f0-4229-aa47-310d9e56dda6",
+    "text": "RBI as monetary authority",
+    "slug": "bank-rbi-as-monetary-authority-0f68006e",
+    "subject": "banking"
+  },
+  {
+    "id": "014c784e-b2ee-421b-af28-002ecfe991b1",
+    "text": "Issuer of currency and note issue",
+    "slug": "bank-issuer-of-currency-and-note-issue-1fb8b54a",
+    "subject": "banking"
+  },
+  {
+    "id": "8002af44-9424-46d0-8021-abcd3e3a817e",
+    "text": "Banker to government and to banks",
+    "slug": "bank-banker-to-government-and-to-banks-310d716c",
+    "subject": "banking"
+  },
+  {
+    "id": "9f346d77-0424-4f95-aaaa-8c72f7e278b1",
+    "text": "Regulator and supervisor of the banking system",
+    "slug": "bank-regulator-and-supervisor-of-the-banking-system-21331e15",
+    "subject": "banking"
+  },
+  {
+    "id": "92bea86e-002f-444a-acc0-4c7df5a60bd4",
+    "text": "Scheduled and non-scheduled banks",
+    "slug": "bank-scheduled-and-non-scheduled-banks-3aca4409",
+    "subject": "banking"
+  },
+  {
+    "id": "7b1597fa-987e-4ed6-868e-2ffeb25a8283",
+    "text": "Public sector, private and foreign banks",
+    "slug": "bank-public-sector-private-and-foreign-banks-813bb1aa",
+    "subject": "banking"
+  },
+  {
+    "id": "2ea7e518-e193-4bdc-ad24-ac7f7c48c7d5",
+    "text": "Small finance banks and payment banks",
+    "slug": "bank-small-finance-banks-and-payment-banks-f44209ce",
+    "subject": "banking"
+  },
+  {
+    "id": "f9621775-9204-4c09-a0ee-429147ec688e",
+    "text": "Cooperative and regional rural banks",
+    "slug": "bank-cooperative-and-regional-rural-banks-2432272d",
+    "subject": "banking"
+  },
+  {
+    "id": "eebda368-5528-43fb-98ed-3e8133db2e3c",
+    "text": "SIDBI",
+    "slug": "bank-sidbi-9613dd45",
+    "subject": "banking"
+  },
+  {
+    "id": "c5da761e-c526-4a50-aedf-fc606beacb14",
+    "text": "EXIM Bank",
+    "slug": "bank-exim-bank-ea0d349a",
+    "subject": "banking"
+  },
+  {
+    "id": "c3e38d45-b2f4-48f6-be65-3080a44d8fc3",
+    "text": "NABARD",
+    "slug": "bank-nabard-8206896b",
+    "subject": "banking"
+  },
+  {
+    "id": "64926994-9dbc-45f2-9e98-7efef362c601",
+    "text": "National Housing Bank",
+    "slug": "bank-national-housing-bank-fa1efb41",
+    "subject": "banking"
+  },
+  {
+    "id": "d20510d1-ae14-48a4-8fe6-2a062ccaa30d",
+    "text": "NaBFID",
+    "slug": "bank-nabfid-47688c4d",
+    "subject": "banking"
+  },
+  {
+    "id": "d8d86a60-b013-4575-a0ed-14c0dee15923",
+    "text": "Recent developments in the global financial system",
+    "slug": "bank-recent-developments-in-the-global-financial-system-9c3f3dd7",
+    "subject": "banking"
+  },
+  {
+    "id": "9525570d-d1e1-4cb9-970c-d4fceb98513b",
+    "text": "Impact on the Indian financial system",
+    "slug": "bank-impact-on-the-indian-financial-system-4b5734d6",
+    "subject": "banking"
+  },
+  {
+    "id": "5712cf90-ec73-4fb5-a149-8f2e8163d3bd",
+    "text": "Core banking and digital channels",
+    "slug": "bank-core-banking-and-digital-channels-42cbcd3c",
+    "subject": "banking"
+  },
+  {
+    "id": "e6a40283-f365-4c96-aee9-07b9d1e8b316",
+    "text": "Cyber security in banking",
+    "slug": "bank-cyber-security-in-banking-626d2046",
+    "subject": "banking"
+  },
+  {
+    "id": "bfcd3438-2dde-4371-8006-165ec2f5f8a2",
+    "text": "Artificial intelligence and analytics in banking",
+    "slug": "bank-artificial-intelligence-and-analytics-in-banking-d7a4a3d0",
+    "subject": "banking"
+  },
+  {
+    "id": "91288b32-bdf0-4648-a531-95dc54757cac",
+    "text": "NBFC categories and classification",
+    "slug": "bank-nbfc-categories-and-classification-0fa1af7e",
+    "subject": "banking"
+  },
+  {
+    "id": "43af1e60-ef5e-43aa-b06b-fd7aa0878edc",
+    "text": "NBFC vs bank ΓÇö distinction",
+    "slug": "bank-nbfc-vs-bank-distinction-38bd7cea",
+    "subject": "banking"
+  },
+  {
+    "id": "0dced790-4243-4656-9de2-9dd2eea40e01",
+    "text": "Scale-based regulation",
+    "slug": "bank-scale-based-regulation-79196047",
+    "subject": "banking"
+  },
+  {
+    "id": "0f211030-66de-4568-a9ad-54efc37df2f3",
+    "text": "Housing finance companies",
+    "slug": "bank-housing-finance-companies-92920c15",
+    "subject": "banking"
+  },
+  {
+    "id": "7e2c2bd2-745f-4482-9651-8e05f2c9f09d",
+    "text": "UPI and its evolution",
+    "slug": "bank-upi-and-its-evolution-fab78a87",
+    "subject": "banking"
+  },
+  {
+    "id": "c1eba886-99a9-4852-8fb6-20fc4969c572",
+    "text": "IMPS, NEFT and RTGS",
+    "slug": "bank-imps-neft-and-rtgs-20f74e74",
+    "subject": "banking"
+  },
+  {
+    "id": "377a51c1-d980-4551-adc0-b099030bd5c5",
+    "text": "Central Bank Digital Currency",
+    "slug": "bank-central-bank-digital-currency-a8a1870c",
+    "subject": "banking"
+  },
+  {
+    "id": "7928e95f-bc53-4369-8e0c-398396cdd432",
+    "text": "Prepaid instruments and wallets",
+    "slug": "bank-prepaid-instruments-and-wallets-ff127251",
+    "subject": "banking"
+  },
+  {
+    "id": "9085a196-842c-4077-9c62-479c0d5d468f",
+    "text": "Payment system oversight and the PSS Act",
+    "slug": "bank-payment-system-oversight-and-the-pss-act-9810ee97",
+    "subject": "banking"
+  },
+  {
+    "id": "40202415-3cfd-4fdd-a1a4-743bf33acaa6",
+    "text": "Role and functions of SEBI",
+    "slug": "cmkt-role-and-functions-of-sebi-e01afbf7",
+    "subject": "capital-market"
+  },
+  {
+    "id": "d64661c1-57a7-4470-84bd-49d37d4833b2",
+    "text": "Market infrastructure institutions",
+    "slug": "cmkt-market-infrastructure-institutions-91db44c3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "859519df-1c9a-4431-b558-858c87a22dbb",
+    "text": "Investor protection framework",
+    "slug": "cmkt-investor-protection-framework-95c221af",
+    "subject": "capital-market"
+  },
+  {
+    "id": "e8cc3ad5-8340-4ee8-b949-6763525b1ee6",
+    "text": "Primary market ΓÇö instruments and issuance",
+    "slug": "cmkt-primary-market-instruments-and-issuance-8ba43032",
+    "subject": "capital-market"
+  },
+  {
+    "id": "42d0c90e-84ec-4600-a6e6-0715cec1b3a8",
+    "text": "Secondary market ΓÇö trading and settlement",
+    "slug": "cmkt-secondary-market-trading-and-settlement-2b16bcfe",
+    "subject": "capital-market"
+  },
+  {
+    "id": "d02c9f8e-743b-45ac-8645-34dc2fcd299b",
+    "text": "Equity market",
+    "slug": "cmkt-equity-market-53a7746c",
+    "subject": "capital-market"
+  },
+  {
+    "id": "cd9fab65-ed26-468a-a4ad-22da8a45e9fc",
+    "text": "Bond market",
+    "slug": "cmkt-bond-market-adeb5345",
+    "subject": "capital-market"
+  },
+  {
+    "id": "9406df4b-e5ce-4980-b2d0-98f437f25765",
+    "text": "Money market instruments",
+    "slug": "cmkt-money-market-instruments-114ad13f",
+    "subject": "capital-market"
+  },
+  {
+    "id": "70ed5360-ea49-4f3e-86b1-e54475f13763",
+    "text": "Foreign exchange market",
+    "slug": "cmkt-foreign-exchange-market-c6c0e8b8",
+    "subject": "capital-market"
+  },
+  {
+    "id": "0b4563c7-3223-4faf-b7de-009a91681eee",
+    "text": "Forward contracts",
+    "slug": "cmkt-forward-contracts-1a9bf1c2",
+    "subject": "capital-market"
+  },
+  {
+    "id": "be82d7a2-22ad-4de3-adaf-499ef1814f73",
+    "text": "Futures contracts",
+    "slug": "cmkt-futures-contracts-d88707e3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "1b7ede71-0cb5-4f69-a2e6-13d6ac2c0e40",
+    "text": "Swaps",
+    "slug": "cmkt-swaps-7de751c9",
+    "subject": "capital-market"
+  },
+  {
+    "id": "041055ea-ec61-400a-84be-5b0e75f54d8e",
+    "text": "Margining and clearing",
+    "slug": "cmkt-margining-and-clearing-088228e3",
+    "subject": "capital-market"
+  },
+  {
+    "id": "c61b4104-fe42-4be8-aaa0-bd6d95c19590",
+    "text": "India International Bullion Exchange",
+    "slug": "cmkt-india-international-bullion-exchange-4e63b4bd",
+    "subject": "capital-market"
+  },
+  {
+    "id": "a6b830c7-928b-4bf0-83d9-82209fddd711",
+    "text": "Bullion depository receipts",
+    "slug": "cmkt-bullion-depository-receipts-efc11410",
+    "subject": "capital-market"
+  },
+  {
+    "id": "c3670114-1765-496f-80c7-8e5bc1f6580d",
+    "text": "Qualified jewellers and eligibility",
+    "slug": "cmkt-qualified-jewellers-and-eligibility-1e384edf",
+    "subject": "capital-market"
+  },
+  {
+    "id": "13a82036-de27-4a3c-b21b-96393b5ec3ee",
+    "text": "Gold Monetization Scheme and gold deposits",
+    "slug": "cmkt-gold-monetization-scheme-and-gold-deposits-ed2394d6",
+    "subject": "capital-market"
+  },
+  {
+    "id": "ff5fba8b-e90b-46e0-846c-8456487705d1",
+    "text": "MCX gold contracts and lot sizes",
+    "slug": "cmkt-mcx-gold-contracts-and-lot-sizes-9b7aec4a",
+    "subject": "capital-market"
+  },
+  {
+    "id": "dbf5ff73-47b3-490b-9a19-b0832fe4da7b",
+    "text": "History of Indian insurance",
+    "slug": "ins-history-of-indian-insurance-b9107de3",
+    "subject": "insurance"
+  },
+  {
+    "id": "5aad7b00-f39f-4f1e-8616-2737d2774da6",
+    "text": "Principles of insurance",
+    "slug": "ins-principles-of-insurance-a051a416",
+    "subject": "insurance"
+  },
+  {
+    "id": "51293e15-7e64-41ce-834e-5ab889402a7d",
+    "text": "Risk and uncertainty",
+    "slug": "ins-risk-and-uncertainty-53f2fed3",
+    "subject": "insurance"
+  },
+  {
+    "id": "a6b3a2c9-d075-4f28-a42e-e206b08e7f2a",
+    "text": "Pooling and diversification of risk",
+    "slug": "ins-pooling-and-diversification-of-risk-9723c358",
+    "subject": "insurance"
+  },
+  {
+    "id": "7483577e-a7e1-4add-a8ff-a2c745233a09",
+    "text": "Indemnity and insurable interest",
+    "slug": "ins-indemnity-and-insurable-interest-740bd357",
+    "subject": "insurance"
+  },
+  {
+    "id": "7776dd30-9ec6-43ce-b9b1-dbe897604104",
+    "text": "Legal foundations of insurance",
+    "slug": "ins-legal-foundations-of-insurance-a270a6a3",
+    "subject": "insurance"
+  },
+  {
+    "id": "864b6288-73c0-42cf-bd72-67e0e80b923f",
+    "text": "Role of intermediation in mobilising savings",
+    "slug": "ins-role-of-intermediation-in-mobilising-savings-82fd4ac6",
+    "subject": "insurance"
+  },
+  {
+    "id": "f9bbff3d-12ad-4c33-85f9-6c4b1e71b8a9",
+    "text": "Types and evolution of intermediaries",
+    "slug": "ins-types-and-evolution-of-intermediaries-c0292ff7",
+    "subject": "insurance"
+  },
+  {
+    "id": "6acb3dbb-e24e-484d-acac-be712f295bec",
+    "text": "Bancassurance in India",
+    "slug": "ins-bancassurance-in-india-cd9dcbc5",
+    "subject": "insurance"
+  },
+  {
+    "id": "9d936e80-9f60-4342-9788-f57dca121812",
+    "text": "Product design",
+    "slug": "ins-product-design-d7249def",
+    "subject": "insurance"
+  },
+  {
+    "id": "263d8b96-85bb-4653-906a-e802e11dc9b2",
+    "text": "Pricing",
+    "slug": "ins-pricing-8383e2b8",
+    "subject": "insurance"
+  },
+  {
+    "id": "842fd329-f1c1-4ed2-8e11-0538069d3ed0",
+    "text": "Distribution",
+    "slug": "ins-distribution-aa968722",
+    "subject": "insurance"
+  },
+  {
+    "id": "ef9a86a1-195b-4be5-aa5c-b010e7db4fdc",
+    "text": "Underwriting",
+    "slug": "ins-underwriting-d9d6fe9e",
+    "subject": "insurance"
+  },
+  {
+    "id": "471d51d4-ca3e-4705-8f46-000457b5d042",
+    "text": "Claims management",
+    "slug": "ins-claims-management-a12995fb",
+    "subject": "insurance"
+  },
+  {
+    "id": "1c1baab2-f591-4339-963a-926846182e92",
+    "text": "Investment of insurance funds",
+    "slug": "ins-investment-of-insurance-funds-7189a3d7",
+    "subject": "insurance"
+  },
+  {
+    "id": "d6a7e1f4-1163-4afc-87dd-3c18a13937fb",
+    "text": "Reinsurance",
+    "slug": "ins-reinsurance-ceb34ae5",
+    "subject": "insurance"
+  },
+  {
+    "id": "7f29a8bb-6ef5-41af-b75d-93a2bc9cca65",
+    "text": "Property and liability insurance",
+    "slug": "ins-property-and-liability-insurance-6a7bf4c0",
+    "subject": "insurance"
+  },
+  {
+    "id": "e3ac9a58-2cb2-4dde-815c-54edb8cbf435",
+    "text": "Life insurance and annuities",
+    "slug": "ins-life-insurance-and-annuities-64457bd8",
+    "subject": "insurance"
+  },
+  {
+    "id": "509a2040-85a5-490a-b31b-001fcae4a090",
+    "text": "Health insurance",
+    "slug": "ins-health-insurance-bae001d6",
+    "subject": "insurance"
+  },
+  {
+    "id": "19ed7d9d-144a-43cd-a1be-559713192165",
+    "text": "Group insurance and pensions",
+    "slug": "ins-group-insurance-and-pensions-3671f200",
+    "subject": "insurance"
+  },
+  {
+    "id": "b6274271-99d5-4993-9fed-e94769bf75b2",
+    "text": "Valuation and solvency requirements",
+    "slug": "ins-valuation-and-solvency-requirements-3a08dd24",
+    "subject": "insurance"
+  },
+  {
+    "id": "a91ae85c-9a36-400b-84d5-2be30725ecfe",
+    "text": "Agricultural and export credit guarantee insurance",
+    "slug": "ins-agricultural-and-export-credit-guarantee-insurance-def404c6",
+    "subject": "insurance"
+  },
+  {
+    "id": "6745261d-5bf9-49a2-9dcc-91000b284e1a",
+    "text": "GIC of India, obligatory cessions and retention",
+    "slug": "ins-gic-of-india-obligatory-cessions-and-retention-578d0b33",
+    "subject": "insurance"
+  },
+  {
+    "id": "be6e1583-c0db-46a9-88f9-08d28bd9375f",
+    "text": "IIO and IIIO framework",
+    "slug": "ins-iio-and-iiio-framework-2d377080",
+    "subject": "insurance"
+  },
+  {
+    "id": "ff2f711b-6bcc-4f4d-9a77-b0579b2d25c5",
+    "text": "Reinsurance in IFSC",
+    "slug": "ins-reinsurance-in-ifsc-e91d5203",
+    "subject": "insurance"
+  },
+  {
+    "id": "13219829-87b8-4102-86aa-634e55ab0e86",
+    "text": "FDI norms in the insurance sector",
+    "slug": "ins-fdi-norms-in-the-insurance-sector-2c787977",
+    "subject": "insurance"
+  },
+  {
+    "id": "8b7921cf-e18e-489a-b064-521439563b66",
+    "text": "Measurement of growth ΓÇö national income and per capita income",
+    "slug": "fawa-measurement-of-growth-national-income-and-per-capita-income-cea20e3f",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "a3da90af-8bfa-457f-94d6-fa7d072fa042",
+    "text": "Poverty alleviation and employment generation in India",
+    "slug": "fawa-poverty-alleviation-and-employment-generation-in-india-e61c9d7c",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "1e50481a-ff13-4e4c-a0d8-40ab0b6fd807",
+    "text": "Sustainable development and environmental issues",
+    "slug": "fawa-sustainable-development-and-environmental-issues-61921a20",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "f8a59260-adac-47f2-8f43-7e3a17416784",
+    "text": "Multiculturalism",
+    "slug": "fawa-multiculturalism-f88b425a",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "9f8bf02d-9a4f-441b-953b-2c7e16bd1ae5",
+    "text": "Demographic trends",
+    "slug": "fawa-demographic-trends-792cb226",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "4c625f60-1f43-4a4e-89b3-3b2de5a57a0f",
+    "text": "Urbanisation and migration",
+    "slug": "fawa-urbanisation-and-migration-851c595d",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "34f30d5e-67f3-4769-92d9-fa9109201d13",
+    "text": "Gender issues and social justice",
+    "slug": "fawa-gender-issues-and-social-justice-174008b3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "3cce1ed9-2cf1-4bcc-9d21-a121db409aaa",
+    "text": "Budget concepts and approach",
+    "slug": "fawa-budget-concepts-and-approach-b54f95f0",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "9ce26fd0-9787-4ed3-b02e-003d2c78327f",
+    "text": "Broad trends in the Union Budget",
+    "slug": "fawa-broad-trends-in-the-union-budget-b2c68805",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "efd7de44-a236-4f45-ad92-35940425d2ac",
+    "text": "Budget documents and the budget process",
+    "slug": "fawa-budget-documents-and-the-budget-process-5ca0ed20",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "c3e98f2d-20c7-4771-aebd-912d750c6054",
+    "text": "Structure of the Economic Survey",
+    "slug": "fawa-structure-of-the-economic-survey-2a149d29",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "e2ed0952-3f31-409c-a5c3-617d9dfa7640",
+    "text": "Themes and findings of the latest Economic Survey",
+    "slug": "fawa-themes-and-findings-of-the-latest-economic-survey-b1a9212a",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "b15890c8-9099-4526-bcee-4599579ce183",
+    "text": "Financial inclusion schemes",
+    "slug": "fawa-financial-inclusion-schemes-27af35a3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "398e64eb-a793-4921-98a3-50bbdaf6976e",
+    "text": "Credit guarantee and MSME schemes",
+    "slug": "fawa-credit-guarantee-and-msme-schemes-2505b01d",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "06786998-4834-4197-b8ac-20b6cd4f6991",
+    "text": "Insurance and pension schemes",
+    "slug": "fawa-insurance-and-pension-schemes-1ae3ac8e",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "71b06075-f4d6-4b04-8921-30d18492f18a",
+    "text": "Current events of national importance",
+    "slug": "fawa-current-events-of-national-importance-f7f0ab39",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "1326ca6c-e981-4960-8229-e3e61c4b91ab",
+    "text": "Current events of international importance",
+    "slug": "fawa-current-events-of-international-importance-25417bd3",
+    "subject": "financial-awareness"
+  },
+  {
+    "id": "d1b7a3f9-84e1-4832-8d3f-ca851b844ce6",
+    "text": "Approximation with decimals and surds",
+    "slug": "qa-approximation-with-decimals-and-surds-5e910263",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7e9de247-a854-4388-a44a-597c50de043a",
+    "text": "Missing-term simplification (find ?)",
+    "slug": "qa-missing-term-simplification-find-47d869c3",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "5d6007fc-1b29-498d-bd19-6a50b296f041",
+    "text": "BODMAS and order of operations",
+    "slug": "qa-bodmas-and-order-of-operations-eaf71d19",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "3a54536e-35fe-4c7a-949c-382476120f62",
+    "text": "Square roots, cube roots and powers",
+    "slug": "qa-square-roots-cube-roots-and-powers-f19808cb",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "48ff8201-3db5-4210-98f1-c89b35d5d955",
+    "text": "Fraction and percentage equivalents",
+    "slug": "qa-fraction-and-percentage-equivalents-475121ec",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a",
+    "text": "Number series ΓÇö arithmetic and difference patterns",
+    "slug": "qa-number-series-arithmetic-and-difference-patterns-130693e5",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "89b27d9f-7081-4930-9186-c41b93349e1a",
+    "text": "Number series ΓÇö multiplicative and mixed patterns",
+    "slug": "qa-number-series-multiplicative-and-mixed-patterns-340f34bd",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7571611f-335f-419f-bb07-46408833d294",
+    "text": "Wrong-term series",
+    "slug": "qa-wrong-term-series-af3f2c81",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "14c51cd0-d60f-42bb-a584-89639d2306fa",
+    "text": "LCM, HCF and divisibility",
+    "slug": "qa-lcm-hcf-and-divisibility-bad12219",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "16630438-beb1-473f-b251-baccce8cd86a",
+    "text": "Sets of consecutive and patterned numbers",
+    "slug": "qa-sets-of-consecutive-and-patterned-numbers-57029c73",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d98cdd8a-6f6a-420a-a477-e5385f96f029",
+    "text": "Remainders and factors",
+    "slug": "qa-remainders-and-factors-0faad1db",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "01f2ee8f-c655-4c2e-912e-e0f18a2d3201",
+    "text": "Quadratic equations ΓÇö root comparison (x vs y)",
+    "slug": "qa-quadratic-equations-root-comparison-x-vs-y-03936368",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "5194061c-a0ed-423e-aa9d-b3c774115dc8",
+    "text": "Linear equations in one and two variables",
+    "slug": "qa-linear-equations-in-one-and-two-variables-dbd6b335",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "a5ece133-4cad-4641-8caa-5e593c34e888",
+    "text": "Simultaneous equations from word conditions",
+    "slug": "qa-simultaneous-equations-from-word-conditions-29e84158",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "0683c41f-da6e-4738-872a-f2cd424de015",
+    "text": "Inequalities and relationship determination",
+    "slug": "qa-inequalities-and-relationship-determination-a6a6a638",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "e1fecd85-fe0d-4594-a851-40691666a7b4",
+    "text": "Algebraic identities and factorisation",
+    "slug": "qa-algebraic-identities-and-factorisation-e8595f7a",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "61f760f9-681d-4ec9-9c5c-bfe750fcf5fe",
+    "text": "Percentage increase and decrease",
+    "slug": "qa-percentage-increase-and-decrease-85f661e1",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2ab2e850-22d2-4286-8b8e-5e40767657e3",
+    "text": "Successive percentage change",
+    "slug": "qa-successive-percentage-change-8a4031e7",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "ff082708-c649-46b6-980f-4a66363e6eab",
+    "text": "Percentage comparison ΓÇö what percent of / more than",
+    "slug": "qa-percentage-comparison-what-percent-of-more-than-b5ef5d48",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "10d8610d-9dbd-4f47-b301-1ed3c0d2dce6",
+    "text": "Income, expenditure and savings",
+    "slug": "qa-income-expenditure-and-savings-20025343",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "82ebea06-9d87-40af-b539-2a37c6024b12",
+    "text": "Population, strength and quantity change",
+    "slug": "qa-population-strength-and-quantity-change-e737e151",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "716450be-826f-428c-a51e-57101be2e9f9",
+    "text": "Cost price, selling price and margin",
+    "slug": "qa-cost-price-selling-price-and-margin-fa9cf244",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f6a36919-07e6-46a8-ae43-e3c13d549c98",
+    "text": "Discount and marked price",
+    "slug": "qa-discount-and-marked-price-feadd5c6",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "fa8a4cb7-7670-4f67-b933-9e9e0d4ace77",
+    "text": "Combined transactions and overall gain",
+    "slug": "qa-combined-transactions-and-overall-gain-229905cb",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "aca7c90a-40a6-436a-98f2-92b678f173ba",
+    "text": "Equal profit and loss conditions",
+    "slug": "qa-equal-profit-and-loss-conditions-cdaceb4b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9ea559c5-2c7b-49b4-8ab0-98938fd471df",
+    "text": "Simple and compound interest",
+    "slug": "qa-simple-and-compound-interest-ee6f76e4",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "74799854-a84e-4607-844e-afb8c50b7bc0",
+    "text": "Simple and compound ratio",
+    "slug": "qa-simple-and-compound-ratio-ae9a2833",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "7d94ff40-34f9-47fe-9caa-9eae0dc38116",
+    "text": "Mixtures and alligation",
+    "slug": "qa-mixtures-and-alligation-921971ac",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "bb343a30-e26e-474a-9ab7-6ecab8e6931b",
+    "text": "Partnership and profit sharing",
+    "slug": "qa-partnership-and-profit-sharing-055fa70d",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "cd574056-f811-4f7b-8fdd-a4e37d0c9772",
+    "text": "Ages ΓÇö present, past and future",
+    "slug": "qa-ages-present-past-and-future-0a8b95a2",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "528ffbb5-94cb-438d-a875-c854d0f65ec5",
+    "text": "Averages ΓÇö simple and weighted",
+    "slug": "qa-averages-simple-and-weighted-1f479970",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c2079ba4-41e3-4db0-908b-a6fd4a550cab",
+    "text": "Proportional division of quantities",
+    "slug": "qa-proportional-division-of-quantities-14622c51",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f5c68108-e718-4a7e-b546-d07e543534b5",
+    "text": "Relative speed and meeting problems",
+    "slug": "qa-relative-speed-and-meeting-problems-4f10cb81",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d1979e85-7942-4fdd-a5fa-b1d2e29f5977",
+    "text": "Boats and streams",
+    "slug": "qa-boats-and-streams-652dae37",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9a417628-ca65-4a32-bac1-87c365f40334",
+    "text": "Trains ΓÇö crossing platforms and each other",
+    "slug": "qa-trains-crossing-platforms-and-each-other-fbf3e1f2",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "e2fc8cb4-eb3e-41dc-b14d-70ea45e8ad4d",
+    "text": "Average speed and journey segments",
+    "slug": "qa-average-speed-and-journey-segments-5db28484",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "caab5701-fc1c-40ff-8286-aa93175b0233",
+    "text": "Races and circular tracks",
+    "slug": "qa-races-and-circular-tracks-ee936ee3",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22",
+    "text": "Individual and combined work rates",
+    "slug": "qa-individual-and-combined-work-rates-f1d3f896",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "d8355e58-6c85-48c8-9878-318ba0a41772",
+    "text": "Efficiency comparison and relative capacity",
+    "slug": "qa-efficiency-comparison-and-relative-capacity-7ef5386a",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "21fb2f26-ef41-477c-a8eb-2717f20b6083",
+    "text": "Pipes and cisterns",
+    "slug": "qa-pipes-and-cisterns-567ce8e0",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c31985e0-3cff-4a90-b5ac-438e656ee509",
+    "text": "Partial work and remaining-work problems",
+    "slug": "qa-partial-work-and-remaining-work-problems-3868d723",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "424d99d5-720f-409e-ba66-8660ac95a486",
+    "text": "Area and perimeter ΓÇö rectangle, square, triangle",
+    "slug": "qa-area-and-perimeter-rectangle-square-triangle-e23db61d",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "a704c46a-26db-43f5-9ece-3e339a15ac3b",
+    "text": "Circle ΓÇö area, circumference and sectors",
+    "slug": "qa-circle-area-circumference-and-sectors-e98b662b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c2384cfd-529f-4f48-8d67-33fb2e5ce9fb",
+    "text": "Reshaping and equal-perimeter problems",
+    "slug": "qa-reshaping-and-equal-perimeter-problems-ef477223",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "c5d44e15-072a-4557-ad7d-f61221fe61c7",
+    "text": "Volume and surface area of solids",
+    "slug": "qa-volume-and-surface-area-of-solids-42588cef",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2677eb4d-bfd9-4bb5-a369-169601b4014c",
+    "text": "Coordinate and line geometry",
+    "slug": "qa-coordinate-and-line-geometry-eb041f58",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "ce23f17b-f621-46b0-bb72-fc926a0be3d4",
+    "text": "Tabular data interpretation",
+    "slug": "qa-tabular-data-interpretation-e6e4b3de",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "598ad90c-f128-40b5-a67b-42de3bbf993d",
+    "text": "Pie chart interpretation",
+    "slug": "qa-pie-chart-interpretation-32cf3346",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "50745fc5-924b-470a-bee7-27cf2f458521",
+    "text": "Bar and line graph interpretation",
+    "slug": "qa-bar-and-line-graph-interpretation-35302e14",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "2fd766ca-2573-4fee-99c2-fa88df93628f",
+    "text": "Caselet data interpretation",
+    "slug": "qa-caselet-data-interpretation-372ea92b",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "1c2f9218-9361-4ee9-84cd-f830a30c648a",
+    "text": "Mixed and combined DI",
+    "slug": "qa-mixed-and-combined-di-4edc5bb5",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "f0e0d76d-38ed-4b29-85db-ae678611b715",
+    "text": "Data sufficiency",
+    "slug": "qa-data-sufficiency-0fd64dd8",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "cd48d660-2fee-415a-8bd5-e6e78324d73c",
+    "text": "Linear row ΓÇö single row, one direction",
+    "slug": "reas-linear-row-single-row-one-direction-3c93ae0f",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c7ccbff3-da69-4369-90fe-f5f8b13ff7b9",
+    "text": "Linear row ΓÇö facing both directions",
+    "slug": "reas-linear-row-facing-both-directions-08c55ceb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "49d20336-ad3d-48c7-b172-fdd9c3d17e7f",
+    "text": "Circular arrangement ΓÇö facing centre",
+    "slug": "reas-circular-arrangement-facing-centre-49054cf2",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "b2e396d9-e67b-4242-904e-7424662e7615",
+    "text": "Circular arrangement ΓÇö mixed facing",
+    "slug": "reas-circular-arrangement-mixed-facing-5596b070",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "8f2e1cb0-8b2b-4ffc-a0fb-9cfec07c69c9",
+    "text": "Row with unknown number of persons",
+    "slug": "reas-row-with-unknown-number-of-persons-cb13e578",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "fbcc6e0e-45b8-4e93-88ab-38bb435e0ec8",
+    "text": "Square and rectangular arrangement",
+    "slug": "reas-square-and-rectangular-arrangement-18e7b720",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "de689596-235b-4ead-8ba1-3431e1189e98",
+    "text": "Floor puzzle",
+    "slug": "reas-floor-puzzle-1df93898",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c26f0386-26ac-4035-96d6-3522f658cb19",
+    "text": "Floor and flat double-variable puzzle",
+    "slug": "reas-floor-and-flat-double-variable-puzzle-fd87d2ea",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "93f445b2-4db4-45b1-acc5-b1bb8c21dc17",
+    "text": "Box and stack puzzle",
+    "slug": "reas-box-and-stack-puzzle-60988bfb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "6e107aa5-c9e0-4888-a7e9-862e98bea935",
+    "text": "Month and date scheduling puzzle",
+    "slug": "reas-month-and-date-scheduling-puzzle-3404d95a",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "cefdf13b-9b68-489e-b5b2-e3d171d70f2c",
+    "text": "Day and week scheduling puzzle",
+    "slug": "reas-day-and-week-scheduling-puzzle-076b2549",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "da8b77aa-4e53-4876-be17-f8f96e1f2913",
+    "text": "Category and attribute matching puzzle",
+    "slug": "reas-category-and-attribute-matching-puzzle-e5f2f3ac",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "0140aef7-82c3-45de-be0d-e9286820ee7f",
+    "text": "Odd-one-out within an arrangement",
+    "slug": "reas-odd-one-out-within-an-arrangement-8a59afe3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e8565eaf-c332-47da-97ab-b50aff00ac13",
+    "text": "Two-statement syllogism",
+    "slug": "reas-two-statement-syllogism-7f65e035",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ee63d21f-3ff5-4193-975f-7e6c04a59c89",
+    "text": "Three or more statement syllogism",
+    "slug": "reas-three-or-more-statement-syllogism-e8800438",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "993efa09-2f9d-42be-a0b3-b6c912e0f07c",
+    "text": "Possibility conclusions",
+    "slug": "reas-possibility-conclusions-b7cd9da3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "b46402a0-947a-4fed-a122-1e655785e683",
+    "text": "Only and only-a-few statements",
+    "slug": "reas-only-and-only-a-few-statements-d42e0ef7",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "a75da08f-fca8-421c-85ce-65d1b6e2c3a5",
+    "text": "Either-or and complementary pairs",
+    "slug": "reas-either-or-and-complementary-pairs-52508ad3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "08bdcee9-fc28-4eb1-a2de-75a99969f042",
+    "text": "Direct coded inequality",
+    "slug": "reas-direct-coded-inequality-4e115de6",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "15e7768f-f126-4030-a227-218a815ea259",
+    "text": "Multi-chain inequality with linked variables",
+    "slug": "reas-multi-chain-inequality-with-linked-variables-26ae9265",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "22d83867-ab62-406d-830c-79336e4e5aeb",
+    "text": "Either-or conclusions in inequality",
+    "slug": "reas-either-or-conclusions-in-inequality-0a9ae6c4",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ed3eadd3-5574-4043-a2e4-2bfde047b9c1",
+    "text": "Symbol-substitution inequality",
+    "slug": "reas-symbol-substitution-inequality-92327ea2",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7c2c5a3a-3a83-479b-9814-8f1dab3d5a35",
+    "text": "Direct relation from a description",
+    "slug": "reas-direct-relation-from-a-description-e0847737",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "652eb8c7-a25a-48c1-b51d-ddf64f8ede1b",
+    "text": "Family tree puzzle with generations",
+    "slug": "reas-family-tree-puzzle-with-generations-78d7886d",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "258d7491-2b80-469d-84c9-6f9ee74b1e4d",
+    "text": "Coded blood relation",
+    "slug": "reas-coded-blood-relation-c6693c9c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "f62fb498-ea86-49f8-8bc3-4f77c9a485d6",
+    "text": "Relation with gender ambiguity",
+    "slug": "reas-relation-with-gender-ambiguity-0d4e3334",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e7dfdb22-8ee7-445d-9f0a-e27ccf215314",
+    "text": "Letter-to-symbol coding",
+    "slug": "reas-letter-to-symbol-coding-35896380",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "2ba3fb21-1709-4d8b-9059-bbfee5264d8f",
+    "text": "Letter shifting and alphabet position",
+    "slug": "reas-letter-shifting-and-alphabet-position-e476a433",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "a4dddc0f-e194-4eb6-bfc6-078240c8d4f0",
+    "text": "Number and digit coding",
+    "slug": "reas-number-and-digit-coding-722eaafb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "388d6536-63d3-4012-9f98-4adbf51dbb67",
+    "text": "Conditional coding with rules",
+    "slug": "reas-conditional-coding-with-rules-0b7eaac9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "479587ab-2cef-4046-9da4-c0ca924e8ef6",
+    "text": "Word formation from given letters",
+    "slug": "reas-word-formation-from-given-letters-3a6e82a0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "c2de8b3d-f79b-47b4-9b9e-5199a2230dbf",
+    "text": "Path tracing and final position",
+    "slug": "reas-path-tracing-and-final-position-11904573",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "09eef279-390d-4889-a8fb-81c6961bee8a",
+    "text": "Shortest distance by Pythagoras",
+    "slug": "reas-shortest-distance-by-pythagoras-3a8e0d2c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "55cde475-d4af-4ff7-b347-b51066736cab",
+    "text": "Direction of one point relative to another",
+    "slug": "reas-direction-of-one-point-relative-to-another-783ac0e9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "86416829-056a-4934-aa07-ef7d78cd9171",
+    "text": "Two-person path problems",
+    "slug": "reas-two-person-path-problems-c50164bd",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "daa9cd63-0fdb-4798-8969-5ce292b31a76",
+    "text": "Position from either end",
+    "slug": "reas-position-from-either-end-8ab86a4c",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "bf9142fc-f9fd-49e5-85ba-1431680791e5",
+    "text": "Comparison and ordering by attribute",
+    "slug": "reas-comparison-and-ordering-by-attribute-d24d90e3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "d6719f2f-0906-4aab-a3f7-7348c1e4fd5b",
+    "text": "Total-count deduction from positions",
+    "slug": "reas-total-count-deduction-from-positions-8130a2b3",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "beb3ca2b-9796-4686-89bd-e643ebb270b1",
+    "text": "Age and height ordering",
+    "slug": "reas-age-and-height-ordering-9e5c27d9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "4990ee6f-b419-42e9-8ee0-e52d5630d3a4",
+    "text": "Shifting and rearrangement machine",
+    "slug": "reas-shifting-and-rearrangement-machine-9b0cb8fb",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "dad69132-676d-4a7b-be3d-1da364bd36f9",
+    "text": "Arithmetic operation machine",
+    "slug": "reas-arithmetic-operation-machine-258cf421",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "4ba00176-6b3d-4873-ae98-62b2fb33fecf",
+    "text": "Step count and intermediate-step questions",
+    "slug": "reas-step-count-and-intermediate-step-questions-790ddbf0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7d5a08c1-a3ac-4337-8f3e-28b5762b1857",
+    "text": "Alphabet series",
+    "slug": "reas-alphabet-series-b3b70d39",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ba50fea4-a0f8-4254-9e5c-dbd2046eacdc",
+    "text": "Alphanumeric and mixed series",
+    "slug": "reas-alphanumeric-and-mixed-series-74351adc",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "90a4700b-5c25-481c-a0b0-07b51e1dc28c",
+    "text": "Letter and digit pair counting",
+    "slug": "reas-letter-and-digit-pair-counting-8acc9fe0",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "951e2be1-ea05-4684-8264-3f38ccf9bf97",
+    "text": "Word and meaning analogy",
+    "slug": "reas-word-and-meaning-analogy-101b7b75",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e380c325-7879-4dca-9efc-a587a9499da0",
+    "text": "Number and letter analogy",
+    "slug": "reas-number-and-letter-analogy-2d75e3a9",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "ebb5aad8-4088-4f4f-b2a9-0506b1a55072",
+    "text": "Odd one out from a list",
+    "slug": "reas-odd-one-out-from-a-list-f44030fa",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "71faffff-a24e-49ae-918e-1216b65553d8",
+    "text": "Statement and argument ΓÇö strong or weak",
+    "slug": "reas-statement-and-argument-strong-or-weak-c34d0b36",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "fc3e9289-0478-4a6c-a0e8-1f6f3f79f82a",
+    "text": "Statement and assumption",
+    "slug": "reas-statement-and-assumption-f8aa8582",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "7a2c2e52-c0f0-4a62-bb28-69fe43fbd971",
+    "text": "Cause and effect",
+    "slug": "reas-cause-and-effect-645e5e25",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "eccadce1-2c9a-4672-9eef-65ee4bfaeb84",
+    "text": "Course of action",
+    "slug": "reas-course-of-action-3f7e5981",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "75d64ae7-691e-4226-9c46-05d217805e7d",
+    "text": "Statement and inference",
+    "slug": "reas-statement-and-inference-65cdc759",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "3b2102a2-bd53-42bb-82c5-a617816fa09b",
+    "text": "Strengthening and weakening an argument",
+    "slug": "reas-strengthening-and-weakening-an-argument-d884876b",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "6a36422b-68e6-409f-863a-bb3812a9ff7c",
+    "text": "Figure series and pattern completion",
+    "slug": "reas-figure-series-and-pattern-completion-f9140d07",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "dbcd498e-6fc8-4e93-a950-c3309a430a27",
+    "text": "Mirror, water image and paper folding",
+    "slug": "reas-mirror-water-image-and-paper-folding-a18a0c58",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "2416c0e0-a68f-45a9-9d66-9b8910ac3e9e",
+    "text": "Tools of communication and their purpose",
+    "slug": "communication-tools",
+    "subject": "english-language"
+  },
+  {
+    "id": "fa2ead71-59b9-4417-b71f-1f623d2c02c9",
+    "text": "Barriers to communication",
+    "slug": "communication-barriers",
+    "subject": "english-language"
+  },
+  {
+    "id": "de0e24eb-5c25-4e0f-8eeb-325b8732f9cc",
+    "text": "Permutations, combinations and counting",
+    "slug": "permutations-and-combinations",
+    "subject": "quantitative-aptitude"
+  },
+  {
+    "id": "484fbb39-85bd-4c88-88b3-9426befa6b49",
+    "text": "Clocks and calendars",
+    "slug": "clocks-and-calendars",
+    "subject": "quantitative-aptitude"
+  }
+]
