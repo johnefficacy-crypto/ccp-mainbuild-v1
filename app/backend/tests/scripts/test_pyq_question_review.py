@@ -732,3 +732,263 @@ def test_merge_questions_attaches_text_and_drops_non_mains():
     assert row["question_text"] == "Real stem?"
     assert row["year"] == 2020
     assert row["section"] == "GS1"
+
+
+# ─── catalog: multi-body, microtopic-only ────────────────────────────────────
+def _topic(tid, *, level="microtopic", exams=("rbi",), subject="s1",
+           name=None, is_active=True):
+    row = {"id": tid, "level": level, "subject_id": subject,
+           "slug": f"slug-{tid}", "name": name or f"Topic {tid}",
+           "is_active": is_active}
+    if exams is not None:
+        row["metadata"] = {"tier": "official", "exams": list(exams)}
+    return row
+
+
+def test_catalog_spans_several_body_keys_in_one_file():
+    """RBI shares subjects with sebi/pfrda/ifsca — one catalogue, all bodies."""
+    topics = [
+        _topic("t-rbi", exams=["rbi"]),
+        _topic("t-sebi", exams=["sebi"]),
+        _topic("t-pfrda", exams=["pfrda"]),
+        _topic("t-ifsca", exams=["ifsca"]),
+        _topic("t-upsc", exams=["upsc"]),
+    ]
+    rows = mod.catalog_rows(topics, ["rbi", "sebi", "pfrda", "ifsca"])
+    assert {r["id"] for r in rows} == {"t-rbi", "t-sebi", "t-pfrda", "t-ifsca"}
+    # A body outside the requested set is not pulled in.
+    assert "t-upsc" not in {r["id"] for r in rows}
+
+
+def test_catalog_emits_a_shared_microtopic_exactly_once():
+    """A row listing several requested bodies is one row, not one per body."""
+    topics = [_topic("shared", exams=["rbi", "sebi", "pfrda", "ifsca"])]
+    rows = mod.catalog_rows(topics, ["rbi", "sebi", "pfrda", "ifsca"])
+    assert len(rows) == 1
+    assert rows[0]["exams"] == ["ifsca", "pfrda", "rbi", "sebi"]
+
+
+def test_catalog_matches_on_intersection_not_equality():
+    """A row carrying MORE bodies than asked for still matches."""
+    topics = [_topic("t1", exams=["rbi", "sebi", "upsc"])]
+    rows = mod.catalog_rows(topics, ["rbi"])
+    assert [r["id"] for r in rows] == ["t1"]
+    assert rows[0]["exams"] == ["rbi"]  # only the requested overlap is reported
+
+
+def test_catalog_excludes_every_non_microtopic_level():
+    topics = [
+        _topic("leaf", level="microtopic"),
+        _topic("parent", level="topic"),
+        _topic("concept", level="concept"),
+    ]
+    rows = mod.catalog_rows(topics, ["rbi"])
+    assert [r["id"] for r in rows] == ["leaf"]
+    assert all(r["level"] == "microtopic" for r in rows)
+
+
+def test_catalog_drops_rows_with_no_or_malformed_exams_key():
+    topics = [
+        _topic("ok"),
+        _topic("no-meta", exams=None),
+        {"id": "meta-not-dict", "level": "microtopic", "metadata": "rbi"},
+        {"id": "exams-not-list", "level": "microtopic", "metadata": {"exams": "rbi"}},
+    ]
+    rows = mod.catalog_rows(topics, ["rbi"])
+    assert [r["id"] for r in rows] == ["ok"]
+
+
+def test_catalog_drops_inactive_rows_and_casefolds_bodies():
+    topics = [
+        _topic("live", exams=["RBI"], is_active=True),
+        _topic("dead", exams=["rbi"], is_active=False),
+    ]
+    rows = mod.catalog_rows(topics, ["rBi"])
+    assert [r["id"] for r in rows] == ["live"]
+
+
+def test_catalog_is_byte_stable_across_input_order():
+    a = [_topic("t2", name="Beta", subject="s1"), _topic("t1", name="Alpha", subject="s1")]
+    b = list(reversed(a))
+    assert mod.catalog_rows(a, ["rbi"]) == mod.catalog_rows(b, ["rbi"])
+
+
+def test_catalog_requires_at_least_one_body():
+    with pytest.raises(ValueError):
+        mod.catalog_rows([_topic("t1")], [])
+
+
+def test_catalog_output_loads_back_through_load_topic_catalog(tmp_path):
+    """The file `catalog` writes is exactly what `sweep`/`apply` accept."""
+    rows = mod.catalog_rows(
+        [_topic("t1", exams=["rbi"]), _topic("t2", exams=["sebi"])], ["rbi", "sebi"])
+    p = tmp_path / "cat.json"
+    p.write_text(json.dumps(rows), encoding="utf-8")
+    valid, orphan, names = mod.load_topic_catalog(str(p))
+    assert valid == {"t1", "t2"}
+    assert orphan == set()
+    assert names["t1"] == "Topic t1"
+
+
+def test_do_catalog_unions_bodies_and_writes_the_file(tmp_path):
+    class TopicsClient:
+        def __init__(self, topics):
+            self.topics = topics
+            self.params = []
+
+        def all_items(self, path, params=None):
+            self.params.append((path, dict(params or {})))
+            return list(self.topics)
+
+    topics = [_topic("t1", exams=["rbi"]), _topic("t2", exams=["sebi", "rbi"]),
+              _topic("t3", exams=["upsc"]), _topic("t4", level="topic", exams=["rbi"])]
+    c = TopicsClient(topics)
+    out = tmp_path / "cat.json"
+    args = mod.build_parser().parse_args(
+        ["catalog", "--body", "rbi", "--body", "sebi", "--out", str(out), "--apply"])
+    assert mod.do_catalog(c, args) == 0
+
+    # level is narrowed server-side; the body filter is not a server predicate.
+    assert c.params[0][0].endswith("/topics")
+    assert c.params[0][1]["level"] == "microtopic"
+    assert "exams" not in c.params[0][1] and "body" not in c.params[0][1]
+
+    written = json.loads(out.read_text(encoding="utf-8"))
+    assert {r["id"] for r in written} == {"t1", "t2"}
+
+
+def test_do_catalog_dry_run_writes_nothing(tmp_path):
+    class TopicsClient:
+        def all_items(self, path, params=None):
+            return [_topic("t1", exams=["rbi"])]
+
+    out = tmp_path / "cat.json"
+    args = mod.build_parser().parse_args(["catalog", "--body", "rbi", "--out", str(out)])
+    assert mod.do_catalog(TopicsClient(), args) == 0
+    assert not out.exists()
+
+
+# ─── load_topic_catalog: microtopic-only, strict when known ──────────────────
+def test_load_topic_catalog_rejects_a_top_level_topic_id(tmp_path):
+    p = tmp_path / "cat.json"
+    p.write_text(json.dumps([
+        {"id": "leaf", "text": "Leaf", "level": "microtopic"},
+        {"id": "parent", "text": "Parent", "level": "topic"},
+    ]), encoding="utf-8")
+    with pytest.raises(ValueError) as exc:
+        mod.load_topic_catalog(str(p))
+    assert "parent" in str(exc.value)
+    assert "microtopic" in str(exc.value)
+
+
+def test_load_topic_catalog_still_accepts_a_flat_levelless_catalogue(tmp_path):
+    """The hand-written UPSC files are [{id, text}] and must keep loading."""
+    p = tmp_path / "cat.json"
+    p.write_text(json.dumps([{"id": "a", "text": "A"}, {"id": "b", "text": "B"}]),
+                 encoding="utf-8")
+    valid, orphan, names = mod.load_topic_catalog(str(p))
+    assert valid == {"a", "b"} and orphan == set() and names["a"] == "A"
+
+
+# ─── difficulty: write without a tag, and clear back to null ─────────────────
+def test_difficulty_writes_without_any_tag_or_decision(tmp_path):
+    """The shape the three tagged exams need: difficulty only, nothing else."""
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 difficulty="hard", assign_topic_id="", decision="")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 0
+    assert len(fake.calls) == 1
+    call = fake.calls[0]
+    assert call["method"] == "PATCH"
+    assert call["path"] == "/api/admin/exam-intelligence-cms/pyq-questions/q1"
+    assert call["body"]["payload"] == {"observed_difficulty": "hard"}
+    # No tag was created and no review verdict was sent.
+    assert all("topic-tags" not in c["path"] and "/review" not in c["path"]
+               for c in fake.calls)
+
+
+def test_difficulty_none_clears_the_value_to_null(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020", difficulty="none")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 0
+    assert len(fake.calls) == 1
+    assert fake.calls[0]["body"]["payload"] == {"observed_difficulty": None}
+    assert "clear" in fake.calls[0]["body"]["reason"]
+
+
+def test_difficulty_clear_is_case_insensitive_like_every_other_value(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020", difficulty="NONE")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 0
+    assert fake.calls[0]["body"]["payload"] == {"observed_difficulty": None}
+
+
+def test_a_blank_difficulty_still_never_clears_anything(tmp_path):
+    """Blank means 'leave alone'. Clearing must be typed, or a sweep of
+    untouched rows would wipe the corpus."""
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 difficulty="", decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 0
+    assert all("pyq-questions/" not in c["path"] for c in fake.calls)
+
+
+def test_clearing_difficulty_composes_with_a_decision(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 difficulty="none", decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 0
+    paths = [c["path"] for c in fake.calls]
+    # Content edit runs BEFORE the verdict, unchanged by the clear path.
+    assert paths == ["/api/admin/exam-intelligence-cms/pyq-questions/q1",
+                     "/api/admin/exam-intelligence/items/pyq_question/q1/review"]
+
+
+def test_a_failed_clear_does_not_promote_the_row(tmp_path, capsys):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 difficulty="none", decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient(fail_on=("pyq-questions/",))
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 1
+    assert all("/review" not in c["path"] for c in fake.calls)
+
+
+def test_difficulty_clear_is_rejected_on_a_tag_row(tmp_path, capsys):
+    rows = [_row(row_type="tag", row_id="t1", paper_year="2020", difficulty="none")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 2
+    assert fake.calls == []
+
+
+def test_clear_sentinel_is_not_smuggled_into_the_difficulty_vocabulary():
+    """`none` must never reach the API as a literal observed_difficulty."""
+    assert mod.DIFFICULTY_CLEAR not in mod.DIFFICULTIES
+
+
+@pytest.mark.parametrize("bad", ["null", "nil", "clear", "blank", "-"])
+def test_only_the_documented_clear_token_is_accepted(tmp_path, bad):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020", difficulty=bad)]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    assert mod.do_apply(fake, _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)) == 2
+    assert fake.calls == []
+
+
+# ─── timeout ─────────────────────────────────────────────────────────────────
+def test_timeout_defaults_to_180_on_every_subcommand():
+    p = mod.build_parser()
+    for argv in (["catalog", "--body", "rbi"],
+                 ["export", "--exam-id", "e1"],
+                 ["apply", "--worksheet", "w.csv", "--topic-catalog", "c.json"]):
+        assert p.parse_args(argv).timeout == mod.DEFAULT_TIMEOUT == 180
+
+
+def test_timeout_is_overridable_and_reaches_the_client():
+    args = mod.build_parser().parse_args(["--timeout", "300", "catalog", "--body", "rbi"])
+    assert args.timeout == 300

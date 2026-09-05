@@ -30,6 +30,15 @@ every phase.
     on an MCQ row therefore means "the stem looks sane", NOT "this question is
     answerable" — the spot-check sample must be read against the paper.
 
+    catalog ->  build the ``--topic-catalog`` file from the taxonomy: MICROTOPIC
+                rows whose ``topics.metadata.exams`` lists any of the
+                ``--body`` keys given. ``--body`` is repeatable and UNIONED, so
+                one file spans the bodies that share subjects (RBI Grade B /
+                SEBI / PFRDA / IFSCA sit on the same Finance, Management,
+                Economics, Commerce & Accountancy, Costing and QRE microtopics)
+                and a row listing several of them is emitted once. Read-only;
+                ``--apply`` writes the file.
+
     export  ->  pull the pending in-scope questions + tags from the live API into
                 two flat JSON files (read-only).
 
@@ -53,8 +62,15 @@ decision always has been):
                      (tag_role='primary', tagging_source='manual'). The new tag
                      is born ``pending`` server-side — assigning it does not
                      verify it; it comes back in the next export for review.
-    difficulty       easy|medium|hard. QUESTION ROWS ONLY. Writes
-                     ``pyq_questions.observed_difficulty``.
+    difficulty       easy|medium|hard, or ``none`` to CLEAR. QUESTION ROWS
+                     ONLY. Writes ``pyq_questions.observed_difficulty``.
+                     Independent of ``assign_topic_id``: a row may carry a
+                     difficulty and no topic id, which is the shape the three
+                     already-tagged regulatory exams need. ``none`` PATCHes
+                     ``observed_difficulty: null`` — the CMS route validates the
+                     field with a falsy check, so NULL passes the vocabulary
+                     gate and lands as SQL NULL. A BLANK cell still means
+                     "leave this row alone"; clearing must be typed.
 
     ``very_hard`` IS NOT ACCEPTED and cannot be written through this tool. The
     column is bare ``text`` (migration 032, no CHECK), and migration 239's
@@ -90,6 +106,13 @@ step in this tool sets a row to verified by itself.
     ``apply``.
 
 Route contracts this tool depends on (verified against the repo backend):
+
+  catalog reads:
+    GET  /api/admin/exam-intelligence-cms/topics?level=microtopic&subject_id&limit&offset
+         -> {items:[...], total, limit, offset}; items carry ``metadata``. This
+         is the only route that returns it. There is NO server-side predicate on
+         ``metadata.exams``, so the body filter is applied client-side; ``level``
+         IS a server-side filter, so only leaves cross the wire.
 
   export reads:
     GET  /api/admin/exam-intelligence/exams/{exam_id}/items
@@ -131,6 +154,15 @@ Usage:
 
     export CCP_API_BASE=...      # e.g. https://<host>
     export CCP_ADMIN_JWT=...     # admin/super_admin JWT
+
+    # 0. Catalog (read-only; --apply writes the file). One file for every body
+    #    that shares the subject set:
+    python scripts/pyq_question_review.py catalog \
+        --body rbi --body sebi --body pfrda --body ifsca \
+        --out topic_catalog_regulatory.json --apply
+
+    # --timeout is global and defaults to 180s (free-tier Render cold starts):
+    python scripts/pyq_question_review.py --timeout 300 catalog --body rbi
 
     # 1. Export (read-only; --apply just means "write the files").
     #    Mains (unchanged — --mains-phase-id still defaults):
@@ -210,6 +242,22 @@ REASON_MAX = 500  # WriteEnvelope.reason max_length (min 8); over this the CMS 4
 # through this tool — the offline check below rejects the run.
 DIFFICULTIES = {"easy", "medium", "hard"}
 
+# Typed in the ``difficulty`` column to CLEAR a previously written value back to
+# SQL NULL. A BLANK cell has always meant "leave this row alone" and must keep
+# meaning that — an operator who never touches the column must not wipe the
+# corpus — so clearing needs its own explicit token. The CMS route validates
+# ``observed_difficulty`` with a FALSY check
+# (``admin_exam_intel_cms.py:2148``: ``if patch.get("observed_difficulty") and
+# ... not in _OBSERVED_DIFFICULTIES``), so ``None`` passes the vocabulary gate
+# and is written straight through as NULL; the key survives the
+# ``_QUESTION_FIELDS`` filter because that filter tests key names, not values.
+DIFFICULTY_CLEAR = "none"
+
+# Catalogue rows are microtopic-level ONLY (see ``load_topic_catalog``). A
+# top-level topic id tagged onto a question routes ``mock_question_bank`` to the
+# parent rather than the leaf, which migration 270 exists to undo.
+MICROTOPIC_LEVEL = "microtopic"
+
 QUESTION_KIND = "pyq_question"
 TAG_KIND = "pyq_question_topic_tag"
 QUESTION_ROW = "question"
@@ -222,6 +270,7 @@ ASSIGN_TAGGING_SOURCE = "manual"
 
 _TAG_CREATE_REASON = "pyq_question_review worksheet: assign primary topic tag"
 _DIFFICULTY_REASON = "pyq_question_review worksheet: set observed_difficulty"
+_DIFFICULTY_CLEAR_REASON = "pyq_question_review worksheet: clear observed_difficulty"
 
 # ``decision`` stays first among the operator-filled columns and the columns
 # that existed before keep their order — the two new ones are APPENDED, so a
@@ -238,8 +287,15 @@ _REPEAT_CHAR = re.compile(r"(\S)\1{3,}")
 
 
 # ─── HTTP client (mirrors scripts/syllabus_mention_review.py) ─────────────────
+# Default HTTP timeout. The API is deployed on a free Render instance that
+# spins down when idle: the first request of a session pays a cold start that
+# routinely runs past a 60s budget, and the export/apply loops issue hundreds of
+# requests, so a spurious first-call timeout costs the whole run.
+DEFAULT_TIMEOUT = 180
+
+
 class Client:
-    def __init__(self, base: str, token: str, timeout: int = 60) -> None:
+    def __init__(self, base: str, token: str, timeout: int = DEFAULT_TIMEOUT) -> None:
         if requests is None:  # pragma: no cover - environment guard
             raise RuntimeError("the 'requests' package is required for live "
                                "export/apply calls but is not installed")
@@ -533,11 +589,21 @@ def load_topic_catalog(path: str) -> tuple[set[str], set[str], dict[str, str]]:
     """Load the operator-supplied topic catalog.
 
     Returns (valid_ids, orphan_ids, id->name). Per Preflight #2, this list is
-    NEVER derived — the operator supplies it. ``orphan_ids`` is only populated
-    when the catalog explicitly distinguishes pre-split-orphan rows (an entry
-    with a truthy ``orphaned``, ``status in {orphan, orphaned, pre_split_orphan}``,
-    or ``reviewed`` false); otherwise no row is treated as orphaned and only
-    ``unknown_topic`` can fire.
+    NEVER derived from the corpus — either the operator writes it by hand or the
+    ``catalog`` subcommand builds it from the taxonomy (which is not the same
+    thing as deriving it from the questions being reviewed).
+    ``orphan_ids`` is only populated when the catalog explicitly distinguishes
+    pre-split-orphan rows (an entry with a truthy ``orphaned``, ``status in
+    {orphan, orphaned, pre_split_orphan}``, or ``reviewed`` false); otherwise no
+    row is treated as orphaned and only ``unknown_topic`` can fire.
+
+    MICROTOPIC-ONLY, strict when known. A row carrying an explicit ``level``
+    that is not ``microtopic`` aborts the load by name: assigning a top-level
+    topic id routes the projected ``mock_question_bank`` row to the parent
+    instead of the leaf, which is exactly the drift migration 270 had to repair.
+    A row with NO ``level`` key is accepted unchanged — the hand-written UPSC
+    catalogues are flat ``[{id, text}]`` and predate the field, so this can only
+    reject a catalogue that states a level and states a wrong one.
     """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, list):
@@ -545,17 +611,141 @@ def load_topic_catalog(path: str) -> tuple[set[str], set[str], dict[str, str]]:
     valid: set[str] = set()
     orphan: set[str] = set()
     names: dict[str, str] = {}
+    non_leaf: list[str] = []
     for e in data:
         tid = e.get("id")
         if not tid:
             continue
+        level = e.get("level")
+        if level is not None and str(level).strip().lower() != MICROTOPIC_LEVEL:
+            non_leaf.append(f"{tid} (level={level!r})")
+            continue
         valid.add(tid)
-        names[tid] = e.get("text") or e.get("macro_topic") or tid
+        names[tid] = e.get("text") or e.get("name") or e.get("macro_topic") or tid
         status = str(e.get("status") or "").lower()
         if (e.get("orphaned") is True or e.get("reviewed") is False
                 or status in {"orphan", "orphaned", "pre_split_orphan"}):
             orphan.add(tid)
+    if non_leaf:
+        shown = ", ".join(non_leaf[:10])
+        more = f" (and {len(non_leaf) - 10} more)" if len(non_leaf) > 10 else ""
+        raise ValueError(
+            f"topic catalog carries {len(non_leaf)} non-microtopic row(s): {shown}{more}. "
+            f"Only level={MICROTOPIC_LEVEL!r} ids may be assigned; rebuild with "
+            f"`catalog` (which emits leaves only) or drop the parent rows."
+        )
     return valid, orphan, names
+
+
+# ─── catalog (build the --topic-catalog file) ─────────────────────────────
+def catalog_rows(topics: Iterable[dict], bodies: Iterable[str]) -> list[dict]:
+    """Narrow taxonomy rows to the catalogue this tool will accept.
+
+    Conjunctive, and both halves matter:
+
+    * ``level == 'microtopic'`` — leaves only, the same rule the UPSC
+      catalogues follow and ``load_topic_catalog`` now enforces on read.
+    * ``metadata.exams`` INTERSECTS ``bodies`` — a UNION across the requested
+      body keys, not one exam. ``topics.metadata.exams`` is a LIST of body keys
+      (``269_gap_microtopics.sql:60`` seeds ``{"tier":"official","exams":["upsc"]}``;
+      ``propose_pyq_topic_tags.py`` documents ``{"exams": ["sebi", "pfrda"]}``),
+      precisely because the regulatory bodies SHARE subjects — RBI Grade B sits
+      on the same Finance / Management / Economics / Commerce & Accountancy /
+      Costing / QRE rows as SEBI, PFRDA and IFSCA. Matching one body at a time
+      and concatenating would emit a row once per body it lists; intersecting
+      once emits each row exactly once.
+
+    Inactive rows are dropped (``is_active`` false), a missing ``is_active`` is
+    treated as active. Matching is case-folded on both sides. Sorted by
+    (subject_id, name, id) so the file is byte-stable across runs.
+    """
+    wanted = {str(b).strip().casefold() for b in bodies if str(b).strip()}
+    if not wanted:
+        raise ValueError("catalog_rows: at least one body key is required")
+    out: list[dict] = []
+    for t in topics:
+        if str(t.get("level") or "").strip().lower() != MICROTOPIC_LEVEL:
+            continue
+        if t.get("is_active") is False:
+            continue
+        meta = t.get("metadata")
+        exams = (meta or {}).get("exams") if isinstance(meta, dict) else None
+        if not isinstance(exams, (list, tuple, set)):
+            continue
+        listed = {str(x).strip().casefold() for x in exams if str(x).strip()}
+        matched = sorted(listed & wanted)
+        if not matched:
+            continue
+        out.append({
+            "id": t.get("id"),
+            "text": t.get("name") or t.get("slug") or t.get("id"),
+            "slug": t.get("slug"),
+            "subject_id": t.get("subject_id"),
+            "level": MICROTOPIC_LEVEL,
+            "exams": matched,
+        })
+    out.sort(key=lambda r: (str(r.get("subject_id") or ""), str(r.get("text") or ""),
+                            str(r.get("id") or "")))
+    return out
+
+
+def do_catalog(c: Client, args: argparse.Namespace) -> int:
+    """Build a microtopic-only ``--topic-catalog`` file for one or more bodies.
+
+    Read-only against ``GET {CMS}/topics``, which is the only route that returns
+    ``metadata`` (``admin_exam_intel_cms.py:3358``). It has no server-side
+    predicate on ``metadata.exams``, so the body filter is applied client-side;
+    ``level`` IS a server-side filter, so the leaf narrowing happens in the query
+    and only leaves cross the wire.
+    """
+    bodies = [b for b in (args.body or []) if str(b).strip()]
+    if not bodies:
+        print("error: at least one --body is required (the key to match against "
+              "topics.metadata.exams, e.g. --body rbi).", file=sys.stderr)
+        return 2
+
+    params: dict[str, Any] = {"level": MICROTOPIC_LEVEL}
+    if args.is_active:
+        params["is_active"] = "true"
+    subject_ids = [s for s in (args.subject_id or []) if str(s).strip()]
+    topics: list[dict] = []
+    if subject_ids:
+        for sid in subject_ids:
+            topics.extend(c.all_items(f"{CMS}/topics", {**params, "subject_id": sid}))
+    else:
+        topics.extend(c.all_items(f"{CMS}/topics", params))
+
+    rows = catalog_rows(topics, bodies)
+    by_body: dict[str, int] = {}
+    for r in rows:
+        for b in r["exams"]:
+            by_body[b] = by_body.get(b, 0) + 1
+    subjects = {r["subject_id"] for r in rows if r.get("subject_id")}
+
+    print(f"topics fetched: {len(topics)} (level={MICROTOPIC_LEVEL})")
+    print(f"catalog rows:   {len(rows)} across {len(subjects)} subject(s)")
+    print(f"bodies:         {dict(sorted(by_body.items()))}")
+    shared = sum(1 for r in rows if len(r["exams"]) > 1)
+    print(f"shared rows:    {shared} carry more than one of the requested bodies "
+          f"(emitted ONCE each)")
+    if not rows:
+        print("error: no microtopic carries any of the requested bodies in "
+              "metadata.exams — nothing to write.", file=sys.stderr)
+        return 1
+
+    if not args.apply:
+        for r in rows[:10]:
+            print(f"  {r['id']}  {r['text'][:70]}  exams={r['exams']}")
+        if len(rows) > 10:
+            print(f"  ... and {len(rows) - 10} more")
+        print("\nDRY RUN — nothing written. Re-run with --apply to write the file.")
+        return 0
+
+    out = Path(args.out)
+    out.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+    print(f"\nwrote {len(rows)} microtopic rows -> {out}")
+    return 0
 
 
 def _year_key(year: Any) -> str:
@@ -753,8 +943,8 @@ def do_sweep(args: argparse.Namespace) -> int:
     print("Fill 'decision' (verified|rejected|needs_correction) for every row you "
           "promote; blanks stay pending. On QUESTION rows you may also fill "
           "'assign_topic_id' (a topic id from the catalog -> creates a pending "
-          "primary tag) and 'difficulty' (easy|medium|hard). This CSV is the "
-          "audit trail — keep it.")
+          "primary tag) and 'difficulty' (easy|medium|hard, or 'none' to clear "
+          "an existing value). This CSV is the audit trail — keep it.")
     return 0
 
 
@@ -813,14 +1003,15 @@ def _validate_worksheet(rows: list[dict], valid_topic_ids: set[str]) -> list[str
                               f"question rows (row_type={row_type or '(blank)'!s})")
             continue
 
-        if difficulty and difficulty not in DIFFICULTIES:
+        if difficulty and difficulty not in DIFFICULTIES | {DIFFICULTY_CLEAR}:
             hint = ""
             if difficulty == "very_hard":
                 hint = (" — 'very_hard' is NOT a valid observed_difficulty: the "
                         "PYQ->mock projection rewrites it to 'medium' while the "
                         "heatmap reads it as 'hard'. Use 'hard'.")
             errors.append(f"row {row_id}: difficulty {_cell(r, 'difficulty')!r} is not "
-                          f"one of {sorted(DIFFICULTIES)}{hint}")
+                          f"one of {sorted(DIFFICULTIES)} "
+                          f"(or {DIFFICULTY_CLEAR!r} to clear it){hint}")
 
         if topic_id and topic_id not in valid_topic_ids:
             errors.append(f"row {row_id}: assign_topic_id {topic_id!r} is not in the "
@@ -894,7 +1085,7 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
     ok = failed = 0
     cur_year = None
     counts = {"verified": 0, "rejected": 0, "needs_correction": 0,
-              "tagged": 0, "difficulty": 0, "skipped": 0}
+              "tagged": 0, "difficulty": 0, "difficulty_cleared": 0, "skipped": 0}
 
     def flush(year: Any) -> None:
         print(f"  year {year}: verified={counts['verified']} "
@@ -902,6 +1093,7 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
               f"needs_correction={counts['needs_correction']} "
               f"tagged={counts['tagged']} "
               f"difficulty={counts['difficulty']} "
+              f"difficulty_cleared={counts['difficulty_cleared']} "
               f"skipped={counts['skipped']}")
 
     def pause() -> None:
@@ -930,11 +1122,13 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
         # a question whose difficulty or tag write failed must not be verified
         # on the strength of a worksheet row that only half landed.
         if difficulty:
+            clearing = difficulty == DIFFICULTY_CLEAR
             try:
                 c.patch(f"{CMS}/pyq-questions/{row_id}",
-                        {"reason": _write_reason(_DIFFICULTY_REASON, note),
-                         "payload": {"observed_difficulty": difficulty}})
-                counts["difficulty"] += 1
+                        {"reason": _write_reason(
+                            _DIFFICULTY_CLEAR_REASON if clearing else _DIFFICULTY_REASON, note),
+                         "payload": {"observed_difficulty": None if clearing else difficulty}})
+                counts["difficulty_cleared" if clearing else "difficulty"] += 1
                 ok += 1
             except RuntimeError as exc:
                 print(f"  {row_id}: difficulty — {exc}", file=sys.stderr)
@@ -995,7 +1189,32 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--api-base", default=None,
                    help="API base URL (default: $CCP_API_BASE)")
+    p.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
+                   help=f"per-request HTTP timeout in seconds (default "
+                        f"{DEFAULT_TIMEOUT}). The API is on a free Render "
+                        f"instance that spins down when idle, so the first "
+                        f"request of a run pays a cold start well past the 60s "
+                        f"the client used to allow. Applies to every GET, PATCH "
+                        f"and POST; ignored by the offline `sweep`.")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    cat = sub.add_parser("catalog", help="build a microtopic-only --topic-catalog "
+                                         "file for one or more exam bodies")
+    cat.add_argument("--body", action="append", default=None, required=True,
+                     help="body key to match against topics.metadata.exams; "
+                          "REPEATABLE and UNIONED, so one file can span the "
+                          "bodies that share subjects (e.g. --body rbi --body "
+                          "sebi --body pfrda --body ifsca). A microtopic listing "
+                          "several of them is emitted once.")
+    cat.add_argument("--subject-id", action="append", default=None,
+                     help="restrict to these subject id(s); repeatable. Omit to "
+                          "read every microtopic in the taxonomy and let the "
+                          "body filter do the narrowing.")
+    cat.add_argument("--is-active", action="store_true", default=False,
+                     help="ask the API for is_active=true rows only; inactive "
+                          "rows are dropped client-side regardless.")
+    cat.add_argument("--out", default="topic_catalog.json")
+    cat.add_argument("--apply", action="store_true", help="write the catalog file")
 
     e = sub.add_parser("export", help="pull pending questions + tags for a scope (read-only)")
     e.add_argument("--exam-id", default=DEFAULT_EXAM_ID)
@@ -1056,9 +1275,9 @@ def main(argv: list[str] | None = None) -> int:
     if not base or not token:
         print("error: set CCP_API_BASE and CCP_ADMIN_JWT", file=sys.stderr)
         return 2
-    c = Client(base, token)
+    c = Client(base, token, timeout=args.timeout)
     handler: Callable[[Client, argparse.Namespace], int] = {
-        "export": do_export, "apply": do_apply}[args.cmd]
+        "export": do_export, "apply": do_apply, "catalog": do_catalog}[args.cmd]
     return handler(c, args)
 
 
