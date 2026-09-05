@@ -156,6 +156,12 @@
     "subject": "quantitative-aptitude"
   },
   {
+    "id": "05f68c0c-9a50-48b6-b713-7393fdf49bfa",
+    "text": "Set-based data interpretation",
+    "slug": "qa-set-based-data-interpretation-8e13c5a7",
+    "subject": "quantitative-aptitude"
+  },
+  {
     "id": "ce23f17b-f621-46b0-bb72-fc926a0be3d4",
     "text": "Tabular data interpretation",
     "slug": "qa-tabular-data-interpretation-e6e4b3de",
@@ -342,6 +348,12 @@
     "subject": "english-language"
   },
   {
+    "id": "9cc0f630-ab4f-4a0a-b5b2-9212f18af346",
+    "text": "Sentence-level correctness selection",
+    "slug": "eng-sentence-level-correctness-selection-9d4e07c1",
+    "subject": "english-language"
+  },
+  {
     "id": "c18d927f-2eab-49db-b302-a017cf1f2193",
     "text": "Word interchange within a sentence",
     "slug": "eng-word-interchange-within-a-sentence-e4c29104",
@@ -459,6 +471,12 @@
     "id": "d24db813-295b-cb39-e6b3-327409910c6f",
     "text": "Word Choice",
     "slug": "word-choice",
+    "subject": "english-language"
+  },
+  {
+    "id": "abf57bec-5615-4320-a666-ff980779a0c2",
+    "text": "Argument evaluation in a passage",
+    "slug": "eng-argument-evaluation-in-a-passage-3f8c21ba",
     "subject": "english-language"
   },
   {
@@ -993,6 +1011,12 @@
     "id": "da8b77aa-4e53-4876-be17-f8f96e1f2913",
     "text": "Category and attribute matching puzzle",
     "slug": "reas-category-and-attribute-matching-puzzle-e5f2f3ac",
+    "subject": "general-intelligence-reasoning"
+  },
+  {
+    "id": "e452f72a-bd16-4faa-87c0-ca8608723b7c",
+    "text": "Clock-time scheduling puzzle",
+    "slug": "reas-clock-time-scheduling-puzzle-6b2a94df",
     "subject": "general-intelligence-reasoning"
   },
   {
