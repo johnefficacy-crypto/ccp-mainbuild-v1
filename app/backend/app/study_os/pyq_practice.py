@@ -33,6 +33,16 @@ from app.utils.safe import safe_required
 logger = logging.getLogger("career_copilot.study_os.pyq_practice")
 
 _SELECTABLE = ("verified", "published", "live")
+# max ids per IN() filter (PostgREST URL-length ceiling) — the repo-wide bound
+# (`exam_intelligence._BATCH`, `essay_builder._BATCH`, `reachability._BATCH`,
+# `pyq_papers._BATCH`). An unchunked `.in_()` over a whole exam's projected bank
+# (1000+ uuids ~ 40 KB of query string) overflows the request; the read then
+# fails and every fail-closed caller below reports it as "no availability" —
+# which is how `practice_ready_count` read 0 for EVERY paper on a healthy corpus.
+_ID_BATCH = 250
+# rows per range page (Supabase `db-max-rows` server-side cap). A bare `.limit(n)`
+# does not defeat it, so bulk reads paginate instead of trusting one response.
+_PAGE = 1000
 _ATTEMPT_TTL = timedelta(hours=24)
 _DEFAULT_LIMIT = 100
 _MAX_LIMIT = 200
@@ -68,6 +78,34 @@ def _require_uuid(value: str, field: str) -> None:
         raise PracticeInputError(f"{field} must be a valid UUID") from None
 
 
+def _chunks(items: list, n: int) -> list[list]:
+    return [items[i : i + n] for i in range(0, len(items), n)]
+
+
+def _read_paged(build, *, op: str) -> list[dict] | None:
+    """Range-paginate one PostgREST read. ``None`` on read failure — never a
+    partial page set, so a caller can distinguish "empty" from "could not read".
+
+    ``build(from_n, to_n)`` must return the query for the inclusive row slice and
+    MUST carry a stable ``.order(...)`` so successive pages partition the result.
+    """
+    out: list[dict] = []
+    offset = 0
+    while True:
+        rows = safe_required(
+            lambda f=offset: build(f, f + _PAGE - 1).execute(),
+            op=op,
+            log=logger,
+            allow_empty=True,
+        )
+        if rows is None:
+            return None
+        out.extend(rows)
+        if len(rows) < _PAGE:
+            return out
+        offset += _PAGE
+
+
 def _active_projection_ids(sb, candidate_ids: list[str]) -> frozenset[str]:
     """The subset of ``candidate_ids`` whose PYQ projection is currently active.
 
@@ -75,22 +113,32 @@ def _active_projection_ids(sb, candidate_ids: list[str]) -> frozenset[str]:
     projection in the table — this is a learner-facing per-click path. Raises on
     read failure (fail-closed): a practice set must never be assembled from a bank
     whose active-projection guard could not be evaluated.
+
+    The id list is chunked at ``_ID_BATCH``. "Bounded to the candidate ids" bounds
+    the SCAN, not the URL: the per-click launch path passes ~100 ids, but
+    ``practice_ready_counts_by_paper`` / ``practiceable_topic_ids`` pass an entire
+    exam's projected bank, which overflows a single request line.
     """
     if not candidate_ids:
         return frozenset()
-    rows = safe_required(
-        lambda: sb.table("pyq_mock_question_projections")
-        .select("mock_question_id")
-        .eq("sync_status", "active")
-        .in_("mock_question_id", candidate_ids)
-        .execute(),
-        op="pyq_practice.active_projections",
-        log=logger,
-        allow_empty=True,
-    )
-    if rows is None:
-        raise RuntimeError("pyq_practice: could not read active PYQ projections")
-    return frozenset(r["mock_question_id"] for r in rows)
+    found: set[str] = set()
+    for chunk in _chunks(list(candidate_ids), _ID_BATCH):
+        rows = safe_required(
+            lambda c=chunk: sb.table("pyq_mock_question_projections")
+            .select("mock_question_id")
+            .eq("sync_status", "active")
+            .in_("mock_question_id", c)
+            .execute(),
+            op="pyq_practice.active_projections",
+            log=logger,
+            allow_empty=True,
+        )
+        if rows is None:
+            # Fail the WHOLE probe on any chunk failure. A partial union would
+            # silently under-report availability instead of surfacing the fault.
+            raise RuntimeError("pyq_practice: could not read active PYQ projections")
+        found.update(r["mock_question_id"] for r in rows)
+    return frozenset(found)
 
 
 def _printed_order_meta(sb, pyq_question_ids: list[str]) -> dict[str, dict]:
@@ -103,18 +151,21 @@ def _printed_order_meta(sb, pyq_question_ids: list[str]) -> dict[str, dict]:
     must not silently fall back to arbitrary id order)."""
     if not pyq_question_ids:
         return {}
-    rows = safe_required(
-        lambda: sb.table("pyq_questions")
-        .select("id,display_order,question_number,source_question_ref")
-        .in_("id", pyq_question_ids)
-        .execute(),
-        op="pyq_practice.printed_order",
-        log=logger,
-        allow_empty=True,
-    )
-    if rows is None:
-        raise RuntimeError("pyq_practice: could not read source PYQ printed order")
-    return {r["id"]: r for r in rows}
+    meta: dict[str, dict] = {}
+    for chunk in _chunks(list(pyq_question_ids), _ID_BATCH):
+        rows = safe_required(
+            lambda c=chunk: sb.table("pyq_questions")
+            .select("id,display_order,question_number,source_question_ref")
+            .in_("id", c)
+            .execute(),
+            op="pyq_practice.printed_order",
+            log=logger,
+            allow_empty=True,
+        )
+        if rows is None:
+            raise RuntimeError("pyq_practice: could not read source PYQ printed order")
+        meta.update({r["id"]: r for r in rows})
+    return meta
 
 
 def _num(v) -> tuple[int, float]:
@@ -297,7 +348,8 @@ def practice_ready_counts_by_paper(
     if allowed is not None and not allowed:
         return {}
     now_iso = _now_iso()
-    try:
+
+    def _bank_page(from_n: int, to_n: int):
         q = (
             sb.table("mock_question_bank")
             .select("id,pyq_paper_id,valid_until")
@@ -305,15 +357,22 @@ def practice_ready_counts_by_paper(
             .in_("reviewer_status", list(_SELECTABLE))
             .not_.is_("pyq_question_id", "null")
             .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
-            .limit(50000)
         )
         if allowed is not None:
             q = q.in_("pyq_paper_id", list(allowed))
-        res = safe_required(
-            lambda: q.execute(), op="pyq_practice.ready_by_paper", log=logger, allow_empty=True
-        )
+        # Stable key so successive pages partition the exam's bank deterministically.
+        return q.order("id").range(from_n, to_n)
+
+    try:
+        # Range-paginated rather than one `.limit(50000)`: a bare limit does not
+        # defeat Supabase's `db-max-rows` cap, so a >1000-row exam was silently
+        # truncated to an arbitrary page and undercounted.
+        res = _read_paged(_bank_page, op="pyq_practice.ready_by_paper")
     except Exception:  # noqa: BLE001 — fail-closed to empty
         logger.warning("practice_ready_counts_by_paper: bank read failed", exc_info=True)
+        return {}
+    if res is None:
+        logger.warning("practice_ready_counts_by_paper: bank read failed (no data)")
         return {}
     candidates = [
         r
@@ -367,18 +426,18 @@ def practiceable_topic_ids(
     if not ids or not exam_id:
         return set()
     now_iso = _now_iso()
-    res = safe_required(
-        lambda: sb.table("mock_question_bank")
+    # Range-paginated for the same reason as `practice_ready_counts_by_paper`:
+    # `.limit(50000)` does not defeat the server-side `db-max-rows` cap.
+    res = _read_paged(
+        lambda f, t: sb.table("mock_question_bank")
         .select("id,topic_id,microtopic_id,valid_until,pyq_year")
         .in_("reviewer_status", list(_SELECTABLE))
         .eq("exam_id", exam_id)
         .not_.is_("pyq_question_id", "null")
         .or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
-        .limit(50000)
-        .execute(),
+        .order("id")
+        .range(f, t),
         op="pyq_practice.practiceable_topics",
-        log=logger,
-        allow_empty=True,
     )
     if not res:
         return set()

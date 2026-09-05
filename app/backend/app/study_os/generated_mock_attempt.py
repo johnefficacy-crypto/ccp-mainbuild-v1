@@ -51,12 +51,46 @@ _MIN_LOCKED_COVERAGE = 1
 # the value is computed server-side and passed to the RPC as p_expires_at).
 _ATTEMPT_TTL = timedelta(hours=24)
 
+# max ids per IN() filter (PostgREST URL-length ceiling) — the repo-wide bound
+# (`exam_intelligence._BATCH` and friends). An unchunked `.in_()` over a whole
+# exam's candidate set overflows the request line and fails the read.
+_ID_BATCH = 250
+# rows per range page (Supabase `db-max-rows` cap). A chunk of 250 questions can
+# yield >1000 option/stimulus rows, so the child reads page rather than trusting
+# one response.
+_PAGE = 1000
+
 # Fallbacks when a section's authored marks/negative_marking are absent. Marks are
 # section-bound for generated attempts (each section carries total marks +
 # negative_marking); per-question marks are derived from them and frozen into the
 # question_snapshot, exactly like template attempts freeze template-level marks.
 _DEFAULT_MARKS_PER_CORRECT = 1.0
 _DEFAULT_MARKS_PER_WRONG = 0.25
+
+
+def _chunks(items: list, n: int) -> list[list]:
+    return [items[i : i + n] for i in range(0, len(items), n)]
+
+
+def _read_paged(build, *, op: str) -> list[dict] | None:
+    """Range-paginate one PostgREST read. ``None`` on read failure — never a
+    partial page set. ``build(from_n, to_n)`` must carry a stable ``.order(...)``.
+    """
+    out: list[dict] = []
+    offset = 0
+    while True:
+        rows = safe_required(
+            lambda f=offset: build(f, f + _PAGE - 1).execute(),
+            op=op,
+            log=logger,
+            allow_empty=True,
+        )
+        if rows is None:
+            return None
+        out.extend(rows)
+        if len(rows) < _PAGE:
+            return out
+        offset += _PAGE
 
 
 def _parse_negative_marking(value) -> float:
@@ -77,50 +111,74 @@ def _load_questions(sb, question_ids: list[str]) -> dict[str, dict]:
     READ path (not a write). The ids come from A-PR2 selection over the readiness
     base pool, so every id resolves; options are attached so the frozen
     ``question_snapshot`` carries answer choices.
+
+    Every ``.in_()`` is chunked at ``_ID_BATCH`` (PostgREST URL-length ceiling) and
+    the child reads are range-paginated inside each chunk (``db-max-rows``). Both
+    bulk reads now RAISE on a read failure instead of degrading to ``[]``: with
+    chunking, a swallowed failure would yield a silently PARTIAL result, and every
+    caller already aborts on a missing bank row / optionless snapshot anyway — the
+    only caller that did not was ``practice_ready_counts_by_paper``, which turned
+    the empty load into a uniform ``practice_ready_count = 0``.
     """
     if not question_ids:
         return {}
-    q_rows = (
-        safe_required(
-            lambda: sb.table("mock_question_bank")
+    q_rows: list[dict] = []
+    for chunk in _chunks(list(question_ids), _ID_BATCH):
+        rows = safe_required(
+            lambda c=chunk: sb.table("mock_question_bank")
             .select("*")
-            .in_("id", question_ids)
+            .in_("id", c)
             .execute(),
             op="generated_mock_attempt.load_questions",
             log=logger,
             allow_empty=True,
         )
-        or []
-    )
-    opt_rows = (
-        safe_required(
-            lambda: sb.table("mock_question_options")
+        if rows is None:
+            raise RuntimeError(
+                "generated attempt: mock_question_bank read failed; refusing to "
+                "freeze or report readiness from a partial question set"
+            )
+        q_rows.extend(rows)
+    opt_rows: list[dict] = []
+    for chunk in _chunks(list(question_ids), _ID_BATCH):
+        page = _read_paged(
+            lambda f, t, c=chunk: sb.table("mock_question_options")
             .select("*")
-            .in_("question_id", question_ids)
+            .in_("question_id", c)
             .order("option_index")
-            .execute(),
+            .order("id")
+            .range(f, t),
             op="generated_mock_attempt.load_options",
-            log=logger,
-            allow_empty=True,
         )
-        or []
-    )
+        if page is None:
+            raise RuntimeError(
+                "generated attempt: mock_question_options read failed; refusing to "
+                "freeze or report readiness from a partial option set"
+            )
+        opt_rows.extend(page)
     opts_by_q: dict[str, list[dict]] = {}
     for o in opt_rows:
         opts_by_q.setdefault(o["question_id"], []).append(o)
     # PR-5/6 render fidelity: attach the projected shared-passage/stimulus
     # snapshot (migration 229) so a generated attempt over a projected PYQ freezes
     # its passage into question_snapshot alongside options.
-    stim_data = safe_required(
-        lambda: sb.table("mock_question_stimuli")
-        .select("*")
-        .in_("mock_question_id", question_ids)
-        .order("display_order")
-        .execute(),
-        op="generated_mock_attempt.load_stimuli",
-        log=logger,
-        allow_empty=True,
-    )
+    stim_data: list[dict] | None = []
+    for chunk in _chunks(list(question_ids), _ID_BATCH):
+        page = _read_paged(
+            lambda f, t, c=chunk: sb.table("mock_question_stimuli")
+            .select("*")
+            .in_("mock_question_id", c)
+            .order("display_order")
+            .order("id")
+            .range(f, t),
+            op="generated_mock_attempt.load_stimuli",
+        )
+        if page is None:
+            # Preserve the original posture: a stimulus read failure is fatal only
+            # for a projected PYQ (checked below), not for an authored-only set.
+            stim_data = None
+            break
+        stim_data.extend(page)
     # Fail closed: safe_required returns None only on read failure (empty success
     # is []). A projected comprehension PYQ must not freeze without its passage.
     if stim_data is None and any(r.get("pyq_question_id") for r in q_rows):
