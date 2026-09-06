@@ -1,0 +1,16 @@
+﻿question_number | question_text
+4 | Which of the following if correct, most invalidates the arguments in the third passage?
+11 | Out of the given statements, only one is grammatically correct. Choose that statement as the answer. If all the sentences are incorrect, then choose option (e) as the answer. [Option a: The Union Cabin et recently approved the auction of airwaves...]
+12 | Out of the given statements, only one is grammatically correct. Choose that statement as the answer. If all the sentences are incorrect, then choose option (e) as the answer. [Option a: Despite IndiaΓÇÖs open willingness to take part in the develop...]
+13 | Out of the given statements, only one is grammatically correct. Choose that statement as the answer. If all the sentences are incorrect, then choose option (e) as the answer. [Option a: Banksia canei , commonly known as the mountain banksia, is a...]
+31 | Which of the following time for Chemistry class is scheduled?
+32 | Which of the following subject is scheduled at last?
+33 | How many classes scheduled between Chemistry and Maths?
+34 | ____ class is scheduled 150 minutes after Maths clas s?
+35 | The number of classes scheduled between Physics and Chemistry is same as the number of classes scheduled before ____ class .
+115 | Find the ratio of people who like only car C to people who like car B.
+116 | People like only car A&C together is what percentage people like at least two cars?
+117 | Ratio of males to females who like only car A is 11:6 respectively. Find the people who like only car B&C together is how much more/less than males who like only car A?
+118 | If 550 people living in the society, then find the people who do not like any of the three cars.
+119 | People who like only car A and only car B together is how much percentage more/less than sum of the people who like only car A&B together and people who like only car C?
+(14 rows)

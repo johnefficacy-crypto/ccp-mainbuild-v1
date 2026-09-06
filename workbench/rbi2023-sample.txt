@@ -1,0 +1,33 @@
+﻿question_number | left
+100 | A paragraph has been mentioned below with blanks in each sentence of the paragraph. The bl
+101 | A paragraph has been mentioned below with blanks in each sentence of the paragraph. The bl
+102 | A paragraph has been mentioned below with blanks in each sentence of the paragraph. The bl
+103 | Four statements have been mentioned below. One or more statements may contain an error. It
+104 | Five statements have been mentioned below. One or more statements may contain an error. It
+105 | Which of the following sentences from the options given below is not coherent with the cen
+106 | Which of the following sentences from the options given below is not coherent with the cen
+107 | In the question given below, a sentence has been divided into different segments. Some of 
+108 | In the question given below, a sentence has been divided into different segments. Some of 
+109 | In the question given below, a sentence has been divided into different segments. Some of 
+110 | In the question given below, a sentence has been divided into different segments. Some of 
+111 | Consider the below information about 200 laptops being sold by five different stores among
+112 | Consider the below information about 200 laptops being sold by five different stores among
+113 | Consider the below information about 200 laptops being sold by five different stores among
+114 | Consider the below information about 200 laptops being sold by five different stores among
+115 | Consider the below information about 200 laptops being sold by five different stores among
+116 | Consider the below series: 12, 21, 46, 95, 176, X, Y What is the sum of X and Y?
+117 | Below are given two series which follow certain pattern. There are two missing values X an
+118 | Read the given information and answer the below questions. Consider the below two quadrati
+119 | Read the given information and answer the below questions. Consider the below two quadrati
+120 | Read the given information and answer the below questions. Certain students comprising of 
+121 | Read the given information and answer the below questions. Certain students comprising of 
+122 | Ansh borrowed 80 books from library A and 120 from library B. Some books are of English la
+123 | Consider the below given two equations. You are given two quantities below the equations n
+124 | Below are given two expressions and then two quantities (QI and QII) below it. Compare the
+125 | Anshu invested Rs. P in scheme X for 3 years at Compound Interest @ 20% per annum and Roni
+126 | Consider the below statements and then answer the question accordingly: I. X is a two digi
+127 | P litres of mixture contains milk and water, in which water is 25%. Which of the following
+128 | A circle of radius “r” metre is inscribed in a rectangle of length Y metre such that the c
+129 | In which of the following statements, profit percentage are equal? I. An article with cost
+130 | Consider the below data about 5 watches as follows: Watches Loss Discount % Marked Price A
+(31 rows)

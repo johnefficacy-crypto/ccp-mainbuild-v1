@@ -1,0 +1,61 @@
+﻿question_number | left
+131 | Consider the below data about 5 watches as follows: Watches Loss Discount % Mark
+132 | Consider the below data about 5 watches as follows: Watches Loss Discount % Mark
+133 | Consider the below data about 5 watches as follows: Watches Loss Discount % Mark
+134 | Consider the below data about 5 watches as follows: Watches Loss Discount % Mark
+135 | Read the given information and answer the below questions. A game is being playe
+136 | Read the given information and answer the below questions. A game is being playe
+137 | Read the given information and answer the below questions. A game is being playe
+138 | Read the given information and answer the below questions. A game is being playe
+139 | Find the ratio of age of Rahul after 6 years and age of Tina before 2 years. Sta
+140 | A car with speed of x km/hr can cover a distance of 2d km in 8 hrs. Speed of a b
+141 | In the word ‘GLASTONBURY’, change every vowel after k to the third consonant aft
+142 | Consider the following words which have one blank each. You are required to fill
+143 | Read the given information and answer the below questions. Input: erase 47 92 wo
+144 | Read the given information and answer the below questions. Input: erase 47 92 wo
+145 | Read the given information and answer the below questions. Input: erase 47 92 wo
+146 | Read the given information and answer the below questions. Input: erase 47 92 wo
+147 | Read the given information and answer the below questions. Input: erase 47 92 wo
+148 | Read the given information and answer the below questions. Below question consis
+149 | Read the given information and answer the below questions. Below question consis
+150 | Read the given information and answer the below questions. Below question consis
+151 | Read the given information and answer the below questions. Below question consis
+152 | Which of the following symbols should be placed in the blank spaces in order to 
+153 | Each of the questions below consists of a question and two/three statements give
+154 | Each of the questions below consists of a question and two/three statements give
+155 | Each of the questions below consists of a question and two/three statements give
+156 | Each of the questions below consists of a question and two/three statements give
+157 | Each of the questions below consists of a question and two/three statements give
+158 | Below is given a passage followed by certain assump- tions. You have to check wh
+159 | Statement: Excessive amounts of lead in drinking water, associated with certain 
+160 | Statement: Green marketing is concerned with choosing, developing, and promoting
+161 | The ministry of sports has been advised by a committee to take the highest award
+162 | Statement: In the city, over 75% of the people are living in slums and substanda
+163 | Statement: For-profit colleges serve far fewer students than either public or pr
+164 | Statement: According to the officials, paucity orphaned with organization has le
+165 | Statement: The solidity of bridge piers built on pilings depends largely on how 
+166 | Max is clearly an incompetent detective. This is because, he has solved a smalle
+167 | Study the following information carefully and answer the questions given below: 
+168 | Study the following information carefully and answer the questions given below: 
+169 | Study the following information carefully and answer the questions given below: 
+170 | Study the following information carefully and answer the questions given below: 
+171 | Study the following information carefully and answer the questions given below: 
+172 | Study the following information carefully and answer the questions given below: 
+173 | Study the following information carefully and answer the questions given below: 
+174 | Study the following information carefully and answer the questions given below: 
+175 | Study the following information carefully and answer the questions given below: 
+176 | Study the following information carefully and answer the questions given below: 
+177 | Study the following information carefully and answer the questions given below: 
+178 | Study the following information carefully and answer the questions given below: 
+179 | Study the following information carefully and answer the questions given below: 
+180 | Study the following information carefully and answer the questions given below: 
+181 | Study the following information carefully and answer the questions given below: 
+182 | Study the following information carefully and answer the questions given below: 
+183 | Study the following information carefully and answer the questions given below: 
+184 | Study the following information carefully and answer the questions given below: 
+185 | Study the following information carefully and answer the questions given below: 
+186 | Study the following information carefully and answer the questions given below: 
+187 | Study the following information carefully and answer the questions given below: 
+188 | Study the following information carefully and answer the questions given below: 
+189 | Study the following information carefully and answer the questions given below: 
+(59 rows)
