@@ -1,0 +1,66 @@
+[
+  {
+    "id": "1ad26e11-1723-44e6-bf0d-e9e705a8f63f",
+    "paper_id": "324856e3-f575-4741-b7fb-f5879f304cdb",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Eight persons, viz. A, B, C, D, E, F, G, and H are celebrating their birthdays on the 6th and 13th of May, June, July, and August of the same year. Each person has a different brand of laptop, such as Dell, Lenovo, Asus, Acer, Apple, Samsung, MSI, and HP. All the information is not necessarily in the same order. H celebrates on the 6th of the month having 31 days. The person who celebrates immediately after H has Dell. Three people celebrate between G and the one who has a Dell. C has Apple and celebrates in the month having 30 days. Two people celebrate between C and D, who has an Asus. Neither D nor F celebrates in May. The number of persons celebrating before D is one more than after E, who has HP. B, who has Lenovo, celebrates before A. A neither has Samsung nor Dell. The one who has an Acer celebrates in July.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "1323449c-67e2-4f2b-afce-aed87cbba863",
+      "90e0a40c-336f-48fd-9c8c-f4f40abda007",
+      "9493f208-b993-4f1c-8d56-404cbf702e47",
+      "9711c2d3-6fb2-4f64-bc6c-94bec3f53344"
+    ],
+    "link_status_by_question": {
+      "90e0a40c-336f-48fd-9c8c-f4f40abda007": "verified",
+      "1323449c-67e2-4f2b-afce-aed87cbba863": "verified",
+      "9493f208-b993-4f1c-8d56-404cbf702e47": "verified",
+      "9711c2d3-6fb2-4f64-bc6c-94bec3f53344": "verified"
+    }
+  },
+  {
+    "id": "226ab178-46ae-4a5a-8476-782f8aaede3d",
+    "paper_id": "324856e3-f575-4741-b7fb-f5879f304cdb",
+    "section_id": null,
+    "stimulus_type": "table",
+    "content_text": "A numerical machine, when given an input, performs certain functions in each step and obtains the final output. The following is an illustration of the numerical machine.\nInput: 15 66 27 36 62 93 90\nStep 1: 93 15 66 27 36 62 90\nStep 2: 93 66 15 27 36 62 90\nStep 3: 93 66 90 15 27 36 62\nStep 4: 93 66 90 36 15 27 62\nStep 5: 93 66 90 36 27 15 62\nStep 6: 93 66 90 36 27 62 15\nStep 6 is the last and final step of the given input. Find the logic of the given input and perform the same steps on the following input to answer the questions given below.\nInput: 54 16 87 25 48 67 32",
+    "language": "en",
+    "display_order": 2,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "023df684-a039-49a5-9934-cfe8b7e5a961",
+      "3c1c9326-f66d-42dc-be0d-71129b43c68c",
+      "a5d7c19a-7f42-4695-a484-877f7a84171f",
+      "fec7d98a-90fc-40a3-8e8e-5cbae54ae78b",
+      "ffb6d5a3-0888-4f0a-90cd-f1ec4e3e65a7"
+    ],
+    "link_status_by_question": {
+      "023df684-a039-49a5-9934-cfe8b7e5a961": "verified",
+      "fec7d98a-90fc-40a3-8e8e-5cbae54ae78b": "verified",
+      "a5d7c19a-7f42-4695-a484-877f7a84171f": "verified",
+      "3c1c9326-f66d-42dc-be0d-71129b43c68c": "verified",
+      "ffb6d5a3-0888-4f0a-90cd-f1ec4e3e65a7": "verified"
+    }
+  },
+  {
+    "id": "aaf8cab3-f0dc-4cb9-8b54-2c24a5e2ce51",
+    "paper_id": "a8476f1b-1422-4c9c-9279-74661254b791",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Rearrange the following sentences in the proper sequence to form a meaningful paragraph, then answer the question.\nA. With reusable rockets drastically cutting costs, space exploration is shifting from being a government monopoly to a commercial frontier.\nB. Private companies are leading the charge, planning ambitious projects ranging from lunar mining to space tourism.\nC. Yet critics argue that unchecked commercialization risks turning outer space into another arena of exploitation and inequality.\nD. International cooperation remains essential, as issues like orbital debris and planetary protection transcend national boundaries.\nE. The dream of colonizing Mars has moved from science fiction to serious planning, though technological and ethical hurdles remain daunting.\nF. Advances in artificial intelligence and robotics are making deep-space missions more sustainable by reducing reliance on human crews.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "59f31669-7079-4752-b8de-dc9c84c2eda9",
+      "97186d05-4d35-4f24-a869-ef6b78317ae5"
+    ],
+    "link_status_by_question": {
+      "59f31669-7079-4752-b8de-dc9c84c2eda9": "verified",
+      "97186d05-4d35-4f24-a869-ef6b78317ae5": "verified"
+    }
+  }
+]

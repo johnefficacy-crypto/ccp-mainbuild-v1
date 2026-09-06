@@ -1,0 +1,282 @@
+[
+  {
+    "id": "f4316992-2fc5-4da7-9278-62a1e2975449",
+    "paper_id": "23365954-5406-4542-bc91-a4763175c2f4",
+    "section_id": null,
+    "stimulus_type": "passage",
+    "content_text": "The rise of technology has profoundly influenced nearly every aspect of modern life, fundamentally reshaping industries and transforming daily routines. Over the past few decades, technological advancements such as automation, artificial intelligence (AI), and machine learning have become central to many sectors, from manufacturing to healthcare. These innovations have introduced remarkable efficiencies, enabling businesses to streamline operations and reduce costs. For instance, automated systems in factories can perform repetitive tasks with high precision, minimizing human error and enhancing productivity.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "060b3bec-26eb-4a42-9111-5c7cf8473625",
+      "3847dfca-5d4c-4e45-9240-beed4fe407f2",
+      "5c13701f-d6e4-4de0-a85b-0ff2e82ed07f",
+      "771ce26f-b973-4a54-a904-aa7e3501999d",
+      "841ae068-aea7-45c2-a41b-fe4335f29b37",
+      "b9df92ff-c4e4-47bd-b8b2-90e5a8cc73ae",
+      "c11475b7-4638-48f1-9e9a-0445876e1034"
+    ],
+    "link_status_by_question": {
+      "5c13701f-d6e4-4de0-a85b-0ff2e82ed07f": "verified",
+      "060b3bec-26eb-4a42-9111-5c7cf8473625": "verified",
+      "b9df92ff-c4e4-47bd-b8b2-90e5a8cc73ae": "verified",
+      "841ae068-aea7-45c2-a41b-fe4335f29b37": "verified",
+      "3847dfca-5d4c-4e45-9240-beed4fe407f2": "verified",
+      "c11475b7-4638-48f1-9e9a-0445876e1034": "verified",
+      "771ce26f-b973-4a54-a904-aa7e3501999d": "verified"
+    }
+  },
+  {
+    "id": "812b7598-b881-4413-a9e4-a64b68ee1e9e",
+    "paper_id": "51c43de4-c6ee-4c5b-89e9-15c5a4f2ea77",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Eight persons — Harper, Zane, Nova, Orion, Luna, Atlas, Vega, and Lyra — consist of a family of three generations. There are three females and two married couples in the family. For every person in the family, either both or none of the parents are alive. Zane's sister-in-law is the mother of Atlas. Vega is an unmarried female. Atlas's mother doesn't have any siblings. Harper is the mother-in-law of Orion, who is the mother of two children. Nova is the grandfather of Atlas, who is the nephew of Luna.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "604dbd30-efc1-4855-90fc-db0cec1ef276",
+      "72bfaad3-c34f-438b-a030-82974d962840",
+      "c9a62049-9d47-4eb8-8090-f8c068596141",
+      "e5e22611-99ac-4052-a46b-03b3b6dfb3b7"
+    ],
+    "link_status_by_question": {
+      "72bfaad3-c34f-438b-a030-82974d962840": "verified",
+      "e5e22611-99ac-4052-a46b-03b3b6dfb3b7": "verified",
+      "c9a62049-9d47-4eb8-8090-f8c068596141": "verified",
+      "604dbd30-efc1-4855-90fc-db0cec1ef276": "verified"
+    }
+  },
+  {
+    "id": "632505fc-20f5-4a4b-98fb-0bbacd318b07",
+    "paper_id": "51c43de4-c6ee-4c5b-89e9-15c5a4f2ea77",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Ten persons, X, Y, Z, M, N, O, P, Q, R, and S, are staying in two different flats, namely Flat Alpha and Flat Beta, in a five-storey building. The lowermost floor is numbered as 1, and the floor immediately above it is numbered as 2, and so on. Z stays on an odd-numbered floor in Flat Alpha and two floors above R but in different flats. Two floors are between Y and M, who stays in Flat Beta on the topmost floor where both stay in the same flat. Both X and S stay on the same floor, where S neither stays in the same flat as Z nor stays below Y. The number of floors above N is the same as the number of floors below Q. S stays above O, who stays on the adjacent floor of P.",
+    "language": "en",
+    "display_order": 2,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "0dfb0389-494f-4b88-bbd0-04d26192a566",
+      "33f5bc51-298d-4b27-80e5-90e72ec8af26",
+      "649b73c0-79e6-4907-88fd-feb22e5379fd",
+      "da42d118-aaaa-4815-ac8a-df9dc904be2b",
+      "e3d8429c-66bf-465d-9991-5d94a413efb0"
+    ],
+    "link_status_by_question": {
+      "649b73c0-79e6-4907-88fd-feb22e5379fd": "verified",
+      "da42d118-aaaa-4815-ac8a-df9dc904be2b": "verified",
+      "e3d8429c-66bf-465d-9991-5d94a413efb0": "verified",
+      "33f5bc51-298d-4b27-80e5-90e72ec8af26": "verified",
+      "0dfb0389-494f-4b88-bbd0-04d26192a566": "verified"
+    }
+  },
+  {
+    "id": "b4423244-4fe8-4377-806d-3023e2a17722",
+    "paper_id": "51c43de4-c6ee-4c5b-89e9-15c5a4f2ea77",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Ten persons Ethan, Olivia, Rohan, Liam, Norah, Mia, Harper, Isabella, Daniel and Ava performed in a competition on the 12th and 23rd of each month among June, July, August, September and October, such that only one person performed on a date of a month. Mia and Liam performed on the same dates but in different months. Ethan's performance was immediately after that of Liam. Only three performances happened between the performances of Ethan and Olivia, who performed on an even-numbered date of the month having only 30 days. Olivia performed before Liam. Four performances happened in between the performances of Ava and Mia. Harper performed on an odd-numbered date of the month having 31 days but not in August. Three performances happened between the performances of Harper and Noah. Daniel and Isabella performed on consecutive turns but in different months. Daniel did not perform in a month whose total number of days is even.",
+    "language": "en",
+    "display_order": 3,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "04cb450f-2a15-4af3-8f3f-261acf778429",
+      "1257cd2b-5e04-40c9-9336-67e13e41e4a2",
+      "29bcd77c-4860-429b-86c0-6f4693cb0247",
+      "45a6a8d5-52cb-4355-a5c1-188133d206f8",
+      "cd28117d-ad42-44b2-89c1-218e74f24906"
+    ],
+    "link_status_by_question": {
+      "04cb450f-2a15-4af3-8f3f-261acf778429": "verified",
+      "29bcd77c-4860-429b-86c0-6f4693cb0247": "verified",
+      "45a6a8d5-52cb-4355-a5c1-188133d206f8": "verified",
+      "cd28117d-ad42-44b2-89c1-218e74f24906": "verified",
+      "1257cd2b-5e04-40c9-9336-67e13e41e4a2": "verified"
+    }
+  },
+  {
+    "id": "cbe7d796-1b39-4d3f-9461-22749d249bbd",
+    "paper_id": "5fc3f464-ca7e-4e26-9f99-4c230c6dab74",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Ten persons, namely M, N, O, P, Q, R, S, T, U, and V, have a meeting on two different dates viz. 9th and 26th of five different months among March, April, June, July and September of the same year, but not necessarily in the given order. Q and U have a meeting in a month having 31 days and 30 days respectively. At least three people have a meeting before Q and after U. Both N and U have a meeting in the same month. S has a meeting in one of the months before N. Only three people have a meeting between S and T. O has a meeting four months before T, but not on an even-numbered date. P, who has a meeting in April, has a meeting in one of the months before M and one of the months after R. Both R and V do not have a meeting on the same numbered date. More than two people have a meeting between V and U. Both P and U have a meeting on the same numbered date.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "13452ac5-49dd-4413-a0a1-2453e00a4775",
+      "7a1d4e98-db99-4587-a9a2-2feb9a4e288f",
+      "a72a9ec9-81ab-4521-84e1-0cdc033d7cf3",
+      "ab69edb7-2254-411b-8352-3ca7b7ba6220",
+      "ce0272eb-49ae-4e1e-bfba-5a7168c211d8"
+    ],
+    "link_status_by_question": {
+      "a72a9ec9-81ab-4521-84e1-0cdc033d7cf3": "verified",
+      "13452ac5-49dd-4413-a0a1-2453e00a4775": "verified",
+      "7a1d4e98-db99-4587-a9a2-2feb9a4e288f": "verified",
+      "ce0272eb-49ae-4e1e-bfba-5a7168c211d8": "verified",
+      "ab69edb7-2254-411b-8352-3ca7b7ba6220": "verified"
+    }
+  },
+  {
+    "id": "fcbf6618-4fe0-4b00-a93d-430892ddcdb6",
+    "paper_id": "5fc3f464-ca7e-4e26-9f99-4c230c6dab74",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "A certain number of persons are sitting in a linear row such that all of them are facing towards the north. M sits fourth to the left of O. N sits seventh to the right of M. The number of persons sitting between M and O is the same as the number of persons sitting between M and Q. Only five persons sit between N and R. The number of persons sitting between Q and R is the same as the number of persons sitting between R and S. P sits fourth from the right end and is an immediate neighbour of N. S sits twelfth from the left end of the row. Not more than 20 people are there in the row.",
+    "language": "en",
+    "display_order": 2,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "06abf31b-cf25-4378-af7e-a6b411a1953d",
+      "1ecc2c85-c65b-41ca-8545-c8cb2b536e51",
+      "79ecb601-c50b-4b3a-a966-8da23a3352d2"
+    ],
+    "link_status_by_question": {
+      "06abf31b-cf25-4378-af7e-a6b411a1953d": "verified",
+      "1ecc2c85-c65b-41ca-8545-c8cb2b536e51": "verified",
+      "79ecb601-c50b-4b3a-a966-8da23a3352d2": "verified"
+    }
+  },
+  {
+    "id": "7e042791-af22-4cc3-9332-006e88bcc159",
+    "paper_id": "66e81f5c-febc-40fe-b835-d0a52ff55858",
+    "section_id": null,
+    "stimulus_type": "table",
+    "content_text": "Directions (20- 21): Read the data carefully and answer the following questions. Following table represents the ratio of sale of Power bank to Earbuds in a store from May to October and the average sale of Power bank and Earbuds in respective months. Month Ratio of sale of Power bank to Earbuds Average sale of Power bank and Earbuds May 2: 3 750 June 4: 11 750 July 13: 7 500 August 5: 3 600 September 3: 5 400 October 5: 6 550",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "2a2c658e-2101-400b-9c92-cf215e0feed5",
+      "3393b557-ccc0-4d15-8c22-76a84e15e650",
+      "9e9c8470-a799-4e81-bdf5-221c4bc343f2",
+      "a9b65ed0-c6a2-4856-9d89-fe35c4f569ba",
+      "d1b1d912-4df5-4a98-b306-7b91df112514",
+      "e41fbf74-5f44-41b1-9242-c141f65a137d"
+    ],
+    "link_status_by_question": {
+      "3393b557-ccc0-4d15-8c22-76a84e15e650": "verified",
+      "2a2c658e-2101-400b-9c92-cf215e0feed5": "verified",
+      "a9b65ed0-c6a2-4856-9d89-fe35c4f569ba": "verified",
+      "d1b1d912-4df5-4a98-b306-7b91df112514": "verified",
+      "e41fbf74-5f44-41b1-9242-c141f65a137d": "verified",
+      "9e9c8470-a799-4e81-bdf5-221c4bc343f2": "verified"
+    }
+  },
+  {
+    "id": "4a016ef9-5994-4225-9a1b-389bb12f34e5",
+    "paper_id": "9c9d165b-52e5-4a81-9239-7777012509e0",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "Direction (11-15): Read the following information carefully and answer the questions. Three friends Mayank, Isha and Lalit prepared for an exam to get their dream job. Each dedicated certain hours of time in three domains such as technical, non-technical and general knowledge in a month. Mayank spent 60 hours totally on non-technical preparation which is 30 hours less than the time he spent on technical preparation. The ratio of the number of hours spent by Lalit on technical preparation to the number of hours spent by Mayank on general knowledge is 7: 5. The total number of hours dedicated by Mayank on total is 200 hours which is 56 th of the number of hours dedicated by Isha on total. The number of hours spent by Isha on non-technical preparation is 40 hours more than the number of hours spent by Mayank on general knowledge. The number of hours spent by Isha on technical preparation is 20% more than the number of hours spent by Lalit on same preparation. The ratio of the number of hours spent by Isha and Lalit on general knowledge is 3:2. Three friends spent totally 190 hours on non-technical preparation.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "44816574-6548-4df3-9506-39d12ae5f7af",
+      "6451c866-f439-48d9-8da0-2a011c5bfe2a",
+      "6eecc4fc-b56d-4d77-9bff-dca2135a2158",
+      "c163cda2-14d6-483d-8d91-6eb973c993d5",
+      "fc03dfa9-9db0-479c-bfef-2977fe754263"
+    ],
+    "link_status_by_question": {
+      "6eecc4fc-b56d-4d77-9bff-dca2135a2158": "verified",
+      "44816574-6548-4df3-9506-39d12ae5f7af": "verified",
+      "fc03dfa9-9db0-479c-bfef-2977fe754263": "verified",
+      "c163cda2-14d6-483d-8d91-6eb973c993d5": "verified",
+      "6451c866-f439-48d9-8da0-2a011c5bfe2a": "verified"
+    }
+  },
+  {
+    "id": "9bac1a10-c309-4e42-90a5-c7ee2c946220",
+    "paper_id": "9c9d165b-52e5-4a81-9239-7777012509e0",
+    "section_id": null,
+    "stimulus_type": "table",
+    "content_text": "Directions (21-25): Answer the questions based on the information given below. The given table shows the average number of spoons (wooden and plastic) and percentage of wooden spoons sold out of total number of spoons sold, by five different sellers. Total number of spoons = Number of (wooden + plastic) spoons. Person Average Number of spoons sold Percentage of wooden spoons sold out of total number of spoons sold A 125 40 % B 240 45 % C 120 25 % D 400 30 % E 250 60 %",
+    "language": "en",
+    "display_order": 2,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "04baa82e-d95f-4291-91b9-9c89b9d79d71",
+      "24e184c0-df07-4ecc-898d-b0c2aa1283b4",
+      "5558461d-2e19-441b-a831-c43123578877",
+      "92994815-47c4-4c32-ac20-756f8d5c3a47",
+      "a6fa25ce-9307-4273-a13b-457c29ed98fa"
+    ],
+    "link_status_by_question": {
+      "92994815-47c4-4c32-ac20-756f8d5c3a47": "verified",
+      "04baa82e-d95f-4291-91b9-9c89b9d79d71": "verified",
+      "24e184c0-df07-4ecc-898d-b0c2aa1283b4": "verified",
+      "5558461d-2e19-441b-a831-c43123578877": "verified",
+      "a6fa25ce-9307-4273-a13b-457c29ed98fa": "verified"
+    }
+  },
+  {
+    "id": "8ee132b5-b25a-4550-9c87-e86fe489059d",
+    "paper_id": "fe8f3cf8-eb78-4130-ada2-715d9ffd819f",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "There are seven members G, Q, D, E, T, U, and H in the family with three generations. There is a couple in each generation. Q is the daughter-in-law of G, who has two children. U is the son of D and does not have any siblings. U is married to H. E is unmarried. There is no single parent in the family.",
+    "language": "en",
+    "display_order": 1,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "01f649fd-1d6e-42d0-a603-2ada9458a2bf",
+      "4a55abae-7d82-4a29-a082-662c66fe5987"
+    ],
+    "link_status_by_question": {
+      "01f649fd-1d6e-42d0-a603-2ada9458a2bf": "verified",
+      "4a55abae-7d82-4a29-a082-662c66fe5987": "verified"
+    }
+  },
+  {
+    "id": "a692f909-f20d-4b37-9c02-9a3b050c2f46",
+    "paper_id": "fe8f3cf8-eb78-4130-ada2-715d9ffd819f",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "A girl started walking from point A towards east for 7m to reach point B. Then, she walks for 4m towards south to reach point C. Then, she takes a left turn and walks for 9m to reach point D. After this she walks for 5m in north direction to reach point E. A boy started walking towards north from point F for 14m to reach point G. Then, he takes a right turn and walks for 7m to reach point I. Then finally he takes a right turn and walks for 10m to reach point E.",
+    "language": "en",
+    "display_order": 2,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "2ca25634-cd1d-4f6d-80ba-3d8a8b9d9027",
+      "8101a505-3869-414f-9b66-0d9b5122ab68",
+      "b13d9ede-1293-4c36-ae62-5e2365bdf06a",
+      "e017f891-419c-4db9-a989-a3d6da7a931d"
+    ],
+    "link_status_by_question": {
+      "2ca25634-cd1d-4f6d-80ba-3d8a8b9d9027": "verified",
+      "e017f891-419c-4db9-a989-a3d6da7a931d": "verified",
+      "b13d9ede-1293-4c36-ae62-5e2365bdf06a": "verified",
+      "8101a505-3869-414f-9b66-0d9b5122ab68": "verified"
+    }
+  },
+  {
+    "id": "6974b5f0-b0d8-49fb-835a-540921477b4f",
+    "paper_id": "fe8f3cf8-eb78-4130-ada2-715d9ffd819f",
+    "section_id": null,
+    "stimulus_type": "caselet",
+    "content_text": "A, E, G, H, K, M, R and V are sitting in a row that runs from East to West, all facing North, but not necessarily in the same order. V is sitting 2nd to the left of G. Only one person is sitting between V and K. M is sitting beside V. G is sitting 2nd to the left of H. M is sitting second to right of E. The number of persons sitting to the left of K is same as the number of persons sitting to the right of A. R is not sitting at any extreme end.",
+    "language": "en",
+    "display_order": 3,
+    "reviewer_status": "verified",
+    "question_ids": [
+      "4474f5d0-e945-4511-935d-8d7ed50a344c",
+      "66c297b8-70e0-4df7-9cf5-7abe340f5e0e",
+      "c21c2406-b9a2-4dc9-8d91-c588bbb15b43",
+      "ced3a18c-7c15-4395-8efb-0e684aa9730e",
+      "d2312a22-1769-45e6-9af9-95e09354e332"
+    ],
+    "link_status_by_question": {
+      "4474f5d0-e945-4511-935d-8d7ed50a344c": "verified",
+      "d2312a22-1769-45e6-9af9-95e09354e332": "verified",
+      "ced3a18c-7c15-4395-8efb-0e684aa9730e": "verified",
+      "66c297b8-70e0-4df7-9cf5-7abe340f5e0e": "verified",
+      "c21c2406-b9a2-4dc9-8d91-c588bbb15b43": "verified"
+    }
+  }
+]
