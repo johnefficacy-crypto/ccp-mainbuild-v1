@@ -888,6 +888,22 @@ def get_exam_pyq_summary(
 #: resolve to — the question's section, or its primary tag's topic. NOT
 #: section_label: the CSAT papers carry three different spellings of it and two
 #: carry NULL.
+# Pins one exam's reachability series to a single subject, so the chart plots
+# one paper family rather than every eligible paper of the exam.
+#
+# NOT THE ANSWER TO A CROWDED AXIS. It has one entry and should keep close to
+# one: pinning discards every paper outside the subject, so it only earns its
+# place where the exam genuinely has one canonical series and the rest are
+# different exams wearing the same name. UPSC qualifies — GS Paper I is the
+# series, CSAT is a separate qualifying paper that happened to collide on the
+# x-axis. NABARD, SEBI, IFSCA and PFRDA do not: their papers are all part of the
+# same exam, and choosing one subject would be an editorial claim the data does
+# not support, dropping 40 of NABARD's 41 papers to tidy the rendering.
+#
+# An exam whose axis is crowded because it genuinely has many papers is a layout
+# problem — a wider card, horizontal scroll, grouping by phase — and belongs in
+# the chart, not here. ReachabilityTrendCard gives each paper its own category
+# when a year holds more than one, which is correct but not by itself roomy.
 REACHABILITY_SERIES_SUBJECT: dict[str, str] = {
     # UPSC CSE — General Studies Paper I.
     "upsc-cse": "09db7afb-0864-46c9-b900-1510b60c0011",
