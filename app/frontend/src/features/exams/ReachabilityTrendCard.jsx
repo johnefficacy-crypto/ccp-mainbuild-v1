@@ -51,17 +51,71 @@ import {
  */
 
 /**
+ * Vertical nudges that keep the three end labels legible when two bands finish
+ * on close counts.
+ *
+ * The labels sit at the series' own y, so bands whose last values are near each
+ * other collide — at Y_AXIS_MAX 65 over a ~250px plot, roughly 3.7px per
+ * question, so anything inside ~4 questions overlaps an 11px label. This ranks
+ * the bands by their final value and pushes each one down only as far as the
+ * band above it needs, so a chart whose bands finish far apart is untouched.
+ */
+export function endLabelOffsets(lastRow, bands = REACHABILITY_BANDS) {
+  const PX_PER_QUESTION = 250 / Y_AXIS_MAX;
+  const MIN_PX = 13;
+  const offsets = {};
+  if (!lastRow) return offsets;
+  const ranked = bands
+    .map((band) => ({ band, value: Number(lastRow[band]) || 0 }))
+    .sort((a, b) => b.value - a.value);
+  let prevY = null;
+  ranked.forEach(({ band, value }) => {
+    const y = (Y_AXIS_MAX - value) * PX_PER_QUESTION;
+    const pushed = prevY === null ? y : Math.max(y, prevY + MIN_PX);
+    offsets[band] = pushed - y;
+    prevY = pushed;
+  });
+  return offsets;
+}
+
+/**
+ * A label that identifies one paper, used when a year holds more than one.
+ *
+ * Bare years cannot label a per-paper series: NABARD ran a morning and an
+ * evening shift and two phases, so 2022 alone covers sixteen papers and the
+ * axis read "2022, 2022, 2022 ...". Prefer the operator-typed set label, then
+ * the phase, then whatever of the paper code is not already in the year.
+ */
+export function paperAxisLabel(row) {
+  const year = row?.year == null ? "" : String(row.year);
+  const set = (row?.set_label || "").trim();
+  if (set) return year ? `${year} ${set}` : set;
+  const code = (row?.paper_code || "").trim();
+  if (code) {
+    const tail = code
+      .split("-")
+      .filter((part) => part && part !== year)
+      .slice(-2)
+      .join(" ");
+    if (tail) return year ? `${year} ${tail}` : tail;
+  }
+  const phase = (row?.phase_name || "").trim();
+  if (phase) return year ? `${year} ${phase}` : phase;
+  return year || row?.paper_id || "";
+}
+
+/**
  * Direct end-label for one series. The categorical palette clears the CVD
  * separation floor but not by a wide margin, so identity carries on the label
  * as well as the hue — never on color alone.
  */
-function EndLabel({ x, y, value, index, total, band }) {
+function EndLabel({ x, y, value, index, total, band, offsetY = 0 }) {
   if (index !== total - 1) return null;
   return (
     <text
       x={x + 8}
       y={y}
-      dy={4}
+      dy={4 + offsetY}
       fontSize={11}
       fontWeight={600}
       fill={BAND_COLOR[band]}
@@ -244,6 +298,21 @@ export default function ReachabilityTrendCard({ examSlug = null, phaseId = null 
   const lastIndex = rows.length - 1;
   const xDomainStart = rows[0].year;
   const xDomainEnd = rows[lastIndex].year;
+  // A numeric year axis is only honest while each year holds ONE paper. The
+  // moment two share a year they land on the same x, the series double back on
+  // themselves and the tick strip repeats the year once per paper. Exams with
+  // shifts or phases (NABARD, SEBI, IFSCA, PFRDA) are all in that state; UPSC is
+  // not, because REACHABILITY_SERIES_SUBJECT pins it to one subject. So keep the
+  // numeric axis — and its true spacing across skipped years — only when the
+  // years are distinct, and fall back to one category per paper when they are
+  // not. See the endpoint docstring: this read is per paper by design.
+  const yearsAreUnique =
+    new Set(rows.map((r) => r.year)).size === rows.length &&
+    rows.every((r) => r.year != null);
+  const chartRows = yearsAreUnique
+    ? rows
+    : rows.map((r) => ({ ...r, x: paperAxisLabel(r) }));
+  const endOffsets = endLabelOffsets(rows[lastIndex]);
   // The prose is editorial, written against a corpus of a known size. If the
   // endpoint now returns a different number of papers, say so rather than
   // letting stale sentences sit silently under fresh counts.
@@ -264,24 +333,42 @@ export default function ReachabilityTrendCard({ examSlug = null, phaseId = null 
       <div className="mt-4 grid lg:grid-cols-[minmax(0,1fr)_15rem] gap-4">
         <div className="h-72" data-testid="reachability-chart">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={rows} margin={{ top: 8, right: 78, bottom: 4, left: 0 }}>
+            <LineChart
+              data={chartRows}
+              margin={{ top: 8, right: 78, bottom: yearsAreUnique ? 4 : 56, left: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD3" vertical={false} />
               {/* Numeric, not categorical. The series can skip a year whenever
                   a paper is unassessed, and a category axis would draw a
                   two-year gap the same width as a one-year step, overstating
                   how fast the trend moved. A number axis puts each paper at its
                   true distance. */}
-              <XAxis
-                dataKey="year"
-                type="number"
-                domain={[xDomainStart, xDomainEnd]}
-                ticks={rows.map((r) => r.year)}
-                allowDecimals={false}
-                stroke="#7A6A55"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
+              {yearsAreUnique ? (
+                <XAxis
+                  dataKey="year"
+                  type="number"
+                  domain={[xDomainStart, xDomainEnd]}
+                  ticks={rows.map((r) => r.year)}
+                  allowDecimals={false}
+                  stroke="#7A6A55"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+              ) : (
+                <XAxis
+                  dataKey="x"
+                  type="category"
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={56}
+                  stroke="#7A6A55"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+              )}
               <YAxis
                 domain={[0, Y_AXIS_MAX]}
                 // Without explicit ticks the 0-65 domain ends on an uneven
@@ -300,7 +387,7 @@ export default function ReachabilityTrendCard({ examSlug = null, phaseId = null 
               />
               <Tooltip
                 formatter={(value, key) => [value, BAND_LABEL[key] || key]}
-                labelFormatter={(y) => `${y} paper`}
+                labelFormatter={(v) => (yearsAreUnique ? `${v} paper` : String(v))}
               />
               <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               {REACHABILITY_BANDS.map((band) => (
@@ -317,7 +404,12 @@ export default function ReachabilityTrendCard({ examSlug = null, phaseId = null 
                   <LabelList
                     dataKey={band}
                     content={(props) => (
-                      <EndLabel {...props} total={lastIndex + 1} band={band} />
+                      <EndLabel
+                        {...props}
+                        total={lastIndex + 1}
+                        band={band}
+                        offsetY={endOffsets[band] || 0}
+                      />
                     )}
                   />
                 </Line>
