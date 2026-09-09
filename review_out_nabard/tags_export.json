@@ -4110,7 +4110,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "1e5b7a10-6cc9-4451-8572-43c9efcb9cee",
@@ -4155,7 +4155,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "feecdea3-1ce4-4df0-8281-a1f90cc442df",
@@ -4245,7 +4245,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "13b3e802-f872-4e98-8932-e2580cf6c920",
@@ -4290,7 +4290,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "c3da7fe7-d649-4efa-9236-879d3c8b0854",
@@ -4335,7 +4335,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "7f940ca8-28d4-4bde-b512-f6db1df5418e",
@@ -4380,7 +4380,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "9a6f8188-49cb-49d0-ba2d-57d7c1b5a899",
@@ -4425,7 +4425,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "ee4590d4-25a6-48fc-8bc3-72c409a637c2",
@@ -4470,7 +4470,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "fba66c15-9f71-4a6d-b859-0922d71ad0b0",
@@ -5946,7 +5946,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "24af2e43-849e-4eaa-bae5-7e004662af18",
@@ -5955,7 +5955,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "6908c5b3-2d58-47a8-a1c0-b5e62f1f2130",
@@ -5964,7 +5964,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "f66ac465-8ea4-43df-b94c-26a4575e027e",
@@ -5973,7 +5973,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "0ae3e214-b598-44c4-ba89-8e13a04df629",
@@ -5982,7 +5982,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "19b580bf-6185-4e1d-9aff-2a4bbd242185",
@@ -5991,7 +5991,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "980c1479-7059-4ab5-96bf-d610a58dfa1f",
@@ -6000,7 +6000,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "3b289ae7-a285-4a9c-b1ac-f0cf717568ef",
@@ -6009,7 +6009,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "f6c4f944-4ee1-49a9-945b-353f5240cc0f",
@@ -6018,7 +6018,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "3827afa7-b224-4077-8f5c-61b93ab195ad",
@@ -6027,7 +6027,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "114de94d-4c19-499b-b16c-7f73e0e3beeb",
@@ -6036,7 +6036,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "86f6ae6d-d809-4bae-9694-e8d70c1488ca",
@@ -6045,7 +6045,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "72ba696f-053e-411d-aa7a-62473243a08c",
@@ -6054,7 +6054,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "25a7308f-02bf-41fc-ad57-b50fad11ce96",
@@ -6063,7 +6063,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "596cf60b-5e55-4b30-b63c-171d18493ecc",
@@ -6072,7 +6072,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "a9484a20-ee0f-4549-bc41-9075ff6eed44",
@@ -6081,7 +6081,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "af30d74c-cd97-4372-aa79-69a797b4779b",
@@ -6090,7 +6090,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "45a79fbb-33a2-4b08-bce1-b96ef72e995a",
@@ -6099,7 +6099,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "3046fb62-a982-4826-a1c3-aae82658b7e8",
@@ -6108,7 +6108,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "a1b6713c-6049-4ccc-b835-aaca5eb8b9b2",
@@ -6117,7 +6117,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "75934bfd-7fef-464c-9c05-d61ba5169d13",
@@ -7476,7 +7476,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "3b66ec7f-89e6-477c-bb91-dc86378dafad",
@@ -7485,7 +7485,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "6bc7b98c-8f5f-4db8-a753-109d2d54b14b",
@@ -7494,7 +7494,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "e16f6938-ad68-40ae-ba14-41680307fb45",
@@ -7503,7 +7503,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "5a28de2f-6abc-4b4e-bc61-e807339063f4",
@@ -7512,7 +7512,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "dfadb830-8179-4719-981b-16de60498b8c",
@@ -7521,7 +7521,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "64f7b0aa-a514-4300-b09d-f8b9c7877b74",
@@ -7530,7 +7530,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "c1226165-1954-4bf6-9a20-7d4b2a4ead0d",
@@ -7539,7 +7539,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "c14e7af2-f438-4a41-8656-413b08684e71",
@@ -7548,7 +7548,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "5613d915-b188-4f95-be64-c56588a75434",
@@ -7557,7 +7557,7 @@
     "tag_role": "primary",
     "tagging_source": "manual",
     "confidence_score": 0.0,
-    "reviewer_status": "pending"
+    "reviewer_status": "verified"
   },
   {
     "id": "35dccaf3-0011-4e26-b644-e64fe2d50a8c",
