@@ -1,172 +1,185 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, Geography Paper I (Principles of Geography)",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for Geography Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
-  "structure_note": "Geography Paper I is the one optional besides PSIR whose syllabus carries named parts: PART A - Physical Geography and PART B - Human Geography. Those parts are carried in section_ref, not as topic rows (rev2 M10). The numbered units within each part are the topic level.",
-  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-geography-p1 exactly.",
-  "papers": [
-    {
-      "paper_id": "opt-geography-p1",
-      "paper_title": "Geography Paper-1 (Optional)",
-      "core_subjects": ["Physical Geography", "Human Geography"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "Geomorphology",
-          "official_syllabus_line": "Geomorphology: Factors controlling landform development; endogenetic and exogenetic forces; Origin and evolution of the earth's crust; Fundamentals of geomagnetism; Physical conditions of the earth's interior; Geosynclines; Continental drift; Isostasy; Plate tectonics; Recent views on mountain building; Vulcanicity; Earthquakes and Tsunamis; Concepts of geomorphic cycles and Landscape development; Denudation chronology; Channel morphology; Erosion surfaces; Slope development; Applied Geomorphology - Geohydrology, economic geology and environment.",
-          "section_ref": "Part A - Physical Geography",
-          "micro_themes": [
-            "Factors controlling landform development; endogenetic and exogenetic forces",
-            "Origin and evolution of the earth's crust; fundamentals of geomagnetism",
-            "Physical conditions of the earth's interior; geosynclines",
-            "Continental drift and isostasy",
-            "Plate tectonics and recent views on mountain building",
-            "Vulcanicity, earthquakes and tsunamis",
-            "Geomorphic cycles and landscape development; denudation chronology",
-            "Channel morphology, erosion surfaces and slope development",
-            "Applied geomorphology: geohydrology, economic geology and environment"
-          ]
-        },
-        {
-          "macro_topic": "Climatology",
-          "official_syllabus_line": "Climatology: Temperature and pressure belts of the world; Heat budget of the earth; Atmospheric circulation; atmospheric stability and instability; Planetary and local winds; Monsoons and jet streams; Air masses and fronto-genesis; Temperate and tropical cyclones; Types and distribution of precipitation; Weather and Climate; Koppen's, Thornthwaite's and Trewartha's classification of world climates; Hydrological cycle; Global climatic change and role and response of man in climatic changes, Applied climatology and Urban climate.",
-          "section_ref": "Part A - Physical Geography",
-          "micro_themes": [
-            "Temperature and pressure belts of the world; heat budget of the earth",
-            "Atmospheric circulation; atmospheric stability and instability",
-            "Planetary and local winds; monsoons and jet streams",
-            "Air masses and frontogenesis",
-            "Temperate and tropical cyclones",
-            "Types and distribution of precipitation; weather and climate",
-            "Koppen's, Thornthwaite's and Trewartha's classifications of world climates",
-            "Hydrological cycle",
-            "Global climatic change; role and response of man",
-            "Applied climatology and urban climate"
-          ]
-        },
-        {
-          "macro_topic": "Oceanography",
-          "official_syllabus_line": "Oceanography: Bottom topography of the Atlantic, Indian and Pacific Oceans; Temperature and salinity of the oceans; Heat and salt budgets, Ocean deposits; Waves, currents and tides; Marine resources - biotic, mineral and energy resources; Coral reefs, coral bleaching; sea-level changes; law of the sea and marine pollution.",
-          "section_ref": "Part A - Physical Geography",
-          "micro_themes": [
-            "Bottom topography of the Atlantic, Indian and Pacific Oceans",
-            "Temperature and salinity of the oceans; heat and salt budgets",
-            "Ocean deposits",
-            "Waves, currents and tides",
-            "Marine resources: biotic, mineral and energy",
-            "Coral reefs and coral bleaching",
-            "Sea-level changes; law of the sea and marine pollution"
-          ]
-        },
-        {
-          "macro_topic": "Biogeography",
-          "official_syllabus_line": "Biogeography: Genesis of soils; Classification and distribution of soils; Soil profile; Soil erosion, Degradation and conservation; Factors influencing world distribution of plants and animals; Problems of deforestation and conservation measures; Social forestry; agro-forestry; Wild life; Major gene pool centres.",
-          "section_ref": "Part A - Physical Geography",
-          "micro_themes": [
-            "Genesis, classification and distribution of soils; soil profile",
-            "Soil erosion, degradation and conservation",
-            "Factors influencing world distribution of plants and animals",
-            "Problems of deforestation and conservation measures",
-            "Social forestry and agro-forestry",
-            "Wildlife and major gene pool centres"
-          ]
-        },
-        {
-          "macro_topic": "Environmental Geography",
-          "official_syllabus_line": "Environmental Geography: Principle of ecology; Human ecological adaptations; Influence of man on ecology and environment; Global and regional ecological changes and imbalances; Ecosystem their management and conservation; Environmental degradation, management and conservation; Biodiversity and sustainable development; Environmental policy; Environmental hazards and remedial measures; Environmental education and legislation.",
-          "section_ref": "Part A - Physical Geography",
-          "micro_themes": [
-            "Principles of ecology; human ecological adaptations",
-            "Influence of man on ecology and environment",
-            "Global and regional ecological changes and imbalances",
-            "Ecosystems: management and conservation",
-            "Environmental degradation, management and conservation",
-            "Biodiversity and sustainable development",
-            "Environmental policy",
-            "Environmental hazards and remedial measures",
-            "Environmental education and legislation"
-          ]
-        },
-        {
-          "macro_topic": "Perspectives in Human Geography",
-          "official_syllabus_line": "Perspectives in Human Geography: Areal differentiation; regional synthesis; Dichotomy and dualism; Environmentalism; Quantitative revolution and locational analysis; radical, behavioural, human and welfare approaches; Languages, religions and secularisation; Cultural regions of the world; Human development index.",
-          "section_ref": "Part B - Human Geography",
-          "micro_themes": [
-            "Areal differentiation and regional synthesis",
-            "Dichotomy and dualism in geography",
-            "Environmentalism",
-            "Quantitative revolution and locational analysis",
-            "Radical, behavioural, human and welfare approaches",
-            "Languages, religions and secularisation",
-            "Cultural regions of the world",
-            "Human development index"
-          ]
-        },
-        {
-          "macro_topic": "Economic Geography",
-          "official_syllabus_line": "Economic Geography: World economic development - measurement and problems; World resources and their distribution; Energy crisis; the limits to growth; World agriculture - typology of agricultural regions; agricultural inputs and productivity; Food and nutrition problems; Food security; famine - causes, effects and remedies; World industries - locational patterns and problems; patterns of world trade.",
-          "section_ref": "Part B - Human Geography",
-          "micro_themes": [
-            "World economic development: measurement and problems",
-            "World resources and their distribution; energy crisis",
-            "The limits to growth",
-            "World agriculture: typology of agricultural regions",
-            "Agricultural inputs and productivity",
-            "Food and nutrition problems; food security",
-            "Famine: causes, effects and remedies",
-            "World industries: locational patterns and problems",
-            "Patterns of world trade"
-          ]
-        },
-        {
-          "macro_topic": "Population and Settlement Geography",
-          "official_syllabus_line": "Population and Settlement Geography: Growth and distribution of world population; demographic attributes; Causes and consequences of migration; concepts of over-under-and optimum population; Population theories, world population problems and policies, Social well-being and quality of life; Population as social capital. Types and patterns of rural settlements; Environmental issues in rural settlements; Hierarchy of urban settlements; Urban morphology - Concepts of primate city and rank-size rule; Functional classification of towns; Sphere of urban influence; Rural-urban fringe; Satellite towns; Problems and remedies of urbanization; Sustainable development of cities.",
-          "section_ref": "Part B - Human Geography",
-          "micro_themes": [
-            "Growth and distribution of world population; demographic attributes",
-            "Causes and consequences of migration",
-            "Concepts of over-, under- and optimum population",
-            "Population theories; world population problems and policies",
-            "Social well-being and quality of life; population as social capital",
-            "Types and patterns of rural settlements; environmental issues",
-            "Hierarchy of urban settlements; urban morphology",
-            "Primate city and rank-size rule",
-            "Functional classification of towns; sphere of urban influence",
-            "Rural-urban fringe and satellite towns",
-            "Problems and remedies of urbanization; sustainable development of cities"
-          ]
-        },
-        {
-          "macro_topic": "Regional Planning",
-          "official_syllabus_line": "Regional Planning: Concept of a region; Types of regions and methods of regionalisation; Growth centres and growth poles; Regional imbalances; regional development strategies; environmental issues in regional planning; Planning for sustainable development.",
-          "section_ref": "Part B - Human Geography",
-          "micro_themes": [
-            "Concept of a region; types of regions and methods of regionalisation",
-            "Growth centres and growth poles",
-            "Regional imbalances and regional development strategies",
-            "Environmental issues in regional planning",
-            "Planning for sustainable development"
-          ]
-        },
-        {
-          "macro_topic": "Models, Theories and Laws in Human Geography",
-          "official_syllabus_line": "Models, Theories and Laws in Human Geography: Systems analysis in Human geography; Malthusian, Marxian and Demographic Transition models; Central Place theories of Christaller and Losch; Perroux and Boudeville; Von Thunen's model of agricultural location; Weber's model of industrial location; Ostov's model of stages of growth; Heartland and Rimland theories; Laws of international boundaries and frontiers.",
-          "section_ref": "Part B - Human Geography",
-          "micro_themes": [
-            "Systems analysis in human geography",
-            "Malthusian, Marxian and Demographic Transition models",
-            "Central Place theories of Christaller and Losch",
-            "Perroux and Boudeville on growth poles",
-            "Von Thunen's model of agricultural location",
-            "Weber's model of industrial location",
-            "Rostow's model of stages of growth",
-            "Heartland and Rimland theories",
-            "Laws of international boundaries and frontiers"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, Geography Paper I (Principles of Geography)",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for Geography Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "Geography Paper I is the one optional besides PSIR whose syllabus carries named parts: PART A - Physical Geography and PART B - Human Geography. Those parts are carried in section_ref, not as topic rows (rev2 M10). The numbered units within each part are the topic level.",
+    "paper_title_note":  "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-geography-p1 exactly.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-geography-p1",
+                       "paper_title":  "Geography Paper-1 (Optional)",
+                       "core_subjects":  [
+                                             "Physical Geography",
+                                             "Human Geography"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "Geomorphology",
+                                                  "official_syllabus_line":  "Geomorphology: Factors controlling landform development; endogenetic and exogenetic forces; Origin and evolution of the earth\u0027s crust; Fundamentals of geomagnetism; Physical conditions of the earth\u0027s interior; Geosynclines; Continental drift; Isostasy; Plate tectonics; Recent views on mountain building; Vulcanicity; Earthquakes and Tsunamis; Concepts of geomorphic cycles and Landscape development; Denudation chronology; Channel morphology; Erosion surfaces; Slope development; Applied Geomorphology - Geohydrology, economic geology and environment.",
+                                                  "section_ref":  "Part A - Physical Geography",
+                                                  "micro_themes":  [
+                                                                       "Factors controlling landform development; endogenetic and exogenetic forces",
+                                                                       "Origin and evolution of the earth\u0027s crust; fundamentals of geomagnetism",
+                                                                       "Physical conditions of the earth\u0027s interior; geosynclines",
+                                                                       "Continental drift and isostasy",
+                                                                       "Plate tectonics and recent views on mountain building",
+                                                                       "Vulcanicity, earthquakes and tsunamis",
+                                                                       "Geomorphic cycles and landscape development; denudation chronology",
+                                                                       "Channel morphology, erosion surfaces and slope development",
+                                                                       "Applied geomorphology: geohydrology, economic geology and environment"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Climatology",
+                                                  "official_syllabus_line":  "Climatology: Temperature and pressure belts of the world; Heat budget of the earth; Atmospheric circulation; atmospheric stability and instability; Planetary and local winds; Monsoons and jet streams; Air masses and fronto-genesis; Temperate and tropical cyclones; Types and distribution of precipitation; Weather and Climate; Koppen\u0027s, Thornthwaite\u0027s and Trewartha\u0027s classification of world climates; Hydrological cycle; Global climatic change and role and response of man in climatic changes, Applied climatology and Urban climate.",
+                                                  "section_ref":  "Part A - Physical Geography",
+                                                  "micro_themes":  [
+                                                                       "Temperature and pressure belts of the world; heat budget of the earth",
+                                                                       "Atmospheric circulation; atmospheric stability and instability",
+                                                                       "Planetary and local winds; monsoons and jet streams",
+                                                                       "Air masses and frontogenesis",
+                                                                       "Temperate and tropical cyclones",
+                                                                       "Types and distribution of precipitation; weather and climate",
+                                                                       "Koppen\u0027s, Thornthwaite\u0027s and Trewartha\u0027s classifications of world climates",
+                                                                       "Hydrological cycle",
+                                                                       "Global climatic change; role and response of man",
+                                                                       "Applied climatology and urban climate"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Oceanography",
+                                                  "official_syllabus_line":  "Oceanography: Bottom topography of the Atlantic, Indian and Pacific Oceans; Temperature and salinity of the oceans; Heat and salt budgets, Ocean deposits; Waves, currents and tides; Marine resources - biotic, mineral and energy resources; Coral reefs, coral bleaching; sea-level changes; law of the sea and marine pollution.",
+                                                  "section_ref":  "Part A - Physical Geography",
+                                                  "micro_themes":  [
+                                                                       "Bottom topography of the Atlantic, Indian and Pacific Oceans",
+                                                                       "Temperature and salinity of the oceans; heat and salt budgets",
+                                                                       "Ocean deposits",
+                                                                       "Waves, currents and tides",
+                                                                       "Marine resources: biotic, mineral and energy",
+                                                                       "Coral reefs and coral bleaching",
+                                                                       "Sea-level changes; law of the sea and marine pollution"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Biogeography",
+                                                  "official_syllabus_line":  "Biogeography: Genesis of soils; Classification and distribution of soils; Soil profile; Soil erosion, Degradation and conservation; Factors influencing world distribution of plants and animals; Problems of deforestation and conservation measures; Social forestry; agro-forestry; Wild life; Major gene pool centres.",
+                                                  "section_ref":  "Part A - Physical Geography",
+                                                  "micro_themes":  [
+                                                                       "Genesis, classification and distribution of soils; soil profile",
+                                                                       "Soil erosion, degradation and conservation",
+                                                                       "Factors influencing world distribution of plants and animals",
+                                                                       "Problems of deforestation and conservation measures",
+                                                                       "Social forestry and agro-forestry",
+                                                                       "Wildlife and major gene pool centres"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Environmental Geography",
+                                                  "official_syllabus_line":  "Environmental Geography: Principle of ecology; Human ecological adaptations; Influence of man on ecology and environment; Global and regional ecological changes and imbalances; Ecosystem their management and conservation; Environmental degradation, management and conservation; Biodiversity and sustainable development; Environmental policy; Environmental hazards and remedial measures; Environmental education and legislation.",
+                                                  "section_ref":  "Part A - Physical Geography",
+                                                  "micro_themes":  [
+                                                                       "Principles of ecology; human ecological adaptations",
+                                                                       "Influence of man on ecology and environment",
+                                                                       "Global and regional ecological changes and imbalances",
+                                                                       "Ecosystems: management and conservation",
+                                                                       "Environmental degradation, management and conservation",
+                                                                       "Biodiversity and sustainable development",
+                                                                       "Environmental policy",
+                                                                       "Environmental hazards and remedial measures",
+                                                                       "Environmental education and legislation"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Perspectives in Human Geography",
+                                                  "official_syllabus_line":  "Perspectives in Human Geography: Areal differentiation; regional synthesis; Dichotomy and dualism; Environmentalism; Quantitative revolution and locational analysis; radical, behavioural, human and welfare approaches; Languages, religions and secularisation; Cultural regions of the world; Human development index.",
+                                                  "section_ref":  "Part B - Human Geography",
+                                                  "micro_themes":  [
+                                                                       "Areal differentiation and regional synthesis",
+                                                                       "Dichotomy and dualism in geography",
+                                                                       "Environmentalism",
+                                                                       "Quantitative revolution and locational analysis",
+                                                                       "Radical, behavioural, human and welfare approaches",
+                                                                       "Languages, religions and secularisation",
+                                                                       "Cultural regions of the world",
+                                                                       "Human development index"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Economic Geography",
+                                                  "official_syllabus_line":  "Economic Geography: World economic development - measurement and problems; World resources and their distribution; Energy crisis; the limits to growth; World agriculture - typology of agricultural regions; agricultural inputs and productivity; Food and nutrition problems; Food security; famine - causes, effects and remedies; World industries - locational patterns and problems; patterns of world trade.",
+                                                  "section_ref":  "Part B - Human Geography",
+                                                  "micro_themes":  [
+                                                                       "World economic development: measurement and problems",
+                                                                       "World resources and their distribution; energy crisis",
+                                                                       "The limits to growth",
+                                                                       "World agriculture: typology of agricultural regions",
+                                                                       "Agricultural inputs and productivity",
+                                                                       "Food and nutrition problems; food security",
+                                                                       "Famine: causes, effects and remedies",
+                                                                       "World industries: locational patterns and problems",
+                                                                       "Patterns of world trade"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Population and Settlement Geography",
+                                                  "official_syllabus_line":  "Population and Settlement Geography: Growth and distribution of world population; demographic attributes; Causes and consequences of migration; concepts of over-under-and optimum population; Population theories, world population problems and policies, Social well-being and quality of life; Population as social capital. Types and patterns of rural settlements; Environmental issues in rural settlements; Hierarchy of urban settlements; Urban morphology - Concepts of primate city and rank-size rule; Functional classification of towns; Sphere of urban influence; Rural-urban fringe; Satellite towns; Problems and remedies of urbanization; Sustainable development of cities.",
+                                                  "section_ref":  "Part B - Human Geography",
+                                                  "micro_themes":  [
+                                                                       "Growth and distribution of world population; demographic attributes",
+                                                                       "Causes and consequences of migration",
+                                                                       "Concepts of over-, under- and optimum population",
+                                                                       "Population theories; world population problems and policies",
+                                                                       "Social well-being and quality of life; population as social capital",
+                                                                       "Types and patterns of rural settlements; environmental issues",
+                                                                       "Hierarchy of urban settlements; urban morphology",
+                                                                       "Primate city and rank-size rule",
+                                                                       "Functional classification of towns; sphere of urban influence",
+                                                                       "Rural-urban fringe and satellite towns",
+                                                                       "Problems and remedies of urbanization; sustainable development of cities"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Regional Planning",
+                                                  "official_syllabus_line":  "Regional Planning: Concept of a region; Types of regions and methods of regionalisation; Growth centres and growth poles; Regional imbalances; regional development strategies; environmental issues in regional planning; Planning for sustainable development.",
+                                                  "section_ref":  "Part B - Human Geography",
+                                                  "micro_themes":  [
+                                                                       "Concept of a region; types of regions and methods of regionalisation",
+                                                                       "Growth centres and growth poles",
+                                                                       "Regional imbalances and regional development strategies",
+                                                                       "Environmental issues in regional planning",
+                                                                       "Planning for sustainable development"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Models, Theories and Laws in Human Geography",
+                                                  "official_syllabus_line":  "Models, Theories and Laws in Human Geography: Systems analysis in Human geography; Malthusian, Marxian and Demographic Transition models; Central Place theories of Christaller and Losch; Perroux and Boudeville; Von Thunen\u0027s model of agricultural location; Weber\u0027s model of industrial location; Ostov\u0027s model of stages of growth; Heartland and Rimland theories; Laws of international boundaries and frontiers.",
+                                                  "section_ref":  "Part B - Human Geography",
+                                                  "micro_themes":  [
+                                                                       "Systems analysis in human geography",
+                                                                       "Malthusian, Marxian and Demographic Transition models",
+                                                                       "Central Place theories of Christaller and Losch",
+                                                                       "Perroux and Boudeville on growth poles",
+                                                                       "Von Thunen\u0027s model of agricultural location",
+                                                                       "Weber\u0027s model of industrial location",
+                                                                       "Rostow\u0027s model of stages of growth",
+                                                                       "Heartland and Rimland theories",
+                                                                       "Laws of international boundaries and frontiers"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }
