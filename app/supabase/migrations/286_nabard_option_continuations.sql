@@ -115,10 +115,17 @@
 -- source, so a plain reconstruction cannot match them. ENG-2023 Q.30 (3
 -- rows) is the two-column collapse already on record. Every one of the 18
 -- is a question already known to have been repaired by hand.
--- One of those 18 is worth a second look on its own: ENG-2023-Q030 option C
--- is loaded as "Moderate" where the reconstruction at that label reads
--- "None of the above". That is a label-to-text disagreement, not a
--- truncation, and this migration does not touch it.
+-- One of those 18 looked like a second defect and is not. ENG-2023-Q030
+-- option C is loaded as "Moderate" where the reconstruction at that label
+-- reads "None of the above" -- because the source prints the labels A, B,
+-- A, B, C. The page collapsed two columns, so the label run restarts mid-
+-- question. The extractor's options_resequenced_from_columns repair
+-- renumbered them positionally into printed order, which is what is loaded
+-- and is correct: Deprived, Excessive, Moderate, Void, None of the above,
+-- all five verbatim from the source. The disagreement is between the
+-- source's literal labels and the loaded positional ones -- it is the
+-- reconstruction that compared the wrong thing, not the data. Nothing to
+-- repair.
 --
 -- PAPERS: 19. All need a projection re-sync; option text is in the content hash.
 --   NABARD-P1-ARD-2021                             1
