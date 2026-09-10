@@ -1,0 +1,309 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, History Paper I",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit text is the published UPSC syllabus for History Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
+  "structure_note": "History Paper I is a flat chronological list of numbered units with no lettered parts, so section_ref is omitted (rev2 M10). Note also that Q1 of this paper is a 20-item map identification question worth 50 marks - the corpus holds only UPSC's locational hints, since the place names live on a map sheet no compilation reproduces. Those questions are flagged requires_map_sheet and will not tag cleanly against any topic here.",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-history-p1 exactly.",
+  "papers": [
+    {
+      "paper_id": "opt-history-p1",
+      "paper_title": "History Paper-1 (Optional)",
+      "core_subjects": ["Ancient India", "Medieval India"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "1 Sources",
+          "official_syllabus_line": "1. Sources: Archaeological sources - Exploration, excavation, epigraphy, numismatics, monuments; Literary sources - Indigenous: Primary and secondary; poetry, scientific literature, literature, literature in regional languages, religious literature; Foreign accounts: Greek, Chinese and Arab writers.",
+          "micro_themes": [
+            "Archaeological sources: exploration and excavation",
+            "Epigraphy, numismatics and monuments",
+            "Indigenous literary sources: primary and secondary",
+            "Poetry, scientific and religious literature; regional languages",
+            "Foreign accounts: Greek, Chinese and Arab writers"
+          ]
+        },
+        {
+          "macro_topic": "2 Pre-history and Proto-history",
+          "official_syllabus_line": "2. Pre-history and Proto-history: Geographical factors; hunting and gathering (paleolithic and mesolithic); Beginning of agriculture (neolithic and chalcolithic).",
+          "micro_themes": [
+            "Geographical factors in Indian pre-history",
+            "Hunting and gathering: Palaeolithic and Mesolithic",
+            "Beginning of agriculture: Neolithic and Chalcolithic"
+          ]
+        },
+        {
+          "macro_topic": "3 Indus Valley Civilization",
+          "official_syllabus_line": "3. Indus Valley Civilization: Origin, date, extent, characteristics, decline, survival and significance, art and architecture.",
+          "micro_themes": [
+            "Origin, date and extent of the Indus Valley Civilization",
+            "Characteristics of the Indus Valley Civilization",
+            "Decline, survival and significance",
+            "Art and architecture of the Indus Valley Civilization"
+          ]
+        },
+        {
+          "macro_topic": "4 Megalithic Cultures",
+          "official_syllabus_line": "4. Megalithic Cultures: Distribution of pastoral and farming cultures outside the Indus, Development of community life, Settlements, Development of agriculture, Crafts, Pottery, and Iron industry.",
+          "micro_themes": [
+            "Distribution of pastoral and farming cultures outside the Indus",
+            "Development of community life and settlements",
+            "Development of agriculture and crafts",
+            "Pottery and the iron industry"
+          ]
+        },
+        {
+          "macro_topic": "5 Aryans and Vedic Period",
+          "official_syllabus_line": "5. Aryans and Vedic Period: Expansions of Aryans in India; Vedic Period - Religious and philosophic literature; Transformation from Rig Vedic period to the later Vedic period; Political, social and economic life; Significance of the Vedic Age; Evolution of Monarchy and Varna system.",
+          "micro_themes": [
+            "Expansion of Aryans in India",
+            "Religious and philosophic literature of the Vedic period",
+            "Transformation from Rig Vedic to later Vedic period",
+            "Political, social and economic life in the Vedic age",
+            "Significance of the Vedic Age",
+            "Evolution of monarchy and the varna system"
+          ]
+        },
+        {
+          "macro_topic": "6 Period of Mahajanapadas",
+          "official_syllabus_line": "6. Period of Mahajanapadas: Formation of States (Mahajanapada); Republics and monarchies; Rise of urban centres; Trade routes; Economic growth; Introduction of coinage; Spread of Jainism and Buddhism; Rise of Magadha and Nandas; Iranian and Macedonian invasions and their impact.",
+          "micro_themes": [
+            "Formation of states: the Mahajanapadas",
+            "Republics and monarchies",
+            "Rise of urban centres and trade routes",
+            "Economic growth and the introduction of coinage",
+            "Spread of Jainism and Buddhism",
+            "Rise of Magadha and the Nandas",
+            "Iranian and Macedonian invasions and their impact"
+          ]
+        },
+        {
+          "macro_topic": "7 Mauryan Empire",
+          "official_syllabus_line": "7. Mauryan Empire: Foundation of the Mauryan Empire, Chandragupta, Kautilya and Arthashastra; Ashoka; Concept of Dharma; Edicts; Polity, Administration; Economy; Art, architecture and sculpture; External contacts; Religion; Spread of religion; Literature; Disintegration of the empire; Sungas and Kanvas.",
+          "micro_themes": [
+            "Foundation of the Mauryan empire: Chandragupta, Kautilya and the Arthashastra",
+            "Ashoka, the concept of Dharma, and the edicts",
+            "Mauryan polity and administration",
+            "Mauryan economy",
+            "Mauryan art, architecture and sculpture",
+            "External contacts, religion and its spread",
+            "Literature of the Mauryan period",
+            "Disintegration of the empire; Sungas and Kanvas"
+          ]
+        },
+        {
+          "macro_topic": "8 Post-Mauryan Period",
+          "official_syllabus_line": "8. Post-Mauryan Period (Indo-Greeks, Sakas, Kushanas, Western Kshatrapas): Contact with outside world; growth of urban centres, economy, coinage, development of religions, Mahayana, social conditions, art, architecture, culture, literature and science.",
+          "micro_themes": [
+            "Indo-Greeks, Sakas, Kushanas and Western Kshatrapas",
+            "Contact with the outside world",
+            "Growth of urban centres, economy and coinage",
+            "Development of religions; Mahayana Buddhism",
+            "Social conditions of the post-Mauryan period",
+            "Art, architecture and culture",
+            "Literature and science"
+          ]
+        },
+        {
+          "macro_topic": "9 Early State and Society in Eastern India, Deccan and South India",
+          "official_syllabus_line": "9. Early State and Society in Eastern India, Deccan and South India: Kharavela, The Satavahanas, Tamil States of the Sangam Age; Administration, economy, land grants, coinage, trade guilds and urban centres; Buddhist centres; Sangam literature and culture; Art and architecture.",
+          "micro_themes": [
+            "Kharavela and the Satavahanas",
+            "Tamil states of the Sangam Age",
+            "Administration, economy and land grants",
+            "Coinage, trade guilds and urban centres",
+            "Buddhist centres in the Deccan and South",
+            "Sangam literature and culture",
+            "Art and architecture of early Deccan and South India"
+          ]
+        },
+        {
+          "macro_topic": "10 Guptas, Vakatakas and Vardhanas",
+          "official_syllabus_line": "10. Guptas, Vakatakas and Vardhanas: Polity and administration, Economic conditions, Coinage of the Guptas, Land grants, Decline of urban centres, Indian feudalism, Caste system, Position of women, Education and educational institutions; Nalanda, Vikramshila and Vallabhi, Literature, scientific literature, art and architecture.",
+          "micro_themes": [
+            "Gupta polity and administration",
+            "Economic conditions and Gupta coinage",
+            "Land grants, decline of urban centres and Indian feudalism",
+            "Caste system and the position of women",
+            "Education and educational institutions: Nalanda, Vikramshila, Vallabhi",
+            "Literature and scientific literature",
+            "Art and architecture of the Gupta age"
+          ]
+        },
+        {
+          "macro_topic": "11 Regional States during the Gupta Era",
+          "official_syllabus_line": "11. Regional States during Gupta Era: The Kadambas, Pallavas, Chalukyas of Badami; Polity and Administration, Trade guilds, Literature; growth of Vernacular literature; Education and learning; Arab conquest of Sind; Alberuni; The Chalukyas of Kalyana; Cholas; Hoysalas; Pandyas; Polity and Administration; local Government; Growth of art and architecture, religious sects, Institution of temple and Mathas, Agraharas, education and literature, economy and society.",
+          "micro_themes": [
+            "Kadambas, Pallavas and Chalukyas of Badami",
+            "Polity, administration and trade guilds",
+            "Growth of vernacular literature; education and learning",
+            "Arab conquest of Sind; Alberuni",
+            "Chalukyas of Kalyana, Cholas, Hoysalas and Pandyas",
+            "Local government in the southern kingdoms",
+            "Growth of art and architecture; religious sects",
+            "Institution of temple, mathas and agraharas",
+            "Economy and society of the regional states"
+          ]
+        },
+        {
+          "macro_topic": "12 Themes in Early Indian Cultural History",
+          "official_syllabus_line": "12. Themes in Early Indian Cultural History: Languages and texts, major stages in the evolution of art and architecture, major philosophical thinkers and schools, ideas in Science and Mathematics.",
+          "micro_themes": [
+            "Languages and texts in early India",
+            "Major stages in the evolution of art and architecture",
+            "Major philosophical thinkers and schools",
+            "Ideas in science and mathematics"
+          ]
+        },
+        {
+          "macro_topic": "13 Early Medieval India, 750-1200",
+          "official_syllabus_line": "13. Early Medieval India, 750-1200: Polity - Major political developments in Northern India and the Peninsula, origin and the rise of Rajputs; The Cholas - administration, village economy and society; Indian Feudalism; Agrarian economy and urban settlements; Trade and commerce; Society - the status of the Brahman and the new social order; Condition of women; Indian science and technology.",
+          "micro_themes": [
+            "Major political developments in Northern India and the Peninsula",
+            "Origin and rise of the Rajputs",
+            "The Cholas: administration, village economy and society",
+            "Indian feudalism",
+            "Agrarian economy and urban settlements",
+            "Trade and commerce in early medieval India",
+            "Status of the Brahman and the new social order",
+            "Condition of women; Indian science and technology"
+          ]
+        },
+        {
+          "macro_topic": "14 Cultural Traditions in India, 750-1200",
+          "official_syllabus_line": "14. Cultural Traditions in India, 750-1200: Philosophy - Skankaracharya and Vedanta, Ramanuja and Vishishtadvaita, Madhva and Brahma-Mimansa; Religion - Forms and features of religion, Tamil devotional cult, growth of Bhakti, Islam and its arrival in India, Sufism; Literature - Literature in Sanskrit, growth of Tamil literature, literature in the newly developing languages, Kalhan's Rajtarangini, Alberuni's India; Art and Architecture - Temple architecture, sculpture, painting.",
+          "micro_themes": [
+            "Shankaracharya and Vedanta; Ramanuja and Vishishtadvaita; Madhva",
+            "Forms and features of religion; the Tamil devotional cult",
+            "Growth of Bhakti",
+            "Islam and its arrival in India; Sufism",
+            "Literature in Sanskrit and the growth of Tamil literature",
+            "Literature in newly developing languages; Rajatarangini and Alberuni's India",
+            "Temple architecture, sculpture and painting"
+          ]
+        },
+        {
+          "macro_topic": "15 The Thirteenth Century",
+          "official_syllabus_line": "15. The Thirteenth Century: Establishment of the Delhi Sultanate; The Ghurian invasions - factors behind Ghurian success; Economic, Social and cultural consequences; Foundation of Delhi Sultanate and early Turkish Sultans; Consolidation - The rule of Iltutmish and Balban.",
+          "micro_themes": [
+            "The Ghurian invasions and factors behind Ghurian success",
+            "Economic, social and cultural consequences of the invasions",
+            "Foundation of the Delhi Sultanate and the early Turkish Sultans",
+            "Consolidation under Iltutmish and Balban"
+          ]
+        },
+        {
+          "macro_topic": "16 The Fourteenth Century",
+          "official_syllabus_line": "16. The Fourteenth Century: 'The Khalji Revolution'; Alauddin Khalji - Conquests and territorial expansion, agrarian and economic measures; Muhammad Tughluq - Major projects, agrarian measures, bureaucracy of Muhammad Tughluq; Firuz Tughluq - Agrarian measures, achievements in civil engineering and public works, decline of the Sultanate, foreign contacts and Ibn Battuta's account.",
+          "micro_themes": [
+            "The Khalji Revolution",
+            "Alauddin Khalji: conquests, territorial expansion, agrarian and economic measures",
+            "Muhammad Tughluq: major projects, agrarian measures and bureaucracy",
+            "Firuz Tughluq: agrarian measures, civil engineering and public works",
+            "Decline of the Sultanate; foreign contacts and Ibn Battuta's account"
+          ]
+        },
+        {
+          "macro_topic": "17 Society, Culture and Economy in the Thirteenth and Fourteenth Centuries",
+          "official_syllabus_line": "17. Society, Culture and Economy in the Thirteenth and Fourteenth Centuries: Society - composition of rural society, ruling classes, town dwellers, women, religious classes, caste and slavery under the Sultanate, Bhakti movement, Sufi movement; Culture - Persian literature, literature in the regional languages of North India, literature in the languages of South India, Sultanate architecture and new structural forms, painting, evolution of a composite culture; Economy - Agricultural Production, rise of urban economy and non-agricultural production, trade and commerce.",
+          "micro_themes": [
+            "Composition of rural society; ruling classes and town dwellers",
+            "Women, religious classes, caste and slavery under the Sultanate",
+            "Bhakti movement and Sufi movement",
+            "Persian literature and regional literatures of North India",
+            "Literature in the languages of South India",
+            "Sultanate architecture and new structural forms; painting",
+            "Evolution of a composite culture",
+            "Agricultural production; rise of the urban economy",
+            "Non-agricultural production, trade and commerce"
+          ]
+        },
+        {
+          "macro_topic": "18 The Fifteenth and Early Sixteenth Century - Political Developments and Economy",
+          "official_syllabus_line": "18. The Fifteenth and early Sixteenth Century - Political Developments and Economy: Rise of Provincial Dynasties - Bengal, Kashmir (Zainul Abedin), Gujarat, Malwa, Bahmanids; The Vijayanagra Empire; Lodis; Mughal Empire, First phase - Babur and Humayun; The Sur Empire - Sher Shah's administration; Portuguese colonial enterprise; Bhakti and Sufi Movements.",
+          "micro_themes": [
+            "Rise of provincial dynasties: Bengal, Kashmir, Gujarat, Malwa, Bahmanids",
+            "The Vijayanagara Empire",
+            "The Lodis",
+            "Mughal Empire first phase: Babur and Humayun",
+            "The Sur Empire and Sher Shah's administration",
+            "Portuguese colonial enterprise",
+            "Bhakti and Sufi movements in this period"
+          ]
+        },
+        {
+          "macro_topic": "19 The Fifteenth and Early Sixteenth Century - Society and Culture",
+          "official_syllabus_line": "19. The Fifteenth and early Sixteenth Century - Society and Culture: Regional cultural specificities; literary traditions; provincial architecture; society, culture, literature and the arts in Vijayanagara Empire.",
+          "micro_themes": [
+            "Regional cultural specificities and literary traditions",
+            "Provincial architecture",
+            "Society, culture, literature and the arts in the Vijayanagara Empire"
+          ]
+        },
+        {
+          "macro_topic": "20 Akbar",
+          "official_syllabus_line": "20. Akbar: Conquests and consolidation of the Empire; Establishment of Jagir and Mansab systems; Rajput policy; Evolution of religious and social outlook, theory of Sulh-i-kul and religious policy; Court patronage of art and technology.",
+          "micro_themes": [
+            "Conquests and consolidation of the empire",
+            "Establishment of the jagir and mansab systems",
+            "Rajput policy",
+            "Evolution of religious and social outlook; Sulh-i-kul and religious policy",
+            "Court patronage of art and technology"
+          ]
+        },
+        {
+          "macro_topic": "21 Mughal Empire in the Seventeenth Century",
+          "official_syllabus_line": "21. Mughal Empire in the Seventeenth Century: Major administrative policies of Jahangir, Shahjahan and Aurangzeb; The Empire and the Zamindars; Religious policies of Jahangir, Shahjahan and Aurangzeb; Nature of the Mughal State; Late Seventeenth century crisis and the revolts; The Ahom Kingdom; Shivaji and the early Maratha Kingdom.",
+          "micro_themes": [
+            "Administrative policies of Jahangir, Shahjahan and Aurangzeb",
+            "The Empire and the zamindars",
+            "Religious policies of Jahangir, Shahjahan and Aurangzeb",
+            "Nature of the Mughal state",
+            "Late seventeenth century crisis and the revolts",
+            "The Ahom kingdom",
+            "Shivaji and the early Maratha kingdom"
+          ]
+        },
+        {
+          "macro_topic": "22 Economy and Society in the Sixteenth and Seventeenth Centuries",
+          "official_syllabus_line": "22. Economy and Society in the 16th and 17th Centuries: Population, agricultural production, craft production; Towns; Commerce with Europe through Dutch, English and French companies; a trade revolution; Indian mercantile classes, banking, insurance and credit systems; Condition of peasants, Condition of Women; Evolution of the Sikh community and the Khalsa Panth.",
+          "micro_themes": [
+            "Population, agricultural production and craft production",
+            "Towns in the sixteenth and seventeenth centuries",
+            "Commerce with Europe through the Dutch, English and French companies",
+            "The trade revolution",
+            "Indian mercantile classes; banking, insurance and credit systems",
+            "Condition of peasants and condition of women",
+            "Evolution of the Sikh community and the Khalsa Panth"
+          ]
+        },
+        {
+          "macro_topic": "23 Culture in the Mughal Empire",
+          "official_syllabus_line": "23. Culture in the Mughal Empire: Persian histories and other literature; Hindi and religious literatures; Mughal architecture; Mughal painting; Provincial architecture and painting; Classical music; Science and technology.",
+          "micro_themes": [
+            "Persian histories and other literature",
+            "Hindi and religious literatures",
+            "Mughal architecture",
+            "Mughal painting",
+            "Provincial architecture and painting",
+            "Classical music",
+            "Science and technology under the Mughals"
+          ]
+        },
+        {
+          "macro_topic": "24 The Eighteenth Century",
+          "official_syllabus_line": "24. The Eighteenth Century: Factors for the decline of the Mughal Empire; The regional principalities - Nizam's Deccan, Bengal, Awadh; Maratha ascendancy under the Peshwas; The Maratha fiscal and financial system; Emergence of Afghan Power and Battle of Panipat; State of politics, culture and economy on the eve of the British conquest.",
+          "micro_themes": [
+            "Factors for the decline of the Mughal Empire",
+            "Regional principalities: Nizam's Deccan, Bengal, Awadh",
+            "Maratha ascendancy under the Peshwas",
+            "The Maratha fiscal and financial system",
+            "Emergence of Afghan power and the Battle of Panipat",
+            "Politics, culture and economy on the eve of the British conquest"
+          ]
+        }
+      ]
+    }
+  ]
+}

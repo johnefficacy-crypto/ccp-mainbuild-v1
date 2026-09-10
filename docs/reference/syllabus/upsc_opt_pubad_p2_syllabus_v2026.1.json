@@ -1,0 +1,178 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, Public Administration Paper II (Indian Administration)",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit text is the published UPSC syllabus for Public Administration Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
+  "structure_note": "Flat numbered units, no lettered parts, so section_ref is omitted. UPSC's numbering is preserved at the head of each macro_topic.",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-pubad-p2 exactly.",
+  "papers": [
+    {
+      "paper_id": "opt-pubad-p2",
+      "paper_title": "Public Administration Paper-2 (Optional)",
+      "core_subjects": ["Indian Administration"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "1 Evolution of Indian Administration",
+          "official_syllabus_line": "1. Evolution of Indian Administration: Kautilya's Arthashastra; Mughal administration; Legacy of British rule in politics and administration - Indianization of public services, revenue administration, district administration, local self-government.",
+          "micro_themes": [
+            "Kautilya's Arthashastra",
+            "Mughal administration",
+            "Legacy of British rule in politics and administration",
+            "Indianization of public services",
+            "Revenue administration under colonial rule",
+            "District administration and local self-government under colonial rule"
+          ]
+        },
+        {
+          "macro_topic": "2 Philosophical and Constitutional framework of government",
+          "official_syllabus_line": "2. Philosophical and Constitutional framework of government: Salient features and value premises; Constitutionalism; Political culture; Bureaucracy and democracy; Bureaucracy and development.",
+          "micro_themes": [
+            "Salient features and value premises of the Constitution",
+            "Constitutionalism",
+            "Political culture",
+            "Bureaucracy and democracy",
+            "Bureaucracy and development"
+          ]
+        },
+        {
+          "macro_topic": "3 Public Sector Undertakings",
+          "official_syllabus_line": "3. Public Sector Undertakings: Public sector in modern India; Forms of Public Sector Undertakings; Problems of autonomy, accountability and control; Impact of liberalization and privatization.",
+          "micro_themes": [
+            "Public sector in modern India",
+            "Forms of Public Sector Undertakings",
+            "Problems of autonomy, accountability and control",
+            "Impact of liberalization and privatization"
+          ]
+        },
+        {
+          "macro_topic": "4 Union Government and Administration",
+          "official_syllabus_line": "4. Union Government and Administration: Executive, Parliament, Judiciary - structure, functions, work processes; Recent trends; Intragovernmental relations; Cabinet Secretariat; Prime Minister's Office; Central Secretariat; Ministries and Departments; Boards; Commissions; Attached offices; Field organizations.",
+          "micro_themes": [
+            "Executive, Parliament and Judiciary: structure, functions and work processes",
+            "Recent trends and intragovernmental relations",
+            "Cabinet Secretariat and the Prime Minister's Office",
+            "Central Secretariat; Ministries and Departments",
+            "Boards, Commissions and attached offices",
+            "Field organizations"
+          ]
+        },
+        {
+          "macro_topic": "5 Plans and Priorities",
+          "official_syllabus_line": "5. Plans and Priorities: Machinery of planning; Role, composition and functions of the Planning Commission and the National Development Council; 'Indicative' planning; Process of plan formulation at Union and State levels; Constitutional Amendments (1992) and decentralized planning for economic development and social justice.",
+          "micro_themes": [
+            "Machinery of planning in India",
+            "Planning Commission and the National Development Council; NITI Aayog",
+            "Indicative planning",
+            "Process of plan formulation at Union and State levels",
+            "Constitutional Amendments of 1992 and decentralized planning"
+          ]
+        },
+        {
+          "macro_topic": "6 State Government and Administration",
+          "official_syllabus_line": "6. State Government and Administration: Union-State administrative, legislative and financial relations; Role of the Finance Commission; Governor; Chief Minister; Council of Ministers; Chief Secretary; State Secretariat; Directorates.",
+          "micro_themes": [
+            "Union-State administrative, legislative and financial relations",
+            "Role of the Finance Commission",
+            "Governor and Chief Minister",
+            "Council of Ministers and the Chief Secretary",
+            "State Secretariat and Directorates"
+          ]
+        },
+        {
+          "macro_topic": "7 District Administration since Independence",
+          "official_syllabus_line": "7. District Administration since Independence: Changing role of the Collector; Union-State-local relations; Imperatives of development management and law and order administration; District administration and democratic decentralization.",
+          "micro_themes": [
+            "Changing role of the Collector",
+            "Union-State-local relations",
+            "Development management and law and order administration",
+            "District administration and democratic decentralization"
+          ]
+        },
+        {
+          "macro_topic": "8 Civil Services",
+          "official_syllabus_line": "8. Civil Services: Constitutional position; Structure, recruitment, training and capacity-building; Good governance initiatives; Code of conduct and discipline; Staff associations; Political rights; Grievance redressal mechanism; Civil service neutrality; Civil service activism.",
+          "micro_themes": [
+            "Constitutional position of the civil services",
+            "Structure, recruitment, training and capacity-building",
+            "Good governance initiatives",
+            "Code of conduct and discipline",
+            "Staff associations and political rights",
+            "Grievance redressal mechanism",
+            "Civil service neutrality and civil service activism"
+          ]
+        },
+        {
+          "macro_topic": "9 Financial Management",
+          "official_syllabus_line": "9. Financial Management: Budget as a political instrument; Parliamentary control of public expenditure; Role of finance ministry in monetary and fiscal area; Accounting techniques; Audit; Role of Controller General of Accounts and Comptroller and Auditor General of India.",
+          "micro_themes": [
+            "Budget as a political instrument",
+            "Parliamentary control of public expenditure",
+            "Role of the Finance Ministry in monetary and fiscal policy",
+            "Accounting techniques and audit",
+            "Controller General of Accounts and Comptroller and Auditor General of India"
+          ]
+        },
+        {
+          "macro_topic": "10 Administrative Reforms since Independence",
+          "official_syllabus_line": "10. Administrative Reforms since Independence: Major concerns; Important Committees and Commissions; Reforms in financial management and human resource development; Problems of implementation.",
+          "micro_themes": [
+            "Major concerns of administrative reform",
+            "Important committees and commissions on administrative reform",
+            "Reforms in financial management",
+            "Reforms in human resource development",
+            "Problems of implementation"
+          ]
+        },
+        {
+          "macro_topic": "11 Rural Development",
+          "official_syllabus_line": "11. Rural Development: Institutions and agencies since Independence; Rural development programmes - foci and strategies; Decentralization and Panchayati Raj; 73rd Constitutional amendment.",
+          "micro_themes": [
+            "Rural development institutions and agencies since Independence",
+            "Rural development programmes: foci and strategies",
+            "Decentralization and Panchayati Raj",
+            "73rd Constitutional Amendment"
+          ]
+        },
+        {
+          "macro_topic": "12 Urban Local Government",
+          "official_syllabus_line": "12. Urban Local Government: Municipal governance - main features, structures, finance and problem areas; 74th Constitutional Amendment; Global-local debate; New localism; Development dynamics, politics and administration with special reference to city management.",
+          "micro_themes": [
+            "Municipal governance: main features, structures and finance",
+            "Problem areas in municipal governance",
+            "74th Constitutional Amendment",
+            "Global-local debate and new localism",
+            "Development dynamics, politics and administration in city management"
+          ]
+        },
+        {
+          "macro_topic": "13 Law and Order Administration",
+          "official_syllabus_line": "13. Law and Order Administration: British legacy; National Police Commission; Investigative agencies; Role of Central and State Agencies including paramilitary forces in maintenance of law and order and countering insurgency and terrorism; Criminalisation of politics and administration; Police-public relations; Reforms in Police.",
+          "micro_themes": [
+            "British legacy in law and order administration",
+            "National Police Commission",
+            "Investigative agencies",
+            "Central and State agencies and paramilitary forces in law and order",
+            "Countering insurgency and terrorism",
+            "Criminalisation of politics and administration",
+            "Police-public relations and police reforms"
+          ]
+        },
+        {
+          "macro_topic": "14 Significant issues in Indian Administration",
+          "official_syllabus_line": "14. Significant issues in Indian Administration: Values in public service; Regulatory Commissions; National Human Rights Commission; Problems of administration in coalition regimes; Citizen-administration interface; Corruption and administration; Disaster management.",
+          "micro_themes": [
+            "Values in public service",
+            "Regulatory Commissions",
+            "National Human Rights Commission",
+            "Problems of administration in coalition regimes",
+            "Citizen-administration interface",
+            "Corruption and administration",
+            "Disaster management"
+          ]
+        }
+      ]
+    }
+  ]
+}

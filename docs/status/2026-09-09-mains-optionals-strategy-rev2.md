@@ -210,6 +210,13 @@ Consequences:
 
 ## Isolation from GS — the `shared` branch must be deleted
 
+> **M8 and M9 below are superseded by
+> `docs/status/2026-09-10-mains-optionals-strategy-rev3.md`.** OPT-SPIKE-01
+> established that the concept row M8 requires cannot be created: all four topic
+> write paths reject a cross-subject `parent_topic_id`. The parent edge would
+> also have bought nothing — mastery does not traverse `parent_topic_id`. The
+> reasoning about WHY isolation is needed still stands; the mechanism does not.
+
 Revision 1 proposed a three-way overlap worksheet: `shared` (tag optional
 questions directly to the GS microtopic), `concept-child`, or `new`. **The
 `shared` branch is unsafe and is withdrawn.**

@@ -26,6 +26,14 @@ Already created and available:
 - Sixteen optional year-papers, ids in
   `workbench/ledgers/OPT-LOAD-02_optional_year_papers.csv`.
 - GS-II subject `upsc-cse-mains-gs2`: 5 topics, 89 microtopics.
+- **All twelve optional subjects now carry their syllabus spine** — 1,252 topics
+  and 1,252 mentions, ingested 2026-09-10, every row `pending`. PSIR Paper-I
+  holds 21 topics and 106 microtopics. The spike therefore runs against a
+  populated tree, not an empty one: its concept row is the 1,253rd, and cleanup
+  must delete ONLY that row. Do not truncate or bulk-delete anything under an
+  optional subject.
+- 4,037 optional PYQ questions are loaded and `pending`. None are tagged. The
+  spike must not tag any of them.
 
 ---
 
