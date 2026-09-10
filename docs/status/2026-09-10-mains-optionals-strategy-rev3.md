@@ -140,17 +140,103 @@ nothing an unscoped read returns is structurally novel.
 
 ---
 
+---
+
+## Decision M10-rev3 — parts are metadata, and M10 as written cannot be built
+
+Revision 2's M10 is headed "Syllabus parts are topics, not sections" and
+requires a syllabus's internal parts to become **top-level `topic` rows** under
+the paper's subject.
+
+The twelve spines do not do that. Four of them — PSIR Paper-I and Paper-II,
+Geography Paper-I, Sociology Paper-II — carry their parts in a `section_ref`
+field on each node, and cite M10 while doing the opposite of what it says.
+SYL-VERIFY-01 caught the inversion, and the verification brief had inherited it,
+restating M10 to match the files rather than the decision.
+
+**The engineering reason is sound and M10 did not account for it.**
+`ingest_upsc_gs_syllabus.py` is strictly two-level: `macro_topic` becomes
+`level='topic'` and `micro_themes` become `level='microtopic'`. M10's
+part → unit → micro-theme tree needs three. Spending the topic level on a
+binary split would have left PSIR Paper-I with 2 topics and 106 microtopics,
+which is not a tree anyone can tag 392 questions against.
+
+**But `section_ref` is read by nothing.** It appears nowhere in the ingest, so
+it reaches no database row. For those four papers the official division is
+currently recorded in neither form — not as topics per M10, nor as metadata per
+the files' own stated intent.
+
+**Decision M10-rev3.** The numbered units are the topic level. A syllabus's
+named parts are **node metadata**, carried through the ingest into
+`topics.metadata.syllabus_part`, and are never topic rows and never
+`exam_phase_sections`.
+
+- The prohibition in M10 stands: parts must not become `exam_phase_sections`.
+  Modelling parts as sections would invent divisions for eight of the twelve
+  papers and undercount Sociology Paper-II, which has three parts against two
+  paper sections.
+- What changes is the positive half. M10 said "topic rows"; that requires a
+  third level the ingest does not have. Metadata is what the two-level tree can
+  actually carry.
+- `section_ref` in the twelve source files is the right field with no plumbing
+  behind it. Either teach the ingest to map `section_ref` into
+  `topics.metadata.syllabus_part`, or rename it there — but until one of those
+  happens, the four part-bearing papers have lost their division.
+
+**One thing SYL-VERIFY-01 confirmed clean:** `section_ref` usage matches M10's
+own table of official divisions row for row. Four part-bearing papers carry
+parts, eight flat papers omit the field, and no file missed a part its syllabus
+has. The classification was right; only the plumbing is missing.
+
+---
+
+## The verbatim claim, and why it needed correcting
+
+`ingest_upsc_gs_syllabus.py:361-364` sets `mention_type` from
+`official_syllabus_line_is_verbatim`, **defaulting to true**. No node in any of
+the twelve files sets that flag, so all 183 unit mentions landed as `explicit` —
+which the script's own comment at `:353` defines as asserting the text IS a
+verbatim official syllabus line.
+
+Every one of those files also carries a `provenance_note` stating the text was
+never diffed against the UPSC notification. The database asserted what the
+source document denied, and review could not have caught it: `reviewer_status`
+and `mention_type` are independent columns, so the claim was never the thing
+being reviewed.
+
+Corrected by `SYL-FIX-01_mention_type.sql` — the 183 reclassified to `derived`,
+with the reason in `metadata`. Same call made on 2026-08-24 for three GS macro
+rows that turned out to be editorial groupings rather than official lines.
+
+The source files still need `"official_syllabus_line_is_verbatim": false` on
+every node so a re-ingest does not reintroduce it. That edit changes each file's
+content hash and so creates a fresh `syllabus_documents` row with a full new
+mention set — it belongs in a deliberate batch with the other pending source
+edits, not applied on discovery.
+
+---
+
 ## Sequence, amended
 
-1. **Prove coverage isolation once.** Promote the mentions for a single optional
+1. **Run SYL-FIX-01's G3 block**, which was a STOP gate on SYL-VERIFY-01 and is
+   still unanswered. If any optional mention is not `pending`, something has
+   been reviewed against the wrong verbatim claim and that review needs
+   revisiting before anything else.
+2. **Correct `mention_type`** on the 183 unit mentions (SYL-FIX-01).
+3. **Merge the branch holding ten of the twelve source files.** They currently
+   live only on `fix/ingest-subject-slug-no-hash`, so the reproducible input
+   behind 1,252 live rows is not on `main`.
+4. **Prove coverage isolation once.** Promote the mentions for a single optional
    paper — PSIR Paper-I — to `verified`, derive coverage, and confirm the GS-II
    rows are untouched. This is the only claim above that has never run.
-2. **Overlap worksheet**, rebuilt on M8-rev3: two columns, not three. Each
+5. **Overlap worksheet**, rebuilt on M8-rev3: two columns, not three. Each
    optional microtopic is either `new` or `gs_counterpart` with the GS
    `topic_id` recorded in `metadata`. The `concept-child` branch is withdrawn
    along with `shared`.
-3. **Tag**, PSIR first, end to end.
-4. **M9 reads**, as its own PR, any time.
+6. **Tag**, PSIR first, end to end.
+7. **M9 reads**, as its own PR, any time.
+8. **`section_ref` plumbing** (M10-rev3), so the four part-bearing papers keep
+   their official division.
 
 ## Still open
 
