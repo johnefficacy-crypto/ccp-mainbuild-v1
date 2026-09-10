@@ -1,0 +1,2066 @@
+{
+ "ifsca": {
+  "exam": "ifsca",
+  "loaded": 444,
+  "live": 362,
+  "matched": 427,
+  "unmatched_paper": {
+   "IFSCA-GA-2024-P2P1-ENG": 3,
+   "IFSCA-GA-2025-P2P1-ENG": 3,
+   "IFSCA-GA-2023-P2P1-ENG": 3
+  },
+  "ctx_lost": [
+   {
+    "id": "2b4a2198-fcff-4e5b-b7c0-c7ca5636f2ad",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 1,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Identify the pair of words that need to be swapped to make the sentence correct.",
+    "stem": "The professor's (A) profound research on (B) historical artifacts (C) shed light on the (D)\nsignificance of ancient cultures."
+   },
+   {
+    "id": "5c115e75-2013-40f2-bc0e-541d33505ac6",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 2,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Identify the pair of words that need to be swapped to make the sentence correct.",
+    "stem": "During the (A) negotiation, the company's (B) stringent terms were (C) challenged by\nthe (D) representatives of the union."
+   },
+   {
+    "id": "259af0b5-d7b7-48fb-baf2-580ce4168aba",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 3,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Identify the pair of words that need to be swapped to make the sentence correct.",
+    "stem": "The novel's (A) intricate plot (B) delves into the (C) intricate emotions of its (D) deeply flawed characters."
+   },
+   {
+    "id": "7861e89c-092e-4a33-8e68-3552fc86688a",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 4,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Identify the pair of words that need to be swapped to make the sentence correct.",
+    "stem": "The conference (A) provided a platform for (B) discussing the latest (C) advances in\ntechnology and (D) highlighted key challenges facing the industry."
+   },
+   {
+    "id": "ba450043-fa9c-4e7f-a5f8-d2c03816a1e9",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 5,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Identify the pair of words that need to be swapped to make the sentence correct.",
+    "stem": "Her (A) meticulous attention to (B) detail in preparing the (C) financial report was (D)\nnoted by the audit team."
+   },
+   {
+    "id": "c8ec54d3-d114-41d9-8a59-e3130a96e968",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 13,
+    "status": "verified",
+    "range": [
+     13,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 88,
+    "body": "Choose the correct pair of words from the given  Options which can fit the blanks aptly.",
+    "stem": "The new policy was designed to _____ both the inefficiencies in the process and the\n_____ it had on employee morale."
+   },
+   {
+    "id": "1a3f0d1a-8d6f-446e-96d5-23fa45b3071b",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 14,
+    "status": "verified",
+    "range": [
+     13,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 88,
+    "body": "Choose the correct pair of words from the given  Options which can fit the blanks aptly.",
+    "stem": "Despite the _____ of the project, the team managed to deliver it on time and within\nbudget, demonstrating their _____ and dedication."
+   },
+   {
+    "id": "895c1651-6997-466a-8a25-17e253a4f67b",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 15,
+    "status": "verified",
+    "range": [
+     13,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 88,
+    "body": "Choose the correct pair of words from the given  Options which can fit the blanks aptly.",
+    "stem": "The CEO's speech was intended to _____ the employees' concerns and _____\nconfidence in the company's future."
+   },
+   {
+    "id": "6b9c5d2c-a4c0-4840-bb09-195d59128702",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 16,
+    "status": "verified",
+    "range": [
+     16,
+     19
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 101,
+    "body": "Choose the word from the Options that best substitutes the underlined word or phrase in the sentence.",
+    "stem": "The committee's decision was met with widespread approval and was seen as a\nhighly commendable move."
+   },
+   {
+    "id": "4d3ab9e7-7b51-47a0-b677-d0fabad57cd8",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 17,
+    "status": "verified",
+    "range": [
+     16,
+     19
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 101,
+    "body": "Choose the word from the Options that best substitutes the underlined word or phrase in the sentence.",
+    "stem": "The new software program is designed to significantly enhance productivity and\nefficiency in the workplace."
+   },
+   {
+    "id": "3306cb70-09d5-4c43-8907-ddba02a97550",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 18,
+    "status": "verified",
+    "range": [
+     16,
+     19
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 101,
+    "body": "Choose the word from the Options that best substitutes the underlined word or phrase in the sentence.",
+    "stem": "Her approach to solving complex problems is both innovative and practical, making\nher a valuable asset to the team."
+   },
+   {
+    "id": "c3c5f8fa-53e2-4a40-9908-71def8686ca1",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 19,
+    "status": "verified",
+    "range": [
+     16,
+     19
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 101,
+    "body": "Choose the word from the Options that best substitutes the underlined word or phrase in the sentence.",
+    "stem": "The government introduced a series of measures aimed at mitigating the adverse\neffects of the economic downturn."
+   },
+   {
+    "id": "deedb100-4263-415a-904e-5639d31faa1b",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 20,
+    "status": "verified",
+    "range": [
+     20,
+     22
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Choose the word that best completes the sentence to convey the intended meaning.",
+    "stem": "The team was able to _____ the project ahead of schedule due to their effective\nmanagement and coordination."
+   },
+   {
+    "id": "a59a3fe9-dcfc-44b4-98d2-4972e2354e2e",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 21,
+    "status": "verified",
+    "range": [
+     20,
+     22
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Choose the word that best completes the sentence to convey the intended meaning.",
+    "stem": "To ensure the accuracy of the research findings, it is important to _____ all sources of\ndata before drawing any conclusions."
+   },
+   {
+    "id": "d05b78f6-3d4f-4401-8b92-fde553a638be",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 22,
+    "status": "verified",
+    "range": [
+     20,
+     22
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 80,
+    "body": "Choose the word that best completes the sentence to convey the intended meaning.",
+    "stem": "Her presentation was filled with detailed information and _____ arguments that\nconvinced the audience of her point of view."
+   },
+   {
+    "id": "39c0904d-48e5-4885-8640-8a99f48f4519",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 23,
+    "status": "verified",
+    "range": [
+     23,
+     25
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 57,
+    "body": "Identify the part of the sentence that contains an error.",
+    "stem": "The company have introduced a new set of guidelines to ensure all employees comply\nwith the latest regulations."
+   },
+   {
+    "id": "80df0d91-7146-4684-9cb0-d134be01bf04",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 24,
+    "status": "verified",
+    "range": [
+     23,
+     25
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 57,
+    "body": "Identify the part of the sentence that contains an error.",
+    "stem": "Neither the manager nor the employees were aware of the changes that was\nimplemented last week."
+   },
+   {
+    "id": "65c6a098-b52c-49f9-ad66-c240330dd08c",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 25,
+    "status": "verified",
+    "range": [
+     23,
+     25
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 57,
+    "body": "Identify the part of the sentence that contains an error.",
+    "stem": "Despite of the challenges, the team managed to meet the project deadlines and\nexceed expectations."
+   },
+   {
+    "id": "b8771e95-39be-435e-a413-27a766311c25",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 1,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 105,
+    "body": "Direction (1-5): What approximate value should come in the place of question mark in the given questions?",
+    "stem": "37.5% of 239.90 + √99.99 =?"
+   },
+   {
+    "id": "5c78042c-380d-411f-b9b6-9f4c51fa2890",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 2,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 105,
+    "body": "Direction (1-5): What approximate value should come in the place of question mark in the given questions?",
+    "stem": "840.98 ÷ 28.99 +? = 112.08"
+   },
+   {
+    "id": "dceb7f80-b2b8-4b4f-bde3-47867e1af9a1",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 3,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 105,
+    "body": "Direction (1-5): What approximate value should come in the place of question mark in the given questions?",
+    "stem": "14.98 ×8.04 + 21.07 × 30.05 =?"
+   },
+   {
+    "id": "6934e704-1a0e-42f1-b0e7-c6233ecfbf6c",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 4,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 105,
+    "body": "Direction (1-5): What approximate value should come in the place of question mark in the given questions?",
+    "stem": "1653.04 ÷ 57.01 x 39.93 =? + 19.98"
+   },
+   {
+    "id": "53980026-c5c4-4897-86bc-272bc1b05bf5",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 5,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 105,
+    "body": "Direction (1-5): What approximate value should come in the place of question mark in the given questions?",
+    "stem": "18.95 × √224.95 =? × √25.03"
+   },
+   {
+    "id": "eae7b9ad-3a6e-4158-885b-e0dee39652fa",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 11,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 179,
+    "body": "Directions (11-15): The following question contains two equations as I and II. You have to solve both equations and determine the relationship between them and give the answer as,",
+    "stem": "(I) x2 – 10x – 24 = 0 (II) y2 + 4y + 4 = 0"
+   },
+   {
+    "id": "0bc60b1d-dfb4-4ae6-9d56-57bc8110d519",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 12,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 179,
+    "body": "Directions (11-15): The following question contains two equations as I and II. You have to solve both equations and determine the relationship between them and give the answer as,",
+    "stem": "(I) x2 -17x + 52 =0 (II) y2 -14y + 45 =0"
+   },
+   {
+    "id": "82fd27d7-3235-4710-b696-90f1b05b42c4",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 13,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 179,
+    "body": "Directions (11-15): The following question contains two equations as I and II. You have to solve both equations and determine the relationship between them and give the answer as,",
+    "stem": "(I) x2 – 25x + 84 = 0 (II) y2 – 28y + 147 = 0"
+   },
+   {
+    "id": "4d731586-16dd-40bd-9f69-6f548dd146aa",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 14,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 179,
+    "body": "Directions (11-15): The following question contains two equations as I and II. You have to solve both equations and determine the relationship between them and give the answer as,",
+    "stem": "(I) x2 – 5x + 6 = 0 (II) y2–8y + 15 = 0"
+   },
+   {
+    "id": "ddc59105-689e-4ef6-8800-882023b8057e",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 15,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 179,
+    "body": "Directions (11-15): The following question contains two equations as I and II. You have to solve both equations and determine the relationship between them and give the answer as,",
+    "stem": "(I) x2 – 8x + 15 = 0 (II) y2 + y – 12 = 0"
+   },
+   {
+    "id": "510adfef-c41e-4cdd-94d0-c2360176a911",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 1,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 829,
+    "body": "Direction: Study the information carefully and answer the question. Eight persons Alice, Bob, Carol, David, Emily, Frank, George, and Hannah are seated in a linear row, some of them are facing North while others are facing South. Hannah sits second to the left of Emily, who sits at the end of the row. David sits to the immediate right of Alice, who faces the South. Carol sits second to the left of David, who faces the same direction as Emily. Hannah, who is not an immediate  neighbor of Alice, faces the opposite direction of Emily. Frank, who is not a  neighbor of Emily or Hannah, faces the opposite direction of Carol. Bob faces the South. George sits second to the right of Bob. Emily and George face the same direction. Carol and David do not face the same direction. Emily and George do not sit adjacent to each other.",
+    "stem": "Who sits second to the right of Bob?"
+   },
+   {
+    "id": "966f6aea-63ce-4202-b4b0-dd4b8b0c6dde",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 2,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 829,
+    "body": "Direction: Study the information carefully and answer the question. Eight persons Alice, Bob, Carol, David, Emily, Frank, George, and Hannah are seated in a linear row, some of them are facing North while others are facing South. Hannah sits second to the left of Emily, who sits at the end of the row. David sits to the immediate right of Alice, who faces the South. Carol sits second to the left of David, who faces the same direction as Emily. Hannah, who is not an immediate  neighbor of Alice, faces the opposite direction of Emily. Frank, who is not a  neighbor of Emily or Hannah, faces the opposite direction of Carol. Bob faces the South. George sits second to the right of Bob. Emily and George face the same direction. Carol and David do not face the same direction. Emily and George do not sit adjacent to each other.",
+    "stem": "Which one sits at one end of the row?"
+   },
+   {
+    "id": "bd0d36af-3a40-459e-95fe-6078ffd737a6",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 3,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 829,
+    "body": "Direction: Study the information carefully and answer the question. Eight persons Alice, Bob, Carol, David, Emily, Frank, George, and Hannah are seated in a linear row, some of them are facing North while others are facing South. Hannah sits second to the left of Emily, who sits at the end of the row. David sits to the immediate right of Alice, who faces the South. Carol sits second to the left of David, who faces the same direction as Emily. Hannah, who is not an immediate  neighbor of Alice, faces the opposite direction of Emily. Frank, who is not a  neighbor of Emily or Hannah, faces the opposite direction of Carol. Bob faces the South. George sits second to the right of Bob. Emily and George face the same direction. Carol and David do not face the same direction. Emily and George do not sit adjacent to each other.",
+    "stem": "How many people are facing south in a row?"
+   },
+   {
+    "id": "0bfc2bff-4309-457e-a425-6082039f6d9a",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 4,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 829,
+    "body": "Direction: Study the information carefully and answer the question. Eight persons Alice, Bob, Carol, David, Emily, Frank, George, and Hannah are seated in a linear row, some of them are facing North while others are facing South. Hannah sits second to the left of Emily, who sits at the end of the row. David sits to the immediate right of Alice, who faces the South. Carol sits second to the left of David, who faces the same direction as Emily. Hannah, who is not an immediate  neighbor of Alice, faces the opposite direction of Emily. Frank, who is not a  neighbor of Emily or Hannah, faces the opposite direction of Carol. Bob faces the South. George sits second to the right of Bob. Emily and George face the same direction. Carol and David do not face the same direction. Emily and George do not sit adjacent to each other.",
+    "stem": "Who faces the same direction as Emily?"
+   },
+   {
+    "id": "7215e382-ad60-41c2-82a9-325831d4e3b9",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 5,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 829,
+    "body": "Direction: Study the information carefully and answer the question. Eight persons Alice, Bob, Carol, David, Emily, Frank, George, and Hannah are seated in a linear row, some of them are facing North while others are facing South. Hannah sits second to the left of Emily, who sits at the end of the row. David sits to the immediate right of Alice, who faces the South. Carol sits second to the left of David, who faces the same direction as Emily. Hannah, who is not an immediate  neighbor of Alice, faces the opposite direction of Emily. Frank, who is not a  neighbor of Emily or Hannah, faces the opposite direction of Carol. Bob faces the South. George sits second to the right of Bob. Emily and George face the same direction. Carol and David do not face the same direction. Emily and George do not sit adjacent to each other.",
+    "stem": "Who is an immediate neighbor of Alice?"
+   },
+   {
+    "id": "82b9805b-9e9b-4380-b175-0d41a75f8aac",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 11,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 166,
+    "body": "Direction: Study the following statements and decide which of the given conclusions logically follows from the given statements disregarding the commonly known facts.",
+    "stem": "Statements:\nAll bread is butter.\nNo butter is cream.\nAll cream is bad.\nConclusions:\nI. All bread are bad\nII. Some bad are butter"
+   },
+   {
+    "id": "03953220-dfa8-4d48-b815-79304eabd8e9",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 12,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 166,
+    "body": "Direction: Study the following statements and decide which of the given conclusions logically follows from the given statements disregarding the commonly known facts.",
+    "stem": "Statements:\nA few plants are not green.\nAll green are colorful.\nNo colorful is black.\nConclusions:\nI. No black is green.\nII. No plant is black."
+   },
+   {
+    "id": "da991ebd-9300-4d33-949b-4f6800403f80",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 13,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 166,
+    "body": "Direction: Study the following statements and decide which of the given conclusions logically follows from the given statements disregarding the commonly known facts.",
+    "stem": "Statements:\nNo tiger is a dog.\nSome rats are tigers.\nAll domestic are dogs.\nConclusions:\nI. No tiger is a rat.\nII. All dogs are definitely not tigers."
+   },
+   {
+    "id": "fdd95d43-8e51-4349-bac4-15bde69d2e86",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 14,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 166,
+    "body": "Direction: Study the following statements and decide which of the given conclusions logically follows from the given statements disregarding the commonly known facts.",
+    "stem": "Statements:\nSome music is videos.\nNo book is bad.\nAll books are music.\nSome bad are not videos.\nConclusions:\nI. All bad being a book is a possibility.\nII. Some music is bad.\nIII. All videos being music is a possibility.\nIV. Some books are videos."
+   },
+   {
+    "id": "c1423e7a-f618-434e-9800-f61dcef21a8c",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 15,
+    "status": "verified",
+    "range": [
+     11,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 166,
+    "body": "Direction: Study the following statements and decide which of the given conclusions logically follows from the given statements disregarding the commonly known facts.",
+    "stem": "Statements:\nSome metros are trains.\nSome metros are lucky.\nAll lucky is great.\nNo human is lucky.\nAll wise are humans.\nConclusions:\nI: All metros can be humans.\nII: Some lucky are trains\nIII: Some great that are lucky being wise are a possibility.\nIV: Some humans that are wise can be trains"
+   },
+   {
+    "id": "f02479db-780f-4f1c-aa49-e33b592f8c53",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 5,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 966,
+    "body": "Read the information carefully and answer the given questions below. Eight people P, Q, R, S, T, U, V, and W, are sitting around a circular table, not necessarily in the same order. Some of them are facing inside the center, while some of them are facing outside the center, but not necessarily in the same order. Three people are sitting between S and U, and both are facing opposite directions to each other. R is sitting third to the right of T, who is sitting opposite P. T is sitting second to the right of S and U and faces the opposite direction as U faces. V is a neighbour of both T and S and faces away from the center. Q faces toward the center. V sits third to the left of P, who is third to the right of W. Q and R face the opposite direction to each other, in such a way that R sits second to the left of Q. (Note - Opposite directions mean that if one person is facing towards the center, the other person will face outside the center and vice versa).",
+    "stem": "Who among the following is sitting fifth to the right of W?"
+   },
+   {
+    "id": "8af784be-26e8-4de8-82d0-039a6a3d6424",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 6,
+    "status": "rejected",
+    "range": [
+     6,
+     10
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 753,
+    "body": "Study the following information carefully and answer the questions below Nine boxes E, F, G, H, I, U, V, W, and X are kept one above another in the stack. The lowermost shelf is numbered as one, and the topmost shelf is numbered as nine. All the information is not necessarily in the same order. Box V has kept on the fourth shelf. Only two boxes are kept between Box V and Box U. Box F has kept at an even number position. Box U and Box F are not kept on adjacent shelves. The number of boxes kept between F and V is the same as between U and X. Box X is kept above U. The number of boxes kept above box X is the same as below box W. Box E has kept immediately above box I. Box H has kept below Box V. Box G and Box F are not kept in adjacent positions",
+    "stem": "Which of the following box kept exactly between G and E?"
+   },
+   {
+    "id": "096fbb87-a8b1-4971-8866-c5d3a82d7cff",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 7,
+    "status": "rejected",
+    "range": [
+     6,
+     10
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 753,
+    "body": "Study the following information carefully and answer the questions below Nine boxes E, F, G, H, I, U, V, W, and X are kept one above another in the stack. The lowermost shelf is numbered as one, and the topmost shelf is numbered as nine. All the information is not necessarily in the same order. Box V has kept on the fourth shelf. Only two boxes are kept between Box V and Box U. Box F has kept at an even number position. Box U and Box F are not kept on adjacent shelves. The number of boxes kept between F and V is the same as between U and X. Box X is kept above U. The number of boxes kept above box X is the same as below box W. Box E has kept immediately above box I. Box H has kept below Box V. Box G and Box F are not kept in adjacent positions",
+    "stem": "What is the position of X from the top of the position?"
+   },
+   {
+    "id": "c24bc207-4a2c-4571-86ab-2b370b599712",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 8,
+    "status": "rejected",
+    "range": [
+     6,
+     10
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 753,
+    "body": "Study the following information carefully and answer the questions below Nine boxes E, F, G, H, I, U, V, W, and X are kept one above another in the stack. The lowermost shelf is numbered as one, and the topmost shelf is numbered as nine. All the information is not necessarily in the same order. Box V has kept on the fourth shelf. Only two boxes are kept between Box V and Box U. Box F has kept at an even number position. Box U and Box F are not kept on adjacent shelves. The number of boxes kept between F and V is the same as between U and X. Box X is kept above U. The number of boxes kept above box X is the same as below box W. Box E has kept immediately above box I. Box H has kept below Box V. Box G and Box F are not kept in adjacent positions",
+    "stem": "How many boxes are kept between F and the box that is kept immediately below G?"
+   },
+   {
+    "id": "83fe08a5-4650-49aa-bcc4-e805fc2807c4",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 9,
+    "status": "rejected",
+    "range": [
+     6,
+     10
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 753,
+    "body": "Study the following information carefully and answer the questions below Nine boxes E, F, G, H, I, U, V, W, and X are kept one above another in the stack. The lowermost shelf is numbered as one, and the topmost shelf is numbered as nine. All the information is not necessarily in the same order. Box V has kept on the fourth shelf. Only two boxes are kept between Box V and Box U. Box F has kept at an even number position. Box U and Box F are not kept on adjacent shelves. The number of boxes kept between F and V is the same as between U and X. Box X is kept above U. The number of boxes kept above box X is the same as below box W. Box E has kept immediately above box I. Box H has kept below Box V. Box G and Box F are not kept in adjacent positions",
+    "stem": "If X and U interchange its positions and the same way V and F interchange its\npositions, then which of the following box kept at three boxes above F?"
+   },
+   {
+    "id": "da31bad6-2ee9-4cb2-827f-6fabe0cb5071",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 11,
+    "status": "needs_correction",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 161,
+    "body": "In each of the following questions, the relationship between different elements is shown in the statements followed by two conclusions. Find the true conclusion.",
+    "stem": "Statements: Z < A ≤ I = B; A ≥ J ≥ K ≥ P; D ≤ M ≤ P\nConclusions:\nI. B > D\nII. B = D"
+   },
+   {
+    "id": "f0e6a88a-a9a6-4c19-a00f-f998779da012",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 12,
+    "status": "needs_correction",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 161,
+    "body": "In each of the following questions, the relationship between different elements is shown in the statements followed by two conclusions. Find the true conclusion.",
+    "stem": "Statements: Y < R ≤ D = N > J; C ≥ L > M = D > G; E < R ≤ B < A = Z\nConclusion:\nI. L > E\nII. A ≤ M"
+   },
+   {
+    "id": "efe921d9-6468-4083-b136-7563f4cd9975",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 13,
+    "status": "needs_correction",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 161,
+    "body": "In each of the following questions, the relationship between different elements is shown in the statements followed by two conclusions. Find the true conclusion.",
+    "stem": "Statements: N > Y ≥ L = P; U < F ≤ T < P; M ≥ R > U\nConclusions:\nI). Y > U\nII). L < M"
+   },
+   {
+    "id": "6075b01e-48e4-42c3-9c24-42750c702171",
+    "paper_code": "IFSCA-GA-2025-P1P1-REAS",
+    "q": 25,
+    "status": "verified",
+    "range": [
+     25,
+     25
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 262,
+    "body": "In the question, a statement is given, followed by two arguments, I and II. You have to consider the statement to be true even if it seems to be at variance from commonly known facts. You have to decide which of the given arguments, if any, is a strong argument.",
+    "stem": "Statement:\nSchools should make participation in at least one extracurricular activity compulsory for\nevery student.\nArguments:\nI. Yes, extracurricular activities help students develop confidence, social skills, and creativity,\nwhich are essential for overall growth.\nII. No, making it compulsory will increase pressure on students who are already struggling to\nmanage academic workload."
+   },
+   {
+    "id": "71e13834-3455-4c19-b594-bff180680ce6",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 6,
+    "status": "verified",
+    "range": [
+     6,
+     9
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 50,
+    "body": "Find the missing term (?) in the following series.",
+    "stem": "223,234, 256, 300, 388, ?"
+   },
+   {
+    "id": "258a1136-f13a-4476-b1af-a92bb75bdcde",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 7,
+    "status": "verified",
+    "range": [
+     6,
+     9
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 50,
+    "body": "Find the missing term (?) in the following series.",
+    "stem": "23, 24, 50,153, ?, 3085"
+   },
+   {
+    "id": "f68d9a7f-a4af-4de1-bfa5-7506e8204716",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 8,
+    "status": "verified",
+    "range": [
+     6,
+     9
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 50,
+    "body": "Find the missing term (?) in the following series.",
+    "stem": "25, 37, 51, 67, 85, ?"
+   },
+   {
+    "id": "71510840-3a51-431f-9eb6-899521bbe8d9",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 9,
+    "status": "needs_correction",
+    "range": [
+     6,
+     9
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 50,
+    "body": "Find the missing term (?) in the following series.",
+    "stem": "8, 5, 4, 0, -24, ?"
+   },
+   {
+    "id": "f9dd146b-e69b-4be1-a258-4cd4a74c5a29",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 10,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "(I) x2 - 29x + 204 = 0\n(II) y2 - 27y - 238 = 0"
+   },
+   {
+    "id": "9aae5caf-6e16-441e-8b87-d13cde48c999",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 11,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "(I) x 2 - 21x + 68 = 0\n(II) 2y2 + 11y - 63 = 0"
+   },
+   {
+    "id": "6b7cb621-9e67-4c04-8bac-d1689fa4ce2f",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 12,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "(I) x2 + 13x - 30 = 0\n(II) y2 - 33y + 242 = 0"
+   },
+   {
+    "id": "e2b40bd5-9651-46e0-94b1-fe9fac7670f0",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 13,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I. x2 -24x + 143 = 0\nII. y2 - 21y + 90 = 0"
+   },
+   {
+    "id": "a291ac8b-fd71-4e27-bb75-1343ebaf912a",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 14,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "(I) x2 - 22x + 57 = 0\n(II) y2 - 41y + 420 = 0"
+   },
+   {
+    "id": "3e8f95c4-1d28-4363-bc5d-b8b4fafaa9b3",
+    "paper_code": "IFSCA-GA-2025-P1P1-QUANT",
+    "q": 15,
+    "status": "verified",
+    "range": [
+     10,
+     15
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I. x2 +5x - 36 = 0\nII. y2 - 36y + 320 = 0"
+   },
+   {
+    "id": "ba54729a-c9bc-4703-857d-1895649b448e",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 2,
+    "status": "needs_correction",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 95,
+    "body": "What is the approximate value should come in place of question mark in the following questions?",
+    "stem": "15𝟏𝟏𝟏𝟏 x 699.9845 – 43.002 x 5 + 594.012 x 2 = ?"
+   },
+   {
+    "id": "08e253a8-c6c7-48e2-b413-9611224e50e8",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 16,
+    "status": "verified",
+    "range": [
+     16,
+     20
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 70,
+    "body": "What value should come in place of (?) in the following number series?",
+    "stem": "169, 289, ?, 469, 529, 569, 589"
+   },
+   {
+    "id": "4d2660cc-0a70-4657-8812-781bbadfde36",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 17,
+    "status": "verified",
+    "range": [
+     16,
+     20
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 70,
+    "body": "What value should come in place of (?) in the following number series?",
+    "stem": "12, 86, 226, ?, 830, 1372"
+   },
+   {
+    "id": "9df3f4ed-1900-4a9f-b77c-61cf58bd1d68",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 18,
+    "status": "verified",
+    "range": [
+     16,
+     20
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 70,
+    "body": "What value should come in place of (?) in the following number series?",
+    "stem": "124, 131, ?, 146, 157, 170"
+   },
+   {
+    "id": "9e88a897-704f-44f9-9a29-4d40aaade2ba",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 19,
+    "status": "verified",
+    "range": [
+     16,
+     20
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 70,
+    "body": "What value should come in place of (?) in the following number series?",
+    "stem": "24, ? , 18, 45, 157.5, 708.75"
+   },
+   {
+    "id": "461dad49-496a-49f3-81f1-9fa9f8ddc77b",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 20,
+    "status": "verified",
+    "range": [
+     16,
+     20
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 70,
+    "body": "What value should come in place of (?) in the following number series?",
+    "stem": "15, 27, 49, ?, 115, 155"
+   },
+   {
+    "id": "21fb9401-c309-4b24-9cb5-1f27c13455ee",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 1,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 674,
+    "body": "Answer the questions based on the information given below. Eight persons A, B, C, D, E, F, G and H are sitting in a circular table but not necessarily in the same order. Some are facing inside the circle while others are facing outside the circle. Not more than two persons sitting together are facing  same direction. D is sitting second right of H and vice versa. E is sitting fourth left of F. E is sitting immediate left of A, who is facing inside the circle. H is sitting second left of G. B is sitting fourth left of C. Both F and  E are facing same direction. C is not an immediate neighbor of H and is not facing inside the circle. G is sitting immediate right of B.",
+    "stem": "Who sits immediate right of G?"
+   },
+   {
+    "id": "e71101db-7662-4980-8d9b-a5f33df5be7c",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 2,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 674,
+    "body": "Answer the questions based on the information given below. Eight persons A, B, C, D, E, F, G and H are sitting in a circular table but not necessarily in the same order. Some are facing inside the circle while others are facing outside the circle. Not more than two persons sitting together are facing  same direction. D is sitting second right of H and vice versa. E is sitting fourth left of F. E is sitting immediate left of A, who is facing inside the circle. H is sitting second left of G. B is sitting fourth left of C. Both F and  E are facing same direction. C is not an immediate neighbor of H and is not facing inside the circle. G is sitting immediate right of B.",
+    "stem": "Who sits opposite to A?"
+   },
+   {
+    "id": "72758f4c-827d-46eb-8555-5aedb79413ec",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 3,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 674,
+    "body": "Answer the questions based on the information given below. Eight persons A, B, C, D, E, F, G and H are sitting in a circular table but not necessarily in the same order. Some are facing inside the circle while others are facing outside the circle. Not more than two persons sitting together are facing  same direction. D is sitting second right of H and vice versa. E is sitting fourth left of F. E is sitting immediate left of A, who is facing inside the circle. H is sitting second left of G. B is sitting fourth left of C. Both F and  E are facing same direction. C is not an immediate neighbor of H and is not facing inside the circle. G is sitting immediate right of B.",
+    "stem": "How many people sit between B and A, if counted from the right of B?"
+   },
+   {
+    "id": "c3b7a96a-9eef-4d52-912a-9b0ed233473e",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 4,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 674,
+    "body": "Answer the questions based on the information given below. Eight persons A, B, C, D, E, F, G and H are sitting in a circular table but not necessarily in the same order. Some are facing inside the circle while others are facing outside the circle. Not more than two persons sitting together are facing  same direction. D is sitting second right of H and vice versa. E is sitting fourth left of F. E is sitting immediate left of A, who is facing inside the circle. H is sitting second left of G. B is sitting fourth left of C. Both F and  E are facing same direction. C is not an immediate neighbor of H and is not facing inside the circle. G is sitting immediate right of B.",
+    "stem": "What is the position of C with respect to H?"
+   },
+   {
+    "id": "7c863f3f-4ac4-4242-a148-0988b8840246",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 5,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 674,
+    "body": "Answer the questions based on the information given below. Eight persons A, B, C, D, E, F, G and H are sitting in a circular table but not necessarily in the same order. Some are facing inside the circle while others are facing outside the circle. Not more than two persons sitting together are facing  same direction. D is sitting second right of H and vice versa. E is sitting fourth left of F. E is sitting immediate left of A, who is facing inside the circle. H is sitting second left of G. B is sitting fourth left of C. Both F and  E are facing same direction. C is not an immediate neighbor of H and is not facing inside the circle. G is sitting immediate right of B.",
+    "stem": "Who sits third to the right of F?"
+   },
+   {
+    "id": "c7186818-5f6b-4781-bb23-82adcfad8a69",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 11,
+    "status": "verified",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 170,
+    "body": "In the given questions, the relationship between different elements is shown in the statements followed by some conclusions. Find the conclusion which is definitely true.",
+    "stem": "Statements:\nR > K ≤ G = C < Z; C ≤ E = A ≥ S\nConclusions:\nI) K ≤ A\nII) Z > S\nIII) E > K"
+   },
+   {
+    "id": "908058ef-3912-4ac0-be49-096ad0c098d1",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 12,
+    "status": "verified",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 170,
+    "body": "In the given questions, the relationship between different elements is shown in the statements followed by some conclusions. Find the conclusion which is definitely true.",
+    "stem": "Statements:\nS > I = W ≥ C ≥ A = U; B > W ≤ Y = E\nConclusions:\nI) E ≥ A\nII) U < B\nIII) Y > S"
+   },
+   {
+    "id": "011ed15d-0665-4e49-bc0f-730a6e09b7a1",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 13,
+    "status": "verified",
+    "range": [
+     11,
+     13
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 170,
+    "body": "In the given questions, the relationship between different elements is shown in the statements followed by some conclusions. Find the conclusion which is definitely true.",
+    "stem": "Statements\nQ ≥ W < E ≤ Y < P ≥ D; W = T > U > L ≤ V = A ≥ M\nConclusions\nI) L < P\nII) Y > V\nIII) Q > L"
+   }
+  ],
+  "ctx_ok": 44,
+  "ctx_absent": [],
+  "ctx_mismatch": [],
+  "ctx_via_stimulus": 0,
+  "opt_lost": [],
+  "opt_bleed": [
+   {
+    "option_id": "14e1ebd7-db6f-41a8-88df-8e0a2f7bee32",
+    "question_id": "53980026-c5c4-4897-86bc-272bc1b05bf5",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "src_q": 5,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "60 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "printed": "60",
+    "tail": "IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "7b7051af-8d55-4736-a366-786f7ced348a",
+    "question_id": "56dcea39-ae23-44ad-a2c5-7bdac76aeec6",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "src_q": 25,
+    "label": "e",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "None of these REASONOING",
+    "printed": "None of these",
+    "tail": "REASONOING",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "7c4895a1-9b8a-4737-ae72-03130d6e28ff",
+    "question_id": "a9824e74-bdde-4309-b176-a2664a6aeec8",
+    "paper_code": "IFSCA-GA-2023-P2P2-BUDGET",
+    "src_q": 5,
+    "label": "e",
+    "is_correct": true,
+    "status": "rejected",
+    "loaded": "5.90; 2025 - 2026 CA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "printed": "5.90; 2025 - 2026",
+    "tail": "CA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "dd3a9491-a535-449f-b97a-3246f827ca37",
+    "question_id": "056aaf92-a1b7-4a0f-b642-ea9ae55f3534",
+    "paper_code": "IFSCA-GA-2023-P2P2-BUDGET",
+    "src_q": 9,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Low Productivity IFSCA Grade A 2025 Phase 2 - Paper 2",
+    "printed": "Low Productivity",
+    "tail": "IFSCA Grade A 2025 Phase 2 - Paper 2",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "ecf74d51-332f-455d-a1ed-910675cc9ef9",
+    "question_id": "0ab83085-f2d2-4685-8ea3-284baed42f6d",
+    "paper_code": "IFSCA-GA-2023-P2P2-FIN",
+    "src_q": 9,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "751 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "printed": "7",
+    "tail": "51 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "064c28ed-d091-49ef-a5f7-fc0b4b58b551",
+    "question_id": "78977083-5ecc-4770-81f0-3a535762e3a1",
+    "paper_code": "IFSCA-GA-2023-P2P2-FIN",
+    "src_q": 13,
+    "label": "e",
+    "is_correct": true,
+    "status": "needs_correction",
+    "loaded": "5 crores IFSCA & GIFT CITY",
+    "printed": "5 crores",
+    "tail": "IFSCA & GIFT CITY",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "94fa4204-3200-4475-9c1c-9e57b10ee407",
+    "question_id": "02c57051-e05e-4e30-99fc-e941bf153e0c",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "src_q": 11,
+    "label": "e",
+    "is_correct": true,
+    "status": "rejected",
+    "loaded": "Verizon23 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "printed": "Verizon",
+    "tail": "23 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "3921184a-57c7-427a-b175-bfc1eaa70b30",
+    "question_id": "d2a81d03-1485-4aef-a8fc-2e408268b68d",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "src_q": 16,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "None of the above24 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "printed": "None of the above",
+    "tail": "24 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "7f0e978a-8f37-466d-8e1e-0414de6aee65",
+    "question_id": "7a27952f-094e-47cf-a29f-c46b263107cb",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "src_q": 21,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Rs.19,200 crore25 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "printed": "Rs.19,200 crore",
+    "tail": "25 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "cf8117c5-0605-4b7f-8931-b5afecc5600a",
+    "question_id": "93049f99-aa14-499e-8f0f-400aa0306485",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "src_q": 25,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "25.0426 IFSCA Grade A IFSCA Grade A 2025 Phase 1 - Paper 1 Answer Key IFSCA Grade A 2025 Phase 1 – Paper 1 Answer Key Quantitative Aptitude Question Answer Question Answer Question Answer 1 C 2 B 3 D 4 C 5 D 6 E 7 E 8 B 9 A 10 C 11 E 12 A 13 E 14 C 15 A 16 E 17 E 18 E 19 C 20 B 21 E 22 C 23 B 24 D 25 A Reasoning Ability Question Answer Question Answer Question Answer 1 C 2 D 3 C 4 A 5 B 6 D 7 C 8 A 9 E 10 E 11 C 12 A 13 A 14 E 15 D 16 C 17 B 18 D 19 C 20 B 21 D 22 A 23 C 24 B 25 C English Language Question Answer Question Answer Question Answer 1 D 2 C 3 A 4 A 5 A 6 C 7 A 8 C 9 C 10 B 11 B 12 B 13 A 14 C 15 B 16 B 17 B 18 B 19 C 20 B 21 A 22 B 23 C 24 B 25 B General Awareness Question Answer Question Answer Question Answer 1 B 2 A 3 D 4 B 5 E 6 C 7 E 8 D 9 D 10 E 11 A 12 C 13 C 14 D 15 B 16 A 17 B 18 A 19 E 20 C 21 A 22 C 23 D 24 C 25 A IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions Answer Key Quant Question Answer Question Answer Question Answer 1 A 2 E 3 B 4 C 5 B 6 A 7 A 8 C 9 E 10 C 11 A 12 D 13 D 14 B 15 B 16 B 17 A 18 D 19 D 20 E 21 A 22 C 23 E 24 C 25 C Reasoning Ability Question Answer Question Answer Question Answer 1 B 2 A 3 B4 C 5 A 6 E7 B 8 C 9 D10 D 11 A 12 C13 C 14 A 15 D16 C 17 B 18 A 19 E 20 A 21 B22 E 23 A 24 C25 A English Question Answer Question Answer Question Answer 1 C 2 C 3 A 4 B 5 A 6 A 7 C 8 B 9 C 10 B 11 A 12 B 13 B 14 B 15 B 16 B 17 C 18 C 19 C 20 B 21 C 22 C 23 B 24 E 25 A General Awareness 1 C 2 B 3 D 4 D 5 C 6 C 7 D 8 D 9 C 10 C 11 D 12 C 13 C 14 B 15 D 16 B 17 B 18 B 19 C 20 B 21 E 22 B 23 B 24 B 25 D",
+    "printed": "25.04",
+    "tail": "26 IFSCA Grade A IFSCA Grade A 2025 Phase 1 - Paper 1 Answer Key IFSCA Grade A 2025 Phase 1 – Paper 1 Answer Key Quantitative Aptitude Question Answer Question Answer Question Answer 1 C 2 B 3 D 4 C 5 D 6 E 7 E 8 B 9 A 10 C 11 E 12 A 13 E 14 C 15 A 16 E 17 E 18 E 19 C 20 B 21 E 22 C 23 B 24 D 25 A Reasoning Ability Question Answer Question Answer Question Answer 1 C 2 D 3 C 4 A 5 B 6 D 7 C 8 A 9 E 10 E 11 C 12 A 13 A 14 E 15 D 16 C 17 B 18 D 19 C 20 B 21 D 22 A 23 C 24 B 25 C English Language Question Answer Question Answer Question Answer 1 D 2 C 3 A 4 A 5 A 6 C 7 A 8 C 9 C 10 B 11 B 12 B 13 A 14 C 15 B 16 B 17 B 18 B 19 C 20 B 21 A 22 B 23 C 24 B 25 B General Awareness Question Answer Question Answer Question Answer 1 B 2 A 3 D 4 B 5 E 6 C 7 E 8 D 9 D 10 E 11 A 12 C 13 C 14 D 15 B 16 A 17 B 18 A 19 E 20 C 21 A 22 C 23 D 24 C 25 A IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions Answer Key Quant Question Answer Question Answer Question Answer 1 A 2 E 3 B 4 C 5 B 6 A 7 A 8 C 9 E 10 C 11 A 12 D 13 D 14 B 15 B 16 B 17 A 18 D 19 D 20 E 21 A 22 C 23 E 24 C 25 C Reasoning Ability Question Answer Question Answer Question Answer 1 B 2 A 3 B4 C 5 A 6 E7 B 8 C 9 D10 D 11 A 12 C13 C 14 A 15 D16 C 17 B 18 A 19 E 20 A 21 B22 E 23 A 24 C25 A English Question Answer Question Answer Question Answer 1 C 2 C 3 A 4 B 5 A 6 A 7 C 8 B 9 C 10 B 11 A 12 B 13 B 14 B 15 B 16 B 17 C 18 C 19 C 20 B 21 C 22 C 23 B 24 E 25 A General Awareness 1 C 2 B 3 D 4 D 5 C 6 C 7 D 8 D 9 C 10 C 11 D 12 C 13 C 14 B 15 D 16 B 17 B 18 B 19 C 20 B 21 E 22 B 23 B 24 B 25 D",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "7d34d41a-7a94-46b5-bd0e-4e3eadbf70da",
+    "question_id": "aa744e57-f536-44e1-9448-8c847865c51d",
+    "paper_code": "IFSCA-GA-2023-P2P2-INSPEN",
+    "src_q": 4,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "9 UNION BUDGET & ECONOMIC SURVEY",
+    "printed": "9",
+    "tail": "UNION BUDGET & ECONOMIC SURVEY",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "f418e4d6-8ce6-4b1a-93ed-07bdd95a41d1",
+    "question_id": "57563e71-171f-48b4-9bda-a31e08c5b787",
+    "paper_code": "IFSCA-GA-2025-P2P2-GIFT",
+    "src_q": 3,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Regulated only by IRDAI Insurance & Pension",
+    "printed": "Regulated only by IRDAI",
+    "tail": "Insurance & Pension",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "4db32617-1714-4c5c-b8ae-76d09f262a08",
+    "question_id": "d7ddbf2d-9415-41b8-a77a-a5a97681baf0",
+    "paper_code": "IFSCA-GA-2023-P2P2-GIFT",
+    "src_q": 9,
+    "label": "e",
+    "is_correct": true,
+    "status": "needs_correction",
+    "loaded": "100%, 10 years57 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "printed": "100%, 10 years",
+    "tail": "57 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "75d40152-3cd3-418c-8fee-4d9999d1acd6",
+    "question_id": "b8d8c558-55ed-43c6-9e1e-2bd295572fb4",
+    "paper_code": "IFSCA-GA-2023-P2P2-GIFT",
+    "src_q": 12,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "New York INSURANCE & PENSION",
+    "printed": "New York",
+    "tail": "INSURANCE & PENSION",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "8a8edf49-f61c-487b-9fb5-5b6cfbdf81ed",
+    "question_id": "7cca238d-ade4-491e-b099-7080c652ee47",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "src_q": 5,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "₹3000 crore General Awareness21 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "printed": "₹3000 crore",
+    "tail": "General Awareness21 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "text"
+   },
+   {
+    "option_id": "10844110-c75e-4931-8a2f-511e27030241",
+    "question_id": "f7a47440-ed19-4ee6-b998-953664a71202",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "src_q": 10,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "12 years22 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "printed": "12 years",
+    "tail": "22 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "42d62de9-2afb-4744-b2ad-4ed04e6d3134",
+    "question_id": "1e1e097c-2664-462f-89b4-a0407a19a0ba",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "src_q": 15,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Axis Bank23 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "printed": "Axis Bank",
+    "tail": "23 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "144dbf9b-aeec-4a1f-af51-bb21f987278b",
+    "question_id": "33f38230-c99f-4563-bd0b-803ad3bdc55d",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "src_q": 21,
+    "label": "e",
+    "is_correct": true,
+    "status": "rejected",
+    "loaded": "100%24 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "printed": "100%",
+    "tail": "24 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions",
+    "tail_kind": "furniture"
+   }
+  ],
+  "opt_divergent": [
+   {
+    "option_id": "f17c7210-ea0d-4b65-aa04-abd3eb0e3ba7",
+    "question_id": "8c52affb-cc53-409d-a6ff-0888b6557c7c",
+    "paper_code": "IFSCA-GA-2024-P2P2-FIN",
+    "src_q": 23,
+    "label": "e",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "Indian Investment Bullion Exchang",
+    "printed": "Indian Investment Bullion Exchange"
+   }
+  ],
+  "opt_absent_q": 0,
+  "opt_checked": 2133,
+  "not_in_book": 8
+ },
+ "pfrda": {
+  "exam": "pfrda",
+  "loaded": 201,
+  "live": 142,
+  "matched": 181,
+  "unmatched_paper": {
+   "PFRDA-GA-2025-P2P1-ENG": 3,
+   "PFRDA-GA-2021-P2P2-COMM": 6,
+   "PFRDA-GA-2022-P2P1-ENG": 3,
+   "PFRDA-GA-2021-P2P1-ENG": 3
+  },
+  "ctx_lost": [
+   {
+    "id": "e8b20c5e-b2c8-4851-9436-8f3af2b4234f",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 1,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 939,
+    "body": "Study the following information carefully and answer the questions given below: Eight persons Komal, Ankit, Pooja, Vijay, Ekta, Deepak, Priya, and Shalu live on different floors of an eight-storey building. Each of them likes different sports. The bottommost floor is numbered as 1 and topmost floor is numbered as 8. Person, who likes Polo, lives three floors above Deepak. Two persons live below Deepak. One person lives between Deepak and the person who likes, Hockey. Pooja lives three floors above the one, who likes Hockey. Person, who likes Rugby lives immediately below Pooja. Person, who likes Baseball, lives three floors above Priya, who doesn’t like Hockey. Person, who likes Football lives immediately above Priya. Shalu lives two floors below the one, who likes Badminton. Vijay lives immediately above Ekta. Person, who lives on floor 1 doesn’t like Table Tennis. Ankit lives immediately above the person, who likes Cricket.",
+    "stem": "How many persons live before Priya?"
+   },
+   {
+    "id": "6408407c-04c3-4330-be30-6c3ee879e04a",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 2,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 939,
+    "body": "Study the following information carefully and answer the questions given below: Eight persons Komal, Ankit, Pooja, Vijay, Ekta, Deepak, Priya, and Shalu live on different floors of an eight-storey building. Each of them likes different sports. The bottommost floor is numbered as 1 and topmost floor is numbered as 8. Person, who likes Polo, lives three floors above Deepak. Two persons live below Deepak. One person lives between Deepak and the person who likes, Hockey. Pooja lives three floors above the one, who likes Hockey. Person, who likes Rugby lives immediately below Pooja. Person, who likes Baseball, lives three floors above Priya, who doesn’t like Hockey. Person, who likes Football lives immediately above Priya. Shalu lives two floors below the one, who likes Badminton. Vijay lives immediately above Ekta. Person, who lives on floor 1 doesn’t like Table Tennis. Ankit lives immediately above the person, who likes Cricket.",
+    "stem": "Four of the following five are based on a certain way to form a group. Who among the\nfollowing doesn't belong to the group?"
+   },
+   {
+    "id": "89166401-322a-490c-9027-00b4cf4fe531",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 3,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 939,
+    "body": "Study the following information carefully and answer the questions given below: Eight persons Komal, Ankit, Pooja, Vijay, Ekta, Deepak, Priya, and Shalu live on different floors of an eight-storey building. Each of them likes different sports. The bottommost floor is numbered as 1 and topmost floor is numbered as 8. Person, who likes Polo, lives three floors above Deepak. Two persons live below Deepak. One person lives between Deepak and the person who likes, Hockey. Pooja lives three floors above the one, who likes Hockey. Person, who likes Rugby lives immediately below Pooja. Person, who likes Baseball, lives three floors above Priya, who doesn’t like Hockey. Person, who likes Football lives immediately above Priya. Shalu lives two floors below the one, who likes Badminton. Vijay lives immediately above Ekta. Person, who lives on floor 1 doesn’t like Table Tennis. Ankit lives immediately above the person, who likes Cricket.",
+    "stem": "Which of the following statements is correct?"
+   },
+   {
+    "id": "e32141db-751a-4baf-9d6e-e1bb00eaa1da",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 4,
+    "status": "rejected",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 939,
+    "body": "Study the following information carefully and answer the questions given below: Eight persons Komal, Ankit, Pooja, Vijay, Ekta, Deepak, Priya, and Shalu live on different floors of an eight-storey building. Each of them likes different sports. The bottommost floor is numbered as 1 and topmost floor is numbered as 8. Person, who likes Polo, lives three floors above Deepak. Two persons live below Deepak. One person lives between Deepak and the person who likes, Hockey. Pooja lives three floors above the one, who likes Hockey. Person, who likes Rugby lives immediately below Pooja. Person, who likes Baseball, lives three floors above Priya, who doesn’t like Hockey. Person, who likes Football lives immediately above Priya. Shalu lives two floors below the one, who likes Badminton. Vijay lives immediately above Ekta. Person, who lives on floor 1 doesn’t like Table Tennis. Ankit lives immediately above the person, who likes Cricket.",
+    "stem": "How many floors are between Komal and the floor of a person, who likes Cricket?"
+   },
+   {
+    "id": "d5234a99-a8a4-45c5-8832-5904dc85f464",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 17,
+    "status": "verified",
+    "range": [
+     16,
+     18
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 358,
+    "body": "In the question below are given three statements followed by two conclusions numbered I and II. You have to take the given statements to be true even if they seem to be at variance with commonly known facts. Read all the conclusions and then decide which of the given conclusions logically follows from the given statements disregarding commonly known facts.",
+    "stem": "Statement:\nAll Pens are Pencils.\nSome Pencils are Books.\nNo Book is Eraser.\nConclusions:\nI. All Pen being Eraser is a possibility.\nII. No Pencil is Book."
+   },
+   {
+    "id": "b5968cc8-861a-4a5a-bf56-56ceed934155",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 18,
+    "status": "needs_correction",
+    "range": [
+     16,
+     18
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 358,
+    "body": "In the question below are given three statements followed by two conclusions numbered I and II. You have to take the given statements to be true even if they seem to be at variance with commonly known facts. Read all the conclusions and then decide which of the given conclusions logically follows from the given statements disregarding commonly known facts.",
+    "stem": "Statements:\nOnly Apple is Mango.\nOnly a few Apple is Guava.\nAll Kiwi are Guava.\nConclusions:\nI. Some Apple are Kiwi.\nII. All Mango being Kiwi is a possibility."
+   },
+   {
+    "id": "a07de6ca-efc2-4639-b563-84b22d96c5f9",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "q": 1,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "(I) x2 - 13x + 36 = 0 (II) y2 - 15y + 54 = 0"
+   },
+   {
+    "id": "a92f9740-c15d-4c84-b429-a09079166df0",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "q": 2,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I. x2 + 19x + 90 = 0 II. 3y - 16 = 8y + 24"
+   },
+   {
+    "id": "7441aefe-fc75-4ac4-babd-f4eceb1a2fc2",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "q": 3,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I. 6x2 - 17x + 12 = 0 II. 15y2 - 17y + 4 = 0"
+   },
+   {
+    "id": "ef00aecf-7eca-4c24-8fa1-44e8b7db7e98",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "q": 4,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I: x2 - 29x + 210 = 0 II: y2 - 27y + 182 = 0"
+   },
+   {
+    "id": "17a20b31-4e60-45de-adcc-9242afbca4c8",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "q": 5,
+    "status": "verified",
+    "range": [
+     1,
+     5
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 97,
+    "body": "Two equations (I) and (II) are given below. You have to solve both the equations and give answer.",
+    "stem": "I: x2 - 4x - 117 = 0 II: y2 + 3y - 180 = 0"
+   },
+   {
+    "id": "73337080-32e0-46ab-8344-693a52d6b2d3",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 1,
+    "status": "rejected",
+    "range": [
+     1,
+     6
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 1341,
+    "body": "Read the following passage carefully and answer the questions. In an age where screens permeate nearly every aspect of life, the practice of a digital detox has emerged as both a wellness intervention and a cultural statement. Unlike permanent lifestyle changes, a digital detox is typically temporary, involving deliberate abstinence from electronic devices. Advocates argue that such breaks restore focus, improve mental health, and rekindle face-to-face interactions. Yet, its meaning extends beyond health. Much like fasting in food-rich societies, refusing screens in a hyper-connected world symbolizes autonomy in the face of abundance. Paradoxically, however, the very tools meant to measure digital balance—tracking apps and screen-time monitors—can heighten dependence, producing a cycle of awareness and relapse. Commercialization complicates matters further. “Screen-free retreats” and branded challenges raise questions of authenticity: is digital detox a genuine path to clarity, or simply another commodified lifestyle product? Meanwhile, cultural pressures celebrating constant connectivity undermine its adoption, leaving individuals torn between professional obligations and personal well-being. At its core, the pursuit of digital detox reflects not merely a retreat from technology but a deeper anxiety about ____________.",
+    "stem": "Which of the following BEST completes the blank?"
+   },
+   {
+    "id": "9b8ba100-0d3f-4918-b600-98bbd8dea827",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 2,
+    "status": "rejected",
+    "range": [
+     1,
+     6
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 1341,
+    "body": "Read the following passage carefully and answer the questions. In an age where screens permeate nearly every aspect of life, the practice of a digital detox has emerged as both a wellness intervention and a cultural statement. Unlike permanent lifestyle changes, a digital detox is typically temporary, involving deliberate abstinence from electronic devices. Advocates argue that such breaks restore focus, improve mental health, and rekindle face-to-face interactions. Yet, its meaning extends beyond health. Much like fasting in food-rich societies, refusing screens in a hyper-connected world symbolizes autonomy in the face of abundance. Paradoxically, however, the very tools meant to measure digital balance—tracking apps and screen-time monitors—can heighten dependence, producing a cycle of awareness and relapse. Commercialization complicates matters further. “Screen-free retreats” and branded challenges raise questions of authenticity: is digital detox a genuine path to clarity, or simply another commodified lifestyle product? Meanwhile, cultural pressures celebrating constant connectivity undermine its adoption, leaving individuals torn between professional obligations and personal well-being. At its core, the pursuit of digital detox reflects not merely a retreat from technology but a deeper anxiety about ____________.",
+    "stem": "The paradox in the passage refers to:"
+   },
+   {
+    "id": "3f962835-d0e3-443c-80c7-b3d350b291b7",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 3,
+    "status": "rejected",
+    "range": [
+     1,
+     6
+    ],
+    "kind": "setup",
+    "has_stimulus": false,
+    "body_len": 1341,
+    "body": "Read the following passage carefully and answer the questions. In an age where screens permeate nearly every aspect of life, the practice of a digital detox has emerged as both a wellness intervention and a cultural statement. Unlike permanent lifestyle changes, a digital detox is typically temporary, involving deliberate abstinence from electronic devices. Advocates argue that such breaks restore focus, improve mental health, and rekindle face-to-face interactions. Yet, its meaning extends beyond health. Much like fasting in food-rich societies, refusing screens in a hyper-connected world symbolizes autonomy in the face of abundance. Paradoxically, however, the very tools meant to measure digital balance—tracking apps and screen-time monitors—can heighten dependence, producing a cycle of awareness and relapse. Commercialization complicates matters further. “Screen-free retreats” and branded challenges raise questions of authenticity: is digital detox a genuine path to clarity, or simply another commodified lifestyle product? Meanwhile, cultural pressures celebrating constant connectivity undermine its adoption, leaving individuals torn between professional obligations and personal well-being. At its core, the pursuit of digital detox reflects not merely a retreat from technology but a deeper anxiety about ____________.",
+    "stem": "The word autonomy as used in the passage is closest in meaning to:"
+   },
+   {
+    "id": "b63fd8f0-dff0-41d3-855c-8496ff4d3b9f",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 7,
+    "status": "verified",
+    "range": [
+     7,
+     10
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 204,
+    "body": "In each of the following sentences, four parts are given and marked as A, B, C, and D. Identify the part that contains a grammatical or usage error. If there is no error, mark your answer as (E) No Error.",
+    "stem": "Hardly had the negotiations concluded (A)/ when the delegates (B)/ was asked to sign\n(C)/ the preliminary agreement. (D)"
+   },
+   {
+    "id": "e78a05cd-8beb-424e-afef-63002265404d",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 8,
+    "status": "verified",
+    "range": [
+     7,
+     10
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 204,
+    "body": "In each of the following sentences, four parts are given and marked as A, B, C, and D. Identify the part that contains a grammatical or usage error. If there is no error, mark your answer as (E) No Error.",
+    "stem": "The committee, along with the advisors, (A)/ are scheduled to meet next week (B)/\nto finalize the guidelines (C)/ for the upcoming policy draft. (D)"
+   },
+   {
+    "id": "21482721-ceca-467c-9eeb-16978d046eca",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 9,
+    "status": "verified",
+    "range": [
+     7,
+     10
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 204,
+    "body": "In each of the following sentences, four parts are given and marked as A, B, C, and D. Identify the part that contains a grammatical or usage error. If there is no error, mark your answer as (E) No Error.",
+    "stem": "Neither the CEO nor the managers (A)/ appears willing to take responsibility (B)/ for\nthe decline in sales, (C)/ despite repeated inquiries. (D)"
+   },
+   {
+    "id": "edf00c9c-bc4f-4674-b6f4-2904e8b0be3e",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 10,
+    "status": "verified",
+    "range": [
+     7,
+     10
+    ],
+    "kind": "instruction",
+    "has_stimulus": false,
+    "body_len": 204,
+    "body": "In each of the following sentences, four parts are given and marked as A, B, C, and D. Identify the part that contains a grammatical or usage error. If there is no error, mark your answer as (E) No Error.",
+    "stem": "The speaker emphasized (A)/ that honesty and integrity (B)/ is the cornerstone\n(C)/ of a successful career. (D)"
+   }
+  ],
+  "ctx_ok": 5,
+  "ctx_absent": [],
+  "ctx_mismatch": [],
+  "ctx_via_stimulus": 0,
+  "opt_lost": [],
+  "opt_bleed": [
+   {
+    "option_id": "10b540dc-59c0-4839-856e-bae8cfdf1eed",
+    "question_id": "25694ed9-c7ba-4c12-bfa8-757ee23db041",
+    "paper_code": "PFRDA-GA-2022-P2P2-CA",
+    "src_q": 4,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "None of the above As per section 141, there are various entities who can be appointed as the auditors of the company, in the same way, Limited Liability Partnership (LLP) can also be appointed as an auditor of the company, however in the case of LLP, only those partners who are",
+    "printed": "None of the above",
+    "tail": "As per section 141, there are various entities who can be appointed as the auditors of the company, in the same way, Limited Liability Partnership (LLP) can also be appointed as an auditor of the company, however in the case of LLP, only those partners who are",
+    "tail_kind": "text"
+   },
+   {
+    "option_id": "cfb6aa28-7faa-4a09-b96d-f2ec5da9116f",
+    "question_id": "9b2bf9aa-c09b-4c88-ad3d-aafd2af969d3",
+    "paper_code": "PFRDA-GA-2025-P1P2-FIN",
+    "src_q": 11,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "It classifies stablecoins as securities under the SEC Economics",
+    "printed": "It classifies stablecoins as securities under the SEC",
+    "tail": "Economics",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "9e32d8b8-f9e0-427a-9777-189925d645b0",
+    "question_id": "14cab782-ae14-4855-bdbd-a31f12f00b4f",
+    "paper_code": "PFRDA-GA-2025-P1P2-MGMT",
+    "src_q": 4,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Conducting team meetings Finance",
+    "printed": "Conducting team meetings",
+    "tail": "Finance",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "ff7ca9dc-0335-4240-b317-63844522eb1c",
+    "question_id": "bd207052-f21c-4f39-b0c3-1de691e73f28",
+    "paper_code": "PFRDA-GA-2025-P2P2-PENS",
+    "src_q": 8,
+    "label": "e",
+    "is_correct": true,
+    "status": "needs_correction",
+    "loaded": "All of the above PFRDA Grade A 2021 Phase 2 – Paper 2",
+    "printed": "All of the above",
+    "tail": "PFRDA Grade A 2021 Phase 2 – Paper 2",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "af8f3643-1a18-4d53-ba8d-61c0520cfb51",
+    "question_id": "e6c91c6d-c398-4c84-bcd1-ef8eac62c586",
+    "paper_code": "PFRDA-GA-2022-P2P2-COST",
+    "src_q": 3,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Rs. 650 From the following given information, calculate economic batch quantity Annual demand of the product = 5000 Products Carrying cost per unit = 10",
+    "printed": "Rs. 650",
+    "tail": "From the following given information, calculate economic batch quantity Annual demand of the product = 5000 Products Carrying cost per unit = 10",
+    "tail_kind": "text"
+   },
+   {
+    "option_id": "d60868e5-17ba-47fa-a831-8cda1c10eaa9",
+    "question_id": "7db806b7-8abf-48f7-9905-7779001cdedc",
+    "paper_code": "PFRDA-GA-2025-P1P2-ECO",
+    "src_q": 5,
+    "label": "e",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "High Income Costing",
+    "printed": "High Income",
+    "tail": "Costing",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "e82b7afe-4619-402c-8c30-4279bd679ddb",
+    "question_id": "657a5900-8bb8-41d9-9d31-c9e427a84052",
+    "paper_code": "PFRDA-GA-2022-P2P2-COMM",
+    "src_q": 6,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "None of the above Study the following financial data and thereafter calculate trade payables turnover ratio Cash purchases= 1,00,000 Opening creditors= 25,000 Closing bill payables= 25,000 Purchase returns= 7,000 Total purchases= 4,07,000 Closing creditors= 50,000 Opening bill payables= 20,000",
+    "printed": "None of the above",
+    "tail": "Study the following financial data and thereafter calculate trade payables turnover ratio Cash purchases= 1,00,000 Opening creditors= 25,000 Closing bill payables= 25,000 Purchase returns= 7,000 Total purchases= 4,07,000 Closing creditors= 50,000 Opening bill payables= 20,000",
+    "tail_kind": "text"
+   },
+   {
+    "option_id": "6c7aa5fb-48b6-441c-afcf-1df7e85a0142",
+    "question_id": "751f629f-9082-47e7-a654-e5be590c6ca9",
+    "paper_code": "PFRDA-GA-2025-P2P2-COMM",
+    "src_q": 6,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "12.0 lakhs Management",
+    "printed": "12.0 lakhs",
+    "tail": "Management",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "149d30b0-4cd9-46b4-9495-bfe81332e7b6",
+    "question_id": "836d24de-a4a4-42d6-87ae-89d508b86304",
+    "paper_code": "PFRDA-GA-2025-P1P1-QUANT",
+    "src_q": 20,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Other than above Reasoning Ability",
+    "printed": "Other than above",
+    "tail": "Reasoning Ability",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "bfd448cd-cc22-4692-9add-f5750c0c4c32",
+    "question_id": "5d1983e4-ed16-43f9-867b-64caae00a761",
+    "paper_code": "PFRDA-GA-2025-P1P2-COST",
+    "src_q": 9,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Processing Time Companies Act",
+    "printed": "Processing Time",
+    "tail": "Companies Act",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "14c5816a-0efc-4677-b3e0-43b81526d9e6",
+    "question_id": "a863a3fd-641d-4445-bc9d-0e8b5086c112",
+    "paper_code": "PFRDA-GA-2025-P1P2-COMM",
+    "src_q": 5,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "None of the above Management",
+    "printed": "None of the above",
+    "tail": "Management",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "28cd5640-3e06-4b0f-a79c-838c4b6f199b",
+    "question_id": "a9cebbf6-e6b4-4ef8-906e-37103385d726",
+    "paper_code": "PFRDA-GA-2025-P2P2-CA",
+    "src_q": 7,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "All of the above Pension Sector",
+    "printed": "All of the above",
+    "tail": "Pension Sector",
+    "tail_kind": "furniture"
+   },
+   {
+    "option_id": "bfcc8295-6525-4289-8416-cfb1266fef0a",
+    "question_id": "d1df03c1-adb3-4edb-901a-6ccada5f43ed",
+    "paper_code": "PFRDA-GA-2022-P2P2-MGMT",
+    "src_q": 2,
+    "label": "d",
+    "is_correct": true,
+    "status": "verified",
+    "loaded": "Morale is concerned with overall attitude of the group towards the Organization and management",
+    "printed": "Morale is concerned with overall attitude of the group towards the Organization and",
+    "tail": "management",
+    "tail_kind": "furniture"
+   }
+  ],
+  "opt_divergent": [
+   {
+    "option_id": "25cce2bf-3c45-4a3f-a0f5-6c0e24ef94b8",
+    "question_id": "fcb502b9-2ad2-4399-980c-8f4b25700907",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "src_q": 56,
+    "label": "a",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "The government has announced strict water rationing in the city starting next week.",
+    "printed": "Only I follow"
+   },
+   {
+    "option_id": "06dcdade-39f7-40f7-b712-6aa6522030f9",
+    "question_id": "fcb502b9-2ad2-4399-980c-8f4b25700907",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "src_q": 56,
+    "label": "b",
+    "is_correct": true,
+    "status": "rejected",
+    "loaded": "The water levels in the city’s main reservoirs have fallen drastically due to poor rainfall this year. A. (A) is the cause and statement (B) is its effect. B. (B) is the cause and statement (A) is its effect.",
+    "printed": "Only II follow"
+   },
+   {
+    "option_id": "2aaa8001-c8a7-4287-bedf-0f90777c0446",
+    "question_id": "fcb502b9-2ad2-4399-980c-8f4b25700907",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "src_q": 56,
+    "label": "c",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Both the statements (A) and (B) are independent causes.",
+    "printed": "Either I or II follows"
+   },
+   {
+    "option_id": "c0ecf57b-3907-4b6f-9bc3-c0776b2c0ec5",
+    "question_id": "fcb502b9-2ad2-4399-980c-8f4b25700907",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "src_q": 56,
+    "label": "d",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Both the statements (A) and (B) are effects of independent causes.",
+    "printed": "Neither I nor II follows"
+   },
+   {
+    "option_id": "22b9bd4a-32d5-4239-b76f-b9273ac667c2",
+    "question_id": "fcb502b9-2ad2-4399-980c-8f4b25700907",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "src_q": 56,
+    "label": "e",
+    "is_correct": false,
+    "status": "rejected",
+    "loaded": "Both the statements (A) and (B) are effects of some common cause.",
+    "printed": "Both I and II follows"
+   },
+   {
+    "option_id": "7d06527d-17af-490a-9e81-88e92977e3d9",
+    "question_id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "src_q": 7,
+    "label": "a",
+    "is_correct": true,
+    "status": "needs_correction",
+    "loaded": "Innovation 2. Organisation achieves targets with",
+    "printed": "1–A, 2–C, 3–D, 4–B, 5–E"
+   },
+   {
+    "option_id": "6a1525a9-3adc-4a45-8ebe-ab2789874841",
+    "question_id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "src_q": 7,
+    "label": "b",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Recognition 3. The firm grows in new markets through",
+    "printed": "1–B, 2–C, 3–A, 4–E, 5–D"
+   },
+   {
+    "option_id": "e83e9acb-d59f-421c-9674-1105bb766db9",
+    "question_id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "src_q": 7,
+    "label": "c",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Team Work 4. Employees stay motivated by",
+    "printed": "1–E, 2–A, 3–C, 4–B, 5–D"
+   },
+   {
+    "option_id": "6480be7a-8abc-42b6-ad9a-683e3995ec6d",
+    "question_id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "src_q": 7,
+    "label": "d",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Market Research 5. Customer loyalty increases due to",
+    "printed": "1–D, 2–B, 3–A, 4–E, 5–C"
+   },
+   {
+    "option_id": "47f68959-497f-458b-8016-4057ebadacb2",
+    "question_id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "src_q": 7,
+    "label": "e",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "Service Quality A. 1–A, 2–C, 3–D, 4–B, 5–E B. 1–B, 2–C, 3–A, 4–E, 5–D C. 1–E, 2–A, 3–C, 4–B, 5–D D. 1–D, 2–B, 3–A, 4–E, 5–C E. 1–A, 2–B, 3–E, 4–C, 5–D Finance",
+    "printed": "1–A, 2–B, 3–E, 4–C, 5–D"
+   },
+   {
+    "option_id": "6f147281-610a-4f3a-b288-da182596d214",
+    "question_id": "b63fd8f0-dff0-41d3-855c-8496ff4d3b9f",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 7,
+    "label": "a",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "A",
+    "printed": "/ the preliminary agreement. (D) A.  A B.  B C.  C"
+   },
+   {
+    "option_id": "6b4b3f39-421f-48a5-94de-576bbffb916e",
+    "question_id": "b63fd8f0-dff0-41d3-855c-8496ff4d3b9f",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 7,
+    "label": "b",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "B",
+    "printed": "D"
+   },
+   {
+    "option_id": "584a3c9d-769e-4098-9bd1-b236b8016098",
+    "question_id": "b63fd8f0-dff0-41d3-855c-8496ff4d3b9f",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 7,
+    "label": "c",
+    "is_correct": true,
+    "status": "verified",
+    "loaded": "C",
+    "printed": "/ the preliminary agreement. (D) A.  A B.  B C.  C"
+   },
+   {
+    "option_id": "d94a828a-0e69-4c84-8e85-b61007c0e3d0",
+    "question_id": "edf00c9c-bc4f-4674-b6f4-2904e8b0be3e",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 10,
+    "label": "a",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "A",
+    "printed": "/ of a successful career. (D) A.  A B.  B C.  C"
+   },
+   {
+    "option_id": "5c8d889f-b7a7-4810-8845-fa1ecf8dd359",
+    "question_id": "edf00c9c-bc4f-4674-b6f4-2904e8b0be3e",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 10,
+    "label": "b",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "B",
+    "printed": "D"
+   },
+   {
+    "option_id": "4f35f1a0-df8e-4d77-8230-97e1a393006d",
+    "question_id": "edf00c9c-bc4f-4674-b6f4-2904e8b0be3e",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 10,
+    "label": "c",
+    "is_correct": true,
+    "status": "verified",
+    "loaded": "C",
+    "printed": "/ of a successful career. (D) A.  A B.  B C.  C"
+   },
+   {
+    "option_id": "8f9adbb0-5623-4bd8-9e40-0b3a0e0deb86",
+    "question_id": "2d4a7183-0d2d-4e50-9339-cdc6cb24baf8",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 13,
+    "label": "a",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "A-B & C-D",
+    "printed": "speculation"
+   },
+   {
+    "option_id": "e7374cd3-cac2-465a-8ad0-8289e9fe7456",
+    "question_id": "2d4a7183-0d2d-4e50-9339-cdc6cb24baf8",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 13,
+    "label": "b",
+    "is_correct": true,
+    "status": "needs_correction",
+    "loaded": "A-C & B-D",
+    "printed": "volatility"
+   },
+   {
+    "option_id": "f6d06bc0-a765-4578-ae0a-f69bc274f171",
+    "question_id": "2d4a7183-0d2d-4e50-9339-cdc6cb24baf8",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 13,
+    "label": "c",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "B-C",
+    "printed": "liquidity"
+   },
+   {
+    "option_id": "aae251b0-511e-4126-a786-76d227a31d55",
+    "question_id": "2d4a7183-0d2d-4e50-9339-cdc6cb24baf8",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 13,
+    "label": "d",
+    "is_correct": false,
+    "status": "needs_correction",
+    "loaded": "A-D & B-C",
+    "printed": "resilience A.  A-B & C-D B.  A-C & B-D C.  B-C D.  A-D & B-C"
+   },
+   {
+    "option_id": "87eaf62e-5ea6-4d75-bbd7-f294b531dc36",
+    "question_id": "96ee11f5-c59f-404f-98a0-13bb8b64341b",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 15,
+    "label": "a",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "A-B & C-D",
+    "printed": "adaptation"
+   },
+   {
+    "option_id": "a788c5f3-1255-4145-9712-0e197459505e",
+    "question_id": "96ee11f5-c59f-404f-98a0-13bb8b64341b",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 15,
+    "label": "b",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "A-C",
+    "printed": "hierarchy"
+   },
+   {
+    "option_id": "517de6db-3e9a-41e1-ae38-2db73a408841",
+    "question_id": "96ee11f5-c59f-404f-98a0-13bb8b64341b",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 15,
+    "label": "c",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "B-D",
+    "printed": "cooperation"
+   },
+   {
+    "option_id": "1f17f4a5-0412-4b31-9aa3-a41ccd1b94ac",
+    "question_id": "96ee11f5-c59f-404f-98a0-13bb8b64341b",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "src_q": 15,
+    "label": "d",
+    "is_correct": false,
+    "status": "verified",
+    "loaded": "A-D & B-C",
+    "printed": "contingency A.  A-B & C-D B.  A-C C.  B-D D.  A-D & B-C"
+   }
+  ],
+  "opt_absent_q": 0,
+  "opt_checked": 904,
+  "not_in_book": 5
+ }
+}

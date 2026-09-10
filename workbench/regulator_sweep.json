@@ -1,0 +1,845 @@
+{
+ "sebi": {
+  "option_furniture": [
+   {
+    "id": "937c3d1a-07f6-4624-a338-9eca99045a07",
+    "paper_code": "SEBI-GA-2025-P2-COMM",
+    "q": 4,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "Section 80 SEBI Grade A 2025 Phase 1 - Commerce & Accounts Recollected Questions"
+   },
+   {
+    "id": "2dcbd74c-9977-41da-b3d7-247f58d70800",
+    "paper_code": "SEBI-GA-2025-P2-MGMT",
+    "q": 18,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "It refers to focusing only on financial performance.22 SEBI Grade A 2025 Phase 2 - Management Recollected Questions"
+   },
+   {
+    "id": "06593360-6a4e-4788-9c44-f9c9b610660f",
+    "paper_code": "SEBI-GA-2025-P1-CA",
+    "q": 5,
+    "status": "needs_correction",
+    "label": "c",
+    "is_correct": true,
+    "text": "Thirty; Four; One hundred and Twenty 21 SEBI Grade A 2025 Phase 1 Company Act"
+   }
+  ],
+  "option_ends_on_function_word": [
+   {
+    "id": "4e3360fa-12ed-43e9-8bd6-339963c78a78",
+    "paper_code": "SEBI-GA-2025-P2-COMM",
+    "q": 6,
+    "status": "verified",
+    "label": "a",
+    "is_correct": true,
+    "text": "1 B, 2 C, 3 D, 4 A"
+   },
+   {
+    "id": "4e3360fa-12ed-43e9-8bd6-339963c78a78",
+    "paper_code": "SEBI-GA-2025-P2-COMM",
+    "q": 6,
+    "status": "verified",
+    "label": "c",
+    "is_correct": false,
+    "text": "1 B, 2 D, 3 C, 4 A"
+   },
+   {
+    "id": "4e3360fa-12ed-43e9-8bd6-339963c78a78",
+    "paper_code": "SEBI-GA-2025-P2-COMM",
+    "q": 6,
+    "status": "verified",
+    "label": "d",
+    "is_correct": false,
+    "text": "1 D, 2 C, 3 B, 4 A"
+   },
+   {
+    "id": "a9449754-1b7f-4649-a0d8-06cf9dfbdd6d",
+    "paper_code": "SEBI-GA-2025-P2-FIN",
+    "q": 13,
+    "status": "needs_correction",
+    "label": "c",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "a9449754-1b7f-4649-a0d8-06cf9dfbdd6d",
+    "paper_code": "SEBI-GA-2025-P2-FIN",
+    "q": 13,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "A"
+   }
+  ],
+  "option_prefix_of_sibling": [
+   {
+    "id": "2b8ad1e5-7f64-40c2-addd-3f25a22e81c2",
+    "paper_code": "SEBI-GA-2020-P2-FIN",
+    "q": 6,
+    "status": "verified",
+    "short": "Principal",
+    "long": "Principal and Interest",
+    "short_keyed": false
+   },
+   {
+    "id": "06593360-6a4e-4788-9c44-f9c9b610660f",
+    "paper_code": "SEBI-GA-2025-P1-CA",
+    "q": 5,
+    "status": "needs_correction",
+    "short": "Forty-five; Five; One hundred",
+    "long": "Forty-five; Five; One hundred and Twenty-Five",
+    "short_keyed": false
+   },
+   {
+    "id": "06593360-6a4e-4788-9c44-f9c9b610660f",
+    "paper_code": "SEBI-GA-2025-P1-CA",
+    "q": 5,
+    "status": "needs_correction",
+    "short": "Thirty; Four; One hundred",
+    "long": "Thirty; Four; One hundred and Twenty 21 SEBI Grade A 2025 Phase 1 Company Act",
+    "short_keyed": false
+   },
+   {
+    "id": "66589e04-84cc-40bc-a88f-1e52e999bbad",
+    "paper_code": "SEBI-GA-2020-P2-MGMT",
+    "q": 5,
+    "status": "verified",
+    "short": "Task Oriented",
+    "long": "Task Oriented and Concern for the Team, make employee feel needed",
+    "short_keyed": false
+   },
+   {
+    "id": "245fe5d0-646c-43c5-a44d-83d37b7b8a8e",
+    "paper_code": "SEBI-GA-2025-P2-COST",
+    "q": 2,
+    "status": "verified",
+    "short": "Cost of Production minus Direct Material",
+    "long": "Cost of Production minus Direct Material minus Direct Expenses",
+    "short_keyed": true
+   },
+   {
+    "id": "c97d8f48-1698-4d46-844f-521c3363bad7",
+    "paper_code": "SEBI-GA-2020-P2-ECO",
+    "q": 7,
+    "status": "verified",
+    "short": "Taxes",
+    "long": "Taxes and Subsidies",
+    "short_keyed": false
+   },
+   {
+    "id": "6dcfdf24-2be9-4929-8704-d0ce57ed7f58",
+    "paper_code": "SEBI-GA-2020-P1-FIN",
+    "q": 12,
+    "status": "verified",
+    "short": "Whole of India",
+    "long": "Whole of India excluding the Union Territories of Jammu & Kashmir and Ladakh",
+    "short_keyed": true
+   },
+   {
+    "id": "6dcfdf24-2be9-4929-8704-d0ce57ed7f58",
+    "paper_code": "SEBI-GA-2020-P1-FIN",
+    "q": 12,
+    "status": "verified",
+    "short": "Whole of India excluding the Union Territories of Jammu & Kashmir and ",
+    "long": "Whole of India excluding the Union Territories of Jammu & Kashmir and Ladakh and the north",
+    "short_keyed": false
+   }
+  ],
+  "option_duplicate": [
+   {
+    "id": "a9449754-1b7f-4649-a0d8-06cf9dfbdd6d",
+    "paper_code": "SEBI-GA-2025-P2-FIN",
+    "q": 13,
+    "status": "needs_correction",
+    "labels": [
+     "a",
+     "d"
+    ],
+    "text": "BBB",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "a9449754-1b7f-4649-a0d8-06cf9dfbdd6d",
+    "paper_code": "SEBI-GA-2025-P2-FIN",
+    "q": 13,
+    "status": "needs_correction",
+    "labels": [
+     "c",
+     "e"
+    ],
+    "text": "A",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "b7e06349-156b-4c61-a997-ecced652af93",
+    "paper_code": "SEBI-GA-2025-P2-MGMT",
+    "q": 13,
+    "status": "needs_correction",
+    "labels": [
+     "c",
+     "d"
+    ],
+    "text": "1 and 3 only",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "4559fcaf-7869-4cd8-9b46-e10fb7abb31c",
+    "paper_code": "SEBI-GA-2025-P2-ECO",
+    "q": 5,
+    "status": "verified",
+    "labels": [
+     "a",
+     "b"
+    ],
+    "text": "Expansionary, Expansionary, Contractionary, Expansionary",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "4559fcaf-7869-4cd8-9b46-e10fb7abb31c",
+    "paper_code": "SEBI-GA-2025-P2-ECO",
+    "q": 5,
+    "status": "verified",
+    "labels": [
+     "a",
+     "d"
+    ],
+    "text": "Expansionary, Expansionary, Contractionary, Expansionary",
+    "keyed_is_dup": false
+   }
+  ],
+  "stem_furniture": [
+   {
+    "id": "beeeb6cf-de21-4970-b67f-e6b119624d1b",
+    "paper_code": "SEBI-GA-2025-P2-MGMT",
+    "q": 9,
+    "status": "needs_correction",
+    "text": "Identify whether the following statements relate to Administration or Management\n(in the same order):\n1. It focuses on setting long-term vision and policies of "
+   },
+   {
+    "id": "b7e06349-156b-4c61-a997-ecced652af93",
+    "paper_code": "SEBI-GA-2025-P2-MGMT",
+    "q": 13,
+    "status": "needs_correction",
+    "text": "Read the following statements about leadership and identify the correct\nstatement(s):\n1. Leadership is a personal skill.\n2. Leadership is fixed across multiple "
+   }
+  ]
+ },
+ "ifsca": {
+  "question_without_options": [
+   {
+    "id": "5dd95765-c338-4c9f-9406-69b32a3f1383",
+    "paper_code": "IFSCA-GA-2024-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "029be2e3-c426-408a-94c8-3b5ceb81a35e",
+    "paper_code": "IFSCA-GA-2024-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "2623fa5b-871c-406c-bb79-25be0adfbcc0",
+    "paper_code": "IFSCA-GA-2024-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   },
+   {
+    "id": "079c881c-7d90-421d-8f6f-ea3861b831de",
+    "paper_code": "IFSCA-GA-2025-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "a83554a8-03c5-4b3b-ad37-4ff72e2064a2",
+    "paper_code": "IFSCA-GA-2025-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "a79a47ec-1adb-47ef-97b3-80c9f223d6b7",
+    "paper_code": "IFSCA-GA-2025-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   },
+   {
+    "id": "ed761733-bdc7-4fba-aac5-70239d6e69ac",
+    "paper_code": "IFSCA-GA-2023-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "68aedf71-b510-491a-8647-6045bba915a5",
+    "paper_code": "IFSCA-GA-2023-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "5e97bbea-e4fa-4720-ae9b-9e6200bf60f2",
+    "paper_code": "IFSCA-GA-2023-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   }
+  ],
+  "option_ends_on_function_word": [
+   {
+    "id": "f3648105-9b5f-4543-b194-2f8f40bc68ee",
+    "paper_code": "IFSCA-GA-2025-P2P2-INSPEN",
+    "q": 4,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "Scheme A"
+   },
+   {
+    "id": "39c0904d-48e5-4885-8640-8a99f48f4519",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 23,
+    "status": "verified",
+    "label": "d",
+    "is_correct": false,
+    "text": "comply with"
+   },
+   {
+    "id": "65c6a098-b52c-49f9-ad66-c240330dd08c",
+    "paper_code": "IFSCA-GA-2024-P1P1-ENG",
+    "q": 25,
+    "status": "verified",
+    "label": "a",
+    "is_correct": true,
+    "text": "Despite of"
+   },
+   {
+    "id": "d82f6d96-6ff5-4f67-970d-98cb300d3bfa",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 25,
+    "status": "verified",
+    "label": "c",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "21fb9401-c309-4b24-9cb5-1f27c13455ee",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 1,
+    "status": "rejected",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "7c863f3f-4ac4-4242-a148-0988b8840246",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 5,
+    "status": "rejected",
+    "label": "a",
+    "is_correct": true,
+    "text": "A"
+   },
+   {
+    "id": "4474f5d0-e945-4511-935d-8d7ed50a344c",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 6,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "66c297b8-70e0-4df7-9cf5-7abe340f5e0e",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 9,
+    "status": "verified",
+    "label": "c",
+    "is_correct": false,
+    "text": "M, A"
+   }
+  ],
+  "option_furniture": [
+   {
+    "id": "53980026-c5c4-4897-86bc-272bc1b05bf5",
+    "paper_code": "IFSCA-GA-2023-P1P1-QUANT",
+    "q": 5,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "60 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "a9824e74-bdde-4309-b176-a2664a6aeec8",
+    "paper_code": "IFSCA-GA-2023-P2P2-BUDGET",
+    "q": 5,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": true,
+    "text": "5.90; 2025 - 2026 CA Grade A 2023 Phase 2 Paper 2 Recollected Questions"
+   },
+   {
+    "id": "056aaf92-a1b7-4a0f-b642-ea9ae55f3534",
+    "paper_code": "IFSCA-GA-2023-P2P2-BUDGET",
+    "q": 9,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "Low Productivity IFSCA Grade A 2025 Phase 2 - Paper 2"
+   },
+   {
+    "id": "0ab83085-f2d2-4685-8ea3-284baed42f6d",
+    "paper_code": "IFSCA-GA-2023-P2P2-FIN",
+    "q": 9,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "751 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions"
+   },
+   {
+    "id": "02c57051-e05e-4e30-99fc-e941bf153e0c",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "q": 11,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": true,
+    "text": "Verizon23 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "d2a81d03-1485-4aef-a8fc-2e408268b68d",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "q": 16,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "None of the above24 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "7a27952f-094e-47cf-a29f-c46b263107cb",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "q": 21,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "Rs.19,200 crore25 IFSCA Grade A 2023 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "93049f99-aa14-499e-8f0f-400aa0306485",
+    "paper_code": "IFSCA-GA-2023-P1P1-GA",
+    "q": 25,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "25.0426 IFSCA Grade A IFSCA Grade A 2025 Phase 1 - Paper 1 Answer Key IFSCA Grade A 2025 Phase 1 – Paper 1 Answer Key Quantitative Aptitude Question Answer Ques"
+   },
+   {
+    "id": "d7ddbf2d-9415-41b8-a77a-a5a97681baf0",
+    "paper_code": "IFSCA-GA-2023-P2P2-GIFT",
+    "q": 9,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": true,
+    "text": "100%, 10 years57 IFSCA Grade A 2023 Phase 2 Paper 2 Recollected Questions"
+   },
+   {
+    "id": "7cca238d-ade4-491e-b099-7080c652ee47",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "q": 5,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "₹3000 crore General Awareness21 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "f7a47440-ed19-4ee6-b998-953664a71202",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "q": 10,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "12 years22 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "1e1e097c-2664-462f-89b4-a0407a19a0ba",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "q": 15,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": false,
+    "text": "Axis Bank23 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions"
+   },
+   {
+    "id": "33f38230-c99f-4563-bd0b-803ad3bdc55d",
+    "paper_code": "IFSCA-GA-2024-P1P1-GA",
+    "q": 21,
+    "status": "rejected",
+    "label": "e",
+    "is_correct": true,
+    "text": "100%24 IFSCA Grade A 2024 Phase 1 Paper 1 Recollected Questions"
+   }
+  ],
+  "option_prefix_of_sibling": [
+   {
+    "id": "6f0ce998-8e2a-4b25-af6c-efe54460c8db",
+    "paper_code": "IFSCA-GA-2024-P2P2-FIN",
+    "q": 20,
+    "status": "verified",
+    "short": "Government of India (GOI)",
+    "long": "Government of India (GOI) and Reserve Bank of India (RBI)",
+    "short_keyed": true
+   },
+   {
+    "id": "6f0ce998-8e2a-4b25-af6c-efe54460c8db",
+    "paper_code": "IFSCA-GA-2024-P2P2-FIN",
+    "q": 20,
+    "status": "verified",
+    "short": "Reserve Bank of India (RBI)",
+    "long": "Reserve Bank of India (RBI), Government of India (GOI), and State Bank of India (SBI)",
+    "short_keyed": false
+   },
+   {
+    "id": "e5e22611-99ac-4052-a46b-03b3b6dfb3b7",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 17,
+    "status": "verified",
+    "short": "daughter",
+    "long": "daughter-in-law",
+    "short_keyed": false
+   },
+   {
+    "id": "604dbd30-efc1-4855-90fc-db0cec1ef276",
+    "paper_code": "IFSCA-GA-2023-P1P1-REAS",
+    "q": 19,
+    "status": "verified",
+    "short": "None",
+    "long": "None of these",
+    "short_keyed": false
+   },
+   {
+    "id": "4a55abae-7d82-4a29-a082-662c66fe5987",
+    "paper_code": "IFSCA-GA-2024-P1P1-REAS",
+    "q": 15,
+    "status": "verified",
+    "short": "Mother",
+    "long": "Mother-in-law",
+    "short_keyed": false
+   }
+  ],
+  "stem_furniture": [
+   {
+    "id": "68aedf71-b510-491a-8647-6045bba915a5",
+    "paper_code": "IFSCA-GA-2023-P2P1-ENG",
+    "q": 2,
+    "status": "pending",
+    "text": "Make a Précis of the following passage in 120 words and give it a suitable title: - (35\nMarks)\nIt’s taboo but we all think about it. We are told it’s not good t"
+   }
+  ],
+  "stem_nonascii_digits": [
+   {
+    "id": "b02fbc33-ce89-4268-9415-bfaf3717c13f",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 1,
+    "status": "needs_correction",
+    "chars": "𝟖𝟗",
+    "text": "55.55% of 305.98 + 6.08 × 11.98 - 960.89−−−−−−√𝟗𝟗𝟗𝟗𝟗𝟗.𝟖𝟖𝟖𝟖\n=?"
+   },
+   {
+    "id": "ba54729a-c9bc-4703-857d-1895649b448e",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 2,
+    "status": "needs_correction",
+    "chars": "𝟏",
+    "text": "15𝟏𝟏𝟏𝟏 x 699.9845 – 43.002 x 5 + 594.012 x 2 = ?"
+   },
+   {
+    "id": "816d2a38-196a-482d-b713-0f2eeb086fee",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 3,
+    "status": "needs_correction",
+    "chars": "𝟎𝟏𝟒𝟗",
+    "text": "11.18 × 170.02−−−−−−√𝟏𝟏𝟏𝟏𝟏𝟏.𝟎𝟎𝟎𝟎 =? × 48.902−−−−−−√𝟒𝟒𝟒𝟒.𝟗𝟗𝟗𝟗𝟗𝟗 + 19.034 × 1.908"
+   },
+   {
+    "id": "4ffe203a-cc8b-401a-bc36-6367f59c565d",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 4,
+    "status": "needs_correction",
+    "chars": "𝟐𝟗",
+    "text": "44.44 % of 198.109 + 224.98−−−−−−√𝟐𝟐𝟐𝟐𝟐𝟐.𝟗𝟗𝟗𝟗 × 2.087 – 218.190=?"
+   },
+   {
+    "id": "68557355-55ae-4a1b-9389-1f6f388184fc",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 5,
+    "status": "needs_correction",
+    "chars": "𝟎𝟒",
+    "text": "419.98 ÷ 6.97 + 8.12 × 13.108 – 629.912 ÷ 441.01−−−−−−√𝟒𝟒𝟒𝟒𝟒𝟒.𝟎𝟎𝟎𝟎 = ?"
+   },
+   {
+    "id": "44816574-6548-4df3-9506-39d12ae5f7af",
+    "paper_code": "IFSCA-GA-2024-P1P1-QUANT",
+    "q": 12,
+    "status": "verified",
+    "chars": "𝟑",
+    "text": "Mayank and Lalit spent 35𝟑𝟑𝟑𝟑th and 34𝟑𝟑𝟑𝟑th of the number of hours spent on non\ntechnical preparation for maths. What i"
+   }
+  ],
+  "stem_mojibake": [
+   {
+    "id": "38742898-cdc3-4264-8012-19c784f62db1",
+    "paper_code": "IFSCA-GA-2024-P1P2-MGMT",
+    "q": 4,
+    "status": "rejected",
+    "text": "Which organization recognized the name \"Statio Shiv Shakti\" for the landing site of\nChandrayaan-3â€™s Vikram lander?"
+   }
+  ]
+ },
+ "pfrda": {
+  "option_duplicate": [
+   {
+    "id": "fec7d98a-90fc-40a3-8e8e-5cbae54ae78b",
+    "paper_code": "PFRDA-GA-2025-P1P1-REAS",
+    "q": 12,
+    "status": "needs_correction",
+    "labels": [
+     "b",
+     "d"
+    ],
+    "text": "76",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "9693d7e7-f490-42a0-8ef3-98fc209b4916",
+    "paper_code": "PFRDA-GA-2025-P1P2-COMM",
+    "q": 2,
+    "status": "verified",
+    "labels": [
+     "b",
+     "c"
+    ],
+    "text": "1:1",
+    "keyed_is_dup": false
+   },
+   {
+    "id": "08d387c7-0680-4799-a540-c568ccd0a2b8",
+    "paper_code": "PFRDA-GA-2022-P2P2-PENS",
+    "q": 1,
+    "status": "verified",
+    "labels": [
+     "b",
+     "d"
+    ],
+    "text": "65% of the purchase price",
+    "keyed_is_dup": false
+   }
+  ],
+  "option_ends_on_function_word": [
+   {
+    "id": "25694ed9-c7ba-4c12-bfa8-757ee23db041",
+    "paper_code": "PFRDA-GA-2022-P2P2-CA",
+    "q": 4,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": false,
+    "text": "None of the above As per section 141, there are various entities who can be appointed as the auditors of the company, in"
+   },
+   {
+    "id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "q": 7,
+    "status": "needs_correction",
+    "label": "a",
+    "is_correct": true,
+    "text": "Innovation 2. Organisation achieves targets with"
+   },
+   {
+    "id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "q": 7,
+    "status": "needs_correction",
+    "label": "c",
+    "is_correct": false,
+    "text": "Team Work 4. Employees stay motivated by"
+   },
+   {
+    "id": "3d884edf-91b2-4102-adb4-78cc3fb07a63",
+    "paper_code": "PFRDA-GA-2025-P2P2-MGMT",
+    "q": 7,
+    "status": "needs_correction",
+    "label": "d",
+    "is_correct": false,
+    "text": "Market Research 5. Customer loyalty increases due to"
+   },
+   {
+    "id": "9579e5bf-cc5d-49cc-b88b-a4bafb056a1d",
+    "paper_code": "PFRDA-GA-2025-P2P2-COMM",
+    "q": 5,
+    "status": "verified",
+    "label": "b",
+    "is_correct": false,
+    "text": "1-A, 2-B, 3-B, 4-A, 5-B, 6-A"
+   },
+   {
+    "id": "9579e5bf-cc5d-49cc-b88b-a4bafb056a1d",
+    "paper_code": "PFRDA-GA-2025-P2P2-COMM",
+    "q": 5,
+    "status": "verified",
+    "label": "c",
+    "is_correct": false,
+    "text": "1-B, 2-A, 3-B, 4-A, 5-A, 6-A"
+   },
+   {
+    "id": "b63fd8f0-dff0-41d3-855c-8496ff4d3b9f",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 7,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "e78a05cd-8beb-424e-afef-63002265404d",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 8,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "21482721-ceca-467c-9eeb-16978d046eca",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 9,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "edf00c9c-bc4f-4674-b6f4-2904e8b0be3e",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 10,
+    "status": "verified",
+    "label": "a",
+    "is_correct": false,
+    "text": "A"
+   },
+   {
+    "id": "59f31669-7079-4752-b8de-dc9c84c2eda9",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 11,
+    "status": "needs_correction",
+    "label": "b",
+    "is_correct": false,
+    "text": "A"
+   }
+  ],
+  "stem_midsentence": [
+   {
+    "id": "6886326b-adef-4c30-a188-f386572c249c",
+    "paper_code": "PFRDA-GA-2022-P2P2-CA",
+    "q": 5,
+    "status": "needs_correction",
+    "text": "can sign for the LLP. Options:"
+   },
+   {
+    "id": "32d14c83-38ab-43b5-b338-9a5151e6ae6a",
+    "paper_code": "PFRDA-GA-2022-P2P2-PENS",
+    "q": 6,
+    "status": "verified",
+    "text": "is a biometric enabled Aadhaar-based Digital Life Certificate for pensioners. Pensioners of Central Government, State Go"
+   }
+  ],
+  "option_furniture": [
+   {
+    "id": "bd207052-f21c-4f39-b0c3-1de691e73f28",
+    "paper_code": "PFRDA-GA-2025-P2P2-PENS",
+    "q": 8,
+    "status": "needs_correction",
+    "label": "e",
+    "is_correct": true,
+    "text": "All of the above PFRDA Grade A 2021 Phase 2 – Paper 2"
+   }
+  ],
+  "stem_mojibake": [
+   {
+    "id": "18bc9d24-7b4d-4ef9-9c02-9dd01c07a1cb",
+    "paper_code": "PFRDA-GA-2025-P1P2-ECO",
+    "q": 4,
+    "status": "needs_correction",
+    "text": "What distinguishes Keynesâ€™ Consumption Function from Friedmanâ€™s Permanent Income\nHypothesis?"
+   },
+   {
+    "id": "b195d4bd-bc6a-45ba-94f1-20ed30b08740",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 5,
+    "status": "rejected",
+    "text": "The authorâ€™s discussion of â€œscreen-free retreatsâ€ and â€œbranded challengesâ€ primarily\nserves to highlight:"
+   },
+   {
+    "id": "18d31323-09a7-4095-a663-6d6153bde0c0",
+    "paper_code": "PFRDA-GA-2025-P1P1-ENG",
+    "q": 14,
+    "status": "needs_correction",
+    "text": "The playwrightâ€™s allegory (A) was lauded for its subversion (B) of tradition, but critics\nclaimed the narrativeâ€™s au"
+   }
+  ],
+  "question_without_options": [
+   {
+    "id": "58c4740a-4902-4c13-8146-2f18fa9bde3e",
+    "paper_code": "PFRDA-GA-2025-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "06e3ded3-0307-4586-b76b-5810b132e25d",
+    "paper_code": "PFRDA-GA-2025-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "1c3e2576-127e-450f-921d-e00c8055dfbf",
+    "paper_code": "PFRDA-GA-2025-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   },
+   {
+    "id": "9c36d1b3-05de-4f67-9cec-09c5bdb22e50",
+    "paper_code": "PFRDA-GA-2022-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "8cfef1b2-0dc4-4bf3-b9d1-65cfd24cf7e5",
+    "paper_code": "PFRDA-GA-2022-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "a7853486-4711-4915-8bdf-42450818f82c",
+    "paper_code": "PFRDA-GA-2022-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   },
+   {
+    "id": "deb6d499-633d-46a7-94df-4e9b1fc60edc",
+    "paper_code": "PFRDA-GA-2021-P2P1-ENG",
+    "q": 1,
+    "status": "pending"
+   },
+   {
+    "id": "fdb17fe3-9bad-474a-918c-eca53a70d953",
+    "paper_code": "PFRDA-GA-2021-P2P1-ENG",
+    "q": 2,
+    "status": "pending"
+   },
+   {
+    "id": "c38c6d3c-9e7c-4161-99af-45440612b9b5",
+    "paper_code": "PFRDA-GA-2021-P2P1-ENG",
+    "q": 3,
+    "status": "pending"
+   }
+  ]
+ }
+}
