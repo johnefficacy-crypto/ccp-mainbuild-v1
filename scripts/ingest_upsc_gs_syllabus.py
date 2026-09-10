@@ -152,7 +152,13 @@ class CmsClient:
 
 def resolve_subject(client: CmsClient, stats: Stats, *, slug: str, name: str, group: str,
                     description: str) -> str:
-    for row in client.find_all(f"{CMS}/subjects", {"q": name}):
+    # Resolve by SLUG first: the slug is the subject's identity, the name is not.
+    # Searching by name alone means a subject created elsewhere under a different
+    # display name is missed, a second subject is created, and the server
+    # uniquifies the colliding slug with a hash suffix. That leaves the syllabus
+    # on an orphan subject while sections still point at the original - the
+    # upsc-mains-gs1 / upsc-cse-mains-gs1 duplication, reproduced.
+    for row in client.find_all(f"{CMS}/subjects", {}):
         if row.get("slug") == slug:
             stats.subjects_reused += 1
             return row["id"]
