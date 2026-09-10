@@ -397,7 +397,11 @@ def run(args: argparse.Namespace) -> int:
 
     for paper in doc.get("papers", []):
         paper_id = paper.get("paper_id", "")
-        subject_slug = f"upsc-cse-mains-{_ROMAN.get(paper_id, slugify(paper_id))}"
+        # paper_id is already a stable identifier - slugify() appends a sha1 suffix
+        # for micro-theme prose and would turn "opt-sociology-p1" into
+        # "opt-sociology-p1-80515c69", so the script searches for one slug and
+        # creates another. Kebab it plainly instead.
+        subject_slug = f"upsc-cse-mains-{_ROMAN.get(paper_id, re.sub(r'[^a-z0-9]+', '-', paper_id.lower()).strip('-'))}"
         subject_id = resolve_subject(
             client,
             stats,
