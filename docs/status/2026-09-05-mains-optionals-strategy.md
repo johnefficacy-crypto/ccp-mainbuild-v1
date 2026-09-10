@@ -1,5 +1,11 @@
 # UPSC Mains optional subjects — corpus strategy
 
+> **Superseded in part by `docs/status/2026-09-09-mains-optionals-strategy-rev2.md` (2026-09-09).**
+> The loading model here is wrong on two counts: bulk import never accepted
+> descriptive questions, and UPSC Mains uses one paper row per year, not per
+> subject. The shared-microtopic, catalogue-construction and difficulty sections
+> below still stand. Read rev2 before acting on section 4 or the sequence.
+
 Written 2026-09-05. Scope: the ten most-taken optional subjects, papers already
 in JSON.
 
