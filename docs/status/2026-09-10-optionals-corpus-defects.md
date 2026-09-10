@@ -69,6 +69,51 @@ available evidence, not proof.
 
 ---
 
+## Syllabus ingest — two defects found while fixing INGEST-FIX-01
+
+**Every `--dry-run` count in this session's history means nothing.**
+`CmsClient.find_all` returns `[]` unconditionally when `dry_run` is set
+(`scripts/ingest_upsc_gs_syllabus.py`, the guard at the top of the paging
+helper), so no existence check can answer "already there". Every subject,
+topic, micro-theme, document and mention is therefore reported as a create,
+whether the tree is empty or complete. The six dry runs performed on
+2026-09-10 all reported 100% created regardless of live state, and were read
+as plans. They were not plans; they are a report on the shape of the source
+file. The output is now relabelled `would-create=` / `undetected=` under an
+explicit "this is NOT a plan" header, so the mistake is not repeatable — but
+nothing in the existing session log can be relied on retrospectively.
+
+**Paged list reads are unstable above 200 rows, and GS is already over the
+line.** `find_all` pages with `limit=200` against routes that order on a
+non-unique column and slice with PostgREST `range()`:
+
+| Route | Order clause | `admin_exam_intel_cms.py` |
+|---|---|---|
+| `GET /topics` | `.order("name", desc=False)` | `:3374` |
+| `GET /syllabus-topic-mentions` | `.order("created_at", desc=True)` | `:4045` |
+| `GET /syllabus-documents` | `.order("created_at", desc=True)` | `:880` |
+
+With ties in the sort column the row order between two `range()` calls is not
+guaranteed, so a row can be skipped at a page boundary and another returned
+twice. A skipped row is a row the dedupe index never sees, and the next ingest
+re-creates it.
+
+This is live, not hypothetical — it is simply untriggered. The GS syllabus
+document holds **456 `syllabus_topic_mentions`**, well past one page, and this
+script bulk-inserts them inside the same second, so `created_at` ties are the
+norm rather than an edge case. `load_mention_index` on GS is exposed today.
+`topics` is under the line per subject for every optional loaded so far
+(PSIR Paper-II is 19 macro + 93 micro = 112), so the topic index is safe for
+now and unsafe on the first subject that passes 200.
+
+`load_topic_index` now refuses to write when it reads fewer rows than the route
+reports as its exact `total`, which converts this class of failure from a
+silent duplicate tree into a hard stop — for topics. `load_mention_index` and
+`resolve_document` carry no equivalent guard. Fixing the ordering needs a
+unique tiebreaker on the routes themselves and belongs in its own change.
+
+---
+
 ## Deliberate states, not defects
 
 - **All 4,040 questions are `pending`.** Question review and tag review are

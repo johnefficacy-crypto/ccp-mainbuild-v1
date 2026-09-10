@@ -19,6 +19,11 @@ subject+parent+slug for topics, content_hash for the document, document+topic
 for mentions) before being created, so re-running after a partial failure
 resumes instead of duplicating.
 
+--dry-run is NOT a preview of that. It never contacts the backend, so no
+existence check can answer "already there" and every row is reported as a
+create even when the whole tree already exists. Read its output as the shape
+of the source file, never as a plan.
+
 Usage:
 
     export CCP_API_BASE=https://api.example.com
@@ -68,6 +73,26 @@ def slugify(text: str, *, maxlen: int = 80) -> str:
     return f"{base[:maxlen].rstrip('-')}-{digest}"
 
 
+def topic_key(subject_id: str | None, parent_id: str | None,
+              slug: str | None) -> tuple[str, str, str]:
+    """Canonical natural key for a ``topics`` row.
+
+    The DB constraint is ``unique(subject_id, parent_topic_id, slug)``, but a
+    NULL ``parent_topic_id`` is SQL-distinct from every other NULL, so the
+    constraint cannot dedupe macro topics and the API-side upsert
+    (``on_conflict="subject_id,parent_topic_id,slug"``) inserts a fresh row
+    every time. Resolution therefore happens locally, against this key, where
+    "no parent" is one real value rather than an unknown.
+
+    Both sides of the comparison must build the key through this function. The
+    index side reads ``parent_topic_id`` off a JSON row, where "no parent" can
+    arrive as ``null`` OR as an absent field; the lookup side passes Python
+    ``None``. Collapsing every one of those to ``""`` is what makes the two
+    keys comparable at all.
+    """
+    return (str(subject_id or ""), str(parent_id or ""), str(slug or ""))
+
+
 @dataclass
 class Stats:
     subjects_created: int = 0
@@ -81,16 +106,31 @@ class Stats:
     mentions_created: int = 0
     mentions_reused: int = 0
     errors: list[str] = field(default_factory=list)
+    #: A dry run never contacts the backend (see CmsClient.find_all), so every
+    #: existence check answers "absent" and every row counts as a create. The
+    #: numbers are therefore a shape-of-the-file report, not a plan.
+    dry_run: bool = False
 
     def render(self) -> str:
-        return (
-            f"subjects  created={self.subjects_created} reused={self.subjects_reused}\n"
-            f"macro     created={self.macro_created} reused={self.macro_reused}\n"
-            f"micro     created={self.micro_created} reused={self.micro_reused}\n"
-            f"document  created={self.document_created} reused={self.document_reused}\n"
-            f"mentions  created={self.mentions_created} reused={self.mentions_reused}\n"
+        verb = "would-create" if self.dry_run else "created"
+        reuse = "undetected" if self.dry_run else "reused"
+        body = (
+            f"subjects  {verb}={self.subjects_created} {reuse}={self.subjects_reused}\n"
+            f"macro     {verb}={self.macro_created} {reuse}={self.macro_reused}\n"
+            f"micro     {verb}={self.micro_created} {reuse}={self.micro_reused}\n"
+            f"document  {verb}={self.document_created} {reuse}={self.document_reused}\n"
+            f"mentions  {verb}={self.mentions_created} {reuse}={self.mentions_reused}\n"
             f"errors    {len(self.errors)}"
         )
+        if not self.dry_run:
+            return body
+        return (
+            "DRY RUN — the backend was never contacted, so this is NOT a plan.\n"
+            "Existing rows cannot be detected offline: every count below is what\n"
+            "a first pass against an EMPTY database would write, and the reuse\n"
+            "column is always zero even when every row already exists.\n"
+            "Run without --dry-run for real created/reused figures.\n\n"
+        ) + body
 
 
 class CmsClient:
@@ -134,19 +174,35 @@ class CmsClient:
     # -- paged lookup helpers -------------------------------------------------
 
     def find_all(self, path: str, params: dict[str, Any], *, page: int = 200) -> list[dict]:
+        return self.find_all_counted(path, params, page=page)[0]
+
+    def find_all_counted(
+        self, path: str, params: dict[str, Any], *, page: int = 200
+    ) -> tuple[list[dict], int | None]:
+        """Page a CMS list route. Returns (rows, server_total).
+
+        ``server_total`` is the route's own ``total`` (an exact count) from the
+        first page, or ``None`` if the route omits it. A caller building a
+        dedupe index must check it: an index short of the server's count is an
+        index that will silently re-create the rows it failed to see.
+        """
         # Dry run stays fully offline so it can be executed without a reachable
         # backend or an admin token — it reports what a first, empty-database
         # pass would write.
         if self.dry_run:
-            return []
+            return [], None
         out: list[dict] = []
+        total: int | None = None
         offset = 0
         while True:
             data = self.get(path, {**params, "limit": page, "offset": offset})
+            if offset == 0:
+                raw_total = data.get("total")
+                total = int(raw_total) if isinstance(raw_total, int) else None
             items = data.get("items") or []
             out.extend(items)
             if len(items) < page:
-                return out
+                return out, total
             offset += page
 
 
@@ -180,7 +236,7 @@ def resolve_subject(client: CmsClient, stats: Stats, *, slug: str, name: str, gr
 def resolve_topic(client: CmsClient, stats: Stats, *, subject_id: str, parent_id: str | None,
                   slug: str, name: str, level: str, description: str | None,
                   metadata: dict[str, Any], existing: dict[tuple, str]) -> str:
-    key = (subject_id, parent_id, slug)
+    key = topic_key(subject_id, parent_id, slug)
     if key in existing:
         if level == "microtopic":
             stats.micro_reused += 1
@@ -216,10 +272,35 @@ def load_topic_index(client: CmsClient, subject_id: str) -> dict[tuple, str]:
     treats NULL parent_topic_id values as distinct, so a macro topic would be
     duplicated on re-run if we relied on upsert alone. Resolving locally first
     keeps the ingest genuinely idempotent.
+
+    That makes this index the ONLY thing standing between a re-run and a
+    duplicate tree, so a short index is a hard failure rather than a silent
+    one: if the route reports more topics for this subject than we managed to
+    read, we refuse to write instead of re-creating everything we could not
+    see. (Observed 2026-09-10: a second run of an unchanged file re-created
+    all 112 topics under one subject, which is exactly what an empty or
+    partial index does.)
     """
+    rows, total = client.find_all_counted(f"{CMS}/topics", {"subject_id": subject_id})
+    if total is not None and len(rows) < total:
+        raise RuntimeError(
+            f"topic index for subject {subject_id} is incomplete: read {len(rows)} "
+            f"of {total} rows the API reports. Refusing to write — a partial index "
+            f"silently re-creates every topic it could not see."
+        )
     index: dict[tuple, str] = {}
-    for row in client.find_all(f"{CMS}/topics", {"subject_id": subject_id}):
-        index[(row.get("subject_id"), row.get("parent_topic_id"), row.get("slug"))] = row["id"]
+    for row in rows:
+        index[topic_key(row.get("subject_id"), row.get("parent_topic_id"), row.get("slug"))] = row["id"]
+    if len(index) < len(rows):
+        # Pre-existing duplicates in the DB (the natural key is not enforceable
+        # for NULL parents). Resolution still works — last row wins — but the
+        # operator needs to know the tree is already dirty.
+        print(
+            f"warning: subject {subject_id} holds {len(rows)} topics under "
+            f"{len(index)} distinct natural keys — {len(rows) - len(index)} are "
+            f"duplicates already in the database.",
+            file=sys.stderr,
+        )
     return index
 
 
@@ -292,7 +373,7 @@ def run(args: argparse.Namespace) -> int:
         return 2
 
     client = CmsClient(base, token, dry_run=args.dry_run)
-    stats = Stats()
+    stats = Stats(dry_run=args.dry_run)
 
     title = (
         f"{doc.get('examination', 'UPSC CSE Mains')} — "
@@ -410,7 +491,8 @@ def run(args: argparse.Namespace) -> int:
 
     print(stats.render())
     if args.dry_run:
-        print("\nDRY RUN — nothing written. Re-run without --dry-run to apply.")
+        print("\nDRY RUN — nothing written, and nothing read. Re-run without "
+              "--dry-run to apply and to see what already exists.")
     else:
         print(
             f"\nsyllabus_document_id={document_id}\n"
