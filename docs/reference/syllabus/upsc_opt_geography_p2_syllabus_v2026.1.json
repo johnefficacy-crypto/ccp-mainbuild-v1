@@ -1,0 +1,166 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, Geography Paper II (Geography of India)",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit text is the published UPSC syllabus for Geography Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
+  "structure_note": "Paper II is a flat list of ten units with no lettered parts - unlike Paper I, which carries PART A Physical / PART B Human. section_ref is therefore omitted (rev2 M10). Note also that Q1 of this paper is a map-location question of about 10 items; those PYQ rows carry only the location names and are flagged requires_map_sheet.",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-geography-p2 exactly.",
+  "papers": [
+    {
+      "paper_id": "opt-geography-p2",
+      "paper_title": "Geography Paper-2 (Optional)",
+      "core_subjects": ["Geography of India"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "1 Physical Setting",
+          "official_syllabus_line": "1. Physical Setting: Space relationship of India with neighbouring countries; Structure and relief; Drainage system and watersheds; Physiographic regions; Mechanism of Indian monsoons and rainfall patterns, Tropical cyclones and western disturbances; Floods and droughts; Climatic regions; Natural vegetation; Soil types and their distributions.",
+          "micro_themes": [
+            "Space relationship of India with neighbouring countries",
+            "Structure and relief",
+            "Drainage system and watersheds",
+            "Physiographic regions of India",
+            "Mechanism of the Indian monsoon and rainfall patterns",
+            "Tropical cyclones and western disturbances",
+            "Floods and droughts",
+            "Climatic regions of India",
+            "Natural vegetation",
+            "Soil types and their distribution"
+          ]
+        },
+        {
+          "macro_topic": "2 Resources",
+          "official_syllabus_line": "2. Resources: Land, surface and ground water, energy, minerals, biotic and marine resources; Forest and wild life resources and their conservation; Energy crisis.",
+          "micro_themes": [
+            "Land resources",
+            "Surface and ground water resources",
+            "Energy and mineral resources",
+            "Biotic and marine resources",
+            "Forest and wildlife resources and their conservation",
+            "Energy crisis in India"
+          ]
+        },
+        {
+          "macro_topic": "3 Agriculture",
+          "official_syllabus_line": "3. Agriculture: Infrastructure - irrigation, seeds, fertilizers, power; Institutional factors - land holdings, land tenure and land reforms; Cropping pattern, agricultural productivity, agricultural intensity, crop combination, land capability; Agro and social-forestry; Green revolution and its socio-economic and ecological implications; Significance of dry farming; Livestock resources and white revolution; aquaculture; sericulture, apiculture and poultry; agricultural regionalisation; agro-climatic zones; agro-ecological regions.",
+          "micro_themes": [
+            "Agricultural infrastructure: irrigation, seeds, fertilizers, power",
+            "Institutional factors: land holdings, land tenure and land reforms",
+            "Cropping pattern, agricultural productivity and intensity",
+            "Crop combination and land capability",
+            "Agro and social forestry",
+            "Green Revolution and its socio-economic and ecological implications",
+            "Significance of dry farming",
+            "Livestock resources and the White Revolution",
+            "Aquaculture, sericulture, apiculture and poultry",
+            "Agricultural regionalisation; agro-climatic zones and agro-ecological regions"
+          ]
+        },
+        {
+          "macro_topic": "4 Industry",
+          "official_syllabus_line": "4. Industry: Evolution of industries; Locational factors of cotton, jute, textile, iron and steel, aluminium, fertilizer, paper, chemical and pharmaceutical, automobile, cottage and agro-based industries; Industrial houses and complexes including public sector undertakings; Industrial regionalisation; New industrial policies; Multinationals and liberalization; Special Economic Zones; Tourism including eco-tourism.",
+          "micro_themes": [
+            "Evolution of industries in India",
+            "Locational factors of cotton, jute and textile industries",
+            "Iron and steel, aluminium and fertilizer industries",
+            "Paper, chemical, pharmaceutical and automobile industries",
+            "Cottage and agro-based industries",
+            "Industrial houses and complexes including public sector undertakings",
+            "Industrial regionalisation and new industrial policies",
+            "Multinationals and liberalization; Special Economic Zones",
+            "Tourism including eco-tourism"
+          ]
+        },
+        {
+          "macro_topic": "5 Transport, Communication and Trade",
+          "official_syllabus_line": "5. Transport, Communication and Trade: Road, railway, waterway, airway and pipeline networks and their complementary roles in regional development; Growing importance of ports on national and foreign trade; Trade balance; Trade Policy; Export processing zones; Developments in communication and information technology and their impacts on economy and society; Indian space programme.",
+          "micro_themes": [
+            "Road, railway, waterway, airway and pipeline networks",
+            "Complementary roles of transport modes in regional development",
+            "Growing importance of ports in national and foreign trade",
+            "Trade balance and trade policy",
+            "Export processing zones",
+            "Developments in communication and information technology",
+            "Impacts of IT on economy and society",
+            "Indian space programme"
+          ]
+        },
+        {
+          "macro_topic": "6 Cultural Setting",
+          "official_syllabus_line": "6. Cultural Setting: Historical Perspective of Indian Society; Racial, linguistic and ethnic diversities; religious minorities; major tribes, tribal areas and their problems; cultural regions; Growth, distribution and density of population; Demographic attributes - sex-ratio, age structure, literacy rate, work-force, dependency ratio, longevity; migration (inter-regional, intra-regional and international) and associated problems; Population problems and policies; Health indicators.",
+          "micro_themes": [
+            "Historical perspective of Indian society",
+            "Racial, linguistic and ethnic diversities; religious minorities",
+            "Major tribes, tribal areas and their problems",
+            "Cultural regions of India",
+            "Growth, distribution and density of population",
+            "Demographic attributes: sex ratio, age structure, literacy, work-force",
+            "Dependency ratio and longevity",
+            "Migration: inter-regional, intra-regional and international",
+            "Population problems and policies; health indicators"
+          ]
+        },
+        {
+          "macro_topic": "7 Settlements",
+          "official_syllabus_line": "7. Settlements: Types, patterns and morphology of rural settlements; Urban developments; Morphology of Indian cities; Functional classification of Indian cities; Conurbations and metropolitan regions; urban sprawl; Slums and associated problems; town planning; Problems of urbanization and remedies.",
+          "micro_themes": [
+            "Types, patterns and morphology of rural settlements",
+            "Urban development in India",
+            "Morphology of Indian cities",
+            "Functional classification of Indian cities",
+            "Conurbations and metropolitan regions; urban sprawl",
+            "Slums and associated problems",
+            "Town planning",
+            "Problems of urbanization and remedies"
+          ]
+        },
+        {
+          "macro_topic": "8 Regional Development and Planning",
+          "official_syllabus_line": "8. Regional Development and Planning: Experience of regional planning in India; Five Year Plans; Integrated rural development programmes; Panchayati Raj and decentralised planning; Command area development; Watershed management; Planning for backward area, desert, drought prone, hill, tribal area development; multi-level planning; Regional planning and development of island territories.",
+          "micro_themes": [
+            "Experience of regional planning in India; Five Year Plans",
+            "Integrated rural development programmes",
+            "Panchayati Raj and decentralised planning",
+            "Command area development and watershed management",
+            "Planning for backward, desert and drought-prone areas",
+            "Hill and tribal area development",
+            "Multi-level planning",
+            "Regional planning and development of island territories"
+          ]
+        },
+        {
+          "macro_topic": "9 Political Aspects",
+          "official_syllabus_line": "9. Political Aspects: Geographical basis of Indian federalism; State reorganisation; Emergence of new states; Regional consciousness and inter-state issues; International boundary of India and related issues; Cross border terrorism; India's role in world affairs; Geopolitics of South Asia and Indian Ocean realm.",
+          "micro_themes": [
+            "Geographical basis of Indian federalism",
+            "State reorganisation and the emergence of new states",
+            "Regional consciousness and inter-state issues",
+            "International boundary of India and related issues",
+            "Cross-border terrorism",
+            "India's role in world affairs",
+            "Geopolitics of South Asia and the Indian Ocean realm"
+          ]
+        },
+        {
+          "macro_topic": "10 Contemporary Issues",
+          "official_syllabus_line": "10. Contemporary Issues: Ecological issues - Environmental hazards: landslides, earthquakes, Tsunamis, floods and droughts, epidemics; Issues related to environmental pollution; Changes in patterns of land use; Principles of environmental impact assessment and environmental management; Population explosion and food security; Environmental degradation; Deforestation, desertification and soil erosion; Problems of agrarian and industrial unrest; Regional disparities in economic development; Concept of sustainable growth and development; Environmental awareness; Linkage of rivers; Globalisation and Indian economy.",
+          "micro_themes": [
+            "Environmental hazards: landslides, earthquakes, tsunamis",
+            "Floods, droughts and epidemics",
+            "Issues related to environmental pollution",
+            "Changes in patterns of land use",
+            "Environmental impact assessment and environmental management",
+            "Population explosion and food security",
+            "Environmental degradation; deforestation, desertification and soil erosion",
+            "Problems of agrarian and industrial unrest",
+            "Regional disparities in economic development",
+            "Concept of sustainable growth and development; environmental awareness",
+            "Linkage of rivers",
+            "Globalisation and the Indian economy"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, Anthropology Paper II",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit text is the published UPSC syllabus for Anthropology Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
+  "structure_note": "Numbered 1.1/1.2/... with no lettered parts, so section_ref is omitted. UPSC's numbering is preserved at the head of each macro_topic.",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-anthropology-p2 exactly.",
+  "papers": [
+    {
+      "paper_id": "opt-anthropology-p2",
+      "paper_title": "Anthropology Paper-2 (Optional)",
+      "core_subjects": ["Indian Anthropology", "Tribal India"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "1.1 Evolution of Indian culture and civilization",
+          "official_syllabus_line": "1.1 Evolution of the Indian Culture and Civilization - Prehistoric (Palaeolithic, Mesolithic, Neolithic and Neolithic-Chalcolithic); Protohistoric (Indus Civilization): Pre-Harappan, Harappan and post-Harappan cultures; Contributions of tribal cultures to Indian civilization.",
+          "micro_themes": [
+            "Prehistoric India: Palaeolithic and Mesolithic cultures",
+            "Neolithic and Neolithic-Chalcolithic cultures",
+            "Protohistoric India: pre-Harappan, Harappan and post-Harappan cultures",
+            "Contributions of tribal cultures to Indian civilization"
+          ]
+        },
+        {
+          "macro_topic": "1.2-1.3 Palaeo-anthropological evidence and ethno-archaeology in India",
+          "official_syllabus_line": "1.2 Palaeo-anthropological evidences from India with special reference to Siwaliks and Narmada basin (Ramapithecus, Sivapithecus and Narmada Man). 1.3 Ethno-archaeology in India: The concept of ethno-archaeology; Survivals and Parallels among the hunting, foraging, fishing, pastoral and peasant communities including arts and crafts producing communities.",
+          "micro_themes": [
+            "Palaeo-anthropological evidence from the Siwaliks: Ramapithecus and Sivapithecus",
+            "Narmada basin and Narmada Man",
+            "The concept of ethno-archaeology",
+            "Survivals and parallels among hunting, foraging and fishing communities",
+            "Survivals and parallels among pastoral, peasant and craft-producing communities"
+          ]
+        },
+        {
+          "macro_topic": "2 Demographic profile of India",
+          "official_syllabus_line": "2. Demographic profile of India - Ethnic and linguistic elements in the Indian population and their distribution; Indian population - factors influencing its structure and growth.",
+          "micro_themes": [
+            "Ethnic elements in the Indian population and their distribution",
+            "Linguistic elements in the Indian population and their distribution",
+            "Factors influencing the structure and growth of the Indian population"
+          ]
+        },
+        {
+          "macro_topic": "3 Traditional Indian social system",
+          "official_syllabus_line": "3. The structure and nature of traditional Indian social system - Varnashram, Purushartha, Karma, Rina and Rebirth.",
+          "micro_themes": [
+            "Varnashrama and the traditional social order",
+            "Purushartha",
+            "Karma, Rina and Rebirth"
+          ]
+        },
+        {
+          "macro_topic": "4 Caste system in India",
+          "official_syllabus_line": "4. Caste system in India: (a) Structure and characteristics - Varna and caste, Theories of origin of caste system, Dominant caste, Caste mobility, Future of caste system, Jajmani system, Tribe-caste continuum. (b) Sacred Complex and Nature-Man-Spirit Complex. (c) Impact of Buddhism, Jainism, Islam and Christianity on Indian society.",
+          "micro_themes": [
+            "Varna and caste; theories of the origin of the caste system",
+            "Dominant caste, caste mobility and the future of the caste system",
+            "Jajmani system",
+            "Tribe-caste continuum",
+            "Sacred Complex and Nature-Man-Spirit Complex",
+            "Impact of Buddhism and Jainism on Indian society",
+            "Impact of Islam and Christianity on Indian society"
+          ]
+        },
+        {
+          "macro_topic": "5 Emergence and growth of anthropology in India",
+          "official_syllabus_line": "5. Emergence and growth of anthropology in India - Contributions of the 18th, 19th and early 20th Century scholar-administrators; Contributions of Indian anthropologists to tribal and caste studies.",
+          "micro_themes": [
+            "Contributions of 18th and 19th century scholar-administrators",
+            "Contributions of early 20th century scholar-administrators",
+            "Contributions of Indian anthropologists to tribal studies",
+            "Contributions of Indian anthropologists to caste studies"
+          ]
+        },
+        {
+          "macro_topic": "6 Indian village",
+          "official_syllabus_line": "6. Indian Village - Significance of village study in India; Indian village as a social system; Traditional and changing patterns of settlement and inter-caste relations; Agrarian relations in Indian villages; Impact of globalization on Indian villages.",
+          "micro_themes": [
+            "Significance of village study in India",
+            "The Indian village as a social system",
+            "Traditional and changing patterns of settlement and inter-caste relations",
+            "Agrarian relations in Indian villages",
+            "Impact of globalization on Indian villages"
+          ]
+        },
+        {
+          "macro_topic": "7 Linguistic and religious minorities",
+          "official_syllabus_line": "7. Linguistic and religious minorities and their social, political and economic status.",
+          "micro_themes": [
+            "Linguistic minorities and their social, political and economic status",
+            "Religious minorities and their social, political and economic status"
+          ]
+        },
+        {
+          "macro_topic": "8 Socio-cultural change in Indian society",
+          "official_syllabus_line": "8. Indigenous and exogenous processes of socio-cultural change in Indian society: Sanskritization, Westernization, Modernization; Inter-play of little and great traditions; Panchayati raj and social change; Media and social change.",
+          "micro_themes": [
+            "Sanskritization",
+            "Westernization and Modernization",
+            "Interplay of little and great traditions",
+            "Panchayati Raj and social change",
+            "Media and social change"
+          ]
+        },
+        {
+          "macro_topic": "9 Tribal situation in India",
+          "official_syllabus_line": "9.1 Tribal situation in India - Bio-genetic variability, linguistic and socio-economic characteristics of tribal populations and their distribution. 9.2 Problems of the tribal communities - land alienation, poverty, indebtedness, low literacy, poor educational facilities, unemployment, underemployment, health and nutrition. 9.3 Developmental projects and their impact on tribal displacement and problems of rehabilitation; Development of forest policy and tribals; Impact of urbanization and industrialization on tribal populations.",
+          "micro_themes": [
+            "Bio-genetic variability of tribal populations",
+            "Linguistic and socio-economic characteristics of tribal populations and their distribution",
+            "Land alienation, poverty and indebtedness among tribal communities",
+            "Low literacy, poor educational facilities, unemployment and underemployment",
+            "Health and nutrition among tribal communities",
+            "Developmental projects, tribal displacement and rehabilitation",
+            "Development of forest policy and tribals",
+            "Impact of urbanization and industrialization on tribal populations"
+          ]
+        },
+        {
+          "macro_topic": "10 Exploitation, deprivation and contemporary tribal society",
+          "official_syllabus_line": "10.1 Problems of exploitation and deprivation of Scheduled Castes, Scheduled Tribes and Other Backward Classes; Constitutional safeguards for Scheduled Tribes and Scheduled Castes. 10.2 Social change and contemporary tribal societies: Impact of modern democratic institutions, development programmes and welfare measures on tribals and weaker sections. 10.3 The concept of ethnicity; Ethnic conflicts and political developments; Unrest among tribal communities; Regionalism and demand for autonomy; Pseudo-tribalism; Social change among the tribes during colonial and post-Independent India.",
+          "micro_themes": [
+            "Exploitation and deprivation of Scheduled Castes, Scheduled Tribes and OBCs",
+            "Constitutional safeguards for Scheduled Tribes and Scheduled Castes",
+            "Impact of modern democratic institutions on tribals and weaker sections",
+            "Impact of development programmes and welfare measures",
+            "The concept of ethnicity; ethnic conflicts and political developments",
+            "Unrest among tribal communities; regionalism and demand for autonomy",
+            "Pseudo-tribalism",
+            "Social change among tribes during colonial and post-Independent India"
+          ]
+        },
+        {
+          "macro_topic": "11 Religion and the tribe-nation relationship",
+          "official_syllabus_line": "11.1 Impact of Hinduism, Buddhism, Christianity, Islam and other religions on tribal societies. 11.2 Tribe and nation state - a comparative study of tribal communities in India and other countries.",
+          "micro_themes": [
+            "Impact of Hinduism and Buddhism on tribal societies",
+            "Impact of Christianity, Islam and other religions on tribal societies",
+            "Tribe and nation state: comparative study of tribal communities in India and abroad"
+          ]
+        },
+        {
+          "macro_topic": "12 Tribal administration and the role of anthropology",
+          "official_syllabus_line": "12.1 History of administration of tribal areas, tribal policies, plans, programmes of tribal development and their implementation; The concept of PTGs (Particularly Vulnerable Tribal Groups), their distribution, special programmes for their development; Role of NGOs in tribal development. 12.2 Role of anthropology in tribal and rural development. 12.3 Contributions of anthropology to the understanding of regionalism, communalism, and ethnic and political movements.",
+          "micro_themes": [
+            "History of the administration of tribal areas and tribal policies",
+            "Plans and programmes of tribal development and their implementation",
+            "Particularly Vulnerable Tribal Groups: distribution and special programmes",
+            "Role of NGOs in tribal development",
+            "Role of anthropology in tribal and rural development",
+            "Contribution of anthropology to understanding regionalism and communalism",
+            "Contribution of anthropology to understanding ethnic and political movements"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, Sociology Paper II (Indian Society: Structure and Change)",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit and clause text is the published UPSC syllabus for Sociology Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF itself. Verify before promoting any mention to verified.",
+  "structure_note": "This paper is the case rev2 M10 names explicitly: the syllabus has THREE lettered parts (A Introducing Indian Society, B Social Structure, C Social Changes in India) against the question paper's two sections. The parts are carried in section_ref; they are not topic rows and must never be modelled as exam_phase_sections. The numbered units within each part are the topic level.",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-sociology-p2 exactly, or resolve_subject creates a duplicate.",
+  "papers": [
+    {
+      "paper_id": "opt-sociology-p2",
+      "paper_title": "Sociology Paper-2 (Optional)",
+      "core_subjects": ["Indian Society: Structure and Change"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Perspectives on the Study of Indian Society",
+          "official_syllabus_line": "Perspectives on the study of Indian society: (a) Indology (G.S. Ghurye). (b) Structural functionalism (M.N. Srinivas). (c) Marxist sociology (A.R. Desai).",
+          "section_ref": "Part A - Introducing Indian Society",
+          "micro_themes": [
+            "Indology and G. S. Ghurye's approach to Indian society",
+            "Structural functionalism and M. N. Srinivas",
+            "Marxist sociology and A. R. Desai"
+          ]
+        },
+        {
+          "macro_topic": "Impact of Colonial Rule on Indian Society",
+          "official_syllabus_line": "Impact of colonial rule on Indian society: (a) Social background of Indian nationalism. (b) Modernization of Indian tradition. (c) Protests and movements during the colonial period. (d) Social reforms.",
+          "section_ref": "Part A - Introducing Indian Society",
+          "micro_themes": [
+            "Social background of Indian nationalism",
+            "Modernization of Indian tradition",
+            "Protests and movements during the colonial period",
+            "Social reforms under colonial rule"
+          ]
+        },
+        {
+          "macro_topic": "Rural and Agrarian Social Structure",
+          "official_syllabus_line": "Rural and Agrarian Social Structure: (a) The idea of Indian village and village studies. (b) Agrarian social structure - evolution of land tenure system, land reforms.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "The idea of the Indian village and village studies",
+            "Agrarian social structure: evolution of the land tenure system",
+            "Land reforms and their impact on the peasantry"
+          ]
+        },
+        {
+          "macro_topic": "Caste System",
+          "official_syllabus_line": "Caste System: (a) Perspectives on the study of caste systems: G.S. Ghurye, M.N. Srinivas, Louis Dumont, Andre Beteille. (b) Features of caste system. (c) Untouchability - forms and perspectives.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "Perspectives on caste: G. S. Ghurye, M. N. Srinivas, Louis Dumont, Andre Beteille",
+            "Features of the caste system",
+            "Untouchability: forms and perspectives"
+          ]
+        },
+        {
+          "macro_topic": "Tribal Communities in India",
+          "official_syllabus_line": "Tribal communities in India: (a) Definitional problems. (b) Geographical spread. (c) Colonial policies and tribes. (d) Issues of integration and autonomy.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "Definitional problems in identifying tribal communities",
+            "Geographical spread of tribal populations",
+            "Colonial policies and tribes",
+            "Issues of integration and autonomy"
+          ]
+        },
+        {
+          "macro_topic": "Social Classes in India",
+          "official_syllabus_line": "Social Classes in India: (a) Agrarian class structure. (b) Industrial class structure. (c) Middle classes in India.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "Agrarian class structure",
+            "Industrial class structure",
+            "Middle classes in India"
+          ]
+        },
+        {
+          "macro_topic": "Systems of Kinship in India",
+          "official_syllabus_line": "Systems of Kinship in India: (a) Lineage and descent in India. (b) Types of kinship systems. (c) Family and marriage in India. (d) Household dimensions of the family. (e) Patriarchy, entitlements and sexual division of labour.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "Lineage and descent in India",
+            "Types of kinship systems in India",
+            "Family and marriage in India",
+            "Household dimensions of the family",
+            "Patriarchy, entitlements and sexual division of labour"
+          ]
+        },
+        {
+          "macro_topic": "Religion and Society in India",
+          "official_syllabus_line": "Religion and Society: (a) Religious communities in India. (b) Problems of religious minorities.",
+          "section_ref": "Part B - Social Structure",
+          "micro_themes": [
+            "Religious communities in India",
+            "Problems of religious minorities"
+          ]
+        },
+        {
+          "macro_topic": "Visions of Social Change in India",
+          "official_syllabus_line": "Visions of Social Change in India: (a) Idea of development planning and mixed economy. (b) Constitution, law and social change. (c) Education and social change.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Idea of development planning and the mixed economy",
+            "Constitution, law and social change",
+            "Education and social change in India"
+          ]
+        },
+        {
+          "macro_topic": "Rural and Agrarian Transformation in India",
+          "official_syllabus_line": "Rural and Agrarian transformation in India: (a) Programmes of rural development, Community Development Programme, cooperatives, poverty alleviation schemes. (b) Green revolution and social change. (c) Changing modes of production in Indian agriculture. (d) Problems of rural labour, bondage, migration.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Programmes of rural development: Community Development Programme, cooperatives, poverty alleviation schemes",
+            "Green Revolution and social change",
+            "Changing modes of production in Indian agriculture",
+            "Problems of rural labour: bondage and migration"
+          ]
+        },
+        {
+          "macro_topic": "Industrialization and Urbanisation in India",
+          "official_syllabus_line": "Industrialization and Urbanisation in India: (a) Evolution of modern industry in India. (b) Growth of urban settlements in India. (c) Working class: structure, growth, class mobilization. (d) Informal sector, child labour. (e) Slums and deprivation in urban areas.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Evolution of modern industry in India",
+            "Growth of urban settlements in India",
+            "Working class: structure, growth and class mobilization",
+            "Informal sector and child labour",
+            "Slums and deprivation in urban areas"
+          ]
+        },
+        {
+          "macro_topic": "Politics and Society in India",
+          "official_syllabus_line": "Politics and Society: (a) Nation, democracy and citizenship. (b) Political parties, pressure groups, social and political elite. (c) Regionalism and decentralization of power. (d) Secularization.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Nation, democracy and citizenship in India",
+            "Political parties, pressure groups, social and political elite",
+            "Regionalism and decentralization of power",
+            "Secularization in Indian society"
+          ]
+        },
+        {
+          "macro_topic": "Social Movements in Modern India",
+          "official_syllabus_line": "Social Movements in Modern India: (a) Peasants and farmers movements. (b) Women's movement. (c) Backward classes and Dalit movement. (d) Environmental movements. (e) Ethnicity and Identity movements.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Peasant and farmers movements",
+            "Women's movement in India",
+            "Backward classes and Dalit movements",
+            "Environmental movements",
+            "Ethnicity and identity movements"
+          ]
+        },
+        {
+          "macro_topic": "Population Dynamics",
+          "official_syllabus_line": "Population Dynamics: (a) Population size, growth, composition and distribution. (b) Components of population growth: birth, death, migration. (c) Population policy and family planning. (d) Emerging issues: ageing, sex ratios, child and infant mortality, reproductive health.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Population size, growth, composition and distribution",
+            "Components of population growth: birth, death, migration",
+            "Population policy and family planning",
+            "Emerging issues: ageing, sex ratios, child and infant mortality, reproductive health"
+          ]
+        },
+        {
+          "macro_topic": "Challenges of Social Transformation",
+          "official_syllabus_line": "Challenges of Social Transformation: (a) Crisis of development: displacement, environmental problems and sustainability. (b) Poverty, deprivation and inequalities. (c) Violence against women. (d) Caste conflicts. (e) Ethnic conflicts, communalism, religious revivalism. (f) Illiteracy and disparities in education.",
+          "section_ref": "Part C - Social Changes in India",
+          "micro_themes": [
+            "Crisis of development: displacement, environmental problems and sustainability",
+            "Poverty, deprivation and inequalities",
+            "Violence against women",
+            "Caste conflicts",
+            "Ethnic conflicts, communalism and religious revivalism",
+            "Illiteracy and disparities in education"
+          ]
+        }
+      ]
+    }
+  ]
+}

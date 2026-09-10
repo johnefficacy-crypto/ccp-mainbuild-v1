@@ -1,0 +1,122 @@
+{
+  "exam_body": "Union Public Service Commission (UPSC)",
+  "examination": "Civil Services Mains Examination - Optional Subject",
+  "document_type": "Official Syllabus, Sociology Paper I (Fundamentals of Sociology)",
+  "version": "2026.1",
+  "last_updated": "2026-09-10",
+  "provenance_note": "Unit and clause text is the published UPSC syllabus for Sociology Paper I, corroborated across independent reproductions including one claiming clause-by-clause reproduction from the CSE 2026 notification. NOT diffed against the notification PDF itself. Verify before promoting any mention to verified.",
+  "structure_note": "Paper I has ten numbered units and no lettered parts - unlike PSIR, whose paper sections map to named syllabus parts. The units are the topic level; their (a)/(b)/(c) clauses are the microtopics. section_ref is omitted because the syllabus makes no such division; the question paper's Section A/B cut is a property of the paper, not the syllabus (rev2 M10).",
+  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-sociology-p1 exactly, or resolve_subject creates a duplicate.",
+  "papers": [
+    {
+      "paper_id": "opt-sociology-p1",
+      "paper_title": "Sociology Paper-1 (Optional)",
+      "core_subjects": ["Fundamentals of Sociology"],
+      "syllabus_nodes": [
+        {
+          "macro_topic": "Sociology - The Discipline",
+          "official_syllabus_line": "Sociology - The Discipline: (a) Modernity and social changes in Europe and emergence of sociology. (b) Scope of the subject and comparison with other social sciences. (c) Sociology and common sense.",
+          "micro_themes": [
+            "Modernity and social changes in Europe and the emergence of sociology",
+            "Scope of the subject and comparison with other social sciences",
+            "Sociology and common sense"
+          ]
+        },
+        {
+          "macro_topic": "Sociology as Science",
+          "official_syllabus_line": "Sociology as Science: (a) Science, scientific method and critique. (b) Major theoretical strands of research methodology. (c) Positivism and its critique. (d) Fact value and objectivity. (e) Non-positivist methodologies.",
+          "micro_themes": [
+            "Science, scientific method and critique",
+            "Major theoretical strands of research methodology",
+            "Positivism and its critique",
+            "Fact, value and objectivity",
+            "Non-positivist methodologies"
+          ]
+        },
+        {
+          "macro_topic": "Research Methods and Analysis",
+          "official_syllabus_line": "Research Methods and Analysis: (a) Qualitative and quantitative methods. (b) Techniques of data collection. (c) Variables, sampling, hypothesis, reliability and validity.",
+          "micro_themes": [
+            "Qualitative and quantitative methods",
+            "Techniques of data collection",
+            "Variables, sampling, hypothesis, reliability and validity"
+          ]
+        },
+        {
+          "macro_topic": "Sociological Thinkers",
+          "official_syllabus_line": "Sociological Thinkers: (a) Karl Marx - Historical materialism, mode of production, alienation, class struggle. (b) Emile Durkheim - Division of labour, social fact, suicide, religion and society. (c) Max Weber - Social action, ideal types, authority, bureaucracy, protestant ethic and the spirit of capitalism. (d) Talcott Parsons - Social system, pattern variables. (e) Robert K. Merton - Latent and manifest functions, conformity and deviance, reference groups. (f) Mead - Self and identity.",
+          "micro_themes": [
+            "Karl Marx: historical materialism, mode of production, alienation, class struggle",
+            "Emile Durkheim: division of labour, social fact, suicide, religion and society",
+            "Max Weber: social action, ideal types, authority, bureaucracy, protestant ethic and the spirit of capitalism",
+            "Talcott Parsons: social system, pattern variables",
+            "Robert K. Merton: latent and manifest functions, conformity and deviance, reference groups",
+            "G. H. Mead: self and identity"
+          ]
+        },
+        {
+          "macro_topic": "Stratification and Mobility",
+          "official_syllabus_line": "Stratification and Mobility: (a) Concepts - equality, inequality, hierarchy, exclusion, poverty and deprivation. (b) Theories of social stratification - Structural functionalist theory, Marxist theory, Weberian theory. (c) Dimensions - Social stratification of class, status groups, gender, ethnicity and race. (d) Social mobility - open and closed systems, types of mobility, sources and causes of mobility.",
+          "micro_themes": [
+            "Concepts: equality, inequality, hierarchy, exclusion, poverty and deprivation",
+            "Structural functionalist theory of stratification",
+            "Marxist theory of stratification",
+            "Weberian theory of stratification",
+            "Dimensions: stratification by class, status group, gender, ethnicity and race",
+            "Social mobility: open and closed systems, types, sources and causes"
+          ]
+        },
+        {
+          "macro_topic": "Works and Economic Life",
+          "official_syllabus_line": "Works and Economic Life: (a) Social organization of work in different types of society - slave society, feudal society, industrial/capitalist society. (b) Formal and informal organization of work. (c) Labour and society.",
+          "micro_themes": [
+            "Social organization of work in slave, feudal and industrial/capitalist society",
+            "Formal and informal organization of work",
+            "Labour and society"
+          ]
+        },
+        {
+          "macro_topic": "Politics and Society",
+          "official_syllabus_line": "Politics and Society: (a) Sociological theories of power. (b) Power elite, bureaucracy, pressure groups and political parties. (c) Nation, state, citizenship, democracy, civil society, ideology. (d) Protest, agitation, social movements, collective action, revolution.",
+          "micro_themes": [
+            "Sociological theories of power",
+            "Power elite, bureaucracy, pressure groups and political parties",
+            "Nation, state, citizenship, democracy, civil society, ideology",
+            "Protest, agitation, social movements, collective action, revolution"
+          ]
+        },
+        {
+          "macro_topic": "Religion and Society",
+          "official_syllabus_line": "Religion and Society: (a) Sociological theories of religion. (b) Types of religious practices: animism, monism, pluralism, sects, cults. (c) Religion in modern society: religion and science, secularization, religious revivalism, fundamentalism.",
+          "micro_themes": [
+            "Sociological theories of religion",
+            "Types of religious practices: animism, monism, pluralism, sects, cults",
+            "Religion in modern society: religion and science, secularization, religious revivalism, fundamentalism"
+          ]
+        },
+        {
+          "macro_topic": "Systems of Kinship",
+          "official_syllabus_line": "Systems of Kinship: (a) Family, household, marriage. (b) Types and forms of family. (c) Lineage and descent. (d) Patriarchy and sexual division of labour. (e) Contemporary trends.",
+          "micro_themes": [
+            "Family, household, marriage",
+            "Types and forms of family",
+            "Lineage and descent",
+            "Patriarchy and sexual division of labour",
+            "Contemporary trends in kinship"
+          ]
+        },
+        {
+          "macro_topic": "Social Change in Modern Society",
+          "official_syllabus_line": "Social Change in Modern Society: (a) Sociological theories of social change. (b) Development and dependency. (c) Agents of social change. (d) Education and social change. (e) Science, technology and social change.",
+          "micro_themes": [
+            "Sociological theories of social change",
+            "Development and dependency",
+            "Agents of social change",
+            "Education and social change",
+            "Science, technology and social change"
+          ]
+        }
+      ]
+    }
+  ]
+}
