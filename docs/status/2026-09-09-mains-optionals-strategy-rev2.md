@@ -42,7 +42,7 @@ Three models were considered.
 |---|---|---|---|
 | A — one paper per subject-year | 139 | 139 | clean |
 | B1 — sections on the existing GS year-papers | 0 | 0 | **broken** |
-| **B2 — one optional paper per year** | **14** | **14** | **clean** |
+| **B2 — one optional paper per year** | **16** | **16** | **clean** |
 
 **A is rejected**: it breaks the year-paper convention and takes the PYQ
 Explorer to 165 cards, 3.8× the 43 that already made SEBI unusable. UPSC would
@@ -60,14 +60,14 @@ assert something false.
 **B2 is adopted.** One `pyq_papers` row per year, `source_type='aggregator'`,
 `trust_status='pending'`, holding every optional subject for that year as
 sections. Preserves the year-paper shape, keeps provenance truthful at the level
-the readiness rule reads, and adds 14 cards rather than 139 — total 41, below
-the point SEBI became unusable.
+the readiness rule reads, and adds 16 cards rather than 139 — total 43.
 
 ### Consequences of M1, stated so they are not discovered later
 
 - The GS year-papers are not touched. Two paper rows per year exist for Mains
   from here: the official GS paper and the aggregator optional paper.
-- 14 rows, not 13: the corpus includes PSIR 2026 and no 2026 year-paper exists.
+- 16 rows, not 13. The corpus adds PSIR 2026 (no GS 2026 year-paper exists) and
+  PubAd 2011 and 2012, which predate the earliest GS year-paper.
 - Coverage is uneven by design. Geography starts 2020, History 2017, PubAd 2011.
   Sections exist only on years the corpus covers, so a reader will see gaps.
   Those gaps are real and belong in the data.
@@ -121,6 +121,13 @@ year-paper.** Twelve sections on a fully-covered year, each pointing at its own
 subject row. Section label carries subject and paper, e.g.
 `Optional: PSIR Paper-I`. Sections and topics must resolve to the *same* subject
 row; verify immediately after creating each.
+
+Note the granularity: `exam_phase_sections` hangs off the **phase**, not the
+paper. Mains `626ec667` currently has 5 sections (Essay, GS I–IV) shared by all
+13 year-papers. Adding 12 optional sections makes 17 on that phase, and all 17
+are selectable against any paper on it, including the GS ones. That is how the
+table already works and is not harmful, but it means the section list is not a
+per-paper contents page and should not be read as one.
 
 **Decision M3. Question numbering uses reserved per-subject blocks starting at
 100,** leaving 1–99 for the GS convention should the two ever be compared. Both
@@ -255,6 +262,21 @@ reach `mock_question_bank`, so `pyq_practice.py`'s
 property of the corpus, not a safeguard — if descriptive questions ever become
 projectable, M9 becomes load-bearing there too.
 
+### M8 has no live precedent — spike it before committing
+
+`concept` is a legal value in `_TOPIC_LEVELS` but **is unused in production**:
+every UPSC subject reports `concepts: 0`, and a probe for concept rows parented
+to another subject's microtopic returned nothing. M8 therefore rests on a
+mechanism nobody has exercised.
+
+Prove it on one PSIR topic before creating twelve subjects around it: one
+`concept` row owned by `…-opt-psir-p1`, parented to a GS-II microtopic, then
+confirm (a) coverage derivation emits a separate row for it, (b) a GS-II-scoped
+read does not return it, and (c) the projection's level resolution — which reads
+`topics.parent_topic_id` and writes microtopic to `microtopic_id`, parent to
+`topic_id` — behaves sanely at concept depth. Migration 270 was written for a
+two-level tree; a third level is untested.
+
 ### Open, and needed before the overlap worksheet is built
 
 Under M8, GS mastery no longer counts toward an optional topic automatically,
@@ -268,24 +290,49 @@ built, not after.
 
 ## Provenance and trust
 
-**Decision M5. Optional papers stay `pending` because `source_type='aggregator'`,
-not because the anchor is a URL.**
+**Decision M5. Optional papers load `pending`, and are promoted only once the
+compiler PDFs are registered as `document_assets` and linked as
+`source_document_id`. The anchor, not the source class, is what gates them.**
 
-This sentence is the decision record, and it exists because the obvious reading
-is wrong. Migration `186:147-151` accepts `source_url` *or*
-`source_document_id`, and 23 of the 26 verified UPSC papers are anchored on
-`source_url` alone — so a weak anchor is already established practice on this
-exam and is **not** a reason these stay pending.
+Revision 2 first recorded this as "aggregator content stays pending, full stop."
+Live data disproved that. Paper provenance across all exams:
 
-What separates them is source class. All 27 existing UPSC papers are
-`source_type='official'`. The optionals are the first aggregator-sourced papers
-this exam has carried. Their comparison class is SEBI, PFRDA, IFSCA and NABARD —
-memory-based and coaching-sourced corpora, every one of which carries a pending
-tail. Migration `228:5-11` is the precedent: an official paper held at `pending`
-because its provenance was a homepage rather than the paper.
+| trust | source_type | papers | with url | with document |
+|---|---|---:|---:|---:|
+| verified | memory_based | 105 | 0 | 105 |
+| verified | coaching | 44 | 0 | 44 |
+| verified | official | 26 | 26 | 3 |
+| pending | memory_based | 38 | 0 | 38 |
+| pending | coaching | 16 | 0 | 3 |
+| rejected | official | 1 | 1 | 0 |
 
-Without M5 recorded, someone finds 23 verified URL-anchored papers, reads
-migration 186, and promotes 139 coaching-compiled papers with a clean conscience.
+**149 non-official papers are already verified.** Coaching and memory-based
+content is not barred from promotion here — SEBI, PFRDA, IFSCA and NABARD all
+carry verified papers. So "these are the first aggregator papers on UPSC CSE" is
+true but is *not* the reason to hold them.
+
+The actual, consistently applied rule is about the anchor:
+
+- **Not one** coaching or memory-based paper is verified on a `source_url`.
+  All 149 carry a `source_document_id`.
+- **Not one** official paper needs a document — 26 of 26 verified officials are
+  URL-anchored, only 3 also carry a document.
+
+A URL is a sufficient anchor when it points at the issuing authority's own
+published paper. It is worthless when it points at a coaching site that can
+re-edit or remove the page. The document asset is what makes non-official
+content auditable, and that is the invariant already recorded for
+SEBI/PFRDA/IFSCA: register the source files as `document_assets` and point
+`source_document_id` at them to satisfy the promotion gate.
+
+So the optionals have a real route to `verified`, and it is the same one the
+regulatory corpora took. Until the six LotusArise PDFs are registered, the
+papers hold at `pending` — not because they are aggregator-sourced, but because
+a coaching URL is not an anchor.
+
+**Do not promote these on `source_url` alone.** Migration `186:147-151` accepts
+either anchor and would let it through; no existing non-official paper has ever
+been promoted that way.
 
 **Decision M6. Question-level provenance travels in question `metadata`** —
 `extraction_source`, `verified_against_official: false`, and the compiler name.
@@ -332,14 +379,70 @@ rows by hand.
 
 ---
 
+---
+
+## Confirmed live, 2026-09-09 — findings that outlive this document
+
+Recorded here because three of them are not in the repository at all.
+
+**Schema drift: `uq_pyq_question_one_primary_tag` exists in the database and in
+no migration.** Live definition:
+
+```
+CREATE UNIQUE INDEX uq_pyq_question_one_primary_tag
+  ON public.pyq_question_topic_tags USING btree (question_id)
+  WHERE (tag_role = 'primary');
+```
+
+A full-tree grep finds it only in revision 1 of this document. It is working —
+0 questions carry two primary tags — but a rebuild from migrations would lose
+it silently, and every wrong-tag replacement in the tagging step depends on it.
+**Write the migration to match live.** Separate task, not part of the optionals
+load.
+
+**Resumability is already solved.** `uq_pyq_questions_idempotency_key` is a
+partial unique index on `idempotency_key`. A load run interrupted by JWT expiry
+can re-post the same rows without duplicating them, so the loader does not need
+a pre-flight existence check per question. `pyq_papers` still has no such guard,
+so paper creation does need one.
+
+**Question counts, corrected.** 1,209 descriptive questions live, not 1,131:
+1,191 `source_kind='manual'` (16–22 Aug 2026) plus 18 `bulk_import`. The manual
+count matches the CMS audit-row count exactly, confirming the per-question CMS
+route as the path those took.
+
+**Optional subjects do not exist yet.** No row matches `upsc-cse-mains-opt-%`.
+Step 4 creates all twelve from nothing.
+
+**`subject_group` has no convention to inherit.** Live values are a mix of
+per-paper (`GS_1`…`GS_4` on the four active Mains subjects), family-style
+(`regulatory-finance`, `upsc-gs`), and the six retired `gs` rows. The four
+retired `upsc-mains-gs*` subjects and `upsc-gs-paper-1` all sit on `gs` with
+`is_active=false` and 0 topics — the duplication trap, now visible in data.
+Choose the optionals' value deliberately and check `_GROUP_FAMILY` before
+writing it.
+
+---
+
 ## Sequence
+
+**Steps 1, 4 and 5-papers are DONE (2026-09-09).** 16 optional year-papers
+created (`UPSC-CSE-MAINS-OPT-<year>`, aggregator/pending), and twelve subject
+rows plus twelve sections created and verified to resolve to the same subject.
+Ledgers: `workbench/ledgers/OPT-LOAD-02_optional_year_papers.csv` and
+`OPT-LOAD-03_subjects_sections.csv`. `subject_group='upsc-optional'` is
+deliberately unmapped in `_GROUP_FAMILY` — `family_for_subject()` returns None
+and the caller maps None to the generic PYQ runtime, the same reasoning already
+recorded for UPSC `gs`. Do not map it to a family.
+
+Remaining:
 
 1. **G5/G6 preflight** — `OPT-PREFLIGHT-01.sql`. Confirms whether
    `upsc-cse-mains-opt-*` subjects exist and how Mains sections are modelled.
    Nothing below starts without it.
 2. **Explorer rendering check** — does the card list include `pending` papers?
-   If yes, 14 cards land at load, not at promotion. Decides whether the grouping
-   fix blocks step 5.
+   If yes, 16 cards land at load, not at promotion, taking UPSC to 43 — the exact
+   count at which SEBI became unusable.
 2a. **Mastery roll-up across `parent_topic_id`** — resolve before the overlap
    worksheet (M8 open item).
 3. **OPT-FRONTLOAD-02** — extend the v2 importer to accept `descriptive` with no
