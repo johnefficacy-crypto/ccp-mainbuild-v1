@@ -43,16 +43,27 @@ JSON: an object envelope::
     }
 
 ``stimuli`` and every per-question field except ``question_text``/
-``question_type``/``options`` are optional. ``options`` supports 2+ entries
-with arbitrary unique non-empty ``label`` strings. ``correct_option_label``
-must resolve to exactly one supplied option's label when
-``question_type == "mcq"``.
+``question_type`` are optional. ``question_type`` accepts ``"mcq"`` and
+``"descriptive"``.
+
+For ``mcq``, ``options`` is required and supports 2+ entries with arbitrary
+unique non-empty ``label`` strings, and ``correct_option_label`` must resolve
+to exactly one supplied option's label.
+
+For ``descriptive`` (UPSC Mains-style: a stem, no choices, no machine-scored
+answer), ``options`` may be omitted entirely — the question commits with no
+``pyq_options`` rows. Options supplied anyway are validated and stored under
+the same per-option rules, minus the 2-entry minimum;
+``correct_option_label`` is carried through unvalidated, as it already was for
+every non-mcq type.
 
 CSV v2 is detected by an ``options_json`` column (instead of
 ``option_a``..``option_d``) holding a JSON-encoded array of
 ``{"label", "source_label", "text", "display_order"}`` objects, plus
 ``correct_option_label`` and optionally ``source_question_ref``,
-``display_order``, ``section_ref``.
+``display_order``, ``section_ref``. A descriptive-only CSV still needs the
+``options_json`` *column* present (that column is what selects v2 over the
+legacy v1 header contract); its cells may be left blank.
 
 ``section_ref`` resolves case-insensitively against
 ``exam_phase_sections.section_label`` scoped to the target paper's
@@ -202,10 +213,13 @@ _STIMULUS_TYPES = frozenset(("passage", "caselet", "table", "chart", "image", "d
 # is explicitly deferred to PR-11 per docs/status/career-copilot-checklist.md.
 _STIMULUS_TYPES_V2_SUPPORTED = frozenset(("passage", "caselet", "table"))
 
-# v2 importer scope (this PR): single-answer MCQ scoring/import only — no
-# correct_text_answer import, no multi-select, no descriptive-answer
-# handling exists yet for the other _QUESTION_TYPES values.
-_QUESTION_TYPES_V2_SUPPORTED = frozenset(("mcq",))
+# v2 importer scope: single-answer MCQ, plus option-less descriptive
+# questions (UPSC Mains-style: a stem, no choices, no machine-scored answer).
+# `descriptive` carries no scoring contract — it imports the stem, section
+# linkage and stimuli only. No correct_text_answer import and no multi-select
+# exist yet, so `numerical`, `caselet`, `matching` and `other` stay
+# unsupported: each needs an answer/scoring shape this importer cannot store.
+_QUESTION_TYPES_V2_SUPPORTED = frozenset(("mcq", "descriptive"))
 
 # ── Parse helpers ─────────────────────────────────────────────────────────────
 
@@ -348,11 +362,22 @@ def _validate_row(raw: dict, seen_numbers: set[int]) -> tuple[dict | None, list[
 # ── v2 parse/validate helpers ─────────────────────────────────────────────────
 
 
-def _parse_v2_options_field(raw: dict, is_csv: bool) -> tuple[list[Any] | None, str | None]:
-    """Return (raw_options_list, error). For CSV, decodes the options_json column."""
+def _parse_v2_options_field(
+    raw: dict, is_csv: bool, qtype: str = "mcq"
+) -> tuple[list[Any] | None, str | None]:
+    """Return (raw_options_list, error). For CSV, decodes the options_json column.
+
+    Options are required for ``mcq`` and optional for every other supported
+    question_type: a descriptive question has a stem and no choices, so an
+    absent/blank ``options``/``options_json`` yields ``[]`` rather than an
+    error. A *present but malformed* value is still an error for every type —
+    "no options" and "broken options" are different failures.
+    """
     if is_csv:
         raw_opts = raw.get("options_json")
         if raw_opts is None or not str(raw_opts).strip():
+            if qtype != "mcq":
+                return [], None
             return None, "options_json is required and must not be empty"
         try:
             opts = json.loads(raw_opts)
@@ -363,6 +388,8 @@ def _parse_v2_options_field(raw: dict, is_csv: bool) -> tuple[list[Any] | None, 
         return opts, None
 
     opts = raw.get("options")
+    if opts is None and qtype != "mcq":
+        return [], None
     if not isinstance(opts, list):
         return None, "options must be a list"
     return opts, None
@@ -455,14 +482,14 @@ def _validate_row_v2(
     if not question_text:
         errors.append("question_text is required")
 
-    # question_type — v2 currently only supports single-answer MCQ import;
-    # other _QUESTION_TYPES values (numerical, descriptive, caselet,
-    # matching, other) have no scoring/import path implemented yet.
+    # question_type — v2 supports single-answer MCQ and option-less
+    # descriptive questions; the remaining _QUESTION_TYPES values (numerical,
+    # caselet, matching, other) have no scoring/import path implemented yet.
     qtype = str(raw.get("question_type") or "").strip().lower()
     if qtype not in _QUESTION_TYPES_V2_SUPPORTED:
         errors.append(
             f"question_type {qtype!r} is not yet supported by the v2 importer; "
-            f"only 'mcq' is currently supported"
+            f"supported types are {sorted(_QUESTION_TYPES_V2_SUPPORTED)}"
         )
 
     # observed_difficulty — nullable, canonical easy|medium|hard
@@ -503,13 +530,15 @@ def _validate_row_v2(
         else:
             seen_stimulus_refs.add(ref)
 
-    # options — 2+ entries, unique non-empty labels.
-    raw_opts, opt_err = _parse_v2_options_field(raw, is_csv)
+    # options — for mcq: required, 2+ entries, unique non-empty labels. For
+    # every other supported type they are optional (a descriptive question has
+    # none), but any options that ARE supplied are validated identically.
+    raw_opts, opt_err = _parse_v2_options_field(raw, is_csv, qtype)
     parsed_opts: list[dict] = []
     if opt_err:
         errors.append(opt_err)
     else:
-        if len(raw_opts) < 2:
+        if qtype == "mcq" and len(raw_opts) < 2:
             errors.append("options must contain at least 2 entries")
         seen_labels: set[str] = set()
         for i, o in enumerate(raw_opts):
@@ -1302,7 +1331,11 @@ def commit(
                             opt_row["source_label"] = o["source_label"]
                         opt_rows.append(opt_row)
 
-                    supabase.table("pyq_options").insert(opt_rows).execute()
+                    # An option-less question (descriptive) produces no option
+                    # rows; an empty insert is a pointless round-trip at best
+                    # and a PostgREST 400 at worst.
+                    if opt_rows:
+                        supabase.table("pyq_options").insert(opt_rows).execute()
 
                     # display_order = 1-based position in stimulus_refs (the
                     # order-preserving JSON array / CSV parse) — preserves
