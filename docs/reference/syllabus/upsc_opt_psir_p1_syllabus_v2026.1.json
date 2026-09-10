@@ -1,272 +1,295 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, Political Science and International Relations Paper I",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for PSIR Paper I, corroborated across four independent reproductions. It has NOT been diffed against the UPSC notification PDF itself. Verify before promoting any mention to verified; the syllabus does not change year to year, so one check settles it permanently.",
-  "structure_note": "The official syllabus divides this paper into Section A (Political Theory and Indian Politics) and Section B (Indian Government and Politics). Those two parts are carried in each node's metadata rather than as topic rows: the ingest supports only topic -> microtopic, and spending the top level on a binary split would leave 784 questions tagging against two buckets. The numbered units are the topic level, which is what the syllabus itself enumerates.",
-  "papers": [
-    {
-      "paper_id": "opt-psir-p1",
-      "paper_title": "Political Science and International Relations Paper-I (Optional)",
-      "core_subjects": ["Political Theory", "Indian Government and Politics"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "Political Theory: meaning and approaches",
-          "official_syllabus_line": "Political Theory: meaning and approaches.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Meaning and scope of political theory; its decline and resurgence",
-            "Normative, empirical and contemporary approaches to political theory",
-            "Behaviouralism and post-behaviouralism in political enquiry"
-          ]
-        },
-        {
-          "macro_topic": "Theories of state",
-          "official_syllabus_line": "Theories of state: Liberal, Neo-liberal, Marxist, Pluralist, Post-colonial and Feminist.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Liberal theory of the state",
-            "Neo-liberal theory of the state",
-            "Marxist theory of the state",
-            "Pluralist theory of the state",
-            "Post-colonial theory of the state",
-            "Feminist theory of the state"
-          ]
-        },
-        {
-          "macro_topic": "Justice",
-          "official_syllabus_line": "Justice: Conceptions of justice with special reference to Rawl's theory of justice and its communitarian critiques.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Conceptions of justice: procedural, distributive and social",
-            "Rawls's theory of justice: original position, veil of ignorance, difference principle",
-            "Communitarian critiques of Rawls (Sandel, MacIntyre, Taylor, Walzer)",
-            "Libertarian critique of distributive justice (Nozick)"
-          ]
-        },
-        {
-          "macro_topic": "Equality",
-          "official_syllabus_line": "Equality: Social, political and economic; relationship between equality and freedom; Affirmative action.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Social, political and economic equality",
-            "Relationship between equality and freedom",
-            "Affirmative action and the debate on reservation",
-            "Capability approach to equality (Sen, Nussbaum)"
-          ]
-        },
-        {
-          "macro_topic": "Rights",
-          "official_syllabus_line": "Rights: Meaning and theories; different kinds of rights; concept of Human Rights.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Meaning and theories of rights: natural, legal and moral",
-            "Different kinds of rights: civil, political, economic and social",
-            "Concept of Human Rights and its universality debate",
-            "Rights and the state: Laski's pluralist account"
-          ]
-        },
-        {
-          "macro_topic": "Democracy",
-          "official_syllabus_line": "Democracy: Classical and contemporary theories; different models of democracy - representative, participatory and deliberative.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Classical theories of democracy",
-            "Contemporary theories of democracy",
-            "Representative democracy and its critics",
-            "Participatory democracy",
-            "Deliberative democracy"
-          ]
-        },
-        {
-          "macro_topic": "Concept of power",
-          "official_syllabus_line": "Concept of power: hegemony, ideology and legitimacy.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Concept and dimensions of power; power, authority and influence",
-            "Hegemony: Gramsci and its later uses",
-            "Ideology: meaning, function and the 'end of ideology' debate",
-            "Legitimacy: Weber's types and legitimation crisis"
-          ]
-        },
-        {
-          "macro_topic": "Political Ideologies",
-          "official_syllabus_line": "Political Ideologies: Liberalism, Socialism, Marxism, Fascism, Gandhism and Feminism.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Liberalism: classical and modern",
-            "Socialism: utopian, democratic and revolutionary",
-            "Marxism: historical materialism, class and revolution",
-            "Fascism",
-            "Gandhism",
-            "Feminism: liberal, socialist, radical and post-modern"
-          ]
-        },
-        {
-          "macro_topic": "Indian Political Thought",
-          "official_syllabus_line": "Indian Political Thought: Dharamshastra, Arthashastra and Buddhist traditions; Sir Syed Ahmed Khan, Sri Aurobindo, M.K. Gandhi, B.R. Ambedkar, M.N. Roy.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Dharamshastra tradition",
-            "Arthashastra and Kautilya's Saptanga theory of state",
-            "Buddhist traditions of political thought",
-            "Sir Syed Ahmed Khan",
-            "Sri Aurobindo",
-            "M.K. Gandhi: Swaraj, trusteeship, satyagraha",
-            "B.R. Ambedkar: democracy, constitutional morality, state socialism",
-            "M.N. Roy: radical humanism"
-          ]
-        },
-        {
-          "macro_topic": "Western Political Thought",
-          "official_syllabus_line": "Western Political Thought: Plato, Aristotle, Machiavelli, Hobbes, Locke, John S. Mill, Marx, Gramsci, Hannah Arendt.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Plato",
-            "Aristotle",
-            "Machiavelli: virtu and fortuna",
-            "Hobbes",
-            "Locke",
-            "John S. Mill",
-            "Marx",
-            "Gramsci",
-            "Hannah Arendt"
-          ]
-        },
-
-        {
-          "macro_topic": "Indian Nationalism",
-          "official_syllabus_line": "Indian Nationalism: (a) Political Strategies of India's Freedom Struggle: constitutionalism to mass Satyagraha, Non-Cooperation, Civil Disobedience; Militant and Revolutionary Movements, Peasant and Workers Movements. (b) Perspectives on Indian National Movement: Liberal, Socialist and Marxist; Radical Humanist and Dalit.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Constitutionalism to mass Satyagraha as political strategy",
-            "Non-Cooperation and Civil Disobedience movements",
-            "Militant and revolutionary movements",
-            "Peasant and workers movements in the freedom struggle",
-            "Liberal perspective on the Indian national movement",
-            "Socialist and Marxist perspectives on the Indian national movement",
-            "Radical Humanist and Dalit perspectives on the Indian national movement"
-          ]
-        },
-        {
-          "macro_topic": "Making of the Indian Constitution",
-          "official_syllabus_line": "Making of the Indian Constitution: Legacies of the British rule; different social and political perspectives.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Legacies of British rule in constitutional design",
-            "The Constituent Assembly and its debates",
-            "Different social and political perspectives on the making of the Constitution"
-          ]
-        },
-        {
-          "macro_topic": "Salient Features of the Indian Constitution",
-          "official_syllabus_line": "Salient Features of the Indian Constitution: The Preamble, Fundamental Rights and Duties, Directive Principles; Parliamentary System and Amendment Procedures; Judicial Review and Basic Structure doctrine.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "The Preamble and its value premises",
-            "Fundamental Rights and Fundamental Duties",
-            "Directive Principles of State Policy and their relation to Fundamental Rights",
-            "Parliamentary system and amendment procedures",
-            "Judicial review and the Basic Structure doctrine"
-          ]
-        },
-        {
-          "macro_topic": "Principal Organs of the Union and State Government",
-          "official_syllabus_line": "(a) Principal Organs of the Union Government: Envisaged role and actual working of the Executive, Legislature and Supreme Court. (b) Principal Organs of the State Government: Envisaged role and actual working of the Executive, Legislature and High Courts.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Union Executive: envisaged role and actual working",
-            "Union Legislature: envisaged role and actual working",
-            "Supreme Court: envisaged role and actual working",
-            "State Executive: envisaged role and actual working",
-            "State Legislature: envisaged role and actual working",
-            "High Courts: envisaged role and actual working"
-          ]
-        },
-        {
-          "macro_topic": "Grassroots Democracy",
-          "official_syllabus_line": "Grassroots Democracy: Panchayati Raj and Municipal Government; Significance of 73rd and 74th Amendments; Grassroot movements.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Panchayati Raj institutions",
-            "Municipal government and urban local bodies",
-            "Significance of the 73rd and 74th Amendments",
-            "Grassroot movements"
-          ]
-        },
-        {
-          "macro_topic": "Statutory Institutions and Commissions",
-          "official_syllabus_line": "Statutory Institutions/Commissions: Election Commission, Comptroller and Auditor General, Finance Commission, Union Public Service Commission, National Commission for Scheduled Castes, National Commission for Scheduled Tribes, National Commission for Women; National Human Rights Commission, National Commission for Minorities, National Backward Classes Commission.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Election Commission of India",
-            "Comptroller and Auditor General",
-            "Finance Commission",
-            "Union Public Service Commission",
-            "National Commission for Scheduled Castes and National Commission for Scheduled Tribes",
-            "National Commission for Women",
-            "National Human Rights Commission",
-            "National Commission for Minorities and National Backward Classes Commission"
-          ]
-        },
-        {
-          "macro_topic": "Federalism",
-          "official_syllabus_line": "Federalism: Constitutional provisions; changing nature of centre-state relations; integrationist tendencies and regional aspirations; inter-state disputes.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Constitutional provisions on federalism",
-            "Changing nature of centre-state relations",
-            "Integrationist tendencies and regional aspirations",
-            "Inter-state disputes, including river-water disputes"
-          ]
-        },
-        {
-          "macro_topic": "Planning and Economic Development",
-          "official_syllabus_line": "Planning and Economic Development: Nehruvian and Gandhian perspectives; role of planning and public sector; Green Revolution, land reforms and agrarian relations; liberalization and economic reforms.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Nehruvian and Gandhian perspectives on development",
-            "Role of planning and the public sector",
-            "Green Revolution, land reforms and agrarian relations",
-            "Liberalization and economic reforms"
-          ]
-        },
-        {
-          "macro_topic": "Caste, Religion and Ethnicity in Indian Politics",
-          "official_syllabus_line": "Caste, Religion and Ethnicity in Indian Politics.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Caste in Indian politics",
-            "Religion, communalism and secularism in Indian politics",
-            "Ethnicity and identity politics in India"
-          ]
-        },
-        {
-          "macro_topic": "Party System",
-          "official_syllabus_line": "Party System: National and regional political parties, ideological and social bases of parties; patterns of coalition politics; Pressure groups, trends in electoral behaviour; changing socio-economic profile of Legislators.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "National and regional political parties",
-            "Ideological and social bases of political parties",
-            "Patterns of coalition politics",
-            "Pressure groups in Indian politics",
-            "Trends in electoral behaviour",
-            "Changing socio-economic profile of legislators"
-          ]
-        },
-        {
-          "macro_topic": "Social Movements",
-          "official_syllabus_line": "Social Movements: Civil liberties and human rights movements; women's movements; environmentalist movements.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Civil liberties and human rights movements",
-            "Women's movements in India",
-            "Environmentalist movements"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, Political Science and International Relations Paper I",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for PSIR Paper I, corroborated across four independent reproductions. It has NOT been diffed against the UPSC notification PDF itself. Verify before promoting any mention to verified; the syllabus does not change year to year, so one check settles it permanently. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "The official syllabus divides this paper into Section A (Political Theory and Indian Politics) and Section B (Indian Government and Politics). Those two parts are carried in each node\u0027s metadata rather than as topic rows: the ingest supports only topic -\u003e microtopic, and spending the top level on a binary split would leave 784 questions tagging against two buckets. The numbered units are the topic level, which is what the syllabus itself enumerates.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-psir-p1",
+                       "paper_title":  "Political Science and International Relations Paper-I (Optional)",
+                       "core_subjects":  [
+                                             "Political Theory",
+                                             "Indian Government and Politics"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "Political Theory: meaning and approaches",
+                                                  "official_syllabus_line":  "Political Theory: meaning and approaches.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Meaning and scope of political theory; its decline and resurgence",
+                                                                       "Normative, empirical and contemporary approaches to political theory",
+                                                                       "Behaviouralism and post-behaviouralism in political enquiry"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Theories of state",
+                                                  "official_syllabus_line":  "Theories of state: Liberal, Neo-liberal, Marxist, Pluralist, Post-colonial and Feminist.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Liberal theory of the state",
+                                                                       "Neo-liberal theory of the state",
+                                                                       "Marxist theory of the state",
+                                                                       "Pluralist theory of the state",
+                                                                       "Post-colonial theory of the state",
+                                                                       "Feminist theory of the state"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Justice",
+                                                  "official_syllabus_line":  "Justice: Conceptions of justice with special reference to Rawl\u0027s theory of justice and its communitarian critiques.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Conceptions of justice: procedural, distributive and social",
+                                                                       "Rawls\u0027s theory of justice: original position, veil of ignorance, difference principle",
+                                                                       "Communitarian critiques of Rawls (Sandel, MacIntyre, Taylor, Walzer)",
+                                                                       "Libertarian critique of distributive justice (Nozick)"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Equality",
+                                                  "official_syllabus_line":  "Equality: Social, political and economic; relationship between equality and freedom; Affirmative action.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Social, political and economic equality",
+                                                                       "Relationship between equality and freedom",
+                                                                       "Affirmative action and the debate on reservation",
+                                                                       "Capability approach to equality (Sen, Nussbaum)"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Rights",
+                                                  "official_syllabus_line":  "Rights: Meaning and theories; different kinds of rights; concept of Human Rights.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Meaning and theories of rights: natural, legal and moral",
+                                                                       "Different kinds of rights: civil, political, economic and social",
+                                                                       "Concept of Human Rights and its universality debate",
+                                                                       "Rights and the state: Laski\u0027s pluralist account"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Democracy",
+                                                  "official_syllabus_line":  "Democracy: Classical and contemporary theories; different models of democracy - representative, participatory and deliberative.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Classical theories of democracy",
+                                                                       "Contemporary theories of democracy",
+                                                                       "Representative democracy and its critics",
+                                                                       "Participatory democracy",
+                                                                       "Deliberative democracy"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Concept of power",
+                                                  "official_syllabus_line":  "Concept of power: hegemony, ideology and legitimacy.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Concept and dimensions of power; power, authority and influence",
+                                                                       "Hegemony: Gramsci and its later uses",
+                                                                       "Ideology: meaning, function and the \u0027end of ideology\u0027 debate",
+                                                                       "Legitimacy: Weber\u0027s types and legitimation crisis"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Political Ideologies",
+                                                  "official_syllabus_line":  "Political Ideologies: Liberalism, Socialism, Marxism, Fascism, Gandhism and Feminism.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Liberalism: classical and modern",
+                                                                       "Socialism: utopian, democratic and revolutionary",
+                                                                       "Marxism: historical materialism, class and revolution",
+                                                                       "Fascism",
+                                                                       "Gandhism",
+                                                                       "Feminism: liberal, socialist, radical and post-modern"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Indian Political Thought",
+                                                  "official_syllabus_line":  "Indian Political Thought: Dharamshastra, Arthashastra and Buddhist traditions; Sir Syed Ahmed Khan, Sri Aurobindo, M.K. Gandhi, B.R. Ambedkar, M.N. Roy.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Dharamshastra tradition",
+                                                                       "Arthashastra and Kautilya\u0027s Saptanga theory of state",
+                                                                       "Buddhist traditions of political thought",
+                                                                       "Sir Syed Ahmed Khan",
+                                                                       "Sri Aurobindo",
+                                                                       "M.K. Gandhi: Swaraj, trusteeship, satyagraha",
+                                                                       "B.R. Ambedkar: democracy, constitutional morality, state socialism",
+                                                                       "M.N. Roy: radical humanism"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Western Political Thought",
+                                                  "official_syllabus_line":  "Western Political Thought: Plato, Aristotle, Machiavelli, Hobbes, Locke, John S. Mill, Marx, Gramsci, Hannah Arendt.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Plato",
+                                                                       "Aristotle",
+                                                                       "Machiavelli: virtu and fortuna",
+                                                                       "Hobbes",
+                                                                       "Locke",
+                                                                       "John S. Mill",
+                                                                       "Marx",
+                                                                       "Gramsci",
+                                                                       "Hannah Arendt"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Indian Nationalism",
+                                                  "official_syllabus_line":  "Indian Nationalism: (a) Political Strategies of India\u0027s Freedom Struggle: constitutionalism to mass Satyagraha, Non-Cooperation, Civil Disobedience; Militant and Revolutionary Movements, Peasant and Workers Movements. (b) Perspectives on Indian National Movement: Liberal, Socialist and Marxist; Radical Humanist and Dalit.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Constitutionalism to mass Satyagraha as political strategy",
+                                                                       "Non-Cooperation and Civil Disobedience movements",
+                                                                       "Militant and revolutionary movements",
+                                                                       "Peasant and workers movements in the freedom struggle",
+                                                                       "Liberal perspective on the Indian national movement",
+                                                                       "Socialist and Marxist perspectives on the Indian national movement",
+                                                                       "Radical Humanist and Dalit perspectives on the Indian national movement"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Making of the Indian Constitution",
+                                                  "official_syllabus_line":  "Making of the Indian Constitution: Legacies of the British rule; different social and political perspectives.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Legacies of British rule in constitutional design",
+                                                                       "The Constituent Assembly and its debates",
+                                                                       "Different social and political perspectives on the making of the Constitution"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Salient Features of the Indian Constitution",
+                                                  "official_syllabus_line":  "Salient Features of the Indian Constitution: The Preamble, Fundamental Rights and Duties, Directive Principles; Parliamentary System and Amendment Procedures; Judicial Review and Basic Structure doctrine.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "The Preamble and its value premises",
+                                                                       "Fundamental Rights and Fundamental Duties",
+                                                                       "Directive Principles of State Policy and their relation to Fundamental Rights",
+                                                                       "Parliamentary system and amendment procedures",
+                                                                       "Judicial review and the Basic Structure doctrine"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Principal Organs of the Union and State Government",
+                                                  "official_syllabus_line":  "(a) Principal Organs of the Union Government: Envisaged role and actual working of the Executive, Legislature and Supreme Court. (b) Principal Organs of the State Government: Envisaged role and actual working of the Executive, Legislature and High Courts.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Union Executive: envisaged role and actual working",
+                                                                       "Union Legislature: envisaged role and actual working",
+                                                                       "Supreme Court: envisaged role and actual working",
+                                                                       "State Executive: envisaged role and actual working",
+                                                                       "State Legislature: envisaged role and actual working",
+                                                                       "High Courts: envisaged role and actual working"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Grassroots Democracy",
+                                                  "official_syllabus_line":  "Grassroots Democracy: Panchayati Raj and Municipal Government; Significance of 73rd and 74th Amendments; Grassroot movements.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Panchayati Raj institutions",
+                                                                       "Municipal government and urban local bodies",
+                                                                       "Significance of the 73rd and 74th Amendments",
+                                                                       "Grassroot movements"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Statutory Institutions and Commissions",
+                                                  "official_syllabus_line":  "Statutory Institutions/Commissions: Election Commission, Comptroller and Auditor General, Finance Commission, Union Public Service Commission, National Commission for Scheduled Castes, National Commission for Scheduled Tribes, National Commission for Women; National Human Rights Commission, National Commission for Minorities, National Backward Classes Commission.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Election Commission of India",
+                                                                       "Comptroller and Auditor General",
+                                                                       "Finance Commission",
+                                                                       "Union Public Service Commission",
+                                                                       "National Commission for Scheduled Castes and National Commission for Scheduled Tribes",
+                                                                       "National Commission for Women",
+                                                                       "National Human Rights Commission",
+                                                                       "National Commission for Minorities and National Backward Classes Commission"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Federalism",
+                                                  "official_syllabus_line":  "Federalism: Constitutional provisions; changing nature of centre-state relations; integrationist tendencies and regional aspirations; inter-state disputes.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Constitutional provisions on federalism",
+                                                                       "Changing nature of centre-state relations",
+                                                                       "Integrationist tendencies and regional aspirations",
+                                                                       "Inter-state disputes, including river-water disputes"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Planning and Economic Development",
+                                                  "official_syllabus_line":  "Planning and Economic Development: Nehruvian and Gandhian perspectives; role of planning and public sector; Green Revolution, land reforms and agrarian relations; liberalization and economic reforms.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Nehruvian and Gandhian perspectives on development",
+                                                                       "Role of planning and the public sector",
+                                                                       "Green Revolution, land reforms and agrarian relations",
+                                                                       "Liberalization and economic reforms"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Caste, Religion and Ethnicity in Indian Politics",
+                                                  "official_syllabus_line":  "Caste, Religion and Ethnicity in Indian Politics.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Caste in Indian politics",
+                                                                       "Religion, communalism and secularism in Indian politics",
+                                                                       "Ethnicity and identity politics in India"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Party System",
+                                                  "official_syllabus_line":  "Party System: National and regional political parties, ideological and social bases of parties; patterns of coalition politics; Pressure groups, trends in electoral behaviour; changing socio-economic profile of Legislators.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "National and regional political parties",
+                                                                       "Ideological and social bases of political parties",
+                                                                       "Patterns of coalition politics",
+                                                                       "Pressure groups in Indian politics",
+                                                                       "Trends in electoral behaviour",
+                                                                       "Changing socio-economic profile of legislators"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Social Movements",
+                                                  "official_syllabus_line":  "Social Movements: Civil liberties and human rights movements; women\u0027s movements; environmentalist movements.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Civil liberties and human rights movements",
+                                                                       "Women\u0027s movements in India",
+                                                                       "Environmentalist movements"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }

@@ -1,246 +1,267 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, Political Science and International Relations Paper II",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for PSIR Paper II, corroborated across independent reproductions. It has NOT been diffed against the UPSC notification PDF. Verify before promoting any mention to verified; the syllabus does not change year to year, so one check settles it permanently.",
-  "structure_note": "The official syllabus divides this paper into Section A (Comparative Politics and International Relations) and Section B (India and the World). Those parts are carried per node in section_ref rather than as topic rows - the ingest supports only topic -> microtopic, and spending the top level on a binary split would leave the corpus tagging against two buckets.",
-  "paper_title_note": "paper_title MUST match the existing subjects.name for slug upsc-cse-mains-opt-psir-p2 exactly. resolve_subject() in the ingest script searches by name; a mismatch creates a duplicate subject with a hash-suffixed slug and orphans the whole spine. This happened on Paper-I.",
-  "papers": [
-    {
-      "paper_id": "opt-psir-p2",
-      "paper_title": "PSIR Paper-2 (Optional)",
-      "core_subjects": ["Comparative Politics and International Relations", "India and the World"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "Comparative Politics: nature and major approaches",
-          "official_syllabus_line": "Comparative Politics: Nature and major approaches; political economy and political sociology perspectives; limitations of the comparative method.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Nature and scope of comparative politics; major approaches",
-            "Political economy perspective in comparative analysis",
-            "Political sociology perspective in comparative analysis",
-            "Limitations of the comparative method",
-            "Institutional approach and its successive criticisms"
-          ]
-        },
-        {
-          "macro_topic": "State in Comparative Perspective",
-          "official_syllabus_line": "State in comparative perspective: Characteristics and changing nature of the State in capitalist and socialist economies, and advanced industrial and developing societies.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Characteristics and changing nature of the State in capitalist economies",
-            "The State in socialist economies",
-            "The State in advanced industrial societies",
-            "The State in developing societies"
-          ]
-        },
-        {
-          "macro_topic": "Politics of Representation and Participation",
-          "official_syllabus_line": "Politics of Representation and Participation: Political parties, pressure groups and social movements in advanced industrial and developing societies.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Political parties in advanced industrial societies",
-            "Political parties in developing societies",
-            "Pressure groups and interest articulation",
-            "Social movements as a mode of participation",
-            "Clientelism and patron-client politics"
-          ]
-        },
-        {
-          "macro_topic": "Globalisation",
-          "official_syllabus_line": "Globalisation: Responses from developed and developing societies.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Responses to globalisation from developed societies",
-            "Responses to globalisation from developing societies",
-            "Extractive capitalism and resource dependence"
-          ]
-        },
-        {
-          "macro_topic": "Approaches to the Study of International Relations",
-          "official_syllabus_line": "Approaches to the study of International Relations: Idealist, Realist, Marxist, Functionalist and Systems theory.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Idealist approach",
-            "Realist approach; classical, structural and defensive realism",
-            "Marxist approaches to international relations",
-            "Functionalist and neo-functionalist approaches",
-            "Systems theory in international relations",
-            "Objectivity and hidden bias in international relations theory"
-          ]
-        },
-        {
-          "macro_topic": "Key Concepts in International Relations",
-          "official_syllabus_line": "Key concepts in International Relations: National interest, Security and power; Balance of power and deterrence; Transactional actors and collective security; World capitalist economy and globalisation.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "National interest",
-            "Security and power",
-            "Balance of power: methods and contemporary relevance",
-            "Deterrence",
-            "Transnational actors and collective security",
-            "World capitalist economy and globalisation",
-            "Power transition theory"
-          ]
-        },
-        {
-          "macro_topic": "Changing International Political Order",
-          "official_syllabus_line": "Changing International Political Order: Rise of super powers; strategic and ideological Bipolarity, arms race and Cold War; nuclear threat; Non-aligned movement: Aims and achievements; Collapse of the Soviet Union; Unipolarity and American hegemony; relevance of non-alignment in the contemporary world.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Rise of the super powers; strategic and ideological bipolarity",
-            "Arms race and the Cold War; the nuclear threat",
-            "Non-Aligned Movement: aims and achievements",
-            "Collapse of the Soviet Union",
-            "Unipolarity and American hegemony",
-            "Relevance of non-alignment in the contemporary world",
-            "Collective security systems and the future of NATO"
-          ]
-        },
-        {
-          "macro_topic": "Evolution of the International Economic System",
-          "official_syllabus_line": "Evolution of the International Economic System: From Brettonwoods to WTO; Socialist economies and the CMEA (Council for Mutual Economic Assistance); Third World demand for new international economic order; Globalisation of the world economy.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "From Bretton Woods to the WTO",
-            "Socialist economies and the Council for Mutual Economic Assistance (CMEA)",
-            "Third World demand for a New International Economic Order",
-            "Globalisation of the world economy"
-          ]
-        },
-        {
-          "macro_topic": "United Nations",
-          "official_syllabus_line": "United Nations: Envisaged role and actual record; specialized UN agencies - aims and functioning; need for UN reforms.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Envisaged role of the United Nations and its actual record",
-            "Specialised UN agencies: aims and functioning",
-            "Need for UN reforms; Security Council expansion",
-            "International law and UNCLOS"
-          ]
-        },
-        {
-          "macro_topic": "Regionalisation of World Politics",
-          "official_syllabus_line": "Regionalisation of World Politics: EU, ASEAN, APEC, SAARC, NAFTA.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "European Union",
-            "ASEAN",
-            "APEC",
-            "SAARC",
-            "NAFTA",
-            "Minilateral and issue-based groupings such as the QUAD"
-          ]
-        },
-        {
-          "macro_topic": "Contemporary Global Concerns",
-          "official_syllabus_line": "Contemporary Global Concerns: Democracy, human rights, environment, gender justice, terrorism, nuclear proliferation.",
-          "section_ref": "Section A",
-          "micro_themes": [
-            "Democracy as a global concern",
-            "Human rights and the politics of international human rights frameworks",
-            "Environment and climate governance",
-            "Gender justice",
-            "Terrorism and counter-terrorism cooperation",
-            "Nuclear proliferation and the non-proliferation regime"
-          ]
-        },
-
-        {
-          "macro_topic": "Indian Foreign Policy",
-          "official_syllabus_line": "Indian Foreign Policy: Determinants of foreign policy; institutions of policy-making; continuity and change.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Determinants of Indian foreign policy",
-            "Institutions of foreign-policy making",
-            "Continuity and change in Indian foreign policy",
-            "Multi-alignment as successor to non-alignment"
-          ]
-        },
-        {
-          "macro_topic": "India and the Non-Aligned Movement",
-          "official_syllabus_line": "India's Contribution to the Non-Alignment Movement: Different phases; current role.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Different phases of India's contribution to the Non-Aligned Movement",
-            "India's current role in the Non-Aligned Movement"
-          ]
-        },
-        {
-          "macro_topic": "India and South Asia",
-          "official_syllabus_line": "India and South Asia: (a) Regional Co-operation: SAARC - past performance and future prospects. (b) South Asia as a Free Trade Area. (c) India's 'Look East' policy. (d) Impediments to regional co-operation: river water disputes; illegal cross-border migration; ethnic conflicts and insurgencies; border disputes.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "SAARC: past performance and future prospects",
-            "South Asia as a Free Trade Area",
-            "India's Look East and Act East policy",
-            "River water disputes as an impediment to regional cooperation",
-            "Illegal cross-border migration and its security implications",
-            "Ethnic conflicts and insurgencies in the region",
-            "Border disputes with neighbours",
-            "India and Pakistan; India and Bangladesh; India and Nepal",
-            "India and Sri Lanka, including the Kachchatheevu question",
-            "India and the Maldives; India and Myanmar; India and Bhutan",
-            "Chinese influence across South Asia and its challenge to India"
-          ]
-        },
-        {
-          "macro_topic": "India and the Global South",
-          "official_syllabus_line": "India and the Global South: Relations with Africa and Latin America; leadership role in the demand for NIEO and WTO negotiations.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "India's relations with Africa",
-            "India's relations with Latin America, including Brazil",
-            "Leadership role in the demand for a New International Economic Order",
-            "India's position in WTO negotiations, including agriculture"
-          ]
-        },
-        {
-          "macro_topic": "India and the Global Centres of Power",
-          "official_syllabus_line": "India and the Global Centres of Power: USA, EU, Japan, China and Russia.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "India and the USA",
-            "India and the European Union",
-            "India and Japan",
-            "India and China",
-            "India and Russia",
-            "India and West Asia"
-          ]
-        },
-        {
-          "macro_topic": "India and the UN System",
-          "official_syllabus_line": "India and the UN System: Role in UN Peace-keeping; demand for Permanent Seat in the Security Council.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "India's role in UN peacekeeping",
-            "India's demand for a permanent seat in the Security Council"
-          ]
-        },
-        {
-          "macro_topic": "India and the Nuclear Question",
-          "official_syllabus_line": "India and the Nuclear Question: Changing perceptions and policy.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "Changing Indian perceptions on the nuclear question",
-            "India's nuclear doctrine and policy evolution"
-          ]
-        },
-        {
-          "macro_topic": "Recent Developments in Indian Foreign Policy",
-          "official_syllabus_line": "Recent developments in Indian Foreign policy: India's position on the recent crisis in Afghanistan, Iraq and West Asia, growing relations with US and Israel; vision of a new world order.",
-          "section_ref": "Section B",
-          "micro_themes": [
-            "India's position on the crisis in Afghanistan",
-            "India's position on Iraq and West Asia",
-            "Growing relations with the United States",
-            "India's relations with Israel",
-            "India's vision of a new world order"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, Political Science and International Relations Paper II",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for PSIR Paper II, corroborated across independent reproductions. It has NOT been diffed against the UPSC notification PDF. Verify before promoting any mention to verified; the syllabus does not change year to year, so one check settles it permanently. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "The official syllabus divides this paper into Section A (Comparative Politics and International Relations) and Section B (India and the World). Those parts are carried per node in section_ref rather than as topic rows - the ingest supports only topic -\u003e microtopic, and spending the top level on a binary split would leave the corpus tagging against two buckets.",
+    "paper_title_note":  "paper_title MUST match the existing subjects.name for slug upsc-cse-mains-opt-psir-p2 exactly. resolve_subject() in the ingest script searches by name; a mismatch creates a duplicate subject with a hash-suffixed slug and orphans the whole spine. This happened on Paper-I.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-psir-p2",
+                       "paper_title":  "PSIR Paper-2 (Optional)",
+                       "core_subjects":  [
+                                             "Comparative Politics and International Relations",
+                                             "India and the World"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "Comparative Politics: nature and major approaches",
+                                                  "official_syllabus_line":  "Comparative Politics: Nature and major approaches; political economy and political sociology perspectives; limitations of the comparative method.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Nature and scope of comparative politics; major approaches",
+                                                                       "Political economy perspective in comparative analysis",
+                                                                       "Political sociology perspective in comparative analysis",
+                                                                       "Limitations of the comparative method",
+                                                                       "Institutional approach and its successive criticisms"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "State in Comparative Perspective",
+                                                  "official_syllabus_line":  "State in comparative perspective: Characteristics and changing nature of the State in capitalist and socialist economies, and advanced industrial and developing societies.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Characteristics and changing nature of the State in capitalist economies",
+                                                                       "The State in socialist economies",
+                                                                       "The State in advanced industrial societies",
+                                                                       "The State in developing societies"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Politics of Representation and Participation",
+                                                  "official_syllabus_line":  "Politics of Representation and Participation: Political parties, pressure groups and social movements in advanced industrial and developing societies.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Political parties in advanced industrial societies",
+                                                                       "Political parties in developing societies",
+                                                                       "Pressure groups and interest articulation",
+                                                                       "Social movements as a mode of participation",
+                                                                       "Clientelism and patron-client politics"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Globalisation",
+                                                  "official_syllabus_line":  "Globalisation: Responses from developed and developing societies.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Responses to globalisation from developed societies",
+                                                                       "Responses to globalisation from developing societies",
+                                                                       "Extractive capitalism and resource dependence"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Approaches to the Study of International Relations",
+                                                  "official_syllabus_line":  "Approaches to the study of International Relations: Idealist, Realist, Marxist, Functionalist and Systems theory.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Idealist approach",
+                                                                       "Realist approach; classical, structural and defensive realism",
+                                                                       "Marxist approaches to international relations",
+                                                                       "Functionalist and neo-functionalist approaches",
+                                                                       "Systems theory in international relations",
+                                                                       "Objectivity and hidden bias in international relations theory"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Key Concepts in International Relations",
+                                                  "official_syllabus_line":  "Key concepts in International Relations: National interest, Security and power; Balance of power and deterrence; Transactional actors and collective security; World capitalist economy and globalisation.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "National interest",
+                                                                       "Security and power",
+                                                                       "Balance of power: methods and contemporary relevance",
+                                                                       "Deterrence",
+                                                                       "Transnational actors and collective security",
+                                                                       "World capitalist economy and globalisation",
+                                                                       "Power transition theory"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Changing International Political Order",
+                                                  "official_syllabus_line":  "Changing International Political Order: Rise of super powers; strategic and ideological Bipolarity, arms race and Cold War; nuclear threat; Non-aligned movement: Aims and achievements; Collapse of the Soviet Union; Unipolarity and American hegemony; relevance of non-alignment in the contemporary world.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Rise of the super powers; strategic and ideological bipolarity",
+                                                                       "Arms race and the Cold War; the nuclear threat",
+                                                                       "Non-Aligned Movement: aims and achievements",
+                                                                       "Collapse of the Soviet Union",
+                                                                       "Unipolarity and American hegemony",
+                                                                       "Relevance of non-alignment in the contemporary world",
+                                                                       "Collective security systems and the future of NATO"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Evolution of the International Economic System",
+                                                  "official_syllabus_line":  "Evolution of the International Economic System: From Brettonwoods to WTO; Socialist economies and the CMEA (Council for Mutual Economic Assistance); Third World demand for new international economic order; Globalisation of the world economy.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "From Bretton Woods to the WTO",
+                                                                       "Socialist economies and the Council for Mutual Economic Assistance (CMEA)",
+                                                                       "Third World demand for a New International Economic Order",
+                                                                       "Globalisation of the world economy"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "United Nations",
+                                                  "official_syllabus_line":  "United Nations: Envisaged role and actual record; specialized UN agencies - aims and functioning; need for UN reforms.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Envisaged role of the United Nations and its actual record",
+                                                                       "Specialised UN agencies: aims and functioning",
+                                                                       "Need for UN reforms; Security Council expansion",
+                                                                       "International law and UNCLOS"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Regionalisation of World Politics",
+                                                  "official_syllabus_line":  "Regionalisation of World Politics: EU, ASEAN, APEC, SAARC, NAFTA.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "European Union",
+                                                                       "ASEAN",
+                                                                       "APEC",
+                                                                       "SAARC",
+                                                                       "NAFTA",
+                                                                       "Minilateral and issue-based groupings such as the QUAD"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Contemporary Global Concerns",
+                                                  "official_syllabus_line":  "Contemporary Global Concerns: Democracy, human rights, environment, gender justice, terrorism, nuclear proliferation.",
+                                                  "section_ref":  "Section A",
+                                                  "micro_themes":  [
+                                                                       "Democracy as a global concern",
+                                                                       "Human rights and the politics of international human rights frameworks",
+                                                                       "Environment and climate governance",
+                                                                       "Gender justice",
+                                                                       "Terrorism and counter-terrorism cooperation",
+                                                                       "Nuclear proliferation and the non-proliferation regime"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Indian Foreign Policy",
+                                                  "official_syllabus_line":  "Indian Foreign Policy: Determinants of foreign policy; institutions of policy-making; continuity and change.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Determinants of Indian foreign policy",
+                                                                       "Institutions of foreign-policy making",
+                                                                       "Continuity and change in Indian foreign policy",
+                                                                       "Multi-alignment as successor to non-alignment"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and the Non-Aligned Movement",
+                                                  "official_syllabus_line":  "India\u0027s Contribution to the Non-Alignment Movement: Different phases; current role.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Different phases of India\u0027s contribution to the Non-Aligned Movement",
+                                                                       "India\u0027s current role in the Non-Aligned Movement"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and South Asia",
+                                                  "official_syllabus_line":  "India and South Asia: (a) Regional Co-operation: SAARC - past performance and future prospects. (b) South Asia as a Free Trade Area. (c) India\u0027s \u0027Look East\u0027 policy. (d) Impediments to regional co-operation: river water disputes; illegal cross-border migration; ethnic conflicts and insurgencies; border disputes.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "SAARC: past performance and future prospects",
+                                                                       "South Asia as a Free Trade Area",
+                                                                       "India\u0027s Look East and Act East policy",
+                                                                       "River water disputes as an impediment to regional cooperation",
+                                                                       "Illegal cross-border migration and its security implications",
+                                                                       "Ethnic conflicts and insurgencies in the region",
+                                                                       "Border disputes with neighbours",
+                                                                       "India and Pakistan; India and Bangladesh; India and Nepal",
+                                                                       "India and Sri Lanka, including the Kachchatheevu question",
+                                                                       "India and the Maldives; India and Myanmar; India and Bhutan",
+                                                                       "Chinese influence across South Asia and its challenge to India"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and the Global South",
+                                                  "official_syllabus_line":  "India and the Global South: Relations with Africa and Latin America; leadership role in the demand for NIEO and WTO negotiations.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "India\u0027s relations with Africa",
+                                                                       "India\u0027s relations with Latin America, including Brazil",
+                                                                       "Leadership role in the demand for a New International Economic Order",
+                                                                       "India\u0027s position in WTO negotiations, including agriculture"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and the Global Centres of Power",
+                                                  "official_syllabus_line":  "India and the Global Centres of Power: USA, EU, Japan, China and Russia.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "India and the USA",
+                                                                       "India and the European Union",
+                                                                       "India and Japan",
+                                                                       "India and China",
+                                                                       "India and Russia",
+                                                                       "India and West Asia"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and the UN System",
+                                                  "official_syllabus_line":  "India and the UN System: Role in UN Peace-keeping; demand for Permanent Seat in the Security Council.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "India\u0027s role in UN peacekeeping",
+                                                                       "India\u0027s demand for a permanent seat in the Security Council"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "India and the Nuclear Question",
+                                                  "official_syllabus_line":  "India and the Nuclear Question: Changing perceptions and policy.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "Changing Indian perceptions on the nuclear question",
+                                                                       "India\u0027s nuclear doctrine and policy evolution"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "Recent Developments in Indian Foreign Policy",
+                                                  "official_syllabus_line":  "Recent developments in Indian Foreign policy: India\u0027s position on the recent crisis in Afghanistan, Iraq and West Asia, growing relations with US and Israel; vision of a new world order.",
+                                                  "section_ref":  "Section B",
+                                                  "micro_themes":  [
+                                                                       "India\u0027s position on the crisis in Afghanistan",
+                                                                       "India\u0027s position on Iraq and West Asia",
+                                                                       "Growing relations with the United States",
+                                                                       "India\u0027s relations with Israel",
+                                                                       "India\u0027s vision of a new world order"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }

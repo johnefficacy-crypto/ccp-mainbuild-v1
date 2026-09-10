@@ -1,261 +1,285 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, Anthropology Paper I",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for Anthropology Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
-  "structure_note": "Anthropology numbers its syllabus as 1.1/1.2/... with no lettered parts, so section_ref is omitted (rev2 M10 - the question paper's Section A/B cut is a property of the paper, not the syllabus). UPSC's own numbering is preserved at the head of each macro_topic so a reader can map a topic back to the notification.",
-  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-anthropology-p1 exactly.",
-  "papers": [
-    {
-      "paper_id": "opt-anthropology-p1",
-      "paper_title": "Anthropology Paper-1 (Optional)",
-      "core_subjects": ["Socio-Cultural Anthropology", "Biological Anthropology", "Archaeological Anthropology"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "1.1-1.3 Meaning, scope and branches of Anthropology",
-          "official_syllabus_line": "1.1 Meaning, scope and development of Anthropology. 1.2 Relationships with other disciplines: Social Sciences, Behavioural Sciences, Life Sciences, Medical Sciences, Earth Sciences and Humanities. 1.3 Main branches of Anthropology, their scope and relevance: Social-cultural Anthropology, Biological Anthropology, Archaeological Anthropology, Linguistic Anthropology.",
-          "micro_themes": [
-            "Meaning, scope and development of Anthropology",
-            "Relationship with the social, behavioural and life sciences",
-            "Relationship with medical sciences, earth sciences and the humanities",
-            "Social-cultural Anthropology: scope and relevance",
-            "Biological Anthropology: scope and relevance",
-            "Archaeological Anthropology: scope and relevance",
-            "Linguistic Anthropology: scope and relevance"
-          ]
-        },
-        {
-          "macro_topic": "1.4 Human evolution and the emergence of Man",
-          "official_syllabus_line": "1.4 Human Evolution and emergence of Man: Biological and Cultural factors in human evolution; Theories of Organic Evolution (Pre-Darwinian, Darwinian and Post-Darwinian); Synthetic theory of evolution; brief outline of terms and concepts of evolutionary biology (Doll's rule, Cope's rule, Gause's rule, parallelism, convergence, adaptive radiation, mosaic evolution).",
-          "micro_themes": [
-            "Biological and cultural factors in human evolution",
-            "Pre-Darwinian theories of organic evolution",
-            "Darwinian and post-Darwinian theories of organic evolution",
-            "Synthetic theory of evolution",
-            "Concepts of evolutionary biology: Doll's rule, Cope's rule, Gause's rule",
-            "Parallelism, convergence, adaptive radiation and mosaic evolution"
-          ]
-        },
-        {
-          "macro_topic": "1.5 Primates",
-          "official_syllabus_line": "1.5 Characteristics of Primates; Evolutionary Trend and Primate Taxonomy; Primate Adaptations (Arboreal and Terrestrial); Primate Behaviour; Tertiary and Quaternary fossil primates; Living Major Primates; Comparative Anatomy of Man and Apes; Skeletal changes due to erect posture and its implications.",
-          "micro_themes": [
-            "Characteristics of primates and primate taxonomy",
-            "Evolutionary trends among primates",
-            "Primate adaptations: arboreal and terrestrial",
-            "Primate behaviour",
-            "Tertiary and Quaternary fossil primates",
-            "Living major primates",
-            "Comparative anatomy of man and apes",
-            "Skeletal changes due to erect posture and their implications"
-          ]
-        },
-        {
-          "macro_topic": "1.6 Phylogenetic status of hominid fossils",
-          "official_syllabus_line": "1.6 Phylogenetic status, characteristics and geographical distribution of: Plio-Pleistocene hominids in South and East Africa (Australopithecines); Homo erectus - Africa (Paranthropus), Europe (Homo erectus heidelbergensis), Asia (Homo erectus javanicus, Homo erectus pekinensis); Neanderthal Man - La-Chapelle-aux-Saints (Classical type), Mt. Carmel (Progressive type); Rhodesian man; Homo sapiens - Cromagnon, Grimaldi and Chancelade.",
-          "micro_themes": [
-            "Plio-Pleistocene hominids of South and East Africa: Australopithecines",
-            "Homo erectus in Africa, Europe and Asia",
-            "Neanderthal Man: classical and progressive types",
-            "Rhodesian man",
-            "Homo sapiens: Cromagnon, Grimaldi and Chancelade"
-          ]
-        },
-        {
-          "macro_topic": "1.7 The biological basis of life",
-          "official_syllabus_line": "1.7 The biological basis of life: The Cell, DNA structure and replication, Protein Synthesis, Gene, Mutation, Chromosomes, and Cell Division.",
-          "micro_themes": [
-            "The cell; DNA structure and replication",
-            "Protein synthesis and the gene",
-            "Mutation",
-            "Chromosomes and cell division"
-          ]
-        },
-        {
-          "macro_topic": "1.8-1.9 Prehistoric archaeology and cultural evolution",
-          "official_syllabus_line": "1.8 Principles of Prehistoric Archaeology. Chronology: Relative and Absolute Dating methods. 1.9 Cultural Evolution - Broad Outlines of Prehistoric cultures: Palaeolithic, Mesolithic, Neolithic, Chalcolithic, Copper-Bronze age, Iron Age.",
-          "micro_themes": [
-            "Principles of prehistoric archaeology",
-            "Relative dating methods",
-            "Absolute dating methods",
-            "Palaeolithic and Mesolithic cultures",
-            "Neolithic and Chalcolithic cultures",
-            "Copper-Bronze age and Iron Age"
-          ]
-        },
-        {
-          "macro_topic": "2.1-2.2 The nature of culture and society",
-          "official_syllabus_line": "2.1 The Nature of Culture: The concept and characteristics of culture and civilization; Ethnocentrism vis-a-vis cultural Relativism. 2.2 The Nature of Society: Concept of Society; Society and Culture; Social Institutions; Social groups; and Social stratification.",
-          "micro_themes": [
-            "Concept and characteristics of culture and civilization",
-            "Ethnocentrism and cultural relativism",
-            "Concept of society; society and culture",
-            "Social institutions and social groups",
-            "Social stratification"
-          ]
-        },
-        {
-          "macro_topic": "2.3 Marriage",
-          "official_syllabus_line": "2.3 Marriage: Definition and universality; Laws of marriage (endogamy, exogamy, hypergamy, hypogamy, incest taboo); Types of marriage (monogamy, polygamy, polyandry, group marriage); Functions of marriage; Marriage regulations (preferential, prescriptive and proscriptive); Marriage payments (bride wealth and dowry).",
-          "micro_themes": [
-            "Definition and universality of marriage",
-            "Laws of marriage: endogamy, exogamy, hypergamy, hypogamy, incest taboo",
-            "Types of marriage: monogamy, polygamy, polyandry, group marriage",
-            "Functions of marriage",
-            "Marriage regulations: preferential, prescriptive and proscriptive",
-            "Marriage payments: bride wealth and dowry"
-          ]
-        },
-        {
-          "macro_topic": "2.4 Family",
-          "official_syllabus_line": "2.4 Family: Definition and universality; Family, household and domestic groups; functions of family; Types of family (from the perspectives of structure, blood relation, marriage, residence and succession); Impact of urbanization, industrialization and feminist movements on family.",
-          "micro_themes": [
-            "Definition and universality of the family",
-            "Family, household and domestic groups",
-            "Functions of the family",
-            "Types of family by structure, blood relation, marriage, residence and succession",
-            "Impact of urbanization, industrialization and feminist movements on the family"
-          ]
-        },
-        {
-          "macro_topic": "2.5 Kinship",
-          "official_syllabus_line": "2.5 Kinship: Consanguinity and Affinity; Principles and types of descent (Unilineal, Double, Bilateral, Ambilineal); Forms of descent groups (lineage, clan, phratry, moiety and kindred); Kinship terminology (descriptive and classificatory); Descent, Filiation and Complementary Filiation; Descent and Alliance.",
-          "micro_themes": [
-            "Consanguinity and affinity",
-            "Principles and types of descent: unilineal, double, bilateral, ambilineal",
-            "Forms of descent groups: lineage, clan, phratry, moiety, kindred",
-            "Kinship terminology: descriptive and classificatory",
-            "Descent, filiation and complementary filiation",
-            "Descent and alliance theory"
-          ]
-        },
-        {
-          "macro_topic": "3 Economic organization",
-          "official_syllabus_line": "3. Economic organization: Meaning, scope and relevance of economic anthropology; Formalist and Substantivist debate; Principles governing production, distribution and exchange (reciprocity, redistribution and market) in communities subsisting on hunting and gathering, fishing, swiddening, pastoralism, horticulture and agriculture; globalization and indigenous economic systems.",
-          "micro_themes": [
-            "Meaning, scope and relevance of economic anthropology",
-            "The formalist and substantivist debate",
-            "Reciprocity, redistribution and market exchange",
-            "Economies of hunting-gathering, fishing and swiddening communities",
-            "Economies of pastoral, horticultural and agricultural communities",
-            "Globalization and indigenous economic systems"
-          ]
-        },
-        {
-          "macro_topic": "4 Political organization and social control",
-          "official_syllabus_line": "4. Political organization and Social Control: Band, tribe, chiefdom, kingdom and state; concepts of power, authority and legitimacy; social control, law and justice in simple societies.",
-          "micro_themes": [
-            "Band, tribe, chiefdom, kingdom and state",
-            "Concepts of power, authority and legitimacy",
-            "Social control, law and justice in simple societies"
-          ]
-        },
-        {
-          "macro_topic": "5 Religion",
-          "official_syllabus_line": "5. Religion: Anthropological approaches to the study of religion (evolutionary, psychological and functional); monism, polytheism and monotheism; sacred and profane; myths and rituals; forms of religion in tribal and peasant societies (animism, animatism, fetishism, naturism and totemism); religion, magic and science distinguished; magico-religious functionaries (priest, shaman, medicine man, sorcerer and witch).",
-          "micro_themes": [
-            "Evolutionary, psychological and functional approaches to religion",
-            "Monism, polytheism and monotheism",
-            "The sacred and the profane; myths and rituals",
-            "Animism, animatism, fetishism, naturism and totemism",
-            "Religion, magic and science distinguished",
-            "Magico-religious functionaries: priest, shaman, medicine man, sorcerer, witch"
-          ]
-        },
-        {
-          "macro_topic": "6 Anthropological theories",
-          "official_syllabus_line": "6. Anthropological theories: Classical evolutionism (Tylor, Morgan, Frazer); Historical particularism (Boas); Diffusionism (British, German and American); Functionalism (Malinowski); Structural-functionalism (Radcliffe-Brown); Structuralism (Levi-Strauss, E. Leach); Culture and personality (Benedict, Mead, Linton, Kardiner, Cora du Bois); Neo-evolutionism (Childe, White, Steward, Sahlins, Service); Cultural materialism (Harris); Symbolic and interpretive theories (Turner, Schneider, Geertz); Cognitive theories (Tyler, Conklin); Post-modernism in anthropology.",
-          "micro_themes": [
-            "Classical evolutionism: Tylor, Morgan, Frazer",
-            "Historical particularism: Boas",
-            "Diffusionism: British, German and American schools",
-            "Functionalism: Malinowski",
-            "Structural-functionalism: Radcliffe-Brown",
-            "Structuralism: Levi-Strauss and E. Leach",
-            "Culture and personality: Benedict, Mead, Linton, Kardiner, Cora du Bois",
-            "Neo-evolutionism: Childe, White, Steward, Sahlins, Service",
-            "Cultural materialism: Harris",
-            "Symbolic and interpretive theories: Turner, Schneider, Geertz",
-            "Cognitive theories: Tyler, Conklin",
-            "Post-modernism in anthropology"
-          ]
-        },
-        {
-          "macro_topic": "7 Culture, language and communication",
-          "official_syllabus_line": "7. Culture, language and communication: Nature, origin and characteristics of language; verbal and non-verbal communication; social context of language use.",
-          "micro_themes": [
-            "Nature, origin and characteristics of language",
-            "Verbal and non-verbal communication",
-            "Social context of language use"
-          ]
-        },
-        {
-          "macro_topic": "8 Research methods in anthropology",
-          "official_syllabus_line": "8. Research methods in anthropology: Fieldwork tradition in anthropology; Distinction between technique, method and methodology; Tools of data collection - observation, interview, schedules, questionnaire, case study, genealogy, life-history, oral history, secondary sources of information, participatory methods; Analysis, interpretation and presentation of data.",
-          "micro_themes": [
-            "The fieldwork tradition in anthropology",
-            "Technique, method and methodology distinguished",
-            "Observation, interview, schedules and questionnaires",
-            "Case study, genealogy, life-history and oral history",
-            "Secondary sources and participatory methods",
-            "Analysis, interpretation and presentation of data"
-          ]
-        },
-        {
-          "macro_topic": "9 Human genetics: methods and application",
-          "official_syllabus_line": "9.1 Human Genetics - Methods and Application: family study (pedigree analysis, twin study, foster child, co-twin method, cytogenetic method, chromosomal and karyotype analysis), biochemical methods, immunological methods, DNA technology and recombinant technologies. 9.2 Mendelian genetics in man - family study, single factor, multifactor, lethal, sub-lethal and polygenic inheritance. 9.3 Concept of genetic polymorphism and selection, Mendelian population, Hardy-Weinberg law; mutation, isolation, migration, selection, inbreeding and genetic drift; consanguineous and non-consanguineous mating, genetic load, genetic effect of consanguineous and cousin marriages.",
-          "micro_themes": [
-            "Pedigree analysis, twin study, foster child and co-twin methods",
-            "Cytogenetic, chromosomal and karyotype analysis",
-            "Biochemical and immunological methods; DNA and recombinant technologies",
-            "Mendelian genetics in man: single factor and multifactor inheritance",
-            "Lethal, sub-lethal and polygenic inheritance",
-            "Genetic polymorphism, selection and the Mendelian population",
-            "Hardy-Weinberg law",
-            "Mutation, isolation, migration, selection, inbreeding and genetic drift",
-            "Consanguineous mating, genetic load and the effects of cousin marriage"
-          ]
-        },
-        {
-          "macro_topic": "10 Concept of human growth and development",
-          "official_syllabus_line": "10. Concept of human growth and development: stages of growth - pre-natal, natal, infant, childhood, adolescence, maturity, senescence; Factors affecting growth and development - genetic, environmental, biochemical, nutritional, cultural and socio-economic; Ageing and senescence; Theories and observations - biological and chronological longevity; Human physique and somatotypes; Methodologies for growth studies.",
-          "micro_themes": [
-            "Stages of growth: pre-natal, natal, infant, childhood, adolescence, maturity, senescence",
-            "Genetic, environmental and biochemical factors affecting growth",
-            "Nutritional, cultural and socio-economic factors affecting growth",
-            "Ageing and senescence; biological and chronological longevity",
-            "Human physique and somatotypes",
-            "Methodologies for growth studies"
-          ]
-        },
-        {
-          "macro_topic": "11-12 Fertility, demography and epidemiological anthropology",
-          "official_syllabus_line": "11. Relevance of menarche, menopause and other bio-events to fertility; Fertility patterns and differentials. 12. Demographic theories - biological, social and cultural. 13. Epidemiological Anthropology: Health and disease; Infectious and non-infectious diseases; Nutritional deficiency related diseases.",
-          "micro_themes": [
-            "Menarche, menopause and other bio-events in relation to fertility",
-            "Fertility patterns and differentials",
-            "Demographic theories: biological, social and cultural",
-            "Epidemiological anthropology: health and disease",
-            "Infectious and non-infectious diseases",
-            "Nutritional deficiency related diseases"
-          ]
-        },
-        {
-          "macro_topic": "14 Applications of anthropology",
-          "official_syllabus_line": "14. Concept of human adaptation and applications of anthropology: Applied and action anthropology; Anthropology of sports; Nutritional anthropology; Anthropology in designing of defence and other equipments; Forensic Anthropology; Methods and principles of personal identification and reconstruction; Applied human genetics - paternity diagnosis, genetic counselling and eugenics, DNA technology in diseases and medicine, serogenetics and cytogenetics in reproductive biology.",
-          "micro_themes": [
-            "Applied and action anthropology",
-            "Anthropology of sports and nutritional anthropology",
-            "Anthropology in the design of defence and other equipment",
-            "Forensic anthropology: personal identification and reconstruction",
-            "Applied human genetics: paternity diagnosis, genetic counselling and eugenics",
-            "DNA technology in disease and medicine",
-            "Serogenetics and cytogenetics in reproductive biology"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, Anthropology Paper I",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for Anthropology Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "Anthropology numbers its syllabus as 1.1/1.2/... with no lettered parts, so section_ref is omitted (rev2 M10 - the question paper\u0027s Section A/B cut is a property of the paper, not the syllabus). UPSC\u0027s own numbering is preserved at the head of each macro_topic so a reader can map a topic back to the notification.",
+    "paper_title_note":  "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-anthropology-p1 exactly.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-anthropology-p1",
+                       "paper_title":  "Anthropology Paper-1 (Optional)",
+                       "core_subjects":  [
+                                             "Socio-Cultural Anthropology",
+                                             "Biological Anthropology",
+                                             "Archaeological Anthropology"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "1.1-1.3 Meaning, scope and branches of Anthropology",
+                                                  "official_syllabus_line":  "1.1 Meaning, scope and development of Anthropology. 1.2 Relationships with other disciplines: Social Sciences, Behavioural Sciences, Life Sciences, Medical Sciences, Earth Sciences and Humanities. 1.3 Main branches of Anthropology, their scope and relevance: Social-cultural Anthropology, Biological Anthropology, Archaeological Anthropology, Linguistic Anthropology.",
+                                                  "micro_themes":  [
+                                                                       "Meaning, scope and development of Anthropology",
+                                                                       "Relationship with the social, behavioural and life sciences",
+                                                                       "Relationship with medical sciences, earth sciences and the humanities",
+                                                                       "Social-cultural Anthropology: scope and relevance",
+                                                                       "Biological Anthropology: scope and relevance",
+                                                                       "Archaeological Anthropology: scope and relevance",
+                                                                       "Linguistic Anthropology: scope and relevance"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "1.4 Human evolution and the emergence of Man",
+                                                  "official_syllabus_line":  "1.4 Human Evolution and emergence of Man: Biological and Cultural factors in human evolution; Theories of Organic Evolution (Pre-Darwinian, Darwinian and Post-Darwinian); Synthetic theory of evolution; brief outline of terms and concepts of evolutionary biology (Doll\u0027s rule, Cope\u0027s rule, Gause\u0027s rule, parallelism, convergence, adaptive radiation, mosaic evolution).",
+                                                  "micro_themes":  [
+                                                                       "Biological and cultural factors in human evolution",
+                                                                       "Pre-Darwinian theories of organic evolution",
+                                                                       "Darwinian and post-Darwinian theories of organic evolution",
+                                                                       "Synthetic theory of evolution",
+                                                                       "Concepts of evolutionary biology: Doll\u0027s rule, Cope\u0027s rule, Gause\u0027s rule",
+                                                                       "Parallelism, convergence, adaptive radiation and mosaic evolution"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "1.5 Primates",
+                                                  "official_syllabus_line":  "1.5 Characteristics of Primates; Evolutionary Trend and Primate Taxonomy; Primate Adaptations (Arboreal and Terrestrial); Primate Behaviour; Tertiary and Quaternary fossil primates; Living Major Primates; Comparative Anatomy of Man and Apes; Skeletal changes due to erect posture and its implications.",
+                                                  "micro_themes":  [
+                                                                       "Characteristics of primates and primate taxonomy",
+                                                                       "Evolutionary trends among primates",
+                                                                       "Primate adaptations: arboreal and terrestrial",
+                                                                       "Primate behaviour",
+                                                                       "Tertiary and Quaternary fossil primates",
+                                                                       "Living major primates",
+                                                                       "Comparative anatomy of man and apes",
+                                                                       "Skeletal changes due to erect posture and their implications"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "1.6 Phylogenetic status of hominid fossils",
+                                                  "official_syllabus_line":  "1.6 Phylogenetic status, characteristics and geographical distribution of: Plio-Pleistocene hominids in South and East Africa (Australopithecines); Homo erectus - Africa (Paranthropus), Europe (Homo erectus heidelbergensis), Asia (Homo erectus javanicus, Homo erectus pekinensis); Neanderthal Man - La-Chapelle-aux-Saints (Classical type), Mt. Carmel (Progressive type); Rhodesian man; Homo sapiens - Cromagnon, Grimaldi and Chancelade.",
+                                                  "micro_themes":  [
+                                                                       "Plio-Pleistocene hominids of South and East Africa: Australopithecines",
+                                                                       "Homo erectus in Africa, Europe and Asia",
+                                                                       "Neanderthal Man: classical and progressive types",
+                                                                       "Rhodesian man",
+                                                                       "Homo sapiens: Cromagnon, Grimaldi and Chancelade"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "1.7 The biological basis of life",
+                                                  "official_syllabus_line":  "1.7 The biological basis of life: The Cell, DNA structure and replication, Protein Synthesis, Gene, Mutation, Chromosomes, and Cell Division.",
+                                                  "micro_themes":  [
+                                                                       "The cell; DNA structure and replication",
+                                                                       "Protein synthesis and the gene",
+                                                                       "Mutation",
+                                                                       "Chromosomes and cell division"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "1.8-1.9 Prehistoric archaeology and cultural evolution",
+                                                  "official_syllabus_line":  "1.8 Principles of Prehistoric Archaeology. Chronology: Relative and Absolute Dating methods. 1.9 Cultural Evolution - Broad Outlines of Prehistoric cultures: Palaeolithic, Mesolithic, Neolithic, Chalcolithic, Copper-Bronze age, Iron Age.",
+                                                  "micro_themes":  [
+                                                                       "Principles of prehistoric archaeology",
+                                                                       "Relative dating methods",
+                                                                       "Absolute dating methods",
+                                                                       "Palaeolithic and Mesolithic cultures",
+                                                                       "Neolithic and Chalcolithic cultures",
+                                                                       "Copper-Bronze age and Iron Age"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2.1-2.2 The nature of culture and society",
+                                                  "official_syllabus_line":  "2.1 The Nature of Culture: The concept and characteristics of culture and civilization; Ethnocentrism vis-a-vis cultural Relativism. 2.2 The Nature of Society: Concept of Society; Society and Culture; Social Institutions; Social groups; and Social stratification.",
+                                                  "micro_themes":  [
+                                                                       "Concept and characteristics of culture and civilization",
+                                                                       "Ethnocentrism and cultural relativism",
+                                                                       "Concept of society; society and culture",
+                                                                       "Social institutions and social groups",
+                                                                       "Social stratification"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2.3 Marriage",
+                                                  "official_syllabus_line":  "2.3 Marriage: Definition and universality; Laws of marriage (endogamy, exogamy, hypergamy, hypogamy, incest taboo); Types of marriage (monogamy, polygamy, polyandry, group marriage); Functions of marriage; Marriage regulations (preferential, prescriptive and proscriptive); Marriage payments (bride wealth and dowry).",
+                                                  "micro_themes":  [
+                                                                       "Definition and universality of marriage",
+                                                                       "Laws of marriage: endogamy, exogamy, hypergamy, hypogamy, incest taboo",
+                                                                       "Types of marriage: monogamy, polygamy, polyandry, group marriage",
+                                                                       "Functions of marriage",
+                                                                       "Marriage regulations: preferential, prescriptive and proscriptive",
+                                                                       "Marriage payments: bride wealth and dowry"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2.4 Family",
+                                                  "official_syllabus_line":  "2.4 Family: Definition and universality; Family, household and domestic groups; functions of family; Types of family (from the perspectives of structure, blood relation, marriage, residence and succession); Impact of urbanization, industrialization and feminist movements on family.",
+                                                  "micro_themes":  [
+                                                                       "Definition and universality of the family",
+                                                                       "Family, household and domestic groups",
+                                                                       "Functions of the family",
+                                                                       "Types of family by structure, blood relation, marriage, residence and succession",
+                                                                       "Impact of urbanization, industrialization and feminist movements on the family"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2.5 Kinship",
+                                                  "official_syllabus_line":  "2.5 Kinship: Consanguinity and Affinity; Principles and types of descent (Unilineal, Double, Bilateral, Ambilineal); Forms of descent groups (lineage, clan, phratry, moiety and kindred); Kinship terminology (descriptive and classificatory); Descent, Filiation and Complementary Filiation; Descent and Alliance.",
+                                                  "micro_themes":  [
+                                                                       "Consanguinity and affinity",
+                                                                       "Principles and types of descent: unilineal, double, bilateral, ambilineal",
+                                                                       "Forms of descent groups: lineage, clan, phratry, moiety, kindred",
+                                                                       "Kinship terminology: descriptive and classificatory",
+                                                                       "Descent, filiation and complementary filiation",
+                                                                       "Descent and alliance theory"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "3 Economic organization",
+                                                  "official_syllabus_line":  "3. Economic organization: Meaning, scope and relevance of economic anthropology; Formalist and Substantivist debate; Principles governing production, distribution and exchange (reciprocity, redistribution and market) in communities subsisting on hunting and gathering, fishing, swiddening, pastoralism, horticulture and agriculture; globalization and indigenous economic systems.",
+                                                  "micro_themes":  [
+                                                                       "Meaning, scope and relevance of economic anthropology",
+                                                                       "The formalist and substantivist debate",
+                                                                       "Reciprocity, redistribution and market exchange",
+                                                                       "Economies of hunting-gathering, fishing and swiddening communities",
+                                                                       "Economies of pastoral, horticultural and agricultural communities",
+                                                                       "Globalization and indigenous economic systems"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "4 Political organization and social control",
+                                                  "official_syllabus_line":  "4. Political organization and Social Control: Band, tribe, chiefdom, kingdom and state; concepts of power, authority and legitimacy; social control, law and justice in simple societies.",
+                                                  "micro_themes":  [
+                                                                       "Band, tribe, chiefdom, kingdom and state",
+                                                                       "Concepts of power, authority and legitimacy",
+                                                                       "Social control, law and justice in simple societies"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "5 Religion",
+                                                  "official_syllabus_line":  "5. Religion: Anthropological approaches to the study of religion (evolutionary, psychological and functional); monism, polytheism and monotheism; sacred and profane; myths and rituals; forms of religion in tribal and peasant societies (animism, animatism, fetishism, naturism and totemism); religion, magic and science distinguished; magico-religious functionaries (priest, shaman, medicine man, sorcerer and witch).",
+                                                  "micro_themes":  [
+                                                                       "Evolutionary, psychological and functional approaches to religion",
+                                                                       "Monism, polytheism and monotheism",
+                                                                       "The sacred and the profane; myths and rituals",
+                                                                       "Animism, animatism, fetishism, naturism and totemism",
+                                                                       "Religion, magic and science distinguished",
+                                                                       "Magico-religious functionaries: priest, shaman, medicine man, sorcerer, witch"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "6 Anthropological theories",
+                                                  "official_syllabus_line":  "6. Anthropological theories: Classical evolutionism (Tylor, Morgan, Frazer); Historical particularism (Boas); Diffusionism (British, German and American); Functionalism (Malinowski); Structural-functionalism (Radcliffe-Brown); Structuralism (Levi-Strauss, E. Leach); Culture and personality (Benedict, Mead, Linton, Kardiner, Cora du Bois); Neo-evolutionism (Childe, White, Steward, Sahlins, Service); Cultural materialism (Harris); Symbolic and interpretive theories (Turner, Schneider, Geertz); Cognitive theories (Tyler, Conklin); Post-modernism in anthropology.",
+                                                  "micro_themes":  [
+                                                                       "Classical evolutionism: Tylor, Morgan, Frazer",
+                                                                       "Historical particularism: Boas",
+                                                                       "Diffusionism: British, German and American schools",
+                                                                       "Functionalism: Malinowski",
+                                                                       "Structural-functionalism: Radcliffe-Brown",
+                                                                       "Structuralism: Levi-Strauss and E. Leach",
+                                                                       "Culture and personality: Benedict, Mead, Linton, Kardiner, Cora du Bois",
+                                                                       "Neo-evolutionism: Childe, White, Steward, Sahlins, Service",
+                                                                       "Cultural materialism: Harris",
+                                                                       "Symbolic and interpretive theories: Turner, Schneider, Geertz",
+                                                                       "Cognitive theories: Tyler, Conklin",
+                                                                       "Post-modernism in anthropology"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "7 Culture, language and communication",
+                                                  "official_syllabus_line":  "7. Culture, language and communication: Nature, origin and characteristics of language; verbal and non-verbal communication; social context of language use.",
+                                                  "micro_themes":  [
+                                                                       "Nature, origin and characteristics of language",
+                                                                       "Verbal and non-verbal communication",
+                                                                       "Social context of language use"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "8 Research methods in anthropology",
+                                                  "official_syllabus_line":  "8. Research methods in anthropology: Fieldwork tradition in anthropology; Distinction between technique, method and methodology; Tools of data collection - observation, interview, schedules, questionnaire, case study, genealogy, life-history, oral history, secondary sources of information, participatory methods; Analysis, interpretation and presentation of data.",
+                                                  "micro_themes":  [
+                                                                       "The fieldwork tradition in anthropology",
+                                                                       "Technique, method and methodology distinguished",
+                                                                       "Observation, interview, schedules and questionnaires",
+                                                                       "Case study, genealogy, life-history and oral history",
+                                                                       "Secondary sources and participatory methods",
+                                                                       "Analysis, interpretation and presentation of data"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "9 Human genetics: methods and application",
+                                                  "official_syllabus_line":  "9.1 Human Genetics - Methods and Application: family study (pedigree analysis, twin study, foster child, co-twin method, cytogenetic method, chromosomal and karyotype analysis), biochemical methods, immunological methods, DNA technology and recombinant technologies. 9.2 Mendelian genetics in man - family study, single factor, multifactor, lethal, sub-lethal and polygenic inheritance. 9.3 Concept of genetic polymorphism and selection, Mendelian population, Hardy-Weinberg law; mutation, isolation, migration, selection, inbreeding and genetic drift; consanguineous and non-consanguineous mating, genetic load, genetic effect of consanguineous and cousin marriages.",
+                                                  "micro_themes":  [
+                                                                       "Pedigree analysis, twin study, foster child and co-twin methods",
+                                                                       "Cytogenetic, chromosomal and karyotype analysis",
+                                                                       "Biochemical and immunological methods; DNA and recombinant technologies",
+                                                                       "Mendelian genetics in man: single factor and multifactor inheritance",
+                                                                       "Lethal, sub-lethal and polygenic inheritance",
+                                                                       "Genetic polymorphism, selection and the Mendelian population",
+                                                                       "Hardy-Weinberg law",
+                                                                       "Mutation, isolation, migration, selection, inbreeding and genetic drift",
+                                                                       "Consanguineous mating, genetic load and the effects of cousin marriage"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "10 Concept of human growth and development",
+                                                  "official_syllabus_line":  "10. Concept of human growth and development: stages of growth - pre-natal, natal, infant, childhood, adolescence, maturity, senescence; Factors affecting growth and development - genetic, environmental, biochemical, nutritional, cultural and socio-economic; Ageing and senescence; Theories and observations - biological and chronological longevity; Human physique and somatotypes; Methodologies for growth studies.",
+                                                  "micro_themes":  [
+                                                                       "Stages of growth: pre-natal, natal, infant, childhood, adolescence, maturity, senescence",
+                                                                       "Genetic, environmental and biochemical factors affecting growth",
+                                                                       "Nutritional, cultural and socio-economic factors affecting growth",
+                                                                       "Ageing and senescence; biological and chronological longevity",
+                                                                       "Human physique and somatotypes",
+                                                                       "Methodologies for growth studies"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "11-12 Fertility, demography and epidemiological anthropology",
+                                                  "official_syllabus_line":  "11. Relevance of menarche, menopause and other bio-events to fertility; Fertility patterns and differentials. 12. Demographic theories - biological, social and cultural. 13. Epidemiological Anthropology: Health and disease; Infectious and non-infectious diseases; Nutritional deficiency related diseases.",
+                                                  "micro_themes":  [
+                                                                       "Menarche, menopause and other bio-events in relation to fertility",
+                                                                       "Fertility patterns and differentials",
+                                                                       "Demographic theories: biological, social and cultural",
+                                                                       "Epidemiological anthropology: health and disease",
+                                                                       "Infectious and non-infectious diseases",
+                                                                       "Nutritional deficiency related diseases"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "14 Applications of anthropology",
+                                                  "official_syllabus_line":  "14. Concept of human adaptation and applications of anthropology: Applied and action anthropology; Anthropology of sports; Nutritional anthropology; Anthropology in designing of defence and other equipments; Forensic Anthropology; Methods and principles of personal identification and reconstruction; Applied human genetics - paternity diagnosis, genetic counselling and eugenics, DNA technology in diseases and medicine, serogenetics and cytogenetics in reproductive biology.",
+                                                  "micro_themes":  [
+                                                                       "Applied and action anthropology",
+                                                                       "Anthropology of sports and nutritional anthropology",
+                                                                       "Anthropology in the design of defence and other equipment",
+                                                                       "Forensic anthropology: personal identification and reconstruction",
+                                                                       "Applied human genetics: paternity diagnosis, genetic counselling and eugenics",
+                                                                       "DNA technology in disease and medicine",
+                                                                       "Serogenetics and cytogenetics in reproductive biology"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }

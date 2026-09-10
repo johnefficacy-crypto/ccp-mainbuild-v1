@@ -1,166 +1,180 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, Public Administration Paper I (Administrative Theory)",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for Public Administration Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
-  "structure_note": "Paper I is a flat list of numbered units with no lettered parts, so section_ref is omitted (rev2 M10 - the question paper's Section A/B cut is where the paper divides a flat syllabus, not a syllabus division). UPSC's numbering is preserved at the head of each macro_topic.",
-  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-pubad-p1 exactly.",
-  "papers": [
-    {
-      "paper_id": "opt-pubad-p1",
-      "paper_title": "Public Administration Paper-1 (Optional)",
-      "core_subjects": ["Administrative Theory"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "1 Introduction",
-          "official_syllabus_line": "1. Introduction: Meaning, scope and significance of Public Administration; Wilson's vision of Public Administration; Evolution of the discipline and its present status; New Public Administration; Public Choice approach; Challenges of liberalization, Privatisation, Globalisation; Good Governance - concept and application; New Public Management.",
-          "micro_themes": [
-            "Meaning, scope and significance of Public Administration",
-            "Wilson's vision of Public Administration",
-            "Evolution of the discipline and its present status",
-            "New Public Administration",
-            "Public Choice approach",
-            "Challenges of liberalization, privatisation and globalisation",
-            "Good Governance: concept and application",
-            "New Public Management"
-          ]
-        },
-        {
-          "macro_topic": "2 Administrative Thought",
-          "official_syllabus_line": "2. Administrative Thought: Scientific Management and Scientific Management movement; Classical Theory; Weber's bureaucratic model - its critique and post-Weberian developments; Dynamic Administration (Mary Parker Follett); Human Relations School (Elton Mayo and others); Functions of the Executive (C.I. Barnard); Simon's decision-making theory; Participative Management (R. Likert, C. Argyris, D. McGregor).",
-          "micro_themes": [
-            "Scientific Management and the Scientific Management movement",
-            "Classical Theory of administration",
-            "Weber's bureaucratic model, its critique and post-Weberian developments",
-            "Dynamic Administration: Mary Parker Follett",
-            "Human Relations School: Elton Mayo and others",
-            "Functions of the Executive: C. I. Barnard",
-            "Simon's decision-making theory",
-            "Participative Management: Likert, Argyris, McGregor"
-          ]
-        },
-        {
-          "macro_topic": "3 Administrative Behaviour",
-          "official_syllabus_line": "3. Administrative Behaviour: Process and techniques of decision-making; Communication; Morale; Motivation Theories - content, process and contemporary; Theories of Leadership - traditional and modern.",
-          "micro_themes": [
-            "Process and techniques of decision-making",
-            "Communication in organisations",
-            "Morale",
-            "Motivation theories: content, process and contemporary",
-            "Theories of leadership: traditional and modern"
-          ]
-        },
-        {
-          "macro_topic": "4 Organisations",
-          "official_syllabus_line": "4. Organisations: Theories - systems, contingency; Structure and forms - Ministries and Departments, Corporations, Companies, Boards and Commissions; Ad hoc and advisory bodies; Headquarters and Field relationships; Regulatory Authorities; Public - Private Partnerships.",
-          "micro_themes": [
-            "Systems and contingency theories of organisation",
-            "Ministries and Departments",
-            "Corporations, Companies, Boards and Commissions",
-            "Ad hoc and advisory bodies",
-            "Headquarters and field relationships",
-            "Regulatory authorities",
-            "Public-Private Partnerships"
-          ]
-        },
-        {
-          "macro_topic": "5 Accountability and control",
-          "official_syllabus_line": "5. Accountability and control: Concepts of accountability and control; Legislative, Executive and Judicial control over administration; Citizen and Administration; Role of media, interest groups, voluntary organizations; Civil society; Citizen's Charters; Right to Information; Social audit.",
-          "micro_themes": [
-            "Concepts of accountability and control",
-            "Legislative control over administration",
-            "Executive control over administration",
-            "Judicial control over administration",
-            "Citizen and administration; role of media and interest groups",
-            "Voluntary organisations and civil society",
-            "Citizen's Charters",
-            "Right to Information",
-            "Social audit"
-          ]
-        },
-        {
-          "macro_topic": "6 Administrative Law",
-          "official_syllabus_line": "6. Administrative Law: Meaning, scope and significance; Dicey on Administrative law; Delegated legislation; Administrative Tribunals.",
-          "micro_themes": [
-            "Meaning, scope and significance of administrative law",
-            "Dicey on administrative law",
-            "Delegated legislation",
-            "Administrative Tribunals"
-          ]
-        },
-        {
-          "macro_topic": "7 Comparative Public Administration",
-          "official_syllabus_line": "7. Comparative Public Administration: Historical and sociological factors affecting administrative systems; Administration and politics in different countries; Current status of Comparative Public Administration; Ecology and administration; Riggsian models and their critique.",
-          "micro_themes": [
-            "Historical and sociological factors affecting administrative systems",
-            "Administration and politics in different countries",
-            "Current status of Comparative Public Administration",
-            "Ecology and administration",
-            "Riggsian models and their critique"
-          ]
-        },
-        {
-          "macro_topic": "8 Development Dynamics",
-          "official_syllabus_line": "8. Development Dynamics: Concept of development; Changing profile of development administration; 'Anti-development thesis'; Bureaucracy and development; Strong state versus the market debate; Impact of liberalisation on administration in developing countries; Women and development - the self-help group movement.",
-          "micro_themes": [
-            "Concept of development",
-            "Changing profile of development administration",
-            "The anti-development thesis",
-            "Bureaucracy and development",
-            "Strong state versus the market debate",
-            "Impact of liberalisation on administration in developing countries",
-            "Women and development; the self-help group movement"
-          ]
-        },
-        {
-          "macro_topic": "9 Personnel Administration",
-          "official_syllabus_line": "9. Personnel Administration: Importance of human resource development; Recruitment, training, career advancement, position classification, discipline, performance appraisal, promotion, pay and service conditions; employer-employee relations, grievance redressal mechanism; Code of conduct; Administrative ethics.",
-          "micro_themes": [
-            "Importance of human resource development",
-            "Recruitment and training",
-            "Career advancement and position classification",
-            "Discipline, performance appraisal and promotion",
-            "Pay and service conditions",
-            "Employer-employee relations and grievance redressal",
-            "Code of conduct and administrative ethics"
-          ]
-        },
-        {
-          "macro_topic": "10 Public Policy",
-          "official_syllabus_line": "10. Public Policy: Models of policy-making and their critique; Processes of conceptualisation, planning, implementation, monitoring, evaluation and review and their limitations; State theories and public policy formulation.",
-          "micro_themes": [
-            "Models of policy-making and their critique",
-            "Conceptualisation and planning of public policy",
-            "Implementation, monitoring and evaluation of policy",
-            "Policy review and its limitations",
-            "State theories and public policy formulation"
-          ]
-        },
-        {
-          "macro_topic": "11 Techniques of Administrative Improvement",
-          "official_syllabus_line": "11. Techniques of Administrative Improvement: Organisation and methods, Work study and work management; e-governance and information technology; Management aid tools like Network Analysis, MIS, PERT, CPM.",
-          "micro_themes": [
-            "Organisation and methods; work study and work management",
-            "e-Governance and information technology",
-            "Network analysis and Management Information Systems",
-            "PERT and CPM"
-          ]
-        },
-        {
-          "macro_topic": "12 Financial Administration",
-          "official_syllabus_line": "12. Financial Administration: Monetary and fiscal policies; Public borrowings and public debt; Budgets - types and forms; Budgetary process; Financial accountability; Accounts and audit.",
-          "micro_themes": [
-            "Monetary and fiscal policies",
-            "Public borrowings and public debt",
-            "Budgets: types and forms",
-            "The budgetary process",
-            "Financial accountability",
-            "Accounts and audit"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, Public Administration Paper I (Administrative Theory)",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for Public Administration Paper I, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "Paper I is a flat list of numbered units with no lettered parts, so section_ref is omitted (rev2 M10 - the question paper\u0027s Section A/B cut is where the paper divides a flat syllabus, not a syllabus division). UPSC\u0027s numbering is preserved at the head of each macro_topic.",
+    "paper_title_note":  "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-pubad-p1 exactly.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-pubad-p1",
+                       "paper_title":  "Public Administration Paper-1 (Optional)",
+                       "core_subjects":  [
+                                             "Administrative Theory"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "1 Introduction",
+                                                  "official_syllabus_line":  "1. Introduction: Meaning, scope and significance of Public Administration; Wilson\u0027s vision of Public Administration; Evolution of the discipline and its present status; New Public Administration; Public Choice approach; Challenges of liberalization, Privatisation, Globalisation; Good Governance - concept and application; New Public Management.",
+                                                  "micro_themes":  [
+                                                                       "Meaning, scope and significance of Public Administration",
+                                                                       "Wilson\u0027s vision of Public Administration",
+                                                                       "Evolution of the discipline and its present status",
+                                                                       "New Public Administration",
+                                                                       "Public Choice approach",
+                                                                       "Challenges of liberalization, privatisation and globalisation",
+                                                                       "Good Governance: concept and application",
+                                                                       "New Public Management"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2 Administrative Thought",
+                                                  "official_syllabus_line":  "2. Administrative Thought: Scientific Management and Scientific Management movement; Classical Theory; Weber\u0027s bureaucratic model - its critique and post-Weberian developments; Dynamic Administration (Mary Parker Follett); Human Relations School (Elton Mayo and others); Functions of the Executive (C.I. Barnard); Simon\u0027s decision-making theory; Participative Management (R. Likert, C. Argyris, D. McGregor).",
+                                                  "micro_themes":  [
+                                                                       "Scientific Management and the Scientific Management movement",
+                                                                       "Classical Theory of administration",
+                                                                       "Weber\u0027s bureaucratic model, its critique and post-Weberian developments",
+                                                                       "Dynamic Administration: Mary Parker Follett",
+                                                                       "Human Relations School: Elton Mayo and others",
+                                                                       "Functions of the Executive: C. I. Barnard",
+                                                                       "Simon\u0027s decision-making theory",
+                                                                       "Participative Management: Likert, Argyris, McGregor"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "3 Administrative Behaviour",
+                                                  "official_syllabus_line":  "3. Administrative Behaviour: Process and techniques of decision-making; Communication; Morale; Motivation Theories - content, process and contemporary; Theories of Leadership - traditional and modern.",
+                                                  "micro_themes":  [
+                                                                       "Process and techniques of decision-making",
+                                                                       "Communication in organisations",
+                                                                       "Morale",
+                                                                       "Motivation theories: content, process and contemporary",
+                                                                       "Theories of leadership: traditional and modern"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "4 Organisations",
+                                                  "official_syllabus_line":  "4. Organisations: Theories - systems, contingency; Structure and forms - Ministries and Departments, Corporations, Companies, Boards and Commissions; Ad hoc and advisory bodies; Headquarters and Field relationships; Regulatory Authorities; Public - Private Partnerships.",
+                                                  "micro_themes":  [
+                                                                       "Systems and contingency theories of organisation",
+                                                                       "Ministries and Departments",
+                                                                       "Corporations, Companies, Boards and Commissions",
+                                                                       "Ad hoc and advisory bodies",
+                                                                       "Headquarters and field relationships",
+                                                                       "Regulatory authorities",
+                                                                       "Public-Private Partnerships"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "5 Accountability and control",
+                                                  "official_syllabus_line":  "5. Accountability and control: Concepts of accountability and control; Legislative, Executive and Judicial control over administration; Citizen and Administration; Role of media, interest groups, voluntary organizations; Civil society; Citizen\u0027s Charters; Right to Information; Social audit.",
+                                                  "micro_themes":  [
+                                                                       "Concepts of accountability and control",
+                                                                       "Legislative control over administration",
+                                                                       "Executive control over administration",
+                                                                       "Judicial control over administration",
+                                                                       "Citizen and administration; role of media and interest groups",
+                                                                       "Voluntary organisations and civil society",
+                                                                       "Citizen\u0027s Charters",
+                                                                       "Right to Information",
+                                                                       "Social audit"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "6 Administrative Law",
+                                                  "official_syllabus_line":  "6. Administrative Law: Meaning, scope and significance; Dicey on Administrative law; Delegated legislation; Administrative Tribunals.",
+                                                  "micro_themes":  [
+                                                                       "Meaning, scope and significance of administrative law",
+                                                                       "Dicey on administrative law",
+                                                                       "Delegated legislation",
+                                                                       "Administrative Tribunals"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "7 Comparative Public Administration",
+                                                  "official_syllabus_line":  "7. Comparative Public Administration: Historical and sociological factors affecting administrative systems; Administration and politics in different countries; Current status of Comparative Public Administration; Ecology and administration; Riggsian models and their critique.",
+                                                  "micro_themes":  [
+                                                                       "Historical and sociological factors affecting administrative systems",
+                                                                       "Administration and politics in different countries",
+                                                                       "Current status of Comparative Public Administration",
+                                                                       "Ecology and administration",
+                                                                       "Riggsian models and their critique"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "8 Development Dynamics",
+                                                  "official_syllabus_line":  "8. Development Dynamics: Concept of development; Changing profile of development administration; \u0027Anti-development thesis\u0027; Bureaucracy and development; Strong state versus the market debate; Impact of liberalisation on administration in developing countries; Women and development - the self-help group movement.",
+                                                  "micro_themes":  [
+                                                                       "Concept of development",
+                                                                       "Changing profile of development administration",
+                                                                       "The anti-development thesis",
+                                                                       "Bureaucracy and development",
+                                                                       "Strong state versus the market debate",
+                                                                       "Impact of liberalisation on administration in developing countries",
+                                                                       "Women and development; the self-help group movement"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "9 Personnel Administration",
+                                                  "official_syllabus_line":  "9. Personnel Administration: Importance of human resource development; Recruitment, training, career advancement, position classification, discipline, performance appraisal, promotion, pay and service conditions; employer-employee relations, grievance redressal mechanism; Code of conduct; Administrative ethics.",
+                                                  "micro_themes":  [
+                                                                       "Importance of human resource development",
+                                                                       "Recruitment and training",
+                                                                       "Career advancement and position classification",
+                                                                       "Discipline, performance appraisal and promotion",
+                                                                       "Pay and service conditions",
+                                                                       "Employer-employee relations and grievance redressal",
+                                                                       "Code of conduct and administrative ethics"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "10 Public Policy",
+                                                  "official_syllabus_line":  "10. Public Policy: Models of policy-making and their critique; Processes of conceptualisation, planning, implementation, monitoring, evaluation and review and their limitations; State theories and public policy formulation.",
+                                                  "micro_themes":  [
+                                                                       "Models of policy-making and their critique",
+                                                                       "Conceptualisation and planning of public policy",
+                                                                       "Implementation, monitoring and evaluation of policy",
+                                                                       "Policy review and its limitations",
+                                                                       "State theories and public policy formulation"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "11 Techniques of Administrative Improvement",
+                                                  "official_syllabus_line":  "11. Techniques of Administrative Improvement: Organisation and methods, Work study and work management; e-governance and information technology; Management aid tools like Network Analysis, MIS, PERT, CPM.",
+                                                  "micro_themes":  [
+                                                                       "Organisation and methods; work study and work management",
+                                                                       "e-Governance and information technology",
+                                                                       "Network analysis and Management Information Systems",
+                                                                       "PERT and CPM"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "12 Financial Administration",
+                                                  "official_syllabus_line":  "12. Financial Administration: Monetary and fiscal policies; Public borrowings and public debt; Budgets - types and forms; Budgetary process; Financial accountability; Accounts and audit.",
+                                                  "micro_themes":  [
+                                                                       "Monetary and fiscal policies",
+                                                                       "Public borrowings and public debt",
+                                                                       "Budgets: types and forms",
+                                                                       "The budgetary process",
+                                                                       "Financial accountability",
+                                                                       "Accounts and audit"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }

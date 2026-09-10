@@ -1,226 +1,244 @@
 {
-  "exam_body": "Union Public Service Commission (UPSC)",
-  "examination": "Civil Services Mains Examination - Optional Subject",
-  "document_type": "Official Syllabus, History Paper II",
-  "version": "2026.1",
-  "last_updated": "2026-09-10",
-  "provenance_note": "Unit text is the published UPSC syllabus for History Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified.",
-  "structure_note": "Flat chronological numbered units, no lettered parts, so section_ref is omitted (rev2 M10). Units 1-10 cover modern India to Independence; 11-15 cover world history from the Enlightenment to the post-war order.",
-  "paper_title_note": "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-history-p2 exactly.",
-  "papers": [
-    {
-      "paper_id": "opt-history-p2",
-      "paper_title": "History Paper-2 (Optional)",
-      "core_subjects": ["Modern India", "World History"],
-      "syllabus_nodes": [
-        {
-          "macro_topic": "1 European Penetration into India",
-          "official_syllabus_line": "1. European Penetration into India: The Early European Settlements; The Portuguese and the Dutch; The English and the French East India Companies; their struggle for supremacy; Carnatic Wars; Bengal - The conflict between the English and the Nawabs of Bengal; Siraj and the English; The Battle of Plassey; Significance of Plassey.",
-          "micro_themes": [
-            "Early European settlements; the Portuguese and the Dutch",
-            "The English and French East India Companies and their struggle for supremacy",
-            "The Carnatic Wars",
-            "Conflict between the English and the Nawabs of Bengal",
-            "Siraj-ud-Daula and the English; the Battle of Plassey and its significance"
-          ]
-        },
-        {
-          "macro_topic": "2 British Expansion in India",
-          "official_syllabus_line": "2. British Expansion in India: Bengal - Mir Jafar and Mir Kasim; The Battle of Buxar; Mysore; The Marathas; The three Anglo-Maratha Wars; The Punjab.",
-          "micro_themes": [
-            "Mir Jafar, Mir Kasim and the Battle of Buxar",
-            "Mysore and the Anglo-Mysore Wars",
-            "The Marathas and the three Anglo-Maratha Wars",
-            "Annexation of the Punjab"
-          ]
-        },
-        {
-          "macro_topic": "3 Early Structure of the British Raj",
-          "official_syllabus_line": "3. Early Structure of the British Raj: The Early administrative structure; From diarchy to direct control; The Regulating Act (1773); The Pitt's India Act (1784); The Charter Act (1833); The Voice of free trade and the changing character of British colonial rule; The English utilitarian and India.",
-          "micro_themes": [
-            "Early administrative structure; from diarchy to direct control",
-            "The Regulating Act 1773 and Pitt's India Act 1784",
-            "The Charter Act 1833",
-            "Free trade and the changing character of British colonial rule",
-            "The English utilitarians and India"
-          ]
-        },
-        {
-          "macro_topic": "4 Economic Impact of British Colonial Rule",
-          "official_syllabus_line": "4. Economic Impact of British Colonial Rule: Land revenue settlements in British India; The Permanent Settlement; Ryotwari Settlement; Mahalwari Settlement; Economic impact of the revenue arrangements; Commercialization of agriculture; Rise of landless agrarian labourers; Impoverishment of the rural society; Dislocation of traditional trade and commerce; De-industrialisation; Decline of traditional crafts; Drain of wealth; Economic transformation of India; Railroad and communication network including telegraph and postal services; Famine and poverty in the rural interior; European business enterprise and its limitations.",
-          "micro_themes": [
-            "Permanent Settlement, Ryotwari and Mahalwari systems",
-            "Economic impact of the revenue arrangements",
-            "Commercialization of agriculture and the rise of landless labourers",
-            "Impoverishment of rural society",
-            "Dislocation of traditional trade and commerce; de-industrialisation",
-            "Decline of traditional crafts; drain of wealth",
-            "Railways, telegraph and postal communication",
-            "Famine and poverty in the rural interior",
-            "European business enterprise and its limitations"
-          ]
-        },
-        {
-          "macro_topic": "5 Social and Cultural Developments",
-          "official_syllabus_line": "5. Social and Cultural Developments: The state of indigenous education, its dislocation; Orientalist-Anglicist controversy; The introduction of western education in India; The rise of press, literature and public opinion; The rise of modern vernacular literature; Progress of Science; Christian missionary activities in India.",
-          "micro_themes": [
-            "State of indigenous education and its dislocation",
-            "The Orientalist-Anglicist controversy",
-            "Introduction of western education in India",
-            "Rise of the press, literature and public opinion",
-            "Rise of modern vernacular literature",
-            "Progress of science",
-            "Christian missionary activities in India"
-          ]
-        },
-        {
-          "macro_topic": "6 Social and Religious Reform Movements",
-          "official_syllabus_line": "6. Social and Religious Reform movements in Bengal and Other Areas: Ram Mohan Roy, The Brahmo Movement; Devendranath Tagore; Iswarchandra Vidyasagar; The Young Bengal Movement; Dayanada Saraswati; The social reform movements in India including Sati, widow remarriage, child marriage etc.; The contribution of Indian renaissance to the growth of modern India; Islamic revivalism - the Feraizi and Wahabi Movements.",
-          "micro_themes": [
-            "Ram Mohan Roy and the Brahmo movement",
-            "Devendranath Tagore and Iswarchandra Vidyasagar",
-            "The Young Bengal Movement",
-            "Dayananda Saraswati and the Arya Samaj",
-            "Social reform: sati, widow remarriage and child marriage",
-            "Contribution of the Indian renaissance to modern India",
-            "Islamic revivalism: the Feraizi and Wahabi movements"
-          ]
-        },
-        {
-          "macro_topic": "7 Indian Response to British Rule",
-          "official_syllabus_line": "7. Indian Response to British Rule: Peasant movements and tribal uprisings in the 18th and 19th centuries including the Rangpur Dhing (1783), the Kol Rebellion (1832), the Mopla Rebellion in Malabar (1841-1920), the Santal Hul (1855), Indigo Rebellion (1859-60), Deccan Uprising (1875) and the Munda Ulgulan (1899-1900); The Great Revolt of 1857 - Origin, character, causes of failure, the consequences; The shift in the character of peasant uprisings in the post-1857 period; the peasant movements of the 1920s and 1930s.",
-          "micro_themes": [
-            "Peasant movements and tribal uprisings of the 18th and 19th centuries",
-            "Rangpur Dhing, Kol Rebellion and Mopla Rebellion",
-            "Santal Hul, Indigo Rebellion, Deccan Uprising and Munda Ulgulan",
-            "The Great Revolt of 1857: origin, character and causes of failure",
-            "Consequences of the Revolt of 1857",
-            "Shift in the character of peasant uprisings after 1857",
-            "Peasant movements of the 1920s and 1930s"
-          ]
-        },
-        {
-          "macro_topic": "8 Factors leading to the birth of Indian Nationalism",
-          "official_syllabus_line": "8. Factors leading to the birth of Indian Nationalism: Politics of Association; The Foundation of the Indian National Congress; The Safety-valve thesis relating to the birth of the Congress; Programme and objectives of Early Congress; the social composition of early Congress leadership; the Moderates and Extremists; The Partition of Bengal (1905); The Swadeshi Movement in Bengal; the economic and political aspects of Swadeshi Movement; The beginning of revolutionary extremism in India.",
-          "micro_themes": [
-            "Politics of association; foundation of the Indian National Congress",
-            "The safety-valve thesis",
-            "Programme, objectives and social composition of the early Congress",
-            "Moderates and Extremists",
-            "Partition of Bengal 1905 and the Swadeshi Movement",
-            "Economic and political aspects of the Swadeshi Movement",
-            "Beginning of revolutionary extremism in India"
-          ]
-        },
-        {
-          "macro_topic": "9 Rise of Gandhi and the Mass Movements",
-          "official_syllabus_line": "9. Rise of Gandhi; Character of Gandhian nationalism; Gandhi's popular appeal; Rowlatt Satyagraha; the Khilafat Movement; the Non-cooperation Movement; National politics from the end of the Non-cooperation movement to the beginning of the Civil Disobedience movement; the two phases of the Civil Disobedience Movement; Simon Commission; The Nehru Report; the Round Table Conferences; Nationalism and the Peasant Movements; Nationalism and Working class movements; Women and Indian youth and students in Indian politics (1885-1947); the election of 1937 and the formation of ministries; Cripps Mission; the Quit India Movement; the Indian National Army; the Naval Mutiny of 1946.",
-          "micro_themes": [
-            "Rise of Gandhi; character of Gandhian nationalism and his popular appeal",
-            "Rowlatt Satyagraha and the Khilafat Movement",
-            "The Non-cooperation Movement",
-            "National politics between Non-cooperation and Civil Disobedience",
-            "The two phases of the Civil Disobedience Movement",
-            "Simon Commission, the Nehru Report and the Round Table Conferences",
-            "Nationalism and the peasant movements",
-            "Nationalism and working class movements",
-            "Women, youth and students in Indian politics 1885-1947",
-            "The election of 1937 and the formation of ministries",
-            "Cripps Mission and the Quit India Movement",
-            "The Indian National Army and the Naval Mutiny of 1946"
-          ]
-        },
-        {
-          "macro_topic": "10 Constitutional Developments, Partition and Independence",
-          "official_syllabus_line": "10. Constitutional Developments in Colonial India between 1858 and 1935. 11. Other strands in the National Movement - The Revolutionaries: Bengal, the Punjab, Maharashtra, U.P, the Madras Presidency, Abroad; The Left - The Left within the Congress: Jawaharlal Nehru, Subhas Chandra Bose, the Congress Socialist Party; the Communist Party of India, other left parties. 12. Politics of Separatism - the Muslim League; the Hindu Mahasabha; Communalism and the politics of partition; Transfer of power; Independence.",
-          "micro_themes": [
-            "Constitutional developments in colonial India, 1858-1935",
-            "Revolutionaries in Bengal, Punjab, Maharashtra, UP and Madras",
-            "Revolutionary activity abroad",
-            "The Left within the Congress: Nehru, Subhas Chandra Bose, the Congress Socialist Party",
-            "The Communist Party of India and other left parties",
-            "The Muslim League and the Hindu Mahasabha",
-            "Communalism and the politics of partition",
-            "Transfer of power and Independence"
-          ]
-        },
-        {
-          "macro_topic": "11 Consolidation as a Nation and Caste Politics",
-          "official_syllabus_line": "13. Consolidation as a Nation; Nehru's Foreign Policy; India and her neighbours (1947-1964); The linguistic reorganisation of States (1935-1947); Regionalism and regional inequality; Integration of Princely States; Princes in electoral politics; the Question of National Language. 14. Caste and Ethnicity after 1947; Backward castes and tribes in post-colonial electoral politics; Dalit movements. 15. Economic development and political change; Land reforms; the politics of planning and rural reconstruction; Ecology and environmental policy in post-colonial India; Progress of science.",
-          "micro_themes": [
-            "Nehru's foreign policy; India and her neighbours 1947-1964",
-            "Linguistic reorganisation of states",
-            "Regionalism and regional inequality",
-            "Integration of princely states; princes in electoral politics",
-            "The question of national language",
-            "Caste and ethnicity after 1947",
-            "Backward castes and tribes in post-colonial electoral politics; Dalit movements",
-            "Land reforms and the politics of planning and rural reconstruction",
-            "Ecology and environmental policy in post-colonial India",
-            "Progress of science after Independence"
-          ]
-        },
-        {
-          "macro_topic": "12 Enlightenment and Modern Ideas",
-          "official_syllabus_line": "16. Enlightenment and Modern ideas: Major ideas of Enlightenment - Kant, Rousseau; Spread of Enlightenment in the colonies; Rise of socialist ideas (up to Marx); spread of Marxian Socialism.",
-          "micro_themes": [
-            "Major ideas of the Enlightenment: Kant and Rousseau",
-            "Spread of Enlightenment in the colonies",
-            "Rise of socialist ideas up to Marx",
-            "Spread of Marxian socialism"
-          ]
-        },
-        {
-          "macro_topic": "13 Origins of Modern Politics and Industrialization",
-          "official_syllabus_line": "17. Origins of Modern Politics: European States System; American Revolution and the Constitution; French revolution and aftermath, 1789-1815; American Civil War with reference to Abraham Lincoln and the abolition of slavery; British Democratic Politics, 1815-1850; Parliamentary Reformers, Free Traders, Chartists. 18. Industrialization: English Industrial Revolution - Causes and Impact on Society; Industrialization in other countries: USA, Germany, Russia, Japan; Industrialization and Globalization.",
-          "micro_themes": [
-            "The European states system",
-            "American Revolution and the Constitution",
-            "French Revolution and its aftermath, 1789-1815",
-            "American Civil War, Lincoln and the abolition of slavery",
-            "British democratic politics 1815-1850: reformers, free traders, Chartists",
-            "English Industrial Revolution: causes and impact on society",
-            "Industrialization in the USA, Germany, Russia and Japan",
-            "Industrialization and globalization"
-          ]
-        },
-        {
-          "macro_topic": "14 Nation-State System, Imperialism and Colonialism",
-          "official_syllabus_line": "19. Nation-State System: Rise of Nationalism in 19th century; Nationalism: state-building in Germany and Italy; Disintegration of Empires in the face of the emergence of nationalities across the world. 20. Imperialism and Colonialism: South and South-East Asia; Latin America and South Africa; Australia; Imperialism and free trade: The new imperialism. 21. Revolution and Counter-Revolution: 19th Century European revolutions; The Russian Revolution of 1917-1921; Fascist Counter-Revolution, Italy and Germany; The Chinese Revolution of 1949.",
-          "micro_themes": [
-            "Rise of nationalism in the 19th century",
-            "State-building in Germany and Italy",
-            "Disintegration of empires and the emergence of nationalities",
-            "Imperialism in South and South-East Asia",
-            "Imperialism in Latin America, South Africa and Australia",
-            "Imperialism and free trade: the new imperialism",
-            "19th century European revolutions",
-            "The Russian Revolution of 1917-1921",
-            "Fascist counter-revolution in Italy and Germany",
-            "The Chinese Revolution of 1949"
-          ]
-        },
-        {
-          "macro_topic": "15 World Wars, Decolonization and the Post-War World",
-          "official_syllabus_line": "22. World Wars: 1st and 2nd World Wars as Total Wars: Societal implications; World War I: Causes and consequences; World War II: Causes and consequences. 23. The World after World War II: Emergence of two power blocs; Emergence of Third World and non-alignment; UNO and the global disputes. 24. Liberation from Colonial Rule: Latin America-Bolivar; Arab world-Egypt; Africa-Apartheid to democracy; South-East Asia-Vietnam. 25. Decolonization and Underdevelopment: Factors constraining development, Latin America, Africa. 26. Unification of Europe: Post War Foundations: NATO and European Community; Consolidation and Expansion of European Community; European Union. 27. Disintegration of Soviet Union and the Rise of the Unipolar World: Factors leading to the collapse of Soviet communism and the Soviet Union, 1985-1991; Political Changes in East Europe 1989-2001; End of the cold war and US ascendancy in the World as the lone superpower.",
-          "micro_themes": [
-            "The World Wars as total wars: societal implications",
-            "World War I: causes and consequences",
-            "World War II: causes and consequences",
-            "Emergence of two power blocs after 1945",
-            "Emergence of the Third World and non-alignment",
-            "The UNO and global disputes",
-            "Liberation from colonial rule: Latin America and Bolivar; the Arab world and Egypt",
-            "Africa from apartheid to democracy; South-East Asia and Vietnam",
-            "Decolonization and underdevelopment; constraints on development",
-            "Post-war foundations: NATO and the European Community",
-            "Consolidation and expansion of the European Community; the European Union",
-            "Collapse of Soviet communism and the Soviet Union, 1985-1991",
-            "Political changes in East Europe 1989-2001",
-            "End of the Cold War and US ascendancy as the lone superpower"
-          ]
-        }
-      ]
-    }
-  ]
+    "exam_body":  "Union Public Service Commission (UPSC)",
+    "examination":  "Civil Services Mains Examination - Optional Subject",
+    "document_type":  "Official Syllabus, History Paper II",
+    "version":  "2026.1",
+    "last_updated":  "2026-09-10",
+    "provenance_note":  "Unit text is the published UPSC syllabus for History Paper II, corroborated across independent reproductions. NOT diffed against the notification PDF. Verify before promoting any mention to verified. Every node sets official_syllabus_line_is_verbatim=false, so the ingest records these as mention_type=derived rather than asserting verbatim official text. Set it to true per node only after that node has been diffed against the notification.",
+    "structure_note":  "Flat chronological numbered units, no lettered parts, so section_ref is omitted (rev2 M10). Units 1-10 cover modern India to Independence; 11-15 cover world history from the Enlightenment to the post-war order.",
+    "paper_title_note":  "paper_title MUST equal subjects.name for slug upsc-cse-mains-opt-history-p2 exactly.",
+    "papers":  [
+                   {
+                       "paper_id":  "opt-history-p2",
+                       "paper_title":  "History Paper-2 (Optional)",
+                       "core_subjects":  [
+                                             "Modern India",
+                                             "World History"
+                                         ],
+                       "syllabus_nodes":  [
+                                              {
+                                                  "macro_topic":  "1 European Penetration into India",
+                                                  "official_syllabus_line":  "1. European Penetration into India: The Early European Settlements; The Portuguese and the Dutch; The English and the French East India Companies; their struggle for supremacy; Carnatic Wars; Bengal - The conflict between the English and the Nawabs of Bengal; Siraj and the English; The Battle of Plassey; Significance of Plassey.",
+                                                  "micro_themes":  [
+                                                                       "Early European settlements; the Portuguese and the Dutch",
+                                                                       "The English and French East India Companies and their struggle for supremacy",
+                                                                       "The Carnatic Wars",
+                                                                       "Conflict between the English and the Nawabs of Bengal",
+                                                                       "Siraj-ud-Daula and the English; the Battle of Plassey and its significance"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "2 British Expansion in India",
+                                                  "official_syllabus_line":  "2. British Expansion in India: Bengal - Mir Jafar and Mir Kasim; The Battle of Buxar; Mysore; The Marathas; The three Anglo-Maratha Wars; The Punjab.",
+                                                  "micro_themes":  [
+                                                                       "Mir Jafar, Mir Kasim and the Battle of Buxar",
+                                                                       "Mysore and the Anglo-Mysore Wars",
+                                                                       "The Marathas and the three Anglo-Maratha Wars",
+                                                                       "Annexation of the Punjab"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "3 Early Structure of the British Raj",
+                                                  "official_syllabus_line":  "3. Early Structure of the British Raj: The Early administrative structure; From diarchy to direct control; The Regulating Act (1773); The Pitt\u0027s India Act (1784); The Charter Act (1833); The Voice of free trade and the changing character of British colonial rule; The English utilitarian and India.",
+                                                  "micro_themes":  [
+                                                                       "Early administrative structure; from diarchy to direct control",
+                                                                       "The Regulating Act 1773 and Pitt\u0027s India Act 1784",
+                                                                       "The Charter Act 1833",
+                                                                       "Free trade and the changing character of British colonial rule",
+                                                                       "The English utilitarians and India"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "4 Economic Impact of British Colonial Rule",
+                                                  "official_syllabus_line":  "4. Economic Impact of British Colonial Rule: Land revenue settlements in British India; The Permanent Settlement; Ryotwari Settlement; Mahalwari Settlement; Economic impact of the revenue arrangements; Commercialization of agriculture; Rise of landless agrarian labourers; Impoverishment of the rural society; Dislocation of traditional trade and commerce; De-industrialisation; Decline of traditional crafts; Drain of wealth; Economic transformation of India; Railroad and communication network including telegraph and postal services; Famine and poverty in the rural interior; European business enterprise and its limitations.",
+                                                  "micro_themes":  [
+                                                                       "Permanent Settlement, Ryotwari and Mahalwari systems",
+                                                                       "Economic impact of the revenue arrangements",
+                                                                       "Commercialization of agriculture and the rise of landless labourers",
+                                                                       "Impoverishment of rural society",
+                                                                       "Dislocation of traditional trade and commerce; de-industrialisation",
+                                                                       "Decline of traditional crafts; drain of wealth",
+                                                                       "Railways, telegraph and postal communication",
+                                                                       "Famine and poverty in the rural interior",
+                                                                       "European business enterprise and its limitations"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "5 Social and Cultural Developments",
+                                                  "official_syllabus_line":  "5. Social and Cultural Developments: The state of indigenous education, its dislocation; Orientalist-Anglicist controversy; The introduction of western education in India; The rise of press, literature and public opinion; The rise of modern vernacular literature; Progress of Science; Christian missionary activities in India.",
+                                                  "micro_themes":  [
+                                                                       "State of indigenous education and its dislocation",
+                                                                       "The Orientalist-Anglicist controversy",
+                                                                       "Introduction of western education in India",
+                                                                       "Rise of the press, literature and public opinion",
+                                                                       "Rise of modern vernacular literature",
+                                                                       "Progress of science",
+                                                                       "Christian missionary activities in India"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "6 Social and Religious Reform Movements",
+                                                  "official_syllabus_line":  "6. Social and Religious Reform movements in Bengal and Other Areas: Ram Mohan Roy, The Brahmo Movement; Devendranath Tagore; Iswarchandra Vidyasagar; The Young Bengal Movement; Dayanada Saraswati; The social reform movements in India including Sati, widow remarriage, child marriage etc.; The contribution of Indian renaissance to the growth of modern India; Islamic revivalism - the Feraizi and Wahabi Movements.",
+                                                  "micro_themes":  [
+                                                                       "Ram Mohan Roy and the Brahmo movement",
+                                                                       "Devendranath Tagore and Iswarchandra Vidyasagar",
+                                                                       "The Young Bengal Movement",
+                                                                       "Dayananda Saraswati and the Arya Samaj",
+                                                                       "Social reform: sati, widow remarriage and child marriage",
+                                                                       "Contribution of the Indian renaissance to modern India",
+                                                                       "Islamic revivalism: the Feraizi and Wahabi movements"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "7 Indian Response to British Rule",
+                                                  "official_syllabus_line":  "7. Indian Response to British Rule: Peasant movements and tribal uprisings in the 18th and 19th centuries including the Rangpur Dhing (1783), the Kol Rebellion (1832), the Mopla Rebellion in Malabar (1841-1920), the Santal Hul (1855), Indigo Rebellion (1859-60), Deccan Uprising (1875) and the Munda Ulgulan (1899-1900); The Great Revolt of 1857 - Origin, character, causes of failure, the consequences; The shift in the character of peasant uprisings in the post-1857 period; the peasant movements of the 1920s and 1930s.",
+                                                  "micro_themes":  [
+                                                                       "Peasant movements and tribal uprisings of the 18th and 19th centuries",
+                                                                       "Rangpur Dhing, Kol Rebellion and Mopla Rebellion",
+                                                                       "Santal Hul, Indigo Rebellion, Deccan Uprising and Munda Ulgulan",
+                                                                       "The Great Revolt of 1857: origin, character and causes of failure",
+                                                                       "Consequences of the Revolt of 1857",
+                                                                       "Shift in the character of peasant uprisings after 1857",
+                                                                       "Peasant movements of the 1920s and 1930s"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "8 Factors leading to the birth of Indian Nationalism",
+                                                  "official_syllabus_line":  "8. Factors leading to the birth of Indian Nationalism: Politics of Association; The Foundation of the Indian National Congress; The Safety-valve thesis relating to the birth of the Congress; Programme and objectives of Early Congress; the social composition of early Congress leadership; the Moderates and Extremists; The Partition of Bengal (1905); The Swadeshi Movement in Bengal; the economic and political aspects of Swadeshi Movement; The beginning of revolutionary extremism in India.",
+                                                  "micro_themes":  [
+                                                                       "Politics of association; foundation of the Indian National Congress",
+                                                                       "The safety-valve thesis",
+                                                                       "Programme, objectives and social composition of the early Congress",
+                                                                       "Moderates and Extremists",
+                                                                       "Partition of Bengal 1905 and the Swadeshi Movement",
+                                                                       "Economic and political aspects of the Swadeshi Movement",
+                                                                       "Beginning of revolutionary extremism in India"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "9 Rise of Gandhi and the Mass Movements",
+                                                  "official_syllabus_line":  "9. Rise of Gandhi; Character of Gandhian nationalism; Gandhi\u0027s popular appeal; Rowlatt Satyagraha; the Khilafat Movement; the Non-cooperation Movement; National politics from the end of the Non-cooperation movement to the beginning of the Civil Disobedience movement; the two phases of the Civil Disobedience Movement; Simon Commission; The Nehru Report; the Round Table Conferences; Nationalism and the Peasant Movements; Nationalism and Working class movements; Women and Indian youth and students in Indian politics (1885-1947); the election of 1937 and the formation of ministries; Cripps Mission; the Quit India Movement; the Indian National Army; the Naval Mutiny of 1946.",
+                                                  "micro_themes":  [
+                                                                       "Rise of Gandhi; character of Gandhian nationalism and his popular appeal",
+                                                                       "Rowlatt Satyagraha and the Khilafat Movement",
+                                                                       "The Non-cooperation Movement",
+                                                                       "National politics between Non-cooperation and Civil Disobedience",
+                                                                       "The two phases of the Civil Disobedience Movement",
+                                                                       "Simon Commission, the Nehru Report and the Round Table Conferences",
+                                                                       "Nationalism and the peasant movements",
+                                                                       "Nationalism and working class movements",
+                                                                       "Women, youth and students in Indian politics 1885-1947",
+                                                                       "The election of 1937 and the formation of ministries",
+                                                                       "Cripps Mission and the Quit India Movement",
+                                                                       "The Indian National Army and the Naval Mutiny of 1946"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "10 Constitutional Developments, Partition and Independence",
+                                                  "official_syllabus_line":  "10. Constitutional Developments in Colonial India between 1858 and 1935. 11. Other strands in the National Movement - The Revolutionaries: Bengal, the Punjab, Maharashtra, U.P, the Madras Presidency, Abroad; The Left - The Left within the Congress: Jawaharlal Nehru, Subhas Chandra Bose, the Congress Socialist Party; the Communist Party of India, other left parties. 12. Politics of Separatism - the Muslim League; the Hindu Mahasabha; Communalism and the politics of partition; Transfer of power; Independence.",
+                                                  "micro_themes":  [
+                                                                       "Constitutional developments in colonial India, 1858-1935",
+                                                                       "Revolutionaries in Bengal, Punjab, Maharashtra, UP and Madras",
+                                                                       "Revolutionary activity abroad",
+                                                                       "The Left within the Congress: Nehru, Subhas Chandra Bose, the Congress Socialist Party",
+                                                                       "The Communist Party of India and other left parties",
+                                                                       "The Muslim League and the Hindu Mahasabha",
+                                                                       "Communalism and the politics of partition",
+                                                                       "Transfer of power and Independence"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "11 Consolidation as a Nation and Caste Politics",
+                                                  "official_syllabus_line":  "13. Consolidation as a Nation; Nehru\u0027s Foreign Policy; India and her neighbours (1947-1964); The linguistic reorganisation of States (1935-1947); Regionalism and regional inequality; Integration of Princely States; Princes in electoral politics; the Question of National Language. 14. Caste and Ethnicity after 1947; Backward castes and tribes in post-colonial electoral politics; Dalit movements. 15. Economic development and political change; Land reforms; the politics of planning and rural reconstruction; Ecology and environmental policy in post-colonial India; Progress of science.",
+                                                  "micro_themes":  [
+                                                                       "Nehru\u0027s foreign policy; India and her neighbours 1947-1964",
+                                                                       "Linguistic reorganisation of states",
+                                                                       "Regionalism and regional inequality",
+                                                                       "Integration of princely states; princes in electoral politics",
+                                                                       "The question of national language",
+                                                                       "Caste and ethnicity after 1947",
+                                                                       "Backward castes and tribes in post-colonial electoral politics; Dalit movements",
+                                                                       "Land reforms and the politics of planning and rural reconstruction",
+                                                                       "Ecology and environmental policy in post-colonial India",
+                                                                       "Progress of science after Independence"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "12 Enlightenment and Modern Ideas",
+                                                  "official_syllabus_line":  "16. Enlightenment and Modern ideas: Major ideas of Enlightenment - Kant, Rousseau; Spread of Enlightenment in the colonies; Rise of socialist ideas (up to Marx); spread of Marxian Socialism.",
+                                                  "micro_themes":  [
+                                                                       "Major ideas of the Enlightenment: Kant and Rousseau",
+                                                                       "Spread of Enlightenment in the colonies",
+                                                                       "Rise of socialist ideas up to Marx",
+                                                                       "Spread of Marxian socialism"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "13 Origins of Modern Politics and Industrialization",
+                                                  "official_syllabus_line":  "17. Origins of Modern Politics: European States System; American Revolution and the Constitution; French revolution and aftermath, 1789-1815; American Civil War with reference to Abraham Lincoln and the abolition of slavery; British Democratic Politics, 1815-1850; Parliamentary Reformers, Free Traders, Chartists. 18. Industrialization: English Industrial Revolution - Causes and Impact on Society; Industrialization in other countries: USA, Germany, Russia, Japan; Industrialization and Globalization.",
+                                                  "micro_themes":  [
+                                                                       "The European states system",
+                                                                       "American Revolution and the Constitution",
+                                                                       "French Revolution and its aftermath, 1789-1815",
+                                                                       "American Civil War, Lincoln and the abolition of slavery",
+                                                                       "British democratic politics 1815-1850: reformers, free traders, Chartists",
+                                                                       "English Industrial Revolution: causes and impact on society",
+                                                                       "Industrialization in the USA, Germany, Russia and Japan",
+                                                                       "Industrialization and globalization"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "14 Nation-State System, Imperialism and Colonialism",
+                                                  "official_syllabus_line":  "19. Nation-State System: Rise of Nationalism in 19th century; Nationalism: state-building in Germany and Italy; Disintegration of Empires in the face of the emergence of nationalities across the world. 20. Imperialism and Colonialism: South and South-East Asia; Latin America and South Africa; Australia; Imperialism and free trade: The new imperialism. 21. Revolution and Counter-Revolution: 19th Century European revolutions; The Russian Revolution of 1917-1921; Fascist Counter-Revolution, Italy and Germany; The Chinese Revolution of 1949.",
+                                                  "micro_themes":  [
+                                                                       "Rise of nationalism in the 19th century",
+                                                                       "State-building in Germany and Italy",
+                                                                       "Disintegration of empires and the emergence of nationalities",
+                                                                       "Imperialism in South and South-East Asia",
+                                                                       "Imperialism in Latin America, South Africa and Australia",
+                                                                       "Imperialism and free trade: the new imperialism",
+                                                                       "19th century European revolutions",
+                                                                       "The Russian Revolution of 1917-1921",
+                                                                       "Fascist counter-revolution in Italy and Germany",
+                                                                       "The Chinese Revolution of 1949"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              },
+                                              {
+                                                  "macro_topic":  "15 World Wars, Decolonization and the Post-War World",
+                                                  "official_syllabus_line":  "22. World Wars: 1st and 2nd World Wars as Total Wars: Societal implications; World War I: Causes and consequences; World War II: Causes and consequences. 23. The World after World War II: Emergence of two power blocs; Emergence of Third World and non-alignment; UNO and the global disputes. 24. Liberation from Colonial Rule: Latin America-Bolivar; Arab world-Egypt; Africa-Apartheid to democracy; South-East Asia-Vietnam. 25. Decolonization and Underdevelopment: Factors constraining development, Latin America, Africa. 26. Unification of Europe: Post War Foundations: NATO and European Community; Consolidation and Expansion of European Community; European Union. 27. Disintegration of Soviet Union and the Rise of the Unipolar World: Factors leading to the collapse of Soviet communism and the Soviet Union, 1985-1991; Political Changes in East Europe 1989-2001; End of the cold war and US ascendancy in the World as the lone superpower.",
+                                                  "micro_themes":  [
+                                                                       "The World Wars as total wars: societal implications",
+                                                                       "World War I: causes and consequences",
+                                                                       "World War II: causes and consequences",
+                                                                       "Emergence of two power blocs after 1945",
+                                                                       "Emergence of the Third World and non-alignment",
+                                                                       "The UNO and global disputes",
+                                                                       "Liberation from colonial rule: Latin America and Bolivar; the Arab world and Egypt",
+                                                                       "Africa from apartheid to democracy; South-East Asia and Vietnam",
+                                                                       "Decolonization and underdevelopment; constraints on development",
+                                                                       "Post-war foundations: NATO and the European Community",
+                                                                       "Consolidation and expansion of the European Community; the European Union",
+                                                                       "Collapse of Soviet communism and the Soviet Union, 1985-1991",
+                                                                       "Political changes in East Europe 1989-2001",
+                                                                       "End of the Cold War and US ascendancy as the lone superpower"
+                                                                   ],
+                                                  "official_syllabus_line_is_verbatim":  false
+                                              }
+                                          ]
+                   }
+               ]
 }
