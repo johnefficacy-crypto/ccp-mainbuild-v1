@@ -6,7 +6,7 @@
     "layout": "topic_wise",
     "years_covered": "1980-2025",
     "capture_method": "pdftotext_layout_parse",
-    "structure_note": "Source has no year-wise counterpart for these rows: no paper number, no question number, no marks. topic_heading is the syllabus heading block above the question, with wrapped lines joined. There is NO key joining these to the year-wise corpus - a join requires text matching.",
+    "structure_note": "Source has no year-wise section, so paper number, question number, section and marks are not recoverable. topic_heading is the raw heading block above the question and may combine a topic and a sub-topic line.",
     "language_coverage": [
       "en"
     ],
@@ -22,9 +22,9 @@
       "year_from_adjacent_item": 64,
       "year_unknown": 3,
       "years_covered": "1980-2025",
-      "heading_defects_remaining": 0
-    },
-    "year_note": "Multi-statement questions print the year only on the last item; those inherit it with year_source=adjacent_item. year_source=unknown means no year established - do not assume one."
+      "heading_defects_remaining": 0,
+      "ligatures_normalised": true
+    }
   },
   "questions": [
     {

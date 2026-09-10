@@ -106,7 +106,7 @@ $papers = @($corpus.papers | Where-Object { $_.paper_number -eq $Paper })
 Write-Host "  years      $($papers.Count)"
 
 # ── Build every row, validating as we go ─────────────────────────────────
-$rows = @(); $problems = @()
+$rows = @(); $problems = @(); $skipped = @()
 foreach ($p in $papers) {
     $y = [int]$p.exam_cycle_year
     $paperId = $paperById[$y]
@@ -149,7 +149,23 @@ foreach ($p in $papers) {
         }
         elseif ($null -ne $q.word_limit) { $meta['word_limit'] = $q.word_limit }
         if ($q.structure_anomaly)        { $meta['structure_anomaly']   = $q.structure_anomaly }
-        if ($q.duplicate_in_source)      { $meta['duplicate_in_source'] = $true }
+
+        # A row flagged duplicate_in_source is byte-identical to another row in
+        # the same paper. pyq_questions_paper_hash_uidx is unique on
+        # (pyq_paper_id, normalized_question_hash), so the second insert cannot
+        # land - it surfaces as a 500 because the question insert is unwrapped.
+        # The duplication is the compiler's error (Sociology 2014 Paper-2 prints
+        # Q5 and Q6 with identical (b) and (c)); the real text is unknown, so
+        # inventing a distinguishing snippet would fabricate a UPSC question.
+        # Skip it, record it, and resolve against the official paper later.
+        if ($q.duplicate_in_source) {
+            $skipped += [pscustomobject]@{
+                year = $y; corpus_question_number = $q.question_number
+                reason = 'duplicate_in_source - identical text already in this paper'
+                text_head = $q.question_text.Substring(0, [Math]::Min(60, $q.question_text.Length))
+            }
+            continue
+        }
 
         $rows += [pscustomobject]@{
             year            = $y
@@ -159,7 +175,15 @@ foreach ($p in $papers) {
             display_order   = $num
             source_ref      = "$($m.ref)-P$Paper-$($p.exam_cycle_year)-$($q.question_number)"
             idempotency_key = "opt:${slug}:${y}:$($q.question_number)"
-            question_text   = $q.question_text
+            question_text   = $(if ($q.map_item) {
+                                    # UPSC prints the item label, and two items can
+                                    # share a hint ("Mesolithic site" at (ii) and (ix)).
+                                    # pyq_questions_paper_hash_uidx is unique on
+                                    # (pyq_paper_id, normalized_question_hash), so the
+                                    # bare hint collides. The label is in the source.
+                                    $lbl = $q.question_number -replace '^\d+', ''
+                                    "$lbl $($q.question_text)".Trim()
+                                } else { $q.question_text })
             metadata        = $meta
         }
     }
@@ -183,6 +207,12 @@ if ($problems) {
     return
 }
 Write-Host "  validation clean" -ForegroundColor Green
+if ($skipped.Count) {
+    Write-Host "`n  SKIPPED $($skipped.Count) row(s) flagged duplicate_in_source:" -ForegroundColor Yellow
+    $skipped | Format-Table -AutoSize
+    Write-Host "  These cannot be inserted - the paper already holds identical text." -ForegroundColor Yellow
+    Write-Host "  Resolve against the official paper, then load them separately." -ForegroundColor Yellow
+}
 
 if (-not $Execute) {
     Write-Host "`nDRY RUN - nothing written." -ForegroundColor Yellow
@@ -207,7 +237,25 @@ if (-not $Execute) {
 # ── Load ─────────────────────────────────────────────────────────────────
 # uq_pyq_questions_idempotency_key makes a re-post of the same row safe, so an
 # interrupted run resumes by simply running again.
-$done = 0; $ledger = @()
+# The CMS question route is a plain INSERT: uq_pyq_questions_idempotency_key
+# stops a duplicate row, but the conflict surfaces as an unhandled 500. So a
+# re-run must skip what is already loaded rather than re-post it.
+Write-Host "`nChecking what this subject-paper already holds..." -ForegroundColor Cyan
+$already = @{}
+foreach ($ppid in ($rows.pyq_paper_id | Select-Object -Unique)) {
+    $off = 0
+    do {
+        $pg = Invoke-Cms GET "$cms/pyq-questions?pyq_paper_id=$ppid&limit=200&offset=$off"
+        foreach ($e in $pg.items) { if ($e.source_question_ref) { $already[$e.source_question_ref] = $true } }
+        $off += 200
+    } while ($pg.items.Count -eq 200)
+}
+$before = $rows.Count
+$rows = @($rows | Where-Object { -not $already.ContainsKey($_.source_ref) })
+Write-Host "  already loaded $($before - $rows.Count), to load $($rows.Count)"
+if (-not $rows) { Write-Host "Nothing to do." -ForegroundColor Green; return }
+
+$done = 0; $ledger = @(); $failed = @()
 foreach ($r in $rows) {
     $body = @{
         reason  = "optionals frontload - $($m.name) Paper-$Paper $($r.year)"
@@ -234,13 +282,19 @@ foreach ($r in $rows) {
         if ($done % 25 -eq 0) { Write-Host "  $done / $($rows.Count)" }
     } catch {
         Write-Host "  FAILED at $($r.source_ref): $_" -ForegroundColor Red
-        Write-Host "  Re-run to resume - idempotency_key makes re-posting safe." -ForegroundColor Yellow
-        break
+        $failed += $r.source_ref
+        if ($failed.Count -ge 20) { Write-Host "  20 failures - stopping." -ForegroundColor Red; break }
     }
     Start-Sleep -Milliseconds 120
 }
 
 Write-Host "`nloaded $done / $($rows.Count)" -ForegroundColor Green
+if ($skipped.Count) {
+    $sp = "workbench\ledgers\OPT-LOAD-04_${Subject}_p${Paper}_SKIPPED.csv"
+    New-Item -ItemType Directory -Force -Path (Split-Path $sp) | Out-Null
+    $skipped | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path (Get-Location) $sp)
+    Write-Host "Skipped rows recorded: $sp" -ForegroundColor Yellow
+}
 $path = "workbench\ledgers\OPT-LOAD-04_${Subject}_p${Paper}.csv"
 New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
 $ledger | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path (Get-Location) $path)
