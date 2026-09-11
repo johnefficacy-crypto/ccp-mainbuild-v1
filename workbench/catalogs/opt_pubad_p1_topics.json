@@ -1,0 +1,752 @@
+[
+  {
+    "id": "366e513e-57d5-43f5-814b-8a0fe72be77d",
+    "text": "Accounts and audit",
+    "slug": "opt-pubad-p1-12-financial-administration-accounts-and-audit-41896a34",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "19fd486e-6a04-4e0c-be75-e74fa5dc2574",
+    "text": "Ad hoc and advisory bodies",
+    "slug": "opt-pubad-p1-4-organisations-ad-hoc-and-advisory-bodies-ae672e1c",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2138cec6-90d3-4248-a5b8-2788ad4fa39b",
+    "text": "Administration and politics in different countries",
+    "slug": "opt-pubad-p1-7-comparative-public-administration-administration-and-politics-in-33e2ca5d",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d34da191-7b29-476f-bdd6-c5425ae74742",
+    "text": "Administrative Tribunals",
+    "slug": "opt-pubad-p1-6-administrative-law-administrative-tribunals-53dcd4c4",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7faf8b15-96d7-4578-b34e-caa7e9eea5b4",
+    "text": "Budgets: types and forms",
+    "slug": "opt-pubad-p1-12-financial-administration-budgets-types-and-forms-2743b5e0",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8f1f9cb8-727f-40be-ba1a-d7bc15d3da6b",
+    "text": "Bureaucracy and development",
+    "slug": "opt-pubad-p1-8-development-dynamics-bureaucracy-and-development-92f17cd7",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "315ff2f8-a023-4645-81d6-b6bbe699dffa",
+    "text": "Career advancement and position classification",
+    "slug": "opt-pubad-p1-9-personnel-administration-career-advancement-and-position-classifi-4f466236",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b49dcbe4-4d6f-4f63-aedc-8ada70e99fa0",
+    "text": "Challenges of liberalization, privatisation and globalisation",
+    "slug": "opt-pubad-p1-1-introduction-challenges-of-liberalization-privatisation-and-globa-5475952e",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3499fb1c-d734-4722-a53d-f2c97c01c1a1",
+    "text": "Changing profile of development administration",
+    "slug": "opt-pubad-p1-8-development-dynamics-changing-profile-of-development-administrati-6f67c46f",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1ea358bf-8af5-4750-8e71-98c002bf14d3",
+    "text": "Citizen and administration; role of media and interest groups",
+    "slug": "opt-pubad-p1-5-accountability-and-control-citizen-and-administration-role-of-med-a0238c3b",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b952a289-904e-4302-94c2-b3da9faf1d94",
+    "text": "Citizen's Charters",
+    "slug": "opt-pubad-p1-5-accountability-and-control-citizen-s-charters-d3e75587",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "954ab5c6-8364-4b40-bd2f-5b0b1ebb033e",
+    "text": "Classical Theory of administration",
+    "slug": "opt-pubad-p1-2-administrative-thought-classical-theory-of-administration-d83c4ae7",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a5c78ba2-1cf1-4bb3-b2b0-c0e251104d68",
+    "text": "Code of conduct and administrative ethics",
+    "slug": "opt-pubad-p1-9-personnel-administration-code-of-conduct-and-administrative-ethic-68408620",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "50c5d9b5-5892-4ff8-bbc8-83b135093154",
+    "text": "Communication in organisations",
+    "slug": "opt-pubad-p1-3-administrative-behaviour-communication-in-organisations-6b4a91e9",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "33986515-597b-4675-89be-3d3243dc033f",
+    "text": "Concept of development",
+    "slug": "opt-pubad-p1-8-development-dynamics-concept-of-development-17329e85",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b58f477d-2b12-4918-ab9b-6e9f9075d0ab",
+    "text": "Concepts of accountability and control",
+    "slug": "opt-pubad-p1-5-accountability-and-control-concepts-of-accountability-and-control-f9dc7afc",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bbdc47b9-fa54-4338-be76-2e7c876a3a2b",
+    "text": "Conceptualisation and planning of public policy",
+    "slug": "opt-pubad-p1-10-public-policy-conceptualisation-and-planning-of-public-policy-c2141840",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6c76d0dd-b54a-4f68-b9e9-34ac62803aa8",
+    "text": "Corporations, Companies, Boards and Commissions",
+    "slug": "opt-pubad-p1-4-organisations-corporations-companies-boards-and-commissions-4883e614",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c2704683-0f31-432b-844b-5784d066b315",
+    "text": "Current status of Comparative Public Administration",
+    "slug": "opt-pubad-p1-7-comparative-public-administration-current-status-of-comparative-p-4ab69a21",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9432855b-b78f-476b-9dc1-0e8f81bce3c3",
+    "text": "Delegated legislation",
+    "slug": "opt-pubad-p1-6-administrative-law-delegated-legislation-d4dec46e",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8d4d6547-6b3b-4390-bd2b-e27c06a4d549",
+    "text": "Dicey on administrative law",
+    "slug": "opt-pubad-p1-6-administrative-law-dicey-on-administrative-law-65d2fabd",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6b98f389-f0af-4b2f-8ec1-9a17ddc79e68",
+    "text": "Discipline, performance appraisal and promotion",
+    "slug": "opt-pubad-p1-9-personnel-administration-discipline-performance-appraisal-and-pro-29e67bfc",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8c2cf8bd-87fc-46f9-a9e7-723e14540860",
+    "text": "Dynamic Administration: Mary Parker Follett",
+    "slug": "opt-pubad-p1-2-administrative-thought-dynamic-administration-mary-parker-follett-fb942d5a",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fd555e68-39ec-41bd-9cac-48c2d8e7236d",
+    "text": "Ecology and administration",
+    "slug": "opt-pubad-p1-7-comparative-public-administration-ecology-and-administration-efe80bcc",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3ee5c60a-1d7a-4bb6-8c4e-2e8ea1e19f0f",
+    "text": "Employer-employee relations and grievance redressal",
+    "slug": "opt-pubad-p1-9-personnel-administration-employer-employee-relations-and-grievanc-2e024d2a",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "173a1eee-c798-4bd7-8bd2-515dd7f7383a",
+    "text": "Evolution of the discipline and its present status",
+    "slug": "opt-pubad-p1-1-introduction-evolution-of-the-discipline-and-its-present-status-969e617f",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dcc71901-696c-4564-9e66-f5e5c7fd025c",
+    "text": "Executive control over administration",
+    "slug": "opt-pubad-p1-5-accountability-and-control-executive-control-over-administration-9c8ec2ee",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2b08ae11-8630-406c-be5a-54415799ca79",
+    "text": "Financial accountability",
+    "slug": "opt-pubad-p1-12-financial-administration-financial-accountability-845a1166",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "86fcd8e5-dd6d-4c8f-a80e-e2c91f8996fb",
+    "text": "Functions of the Executive: C. I. Barnard",
+    "slug": "opt-pubad-p1-2-administrative-thought-functions-of-the-executive-c-i-barnard-8cc99ff3",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "480bf3c9-b8a2-400d-95a8-f8d69ff0810b",
+    "text": "Good Governance: concept and application",
+    "slug": "opt-pubad-p1-1-introduction-good-governance-concept-and-application-90090343",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "aef30487-879a-46ea-a18f-558b9742f415",
+    "text": "Headquarters and field relationships",
+    "slug": "opt-pubad-p1-4-organisations-headquarters-and-field-relationships-4710ea79",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c881fb3c-1e9b-4e27-b585-9cbdece43804",
+    "text": "Historical and sociological factors affecting administrative systems",
+    "slug": "opt-pubad-p1-7-comparative-public-administration-historical-and-sociological-fac-12b6f12b",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ed6906a1-6ab4-43cf-aad9-5e1ed04acd73",
+    "text": "Human Relations School: Elton Mayo and others",
+    "slug": "opt-pubad-p1-2-administrative-thought-human-relations-school-elton-mayo-and-othe-2ca1fc4e",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ba86f9d7-b294-427c-a81c-670c2edb4f1a",
+    "text": "Impact of liberalisation on administration in developing countries",
+    "slug": "opt-pubad-p1-8-development-dynamics-impact-of-liberalisation-on-administration-i-578ee967",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bdb0f39b-efb8-4820-9697-38abfb322f40",
+    "text": "Implementation, monitoring and evaluation of policy",
+    "slug": "opt-pubad-p1-10-public-policy-implementation-monitoring-and-evaluation-of-policy-f1b9306e",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b2b3830-99ec-4983-9766-20278ff49566",
+    "text": "Importance of human resource development",
+    "slug": "opt-pubad-p1-9-personnel-administration-importance-of-human-resource-development-8a3ab5c3",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9e581d32-cea9-437e-b140-00fe74d8c82d",
+    "text": "Judicial control over administration",
+    "slug": "opt-pubad-p1-5-accountability-and-control-judicial-control-over-administration-c0db8376",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2a5e2fb7-4efc-4026-911b-d976bc965ceb",
+    "text": "Legislative control over administration",
+    "slug": "opt-pubad-p1-5-accountability-and-control-legislative-control-over-administratio-29012f19",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b6109f3-f355-44f0-9dd6-9f4eeff73230",
+    "text": "Meaning, scope and significance of Public Administration",
+    "slug": "opt-pubad-p1-1-introduction-meaning-scope-and-significance-of-public-administrat-c23c486d",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "edd6339d-6cf1-465c-8331-b56c895661a8",
+    "text": "Meaning, scope and significance of administrative law",
+    "slug": "opt-pubad-p1-6-administrative-law-meaning-scope-and-significance-of-administrati-d96ea03f",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "302ccde9-ea71-43e7-b610-720c388d3b90",
+    "text": "Ministries and Departments",
+    "slug": "opt-pubad-p1-4-organisations-ministries-and-departments-962db112",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bc0d60a1-9a89-4d34-9fd1-42cff75a0074",
+    "text": "Models of policy-making and their critique",
+    "slug": "opt-pubad-p1-10-public-policy-models-of-policy-making-and-their-critique-2fd4aba9",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4d78dae3-c798-4d8f-8cf3-8c68270d3dce",
+    "text": "Monetary and fiscal policies",
+    "slug": "opt-pubad-p1-12-financial-administration-monetary-and-fiscal-policies-5eacada3",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ad000913-7105-4a7d-b159-0a7734d0cf0c",
+    "text": "Morale",
+    "slug": "opt-pubad-p1-3-administrative-behaviour-morale-36195688",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "230d86aa-b682-4cb5-9dcf-a919604e1a93",
+    "text": "Motivation theories: content, process and contemporary",
+    "slug": "opt-pubad-p1-3-administrative-behaviour-motivation-theories-content-process-and-73fb6570",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "35b9088b-8ac8-4d5e-a309-c8ea243994a1",
+    "text": "Network analysis and Management Information Systems",
+    "slug": "opt-pubad-p1-11-techniques-of-administrative-improvement-network-analysis-and-ma-28961478",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6cc52d6f-126e-466e-bc71-f050b4c158e1",
+    "text": "New Public Administration",
+    "slug": "opt-pubad-p1-1-introduction-new-public-administration-460fe3b0",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "02fb975c-625a-459a-bf7d-3b8c54432963",
+    "text": "New Public Management",
+    "slug": "opt-pubad-p1-1-introduction-new-public-management-0b825669",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "968dc256-aaaa-48e3-9fb9-c880aa2340ac",
+    "text": "Organisation and methods; work study and work management",
+    "slug": "opt-pubad-p1-11-techniques-of-administrative-improvement-organisation-and-method-424832f3",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4e208852-ee87-47b8-b8d8-4423985619fa",
+    "text": "PERT and CPM",
+    "slug": "opt-pubad-p1-11-techniques-of-administrative-improvement-pert-and-cpm-06a01233",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b67c609f-028d-4abe-8293-4d918af13418",
+    "text": "Participative Management: Likert, Argyris, McGregor",
+    "slug": "opt-pubad-p1-2-administrative-thought-participative-management-likert-argyris-mc-25219608",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "426f80e2-fdc0-49f2-b578-aa6c5f5a3ad1",
+    "text": "Pay and service conditions",
+    "slug": "opt-pubad-p1-9-personnel-administration-pay-and-service-conditions-bdb342f6",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "73f43f8f-cb02-4da2-b6a7-56742079ef2d",
+    "text": "Policy review and its limitations",
+    "slug": "opt-pubad-p1-10-public-policy-policy-review-and-its-limitations-92cceba7",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b0900d91-c603-46e9-abc2-0a2ba80732df",
+    "text": "Process and techniques of decision-making",
+    "slug": "opt-pubad-p1-3-administrative-behaviour-process-and-techniques-of-decision-makin-4ea3eea7",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "85bdc1fd-d933-40d2-be3e-5551c7f8803b",
+    "text": "Public Choice approach",
+    "slug": "opt-pubad-p1-1-introduction-public-choice-approach-dd948422",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9b288a96-e209-460a-810c-f38411c092d6",
+    "text": "Public borrowings and public debt",
+    "slug": "opt-pubad-p1-12-financial-administration-public-borrowings-and-public-debt-e801bc83",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "14692703-17c5-4495-b044-3fb701fab88b",
+    "text": "Public-Private Partnerships",
+    "slug": "opt-pubad-p1-4-organisations-public-private-partnerships-fc8531c8",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4b3b8f5e-a8bf-4b76-ae2f-396c3bbf5fac",
+    "text": "Recruitment and training",
+    "slug": "opt-pubad-p1-9-personnel-administration-recruitment-and-training-1ffdee44",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e04f6d9c-6651-4dcc-b3fa-0c2ddeecdf5c",
+    "text": "Regulatory authorities",
+    "slug": "opt-pubad-p1-4-organisations-regulatory-authorities-d5cf2d76",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9efc2fe7-9f0e-457f-867a-1c9e70c9aed2",
+    "text": "Riggsian models and their critique",
+    "slug": "opt-pubad-p1-7-comparative-public-administration-riggsian-models-and-their-criti-f674d543",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f2d5b0fb-3e2d-4142-8481-bafc1f4edb27",
+    "text": "Right to Information",
+    "slug": "opt-pubad-p1-5-accountability-and-control-right-to-information-3469c875",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5af68a59-43ac-4678-a808-ab3e841d0009",
+    "text": "Scientific Management and the Scientific Management movement",
+    "slug": "opt-pubad-p1-2-administrative-thought-scientific-management-and-the-scientific-m-0abc9a0c",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9a8d584c-1ccc-4505-b9c2-3042570f38f8",
+    "text": "Simon's decision-making theory",
+    "slug": "opt-pubad-p1-2-administrative-thought-simon-s-decision-making-theory-aa04c9ba",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "621e6b93-520f-492f-99d3-f166762d1da5",
+    "text": "Social audit",
+    "slug": "opt-pubad-p1-5-accountability-and-control-social-audit-37d946c9",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a7c1d9b0-8315-4514-a80d-54b029a793e1",
+    "text": "State theories and public policy formulation",
+    "slug": "opt-pubad-p1-10-public-policy-state-theories-and-public-policy-formulation-e69def7e",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8e9609bc-2879-4d1e-89da-c17d5fa2921f",
+    "text": "Strong state versus the market debate",
+    "slug": "opt-pubad-p1-8-development-dynamics-strong-state-versus-the-market-debate-c055e7a3",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2d27885e-bb8d-4188-84fa-1011d078100e",
+    "text": "Systems and contingency theories of organisation",
+    "slug": "opt-pubad-p1-4-organisations-systems-and-contingency-theories-of-organisation-539efe88",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4aba9d3c-3573-41d8-b3c4-8391bb912de3",
+    "text": "The anti-development thesis",
+    "slug": "opt-pubad-p1-8-development-dynamics-the-anti-development-thesis-83578be5",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "14c291b5-bce0-4077-8040-17f5359fbaa8",
+    "text": "The budgetary process",
+    "slug": "opt-pubad-p1-12-financial-administration-the-budgetary-process-bd902a67",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7ab4c0c4-9286-42b0-bd1f-7ca4c187d6d0",
+    "text": "Theories of leadership: traditional and modern",
+    "slug": "opt-pubad-p1-3-administrative-behaviour-theories-of-leadership-traditional-and-m-fbb95863",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "192ae31c-ba21-401e-a97d-41720c56314c",
+    "text": "Voluntary organisations and civil society",
+    "slug": "opt-pubad-p1-5-accountability-and-control-voluntary-organisations-and-civil-soci-0ace905d",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "21d6ae80-b4cb-4d54-b230-7836a0523382",
+    "text": "Weber's bureaucratic model, its critique and post-Weberian developments",
+    "slug": "opt-pubad-p1-2-administrative-thought-weber-s-bureaucratic-model-its-critique-an-21f11a05",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "30d0020c-2778-4e58-98ff-44489d62e658",
+    "text": "Wilson's vision of Public Administration",
+    "slug": "opt-pubad-p1-1-introduction-wilson-s-vision-of-public-administration-533e6759",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d0c26a40-0553-4329-83bf-e9df9b5d2c07",
+    "text": "Women and development; the self-help group movement",
+    "slug": "opt-pubad-p1-8-development-dynamics-women-and-development-the-self-help-group-mo-4439bc2f",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "888dacb1-bfe7-4259-a002-8248a45211f8",
+    "text": "e-Governance and information technology",
+    "slug": "opt-pubad-p1-11-techniques-of-administrative-improvement-e-governance-and-inform-5f587850",
+    "subject_id": "c22d6fad-0e88-46c9-93ea-c6f27f77407d",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

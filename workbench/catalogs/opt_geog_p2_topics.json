@@ -1,0 +1,872 @@
+[
+  {
+    "id": "5faac06a-1f02-4463-b5b2-091c5eb09a49",
+    "text": "Agricultural infrastructure: irrigation, seeds, fertilizers, power",
+    "slug": "opt-geography-p2-3-agriculture-agricultural-infrastructure-irrigation-seeds-fert-adfcb48e",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "64707e5a-422f-452a-b313-2e4644638d6f",
+    "text": "Agricultural regionalisation; agro-climatic zones and agro-ecological regions",
+    "slug": "opt-geography-p2-3-agriculture-agricultural-regionalisation-agro-climatic-zones-ff58385f",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "eb352d2c-6eb1-447a-961f-a8de734192d6",
+    "text": "Agro and social forestry",
+    "slug": "opt-geography-p2-3-agriculture-agro-and-social-forestry-82c37cfd",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "97e4983a-b8ca-4a86-b629-c6c1d2f385af",
+    "text": "Aquaculture, sericulture, apiculture and poultry",
+    "slug": "opt-geography-p2-3-agriculture-aquaculture-sericulture-apiculture-and-poultry-cea6aaea",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ce89a58e-e963-4239-a99e-e5b4defe6531",
+    "text": "Biotic and marine resources",
+    "slug": "opt-geography-p2-2-resources-biotic-and-marine-resources-2c3341be",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2054d2e6-81c6-46d2-84f8-455e569b95ab",
+    "text": "Changes in patterns of land use",
+    "slug": "opt-geography-p2-10-contemporary-issues-changes-in-patterns-of-land-use-e70de79a",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fe1b82fa-0513-4402-9e7c-533e33dca0c5",
+    "text": "Climatic regions of India",
+    "slug": "opt-geography-p2-1-physical-setting-climatic-regions-of-india-5531d9bd",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b8f880e1-44ba-45b0-a034-b9ff0add1cef",
+    "text": "Command area development and watershed management",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-command-area-development-an-6dfaa68b",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7d8e037-190a-4535-b782-783ff41b372c",
+    "text": "Complementary roles of transport modes in regional development",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-complementary-roles-of-tran-f7bf747b",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "809bb010-3cef-4839-b966-bb2cced8bf79",
+    "text": "Concept of sustainable growth and development; environmental awareness",
+    "slug": "opt-geography-p2-10-contemporary-issues-concept-of-sustainable-growth-and-develo-fc488ee4",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cd97f519-b275-4c87-b7ea-ec05dc50c820",
+    "text": "Conurbations and metropolitan regions; urban sprawl",
+    "slug": "opt-geography-p2-7-settlements-conurbations-and-metropolitan-regions-urban-spraw-88541cb8",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "aab83473-7131-4e4b-bff1-587caf6dea52",
+    "text": "Cottage and agro-based industries",
+    "slug": "opt-geography-p2-4-industry-cottage-and-agro-based-industries-63203852",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3787ee31-24fe-4734-b25e-f053dbcc9cd7",
+    "text": "Crop combination and land capability",
+    "slug": "opt-geography-p2-3-agriculture-crop-combination-and-land-capability-19d701ad",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "70abc9aa-9e0e-442a-856c-fcb1e75f24f1",
+    "text": "Cropping pattern, agricultural productivity and intensity",
+    "slug": "opt-geography-p2-3-agriculture-cropping-pattern-agricultural-productivity-and-in-98408f92",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a8ab9f1f-9840-44f8-9600-92bed423e7a1",
+    "text": "Cross-border terrorism",
+    "slug": "opt-geography-p2-9-political-aspects-cross-border-terrorism-7a18df49",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "85846690-b914-4749-aebd-39f02087d963",
+    "text": "Cultural regions of India",
+    "slug": "opt-geography-p2-6-cultural-setting-cultural-regions-of-india-c5fdc7c8",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d175f65c-eab6-4bf3-b79d-33abbbdb252c",
+    "text": "Demographic attributes: sex ratio, age structure, literacy, work-force",
+    "slug": "opt-geography-p2-6-cultural-setting-demographic-attributes-sex-ratio-age-structu-e1fa07cc",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8f87515f-6dc1-4fa6-abf4-beaed5078f9e",
+    "text": "Dependency ratio and longevity",
+    "slug": "opt-geography-p2-6-cultural-setting-dependency-ratio-and-longevity-7bd7471f",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b4e816e1-89ed-4a12-81b7-89ad5ba93955",
+    "text": "Developments in communication and information technology",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-developments-in-communicati-d4292d41",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d3821dd1-31be-4875-964a-758c5aa032bc",
+    "text": "Drainage system and watersheds",
+    "slug": "opt-geography-p2-1-physical-setting-drainage-system-and-watersheds-e23de179",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3126bdf8-0e3f-482f-b995-e2c61261d2b5",
+    "text": "Energy and mineral resources",
+    "slug": "opt-geography-p2-2-resources-energy-and-mineral-resources-e87ed95d",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bf265aa1-96cb-4eb1-90b6-e5f775097b8c",
+    "text": "Energy crisis in India",
+    "slug": "opt-geography-p2-2-resources-energy-crisis-in-india-e121a621",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "234100fc-0923-4fa6-819a-cd46e6b41057",
+    "text": "Environmental degradation; deforestation, desertification and soil erosion",
+    "slug": "opt-geography-p2-10-contemporary-issues-environmental-degradation-deforestation-07fc17a3",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ef1a3e3f-0786-426f-bbba-7e6f36095cce",
+    "text": "Environmental hazards: landslides, earthquakes, tsunamis",
+    "slug": "opt-geography-p2-10-contemporary-issues-environmental-hazards-landslides-earthqu-4b08d693",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7830c51a-1902-4442-b386-9de66c2c1595",
+    "text": "Environmental impact assessment and environmental management",
+    "slug": "opt-geography-p2-10-contemporary-issues-environmental-impact-assessment-and-envi-8f70dd93",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9d555606-c246-407f-be13-a7c0954cb39a",
+    "text": "Evolution of industries in India",
+    "slug": "opt-geography-p2-4-industry-evolution-of-industries-in-india-2681a4cd",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6ef8b62c-76b0-49e9-b0ea-c787cbffa56e",
+    "text": "Experience of regional planning in India; Five Year Plans",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-experience-of-regional-plan-37f7dd63",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cab87d68-46af-4888-8d18-1fa153269d6e",
+    "text": "Export processing zones",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-export-processing-zones-e6cfe6da",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5f01b38f-2931-4b92-aeea-370ac63ac491",
+    "text": "Floods and droughts",
+    "slug": "opt-geography-p2-1-physical-setting-floods-and-droughts-780f2842",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "64c6aea1-20c4-4eae-b5f2-70f9e186dbe3",
+    "text": "Floods, droughts and epidemics",
+    "slug": "opt-geography-p2-10-contemporary-issues-floods-droughts-and-epidemics-2d36ae84",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "65fb2e5b-e19c-470b-977f-6b7ba0ceb489",
+    "text": "Forest and wildlife resources and their conservation",
+    "slug": "opt-geography-p2-2-resources-forest-and-wildlife-resources-and-their-conservatio-de2c8563",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d78f420d-f31f-4aa8-97dc-76ebbcf4997b",
+    "text": "Functional classification of Indian cities",
+    "slug": "opt-geography-p2-7-settlements-functional-classification-of-indian-cities-28330815",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "faeb5ebe-3aef-41b8-839f-608801016709",
+    "text": "Geographical basis of Indian federalism",
+    "slug": "opt-geography-p2-9-political-aspects-geographical-basis-of-indian-federalism-1808970a",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3f821522-a15a-410b-b710-0ff4d2d50fea",
+    "text": "Geopolitics of South Asia and the Indian Ocean realm",
+    "slug": "opt-geography-p2-9-political-aspects-geopolitics-of-south-asia-and-the-indian-oc-cfd695d8",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cc407ab5-a1c2-4313-8bc0-496fd57c57d5",
+    "text": "Globalisation and the Indian economy",
+    "slug": "opt-geography-p2-10-contemporary-issues-globalisation-and-the-indian-economy-2a605f72",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6a1440b9-813b-473b-8f5c-adce7744f07e",
+    "text": "Green Revolution and its socio-economic and ecological implications",
+    "slug": "opt-geography-p2-3-agriculture-green-revolution-and-its-socio-economic-and-ecolo-447de44d",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2b21c7fd-24bb-4ff0-9247-b0f12a4aad82",
+    "text": "Growing importance of ports in national and foreign trade",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-growing-importance-of-ports-e98dc01c",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8597f4d3-6e34-415c-86cf-4aba2d2e0931",
+    "text": "Growth, distribution and density of population",
+    "slug": "opt-geography-p2-6-cultural-setting-growth-distribution-and-density-of-populatio-8eca6055",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7d8c0b9c-6f5a-4e2b-b2d7-dd4043e2b2a5",
+    "text": "Hill and tribal area development",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-hill-and-tribal-area-develo-13145e17",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b7d0e08d-7c34-4413-bcd7-186fbefcb7bc",
+    "text": "Historical perspective of Indian society",
+    "slug": "opt-geography-p2-6-cultural-setting-historical-perspective-of-indian-society-9b137293",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a2d0f31c-0a1d-4d46-9f03-ed6b372f9e13",
+    "text": "Impacts of IT on economy and society",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-impacts-of-it-on-economy-an-46c80550",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ea398a9b-3f56-4c60-8f6d-25c46d1d27c9",
+    "text": "India's role in world affairs",
+    "slug": "opt-geography-p2-9-political-aspects-india-s-role-in-world-affairs-e1b838c5",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a935e9d3-b531-49a5-a19c-beaad496272c",
+    "text": "Indian space programme",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-indian-space-programme-e2c2cbd4",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "168f5405-49b1-4bbb-a609-48a8a2df0542",
+    "text": "Industrial houses and complexes including public sector undertakings",
+    "slug": "opt-geography-p2-4-industry-industrial-houses-and-complexes-including-public-sec-53b50c06",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d45f2b3a-d30b-401c-95ce-514ecf25f444",
+    "text": "Industrial regionalisation and new industrial policies",
+    "slug": "opt-geography-p2-4-industry-industrial-regionalisation-and-new-industrial-polici-8c396004",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "631ef443-7faf-497c-9a72-ed4b99ea0b27",
+    "text": "Institutional factors: land holdings, land tenure and land reforms",
+    "slug": "opt-geography-p2-3-agriculture-institutional-factors-land-holdings-land-tenure-a-fd1f0bd8",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9ed92be7-be68-40ce-8bbf-e37dbfce159c",
+    "text": "Integrated rural development programmes",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-integrated-rural-developmen-ff2d3d2f",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7f638e56-45d0-4215-b8c5-853b91d17f68",
+    "text": "International boundary of India and related issues",
+    "slug": "opt-geography-p2-9-political-aspects-international-boundary-of-india-and-related-dc7f433d",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7659ecb3-0b59-4af4-b0b1-632b4ce169fb",
+    "text": "Iron and steel, aluminium and fertilizer industries",
+    "slug": "opt-geography-p2-4-industry-iron-and-steel-aluminium-and-fertilizer-industries-a272cca9",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5a83c04b-0138-4067-8ed3-9e30ab9718ea",
+    "text": "Issues related to environmental pollution",
+    "slug": "opt-geography-p2-10-contemporary-issues-issues-related-to-environmental-pollutio-c47edc4c",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "aa145448-2bdf-4b6e-a8e6-d2ed974ed83b",
+    "text": "Land resources",
+    "slug": "opt-geography-p2-2-resources-land-resources-58ba5cc9",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2f57ca50-427d-4951-a8f2-cdec0460c9d3",
+    "text": "Linkage of rivers",
+    "slug": "opt-geography-p2-10-contemporary-issues-linkage-of-rivers-d803d94f",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2216a946-3cf7-4bbb-8460-71214d2a732d",
+    "text": "Livestock resources and the White Revolution",
+    "slug": "opt-geography-p2-3-agriculture-livestock-resources-and-the-white-revolution-7f796654",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "77a45c6d-5450-463e-8a99-3a872e8e56bb",
+    "text": "Locational factors of cotton, jute and textile industries",
+    "slug": "opt-geography-p2-4-industry-locational-factors-of-cotton-jute-and-textile-indust-e4bbfd2e",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d1b7dcb9-897d-4d2f-ad8c-2523df326393",
+    "text": "Major tribes, tribal areas and their problems",
+    "slug": "opt-geography-p2-6-cultural-setting-major-tribes-tribal-areas-and-their-problems-cc9fb901",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6a5296f3-6bd2-421c-bbf1-f0c1e5d8d34c",
+    "text": "Mechanism of the Indian monsoon and rainfall patterns",
+    "slug": "opt-geography-p2-1-physical-setting-mechanism-of-the-indian-monsoon-and-rainfall-36449321",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "918256b5-76e1-4f64-bbba-9fc90a59dc61",
+    "text": "Migration: inter-regional, intra-regional and international",
+    "slug": "opt-geography-p2-6-cultural-setting-migration-inter-regional-intra-regional-and-fb2f2062",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f4819707-e0b5-4b98-80c1-ea220da3ac32",
+    "text": "Morphology of Indian cities",
+    "slug": "opt-geography-p2-7-settlements-morphology-of-indian-cities-b5eddbd0",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a03af4ce-2b5b-4e7c-ae26-fc300ce01492",
+    "text": "Multi-level planning",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-multi-level-planning-30cc59e2",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ad22c36a-9eb3-4088-b8b9-87838d1a82b5",
+    "text": "Multinationals and liberalization; Special Economic Zones",
+    "slug": "opt-geography-p2-4-industry-multinationals-and-liberalization-special-economic-z-8fd89082",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "510b7513-9992-4419-b743-b5b2be801aa8",
+    "text": "Natural vegetation",
+    "slug": "opt-geography-p2-1-physical-setting-natural-vegetation-513f4885",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "91682122-97d1-4508-9a09-f78b09bf0936",
+    "text": "Panchayati Raj and decentralised planning",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-panchayati-raj-and-decentra-6d58c4ca",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3cd40ecc-2d25-4a4a-8c3d-c095fe2756b1",
+    "text": "Paper, chemical, pharmaceutical and automobile industries",
+    "slug": "opt-geography-p2-4-industry-paper-chemical-pharmaceutical-and-automobile-industr-747b0c2e",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "aba1c174-7979-4124-9ee7-228090c2a7c7",
+    "text": "Physiographic regions of India",
+    "slug": "opt-geography-p2-1-physical-setting-physiographic-regions-of-india-baa19984",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1cbf7036-5934-4719-a45c-37e5e1726d73",
+    "text": "Planning for backward, desert and drought-prone areas",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-planning-for-backward-deser-18116880",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a8f8707a-eb5f-454e-b3ff-3d0380f9474e",
+    "text": "Population explosion and food security",
+    "slug": "opt-geography-p2-10-contemporary-issues-population-explosion-and-food-security-fe985e2e",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3557a314-f522-4b6b-8840-0b40419893f5",
+    "text": "Population problems and policies; health indicators",
+    "slug": "opt-geography-p2-6-cultural-setting-population-problems-and-policies-health-indi-e00145aa",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cf9afe9b-75ec-4954-80f0-ab3beb9f7df8",
+    "text": "Problems of agrarian and industrial unrest",
+    "slug": "opt-geography-p2-10-contemporary-issues-problems-of-agrarian-and-industrial-unre-bc5422c1",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7fd4ec3-c595-4e41-8e38-dbac462e8012",
+    "text": "Problems of urbanization and remedies",
+    "slug": "opt-geography-p2-7-settlements-problems-of-urbanization-and-remedies-5186dfc5",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "48fc6530-ed7a-4bd6-9cf2-3aa5e5511b54",
+    "text": "Racial, linguistic and ethnic diversities; religious minorities",
+    "slug": "opt-geography-p2-6-cultural-setting-racial-linguistic-and-ethnic-diversities-rel-3802eb25",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "76486ba2-c912-4573-844b-024cc932e7f2",
+    "text": "Regional consciousness and inter-state issues",
+    "slug": "opt-geography-p2-9-political-aspects-regional-consciousness-and-inter-state-issu-659df20b",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "afaecea5-4959-4b7d-a158-0b85c6e97d3a",
+    "text": "Regional disparities in economic development",
+    "slug": "opt-geography-p2-10-contemporary-issues-regional-disparities-in-economic-develop-b6f07ebe",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c66bb33b-513e-40bc-92bf-d728c4c9afb8",
+    "text": "Regional planning and development of island territories",
+    "slug": "opt-geography-p2-8-regional-development-and-planning-regional-planning-and-devel-abb18242",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "347ad8bf-951f-4e94-866f-e5d6e0a0656b",
+    "text": "Road, railway, waterway, airway and pipeline networks",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-road-railway-waterway-airwa-99074f7c",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "347880f9-ad95-4fe7-b999-a0d065ce1027",
+    "text": "Significance of dry farming",
+    "slug": "opt-geography-p2-3-agriculture-significance-of-dry-farming-056821f4",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "90e8bc38-6b44-4970-b70c-18b65d35cac5",
+    "text": "Slums and associated problems",
+    "slug": "opt-geography-p2-7-settlements-slums-and-associated-problems-298097c5",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "233d8c64-0e0f-48a1-9e4f-da721e7f5536",
+    "text": "Soil types and their distribution",
+    "slug": "opt-geography-p2-1-physical-setting-soil-types-and-their-distribution-e75a1a64",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8051d3b6-031c-4eef-8e95-2fcc86223c6f",
+    "text": "Space relationship of India with neighbouring countries",
+    "slug": "opt-geography-p2-1-physical-setting-space-relationship-of-india-with-neighbourin-f7d1f432",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "77aaa67b-bc43-4bd6-8086-ebfa4f69b7e1",
+    "text": "State reorganisation and the emergence of new states",
+    "slug": "opt-geography-p2-9-political-aspects-state-reorganisation-and-the-emergence-of-n-9aff62b1",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b0e2951-fa48-4798-b3fe-b82679ebcd6d",
+    "text": "Structure and relief",
+    "slug": "opt-geography-p2-1-physical-setting-structure-and-relief-de3980c8",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "810713a3-20fe-4186-bcee-4eb2204f1d4e",
+    "text": "Surface and ground water resources",
+    "slug": "opt-geography-p2-2-resources-surface-and-ground-water-resources-19c22105",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7987e721-7f39-415c-a5c9-9b84b54e8d2d",
+    "text": "Tourism including eco-tourism",
+    "slug": "opt-geography-p2-4-industry-tourism-including-eco-tourism-52fe8ba5",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "29fc1ef8-00f2-47d5-a3bf-3f999b147151",
+    "text": "Town planning",
+    "slug": "opt-geography-p2-7-settlements-town-planning-e9922701",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bbc8a9fb-6ce7-4676-b7ac-49d440bd85e5",
+    "text": "Trade balance and trade policy",
+    "slug": "opt-geography-p2-5-transport-communication-and-trade-trade-balance-and-trade-pol-13c7da28",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d0a08f12-dc6a-4420-b8c0-096c961c67b9",
+    "text": "Tropical cyclones and western disturbances",
+    "slug": "opt-geography-p2-1-physical-setting-tropical-cyclones-and-western-disturbances-07d7a42c",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3a86a631-ce90-4e5d-aa4a-68326fc4f32d",
+    "text": "Types, patterns and morphology of rural settlements",
+    "slug": "opt-geography-p2-7-settlements-types-patterns-and-morphology-of-rural-settlement-7929ebb3",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "39696f1c-c8f3-4d63-97f2-d936e2ace236",
+    "text": "Urban development in India",
+    "slug": "opt-geography-p2-7-settlements-urban-development-in-india-96a5015a",
+    "subject_id": "787407d5-0100-4bde-89ba-60709afbf5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]
