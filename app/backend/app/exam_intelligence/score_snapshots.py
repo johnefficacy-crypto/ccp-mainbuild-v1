@@ -77,27 +77,78 @@ def _paginate(
     table: str | None = None,
     operation: str | None = None,
 ) -> list[dict[str, Any]] | None:
-    """Fetch all rows using range-based pagination.
+    """Fetch every row of a read using ordered, verified range pagination.
 
-    *build_query(from_n, to_n)* must return a list of rows for the given
-    inclusive ``[from_n, to_n]`` range. Returns ``None`` if any page read
-    fails (caller should treat this as a read error).
+    ``build_query(from_n, to_n)`` must return the PostgREST *response* for the
+    inclusive ``[from_n, to_n]`` window, and the query it builds MUST carry:
+
+    * a total ``.order(...)`` ending on a unique column (``id``), and
+    * ``count="exact"`` on ``.select(...)``.
+
+    Both are load-bearing.
+
+    Range paging without a total order is undefined in Postgres: each window is
+    a separate query, so the server is free to return rows in a different
+    physical order per page. Rows then repeat across pages while others never
+    appear — the read completes, reports no error, and is short. That is the
+    SNAP-DUP-01 mechanism: the ``existing_fps`` index in
+    ``compute_exam_topic_scores`` came back missing the drafts that fell
+    through the crack, and the topics they belonged to were written again as
+    duplicates.
+
+    ``count="exact"`` is the completeness proof. A page that comes back short
+    of ``_PAGE`` is indistinguishable from the end of the set by length alone,
+    so the total collected is compared against the server's own match count.
+
+    Returns ``None`` — a read error the caller must fail closed on — when a
+    page read raises, when the driver reports no exact count, or when the rows
+    collected do not match that count. A partial read is more dangerous than a
+    failed one precisely because it looks like success.
     """
     all_rows: list[dict[str, Any]] = []
     offset = 0
+    exact_total: int | None = None
     while True:
-        rows = _safe(
+        resp = _safe(
             lambda o=offset: build_query(o, o + _PAGE - 1),
             default=None,
             table=table,
             operation=operation,
         )
-        if rows is None:
+        if resp is None:
             return None
+        rows = list(getattr(resp, "data", None) or [])
+        count = getattr(resp, "count", None)
+        if count is not None:
+            # Re-read each page: a concurrent write changes the total, and the
+            # mismatch below is then the correct (fail-closed) outcome.
+            exact_total = int(count)
         all_rows.extend(rows)
         if len(rows) < _PAGE:
             break
         offset += _PAGE
+
+    if exact_total is None:
+        logger.error(
+            "exam_intelligence score_snapshots paginated read reported no exact count",
+            extra={
+                "operation": operation or "read",
+                "table": table,
+                "rows_collected": len(all_rows),
+            },
+        )
+        return None
+    if len(all_rows) != exact_total:
+        logger.error(
+            "exam_intelligence score_snapshots paginated read is incomplete",
+            extra={
+                "operation": operation or "read",
+                "table": table,
+                "rows_collected": len(all_rows),
+                "rows_expected": exact_total,
+            },
+        )
+        return None
     return all_rows
 
 
@@ -291,16 +342,16 @@ def compute_exam_topic_scores(
             return {**zero, "invalid_scope": True}
 
     # ── 2. Verified papers (paginated) ────────────────────────────────────
-    def _papers_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _papers_page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("pyq_papers")
-            .select("id")
+            .select("id", count="exact")
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
         )
         if exam_phase_id:
             q = q.eq("exam_phase_id", exam_phase_id)
-        return q.range(from_n, to_n).execute().data
+        return q.order("id").range(from_n, to_n).execute()
 
     paper_rows = _paginate(
         _papers_page,
@@ -320,15 +371,15 @@ def compute_exam_topic_scores(
     question_ids: list[str] = []
     q_to_paper: dict[str, str] = {}
     for chunk in _chunks(paper_ids, _BATCH):
-        def _questions_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+        def _questions_page(from_n: int, to_n: int, c: list[str] = chunk) -> Any:
             return (
                 sb.table("pyq_questions")
-                .select("id, pyq_paper_id")
+                .select("id, pyq_paper_id", count="exact")
                 .in_("pyq_paper_id", c)
                 .eq("reviewer_status", "verified")
+                .order("id")
                 .range(from_n, to_n)
                 .execute()
-                .data
             )
 
         batch_rows = _paginate(
@@ -353,16 +404,16 @@ def compute_exam_topic_scores(
     # Map each question to the set of topics it has primary tags for.
     q_to_topics: dict[str, set[str]] = {}
     for chunk in _chunks(question_ids, _BATCH):
-        def _tags_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+        def _tags_page(from_n: int, to_n: int, c: list[str] = chunk) -> Any:
             return (
                 sb.table("pyq_question_topic_tags")
-                .select("question_id, topic_id")
+                .select("id, question_id, topic_id", count="exact")
                 .in_("question_id", c)
                 .eq("reviewer_status", "verified")
                 .eq("tag_role", "primary")
+                .order("id")
                 .range(from_n, to_n)
                 .execute()
-                .data
             )
 
         batch_rows = _paginate(
@@ -401,14 +452,14 @@ def compute_exam_topic_scores(
     topic_subject: dict[str, str] = {}
     tagged_topic_ids = sorted(primary_counts.keys())
     for chunk in _chunks(tagged_topic_ids, _BATCH):
-        def _topics_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+        def _topics_page(from_n: int, to_n: int, c: list[str] = chunk) -> Any:
             return (
                 sb.table("topics")
-                .select("id, subject_id")
+                .select("id, subject_id", count="exact")
                 .in_("id", c)
+                .order("id")
                 .range(from_n, to_n)
                 .execute()
-                .data
             )
 
         batch_rows = _paginate(
@@ -435,10 +486,13 @@ def compute_exam_topic_scores(
     # coverage_component must only ever reflect genuinely human-authored
     # coverage (manual/admin_review/official_syllabus/pyq_analysis/hybrid).
     # This is a scoring invariant enforced by tests, not a promotion check.
-    def _coverage_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _coverage_page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("exam_topic_coverage")
-            .select("topic_id, exam_priority_score, is_high_yield, source_basis")
+            .select(
+                "id, topic_id, exam_priority_score, is_high_yield, source_basis",
+                count="exact",
+            )
             .eq("exam_id", exam_id)
             .eq("reviewer_status", "locked")
             .neq("source_basis", "evidence_derived")
@@ -447,7 +501,7 @@ def compute_exam_topic_scores(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.range(from_n, to_n).execute().data
+        return q.order("id").range(from_n, to_n).execute()
 
     locked_cov_rows = _paginate(
         _coverage_page,
@@ -475,10 +529,10 @@ def compute_exam_topic_scores(
     )
 
     # ── 7. Existing drafts (phase-scoped, paginated, fail closed) ─────────
-    def _drafts_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _drafts_page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("exam_topic_score_snapshots")
-            .select("topic_id, input_summary")
+            .select("id, topic_id, input_summary", count="exact")
             .eq("exam_id", exam_id)
             .eq("model_version", model_version)
             .eq("status", "draft")
@@ -487,7 +541,7 @@ def compute_exam_topic_scores(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.range(from_n, to_n).execute().data
+        return q.order("id").range(from_n, to_n).execute()
 
     existing_rows = _paginate(
         _drafts_page,
@@ -495,13 +549,19 @@ def compute_exam_topic_scores(
         operation="select_drafts",
     )
     if existing_rows is None:
-        # Fail closed: a DB error here is indistinguishable from "no drafts"
-        # without this guard, causing duplicates on every recompute.
+        # Fail closed. `_paginate` returns None for a raised page read AND for
+        # a read that completed short of the server's exact count — the
+        # SNAP-DUP-01 case, where an incomplete index looks exactly like "this
+        # topic has no draft yet" and the compute writes a duplicate. Refusing
+        # is always the right answer here: the next run recomputes from a
+        # complete index, whereas a duplicate draft needs an operator to
+        # remove it.
         return {**zero, "read_error": True}
 
-    # Track ALL fingerprints per topic. If PostgREST row order varies between
-    # runs, a single-row-per-topic dict could select a stale draft and miss
-    # a matching fingerprint inserted by a prior run.
+    # Track ALL fingerprints per topic: a topic can legitimately carry more
+    # than one draft (an earlier fingerprint plus the current one), and a
+    # single-row-per-topic dict would keep whichever the page order happened
+    # to yield last and miss a matching fingerprint written by a prior run.
     existing_fps: dict[str, set[str]] = {}
     for r in existing_rows:
         tid = r.get("topic_id")
@@ -657,13 +717,14 @@ def locked_score_snapshots(
     if not exam_id:
         return []
 
-    def _locked_page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _locked_page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("exam_topic_score_snapshots")
             .select(
                 "id, topic_id, exam_priority_score, is_high_yield, "
                 "confidence_score, model_version, score_components, computed_at, "
-                "evidence_count, input_summary"
+                "evidence_count, input_summary",
+                count="exact",
             )
             .eq("exam_id", exam_id)
             .eq("status", "locked")
@@ -673,7 +734,13 @@ def locked_score_snapshots(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.order("computed_at", desc=True).range(from_n, to_n).execute().data
+        # `id` breaks computed_at ties so the window partition is total.
+        return (
+            q.order("computed_at", desc=True)
+            .order("id")
+            .range(from_n, to_n)
+            .execute()
+        )
 
     rows = _paginate(
         _locked_page,
@@ -735,10 +802,10 @@ def list_exam_score_snapshots(
     if not exam_id:
         return []
 
-    def _page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("exam_topic_score_snapshots")
-            .select("*")
+            .select("*", count="exact")
             .eq("exam_id", exam_id)
         )
         if status:
@@ -747,7 +814,12 @@ def list_exam_score_snapshots(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.order("computed_at", desc=True).range(from_n, to_n).execute().data
+        return (
+            q.order("computed_at", desc=True)
+            .order("id")
+            .range(from_n, to_n)
+            .execute()
+        )
 
     return _paginate(
         _page,
