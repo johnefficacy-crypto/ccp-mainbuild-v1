@@ -726,12 +726,37 @@ puts that third:
 4. **PLAN-LOOP-01 proper** — the cross-tool emitter, worth building only once
    1-3 make the loop observable end to end.
 
+## Render environment — confirmed by the repo owner, 2026-09-12
+
+Two values read from the live Render service close the remaining
+non-SQL questions.
+
+**`FF_MOCK_MASTERY_WRITES = shadow`.** This is a deliberate dark launch, not a
+misconfiguration. `get_mastery_write_flag()` accepts `shadow` as a valid state
+(`app/backend/app/study_os/mastery_writer.py:414-416`), and
+`resolve_effective_mastery_flag` returns it unchanged because the
+allowlist branch only applies to `live` (`:434-435`). So `MasteryWriter`
+runs its full derivation on every submitted attempt, writes
+`mock_mastery_shadow`, and skips the `if self.flag_state == "live"` block
+(`:100-104`). That is exactly the §5 result: 127 derived deltas across 23
+attempts, all `flag_state='shadow'`, zero applied.
+
+**Going live requires two variables, not one.**
+`FF_MOCK_MASTERY_LIVE_USER_IDS` is not among the configured values. Setting
+`FF_MOCK_MASTERY_WRITES=live` on its own is a **no-op**: the empty allowlist
+fails closed back to `shadow` and logs a warning
+(`app/backend/app/study_os/mastery_writer.py:437-444`). Both variables must be
+set in the same deploy.
+
+**`ENABLE_SCHEDULER = true`.** The in-process APScheduler is gated on this
+(`app/backend/server.py:179-185`, default `"false"`), so it is running. This
+closes probe B by configuration rather than SQL and **retires the
+dead-scheduler hypothesis**: the `study:plan_regen` cron fires at 03:00 UTC
+every night, iterates `study_plans` where `status='active'`, finds zero rows,
+and returns `checked=0`. Finding A is the sole cause of the planner silence.
+
 ## Still requires live data
 
-- **Is `FF_MOCK_MASTERY_WRITES` set to `live` anywhere, with a non-empty
-  `FF_MOCK_MASTERY_LIVE_USER_IDS`?** Render environment config; §1's zero rows
-  prove it has never taken effect, but not what the variable currently says.
-- **Is the APScheduler process actually running?** Probe B is inconclusive
-  (empty queue). Answering this needs process/log inspection, not SQL.
-- **What archived the three plans on 2026-07-13?** `study_os.py:293` is the only
-  code path, but a direct DB edit cannot be ruled out from here.
+- **What archived the three plans on 2026-07-13?**
+  `app/backend/app/api/study_os.py:293` is the only code path that writes
+  `status='archived'`, but a direct DB edit cannot be ruled out from here.
