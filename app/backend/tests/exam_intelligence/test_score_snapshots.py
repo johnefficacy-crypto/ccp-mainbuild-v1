@@ -653,3 +653,266 @@ def test_no_self_reinforcement_across_derive_lock_recompute_cycle():
     assert r2["skipped"] == 1
     assert len(sb.db["exam_topic_score_snapshots"]) == 1
     assert sb.db["exam_topic_score_snapshots"][0]["exam_priority_score"] == baseline_priority
+
+
+# ── 20. Cohort scale model (v2.0) ─────────────────────────────────────────────
+#
+# SCORE-MAINS-01. The v1.0 model normalised a topic's frequency against every
+# verified primary tag on the whole exam. That works for an objective paper
+# (100 questions a sitting, one paper examining every subject) and collapses on
+# a descriptive Mains paper, where ~1,250 topics share ~5,100 questions so no
+# topic exceeds 0.5% and the only varying component moves in the third decimal.
+#
+# v2.0 measures a topic against its PEER COHORT — the papers that examine its
+# own subject. The cohort is derived from the evidence, never from an exam id.
+# Where an exam is a single cohort (every paper examines every subject) the
+# cohort IS the scope and every output is identical to v1.0: that is the
+# neutrality guarantee these tests pin.
+
+
+def _prelims_corpus():
+    """Objective-paper shape: two papers, BOTH examining BOTH subjects.
+
+    This is the structural property that makes an exam single-cohort, and it is
+    what UPSC CSE Prelims Paper I looks like — one general-studies paper per
+    sitting carrying History, Geography, Polity and the rest together.
+
+    Counts: t-hist-a 5, t-hist-b 2, t-geo-a 10, t-geo-b 3 → 20 primary tags.
+    """
+    papers = [
+        {"id": "p1", "exam_id": "prelims", "trust_status": "verified"},
+        {"id": "p2", "exam_id": "prelims", "trust_status": "verified"},
+    ]
+    topics = [
+        {"id": "t-hist-a", "subject_id": "s-history"},
+        {"id": "t-hist-b", "subject_id": "s-history"},
+        {"id": "t-geo-a", "subject_id": "s-geography"},
+        {"id": "t-geo-b", "subject_id": "s-geography"},
+    ]
+    # (paper, topic, count) — every subject appears in every paper.
+    layout = [
+        ("p1", "t-hist-a", 3), ("p1", "t-hist-b", 1),
+        ("p1", "t-geo-a", 5), ("p1", "t-geo-b", 1),
+        ("p2", "t-hist-a", 2), ("p2", "t-hist-b", 1),
+        ("p2", "t-geo-a", 5), ("p2", "t-geo-b", 2),
+    ]
+    questions, tags = [], []
+    n = 0
+    for pid, tid, count in layout:
+        for _ in range(count):
+            n += 1
+            qid = f"q{n}"
+            questions.append({"id": qid, "pyq_paper_id": pid, "reviewer_status": "verified"})
+            tags.append({
+                "question_id": qid, "topic_id": tid,
+                "reviewer_status": "verified", "tag_role": "primary",
+            })
+    return SBStub({
+        "pyq_papers": papers,
+        "pyq_questions": questions,
+        "pyq_question_topic_tags": tags,
+        "topics": topics,
+        "exam_topic_coverage": [],
+    })
+
+
+# v1.0 output for _prelims_corpus(), computed by hand from
+#   exam_priority_score = (count/20)*50 + 0*40 + min(count/10,1)*10
+#   is_high_yield       = (count/20) > 0.15
+# and pinned here as literals so the assertion does not restate the formula.
+# t-geo-b sits exactly ON the 0.15 boundary (3/20) and must stay False.
+_PRELIMS_V1_PIN = {
+    "t-geo-a": (35.00, True),    # 10/20 → 25.00 + 10.00
+    "t-hist-a": (17.50, True),   #  5/20 → 12.50 +  5.00
+    "t-geo-b": (10.50, False),   #  3/20 →  7.50 +  3.00
+    "t-hist-b": (7.00, False),   #  2/20 →  5.00 +  2.00
+}
+
+
+def test_prelims_scores_are_unchanged_by_the_cohort_model():
+    """D1. An exam whose papers each examine every subject is a single cohort,
+    so v2.0 must reproduce v1.0 exactly — score, high-yield flag and the three
+    v1.0 score components. This test passes on the v1.0 implementation too;
+    that is the point of it."""
+    sb = _prelims_corpus()
+
+    result = compute_exam_topic_scores(sb, "prelims")
+    assert result["written"] == 4
+    assert result["read_error"] is False
+
+    snaps = {s["topic_id"]: s for s in sb.db["exam_topic_score_snapshots"]}
+    assert set(snaps) == set(_PRELIMS_V1_PIN)
+
+    for tid, (score, high_yield) in _PRELIMS_V1_PIN.items():
+        snap = snaps[tid]
+        assert snap["exam_priority_score"] == score, tid
+        assert snap["is_high_yield"] is high_yield, tid
+
+    # The v1.0 components are untouched, and the frequency denominator is still
+    # the whole 20-tag corpus.
+    assert snaps["t-geo-a"]["score_components"]["frequency_component"] == 0.5
+    assert snaps["t-hist-a"]["score_components"]["frequency_component"] == 0.25
+    assert snaps["t-geo-b"]["score_components"]["frequency_component"] == 0.15
+    assert snaps["t-hist-b"]["score_components"]["frequency_component"] == 0.1
+    for tid in _PRELIMS_V1_PIN:
+        assert snaps[tid]["score_components"]["coverage_component"] == 0.0
+        assert snaps[tid]["input_summary"]["corpus_total_primary"] == 20
+
+
+def test_single_cohort_exam_carries_zero_cohort_weight():
+    """The mechanism behind D1: cohort == scope ⇒ weight 0 ⇒ the cohort
+    prominence term drops out of the composite entirely."""
+    sb = _prelims_corpus()
+    compute_exam_topic_scores(sb, "prelims")
+
+    for snap in sb.db["exam_topic_score_snapshots"]:
+        comps = snap["score_components"]
+        assert comps["cohort_weight"] == 0.0, snap["topic_id"]
+        assert snap["input_summary"]["cohort_total_primary"] == 20
+
+
+def test_topic_with_no_subject_row_falls_back_to_the_whole_scope():
+    """A missing ``topics`` row must degrade to v1.0 behaviour for that topic,
+    never silently drop it into a wrong cohort."""
+    sb = _prelims_corpus()
+    sb.db["topics"] = [t for t in sb.db["topics"] if t["id"] != "t-geo-a"]
+
+    compute_exam_topic_scores(sb, "prelims")
+    snaps = {s["topic_id"]: s for s in sb.db["exam_topic_score_snapshots"]}
+
+    assert snaps["t-geo-a"]["exam_priority_score"] == _PRELIMS_V1_PIN["t-geo-a"][0]
+    assert snaps["t-geo-a"]["score_components"]["cohort_weight"] == 0.0
+
+
+def _descriptive_corpus(spec: dict[str, dict[str, int]]):
+    """Descriptive-paper shape: each subject is examined in its own paper only.
+
+    *spec* is ``{subject_id: {topic_id: primary_count}}``. This is the UPSC
+    Mains optional structure — a PSIR question was never going to be asked in
+    the History Optional paper, so the two subjects share no paper.
+    """
+    papers, questions, tags, topics = [], [], [], []
+    n = 0
+    for sid, counts in spec.items():
+        pid = f"paper-{sid}"
+        papers.append({"id": pid, "exam_id": "mains", "trust_status": "verified"})
+        for tid, count in counts.items():
+            topics.append({"id": tid, "subject_id": sid})
+            for _ in range(count):
+                n += 1
+                qid = f"q{n}"
+                questions.append({"id": qid, "pyq_paper_id": pid, "reviewer_status": "verified"})
+                tags.append({
+                    "question_id": qid, "topic_id": tid,
+                    "reviewer_status": "verified", "tag_role": "primary",
+                })
+    return SBStub({
+        "pyq_papers": papers,
+        "pyq_questions": questions,
+        "pyq_question_topic_tags": tags,
+        "topics": topics,
+        "exam_topic_coverage": [],
+    })
+
+
+def _mains_spec():
+    """Four optional subjects, one paper each; 610 primary tags over 160 topics.
+
+    The subject under test (``history-opt``) holds 160 tags over 40 topics —
+    the live optional shape, where a topic asked 24 times in nine years sits
+    alongside one asked 14 times and one asked once.
+    """
+    history = {"t-temple": 24, "t-neolithic": 14, "t-onceoff": 1}
+    #  37 filler topics summing to 121 → 160 tags over 40 topics, mean 4.0
+    for i in range(10):
+        history[f"t-h-four-{i}"] = 4
+    for i in range(27):
+        history[f"t-h-three-{i}"] = 3
+    spec = {"history-opt": history}
+    #  three peer subjects, 150 tags over 40 topics each
+    for sid in ("psir", "sociology", "geography-opt"):
+        peer = {}
+        for i in range(30):
+            peer[f"t-{sid}-four-{i}"] = 4
+        for i in range(10):
+            peer[f"t-{sid}-three-{i}"] = 3
+        spec[sid] = peer
+    return spec
+
+
+def test_mains_topics_separate_by_an_actionable_margin():
+    """D3/validation. On a descriptive corpus the 24-, 14- and 1-question topics
+    of one subject must order correctly and separate by a margin a human would
+    act on — not by the 0.01 points the v1.0 model produced."""
+    sb = _descriptive_corpus(_mains_spec())
+
+    result = compute_exam_topic_scores(sb, "mains")
+    assert result["read_error"] is False
+
+    snaps = {s["topic_id"]: s for s in sb.db["exam_topic_score_snapshots"]}
+    top = snaps["t-temple"]["exam_priority_score"]
+    mid = snaps["t-neolithic"]["exam_priority_score"]
+    low = snaps["t-onceoff"]["exam_priority_score"]
+
+    assert top > mid > low
+    # Stated minimum margins. v1.0 on this same corpus produces
+    # 11.97 / 11.15 / 1.08 — 0.82 points between 24 questions and 14.
+    assert top - mid >= 8.0, (top, mid)
+    assert mid - low >= 15.0, (mid, low)
+
+    # The cohort is the subject's own paper, not the 610-tag exam.
+    assert snaps["t-temple"]["input_summary"]["cohort_total_primary"] == 160
+    assert snaps["t-temple"]["input_summary"]["corpus_total_primary"] == 610
+    # 24 questions against a cohort mean of 4.0.
+    assert snaps["t-temple"]["score_components"]["cohort_lift"] == 6.0
+
+
+def test_mains_high_yield_fires_for_a_prominent_topic_and_not_a_median_one():
+    """D3. The flag must be reachable on Mains and must still mean something:
+    asked far more than its peers, not true for everything."""
+    sb = _descriptive_corpus(_mains_spec())
+    compute_exam_topic_scores(sb, "mains")
+    snaps = {s["topic_id"]: s for s in sb.db["exam_topic_score_snapshots"]}
+
+    assert snaps["t-temple"]["is_high_yield"] is True      # 24 → 6.0x cohort mean
+    assert snaps["t-neolithic"]["is_high_yield"] is True   # 14 → 3.5x cohort mean
+    assert snaps["t-h-three-0"]["is_high_yield"] is False  # 3 → 0.75x, the median
+    assert snaps["t-h-four-0"]["is_high_yield"] is False   # 4 → exactly the mean
+    assert snaps["t-onceoff"]["is_high_yield"] is False
+
+    fired = [s for s in sb.db["exam_topic_score_snapshots"] if s["is_high_yield"]]
+    assert len(fired) == 2, [s["topic_id"] for s in fired]
+    assert len(fired) / len(sb.db["exam_topic_score_snapshots"]) < 0.05
+
+
+def test_cohort_inputs_change_the_fingerprint():
+    """Moving a topic to another subject changes its cohort and therefore its
+    score, so it must invalidate the existing draft."""
+    args = ("exam-1", MODEL_VERSION, None, ["p1"], ["q1"], [("q1", "t1")],
+            [{"topic_id": "t1", "exam_priority_score": 80, "is_high_yield": True}])
+
+    fp_s1 = _build_fingerprint(*args, q_to_paper={"q1": "p1"}, topic_subject={"t1": "s1"})
+    fp_s2 = _build_fingerprint(*args, q_to_paper={"q1": "p1"}, topic_subject={"t1": "s2"})
+    fp_p2 = _build_fingerprint(*args, q_to_paper={"q1": "p2"}, topic_subject={"t1": "s1"})
+
+    assert fp_s1 != fp_s2
+    assert fp_s1 != fp_p2
+
+
+def test_topics_read_failure_fails_closed():
+    """A partial topic→subject map would move topics into the wrong cohort, so
+    a failed read is a compute failure, not a silent fallback."""
+    sb = _prelims_corpus()
+    original = sb.table
+
+    def _boom(name):
+        if name == "topics":
+            raise RuntimeError("topics read failed")
+        return original(name)
+
+    sb.table = _boom
+    result = compute_exam_topic_scores(sb, "prelims")
+
+    assert result["read_error"] is True
+    assert result["written"] == 0
+    assert sb.db.get("exam_topic_score_snapshots", []) == []

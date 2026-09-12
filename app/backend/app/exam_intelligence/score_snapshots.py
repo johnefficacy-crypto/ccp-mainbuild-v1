@@ -7,6 +7,13 @@ Only locked snapshots reach the planner and user surfaces.
 Frequency contract: primary-only. One verified question contributes at most
 one count to a topic's frequency, through its primary tag. Questions with
 multiple primary tags (ambiguous) are excluded from frequency counts.
+
+Scale contract (v2.0): a topic's frequency is measured against its **peer
+cohort** — the papers that examine the topic's own subject — not against the
+whole exam corpus. See ``_cohort_stats`` for the derivation and
+``_cohort_weight`` for the neutrality guarantee that keeps single-cohort exams
+(one undivided paper series examining every subject, e.g. an objective
+general-studies Prelims paper) bit-for-bit identical to v1.0.
 """
 from __future__ import annotations
 
@@ -16,7 +23,14 @@ from typing import Any
 
 logger = logging.getLogger("career_copilot.exam_intelligence.score_snapshots")
 
-MODEL_VERSION = "v1.0"  # bump when computation logic changes
+MODEL_VERSION = "v2.0"  # bump when computation logic changes
+
+# ── Scale constants (model-wide, never per-exam) ──────────────────────────────
+# A topic's cohort lift is how many times its cohort's mean question count it
+# was asked. These two constants map lift onto the score; they are properties
+# of the model, not tunables keyed on an exam.
+_LIFT_FULL_MARKS = 10.0  # 10x the cohort mean earns the full frequency weight
+_HIGH_YIELD_LIFT = 3.0   # 3x the cohort mean is "asked far more than its peers"
 
 _BATCH = 250   # max items per Supabase IN() filter
 _PAGE = 1000   # rows per pagination page
@@ -87,6 +101,86 @@ def _paginate(
     return all_rows
 
 
+def _cohort_stats(
+    primary_counts: dict[str, int],
+    counted_tag_tuples: list[tuple[str, str]],
+    q_to_paper: dict[str, str],
+    topic_subject: dict[str, str],
+) -> dict[str, tuple[int, int]]:
+    """Return ``{topic_id: (cohort_total, cohort_topic_count)}``.
+
+    A topic's **peer cohort** is the set of papers that examine the topic's own
+    subject — derived from the evidence itself (which papers carry primary tags
+    for topics owned by that subject), never from a configured exam id.
+    ``cohort_total`` is the primary-counted question total over those papers and
+    ``cohort_topic_count`` the number of distinct topics tagged in them.
+
+    Why this is the right denominator for a descriptive paper: "Panchayati Raj
+    is 14 of PSIR Paper-I's 392 questions" is a share a human can act on;
+    "14 of the exam's 5,133" is not, because a PSIR question was never going to
+    be asked in the History Optional paper. For an objective general-studies
+    paper — where every paper examines every subject — every subject's cohort is
+    the whole scope, so this reduces exactly to the v1.0 exam-wide denominator.
+
+    Topics whose subject is unknown (``topics`` row missing) fall back to the
+    whole scope, i.e. to v1.0 behaviour.
+    """
+    scope_papers = {q_to_paper[q] for q, _ in counted_tag_tuples if q in q_to_paper}
+    scope_total = sum(primary_counts.values())
+    scope_topic_count = len(primary_counts)
+
+    # Per-paper primary totals and the topic set each paper touches.
+    paper_total: dict[str, int] = {}
+    paper_topics: dict[str, set[str]] = {}
+    subject_papers: dict[str, set[str]] = {}
+    for qid, tid in counted_tag_tuples:
+        pid = q_to_paper.get(qid)
+        if not pid:
+            continue
+        paper_total[pid] = paper_total.get(pid, 0) + 1
+        paper_topics.setdefault(pid, set()).add(tid)
+        sid = topic_subject.get(tid)
+        if sid:
+            subject_papers.setdefault(sid, set()).add(pid)
+
+    by_subject: dict[str, tuple[int, int]] = {}
+    for sid, papers in subject_papers.items():
+        total = sum(paper_total.get(pid, 0) for pid in papers)
+        topics: set[str] = set()
+        for pid in papers:
+            topics |= paper_topics.get(pid, set())
+        by_subject[sid] = (total, len(topics))
+
+    whole_scope = (scope_total, scope_topic_count)
+    # A cohort that turns out to span every paper in the scope IS the scope;
+    # normalise it to the exact scope totals so the neutrality guarantee holds
+    # even when a paper carries no primary-counted question.
+    return {
+        tid: (
+            whole_scope
+            if (sid := topic_subject.get(tid)) is None
+            or subject_papers.get(sid, set()) >= scope_papers
+            else by_subject.get(sid, whole_scope)
+        )
+        for tid in primary_counts
+    }
+
+
+def _cohort_weight(cohort_total: int, scope_total: int) -> float:
+    """How much of the score the cohort-relative axis owns, in ``[0, 1]``.
+
+    ``1 - cohort_total/scope_total`` — the share of the exam that a topic's
+    cohort does *not* cover. It is exactly ``0`` when the exam is a single
+    cohort, which is what makes v2.0 bit-for-bit identical to v1.0 there: the
+    cohort-prominence term drops out and the frequency denominator is unchanged.
+    The more specialised an exam's papers are, the more a topic's standing among
+    its own peers matters and the less its share of the whole exam means.
+    """
+    if scope_total <= 0 or cohort_total <= 0:
+        return 0.0
+    return max(0.0, min(1.0, 1.0 - cohort_total / scope_total))
+
+
 def _build_fingerprint(
     exam_id: str,
     model_version: str,
@@ -95,12 +189,19 @@ def _build_fingerprint(
     question_ids: list[str],
     primary_tag_tuples: list[tuple[str, str]],
     locked_cov_rows: list[dict[str, Any]],
+    *,
+    q_to_paper: dict[str, str] | None = None,
+    topic_subject: dict[str, str] | None = None,
 ) -> str:
     """SHA-256 fingerprint over all inputs that affect score computation.
 
     Including primary-tag content and locked-coverage values means that
     changing a topic assignment or a locked priority score invalidates the
     existing draft and triggers a re-compute.
+
+    v2.0 also folds in the question→paper and topic→subject maps, because a
+    topic's cohort — and therefore its score — changes when a question moves
+    paper or a topic moves subject, even though the tag tuples are unchanged.
     """
     phase_str = exam_phase_id or "null"
     tags_str = ",".join(sorted(f"{q}:{t}" for q, t in primary_tag_tuples))
@@ -115,7 +216,9 @@ def _build_fingerprint(
         f"{exam_id}:{model_version}:phase={phase_str}:"
         f"papers={','.join(sorted(paper_ids))}:"
         f"questions={','.join(sorted(question_ids))}:"
-        f"tags={tags_str}:cov={cov_str}"
+        f"tags={tags_str}:cov={cov_str}:"
+        f"qpapers={','.join(sorted(f'{q}:{p}' for q, p in (q_to_paper or {}).items()))}:"
+        f"tsubjects={','.join(sorted(f'{t}:{sid}' for t, sid in (topic_subject or {}).items()))}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
@@ -212,12 +315,15 @@ def compute_exam_topic_scores(
         return zero
 
     # ── 3. Verified questions (batched + paginated) ───────────────────────
+    # ``pyq_paper_id`` comes back alongside the id: the cohort derivation needs
+    # to know which paper each counted question sat in.
     question_ids: list[str] = []
+    q_to_paper: dict[str, str] = {}
     for chunk in _chunks(paper_ids, _BATCH):
         def _questions_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
             return (
                 sb.table("pyq_questions")
-                .select("id")
+                .select("id, pyq_paper_id")
                 .in_("pyq_paper_id", c)
                 .eq("reviewer_status", "verified")
                 .range(from_n, to_n)
@@ -232,7 +338,13 @@ def compute_exam_topic_scores(
         )
         if batch_rows is None:
             return {**zero, "read_error": True}
-        question_ids.extend(r["id"] for r in batch_rows if r.get("id"))
+        for r in batch_rows:
+            qid = r.get("id")
+            if not qid:
+                continue
+            question_ids.append(qid)
+            if r.get("pyq_paper_id"):
+                q_to_paper[qid] = r["pyq_paper_id"]
 
     if not question_ids:
         return zero
@@ -282,6 +394,35 @@ def compute_exam_topic_scores(
             primary_counts[tid] = primary_counts.get(tid, 0) + 1
             primary_tag_tuples.append((qid, tid))
 
+    # ── 4b. Topic → subject (batched + paginated) ─────────────────────────
+    # Owning subject is what defines a topic's peer cohort (``_cohort_stats``).
+    # Fail closed like every other input read: a partial map would silently
+    # move topics into the wrong cohort and change their scores.
+    topic_subject: dict[str, str] = {}
+    tagged_topic_ids = sorted(primary_counts.keys())
+    for chunk in _chunks(tagged_topic_ids, _BATCH):
+        def _topics_page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+            return (
+                sb.table("topics")
+                .select("id, subject_id")
+                .in_("id", c)
+                .range(from_n, to_n)
+                .execute()
+                .data
+            )
+
+        batch_rows = _paginate(
+            _topics_page,
+            table="topics",
+            operation="select_subject",
+        )
+        if batch_rows is None:
+            return {**zero, "read_error": True}
+        for row in batch_rows:
+            tid, sid = row.get("id"), row.get("subject_id")
+            if tid and sid:
+                topic_subject[tid] = sid
+
     # ── 5. Locked coverage (paginated, phase-isolated) ────────────────────
     # Exam-wide reads use .is_("exam_phase_id", None) to exclude phase-
     # specific rows — mixing scopes would make the score nondeterministic.
@@ -329,6 +470,8 @@ def compute_exam_topic_scores(
         question_ids,
         primary_tag_tuples,
         locked_cov_rows,
+        q_to_paper=q_to_paper,
+        topic_subject=topic_subject,
     )
 
     # ── 7. Existing drafts (phase-scoped, paginated, fail closed) ─────────
@@ -369,31 +512,62 @@ def compute_exam_topic_scores(
     # ── 8. Score each topic ───────────────────────────────────────────────
     all_topic_ids = set(primary_counts.keys()) | set(locked_cov.keys())
     total_primary = sum(primary_counts.values())
+    cohorts = _cohort_stats(primary_counts, primary_tag_tuples, q_to_paper, topic_subject)
 
     written = skipped = errors = 0
 
     for tid in all_topic_ids:
-        freq_component = primary_counts.get(tid, 0) / max(total_primary, 1)
+        topic_count = primary_counts.get(tid, 0)
+        cohort_total, cohort_topics = cohorts.get(tid, (total_primary, len(primary_counts)))
+
+        # Frequency is a share of the topic's own cohort. When the exam is a
+        # single cohort this is identical to the v1.0 exam-wide share.
+        freq_component = topic_count / max(cohort_total, 1)
         cov_component = float(locked_cov.get(tid, {}).get("exam_priority_score") or 0) / 100
-        evidence_quality = min(primary_counts.get(tid, 0) / 10.0, 1.0)
+        evidence_quality = min(topic_count / 10.0, 1.0)
+
+        # Cohort lift: how many times its cohort's mean a topic was asked. This
+        # is the axis that discriminates on a descriptive paper, where no topic
+        # can own a meaningful fraction of the exam but one can plainly own
+        # several times its peers' share.
+        cohort_mean = cohort_total / cohort_topics if cohort_topics else 0.0
+        cohort_lift = topic_count / cohort_mean if cohort_mean > 0 else 0.0
+        prominence = min(cohort_lift / _LIFT_FULL_MARKS, 1.0)
+        weight = _cohort_weight(cohort_total, total_primary)
+
+        # The frequency weight is blended between the exam-wide share (v1.0) and
+        # cohort prominence, by how specialised the topic's cohort is. weight==0
+        # on a single-cohort exam collapses this to ``freq_component * 50``.
+        frequency_term = freq_component * 50 * (1 - weight) + prominence * 50 * weight
 
         exam_priority_score = round(
-            freq_component * 50 + cov_component * 40 + evidence_quality * 10, 2
+            frequency_term + cov_component * 40 + evidence_quality * 10, 2
         )
-        is_high_yield = bool(locked_cov.get(tid, {}).get("is_high_yield")) or freq_component > 0.15
+        is_high_yield = (
+            bool(locked_cov.get(tid, {}).get("is_high_yield"))
+            or freq_component > 0.15
+            # Relative high yield, available only where cohorts actually
+            # partition the corpus: asked far more than its own peers.
+            or (weight > 0 and cohort_lift >= _HIGH_YIELD_LIFT)
+        )
         confidence_score = round(min(0.3 + evidence_quality * 0.7, 1.0), 3)
 
         score_components = {
             "frequency_component": round(freq_component, 4),
             "coverage_component": round(cov_component, 4),
             "evidence_quality": round(evidence_quality, 4),
+            "cohort_lift": round(cohort_lift, 4),
+            "cohort_prominence": round(prominence, 4),
+            "cohort_weight": round(weight, 4),
         }
         input_summary = {
             "fingerprint": fingerprint,
             "paper_count": len(paper_ids),
             "question_count": len(question_ids),
-            "topic_primary_count": primary_counts.get(tid, 0),
+            "topic_primary_count": topic_count,
             "corpus_total_primary": total_primary,
+            "cohort_total_primary": cohort_total,
+            "cohort_topic_count": cohort_topics,
         }
 
         # Idempotency check: skip if current fingerprint is already in
