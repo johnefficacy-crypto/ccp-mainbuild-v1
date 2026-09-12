@@ -596,3 +596,142 @@ answers them is in `workbench/sql/PLAN-LOOP-01_probe.sql`.
    are other `event_type` values already being written?** A distinct-`event_type`
    count decides whether it is reusable as the cross-tool ledger or is
    effectively a persona-private table. Probe §9.
+
+---
+
+# Live probe results — run 2026-09-12
+
+The probe in `workbench/sql/PLAN-LOOP-01_probe.sql` was executed by the repo
+owner against production. This section records the answers and the two new
+defects they exposed. It supersedes the predictions in `## Requires live data`
+above; the questions there are now answered except where noted.
+
+## Results
+
+| § | Result | Reading |
+|---|---|---|
+| 1 | `user_topic_mastery_audit` = **0 rows** | W2 (the delta RPC) has never fired. `FF_MOCK_MASTERY_WRITES` confirmed off/shadow. |
+| 2 | `user_topic_mastery` = **0 rows** | Neither writer has ever written. W1 never fired either — no manual mock review with `topic_breakdowns` has occurred in production. |
+| 3 | no rows | Moot: D1 cannot manifest in an empty table. |
+| 4 | no rows | Moot, same reason. |
+| 5 | `mock_mastery_shadow` = **127 rows / 4 users / 23 attempts, all `flag_state='shadow'`**, newest `2026-09-09 18:42`. `trap_drill_mastery_shadow` returned no group → empty. | The mock engine *is* deriving real per-topic deltas and discarding every one. |
+| 6 | `user_topic_mastery_evidence` = **0 rows** | The writing loop has never produced evidence. D2 is structurally real but carries no volume. |
+| 7 | **Last `study_plan_versions` row ever: `2026-07-10 14:52`.** 38 of 44 attempts have `first_plan_version_after = null`; the 6 non-null all point at two versions from that single day. | No plan has been generated in ~2 months. |
+| 8 | 6 orphan `planned` tasks, one user, all `scheduled_date = 2026-07-10` | Consistent with §7. `_persist` only clears *today's* planned rows, so these are permanently stranded. |
+| 9 | `user_signal_events` = 19 rows, one `event_type` (`persona_question_answered`), **19/19 `processed_at IS NULL`**, last `2026-05-21` | Confirms P3's code reading: persona-private. Additionally its consumer is not draining the queue. |
+| 9b | `study_adaptation_events` = **3 rows total**, all `manual_regeneration` / `planner_v1`, 1 user, last `2026-07-10 14:52` | The planner has run three times in its life, all on one day. |
+
+## Correction to this report's own Q2 conclusion
+
+Q2 above describes `mastery_gap` and `error_signal` as the planner's two
+per-user performance terms. With `user_topic_mastery` empty,
+`_load_user_signals_ex` returns `{}` for every user, so `_score_topic` always
+takes the `mastery is None` branch and assigns **`mastery_gap = 55.0` to every
+topic** (`app/backend/app/study_os/planner.py:610`). A constant across all
+topics contributes **zero to relative ranking**. `error_signal` is 0 everywhere
+for the same reason.
+
+The planner today is therefore not weakly personalised — it is **entirely
+corpus-driven**: `coverage_priority + pyq_factor + snapshot + high_yield +
+pin_bonus`. Both per-user performance terms are inert in the arithmetic.
+
+## Follow-up diagnosis — why no plan since 2026-07-10
+
+Four additional queries (A–D) were run to locate the cause.
+
+**A.** `study_plans` holds **3 rows, all `status='archived'`**, last touched
+`2026-07-13 05:49`. Zero `active`.
+
+Both regen entry points gate on an active plan:
+- `regenerate_stale_plans` filters `.eq("status", "active")`
+  (`app/backend/app/study_os/regen.py:150`) → iterates zero rows → `checked=0`
+  on every nightly sweep since 2026-07-13.
+- `regenerate_on_signal` returns `{"regenerated": False, "reason":
+  "no_active_plan"}` (`regen.py:107-108`) → no-op for every user.
+
+The 03:00 UTC sweep is not broken. It runs and correctly finds nothing.
+
+**B.** `eligibility_recompute_queue` = 7 rows, all `completed`, nothing queued
+since `2026-06-18`. **Inconclusive** — an idle worker against an empty queue is
+indistinguishable from a stopped one. No scheduler-health conclusion is drawn
+from this; A fully explains the planner silence.
+
+**C.** Locked coverage is healthy: `upsc-cse` (`management_mode='core'`) has
+**1433** `reviewer_status='locked'` rows. `core` is unconditionally
+planner-eligible, so the `planner_activation_enabled` gate at
+`planner.py:1191-1194` does not apply. Coverage is not the blocker.
+
+**D.** All four probed users have a `profiles.target_exam` set and
+`plan_status = null`. `auto_regenerate` is `NULL` for three of them, which is
+harmless: `_normalise` skips `None` values
+(`app/backend/app/study_os/plan_preferences.py:60-62`) and the default is
+`True` (`:28`). Not the blocker.
+
+Exam identities resolved:
+- `5466e62f-7382-4a38-ba96-2fe5fbfeaba2` → `upsc-cse`, `is_active=true`,
+  `management_mode='core'` — three users.
+- `22222222-2222-2222-2222-222222222222` → `ssc-cgl-legacy-sandbox-do-not-use`,
+  name `[SANDBOX - DO NOT USE] SSC CGL`, **`is_active=false`** — one user
+  (`902ceffb`). This exam carries 7 locked `exam_topic_coverage` rows.
+
+## Defects observed (continued)
+
+**D5 — switching target exam permanently kills the planner for that user.**
+`PUT /api/study/target-exam?confirm_archive=true` is the only code path that
+writes `status='archived'` to `study_plans`
+(`app/backend/app/api/study_os.py:293`). It archives the active plan, updates
+`profiles.target_exam` (`:294`) and rewrites
+`aspirant_preferences.target_exams` — and **never regenerates a plan for the
+new exam**. There is no `generate_plan` or `apply_plan` call anywhere in the
+handler.
+
+Because both regen entry points require an active plan (A above), the user is
+left with no plan and no automatic route back to one. Only an explicit
+`POST /api/study/plan/generate` or `/plan/apply` recovers, since `_persist`
+creates a plan when `_active_plan` returns `None`
+(`app/backend/app/study_os/planner.py:984-989`). This is the root cause of the
+~2-month planner silence and outranks everything else in this investigation.
+
+**D6 — the planner never checks `exams.is_active`, so a deactivated exam still
+generates plans.** `_resolve_target_exam`
+(`app/backend/app/study_os/planner.py:160-202`) delegates to
+`resolve_exam_by_id` (`app/backend/app/exam_intelligence/lookup.py:100-120`),
+which selects on `id` alone with no `is_active` predicate. `_compute_plan`'s
+only exam-level gate is for `management_mode == 'light'`
+(`planner.py:1191-1194`); the sandbox exam's `management_mode` is `NULL`, so it
+does not fire. The route's `expected_exam_id` is a TOCTOU guard that the two
+resolutions agree (`planner.py:1176-1180`), not an activity check.
+`regenerate_stale_plans` passes no `expected_exam_id` at all
+(`regen.py:185-190`). The only `is_active` filter in the path is topic-level,
+inside `_load_locked_coverage` (`planner.py:326-327`).
+
+Consequence: user `902ceffb` is pointed at `[SANDBOX - DO NOT USE] SSC CGL`,
+which has 7 locked coverage rows. The moment D5 is fixed — or that user hits
+`/plan/generate` — they receive a real study plan built from sandbox data.
+D5 is currently masking D6. Note that `set_target_exam` itself *does* validate
+`is_active` on write (`app/backend/app/api/study_os.py:265`), so this profile
+value predates the exam's deactivation or was written outside that endpoint.
+
+## Revised sequencing
+
+PLAN-LOOP-01 was scoped as "connect other tools to the planner." The live data
+puts that third:
+
+1. **D5** — restore the loop's existence. Regenerate on target-exam switch, or
+   refuse to archive without a replacement. No user has a plan today.
+2. **D6** — refuse to plan against an inactive exam, before D5 unmasks it.
+3. **The mastery gate** — `user_topic_mastery` is empty while 127 derived
+   deltas across 23 attempts sit unused in `mock_mastery_shadow`. The emitter is
+   built and wired; enabling it is a configuration change, not code.
+4. **PLAN-LOOP-01 proper** — the cross-tool emitter, worth building only once
+   1-3 make the loop observable end to end.
+
+## Still requires live data
+
+- **Is `FF_MOCK_MASTERY_WRITES` set to `live` anywhere, with a non-empty
+  `FF_MOCK_MASTERY_LIVE_USER_IDS`?** Render environment config; §1's zero rows
+  prove it has never taken effect, but not what the variable currently says.
+- **Is the APScheduler process actually running?** Probe B is inconclusive
+  (empty queue). Answering this needs process/log inspection, not SQL.
+- **What archived the three plans on 2026-07-13?** `study_os.py:293` is the only
+  code path, but a direct DB edit cannot be ruled out from here.
