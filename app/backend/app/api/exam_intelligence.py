@@ -361,20 +361,30 @@ def list_exam_pyqs(
 
         paper_rows = paper_q.execute().data or []
 
-        # Phase filter: resolve phase_id from slug
+        # Phase filter: resolve phase_id from slug.
+        # phase_slug is NOT globally unique - 86 exams carry a phase slugged
+        # 'mains'. Without the exam_id scope this resolved to whichever exam
+        # PostgREST returned first and the explorer returned 0 rows for every
+        # other exam. Nor is it unique WITHIN an exam: UPSC CSE has three
+        # 'mains' phases (one null-cycle template plus cycle-specific ones
+        # promoted from it), so match every phase on this exam rather than
+        # picking one arbitrarily. mock_readiness_cli.py:62-71 already scopes
+        # its lookup this way.
         if phase:
             phase_id_rows = (
                 sb.table("exam_phases")
                 .select("id")
+                .eq("exam_id", exam_id)
                 .eq("phase_slug", phase)
-                .limit(1)
+                .limit(50)
                 .execute()
                 .data
                 or []
             )
             if phase_id_rows:
-                phase_uuid = phase_id_rows[0]["id"]
-                paper_rows = [p for p in paper_rows if p.get("exam_phase_id") == phase_uuid]
+                phase_uuids = {r["id"] for r in phase_id_rows}
+                paper_rows = [p for p in paper_rows
+                              if p.get("exam_phase_id") in phase_uuids]
             else:
                 paper_rows = []
 
