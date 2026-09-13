@@ -21,6 +21,8 @@ import hashlib
 import logging
 from typing import Any
 
+from app.exam_intelligence.predictability import score_paper
+
 logger = logging.getLogger("career_copilot.exam_intelligence.score_snapshots")
 
 MODEL_VERSION = "v2.0"  # bump when computation logic changes
@@ -243,6 +245,7 @@ def _build_fingerprint(
     *,
     q_to_paper: dict[str, str] | None = None,
     topic_subject: dict[str, str] | None = None,
+    paper_year: dict[str, int] | None = None,
 ) -> str:
     """SHA-256 fingerprint over all inputs that affect score computation.
 
@@ -253,6 +256,10 @@ def _build_fingerprint(
     v2.0 also folds in the question→paper and topic→subject maps, because a
     topic's cohort — and therefore its score — changes when a question moves
     paper or a topic moves subject, even though the tag tuples are unchanged.
+
+    PRED-01 folds in paper→year for the same reason: predictability is measured
+    over the years a topic was asked, so a corrected paper year changes a
+    snapshot's output while leaving every other input identical.
     """
     phase_str = exam_phase_id or "null"
     tags_str = ",".join(sorted(f"{q}:{t}" for q, t in primary_tag_tuples))
@@ -269,7 +276,12 @@ def _build_fingerprint(
         f"questions={','.join(sorted(question_ids))}:"
         f"tags={tags_str}:cov={cov_str}:"
         f"qpapers={','.join(sorted(f'{q}:{p}' for q, p in (q_to_paper or {}).items()))}:"
-        f"tsubjects={','.join(sorted(f'{t}:{sid}' for t, sid in (topic_subject or {}).items()))}"
+        f"tsubjects={','.join(sorted(f'{t}:{sid}' for t, sid in (topic_subject or {}).items()))}:"
+        # PRED-01: paper years are an input now — predictability is measured
+        # over them. They MUST be in the fingerprint or the first recompute
+        # after this change would match every existing draft's fingerprint,
+        # skip all of them, and silently write no predictability at all.
+        f"pyears={','.join(sorted(f'{p}:{y}' for p, y in (paper_year or {}).items()))}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
@@ -345,7 +357,9 @@ def compute_exam_topic_scores(
     def _papers_page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("pyq_papers")
-            .select("id", count="exact")
+            # `year` is what predictability is measured over. It rides the read
+            # that already runs, so the axis costs no extra round trip.
+            .select("id, year", count="exact")
             .eq("exam_id", exam_id)
             .eq("trust_status", "verified")
         )
@@ -362,6 +376,9 @@ def compute_exam_topic_scores(
         return {**zero, "read_error": True}
 
     paper_ids: list[str] = [r["id"] for r in paper_rows if r.get("id")]
+    paper_year: dict[str, int] = {
+        r["id"]: int(r["year"]) for r in paper_rows if r.get("id") and r.get("year") is not None
+    }
     if not paper_ids:
         return zero
 
@@ -526,6 +543,7 @@ def compute_exam_topic_scores(
         locked_cov_rows,
         q_to_paper=q_to_paper,
         topic_subject=topic_subject,
+        paper_year=paper_year,
     )
 
     # ── 7. Existing drafts (phase-scoped, paginated, fail closed) ─────────
@@ -568,6 +586,33 @@ def compute_exam_topic_scores(
         fp = (r.get("input_summary") or {}).get("fingerprint")
         if tid and fp:
             existing_fps.setdefault(tid, set()).add(fp)
+
+    # ── 7b. Predictability (PRED-01) ──────────────────────────────────────
+    # DISTINCT YEARS, not question counts. A paper can ask two questions on one
+    # topic in a year and that is one data point, not two. It is also what
+    # makes the measure safe across the corpus's two halves, which count
+    # differently: thematic rows are one per theme-year, year-wise rows one per
+    # question (design note, "Open").
+    topic_years: dict[str, set[int]] = {}
+    for qid, tid in primary_tag_tuples:
+        year = paper_year.get(q_to_paper.get(qid) or "")
+        if year is not None:
+            topic_years.setdefault(tid, set()).add(year)
+
+    # Y is per subject-paper — the span where THAT paper has evidence, never a
+    # global 1980-2026 constant. Geography's corpus starts 1986 and History's
+    # 1985; a shared span would understate every Geography topic's breadth by
+    # a tenth. Each optional paper is its own `subjects` row (rev2 M2), so the
+    # owning subject is the paper.
+    years_by_subject: dict[str, dict[str, list[int]]] = {}
+    for tid, years in topic_years.items():
+        sid = topic_subject.get(tid)
+        if sid:
+            years_by_subject.setdefault(sid, {})[tid] = sorted(years)
+
+    predictability_by_topic: dict[str, dict[str, Any]] = {}
+    for _sid, per_topic in years_by_subject.items():
+        predictability_by_topic.update(score_paper(per_topic))
 
     # ── 8. Score each topic ───────────────────────────────────────────────
     all_topic_ids = set(primary_counts.keys()) | set(locked_cov.keys())
@@ -612,6 +657,13 @@ def compute_exam_topic_scores(
         )
         confidence_score = round(min(0.3 + evidence_quality * 0.7, 1.0), 3)
 
+        # Predictability is a separate axis, not a term in exam_priority_score:
+        # importance and recurrence are different claims. A topic with no year
+        # evidence (locked coverage only) gets no band rather than a made-up one.
+        pred = predictability_by_topic.get(tid)
+        predictability = round(pred["predictability"], 4) if pred else None
+        predictability_band = pred["predictability_band"] if pred else None
+
         score_components = {
             "frequency_component": round(freq_component, 4),
             "coverage_component": round(cov_component, 4),
@@ -619,6 +671,13 @@ def compute_exam_topic_scores(
             "cohort_lift": round(cohort_lift, 4),
             "cohort_prominence": round(prominence, 4),
             "cohort_weight": round(weight, 4),
+            # Kept beside the score so a reviewer can see WHY a band was given
+            # without re-deriving it. breadth is the dominant term.
+            "predictability_breadth": round(pred["breadth"], 4) if pred else None,
+            "predictability_regularity": round(pred["regularity"], 4) if pred else None,
+            "predictability_recency": round(pred["recency"], 4) if pred else None,
+            "predictability_years_asked": pred["years_asked"] if pred else 0,
+            "predictability_span_years": pred["span_years"] if pred else None,
         }
         input_summary = {
             "fingerprint": fingerprint,
@@ -647,6 +706,8 @@ def compute_exam_topic_scores(
                     "is_high_yield": is_high_yield,
                     "confidence_score": confidence_score,
                     "evidence_count": primary_counts.get(tid, 0),
+                    "predictability": predictability,
+                    "predictability_band": predictability_band,
                     "score_components": score_components,
                     "input_summary": input_summary,
                     "status": "draft",
@@ -723,7 +784,7 @@ def locked_score_snapshots(
             .select(
                 "id, topic_id, exam_priority_score, is_high_yield, "
                 "confidence_score, model_version, score_components, computed_at, "
-                "evidence_count, input_summary",
+                "evidence_count, input_summary, predictability, predictability_band",
                 count="exact",
             )
             .eq("exam_id", exam_id)
@@ -767,6 +828,10 @@ def locked_score_snapshots(
                 "score_components": r.get("score_components") or {},
                 "computed_at": r.get("computed_at"),
                 "evidence_count": r.get("evidence_count"),
+                # PRED-01: carried verbatim, never recomputed downstream — the
+                # locked snapshot is the authority for every evidence number.
+                "predictability": r.get("predictability"),
+                "predictability_band": r.get("predictability_band"),
                 # P1-1 fix (J3 PR4 checkpost): expose the snapshot's OWN input
                 # fingerprint (input_summary.fingerprint) so downstream
                 # projections (coverage_derivation.py) can build their
