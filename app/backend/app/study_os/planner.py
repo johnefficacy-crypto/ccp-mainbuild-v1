@@ -31,6 +31,7 @@ from typing import Any, Callable
 from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
+from app.exam_intelligence.priority_scale import attach_comparable_priority
 from app.exam_intelligence.lookup import (
     InactiveExamError,
     resolve_exam_by_id,
@@ -329,6 +330,11 @@ def _load_locked_coverage_checked(
             .select(
                 "id, exam_cycle_id, exam_phase_id, section_id, topic_id, "
                 "exam_priority_score, is_high_yield, confidence_score, "
+                # RANK-SCALE-01: `source_basis` says which unit system this
+                # row's score is in. Selected but never read before, which is
+                # why a derived Mains row (max 36.10) could not outrank an
+                # authored Prelims row (min 60.00).
+                "source_basis, "
                 "coverage_depth, expected_difficulty, reviewer_status",
                 count="exact",
             )
@@ -423,10 +429,17 @@ def _load_locked_coverage_checked(
                 # so every caller saw rows with no section identity at all.
                 "section_id": r.get("section_id"),
                 "coverage_priority": _num(r.get("exam_priority_score")),
+                "source_basis": r.get("source_basis"),
                 "is_high_yield": bool(r.get("is_high_yield")),
                 "confidence_score": r.get("confidence_score"),
             }
         )
+    # RANK-SCALE-01: this read is exam-wide, so it mixes v2.0-derived rows with
+    # hand-authored ones. Attach each row's standing WITHIN its own basis; the
+    # raw `coverage_priority` is left untouched beside it.
+    attach_comparable_priority(
+        out, score_key="coverage_priority", out_key="comparable_priority"
+    )
     return out, reads_ok
 
 
@@ -869,7 +882,14 @@ def _score_topic(
     Confidence modulates the snapshot component — low-confidence snapshots
     contribute less; when confidence is absent it defaults to 1.0 (full weight).
     """
-    coverage_priority = cov["coverage_priority"]
+    # RANK-SCALE-01: rank on the cross-basis-comparable standing, not the raw
+    # column. `coverage_w * raw` gave an authored 0-100 row roughly ten times
+    # the coverage term of a derived 0-36 one, whatever the evidence said.
+    # Falls back to the raw value when nothing attached a comparable one, so a
+    # caller that builds rows by hand still scores.
+    coverage_priority = cov.get("comparable_priority")
+    if coverage_priority is None:
+        coverage_priority = cov["coverage_priority"]
     mastery_gap = (100.0 - mastery) if mastery is not None else 55.0
     pyq_factor = min(20.0, pyq_count * 5.0)
     snapshot_component = (
@@ -997,6 +1017,7 @@ def _build_tasks(
         prior_band = prior_entry.get("band") if prior_entry else None
         why = {
             "coverage_priority": cov["coverage_priority"],
+            "comparable_priority": cov.get("comparable_priority"),
             "verified_pyq_count": cov["_pyq_count"],
             "mastery_score": cov["_mastery"],
             "mastery_gap": cov["_mastery_gap"],

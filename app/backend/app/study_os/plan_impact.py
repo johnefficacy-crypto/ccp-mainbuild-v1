@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
+from app.exam_intelligence.priority_scale import attach_comparable_priority
 
 logger = logging.getLogger("career_copilot.study_os.plan_impact")
 
@@ -45,7 +46,12 @@ def _num(value: Any, default: float = 0.0) -> float:
 
 
 def _exam_level_score(coverage_priority: float, pyq_count: int, high_yield: bool) -> float:
-    """User-independent planner score component (see module docstring)."""
+    """User-independent planner score component (see module docstring).
+
+    RANK-SCALE-01: *coverage_priority* here is the cross-basis-comparable
+    standing, not the raw column — this ranks an exam-wide set that mixes
+    v2.0-derived rows (max 36.10) with hand-authored ones (min 60.00).
+    """
     pyq_factor = min(20.0, pyq_count * 5.0)
     high_yield_bonus = 10.0 if high_yield else 0.0
     return round(0.50 * coverage_priority + pyq_factor + high_yield_bonus, 2)
@@ -79,7 +85,8 @@ def _locked_rows(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
             lambda: (
                 supabase.table("exam_topic_coverage")
                 .select(
-                    "id, topic_id, exam_priority_score, is_high_yield, reviewer_status"
+                    "id, topic_id, exam_priority_score, is_high_yield, "
+                    "source_basis, reviewer_status"
                 )
                 .eq("exam_id", exam_id)
                 .eq("reviewer_status", "locked")
@@ -119,7 +126,7 @@ def _rank(rows: list[dict[str, Any]], pyq_counts: dict[str, int], names: dict[st
     for r in rows:
         tid = r.get("topic_id")
         score = _exam_level_score(
-            _num(r.get("exam_priority_score")),
+            _num(r.get("comparable_priority"), _num(r.get("exam_priority_score"))),
             int(pyq_counts.get(tid, 0)),
             bool(r.get("is_high_yield")),
         )
@@ -188,6 +195,12 @@ def compute_plan_impact(supabase: Any, coverage_id: str) -> dict[str, Any]:
     )
     names = _topic_names(supabase, topic_ids)
 
+    # RANK-SCALE-01: percentile standing is relative to the set it is measured
+    # in, so before/after must share one reference or the delta would pick up a
+    # change of denominator rather than a change of priority.
+    reference = attach_comparable_priority(list(locked) + list(after_rows))
+    attach_comparable_priority(locked, reference=reference)
+    attach_comparable_priority(after_rows, reference=reference)
     before = _rank(locked, pyq_counts, names)
     after = _rank(after_rows, pyq_counts, names)
 
