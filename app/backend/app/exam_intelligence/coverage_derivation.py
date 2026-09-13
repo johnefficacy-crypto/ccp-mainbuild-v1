@@ -128,26 +128,59 @@ def _paginate(
     table: str | None = None,
     operation: str | None = None,
 ) -> list[dict[str, Any]] | None:
-    """Fetch all rows using range-based pagination.
+    """Fetch every row of a read using ordered, verified range pagination.
 
-    Returns ``None`` if any page read fails (caller must treat this as a
-    read error — fail-closed, mirrors ``score_snapshots.py``).
+    ``build_query(from_n, to_n)`` must return the PostgREST *response* for the
+    inclusive ``[from_n, to_n]`` window, and the query it builds MUST carry a
+    total ``.order(...)`` ending on the unique ``id`` column and
+    ``count="exact"`` on ``.select(...)``.
+
+    Range paging without a total order is undefined in Postgres — each window
+    is a separate query, so rows can repeat across pages while others never
+    appear, and the read still reports success. Here that means a short
+    ``_verified_syllabus_mention_counts`` map (topics silently dropped from
+    the derivation's work list) or a short ``_existing_coverage_rows`` /
+    reconcile read (a row treated as absent, so an insert is attempted, or a
+    stale owned row never reconciled). ``count="exact"`` is the completeness
+    proof, since a page short of ``_PAGE`` is indistinguishable from the end
+    of the set by length alone.
+
+    Returns ``None`` if any page read fails, if the driver reports no exact
+    count, or if the rows collected do not match it (caller must treat this
+    as a read error — fail-closed, mirrors ``score_snapshots.py``).
     """
     all_rows: list[dict[str, Any]] = []
     offset = 0
+    exact_total: int | None = None
     while True:
-        rows = _safe(
+        resp = _safe(
             lambda o=offset: build_query(o, o + _PAGE - 1),
             default=None,
             table=table,
             operation=operation,
         )
-        if rows is None:
+        if resp is None:
             return None
+        rows = list(getattr(resp, "data", None) or [])
+        count = getattr(resp, "count", None)
+        if count is not None:
+            exact_total = int(count)
         all_rows.extend(rows)
         if len(rows) < _PAGE:
             break
         offset += _PAGE
+
+    if exact_total is None or len(all_rows) != exact_total:
+        logger.error(
+            "coverage_derivation paginated read is incomplete",
+            extra={
+                "operation": operation or "read",
+                "table": table,
+                "rows_collected": len(all_rows),
+                "rows_expected": exact_total,
+            },
+        )
+        return None
     return all_rows
 
 
@@ -248,10 +281,10 @@ def _verified_syllabus_mention_counts(
     Returns ``None`` on any read failure (fail-closed).
     """
 
-    def _page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("syllabus_topic_mentions")
-            .select("topic_id")
+            .select("id, topic_id", count="exact")
             .eq("exam_id", exam_id)
             .eq("reviewer_status", "verified")
         )
@@ -259,7 +292,7 @@ def _verified_syllabus_mention_counts(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.range(from_n, to_n).execute().data
+        return q.order("id").range(from_n, to_n).execute()
 
     rows = _paginate(_page, table="syllabus_topic_mentions", operation="select_verified")
     if rows is None:
@@ -290,14 +323,15 @@ def _existing_coverage_rows(
     rows: list[dict[str, Any]] = []
     for chunk in [topic_ids[i : i + _BATCH] for i in range(0, len(topic_ids), _BATCH)]:
 
-        def _page(from_n: int, to_n: int, c: list[str] = chunk) -> list[dict[str, Any]]:
+        def _page(from_n: int, to_n: int, c: list[str] = chunk) -> Any:
             q = (
                 sb.table("exam_topic_coverage")
                 .select(
                     "id, topic_id, exam_id, exam_cycle_id, exam_phase_id, "
                     "source_basis, model_version, reviewer_status, "
                     "exam_priority_score, is_high_yield, confidence_score, "
-                    "coverage_depth, metadata"
+                    "coverage_depth, metadata",
+                    count="exact",
                 )
                 .eq("exam_id", exam_id)
                 .in_("topic_id", c)
@@ -307,7 +341,7 @@ def _existing_coverage_rows(
                 q = q.eq("exam_phase_id", exam_phase_id)
             else:
                 q = q.is_("exam_phase_id", None)
-            return q.range(from_n, to_n).execute().data
+            return q.order("id").range(from_n, to_n).execute()
 
         batch = _paginate(_page, table="exam_topic_coverage", operation="select_existing")
         if batch is None:
@@ -474,12 +508,13 @@ def _reconcile_stale_owned_rows(
     error).
     """
 
-    def _page(from_n: int, to_n: int) -> list[dict[str, Any]]:
+    def _page(from_n: int, to_n: int) -> Any:
         q = (
             sb.table("exam_topic_coverage")
             .select(
                 "id, topic_id, exam_id, exam_cycle_id, exam_phase_id, "
-                "source_basis, model_version, reviewer_status, metadata"
+                "source_basis, model_version, reviewer_status, metadata",
+                count="exact",
             )
             .eq("exam_id", exam_id)
             .eq("source_basis", _EVIDENCE_DERIVED_BASIS)
@@ -490,7 +525,7 @@ def _reconcile_stale_owned_rows(
             q = q.eq("exam_phase_id", exam_phase_id)
         else:
             q = q.is_("exam_phase_id", None)
-        return q.range(from_n, to_n).execute().data
+        return q.order("id").range(from_n, to_n).execute()
 
     rows = _paginate(_page, table="exam_topic_coverage", operation="select_owned_for_reconcile")
     if rows is None:

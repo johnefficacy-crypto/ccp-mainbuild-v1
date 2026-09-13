@@ -153,7 +153,12 @@ def test_safe_logs_undefined_column_at_error_level(caplog):
 
     with caplog.at_level("WARNING", logger="career_copilot.exam_intelligence.coverage"):
         rows = locked_topic_coverage_summary(_BrokenColumn(), "exam-1")
-    assert rows == []
+    # `None`, not `[]`. A failed read must not be indistinguishable from "this
+    # exam has no locked coverage" — that equivalence is what let a truncated
+    # read reach the planner as a plausible-looking answer. Callers that want
+    # to degrade still spell it `or []` at the call site, where the choice is
+    # visible.
+    assert rows is None
     matching = [r for r in caplog.records if r.name == "career_copilot.exam_intelligence.coverage"]
     assert matching, "expected at least one log record"
     rec = matching[0]
