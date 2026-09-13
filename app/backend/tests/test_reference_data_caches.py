@@ -59,20 +59,20 @@ class _CountingSupabase:
 
 
 def test_resolve_exam_by_slug_caches_within_ttl():
-    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC"}]})
+    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}]})
     lookup_module.invalidate_exam_lookup_cache()
     a = lookup_module.resolve_exam_by_slug(sb, "ssc")
     b = lookup_module.resolve_exam_by_slug(sb, "ssc")
-    assert a == b == {"id": "x1", "slug": "ssc", "name": "SSC"}
+    assert a == b == {"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}
     assert sb.counts["exams"][0] == 1
 
 
 def test_resolve_exam_by_id_caches_within_ttl():
-    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC"}]})
+    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}]})
     lookup_module.invalidate_exam_lookup_cache()
     a = lookup_module.resolve_exam_by_id(sb, "x1")
     b = lookup_module.resolve_exam_by_id(sb, "x1")
-    assert a == b == {"id": "x1", "slug": "ssc", "name": "SSC"}
+    assert a == b == {"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}
     assert sb.counts["exams"][0] == 1
 
 
@@ -85,7 +85,7 @@ def test_list_active_exams_caches_within_ttl():
 
 
 def test_invalidate_exam_lookup_cache_forces_refetch():
-    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC"}]})
+    sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}]})
     lookup_module.invalidate_exam_lookup_cache()
     lookup_module.resolve_exam_by_slug(sb, "ssc")
     lookup_module.invalidate_exam_lookup_cache()

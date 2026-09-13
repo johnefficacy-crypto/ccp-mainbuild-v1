@@ -16,6 +16,44 @@ from cachetools import TTLCache
 logger = logging.getLogger("career_copilot.exam_intelligence.lookup")
 
 
+class InactiveExamError(RuntimeError):
+    """A resolver was asked for an exam whose ``is_active`` is not True.
+
+    Raised instead of returning the row, so a retired or sandbox exam can
+    never reach a surface that builds learner-facing output from it. The
+    planner in particular resolved by id alone and would happily build a full
+    study plan from a ``[SANDBOX - DO NOT USE]`` exam's locked coverage.
+
+    Deliberately NOT a silent ``None``: "this exam is retired" and "this user
+    has no target exam" are different failures with different fixes, and
+    collapsing them hides the first behind the second.
+
+    Callers that legitimately inspect retired exams (admin/diagnostic reads)
+    pass ``allow_inactive=True`` and never see this.
+    """
+
+    def __init__(self, exam_id: Any = None, slug: Any = None) -> None:
+        self.exam_id = exam_id
+        self.slug = slug
+        super().__init__(f"exam is not active (id={exam_id!r}, slug={slug!r})")
+
+
+def _reject_if_inactive(
+    row: dict[str, Any], *, allow_inactive: bool
+) -> dict[str, Any]:
+    """Return *row*, or raise :class:`InactiveExamError` when it is retired.
+
+    Fail-closed on anything that is not exactly ``True``. ``exams.is_active``
+    is ``boolean not null default true`` (migration 030), so a real row always
+    carries a bool; the strict check also covers a row that reached us without
+    the column (a narrowed ``select``, a test stub) rather than treating a
+    missing flag as permission.
+    """
+    if allow_inactive or row.get("is_active") is True:
+        return row
+    raise InactiveExamError(exam_id=row.get("id"), slug=row.get("slug"))
+
+
 def _safe(call: Callable[[], Any], default: Any = None) -> Any:
     try:
         return call()
@@ -74,13 +112,24 @@ def invalidate_exam_lookup_cache() -> None:
     _EXAM_CACHE.clear()
 
 
-def resolve_exam_by_slug(supabase: Any, slug: str) -> dict[str, Any] | None:
+def resolve_exam_by_slug(
+    supabase: Any, slug: str, *, allow_inactive: bool = False
+) -> dict[str, Any] | None:
+    """Resolve one exam by slug. ``None`` when no such row exists.
+
+    Raises :class:`InactiveExamError` when the row exists but is retired,
+    unless ``allow_inactive=True``. The cache stores the row either way, so
+    the guard is applied per call and two callers with different permissions
+    share one cached read.
+    """
     if not slug:
         return None
     key = ("slug", slug)
     cached = _EXAM_CACHE.get(key)
     if cached is not None:
-        return None if cached == _MISSING else cached
+        if cached == _MISSING:
+            return None
+        return _reject_if_inactive(cached, allow_inactive=allow_inactive)
     rows = _safe(
         lambda: (
             supabase.table("exams")
@@ -94,16 +143,27 @@ def resolve_exam_by_slug(supabase: Any, slug: str) -> dict[str, Any] | None:
     ) or []
     value = rows[0] if rows else _MISSING
     _EXAM_CACHE[key] = value
-    return None if value is _MISSING else value
+    if value is _MISSING:
+        return None
+    return _reject_if_inactive(value, allow_inactive=allow_inactive)
 
 
-def resolve_exam_by_id(supabase: Any, exam_id: str) -> dict[str, Any] | None:
+def resolve_exam_by_id(
+    supabase: Any, exam_id: str, *, allow_inactive: bool = False
+) -> dict[str, Any] | None:
+    """Resolve one exam by id. ``None`` when no such row exists.
+
+    Raises :class:`InactiveExamError` when the row exists but is retired,
+    unless ``allow_inactive=True``. See :func:`resolve_exam_by_slug`.
+    """
     if not exam_id:
         return None
     key = ("id", exam_id)
     cached = _EXAM_CACHE.get(key)
     if cached is not None:
-        return None if cached == _MISSING else cached
+        if cached == _MISSING:
+            return None
+        return _reject_if_inactive(cached, allow_inactive=allow_inactive)
     rows = _safe(
         lambda: (
             supabase.table("exams")
@@ -117,7 +177,9 @@ def resolve_exam_by_id(supabase: Any, exam_id: str) -> dict[str, Any] | None:
     ) or []
     value = rows[0] if rows else _MISSING
     _EXAM_CACHE[key] = value
-    return None if value is _MISSING else value
+    if value is _MISSING:
+        return None
+    return _reject_if_inactive(value, allow_inactive=allow_inactive)
 
 
 def list_active_exams(supabase: Any, limit: int | None = None) -> list[dict[str, Any]]:

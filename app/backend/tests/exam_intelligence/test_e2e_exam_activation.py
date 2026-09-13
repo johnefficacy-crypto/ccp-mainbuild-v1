@@ -47,7 +47,11 @@ def test_exam_activation_empty_to_planner_ready(monkeypatch):
 
     # 1. registry
     fam = post("exam-families", {"slug": "ssc", "name": "SSC"})
-    exam = post("exams", {"slug": "ssc-cgl", "name": "SSC CGL", "exam_family_id": fam["id"]})
+    # ``is_active`` is explicit because the in-memory stub does not apply the
+    # ``boolean not null default true`` that migration 030 gives the real
+    # column, and the planner now refuses an exam whose flag is not True.
+    exam = post("exams", {"slug": "ssc-cgl", "name": "SSC CGL",
+                          "exam_family_id": fam["id"], "is_active": True})
     post("exam-cycles", {"exam_id": exam["id"], "year": 2026, "cycle_name": "2026", "status": "open"})
     phase = post("exam-phases", {"exam_id": exam["id"], "phase_name": "Tier 1", "phase_slug": "tier-1", "status": "active"})
     # 2-3. taxonomy: subject + topic + microtopic-under-topic

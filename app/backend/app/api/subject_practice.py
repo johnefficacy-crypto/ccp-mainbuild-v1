@@ -25,6 +25,7 @@ from app.api.writing_practice import create_learning_session
 from app.core.auth import get_current_user
 from app.current_affairs.attempts import start_weekly_current_affairs_attempt
 from app.db.supabase_client import get_supabase_admin
+from app.exam_intelligence.lookup import InactiveExamError
 from app.study_os.calc_gym import create_session as create_calc_gym_session
 from app.study_os.planner import _resolve_target_exam
 from app.study_os.pyq_practice import PracticeInputError, start_pyq_practice
@@ -72,7 +73,19 @@ def start_subject_practice(
 ) -> dict:
     user_id = user.get("id")
     supabase = get_supabase_admin()
-    target = _resolve_target_exam(supabase, user_id)
+    try:
+        target = _resolve_target_exam(supabase, user_id)
+    except InactiveExamError as exc:
+        # Retired/sandbox target exam. Fail closed with a client-correctable
+        # 422 rather than starting practice against do-not-use content.
+        logger.info(
+            "subject practice: refusing inactive exam user=%s exam_id=%s",
+            user_id,
+            exc.exam_id,
+        )
+        raise HTTPException(
+            status_code=422, detail="target exam is not active"
+        ) from exc
     exam_id = target.get("id") if target else None
 
     # Registry-driven dispatch (GQR-1): the mode must be a wired runtime mode in the

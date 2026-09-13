@@ -751,16 +751,38 @@ def list_topic_coverage(
         raise HTTPException(status_code=400, detail="Invalid status filter")
     sb = get_supabase_admin()
 
-    def _builder():
-        q = sb.table("exam_topic_coverage").select(_TOPIC_COVERAGE_COLUMNS)
+    def _filtered(select_cols: str, **kw: Any):
+        q = sb.table("exam_topic_coverage").select(select_cols, **kw)
         if exam_id:
             q = q.eq("exam_id", exam_id)
         if status != "all":
             q = q.eq("reviewer_status", status)
-        return q.order("created_at", desc=True).limit(limit + offset).execute().data
+        return q
 
-    rows = _safe(_builder, default=[]) or []
-    page = rows[offset : offset + limit]
+    # Range-paginate. The previous read was `.limit(limit + offset)` followed
+    # by a Python slice, but PostgREST caps every select at `db-max-rows`
+    # (`max_rows = 1000`, app/supabase/config.toml:18). Any request whose
+    # `limit + offset` exceeded 1000 therefore received 1000 rows, the slice
+    # landed past the end, and the caller got an empty page with no error —
+    # observed live against UPSC CSE Mains (1 320 coverage rows). Letting the
+    # database do the slicing removes the ceiling entirely.
+    resp = _safe(
+        lambda: (
+            _filtered(_TOPIC_COVERAGE_COLUMNS, count="exact")
+            .order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
+            .execute()
+        ),
+        default=None,
+    )
+    total_count = getattr(resp, "count", None)
+    raw = list(getattr(resp, "data", None) or [])
+    if total_count is None:
+        # Legacy test stubs treat `.range()`/`count` as no-ops; emulate the
+        # window so their fixtures keep exercising the mapping below.
+        page = raw[offset : offset + limit]
+    else:
+        page = raw
 
     topic_ids = list({r.get("topic_id") for r in page if r.get("topic_id")})
     exam_ids = list({r.get("exam_id") for r in page if r.get("exam_id")})
@@ -838,7 +860,16 @@ def list_topic_coverage(
                 "reviewed_at": r.get("reviewed_at"),
             }
         )
-    return {"items": items, "count": len(rows)}
+    # `count` keeps its historical meaning — the number of rows the read had
+    # walked through, i.e. `offset + len(page)`, which is what the old
+    # `len(rows)` evaluated to whenever the server cap was not hit. Callers
+    # that want a real total read `total_count` (added here, not repurposed).
+    walked = offset + len(page)
+    return {
+        "items": items,
+        "count": walked,
+        "total_count": total_count if total_count is not None else walked,
+    }
 
 
 # ─── 3c. Topic coverage lifecycle review ──────────────────────────────────
