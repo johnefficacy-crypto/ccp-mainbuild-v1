@@ -339,3 +339,55 @@ settle it, and they also decide how urgent D11 is:
    from public.user_topic_mastery
    group by 1,2;
    ```
+
+---
+
+## Live probe results — 2026-09-13
+
+Operator ran all three queries above.
+
+| Probe | Result |
+|---|---|
+| 1. (user, topic) pairs holding both a global and a scoped row | **0** |
+| 2. Half-scoped rows (`exam_id` set, `exam_phase_id` NULL) | **no rows** |
+| 3. Row counts grouped by scope shape | **no rows** |
+
+Probe 3 carries no `WHERE` and no user filter, so an empty result means the
+**table itself is empty**: `public.user_topic_mastery` holds zero rows. That
+subsumes probes 1 and 2.
+
+### What this changes
+
+- **The MASTERY-W1-01 collision is hypothetical, not active.** No user has a
+  mastery row, so no accumulated value has been overwritten. D11, D12 and D13
+  are real defects in the code but have never fired against data.
+- **The scope decision is greenfield.** Choosing §4 or §5 costs no backfill and
+  no data migration today. That stops being true at the first live write.
+- **W2 creates the first row by default.** The RPC inserts the global row seeded
+  at 50 (`145:96-99`) on any live attempt; W1 writes only when a user reviews an
+  offline mock carrying `topic_breakdowns`. Absent a decision, the global row
+  wins by inaction.
+- **Two live consequences of the emptiness**, independent of the scope question:
+  every topic currently scores with the 55-point cold-start gap
+  (`_score_topic`, `planner.py:874`), and
+  `calibration.resolve_required_subjects` (`calibration.py:222-236`) finds no
+  validated mastery for any user, so the gate treats every subject as required.
+
+### Still unconfirmed
+
+An empty table and a failed/permission-blocked read look identical from a
+`GROUP BY`. One query separates them and also says whether either writer has
+ever run end to end:
+
+```sql
+select
+  (select count(*) from public.user_topic_mastery)       as mastery_rows,
+  (select count(*) from public.user_topic_mastery_audit) as audit_rows,
+  (select count(*) from public.mock_topic_breakdowns)    as breakdown_rows,
+  (select count(*) from public.mock_mastery_shadow)      as shadow_rows;
+```
+
+`shadow_rows` is expected to be 127. `audit_rows = 0` would mean W2 has never
+written live despite `FF_MOCK_MASTERY_WRITES=live`; `breakdown_rows = 0` would
+mean W1 has never had input, i.e. the manual-review path has never run end to
+end — which should be established before building on it.
