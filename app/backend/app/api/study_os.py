@@ -279,6 +279,8 @@ async def set_target_exam(
         .data
         or []
     )
+    previous_exam: str | None = None
+    archived_plan_id: str | None = None
     if active:
         p = active[0]
         prev = p.get("exam_id") or p.get("target_exam")
@@ -291,6 +293,8 @@ async def set_target_exam(
             from datetime import datetime, timezone
             today = datetime.now(timezone.utc).date().isoformat()
             supabase.table("study_plans").update({"status": "archived", "end_date": today}).eq("id", p["id"]).execute()
+            previous_exam = str(prev)
+            archived_plan_id = str(p.get("id"))
     supabase.table("profiles").update({"target_exam": exam_id}).eq("id", user_id).execute()
     pref = (
         supabase.table("aspirant_preferences").select("id,target_exams").eq("user_id", user_id).limit(1).execute().data
@@ -299,7 +303,56 @@ async def set_target_exam(
     cur = list((pref[0].get("target_exams") if pref else []) or [])
     next_exams = [exam.get("slug")] + [x for x in cur if x != exam.get("slug")]
     supabase.table("aspirant_preferences").upsert({"user_id": user_id, "target_exams": next_exams}, on_conflict="user_id").execute()
-    return {"ok": True, "selected_exam": {"id": exam["id"], "slug": exam.get("slug"), "name": exam.get("name")}}
+
+    # D5 — regenerate for the NEW exam before returning.
+    #
+    # ``archived`` is terminal: nothing in the repo ever writes study_plans.status
+    # back to 'active' (the only writer of 'active' is the planner's own INSERT in
+    # _persist), and BOTH regeneration entry points require an active plan —
+    # regenerate_stale_plans filters .eq("status","active") and regenerate_on_signal
+    # returns no_active_plan. So a switch that archives without regenerating leaves
+    # the user with zero active plans and no automatic route back; that is what
+    # stopped this platform planning for two months.
+    #
+    # Strictly AFTER both the profiles and aspirant_preferences writes: the planner
+    # resolves the target exam from profiles, so running earlier would rebuild the
+    # plan for the exam the user just left. The old plan is never resurrected — the
+    # planner INSERTs a fresh row for the new exam.
+    #
+    # Best-effort by contract: the switch is the user's request and has already
+    # succeeded. Generation never fails it; the outcome is reported, not swallowed.
+    plan_outcome: dict[str, Any] = {"created": False, "reason": "error"}
+    try:
+        envelope = _apply_plan_envelope(supabase, user_id)
+        created = bool(envelope.get("generated") or envelope.get("applied"))
+        plan_outcome = {
+            "created": created,
+            # Verbatim planner vocabulary — calibration_required, no_locked_coverage,
+            # planner_activation_disabled, ... Never a string invented here.
+            "reason": None if created else (envelope.get("reason") or "error"),
+        }
+    except Exception:  # noqa: BLE001 — a generation fault must not fail the switch
+        logger.exception(
+            "target-exam switch: plan regeneration failed for user=%s new_exam=%s",
+            user_id,
+            exam_id,
+        )
+
+    logger.info(
+        "target-exam switch user=%s old_exam=%s new_exam=%s archived_plan=%s "
+        "plan_created=%s reason=%s",
+        user_id,
+        previous_exam,
+        exam_id,
+        archived_plan_id,
+        plan_outcome["created"],
+        plan_outcome["reason"],
+    )
+    return {
+        "ok": True,
+        "selected_exam": {"id": exam["id"], "slug": exam.get("slug"), "name": exam.get("name")},
+        "plan": plan_outcome,
+    }
 
 
 @router.get("/tracked-exams")
@@ -723,22 +776,44 @@ async def post_plan_draft(user: dict = Depends(get_current_user)) -> dict[str, A
     return compute_draft_plan(supabase, user_id, expected_exam_id=exam_id)
 
 
+def _apply_plan_envelope(supabase: Any, user_id: str) -> dict[str, Any]:
+    """Run the ``/plan/apply`` preconditions and the planner, returning the envelope.
+
+    Extracted so the exam-switch regeneration (D5) reuses this exact path rather
+    than duplicating the preconditions or issuing an internal HTTP call. Returns
+    the planner's in-band envelope untouched — including the calibration gate's
+    ``calibration_required`` payload, which is a legitimate outcome and not a
+    failure. Translating an envelope to HTTP stays the route's job.
+
+    Still raises ``HTTPException`` for the two precondition faults the route
+    already surfaced: a missing canonical target (400) and an undeterminable
+    calibration gate (503). Callers that must not fail on those catch them.
+    """
+    _require_canonical_target(supabase, user_id)
+    gate, exam_id = _calibration_gate_response(supabase, user_id)
+    if gate is not None:
+        return gate
+    return apply_plan(supabase, user_id, expected_exam_id=exam_id)
+
+
 @router.post("/plan/apply")
 async def post_plan_apply(user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """Apply the deterministic plan candidate to the active plan."""
     user_id = user.get("id")
     supabase = get_supabase_admin()
-    _require_canonical_target(supabase, user_id)
-    gate, exam_id = _calibration_gate_response(supabase, user_id)
-    if gate is not None:
-        return gate
     try:
-        result = apply_plan(supabase, user_id, expected_exam_id=exam_id)
+        result = _apply_plan_envelope(supabase, user_id)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
         logger.exception("plan apply failed for %s", user_id)
         raise HTTPException(status_code=500, detail="Plan apply is temporarily unavailable.")
+    if result.get("calibration_required"):
+        # The gate short-circuits with HTTP 200 and its own envelope — unchanged
+        # from before the extraction. ``calibration_required`` is deliberately
+        # NOT in _PLAN_UNPROCESSABLE_REASONS, so routing it through
+        # _raise_for_plan_failure would turn a 200 interstitial into a 500.
+        return result
     return _raise_for_plan_failure(result)
 
 
