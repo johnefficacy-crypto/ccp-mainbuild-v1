@@ -42,7 +42,12 @@ def _seed(
     *,
     with_mock_tests: bool = True,
     error_type: str | None = "concept_gap",
-    n: int = 3,
+    # Five, not three. Three of this file's tests also assert the mastery write
+    # (audit row / shadow row) alongside the 063 correction payload, and
+    # MASTERY-GATE-01 refuses an attempt with fewer than 5 answered questions.
+    # Sample size is not what any of them is testing, so the fixture is
+    # re-seeded above the floor; no assertion changed.
+    n: int = 5,
     pinned_mastery_flag: str | None = None,
 ) -> None:
     sb.db["mock_attempts"] = [{"id": ATTEMPT, "user_id": USER}]
