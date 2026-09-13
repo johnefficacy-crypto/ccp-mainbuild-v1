@@ -9,10 +9,14 @@ allowed to reach the cap at all.
 
 Two floors, both on answered counts, both REFUSING rather than discounting:
 
-  * attempt floor — fewer than 5 answered questions → no delta derivation at
-    all, so no live write and no shadow row;
+  * attempt floor — fewer than 5 answered questions → the whole delta set is
+    dropped, so no live write and no shadow row;
   * topic floor — inside an attempt that clears, a topic backed by fewer than 2
     answered questions contributes no delta; its siblings are untouched.
+
+Both floors are MASTERY-ONLY. Derivation still runs, and the corrections and
+error patterns derived from the same analytics are never suppressed: an error
+is evidence at n=1, a rate estimate is not.
 
 The attempt itself is never modified: it still persists, still scores, still
 appears in history. Stub-only (in-memory SBStub); no live DB.
@@ -262,3 +266,44 @@ def test_topic_floor_also_applies_in_shadow_mode():
     assert _shadow_topics(sb) == {"t-a", "t-b"}
     # Shadow mode never writes live mastery, gate or no gate.
     assert sb.db["user_topic_mastery_audit"] == []
+
+
+# ── 7. the floors are mastery-only ────────────────────────────────────────────
+
+def test_refused_attempt_still_writes_corrections_and_error_patterns():
+    """An error is evidence at n=1; a rate estimate is not.
+
+    The attempt floor drops the deltas but never the error/correction signals —
+    ``error_signal`` is a flat 10.0 in the planner's ``_score_topic``, wider than
+    the top-eight score spread, so suppressing those would move the plan further
+    than the mastery gate does.
+    """
+    sb = SBStub(_base_db())
+    _seed(sb, answered=[("q-1", "t-a", False), ("q-2", "t-a", False)], blanks=[])
+    _run(sb)
+
+    assert mw.mastery_gate_metrics["attempt_floor_refused"] == 1
+    assert sb.db["mock_mastery_shadow"] == []
+    assert sb.db["user_topic_mastery_audit"] == []
+    # ...but the evidence of the two wrong answers survives.
+    assert {r["topic_id"] for r in sb.db["user_topic_error_patterns"]} == {"t-a"}
+    assert any(c["topic"] == "t-a" for c in sb.db["mock_correction_tasks"])
+
+
+def test_topic_floor_refusal_also_keeps_its_corrections():
+    """Same rule one level down: a single-answer topic still reports its error."""
+    sb = SBStub(_base_db())
+    _seed(
+        sb,
+        answered=[("q-a1", "t-a", True), ("q-a2", "t-a", True), ("q-a3", "t-a", True),
+                  ("q-a4", "t-a", True), ("q-b1", "t-b", False)],
+        blanks=[],
+    )
+    _run(sb)
+
+    # t-b is refused for mastery...
+    assert _shadow_topics(sb) == {"t-a"}
+    assert _audit_topics(sb) == {"t-a"}
+    assert mw.mastery_gate_metrics["topic_floor_refused"] == 1
+    # ...and still reports its single wrong answer as an error pattern.
+    assert any(r["topic_id"] == "t-b" for r in sb.db["user_topic_error_patterns"])

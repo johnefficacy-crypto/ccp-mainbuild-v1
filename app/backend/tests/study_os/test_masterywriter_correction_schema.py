@@ -42,10 +42,7 @@ def _seed(
     *,
     with_mock_tests: bool = True,
     error_type: str | None = "concept_gap",
-    # Five, not three: MASTERY-GATE-01's attempt floor refuses an attempt with
-    # fewer than 5 answered questions before any derivation runs, corrections
-    # included. These tests are about the 063 payload shape, not sample size.
-    n: int = 5,
+    n: int = 3,
     pinned_mastery_flag: str | None = None,
 ) -> None:
     sb.db["mock_attempts"] = [{"id": ATTEMPT, "user_id": USER}]

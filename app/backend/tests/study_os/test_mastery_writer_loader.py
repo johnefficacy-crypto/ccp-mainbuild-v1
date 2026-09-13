@@ -90,23 +90,16 @@ def test_attempted_flag_tracks_selected_option_id():
 # ── 2. answered topic moves mastery; untouched frozen topic does not ───────────
 
 def test_only_answered_topic_gets_mastery_and_shadow():
-    # Five answered questions in one topic: the point of this test is the
-    # answered/frozen split, so the fixture carries enough answers to clear
-    # MASTERY-GATE-01's floors (5 per attempt, 2 per topic) and keep that split
-    # the only thing under test.
     sb = SBStub(_base_db())
     sb.db["mock_attempt_responses"] = [
-        _response(f"q-ans{i}", T_ANSWERED, selected="opt-1", is_correct=True)
-        for i in range(5)
-    ] + [
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
         # Two untouched frozen rows in a different topic — never answered.
         _response("q-f1", T_FROZEN, selected=None, is_correct=False),
         _response("q-f2", T_FROZEN, selected=None, is_correct=False),
     ]
     # Seed one classification row per response (simulates analytics having run).
     sb.db["mock_attempt_response_classification"] = [
-        _classification(f"q-ans{i}", "correct") for i in range(5)
-    ] + [
+        _classification("q-ans", "correct"),
         _classification("q-f1", "concept_gap"),
         _classification("q-f2", "concept_gap"),
     ]
@@ -145,23 +138,17 @@ def test_error_type_loaded_from_classification_only():
 
 def test_time_pressure_unattempted_no_mastery_but_speed_correction():
     sb = SBStub(_base_db())
-    # Five answered questions in ANOTHER topic carry the attempt past
-    # MASTERY-GATE-01's attempt floor, so the unanswered row's behaviour — no
-    # mastery, still a speed correction — is what this test measures.
     sb.db["mock_attempt_responses"] = [
         _response("q-tp", T_FROZEN, selected=None, is_correct=False),
-    ] + [
-        _response(f"q-ans{i}", T_ANSWERED, selected="opt-1", is_correct=True)
-        for i in range(5)
     ]
     sb.db["mock_attempt_response_classification"] = [
         _classification("q-tp", "time_pressure_unattempted"),
-    ] + [_classification(f"q-ans{i}", "correct") for i in range(5)]
+    ]
     asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
 
     # No mastery delta for the unattempted topic.
-    assert {r["topic_id"] for r in sb.db["mock_mastery_shadow"]} == {T_ANSWERED}
-    assert {r["topic_id"] for r in sb.db["user_topic_mastery_audit"]} == {T_ANSWERED}
+    assert sb.db["mock_mastery_shadow"] == []
+    assert sb.db["user_topic_mastery_audit"] == []
     # But a speed correction is still drafted for that topic.
     corrections = sb.db["mock_correction_tasks"]
     assert any(c["category"] == "speed_issue" and c["topic"] == T_FROZEN for c in corrections)
@@ -222,14 +209,11 @@ def test_correction_insert_is_idempotent_via_rpc():
     """Conflicts are handled inside ensure_mock_correction_drafts (ON CONFLICT DO
     NOTHING); calling process_attempt twice must not raise and must not duplicate rows."""
     db = _base_db_with_mock_test()
-    # Five answered wrong questions: enough to clear MASTERY-GATE-01's attempt
-    # floor, which gates the whole derivation (corrections included).
     db["mock_attempt_responses"] = [
-        _response(f"q-ans{i}", T_ANSWERED, selected="opt-1", is_correct=False)
-        for i in range(5)
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=False),
     ]
     db["mock_attempt_response_classification"] = [
-        _classification(f"q-ans{i}", "concept_gap") for i in range(5)
+        _classification("q-ans", "concept_gap"),
     ]
     sb = SBStub(db)
     asyncio.run(mw.MasteryWriter(sb, "live").process_attempt(ATTEMPT))
@@ -251,14 +235,11 @@ def test_correction_non_23505_propagates():
             return super().rpc(name, params)
 
     db = _base_db_with_mock_test()
-    # Five answered, per MASTERY-GATE-01's attempt floor — the RPC must be
-    # reached at all for its failure to propagate.
     db["mock_attempt_responses"] = [
-        _response(f"q-ans{i}", T_ANSWERED, selected="opt-1", is_correct=False)
-        for i in range(5)
+        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=False),
     ]
     db["mock_attempt_response_classification"] = [
-        _classification(f"q-ans{i}", "concept_gap") for i in range(5)
+        _classification("q-ans", "concept_gap"),
     ]
     sb = _NetworkFailSB(db)
     with pytest.raises(RuntimeError, match="connection refused"):

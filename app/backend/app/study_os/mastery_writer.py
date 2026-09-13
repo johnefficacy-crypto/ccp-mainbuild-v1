@@ -58,6 +58,12 @@ def _weighted_delta(base_delta: Decimal, trust_level: str) -> Decimal:
 # 0.2 still moves mastery for no reason and makes the stored number harder to
 # reason about later; zero observations of sufficient weight means zero change.
 #
+# MASTERY ONLY. Both floors drop deltas; neither suppresses error patterns or
+# correction drafts. An error is evidence at n=1 — a rate estimate is not — and
+# ``error_signal`` is a flat 10.0 in the planner's _score_topic, wider than the
+# current top-eight score spread, so suppressing error patterns on a short
+# attempt would move the plan further than the mastery gate it rode in on.
+#
 # Starting values, not derived constants — tune here, not at the call sites.
 MIN_ANSWERED_QUESTIONS_PER_ATTEMPT = 5
 MIN_ANSWERED_QUESTIONS_PER_TOPIC = 2
@@ -122,28 +128,6 @@ class MasteryWriter:
         if analytics is None:
             return
 
-        # ATTEMPT FLOOR — before derivation, deliberately. A refused attempt must
-        # produce no delta at all, in shadow or live: a shadow row is the baseline
-        # a later live flip is judged against, so a row written here would be
-        # indistinguishable from a real observation. The attempt itself is
-        # untouched — it still persists, still scores, still appears in history
-        # and still counts toward mocks taken. This gate changes only what reaches
-        # user_topic_mastery and mock_mastery_shadow.
-        answered = _answered_question_count(analytics)
-        if answered < MIN_ANSWERED_QUESTIONS_PER_ATTEMPT:
-            mastery_gate_metrics["attempt_floor_refused"] += 1
-            logger.info(
-                "mastery refused (attempt floor): attempt=%s user=%s answered=%d "
-                "minimum=%d questions=%d flag=%s — no delta derived, no shadow row",
-                attempt_id,
-                analytics.user_id,
-                answered,
-                MIN_ANSWERED_QUESTIONS_PER_ATTEMPT,
-                len(analytics.questions),
-                self.flag_state,
-            )
-            return
-
         trust_level = self._load_trust_level(attempt_id)
         current_mastery = self._load_current_mastery(analytics.user_id)
         existing_error_topics = self._load_existing_error_topics(analytics.user_id)
@@ -151,22 +135,55 @@ class MasteryWriter:
             analytics, current_mastery, existing_error_topics, source_trust=trust_level
         )
 
-        # TOPIC FLOOR — a topic backed by a single answered question is one
-        # observation, and one observation can reach the ±15 cap (see the module
-        # header). Refuse that topic's delta; every other topic in the same
-        # attempt is unaffected and its delta is byte-identical to what it would
-        # have been without this gate — nothing here rescales a surviving delta.
-        # ``MasteryDelta.attempted`` is the per-topic answered count the engine
-        # already computed (mastery_engine/mastery_delta.py:64,86); no extra read.
-        deltas = self._apply_topic_floor(attempt_id, analytics.user_id, result.mastery_deltas)
+        # ATTEMPT FLOOR — the whole delta set is dropped, but derivation still
+        # ran, so the corrections and error patterns derived from the same
+        # analytics survive. The floor sits here rather than before
+        # derive_from_analytics because those two are NOT rate estimates: an
+        # error is evidence at n=1. Placing it earlier would also suppress them,
+        # and ``error_signal`` is a flat 10.0 in the planner's _score_topic —
+        # wider than the current top-eight score spread — so that placement
+        # would change plan output more than the mastery gate itself.
+        #
+        # Nothing is written for a refused attempt: the empty list means no live
+        # write and no mock_mastery_shadow row (the payload guard in
+        # _write_shadow). The shadow table stays a clean pre-flip baseline — a
+        # row written from a smoke test would be indistinguishable from a real
+        # observation, and there is no "refused" marker in that schema.
+        answered = _answered_question_count(analytics)
+        if answered < MIN_ANSWERED_QUESTIONS_PER_ATTEMPT:
+            mastery_gate_metrics["attempt_floor_refused"] += 1
+            logger.info(
+                "mastery refused (attempt floor): attempt=%s user=%s answered=%d "
+                "minimum=%d questions=%d flag=%s — %d delta(s) dropped, no shadow "
+                "row; corrections and error patterns unaffected",
+                attempt_id,
+                analytics.user_id,
+                answered,
+                MIN_ANSWERED_QUESTIONS_PER_ATTEMPT,
+                len(analytics.questions),
+                self.flag_state,
+                len(result.mastery_deltas),
+            )
+            deltas: list[Any] = []
+        else:
+            # TOPIC FLOOR — a topic backed by a single answered question is one
+            # observation, and one observation can reach the ±15 cap (see the
+            # module header). Refuse that topic's delta; every other topic in the
+            # same attempt is unaffected and its delta is byte-identical to what
+            # it would have been without this gate — nothing here rescales a
+            # surviving delta. ``MasteryDelta.attempted`` is the per-topic
+            # answered count the engine already computed
+            # (mastery_engine/mastery_delta.py:64,86); no extra read.
+            deltas = self._apply_topic_floor(
+                attempt_id, analytics.user_id, result.mastery_deltas
+            )
 
         self._write_shadow(attempt_id, deltas, self.flag_state, trust_level)
 
         if self.flag_state == "live":
             self._apply_mastery(attempt_id, deltas, trust_level)
-            # Error patterns and corrections are NOT mastery writes and are not
-            # gated per topic: a wrong answer is still evidence of an error even
-            # when it is the only one for its topic.
+            # Never gated: a wrong answer is still evidence of an error even when
+            # it is the only one for its topic, or the only one in the attempt.
             self._apply_error_patterns(result.error_signals)
             self._draft_correction_tasks(attempt_id, result.correction_task_drafts)
 
