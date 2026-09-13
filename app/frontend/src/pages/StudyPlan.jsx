@@ -14,6 +14,12 @@ import PrePlanCalibration from "../features/study/components/PrePlanCalibration"
 // initial chunk — the timeline only loads when the "Plan changes" tab opens.
 const PlanTimelineTab = React.lazy(() => import("../features/study/components/PlanTimelineTab"));
 
+// Lazy for the same reason: the board and its palette only load when the
+// "Arrange" tab opens, so the plan page's own initial chunk is unchanged.
+const PlannerBoard = React.lazy(() =>
+  import("../features/study/components/planner-board/PlannerBoard"),
+);
+
 const STATUS_TONE = {
   completed: "sage",
   in_progress: "ink",
@@ -625,11 +631,22 @@ export default function StudyPlan() {
         onChange={setTab}
         options={[
           { value: "plan", label: "This week" },
+          { value: "arrange", label: "Arrange" },
           { value: "changes", label: "Plan changes" },
         ]}
       />
 
-      {tab === "changes" ? (
+      {tab === "arrange" ? (
+        <Suspense
+          fallback={
+            <Card>
+              <p className="text-sm text-clay-700">Loading your board…</p>
+            </Card>
+          }
+        >
+          <PlannerBoard />
+        </Suspense>
+      ) : tab === "changes" ? (
         <Suspense
           fallback={
             <Card>

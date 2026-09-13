@@ -28,6 +28,7 @@ from app.study_os.planner import apply_plan, compute_draft_plan, generate_plan
 from app.study_os import calibration
 from app.study_os import mocks as mocks_service
 from app.study_os import plan_by_subject as plan_by_subject_service
+from app.study_os import planner_board as planner_board_service
 from app.study_os import plan_timeline as plan_timeline_service
 from app.study_os import subjects as subjects_service
 from app.study_os import weekly_review as weekly_review_service
@@ -1889,3 +1890,119 @@ async def dismiss_nudge(
         logger.exception("nudge dismiss failed for %s / %s", user_id, code)
         raise HTTPException(status_code=500, detail="Could not dismiss nudge.")
     return {"ok": True, "code": code}
+
+
+# ───────────────────────── Planner board (PLAN-UI-01) ──────────────────────
+# The drag-and-drop planner surface. Two reads (the seven-day board, the
+# palette of unscheduled topics) and the three mutations PLAN-UI-01's endpoint
+# inventory found missing: place a task on a day at a position, create a
+# user-placed task from a palette topic, remove a task.
+#
+# There is deliberately no bulk-replace route that accepts a whole day. Every
+# mutation names ONE task id; the server re-reads the affected day and writes
+# the ordinals itself, so a stale client can never wipe or reorder rows it has
+# not seen. Ownership is enforced inside the service against the authenticated
+# user, because the service-role client bypasses RLS.
+
+
+def _board_error(exc: planner_board_service.BoardError) -> HTTPException:
+    return HTTPException(
+        status_code=exc.status, detail={"code": exc.code, "message": exc.message}
+    )
+
+
+class BoardPlacementBody(BaseModel):
+    """Where the user dropped one card."""
+
+    scheduled_date: str
+    position: int | None = Field(default=None, ge=0)
+
+
+class BoardCreateBody(BaseModel):
+    """A palette topic dragged onto a day."""
+
+    topic_id: str
+    scheduled_date: str
+    position: int | None = Field(default=None, ge=0)
+    task_type: str = Field(default="concept")
+
+
+@router.get("/plan/board")
+async def get_plan_board(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Today plus the next six days, each with its ordered task cards."""
+    try:
+        return planner_board_service.get_board(get_supabase_admin(), user.get("id"))
+    except planner_board_service.BoardError as exc:
+        raise _board_error(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("plan board read failed for %s", user.get("id"))
+        raise HTTPException(status_code=500, detail="The planner board is temporarily unavailable.")
+
+
+@router.get("/plan/candidates")
+async def get_plan_candidates(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Locked-coverage topics not already scheduled in the board window."""
+    try:
+        return planner_board_service.list_candidates(get_supabase_admin(), user.get("id"))
+    except planner_board_service.BoardError as exc:
+        raise _board_error(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("plan candidates read failed for %s", user.get("id"))
+        raise HTTPException(status_code=500, detail="Topics are temporarily unavailable.")
+
+
+@router.post("/plan/board/tasks")
+async def create_board_task(
+    body: BoardCreateBody, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Create a user-placed task from a palette topic."""
+    try:
+        return planner_board_service.create_user_task(
+            get_supabase_admin(),
+            user.get("id"),
+            topic_id=body.topic_id,
+            scheduled_date=body.scheduled_date,
+            position=body.position,
+            task_type=body.task_type,
+        )
+    except planner_board_service.BoardError as exc:
+        raise _board_error(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("board task create failed for %s", user.get("id"))
+        raise HTTPException(status_code=500, detail="Couldn't add that task.")
+
+
+@router.patch("/plan/board/tasks/{task_id}/placement")
+async def move_board_task(
+    task_id: str, body: BoardPlacementBody, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Move one task to a day and a position. Reorder and move are one call."""
+    try:
+        return planner_board_service.move_task(
+            get_supabase_admin(),
+            user.get("id"),
+            task_id,
+            scheduled_date=body.scheduled_date,
+            position=body.position,
+        )
+    except planner_board_service.BoardError as exc:
+        raise _board_error(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("board task move failed for %s / %s", user.get("id"), task_id)
+        raise HTTPException(status_code=500, detail="Couldn't move that task.")
+
+
+@router.delete("/plan/board/tasks/{task_id}")
+async def delete_board_task(
+    task_id: str, user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Remove one task from the board."""
+    try:
+        return planner_board_service.delete_task(
+            get_supabase_admin(), user.get("id"), task_id
+        )
+    except planner_board_service.BoardError as exc:
+        raise _board_error(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("board task delete failed for %s / %s", user.get("id"), task_id)
+        raise HTTPException(status_code=500, detail="Couldn't remove that task.")
