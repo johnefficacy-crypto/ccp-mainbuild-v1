@@ -21,6 +21,7 @@ import hashlib
 import logging
 from typing import Any
 
+from app.exam_intelligence.phase_inheritance import resolve_template_phase_id
 from app.exam_intelligence.predictability import score_paper
 
 logger = logging.getLogger("career_copilot.exam_intelligence.score_snapshots")
@@ -354,18 +355,23 @@ def compute_exam_topic_scores(
             return {**zero, "invalid_scope": True}
 
     # ── 2. Verified papers (paginated) ────────────────────────────────────
-    def _papers_page(from_n: int, to_n: int) -> Any:
-        q = (
-            sb.table("pyq_papers")
-            # `year` is what predictability is measured over. It rides the read
-            # that already runs, so the axis costs no extra round trip.
-            .select("id, year", count="exact")
-            .eq("exam_id", exam_id)
-            .eq("trust_status", "verified")
-        )
-        if exam_phase_id:
-            q = q.eq("exam_phase_id", exam_phase_id)
-        return q.order("id").range(from_n, to_n).execute()
+    def _papers_page_for(phase_id: str | None) -> Any:
+        def _page(from_n: int, to_n: int) -> Any:
+            q = (
+                sb.table("pyq_papers")
+                # `year` is what predictability is measured over. It rides the
+                # read that already runs, so the axis costs no extra round trip.
+                .select("id, year", count="exact")
+                .eq("exam_id", exam_id)
+                .eq("trust_status", "verified")
+            )
+            if phase_id:
+                q = q.eq("exam_phase_id", phase_id)
+            return q.order("id").range(from_n, to_n).execute()
+
+        return _page
+
+    _papers_page = _papers_page_for(exam_phase_id)
 
     paper_rows = _paginate(
         _papers_page,
@@ -374,6 +380,38 @@ def compute_exam_topic_scores(
     )
     if paper_rows is None:
         return {**zero, "read_error": True}
+
+    # PHASE-INHERIT-01: a cycle phase reads its template's corpus.
+    # The corpus is cycle-independent — 8,302 questions spanning 1980-2026 —
+    # and lives on the template phase, while the planner can only target a
+    # cycle phase (`exam_target_window.py:56-57` excludes null-cycle phases).
+    # So a compute scoped to the 2026 Mains phase found zero papers and wrote
+    # nothing. It now reads the template's papers and writes snapshots carrying
+    # the CYCLE phase id: reads inherit, writes never do.
+    #
+    # Only when this phase has NO papers of its own. A cycle phase that carries
+    # its own corpus uses it; mixing the two sets would double-count.
+    # Only the CORPUS inherits. Locked coverage (section 5) stays scoped to the
+    # target phase: those rows are authored or derived output owned by that
+    # phase, not cycle-independent evidence, and inheriting them would blur
+    # which phase owns what.
+    if exam_phase_id and not paper_rows:
+        template_phase_id = resolve_template_phase_id(sb, exam_id, exam_phase_id)
+        if template_phase_id:
+            logger.debug(
+                "score_snapshots: phase %s has no papers of its own; reading the "
+                "template phase %s instead. Snapshots are still written to %s.",
+                exam_phase_id,
+                template_phase_id,
+                exam_phase_id,
+            )
+            paper_rows = _paginate(
+                _papers_page_for(template_phase_id),
+                table="pyq_papers",
+                operation="select_verified_by_template_phase",
+            )
+            if paper_rows is None:
+                return {**zero, "read_error": True}
 
     paper_ids: list[str] = [r["id"] for r in paper_rows if r.get("id")]
     paper_year: dict[str, int] = {
