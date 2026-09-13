@@ -69,7 +69,11 @@ print("optional papers  : %d" % len(opt_paper_ids))
 print("optional questions: %d" % len(qs))
 
 print("fetching tags ...")
-tags = get_all(CMS + "/pyq-question-topic-tags", {})
+# The route caps a page at 200 and PostgREST caps the select at 1000, so an
+# unfiltered fetch silently sees ~8% of 13,168 tags. reviewer_status is a
+# server-side filter (admin_exam_intel_cms.py, list_pyq_question_topic_tags),
+# which keeps the pending set well under the ceiling.
+tags = get_all(CMS + "/pyq-question-topic-tags", {"reviewer_status": "pending"})
 mine = [t for t in tags
         if t.get("question_id") in qs
         and t.get("tag_role") == "primary"]
