@@ -314,13 +314,56 @@ class _RaiseOnStudyTasks(SBStub):
         return super().table(name)
 
 
+class _ScopedRaisingQuery:
+    """Proxy that raises only on the WRITING-DEDUP ``study_tasks`` read.
+
+    ``_compute_plan`` issues two ``study_tasks`` reads: the writing dedup
+    (filtered on ``launch_type``) and, since PLAN-PIN-01, today's user-placed
+    tasks (filtered on ``source``). The latter fails the whole plan closed, so a
+    stub that raises on EVERY ``study_tasks`` read no longer isolates the
+    behaviour this test is about. Scoping the failure to the ``launch_type``
+    query keeps the assertion — a dedup read failure degrades writing-task
+    generation and nothing else.
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+        self._writing_dedup = False
+
+    def select(self, *a, **k):
+        self._inner = self._inner.select(*a, **k)
+        return self
+
+    def eq(self, key, val):
+        if key == "launch_type":
+            self._writing_dedup = True
+        self._inner = self._inner.eq(key, val)
+        return self
+
+    def execute(self):
+        if self._writing_dedup:
+            raise RuntimeError("study_tasks read boom")
+        return self._inner.execute()
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+class _RaiseOnWritingDedup(SBStub):
+    def table(self, name):
+        inner = super().table(name)
+        if name != "study_tasks":
+            return inner
+        return _ScopedRaisingQuery(inner)
+
+
 def test_compute_plan_fails_closed_when_dedup_read_raises():
     db = _seed_with_english_writing()
     db["study_plans"] = [
         {"id": "plan-1", "user_id": "u-1", "status": "active",
          "current_plan_version_id": "v-0"},
     ]
-    result = planner._compute_plan(_RaiseOnStudyTasks(db), "u-1", reason="test")
+    result = planner._compute_plan(_RaiseOnWritingDedup(db), "u-1", reason="test")
     assert result["generated"] is True
     # dedup read failed -> NO writing task emitted (never risk a duplicate).
     assert [t for t in result["tasks"]

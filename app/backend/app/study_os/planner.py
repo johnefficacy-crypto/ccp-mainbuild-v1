@@ -1005,10 +1005,26 @@ def _build_tasks(
     minutes: int,
     pressure_level: str,
     exam_id: str,
+    reserved_slots: int = 0,
+    placed_topic_ids: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
+    """Build today's planner-generated tasks, planning AROUND user placements.
+
+    ``reserved_slots`` is the number of tasks the user placed for today
+    themselves (PLAN-PIN-01, ``source='user'``). They occupy real slots in the
+    day: the generator emits ``max_tasks - reserved_slots`` tasks, so a user who
+    placed 3 of an 8-task day gets 5 generated ones and 8 in total. It does NOT
+    emit a full ``max_tasks`` and push the user's placements to the bottom.
+
+    ``placed_topic_ids`` are the topics those user tasks already cover. The
+    generator skips them, so a topic the user placed is never also generated —
+    one task per topic per day.
+    """
     today = _today_iso()
     tasks: list[dict[str, Any]] = []
-    for cov in ordered[:max_tasks]:
+    budget = max(0, max_tasks - max(0, reserved_slots))
+    candidates = [c for c in ordered if str(c["topic_id"]) not in placed_topic_ids]
+    for cov in candidates[:budget]:
         task_type = cov["_task_type"]
         label = _TASK_LABEL.get(task_type, "Study")
         snap = cov.get("_snapshot")
@@ -1068,6 +1084,7 @@ def _build_tasks(
             "scheduled_date": today,
             "day_label": "Today",
             "status": "planned",
+            "source": "planner",
             "planned_minutes": minutes,
             "priority_score": cov["_priority_score"],
             "why_this_task": why,
@@ -1194,6 +1211,39 @@ def _generate_writing_tasks(
         existing_writing_topic_ids=existing,
         max_writing_tasks=_MAX_WRITING_TASKS,
     )
+
+
+def _user_placed_today(supabase: Any, user_id: str) -> list[dict[str, Any]] | object:
+    """Today's USER-PLACED tasks (``source='user'``) on the active plan.
+
+    PLAN-PIN-01. These rows are the aspirant's own arrangement. ``_persist``
+    never deletes them, and the generator plans around them: each one consumes a
+    slot out of ``max_tasks`` and blocks its topic from being generated again.
+
+    Fails **closed**: on a read error the ``_READ_FAILED`` sentinel is returned
+    and ``_compute_plan`` refuses to generate. Treating a transient error as
+    "the user placed nothing" would emit a full ``max_tasks`` of generated tasks
+    on top of placements that are still in the table — an over-full day with
+    duplicate topics, and no error on any surface.
+    """
+    plan = _active_plan(supabase, user_id)
+    if not plan:
+        return []
+    rows = _safe(
+        lambda: (
+            supabase.table("study_tasks")
+            .select("id, topic_id, scheduled_date, status")
+            .eq("plan_id", plan["id"])
+            .eq("scheduled_date", _today_iso())
+            .eq("source", "user")
+            .execute()
+            .data
+        ),
+        default=_READ_FAILED,
+    )
+    if rows is _READ_FAILED:
+        return _READ_FAILED
+    return list(rows or [])
 
 
 def _next_version_number(supabase: Any, plan_id: str) -> int:
@@ -1340,6 +1390,15 @@ def _persist(
     # plan, then insert the fresh set. Completed / in-progress tasks stay.
     # ``allow_empty=True`` because a fresh plan legitimately deletes zero
     # rows on the first apply — that is not a failure.
+    #
+    # PLAN-PIN-01: user-placed tasks (``source='user'``, migration 289) are
+    # NEVER deleted here, whatever their status. The nightly
+    # ``regenerate_stale_plans`` sweep runs this exact path, so without the
+    # guard every arrangement a user makes is destroyed at 03:00. The predicate
+    # is written NULL-safely (``source.is.null,source.neq.user``) because
+    # PostgREST's ``neq`` drops NULL rows: any row predating the migration's
+    # backfill must still be treated as planner-generated and cleared, exactly
+    # as it is today.
     cleared = safe_required(
         lambda: (
             supabase.table("study_tasks")
@@ -1347,6 +1406,7 @@ def _persist(
             .eq("plan_id", plan_id)
             .eq("scheduled_date", today)
             .eq("status", "planned")
+            .or_("source.is.null,source.neq.user")
             .execute()
         ),
         op="study_tasks.delete_today",
@@ -1681,12 +1741,29 @@ def _compute_plan(
             max(phase_counts, key=phase_counts.get) if phase_counts else None
         )
 
+    # PLAN-PIN-01: the user's own placements for today occupy real slots and
+    # own their topics. Read them BEFORE generating so the generator plans
+    # around them rather than over them. Fail closed on a read error — see
+    # ``_user_placed_today``.
+    user_placed = _user_placed_today(supabase, user_id)
+    if user_placed is _READ_FAILED:
+        return {
+            "generated": False,
+            "reason": "user_task_read_failed",
+            "exam": exam.get("slug"),
+        }
+    placed_topic_ids = frozenset(
+        str(r["topic_id"]) for r in user_placed if r.get("topic_id")
+    )
+
     tasks = _build_tasks(
         ordered,
         max_tasks=max_tasks,
         minutes=minutes,
         pressure_level=pressure_level,
         exam_id=exam_id,
+        reserved_slots=len(user_placed),
+        placed_topic_ids=placed_topic_ids,
     )
 
     # EWP-5: auto-generate real english_writing_session sentence tasks for
@@ -1712,6 +1789,8 @@ def _compute_plan(
         "exam_slug": exam.get("slug"),
         "locked_topic_count": len(coverage),
         "writing_task_count": len(writing_tasks),
+        "user_placed_task_count": len(user_placed),
+        "generated_task_slots": max(0, max_tasks - len(user_placed)),
         "days_remaining": days_remaining,
         "competition_pressure": pressure_level,
         "policy_affects_syllabus": bool(policy_updates.get("affects_syllabus")),
