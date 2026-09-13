@@ -44,6 +44,40 @@ def _weighted_delta(base_delta: Decimal, trust_level: str) -> Decimal:
     return base_delta * TRUST_WEIGHT.get(trust_level, Decimal("0.3"))
 
 
+# ── Sample-size gate (MASTERY-GATE-01) ────────────────────────────────────
+#
+# Live evidence from the 23 shadow-mode attempts: attempt df35b2a8 answered ONE
+# question (correct) out of 75 and produced an average proposed_delta_db of
+# +14.40 against the ±15 cap; fade04bf answered 1 of 10 and produced +9.60. The
+# cap and the [0,100] clamp both work — the defect is that a one-observation
+# sample is allowed to reach the cap at all. ``weight_volume`` in
+# derive_mastery_deltas caps the volume discount at 1.0 but has no floor, so a
+# single hard PYQ (weight 1.5 × 1.2 = 1.8) already carries 36% of full volume.
+#
+# Both floors REFUSE rather than discount. A one-question sample weighted at
+# 0.2 still moves mastery for no reason and makes the stored number harder to
+# reason about later; zero observations of sufficient weight means zero change.
+#
+# Starting values, not derived constants — tune here, not at the call sites.
+MIN_ANSWERED_QUESTIONS_PER_ATTEMPT = 5
+MIN_ANSWERED_QUESTIONS_PER_TOPIC = 2
+
+# Observable refusal signal, mirroring ``correction_metrics``: tests read it and
+# ops can scrape it. A refusal is never silent — it is also logged with the
+# attempt id, user id and answered count.
+mastery_gate_metrics: Counter = Counter()
+
+
+def _answered_question_count(analytics: DerivedAttemptAnalytics) -> int:
+    """How many questions in this attempt the user actually answered.
+
+    ``attempted`` is set by the evidence loader from ``selected_option_id is not
+    null`` and is the single source of truth for answered-ness (DEFECT-001).
+    Never re-derive it from ``is_correct`` or any other proxy.
+    """
+    return sum(1 for q in analytics.questions if q.attempted)
+
+
 # Correction CATEGORY now comes from the shared correction_policy (§7) on the
 # CorrectionTaskDraft itself — MasteryWriter is a pure persistence adapter and
 # carries NO classification logic. It only persists draft.category verbatim.
@@ -88,6 +122,28 @@ class MasteryWriter:
         if analytics is None:
             return
 
+        # ATTEMPT FLOOR — before derivation, deliberately. A refused attempt must
+        # produce no delta at all, in shadow or live: a shadow row is the baseline
+        # a later live flip is judged against, so a row written here would be
+        # indistinguishable from a real observation. The attempt itself is
+        # untouched — it still persists, still scores, still appears in history
+        # and still counts toward mocks taken. This gate changes only what reaches
+        # user_topic_mastery and mock_mastery_shadow.
+        answered = _answered_question_count(analytics)
+        if answered < MIN_ANSWERED_QUESTIONS_PER_ATTEMPT:
+            mastery_gate_metrics["attempt_floor_refused"] += 1
+            logger.info(
+                "mastery refused (attempt floor): attempt=%s user=%s answered=%d "
+                "minimum=%d questions=%d flag=%s — no delta derived, no shadow row",
+                attempt_id,
+                analytics.user_id,
+                answered,
+                MIN_ANSWERED_QUESTIONS_PER_ATTEMPT,
+                len(analytics.questions),
+                self.flag_state,
+            )
+            return
+
         trust_level = self._load_trust_level(attempt_id)
         current_mastery = self._load_current_mastery(analytics.user_id)
         existing_error_topics = self._load_existing_error_topics(analytics.user_id)
@@ -95,12 +151,45 @@ class MasteryWriter:
             analytics, current_mastery, existing_error_topics, source_trust=trust_level
         )
 
-        self._write_shadow(attempt_id, result.mastery_deltas, self.flag_state, trust_level)
+        # TOPIC FLOOR — a topic backed by a single answered question is one
+        # observation, and one observation can reach the ±15 cap (see the module
+        # header). Refuse that topic's delta; every other topic in the same
+        # attempt is unaffected and its delta is byte-identical to what it would
+        # have been without this gate — nothing here rescales a surviving delta.
+        # ``MasteryDelta.attempted`` is the per-topic answered count the engine
+        # already computed (mastery_engine/mastery_delta.py:64,86); no extra read.
+        deltas = self._apply_topic_floor(attempt_id, analytics.user_id, result.mastery_deltas)
+
+        self._write_shadow(attempt_id, deltas, self.flag_state, trust_level)
 
         if self.flag_state == "live":
-            self._apply_mastery(attempt_id, result.mastery_deltas, trust_level)
+            self._apply_mastery(attempt_id, deltas, trust_level)
+            # Error patterns and corrections are NOT mastery writes and are not
+            # gated per topic: a wrong answer is still evidence of an error even
+            # when it is the only one for its topic.
             self._apply_error_patterns(result.error_signals)
             self._draft_correction_tasks(attempt_id, result.correction_task_drafts)
+
+    def _apply_topic_floor(
+        self, attempt_id: str, user_id: str, deltas: list[Any]
+    ) -> list[Any]:
+        """Drop deltas backed by fewer than MIN_ANSWERED_QUESTIONS_PER_TOPIC answers."""
+        kept: list[Any] = []
+        for d in deltas:
+            if d.attempted < MIN_ANSWERED_QUESTIONS_PER_TOPIC:
+                mastery_gate_metrics["topic_floor_refused"] += 1
+                logger.info(
+                    "mastery refused (topic floor): attempt=%s user=%s topic=%s "
+                    "answered=%d minimum=%d — no delta for this topic",
+                    attempt_id,
+                    user_id,
+                    d.topic_id,
+                    d.attempted,
+                    MIN_ANSWERED_QUESTIONS_PER_TOPIC,
+                )
+                continue
+            kept.append(d)
+        return kept
 
     def redraft_corrections(self, attempt_id: str) -> None:
         """Recovery entry point: re-derive and (idempotently) draft corrections

@@ -276,6 +276,10 @@ def test_evidence_mode_does_not_change_normalized_category_or_title_parity():
 # ── 6. persistence ────────────────────────────────────────────────────────────
 
 def _seed_generated(sb, error_types):
+    # One answered question per entry in ``error_types``, so the list length is
+    # also the attempt's answered count — keep it at or above
+    # MASTERY-GATE-01's attempt floor (5) or the writer refuses the attempt
+    # before any correction is derived.
     # Answered (selected_option_id set) wrong questions; error_type comes from the
     # classification table, not from the response row (the loader's authoritative
     # source post-DEFECT-003).
@@ -300,7 +304,9 @@ def _seed_generated(sb, error_types):
 def test_generated_persist_all_specs_063_and_serial_dedup(monkeypatch):
     monkeypatch.setenv("FF_MOCK_MASTERY_WRITES", "live")
     sb = SBStub()
-    _seed_generated(sb, ["concept_gap", "option_trap", "option_trap", "option_trap"])
+    _seed_generated(
+        sb, ["concept_gap", "concept_gap", "option_trap", "option_trap", "option_trap"]
+    )
     writer = mw.MasteryWriter(sb, "live")
     asyncio.run(writer.process_attempt(ATTEMPT))
 
@@ -351,7 +357,9 @@ def test_e2e_generated_and_manual_same_categories_and_titles(monkeypatch):
 
     # generated origin
     sb_gen = SBStub()
-    _seed_generated(sb_gen, ["concept_gap", "option_trap", "option_trap", "option_trap"])
+    _seed_generated(
+        sb_gen, ["concept_gap", "concept_gap", "option_trap", "option_trap", "option_trap"]
+    )
     asyncio.run(mw.MasteryWriter(sb_gen, "live").process_attempt(ATTEMPT))
     gen_cats = _apply_all(sb_gen, list(sb_gen.db["mock_correction_tasks"]))
 
