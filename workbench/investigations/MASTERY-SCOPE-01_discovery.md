@@ -391,3 +391,43 @@ select
 written live despite `FF_MOCK_MASTERY_WRITES=live`; `breakdown_rows = 0` would
 mean W1 has never had input, i.e. the manual-review path has never run end to
 end — which should be established before building on it.
+
+### Confirming counts — 2026-09-13
+
+```
+mastery_rows 0 | audit_rows 0 | breakdown_rows 0 | shadow_rows 127
+```
+
+`shadow_rows = 127` proves the read is not blocked, so the three zeros are the
+real state of the data.
+
+- **`audit_rows = 0` — W2 has never written live.** With
+  `FF_MOCK_MASTERY_WRITES=live` and a populated allowlist, not one
+  `apply_mock_mastery_delta` call has landed an audit row. Every one of the 127
+  rows is a shadow decision.
+- **`breakdown_rows = 0` — W1 has never had input.** `mock_topic_breakdowns` is
+  empty, so `recompute_topic_mastery` has never written a row in production.
+
+The reason W1 has no input is structural, not incidental:
+
+- the only writer of `mock_topic_breakdowns` is the review PATCH
+  (`api/canonical.py:2359-2363`);
+- `topic_breakdowns` exists only on the backend request model
+  (`canonical.py:2146`);
+- **no file under `app/frontend/src` or `app/frontend/e2e` mentions
+  `topic_breakdowns` or `topicBreakdowns`** — zero matches. The study Mocks page
+  patches `/api/study/mocks/{id}/review-state` with `{state}` alone
+  (`app/frontend/src/pages/study/Mocks.jsx:211`).
+
+**Correction to the MASTERY-W1-01 brief.** "W1 has always written it" and "W1 is
+the surface for self-reported and third-party mocks… a real product feature" do
+not hold in this repository as it stands: W1 has written nothing, and no client
+here can make it write. The endpoint accepts the payload; nothing sends it.
+Whether the multi-select offline-mock UI was never built, or lives outside this
+repo, is not answerable from the code.
+
+**Consequence for sequencing.** Changing W1's write semantics is now a
+before-the-fact design choice on an unused path, not a rescue of live data. It
+is cheaper to do now than after the UI ships, and it carries no backfill — but
+it is not urgent, and the scope question in §4/§5 should be settled first
+because it determines which row W1 would even write to.
