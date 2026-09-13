@@ -270,3 +270,129 @@ def test_launch_fails_closed_for_subject_outside_exam_scope():
     )
     assert resp.status_code == 422
     assert "practice scope" in resp.json()["detail"].lower()
+
+
+# ── PLAN-SCOPE-03: the launch gate honours elective scope ──────────────────
+#
+# Before this, ``resolve_subject_family`` and ``locked_topic_ids_for_subject``
+# read exam-wide locked coverage. Every other surface hid an unchosen optional
+# paper, but its subject still resolved here — so a hand-rolled POST could start
+# topic practice on a paper the user never selected.
+
+_PHASE = "99999999-9999-9999-9999-999999999999"
+_S_PSIR = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+_S_ANTH = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+_T_PSIR = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+_T_ANTH = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+
+
+def _seed_with_electives(chosen: list[str] | None):
+    """The base seed plus two optional papers, one chosen and one not."""
+    seed = _seed()
+    seed["exam_phases"] = [{"id": _PHASE, "exam_id": _EXAM, "phase_slug": "mains"}]
+    # Compulsory sections for the base subjects, elective ones for the optionals.
+    seed["exam_phase_sections"] = [
+        {"id": "sec-quant", "exam_phase_id": _PHASE, "subject_id": _S_QUANT,
+         "section_label": "Quant", "selection_kind": "compulsory", "elective_group": None},
+        {"id": "sec-eng", "exam_phase_id": _PHASE, "subject_id": _S_ENGLISH,
+         "section_label": "English", "selection_kind": "compulsory", "elective_group": None},
+        {"id": "sec-reas", "exam_phase_id": _PHASE, "subject_id": _S_REASONING,
+         "section_label": "Reasoning", "selection_kind": "compulsory", "elective_group": None},
+        {"id": "sec-psir", "exam_phase_id": _PHASE, "subject_id": _S_PSIR,
+         "section_label": "PSIR", "selection_kind": "elective",
+         "elective_group": "upsc-cse-optional"},
+        {"id": "sec-anth", "exam_phase_id": _PHASE, "subject_id": _S_ANTH,
+         "section_label": "Anthropology", "selection_kind": "elective",
+         "elective_group": "upsc-cse-optional"},
+    ]
+    for cov in seed["exam_topic_coverage"]:
+        cov["section_id"] = {
+            _T_QUANT: "sec-quant", _T_ENGLISH: "sec-eng", _T_REASONING: "sec-reas",
+        }[cov["topic_id"]]
+    seed["exam_topic_coverage"] += [
+        {"id": "cov-psir", "exam_id": _EXAM, "topic_id": _T_PSIR,
+         "section_id": "sec-psir", "reviewer_status": "locked"},
+        {"id": "cov-anth", "exam_id": _EXAM, "topic_id": _T_ANTH,
+         "section_id": "sec-anth", "reviewer_status": "locked"},
+    ]
+    seed["topics"] += [
+        {"id": _T_PSIR, "name": "Political theory", "slug": "pol-theory",
+         "subject_id": _S_PSIR, "is_active": True},
+        {"id": _T_ANTH, "name": "Tribal issues", "slug": "tribal",
+         "subject_id": _S_ANTH, "is_active": True},
+    ]
+    seed["subjects"] += [
+        {"id": _S_PSIR, "slug": "psir-p1", "name": "PSIR Paper-1",
+         "subject_group": "upsc-optional", "is_active": True},
+        {"id": _S_ANTH, "slug": "anth-p1", "name": "Anthropology Paper-1",
+         "subject_group": "upsc-optional", "is_active": True},
+    ]
+    if chosen is not None:
+        seed["user_exam_electives"] = [
+            {"id": "ue-1", "user_id": "u-1", "exam_id": _EXAM,
+             "elective_group": "upsc-cse-optional", "subject_ids": chosen}
+        ]
+    return seed
+
+
+def test_launch_refused_for_an_optional_the_user_did_not_choose(monkeypatch):
+    """The gate must refuse Anthropology for a PSIR aspirant.
+
+    Every other surface already hides it; this is the one that could still
+    START practice on it.
+    """
+    monkeypatch.setattr(
+        subject_practice, "start_pyq_practice",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "att-should-not-happen"},
+    )
+    sb = SBStub(_seed_with_electives(chosen=[_S_PSIR]))
+    resp = _client(sb).post(
+        f"/api/study/subjects/{_S_ANTH}/practice/start",
+        json={"mode": "topic_pyq", "topic_id": _T_ANTH},
+    )
+    assert resp.status_code == 422
+    assert "practice scope" in resp.json()["detail"].lower()
+
+
+def test_launch_allowed_for_the_optional_the_user_chose(monkeypatch):
+    monkeypatch.setattr(
+        subject_practice, "start_pyq_practice",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "att-psir"},
+    )
+    sb = SBStub(_seed_with_electives(chosen=[_S_PSIR]))
+    resp = _client(sb).post(
+        f"/api/study/subjects/{_S_PSIR}/practice/start",
+        json={"mode": "topic_pyq", "topic_id": _T_PSIR},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["kind"] == "pyq_practice"
+
+
+def test_undecided_user_cannot_launch_any_optional(monkeypatch):
+    """No elective row = compulsory-only, so BOTH optionals are out of scope."""
+    monkeypatch.setattr(
+        subject_practice, "start_pyq_practice",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "att-should-not-happen"},
+    )
+    sb = SBStub(_seed_with_electives(chosen=None))
+    for subject_id, topic_id in ((_S_PSIR, _T_PSIR), (_S_ANTH, _T_ANTH)):
+        resp = _client(sb).post(
+            f"/api/study/subjects/{subject_id}/practice/start",
+            json={"mode": "topic_pyq", "topic_id": topic_id},
+        )
+        assert resp.status_code == 422, subject_id
+
+
+def test_compulsory_subjects_still_launch_under_elective_scoping(monkeypatch):
+    """Scoping must not cost a compulsory subject its launch."""
+    monkeypatch.setattr(
+        subject_practice, "start_pyq_practice",
+        lambda *a, **k: {"outcome": "ready", "attempt_id": "att-quant"},
+    )
+    sb = SBStub(_seed_with_electives(chosen=[_S_PSIR]))
+    resp = _client(sb).post(
+        f"/api/study/subjects/{_S_QUANT}/practice/start",
+        json={"mode": "topic_pyq", "topic_id": _T_QUANT},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["kind"] == "pyq_practice"

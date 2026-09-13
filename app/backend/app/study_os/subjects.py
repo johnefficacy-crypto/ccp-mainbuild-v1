@@ -14,7 +14,6 @@ import logging
 from typing import Any, Callable
 
 from app.study_os.planner import (  # type: ignore  # private helpers reused intentionally
-    _load_locked_coverage,
     load_scoped_coverage,
     _load_user_signals,
     resolve_target_exam_or_none,
@@ -117,19 +116,24 @@ def _previous_review_mastery_by_subject(
 
 
 def locked_topic_ids_for_subject(
-    supabase: Any, exam_id: str | None, subject_id: str | None
+    supabase: Any, user_id: str | None, exam_id: str | None, subject_id: str | None
 ) -> set[str]:
-    """Topic ids under ``subject_id`` in the exam's LOCKED coverage.
+    """Topic ids under ``subject_id`` in the user's SCOPED locked coverage.
 
     The server-side scope gate for subject topic-practice launches: a ``topic_pyq``
     launch on ``/api/study/subjects/{subject_id}/practice/start`` must target a
     topic that actually belongs to the PATH subject in the caller's resolved exam.
     The browser-supplied ``topic_id`` is never trusted to match the path subject —
     a caller could otherwise POST a Quant topic id to the English subject's launch
-    path. Mismatches are rejected upstream (422)."""
+    path. Mismatches are rejected upstream (422).
+
+    Elective scoping applies here too: reading the exam-wide set would let a user
+    launch topic practice on an optional paper they did NOT choose, even though
+    every other surface hides it. ``user_id`` is a required positional, so a
+    caller that forgets it raises rather than silently reverting to exam-wide."""
     if not exam_id or not subject_id:
         return set()
-    coverage = _load_locked_coverage(supabase, exam_id) or []
+    coverage = load_scoped_coverage(supabase, user_id, exam_id) or []
     return {
         str(c.get("topic_id"))
         for c in coverage
@@ -138,18 +142,23 @@ def locked_topic_ids_for_subject(
 
 
 def resolve_subject_family(
-    supabase: Any, exam_id: str | None, subject_id: str | None
+    supabase: Any, user_id: str | None, exam_id: str | None, subject_id: str | None
 ) -> tuple[str | None, bool]:
-    """Resolve the SubjectRuntimePolicy family for a PATH subject from the exam's
-    LOCKED coverage (canonical ``subject_group`` → ``slug``).
+    """Resolve the SubjectRuntimePolicy family for a PATH subject from the user's
+    SCOPED locked coverage (canonical ``subject_group`` → ``slug``).
 
     Returns ``(family, known)``:
-      * ``known=True``  → the subject is a real, locked subject of the caller's exam;
+      * ``known=True``  → the subject is a real, locked subject IN THIS USER'S SCOPE;
         ``family`` is its family (``None`` = a legitimately ungoverned/generic subject).
       * ``known=False`` → no target exam, no subject_id, the subject is not in the
-        exam's locked coverage, OR the coverage read failed. The launch gate must FAIL
+        user's scoped coverage, OR the coverage read failed. The launch gate must FAIL
         CLOSED here — a ``None`` family must never be conflated with "generic subject",
         or a mode could be forced onto an unresolved/non-covered subject.
+
+    Scoped rather than exam-wide: an unchosen optional paper is not in the user's
+    practice scope, so its subject resolves ``known=False`` and the launch is
+    refused at the gate. ``user_id`` is a required positional for the same
+    fail-loud reason as :func:`locked_topic_ids_for_subject`.
     """
     from app.study_os.subject_runtime_policy import (
         FAMILY_GENERAL_AWARENESS,
@@ -163,7 +172,7 @@ def resolve_subject_family(
     # weekly-bundle resolution inside the handler is the real availability authority.
     if str(subject_id) == CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID:
         return FAMILY_GENERAL_AWARENESS, True
-    coverage = _load_locked_coverage(supabase, exam_id) or []
+    coverage = load_scoped_coverage(supabase, user_id, exam_id) or []
     row = next(
         (c for c in coverage if str(c.get("subject_id")) == str(subject_id)), None
     )
