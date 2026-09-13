@@ -995,3 +995,195 @@ class TestV2StimuliFailClosedLookup:
         # RuntimeError here never burns the token.
         row = next(r for r in sb.db["pyq_import_tokens"] if r["token"] == token)
         assert row["consumed_at"] is None
+
+
+# ── OPT-FRONTLOAD-02: descriptive questions with no options ────────────────
+
+
+class TestV2DescriptiveQuestions:
+    """A UPSC Mains-style descriptive question is a stem with no choices and
+    no machine-scored answer. Before this change three unconditional rules
+    rejected it: `descriptive` was absent from _QUESTION_TYPES_V2_SUPPORTED,
+    _parse_v2_options_field required `options`/`options_json` for every type,
+    and the row validator's 2-entry minimum ran for every type. All three are
+    now mcq-conditional; every mcq rule is unchanged."""
+
+    def test_descriptive_without_options_preflights_clean_and_commits(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([{
+            "source_question_ref": "PSIR-P1-1a",
+            "question_number": 100,
+            "display_order": 100,
+            "question_text": "Critically examine the relevance of Gandhian thought today.",
+            "question_type": "descriptive",
+        }])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1, pf["rows"]
+        assert pf["summary"]["error"] == 0
+        assert pf["rows"][0]["messages"] == []
+
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+        assert len(sb.db["pyq_questions"]) == 1
+        q = sb.db["pyq_questions"][0]
+        assert q["question_type"] == "descriptive"
+        assert q["reviewer_status"] == "pending"
+        assert q["source_question_ref"] == "PSIR-P1-1a"
+        assert q["question_number"] == 100
+        # No option rows, and no empty insert issued on the way there.
+        assert sb.db["pyq_options"] == []
+
+    def test_descriptive_with_options_is_accepted_and_options_stored(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([_q(
+            question_text="Match the thinkers to their works and justify.",
+            question_type="descriptive",
+            options=[
+                {"label": "a", "text": "Kautilya", "display_order": 1},
+                {"label": "b", "text": "Manu", "display_order": 2},
+                {"label": "c", "text": "Aristotle", "display_order": 3},
+            ],
+            correct_option_label=None,
+        )])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1, pf["rows"]
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+        opts = sb.db["pyq_options"]
+        assert len(opts) == 3
+        assert sorted(o["option_label"] for o in opts) == ["a", "b", "c"]
+        # No correct_option_label on a descriptive row -> nothing flagged.
+        assert all(o["is_correct"] is False for o in opts)
+
+    def test_descriptive_with_section_ref_resolves(self):
+        """Mains phase carries 17 sections after the optionals load; the
+        resolver keys on the whole lower-cased label, not a prefix, so
+        'Optional: PSIR Paper-I' and 'Optional: PSIR Paper-II' are distinct."""
+        sb = TaxSBStub(_seed_v2(extra_sections=[
+            {"id": "sec-p1", "exam_phase_id": _PAPER_PHASE_ID,
+             "section_label": "Optional: PSIR Paper-I"},
+            {"id": "sec-p2", "exam_phase_id": _PAPER_PHASE_ID,
+             "section_label": "Optional: PSIR Paper-II"},
+        ]))
+        client = _client(sb)
+        payload = _v2_payload([{
+            "question_text": "Discuss the idea of justice in Rawls.",
+            "question_type": "descriptive",
+            "section_ref": "optional: psir paper-i",
+        }])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["ok"] == 1, pf["rows"]
+        _commit(client, pf["import_token"])
+        assert sb.db["pyq_questions"][0]["section_id"] == "sec-p1"
+
+    def test_descriptive_csv_with_blank_options_json_commits(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        csv_bytes = _make_csv_v2([{
+            "question_text": "Examine the role of pressure groups in Indian politics.",
+            "question_type": "descriptive",
+            "source_question_ref": "PSIR-P1-2b",
+            "display_order": "101",
+            "options_json": "",
+            "correct_option_label": "",
+        }])
+        pf = _preflight_csv_v2(client, csv_bytes)
+        assert pf["summary"]["ok"] == 1, pf["rows"]
+        result = _commit(client, pf["import_token"])
+        assert result["committed"] == 1
+        assert sb.db["pyq_questions"][0]["question_type"] == "descriptive"
+        assert sb.db["pyq_options"] == []
+
+    def test_descriptive_with_malformed_options_still_errors(self):
+        """"No options" and "broken options" are different failures — the
+        second is still rejected for a descriptive row."""
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([{
+            "question_text": "A descriptive question with a broken options value.",
+            "question_type": "descriptive",
+            "options": "not-a-list",
+        }])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        assert any("options must be a list" in m for m in pf["rows"][0]["messages"])
+
+
+class TestV2McqRulesUnchanged:
+    """D3: options become optional only when question_type != 'mcq'. Every
+    mcq rule stands, with its message unchanged."""
+
+    def test_mcq_missing_options_still_fails(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([{
+            "question_text": "An mcq with no options at all.",
+            "question_type": "mcq",
+            "correct_option_label": "1",
+        }])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        assert any("options must be a list" in m for m in pf["rows"][0]["messages"])
+
+    def test_mcq_single_option_still_fails_two_entry_minimum(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([_q(
+            question_text="An mcq with exactly one option.",
+            options=[{"label": "1", "text": "Alpha", "display_order": 1}],
+            correct_option_label="1",
+        )])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        assert any(
+            "options must contain at least 2 entries" in m
+            for m in pf["rows"][0]["messages"]
+        )
+
+    def test_mcq_missing_correct_option_label_still_fails(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        payload = _v2_payload([_q(
+            question_text="An mcq with options but no correct label.",
+            correct_option_label=None,
+        )])
+        pf = _preflight_json_v2(client, payload)
+        assert pf["summary"]["error"] == 1
+        assert any(
+            "correct_option_label is required for question_type 'mcq'" in m
+            for m in pf["rows"][0]["messages"]
+        )
+
+    def test_mcq_csv_missing_options_json_still_fails(self):
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        csv_bytes = _make_csv_v2([{
+            "question_text": "An mcq CSV row with a blank options_json cell.",
+            "question_type": "mcq",
+            "options_json": "",
+            "correct_option_label": "1",
+        }])
+        pf = _preflight_csv_v2(client, csv_bytes)
+        assert pf["summary"]["error"] == 1
+        assert any(
+            "options_json is required and must not be empty" in m
+            for m in pf["rows"][0]["messages"]
+        )
+
+    def test_numerical_still_rejected_by_type(self):
+        """D1: descriptive joins the supported set; nothing else does."""
+        sb = TaxSBStub(_seed_v2())
+        client = _client(sb)
+        for unsupported in ("numerical", "caselet", "matching", "other"):
+            payload = _v2_payload([{
+                "question_text": f"A {unsupported} question.",
+                "question_type": unsupported,
+            }])
+            pf = _preflight_json_v2(client, payload)
+            assert pf["summary"]["error"] == 1, unsupported
+            assert any(
+                "is not yet supported by the v2 importer" in m
+                for m in pf["rows"][0]["messages"]
+            ), unsupported

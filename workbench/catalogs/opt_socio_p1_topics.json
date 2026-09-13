@@ -1,0 +1,432 @@
+[
+  {
+    "id": "ba618b09-7f03-4051-a61e-441b67e4d438",
+    "text": "Agents of social change",
+    "slug": "opt-sociology-p1-social-change-in-modern-society-agents-of-social-change-ff52bcff",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b67cbaba-8224-4644-8846-a97c9fad88b8",
+    "text": "Concepts: equality, inequality, hierarchy, exclusion, poverty and deprivation",
+    "slug": "opt-sociology-p1-stratification-and-mobility-concepts-equality-inequality-hierar-25351b97",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "631f70ca-1b39-4b9b-8671-b900a4409e4f",
+    "text": "Contemporary trends in kinship",
+    "slug": "opt-sociology-p1-systems-of-kinship-contemporary-trends-in-kinship-704d5550",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ba1242c0-6193-438b-a78e-82abcd7cdec9",
+    "text": "Development and dependency",
+    "slug": "opt-sociology-p1-social-change-in-modern-society-development-and-dependency-b52f8478",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4f070977-f20a-4aa4-99ef-3087bc897a75",
+    "text": "Dimensions: stratification by class, status group, gender, ethnicity and race",
+    "slug": "opt-sociology-p1-stratification-and-mobility-dimensions-stratification-by-class-50e6db56",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2608d35c-7121-4cd6-8d3a-e5517c0fc860",
+    "text": "Education and social change",
+    "slug": "opt-sociology-p1-social-change-in-modern-society-education-and-social-change-2ba2035e",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "55e45651-6d55-4610-8314-de8401558cfc",
+    "text": "Emile Durkheim: division of labour, social fact, suicide, religion and society",
+    "slug": "opt-sociology-p1-sociological-thinkers-emile-durkheim-division-of-labour-social-811d2886",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c4d47a4c-e865-4bde-aba5-909ffceaf601",
+    "text": "Fact, value and objectivity",
+    "slug": "opt-sociology-p1-sociology-as-science-fact-value-and-objectivity-a322e071",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5673c209-4a13-48ab-a239-618ee9141e96",
+    "text": "Family, household, marriage",
+    "slug": "opt-sociology-p1-systems-of-kinship-family-household-marriage-7455191a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "79d59210-ee92-4e3e-9379-6f2b9a2f6282",
+    "text": "Formal and informal organization of work",
+    "slug": "opt-sociology-p1-works-and-economic-life-formal-and-informal-organization-of-wor-d902f81a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a86cee6c-c15e-423d-b1f3-91e92d93ba3e",
+    "text": "G. H. Mead: self and identity",
+    "slug": "opt-sociology-p1-sociological-thinkers-g-h-mead-self-and-identity-64872b76",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "943c80ff-7983-4929-b2e7-900030118158",
+    "text": "Karl Marx: historical materialism, mode of production, alienation, class struggle",
+    "slug": "opt-sociology-p1-sociological-thinkers-karl-marx-historical-materialism-mode-of-3c4dbf7e",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c13f67f1-887c-42e3-ade4-c6caee2d6fbb",
+    "text": "Labour and society",
+    "slug": "opt-sociology-p1-works-and-economic-life-labour-and-society-1097d9fa",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9fec458e-27f6-459a-9306-c2fe745c9c83",
+    "text": "Lineage and descent",
+    "slug": "opt-sociology-p1-systems-of-kinship-lineage-and-descent-3f97837b",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b5784f6e-b737-4ab5-9c2c-5ab7cd729f43",
+    "text": "Major theoretical strands of research methodology",
+    "slug": "opt-sociology-p1-sociology-as-science-major-theoretical-strands-of-research-meth-4be5ac02",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8b93e08c-b92d-4bb3-9da8-656eaae4118a",
+    "text": "Marxist theory of stratification",
+    "slug": "opt-sociology-p1-stratification-and-mobility-marxist-theory-of-stratification-dee4169b",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ebb639c4-d49e-40ba-9d3b-e1bb18b02847",
+    "text": "Max Weber: social action, ideal types, authority, bureaucracy, protestant ethic and the spirit of capitalism",
+    "slug": "opt-sociology-p1-sociological-thinkers-max-weber-social-action-ideal-types-autho-dd778fe9",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "74663d91-023f-453d-9d18-7df1150a9291",
+    "text": "Modernity and social changes in Europe and the emergence of sociology",
+    "slug": "opt-sociology-p1-sociology-the-discipline-modernity-and-social-changes-in-europe-3af3bfe6",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "13b94119-8de4-4924-b30b-7d246b86ca9e",
+    "text": "Nation, state, citizenship, democracy, civil society, ideology",
+    "slug": "opt-sociology-p1-politics-and-society-nation-state-citizenship-democracy-civil-s-845a2e24",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e3ecfeb5-af9e-4288-a4e7-81d43802d0e5",
+    "text": "Non-positivist methodologies",
+    "slug": "opt-sociology-p1-sociology-as-science-non-positivist-methodologies-28df74f5",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ea545c6e-74cc-4a56-8cd0-b0ee13be2556",
+    "text": "Patriarchy and sexual division of labour",
+    "slug": "opt-sociology-p1-systems-of-kinship-patriarchy-and-sexual-division-of-labour-855012fa",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "13c9db08-e17c-48c4-b89d-d276824dfee3",
+    "text": "Positivism and its critique",
+    "slug": "opt-sociology-p1-sociology-as-science-positivism-and-its-critique-3d5a240e",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7f9e200-e0d1-44d7-9fff-2319dfd900c5",
+    "text": "Power elite, bureaucracy, pressure groups and political parties",
+    "slug": "opt-sociology-p1-politics-and-society-power-elite-bureaucracy-pressure-groups-an-426c0c6a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f646d72e-3fcb-4241-a403-40b6dba95533",
+    "text": "Protest, agitation, social movements, collective action, revolution",
+    "slug": "opt-sociology-p1-politics-and-society-protest-agitation-social-movements-collect-3651a3e4",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fac95b84-dc87-4d4e-a935-2b55043f687a",
+    "text": "Qualitative and quantitative methods",
+    "slug": "opt-sociology-p1-research-methods-and-analysis-qualitative-and-quantitative-meth-8d4f21d5",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2c266249-806c-467d-8251-8cd5056add61",
+    "text": "Religion in modern society: religion and science, secularization, religious revivalism, fundamentalism",
+    "slug": "opt-sociology-p1-religion-and-society-religion-in-modern-society-religion-and-sc-056ac305",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bd203c4e-7988-4ca6-8ff3-cd9423377678",
+    "text": "Robert K. Merton: latent and manifest functions, conformity and deviance, reference groups",
+    "slug": "opt-sociology-p1-sociological-thinkers-robert-k-merton-latent-and-manifest-funct-1fd12256",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4a3254b2-d294-45c4-b86e-1ddb6fabc593",
+    "text": "Science, scientific method and critique",
+    "slug": "opt-sociology-p1-sociology-as-science-science-scientific-method-and-critique-8d59307a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3e35ec95-4390-4682-9425-4eeeb8c36506",
+    "text": "Science, technology and social change",
+    "slug": "opt-sociology-p1-social-change-in-modern-society-science-technology-and-social-c-e6ae339f",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "50193be4-dfd0-488b-b1a0-de6b767809fd",
+    "text": "Scope of the subject and comparison with other social sciences",
+    "slug": "opt-sociology-p1-sociology-the-discipline-scope-of-the-subject-and-comparison-wi-0a2efe07",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "57416751-ea7d-43ce-b6e0-67b65aba9af0",
+    "text": "Social mobility: open and closed systems, types, sources and causes",
+    "slug": "opt-sociology-p1-stratification-and-mobility-social-mobility-open-and-closed-sys-da88363a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3f1964c0-2c3c-4c11-b492-6540b7ebc2e9",
+    "text": "Social organization of work in slave, feudal and industrial/capitalist society",
+    "slug": "opt-sociology-p1-works-and-economic-life-social-organization-of-work-in-slave-fe-72c922c4",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "333c4193-6f1c-4153-b0cd-76d6a4c396d6",
+    "text": "Sociological theories of power",
+    "slug": "opt-sociology-p1-politics-and-society-sociological-theories-of-power-8eda0134",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f1726758-a2cb-4cb6-a81e-2c24026032e4",
+    "text": "Sociological theories of religion",
+    "slug": "opt-sociology-p1-religion-and-society-sociological-theories-of-religion-d317a5c0",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1e2ab683-72e1-4706-915f-2339048bfd49",
+    "text": "Sociological theories of social change",
+    "slug": "opt-sociology-p1-social-change-in-modern-society-sociological-theories-of-social-1cfd9123",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "15b4b840-5443-4f34-8f21-7dae3dcd1989",
+    "text": "Sociology and common sense",
+    "slug": "opt-sociology-p1-sociology-the-discipline-sociology-and-common-sense-e7a4359b",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "de09d10e-0cdb-4fae-ac26-902789ae1355",
+    "text": "Structural functionalist theory of stratification",
+    "slug": "opt-sociology-p1-stratification-and-mobility-structural-functionalist-theory-of-65da49f8",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2c778145-d79d-4df5-8bc8-e9f0199c4c8c",
+    "text": "Talcott Parsons: social system, pattern variables",
+    "slug": "opt-sociology-p1-sociological-thinkers-talcott-parsons-social-system-pattern-var-2b2b4ac6",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a12f62d9-14a6-4f3e-98ac-7c91c76f7311",
+    "text": "Techniques of data collection",
+    "slug": "opt-sociology-p1-research-methods-and-analysis-techniques-of-data-collection-892fc3e8",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e30a7156-3848-4f89-aa3a-bc69d881c190",
+    "text": "Types and forms of family",
+    "slug": "opt-sociology-p1-systems-of-kinship-types-and-forms-of-family-583f142a",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "460c2646-d0a6-4ece-a009-6433678ae032",
+    "text": "Types of religious practices: animism, monism, pluralism, sects, cults",
+    "slug": "opt-sociology-p1-religion-and-society-types-of-religious-practices-animism-monis-cb5fe974",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ee6fbe19-4181-44e7-a4c4-44d3ab19292a",
+    "text": "Variables, sampling, hypothesis, reliability and validity",
+    "slug": "opt-sociology-p1-research-methods-and-analysis-variables-sampling-hypothesis-rel-f24e97de",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e381c02c-be55-4206-b6ba-2c0efab1e755",
+    "text": "Weberian theory of stratification",
+    "slug": "opt-sociology-p1-stratification-and-mobility-weberian-theory-of-stratification-14157234",
+    "subject_id": "15fd8b1e-8cda-44dd-a72d-db455ddadec1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

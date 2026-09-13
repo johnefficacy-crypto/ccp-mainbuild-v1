@@ -18,6 +18,7 @@ from app.exam_intelligence.coverage_derivation import (
     bucket_coverage_depth,
     derive_topic_coverage,
 )
+from app.exam_intelligence.score_snapshots import MODEL_VERSION
 
 
 def _snapshot_row(**overrides):
@@ -27,7 +28,7 @@ def _snapshot_row(**overrides):
         "exam_phase_id": None,
         "topic_id": "t1",
         "status": "locked",
-        "model_version": "v1.0",
+        "model_version": MODEL_VERSION,
         "exam_priority_score": 72.5,
         "is_high_yield": True,
         "confidence_score": 0.81,

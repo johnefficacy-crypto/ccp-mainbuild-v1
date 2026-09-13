@@ -1,0 +1,1172 @@
+[
+  {
+    "id": "01460f8d-af99-446c-856a-10a301bde993",
+    "text": "19th century European revolutions",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-19th-century-e-0176a538",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "71a4e52a-f513-48cd-9e73-13a5eff30605",
+    "text": "Africa from apartheid to democracy; South-East Asia and Vietnam",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-africa-from-a-6299fec4",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "890bd10c-f69a-4871-929a-e80120c9ea16",
+    "text": "American Civil War, Lincoln and the abolition of slavery",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-american-civi-6f563e93",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "40ee79f0-4938-4995-83bd-243af20db01a",
+    "text": "American Revolution and the Constitution",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-american-revo-8b6e5dd3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ba841d07-d10c-4b46-b135-1ec1969fa7e9",
+    "text": "Annexation of the Punjab",
+    "slug": "opt-history-p2-2-british-expansion-in-india-annexation-of-the-punjab-add1f1b3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e162c7a2-9069-4b96-931a-bd20cdb84961",
+    "text": "Backward castes and tribes in post-colonial electoral politics; Dalit movements",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-backward-castes-a-90f73b0e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ada6ca7a-996b-4181-882d-1ed18c82f337",
+    "text": "Beginning of revolutionary extremism in India",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-beginning-of-f3f7501f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d63f08fa-cd98-4587-8652-de7363502f46",
+    "text": "British democratic politics 1815-1850: reformers, free traders, Chartists",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-british-democ-34205ab0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "09f655c4-e3ce-49b3-a5ae-2e997146fed9",
+    "text": "Caste and ethnicity after 1947",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-caste-and-ethnici-dd526860",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "52455722-c5a7-48cb-bfb1-35b7e1085621",
+    "text": "Christian missionary activities in India",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-christian-missionary-activitie-54c5f08b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "236ed1b4-8049-4a08-b000-1cdaa99c9630",
+    "text": "Collapse of Soviet communism and the Soviet Union, 1985-1991",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-collapse-of-s-d05db877",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "73ee6af0-634e-4c0e-a7b5-f7f31191b38e",
+    "text": "Commercialization of agriculture and the rise of landless labourers",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-commercialization-of-a-383d8a02",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "99e9e1bd-43fa-4a6f-8a9a-237a94ebf683",
+    "text": "Communalism and the politics of partition",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-communa-a85cf77c",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "19ad048c-6e84-45c1-9f97-97035703ec9a",
+    "text": "Conflict between the English and the Nawabs of Bengal",
+    "slug": "opt-history-p2-1-european-penetration-into-india-conflict-between-the-english-an-9c834a8f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b770f2d-cda2-4fd8-bdc5-f133cd4238c9",
+    "text": "Consequences of the Revolt of 1857",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-consequences-of-the-revolt-of-1-a8e2adf0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "37456322-3ee1-48a2-b4dd-31a1348d1637",
+    "text": "Consolidation and expansion of the European Community; the European Union",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-consolidation-9d07d5c0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f36cf857-ad85-442f-aba2-4f2ed5ea756b",
+    "text": "Constitutional developments in colonial India, 1858-1935",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-constit-85659d1c",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fc4309c0-81e7-4df0-9d0d-c9d29948238e",
+    "text": "Contribution of the Indian renaissance to modern India",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-contribution-of-the-india-c2d64698",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c099cf45-5793-4e23-a87f-7b2ae508cb71",
+    "text": "Cripps Mission and the Quit India Movement",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-cripps-mission-and-the-qu-77a60cb0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d42046ba-1ec3-4c57-b4c4-37e962c63c33",
+    "text": "Dayananda Saraswati and the Arya Samaj",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-dayananda-saraswati-and-t-10a6d6b6",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "69b9ab1d-e494-42b6-981b-e833dd1b0eae",
+    "text": "Decline of traditional crafts; drain of wealth",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-decline-of-traditional-ac03979e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "200cd4dd-5305-45e8-bfff-33fa69b1ff5b",
+    "text": "Decolonization and underdevelopment; constraints on development",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-decolonizatio-26df2635",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6da0c29c-9b9f-4cbc-8748-6a1d80f85f64",
+    "text": "Devendranath Tagore and Iswarchandra Vidyasagar",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-devendranath-tagore-and-i-1ac40498",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "71994059-f845-4720-8ea6-00cee1ca116c",
+    "text": "Disintegration of empires and the emergence of nationalities",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-disintegration-06c9f450",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4299b280-36b7-4286-b4df-13fb8bb1f062",
+    "text": "Dislocation of traditional trade and commerce; de-industrialisation",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-dislocation-of-traditi-9214a56a",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3571abf6-a04b-4da1-919b-d1d680c13101",
+    "text": "Early European settlements; the Portuguese and the Dutch",
+    "slug": "opt-history-p2-1-european-penetration-into-india-early-european-settlements-the-e5d9c754",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3b24b799-34f7-4286-8592-ddbbd61ce21f",
+    "text": "Early administrative structure; from diarchy to direct control",
+    "slug": "opt-history-p2-3-early-structure-of-the-british-raj-early-administrative-structu-23296081",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "16df4c69-f900-4d31-9bba-215c602a8025",
+    "text": "Ecology and environmental policy in post-colonial India",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-ecology-and-envir-b5141cc3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e996b189-4061-4ebf-a49d-a2280af9c242",
+    "text": "Economic and political aspects of the Swadeshi Movement",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-economic-and-09d6ee7a",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bf6bebf5-dae3-40f5-9d69-b7b05e05e5f2",
+    "text": "Economic impact of the revenue arrangements",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-economic-impact-of-the-e252d137",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9df22a44-809e-4cf7-bcf7-dd918ee7abba",
+    "text": "Emergence of the Third World and non-alignment",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-emergence-of-115158ab",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "61403856-8e18-467d-b3b1-298b0d60df20",
+    "text": "Emergence of two power blocs after 1945",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-emergence-of-c5f35436",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4cb28624-8c58-412d-b584-c713bea37d22",
+    "text": "End of the Cold War and US ascendancy as the lone superpower",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-end-of-the-co-c7670348",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "115b047a-ec43-4c98-8539-f04c034c9053",
+    "text": "English Industrial Revolution: causes and impact on society",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-english-indus-798b0097",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7d9098c-e43c-4992-b13e-f53bfe80379c",
+    "text": "European business enterprise and its limitations",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-european-business-ente-ad01b604",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "22c46168-2e98-4b18-897c-68dfb8c3256b",
+    "text": "Famine and poverty in the rural interior",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-famine-and-poverty-in-b924c77b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5196ef66-0d75-4151-aca0-45fbab0c1495",
+    "text": "Fascist counter-revolution in Italy and Germany",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-fascist-counte-86e7dd34",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "70f079a0-8fb0-4e15-8a29-178169acecdf",
+    "text": "Free trade and the changing character of British colonial rule",
+    "slug": "opt-history-p2-3-early-structure-of-the-british-raj-free-trade-and-the-changing-44fc27d1",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "640f55e5-1baf-4b97-9668-c88849022fba",
+    "text": "French Revolution and its aftermath, 1789-1815",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-french-revolu-cbbbc80b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2c1cb42a-2367-424e-ace9-b48de50782a0",
+    "text": "Imperialism and free trade: the new imperialism",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-imperialism-an-a0e40f40",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fcf547d9-ab5f-46ce-b920-efd662b1c62f",
+    "text": "Imperialism in Latin America, South Africa and Australia",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-imperialism-in-7806cb4e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ae2430b0-98b3-44fb-96c6-300ebfc62baf",
+    "text": "Imperialism in South and South-East Asia",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-imperialism-in-369ccd81",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7aec0aab-5047-4c3a-9121-ad9c627d77ca",
+    "text": "Impoverishment of rural society",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-impoverishment-of-rura-c172378f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "852312a0-c14a-46e5-85de-a4fa7ae35368",
+    "text": "Industrialization and globalization",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-industrializa-3d823bb0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c9e3d2cb-043c-4525-8c2d-dc51c37d944f",
+    "text": "Industrialization in the USA, Germany, Russia and Japan",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-industrializa-b10226e9",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "63d68b61-d2d5-485b-bf27-61b3c19a4c60",
+    "text": "Integration of princely states; princes in electoral politics",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-integration-of-pr-34282bc3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "103cb227-4d59-452e-b4c8-d7191cf370ea",
+    "text": "Introduction of western education in India",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-introduction-of-western-educat-ec646d49",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fb248713-cf37-4253-b3c9-9efdee318d68",
+    "text": "Islamic revivalism: the Feraizi and Wahabi movements",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-islamic-revivalism-the-fe-246c3925",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3e20c070-297d-4a08-8d6e-7d9f8a2daed0",
+    "text": "Land reforms and the politics of planning and rural reconstruction",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-land-reforms-and-f0d2c985",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7de93954-3c3c-4e65-a237-53fb8e01c267",
+    "text": "Liberation from colonial rule: Latin America and Bolivar; the Arab world and Egypt",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-liberation-fr-82aaf360",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d3be89d3-f14f-45df-85c8-66d91a79a7dc",
+    "text": "Linguistic reorganisation of states",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-linguistic-reorga-f5d9bd1b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3f1e4c7b-67a8-44d0-b2e3-37784bf90f0f",
+    "text": "Major ideas of the Enlightenment: Kant and Rousseau",
+    "slug": "opt-history-p2-12-enlightenment-and-modern-ideas-major-ideas-of-the-enlightenmen-27ca54ab",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "71210572-e9f4-4559-821a-b9b61ec9779f",
+    "text": "Mir Jafar, Mir Kasim and the Battle of Buxar",
+    "slug": "opt-history-p2-2-british-expansion-in-india-mir-jafar-mir-kasim-and-the-battle-o-f8ff2e56",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9c5f253a-4444-447f-ba42-8e2b072300f2",
+    "text": "Moderates and Extremists",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-moderates-an-83bf6bed",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a6a704b0-14b6-4783-b6b8-241603e809f7",
+    "text": "Mysore and the Anglo-Mysore Wars",
+    "slug": "opt-history-p2-2-british-expansion-in-india-mysore-and-the-anglo-mysore-wars-bf4cf803",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0272a58c-07c2-4805-b456-4dec483263f1",
+    "text": "National politics between Non-cooperation and Civil Disobedience",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-national-politics-between-a8bbcc21",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2f7b81e1-6baf-42e3-9b52-b3426f18998e",
+    "text": "Nationalism and the peasant movements",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-nationalism-and-the-peasa-1eca38a9",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8e8abff7-c396-4ade-877a-8bdca4f3566f",
+    "text": "Nationalism and working class movements",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-nationalism-and-working-c-004a1605",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "52c3517a-9f64-465c-8815-2c7b02694890",
+    "text": "Nehru's foreign policy; India and her neighbours 1947-1964",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-nehru-s-foreign-p-f590c981",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7e8fb8b-5c39-469d-9a55-3fc13389e7a7",
+    "text": "Partition of Bengal 1905 and the Swadeshi Movement",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-partition-of-a367abe5",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8917a109-e89b-41d4-ab2f-de14dfec5911",
+    "text": "Peasant movements and tribal uprisings of the 18th and 19th centuries",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-peasant-movements-and-tribal-up-3f53dc68",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e7729865-615b-4c9f-8c7e-0400ff333ef2",
+    "text": "Peasant movements of the 1920s and 1930s",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-peasant-movements-of-the-1920s-eb4de118",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "007824cf-0515-4b21-bd1f-ed9e2d95c5fa",
+    "text": "Permanent Settlement, Ryotwari and Mahalwari systems",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-permanent-settlement-r-08160d8f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "42a58c6c-7c88-4fc0-82ff-c95f9f2a8d0d",
+    "text": "Political changes in East Europe 1989-2001",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-political-cha-f6884c40",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "69992baf-7aa1-47bf-9612-ef91e0586f2b",
+    "text": "Politics of association; foundation of the Indian National Congress",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-politics-of-d3986e36",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0ffadfe9-7f8a-4086-ae5f-6348a0d02beb",
+    "text": "Post-war foundations: NATO and the European Community",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-post-war-foun-563ff3b8",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9c86924b-63bc-400a-a6d1-cf16634bfb63",
+    "text": "Programme, objectives and social composition of the early Congress",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-programme-ob-beb154a0",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bc497911-113c-42d3-808b-dc0b4379902d",
+    "text": "Progress of science",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-progress-of-science-58354d0f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fbfcecb1-4fd5-488f-87c9-993c9053d420",
+    "text": "Progress of science after Independence",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-progress-of-scien-3807771f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "42bbd8bc-2c04-4ecf-8c4f-6aafa777fce6",
+    "text": "Railways, telegraph and postal communication",
+    "slug": "opt-history-p2-4-economic-impact-of-british-colonial-rule-railways-telegraph-and-71017683",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e3bde945-171c-4052-9a22-3a24752934a7",
+    "text": "Ram Mohan Roy and the Brahmo movement",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-ram-mohan-roy-and-the-bra-302c09c2",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "efe07dee-3522-4d35-ab55-f2f912296a45",
+    "text": "Rangpur Dhing, Kol Rebellion and Mopla Rebellion",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-rangpur-dhing-kol-rebellion-and-be371065",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5417c0a6-2133-4be6-b9db-caa0806c1800",
+    "text": "Regionalism and regional inequality",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-regionalism-and-r-2ba886fe",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6f00371b-c24c-48fe-894d-24322959a6a7",
+    "text": "Revolutionaries in Bengal, Punjab, Maharashtra, UP and Madras",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-revolut-56a99bd8",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "551a1aab-0729-41da-a466-c23304e691b5",
+    "text": "Revolutionary activity abroad",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-revolut-92ec112a",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "052a73e7-f9be-4a4a-8ed5-14d84788b13a",
+    "text": "Rise of Gandhi; character of Gandhian nationalism and his popular appeal",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-rise-of-gandhi-character-0651933a",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9893c321-1735-4dbe-acf3-afe9ebfb569f",
+    "text": "Rise of modern vernacular literature",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-rise-of-modern-vernacular-lite-4a5952cc",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f079c178-7a28-4b79-b129-23c86317f1fe",
+    "text": "Rise of nationalism in the 19th century",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-rise-of-nation-458fa163",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "26966f2e-763a-4858-850d-70eb9f1f4dd6",
+    "text": "Rise of socialist ideas up to Marx",
+    "slug": "opt-history-p2-12-enlightenment-and-modern-ideas-rise-of-socialist-ideas-up-to-m-48234776",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bf804cb1-a437-4e43-8400-9fedd89dc8ba",
+    "text": "Rise of the press, literature and public opinion",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-rise-of-the-press-literature-a-47695e79",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "507e0a4c-86e5-412f-ba4f-4aa65c24351e",
+    "text": "Rowlatt Satyagraha and the Khilafat Movement",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-rowlatt-satyagraha-and-th-ce41ff8b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "57600b8d-46d4-4ed9-a4c2-d6f97315bd51",
+    "text": "Santal Hul, Indigo Rebellion, Deccan Uprising and Munda Ulgulan",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-santal-hul-indigo-rebellion-dec-b568d0c7",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b4d1d79e-8270-4846-be72-b2ac601c96c8",
+    "text": "Shift in the character of peasant uprisings after 1857",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-shift-in-the-character-of-peasa-05f78958",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9a32302f-142a-443d-98ce-9b1986ddfaa1",
+    "text": "Simon Commission, the Nehru Report and the Round Table Conferences",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-simon-commission-the-nehr-1a201b96",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e835c2c0-1932-4979-92c3-57c4db545b2e",
+    "text": "Siraj-ud-Daula and the English; the Battle of Plassey and its significance",
+    "slug": "opt-history-p2-1-european-penetration-into-india-siraj-ud-daula-and-the-english-378f9bbd",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "edb5e58f-5e42-460e-a6e5-5d118530720b",
+    "text": "Social reform: sati, widow remarriage and child marriage",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-social-reform-sati-widow-635f6f59",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "58ef4daf-f104-41f9-ae67-6df4f68debc5",
+    "text": "Spread of Enlightenment in the colonies",
+    "slug": "opt-history-p2-12-enlightenment-and-modern-ideas-spread-of-enlightenment-in-the-c65d3986",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c707a0e1-e33b-4231-90a7-3ce16e7a3ff1",
+    "text": "Spread of Marxian socialism",
+    "slug": "opt-history-p2-12-enlightenment-and-modern-ideas-spread-of-marxian-socialism-6192948a",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4a13dcaa-f502-4aa1-a288-baa3d637a868",
+    "text": "State of indigenous education and its dislocation",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-state-of-indigenous-education-b42a0c94",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "042e4822-6d27-4c22-8266-daf1f4f4ab2f",
+    "text": "State-building in Germany and Italy",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-state-building-892c3236",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3325903d-3b66-4f81-9bd4-af8a8c7391d3",
+    "text": "The Carnatic Wars",
+    "slug": "opt-history-p2-1-european-penetration-into-india-the-carnatic-wars-5ae57563",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7908761f-826d-4e0a-8759-b33441ac7ff6",
+    "text": "The Charter Act 1833",
+    "slug": "opt-history-p2-3-early-structure-of-the-british-raj-the-charter-act-1833-20a0324f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e0e3f721-7d7f-4d16-b1c2-7ceb45369ec6",
+    "text": "The Chinese Revolution of 1949",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-the-chinese-re-2545462e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "73cdd427-27e5-4373-b121-2299183526ea",
+    "text": "The Communist Party of India and other left parties",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-the-com-74f601b8",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8c3b5579-44bc-4895-a733-7ad4581b8431",
+    "text": "The English and French East India Companies and their struggle for supremacy",
+    "slug": "opt-history-p2-1-european-penetration-into-india-the-english-and-french-east-ind-1d873bf9",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a3bc7b40-6018-48b7-b51c-6b063ce5ba7f",
+    "text": "The English utilitarians and India",
+    "slug": "opt-history-p2-3-early-structure-of-the-british-raj-the-english-utilitarians-and-f28c27c6",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b6ba0be1-fa97-4473-8035-bc321950ec3d",
+    "text": "The European states system",
+    "slug": "opt-history-p2-13-origins-of-modern-politics-and-industrialization-the-european-6240e2e2",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8163c5c2-ce23-4eda-82d9-4b0ef9c722fb",
+    "text": "The Great Revolt of 1857: origin, character and causes of failure",
+    "slug": "opt-history-p2-7-indian-response-to-british-rule-the-great-revolt-of-1857-origin-41994d52",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a37252a9-c899-4bb9-9973-af6f49e80214",
+    "text": "The Indian National Army and the Naval Mutiny of 1946",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-the-indian-national-army-20baeb3b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f52ef4aa-2c55-449d-9ef9-c8b3f33752e2",
+    "text": "The Left within the Congress: Nehru, Subhas Chandra Bose, the Congress Socialist Party",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-the-lef-ccb1291e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dbd6489c-a59f-445b-a261-f5f9fbc355f0",
+    "text": "The Marathas and the three Anglo-Maratha Wars",
+    "slug": "opt-history-p2-2-british-expansion-in-india-the-marathas-and-the-three-anglo-mar-dfa67d0f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3c693ab3-c96b-4472-a1a2-4e953ee86709",
+    "text": "The Muslim League and the Hindu Mahasabha",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-the-mus-e0150c3e",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d97f1546-0ace-45af-83e3-d00098652bd2",
+    "text": "The Non-cooperation Movement",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-the-non-cooperation-movem-3d9eb914",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1bdbacba-7cf0-498a-8c6e-11db612a9303",
+    "text": "The Orientalist-Anglicist controversy",
+    "slug": "opt-history-p2-5-social-and-cultural-developments-the-orientalist-anglicist-cont-de920337",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a818bd4b-40de-465a-9e46-c50f792c65c0",
+    "text": "The Regulating Act 1773 and Pitt's India Act 1784",
+    "slug": "opt-history-p2-3-early-structure-of-the-british-raj-the-regulating-act-1773-and-6ac7d4ad",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "de778a59-399c-4071-a4d4-c614448eb992",
+    "text": "The Russian Revolution of 1917-1921",
+    "slug": "opt-history-p2-14-nation-state-system-imperialism-and-colonialism-the-russian-re-7a925282",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0bdd7032-b322-4133-a571-83b22ac8d0e1",
+    "text": "The UNO and global disputes",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-the-uno-and-g-ce46f5bb",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9690a9a5-2b91-49f0-abc9-7cf096eb3b69",
+    "text": "The World Wars as total wars: societal implications",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-the-world-war-e1e82ffc",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b666b2dc-9cb0-403d-be50-e6d7aa19a8df",
+    "text": "The Young Bengal Movement",
+    "slug": "opt-history-p2-6-social-and-religious-reform-movements-the-young-bengal-movement-c4479307",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "47cc8543-d8ea-48ad-ada7-715d300f3275",
+    "text": "The election of 1937 and the formation of ministries",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-the-election-of-1937-and-07cbc78f",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e64f4aa4-16b0-4066-af46-04e1315e6b13",
+    "text": "The question of national language",
+    "slug": "opt-history-p2-11-consolidation-as-a-nation-and-caste-politics-the-question-of-n-2e3df8e8",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d2fc1244-3423-42b6-9296-294e8c6e5b52",
+    "text": "The safety-valve thesis",
+    "slug": "opt-history-p2-8-factors-leading-to-the-birth-of-indian-nationalism-the-safety-v-2e9f68d3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e081e486-e8ab-4b45-b362-33e897f872c0",
+    "text": "The two phases of the Civil Disobedience Movement",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-the-two-phases-of-the-civ-30df7629",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1a89895a-b498-429d-a706-e16a2decc956",
+    "text": "Transfer of power and Independence",
+    "slug": "opt-history-p2-10-constitutional-developments-partition-and-independence-transfe-36d259b3",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "09834bdc-69bc-43ab-b3bd-8e30fb8f8fd0",
+    "text": "Women, youth and students in Indian politics 1885-1947",
+    "slug": "opt-history-p2-9-rise-of-gandhi-and-the-mass-movements-women-youth-and-students-659c866b",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "96c90ca3-fcde-4912-9d9c-e481449c353c",
+    "text": "World War I: causes and consequences",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-world-war-i-c-c1dc1b21",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7c66504f-ac38-4f30-a0c4-1332a8c89894",
+    "text": "World War II: causes and consequences",
+    "slug": "opt-history-p2-15-world-wars-decolonization-and-the-post-war-world-world-war-ii-56f777bb",
+    "subject_id": "865db4f2-c0b8-4751-a32a-8231b17ff640",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

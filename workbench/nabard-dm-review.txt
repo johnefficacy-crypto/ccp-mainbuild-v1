@@ -1,0 +1,320 @@
+﻿Q91  []
+Q.91) Which is a structured method of group decision making which allows a rich generation of original ideas, behavioural participation of all members which reduces interaction of members at some point of the stage ?
+     (A) Delphi
+     (B) Brainstorming
+   * (C) Nominal Group
+     (D) Fish bowling
+     (E) Consensus mapping
+
+Q92  []
+Q.92) With a view to improve the process and outcomes of future decisions decision makers generally assess both outcome of a decision and process by which the decision has reached after â€“
+     (A) Analysing alternative course
+     (B) Decision has been made and implemented
+   * (C) Evaluating alternative course of action
+     (D) Identifying alternative course of action
+     (E) Defining and understanding the problem
+
+Q93  []
+Q.93) Managers sometimes make decisions based on skills, knowledge & training. Such decisions are known as-
+     (A) Value ethics based decisions
+     (B) Experience based decisions
+     (C) Sub-conscious mental processing
+   * (D) Cognitive based decisions
+     (E) Environment based decisions
+
+Q94  []
+Q.94) Which of the following is an individual level factor that can affect process of decision making in an organisation?
+   * (A) Personal values
+     (B) Economic Conditions
+     (C) Organisational politics
+     (D) Organisational policies
+     (E) Government legislation
+
+Q95  []
+Q.95) Method of determining the root cause of the problem uses Boolean logic to determine cause of the problem in any undesirable event which involves a diagram that looks like a tree where all causes are written down as branches-
+   * (A) Fault tree analysis
+     (B) Failure mode and effect analysis
+     (C) Eight D problem analysis
+     (D) Fishbone diagram
+     (E) Five Whys analysis
+
+Q96  []
+Q.96) When a decision making wrongly comprises of two situations because of perceived similarity or evaluates an event without comparing it to the similar situations, the tendency is known as â€“
+     (A) Overconfidence bias
+     (B) Confirmation bias
+     (C) Time sight bias
+     (D) Availability bias
+   * (E) Representative bias
+
+Q97  []
+Q.97) Which decision making theory was put forward, based on how the game of chess is played, and an individualâ€™s relationship with uncertainty?
+     (A) Rational
+     (B) Prospect
+     (C) Bounded rationality
+     (D) Intuitive
+   * (E) Predispositioning
+
+Q98  []
+Q.98) Decision making technique useful in motivating participation in group decisions and which encourages all members to contribute at an individual level before being influenced by anyone else thereby leading to wide variety of ideas-
+     (A) Cost benefit analysis
+   * (B) Step ladder technique
+     (C) Simulation training
+     (D) Star bursting
+     (E) Heuristic method
+
+Q99  []
+Q.99) Tendency to maintain things as they are even when that may be significantly less than the optimal is termed as -
+     (A) Sunk cost trap
+     (B) Prudence trap
+     (C) Anchoring trap
+     (D) Loss aversion trap
+   * (E) Status quo trap
+
+Q100  []
+Q.100) Leadership style where leader uses knowledge and past experience to reach a decision without seeking information from others-
+   * (A) Directive Decision making style
+     (B) Delegating Decision making style
+     (C) Facilitative Decision-making style
+     (D) Conceptual Decision-making style
+     (E) Analytical Decision-making style
+
+Q91  []
+Q.91) Which of the following techniques of decision making involves a process for arriving at an evaluation of decisions, in which selected individuals are asked to respond individually to key questions about a problem, then are provided with a summary of the responses all members have given and invited to respond again?
+   * (A) delphi technique
+     (B) brainstorming
+     (C) nominal group technique
+     (D) bounded rationality
+     (E) Multi-voting
+
+Q92  []
+Q.92) Which type of a decision would it be when an employee in a company is working out a schedule to ensure that all the sales staff arrive at the company conference on time?
+   * (A) Programmed decisions
+     (B) Non-programmed decisions
+     (C) Strategic decisions
+     (D) Personal decision
+     (E) Major decision
+
+Q93  []
+Q.93) What type of bias relies too heavily on one piece of information in making a final decision?
+     (A) Confirmation
+     (B) Validation
+     (C) Escalation of Commitment
+   * (D) Anchoring
+     (E) Hindsight
+
+Q94  []
+Q.94) A manager's freedom to make totally rational decisions is restricted by internal and external environmental factors and by the manager's own characteristics and decision- making ability. This concept is known as _________
+     (A) Behavioural rationality
+     (B) Objective Rationality
+   * (C) Bounded rationality
+     (D) Limited rationality
+     (E) Subjective Rationality
+
+Q95  []
+Q.95) A decision is said to be rational when it is based on _______.
+     (A) Gut feeling
+   * (B) Reasoning
+     (C) Bias
+     (D) Emotions
+     (E) Both A and B
+
+Q96  []
+Q.96) The propensity of a decision maker to be influenced by the manner in which the information is presented to him/her is known as ________.
+     (A) Commitment bias
+     (B) Confirmation bias
+     (C) Hindsight bias
+   * (D) Framing bias
+     (E) Anchoring bias
+
+Q97  []
+Q.97) Discussing a problem face to face with open mind by a group of selected persons is known as _________
+     (A) Delphi
+     (B) Multi-voting
+     (C) Didactic
+   * (D) Brainstorming
+     (E) Decision tree
+
+Q98  []
+Q.98) __________ emerges when decision makers have limits on their ability to assimilate large amounts of information.
+     (A) Intuitive Rationality
+     (B) Irrationality
+     (C) Limited rationality
+   * (D) Bounded rationality
+     (E) Rounded rationality
+
+Q99  []
+Q.99) Prospect theory of decision making is given by ________.
+   * (A) Daniel Kahneman
+     (B) Henry Mintzberg
+     (C) Herbert Simon
+     (D) Edward Deming
+     (E) Albert Bandura
+
+Q100  []
+Q.100)Manish is going on a vacation and needs to book a hotel. He shortlists 3 hotels and is now comparing them on the basis of cost, facilities available and proximity to tourist sites. Which step of decision making is Manish performing?
+     (A) Generating the alternatives
+     (B) Defining the selection criteria
+   * (C) Evaluating the alternatives
+     (D) Reviewing the decision
+     (E) Removing biases
+
+Q91  []
+Q.91) Which of the following is a quantitative method of decision making?
+   * (A) PERT
+     (B) Rule of thumb
+     (C) Psychological analysis
+     (D) Decision making by creativity
+     (E) Following standard procedure
+
+Q92  []
+Q.92) Tendency to see a particular situation or issue from chosen perspective, influencing our ability to understand alternative or conflicting points of view or alternatives is called
+     (A) Availability bias
+     (B) Immediate gratification
+     (C) Status quo bias
+     (D) Hindsight bias
+   * (E) Selective perception
+
+Q93  []
+Q.93) Which of the following problem-solving tools is a visual means of displaying the sequence of activities and decisions that occur in a system or process over time?
+     (A) Brainstorming
+     (B) Benchmarking
+   * (C) Flowchart
+     (D) Five Whys Analysis
+     (E) Force Field Analysis
+
+Q94  []
+Q.94) One of the barriers to good decision making is setting out to solve wrong problem because we have created a mental framework for our decision, with little thought, that causes us to overlook the best option or lose sight of important objectives. This is called
+     (A) Failure to interpret feedback
+   * (B) Frame blindness
+     (C) Not keeping track
+     (D) Over confidence in our judgement
+     (E) Short sighted shortcuts
+
+Q95  []
+Q.95) The type of Data Analytics which is used to make forecasts about future trends and answer the question â€˜What might happen in the futureâ€™ is called
+     (A) Inferential analytics
+     (B) Descriptive analytics
+   * (C) Predictive analytics
+     (D) Diagnostic analytics
+     (E) Prescriptive analytics
+
+Q96  []
+Q.96) Most â€˜judgemental problemsâ€™ are solved by
+   * (A) use of good judgement & minimizing possibility of undesired outcomes
+     (B) habitual response, standard operating procedure
+     (C) inventory reorder model, queueing theory, statistical analysis
+     (D) frequent modification in strategies to match development in technology
+     (E) computational techniques like linear programming and network analysis
+
+Q97  []
+Q.97) In Root Cause Analysis (RCA), which of the following is the cause in case people did something wrong or did not do something that was needed?
+     (A) physical cause
+     (B) organizational cause
+     (C) statutory cause
+     (D) legislative cause
+   * (E) human cause
+
+Q98  []
+Q.98) Effective communication during decision making process will help to minimize
+   * (A) resistance and negative emotions
+     (B) interest and receptivity
+     (C) necessary support for changes
+     (D) harmony and agreement
+     (E) support and cooperation
+
+Q99  []
+Q.99) Overconfidence about our judgement abilities and prediction accuracy, as we remember our successes and quickly forget our errors is called
+   * (A) Overconfidence trap
+     (B) Estimating trap
+     (C) Anchoring trap
+     (D) Information overdose trap
+     (E) Confirming evidence trap
+
+Q100  []
+Q.100) Which of the following decision making style is suitable for a leader where there are more than one right answer and where cause effect relationship is discoverable but not immediately apparent?
+     (A) avoidant style
+     (B) conceptual style
+     (C) behavioural style
+   * (D) analytic style
+     (E) directive style
+
+Q1  []
+Q.1) What technique is used to identify the most important factors that contribute to a particular problem or outcome, based on the 80:20 ratio?
+   * (A) Pareto analysis
+     (B) Root cause analysis
+     (C) Ishikawa diagram
+     (D) Five whys
+     (E) Brainstorming`
+
+Q2  []
+Q.2) What strategies can individuals employ to mitigate confirmation bias in their decisionmaking processes?
+   * (A) By reducing personal thoughts and emphasizing objectivity
+     (B) By reducing objectivity and increasing personal opinion
+     (C) Seeking out only information that supports your existing beliefs
+     (D) Avoiding any kind of critical thinking
+     (E) None of the above
+
+Q3  []
+Q.3) What are the key factors contributing to procrastination in the decision-making process among the following options?
+     (A) Analysis paralysis
+     (B) Fear of consequences
+     (C) Loss of opportunity
+     (D) Compounding complexity
+   * (E) All of the above
+
+Q4  []
+Q.4) What is the term for a methodology that utilizes a panel of experts who provide anonymous responses to structured questionnaires?
+   * (A) Delphi method
+     (B) Linear programming
+     (C) PERT (Programming Evaluation and Review Technique)
+     (D) Cost-benefit Analysis
+     (E) None of the above
+
+Q5  []
+Q.5) In situations marked by uncertainty in the condition or outcome, but where the associated risk is deemed minimal, what is the recommended approach to decision- making?
+     (A) Be cautious and conservative.
+     (B) Gather as much information as possible.
+     (C) Consider all possible options.
+     (D) Make a decision based on your intuition.
+   * (E) All of the above.
+
+Q6  []
+Q.6) What constitutes the initial step in the process of content analysis as applied to decision making?
+   * (A) Data collection
+     (B) Data analysis
+     (C) Hypothesis formulation
+     (D) Sampling
+     (E) Data interpretation
+
+Q7  []
+Q.7) Which is the most precise definition of a random heuristic among the following options? areas of the search space.
+     (A) A search algorithm that uses a heuristic function to guide the search towards promising
+   * (B) A search algorithm that uses a combination of randomness and a heuristic function to
+     (C) A search algorithm that is guaranteed to find the optimal solution to a problem.
+     (D) A search algorithm that is very fast but not very accurate.
+     (E) None of the above
+
+Q8  []
+Q.8) Which of the following is a characteristic of the bounded rationality model?
+     (A) Humans have complete information.
+     (B) Humans have unlimited cognitive capacity.
+   * (C) Humans make decisions under time pressure.
+     (D) Humans are always rational.
+     (E) Humans always make the best possible decisions.
+
+Q9  []
+Q.9) Among the following, which assumption does not align with the principles of rational decision-making?
+     (A) Perfect information
+     (B) Consistency in preferences
+   * (C) Emotion-driven decision making
+     (D) Transitivity of preferences
+     (E) Maximizing utility
+
+Q10  []
+Q.10) Consider the following statements regarding group conflict. 1) Group conflict can arise due to differences in goals and interests among group members. 2) Conflict within a group always leads to negative outcomes 3) Effective communication and conflict resolution skills are essential in managing and resolving group conflicts. Which among the following statement/s is/are incorrect?
+     (A) 1 and 2
+     (B) 2 and 3
+   * (C) 2 only
+     (D) 2 and 3
+     (E) 1,2, and 3
+

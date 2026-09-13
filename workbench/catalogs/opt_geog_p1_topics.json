@@ -1,0 +1,832 @@
+[
+  {
+    "id": "5deb5b16-c08c-4081-8a04-1171f9341d11",
+    "text": "Agricultural inputs and productivity",
+    "slug": "opt-geography-p1-economic-geography-agricultural-inputs-and-productivity-7d0cd2fa",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "228786df-6eb9-4bd9-b4fd-8f3569cbb2bc",
+    "text": "Air masses and frontogenesis",
+    "slug": "opt-geography-p1-climatology-air-masses-and-frontogenesis-a33fe5a9",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "65cebe06-cf15-47f0-84cd-d29ab978120a",
+    "text": "Applied climatology and urban climate",
+    "slug": "opt-geography-p1-climatology-applied-climatology-and-urban-climate-cacc05af",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ca2ec84e-dfb5-4b7d-8c6f-feb1d9cc6a6a",
+    "text": "Applied geomorphology: geohydrology, economic geology and environment",
+    "slug": "opt-geography-p1-geomorphology-applied-geomorphology-geohydrology-economic-geolo-55888be8",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6318e1ea-96ab-413b-8b2b-0b7685a05261",
+    "text": "Areal differentiation and regional synthesis",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-areal-differentiation-and-regio-9d07a0b2",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "28ed7fd5-3419-435d-8f92-b83c1684d91a",
+    "text": "Atmospheric circulation; atmospheric stability and instability",
+    "slug": "opt-geography-p1-climatology-atmospheric-circulation-atmospheric-stability-and-i-6358184e",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "95ee8909-66da-4a8d-9a46-a2b072a75e8f",
+    "text": "Biodiversity and sustainable development",
+    "slug": "opt-geography-p1-environmental-geography-biodiversity-and-sustainable-developmen-2041f49f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f1336305-31f8-427d-be02-53042edc629c",
+    "text": "Bottom topography of the Atlantic, Indian and Pacific Oceans",
+    "slug": "opt-geography-p1-oceanography-bottom-topography-of-the-atlantic-indian-and-pacif-f4b08bff",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8d40b536-63c9-42cf-8b5a-79fbb9fec386",
+    "text": "Causes and consequences of migration",
+    "slug": "opt-geography-p1-population-and-settlement-geography-causes-and-consequences-of-30842e70",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "57f31d8f-b793-45aa-99b8-d215ff09c05c",
+    "text": "Central Place theories of Christaller and Losch",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-central-place-theor-67e40f3b",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ad9fce43-9333-406a-a94b-d1a550cb2e25",
+    "text": "Channel morphology, erosion surfaces and slope development",
+    "slug": "opt-geography-p1-geomorphology-channel-morphology-erosion-surfaces-and-slope-dev-37678822",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dcfa6309-2a4f-4e89-bad1-fb680e5b1b37",
+    "text": "Concept of a region; types of regions and methods of regionalisation",
+    "slug": "opt-geography-p1-regional-planning-concept-of-a-region-types-of-regions-and-meth-88be39a9",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5c54230b-e31e-4fbc-ac74-e63443e04b6b",
+    "text": "Concepts of over-, under- and optimum population",
+    "slug": "opt-geography-p1-population-and-settlement-geography-concepts-of-over-under-and-3a360c1e",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c5298761-3063-4a5d-89c6-2bc0c3e80207",
+    "text": "Continental drift and isostasy",
+    "slug": "opt-geography-p1-geomorphology-continental-drift-and-isostasy-0b948949",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9ed31b59-8fd7-44a7-9d40-6ad03a2c4031",
+    "text": "Coral reefs and coral bleaching",
+    "slug": "opt-geography-p1-oceanography-coral-reefs-and-coral-bleaching-3861c155",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2d1bd027-3e2e-463d-8a32-1cd17a6d7041",
+    "text": "Cultural regions of the world",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-cultural-regions-of-the-world-7a20d27e",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2796dd1f-8708-4f24-a8f8-8ab73d2fc8a8",
+    "text": "Dichotomy and dualism in geography",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-dichotomy-and-dualism-in-geogra-efface6f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cde2ea06-c84b-4fb1-a97a-04f2062d2440",
+    "text": "Ecosystems: management and conservation",
+    "slug": "opt-geography-p1-environmental-geography-ecosystems-management-and-conservation-c75944b9",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e582e139-3966-475d-8a28-08eecbdb68a5",
+    "text": "Environmental degradation, management and conservation",
+    "slug": "opt-geography-p1-environmental-geography-environmental-degradation-management-an-13bec177",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "faf7987b-290f-4e29-9ee1-718218b60422",
+    "text": "Environmental education and legislation",
+    "slug": "opt-geography-p1-environmental-geography-environmental-education-and-legislation-1af4509c",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "523429d5-f5ea-46f4-ae73-54d29a484867",
+    "text": "Environmental hazards and remedial measures",
+    "slug": "opt-geography-p1-environmental-geography-environmental-hazards-and-remedial-meas-065b6edd",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d93eca27-05b5-4c4e-8c9c-c1bd1a594f4c",
+    "text": "Environmental issues in regional planning",
+    "slug": "opt-geography-p1-regional-planning-environmental-issues-in-regional-planning-c981790f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c0a43032-a2ac-412b-8cb8-34dc5e8150ce",
+    "text": "Environmental policy",
+    "slug": "opt-geography-p1-environmental-geography-environmental-policy-8a47eb6f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "65b7af5f-2ee2-4f3e-8cb6-b0a1613e0fba",
+    "text": "Environmentalism",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-environmentalism-c8943762",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f000106c-9bea-416c-bed8-c1fdcd011586",
+    "text": "Factors controlling landform development; endogenetic and exogenetic forces",
+    "slug": "opt-geography-p1-geomorphology-factors-controlling-landform-development-endogene-19479410",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e3e9cd68-6779-43c8-b711-be2677716b6b",
+    "text": "Factors influencing world distribution of plants and animals",
+    "slug": "opt-geography-p1-biogeography-factors-influencing-world-distribution-of-plants-a-cfb48f84",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d5c2aef0-c1cc-45dc-8982-2c639f5843de",
+    "text": "Famine: causes, effects and remedies",
+    "slug": "opt-geography-p1-economic-geography-famine-causes-effects-and-remedies-d1d25ef4",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8b5d3a16-3912-41df-b38e-a51413a479e5",
+    "text": "Food and nutrition problems; food security",
+    "slug": "opt-geography-p1-economic-geography-food-and-nutrition-problems-food-security-bcea5838",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4eb02b65-5b3a-4f1b-9376-f51e7ebfb786",
+    "text": "Functional classification of towns; sphere of urban influence",
+    "slug": "opt-geography-p1-population-and-settlement-geography-functional-classification-o-fd231345",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "101d60f5-085f-413d-aa50-ad05d9ad99b5",
+    "text": "Genesis, classification and distribution of soils; soil profile",
+    "slug": "opt-geography-p1-biogeography-genesis-classification-and-distribution-of-soils-s-825e457c",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e5570ff8-ac76-4538-81fb-0ffd99b4d135",
+    "text": "Geomorphic cycles and landscape development; denudation chronology",
+    "slug": "opt-geography-p1-geomorphology-geomorphic-cycles-and-landscape-development-denud-508b73fd",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d9c3fdbd-1e27-476c-85e1-6d8a9e244258",
+    "text": "Global and regional ecological changes and imbalances",
+    "slug": "opt-geography-p1-environmental-geography-global-and-regional-ecological-changes-01c22d98",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e2e9e75f-316c-4343-8958-574380db179a",
+    "text": "Global climatic change; role and response of man",
+    "slug": "opt-geography-p1-climatology-global-climatic-change-role-and-response-of-man-1635ca55",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d5121923-1ee0-4901-98db-2dfa6accfb46",
+    "text": "Growth and distribution of world population; demographic attributes",
+    "slug": "opt-geography-p1-population-and-settlement-geography-growth-and-distribution-of-7a8e256a",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a146cce6-cd27-495b-84d0-aa516ecbff66",
+    "text": "Growth centres and growth poles",
+    "slug": "opt-geography-p1-regional-planning-growth-centres-and-growth-poles-e620de4c",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f8cdad15-7e0b-483f-95d0-8f3b2b4c25ff",
+    "text": "Heartland and Rimland theories",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-heartland-and-rimla-7322a792",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "136abffe-cb9c-4e21-a878-fd1142cf831a",
+    "text": "Hierarchy of urban settlements; urban morphology",
+    "slug": "opt-geography-p1-population-and-settlement-geography-hierarchy-of-urban-settleme-1a2d14e3",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "97ef07ff-14dd-40f9-8ac5-e3a43af8ecc8",
+    "text": "Human development index",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-human-development-index-a6d46db6",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1caa10ad-5e6a-4025-9223-0bca8125c408",
+    "text": "Hydrological cycle",
+    "slug": "opt-geography-p1-climatology-hydrological-cycle-a980306f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c22df506-0400-4899-be34-2cedaa18452a",
+    "text": "Influence of man on ecology and environment",
+    "slug": "opt-geography-p1-environmental-geography-influence-of-man-on-ecology-and-environ-8702a3af",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "75821841-a722-48e4-8ee1-65b6ace4998c",
+    "text": "Koppen's, Thornthwaite's and Trewartha's classifications of world climates",
+    "slug": "opt-geography-p1-climatology-koppen-s-thornthwaite-s-and-trewartha-s-classificat-c7d2fa97",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "94ea99c9-02af-4723-b8d2-4426e645263e",
+    "text": "Languages, religions and secularisation",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-languages-religions-and-secular-3e33b124",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1dc9b992-b525-4c07-b9a0-4674317bb527",
+    "text": "Laws of international boundaries and frontiers",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-laws-of-internation-a6cef8b4",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2a0ae617-b126-4b33-88a2-91ef5b698860",
+    "text": "Malthusian, Marxian and Demographic Transition models",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-malthusian-marxian-d5fa4a58",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b9900b37-1900-4ee5-8b6d-fb20fc958ebc",
+    "text": "Marine resources: biotic, mineral and energy",
+    "slug": "opt-geography-p1-oceanography-marine-resources-biotic-mineral-and-energy-b5a05456",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "10d34498-00c3-44b3-befe-cc5505ce06ea",
+    "text": "Ocean deposits",
+    "slug": "opt-geography-p1-oceanography-ocean-deposits-3c2aa844",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "30373841-ea8d-40ae-9a0a-4d01326168e8",
+    "text": "Origin and evolution of the earth's crust; fundamentals of geomagnetism",
+    "slug": "opt-geography-p1-geomorphology-origin-and-evolution-of-the-earth-s-crust-fundame-cb308fb7",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "faf2b50c-a8d0-4ecf-aee9-5f01b86bc448",
+    "text": "Patterns of world trade",
+    "slug": "opt-geography-p1-economic-geography-patterns-of-world-trade-e10a7878",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d54e288c-8b25-4383-8b75-378d570fc243",
+    "text": "Perroux and Boudeville on growth poles",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-perroux-and-boudevi-8ebcd96c",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "17992314-27aa-43b0-ae23-40db28e497c6",
+    "text": "Physical conditions of the earth's interior; geosynclines",
+    "slug": "opt-geography-p1-geomorphology-physical-conditions-of-the-earth-s-interior-geosy-a37ca52e",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5acc249d-90d5-492c-9e19-08c6ce4e2bbe",
+    "text": "Planetary and local winds; monsoons and jet streams",
+    "slug": "opt-geography-p1-climatology-planetary-and-local-winds-monsoons-and-jet-streams-b27e7697",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c9d756b7-78c1-4898-b1fe-ec6d17cd2a5b",
+    "text": "Planning for sustainable development",
+    "slug": "opt-geography-p1-regional-planning-planning-for-sustainable-development-32460cb6",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "73f70e40-f560-4e8e-a9ea-c36365847a62",
+    "text": "Plate tectonics and recent views on mountain building",
+    "slug": "opt-geography-p1-geomorphology-plate-tectonics-and-recent-views-on-mountain-buil-9b5ef520",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "02b0a0fc-691b-4f53-8516-5b329d62b53d",
+    "text": "Population theories; world population problems and policies",
+    "slug": "opt-geography-p1-population-and-settlement-geography-population-theories-world-p-7ada279d",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2f54e777-5b35-4aac-a89e-5b9d77b46c7c",
+    "text": "Primate city and rank-size rule",
+    "slug": "opt-geography-p1-population-and-settlement-geography-primate-city-and-rank-size-c50da9de",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7739a08f-34bf-4e43-b398-bddc84b761b5",
+    "text": "Principles of ecology; human ecological adaptations",
+    "slug": "opt-geography-p1-environmental-geography-principles-of-ecology-human-ecological-436ca421",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "18964473-f458-42c2-8e50-421938c51c72",
+    "text": "Problems and remedies of urbanization; sustainable development of cities",
+    "slug": "opt-geography-p1-population-and-settlement-geography-problems-and-remedies-of-ur-0d852a32",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b239a8f-667d-4f4e-9416-0b314da0ce09",
+    "text": "Problems of deforestation and conservation measures",
+    "slug": "opt-geography-p1-biogeography-problems-of-deforestation-and-conservation-measure-22a585e1",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "653cc3ec-798e-4472-bf5d-66c8f9fb40bf",
+    "text": "Quantitative revolution and locational analysis",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-quantitative-revolution-and-loc-dd20bcdd",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f071d630-0602-41d5-9d27-f2a8381c6757",
+    "text": "Radical, behavioural, human and welfare approaches",
+    "slug": "opt-geography-p1-perspectives-in-human-geography-radical-behavioural-human-and-w-8b3325f0",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5b347bca-fde8-4f36-8130-3a9eaf7fc0b6",
+    "text": "Regional imbalances and regional development strategies",
+    "slug": "opt-geography-p1-regional-planning-regional-imbalances-and-regional-development-1bda11b7",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d8cbd5d1-d360-44da-87d0-43a3fbba2d26",
+    "text": "Rostow's model of stages of growth",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-rostow-s-model-of-s-08eeacfb",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "96e690fe-6314-4078-9761-7690e8a5d3ab",
+    "text": "Rural-urban fringe and satellite towns",
+    "slug": "opt-geography-p1-population-and-settlement-geography-rural-urban-fringe-and-sate-88f5d477",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0886ebe6-5831-4eb8-81b3-ada01fe9b4de",
+    "text": "Sea-level changes; law of the sea and marine pollution",
+    "slug": "opt-geography-p1-oceanography-sea-level-changes-law-of-the-sea-and-marine-pollut-717a91b5",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bbc89116-3512-469e-bba9-3c4825588ee8",
+    "text": "Social forestry and agro-forestry",
+    "slug": "opt-geography-p1-biogeography-social-forestry-and-agro-forestry-d3ffebdd",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a067b224-d5c9-433f-bc0f-d83b6c84937b",
+    "text": "Social well-being and quality of life; population as social capital",
+    "slug": "opt-geography-p1-population-and-settlement-geography-social-well-being-and-quali-e7f56e0f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4b17577e-af81-4e5d-bb1e-e8250affa33f",
+    "text": "Soil erosion, degradation and conservation",
+    "slug": "opt-geography-p1-biogeography-soil-erosion-degradation-and-conservation-103cbcfd",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "55188aa9-9f0a-43cd-8631-8af0dbf1f80e",
+    "text": "Systems analysis in human geography",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-systems-analysis-in-d8be65ca",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "43ec1288-2cc4-4571-a331-b939e759d904",
+    "text": "Temperate and tropical cyclones",
+    "slug": "opt-geography-p1-climatology-temperate-and-tropical-cyclones-f9db8804",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "edf0f294-7a69-4b4b-9b41-b4c5214c863a",
+    "text": "Temperature and pressure belts of the world; heat budget of the earth",
+    "slug": "opt-geography-p1-climatology-temperature-and-pressure-belts-of-the-world-heat-bu-3f4429e2",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e92eed19-08b6-409b-96ef-e59b8e5eab11",
+    "text": "Temperature and salinity of the oceans; heat and salt budgets",
+    "slug": "opt-geography-p1-oceanography-temperature-and-salinity-of-the-oceans-heat-and-sa-793e1377",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "11adedd2-4371-4b05-a9d8-08e6eeb4f588",
+    "text": "The limits to growth",
+    "slug": "opt-geography-p1-economic-geography-the-limits-to-growth-82d442fb",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "747ec267-13f8-47c5-a243-da389d52028a",
+    "text": "Types and distribution of precipitation; weather and climate",
+    "slug": "opt-geography-p1-climatology-types-and-distribution-of-precipitation-weather-and-3fb9ec26",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "12302878-be1f-4694-a2e9-a4e4b9bec90a",
+    "text": "Types and patterns of rural settlements; environmental issues",
+    "slug": "opt-geography-p1-population-and-settlement-geography-types-and-patterns-of-rural-d3930ce5",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6dff20e6-55f2-49b4-8676-fb7333163924",
+    "text": "Von Thunen's model of agricultural location",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-von-thunen-s-model-fc683b0b",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3e8d6909-90e5-42c8-b345-0aed658d6331",
+    "text": "Vulcanicity, earthquakes and tsunamis",
+    "slug": "opt-geography-p1-geomorphology-vulcanicity-earthquakes-and-tsunamis-ad993987",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "05fd14f7-8eb4-4e50-9dc7-2705d8767af9",
+    "text": "Waves, currents and tides",
+    "slug": "opt-geography-p1-oceanography-waves-currents-and-tides-56d80068",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5b122f23-b521-45a7-9df1-f4a61e7cdf3e",
+    "text": "Weber's model of industrial location",
+    "slug": "opt-geography-p1-models-theories-and-laws-in-human-geography-weber-s-model-of-in-457d0404",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ee92ee3a-64ba-4e5e-b65c-16742e18db72",
+    "text": "Wildlife and major gene pool centres",
+    "slug": "opt-geography-p1-biogeography-wildlife-and-major-gene-pool-centres-690a7d2f",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c866edb2-110f-449e-af39-1af16f688426",
+    "text": "World agriculture: typology of agricultural regions",
+    "slug": "opt-geography-p1-economic-geography-world-agriculture-typology-of-agricultural-r-7677f83e",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d713016f-de71-4e43-b757-1e6ee54bc637",
+    "text": "World economic development: measurement and problems",
+    "slug": "opt-geography-p1-economic-geography-world-economic-development-measurement-and-p-48a5257c",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0e8ea883-c1d7-4fca-b042-f2698506cbe9",
+    "text": "World industries: locational patterns and problems",
+    "slug": "opt-geography-p1-economic-geography-world-industries-locational-patterns-and-pro-fa34067d",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1385bbb8-f386-4581-95ae-0b84b4deca3e",
+    "text": "World resources and their distribution; energy crisis",
+    "slug": "opt-geography-p1-economic-geography-world-resources-and-their-distribution-energ-e22186ba",
+    "subject_id": "f1e7a374-d59e-4584-9db1-aeacf0af95b1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

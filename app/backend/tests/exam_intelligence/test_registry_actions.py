@@ -339,7 +339,7 @@ def test_TRUST_GUARD_no_auto_apply_path_exists():
             if any(rel.endswith(allowed) for allowed in _ALLOWED_MODULES):
                 continue
             try:
-                src = open(full).read()
+                src = open(full, encoding="utf-8").read()
             except OSError:
                 continue
 

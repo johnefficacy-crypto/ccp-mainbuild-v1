@@ -174,19 +174,25 @@ def resolve_required_subjects(
     treat the state as UNKNOWN (fail closed), NOT as "nothing to calibrate".
     A legitimately empty required set returns ``([], True)``.
     """
-    cov_rows, ok = _read(
-        lambda: (
-            supabase.table("exam_topic_coverage")
-            .select("topic_id")
-            .eq("exam_id", exam_id)
-            .eq("reviewer_status", "locked")
-            .limit(5000)
-            .execute()
-            .data
-        )
+    # Elective scoping (OPT-CHOICE-01 Q4): this read derives the subject set the
+    # user must calibrate on, so it has to see the user's OWN scope. Its own
+    # unscoped read is why a UPSC aspirant was asked for 16 subjects — GS I-IV
+    # plus all twelve optional papers — and could never clear the gate.
+    #
+    # Routed through the shared wrapper rather than re-implementing the filter:
+    # a second copy of the scope rule is a second copy to drift. The wrapper also
+    # paginates, replacing the .limit(5000) this read carried.
+    from app.study_os.planner import load_scoped_coverage_checked  # noqa: PLC0415
+
+    # The _checked variant, NOT the graceful one: this function's ``ok`` flag is
+    # a fail-closed safety property, and the graceful wrapper would report a
+    # failed read as an empty-but-healthy one — i.e. "nothing to calibrate".
+    cov_rows, cov_ok = _read(
+        lambda: load_scoped_coverage_checked(supabase, user_id, exam_id)
     )
-    if not ok:
+    if not cov_ok or not cov_rows or not cov_rows[1]:
         return [], False
+    cov_rows = cov_rows[0]
     topic_ids = list({r["topic_id"] for r in (cov_rows or []) if r.get("topic_id")})
     if not topic_ids:
         return [], True

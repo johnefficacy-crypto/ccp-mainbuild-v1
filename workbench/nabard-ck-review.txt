@@ -1,0 +1,800 @@
+﻿Q61  []
+Q.61)____ is larger than LANs but smaller than MANs and WANs.
+   * (A) CAN
+     (B) PAN
+     (C) SAN
+     (D) WLAN
+     (E) TAN
+
+Q62  []
+Q.62)A ___________ can be either a hardware device or a software that provides protection from online intrusions.
+     (A) Antivirus
+     (B) Malware
+     (C) Encryption
+   * (D) Firewall
+     (E) Firmware
+
+Q63  []
+Q.63)What is the main folder on a storage device called?
+     (A) Device driver
+   * (B) Root directory
+     (C) Platform
+     (D) Register
+     (E) Main directory
+
+Q64  []
+Q.64)A _______________ is an input device used to enter motion data into computers or other electronic devices.
+     (A) Joystick
+     (B) Mouse
+     (C) Barcode reader
+     (D) Gamepad
+   * (E) Trackball
+
+Q65  []
+Q.65)FTP allows us to transfer files from one computer to another on the internet. FTP stands for
+     (A) File Transmission Protocol
+     (B) File Transfer Processing
+   * (C) File Transfer Protocol
+     (D) File Transmission Processing
+     (E) File Tracking Protocol
+
+Q66  []
+Q.66)Hardware is a __________ component.
+   * (A) Tangible
+     (B) Non-Tangible
+     (C) Specific
+     (D) Antivirus
+     (E) Usable
+
+Q67  []
+Q.67)A ____________, in the context of networking is a high-speed device that receives incoming data and redirects it to its destination on a local area network (LAN).
+     (A) Router
+   * (B) Switch
+     (C) Repeater
+     (D) Modem
+     (E) Gateway
+
+Q68  []
+Q.68)What for â€˜Iâ€™ stands for in PPI?
+   * (A) Inch
+     (B) Interface
+     (C) Inter
+     (D) Isolation
+     (E) None of these
+
+Q69  []
+Q.69)The word wrap feature-
+     (A) Allows you to type over text
+     (B) Appears at the bottom of the document
+     (C) Is the short horizontal line indicating the end of the document
+   * (D) Automatically moves the text to next line when necessary
+     (E) Applies default font setting on the entire text
+
+Q70  []
+Q.70)VIRUS is actually an acronym for
+     (A) Void Information Resource Under Siege
+     (B) Vital Information Restricted Under Sieze
+   * (C) Vital Information Resource Under Siege
+     (D) Vital Information Restrained Under Sight
+     (E) Void Information Resource Under Sight
+
+Q71  []
+Q.71)Which of the following BIOS function tests the computer hardware and makes sure that no error exists before loading the operating system?
+   * (A) POST
+     (B) Bootstrap loader
+     (C) BIOS drivers
+     (D) BIOS setup
+     (E) MBR
+
+Q72  []
+Q.72)A _____ is a piece of computer hardware that produces the image you see on a monitor.
+     (A) Optical drive
+     (B) Captcha
+     (C) Image
+     (D) Pixel
+   * (E) Graphics Card
+
+Q73  []
+Q.73)To increase the line spacing, use the ______ shortcut keys.
+     (A) Ctrl + E
+     (B) Ctrl + I
+     (C) Ctrl + L
+   * (D) Ctrl + 5
+     (E) Ctrl + 9
+
+Q74  []
+Q.74)The letter and number of the intersecting column and row is the
+     (A) Cell location
+     (B) Cell position
+   * (C) Cell address
+     (D) Cell coordinates
+     (E) Cell contents
+
+Q75  []
+Q.75)What type of topology is found in a WIRELESS LAN?
+     (A) Line
+     (B) Bus
+   * (C) Star
+     (D) Ring
+     (E) Mesh
+
+Q76  []
+Q.76)Symantec is the maker of which among the following popular antivirus software?
+     (A) Avast
+   * (B) Norton
+     (C) K7
+     (D) Bit defender
+     (E) Windows defender
+
+Q77  []
+Q.77)Which of the following is an example of an input device?
+   * (A) Scanner
+     (B) Printer
+     (C) Speaker
+     (D) Headphone
+     (E) Projector
+
+Q78  []
+Q.78)The bottom portion of internet Browsers and other program Windows that displays the current status of the web page or Window currently being viewed is known as ____________.
+     (A) Address bar
+     (B) Toolbar
+     (C) Infobar
+     (D) Scroll bar
+   * (E) Status bar
+
+Q79  []
+Q.79)Name the fourth layer of OSI model.
+     (A) Data Link Layer
+   * (B) Transport Layer
+     (C) Session Layer
+     (D) Application Layer
+     (E) Network Layer
+
+Q80  []
+Q.80)Which of the following acts as an interface between user and hardware?
+     (A) Software
+     (B) Utility
+     (C) Function
+   * (D) Operating System
+     (E) System software
+
+Q51  []
+Q.51) What is the full form of TIFF?
+     (A) Tagged Image Fax Format
+   * (B) Tagged Image File Format
+     (C) Tagged Image File Font
+     (D) Tagged Image Fax Font
+     (E) Tagged Image Front File
+
+Q52  []
+Q.52) What is the attempt to acquire sensitive information such as usernames, passwords, and credit card details (and sometimes, indirectly, money) by masquerading as a trustworthy entity in an electronic communication?
+   * (A) Phishing
+     (B) Spoofing
+     (C) Identity theft
+     (D) Authentication
+     (E) Spamming
+
+Q53  []
+Q.53) While browsing the internet, which of the following key is used for full screen view?
+     (A) F3
+     (B) F5
+   * (C) F11
+     (D) F9
+     (E) F1
+
+Q54  []
+Q.54) Which PowerPoint view displays each slide of the presentation as a thumbnail and is useful for rearranging slides?
+     (A) Slide Show
+     (B) Slide Master
+     (C) Notes Page
+     (D) Slide Design
+   * (E) Slide Sorter
+
+Q55  []
+Q.55) If you wish to extend the length of the network without having the signal degrade, you would use a _______.
+   * (A) Repeater
+     (B) Router
+     (C) Gateway
+     (D) Switch
+     (E) Server
+
+Q56  []
+Q.56) What kind of memory is both static and non-volatile?
+     (A) RAM
+   * (B) ROM
+     (C) BIOS
+     (D) CACHE
+     (E) CMOS
+
+Q57  []
+Q.57) A normal CD-ROM usually can store up to _________data?
+     (A) 680 KB
+     (B) 680 Bytes
+   * (C) 680 MB
+     (D) 680 GB
+     (E) 680 TB
+
+Q58  []
+Q.58) What is a light pen?
+     (A) Mechanical input device
+   * (B) Optical input device
+     (C) Electronic input device
+     (D) Optical output device
+     (E) Electronic output device
+
+Q59  []
+Q.59) What is the full form of UNIVAC?
+   * (A) Universal Automatic Computer
+     (B) Universal Array Computer
+     (C) Unique Automatic Computer
+     (D) Unvalued Automatic Computer
+     (E) Unique Array Computer
+
+Q60  []
+Q.60) Who among the following is known as father of Internet?
+     (A) Adlof Garrifield
+     (B) Tim Berners Lee
+     (C) Adder Tiff
+     (D) Douglas Engelbart
+   * (E) Vint Cerf
+
+Q61  []
+Q.61) In which of the following topology, each device is connected to every other device on a network through a dedicated point-to-point link?
+     (A) Star topology
+   * (B) Mesh topology
+     (C) Bus topology
+     (D) Ring topology
+     (E) Tree topology
+
+Q62  []
+Q.62) Which ports connect special types of music instruments to sound cards?
+     (A) BUS
+     (B) CPU
+     (C) USB
+   * (D) MIDI
+     (E) UPS
+
+Q63  []
+Q.63) Which files are contents readymade styles that can be used for a word document?
+     (A) Presentation
+     (B) Letters
+     (C) Magic wands
+   * (D) Templates
+     (E) WordArt
+
+Q64  []
+Q.64) Which of the following techniques can be used to store a large number of files in a small amount of storage space?
+     (A) File adjustment
+     (B) File copying
+     (C) File compatibility
+   * (D) File compression
+     (E) File maintenance
+
+Q65  []
+Q.65) Which of the following shortcut key save the open document in MS Word like â€˜Ctrl + Sâ€™?
+     (A) F8
+     (B) F9
+   * (C) F12
+     (D) F10
+     (E) F6
+
+Q66  []
+Q.66) Which printer is also called Inkless Printer?
+   * (A) Thermal Printer
+     (B) Inkjet Printer
+     (C) Dot Matrix Printer
+     (D) Plotter
+     (E) Line printer
+
+Q67  []
+Q.67) Where are data and programme stored when the processor uses them?
+     (A) Disk memory
+   * (B) Main memory
+     (C) Secondary memory
+     (D) Programme memory
+     (E) None of these
+
+Q68  []
+Q.68) ASCII stands for
+     (A) American Stable Code for International Interchange
+     (B) American Standard Case for Institutional Interchange
+   * (C) American Standard Code for Information Interchange
+     (D) American Standard Code for Interchange Information
+     (E) American Stable Code for Information Interchange
+
+Q69  []
+Q.69) Vendor-created program modifications are called ______.
+     (A) Holes
+   * (B) Patches
+     (C) Fixes
+     (D) Overlaps
+     (E) Antiviruses
+
+Q70  []
+Q.70) _______________ is used in second generation computer.
+     (A) Vacuum tubes
+     (B) Microprocessor
+     (C) Integrated circuit
+   * (D) Transistors
+     (E) AI
+
+Q51  []
+Q.51) What is the full form of URL?
+     (A) Universal Resource Locator
+   * (B) Uniform Resource Locator
+     (C) Union Research Locator
+     (D) Union Resource Locator
+     (E) Uniform Research Locator
+
+Q52  []
+Q.52) Which of the following options is available in the share ribbon of file explorer in windows 10?
+     (A) Sorting and arranging contents of the folder
+     (B) Adding additional panels to show a preview or details of the files
+     (C) Verifying/modifying properties of a document
+   * (D) Print & Fax
+     (E) Renaming a file or folder
+
+Q53  []
+Q.53) How many holes are there in a VGA connector?
+     (A) 9
+     (B) 11
+     (C) 13
+   * (D) 15
+     (E) 17
+
+Q54  []
+Q.54) _____ is found just above the file tab option in MS word. Its purpose is to provide a convenient access to most commonly used commands.
+     (A) Document area
+   * (B) Quick access toolbar
+     (C) Ribbon
+     (D) Title bar
+     (E) Ruler
+
+Q55  []
+Q.55) In MS Excel, to reach to the last cell of the worksheet that contains data, which of the following shortcut key is used?
+     (A) Ctrl + T
+     (B) Ctrl + W
+     (C) Ctrl + ]
+   * (D) Ctrl + End
+     (E) Ctrl + E
+
+Q56  []
+Q.56) _____ file operation is simply deleting the file except deleting the attributes.
+     (A) Close
+     (B) Seek
+     (C) Delete
+     (D) Append
+   * (E) Truncate
+
+Q57  []
+Q.57) The length of IPv4 address is
+     (A) 64-bit
+   * (B) 32-bit
+     (C) 128-bit
+     (D) 256-bit
+     (E) 16-bit
+
+Q58  []
+Q.58) ______ is a type of device that acts as the central point among computers and other devices that are a part of a network.
+     (A) Distributor
+   * (B) Router
+     (C) USB
+     (D) Network card
+     (E) Network cable
+
+Q59  []
+Q.59) Starting a computer or a computer embedded device is called â€“
+     (A) Signing
+     (B) Logging
+     (C) Spoofing
+   * (D) Booting
+     (E) Threading
+
+Q60  []
+Q.60) Language used in second generation computers is called
+     (A) Basic
+     (B) Pascal
+     (C) Machine Language
+     (D) Algol
+   * (E) Assembly language
+
+Q61  []
+Q.61) The â€˜Header and Footerâ€™ option in MS-Word is present under which tab?
+     (A) Mailing
+   * (B) Insert
+     (C) Home
+     (D) File
+     (E) Review
+
+Q62  []
+Q.62) Which of the following registers holds the address of an instruction?
+     (A) Temporary register
+     (B) Accumulator
+     (C) Address register
+     (D) Data register
+   * (E) Program counter
+
+Q63  []
+Q.63) The difference between the arrival time and the time at which the process first gets the CPU is called _____ Time.
+     (A) Turn around
+     (B) Event
+     (C) Burst
+   * (D) Response
+     (E) Wait
+
+Q64  []
+Q.64) Which MS excel function calculates the number of days between 2 dates?
+     (A) GAP
+     (B) DATES
+   * (C) DAYS
+     (D) DAYS360
+     (E) SPAN
+
+Q65  []
+Q.65) Create, insert and write, preview results and finish are commands found in which tab of MS word 2013?
+   * (A) Mailing tab
+     (B) Home tab
+     (C) Reference tab
+     (D) Review tab
+     (E) Page layout tab
+
+Q66  []
+Q.66) BCC stands for
+     (A) Black Coloured Copy
+     (B) Blocked Carbon Copy
+   * (C) Blind Carbon Copy
+     (D) Blind Chart Copy
+     (E) Blocked Chart Answer
+
+Q67  []
+Q.67) _____ method can make macros run automatically in MS-excel 2013, once you have done some setup for scheduling a macros.
+     (A) Application now
+     (B) Application offline
+   * (C) Ontime
+     (D) Uptime
+     (E) Time zone
+
+Q68  []
+Q.68) ________type of Column chart in MS-Excel 2013 is like a stacked column. It uses a single bar for each category and subdivides that bar to show the proportion from each series.
+     (A) 3-D column
+     (B) Clustered
+     (C) 3-D clustered
+   * (D) 100% stacked
+     (E) Histogram
+
+Q69  []
+Q.69) ____ contains the code, by executing which the CPU access the very first partition of hard disk when we turn on the computer.
+     (A) ROM
+     (B) DOS
+     (C) EHD
+     (D) DDS
+   * (E) BIOS
+
+Q70  []
+Q.70) What is the storage capacity of a dual layered Blue ray disc?
+   * (A) 50 GB
+     (B) 25 GB
+     (C) 100 GB
+     (D) 20 GB
+     (E) 200 GB
+
+Q1  []
+Q.1 What is the full form of VFX?
+     (A) Visualised expression
+     (B) Virtual expression
+     (C) Video Effects
+     (D) Visual Extension
+   * (E) Visual Effects
+
+Q2  []
+Q.2 Which of the following shortcut keys is used for the screen lock and password is required to unlock the screen?
+   * (A) Windows key + L
+     (B) Ctrl + Alt + Del
+     (C) Ctrl + Shift + Esc
+     (D) Alt + F4
+     (E) Ctrl + Tab
+
+Q3  []
+Q.3 The incognito mode does not store which of the following information. 1. Data entered in forms. 2. Your browsing history 3. Browsing Cookies
+     (A) 1 and 2
+     (B) 1 and 3
+     (C) 3 only
+   * (D) 1, 2, and 3
+     (E) 2 only
+
+Q4  []
+Q.4 Which computer device played a key role during World War 2, helping the Germans during the war?
+   * (A) Enigma
+     (B) IBM
+     (C) Colossus
+     (D) ENIAC
+     (E) Abacus
+
+Q5  []
+Q.5 ASCII stands for _________________________________
+   * (A) American Standard Code for Information Interchange
+     (B) Advanced System for Computer Information Integration
+     (C) American Society of Computer Information Engineers
+     (D) Artificial System for Computer Intelligence
+     (E) None of the above
+
+Q6  []
+Q.6 What keyboard shortcut is commonly employed to toggle between active applications in Microsoft Windows and other operating systems?
+     (A) Ctrl + Shift + Tab
+   * (B) Alt + Tab
+     (C) Windows + Tab
+     (D) Windows + M
+     (E) Ctrl + Alt + Delete
+
+Q7  []
+Q.7 Which of the following is a benefit of using parental controls?
+     (A) To limit screen time
+     (B) To block access to inappropriate sites
+     (C) To monitor online activity
+     (D) To promote healthy digital habits
+   * (E) All of the above
+
+Q8  []
+Q.8 Which of the following companies are involved in the production of microprocessors?
+   * (A) Intel, AMD, Qualcomm, MediaTek
+     (B) Microsoft, HCL, Core, Huawei
+     (C) Microsoft, Apple, Core, Starter
+     (D) Intel, AMD, Nvidia, Arsenal
+     (E) Intel, AMD, Qualcomm, Mahindra Tech
+
+Q9  []
+Q.9 What is the primary purpose of a Task Manager? (1) Managing tasks in a project or workflow (2) Monitoring the performance of a computer system (3) Regulating access to a computer system
+     (A) 1 only
+   * (B) 1 and 2
+     (C) 2 and 3
+     (D) 3 only
+     (E) 1, 2, and 3
+
+Q10  []
+Q.10 Which statement accurately defines the scenario when we download documents in incognito mode? is closed.
+     (A) The documents will be saved to a temporary folder and deleted when the incognito mode
+   * (B) The documents will be saved to the Downloads folder and can be seen by anyone who
+     (C) The documents will be encrypted and cannot be seen by anyone without the password.
+     (D) The documents will be uploaded to the cloud and can be accessed from anywhere.
+     (E) None of the above.
+
+Q11  []
+Q.11 What is the accurate sequence for memory speed, ranging from fastest to slowest?
+   * (A) Cache, ROM, hard disk, floppy disk, tape drive
+     (B) Floppy disk, hard disk, ROM, cache, CD
+     (C) Hard disk, floppy disk, ROM, cache
+     (D) ROM, hard disk, floppy disk, cache
+     (E) Tape drive, Floppy disk, ROM, cache, floppy disk
+
+Q12  []
+Q.12 What is the full form of BCC?
+     (A) Basic Carbon Copy
+   * (B) Blind Carbon Copy
+     (C) Broad Carbon Copy
+     (D) Backup Carbon Copy
+     (E) Broadcast Carbon Copy
+
+Q13  []
+Q.13 Which of the following is the primary use of a stylus input device?
+   * (A) Selecting and drawing on a touchscreen
+     (B) Typing text on a keyboard
+     (C) Moving the cursor on a computer screen
+     (D) Scanning documents
+     (E) Printing documents
+
+Q14  []
+Q.14 What technological advancement addressed the issues that were associated with vacuum tubes?
+   * (A) Transistor
+     (B) Integrated circuit
+     (C) Microprocessor
+     (D) Cathode ray tube
+     (E) Diode
+
+Q15  []
+Q.15 Which of these options employs qubits in its operation?
+   * (A) Quantum computers
+     (B) Classical computers
+     (C) Supercomputers
+     (D) Mainframes
+     (E) Minicomputers
+
+Q16  []
+Q. 16 What type of printer is typically employed in office settings for the purpose of producing high volumes of documents or papers?
+     (A) Inkjet printer
+   * (B) Laser printer
+     (C) Thermal printer
+     (D) Dot matrix printer
+     (E) Solid ink printer
+
+Q17  []
+Q. 17 The action of dragging two fingers across the touchpad of the laptop is used for?
+     (A) Closing all the open tabs
+   * (B) Zooming in or out of a document or web page
+     (C) Right-clicking
+     (D) Dragging and dropping files or objects
+     (E) Switching between applications
+
+Q18  []
+Q. 18- Who is credited with pioneering the first electronic computer?
+     (A) Charles Xavier
+     (B) John Mauchly
+   * (C) John Atanasoff
+     (D) Alan Turing
+     (E) Steve Jobs
+
+Q19  []
+Q. 19 What is the full form of CD-R?
+     (A) Compact Disc-Read
+     (B) Compact Disc-ReWritable
+   * (C) Compact Disc-Recordable
+     (D) Compact Disc-Random Access Memory
+     (E) Compact Disc-Write Once Read Many
+
+Q20  []
+Q. 20 What keyboard shortcut can be used to switch between windows while using a virtual desktop?
+     (A) Ctrl + Z
+     (B) Windows key + Tab
+     (C) Windows key + Ctrl + Tab
+   * (D) Windows key + Ctrl + Left Arrow/Right Arrow
+     (E) Windows key + Ctrl + Shift + Tab
+
+Q51  []
+Q.51) Margin that is added to the binding side of the page when printing is called?
+   * (A) Gutter Margin
+     (B) End Margin
+     (C) Headline Margin
+     (D) Middle Margin
+     (E) None of the above
+
+Q52  []
+Q.52) Which is the first browser to act as a text based browser?
+     (A) Mosaic
+   * (B) Lynx
+     (C) Netscape Navigator
+     (D) Opera
+     (E) Internet Explorer
+
+Q53  []
+Q.53) In Ms excel, one can use the present value to predict / calculate the future value including repayments and interest rate. Which command can be used to find the future value?
+     (A) FV(rate,pmt,[pv],[type])
+     (B) FV(rate,nper,[pv],[type])
+   * (C) FV(rate,nper,pmt,[pv],[type])
+     (D) FV(rate,nper,pmt,type)
+     (E) FV(rate,nper,[pmt],[pv])
+
+Q54  []
+Q.54) In Ms excel, an entire column can be selected using the following command?
+     (A) Shift + the spacebar
+     (B) Ctrl + shift + the spacebar
+     (C) Alt + the spacebar
+   * (D) Ctrl + the spacebar
+     (E) Fn + the spacebar
+
+Q55  []
+Q.55) The 1â€™s complementary in a binary of 1000 is?
+     (A) 1100
+   * (B) 0111
+     (C) 1110
+     (D) 1101
+     (E) 1001
+
+Q56  []
+Q.56) In Microsoft PowerPoint presentation, to select one hyperlink after another during a slide presentation, the following keyboard key is pressed?
+     (A) Shift
+     (B) Ctrl
+   * (C) Tab
+     (D) Alt
+     (E) Fn
+
+Q57  []
+Q.57) What do you mean by warm boot?
+     (A) The mechanism of starting a computer system after it has been turned off.
+     (B) The process of starting the computer system by pressing the power button.
+     (C) Process of booting the system using the BIOS operating system.
+   * (D) The act or process of restarting a computer without turning off the power.
+     (E) Last way to boot a computer designed to change the BIOS.
+
+Q58  []
+Q.58) In MS word, which symbol can be used in naming the document?
+     (A) /
+     (B) <
+     (C) ?
+   * (D) _
+     (E) *
+
+Q59  []
+Q.59) Which one is the most suitable reason to use Macro in MS Office (Word, Excel, PPT, etc.)?
+     (A) To Record Sound
+   * (B) To automate repetitive tasks
+     (C) To Record Mouse Move
+     (D) To Record Keystroke
+     (E) None of the above
+
+Q60  []
+Q.60) Which of the symbol appear in MS-Excel that says results are too long to fit in a cell?
+     (A) $$$$
+   * (B) ####
+     (C) ^^^^
+     (D) ****
+     (E) @@@@
+
+Q61  []
+Q.61) What does dpi in printing means?
+   * (A) Dots per inch refers to the resolution of the output image or simply the resolution of
+     (B) Disc per inch refers to the resolution of the output image or simply the resolution of
+     (C) Dots per inch refers to the resolution of the input image or simply the resolution of
+     (D) Disc per inch refers to the resolution of the input image or simply the resolution of
+     (E) Dots per inch refers to the resolution of the image displayed on a computer monitor.
+
+Q62  []
+Q.62) FORTRAN is a computer programming language that is extensively used in numerical, scientific computing. FORTRAN is abbreviated as?
+     (A) Formal Translator
+     (B) Final Transmission
+     (C) Formula Transmission
+     (D) Final Translation
+   * (E) Formula Translation
+
+Q63  []
+Q.63) The shortcut control + semicolon is used to enter which of the following in Excel?
+     (A) Current Memory
+     (B) Current Time
+     (C) Current Location
+   * (D) Current Date
+     (E) Current Cell Number
+
+Q64  []
+Q.64) Ethernet generally uses which of the following topologies?
+   * (A) Bus topology
+     (B) Ring topology
+     (C) Star topology
+     (D) Tree topology
+     (E) Mesh topology
+
+Q65  []
+Q.65) Cache Memory is a very strong memory. It is a type of which of the following memory?
+     (A) Virtual memory
+   * (B) RAM
+     (C) ROM
+     (D) Permanent Memory
+     (E) PROM
+
+Q66  []
+Q.66) A virus that fools the user into the downloading and or executing them by pretending to be useful application is called as?
+     (A) Malware
+   * (B) Trojan Horse
+     (C) Spyware
+     (D) Man in middle
+     (E) Denial-of-service
+
+Q67  []
+Q.67)You can copy cell formats from one cell to another by using the
+     (A) COPY AND PASTE operation
+     (B) Default font
+   * (C) Format painter
+     (D) Formatting toolbar
+     (E) Cross-reference
+
+Q68  []
+Q.68) Which one of the following digital circuits is used as the basic component for storing data?
+     (A) Register
+     (B) Derived logic gates
+   * (C) Flip-flop
+     (D) Counter
+     (E) Multiplexer
+
+Q69  []
+Q.69) Ctrl+N is used to execute which task in MS-WORD?
+     (A) Create a new doc file
+     (B) Create a new text file
+     (C) Create a new paragraph
+   * (D) Create and open a new doc file
+     (E) Open a doc file
+
+Q70  []
+Q.70)What is the full form of DOS?
+     (A) Device Outsourcing System
+     (B) Differential Operating System
+     (C) Disc Outsourcing System
+     (D) Device Operating System
+   * (E) Disc Operating System
+

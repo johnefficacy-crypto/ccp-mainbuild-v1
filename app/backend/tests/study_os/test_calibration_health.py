@@ -27,7 +27,10 @@ class _Query:
         self._rows = rows
         self._fail = fail
 
-    # the calibration reads chain select/eq/in_/limit then execute
+    # the calibration reads chain select/eq/in_/limit then execute; the
+    # coverage read now range-paginates, so order/range chain too (the real
+    # PostgREST client has both; without them the stub raises AttributeError
+    # and a healthy read would look like a failed one).
     def select(self, *a, **k):
         return self
 
@@ -38,6 +41,12 @@ class _Query:
         return self
 
     def limit(self, *a, **k):
+        return self
+
+    def order(self, *a, **k):
+        return self
+
+    def range(self, *a, **k):
         return self
 
     def execute(self):

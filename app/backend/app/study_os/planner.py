@@ -31,7 +31,11 @@ from typing import Any, Callable
 from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
-from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+from app.exam_intelligence.lookup import (
+    InactiveExamError,
+    resolve_exam_by_id,
+    resolve_exam_by_slug,
+)
 from app.exam_intelligence.score_snapshots import locked_score_snapshots
 from app.study_os import calibration
 from app.study_os.competition_context import competition_context
@@ -253,71 +257,140 @@ def _days_remaining(supabase: Any, exam_id: str) -> int | None:
     return max(0, (start - today).days)
 
 
+# Rows per range page, and ids per ``.in_()`` chunk. Both sit well under
+# PostgREST's default db-max-rows and URL-length ceilings.
+_PAGE = 1000
+_IN_CHUNK = 300
+
+
+def _chunked(items: list[Any], size: int) -> list[list[Any]]:
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def _paginate_all(
+    build_query: Callable[[int, int], Any], *, op: str
+) -> tuple[list[dict[str, Any]], bool]:
+    """Read every row for *build_query* by range pagination.
+
+    Replaces the fixed ``.limit(2000)`` this function used to carry. A cap does
+    not fail — it silently returns a prefix, so topics vanish from the planner
+    with no error anywhere. UPSC locked coverage reached that ceiling the moment
+    the optional papers landed. Raising the number would only move the cliff, so
+    the walk continues until a short page proves exhaustion.
+
+    ``build_query(from_n, to_n)`` MUST carry a stable ``.order(...)`` or the
+    pages can overlap and drop rows.
+
+    Returns ``(rows, complete)``. ``complete`` is False when a page read failed,
+    so the rows are a PREFIX rather than the result. Callers that degrade
+    gracefully ignore it; callers with a fail-closed contract (calibration's
+    health flag) must not treat a prefix as a full read.
+    """
+    all_rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        page = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
+        if page is None:
+            logger.error(
+                "%s: paginated read failed after %d row(s) — result is a PREFIX, "
+                "not the full set",
+                op,
+                len(all_rows),
+            )
+            return all_rows, False
+        all_rows.extend(page)
+        if len(page) < _PAGE:
+            break
+        offset += _PAGE
+    return all_rows, True
+
+
 def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
+    """Graceful view of :func:`_load_locked_coverage_checked` — rows only."""
+    return _load_locked_coverage_checked(supabase, exam_id)[0]
+
+
+def _load_locked_coverage_checked(
+    supabase: Any, exam_id: str
+) -> tuple[list[dict[str, Any]], bool]:
     """Locked ``exam_topic_coverage`` rows enriched with topic/subject names.
 
     Only ``reviewer_status='locked'`` rows are planner-ready — the same
     verified-only contract the rest of Study OS uses.
+
+    EXAM-WIDE and unscoped: every compulsory and every elective section. Callers
+    serving a specific learner want :func:`load_scoped_coverage` instead — this
+    one stays unscoped for admin, derivation and readiness reads that must see
+    the whole exam.
     """
-    rows = (
-        _safe(
-            lambda: (
-                supabase.table("exam_topic_coverage")
-                .select(
-                    "id, exam_cycle_id, exam_phase_id, section_id, topic_id, "
-                    "exam_priority_score, is_high_yield, confidence_score, "
-                    "coverage_depth, expected_difficulty, reviewer_status"
-                )
-                .eq("exam_id", exam_id)
-                .eq("reviewer_status", "locked")
-                .limit(2000)
-                .execute()
-                .data
-            ),
-            default=[],
-        )
-        or []
+    rows, cov_ok = _paginate_all(
+        lambda from_n, to_n: (
+            supabase.table("exam_topic_coverage")
+            .select(
+                "id, exam_cycle_id, exam_phase_id, section_id, topic_id, "
+                "exam_priority_score, is_high_yield, confidence_score, "
+                "coverage_depth, expected_difficulty, reviewer_status",
+                count="exact",
+            )
+            .eq("exam_id", exam_id)
+            .eq("reviewer_status", "locked")
+            .order("id")
+            .range(from_n, to_n)
+            .execute()
+            .data
+        ),
+        op=f"exam_topic_coverage.locked(exam={exam_id})",
     )
+    reads_ok = cov_ok
     topic_ids = list({r.get("topic_id") for r in rows if r.get("topic_id")})
     if not topic_ids:
-        return []
-    topic_rows = (
-        _safe(
-            lambda: (
+        return [], reads_ok
+    topic_rows: list[dict[str, Any]] = []
+    # ``.in_()`` with thousands of ids overflows the PostgREST URL, so chunk the
+    # id list as well as paginating each chunk's result.
+    for chunk in _chunked(topic_ids, _IN_CHUNK):
+        chunk_rows, chunk_ok = _paginate_all(
+            lambda from_n, to_n, ids=chunk: (
                 supabase.table("topics")
                 # Include ``parent_topic_id`` + ``level`` so callers (e.g.
                 # /api/study/topics) can render the Subject → Topic →
                 # Microtopic → Concept hierarchy without a second round-trip.
-                .select("id, name, slug, subject_id, is_active, parent_topic_id, level")
-                .in_("id", topic_ids)
-                .limit(2000)
+                .select(
+                    "id, name, slug, subject_id, is_active, parent_topic_id, level",
+                    count="exact",
+                )
+                .in_("id", ids)
+                .order("id")
+                .range(from_n, to_n)
                 .execute()
                 .data
             ),
-            default=[],
+            op="topics.by_id",
         )
-        or []
-    )
+        topic_rows.extend(chunk_rows)
+        reads_ok = reads_ok and chunk_ok
     topics_by_id = {t["id"]: t for t in topic_rows if t.get("id")}
     subject_ids = list(
         {t.get("subject_id") for t in topics_by_id.values() if t.get("subject_id")}
     )
     subjects_by_id: dict[str, dict[str, Any]] = {}
     if subject_ids:
-        subj_rows = (
-            _safe(
-                lambda: (
+        subj_rows: list[dict[str, Any]] = []
+        for chunk in _chunked(subject_ids, _IN_CHUNK):
+            chunk_rows, chunk_ok = _paginate_all(
+                lambda from_n, to_n, ids=chunk: (
                     supabase.table("subjects")
-                    .select("id, name, slug, subject_group")
-                    .in_("id", subject_ids)
-                    .limit(500)
+                    .select("id, name, slug, subject_group", count="exact")
+                    .in_("id", ids)
+                    .order("id")
+                    .range(from_n, to_n)
                     .execute()
                     .data
                 ),
-                default=[],
+                op="subjects.by_id",
             )
-            or []
-        )
+            subj_rows.extend(chunk_rows)
+            reads_ok = reads_ok and chunk_ok
         subjects_by_id = {s["id"]: s for s in subj_rows if s.get("id")}
 
     out: list[dict[str, Any]] = []
@@ -345,12 +418,174 @@ def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:
                 "subject_group": subject.get("subject_group"),
                 "exam_cycle_id": r.get("exam_cycle_id"),
                 "exam_phase_id": r.get("exam_phase_id"),
+                # Carried through so elective scoping is a set intersection with
+                # no extra join. It was selected from the table but dropped here,
+                # so every caller saw rows with no section identity at all.
+                "section_id": r.get("section_id"),
                 "coverage_priority": _num(r.get("exam_priority_score")),
                 "is_high_yield": bool(r.get("is_high_yield")),
                 "confidence_score": r.get("confidence_score"),
             }
         )
-    return out
+    return out, reads_ok
+
+
+def _in_scope_section_ids(
+    supabase: Any, user_id: str | None, exam_id: str
+) -> set[str] | None:
+    """Section ids this user studies, or ``None`` meaning "no scoping applies".
+
+    ``None`` is returned when the exam declares no elective sections at all —
+    every exam before UPSC's optionals landed. That short-circuits to today's
+    behaviour with no per-user read, so nothing changes for those exams.
+
+    Otherwise: every ``compulsory`` section, plus the ``elective`` sections whose
+    subject the user actually chose. GS needs no special case — it is in scope
+    because it is compulsory, not because it is GS.
+    """
+    # exam_phase_sections keys on exam_phase_id, not exam_id, so scope through
+    # this exam's phases. Without that the read would classify sections from
+    # every other exam and one unrelated elective would switch scoping on here.
+    phase_ids = [
+        str(p["id"])
+        for p in _paginate_all(
+            lambda from_n, to_n: (
+                supabase.table("exam_phases")
+                .select("id", count="exact")
+                .eq("exam_id", exam_id)
+                .order("id")
+                .range(from_n, to_n)
+                .execute()
+                .data
+            ),
+            op=f"exam_phases(exam={exam_id})",
+        )[0]
+        if p.get("id")
+    ]
+    if not phase_ids:
+        return None
+
+    sections: list[dict[str, Any]] = []
+    for chunk in _chunked(phase_ids, _IN_CHUNK):
+        sections.extend(
+            _paginate_all(
+                lambda from_n, to_n, ids=chunk: (
+                    supabase.table("exam_phase_sections")
+                    .select(
+                        "id, subject_id, selection_kind, elective_group, exam_phase_id",
+                        count="exact",
+                    )
+                    .in_("exam_phase_id", ids)
+                    .order("id")
+                    .range(from_n, to_n)
+                    .execute()
+                    .data
+                ),
+                op=f"exam_phase_sections(exam={exam_id})",
+            )[0]
+        )
+    elective = [s for s in sections if s.get("selection_kind") == "elective"]
+    if not elective:
+        return None
+
+    in_scope = {
+        str(s["id"]) for s in sections
+        # Fail safe on an unrecognised value: anything not explicitly marked
+        # elective stays visible rather than silently disappearing.
+        if s.get("id") and s.get("selection_kind") != "elective"
+    }
+
+    chosen = _paginate_all(
+        lambda from_n, to_n: (
+            supabase.table("user_exam_electives")
+            .select("elective_group, subject_ids", count="exact")
+            .eq("user_id", user_id)
+            .eq("exam_id", exam_id)
+            .order("elective_group")
+            .range(from_n, to_n)
+            .execute()
+            .data
+        ),
+        op=f"user_exam_electives(user={user_id})",
+    )[0] if user_id else []
+
+    chosen_by_group: dict[str, set[str]] = {}
+    for row in chosen:
+        group = row.get("elective_group")
+        if not group:
+            continue
+        chosen_by_group.setdefault(str(group), set()).update(
+            str(s) for s in (row.get("subject_ids") or []) if s
+        )
+
+    matched_subjects: set[str] = set()
+    for s in elective:
+        group = str(s.get("elective_group") or "")
+        subject_id = str(s.get("subject_id") or "")
+        if subject_id and subject_id in chosen_by_group.get(group, set()):
+            in_scope.add(str(s["id"]))
+            matched_subjects.add(subject_id)
+
+    # Fail closed on a choice that no longer resolves: the stored subject is not
+    # an elective section of this exam any more (retired paper, corrected
+    # taxonomy, a bad write). Drop to compulsory-only and say so — NEVER widen
+    # back to all electives, which would resurrect exactly the regression this
+    # scoping exists to close.
+    for group, subject_ids in chosen_by_group.items():
+        unresolved = subject_ids - matched_subjects
+        if unresolved:
+            logger.warning(
+                "elective scope: %d stored subject id(s) in group %r do not "
+                "resolve to an elective section — user=%s exam=%s ids=%s; "
+                "falling back to compulsory-only for them",
+                len(unresolved),
+                group,
+                user_id,
+                exam_id,
+                sorted(unresolved),
+            )
+    return in_scope
+
+
+def load_scoped_coverage(
+    supabase: Any, user_id: str | None, exam_id: str
+) -> list[dict[str, Any]]:
+    """Locked coverage filtered to what THIS user actually studies.
+
+    The learner-facing counterpart to :func:`_load_locked_coverage`. One
+    chokepoint, so calibration, the Subject Hub, the planner and the timeline
+    cannot drift apart — three independent filters would, and the next caller
+    added would miss all of them.
+
+    A user with no recorded choice gets compulsory sections only. That is the
+    safe default and a valid state — undecided is not an error, and it is
+    exactly what shipped before the optional papers loaded.
+    """
+    return load_scoped_coverage_checked(supabase, user_id, exam_id)[0]
+
+
+def load_scoped_coverage_checked(
+    supabase: Any, user_id: str | None, exam_id: str
+) -> tuple[list[dict[str, Any]], bool]:
+    """:func:`load_scoped_coverage` plus the read-health flag.
+
+    Calibration derives its required-subject set from this and must fail CLOSED:
+    a failed read has to read as UNKNOWN, never as "nothing to calibrate". The
+    graceful wrapper above drops the flag for callers that degrade instead.
+    """
+    coverage, reads_ok = _load_locked_coverage_checked(supabase, exam_id)
+    if not coverage:
+        return coverage, reads_ok
+    scope = _in_scope_section_ids(supabase, user_id, exam_id)
+    if scope is None:
+        return coverage, reads_ok
+    # A coverage row with no section_id cannot be attributed to a compulsory or
+    # elective section, so it is kept: unclassified content stays visible rather
+    # than vanishing from a learner's plan without explanation.
+    return [
+        c for c in coverage
+        if not c.get("section_id") or str(c["section_id"]) in scope
+    ], reads_ok
 
 
 def _load_prerequisites(
@@ -463,6 +698,34 @@ def _load_user_signals(
     """
     mastery, error_topics, _ = _load_user_signals_ex(supabase, user_id, exam_id)
     return mastery, error_topics
+
+
+def resolve_target_exam_or_none(
+    supabase: Any, user_id: str, *, surface: str
+) -> dict[str, Any] | None:
+    """:func:`_resolve_target_exam` for read surfaces that degrade to "no exam".
+
+    The subject hub, the subject topic tree and the weekly plan-by-subject view
+    already render a valid result when a user has no target exam (an empty list,
+    or structure with coverage null). A RETIRED target is the same situation for
+    them — there is no live exam to prioritise against — so they treat it that
+    way instead of erroring at an aspirant.
+
+    Logged, never silent. The planner itself deliberately does NOT use this: it
+    reports ``exam_inactive`` in-band so a retired target stays distinguishable
+    from "never picked one" where that distinction decides the fix.
+    """
+    try:
+        return _resolve_target_exam(supabase, user_id)
+    except InactiveExamError as exc:
+        logger.info(
+            "%s: ignoring inactive target exam for user=%s exam_id=%s slug=%s",
+            surface,
+            user_id,
+            exc.exam_id,
+            exc.slug,
+        )
+        return None
 
 
 def _load_topic_priors(
@@ -1169,7 +1432,19 @@ def _compute_plan(
     if not user_id:
         return {"generated": False, "reason": "no_user"}
 
-    exam = _resolve_target_exam(supabase, user_id)
+    try:
+        exam = _resolve_target_exam(supabase, user_id)
+    except InactiveExamError as exc:
+        # The user's target exam is retired (or a sandbox identity). Report it
+        # in-band like every other planner refusal — never build a plan from a
+        # retired exam's locked coverage, and never collapse this into
+        # ``no_target_exam``, which would read as "user never picked one".
+        return {
+            "generated": False,
+            "reason": "exam_inactive",
+            "exam": exc.slug,
+            "exam_id": str(exc.exam_id) if exc.exam_id else None,
+        }
     if not exam or not exam.get("id"):
         return {"generated": False, "reason": "no_target_exam"}
     exam_id = exam["id"]

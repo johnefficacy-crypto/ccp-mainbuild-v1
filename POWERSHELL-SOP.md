@@ -387,3 +387,34 @@ Every defect in this corpus has that shape. A validator that reads what is
 present will never report what is missing; a query that cannot fail will never
 tell you it failed. Before concluding from an empty result, establish what a
 non-empty one would have required.
+
+## Detect missing context by direction block, not stem keyword
+
+A regex over stems for "passage", "the author", "arrangement" finds
+only questions that *mention* what is missing. It systematically
+undercounts.
+
+Measured on 2026-09-09:
+  NABARD  stem regex 28  ->  direction-block scan 129
+  RBI     stem regex 28  ->  direction-block scan  85
+
+The set is the unit, not the stem. "Initially, the role of the World
+Bank was to:" names nothing and is exactly as unanswerable as "which
+of the following can be inferred from the passage".
+
+Method that works: find every direction block in the source, resolve
+its printed question range, and test whether the block's content
+appears in any question of that range in the import. Absent means
+every question in the set is orphaned, regardless of how its stem
+reads.
+
+Corollary: a question can be gradable for difficulty and still
+unanswerable. Migration 278 left QA 2020/2021 alone because their
+tables "print as text" — true of difficulty, false of answerability.
+
+Not yet re-checked with this method: SEBI, IFSCA, PFRDA. All three are
+live.
+
+RBI 2022 is the worst case found — 65 orphans in one paper, including
+a class-scheduling puzzle whose Q31 reads in full: "Which of the
+following time for Chemistry class is scheduled?"

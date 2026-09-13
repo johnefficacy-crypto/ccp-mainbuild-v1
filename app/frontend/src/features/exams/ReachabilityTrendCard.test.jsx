@@ -21,7 +21,10 @@ jest.mock("recharts", () => {
 jest.mock("../../lib/api", () => ({ api: { get: jest.fn() } }));
 
 import { api } from "../../lib/api";
-import ReachabilityTrendCard from "./ReachabilityTrendCard";
+import ReachabilityTrendCard, {
+  endLabelOffsets,
+  paperAxisLabel,
+} from "./ReachabilityTrendCard";
 import { reachabilityCopyFor } from "./reachabilityConfig";
 
 const UPSC = "upsc-cse";
@@ -280,5 +283,85 @@ describe("analysis prose", () => {
     render(<ReachabilityTrendCard examSlug={UPSC} />);
     await screen.findByTestId("reachability-trend-card");
     expect(screen.getByTestId("reachability-analysis")).toBeInTheDocument();
+  });
+});
+
+// ── Exams with more than one paper in a year ─────────────────────────────────
+// NABARD ran a morning and an evening shift and two phases, so a bare year
+// cannot identify a point. Before this, the axis repeated "2022" once per paper
+// and the three series doubled back on themselves.
+const NABARD = "national-nabard-grade-a";
+const SHIFT_PAPERS = [
+  { year: 2021, paper_code: "NABARD-P1-REASONING-2021", easy: 12, medium: 30, hard: 8 },
+  { year: 2022, paper_code: "NABARD-P1-REASONING-2022-MORNING", easy: 10, medium: 31, hard: 9 },
+  { year: 2022, paper_code: "NABARD-P1-REASONING-2022-EVENING", easy: 9, medium: 30, hard: 11 },
+  { year: 2023, paper_code: "NABARD-P1-REASONING-2023", easy: 8, medium: 29, hard: 13 },
+].map((p, i) => ({
+  ...p,
+  paper_id: `nab-${i}`,
+  total: p.easy + p.medium + p.hard,
+  phase_id: "ph-1",
+  phase_name: "Phase I",
+  set_label: null,
+}));
+
+function ticks() {
+  return Array.from(document.querySelectorAll(".recharts-xAxis .recharts-cartesian-axis-tick-value"))
+    .map((n) => n.textContent.trim());
+}
+
+describe("an exam with several papers in one year", () => {
+  it("gives every point its own x category instead of repeating the year", async () => {
+    mockGet({ ...payload(SHIFT_PAPERS), exam_slug: NABARD });
+    render(<ReachabilityTrendCard examSlug={NABARD} />);
+    await screen.findByTestId("reachability-trend-card");
+    const labels = ticks();
+    expect(labels).toHaveLength(SHIFT_PAPERS.length);
+    expect(new Set(labels).size).toBe(SHIFT_PAPERS.length);
+    expect(labels.filter((t) => t === "2022")).toHaveLength(0);
+  });
+
+  it("keeps the year in the label and adds what distinguishes the paper", async () => {
+    mockGet({ ...payload(SHIFT_PAPERS), exam_slug: NABARD });
+    render(<ReachabilityTrendCard examSlug={NABARD} />);
+    await screen.findByTestId("reachability-trend-card");
+    const labels = ticks();
+    expect(labels.every((t) => /^20\d\d/.test(t))).toBe(true);
+    expect(labels.some((t) => /MORNING/i.test(t))).toBe(true);
+    expect(labels.some((t) => /EVENING/i.test(t))).toBe(true);
+  });
+
+  it("leaves the numeric year axis alone when each year holds one paper", async () => {
+    mockGet(payload(NINE_PAPERS));
+    render(<ReachabilityTrendCard examSlug={UPSC} />);
+    await screen.findByTestId("reachability-trend-card");
+    expect(ticks()).toEqual(NINE_PAPERS.map((p) => String(p.year)));
+  });
+});
+
+describe("end labels", () => {
+  it("pushes the lower of two bands that finish on close counts", () => {
+    // medium 31 draws just above easy 30 — about 4px apart at this scale, well
+    // inside an 11px label. The upper band holds its position; the lower one
+    // moves down until the two labels clear each other.
+    const offsets = endLabelOffsets({ easy: 30, medium: 31, hard: 5 });
+    expect(offsets.medium).toBe(0);
+    expect(offsets.easy).toBeGreaterThanOrEqual(9);
+    expect(offsets.hard).toBe(0);
+  });
+
+  it("leaves bands that finish far apart where they are", () => {
+    const offsets = endLabelOffsets({ easy: 10, medium: 55, hard: 30 });
+    expect(offsets.medium).toBe(0);
+    expect(offsets.hard).toBe(0);
+    expect(offsets.easy).toBe(0);
+  });
+
+  it("labels a paper by its set when the operator typed one", () => {
+    expect(paperAxisLabel({ year: 2025, set_label: "Set A" })).toBe("2025 Set A");
+  });
+
+  it("falls back to the phase when there is no set or code", () => {
+    expect(paperAxisLabel({ year: 2024, phase_name: "Phase II" })).toBe("2024 Phase II");
   });
 });

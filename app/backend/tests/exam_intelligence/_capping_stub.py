@@ -12,6 +12,8 @@ pagination fix can be proven:
 * ``.eq`` / ``.in_`` / ``.is_`` / ``.not_.is_`` / ``.gt`` filters,
 * ``.order(key, desc=)`` deterministic sort,
 * ``.range(from, to)`` inclusive window (else ``.limit(n)``),
+* ``count="exact"`` on ``.select()`` → ``execute().count``, the pre-window,
+  pre-cap match total (PostgREST's Content-Range header),
 * a hard ``server_cap`` applied LAST, modelling ``db-max-rows``.
 
 Set ``server_cap`` equal to the module ``_PAGE`` under test to model the real
@@ -24,8 +26,12 @@ from typing import Any
 
 
 class _Exec:
-    def __init__(self, data: list[dict[str, Any]]):
+    def __init__(self, data: list[dict[str, Any]], count: int | None = None):
         self.data = data
+        #: Mirrors PostgREST's exact-count header: the number of rows matching
+        #: the filters BEFORE range/limit/cap are applied. ``None`` unless the
+        #: caller passed ``count="exact"`` to ``.select()``.
+        self.count = count
 
 
 class _CapNot:
@@ -46,9 +52,11 @@ class _CapQuery:
         self._desc = False
         self._limit: int | None = None
         self._range: tuple[int, int] | None = None
+        self._count: str | None = None
 
     # ── builder chain ────────────────────────────────────────────────────
-    def select(self, *a: Any, **k: Any) -> "_CapQuery":
+    def select(self, *a: Any, count: str | None = None, **k: Any) -> "_CapQuery":
+        self._count = count
         return self
 
     def eq(self, key: str, val: Any) -> "_CapQuery":
@@ -112,6 +120,9 @@ class _CapQuery:
 
     def execute(self) -> _Exec:
         rows = [r for r in self._rows if self._match(r)]
+        # Exact count is taken pre-window and pre-cap, like PostgREST's
+        # Content-Range total.
+        total = len(rows) if self._count == "exact" else None
         if self._order:
             rows.sort(
                 key=lambda r: (r.get(self._order) is None, r.get(self._order)),
@@ -124,7 +135,7 @@ class _CapQuery:
             rows = rows[: self._limit]
         # Server-side db-max-rows cap — applied LAST, exactly like PostgREST.
         rows = rows[: self._cap]
-        return _Exec([dict(r) for r in rows])
+        return _Exec([dict(r) for r in rows], count=total)
 
 
 class _CapRpc:

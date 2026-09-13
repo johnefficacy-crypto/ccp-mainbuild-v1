@@ -1,0 +1,932 @@
+[
+  {
+    "id": "11392d90-4ec3-49ce-a60f-15c1d14bff05",
+    "text": "APEC",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-apec-3490469f",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7d652a2e-ac07-4783-b899-d3d04baa4105",
+    "text": "ASEAN",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-asean-ed2ec62d",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e2fe869a-5709-4695-a67c-d9bbe0988931",
+    "text": "Arms race and the Cold War; the nuclear threat",
+    "slug": "opt-psir-p2-changing-international-political-order-arms-race-and-the-cold-war-th-73aa2303",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "af4729dd-e7a5-4099-bd5d-b0f1fb4bc4d3",
+    "text": "Balance of power: methods and contemporary relevance",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-balance-of-power-methods-and-17eaaa12",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "57a8b145-5c8a-44dd-8f33-6f26829ebb4e",
+    "text": "Border disputes with neighbours",
+    "slug": "opt-psir-p2-india-and-south-asia-border-disputes-with-neighbours-58cbfdf8",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "98114129-d024-4f2e-9d2e-dd82dcefe2fb",
+    "text": "Changing Indian perceptions on the nuclear question",
+    "slug": "opt-psir-p2-india-and-the-nuclear-question-changing-indian-perceptions-on-the-nu-aa86cdfc",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e5b3c3c3-e115-426f-bf33-7bf1792035e4",
+    "text": "Characteristics and changing nature of the State in capitalist economies",
+    "slug": "opt-psir-p2-state-in-comparative-perspective-characteristics-and-changing-nature-a4e492ac",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f95d5fc2-501f-44df-a232-4f597da15fc8",
+    "text": "Chinese influence across South Asia and its challenge to India",
+    "slug": "opt-psir-p2-india-and-south-asia-chinese-influence-across-south-asia-and-its-cha-bda695c9",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "be0b48c5-c510-4b69-9ede-2f5882a530dc",
+    "text": "Clientelism and patron-client politics",
+    "slug": "opt-psir-p2-politics-of-representation-and-participation-clientelism-and-patron-8acc1d8c",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "050aa744-d93b-4138-8acb-db541d2e329f",
+    "text": "Collapse of the Soviet Union",
+    "slug": "opt-psir-p2-changing-international-political-order-collapse-of-the-soviet-union-bfea39ed",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a94f89a1-01b2-49ae-a980-cb02def29475",
+    "text": "Collective security systems and the future of NATO",
+    "slug": "opt-psir-p2-changing-international-political-order-collective-security-systems-a-256c44d1",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "29dcdd01-a1cf-4c64-88e0-26b30a113ffc",
+    "text": "Continuity and change in Indian foreign policy",
+    "slug": "opt-psir-p2-indian-foreign-policy-continuity-and-change-in-indian-foreign-policy-d427670a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "25300170-b8f2-475f-a757-c9161444206e",
+    "text": "Democracy as a global concern",
+    "slug": "opt-psir-p2-contemporary-global-concerns-democracy-as-a-global-concern-643731b9",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dbf6ffd4-c06a-4daf-9eb5-93c0984efc14",
+    "text": "Determinants of Indian foreign policy",
+    "slug": "opt-psir-p2-indian-foreign-policy-determinants-of-indian-foreign-policy-7764fa62",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5de389d9-51a9-4762-b598-6e4ccf4f3a00",
+    "text": "Deterrence",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-deterrence-d4200006",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "312d83d2-5ed2-46fc-aed0-bde2d9d90c80",
+    "text": "Different phases of India's contribution to the Non-Aligned Movement",
+    "slug": "opt-psir-p2-india-and-the-non-aligned-movement-different-phases-of-india-s-contr-61840797",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d4232487-e8cf-4d6e-826f-08ac75217b45",
+    "text": "Environment and climate governance",
+    "slug": "opt-psir-p2-contemporary-global-concerns-environment-and-climate-governance-99e79f6d",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "76567b50-6ea5-4aa5-b453-f2d4b0601569",
+    "text": "Envisaged role of the United Nations and its actual record",
+    "slug": "opt-psir-p2-united-nations-envisaged-role-of-the-united-nations-and-its-actual-r-31783d5e",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "07788893-22b2-4275-929b-f46326ee1536",
+    "text": "Ethnic conflicts and insurgencies in the region",
+    "slug": "opt-psir-p2-india-and-south-asia-ethnic-conflicts-and-insurgencies-in-the-region-62d86e32",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3625cb66-768d-4435-8fba-c9769c1b1edd",
+    "text": "European Union",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-european-union-98ea8793",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d1e6cc56-f8ab-458f-9f37-23b22d3fee9b",
+    "text": "Extractive capitalism and resource dependence",
+    "slug": "opt-psir-p2-globalisation-extractive-capitalism-and-resource-dependence-ac2f6321",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fa85d549-3c25-4ce2-a56e-c682a4ce7a35",
+    "text": "From Bretton Woods to the WTO",
+    "slug": "opt-psir-p2-evolution-of-the-international-economic-system-from-bretton-woods-to-be56538c",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "629e68c6-1ecd-42d6-98cd-b43037b577d8",
+    "text": "Functionalist and neo-functionalist approaches",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-functionalist-and-2a725c61",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "498275b0-dd52-4aa9-959f-f5654142ac36",
+    "text": "Gender justice",
+    "slug": "opt-psir-p2-contemporary-global-concerns-gender-justice-f3d3d86e",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a7e7d182-36a3-4e42-ac54-4cc90524f4ab",
+    "text": "Globalisation of the world economy",
+    "slug": "opt-psir-p2-evolution-of-the-international-economic-system-globalisation-of-the-f180c146",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f8f01b12-5491-4381-b8f5-f3b6be527c17",
+    "text": "Growing relations with the United States",
+    "slug": "opt-psir-p2-recent-developments-in-indian-foreign-policy-growing-relations-with-447e0b44",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1564b709-56f4-4edc-8275-278f308690d6",
+    "text": "Human rights and the politics of international human rights frameworks",
+    "slug": "opt-psir-p2-contemporary-global-concerns-human-rights-and-the-politics-of-intern-9cf0dc3c",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "84fbe442-1af1-4e43-87a2-420168b888c6",
+    "text": "Idealist approach",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-idealist-approach-7cb84133",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ce72d7dc-d3d7-4c8c-acbd-28199160cf84",
+    "text": "Illegal cross-border migration and its security implications",
+    "slug": "opt-psir-p2-india-and-south-asia-illegal-cross-border-migration-and-its-security-107a2500",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c4f92e49-43b4-4a0f-8907-ec0566de40a3",
+    "text": "India and China",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-china-8d5a302a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "115c09b6-07c2-42c3-a303-66197d05687e",
+    "text": "India and Japan",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-japan-cc5e70eb",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "60baa9ca-8ef9-4617-9fca-467de588d9ad",
+    "text": "India and Pakistan; India and Bangladesh; India and Nepal",
+    "slug": "opt-psir-p2-india-and-south-asia-india-and-pakistan-india-and-bangladesh-india-a-68d6f200",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f7183ee3-a9a0-429e-b37b-ff62fa27f2bd",
+    "text": "India and Russia",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-russia-2f81b1e6",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "12d0ac0f-cd03-448d-a97e-0cfd826b7831",
+    "text": "India and Sri Lanka, including the Kachchatheevu question",
+    "slug": "opt-psir-p2-india-and-south-asia-india-and-sri-lanka-including-the-kachchatheevu-44bdb99a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a20987ae-3bdb-4c78-abff-00b534b83a71",
+    "text": "India and West Asia",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-west-asia-ad4a6b04",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "baa7e933-65f1-4df5-bbce-259ad66c35ff",
+    "text": "India and the European Union",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-the-european-union-2d119682",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c1862ac9-0fa2-4826-976e-9fd52f60b2b8",
+    "text": "India and the Maldives; India and Myanmar; India and Bhutan",
+    "slug": "opt-psir-p2-india-and-south-asia-india-and-the-maldives-india-and-myanmar-india-91aa710d",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e4ec2dad-16f3-4aff-aefe-229f85d7d3d8",
+    "text": "India and the USA",
+    "slug": "opt-psir-p2-india-and-the-global-centres-of-power-india-and-the-usa-2b46419a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "96cfc848-406f-40e5-bfea-d96d7db55759",
+    "text": "India's Look East and Act East policy",
+    "slug": "opt-psir-p2-india-and-south-asia-india-s-look-east-and-act-east-policy-fe4b553d",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5046bfab-e894-4929-97e9-63bb37734bc4",
+    "text": "India's current role in the Non-Aligned Movement",
+    "slug": "opt-psir-p2-india-and-the-non-aligned-movement-india-s-current-role-in-the-non-a-d4358b5f",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0ee154bb-4f18-492e-ac14-7e93ba0e232e",
+    "text": "India's demand for a permanent seat in the Security Council",
+    "slug": "opt-psir-p2-india-and-the-un-system-india-s-demand-for-a-permanent-seat-in-the-s-8fb1ce0d",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ce5491b8-bbc5-4bcd-af7f-9a3666f5d197",
+    "text": "India's nuclear doctrine and policy evolution",
+    "slug": "opt-psir-p2-india-and-the-nuclear-question-india-s-nuclear-doctrine-and-policy-e-bb0d9543",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "df568657-495f-47ac-8d69-3cb8ee20f363",
+    "text": "India's position in WTO negotiations, including agriculture",
+    "slug": "opt-psir-p2-india-and-the-global-south-india-s-position-in-wto-negotiations-incl-54754c8b",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f2c357a2-7427-4e32-8219-0752360e2e3d",
+    "text": "India's position on Iraq and West Asia",
+    "slug": "opt-psir-p2-recent-developments-in-indian-foreign-policy-india-s-position-on-ira-c9a018c0",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "631cffe0-b0e0-4e39-913a-163d0a647429",
+    "text": "India's position on the crisis in Afghanistan",
+    "slug": "opt-psir-p2-recent-developments-in-indian-foreign-policy-india-s-position-on-the-35c16d8f",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b97b6c51-4628-4c16-a6a1-ad2341266fa7",
+    "text": "India's relations with Africa",
+    "slug": "opt-psir-p2-india-and-the-global-south-india-s-relations-with-africa-4d823680",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f78631d8-97da-40ee-a049-ffe6bc769abb",
+    "text": "India's relations with Israel",
+    "slug": "opt-psir-p2-recent-developments-in-indian-foreign-policy-india-s-relations-with-2f0b1ba3",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "af7f1d9a-cb89-4038-96b5-61887f9c3dc1",
+    "text": "India's relations with Latin America, including Brazil",
+    "slug": "opt-psir-p2-india-and-the-global-south-india-s-relations-with-latin-america-incl-bd7f9fa7",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1e077f96-d25f-4115-896c-610d0f1de0ae",
+    "text": "India's role in UN peacekeeping",
+    "slug": "opt-psir-p2-india-and-the-un-system-india-s-role-in-un-peacekeeping-c25e95ff",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d6c4545a-36aa-4432-b941-d022008e3536",
+    "text": "India's vision of a new world order",
+    "slug": "opt-psir-p2-recent-developments-in-indian-foreign-policy-india-s-vision-of-a-new-3654b471",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f853acf8-6d02-49a7-8bca-68e4a950f567",
+    "text": "Institutional approach and its successive criticisms",
+    "slug": "opt-psir-p2-comparative-politics-nature-and-major-approaches-institutional-appro-7dfb9b57",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6cfe16e9-9963-496b-828b-07b49958a209",
+    "text": "Institutions of foreign-policy making",
+    "slug": "opt-psir-p2-indian-foreign-policy-institutions-of-foreign-policy-making-f6d393ce",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "636fa995-e27d-4683-85c5-ed2f1a6adbf4",
+    "text": "International law and UNCLOS",
+    "slug": "opt-psir-p2-united-nations-international-law-and-unclos-b513e1ac",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4324436f-6e50-49f6-b9f3-937b9cef7689",
+    "text": "Leadership role in the demand for a New International Economic Order",
+    "slug": "opt-psir-p2-india-and-the-global-south-leadership-role-in-the-demand-for-a-new-i-f6b2e4bd",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b011155f-d631-4441-8e9e-90e9a916efd1",
+    "text": "Limitations of the comparative method",
+    "slug": "opt-psir-p2-comparative-politics-nature-and-major-approaches-limitations-of-the-e2febbd8",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9ee7da7c-1c51-4753-867c-d726220c6b70",
+    "text": "Marxist approaches to international relations",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-marxist-approache-7ee8e996",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4ba7a495-be70-43be-b20b-2ee0df244dc9",
+    "text": "Minilateral and issue-based groupings such as the QUAD",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-minilateral-and-issue-based-groupi-86090d07",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "19b46db3-5dee-43e9-b51d-c9a74bc40999",
+    "text": "Multi-alignment as successor to non-alignment",
+    "slug": "opt-psir-p2-indian-foreign-policy-multi-alignment-as-successor-to-non-alignment-522cbbf9",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b5a8cea0-c230-45d4-b2e1-df2bd5c126bc",
+    "text": "NAFTA",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-nafta-6d46456e",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "040d8c4d-9538-44bd-b510-cc67106e58df",
+    "text": "National interest",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-national-interest-7336fe1f",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b13e8c2f-fadf-4007-adfa-f05af4a42ca7",
+    "text": "Nature and scope of comparative politics; major approaches",
+    "slug": "opt-psir-p2-comparative-politics-nature-and-major-approaches-nature-and-scope-of-924fb7ff",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "97bc11f8-69c0-42bb-9731-4f3b7a840ead",
+    "text": "Need for UN reforms; Security Council expansion",
+    "slug": "opt-psir-p2-united-nations-need-for-un-reforms-security-council-expansion-65631103",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8a1b590d-d95a-4172-abb3-dfdb200fa6e6",
+    "text": "Non-Aligned Movement: aims and achievements",
+    "slug": "opt-psir-p2-changing-international-political-order-non-aligned-movement-aims-and-42958a31",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5a5954f2-17ee-418d-9ccd-f581884e286a",
+    "text": "Nuclear proliferation and the non-proliferation regime",
+    "slug": "opt-psir-p2-contemporary-global-concerns-nuclear-proliferation-and-the-non-proli-0682675a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5a0648b8-fbc0-426d-bbc8-6763e05488b5",
+    "text": "Objectivity and hidden bias in international relations theory",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-objectivity-and-h-ff46ff7a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "118b48af-1086-4b1c-89ec-7d208dabb07e",
+    "text": "Political economy perspective in comparative analysis",
+    "slug": "opt-psir-p2-comparative-politics-nature-and-major-approaches-political-economy-p-1384c603",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "91c500a3-9b9c-4409-baa0-3d6e60724727",
+    "text": "Political parties in advanced industrial societies",
+    "slug": "opt-psir-p2-politics-of-representation-and-participation-political-parties-in-ad-1a9bb153",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "84e30f3e-6e4c-4a80-92a2-e6e99867952f",
+    "text": "Political parties in developing societies",
+    "slug": "opt-psir-p2-politics-of-representation-and-participation-political-parties-in-de-aafb9185",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ddd3afb7-5886-4521-aa62-627cfe03eb38",
+    "text": "Political sociology perspective in comparative analysis",
+    "slug": "opt-psir-p2-comparative-politics-nature-and-major-approaches-political-sociology-fd43ab91",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0d962bf4-1990-47b2-bfe9-37727e7fbb91",
+    "text": "Power transition theory",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-power-transition-theory-c53cbe26",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "46e5d3de-69b9-43f6-a287-4d1892e66f28",
+    "text": "Pressure groups and interest articulation",
+    "slug": "opt-psir-p2-politics-of-representation-and-participation-pressure-groups-and-int-62cecd6c",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9bf35b50-3101-47ac-9f77-3da66eee4e0a",
+    "text": "Realist approach; classical, structural and defensive realism",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-realist-approach-31a0195b",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1a3f5d98-62c0-442e-bf55-d1a497e50d7e",
+    "text": "Relevance of non-alignment in the contemporary world",
+    "slug": "opt-psir-p2-changing-international-political-order-relevance-of-non-alignment-in-e22dd53e",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4568628c-b2e4-4921-8112-197f4e4826fb",
+    "text": "Responses to globalisation from developed societies",
+    "slug": "opt-psir-p2-globalisation-responses-to-globalisation-from-developed-societies-622b9c4a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bc65be6e-5d22-4788-be89-38a8f24f89ba",
+    "text": "Responses to globalisation from developing societies",
+    "slug": "opt-psir-p2-globalisation-responses-to-globalisation-from-developing-societies-41eeb4b9",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bb90d3cc-9d1e-43db-9e9f-acd91a69c2e4",
+    "text": "Rise of the super powers; strategic and ideological bipolarity",
+    "slug": "opt-psir-p2-changing-international-political-order-rise-of-the-super-powers-stra-58f386b3",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7771a4d3-fa75-4cca-bf48-3852a0f0d590",
+    "text": "River water disputes as an impediment to regional cooperation",
+    "slug": "opt-psir-p2-india-and-south-asia-river-water-disputes-as-an-impediment-to-region-104341f5",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "be0bd355-44bf-42bf-be3c-34e832beed19",
+    "text": "SAARC",
+    "slug": "opt-psir-p2-regionalisation-of-world-politics-saarc-a26a2e6c",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "db03a092-228e-41f7-b33e-f3f51cc68bab",
+    "text": "SAARC: past performance and future prospects",
+    "slug": "opt-psir-p2-india-and-south-asia-saarc-past-performance-and-future-prospects-37d0e44e",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ad6011d8-0462-4ada-be05-73321fa44023",
+    "text": "Security and power",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-security-and-power-5bfb2c88",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "242e669f-485f-4401-8530-b2356c74c11d",
+    "text": "Social movements as a mode of participation",
+    "slug": "opt-psir-p2-politics-of-representation-and-participation-social-movements-as-a-m-51b27547",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bfcd2bcc-7a48-44f6-80e1-0760b1bf8bb5",
+    "text": "Socialist economies and the Council for Mutual Economic Assistance (CMEA)",
+    "slug": "opt-psir-p2-evolution-of-the-international-economic-system-socialist-economies-a-213c24cf",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "761048f6-4365-4cad-82ab-af88ece1478e",
+    "text": "South Asia as a Free Trade Area",
+    "slug": "opt-psir-p2-india-and-south-asia-south-asia-as-a-free-trade-area-8cc9c211",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e06c8f91-2db5-4b1e-ad8c-ccd447e68b32",
+    "text": "Specialised UN agencies: aims and functioning",
+    "slug": "opt-psir-p2-united-nations-specialised-un-agencies-aims-and-functioning-1453a361",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ffa40acd-c5e8-4912-a387-027baf3ff04d",
+    "text": "Systems theory in international relations",
+    "slug": "opt-psir-p2-approaches-to-the-study-of-international-relations-systems-theory-in-07a2d417",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "108cd9e0-c4ba-4e67-a8f3-a03f03ef201a",
+    "text": "Terrorism and counter-terrorism cooperation",
+    "slug": "opt-psir-p2-contemporary-global-concerns-terrorism-and-counter-terrorism-coopera-a1307202",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c6ade914-f813-4e68-830a-4eb22f7ede91",
+    "text": "The State in advanced industrial societies",
+    "slug": "opt-psir-p2-state-in-comparative-perspective-the-state-in-advanced-industrial-so-3f74477a",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "db868ba2-6cc1-4882-a3fa-c1a575486e2e",
+    "text": "The State in developing societies",
+    "slug": "opt-psir-p2-state-in-comparative-perspective-the-state-in-developing-societies-d7d42cdf",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "37e55115-d6c4-43c2-927c-719b8f407268",
+    "text": "The State in socialist economies",
+    "slug": "opt-psir-p2-state-in-comparative-perspective-the-state-in-socialist-economies-ae8c51a1",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ae9dfcf8-bf84-49c1-bd37-17933645ff7d",
+    "text": "Third World demand for a New International Economic Order",
+    "slug": "opt-psir-p2-evolution-of-the-international-economic-system-third-world-demand-fo-c3c11eee",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0ee7c6fe-27c0-4fcc-90f8-b45d41df413a",
+    "text": "Transnational actors and collective security",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-transnational-actors-and-col-30c0b0dc",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "85cfdeaa-e197-4a2f-9893-4e067b2f8f4b",
+    "text": "Unipolarity and American hegemony",
+    "slug": "opt-psir-p2-changing-international-political-order-unipolarity-and-american-hege-7b89be6f",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "191abcbf-ccf5-466f-b1ba-54e83c744f39",
+    "text": "World capitalist economy and globalisation",
+    "slug": "opt-psir-p2-key-concepts-in-international-relations-world-capitalist-economy-and-0a7e6272",
+    "subject_id": "132b4208-06e9-471f-8f03-ce6a955d09f1",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

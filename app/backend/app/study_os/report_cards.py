@@ -285,7 +285,7 @@ def _build_high_yield_coverage(
     """
     try:
         from app.study_os.planner import (
-            _load_locked_coverage,
+            load_scoped_coverage,
             _load_user_signals,
             _resolve_target_exam,
         )
@@ -307,7 +307,7 @@ def _build_high_yield_coverage(
             "trust_status": "preview",
         }
     exam_id = target["id"]
-    coverage = _safe(lambda: _load_locked_coverage(supabase, exam_id), []) or []
+    coverage = _safe(lambda: load_scoped_coverage(supabase, user_id, exam_id), []) or []
     high_yield = [c for c in coverage if c.get("is_high_yield")]
     total = len(high_yield)
     if total == 0:

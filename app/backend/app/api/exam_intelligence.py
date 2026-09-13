@@ -361,20 +361,30 @@ def list_exam_pyqs(
 
         paper_rows = paper_q.execute().data or []
 
-        # Phase filter: resolve phase_id from slug
+        # Phase filter: resolve phase_id from slug.
+        # phase_slug is NOT globally unique - 86 exams carry a phase slugged
+        # 'mains'. Without the exam_id scope this resolved to whichever exam
+        # PostgREST returned first and the explorer returned 0 rows for every
+        # other exam. Nor is it unique WITHIN an exam: UPSC CSE has three
+        # 'mains' phases (one null-cycle template plus cycle-specific ones
+        # promoted from it), so match every phase on this exam rather than
+        # picking one arbitrarily. mock_readiness_cli.py:62-71 already scopes
+        # its lookup this way.
         if phase:
             phase_id_rows = (
                 sb.table("exam_phases")
                 .select("id")
+                .eq("exam_id", exam_id)
                 .eq("phase_slug", phase)
-                .limit(1)
+                .limit(50)
                 .execute()
                 .data
                 or []
             )
             if phase_id_rows:
-                phase_uuid = phase_id_rows[0]["id"]
-                paper_rows = [p for p in paper_rows if p.get("exam_phase_id") == phase_uuid]
+                phase_uuids = {r["id"] for r in phase_id_rows}
+                paper_rows = [p for p in paper_rows
+                              if p.get("exam_phase_id") in phase_uuids]
             else:
                 paper_rows = []
 
@@ -888,6 +898,22 @@ def get_exam_pyq_summary(
 #: resolve to — the question's section, or its primary tag's topic. NOT
 #: section_label: the CSAT papers carry three different spellings of it and two
 #: carry NULL.
+# Pins one exam's reachability series to a single subject, so the chart plots
+# one paper family rather than every eligible paper of the exam.
+#
+# NOT THE ANSWER TO A CROWDED AXIS. It has one entry and should keep close to
+# one: pinning discards every paper outside the subject, so it only earns its
+# place where the exam genuinely has one canonical series and the rest are
+# different exams wearing the same name. UPSC qualifies — GS Paper I is the
+# series, CSAT is a separate qualifying paper that happened to collide on the
+# x-axis. NABARD, SEBI, IFSCA and PFRDA do not: their papers are all part of the
+# same exam, and choosing one subject would be an editorial claim the data does
+# not support, dropping 40 of NABARD's 41 papers to tidy the rendering.
+#
+# An exam whose axis is crowded because it genuinely has many papers is a layout
+# problem — a wider card, horizontal scroll, grouping by phase — and belongs in
+# the chart, not here. ReachabilityTrendCard gives each paper its own category
+# when a year holds more than one, which is correct but not by itself roomy.
 REACHABILITY_SERIES_SUBJECT: dict[str, str] = {
     # UPSC CSE — General Studies Paper I.
     "upsc-cse": "09db7afb-0864-46c9-b900-1510b60c0011",

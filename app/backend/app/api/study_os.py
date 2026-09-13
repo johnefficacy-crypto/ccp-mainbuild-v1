@@ -61,6 +61,9 @@ _PLAN_UNPROCESSABLE_REASONS = {
     "no_locked_coverage",
     "all_topics_muted",
     "target_changed",
+    # The target exam is retired/sandbox. A client-correctable state (pick a
+    # live exam), not a server fault — 422, not 500.
+    "exam_inactive",
 }
 
 
@@ -1185,22 +1188,35 @@ async def get_topics(
     supabase = get_supabase_admin()
     try:
         from app.exam_intelligence.coverage import verified_pyq_topic_counts
-        from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+        from app.exam_intelligence.lookup import (
+            InactiveExamError,
+            resolve_exam_by_id,
+            resolve_exam_by_slug,
+        )
         from app.study_os.planner import (
-            _load_locked_coverage,
+            load_scoped_coverage,
             _load_user_signals,
             _resolve_target_exam,
         )
 
-        if not exam_id:
-            target = _resolve_target_exam(supabase, user_id)
-            exam_id = target.get("id") if target else None
-        else:
-            target = resolve_exam_by_id(supabase, exam_id) or resolve_exam_by_slug(
-                supabase, exam_id
+        try:
+            if not exam_id:
+                target = _resolve_target_exam(supabase, user_id)
+                exam_id = target.get("id") if target else None
+            else:
+                target = resolve_exam_by_id(supabase, exam_id) or resolve_exam_by_slug(
+                    supabase, exam_id
+                )
+                if target:
+                    exam_id = target.get("id")
+        except InactiveExamError:
+            # Retired/sandbox exam — whether it came from the user's target or
+            # an explicit ?exam_id=. Fall through to the same empty tree this
+            # route already returns when there is no exam to read.
+            logger.info(
+                "topics: refusing inactive exam for user=%s exam_id=%s", user_id, exam_id
             )
-            if target:
-                exam_id = target.get("id")
+            exam_id = None
 
         if not exam_id:
             return {
@@ -1210,7 +1226,7 @@ async def get_topics(
                 "trust_status": "locked",
             }
 
-        coverage = _load_locked_coverage(supabase, exam_id)
+        coverage = load_scoped_coverage(supabase, user_id, exam_id)
         if subject_id:
             coverage = [c for c in coverage if c.get("subject_id") == subject_id]
 

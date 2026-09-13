@@ -1,0 +1,642 @@
+[
+  {
+    "id": "35f85417-8367-4e04-8f9b-5af866eef4e6",
+    "text": "Agrarian relations in Indian villages",
+    "slug": "opt-anthropology-p2-6-indian-village-agrarian-relations-in-indian-villages-80116004",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "41509519-b951-4c3f-a908-4f369f4e18a0",
+    "text": "Bio-genetic variability of tribal populations",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-bio-genetic-variability-of-triba-25b9f6f0",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "38afc82f-145e-41dc-8a54-2d54cdb58b04",
+    "text": "Constitutional safeguards for Scheduled Tribes and Scheduled Castes",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-fc74ebcd",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "453d0bb9-3f94-4199-b478-3452e2c18f9c",
+    "text": "Contribution of anthropology to understanding ethnic and political movements",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-contri-1135612d",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3abe6c20-7452-4510-ad7b-0135f51a9858",
+    "text": "Contribution of anthropology to understanding regionalism and communalism",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-contri-f7b2dbaf",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "44e6bc15-b5f7-4f00-89bf-85967ef5f17f",
+    "text": "Contributions of 18th and 19th century scholar-administrators",
+    "slug": "opt-anthropology-p2-5-emergence-and-growth-of-anthropology-in-india-contribution-40e169a0",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bc0ab9e5-0967-4b7c-a52a-3f7c6abbeef0",
+    "text": "Contributions of Indian anthropologists to caste studies",
+    "slug": "opt-anthropology-p2-5-emergence-and-growth-of-anthropology-in-india-contribution-d0d4ff29",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d5ee57bb-9e0d-4a54-95fb-a7dc106807eb",
+    "text": "Contributions of Indian anthropologists to tribal studies",
+    "slug": "opt-anthropology-p2-5-emergence-and-growth-of-anthropology-in-india-contribution-91140e50",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "13258551-acbc-4355-bef0-3502c434487c",
+    "text": "Contributions of early 20th century scholar-administrators",
+    "slug": "opt-anthropology-p2-5-emergence-and-growth-of-anthropology-in-india-contribution-1544cee5",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "af91723b-9da8-4adf-9cce-e9c500cb45d2",
+    "text": "Contributions of tribal cultures to Indian civilization",
+    "slug": "opt-anthropology-p2-1-1-evolution-of-indian-culture-and-civilization-contributio-4d795666",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6bffa151-f6f7-40a3-9452-0ee61a790e90",
+    "text": "Development of forest policy and tribals",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-development-of-forest-policy-and-020dffb5",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d4157e36-d3d9-4658-90da-222a43b3be68",
+    "text": "Developmental projects, tribal displacement and rehabilitation",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-developmental-projects-tribal-di-f20491e1",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "43c39b13-7a6d-4e4e-8b0a-a973ee70c178",
+    "text": "Dominant caste, caste mobility and the future of the caste system",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-dominant-caste-caste-mobility-and-th-e7a0e996",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b08fea89-454a-4221-a1e9-c9255d05e823",
+    "text": "Ethnic elements in the Indian population and their distribution",
+    "slug": "opt-anthropology-p2-2-demographic-profile-of-india-ethnic-elements-in-the-indian-6d394676",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "11f9a3ec-c144-4988-b765-6d04cf887b86",
+    "text": "Exploitation and deprivation of Scheduled Castes, Scheduled Tribes and OBCs",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-6af06b48",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "01c457c5-c964-4d98-9c5d-d7ada290c59f",
+    "text": "Factors influencing the structure and growth of the Indian population",
+    "slug": "opt-anthropology-p2-2-demographic-profile-of-india-factors-influencing-the-struc-3d49a6b0",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "25205f16-d24b-4aa4-91af-818235c71481",
+    "text": "Health and nutrition among tribal communities",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-health-and-nutrition-among-triba-5eef2fa7",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ae64f9e4-f1a6-4e78-a570-3211472818f6",
+    "text": "History of the administration of tribal areas and tribal policies",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-histor-fd2ff5ac",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "04c66450-dc40-491a-885b-1b7e8283358a",
+    "text": "Impact of Buddhism and Jainism on Indian society",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-impact-of-buddhism-and-jainism-on-in-b2e5688a",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4726dad0-aa07-4b63-bd18-00f36d691a29",
+    "text": "Impact of Christianity, Islam and other religions on tribal societies",
+    "slug": "opt-anthropology-p2-11-religion-and-the-tribe-nation-relationship-impact-of-chri-5e41b305",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2785ddad-6dbb-487c-a615-e69806b046a4",
+    "text": "Impact of Hinduism and Buddhism on tribal societies",
+    "slug": "opt-anthropology-p2-11-religion-and-the-tribe-nation-relationship-impact-of-hind-5e50c8df",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cada2914-f7f4-44c7-b3d8-604b12492f3e",
+    "text": "Impact of Islam and Christianity on Indian society",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-impact-of-islam-and-christianity-on-09c66f59",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e47db629-a5ec-473e-8ec7-0631791365f2",
+    "text": "Impact of development programmes and welfare measures",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-369b83ef",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5ee48f59-0b98-42f0-a754-d0052f7e327b",
+    "text": "Impact of globalization on Indian villages",
+    "slug": "opt-anthropology-p2-6-indian-village-impact-of-globalization-on-indian-villages-9f786d17",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2c15e33e-483e-4178-b727-eaeb957d75bf",
+    "text": "Impact of modern democratic institutions on tribals and weaker sections",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-5a0be0ba",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "21a995bd-256d-446b-b903-a337a6bed8f1",
+    "text": "Impact of urbanization and industrialization on tribal populations",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-impact-of-urbanization-and-indus-bb938fb2",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1422a347-2591-4890-b954-038f3d00e763",
+    "text": "Interplay of little and great traditions",
+    "slug": "opt-anthropology-p2-8-socio-cultural-change-in-indian-society-interplay-of-littl-ce0d0511",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ca1322a1-7f0a-4f4e-89d0-4b7bf71e19ae",
+    "text": "Jajmani system",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-jajmani-system-923c9dc1",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e0948f66-bc64-401b-aca5-5a8f2225910c",
+    "text": "Karma, Rina and Rebirth",
+    "slug": "opt-anthropology-p2-3-traditional-indian-social-system-karma-rina-and-rebirth-e1370fb6",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "00146e4c-6111-4319-a319-85c983b7b493",
+    "text": "Land alienation, poverty and indebtedness among tribal communities",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-land-alienation-poverty-and-inde-aeca610a",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1d8274be-e83d-4ad6-be15-0c3c3d38f63c",
+    "text": "Linguistic and socio-economic characteristics of tribal populations and their distribution",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-linguistic-and-socio-economic-ch-42b916ba",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f056ae36-a393-4263-8568-25f4bca49c70",
+    "text": "Linguistic elements in the Indian population and their distribution",
+    "slug": "opt-anthropology-p2-2-demographic-profile-of-india-linguistic-elements-in-the-in-e2d5da21",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "54d29be6-77c2-477b-bba4-f74ff65e50de",
+    "text": "Linguistic minorities and their social, political and economic status",
+    "slug": "opt-anthropology-p2-7-linguistic-and-religious-minorities-linguistic-minorities-f6367339",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f339394e-cfe6-4dfa-89c3-ec49ae79bf74",
+    "text": "Low literacy, poor educational facilities, unemployment and underemployment",
+    "slug": "opt-anthropology-p2-9-tribal-situation-in-india-low-literacy-poor-educational-fa-4b523c7a",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3a18d9ba-c4a2-46b2-8b58-41ee485abc64",
+    "text": "Media and social change",
+    "slug": "opt-anthropology-p2-8-socio-cultural-change-in-indian-society-media-and-social-c-293b73da",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "24e94f7c-dfc5-4d5f-915a-d259727ee5a6",
+    "text": "Narmada basin and Narmada Man",
+    "slug": "opt-anthropology-p2-1-2-1-3-palaeo-anthropological-evidence-and-ethno-archaeolog-7e37a0f6",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f16616cc-64db-48bd-a612-3169149bedad",
+    "text": "Neolithic and Neolithic-Chalcolithic cultures",
+    "slug": "opt-anthropology-p2-1-1-evolution-of-indian-culture-and-civilization-neolithic-a-b42027c4",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b94d33fb-9d10-4b5e-91d7-b50b171bd866",
+    "text": "Palaeo-anthropological evidence from the Siwaliks: Ramapithecus and Sivapithecus",
+    "slug": "opt-anthropology-p2-1-2-1-3-palaeo-anthropological-evidence-and-ethno-archaeolog-762b11a2",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b5375cb2-475c-4a7b-94b0-d27d16f9db14",
+    "text": "Panchayati Raj and social change",
+    "slug": "opt-anthropology-p2-8-socio-cultural-change-in-indian-society-panchayati-raj-and-1e44c449",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d452fd2d-d6e8-4446-8d48-84f812bfe9e1",
+    "text": "Particularly Vulnerable Tribal Groups: distribution and special programmes",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-partic-20bb61a6",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dd42d26e-49d1-4a18-92e9-171e893bbeda",
+    "text": "Plans and programmes of tribal development and their implementation",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-plans-d4cfb9e5",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2e37b1d3-f3cf-4fdb-bc6a-d1206d39ee6f",
+    "text": "Prehistoric India: Palaeolithic and Mesolithic cultures",
+    "slug": "opt-anthropology-p2-1-1-evolution-of-indian-culture-and-civilization-prehistoric-54f08dd9",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "62af0763-2112-4444-89f5-cd28971c386e",
+    "text": "Protohistoric India: pre-Harappan, Harappan and post-Harappan cultures",
+    "slug": "opt-anthropology-p2-1-1-evolution-of-indian-culture-and-civilization-protohistor-0edefe61",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "000bafb3-e3bf-4a24-9bbb-ed61c702879e",
+    "text": "Pseudo-tribalism",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-df3ea41c",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "55b8b3ba-8b36-4012-85a6-34a92215ef6d",
+    "text": "Purushartha",
+    "slug": "opt-anthropology-p2-3-traditional-indian-social-system-purushartha-88a94f3a",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "972dfdbe-adf4-4a9d-bd5d-34646b6a0038",
+    "text": "Religious minorities and their social, political and economic status",
+    "slug": "opt-anthropology-p2-7-linguistic-and-religious-minorities-religious-minorities-a-c20df655",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4a9b4284-693d-4727-867b-ba9e93893ca3",
+    "text": "Role of NGOs in tribal development",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-role-o-af3d478d",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "02d753d4-24b6-4d5b-952b-f1f328260d6a",
+    "text": "Role of anthropology in tribal and rural development",
+    "slug": "opt-anthropology-p2-12-tribal-administration-and-the-role-of-anthropology-role-o-9f5b5303",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3772bb3c-df41-4e26-9db3-da411cc193d2",
+    "text": "Sacred Complex and Nature-Man-Spirit Complex",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-sacred-complex-and-nature-man-spirit-4cd3732d",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f11fc01c-0bc7-47f1-81ad-c7642fe2fd2a",
+    "text": "Sanskritization",
+    "slug": "opt-anthropology-p2-8-socio-cultural-change-in-indian-society-sanskritization-826bd5b4",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f48cb63c-d164-40b7-bf16-e1a6ef63d214",
+    "text": "Significance of village study in India",
+    "slug": "opt-anthropology-p2-6-indian-village-significance-of-village-study-in-india-7dc6852d",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2c31a302-b119-47cb-afe8-5c33adf40fad",
+    "text": "Social change among tribes during colonial and post-Independent India",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-782eb958",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "65324be0-cb26-4cfe-b37e-798473720657",
+    "text": "Survivals and parallels among hunting, foraging and fishing communities",
+    "slug": "opt-anthropology-p2-1-2-1-3-palaeo-anthropological-evidence-and-ethno-archaeolog-1b324773",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "47d300b9-72b5-4e54-a0e1-dcbad5cfaefe",
+    "text": "Survivals and parallels among pastoral, peasant and craft-producing communities",
+    "slug": "opt-anthropology-p2-1-2-1-3-palaeo-anthropological-evidence-and-ethno-archaeolog-a064521b",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ef78d9c7-2e11-4d1b-b6dd-e55e30fa6ae3",
+    "text": "The Indian village as a social system",
+    "slug": "opt-anthropology-p2-6-indian-village-the-indian-village-as-a-social-system-4983b3b3",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c380c2e1-1467-4325-aa5f-c0dd6f3f7c3b",
+    "text": "The concept of ethnicity; ethnic conflicts and political developments",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-8e785917",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2cc31b6c-3439-4c9a-b536-8bb228be69d5",
+    "text": "The concept of ethno-archaeology",
+    "slug": "opt-anthropology-p2-1-2-1-3-palaeo-anthropological-evidence-and-ethno-archaeolog-b6225946",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "88d22150-a121-45e2-babc-a807c90ca7e9",
+    "text": "Traditional and changing patterns of settlement and inter-caste relations",
+    "slug": "opt-anthropology-p2-6-indian-village-traditional-and-changing-patterns-of-settle-530a13c8",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6d9d4515-b87b-416f-9370-cdf0497b88e5",
+    "text": "Tribe and nation state: comparative study of tribal communities in India and abroad",
+    "slug": "opt-anthropology-p2-11-religion-and-the-tribe-nation-relationship-tribe-and-nati-790df7df",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "12597bc3-20e3-4c07-85d7-100bf24bedc1",
+    "text": "Tribe-caste continuum",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-tribe-caste-continuum-beed3ce4",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "80a4bb91-dca3-4bf6-9d5e-84d9b00b3777",
+    "text": "Unrest among tribal communities; regionalism and demand for autonomy",
+    "slug": "opt-anthropology-p2-10-exploitation-deprivation-and-contemporary-tribal-society-e47afdce",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0cdce1bf-8a2b-4534-a1ba-cf443935a97f",
+    "text": "Varna and caste; theories of the origin of the caste system",
+    "slug": "opt-anthropology-p2-4-caste-system-in-india-varna-and-caste-theories-of-the-orig-16f50c69",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "63eb351f-e663-4eff-ba3d-e164f185a1d2",
+    "text": "Varnashrama and the traditional social order",
+    "slug": "opt-anthropology-p2-3-traditional-indian-social-system-varnashrama-and-the-tradi-7fc75a39",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f74d73fa-9fd1-475e-aba9-c8b79e7d0c99",
+    "text": "Westernization and Modernization",
+    "slug": "opt-anthropology-p2-8-socio-cultural-change-in-indian-society-westernization-and-aa0646fb",
+    "subject_id": "afae1e20-fc5e-4e97-94a1-29acbd18c5e2",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]

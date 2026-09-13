@@ -15,8 +15,9 @@ from typing import Any, Callable
 
 from app.study_os.planner import (  # type: ignore  # private helpers reused intentionally
     _load_locked_coverage,
+    load_scoped_coverage,
     _load_user_signals,
-    _resolve_target_exam,
+    resolve_target_exam_or_none,
 )
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
 from app.current_affairs.bundles import resolve_eligible_bundle
@@ -194,12 +195,12 @@ def list_subjects(supabase: Any, user_id: str) -> list[dict[str, Any]]:
     """
     if not user_id:
         return []
-    target = _resolve_target_exam(supabase, user_id)
+    target = resolve_target_exam_or_none(supabase, user_id, surface="subject_hub")
     exam_id = target.get("id") if target else None
     if not exam_id:
         return []
 
-    coverage = _load_locked_coverage(supabase, exam_id)
+    coverage = load_scoped_coverage(supabase, user_id, exam_id)
     if not coverage:
         return []
 
@@ -381,7 +382,7 @@ def subject_topic_tree(
     # explicit override, else the caller's target exam. No exam ⇒ structure with
     # coverage null throughout (still a valid tree).
     if not exam_id:
-        target = _resolve_target_exam(supabase, user_id)
+        target = resolve_target_exam_or_none(supabase, user_id, surface="subject_tree")
         exam_id = target.get("id") if target else None
 
     # STRUCTURE — every macro + microtopic row under the subject, from topics.
@@ -403,7 +404,7 @@ def subject_topic_tree(
     coverage_by_topic: dict[str, dict[str, Any]] = {}
     evidence_by_topic: dict[str, int] = {}
     if exam_id:
-        for c in _load_locked_coverage(supabase, exam_id) or []:
+        for c in load_scoped_coverage(supabase, user_id, exam_id) or []:
             tid = c.get("topic_id")
             if tid and str(c.get("subject_id")) == str(subject_id):
                 coverage_by_topic[tid] = c

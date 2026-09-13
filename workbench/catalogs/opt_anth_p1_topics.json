@@ -1,0 +1,1222 @@
+[
+  {
+    "id": "e5a52ef5-d183-444d-a7fa-585a003314f9",
+    "text": "Absolute dating methods",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-absol-e2958c67",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "30329e7d-d6a1-45be-b6d1-3030389e887f",
+    "text": "Ageing and senescence; biological and chronological longevity",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-ageing-and-senesc-dbead382",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0b7c8c0f-a388-4184-ac02-6462d0c49a85",
+    "text": "Analysis, interpretation and presentation of data",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-analysis-interpretation-a-22f91ad3",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3a94f957-c568-4cbc-96b2-e199b6ec3ef9",
+    "text": "Animism, animatism, fetishism, naturism and totemism",
+    "slug": "opt-anthropology-p1-5-religion-animism-animatism-fetishism-naturism-and-totemism-7864f127",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6d263e8c-082a-4732-a4a7-4670c81eff63",
+    "text": "Anthropology in the design of defence and other equipment",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-anthropology-in-the-design-o-41a74d85",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "64a4d05a-c2cd-40eb-b187-92d148e5150b",
+    "text": "Anthropology of sports and nutritional anthropology",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-anthropology-of-sports-and-n-c98dc5d8",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fce62a1f-964e-4bb7-a6d5-89193f5c724d",
+    "text": "Applied and action anthropology",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-applied-and-action-anthropol-a9b6b8bb",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2aa830f6-197b-4f2e-9d27-2e3fb9d8b8b0",
+    "text": "Applied human genetics: paternity diagnosis, genetic counselling and eugenics",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-applied-human-genetics-pater-012a5cff",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f1565ecc-8744-4033-8b52-6537e7d5b977",
+    "text": "Archaeological Anthropology: scope and relevance",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-archaeolo-41d9be00",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2eb1bc20-d390-484e-a301-0a8190ad80a4",
+    "text": "Band, tribe, chiefdom, kingdom and state",
+    "slug": "opt-anthropology-p1-4-political-organization-and-social-control-band-tribe-chief-ea22e864",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6c5db1e6-1ba9-4f46-833e-3d6e93b0294e",
+    "text": "Biochemical and immunological methods; DNA and recombinant technologies",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-biochemical-and-imm-910c209c",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9af7e0ec-c887-4451-90c2-35c487642acb",
+    "text": "Biological Anthropology: scope and relevance",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-biologica-26caae44",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2f03172c-8e01-483c-8e62-c04dd8a8d01d",
+    "text": "Biological and cultural factors in human evolution",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-biological-and-3dcbc750",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fcf1600a-316d-4357-97e0-f7a83bc309a7",
+    "text": "Case study, genealogy, life-history and oral history",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-case-study-genealogy-life-e11086bf",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "554d0b11-17d1-41ad-b2f8-eaf404e2376d",
+    "text": "Characteristics of primates and primate taxonomy",
+    "slug": "opt-anthropology-p1-1-5-primates-characteristics-of-primates-and-primate-taxonom-12dda91b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8614c6a2-e198-4464-8fc5-f772880fbfe4",
+    "text": "Chromosomes and cell division",
+    "slug": "opt-anthropology-p1-1-7-the-biological-basis-of-life-chromosomes-and-cell-divisi-83e4eb7e",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "dcda72e4-1ea2-4c4e-95fc-0a5b51338b7e",
+    "text": "Classical evolutionism: Tylor, Morgan, Frazer",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-classical-evolutionism-tylor-morg-c086d838",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "f96f23a0-5f27-43d9-9d25-e988daffb42f",
+    "text": "Cognitive theories: Tyler, Conklin",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-cognitive-theories-tyler-conklin-0d842aa2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9e37916e-dd62-4aa5-9453-58a4c864b233",
+    "text": "Comparative anatomy of man and apes",
+    "slug": "opt-anthropology-p1-1-5-primates-comparative-anatomy-of-man-and-apes-8c304c94",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a27a1414-eb57-44a6-9e66-31f06c4484d5",
+    "text": "Concept and characteristics of culture and civilization",
+    "slug": "opt-anthropology-p1-2-1-2-2-the-nature-of-culture-and-society-concept-and-charac-987ce794",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "632c60e1-cb2d-4d29-8297-ddaec4116cae",
+    "text": "Concept of society; society and culture",
+    "slug": "opt-anthropology-p1-2-1-2-2-the-nature-of-culture-and-society-concept-of-society-587211a5",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "cc1ff692-837e-4704-9801-1338385a9c2a",
+    "text": "Concepts of evolutionary biology: Doll's rule, Cope's rule, Gause's rule",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-concepts-of-evo-7826e3a4",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "70989950-2e90-4528-96ae-f6808226d3e1",
+    "text": "Concepts of power, authority and legitimacy",
+    "slug": "opt-anthropology-p1-4-political-organization-and-social-control-concepts-of-powe-ac49a490",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6d09da30-8aca-4f72-be63-dff47f0741a0",
+    "text": "Consanguineous mating, genetic load and the effects of cousin marriage",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-consanguineous-mati-4ce9b440",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ebb8e119-bb07-4d21-a5bd-3d91b8372fec",
+    "text": "Consanguinity and affinity",
+    "slug": "opt-anthropology-p1-2-5-kinship-consanguinity-and-affinity-f3c755a0",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a0fd7a11-e2ec-4016-a108-65b4ae9313a7",
+    "text": "Copper-Bronze age and Iron Age",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-coppe-3fd245c1",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "37287845-8b66-4be1-ba16-f9246b08bc68",
+    "text": "Cultural materialism: Harris",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-cultural-materialism-harris-0261e4ab",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4cd21739-1e5b-435b-a7d2-f0e19b48c75e",
+    "text": "Culture and personality: Benedict, Mead, Linton, Kardiner, Cora du Bois",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-culture-and-personality-benedict-cc5e6ed2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9b03e05c-a7ad-422a-9ead-a8785994d814",
+    "text": "Cytogenetic, chromosomal and karyotype analysis",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-cytogenetic-chromos-bf5ae1c1",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1d90a956-1196-44c8-9c13-c9131c968b2c",
+    "text": "DNA technology in disease and medicine",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-dna-technology-in-disease-an-001d72e2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "39c0198c-0d6f-4b2c-8596-c656e9f63f91",
+    "text": "Darwinian and post-Darwinian theories of organic evolution",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-darwinian-and-p-c85af0ad",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "21df0ccc-a62e-405f-9a35-46438c38b56f",
+    "text": "Definition and universality of marriage",
+    "slug": "opt-anthropology-p1-2-3-marriage-definition-and-universality-of-marriage-0f5c1ecb",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "04740370-e9ed-4d1b-9bb3-66ef0a168819",
+    "text": "Definition and universality of the family",
+    "slug": "opt-anthropology-p1-2-4-family-definition-and-universality-of-the-family-b6015a90",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0d814724-891f-4481-bb48-1e09aee0ed7a",
+    "text": "Demographic theories: biological, social and cultural",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-1ddd55b4",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5a36c401-7666-4e04-9394-d2c38d3ba74a",
+    "text": "Descent and alliance theory",
+    "slug": "opt-anthropology-p1-2-5-kinship-descent-and-alliance-theory-c7af43fc",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a1cf86a6-00ad-4b03-8046-b71f8696aa76",
+    "text": "Descent, filiation and complementary filiation",
+    "slug": "opt-anthropology-p1-2-5-kinship-descent-filiation-and-complementary-filiation-658f6fae",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "83927d02-7642-489d-b87d-9ade5f2c0314",
+    "text": "Diffusionism: British, German and American schools",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-diffusionism-british-german-and-a-10a9ce36",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "555c581d-08a4-448f-b22b-8412dab26761",
+    "text": "Economies of hunting-gathering, fishing and swiddening communities",
+    "slug": "opt-anthropology-p1-3-economic-organization-economies-of-hunting-gathering-fishi-aff03e03",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e6773722-a290-4226-8317-d84129fe600a",
+    "text": "Economies of pastoral, horticultural and agricultural communities",
+    "slug": "opt-anthropology-p1-3-economic-organization-economies-of-pastoral-horticultural-1dfd213b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "acc2f17f-1b12-4db1-8d12-9e264a0f2491",
+    "text": "Epidemiological anthropology: health and disease",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-204cb6ae",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1284b836-a24e-4695-b3f9-ccb6680ea431",
+    "text": "Ethnocentrism and cultural relativism",
+    "slug": "opt-anthropology-p1-2-1-2-2-the-nature-of-culture-and-society-ethnocentrism-and-fb88cfcf",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d028da71-cdaa-4454-9a9b-6c3e939e80b2",
+    "text": "Evolutionary trends among primates",
+    "slug": "opt-anthropology-p1-1-5-primates-evolutionary-trends-among-primates-0c38c236",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "94a01f31-8534-4dc9-b4e2-f38c4da1319a",
+    "text": "Evolutionary, psychological and functional approaches to religion",
+    "slug": "opt-anthropology-p1-5-religion-evolutionary-psychological-and-functional-approac-a46edb2f",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "81acc079-079e-4045-8d1e-69aab3d8d571",
+    "text": "Family, household and domestic groups",
+    "slug": "opt-anthropology-p1-2-4-family-family-household-and-domestic-groups-4ad9c358",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "41be3178-d598-4d1a-b9c3-4660c95f5457",
+    "text": "Fertility patterns and differentials",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-42e878ea",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9baa9b20-4635-4703-93c0-7f5d544ac649",
+    "text": "Forensic anthropology: personal identification and reconstruction",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-forensic-anthropology-person-f1219a6d",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "3726d2c4-3cdb-44fb-ab68-0e3602f03462",
+    "text": "Forms of descent groups: lineage, clan, phratry, moiety, kindred",
+    "slug": "opt-anthropology-p1-2-5-kinship-forms-of-descent-groups-lineage-clan-phratry-moi-dc56c663",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d8e5bf36-f0a5-41ff-97b8-ffb149c104ec",
+    "text": "Functionalism: Malinowski",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-functionalism-malinowski-33f07343",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ff745be3-d14b-470b-9bfb-dea56eef4d04",
+    "text": "Functions of marriage",
+    "slug": "opt-anthropology-p1-2-3-marriage-functions-of-marriage-72702ca3",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d7ad5fc7-fd12-400a-a612-f4b90abe47a0",
+    "text": "Functions of the family",
+    "slug": "opt-anthropology-p1-2-4-family-functions-of-the-family-c3f1e363",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b4f5023d-1d11-406f-bd3b-887ccf22a4e2",
+    "text": "Genetic polymorphism, selection and the Mendelian population",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-genetic-polymorphis-1e138d02",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7cb03a38-6a6d-46a2-be97-4bb71fecb76d",
+    "text": "Genetic, environmental and biochemical factors affecting growth",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-genetic-environme-92eacf94",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "16204ce6-990d-4e2a-a468-969b4cc4a631",
+    "text": "Globalization and indigenous economic systems",
+    "slug": "opt-anthropology-p1-3-economic-organization-globalization-and-indigenous-economi-c3bbe4ad",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8785e0cb-9e75-4e94-8def-27a59a5ac737",
+    "text": "Hardy-Weinberg law",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-hardy-weinberg-law-749341cf",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fa9d1d97-5250-4c6f-8728-09fda05936eb",
+    "text": "Historical particularism: Boas",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-historical-particularism-boas-dcb0825b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a7240cf3-7e7d-42d4-b9a9-f195289037bf",
+    "text": "Homo erectus in Africa, Europe and Asia",
+    "slug": "opt-anthropology-p1-1-6-phylogenetic-status-of-hominid-fossils-homo-erectus-in-a-f894cbeb",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "722cf799-da44-4205-94c6-e4bc1b440691",
+    "text": "Homo sapiens: Cromagnon, Grimaldi and Chancelade",
+    "slug": "opt-anthropology-p1-1-6-phylogenetic-status-of-hominid-fossils-homo-sapiens-crom-6b7ddf88",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "fcccc3f0-c7de-45d7-8370-d11876104a3f",
+    "text": "Human physique and somatotypes",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-human-physique-an-ba70c18b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1f119bc7-08f7-4c69-b7c1-d5106af85d38",
+    "text": "Impact of urbanization, industrialization and feminist movements on the family",
+    "slug": "opt-anthropology-p1-2-4-family-impact-of-urbanization-industrialization-and-femi-acd87494",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bcd1d8ee-5cff-4455-946d-44478bbb7130",
+    "text": "Infectious and non-infectious diseases",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-a0577a5d",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "ff5ab068-86da-4a9b-bf60-ac560f647c63",
+    "text": "Kinship terminology: descriptive and classificatory",
+    "slug": "opt-anthropology-p1-2-5-kinship-kinship-terminology-descriptive-and-classificato-402de996",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "0fc226e1-8263-4cda-97eb-11d9a372d111",
+    "text": "Laws of marriage: endogamy, exogamy, hypergamy, hypogamy, incest taboo",
+    "slug": "opt-anthropology-p1-2-3-marriage-laws-of-marriage-endogamy-exogamy-hypergamy-hyp-6ee61a51",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5caa35cd-8244-45c0-a3f5-7f9ccef73ba7",
+    "text": "Lethal, sub-lethal and polygenic inheritance",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-lethal-sub-lethal-a-4ffa21a8",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4ff3f6bc-918f-4308-afa8-850f2062174d",
+    "text": "Linguistic Anthropology: scope and relevance",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-linguisti-0ed0c8f7",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "55c6ec86-e209-4b31-980b-d68e2be28f9b",
+    "text": "Living major primates",
+    "slug": "opt-anthropology-p1-1-5-primates-living-major-primates-87b4d489",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9cd8c160-87e6-4b06-9a41-e58d607c9ae7",
+    "text": "Magico-religious functionaries: priest, shaman, medicine man, sorcerer, witch",
+    "slug": "opt-anthropology-p1-5-religion-magico-religious-functionaries-priest-shaman-medi-93e818d6",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "d1ad5c90-5353-4cdd-b9d3-e5240ec46545",
+    "text": "Marriage payments: bride wealth and dowry",
+    "slug": "opt-anthropology-p1-2-3-marriage-marriage-payments-bride-wealth-and-dowry-51b540f2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "22aa8c80-9739-4c32-8976-6d2027914a45",
+    "text": "Marriage regulations: preferential, prescriptive and proscriptive",
+    "slug": "opt-anthropology-p1-2-3-marriage-marriage-regulations-preferential-prescriptive-71ef6d33",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9716eecc-957a-4520-b1a1-77d10bda3b41",
+    "text": "Meaning, scope and development of Anthropology",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-meaning-s-4359b942",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e044b862-5abe-457a-a141-1a4e6886d490",
+    "text": "Meaning, scope and relevance of economic anthropology",
+    "slug": "opt-anthropology-p1-3-economic-organization-meaning-scope-and-relevance-of-econo-b0bbb53f",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9c9729e1-f86c-400c-b862-423e0317b688",
+    "text": "Menarche, menopause and other bio-events in relation to fertility",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-c8dcd7ee",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e719533c-c31e-4266-a4e9-4c5198e79931",
+    "text": "Mendelian genetics in man: single factor and multifactor inheritance",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-mendelian-genetics-023b8ffb",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a6083d5b-7221-4e95-a2a0-e114e5f68f9e",
+    "text": "Methodologies for growth studies",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-methodologies-for-074038f3",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "06fd9f41-99c8-493f-bfc0-9f4b2768d016",
+    "text": "Monism, polytheism and monotheism",
+    "slug": "opt-anthropology-p1-5-religion-monism-polytheism-and-monotheism-78c2b54a",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "09ef6e55-4e8b-4a34-a866-bdbd2a79e652",
+    "text": "Mutation",
+    "slug": "opt-anthropology-p1-1-7-the-biological-basis-of-life-mutation-1f9522d2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a4280511-e2c7-4223-bb99-2379b2221e2b",
+    "text": "Mutation, isolation, migration, selection, inbreeding and genetic drift",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-mutation-isolation-b2aa7ab0",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "28bfe790-bf5d-4f76-8c8f-3595eff091c1",
+    "text": "Nature, origin and characteristics of language",
+    "slug": "opt-anthropology-p1-7-culture-language-and-communication-nature-origin-and-chara-7b6e8a4c",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "39d9f5e3-c8f5-4707-a516-698b6f154308",
+    "text": "Neanderthal Man: classical and progressive types",
+    "slug": "opt-anthropology-p1-1-6-phylogenetic-status-of-hominid-fossils-neanderthal-man-c-7fd6d62a",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "bd1d0b6b-722c-4bb9-aa40-01d75f44ea8e",
+    "text": "Neo-evolutionism: Childe, White, Steward, Sahlins, Service",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-neo-evolutionism-childe-white-ste-9c3c702d",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2214504e-519e-4a33-bf7f-4f876da2d08a",
+    "text": "Neolithic and Chalcolithic cultures",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-neoli-f99c4eb7",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9316e962-bc4e-4611-a9d5-1bf2ab1c48e2",
+    "text": "Nutritional deficiency related diseases",
+    "slug": "opt-anthropology-p1-11-12-fertility-demography-and-epidemiological-anthropology-406cc45c",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5f18a481-01c4-4793-8237-a3f20238afae",
+    "text": "Nutritional, cultural and socio-economic factors affecting growth",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-nutritional-cultu-8160fcc2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a8c32027-4800-4a91-9ff0-c4dea0a0f6bb",
+    "text": "Observation, interview, schedules and questionnaires",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-observation-interview-sch-fbf09c15",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "689f78b1-4306-4afc-b3c9-58dffb12d21f",
+    "text": "Palaeolithic and Mesolithic cultures",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-palae-fc6bc1cc",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "beca73d9-fa43-4bc4-aa2d-f6f814bf23cc",
+    "text": "Parallelism, convergence, adaptive radiation and mosaic evolution",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-parallelism-con-ef4d3f57",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "986e5ee6-296a-456e-8782-101bb2c46d0a",
+    "text": "Pedigree analysis, twin study, foster child and co-twin methods",
+    "slug": "opt-anthropology-p1-9-human-genetics-methods-and-application-pedigree-analysis-t-0e9a0eeb",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "319006b7-c8f9-46c8-9575-39e8eec4ac94",
+    "text": "Plio-Pleistocene hominids of South and East Africa: Australopithecines",
+    "slug": "opt-anthropology-p1-1-6-phylogenetic-status-of-hominid-fossils-plio-pleistocene-70d8625b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8d6af656-84bf-4a28-9035-577f12cf8cb1",
+    "text": "Post-modernism in anthropology",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-post-modernism-in-anthropology-6a4a71cd",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "1ef2870d-159a-4929-a7e4-4158ded0dd2a",
+    "text": "Pre-Darwinian theories of organic evolution",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-pre-darwinian-t-ee61551d",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c7ffe9e6-08b6-46ea-9c7d-ef597f616ddb",
+    "text": "Primate adaptations: arboreal and terrestrial",
+    "slug": "opt-anthropology-p1-1-5-primates-primate-adaptations-arboreal-and-terrestrial-036b737d",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "16bffd3a-934a-420d-b1e9-5880221bc059",
+    "text": "Primate behaviour",
+    "slug": "opt-anthropology-p1-1-5-primates-primate-behaviour-9572acbe",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "b85abc50-68c3-4cd3-a571-7ce938f3bf66",
+    "text": "Principles and types of descent: unilineal, double, bilateral, ambilineal",
+    "slug": "opt-anthropology-p1-2-5-kinship-principles-and-types-of-descent-unilineal-double-a7db03f2",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9af27adb-5d99-4104-80bc-121baf03b5d9",
+    "text": "Principles of prehistoric archaeology",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-princ-77e316de",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "6ad5c7c1-139e-4228-b202-35fa7ab4a052",
+    "text": "Protein synthesis and the gene",
+    "slug": "opt-anthropology-p1-1-7-the-biological-basis-of-life-protein-synthesis-and-the-g-9be96844",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "babb2307-765d-423b-bfa1-a44fe04c4b65",
+    "text": "Reciprocity, redistribution and market exchange",
+    "slug": "opt-anthropology-p1-3-economic-organization-reciprocity-redistribution-and-marke-48448051",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a7d4abf6-e93c-4fc6-8641-29d66cf5e04e",
+    "text": "Relationship with medical sciences, earth sciences and the humanities",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-relations-0c62e67e",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4376e479-7f6c-421c-b0e0-71fb60c16b7d",
+    "text": "Relationship with the social, behavioural and life sciences",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-relations-29533de4",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4738736b-39b7-4e99-a669-3c519652530f",
+    "text": "Relative dating methods",
+    "slug": "opt-anthropology-p1-1-8-1-9-prehistoric-archaeology-and-cultural-evolution-relat-11baf68a",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "74c33190-fe71-47c1-9c9a-a9978115512a",
+    "text": "Religion, magic and science distinguished",
+    "slug": "opt-anthropology-p1-5-religion-religion-magic-and-science-distinguished-10a88daf",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "a83730be-99c1-4880-b594-fbe4788e3ad0",
+    "text": "Rhodesian man",
+    "slug": "opt-anthropology-p1-1-6-phylogenetic-status-of-hominid-fossils-rhodesian-man-083cba27",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "33460b14-9e77-4fe1-b30b-13f0fcd28b47",
+    "text": "Secondary sources and participatory methods",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-secondary-sources-and-par-e63bd220",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e78d3cc9-9045-4f3d-abcd-c7fe757daf08",
+    "text": "Serogenetics and cytogenetics in reproductive biology",
+    "slug": "opt-anthropology-p1-14-applications-of-anthropology-serogenetics-and-cytogenetic-d9dcbb8e",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7258d1b9-0d42-4b7e-ab42-e461c8d4134d",
+    "text": "Skeletal changes due to erect posture and their implications",
+    "slug": "opt-anthropology-p1-1-5-primates-skeletal-changes-due-to-erect-posture-and-their-235c21aa",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "de48f458-61e8-4f30-8796-6e6346124102",
+    "text": "Social context of language use",
+    "slug": "opt-anthropology-p1-7-culture-language-and-communication-social-context-of-langu-c719c1c1",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "8752810d-b580-4f27-8cbe-9e715ea3309c",
+    "text": "Social control, law and justice in simple societies",
+    "slug": "opt-anthropology-p1-4-political-organization-and-social-control-social-control-l-9579fcdc",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7fd7bbc6-a66f-475e-b1f1-8e7238d16bcf",
+    "text": "Social institutions and social groups",
+    "slug": "opt-anthropology-p1-2-1-2-2-the-nature-of-culture-and-society-social-institution-2e500742",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "11412729-ba27-4d3a-aded-69a699adf62a",
+    "text": "Social stratification",
+    "slug": "opt-anthropology-p1-2-1-2-2-the-nature-of-culture-and-society-social-stratificat-7383d15a",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "7b10e1ce-0eaf-4854-a390-5d9b2abe6999",
+    "text": "Social-cultural Anthropology: scope and relevance",
+    "slug": "opt-anthropology-p1-1-1-1-3-meaning-scope-and-branches-of-anthropology-social-cu-ea716535",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "9d4f4ad0-7aae-47e3-bd85-197df449abeb",
+    "text": "Stages of growth: pre-natal, natal, infant, childhood, adolescence, maturity, senescence",
+    "slug": "opt-anthropology-p1-10-concept-of-human-growth-and-development-stages-of-growth-2c42bda0",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "34d1efbc-16be-4d3d-8264-5d5a85371541",
+    "text": "Structural-functionalism: Radcliffe-Brown",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-structural-functionalism-radcliff-d0564f2c",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "c6a599e4-9a86-4724-be46-3c830afd52c8",
+    "text": "Structuralism: Levi-Strauss and E. Leach",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-structuralism-levi-strauss-and-e-9995c87e",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "acf52d65-10d4-4457-abc1-e80cdbd601fc",
+    "text": "Symbolic and interpretive theories: Turner, Schneider, Geertz",
+    "slug": "opt-anthropology-p1-6-anthropological-theories-symbolic-and-interpretive-theorie-cbf53e3a",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2290024d-d715-4aac-b936-a2435f00927c",
+    "text": "Synthetic theory of evolution",
+    "slug": "opt-anthropology-p1-1-4-human-evolution-and-the-emergence-of-man-synthetic-theor-7210b264",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "69c81931-ed3d-44a1-976b-57efd57f8fc3",
+    "text": "Technique, method and methodology distinguished",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-technique-method-and-meth-53eddd3b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "60762017-2118-4c84-8d18-c3257e608c72",
+    "text": "Tertiary and Quaternary fossil primates",
+    "slug": "opt-anthropology-p1-1-5-primates-tertiary-and-quaternary-fossil-primates-18f2b9ab",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "05043e6e-a120-4496-8f2a-be6e9dde203e",
+    "text": "The cell; DNA structure and replication",
+    "slug": "opt-anthropology-p1-1-7-the-biological-basis-of-life-the-cell-dna-structure-and-a31d9cfe",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "e5cb70b2-03ca-4940-b9d3-bb4f23e29c27",
+    "text": "The fieldwork tradition in anthropology",
+    "slug": "opt-anthropology-p1-8-research-methods-in-anthropology-the-fieldwork-tradition-i-b957c634",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "917e26cb-4ee2-4c4c-929e-eed073126b1a",
+    "text": "The formalist and substantivist debate",
+    "slug": "opt-anthropology-p1-3-economic-organization-the-formalist-and-substantivist-deba-a47fa3d7",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "4b09a7a5-f280-4e17-b14c-8e2f290dfcfd",
+    "text": "The sacred and the profane; myths and rituals",
+    "slug": "opt-anthropology-p1-5-religion-the-sacred-and-the-profane-myths-and-rituals-21489194",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "21218aad-5bdc-49c4-a9cf-b3bf692e1e62",
+    "text": "Types of family by structure, blood relation, marriage, residence and succession",
+    "slug": "opt-anthropology-p1-2-4-family-types-of-family-by-structure-blood-relation-marri-fcc348fd",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "5eed334b-f21f-402c-9bdc-caa4402417dd",
+    "text": "Types of marriage: monogamy, polygamy, polyandry, group marriage",
+    "slug": "opt-anthropology-p1-2-3-marriage-types-of-marriage-monogamy-polygamy-polyandry-g-52388267",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  },
+  {
+    "id": "2cb35188-49d4-4dcc-8af8-65fb99aa726a",
+    "text": "Verbal and non-verbal communication",
+    "slug": "opt-anthropology-p1-7-culture-language-and-communication-verbal-and-non-verbal-c-ec1a962b",
+    "subject_id": "9f01fd26-c387-41ff-99e2-a492136f5ac5",
+    "level": "microtopic",
+    "exams": [
+      "upsc"
+    ]
+  }
+]
