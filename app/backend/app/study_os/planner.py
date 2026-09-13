@@ -1475,7 +1475,38 @@ def _compute_plan(
     pinned = set(prefs.get("pinned_topic_ids") or [])
     weights = focus_weights(prefs.get("focus"))
 
-    coverage = _load_locked_coverage(supabase, exam_id)
+    # Scoped to the user's electives, and _checked rather than the graceful
+    # wrapper. Two different failures have to stay distinguishable here:
+    #
+    #   * an EMPTY pool is a real answer — this exam has no locked coverage yet,
+    #     reported as ``no_locked_coverage`` below exactly as before;
+    #   * a PARTIAL pool is not. ``_paginate_all`` returns a PREFIX when a page
+    #     read fails mid-walk, so the graceful wrapper would hand back a
+    #     plausible-looking subset and the planner would rank a truncated
+    #     candidate pool — a plan silently missing topics, with no error on any
+    #     surface. That is the exact failure the row-cap removal existed to kill,
+    #     and dropping ``reads_ok`` would reintroduce it one layer up.
+    #
+    # So: refuse rather than plan from a prefix. A user can retry a refusal;
+    # they cannot detect a quietly incomplete plan.
+    coverage, coverage_ok = load_scoped_coverage_checked(supabase, user_id, exam_id)
+    if not coverage_ok:
+        logger.error(
+            "plan generation refused: coverage read incomplete for user=%s exam=%s "
+            "(%d row(s) read)",
+            user_id,
+            exam_id,
+            len(coverage),
+        )
+        return {
+            "generated": False,
+            # Deliberately NOT in _PLAN_UNPROCESSABLE_REASONS: a failed read is a
+            # retryable server fault, not something the client can correct, so it
+            # maps to 500 rather than 422. Reporting it as ``no_locked_coverage``
+            # would tell an aspirant their exam has no syllabus during an outage.
+            "reason": "coverage_read_failed",
+            "exam": exam.get("slug"),
+        }
     if not coverage:
         return {
             "generated": False,
