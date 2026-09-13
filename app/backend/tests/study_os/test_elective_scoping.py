@@ -18,7 +18,9 @@ import pytest
 
 from app.study_os import calibration as calibration_module
 from app.study_os.planner import (
+    _PAGE,
     _load_locked_coverage,
+    generate_plan,
     load_scoped_coverage,
     load_scoped_coverage_checked,
 )
@@ -292,15 +294,70 @@ def test_subject_hub_shows_only_the_chosen_optional():
     assert _SUB_ANTH1 not in subject_ids and _SUB_ANTH2 not in subject_ids
 
 
-def test_planner_candidate_pool_is_scoped():
-    """Regression 3: a PSIR aspirant's week could go to Anthropology Paper-II."""
-    sb = SBStub(_seed(chosen=[_SUB_PSIR1, _SUB_PSIR2]))
-    pool, ok = load_scoped_coverage_checked(sb, "u-1", _EXAM)
+def test_planner_emits_tasks_only_for_subjects_in_scope():
+    """Regression 3: a PSIR aspirant's week could go to Anthropology Paper-II.
 
-    assert ok is True
-    assert {r["subject_id"] for r in pool} == {
-        _SUB_GS1, _SUB_GS2, _SUB_PSIR1, _SUB_PSIR2,
-    }
+    Drives ``generate_plan`` end to end and asserts on the topic ids of the
+    tasks it actually PERSISTS. The previous version of this test called
+    ``load_scoped_coverage_checked`` directly and passed for months while
+    ``_compute_plan`` still called the unscoped loader — it proved the wrapper
+    worked, never that the planner used it.
+    """
+    sb = SBStub(_seed(chosen=[_SUB_PSIR1, _SUB_PSIR2]))
+    out = generate_plan(sb, "u-1")
+    assert out.get("generated") is True, out
+
+    tasks = [t for t in (sb.db.get("study_tasks") or []) if t.get("user_id") == "u-1"]
+    assert tasks, "planner persisted no tasks"
+
+    # Resolve each emitted task back to the subject that owns its topic.
+    topic_subject = {t["id"]: t["subject_id"] for t in sb.db["topics"]}
+    task_subjects = {topic_subject[t["topic_id"]] for t in tasks}
+
+    assert task_subjects <= {_SUB_GS1, _SUB_GS2, _SUB_PSIR1, _SUB_PSIR2}
+    # By id: the unchosen optional never reaches a task.
+    assert _SUB_ANTH1 not in task_subjects
+    assert _SUB_ANTH2 not in task_subjects
+    # By count: four sections are in scope, so at most four distinct topics can
+    # be — a pool that widened back to six would break this even if the four
+    # right ones were still present.
+    assert len({t["topic_id"] for t in tasks}) <= 4
+    assert not any(
+        t["topic_id"] in {f"t-{_SEC_ANTH1}", f"t-{_SEC_ANTH2}"} for t in tasks
+    )
+
+
+def test_planner_refuses_rather_than_planning_from_a_truncated_pool():
+    """A partial coverage read must not become a quietly incomplete plan.
+
+    ``_paginate_all`` returns a PREFIX when a page fails mid-walk. Planning from
+    that prefix would drop topics with no error on any surface, so the planner
+    refuses with a retryable reason instead.
+    """
+    seed = _seed(chosen=[_SUB_PSIR1, _SUB_PSIR2])
+    calls = {"n": 0}
+
+    class _FlakyCoverage(SBStub):
+        def table(self, name: str):
+            if name == "exam_topic_coverage":
+                calls["n"] += 1
+                if calls["n"] > 1:  # first page lands, the walk then fails
+                    raise RuntimeError("simulated mid-walk read failure")
+            return super().table(name)
+
+    # Force a second page: _PAGE rows + 1 means the walk cannot finish in one.
+    big = dict(seed)
+    big["topics"] = list(seed["topics"]) + [
+        {"id": f"t-bulk{i}", "name": f"B{i}", "subject_id": _SUB_GS1, "is_active": True}
+        for i in range(_PAGE)
+    ]
+    big["exam_topic_coverage"] = list(seed["exam_topic_coverage"]) + [
+        _coverage(f"c-bulk{i}", f"t-bulk{i}", _SEC_GS1) for i in range(_PAGE)
+    ]
+
+    out = generate_plan(_FlakyCoverage(big), "u-1")
+    assert out.get("generated") is False
+    assert out.get("reason") == "coverage_read_failed"
 
 
 def test_section_id_is_carried_on_every_row():
