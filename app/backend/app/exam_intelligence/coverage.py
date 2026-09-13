@@ -186,6 +186,8 @@ def locked_topic_coverage_summary(supabase: Any, exam_id: str) -> list[dict[str,
             supabase.table("exam_topic_coverage")
             .select(
                 "id, topic_id, exam_phase_id, exam_priority_score, "
+                # RANK-SCALE-01: the unit system this row's score is in.
+                "source_basis, "
                 "is_high_yield, confidence_score, reviewer_status",
                 count="exact",
             )
@@ -254,6 +256,7 @@ def locked_topic_coverage_summary(supabase: Any, exam_id: str) -> list[dict[str,
                 "subject_id": subject.get("id") or topic.get("subject_id"),
                 "subject_name": subject.get("name"),
                 "exam_priority_score": r.get("exam_priority_score"),
+                "source_basis": r.get("source_basis"),
                 "is_high_yield": bool(r.get("is_high_yield")),
                 "confidence_score": r.get("confidence_score"),
                 "reviewer_status": r.get("reviewer_status"),

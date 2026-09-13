@@ -19,6 +19,7 @@ from typing import Any, Callable
 
 from app.exam_eligibility.evaluator import summarize_user_eligibility
 from app.exam_intelligence.coverage import locked_topic_coverage_summary
+from app.exam_intelligence.priority_scale import attach_comparable_priority
 from app.exam_intelligence.status import exam_intelligence_status
 from app.study_os.competition_context import competition_context
 from app.study_os.update_context import (
@@ -438,9 +439,16 @@ def _load_exam_context(supabase: Any, exam_intel: dict[str, Any]) -> dict[str, A
     # Shape-shift to the legacy `locked_topic_coverage` row keys so the
     # rest of this function (and any caller of `high_yield_topics`) keeps
     # reading `topic` / `priority_score` / `status`.
+    # RANK-SCALE-01: this summary is exam-wide, so it mixes v2.0-derived rows
+    # with hand-authored ones on incompatible scales. Sorting on the raw column
+    # put the twenty authored rows above all 1,497 derived ones by construction.
+    # Rank on each row's standing within its own `source_basis` instead; the
+    # raw score is still what the payload reports.
+    summary_rows = attach_comparable_priority(list(summary_rows))
+
     def _score(row: dict[str, Any]) -> float:
         try:
-            return float(row.get("exam_priority_score") or 0.0)
+            return float(row.get("comparable_priority") or 0.0)
         except (TypeError, ValueError):
             return 0.0
 
@@ -449,6 +457,7 @@ def _load_exam_context(supabase: Any, exam_intel: dict[str, Any]) -> dict[str, A
             "topic": r.get("topic_name") or r.get("topic_slug"),
             "topic_id": r.get("topic_id"),
             "priority_score": r.get("exam_priority_score"),
+            "comparable_priority": r.get("comparable_priority"),
             "confidence_score": r.get("confidence_score"),
             "high_yield": bool(r.get("is_high_yield")),
             "status": r.get("reviewer_status") or "locked",
