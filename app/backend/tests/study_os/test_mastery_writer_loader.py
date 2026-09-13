@@ -90,16 +90,25 @@ def test_attempted_flag_tracks_selected_option_id():
 # ── 2. answered topic moves mastery; untouched frozen topic does not ───────────
 
 def test_only_answered_topic_gets_mastery_and_shadow():
+    # Five answered, not one. This test previously seeded a SINGLE answered
+    # question and asserted it wrote a shadow row and an audit row — which is
+    # exactly the df35b2a8 defect MASTERY-GATE-01 removes (1 answer of 75,
+    # +14.40 db against the ±15 cap). Its subject is the answered/frozen split,
+    # never sample size, so the fixture is re-seeded above both floors (5 per
+    # attempt, 2 per topic) and every assertion below is unchanged.
     sb = SBStub(_base_db())
     sb.db["mock_attempt_responses"] = [
-        _response("q-ans", T_ANSWERED, selected="opt-1", is_correct=True),
+        _response(f"q-ans{i}", T_ANSWERED, selected="opt-1", is_correct=True)
+        for i in range(5)
+    ] + [
         # Two untouched frozen rows in a different topic — never answered.
         _response("q-f1", T_FROZEN, selected=None, is_correct=False),
         _response("q-f2", T_FROZEN, selected=None, is_correct=False),
     ]
     # Seed one classification row per response (simulates analytics having run).
     sb.db["mock_attempt_response_classification"] = [
-        _classification("q-ans", "correct"),
+        _classification(f"q-ans{i}", "correct") for i in range(5)
+    ] + [
         _classification("q-f1", "concept_gap"),
         _classification("q-f2", "concept_gap"),
     ]
