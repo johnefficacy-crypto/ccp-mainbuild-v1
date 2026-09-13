@@ -6,8 +6,12 @@ from typing import Any
 
 
 class _Exec:
-    def __init__(self, data):
+    def __init__(self, data, count=None):
         self.data = data
+        #: Mirrors PostgREST's exact-count header. ``None`` unless the caller
+        #: passed ``count="exact"`` to ``.select()``; then it is the number of
+        #: rows matching the filters, before limit/range.
+        self.count = count
 
 
 class _NotProxy:
@@ -39,9 +43,12 @@ class _Query:
         self._on_conflict: list[str] | None = None
         self._ignore_duplicates = False
         self._single = False  # q.maybe_single() collapses execute() to one row / None
+        self._count: str | None = None  # select(count="exact") → _Exec.count
+        self._range: tuple[int, int] | None = None  # inclusive .range() window
         self.not_: Any = _NotProxy(self)  # q.not_.in_(...) negates the next filter
 
-    def select(self, *args, **kwargs):
+    def select(self, *args, count=None, **kwargs):
+        self._count = count
         return self
 
     def eq(self, key, val):
@@ -106,9 +113,14 @@ class _Query:
             self.filters.append(("__or__", "or", conds))
         return self
 
-    def range(self, *args, **kwargs):
-        # No-op: SBStub returns all matching rows; API-level pagination is not
-        # exercised in unit tests.
+    def range(self, from_n, to_n, **kwargs):
+        # Recorded, but only APPLIED for a read that also asked for
+        # ``count="exact"`` (see execute). A caller doing real server-side
+        # pagination asks for both and needs the window honoured, or the stub
+        # hides truncation and duplication bugs. Everything else keeps the
+        # historical "return all matching rows" convenience the rest of the
+        # suite is written against.
+        self._range = (from_n, to_n)
         return self
 
     def insert(self, payload):
@@ -268,16 +280,20 @@ class _Query:
             return _Exec(matching)
 
         rows = list(matching)
+        total = len(matching) if self._count == "exact" else None
         if self._order_key:
             rows.sort(
                 key=lambda r: (r.get(self._order_key) if r.get(self._order_key) is not None else ""),
                 reverse=self._desc,
             )
-        if self._limit is not None:
+        if self._range is not None and self._count == "exact":
+            f, t = self._range
+            rows = rows[f : t + 1]
+        elif self._limit is not None:
             rows = rows[: self._limit]
         if self._single:
-            return _Exec(rows[0] if rows else None)
-        return _Exec(rows)
+            return _Exec(rows[0] if rows else None, count=total)
+        return _Exec(rows, count=total)
 
 
 class _RpcExec:
