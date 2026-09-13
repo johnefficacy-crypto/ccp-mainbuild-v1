@@ -31,7 +31,11 @@ from typing import Any, Callable
 from cachetools import TTLCache
 
 from app.exam_intelligence.coverage import verified_pyq_topic_counts
-from app.exam_intelligence.lookup import resolve_exam_by_id, resolve_exam_by_slug
+from app.exam_intelligence.lookup import (
+    InactiveExamError,
+    resolve_exam_by_id,
+    resolve_exam_by_slug,
+)
 from app.exam_intelligence.score_snapshots import locked_score_snapshots
 from app.study_os import calibration
 from app.study_os.competition_context import competition_context
@@ -463,6 +467,34 @@ def _load_user_signals(
     """
     mastery, error_topics, _ = _load_user_signals_ex(supabase, user_id, exam_id)
     return mastery, error_topics
+
+
+def resolve_target_exam_or_none(
+    supabase: Any, user_id: str, *, surface: str
+) -> dict[str, Any] | None:
+    """:func:`_resolve_target_exam` for read surfaces that degrade to "no exam".
+
+    The subject hub, the subject topic tree and the weekly plan-by-subject view
+    already render a valid result when a user has no target exam (an empty list,
+    or structure with coverage null). A RETIRED target is the same situation for
+    them — there is no live exam to prioritise against — so they treat it that
+    way instead of erroring at an aspirant.
+
+    Logged, never silent. The planner itself deliberately does NOT use this: it
+    reports ``exam_inactive`` in-band so a retired target stays distinguishable
+    from "never picked one" where that distinction decides the fix.
+    """
+    try:
+        return _resolve_target_exam(supabase, user_id)
+    except InactiveExamError as exc:
+        logger.info(
+            "%s: ignoring inactive target exam for user=%s exam_id=%s slug=%s",
+            surface,
+            user_id,
+            exc.exam_id,
+            exc.slug,
+        )
+        return None
 
 
 def _load_topic_priors(
@@ -1169,7 +1201,19 @@ def _compute_plan(
     if not user_id:
         return {"generated": False, "reason": "no_user"}
 
-    exam = _resolve_target_exam(supabase, user_id)
+    try:
+        exam = _resolve_target_exam(supabase, user_id)
+    except InactiveExamError as exc:
+        # The user's target exam is retired (or a sandbox identity). Report it
+        # in-band like every other planner refusal — never build a plan from a
+        # retired exam's locked coverage, and never collapse this into
+        # ``no_target_exam``, which would read as "user never picked one".
+        return {
+            "generated": False,
+            "reason": "exam_inactive",
+            "exam": exc.slug,
+            "exam_id": str(exc.exam_id) if exc.exam_id else None,
+        }
     if not exam or not exam.get("id"):
         return {"generated": False, "reason": "no_target_exam"}
     exam_id = exam["id"]

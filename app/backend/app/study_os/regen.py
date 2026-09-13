@@ -161,6 +161,7 @@ def regenerate_stale_plans(supabase: Any, *, limit: int = 200) -> dict[str, Any]
     regenerated = 0
     skipped_fresh = 0
     skipped_opt_out = 0
+    skipped_inactive_exam = 0
     for plan in plans:
         user_id = plan.get("user_id")
         if not user_id:
@@ -192,10 +193,24 @@ def regenerate_stale_plans(supabase: Any, *, limit: int = 200) -> dict[str, Any]
         )
         if result and result.get("generated"):
             regenerated += 1
+        elif (result or {}).get("reason") == "exam_inactive":
+            # One user on a retired/sandbox exam must never abort the sweep for
+            # everyone else. ``generate_plan`` already reports this in-band, so
+            # it arrives here as an envelope rather than an exception; count it
+            # and name the user so the enrolment can be corrected.
+            skipped_inactive_exam += 1
+            logger.warning(
+                "stale-regen skipped for %s: target exam is inactive "
+                "(exam_id=%s slug=%s)",
+                user_id,
+                result.get("exam_id"),
+                result.get("exam"),
+            )
 
     return {
         "checked": checked,
         "regenerated": regenerated,
         "skipped_fresh": skipped_fresh,
         "skipped_opt_out": skipped_opt_out,
+        "skipped_inactive_exam": skipped_inactive_exam,
     }
