@@ -33,11 +33,15 @@ def _resolve(supabase: Any, exam_id_or_slug: str | None) -> dict[str, Any] | Non
     # Slugs look like "ssc-cgl"; uuids contain hyphens too. Try id first
     # (uuid is 36 chars), then slug as fallback.
     candidate = str(exam_id_or_slug)
+    # allow_inactive: this is a diagnostic read that reports what intelligence
+    # exists for an exam; operators build up draft exams (is_active=false, see
+    # migration 244) and must be able to see their coverage/PYQ counts. It
+    # produces no learner plan, so a retired exam is safe to describe here.
     if len(candidate) == 36 and candidate.count("-") == 4:
-        exam = resolve_exam_by_id(supabase, candidate)
+        exam = resolve_exam_by_id(supabase, candidate, allow_inactive=True)
         if exam:
             return exam
-    return resolve_exam_by_slug(supabase, candidate)
+    return resolve_exam_by_slug(supabase, candidate, allow_inactive=True)
 
 
 def _verified_syllabus_count(supabase: Any, exam_id: str) -> int:

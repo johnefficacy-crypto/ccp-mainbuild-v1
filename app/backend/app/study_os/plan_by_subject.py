@@ -16,7 +16,7 @@ from typing import Any, Callable
 
 from app.study_os.planner import (  # type: ignore  # private helpers reused
     _load_locked_coverage,
-    _resolve_target_exam,
+    resolve_target_exam_or_none,
 )
 
 logger = logging.getLogger("career_copilot.study_os.plan_by_subject")
@@ -143,7 +143,9 @@ def list_plan_by_subject(
             "trust_status": "preview",
         }
 
-    target = _resolve_target_exam(supabase, user_id)
+    target = resolve_target_exam_or_none(
+        supabase, user_id, surface="plan_by_subject"
+    )
     exam_id = target.get("id") if target else None
     locked = _locked_subjects(supabase, exam_id) if exam_id else {}
 
