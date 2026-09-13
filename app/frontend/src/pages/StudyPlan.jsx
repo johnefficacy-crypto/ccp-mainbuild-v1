@@ -55,6 +55,28 @@ function DayCell({ d, target = 7 }) {
   );
 }
 
+// Planner refusal reasons, in the aspirant's terms. The server sends the
+// planner's own vocabulary verbatim; anything unmapped falls back to a plain
+// line rather than leaking an internal code onto a learner surface.
+const SWITCH_NOTICES = {
+  calibration_required:
+    "Exam updated. Answer a few quick questions about this exam to get your plan.",
+  no_locked_coverage:
+    "Exam updated. We're still preparing the syllabus for this exam — your plan will follow.",
+  planner_activation_disabled:
+    "Exam updated. Planning isn't open for this exam yet.",
+  all_topics_muted:
+    "Exam updated. Every topic is muted — unmute one to get a plan.",
+  no_target_exam: "Exam updated. Pick an exam to get a plan.",
+};
+
+function switchNoticeFor(reason) {
+  return (
+    SWITCH_NOTICES[reason] ||
+    "Exam updated. We couldn't build a plan just yet — try again shortly."
+  );
+}
+
 export default function StudyPlan() {
   const [plan, setPlan] = useState({ tasks: [], plan: null });
   const [focus, setFocus] = useState({ total_hours_7d: 0, week: [] });
@@ -74,6 +96,10 @@ export default function StudyPlan() {
   // chips plus one "Change or add exam" control, and the full searchable list —
   // planner-ready first, not-ready collapsed under "Other exams" — lives in the
   // drawer instead of rendering every exam inline.
+  // Set from PUT /api/study/target-exam. The switch always succeeds; a plan is
+  // only attempted. When none was created the server hands back the planner's
+  // own reason so the page can say what is still needed instead of going quiet.
+  const [switchNotice, setSwitchNotice] = useState("");
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [examSearch, setExamSearch] = useState("");
   const [showOtherExams, setShowOtherExams] = useState(false);
@@ -228,8 +254,15 @@ export default function StudyPlan() {
   async function chooseExam(examId, confirm = false) {
     const suffix = confirm ? "?confirm_archive=true" : "";
     try {
-      await api.put(`/api/study/target-exam${suffix}`, { exam_id: examId });
+      const resp = await api.put(`/api/study/target-exam${suffix}`, { exam_id: examId });
       setSelectedExamId(examId);
+      // Switching archives the previous plan, so a failure to build the new one
+      // leaves the page with nothing to show. Say why rather than look empty.
+      setSwitchNotice(
+        resp?.plan && resp.plan.created === false
+          ? switchNoticeFor(resp.plan.reason)
+          : "",
+      );
       await refreshTrackedExams();
     } catch (e) {
       if (e?.status === 409 && !confirm) {
@@ -574,6 +607,11 @@ export default function StudyPlan() {
             </button>
           </div>
         )}
+        {switchNotice ? (
+          <p className="text-sm text-clay-700 mt-3" data-testid="exam-switch-notice">
+            {switchNotice}
+          </p>
+        ) : null}
         {!examsLoading && !examsError && examItems.length > 0 && !selectedExamId && (
           <p className="text-sm text-clay-700 mt-2">Choose the exam you are preparing for.</p>
         )}
