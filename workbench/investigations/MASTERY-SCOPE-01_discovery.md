@@ -431,3 +431,55 @@ before-the-fact design choice on an unused path, not a rescue of live data. It
 is cheaper to do now than after the UI ships, and it carries no backfill — but
 it is not urgent, and the scope question in §4/§5 should be settled first
 because it determines which row W1 would even write to.
+
+---
+
+## 7. Has anything ever written the exam-scoped row?
+
+**No — and the only writer that has ever run live cannot.**
+
+Exhaustive search for every writer of `user_topic_mastery` across `app/`,
+`scripts/`, `tools/`, `workbench/`, migrations and seeds, in any language:
+
+| Candidate | Can it write the scoped row? |
+|---|---|
+| **W2** `apply_mock_mastery_delta` | **No, structurally.** The INSERT names only `(id, user_id, topic_id, mastery_score)` (`145:98-99`), so both scope columns take their NULL default; the UPDATE targets a row already filtered to `exam_id is null and exam_phase_id is null` (`145:88-89`). It cannot produce a scoped row even in principle. |
+| **W1** `recompute_topic_mastery` | **Yes in code, never in fact.** `mastery.py:176` copies `mock_tests.exam_id/exam_phase_id` into the group key, so it is the only thing that could. `mock_topic_breakdowns` is empty and no client sends `topic_breakdowns`, so it has never run. |
+| Migrations | None. `033` is DDL, `035` RLS, `116` an `updated_at` trigger, `145` the function. No INSERT or UPDATE anywhere else. |
+| Seeds | None — `app/supabase/seeds/exam_intelligence_demo_ssc_cgl.sql:85` states it "never writes user_topic_mastery". |
+| `scripts/`, `tools/`, `workbench/` | None. |
+| Direct client writes | RLS *permits* them — `user_topic_mastery_owner_insert` / `owner_update` for `authenticated` (`035:121-131`) — but no frontend file references the table. Available, unused. |
+
+### What `planner.py:678-683` selects between in practice: nothing
+
+```python
+is_exam = r.get("exam_id") == exam_id     # :678
+if tid in exam_scoped and not is_exam:    # :679
+    continue
+```
+
+Every row that can exist today is the global row, so `r["exam_id"]` is `None`.
+Every caller passes a real uuid: `_compute_plan` uses `exam["id"]`
+(`planner.py:1556`), and the four wrapper callers — `api/study_os.py:1234`,
+`subjects.py:216`, `plan_timeline.py:715`, `report_cards.py:321` — each return
+early when no target exam resolves. Therefore:
+
+- `is_exam` is **always False**;
+- `exam_scoped` **never gains a member**, so the `continue` at `:680` is
+  unreachable;
+- `user_topic_mastery_user_topic_no_exam_uidx` (`033:63-65`) guarantees at most
+  one global row per (user, topic), so the loop reduces to a plain
+  `{topic_id: mastery_score}` build with nothing to disambiguate.
+
+The docstring's contract — "when a topic has both an exam-scoped and a global
+mastery row the exam-scoped one wins" (`planner.py:645-647`) — describes a case
+the system has never been able to produce. It is dead code guarding a
+hypothetical. **D11's last-wins hazard is latent for the same reason**: it needs
+a scoped row to exist, which needs W1 to run.
+
+### Effect on the §4 / §5 choice
+
+Retiring the scoped row deletes a branch that has never held a row and that the
+live writer is incapable of creating. Retiring the global row deletes the only
+row that exists, and (per §5) cannot be implemented today at all. The asymmetry
+is now total.
