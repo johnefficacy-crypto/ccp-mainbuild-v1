@@ -101,7 +101,9 @@ def start_subject_practice(
     # subject is rejected here, before any handler runs. Fail CLOSED when the path
     # subject cannot be resolved (missing / not in the exam's locked coverage / read
     # failed): a mode must never proceed for an unresolved subject.
-    family, subject_known = resolve_subject_family(supabase, exam_id, str(subject_id))
+    family, subject_known = resolve_subject_family(
+        supabase, user_id, exam_id, str(subject_id)
+    )
     if not subject_known:
         raise HTTPException(
             status_code=422, detail="subject not found in your exam's practice scope",
@@ -233,7 +235,9 @@ def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, secon
     # caller's resolved exam. Never trust the browser-supplied topic_id to match
     # the path subject_id — reject a cross-subject topic (e.g. a Quant topic posted
     # to the English subject's launch path).
-    if topic_id not in locked_topic_ids_for_subject(supabase, exam_id, subject_id):
+    if topic_id not in locked_topic_ids_for_subject(
+        supabase, user_id, exam_id, subject_id
+    ):
         raise HTTPException(status_code=422, detail="topic_id does not belong to this subject")
     try:
         result = start_pyq_practice(

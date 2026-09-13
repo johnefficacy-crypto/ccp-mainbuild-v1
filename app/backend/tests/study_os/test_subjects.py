@@ -233,7 +233,7 @@ def test_resolve_subject_family_resolves_virtual_ca_id_without_coverage():
     # locked coverage — the bundle resolution in the handler is the real authority.
     sb = SBStub(_seed())
     family, known = subjects_service.resolve_subject_family(
-        sb, "exam-1", CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID
+        sb, "u-1", "exam-1", CURRENT_AFFAIRS_VIRTUAL_SUBJECT_ID
     )
     assert (family, known) == ("general_awareness", True)
 
