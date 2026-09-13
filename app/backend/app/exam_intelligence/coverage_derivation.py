@@ -330,7 +330,7 @@ def _existing_coverage_rows(
                     "id, topic_id, exam_id, exam_cycle_id, exam_phase_id, "
                     "source_basis, model_version, reviewer_status, "
                     "exam_priority_score, is_high_yield, confidence_score, "
-                    "coverage_depth, metadata",
+                    "coverage_depth, metadata, predictability, predictability_band",
                     count="exact",
                 )
                 .eq("exam_id", exam_id)
@@ -393,6 +393,11 @@ def _proposed_row(
         "exam_priority_score": (snapshot or {}).get("exam_priority_score") or 0,
         "is_high_yield": is_high_yield,
         "confidence_score": (snapshot or {}).get("confidence_score") or 0,
+        # PRED-01: projected, not recomputed. A syllabus-only row (no snapshot)
+        # gets NULL rather than a fabricated band — there is no year evidence
+        # behind it, which is exactly what NULL says.
+        "predictability": (snapshot or {}).get("predictability"),
+        "predictability_band": (snapshot or {}).get("predictability_band"),
         "coverage_depth": depth,
         "source_basis": _EVIDENCE_DERIVED_BASIS,
         "model_version": DERIVATION_VERSION,
@@ -456,7 +461,16 @@ def _cas_update_owned_row(
 def _delta(existing: dict[str, Any], proposed: dict[str, Any]) -> dict[str, Any]:
     """Proposed-vs-current comparison, for audit/derivation metadata ONLY
     (PD-4b / OD-5) — never written as a shadow coverage row."""
-    fields = ("exam_priority_score", "is_high_yield", "confidence_score", "coverage_depth")
+    fields = (
+        "exam_priority_score",
+        "is_high_yield",
+        "confidence_score",
+        "coverage_depth",
+        # PRED-01: a band change is exactly the kind of thing a reviewer wants
+        # to see in the audit trail — it is what a learner surface will show.
+        "predictability",
+        "predictability_band",
+    )
     return {
         "topic_id": existing.get("topic_id"),
         "existing_row_id": existing.get("id"),
