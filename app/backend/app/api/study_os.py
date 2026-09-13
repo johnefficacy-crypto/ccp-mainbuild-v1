@@ -1119,7 +1119,7 @@ async def get_topics(
             resolve_exam_by_slug,
         )
         from app.study_os.planner import (
-            _load_locked_coverage,
+            load_scoped_coverage,
             _load_user_signals,
             _resolve_target_exam,
         )
@@ -1151,7 +1151,7 @@ async def get_topics(
                 "trust_status": "locked",
             }
 
-        coverage = _load_locked_coverage(supabase, exam_id)
+        coverage = load_scoped_coverage(supabase, user_id, exam_id)
         if subject_id:
             coverage = [c for c in coverage if c.get("subject_id") == subject_id]
 

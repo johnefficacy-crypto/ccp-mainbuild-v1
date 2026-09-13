@@ -28,7 +28,7 @@ from typing import Any, Callable
 
 from app.study_os.exam_target_window import resolve_exam_target_window
 from app.study_os.planner import (  # type: ignore
-    _load_locked_coverage,
+    load_scoped_coverage,
     _load_user_signals,
     _resolve_target_exam,
 )
@@ -701,7 +701,9 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
     else:
         status = "on_track"
 
-    locked_coverage = _load_locked_coverage(supabase, exam_id) if exam_id else []
+    locked_coverage = (
+        load_scoped_coverage(supabase, user_id, exam_id) if exam_id else []
+    )
     locked_subject_ids = {
         c.get("subject_id") for c in locked_coverage if c.get("subject_id")
     }

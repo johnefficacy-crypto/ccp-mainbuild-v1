@@ -15,7 +15,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.study_os.planner import (  # type: ignore  # private helpers reused
-    _load_locked_coverage,
+    load_scoped_coverage,
     resolve_target_exam_or_none,
 )
 
@@ -84,11 +84,11 @@ def _load_week_tasks(
     return getattr(rows, "data", None) or []
 
 
-def _locked_subjects(supabase: Any, exam_id: str) -> dict[str, str]:
+def _locked_subjects(supabase: Any, user_id: str, exam_id: str) -> dict[str, str]:
     """Map subject_id → subject_name for subjects that have any locked
     coverage row in the target exam. Used to decide trust_status.
     """
-    coverage = _load_locked_coverage(supabase, exam_id) if exam_id else []
+    coverage = load_scoped_coverage(supabase, user_id, exam_id) if exam_id else []
     out: dict[str, str] = {}
     for c in coverage:
         sid = c.get("subject_id")
@@ -147,7 +147,7 @@ def list_plan_by_subject(
         supabase, user_id, surface="plan_by_subject"
     )
     exam_id = target.get("id") if target else None
-    locked = _locked_subjects(supabase, exam_id) if exam_id else {}
+    locked = _locked_subjects(supabase, user_id, exam_id) if exam_id else {}
 
     # Bucket tasks by subject. Subject id is best-effort: prefer the row's
     # subject_id when present; otherwise fall back to the subject name.
