@@ -71,3 +71,21 @@ test("an unrecognised band is not rendered", () => {
     warn.mockRestore();
   }
 });
+
+test("shows the standing the server ranked by, not a zero", () => {
+  // D16: the palette used to read a key the payload never carried, so every
+  // row rendered "priority 0".
+  renderPalette([item({ exam_priority_score: 30, comparable_priority: 87 })]);
+
+  expect(screen.getByTestId("palette-topic").textContent).toMatch(
+    /priority 87/,
+  );
+});
+
+test("falls back to the raw priority when no standing is attached", () => {
+  renderPalette([item({ exam_priority_score: 30, comparable_priority: undefined })]);
+
+  expect(screen.getByTestId("palette-topic").textContent).toMatch(
+    /priority 30/,
+  );
+});

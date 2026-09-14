@@ -263,8 +263,16 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
     The same locked coverage the planner ranks, filtered by the same elective
     scope and the same muted list — so the palette can never offer a topic the
     planner itself would refuse to schedule. Ordered by the coverage row's own
-    ``exam_priority_score``; this does NOT re-run the planner's scorer, which
-    stays the planner's business.
+    priority; this does NOT re-run the planner's scorer, which stays the
+    planner's business.
+
+    Ordering uses ``comparable_priority`` — each row's standing WITHIN its own
+    ``source_basis`` (RANK-SCALE-01) — for the same reason ``_score_topic``
+    does: this read is exam-wide, so it mixes the v2.0-derived rows (max 36.10
+    live) with hand-authored ones (min 60.00), and sorting on the raw column
+    would put thirteen authored Prelims rows above two thousand derived Mains
+    ones whatever the evidence said. On a single-basis set the two are the same
+    number, so nothing moves.
     """
     exam = _safe(lambda: _resolve_target_exam(supabase, user_id), default=None)
     exam_id = (exam or {}).get("id")
@@ -290,11 +298,31 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
             )
         scheduled = {str(r["topic_id"]) for r in rows if r.get("topic_id")}
 
-    def _score(cov: dict[str, Any]) -> float:
+    def _num(value: Any) -> float:
         try:
-            return float(cov.get("exam_priority_score") or 0)
+            return float(value or 0)
         except (TypeError, ValueError):
             return 0.0
+
+    def _score(cov: dict[str, Any]) -> float:
+        """The row's raw priority.
+
+        ``load_scoped_coverage_checked`` emits this under ``coverage_priority``
+        (planner.py) — it has never emitted an ``exam_priority_score`` key, so
+        reading that name returned 0.0 for every candidate and the sort below
+        silently degenerated to alphabetical.
+        """
+        return _num(cov.get("coverage_priority"))
+
+    def _standing(cov: dict[str, Any]) -> float:
+        """Cross-basis-comparable standing, falling back to the raw value.
+
+        ``attach_comparable_priority`` runs inside the loader, so this is
+        already on the row; the fallback covers a caller that built rows by
+        hand.
+        """
+        value = cov.get("comparable_priority")
+        return _num(value) if value is not None else _score(cov)
 
     items = [
         {
@@ -303,6 +331,9 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
             "subject": c.get("subject_name"),
             "subject_id": c.get("subject_id"),
             "exam_priority_score": _score(c),
+            # What the ordering below actually uses, so a client can show the
+            # number it was ranked by instead of re-deriving one.
+            "comparable_priority": _standing(c),
             "is_high_yield": bool(c.get("is_high_yield")),
             # How regularly this topic has been asked in its own subject-paper
             # (PRED-01). A percentile within that paper, so it reads the same
@@ -316,7 +347,7 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
         and str(c["topic_id"]) not in scheduled
         and str(c["topic_id"]) not in muted
     ]
-    items.sort(key=lambda i: (-i["exam_priority_score"], str(i["topic"] or "")))
+    items.sort(key=lambda i: (-i["comparable_priority"], str(i["topic"] or "")))
     return {"items": items, "exam_id": exam_id, "read_error": False}
 
 

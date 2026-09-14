@@ -91,7 +91,9 @@ export default function TopicPalette({ items, days, onAdd, busy, loading, error 
               <p className="text-[12.5px] leading-snug text-[#2E2218]">{item.topic}</p>
               <p className="num-mono mt-0.5 text-[10.5px] text-clay-700">
                 {item.subject || "Unassigned"} · priority{" "}
-                {Math.round(item.exam_priority_score || 0)}
+                {Math.round(
+                  item.comparable_priority ?? item.exam_priority_score ?? 0,
+                )}
                 {RECURRENCE_LABEL[item.predictability_band] ? (
                   <> · recurrence {RECURRENCE_LABEL[item.predictability_band]}</>
                 ) : null}
@@ -141,6 +143,9 @@ TopicPalette.propTypes = {
       topic: PropTypes.string,
       subject: PropTypes.string,
       exam_priority_score: PropTypes.number,
+      // The standing the server ranked by. Equal to exam_priority_score when
+      // the candidate set spans a single source_basis.
+      comparable_priority: PropTypes.number,
       predictability_band: PropTypes.oneOf([
         "near_certain",
         "likely",
