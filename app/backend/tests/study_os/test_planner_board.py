@@ -429,3 +429,32 @@ def test_position_beyond_the_day_clamps_to_the_end_rather_than_failing():
     ]
     board.move_task(sb, "u-1", "a", scheduled_date=days[0], position=99)
     assert _ids_on(sb, days[0]) == ["b", "a"]
+
+
+# ── COV-DIM-01: recurrence band on the palette ──────────────────────────
+
+
+def test_candidates_carry_the_predictability_band():
+    """PRED-01's band is percentile-within-subject-paper, so unlike the raw
+    priority beside it, it means the same thing for an optional as for GS.
+    It is the one comparable signal already on the coverage row."""
+    sb = _seed_with_plan()
+    for row, band in (("cov-2", "near_certain"), ("cov-3", "occasional")):
+        next(c for c in sb.db["exam_topic_coverage"] if c["id"] == row)[
+            "predictability_band"
+        ] = band
+
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    assert by_topic["t2"]["predictability_band"] == "near_certain"
+    assert by_topic["t3"]["predictability_band"] == "occasional"
+
+
+def test_candidate_without_year_evidence_carries_no_band():
+    """382 derived rows and all 13 authored ones have no band. An absent band
+    is the honest answer — never a default."""
+    sb = _seed_with_plan()
+    out = board.list_candidates(sb, "u-1")
+
+    assert all(i["predictability_band"] is None for i in out["items"])

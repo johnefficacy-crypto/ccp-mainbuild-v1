@@ -2,6 +2,19 @@ import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 
 /**
+ * How regularly a topic has been asked in its own subject-paper (PRED-01).
+ * The band is a percentile within that paper, so "Likely" means the same thing
+ * for an optional as for General Studies. A topic with no year evidence carries
+ * no band and shows none — never a default.
+ */
+const RECURRENCE_LABEL = {
+  near_certain: "Near-certain",
+  likely: "Likely",
+  occasional: "Occasional",
+  rare: "Rare",
+};
+
+/**
  * Topics from the exam's locked coverage that are not on the board.
  *
  * Every row is draggable AND carries a day picker plus an Add button, so the
@@ -79,6 +92,9 @@ export default function TopicPalette({ items, days, onAdd, busy, loading, error 
               <p className="num-mono mt-0.5 text-[10.5px] text-clay-700">
                 {item.subject || "Unassigned"} · priority{" "}
                 {Math.round(item.exam_priority_score || 0)}
+                {RECURRENCE_LABEL[item.predictability_band] ? (
+                  <> · recurrence {RECURRENCE_LABEL[item.predictability_band]}</>
+                ) : null}
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 <label htmlFor={selectId} className="sr-only">
@@ -125,6 +141,13 @@ TopicPalette.propTypes = {
       topic: PropTypes.string,
       subject: PropTypes.string,
       exam_priority_score: PropTypes.number,
+      predictability_band: PropTypes.oneOf([
+        "near_certain",
+        "likely",
+        "occasional",
+        "rare",
+        null,
+      ]),
     }),
   ).isRequired,
   days: PropTypes.arrayOf(

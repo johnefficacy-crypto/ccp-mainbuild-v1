@@ -304,6 +304,12 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
             "subject_id": c.get("subject_id"),
             "exam_priority_score": _score(c),
             "is_high_yield": bool(c.get("is_high_yield")),
+            # How regularly this topic has been asked in its own subject-paper
+            # (PRED-01). A percentile within that paper, so it reads the same
+            # for an optional as for GS — unlike the raw priority beside it.
+            # None where the row has no year evidence; the palette shows
+            # nothing rather than inventing a band.
+            "predictability_band": c.get("predictability_band"),
         }
         for c in coverage
         if c.get("topic_id")
