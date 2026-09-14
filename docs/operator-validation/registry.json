@@ -86,18 +86,48 @@
             }
           ],
           "defects_found": [
-            { "id": "csat-setb-01", "summary": "Exact Set-B identity was absent from the learner paper card." },
-            { "id": "csat-setb-02", "summary": "Searching UPSC did not discover the exam." },
-            { "id": "csat-setb-03", "summary": "The 80-question palette did not make lower questions sufficiently discoverable." },
-            { "id": "csat-setb-04", "summary": "The learner could not clear an MCQ response back to unattempted." },
-            { "id": "csat-setb-05", "summary": "Verified paper/source metadata retained stale provenance_pending=true." }
+            {
+              "id": "csat-setb-01",
+              "summary": "Exact Set-B identity was absent from the learner paper card."
+            },
+            {
+              "id": "csat-setb-02",
+              "summary": "Searching UPSC did not discover the exam."
+            },
+            {
+              "id": "csat-setb-03",
+              "summary": "The 80-question palette did not make lower questions sufficiently discoverable."
+            },
+            {
+              "id": "csat-setb-04",
+              "summary": "The learner could not clear an MCQ response back to unattempted."
+            },
+            {
+              "id": "csat-setb-05",
+              "summary": "Verified paper/source metadata retained stale provenance_pending=true."
+            }
           ],
           "defects_fixed": [
-            { "id": "csat-setb-01", "summary": "PR #1008 added reviewed paper/set identity to the API and paper card." },
-            { "id": "csat-setb-02", "summary": "PR #1008 expanded catalogue search to normalized name, slug, and exam type." },
-            { "id": "csat-setb-03", "summary": "PR #1008 added a bounded palette scroll area and active-item scrollIntoView." },
-            { "id": "csat-setb-04", "summary": "PR #1008 added Clear response through the existing null-answer sync path." },
-            { "id": "csat-setb-05", "summary": "PR #1008 migration 264 reconciles and prevents stale provenance_pending on verified rows." }
+            {
+              "id": "csat-setb-01",
+              "summary": "PR #1008 added reviewed paper/set identity to the API and paper card."
+            },
+            {
+              "id": "csat-setb-02",
+              "summary": "PR #1008 expanded catalogue search to normalized name, slug, and exam type."
+            },
+            {
+              "id": "csat-setb-03",
+              "summary": "PR #1008 added a bounded palette scroll area and active-item scrollIntoView."
+            },
+            {
+              "id": "csat-setb-04",
+              "summary": "PR #1008 added Clear response through the existing null-answer sync path."
+            },
+            {
+              "id": "csat-setb-05",
+              "summary": "PR #1008 migration 264 reconciles and prevents stale provenance_pending on verified rows."
+            }
           ],
           "blockers": [
             "Migration 264 remains VERIFY DB.",
@@ -133,14 +163,32 @@
             }
           ],
           "defects_found": [
-            { "id": "pyq-prov-01", "summary": "Provenance RPC execute grants were exposed beyond service_role." },
-            { "id": "pyq-prov-02", "summary": "Document validation had a precheck-to-mutation race window." },
-            { "id": "pyq-prov-03", "summary": "Provenance/link updates and audit writes were not atomic." }
+            {
+              "id": "pyq-prov-01",
+              "summary": "Provenance RPC execute grants were exposed beyond service_role."
+            },
+            {
+              "id": "pyq-prov-02",
+              "summary": "Document validation had a precheck-to-mutation race window."
+            },
+            {
+              "id": "pyq-prov-03",
+              "summary": "Provenance/link updates and audit writes were not atomic."
+            }
           ],
           "defects_fixed": [
-            { "id": "pyq-prov-01", "summary": "Migration 190 revoked anon/authenticated execution and retained service_role." },
-            { "id": "pyq-prov-02", "summary": "Migration 189 locked and revalidated document rows inside the transaction." },
-            { "id": "pyq-prov-03", "summary": "Migration 188 made provenance/link mutations and audit insertion atomic." }
+            {
+              "id": "pyq-prov-01",
+              "summary": "Migration 190 revoked anon/authenticated execution and retained service_role."
+            },
+            {
+              "id": "pyq-prov-02",
+              "summary": "Migration 189 locked and revalidated document rows inside the transaction."
+            },
+            {
+              "id": "pyq-prov-03",
+              "summary": "Migration 188 made provenance/link mutations and audit insertion atomic."
+            }
           ],
           "blockers": [],
           "depends_on": []
@@ -173,7 +221,10 @@
             }
           ],
           "defects_found": [
-            { "id": "v1-p1-01", "summary": "No complete staging and production schema_migrations reconciliation exists for the current repository head." }
+            {
+              "id": "v1-p1-01",
+              "summary": "No complete staging and production schema_migrations reconciliation exists for the current repository head."
+            }
           ],
           "defects_fixed": [],
           "blockers": [
@@ -203,15 +254,23 @@
             }
           ],
           "defects_found": [
-            { "id": "v1-p2-01", "summary": "The complete release verification and RPC grant audit have not been run across staging and production." },
-            { "id": "v1-p2-02", "summary": "Normal-user and admin real-JWT returned-row evidence is missing." }
+            {
+              "id": "v1-p2-01",
+              "summary": "The complete release verification and RPC grant audit have not been run across staging and production."
+            },
+            {
+              "id": "v1-p2-02",
+              "summary": "Normal-user and admin real-JWT returned-row evidence is missing."
+            }
           ],
           "defects_fixed": [],
           "blockers": [
             "P1 migration-chain reconciliation must complete first.",
             "Release-wide real-JWT evidence is absent."
           ],
-          "depends_on": ["v1-p1-migration-chain"]
+          "depends_on": [
+            "v1-p1-migration-chain"
+          ]
         },
         {
           "id": "v1-p3-migration-182-validation",
@@ -258,17 +317,28 @@
             }
           ],
           "defects_found": [
-            { "id": "v1-p4-01", "summary": "The June 30 migration-204 staging run had no durable audit snapshot and the tracker remained stale." },
-            { "id": "v1-p4-02", "summary": "Concurrency and the complete negative direct-RPC matrix are not preserved in available evidence." }
+            {
+              "id": "v1-p4-01",
+              "summary": "The June 30 migration-204 staging run had no durable audit snapshot and the tracker remained stale."
+            },
+            {
+              "id": "v1-p4-02",
+              "summary": "Concurrency and the complete negative direct-RPC matrix are not preserved in available evidence."
+            }
           ],
           "defects_fixed": [
-            { "id": "v1-p4-01", "summary": "This registry PR adds a durable reconstruction and reconciles P4 to partial_pass without falsely closing it." }
+            {
+              "id": "v1-p4-01",
+              "summary": "This registry PR adds a durable reconstruction and reconciles P4 to partial_pass without falsely closing it."
+            }
           ],
           "blockers": [
             "P1 must establish the intended live migration chain.",
             "Concurrency and remaining negative direct-RPC cases require a fresh captured run."
           ],
-          "depends_on": ["v1-p1-migration-chain"]
+          "depends_on": [
+            "v1-p1-migration-chain"
+          ]
         },
         {
           "id": "v1-p5-telemetry-boundary",
@@ -291,12 +361,24 @@
             }
           ],
           "defects_found": [
-            { "id": "v1-p5-01", "summary": "Visibility/unmount event batches could be dropped because sendBeacon could not carry authentication and failed batches were removed before acknowledgement." },
-            { "id": "v1-p5-02", "summary": "Partial event coverage fallback could occur without a persisted warning or fallback count." }
+            {
+              "id": "v1-p5-01",
+              "summary": "Visibility/unmount event batches could be dropped because sendBeacon could not carry authentication and failed batches were removed before acknowledgement."
+            },
+            {
+              "id": "v1-p5-02",
+              "summary": "Partial event coverage fallback could occur without a persisted warning or fallback count."
+            }
           ],
           "defects_fixed": [
-            { "id": "v1-p5-01", "summary": "PR #800 added authenticated keepalive delivery, retain-on-failure, retry, and acknowledgement-based removal." },
-            { "id": "v1-p5-02", "summary": "PR #800 records event coverage, fallback count, and the partial-coverage warning." }
+            {
+              "id": "v1-p5-01",
+              "summary": "PR #800 added authenticated keepalive delivery, retain-on-failure, retry, and acknowledgement-based removal."
+            },
+            {
+              "id": "v1-p5-02",
+              "summary": "PR #800 records event coverage, fallback count, and the partial-coverage warning."
+            }
           ],
           "blockers": [],
           "depends_on": []
@@ -321,12 +403,24 @@
             }
           ],
           "defects_found": [
-            { "id": "v1-p6-01", "summary": "The earlier capture did not prove automatic scheduler provenance." },
-            { "id": "v1-p6-02", "summary": "The earlier 65-minute observation did not prove the required <=30-second drain cycle." }
+            {
+              "id": "v1-p6-01",
+              "summary": "The earlier capture did not prove automatic scheduler provenance."
+            },
+            {
+              "id": "v1-p6-02",
+              "summary": "The earlier 65-minute observation did not prove the required <=30-second drain cycle."
+            }
           ],
           "defects_fixed": [
-            { "id": "v1-p6-01", "summary": "The watcher capture recorded manual absent, derivations 1, and errors 0." },
-            { "id": "v1-p6-02", "summary": "The controlled job completed in 19.67 seconds." }
+            {
+              "id": "v1-p6-01",
+              "summary": "The watcher capture recorded manual absent, derivations 1, and errors 0."
+            },
+            {
+              "id": "v1-p6-02",
+              "summary": "The controlled job completed in 19.67 seconds."
+            }
           ],
           "blockers": [],
           "depends_on": []
@@ -358,6 +452,42 @@
             "ADMIN_STUDY_OS_ENABLED and exam_intelligence permissions require staging operator confirmation.",
             "Prerequisite editing remains governed by its separate blocked gate.",
             "UPSC CSE has no complete evidence-backed staging activation record under this gate."
+          ],
+          "depends_on": []
+        },
+        {
+          "id": "cov-phase-01-mains-coverage-consolidation",
+          "title": "UPSC Mains coverage consolidated onto the plannable phase",
+          "status": "operator_pending",
+          "summary": "UPSC CSE holds the Mains corpus on two phases with the same slug: 1,497 locked rows on a cycle-less template phase and 1,317 on the cycle-attached one. The duplicate a learner saw is closed in code — _canonical_coverage_rows keeps one row per topic and prefers the cycle-attached phase. The 180 topics that exist ONLY on the template phase remain unschedulable until coverage is re-derived and locked against the cycle phase, which is operator work on live data and cannot be proven from code.",
+          "updated_at": "2026-09-14",
+          "review_by": "2026-09-30T18:00:00Z",
+          "next_action": "Run workbench/sql/COV-PHASE-01_orphans.sql §1-§4 against the live database, then execute docs/runbooks/cov-phase-01-mains-coverage-consolidation.md against UPSC CSE: compute and lock cycle-phase score snapshots where §3 reports them missing, derive coverage scoped to the cycle phase, review and lock, and attach one evidence record with §2 and §6 re-run.",
+          "implementation_refs": [
+            "docs/architecture/domain-model.md",
+            "workbench/sql/COV-PHASE-01_orphans.sql"
+          ],
+          "runbook": "docs/runbooks/cov-phase-01-mains-coverage-consolidation.md",
+          "evidence": [],
+          "defects_found": [
+            {
+              "id": "cov-phase-01-duplicate-coverage-rows-in-learner-reads",
+              "summary": "Every exam-wide learner read offered each Mains topic twice, once per phase — the palette, the calibration subject set and the Subject Hub. Reported live as 'Balance of power: methods and contemporary relevance', 9.20 twice."
+            },
+            {
+              "id": "cov-phase-01-180-topics-only-on-the-template-phase",
+              "summary": "180 topics carry locked coverage only on the cycle-less template phase, which exam_target_window can never target, so the planner cannot schedule them."
+            }
+          ],
+          "defects_fixed": [
+            {
+              "id": "cov-phase-01-duplicate-coverage-rows-in-learner-reads",
+              "summary": "load_scoped_coverage[_checked] resolves to one row per topic, preferring the cycle-attached phase, then exam-wide, then template, with coverage_id breaking ties. A failed exam_phases read leaves the duplicates and reports the read unhealthy rather than keeping the wrong row."
+            }
+          ],
+          "blockers": [
+            "Re-deriving coverage on the cycle phase requires an admin JWT with exam_intelligence.manage against the live environment.",
+            "Orphan topics without a locked cycle-phase score snapshot need the snapshot compute-and-lock step first; the derivation copies its numbers verbatim from a locked snapshot and snapshots are not inherited across phases."
           ],
           "depends_on": []
         }

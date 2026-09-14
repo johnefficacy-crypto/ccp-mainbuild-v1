@@ -257,6 +257,76 @@ def get_board(supabase: Any, user_id: str) -> dict[str, Any]:
     }
 
 
+#: Ids per ``.in_()`` filter, mirroring the planner's own chunk size.
+_IN_CHUNK = 300
+
+
+def _chunked(items: list[str], size: int = _IN_CHUNK) -> list[list[str]]:
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def _topic_names(supabase: Any, topic_ids: list[str]) -> dict[str, str]:
+    """``{topic_id: name}`` for ids the coverage read did not already name.
+
+    The palette groups microtopics under their macro topic, and a macro topic
+    only appears in the coverage read when it has locked coverage of its own —
+    a parent that is purely structural does not. One chunked read per request,
+    indexed; never one per topic. Degrades to ``{}`` on failure: an unnamed
+    parent groups under its subject instead, which is a smaller loss than a
+    failed palette.
+    """
+    if not topic_ids:
+        return {}
+    out: dict[str, str] = {}
+    for chunk in _chunked(sorted(set(topic_ids))):
+        rows = _safe(
+            lambda c=chunk: (
+                supabase.table("topics")
+                .select("id, name")
+                .in_("id", c)
+                .limit(len(c))
+                .execute()
+                .data
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            if r.get("id") and r.get("name"):
+                out[str(r["id"])] = str(r["name"])
+    return out
+
+
+def _section_kinds(supabase: Any, section_ids: list[str]) -> dict[str, str]:
+    """``{section_id: selection_kind}``, one chunked read per request.
+
+    The palette separates "papers everybody sits" from "the optional you
+    chose", and migration 287 puts that distinction on the SECTION —
+    deliberately, so nothing pattern-matches a subject slug to decide scope.
+    A row whose section is unknown or unset reads as ``compulsory``, matching
+    the fail-safe in ``_in_scope_section_ids``: an unclassified subject stays
+    visible rather than vanishing under a heading the user never opens.
+    """
+    if not section_ids:
+        return {}
+    out: dict[str, str] = {}
+    for chunk in _chunked(sorted(set(section_ids))):
+        rows = _safe(
+            lambda c=chunk: (
+                supabase.table("exam_phase_sections")
+                .select("id, selection_kind")
+                .in_("id", c)
+                .limit(len(c))
+                .execute()
+                .data
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            if r.get("id"):
+                out[str(r["id"])] = str(r.get("selection_kind") or "compulsory")
+    return out
+
+
 def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
     """Locked-coverage topics the user could add, minus what is already placed.
 
@@ -273,6 +343,19 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
     would put thirteen authored Prelims rows above two thousand derived Mains
     ones whatever the evidence said. On a single-basis set the two are the same
     number, so nothing moves.
+
+    PLAN-UI-02 widens each item with what a two-pane palette needs to place a
+    topic in the syllabus and tell placed from unplaced:
+
+    * ``parent_topic_id`` / ``parent_topic`` — the macro topic a microtopic
+      sits under, so the tree can group without the client guessing;
+    * ``selection_kind`` — whether the subject is a paper everybody sits or the
+      optional this user chose (migration 287, read from the section);
+    * ``scheduled_date`` — set when the topic is already on the board this
+      week. Scheduled topics are no longer dropped from the list: hiding them
+      left a user unable to tell "not in my syllabus" from "already placed".
+
+    Three reads per request, each chunked and indexed, none per topic.
     """
     exam = _safe(lambda: _resolve_target_exam(supabase, user_id), default=None)
     exam_id = (exam or {}).get("id")
@@ -288,7 +371,7 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
     prefs = get_plan_preferences(supabase, user_id)
     muted = {str(t) for t in (prefs.get("muted_topic_ids") or [])}
 
-    scheduled: set[str] = set()
+    scheduled: dict[str, str | None] = {}
     plan = _active_plan(supabase, user_id)
     if plan:
         rows = _window_tasks(supabase, plan["id"], user_id, window_dates())
@@ -296,7 +379,13 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
             raise BoardError(
                 "candidates_read_failed", "Topics are temporarily unavailable.", 503
             )
-        scheduled = {str(r["topic_id"]) for r in rows if r.get("topic_id")}
+        # Earliest day in the window wins when a topic sits on two — the
+        # palette says where to find it, and the first one is where a user
+        # looks. Sorting rather than last-write-wins keeps it deterministic.
+        for r in sorted(rows, key=lambda t: str(t.get("scheduled_date") or "")):
+            tid = r.get("topic_id")
+            if tid and str(tid) not in scheduled:
+                scheduled[str(tid)] = str(r.get("scheduled_date") or "") or None
 
     def _num(value: Any) -> float:
         try:
@@ -324,15 +413,55 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
         value = cov.get("comparable_priority")
         return _num(value) if value is not None else _score(cov)
 
+    offered = [
+        c
+        for c in coverage
+        if c.get("topic_id") and str(c["topic_id"]) not in muted
+    ]
+
+    # Two indexed reads for the whole request. Parent NAMES are only needed for
+    # parents the coverage read did not already carry: a macro topic with
+    # locked coverage of its own is already named.
+    named = {
+        str(c["topic_id"]): c.get("topic_name")
+        for c in offered
+        if c.get("topic_name")
+    }
+    missing_parents = [
+        str(c["parent_topic_id"])
+        for c in offered
+        if c.get("parent_topic_id") and str(c["parent_topic_id"]) not in named
+    ]
+    parent_names = {**named, **_topic_names(supabase, missing_parents)}
+    section_kinds = _section_kinds(
+        supabase, [str(c["section_id"]) for c in offered if c.get("section_id")]
+    )
+
     items = [
         {
             "topic_id": str(c["topic_id"]),
             "topic": c.get("topic_name"),
             "subject": c.get("subject_name"),
             "subject_id": c.get("subject_id"),
+            # Syllabus position. NULL parent is legitimate — a macro topic IS a
+            # root; the tree files it directly under its subject.
+            "parent_topic_id": (
+                str(c["parent_topic_id"]) if c.get("parent_topic_id") else None
+            ),
+            "parent_topic": (
+                parent_names.get(str(c["parent_topic_id"]))
+                if c.get("parent_topic_id")
+                else None
+            ),
+            # 'compulsory' | 'elective'. Read from the section (migration 287),
+            # never inferred from a subject slug; unknown reads as compulsory.
+            "selection_kind": section_kinds.get(
+                str(c.get("section_id") or ""), "compulsory"
+            ),
             "exam_priority_score": _score(c),
-            # What the ordering below actually uses, so a client can show the
-            # number it was ranked by instead of re-deriving one.
+            # Orders the list. NOT for display: it is a percentile within a
+            # source_basis, so three topics can hold 100 at once and none of
+            # them means "100 out of 100".
             "comparable_priority": _standing(c),
             "is_high_yield": bool(c.get("is_high_yield")),
             # How regularly this topic has been asked in its own subject-paper
@@ -341,11 +470,12 @@ def list_candidates(supabase: Any, user_id: str) -> dict[str, Any]:
             # None where the row has no year evidence; the palette shows
             # nothing rather than inventing a band.
             "predictability_band": c.get("predictability_band"),
+            # Set when this topic is already on the board this week. Present
+            # rather than filtered out: a hidden topic is indistinguishable
+            # from one outside the user's syllabus.
+            "scheduled_date": scheduled.get(str(c["topic_id"])),
         }
-        for c in coverage
-        if c.get("topic_id")
-        and str(c["topic_id"]) not in scheduled
-        and str(c["topic_id"]) not in muted
+        for c in offered
     ]
     items.sort(key=lambda i: (-i["comparable_priority"], str(i["topic"] or "")))
     return {"items": items, "exam_id": exam_id, "read_error": False}
