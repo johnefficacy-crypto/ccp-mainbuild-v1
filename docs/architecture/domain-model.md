@@ -139,6 +139,44 @@ quarantine with the cycle preserved in `metadata`), so no assignment is lost.
 Entity canonicity is preserved — the mapping's `exam_id` still references
 `public.exams(id)`.
 
+## Which phase's coverage is canonical (COV-PHASE-01, added 2026-09-14)
+
+`exam_topic_coverage` is unique on `(exam_id, exam_cycle_id, exam_phase_id,
+topic_id)` (migration 030), so one topic may legally hold one locked row per
+phase plus an exam-wide row with `exam_phase_id IS NULL`. UPSC CSE does: the
+Mains corpus sits on two phases with the same slug `mains` — 1,497 locked rows
+on a cycle-less template and 1,317 on the cycle-attached phase, same topics,
+identical scores.
+
+**The cycle-attached phase is canonical for coverage.** It is the only phase
+`exam_target_window` can resolve, so it is the only one a plan can be built
+from. A cycle-less phase is a template: canonical for **evidence** (see
+`phase_inheritance.py` — reads inherit, writes never), not for coverage.
+
+Precedence when one topic holds several locked rows, highest first:
+
+1. a phase attached to a cycle — plannable, therefore canonical;
+2. no phase at all (`exam_phase_id IS NULL`) — exam-wide, applies to whichever
+   phase is targeted;
+3. a phase with no cycle — a template, untargetable.
+
+Ties break on `coverage_id`, so the winner is the same on every read.
+
+Two rules follow:
+
+- **Every learner-facing read resolves to one row per topic.**
+  `load_scoped_coverage[_checked]` (`app/backend/app/study_os/planner.py`) is
+  the single chokepoint; the exam-wide `_load_locked_coverage_checked` stays
+  undeduped for admin, derivation, and readiness reads that must see the whole
+  table.
+- **A topic whose only row is on a template phase keeps it.** Deduplication
+  never deletes a topic from a syllabus. Such a topic is visible and
+  unschedulable until coverage is reproduced on the cycle phase, which is an
+  operator action — `docs/runbooks/cov-phase-01-mains-coverage-consolidation.md`.
+
+Coverage is not inherited across phases. Reading the template's rows for a
+cycle phase would make the derivation treat another phase's rows as its own.
+
 ## Agent instruction
 
 When generating SQL, migrations, APIs, or React components:
