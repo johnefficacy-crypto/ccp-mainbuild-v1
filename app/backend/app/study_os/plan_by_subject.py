@@ -14,6 +14,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
+from app.study_os.subjects import declined_elective_subject_ids, in_scope_subject
 from app.study_os.planner import (  # type: ignore  # private helpers reused
     load_scoped_coverage,
     resolve_target_exam_or_none,
@@ -148,6 +149,22 @@ def list_plan_by_subject(
     )
     exam_id = target.get("id") if target else None
     locked = _locked_subjects(supabase, user_id, exam_id) if exam_id else {}
+    # PLAN-BUG-02 F5. The buckets below come from persisted ``study_tasks``, not
+    # from coverage, so a task written before the user chose their optional
+    # paper keeps that subject alive on this surface long after every other one
+    # has dropped it. Filter the tasks themselves so the weights and totals are
+    # computed over the user's real scope, not just the rendered rows.
+    declined = declined_elective_subject_ids(supabase, user_id, exam_id)
+    tasks = [t for t in tasks if in_scope_subject(t.get("subject_id"), declined)]
+    if not tasks:
+        return {
+            "week_start": week_start_s,
+            "week_end": week_end_s,
+            "items": [],
+            "total_minutes": 0,
+            "total_hours": 0.0,
+            "trust_status": "preview",
+        }
 
     # Bucket tasks by subject. Subject id is best-effort: prefer the row's
     # subject_id when present; otherwise fall back to the subject name.

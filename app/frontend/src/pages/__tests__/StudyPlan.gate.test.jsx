@@ -158,7 +158,9 @@ test("once calibrated === true the generation controls render", async () => {
   });
 
   expect(await screen.findByTestId("regenerate-plan-btn")).toBeTruthy();
-  expect(screen.getByTestId("suggest-changes-btn")).toBeTruthy();
+  // PLAN-BUG-02 F3 removed "Suggest changes": it was bound to the SAME handler
+  // as "Regenerate plan", so it promised a distinct action it never performed.
+  expect(screen.queryByTestId("suggest-changes-btn")).toBeNull();
   expect(screen.queryByTestId("plan-controls-checking")).toBeNull();
   expect(screen.queryByTestId("plan-controls-gated")).toBeNull();
 });

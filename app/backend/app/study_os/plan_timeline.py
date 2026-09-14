@@ -27,6 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.study_os.exam_target_window import resolve_exam_target_window
+from app.study_os.subjects import declined_elective_subject_ids, in_scope_subject
 from app.study_os.planner import (  # type: ignore
     load_scoped_coverage,
     _load_user_signals,
@@ -453,7 +454,17 @@ def _build_subjects(
     tasks: list[dict[str, Any]],
     sessions: list[dict[str, Any]],
     locked_subject_ids: set[str],
+    declined_subject_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
+    """Per-subject planned/actual hours, grouped from the user's tasks.
+
+    ``declined_subject_ids`` is the elective-scope filter (PLAN-BUG-02 F5). The
+    buckets come from persisted ``study_tasks``, so a task left over from before
+    the user chose their optional paper would otherwise put an unchosen subject
+    on this surface. An empty set or ``None`` disables the filter — see
+    ``subjects.declined_elective_subject_ids`` for why an unknown scope must not
+    blank the surface. This is a DISPLAY filter only; totals are untouched.
+    """
     buckets: dict[str, dict[str, Any]] = {}
     for t in tasks:
         name = t.get("subject") or "General"
@@ -495,6 +506,8 @@ def _build_subjects(
 
     items: list[dict[str, Any]] = []
     for b in buckets.values():
+        if not in_scope_subject(b["subject_id"], declined_subject_ids):
+            continue
         planned_pct = _pct(b["completed_minutes"], b["planned_minutes"]) if b["planned_minutes"] else 0
         items.append({
             "subject_id": b["subject_id"],
@@ -717,7 +730,12 @@ def get_plan_timeline(supabase: Any, user_id: str) -> dict[str, Any]:
             logger.debug("plan_timeline user signal preload failed", exc_info=True)
 
     series = _build_series(tasks, cycle_start, timeline_target_date, total_units) if timeline_target_date else []
-    subjects = _build_subjects(tasks, sessions, locked_subject_ids)
+    subjects = _build_subjects(
+        tasks,
+        sessions,
+        locked_subject_ids,
+        declined_subject_ids=declined_elective_subject_ids(supabase, user_id, exam_id),
+    )
     milestones = _build_milestones(cycle, phases, today)
     phase_bands = _build_phase_bands(cycle_start, timeline_target_date)
 

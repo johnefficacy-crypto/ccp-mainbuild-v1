@@ -313,8 +313,14 @@ export default function PlannerBoard() {
         applying={applying}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_460px] lg:items-start">
-        <div className="flex gap-3 overflow-x-auto pb-2">
+      {/* `minmax(0,1fr)`, not `1fr`: a bare fr track has `min-width: auto`, so it
+          refuses to shrink below its content's intrinsic width. The scroller
+          below holds seven `min-w-[210px]` columns (~1500px), so the track grew
+          to fit them, `overflow-x-auto` never engaged, and the 460px palette was
+          pushed outside the container. `min-w-0` on the child is the same rule
+          one level down, for the flex item. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-start">
+        <div className="flex min-w-0 gap-3 overflow-x-auto pb-2">
           {days.map((day) => (
             <DayColumn
               key={day.date}

@@ -14,6 +14,7 @@ import logging
 from typing import Any, Callable
 
 from app.study_os.planner import (  # type: ignore  # private helpers reused intentionally
+    _load_locked_coverage,
     load_scoped_coverage,
     _load_user_signals,
     resolve_target_exam_or_none,
@@ -483,3 +484,55 @@ def _cov_num(value: Any) -> float | None:
         return None if value is None else float(value)
     except (TypeError, ValueError):
         return None
+
+
+def declined_elective_subject_ids(
+    supabase: Any, user_id: str | None, exam_id: str | None
+) -> set[str]:
+    """Subjects the user is NOT studying because they chose a different optional.
+
+    PLAN-BUG-02 F5. Surfaces that derive their subject list by grouping
+    persisted ``study_tasks`` rows — "Subjects across the cycle" and "This week
+    by subject" — cannot get elective scoping from the tasks themselves: a task
+    written before the user picked an optional paper, or carried forward from an
+    earlier cycle, keeps that subject alive long after every other surface has
+    dropped it. That is what put History Paper-1/2 on a PSIR-only user's page.
+
+    The set is EXCLUSION-shaped on purpose. The obvious implementation — keep
+    only subjects that appear in the user's scoped coverage — is wrong: it also
+    deletes subjects that have no locked coverage at all, which are a legitimate
+    ``trust_status='preview'`` / ``source='weakness_map'`` case the plan-by-
+    subject contract has always supported. A declined optional is specifically a
+    subject that IS covered for this exam but is NOT in this user's scope, so
+    that difference is exactly what this computes.
+
+    Returns an empty set when nothing can be excluded — no exam, no elective
+    sections, or a read that came back empty. Filtering on an unknown scope must
+    never blank a surface; briefly showing a paper the user did not choose is
+    far better than erasing the week they did.
+    """
+    if not exam_id:
+        return set()
+    scoped = load_scoped_coverage(supabase, user_id, exam_id) or []
+    if not scoped:
+        return set()
+    exam_wide = _load_locked_coverage(supabase, exam_id) or []
+    scoped_ids = {str(c["subject_id"]) for c in scoped if c.get("subject_id")}
+    exam_wide_ids = {str(c["subject_id"]) for c in exam_wide if c.get("subject_id")}
+    return exam_wide_ids - scoped_ids
+
+
+def in_scope_subject(subject_id: Any, declined_ids: set[str] | None) -> bool:
+    """Whether a task-derived subject bucket belongs on a scoped surface.
+
+    Only an explicitly declined optional is dropped. A bucket with no
+    ``subject_id`` is kept — unclassified work ("General") has no subject
+    identity to test, and dropping it would silently delete hours the user
+    actually logged, the same fail-safe rule ``load_scoped_coverage`` applies to
+    a coverage row with no ``section_id``.
+    """
+    if not declined_ids:
+        return True
+    if not subject_id:
+        return True
+    return str(subject_id) not in declined_ids

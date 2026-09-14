@@ -29,9 +29,12 @@ import StudyPlan from "../StudyPlan";
 
 const EXAM_ID = "11111111-1111-4111-8111-111111111111";
 
+// The vocabulary the plan surface is allowed to use for its actions. The list
+// is an allow-list for AI-authority copy, not an inventory of controls:
+// "Suggest changes" left it in PLAN-BUG-02 F3 when the duplicate button was
+// removed, so the label no longer appears anywhere to be asserted.
 const APPROVED_LABELS = [
   "Regenerate plan",
-  "Suggest changes",
   "Preview changes",
   "Apply selected changes",
 ];
@@ -118,11 +121,10 @@ test("StudyPlan renders only deterministic-planner action labels", async () => {
     render(<StudyPlan />);
   });
 
-  // Header buttons should be present after hydration.
+  // Header button should be present after hydration. "Suggest changes" was
+  // removed in PLAN-BUG-02 F3 — it shared this button's exact handler.
   const regenBtn = await screen.findByTestId("regenerate-plan-btn");
-  const suggestBtn = await screen.findByTestId("suggest-changes-btn");
   expect(regenBtn.textContent).toMatch(/Regenerate plan/);
-  expect(suggestBtn.textContent).toMatch(/Suggest changes/);
 
   // Open the preview drawer to surface the remaining two approved labels.
   await act(async () => {
