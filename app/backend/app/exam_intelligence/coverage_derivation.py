@@ -47,6 +47,7 @@ import hashlib
 import logging
 from typing import Any
 
+from app.exam_intelligence.phase_inheritance import resolve_template_phase_id
 from app.exam_intelligence.score_snapshots import locked_score_snapshots
 
 logger = logging.getLogger("career_copilot.exam_intelligence.coverage_derivation")
@@ -281,22 +282,54 @@ def _verified_syllabus_mention_counts(
     Returns ``None`` on any read failure (fail-closed).
     """
 
-    def _page(from_n: int, to_n: int) -> Any:
-        q = (
-            sb.table("syllabus_topic_mentions")
-            .select("id, topic_id", count="exact")
-            .eq("exam_id", exam_id)
-            .eq("reviewer_status", "verified")
-        )
-        if exam_phase_id:
-            q = q.eq("exam_phase_id", exam_phase_id)
-        else:
-            q = q.is_("exam_phase_id", None)
-        return q.order("id").range(from_n, to_n).execute()
+    def _page_for(phase_id: str | None) -> Any:
+        def _page(from_n: int, to_n: int) -> Any:
+            q = (
+                sb.table("syllabus_topic_mentions")
+                .select("id, topic_id", count="exact")
+                .eq("exam_id", exam_id)
+                .eq("reviewer_status", "verified")
+            )
+            if phase_id:
+                q = q.eq("exam_phase_id", phase_id)
+            else:
+                q = q.is_("exam_phase_id", None)
+            return q.order("id").range(from_n, to_n).execute()
 
-    rows = _paginate(_page, table="syllabus_topic_mentions", operation="select_verified")
+        return _page
+
+    rows = _paginate(
+        _page_for(exam_phase_id),
+        table="syllabus_topic_mentions",
+        operation="select_verified",
+    )
     if rows is None:
         return None
+
+    # PHASE-INHERIT-01: a syllabus is cycle-independent evidence, so it lives on
+    # the template phase alongside the corpus. A cycle phase with no mentions of
+    # its own reads the template's — the same reads-inherit/writes-never rule as
+    # the corpus in `score_snapshots.py`. Coverage rows are NOT inherited: this
+    # derivation owns and rewrites those at the target scope, and reading the
+    # template's would make it treat another phase's rows as its own.
+    if exam_phase_id and not rows:
+        template_phase_id = resolve_template_phase_id(sb, exam_id, exam_phase_id)
+        if template_phase_id:
+            logger.debug(
+                "coverage_derivation: phase %s has no verified syllabus mentions "
+                "of its own; reading the template phase %s instead. Coverage is "
+                "still written to %s.",
+                exam_phase_id,
+                template_phase_id,
+                exam_phase_id,
+            )
+            rows = _paginate(
+                _page_for(template_phase_id),
+                table="syllabus_topic_mentions",
+                operation="select_verified_by_template_phase",
+            )
+            if rows is None:
+                return None
 
     counts: dict[str, int] = {}
     for r in rows:
