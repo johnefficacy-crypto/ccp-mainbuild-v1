@@ -1811,9 +1811,20 @@ router_metadata = APIRouter(prefix="/metadata", tags=["metadata"])
 
 
 def _ensure_active_plan(supabase: Client, user_id: str) -> str | None:
+    row = _active_plan_row(supabase, user_id)
+    return row["id"] if row else None
+
+
+def _active_plan_row(supabase: Client, user_id: str) -> dict[str, Any] | None:
+    """The user's active plan row, including ``start_date``.
+
+    ``start_date`` is what supplies the "Day N" heading. It is written on every
+    plan at creation (``planner._persist``) but was never selected here, which
+    is why the heading interpolated a hardcoded ``None``.
+    """
     rows = _safe(
         lambda: supabase.table("study_plans")
-        .select("id")
+        .select("id, start_date")
         .eq("user_id", user_id)
         .eq("status", "active")
         .limit(1)
@@ -1821,18 +1832,34 @@ def _ensure_active_plan(supabase: Client, user_id: str) -> str | None:
         .data,
         default=[],
     ) or []
-    if rows:
-        return rows[0]["id"]
-    return None
+    return rows[0] if rows else None
+
+
+def _plan_day_number(start_date: Any, today: date) -> int | None:
+    """1-based day of the plan, or ``None`` when it cannot be known.
+
+    ``None`` is a real answer — a plan with no parseable ``start_date``, or one
+    dated in the future, has no day number — and callers must omit the segment
+    rather than render the absence.
+    """
+    if not start_date:
+        return None
+    try:
+        started = date.fromisoformat(str(start_date)[:10])
+    except (TypeError, ValueError):
+        return None
+    delta = (today - started).days
+    return delta + 1 if delta >= 0 else None
 
 
 @router_study.get("/plan")
 async def get_plan(user: dict = Depends(get_current_user)):
     supabase = get_supabase_admin()
     today = datetime.now(timezone.utc).date().isoformat()
-    plan_id = _ensure_active_plan(supabase, user["id"])
-    if not plan_id:
+    plan_row = _active_plan_row(supabase, user["id"])
+    if not plan_row:
         return {"date": today, "plan": None, "tasks": []}
+    plan_id = plan_row["id"]
     # Pull the planner's reasoning columns (added in migration 034) alongside
     # the display fields so the StudyPlan task list can show the deterministic
     # one-liner without a second round-trip per row. The full reasoning_trace
@@ -1877,7 +1904,20 @@ async def get_plan(user: dict = Depends(get_current_user)):
             # frontend never derives copy itself.
             "why_this_task_summary": _safe_copy(t, None, task_type),
         })
-    return {"date": today, "plan": {"id": plan_id, "theme": "Adaptive weekly plan", "target": "Complete planned blocks", "day": None}, "tasks": out_tasks}
+    return {
+        "date": today,
+        "plan": {
+            "id": plan_id,
+            "theme": "Adaptive weekly plan",
+            "target": "Complete planned blocks",
+            # Real value when the plan's start_date supports one; None when it
+            # genuinely cannot be known. Never a placeholder the UI would print.
+            "day": _plan_day_number(
+                plan_row.get("start_date"), datetime.now(timezone.utc).date()
+            ),
+        },
+        "tasks": out_tasks,
+    }
 
 
 class PlanToggle(BaseModel):

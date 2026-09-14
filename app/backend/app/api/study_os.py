@@ -40,6 +40,20 @@ logger = logging.getLogger("career_copilot.api.study_os")
 router = APIRouter(prefix="/study", tags=["study"])
 
 
+def _safe(call: Any, default: Any = None) -> Any:
+    """Run a Supabase read; on any error return ``default``.
+
+    Mirrors ``app.study_os.planner._safe``. Used by reads whose failure must be
+    distinguishable from an empty result, by passing a ``None`` default.
+    """
+    try:
+        return call()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("study_os read failed: %s", exc)
+        return default
+
+
+
 def _require_canonical_exam_flag() -> bool:
     raw = os.getenv("STUDY_OS_REQUIRE_CANONICAL_EXAM")
     if raw is None:
@@ -164,53 +178,98 @@ async def list_study_exams(
     planner_ready: bool | None = None,
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """Active exams with their planner-readiness.
+
+    Previously this issued TWO Supabase round-trips PER EXAM inside a loop over
+    up to 500 rows — a thousand sequential requests, none of them wrapped, on a
+    route with no error handling. One slow or failed call anywhere in that loop
+    threw out of the route as a 500, and the page showed "Couldn't load exams"
+    for every user, every time. The per-exam reads are now two bulk queries,
+    and a read failure degrades to a named reason instead of an exception.
+    """
     del user
     supabase = get_supabase_admin()
-    rows = (
-        supabase.table("exams")
-        .select("id,slug,name,exam_type,exam_family_id,default_difficulty_level,is_active")
-        .eq("is_active", True)
-        .order("name")
-        .limit(500)
-        .execute()
-        .data
-        or []
-    )
-    if not rows:
-        logger.warning("study/exams: public.exams has zero active rows")
-    out = []
-    for r in rows:
-        cov = (
-            supabase.table("exam_topic_coverage")
-            .select("id", count="exact")
-            .eq("exam_id", r["id"])
-            .eq("reviewer_status", "locked")
-            .limit(1)
-            .execute()
-        )
-        locked_count = int(getattr(cov, "count", 0) or 0)
-        cycle = (
-            supabase.table("exam_cycles")
-            .select("id,year,cycle_name,exam_start")
-            .eq("exam_id", r["id"])
-            .eq("reviewer_status", "verified")  # trust gate (migration 261)
-            .gte("exam_start", __import__("datetime").datetime.utcnow().date().isoformat())
-            .order("exam_start")
-            .limit(1)
+
+    rows = _safe(
+        lambda: (
+            supabase.table("exams")
+            .select("id,slug,name,exam_type,exam_family_id,default_difficulty_level,is_active")
+            .eq("is_active", True)
+            .order("name")
+            .limit(500)
             .execute()
             .data
-            or []
+        ),
+        default=None,
+    )
+    if rows is None:
+        logger.error("study/exams: exams read failed")
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "exams_read_failed", "message": "Exams are unavailable right now."},
         )
-        ready = bool(r.get("is_active")) and locked_count > 0
+    if not rows:
+        logger.warning("study/exams: public.exams has zero active rows")
+        return {"items": []}
+
+    exam_ids = [r["id"] for r in rows if r.get("id")]
+
+    # One read for every exam's locked-coverage subject ids. `count="exact"` per
+    # exam is what forced the old loop; pulling the exam_id column and counting
+    # in Python costs one request instead of N.
+    locked_counts: dict[str, int] = {}
+    coverage_rows = _safe(
+        lambda: (
+            supabase.table("exam_topic_coverage")
+            .select("exam_id")
+            .in_("exam_id", exam_ids)
+            .eq("reviewer_status", "locked")
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    coverage_ok = coverage_rows is not None
+    for c in coverage_rows or []:
+        key = str(c.get("exam_id"))
+        locked_counts[key] = locked_counts.get(key, 0) + 1
+
+    # One read for the soonest verified upcoming cycle per exam. Ordered
+    # ascending so the first row seen for an exam is its soonest.
+    today_iso = datetime.now(timezone.utc).date().isoformat()
+    next_cycles: dict[str, dict[str, Any]] = {}
+    cycle_rows = _safe(
+        lambda: (
+            supabase.table("exam_cycles")
+            .select("id,exam_id,year,cycle_name,exam_start")
+            .in_("exam_id", exam_ids)
+            .eq("reviewer_status", "verified")  # trust gate (migration 261)
+            .gte("exam_start", today_iso)
+            .order("exam_start")
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    for c in cycle_rows or []:
+        next_cycles.setdefault(str(c.get("exam_id")), c)
+
+    out = []
+    for r in rows:
+        locked_count = locked_counts.get(str(r["id"]), 0)
+        # Fail closed on a coverage read failure: an exam is only planner-ready
+        # when we actually READ locked coverage for it. Reporting ready=True off
+        # a failed read would send a user into a planner with no syllabus.
+        ready = bool(r.get("is_active")) and coverage_ok and locked_count > 0
         row = {
             **r,
             "locked_coverage_count": locked_count,
-            "next_cycle": cycle[0] if cycle else None,
+            "next_cycle": next_cycles.get(str(r["id"])),
             "planner_ready": ready,
         }
         if planner_ready is None or row["planner_ready"] == planner_ready:
             out.append(row)
-    return {"items": out}
+    return {"items": out, "coverage_read_failed": not coverage_ok}
 
 
 @router.get("/target-exam")

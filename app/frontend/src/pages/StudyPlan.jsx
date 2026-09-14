@@ -76,6 +76,27 @@ const SWITCH_NOTICES = {
   no_target_exam: "Exam updated. Pick an exam to get a plan.",
 };
 
+// `mock_trend` is a list of `{id, name, percentage}` rows from
+// weekly_review._mock_trend_history — never strings. Joining it printed
+// "[object Object] · [object Object]" into the Truth Panel. Read the one field
+// that means something to an aspirant, and say "No mocks yet" when nothing in
+// the list carries a usable score rather than rendering the gap.
+export function mockTrendLabel(trend) {
+  const scores = (Array.isArray(trend) ? trend : [])
+    .map((m) => (typeof m === "number" ? m : m && m.percentage))
+    .filter((v) => typeof v === "number" && Number.isFinite(v));
+  return scores.length ? scores.map((v) => `${v}%`).join(" · ") : "No mocks yet";
+}
+
+// "Day N · theme" only when the server knows N. `study_plans.start_date`
+// supplies it; a plan without a parseable start date has no day number, and the
+// heading drops the segment rather than printing the absence.
+export function planHeading(plan) {
+  if (!plan) return "Your week, with every change traced.";
+  const theme = plan.theme || "Active plan";
+  return Number.isFinite(plan.day) && plan.day > 0 ? `Day ${plan.day} · ${theme}` : theme;
+}
+
 function switchNoticeFor(reason) {
   return (
     SWITCH_NOTICES[reason] ||
@@ -165,7 +186,12 @@ export default function StudyPlan() {
       })
       .catch((e) => {
         if (process.env.NODE_ENV !== "production") console.error(e);
-        setExamsError("Couldn't load exams — try again in a moment.");
+        // The endpoint fails as a whole or not at all, so "try again in a
+        // moment" was advice that could not work. Say what is true and give the
+        // one action that helps.
+        setExamsError(
+          "Exams aren't loading. Reload the page — if it keeps failing, your saved exam still drives your plan.",
+        );
       })
       .finally(() => setExamsLoading(false));
     // Hydrate the picker from the user's stored target so the "Choose your
@@ -704,11 +730,7 @@ export default function StudyPlan() {
 
       <PageHeader
         eyebrow="Study Plan · timeline &amp; adaptation"
-        title={
-          plan.plan
-            ? `Day ${plan.plan?.day} · ${plan.plan?.theme || "Active plan"}`
-            : "Your week, with every change traced."
-        }
+        title={planHeading(plan.plan)}
         sub={
           plan.plan
             ? "Plan telemetry is synced from your latest saved schedule. The plan only mutates after you preview and approve."
@@ -765,16 +787,6 @@ export default function StudyPlan() {
                     Update starting point
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={previewRegenerate}
-                  disabled={!planControlsReady}
-                  data-testid="suggest-changes-btn"
-                  title="Show planner-suggested changes for review"
-                >
-                  Suggest changes
-                </button>
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -870,7 +882,7 @@ export default function StudyPlan() {
               },
               {
                 t: "Mock score trend",
-                v: review?.mock_trend?.length ? review.mock_trend.join(" · ") : "No mocks yet",
+                v: mockTrendLabel(review?.mock_trend),
                 good: (review?.mocks_taken || 0) > 0,
               },
               {
