@@ -626,3 +626,50 @@ def test_pyq_practice_launch_columns_persist_on_study_tasks():
         assert t["launch_context"]["mode"] == "topic"
         assert t["launch_context"]["target_id"] == t["topic_id"]
         assert t["launch_context"]["exam_id"] == "exam-1"
+
+
+def test_locked_coverage_carries_the_predictability_band():
+    """COV-DIM-01: selected AND emitted, so a learner surface can read it.
+    It was written by the derivation and dropped by this loader."""
+    from app.study_os.planner import _load_locked_coverage_checked
+
+    seed = _seed()
+    seed["exam_topic_coverage"][0]["predictability_band"] = "likely"
+    rows, ok = _load_locked_coverage_checked(SBStub(seed), "exam-1")
+
+    assert ok is True
+    by_topic = {r["topic_id"]: r for r in rows}
+    assert by_topic["t1"]["predictability_band"] == "likely"
+    # A row the derivation left unbanded stays unbanded.
+    assert by_topic["t2"]["predictability_band"] is None
+
+
+def test_locked_coverage_select_asks_postgrest_for_the_band():
+    """The stub hands back whole rows whatever the select string says, so the
+    test above would pass against a loader that never asked for the column.
+    PostgREST would not. Pin the column list itself."""
+    from app.study_os.planner import _load_locked_coverage_checked
+
+    seen: list[str] = []
+    sb = SBStub(_seed())
+    real_table = sb.table
+
+    class _Recorder:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def select(self, *args, **kwargs):
+            if args:
+                seen.append(str(args[0]))
+            return self._inner.select(*args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    sb.table = lambda name: (  # type: ignore[method-assign]
+        _Recorder(real_table(name)) if name == "exam_topic_coverage" else real_table(name)
+    )
+    _load_locked_coverage_checked(sb, "exam-1")
+
+    assert seen, "the loader never selected from exam_topic_coverage"
+    assert "predictability_band" in seen[0]

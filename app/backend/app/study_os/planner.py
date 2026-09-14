@@ -335,6 +335,12 @@ def _load_locked_coverage_checked(
                 # why a derived Mains row (max 36.10) could not outrank an
                 # authored Prelims row (min 60.00).
                 "source_basis, "
+                # PRED-01 projects this from the locked snapshot. Unlike
+                # exam_priority_score it is a percentile WITHIN the topic's own
+                # subject-paper, so it already means the same thing for a PSIR
+                # topic and a GS one — the only signal on this row that is
+                # comparable across producers without post-processing.
+                "predictability_band, "
                 "coverage_depth, expected_difficulty, reviewer_status",
                 count="exact",
             )
@@ -430,6 +436,10 @@ def _load_locked_coverage_checked(
                 "section_id": r.get("section_id"),
                 "coverage_priority": _num(r.get("exam_priority_score")),
                 "source_basis": r.get("source_basis"),
+                # NULL is legitimate — a syllabus-only row has no year evidence
+                # behind it, which is exactly what the absent band says. Never
+                # coerce it to a default band.
+                "predictability_band": r.get("predictability_band"),
                 "is_high_yield": bool(r.get("is_high_yield")),
                 "confidence_score": r.get("confidence_score"),
             }

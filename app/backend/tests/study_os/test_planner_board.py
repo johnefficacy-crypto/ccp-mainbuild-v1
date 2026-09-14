@@ -429,3 +429,77 @@ def test_position_beyond_the_day_clamps_to_the_end_rather_than_failing():
     ]
     board.move_task(sb, "u-1", "a", scheduled_date=days[0], position=99)
     assert _ids_on(sb, days[0]) == ["b", "a"]
+
+
+# ── COV-DIM-01: recurrence band on the palette ──────────────────────────
+
+
+def test_candidates_carry_the_predictability_band():
+    """PRED-01's band is percentile-within-subject-paper, so unlike the raw
+    priority beside it, it means the same thing for an optional as for GS.
+    It is the one comparable signal already on the coverage row."""
+    sb = _seed_with_plan()
+    for row, band in (("cov-2", "near_certain"), ("cov-3", "occasional")):
+        next(c for c in sb.db["exam_topic_coverage"] if c["id"] == row)[
+            "predictability_band"
+        ] = band
+
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    assert by_topic["t2"]["predictability_band"] == "near_certain"
+    assert by_topic["t3"]["predictability_band"] == "occasional"
+
+
+def test_candidate_without_year_evidence_carries_no_band():
+    """382 derived rows and all 13 authored ones have no band. An absent band
+    is the honest answer — never a default."""
+    sb = _seed_with_plan()
+    out = board.list_candidates(sb, "u-1")
+
+    assert all(i["predictability_band"] is None for i in out["items"])
+
+
+def test_candidates_carry_the_rows_real_priority_not_zero():
+    """D16: the loader emits `coverage_priority`; this reader asked for
+    `exam_priority_score`, a key that has never existed on those rows, so every
+    candidate scored 0.0 and the sort fell back to alphabetical."""
+    sb = _seed_with_plan()
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    # Seeded scores: t2=80, t3=60, t4=50 (t1 is on the board).
+    assert by_topic["t2"]["exam_priority_score"] == 80.0
+    assert by_topic["t3"]["exam_priority_score"] == 60.0
+    assert by_topic["t4"]["exam_priority_score"] == 50.0
+    assert all(i["exam_priority_score"] > 0 for i in out["items"])
+
+
+def test_candidates_rank_on_standing_within_source_basis():
+    """RANK-SCALE-01: this read is exam-wide, so thirteen authored rows
+    (min 60) must not outrank two thousand derived ones (max 36) on the raw
+    column alone. The derived top row outranks the authored bottom row."""
+    sb = _seed_with_plan()
+    cov = {c["id"]: c for c in sb.db["exam_topic_coverage"]}
+    # t2 is the best of its (derived) kind; t3 the worst of the authored kind.
+    cov["cov-2"].update({"source_basis": "evidence_derived", "exam_priority_score": 30})
+    cov["cov-4"].update({"source_basis": "evidence_derived", "exam_priority_score": 5})
+    cov["cov-3"].update({"source_basis": "official_syllabus", "exam_priority_score": 60})
+
+    out = board.list_candidates(sb, "u-1")
+    order = [i["topic_id"] for i in out["items"]]
+
+    # Raw order would be t3 (60), t2 (30), t4 (5). Standing puts the best
+    # derived row level with the only authored one, and t4 stays last.
+    assert order.index("t2") < order.index("t4")
+    assert out["items"][0]["comparable_priority"] >= out["items"][-1][
+        "comparable_priority"
+    ]
+    # The raw column is untouched beside it (t1 keeps its seeded 88 — nothing
+    # is on the board in this fixture, so every locked topic is a candidate).
+    assert {i["topic_id"]: i["exam_priority_score"] for i in out["items"]} == {
+        "t1": 88.0,
+        "t2": 30.0,
+        "t3": 60.0,
+        "t4": 5.0,
+    }
