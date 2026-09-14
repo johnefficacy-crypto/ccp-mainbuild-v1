@@ -453,8 +453,103 @@ def _load_locked_coverage_checked(
     return out, reads_ok
 
 
+def _exam_phase_rows(
+    supabase: Any, exam_id: str
+) -> tuple[list[dict[str, Any]], bool]:
+    """``exam_phases`` for this exam, with the cycle each one hangs off.
+
+    Two consumers need this one read: elective scoping (which phases own the
+    sections) and COV-PHASE-01's canonical filter (which phase a coverage row
+    belongs to a plannable cycle through). Read once, passed to both.
+    """
+    return _paginate_all(
+        lambda from_n, to_n: (
+            supabase.table("exam_phases")
+            .select("id, exam_cycle_id", count="exact")
+            .eq("exam_id", exam_id)
+            .order("id")
+            .range(from_n, to_n)
+            .execute()
+            .data
+        ),
+        op=f"exam_phases(exam={exam_id})",
+    )
+
+
+def _canonical_coverage_rows(
+    rows: list[dict[str, Any]], phase_rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """One coverage row per topic — COV-PHASE-01's canonicity rule.
+
+    ``exam_topic_coverage`` is unique on ``(exam, cycle, phase, topic)``
+    (migration 030), so one topic may legally hold several locked rows: one per
+    phase, plus an exam-wide row with ``exam_phase_id IS NULL``. Live UPSC CSE
+    holds exactly that — the Mains corpus is duplicated across two phases with
+    the same slug, 1,497 rows on the cycle-less template and 1,317 on the
+    cycle-attached one, identical scores — so every learner read that is
+    exam-wide offered each Mains topic twice.
+
+    **The cycle-attached phase is canonical for coverage.** It is the only one
+    ``exam_target_window`` can ever target, so it is the only one a plan can be
+    built from; a cycle-less template phase holds the canonical *evidence*, not
+    the canonical coverage. Rank, highest first:
+
+    1. a phase attached to a cycle — plannable, therefore canonical;
+    2. no phase at all (``exam_phase_id IS NULL``) — exam-wide, so it applies
+       to whichever phase is targeted;
+    3. a phase with no cycle — a template, untargetable.
+
+    Ties break on ``coverage_id`` so the choice is deterministic across reads
+    rather than dependent on page order.
+
+    A topic whose ONLY row sits on a template phase keeps that row. Dropping it
+    would hide a topic that is genuinely in the user's syllabus; the duplicate
+    is the defect, not the topic. Such rows are still excluded from a generated
+    plan by ``_compute_plan``'s own phase filter until the coverage is
+    reproduced on the cycle phase.
+
+    Pure: takes the phases already read, never reads.
+    """
+    cycle_attached = {
+        str(p["id"]) for p in phase_rows if p.get("id") and p.get("exam_cycle_id")
+    }
+
+    def rank(row: dict[str, Any]) -> int:
+        phase = row.get("exam_phase_id")
+        if not phase:
+            return 1
+        return 2 if str(phase) in cycle_attached else 0
+
+    # Index-keyed, not value-keyed: two rows can share a topic AND a blank
+    # coverage_id (a caller that built rows by hand), and a value key would
+    # keep both of them.
+    winner: dict[str, tuple[int, str, int]] = {}
+    unkeyed: list[int] = []
+    for index, r in enumerate(rows):
+        tid = r.get("topic_id")
+        if not tid:
+            # Nothing to deduplicate against. Keep it rather than drop it.
+            unkeyed.append(index)
+            continue
+        candidate = (rank(r), str(r.get("coverage_id") or ""), index)
+        held = winner.get(str(tid))
+        # Higher rank wins; equal rank falls to the lower coverage_id.
+        if (
+            held is None
+            or candidate[0] > held[0]
+            or (candidate[0] == held[0] and candidate[1] < held[1])
+        ):
+            winner[str(tid)] = candidate
+
+    keep = {index for _, _, index in winner.values()} | set(unkeyed)
+    return [r for index, r in enumerate(rows) if index in keep]
+
+
 def _in_scope_section_ids(
-    supabase: Any, user_id: str | None, exam_id: str
+    supabase: Any,
+    user_id: str | None,
+    exam_id: str,
+    phase_rows: list[dict[str, Any]] | None = None,
 ) -> set[str] | None:
     """Section ids this user studies, or ``None`` meaning "no scoping applies".
 
@@ -469,22 +564,9 @@ def _in_scope_section_ids(
     # exam_phase_sections keys on exam_phase_id, not exam_id, so scope through
     # this exam's phases. Without that the read would classify sections from
     # every other exam and one unrelated elective would switch scoping on here.
-    phase_ids = [
-        str(p["id"])
-        for p in _paginate_all(
-            lambda from_n, to_n: (
-                supabase.table("exam_phases")
-                .select("id", count="exact")
-                .eq("exam_id", exam_id)
-                .order("id")
-                .range(from_n, to_n)
-                .execute()
-                .data
-            ),
-            op=f"exam_phases(exam={exam_id})",
-        )[0]
-        if p.get("id")
-    ]
+    if phase_rows is None:
+        phase_rows = _exam_phase_rows(supabase, exam_id)[0]
+    phase_ids = [str(p["id"]) for p in phase_rows if p.get("id")]
     if not phase_ids:
         return None
 
@@ -599,16 +681,27 @@ def load_scoped_coverage_checked(
     coverage, reads_ok = _load_locked_coverage_checked(supabase, exam_id)
     if not coverage:
         return coverage, reads_ok
-    scope = _in_scope_section_ids(supabase, user_id, exam_id)
-    if scope is None:
-        return coverage, reads_ok
-    # A coverage row with no section_id cannot be attributed to a compulsory or
-    # elective section, so it is kept: unclassified content stays visible rather
-    # than vanishing from a learner's plan without explanation.
-    return [
-        c for c in coverage
-        if not c.get("section_id") or str(c["section_id"]) in scope
-    ], reads_ok
+    phase_rows, phases_ok = _exam_phase_rows(supabase, exam_id)
+    scope = _in_scope_section_ids(
+        supabase, user_id, exam_id, phase_rows=phase_rows
+    )
+    if scope is not None:
+        # A coverage row with no section_id cannot be attributed to a compulsory
+        # or elective section, so it is kept: unclassified content stays visible
+        # rather than vanishing from a learner's plan without explanation.
+        coverage = [
+            c for c in coverage
+            if not c.get("section_id") or str(c["section_id"]) in scope
+        ]
+    if not phases_ok:
+        # A partial phase list would rank a cycle-attached phase as a template
+        # and keep the wrong row of a duplicated pair. Leave the duplicates —
+        # visibly wrong beats silently wrong — and say the read was unhealthy.
+        return coverage, False
+    # COV-PHASE-01. Deliberately NOT re-running attach_comparable_priority:
+    # the percentile is a standing within the exam-wide set by design, and the
+    # rows removed here are exact-score duplicates, so no order changes.
+    return _canonical_coverage_rows(coverage, phase_rows), reads_ok
 
 
 def _load_prerequisites(

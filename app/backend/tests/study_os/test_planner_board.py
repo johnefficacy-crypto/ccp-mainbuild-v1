@@ -621,7 +621,12 @@ def test_palette_reads_do_not_scale_with_topic_count():
     sb.table = _counting_table  # type: ignore[method-assign]
     out = board.list_candidates(sb, "u-1")
 
-    assert len(out["items"]) >= 5
+    # Four topics, four items. The seed carries TWO coverage rows for t4
+    # (cov-4 and cov-6) and this assertion used to read `>= 5`, counting that
+    # duplicate as a candidate — the same defect COV-PHASE-01 fixes live, where
+    # 1,317 Mains topics each held a second row on a template phase.
+    assert len(out["items"]) == 4
+    assert len({i["topic_id"] for i in out["items"]}) == 4
     # `topics` is read twice in total: once by the coverage loader for the
     # rows themselves, once here for parent names the loader could not carry.
     assert reads["topics"] == 2
