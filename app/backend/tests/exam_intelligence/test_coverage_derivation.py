@@ -832,3 +832,170 @@ def test_stale_reconcile_does_not_flag_topics_still_in_current_input_set():
     result = derive_topic_coverage(sb, "exam-1")
     assert result["stale_reconciled"] == 0
     assert "stale" not in sb.db["exam_topic_coverage"][0].get("metadata", {})
+
+
+# ── COV-SECT-01 §5.3 section attribution ────────────────────────────────────
+#
+# `exam_topic_coverage.section_id` is the only carrier from a coverage row to
+# an `exam_phase_sections` row, and migration 287's elective rule is expressed
+# per section. A derived row without one cannot be scoped: `planner.py` keeps
+# NULL as unclassified, so an unchosen optional reaches every learner surface.
+
+_PHASE = "phase-mains"
+
+
+def _sb_with_sections(*, sections, topics, snapshots=None, phase=_PHASE):
+    """Seed snapshots on *phase* plus a section/topic taxonomy around them."""
+    return SBStub(
+        {
+            "exam_topic_score_snapshots": snapshots
+            or [_snapshot_row(id=f"snap-{t['id']}", topic_id=t["id"], exam_phase_id=phase)
+                for t in topics],
+            "exam_phases": [{"id": phase, "exam_id": "exam-1"}],
+            "exam_phase_sections": sections,
+            "topics": topics,
+        }
+    )
+
+
+def test_topic_whose_subject_owns_one_section_records_that_section():
+    """The defect case. Seventeen Mains subjects each own exactly one section
+    on the target phase, so topic -> subject -> section is a function there and
+    the derivation can record it without guessing."""
+    sb = _sb_with_sections(
+        sections=[
+            {"id": "sec-psir1", "exam_phase_id": _PHASE, "subject_id": "sub-psir1",
+             "section_label": "Optional: PSIR Paper-1"},
+            {"id": "sec-gs4", "exam_phase_id": _PHASE, "subject_id": "sub-gs4",
+             "section_label": "General Studies IV (Ethics)"},
+        ],
+        topics=[
+            {"id": "t1", "subject_id": "sub-psir1"},
+            {"id": "t2", "subject_id": "sub-gs4"},
+        ],
+    )
+
+    result = derive_topic_coverage(sb, "exam-1", exam_phase_id=_PHASE)
+
+    assert result["written"] == 2
+    by_topic = {r["topic_id"]: r for r in sb.db["exam_topic_coverage"]}
+    # The id itself, not merely non-NULL.
+    assert by_topic["t1"]["section_id"] == "sec-psir1"
+    assert by_topic["t2"]["section_id"] == "sec-gs4"
+
+
+def test_subject_with_two_sections_writes_null_and_still_produces_the_row(caplog):
+    """`exam_phase_sections` is unique on (phase, subject, LABEL), so a subject
+    may own several. Nothing on a coverage row picks one — Prelims hits this."""
+    sb = _sb_with_sections(
+        sections=[
+            {"id": "sec-a", "exam_phase_id": _PHASE, "subject_id": "sub-gs",
+             "section_label": "General Studies Paper I"},
+            {"id": "sec-b", "exam_phase_id": _PHASE, "subject_id": "sub-gs",
+             "section_label": "General Studies Paper I"},
+        ],
+        topics=[{"id": "t1", "subject_id": "sub-gs"}, {"id": "t2", "subject_id": "sub-gs"}],
+    )
+
+    with caplog.at_level("WARNING", logger="career_copilot.exam_intelligence.coverage_derivation"):
+        result = derive_topic_coverage(sb, "exam-1", exam_phase_id=_PHASE)
+
+    assert result["written"] == 2
+    rows = sb.db["exam_topic_coverage"]
+    assert len(rows) == 2
+    assert all(r["section_id"] is None for r in rows)
+    # Logged once per SUBJECT, not once per row.
+    ambiguous = [r for r in caplog.records if "cannot be attributed" in r.getMessage()]
+    assert len(ambiguous) == 1
+    assert "sub-gs" in ambiguous[0].getMessage()
+
+
+def test_subject_with_no_section_on_the_phase_writes_null_and_still_produces_the_row():
+    sb = _sb_with_sections(
+        sections=[
+            {"id": "sec-other", "exam_phase_id": _PHASE, "subject_id": "sub-other",
+             "section_label": "Something else"},
+        ],
+        topics=[{"id": "t1", "subject_id": "sub-unsectioned"}],
+    )
+
+    result = derive_topic_coverage(sb, "exam-1", exam_phase_id=_PHASE)
+
+    assert result["written"] == 1
+    assert sb.db["exam_topic_coverage"][0]["section_id"] is None
+
+
+def test_exam_wide_derivation_writes_no_section():
+    """With no exam_phase_id there is no phase whose sections to resolve
+    against, and the trigger's section-belongs-to-phase check has nothing to
+    compare (242_exam_streams_schema.sql:391-394)."""
+    sb = _sb_with_sections(
+        sections=[
+            {"id": "sec-psir1", "exam_phase_id": _PHASE, "subject_id": "sub-psir1",
+             "section_label": "Optional: PSIR Paper-1"},
+        ],
+        topics=[{"id": "t1", "subject_id": "sub-psir1"}],
+        snapshots=[_snapshot_row(id="snap-t1", topic_id="t1", exam_phase_id=None)],
+    )
+
+    result = derive_topic_coverage(sb, "exam-1")
+
+    assert result["written"] == 1
+    assert sb.db["exam_topic_coverage"][0]["section_id"] is None
+
+
+def test_sections_are_read_once_per_run_not_once_per_row():
+    """A 1,497-row run must not issue 1,497 section reads."""
+    topics = [{"id": f"t{i}", "subject_id": "sub-psir1"} for i in range(12)]
+    sb = _sb_with_sections(
+        sections=[
+            {"id": "sec-psir1", "exam_phase_id": _PHASE, "subject_id": "sub-psir1",
+             "section_label": "Optional: PSIR Paper-1"},
+        ],
+        topics=topics,
+    )
+
+    reads = {"exam_phase_sections": 0, "topics": 0}
+    real_table = sb.table
+
+    def _counting_table(name):
+        if name in reads:
+            reads[name] += 1
+        return real_table(name)
+
+    sb.table = _counting_table  # type: ignore[method-assign]
+    result = derive_topic_coverage(sb, "exam-1", exam_phase_id=_PHASE)
+
+    assert result["written"] == 12
+    assert all(r["section_id"] == "sec-psir1" for r in sb.db["exam_topic_coverage"])
+    # One section read for the phase, one chunked topics read — 12 rows, not 12 reads.
+    assert reads["exam_phase_sections"] == 1
+    assert reads["topics"] == 1
+
+
+def test_section_read_failure_fails_closed_rather_than_writing_null():
+    """Writing NULL on a failed read would silently undo the operator backfill
+    and report a successful run."""
+
+    class _FailingSections(SBStub):
+        def table(self, name):
+            if name == "exam_phase_sections":
+                raise RuntimeError("connection refused")
+            return super().table(name)
+
+    sb = _FailingSections(
+        {
+            "exam_topic_score_snapshots": [
+                _snapshot_row(id="snap-t1", topic_id="t1", exam_phase_id=_PHASE)
+            ],
+            "exam_phases": [{"id": _PHASE, "exam_id": "exam-1"}],
+            "exam_phase_sections": [],
+            "topics": [{"id": "t1", "subject_id": "sub-psir1"}],
+        }
+    )
+
+    result = derive_topic_coverage(sb, "exam-1", exam_phase_id=_PHASE)
+
+    assert result["read_error"] is True
+    assert result["written"] == 0
+    assert sb.db["exam_topic_coverage"] == []

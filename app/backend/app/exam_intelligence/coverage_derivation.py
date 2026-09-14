@@ -383,6 +383,156 @@ def _existing_coverage_rows(
     return rows
 
 
+def _sections_by_subject(
+    sb: Any, exam_phase_id: str
+) -> dict[str, list[str]] | None:
+    """``{subject_id: [section_id, …]}`` for one phase. ``None`` on read failure.
+
+    One read per derivation run, indexed in memory — never per row. The list is
+    deliberately not collapsed to a single id here: the caller needs the COUNT
+    to tell "exactly one section" from "two, so unresolvable" (§5.3 below).
+    """
+
+    def _page(from_n: int, to_n: int) -> Any:
+        return (
+            sb.table("exam_phase_sections")
+            .select("id, subject_id, section_label", count="exact")
+            .eq("exam_phase_id", exam_phase_id)
+            .order("id")
+            .range(from_n, to_n)
+            .execute()
+        )
+
+    rows = _paginate(
+        _page, table="exam_phase_sections", operation="select_by_phase"
+    )
+    if rows is None:
+        return None
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        sid = r.get("subject_id")
+        rid = r.get("id")
+        if sid and rid:
+            out.setdefault(str(sid), []).append(str(rid))
+    return out
+
+
+def _subject_by_topic(sb: Any, topic_ids: list[str]) -> dict[str, str] | None:
+    """``{topic_id: subject_id}`` for the run's topics. ``None`` on read failure.
+
+    The derivation's topic universe comes from snapshots + syllabus mentions,
+    both keyed by ``topic_id``; this module never read ``topics`` before, so a
+    coverage row's subject — which is what a section keys on — was not in hand.
+    Chunked by ``_BATCH`` like every other ``.in_()`` read here, once per run.
+    """
+    if not topic_ids:
+        return {}
+    out: dict[str, str] = {}
+    for chunk in [topic_ids[i : i + _BATCH] for i in range(0, len(topic_ids), _BATCH)]:
+
+        def _page(from_n: int, to_n: int, c: list[str] = chunk) -> Any:
+            return (
+                sb.table("topics")
+                .select("id, subject_id", count="exact")
+                .in_("id", c)
+                .order("id")
+                .range(from_n, to_n)
+                .execute()
+            )
+
+        rows = _paginate(_page, table="topics", operation="select_subject")
+        if rows is None:
+            return None
+        for r in rows:
+            tid = r.get("id")
+            sid = r.get("subject_id")
+            if tid and sid:
+                out[str(tid)] = str(sid)
+    return out
+
+
+def _resolve_section_ids(
+    sb: Any, exam_phase_id: str | None, topic_ids: list[str]
+) -> dict[str, str] | None:
+    """``{topic_id: section_id}`` for topics that resolve to EXACTLY one section.
+
+    §5.3 section attribution. ``exam_topic_coverage.section_id`` is the only
+    carrier from a coverage row to an ``exam_phase_sections`` row, and the
+    elective rule in migration 287 is expressed per section — so a row without
+    one cannot be scoped, and ``planner.py`` keeps it as unclassified.
+
+    Resolution is ``topic → subject → section``, and it is a function only where
+    the subject owns exactly one section on the target phase.
+    ``exam_phase_sections`` is unique on ``(exam_phase_id, subject_id,
+    section_label)`` (migration 030), so a subject may legitimately own several
+    — a paper split into Section A and B. A topic under such a subject carries
+    no information that picks one, so it gets **no section**: NULL reads as
+    "unclassified, keep" downstream, while a guessed id would silently attribute
+    a topic to half a paper and, where only one of the two sections is marked
+    elective, decide a learner's scope by coin-flip.
+
+    Exam-wide derivation resolves nothing: with no ``exam_phase_id`` there is no
+    phase whose sections to resolve against, and the DB trigger's
+    section-belongs-to-phase check has nothing to compare (242_exam_streams_
+    schema.sql:391-394).
+
+    Returns ``None`` on a read failure — fail closed, like every other read in
+    this module. Writing NULL on a failed read would silently undo an operator
+    backfill and look like a successful run.
+    """
+    if not exam_phase_id or not topic_ids:
+        return {}
+
+    by_subject = _sections_by_subject(sb, exam_phase_id)
+    if by_subject is None:
+        return None
+    if not by_subject:
+        logger.info(
+            "coverage_derivation: phase %s declares no sections; every row "
+            "keeps section_id NULL",
+            exam_phase_id,
+        )
+        return {}
+
+    subject_by_topic = _subject_by_topic(sb, topic_ids)
+    if subject_by_topic is None:
+        return None
+
+    # Logged once per subject, never per row: a 1,497-row run over twelve
+    # ambiguous subjects would otherwise emit 1,497 identical warnings.
+    for subject_id, section_ids in sorted(by_subject.items()):
+        if len(section_ids) > 1:
+            logger.warning(
+                "coverage_derivation: subject %s has %d sections on phase %s "
+                "(%s) — its topics cannot be attributed to one, so they keep "
+                "section_id NULL",
+                subject_id,
+                len(section_ids),
+                exam_phase_id,
+                ", ".join(sorted(section_ids)),
+            )
+
+    out: dict[str, str] = {}
+    unmapped_subjects: set[str] = set()
+    for tid in topic_ids:
+        subject_id = subject_by_topic.get(tid)
+        if not subject_id:
+            continue
+        section_ids = by_subject.get(subject_id) or []
+        if len(section_ids) == 1:
+            out[tid] = section_ids[0]
+        elif not section_ids:
+            unmapped_subjects.add(subject_id)
+    for subject_id in sorted(unmapped_subjects):
+        logger.info(
+            "coverage_derivation: subject %s has no section on phase %s; its "
+            "topics keep section_id NULL",
+            subject_id,
+            exam_phase_id,
+        )
+    return out
+
+
 def _proposed_row(
     exam_id: str,
     exam_phase_id: str | None,
@@ -390,6 +540,7 @@ def _proposed_row(
     snapshot: dict[str, Any] | None,
     syllabus_mentions: int,
     fingerprint: str,
+    section_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Build the proposed derived-coverage payload for one topic.
 
@@ -422,6 +573,11 @@ def _proposed_row(
         "exam_id": exam_id,
         "exam_cycle_id": None,
         "exam_phase_id": exam_phase_id,
+        # §5.3: the section this topic's subject resolves to on THIS phase, or
+        # NULL when the mapping is not a function (see _resolve_section_ids).
+        # Sourced from the target phase, so the trigger's
+        # section-belongs-to-coverage-phase check is satisfied by construction.
+        "section_id": section_id,
         "topic_id": topic_id,
         "exam_priority_score": (snapshot or {}).get("exam_priority_score") or 0,
         "is_high_yield": is_high_yield,
@@ -716,6 +872,11 @@ def derive_topic_coverage(
         r["topic_id"]: r for r in existing_rows if r.get("topic_id")
     }
 
+    # ── 4b. Section attribution (§5.3) — two reads for the whole run ──────
+    section_by_topic = _resolve_section_ids(sb, exam_phase_id, topic_ids)
+    if section_by_topic is None:
+        return {**zero, "read_error": True}
+
     written = updated = skipped = triaged = no_row = errors = 0
     deltas: list[dict[str, Any]] = []
     triage: list[dict[str, Any]] = []
@@ -731,7 +892,15 @@ def derive_topic_coverage(
             snapshot_id, snapshot_fingerprint, syllabus_mentions, DERIVATION_VERSION
         )
 
-        proposed = _proposed_row(exam_id, exam_phase_id, tid, snapshot, syllabus_mentions, fingerprint)
+        proposed = _proposed_row(
+            exam_id,
+            exam_phase_id,
+            tid,
+            snapshot,
+            syllabus_mentions,
+            fingerprint,
+            section_by_topic.get(tid),
+        )
         if proposed is None:
             no_row += 1
             continue
