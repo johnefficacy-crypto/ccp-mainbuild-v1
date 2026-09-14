@@ -2,9 +2,10 @@ import React, { useEffect, useState, Suspense } from "react";
 import { Sparkles, ArrowRight, ChevronRight } from "lucide-react";
 import { api } from "../lib/api";
 import { Card, Drawer, Eyebrow, PageHeader, Pill, SectionHeader, StatusDot, Tabs } from "../shared/ui/studyos";
-import PlanChangeLogCard from "../features/study/components/PlanChangeLogCard";
 import PlanByTopic from "../features/study/components/PlanByTopic";
-import ExamCycleTimeline from "../features/study/components/ExamCycleTimeline";
+import CycleCountdown from "../features/study/components/CycleCountdown";
+import WeekTruth, { mockTrendLabel } from "../features/study/components/WeekTruth";
+import PlanRiskNotes from "../features/study/components/PlanRiskNotes";
 import useApiAction from "../lib/hooks/useApiAction";
 import HowItWorksHeaderButton from "../shared/components/HowItWorksHeaderButton";
 import useCalibrationPriors from "../features/study/hooks/useCalibrationPriors";
@@ -76,17 +77,9 @@ const SWITCH_NOTICES = {
   no_target_exam: "Exam updated. Pick an exam to get a plan.",
 };
 
-// `mock_trend` is a list of `{id, name, percentage}` rows from
-// weekly_review._mock_trend_history — never strings. Joining it printed
-// "[object Object] · [object Object]" into the Truth Panel. Read the one field
-// that means something to an aspirant, and say "No mocks yet" when nothing in
-// the list carries a usable score rather than rendering the gap.
-export function mockTrendLabel(trend) {
-  const scores = (Array.isArray(trend) ? trend : [])
-    .map((m) => (typeof m === "number" ? m : m && m.percentage))
-    .filter((v) => typeof v === "number" && Number.isFinite(v));
-  return scores.length ? scores.map((v) => `${v}%`).join(" · ") : "No mocks yet";
-}
+// `mockTrendLabel` now lives beside the panel that renders it (WeekTruth), and
+// is re-exported here because it was this module's export first.
+export { mockTrendLabel };
 
 // "Day N · theme" only when the server knows N. `study_plans.start_date`
 // supplies it; a plan without a parseable start date has no day number, and the
@@ -95,6 +88,16 @@ export function planHeading(plan) {
   if (!plan) return "Your week, with every change traced.";
   const theme = plan.theme || "Active plan";
   return Number.isFinite(plan.day) && plan.day > 0 ? `Day ${plan.day} · ${theme}` : theme;
+}
+
+/** "2h 30m" / "45m" — plain time, never a decimal of an hour. */
+function formatMinutes(total) {
+  const mins = Math.max(0, Math.round(Number(total) || 0));
+  if (!mins) return "";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (!h) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
 }
 
 function switchNoticeFor(reason) {
@@ -108,6 +111,10 @@ export default function StudyPlan() {
   const [plan, setPlan] = useState({ tasks: [], plan: null });
   const [focus, setFocus] = useState({ total_hours_7d: 0, week: [] });
   const [review, setReview] = useState(null);
+  // One read of the cycle for the whole page: the countdown line and the
+  // dates behind it come from the same payload, and so do the risk notes.
+  const [timeline, setTimeline] = useState(null);
+  const [subjectsOpen, setSubjectsOpen] = useState(false);
   const [err, setErr] = useState("");
   const [draft, setDraft] = useState(null);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -176,6 +183,10 @@ export default function StudyPlan() {
       .get("/api/study/weekly-review")
       .then((d) => setReview(d || null))
       .catch(() => setReview(null));
+    api
+      .get("/api/study/plan/timeline")
+      .then((d) => setTimeline(d || null))
+      .catch(() => setTimeline(null));
     setExamsLoading(true);
     setExamsError("");
     api
@@ -479,13 +490,13 @@ export default function StudyPlan() {
     if (Number.isFinite(weekly) && weekly > 0) return Math.round((weekly / 7) * 10) / 10;
     return 7;
   })();
-  const hasReview =
-    review &&
-    ((review.hours_studied || 0) > 0 ||
-      (review.planned_tasks || 0) > 0 ||
-      (review.mocks_taken || 0) > 0 ||
-      (review.corrections || []).length > 0);
   const done = tasks.filter((t) => t.done || t.status === "completed").length;
+  // Total planned time for today, straight from the blocks. Shown beside the
+  // count because "6 blocks" says nothing about whether the day fits.
+  const plannedMinutes = tasks.reduce(
+    (sum, t) => sum + Number(t.planned_minutes || t.duration_mins || 0),
+    0,
+  );
   const selectedExam = examItems.find((e) => e.id === selectedExamId);
 
   // Selector drawer lists: planner-ready exams first, not-ready exams collapsed
@@ -729,11 +740,11 @@ export default function StudyPlan() {
       )}
 
       <PageHeader
-        eyebrow="Study Plan · timeline &amp; adaptation"
+        eyebrow="Your study plan"
         title={planHeading(plan.plan)}
         sub={
           plan.plan
-            ? "Plan telemetry is synced from your latest saved schedule. The plan only mutates after you preview and approve."
+            ? "Nothing changes until you preview and approve it."
             : "Create or regenerate a study plan to start tracking progress."
         }
         right={
@@ -802,20 +813,67 @@ export default function StudyPlan() {
         }
       />
 
-      {/* Exam cycle timeline — full-cycle planned vs actual */}
-      <ExamCycleTimeline />
+      {/* 1. How long is left. One line; the dates expand in place. */}
+      <CycleCountdown timeline={timeline} />
 
-      {/* Week timeline */}
+      {/* 2. Today. The page's subject, and the first substantive thing on it. */}
+      <Card padded={false} data-testid="today-section">
+        <div className="px-7 pt-6 pb-3 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="font-heading text-[22px] leading-tight">
+              {tasks.length} {tasks.length === 1 ? "block" : "blocks"} today
+              {plannedMinutes ? (
+                <span className="text-clay-700 text-base"> · {formatMinutes(plannedMinutes)}</span>
+              ) : null}
+            </h2>
+            <button type="button" className="text-[12px] mt-1 link-under text-clay-700" onClick={carryForward}>
+              Bring forward what you missed
+            </button>
+          </div>
+          <div className="num-mono text-[11.5px] text-clay-700">
+            {done}/{tasks.length} done
+          </div>
+        </div>
+        <div className="hairline mx-7" />
+        <div className="px-7 pb-6 pt-2">
+          {tasks.length ? (
+            tasks.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                onToggle={() => toggle(t)}
+                onSetStatus={(status) => updateStatus(t, status)}
+              />
+            ))
+          ) : (
+            <p className="py-6 text-sm text-clay-700">
+              Nothing is scheduled for today yet. Regenerate your plan, or arrange
+              the week yourself.
+            </p>
+          )}
+          <button
+            type="button"
+            className="mt-3 btn btn-secondary"
+            onClick={() => setTab("arrange")}
+            data-testid="go-arrange-btn"
+          >
+            Arrange your week
+          </button>
+        </div>
+      </Card>
+
+      {/* 3. What you actually studied, beside what was planned. */}
       <Card padded={false}>
         <div className="px-7 pt-6 pb-3 flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <Eyebrow>This week · focus hours</Eyebrow>
+            <Eyebrow>This week</Eyebrow>
             <h2 className="font-heading text-[24px] mt-1">
               {review?.hours_studied || 0}h{" "}
-              <span className="text-clay-700 text-base">/ {review?.hours_planned || 0}h planned</span>
+              <span className="text-clay-700 text-base">
+                studied of {review?.hours_planned || 0}h planned
+              </span>
             </h2>
           </div>
-          <Pill tone="sage">{Math.round((review?.adherence || 0) * 100)}% adherence</Pill>
         </div>
         <div className="hairline mx-7" />
         <div className="px-7 py-5">
@@ -826,99 +884,34 @@ export default function StudyPlan() {
           </div>
           {!hasWeek && (
             <div className="mt-3 text-xs text-clay-700">
-              No focus sessions this week. Start a focus session to build your weekly curve.
+              No focus sessions yet this week. Start one and your hours land here.
             </div>
           )}
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-6 items-start">
-        {/* Today's schedule */}
-        <Card padded={false}>
-          <div className="px-7 pt-6 pb-3 flex items-end justify-between gap-4">
-            <div>
-              <Eyebrow>Today's schedule</Eyebrow>
-              <h2 className="font-heading text-[22px] mt-1 leading-tight">{tasks.length} blocks</h2>
-              <button type="button" className="text-[12px] mt-1 link-under text-clay-700" onClick={carryForward}>
-                Carry forward backlog →
-              </button>
-            </div>
-            <div className="num-mono text-[11.5px] text-clay-700">
-              {done}/{tasks.length} done
-            </div>
-          </div>
-          <div className="hairline mx-7" />
-          <div className="px-7 pb-6 pt-2">
-            {tasks.length ? (
-              tasks.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  onToggle={() => toggle(t)}
-                  onSetStatus={(status) => updateStatus(t, status)}
-                />
-              ))
-            ) : (
-              <p className="py-6 text-sm text-clay-700">
-                No tasks scheduled yet. Use Regenerate plan to populate today's blocks.
-              </p>
-            )}
-          </div>
-        </Card>
+      {/* 4. Real numbers only — absent rows rather than invented ones. */}
+      <WeekTruth review={review} />
 
-        {/* Truth panel */}
-        <Card className="!bg-[#2E2218] !border-[#2E2218]">
-          <SectionHeader
-            eyebrow="Truth panel · week"
-            dark
-            title={hasReview ? `Studied ${review.hours_studied != null ? review.hours_studied : "—"}h this week.` : "No weekly review data yet"}
-          />
-          <ul className="space-y-3 text-sm">
-            {[
-              {
-                t: "Tasks completed",
-                v: `${review?.completed_tasks || 0} / ${review?.planned_tasks || 0}`,
-                good: (review?.task_completion_rate || 0) >= 0.7,
-              },
-              {
-                t: "Mock score trend",
-                v: mockTrendLabel(review?.mock_trend),
-                good: (review?.mocks_taken || 0) > 0,
-              },
-              {
-                t: "Revision backlog",
-                v: review?.backlog_count != null ? `${review.backlog_count} topics` : "No backlog telemetry",
-                good: (review?.backlog_count || 0) <= 3,
-              },
-              {
-                t: "Revision coverage",
-                v:
-                  review?.revision_coverage == null
-                    ? "Not available yet"
-                    : `${Math.round(review.revision_coverage * 100)}%`,
-                good: (review?.revision_coverage || 0) >= 0.7,
-              },
-            ].map((x, i) => (
-              <li
-                key={i}
-                className="flex items-center justify-between pb-3 border-b border-[#6C5038]/40 last:border-0"
-              >
-                <span className="text-[#D6BC93]">{x.t}</span>
-                <span className={`num-mono font-semibold ${x.good ? "text-sage-300" : "text-clay-300"}`}>
-                  {x.v}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 pt-3 border-t border-[#6C5038]/40 text-[12.5px] text-[#D6BC93]">
-            {(review?.corrections || [])[0] || "Complete tasks to generate correction insights."}
-          </div>
-        </Card>
-      </div>
+      {/* 5. Why the plan looks like this. */}
+      <PlanRiskNotes flags={timeline?.risk_flags} />
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-6 items-start">
-        <PlanByTopic />
-        <PlanChangeLogCard />
+      {/* Subject breakdown, for when the week above raises a question. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setSubjectsOpen((v) => !v)}
+          aria-expanded={subjectsOpen}
+          data-testid="subjects-toggle"
+          className="text-[12.5px] link-under text-clay-700"
+        >
+          {subjectsOpen ? "Hide this week by subject" : "See this week by subject"}
+        </button>
+        {subjectsOpen && (
+          <div className="mt-3">
+            <PlanByTopic />
+          </div>
+        )}
       </div>
         </>
       )}
