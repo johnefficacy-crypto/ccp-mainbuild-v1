@@ -240,18 +240,40 @@ def test_card_prefers_the_planners_own_sentence_and_always_has_one():
 # ── palette ─────────────────────────────────────────────────────────────
 
 
-def test_candidates_exclude_topics_already_scheduled_in_the_window():
+def test_candidates_keep_scheduled_topics_and_say_which_day():
+    """PLAN-UI-02 changed this contract deliberately.
+
+    Scheduled topics used to be dropped from the payload, which left a user
+    unable to tell "not in my syllabus" from "already on my board" — the topic
+    simply was not there either way. They are now returned carrying the day
+    they sit on, and the palette dims them instead of hiding them.
+    """
     days = _dates()
     sb = _seed_with_plan()
     sb.db["study_tasks"] = [_task("a", "t1", day=days[4])]
 
     out = board.list_candidates(sb, "u-1")
-    topic_ids = [i["topic_id"] for i in out["items"]]
+    by_topic = {i["topic_id"]: i for i in out["items"]}
 
-    assert "t1" not in topic_ids
-    assert {"t2", "t3", "t4"} <= set(topic_ids)
+    assert by_topic["t1"]["scheduled_date"] == days[4]
+    assert {"t2", "t3", "t4"} <= set(by_topic)
+    assert all(by_topic[t]["scheduled_date"] is None for t in ("t2", "t3", "t4"))
     # draft coverage never reaches a learner surface
-    assert "t5" not in topic_ids
+    assert "t5" not in by_topic
+
+
+def test_candidates_report_the_earliest_day_when_a_topic_sits_on_two():
+    days = _dates()
+    sb = _seed_with_plan()
+    sb.db["study_tasks"] = [
+        _task("late", "t1", day=days[5]),
+        _task("early", "t1", day=days[1]),
+    ]
+
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    assert by_topic["t1"]["scheduled_date"] == days[1]
 
 
 def test_candidates_exclude_muted_topics_and_sort_by_priority():
@@ -503,3 +525,131 @@ def test_candidates_rank_on_standing_within_source_basis():
         "t3": 60.0,
         "t4": 5.0,
     }
+
+
+# ── PLAN-UI-02: what the two-pane palette needs ─────────────────────────
+
+
+def _seed_with_syllabus():
+    """Coverage across two subjects, one of them the user's chosen optional,
+    with a macro topic that carries no coverage row of its own."""
+    sb = _seed_with_plan()
+    sb.db["topics"] = [
+        {"id": "t1", "name": "Percentage", "subject_id": "s1",
+         "parent_topic_id": "macro-1", "level": "microtopic", "is_active": True},
+        {"id": "t2", "name": "Ratio", "subject_id": "s1",
+         "parent_topic_id": "macro-1", "level": "microtopic", "is_active": True},
+        {"id": "t3", "name": "Arithmetic", "subject_id": "s1",
+         "parent_topic_id": None, "level": "topic", "is_active": True},
+        {"id": "t4", "name": "State theory", "subject_id": "s2",
+         "parent_topic_id": "macro-2", "level": "microtopic", "is_active": True},
+        # macro-1 has NO coverage row: purely structural, so its name is only
+        # reachable by the parent-name read.
+        {"id": "macro-1", "name": "Quantitative methods", "subject_id": "s1",
+         "parent_topic_id": None, "level": "topic", "is_active": True},
+        {"id": "macro-2", "name": "Political theory", "subject_id": "s2",
+         "parent_topic_id": None, "level": "topic", "is_active": True},
+    ]
+    sb.db["subjects"] = [
+        {"id": "s1", "name": "Quantitative Aptitude", "slug": "quant"},
+        {"id": "s2", "name": "PSIR Paper-1", "slug": "psir-p1"},
+    ]
+    for row in sb.db["exam_topic_coverage"]:
+        row["section_id"] = "sec-1" if row["topic_id"] in ("t1", "t2", "t3") else "sec-2"
+    sb.db["exam_topic_coverage"].append(
+        {"id": "cov-6", "exam_id": "exam-1", "exam_cycle_id": "cyc-1",
+         "exam_phase_id": "ph1", "topic_id": "t4", "section_id": "sec-2",
+         "exam_priority_score": 40, "is_high_yield": False,
+         "confidence_score": 0.6, "reviewer_status": "locked"}
+    )
+    sb.db["exam_phase_sections"] = [
+        {"id": "sec-1", "exam_phase_id": "ph1", "subject_id": "s1",
+         "selection_kind": "compulsory", "elective_group": None},
+        {"id": "sec-2", "exam_phase_id": "ph1", "subject_id": "s2",
+         "selection_kind": "elective", "elective_group": "optional"},
+    ]
+    return sb
+
+
+def test_candidates_carry_their_syllabus_position():
+    sb = _seed_with_syllabus()
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    # A microtopic names the macro topic it sits under, even though that macro
+    # topic has no coverage row of its own.
+    assert by_topic["t1"]["parent_topic_id"] == "macro-1"
+    assert by_topic["t1"]["parent_topic"] == "Quantitative methods"
+    # A root topic has no parent and files directly under its subject.
+    assert by_topic["t3"]["parent_topic_id"] is None
+    assert by_topic["t3"]["parent_topic"] is None
+
+
+def test_candidates_report_whether_the_subject_is_compulsory_or_elective():
+    """Read from the section (migration 287), never from a subject slug."""
+    sb = _seed_with_syllabus()
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    assert by_topic["t1"]["selection_kind"] == "compulsory"
+    assert by_topic["t4"]["selection_kind"] == "elective"
+
+
+def test_a_row_with_no_section_reads_as_compulsory():
+    """Fail safe: an unclassified subject stays visible rather than hiding
+    under a heading the user never opens."""
+    sb = _seed_with_syllabus()
+    for row in sb.db["exam_topic_coverage"]:
+        row["section_id"] = None
+
+    out = board.list_candidates(sb, "u-1")
+
+    assert {i["selection_kind"] for i in out["items"]} == {"compulsory"}
+
+
+def test_palette_reads_do_not_scale_with_topic_count():
+    """Three indexed reads per request, whatever the syllabus size."""
+    sb = _seed_with_syllabus()
+    reads: dict[str, int] = {"topics": 0, "exam_phase_sections": 0}
+    real_table = sb.table
+
+    def _counting_table(name):
+        if name in reads:
+            reads[name] += 1
+        return real_table(name)
+
+    sb.table = _counting_table  # type: ignore[method-assign]
+    out = board.list_candidates(sb, "u-1")
+
+    assert len(out["items"]) >= 5
+    # `topics` is read twice in total: once by the coverage loader for the
+    # rows themselves, once here for parent names the loader could not carry.
+    assert reads["topics"] == 2
+    assert reads["exam_phase_sections"] == 1
+
+
+def test_parent_name_read_failure_leaves_the_palette_usable():
+    """An unnamed parent groups under its subject — a smaller loss than a
+    failed palette."""
+
+    class _NoTopicNames(SBStub):
+        def __init__(self, db, block_after):
+            super().__init__(db)
+            self._calls = 0
+            self._block_after = block_after
+
+        def table(self, name):
+            if name == "topics":
+                self._calls += 1
+                if self._calls > self._block_after:
+                    raise RuntimeError("connection refused")
+            return super().table(name)
+
+    seeded = _seed_with_syllabus()
+    sb = _NoTopicNames(seeded.db, block_after=1)
+    out = board.list_candidates(sb, "u-1")
+    by_topic = {i["topic_id"]: i for i in out["items"]}
+
+    assert by_topic["t1"]["parent_topic_id"] == "macro-1"
+    assert by_topic["t1"]["parent_topic"] is None
+    assert out["read_error"] is False

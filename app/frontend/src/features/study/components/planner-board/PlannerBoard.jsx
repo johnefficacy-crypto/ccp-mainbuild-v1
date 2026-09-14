@@ -313,7 +313,7 @@ export default function PlannerBoard() {
         applying={applying}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-[1fr_460px] lg:items-start">
         <div className="flex gap-3 overflow-x-auto pb-2">
           {days.map((day) => (
             <DayColumn

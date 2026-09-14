@@ -1,39 +1,80 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 
-/**
- * How regularly a topic has been asked in its own subject-paper (PRED-01).
- * The band is a percentile within that paper, so "Likely" means the same thing
- * for an optional as for General Studies. A topic with no year evidence carries
- * no band and shows none — never a default.
- */
-const RECURRENCE_LABEL = {
-  near_certain: "Near-certain",
-  likely: "Likely",
-  occasional: "Occasional",
-  rare: "Rare",
-};
+import PaletteCard from "./PaletteCard";
+import {
+  buildTree,
+  firstNode,
+  sameNode,
+  searchTopics,
+  topicsForNode,
+} from "./syllabusTree";
 
 /**
- * Topics from the exam's locked coverage that are not on the board.
+ * Two panes: the syllabus on the left, the topics of the selected node on the
+ * right.
  *
- * Every row is draggable AND carries a day picker plus an Add button, so the
- * whole palette is usable without a pointer. The picker is not a fallback for
- * drag — it is the same operation, spelled out.
+ * The flat list this replaces was unusable at 683 in-scope topics — no way to
+ * see which subject you were in, no way to tell a microtopic's place in the
+ * syllabus, and a search box that did nothing. The tree answers "where am I",
+ * the cards answer "what can I add", and search cuts across both because
+ * someone who types a topic name does not know which subject it lives under.
+ *
+ * What is deliberately NOT here: a priority number. The server ranks the cards
+ * by `comparable_priority`, but that is a percentile within a source_basis —
+ * three topics can hold 100 at once — so showing it would invite reading it as
+ * a score out of 100. The order carries it; the number would mislead.
  */
 export default function TopicPalette({ items, days, onAdd, busy, loading, error }) {
   const [query, setQuery] = useState("");
+  const [node, setNode] = useState(null);
   const [dayByTopic, setDayByTopic] = useState({});
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (i) =>
-        (i.topic || "").toLowerCase().includes(q) ||
-        (i.subject || "").toLowerCase().includes(q),
-    );
-  }, [items, query]);
+  const tree = useMemo(() => buildTree(items), [items]);
+  const searching = query.trim().length > 0;
+
+  // Settle on a node once the list arrives, and recover if the selected one
+  // disappears (the user's optional changed, or a topic was placed).
+  useEffect(() => {
+    setNode((current) => {
+      const stillThere =
+        current &&
+        tree.some((g) =>
+          g.subjects.some(
+            (s) =>
+              s.id === current.subjectId &&
+              (!current.macroId || s.macros.some((m) => m.id === current.macroId)),
+          ),
+        );
+      return stillThere ? current : firstNode(tree);
+    });
+  }, [tree]);
+
+  const visible = useMemo(
+    () => (searching ? searchTopics(items, query) : topicsForNode(items, node)),
+    [items, query, searching, node],
+  );
+
+  const selectedSubject = useMemo(() => {
+    for (const group of tree) {
+      const match = group.subjects.find((s) => s.id === node?.subjectId);
+      if (match) return match;
+    }
+    return null;
+  }, [tree, node]);
+
+  const breadcrumb = searching
+    ? `Matching “${query.trim()}” across your syllabus`
+    : [
+        selectedSubject?.name,
+        node?.macroId
+          ? (selectedSubject?.macros.find((m) => m.id === node.macroId) || {}).name
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" › ");
+
+  const chosenFor = (topicId) => dayByTopic[topicId] || days[0]?.date || "";
 
   return (
     <div className="flex flex-col rounded-xl border border-[#E7DECB] bg-white/60 p-4">
@@ -41,8 +82,8 @@ export default function TopicPalette({ items, days, onAdd, busy, loading, error 
         Topics to add
       </h3>
       <p className="mt-1 text-[11.5px] text-clay-700">
-        From your exam&apos;s verified syllabus. Anything already on the board is
-        hidden.
+        Your exam&apos;s verified syllabus. Topics already on the board stay
+        listed, marked with their day.
       </p>
 
       <label htmlFor="palette-search" className="mt-3 block text-[11px] text-clay-700">
@@ -64,74 +105,133 @@ export default function TopicPalette({ items, days, onAdd, busy, loading, error 
         </p>
       )}
 
-      {!loading && !error && filtered.length === 0 && (
-        <p className="mt-4 text-[12px] text-clay-700">
-          {items.length === 0
-            ? "Every verified topic is already on your board."
-            : "No topic matches that search."}
-        </p>
-      )}
-
-      <ul className="mt-3 flex max-h-[480px] flex-col gap-2 overflow-y-auto">
-        {filtered.map((item) => {
-          const selectId = `palette-day-${item.topic_id}`;
-          const chosen = dayByTopic[item.topic_id] || days[0]?.date || "";
-          return (
-            <li
-              key={item.topic_id}
-              data-testid="palette-topic"
-              data-topic-id={item.topic_id}
-              draggable={!busy}
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "copy";
-                e.dataTransfer.setData("text/plain", `topic:${item.topic_id}`);
-              }}
-              className="rounded-lg border border-[#E7DECB] bg-white px-3 py-2"
-            >
-              <p className="text-[12.5px] leading-snug text-[#2E2218]">{item.topic}</p>
-              <p className="num-mono mt-0.5 text-[10.5px] text-clay-700">
-                {item.subject || "Unassigned"} · priority{" "}
-                {Math.round(
-                  item.comparable_priority ?? item.exam_priority_score ?? 0,
-                )}
-                {RECURRENCE_LABEL[item.predictability_band] ? (
-                  <> · recurrence {RECURRENCE_LABEL[item.predictability_band]}</>
-                ) : null}
+      {!loading && !error && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          {/* ── the syllabus ─────────────────────────────────────────── */}
+          <nav
+            aria-label="Syllabus"
+            data-testid="palette-tree"
+            aria-hidden={searching ? "true" : undefined}
+            className={
+              "max-h-[420px] overflow-y-auto pr-1 " + (searching ? "opacity-40" : "")
+            }
+          >
+            {tree.length === 0 && (
+              <p className="text-[12px] text-clay-700">
+                Every verified topic is already on your board.
               </p>
-              <div className="mt-2 flex items-center gap-1.5">
-                <label htmlFor={selectId} className="sr-only">
-                  Day for {item.topic}
-                </label>
-                <select
-                  id={selectId}
-                  value={chosen}
-                  onChange={(e) =>
-                    setDayByTopic((prev) => ({
-                      ...prev,
-                      [item.topic_id]: e.target.value,
-                    }))
-                  }
-                  className="flex-1 rounded border border-[#E7DECB] bg-white px-1.5 py-1 text-[11px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E2218]"
-                >
-                  {days.map((d) => (
-                    <option key={d.date} value={d.date}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={busy || !chosen}
-                  onClick={() => onAdd?.(item, chosen)}
-                  className="rounded border border-[#2E2218] px-2 py-1 text-[11px] font-semibold text-[#2E2218] hover:bg-[#F3EADB] disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E2218]"
-                >
-                  Add
-                </button>
+            )}
+            {tree.map((group) => (
+              <div key={group.kind} className="mb-3 last:mb-0">
+                <p className="text-[11px] text-clay-700">{group.label}</p>
+                <ul className="mt-1">
+                  {group.subjects.map((subject) => {
+                    const on = !searching && sameNode(node, {
+                      subjectId: subject.id,
+                      macroId: null,
+                    });
+                    return (
+                      <li key={subject.id}>
+                        <button
+                          type="button"
+                          data-testid="tree-subject"
+                          aria-current={on ? "true" : undefined}
+                          disabled={searching}
+                          onClick={() =>
+                            setNode({ subjectId: subject.id, macroId: null })
+                          }
+                          className={
+                            "flex w-full items-baseline justify-between gap-2 rounded px-1.5 py-1 text-left text-[12px] hover:bg-[#F3EADB] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E2218] " +
+                            (on ? "bg-[#F3EADB] font-semibold text-[#2E2218]" : "text-[#2E2218]")
+                          }
+                        >
+                          <span className="truncate">{subject.name}</span>
+                          <span className="num-mono shrink-0 text-[10.5px] text-clay-700">
+                            {subject.count}
+                          </span>
+                        </button>
+                        {subject.macros.length > 0 && (
+                          <ul className="ml-2 border-l border-[#E7DECB] pl-1.5">
+                            {subject.macros.map((macro) => {
+                              const macroOn = !searching && sameNode(node, {
+                                subjectId: subject.id,
+                                macroId: macro.id,
+                              });
+                              return (
+                                <li key={macro.id}>
+                                  <button
+                                    type="button"
+                                    data-testid="tree-macro"
+                                    aria-current={macroOn ? "true" : undefined}
+                                    disabled={searching}
+                                    onClick={() =>
+                                      setNode({
+                                        subjectId: subject.id,
+                                        macroId: macro.id,
+                                      })
+                                    }
+                                    className={
+                                      "flex w-full items-baseline justify-between gap-2 rounded px-1.5 py-1 text-left text-[11.5px] hover:bg-[#F3EADB] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E2218] " +
+                                      (macroOn
+                                        ? "bg-[#F3EADB] font-semibold text-[#2E2218]"
+                                        : "text-clay-700")
+                                    }
+                                  >
+                                    <span className="truncate">{macro.name}</span>
+                                    <span className="num-mono shrink-0 text-[10.5px]">
+                                      {macro.count}
+                                    </span>
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            </li>
-          );
-        })}
-      </ul>
+            ))}
+          </nav>
+
+          {/* ── the topics ───────────────────────────────────────────── */}
+          <div className="min-w-0">
+            {breadcrumb && (
+              <p
+                data-testid="palette-breadcrumb"
+                className="truncate text-[11px] text-clay-700"
+              >
+                {breadcrumb}
+              </p>
+            )}
+            {visible.length === 0 ? (
+              <p className="mt-2 text-[12px] text-clay-700">
+                {searching
+                  ? "No topic matches that search."
+                  : "Nothing left to add here."}
+              </p>
+            ) : (
+              <ul className="mt-2 flex max-h-[420px] flex-col gap-2 overflow-y-auto">
+                {visible.map((item) => (
+                  <PaletteCard
+                    key={item.topic_id}
+                    item={item}
+                    days={days}
+                    chosenDay={chosenFor(item.topic_id)}
+                    onDayChange={(topicId, date) =>
+                      setDayByTopic((prev) => ({ ...prev, [topicId]: date }))
+                    }
+                    onAdd={onAdd}
+                    busy={busy}
+                    showPosition={searching}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -142,17 +242,12 @@ TopicPalette.propTypes = {
       topic_id: PropTypes.string.isRequired,
       topic: PropTypes.string,
       subject: PropTypes.string,
-      exam_priority_score: PropTypes.number,
-      // The standing the server ranked by. Equal to exam_priority_score when
-      // the candidate set spans a single source_basis.
-      comparable_priority: PropTypes.number,
-      predictability_band: PropTypes.oneOf([
-        "near_certain",
-        "likely",
-        "occasional",
-        "rare",
-        null,
-      ]),
+      subject_id: PropTypes.string,
+      parent_topic_id: PropTypes.string,
+      parent_topic: PropTypes.string,
+      selection_kind: PropTypes.oneOf(["compulsory", "elective"]),
+      scheduled_date: PropTypes.string,
+      predictability_band: PropTypes.string,
     }),
   ).isRequired,
   days: PropTypes.arrayOf(
