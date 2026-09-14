@@ -53,6 +53,28 @@ export function applyMove(board, taskId, toDate, toIndex) {
   return next;
 }
 
+/**
+ * Does `next` arrange every day exactly as `board` does?
+ *
+ * Used to drop a move that changes nothing before it becomes a request. A
+ * card released on the gap above itself and one released on the gap below
+ * itself both land back where they started, so comparing the resulting
+ * arrangement is the only check that catches both without special-casing
+ * either.
+ */
+export function sameArrangement(board, next) {
+  const left = board?.days || [];
+  const right = next?.days || [];
+  if (left.length !== right.length) return false;
+  return left.every((day, i) => {
+    const other = right[i];
+    if (!other || day.date !== other.date) return false;
+    const a = (day.tasks || []).map((t) => t.id);
+    const b = (other.tasks || []).map((t) => t.id);
+    return a.length === b.length && a.every((id, j) => id === b[j]);
+  });
+}
+
 export function removeTask(board, taskId) {
   const next = cloneBoard(board);
   const found = findTask(next, taskId);

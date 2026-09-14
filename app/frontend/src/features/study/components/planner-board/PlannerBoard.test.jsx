@@ -342,3 +342,123 @@ test("a board read failure says so instead of showing an empty week", async () =
   );
   expect(screen.queryAllByRole("region")).toHaveLength(0);
 });
+
+// ── PLAN-BUG-01: a card must reach another day ──────────────────────────
+//
+// Written red. The board's only drop targets were the 8px transparent gaps
+// between cards, so everything else in a day column — the space below the
+// last card, an empty column's body, the surface of a card — rejected every
+// drop, because a target that does not preventDefault on `dragover` silently
+// refuses. A user dragging a block to another day hit that dead surface
+// almost every time and the card sprang back.
+
+function dayColumn(label) {
+  return screen.getByRole("region", { name: new RegExp(`^${label},`) });
+}
+
+function dropGap(date, index) {
+  return screen
+    .getAllByTestId("board-drop-gap")
+    .find(
+      (g) =>
+        g.getAttribute("data-date") === date &&
+        g.getAttribute("data-index") === String(index),
+    );
+}
+
+const DT = (id) => ({ getData: () => id, dropEffect: "move" });
+
+test("a card dropped on another day's column body lands on that day", async () => {
+  mockPatch.mockResolvedValue(card("b", "Ratios", { user: true, date: "2026-09-15" }));
+  await renderBoard(
+    board({ "2026-09-13": [card("a", "Percentage"), card("b", "Ratios")] }),
+  );
+
+  const target = dayColumn("Tue 15 Sep");
+  fireEvent.dragOver(target, { dataTransfer: DT("b") });
+  fireEvent.drop(target, { dataTransfer: DT("b") });
+
+  await waitFor(() =>
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/study/plan/board/tasks/b/placement",
+      { scheduled_date: "2026-09-15", position: 0 },
+    ),
+  );
+  await waitFor(() => expect(cardIdsInColumn("Tue 15 Sep")).toEqual(["b"]));
+  // And the day it left renumbers contiguously — no hole where it was.
+  expect(cardIdsInColumn("Today")).toEqual(["a"]);
+});
+
+test("a card dropped on a gap in another day lands at that position", async () => {
+  mockPatch.mockResolvedValue(card("c", "Ratios", { user: true, date: "2026-09-14" }));
+  await renderBoard(
+    board({
+      "2026-09-13": [card("a", "Percentage"), card("c", "Ratios")],
+      "2026-09-14": [card("b", "Averages")],
+    }),
+  );
+
+  const gap = dropGap("2026-09-14", 0);
+  fireEvent.drop(gap, { dataTransfer: DT("c") });
+
+  await waitFor(() =>
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/study/plan/board/tasks/c/placement",
+      { scheduled_date: "2026-09-14", position: 0 },
+    ),
+  );
+  await waitFor(() => expect(cardIdsInColumn("Tomorrow")).toEqual(["c", "b"]));
+  expect(cardIdsInColumn("Today")).toEqual(["a"]);
+  // One write, not two: the gap's drop must not also bubble to the column.
+  expect(mockPatch).toHaveBeenCalledTimes(1);
+});
+
+test("a card dropped over another card lands on that card's day", async () => {
+  mockPatch.mockResolvedValue(card("c", "Ratios", { user: true, date: "2026-09-14" }));
+  await renderBoard(
+    board({
+      "2026-09-13": [card("c", "Ratios")],
+      "2026-09-14": [card("b", "Averages")],
+    }),
+  );
+
+  const [, occupant] = screen.getAllByTestId("board-task");
+  fireEvent.dragOver(occupant, { dataTransfer: DT("c") });
+  fireEvent.drop(occupant, { dataTransfer: DT("c") });
+
+  await waitFor(() =>
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/study/plan/board/tasks/c/placement",
+      { scheduled_date: "2026-09-14", position: 1 },
+    ),
+  );
+  expect(cardIdsInColumn("Tomorrow")).toEqual(["b", "c"]);
+});
+
+test("a rejected cross-day write puts the card back and says so", async () => {
+  mockPatch.mockRejectedValue(new Error("boom"));
+  await renderBoard(
+    board({ "2026-09-13": [card("a", "Percentage"), card("b", "Ratios")] }),
+  );
+
+  const target = dayColumn("Thu 17 Sep");
+  fireEvent.drop(target, { dataTransfer: DT("b") });
+
+  await waitFor(() => expect(mockErrorToast).toHaveBeenCalled());
+  expect(cardIdsInColumn("Today")).toEqual(["a", "b"]);
+  expect(cardIdsInColumn("Thu 17 Sep")).toEqual([]);
+});
+
+test("dropping a card back where it already is writes nothing", async () => {
+  await renderBoard(
+    board({ "2026-09-13": [card("a", "Percentage"), card("b", "Ratios")] }),
+  );
+
+  // Its own position, both spellings of it: the gap above the card and the
+  // gap below it leave the order untouched.
+  fireEvent.drop(dropGap("2026-09-13", 1), { dataTransfer: DT("b") });
+  fireEvent.drop(dropGap("2026-09-13", 2), { dataTransfer: DT("b") });
+
+  await waitFor(() => expect(cardIdsInColumn("Today")).toEqual(["a", "b"]));
+  expect(mockPatch).not.toHaveBeenCalled();
+});

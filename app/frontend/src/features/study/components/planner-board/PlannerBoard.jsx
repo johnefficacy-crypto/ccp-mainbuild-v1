@@ -11,6 +11,7 @@ import {
   insertCard,
   nextKeyboardPlacement,
   removeTask,
+  sameArrangement,
 } from "./boardModel";
 
 /**
@@ -88,6 +89,10 @@ export default function PlannerBoard() {
     async (taskId, toDate, toIndex) => {
       const previous = board;
       const optimistic = applyMove(board, taskId, toDate, toIndex);
+      // A card released where it already sits is not a move. Writing it would
+      // also claim it from the planner — "Planner · may change" would silently
+      // become "Yours · stays put" for a drag the user abandoned.
+      if (sameArrangement(board, optimistic)) return { ok: true, unchanged: true };
       const result = await run({
         optimistic: () => setBoard(optimistic),
         action: () =>

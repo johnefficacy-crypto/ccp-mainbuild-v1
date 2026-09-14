@@ -5,9 +5,14 @@ import TaskCard from "./TaskCard";
 /**
  * One day of the board.
  *
- * Drop targets are the gaps between cards, not the cards themselves: dropping
- * "onto" a card is ambiguous about before/after, and a planner day is short
- * enough that explicit gaps are both clearer and easier to hit.
+ * The WHOLE column is a drop target, and the gaps between cards are the
+ * precise ones inside it. That split matters: native drag-and-drop refuses a
+ * drop on any element whose `dragover` handler does not call
+ * `preventDefault()`, so when only the 8px gaps handled it, the rest of a
+ * column — the space under the last card, an empty column's body, the surface
+ * of a card — silently rejected every drop and the card sprang back. Dropping
+ * on the column means "this day, at the end"; dropping on a gap means "this
+ * day, exactly here".
  */
 export default function DayColumn({
   day,
@@ -43,6 +48,10 @@ export default function DayColumn({
         }}
         onDrop={(e) => {
           e.preventDefault();
+          // The column below is a drop target too. Without this the same drop
+          // would commit twice: once here at the dropped position, once there
+          // at the end of the day.
+          e.stopPropagation();
           const id = e.dataTransfer.getData("text/plain");
           if (id) onDropAt?.(id, day.date, index);
         }}
@@ -54,6 +63,20 @@ export default function DayColumn({
   return (
     <section
       aria-label={`${day.label}, ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`}
+      onDragOver={(e) => {
+        // Accepts the drag anywhere in the column, including over a card:
+        // `dragover` bubbles, so a card the pointer is over is covered by
+        // this one handler rather than by a handler of its own.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData("text/plain");
+        // No index: the column knows the day, not the position. A drop that
+        // wanted a position landed on a gap and stopped there.
+        if (id) onDropAt?.(id, day.date, tasks.length);
+      }}
       className={`flex min-w-[210px] flex-1 flex-col rounded-xl border p-3 ${
         isToday ? "border-[#2E2218] bg-[#FBF6EF]" : "border-[#E7DECB] bg-white/60"
       }`}
