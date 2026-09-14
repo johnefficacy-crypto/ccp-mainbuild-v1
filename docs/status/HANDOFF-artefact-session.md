@@ -133,3 +133,48 @@ choosing priorities.
 - **The six blog posts** at `docs/blog/upsc-*-what-actually-gets-asked.md` are
   publishable as-is and are the clearest statement of what the data supports.
   Worth reading one before designing anything.
+
+---
+
+## Platform state this session left behind
+
+Recorded because it is the ground the artefact work stands on, and because two
+items are deliberate oddities that would otherwise look like bugs.
+
+**The evidence chain is closed and published.** 8,302 questions across 47
+verified papers; 8,188 verified with verified primary tags; 1,306 score
+snapshots and 1,497 coverage rows locked, 48 high-yield, 137 near-certain.
+
+**Evidence lives on the template phase; the ranking lives on the cycle phase.**
+`626ec667-…` (null cycle) holds the papers, questions, tags and syllabus
+mentions. `f42ffb84-…` (2026 cycle) holds the snapshots and coverage the
+planner reads. PR #1110 added `phase_inheritance.py` so a compute scoped to a
+cycle phase reads the template's evidence and writes its own results — reads
+fall back, writes never do.
+
+**Consequence for next cycle:** a new cycle phase needs a recompute, not a data
+migration. Nothing moves. The operator sequence is compute → lock snapshots →
+unlock coverage → derive → lock coverage, all scoped to the new phase id.
+
+**Two loose ends, neither breaking anything:**
+
+- The template phase still carries 1,497 locked coverage rows from before the
+  repoint. Nothing should read them — the planner cannot see null-cycle phases
+  by design (`exam_target_window.py:56-57`) — but they will confuse anyone
+  querying coverage without a phase filter. Retire or delete when convenient.
+- `lock_snapshots.py` and `lock_coverage.py` now carry the 2026 phase id as a
+  constant. They filter by subject, not phase, so they lock whatever drafts
+  exist in scope; the constant only governs which phase's snapshots are
+  fetched. Re-point both when the cycle turns over.
+
+**The syllabus ingest script's `--exam-phase-id` example still names the
+template, and that is correct.** Its docstring now says why: canonical evidence
+belongs on the template, cycle phases inherit it. Ingesting a syllabus onto a
+cycle phase would strand it and force a re-ingest every year.
+
+**A procedure worth knowing before touching any of this.** A published ranking
+is not updated in place. Locked rows are protected from overwrite, so any
+change to the corpus, the scoring model or the read path requires the full
+cycle: reject locked snapshots → recompute → lock → unlock coverage → derive →
+lock coverage. Skipping the unlock is the most common mistake — the derive
+reports `updated: 0` and everything looks fine.

@@ -31,7 +31,7 @@ if not BASE or not TOK:
     sys.exit("error: set CCP_API_BASE and CCP_ADMIN_JWT")
 
 EXAM = "5466e62f-7382-4a38-ba96-2fe5fbfeaba2"
-PHASE = "626ec667-4bbf-4420-8715-48c5b83e0d11"
+PHASE = "f42ffb84-082e-49db-9154-9fd973e8b6e5"
 INTEL = "/api/admin/exam-intelligence"
 CMS = "/api/admin/exam-intelligence-cms"
 

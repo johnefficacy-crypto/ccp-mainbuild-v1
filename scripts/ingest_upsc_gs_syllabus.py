@@ -32,6 +32,14 @@ Usage:
         docs/reference/syllabus/upsc_cse_mains_gs_micro_themes_v2026.3.json \
         --exam-id 5466e62f-7382-4a38-ba96-2fe5fbfeaba2 \
         --exam-phase-id 626ec667-4bbf-4420-8715-48c5b83e0d11 \
+
+    That phase id is the UPSC CSE Mains TEMPLATE (exam_cycle_id is null),
+    and it is deliberately the right target even though a template is not
+    something a person sits for. Canonical evidence - papers, questions,
+    tags, syllabus mentions - lives on the template; each cycle's phase
+    inherits it at read time via app/exam_intelligence/phase_inheritance.py
+    (PR #1110). Ingesting a syllabus straight onto a cycle phase would
+    strand it there and it would have to be re-ingested every cycle.
         --dry-run
 
 Drop --dry-run to write. Requires the ``exam_intelligence.cms`` permission and

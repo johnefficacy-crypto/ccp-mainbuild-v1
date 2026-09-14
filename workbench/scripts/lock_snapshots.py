@@ -86,7 +86,7 @@ for sub in subjects:
 print("topics in scope   : %d" % len(topic_subject))
 
 print("fetching snapshots ...")
-MAINS_PHASE = "626ec667-4bbf-4420-8715-48c5b83e0d11"
+MAINS_PHASE = "f42ffb84-082e-49db-9154-9fd973e8b6e5"
 # Omitting exam_phase_id returns ONLY exam-wide rows (exam_phase_id IS NULL),
 # which is 12 legacy snapshots - not the phase-scoped drafts we just computed.
 snaps = get_all(INTEL + "/exams/%s/score-snapshots" % EXAM,
