@@ -254,8 +254,14 @@ test("the palette lists candidates and adds one to a chosen day without a pointe
   mockPost.mockResolvedValue(card("new-1", "Time and Work", { user: true, date: "2026-09-15" }));
   await renderBoard(board({ "2026-09-13": [card("a", "Percentage")] }));
 
+  // PLAN-UI-02: the palette is a syllabus tree now, so it opens on one subject
+  // rather than listing every candidate at once. The other subject's topic is
+  // one click away, not gone.
   expect(screen.getByText("Time and Work")).toBeInTheDocument();
+  expect(screen.queryByText("Polity Basics")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /General Studies/ }));
   expect(screen.getByText("Polity Basics")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Quantitative Aptitude/ }));
 
   fireEvent.change(screen.getByLabelText("Day for Time and Work"), {
     target: { value: "2026-09-15" },
