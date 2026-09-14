@@ -393,3 +393,162 @@ Each question, with the SQL that answers it, is in
    summary.)
 7. **How many locked rows carry `predictability_band`**, and is it populated on
    the optionals? (D22 — whether the one comparable signal is actually there.)
+
+---
+
+## Live probe results — 2026-09-14
+
+All seven probes run by the operator. Four of this report's conclusions change.
+
+### §1 — `topic → section` IS a function on Mains; the ambiguity is on Prelims
+
+Every Mains subject carries **exactly one** section: four GS papers, twelve
+optional papers, Essay — `sections_per_subject = 1` on all seventeen. So the
+composition `topic → subject → section` **is deterministic for Mains**, and the
+section dimension can be populated without a disambiguation rule. Q3's
+conditional resolves in the favourable direction.
+
+The ambiguity is on the phase this report did not expect:
+
+| phase | subject | sections | labels |
+|---|---|---:|---|
+| prelims | `upsc-cse-prelims-gs` | **3** | "General Studies Paper I" × 3 |
+| prelims | `upsc-csat` | **2** | "General Studies Paper II / CSAT" × 2 |
+
+**Those duplicates should be impossible.** `exam_phase_sections` is
+`unique(exam_phase_id, subject_id, section_label)` (`030:92`), and the labels
+printed identical. Either the live index is absent, or the labels differ by
+characters that do not render (trailing space, non-breaking space, case). Both
+are defects — see D23.
+
+§1b returns each Mains subject **twice**, once with
+`max_sections_for_its_subject = 1` and once with `0`. That is the two-phase
+split below: sections exist on only one of the two phases named `mains`.
+
+### §2 — the corpus is on TWO Mains phases, not one
+
+| `exam_phase_id` | slug | cycle | targetability | locked rows | with section | max score |
+|---|---|---|---|---:|---:|---|
+| `626ec667-…` | mains | **NULL** | TEMPLATE (never a plan target) | **1,497** | 0 | 36.10 |
+| `f42ffb84-…` | mains | `787b0067-…` | cycle-attached | **1,317** | 0 | 36.10 |
+| `6566d50e-…` | prelims | `787b0067-…` | cycle-attached | 13 | **13** | 95.00 |
+
+Correction 3 resolves as **neither brief was wrong**: PLAN-POOL-01's
+`626ec667-…` and this brief's `f42ffb84-…` both exist, both are slug `mains`,
+and the corpus was **duplicated across them**, not moved — 1,497 + 1,317 = 2,814,
+which is exactly the derived row count §6 reports. 180 topics have a row only on
+the template phase.
+
+This also confirms PLAN-POOL-01's core finding from the other side: the phase
+holding 1,497 rows has `exam_cycle_id IS NULL`, so
+`exam_target_window.py:56-57` can never target it. The planner's usable Mains
+pool is the 1,317 on `f42ffb84-…`, and only when the resolver picks Mains over
+Prelims — both hang off the same cycle `787b0067-…`.
+
+### §3 — the 13 sectioned rows came from a writer this report did not list
+
+- **No `admin_audit_logs` rows at all** for those coverage ids. Both CMS paths
+  audit unconditionally (`admin_exam_intel_cms.py:2683-2687` for create; the
+  registry's `"audit": "exam_intel.cms.coverage.bulk_create"` at `:4566`).
+- Their provenance: `source_basis='official_syllabus'`, `source_kind='manual'`,
+  `model_version=NULL`, all 13 created **2026-05-26 11:23:25 → 11:23:29** — a
+  four-second burst.
+
+`source_kind='manual'` is not evidence of the CMS: migration `149:139`
+backfilled that value onto every pre-existing row. An unaudited four-second
+insert of 13 rows is a **direct SQL session**, not an API call. Q2's writer
+enumeration was therefore incomplete: there is an **eighth path — operator psql**
+— which no code in this repository governs and which is how `section_id` came to
+be set. The existence proof still holds; the provenance claim in Q2 ("writer 2
+or 3") does not.
+
+### §4 — the unvalidated bulk-import path has not been exercised
+
+Zero rows where a coverage row's `section_id` points at a section on a different
+phase. D19 remains latent.
+
+### §5 — every Mains topic is duplicated, exactly as D20 predicted
+
+Every sampled topic returns `locked_rows = 2`, one row on each Mains phase, both
+`evidence_derived`, **both carrying the identical score** ("5.07, 5.07";
+"15.21, 15.21"; …). Including `af4729dd-…` **"Balance of power: methods and
+contemporary relevance"**, 9.20 twice — the duplicate the brief reported seeing
+in the palette, explained exactly: `_load_locked_coverage_checked` emits one item
+per coverage **row** and never dedupes by `topic_id`, so a topic present on both
+Mains phases is offered twice. D20 confirmed against data.
+
+### §6 — the ceiling claim holds, and the brief undercounted the corpus
+
+| phase | basis | rows | min | avg | max | high-yield |
+|---|---|---:|---|---|---|---:|
+| mains | `evidence_derived` | **2,814** | 0.00 | 6.46 | 36.10 | 91 |
+| prelims | `official_syllabus` | 13 | 60.00 | 82.31 | 95.00 | 11 |
+
+`max(derived) = 36.10 < min(authored) = 60.00` — the structural gap is real, and
+Q4's analysis stands. Note the derived corpus is **2,814 rows, not 1,497**: the
+brief counted one of the two Mains phases.
+
+Per-subject maxima confirm the cohort-normalisation prediction precisely: GS4
+reaches 36.10 and GS1 28.42, while **every one of the twelve optionals tops out
+between 12.26 and 14.95** — Geography P1 at 14.95 and Anthropology P2 at 12.26,
+the exact bounds the brief quoted. A specialised paper's small cohort drives
+`weight` high, so the score rides on `prominence`, which needs a 10× outlier to
+pay out (`_LIFT_FULL_MARKS`, `score_snapshots.py:35`).
+
+Average confidence differs the same way: 0.597 derived versus 0.935 authored —
+consistent with the derived value being `0.3 + evidence_quality*0.7` (`:697`),
+i.e. a question-count proxy, not a human's certainty.
+
+### §7 — `predictability_band` is populated and is the strongest available signal
+
+| band | rows |
+|---|---:|
+| occasional | 1,085 |
+| likely | 623 |
+| rare | 464 |
+| near_certain | 260 |
+| (null) | 382 |
+
+**2,432 of 2,814 derived rows carry a band** (86 %). Across the twelve optional
+papers it is **complete** — every row banded — except `psir-p1`, where 50 of 254
+lack one. The 13 authored Prelims rows have no band, as expected: they have no
+year evidence behind them.
+
+This materially raises D22's importance. The band is percentile-within-paper
+(`288:71-73`), so it is **already comparable across subjects and across
+producers** in a way `exam_priority_score` is not — and it is the one signal the
+palette could show today that means the same thing for a PSIR topic and a GS
+topic. The planner's loader simply does not select it (`planner.py:330-339`).
+
+### Consequences for the two dimensions
+
+- **Section:** populatable for Mains deterministically (one section per subject),
+  **but only for the 1,317 rows on `f42ffb84-…`** — the template phase carries no
+  sections at all, so its 1,497 rows have nothing to point at. Any backfill must
+  decide what the template phase's rows are for before it can decide their scope.
+- **Score:** the two-unit-system finding is confirmed on live data, and
+  `predictability_band` is a populated, already-normalised alternative that no
+  learner surface currently reads.
+
+---
+
+## Defects observed (added after the live run)
+
+- **D23 — duplicate `exam_phase_sections` rows on Prelims.**
+  `upsc-cse-prelims-gs` has three sections and `upsc-csat` two, with labels that
+  print identically, against a `unique(exam_phase_id, subject_id, section_label)`
+  (`030:92`). Either the index is missing in the live database or the labels
+  differ by invisible characters. Until resolved, `topic → section` is ambiguous
+  on Prelims — the one phase whose coverage rows actually carry a section.
+- **D24 — the Mains corpus is duplicated across two phases.** 1,497 rows on the
+  cycle-less template `626ec667-…` and 1,317 on the cycle-attached
+  `f42ffb84-…`, same topics, identical scores. Everything reading locked coverage
+  exam-wide sees each topic twice (the palette, the calibration subject set, the
+  Subject Hub); the planner's phase filter (`planner.py:1528`) hides it only
+  because it keeps one phase. 180 topics exist solely on the untargetable
+  template phase and are invisible to the planner entirely.
+- **D25 — an unaudited direct-SQL write path into `exam_topic_coverage`.** The 13
+  sectioned rows have no `admin_audit_logs` entry and landed in four seconds.
+  Every code path in this repo audits; this one did not go through code. Not a
+  bug in the codebase, but it means `source_kind`/`source_basis` are the only
+  provenance for those rows and the CMS's section validation never ran on them.
