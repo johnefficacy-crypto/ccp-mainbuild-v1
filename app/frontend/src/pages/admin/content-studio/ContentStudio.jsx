@@ -22,6 +22,7 @@ import React, { Suspense, lazy } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../lib/authContext";
 import { studioPerms } from "./permissions";
+import { CARD_TYPE_KEYS } from "./contentStudioApi";
 
 const MockQuestionList = lazy(() => import("../mocks/QuestionList"));
 const MockReviewQueue = lazy(() => import("../mocks/ReviewQueue"));
@@ -30,10 +31,8 @@ const PromptLibrary = lazy(() => import("./PromptLibrary"));
 const PromptReviewQueue = lazy(() => import("./PromptReviewQueue"));
 const PromptBulkImport = lazy(() => import("./PromptBulkImport"));
 const ExamAssignments = lazy(() => import("./ExamAssignments"));
-const QuantHeuristicLibrary = lazy(() => import("./QuantHeuristicLibrary"));
-const QuantHeuristicReviewQueue = lazy(() => import("./QuantHeuristicReviewQueue"));
-const ReasoningStrategyLibrary = lazy(() => import("./ReasoningStrategyLibrary"));
-const ReasoningStrategyReviewQueue = lazy(() => import("./ReasoningStrategyReviewQueue"));
+const ContentCardLibrary = lazy(() => import("./ContentCardLibrary"));
+const ContentCardReviewQueue = lazy(() => import("./ContentCardReviewQueue"));
 const CaQuestionReviewQueue = lazy(() => import("./CaQuestionReviewQueue"));
 
 const TABS = [
@@ -111,14 +110,13 @@ export default function ContentStudio() {
     if (activeTab === "library") body = <MockQuestionList />;
     else if (activeTab === "review-queue") body = <MockReviewQueue />;
     else body = <MockImportWizard />;
-  } else if (type === "quant_heuristic") {
+  } else if (CARD_TYPE_KEYS.includes(type)) {
+    // Every content-card type renders through the SAME pair, parameterised by
+    // content_type (migration 291). Adding a type is an entry in CARD_TYPES —
+    // no branch here, no new component.
     body = activeTab === "review-queue"
-      ? <QuantHeuristicReviewQueue perms={perms} />
-      : <QuantHeuristicLibrary perms={perms} />;
-  } else if (type === "reasoning_strategy") {
-    body = activeTab === "review-queue"
-      ? <ReasoningStrategyReviewQueue perms={perms} />
-      : <ReasoningStrategyLibrary perms={perms} />;
+      ? <ContentCardReviewQueue perms={perms} contentType={type} />
+      : <ContentCardLibrary perms={perms} contentType={type} />;
   } else if (type === "current_affairs_question") {
     body = <CaQuestionReviewQueue perms={perms} />;
   } else if (activeTab === "library") {

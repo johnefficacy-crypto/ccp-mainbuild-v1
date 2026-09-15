@@ -79,41 +79,34 @@ export const contentStudioApi = {
   reviewTarget: (targetId, body) => api.post(`${BASE}/writing-prompt-targets/${targetId}/review`, body),
   removeTarget: (targetId, body) => api.post(`${BASE}/writing-prompt-targets/${targetId}/remove`, body),
 
-  // Quant heuristic authority (GQR-Q7). Read = content_studio reads; review =
-  // content_studio.review. There is no create/edit/assign path — migration 243
-  // ships only the review RPC (CAS + reason hardened in 245). Every review
-  // decision carries an 8–500 char `reason` and is dual-CAS-guarded on BOTH the
-  // `expected_status` and the content `expected_updated_at` the client last read
-  // (so a reviewer can never verify a revision they did not see); a 409 means the
-  // heuristic changed under review — refetch and re-read before deciding.
-  listHeuristics: (params) => api.get(`${BASE}/quant-heuristics${qs(params)}`),
-  getHeuristic: (id) => api.get(`${BASE}/quant-heuristics/${id}`),
-  reviewHeuristic: (id, { status, expected_status, expected_updated_at, reason, reviewer_notes }) =>
-    api.post(`${BASE}/quant-heuristics/${id}/review`, {
+  // Content cards — the merged content authority (migration 291, CONTENT-01).
+  // One API for every card type; the type is a PARAMETER, not a new endpoint.
+  // Read = content_studio reads; review = content_studio.review; activate and
+  // deactivate are the SEPARATE, higher-trust content_studio.activate authority
+  // (neither author nor review may flip is_active).
+  //
+  // Every review decision carries an 8-500 char `reason` and is dual-CAS-guarded
+  // on BOTH the `expected_status` and the content `expected_updated_at` the
+  // client last read, so a reviewer can never verify a revision they did not
+  // see; a 409 means the card changed under review - refetch before deciding.
+  //
+  // Activation is a PRECONDITION MACHINE, not a toggle: a blocked activation
+  // comes back as a normal 200 carrying { eligible: false, blockers: [...] }.
+  // Callers must read `eligible`, not assume success from the status code.
+  listCards: (params) => api.get(`${BASE}/content-cards${qs(params)}`),
+  getCard: (id) => api.get(`${BASE}/content-cards/${id}`),
+  reviewCard: (id, { status, expected_status, expected_updated_at, reason, reviewer_notes }) =>
+    api.post(`${BASE}/content-cards/${id}/review`, {
       status,
       expected_status,
       expected_updated_at,
       reason,
       ...(reviewer_notes ? { reviewer_notes } : {}),
     }),
-
-  // Reasoning strategy authority (GQR-S3). Read = content_studio reads; review =
-  // content_studio.review. There is no create/edit/assign path — migration 262
-  // ships only the review RPC. Every review decision carries an 8–500 char
-  // `reason` and is dual-CAS-guarded on BOTH the `expected_status` and the content
-  // `expected_updated_at` the client last read (so a reviewer can never verify a
-  // revision they did not see); a 409 means the strategy changed under review —
-  // refetch and re-read before deciding. Mirrors the quant-heuristic surface.
-  listStrategies: (params) => api.get(`${BASE}/reasoning-strategies${qs(params)}`),
-  getStrategy: (id) => api.get(`${BASE}/reasoning-strategies/${id}`),
-  reviewStrategy: (id, { status, expected_status, expected_updated_at, reason, reviewer_notes }) =>
-    api.post(`${BASE}/reasoning-strategies/${id}/review`, {
-      status,
-      expected_status,
-      expected_updated_at,
-      reason,
-      ...(reviewer_notes ? { reviewer_notes } : {}),
-    }),
+  activateCard: (id, { expected_updated_at, reason }) =>
+    api.post(`${BASE}/content-cards/${id}/activate`, { expected_updated_at, reason }),
+  deactivateCard: (id, { expected_updated_at, reason }) =>
+    api.post(`${BASE}/content-cards/${id}/deactivate`, { expected_updated_at, reason }),
 
   // Current-affairs question candidates (GQR-G4). The reviewer approves/rejects/
   // sends-back a shadow-generated candidate; PROMOTION into the objective bank is a
@@ -191,30 +184,32 @@ export function describeActivationBlocker(code) {
   return ACTIVATION_BLOCKER_LABELS[code] || code;
 }
 
-// Quant heuristic authority (migration 243). heuristic_type facet + the review
-// transition matrix, which DIFFERS from writing prompts: needs_correction routes
-// back to pending (never straight to verified), a verified heuristic can only be
-// reopened for correction, and rejected can be reopened to pending for rework.
-export const HEURISTIC_TYPES = ["shortcut", "standard_method", "trap", "estimation"];
-
-export const HEURISTIC_REVIEW_TRANSITIONS = {
+// The review transition matrix. It is the SAME for every card type (migrations
+// 243, 262 and 291 all declare it identically) and DIFFERS from writing prompts:
+// needs_correction routes back to pending (never straight to verified), a
+// verified card can only be reopened for correction, and rejected can be
+// reopened to pending for rework.
+export const CARD_REVIEW_TRANSITIONS = {
   pending: ["verified", "rejected", "needs_correction"],
   needs_correction: ["pending", "rejected"],
   verified: ["needs_correction"],
   rejected: ["pending"],
 };
 
-// Reasoning strategy authority (migration 262, GQR-S3). strategy_type facet + the
-// review transition matrix, which MATCHES the quant-heuristic one: needs_correction
-// routes back to pending (never straight to verified), a verified strategy can only
-// be reopened for correction, and rejected can be reopened to pending for rework.
-export const REASONING_STRATEGY_TYPES = [
-  "approach", "pattern", "elimination", "diagram_method", "set_method", "trap",
-];
-
-export const REASONING_REVIEW_TRANSITIONS = {
-  pending: ["verified", "rejected", "needs_correction"],
-  needs_correction: ["pending", "rejected"],
-  verified: ["needs_correction"],
-  rejected: ["pending"],
+// The card-type registry. ADDING A TYPE IS AN ENTRY HERE — no new component, no
+// new endpoint, no new constant pair. `subtypes` mirrors the per-type CHECK in
+// migration 291; `label` and `subtypeLabel` are display only.
+export const CARD_TYPES = {
+  quant_heuristic: {
+    label: "Quant heuristic",
+    subtypeLabel: "Heuristic type",
+    subtypes: ["shortcut", "standard_method", "trap", "estimation"],
+  },
+  reasoning_strategy: {
+    label: "Reasoning strategy",
+    subtypeLabel: "Strategy type",
+    subtypes: ["approach", "pattern", "elimination", "diagram_method", "set_method", "trap"],
+  },
 };
+
+export const CARD_TYPE_KEYS = Object.keys(CARD_TYPES);

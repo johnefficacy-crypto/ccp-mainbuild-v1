@@ -1,8 +1,11 @@
 """Quant heuristic authority — verified-only reads + review wrapper (GQR-Q7).
 
-Content Studio authors and reviews ``quant_heuristics`` (migration 243). This
-module is the read/selection authority the learner-feedback path uses, plus a
-thin wrapper over the ``cms_review_quant_heuristic`` lifecycle RPC.
+Content Studio authors and reviews quant heuristics. Since migration 291 they
+are rows in the merged ``content_cards`` table carrying
+``content_type='quant_heuristic'``; this module is the read/selection authority
+the learner-feedback path uses, plus a thin wrapper over the
+``cms_review_content_card`` lifecycle RPC. Every read here filters on
+content_type, so a card of another type can never reach the Quant feed.
 
 Domain rule (CLAUDE.md): user-facing reads filter ``reviewer_status='verified'``
 CONJUNCTIVELY. A heuristic reaches a learner only when BOTH the heuristic row and
@@ -20,7 +23,8 @@ from app.study_os.subject_runtime_policy import FAMILY_QUANT, family_for_subject
 
 logger = logging.getLogger("career_copilot.study_os.quant_heuristics")
 
-_HEURISTICS = "quant_heuristics"
+_HEURISTICS = "content_cards"
+_CONTENT_TYPE = "quant_heuristic"
 _LINKS = "quant_question_heuristics"
 
 # Learner-facing display order for a question's heuristics.
@@ -28,15 +32,16 @@ _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
 
 # Fetch the content fields used by the learner projection plus the internal scope
 # fields needed to validate that the reviewed link targets a compatible question.
-# Governance fields such as applicability_rule, reviewer notes/actors, timestamps,
-# and audit/CAS metadata never cross this authority boundary.
+# Governance fields such as reviewer notes/actors, timestamps, and audit/CAS
+# metadata never cross this authority boundary. (applicability_rule was dropped
+# outright in migration 291 — nothing ever read it.)
 _CONTENT_KEYS = (
     "id",
     "name",
-    "heuristic_type",
+    "card_subtype",
     "formula_latex",
     "standard_method",
-    "shortcut_method",
+    "faster_method",
     "worked_example",
     "common_traps",
 )
@@ -45,9 +50,9 @@ _HEURISTIC_FIELDS = ",".join(
     (
         *_CONTENT_KEYS,
         *_INTERNAL_SCOPE_KEYS,
-        "topic:topics!quant_heuristics_topic_id_fkey("
+        "topic:topics!content_cards_topic_id_fkey("
         "subject:subjects(slug,subject_group))",
-        "microtopic:topics!quant_heuristics_microtopic_id_fkey("
+        "microtopic:topics!content_cards_microtopic_id_fkey("
         "parent_topic_id,subject:subjects(slug,subject_group))",
     )
 )
@@ -175,7 +180,7 @@ def heuristics_for_questions(
     link_rows = _read(
         lambda: supabase.table(_LINKS)
         .select(
-            "question_id,heuristic_id,relevance,"
+            "question_id,card_id,relevance,"
             "question:mock_question_bank!inner(topic_id,microtopic_id)"
         )
         .in_("question_id", ids)
@@ -189,9 +194,9 @@ def heuristics_for_questions(
 
     heuristic_ids = sorted(
         {
-            link.get("heuristic_id")
+            link.get("card_id")
             for link in links
-            if isinstance(link, dict) and link.get("heuristic_id")
+            if isinstance(link, dict) and link.get("card_id")
         }
     )
     if not heuristic_ids:
@@ -201,6 +206,7 @@ def heuristics_for_questions(
         lambda: supabase.table(_HEURISTICS)
         .select(_HEURISTIC_FIELDS)
         .in_("id", heuristic_ids)
+        .eq("content_type", _CONTENT_TYPE)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
@@ -216,7 +222,7 @@ def heuristics_for_questions(
         if not isinstance(link, dict):
             continue
         question_id = link.get("question_id")
-        heuristic = heur_by_id.get(link.get("heuristic_id"))
+        heuristic = heur_by_id.get(link.get("card_id"))
         if (
             question_id in out
             and heuristic is not None
@@ -256,6 +262,7 @@ def list_verified_heuristics_for_topic(
     q = (
         supabase.table(_HEURISTICS)
         .select("*")
+        .eq("content_type", _CONTENT_TYPE)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
     )
@@ -285,7 +292,8 @@ def review_heuristic(
 ) -> dict:
     """Transition a heuristic's reviewer_status via the audited lifecycle RPC.
 
-    The RPC (migration 246, replacing 243) owns the transition matrix, dual
+    The RPC (migration 291's ``cms_review_content_card``, carrying forward 246's
+    hardened 8-arg shape) owns the transition matrix, dual
     optimistic-concurrency (CAS on BOTH ``expected_status`` and
     ``expected_updated_at`` — the content-revision token, so a reviewer can never
     verify a revision they did not read), the mandatory 8–500 char audit
@@ -295,9 +303,9 @@ def review_heuristic(
     those as 4xx.
     """
     res = supabase.rpc(
-        "cms_review_quant_heuristic",
+        "cms_review_content_card",
         {
-            "p_heuristic_id": heuristic_id,
+            "p_card_id": heuristic_id,
             "p_expected_status": expected_status,
             "p_expected_updated_at": expected_updated_at,
             "p_new_status": new_status,

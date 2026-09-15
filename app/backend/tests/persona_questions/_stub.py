@@ -353,8 +353,12 @@ class SBStub:
             return _RpcCall(self._cms_review_candidate_count(params))
         if name == "cms_reopen_candidate_count_for_edit":
             return _RpcCall(self._cms_reopen_candidate_count_for_edit(params))
-        if name == "cms_review_quant_heuristic":
-            return _RpcCall(self._cms_review_quant_heuristic(params))
+        if name == "cms_review_content_card":
+            return _RpcCall(self._cms_review_content_card(params))
+        if name == "cms_activate_content_card":
+            return _RpcCall(self._cms_set_content_card_active(params, True))
+        if name == "cms_deactivate_content_card":
+            return _RpcCall(self._cms_set_content_card_active(params, False))
         if name == "create_calc_gym_session":
             return _RpcCall(self._create_calc_gym_session(params))
         if name == "submit_calc_gym_session":
@@ -1175,15 +1179,15 @@ class SBStub:
         "rejected": {"pending"},
     }
 
-    def _cms_review_quant_heuristic(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Emulate cms_review_quant_heuristic (migration 246, replacing 243):
+    def _cms_review_content_card(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Emulate cms_review_content_card (migration 291, carrying 246's shape):
         actor required, mandatory 8–500 char reason, dual CAS on expected_status
         AND expected_updated_at (content-revision token), target-status validation,
         transition matrix, verified→needs_correction notes gate, and an audit row
         carrying the reason."""
         import uuid as _uuid
 
-        heuristic_id = params.get("p_heuristic_id")
+        heuristic_id = params.get("p_card_id")
         expected_status = params.get("p_expected_status")
         expected_updated_at = params.get("p_expected_updated_at")
         new_status = params.get("p_new_status")
@@ -1201,9 +1205,9 @@ class SBStub:
         if new_status not in ("pending", "verified", "rejected", "needs_correction"):
             raise RuntimeError(f"invalid_target_status: {new_status} is not a recognised status")
 
-        row = next((r for r in self.db.get("quant_heuristics", []) if r.get("id") == heuristic_id), None)
+        row = next((r for r in self.db.get("content_cards", []) if r.get("id") == heuristic_id), None)
         if row is None:
-            raise RuntimeError(f"not_found: heuristic {heuristic_id} does not exist")
+            raise RuntimeError(f"not_found: content_card {heuristic_id} does not exist")
 
         current_status = row.get("reviewer_status")
         if current_status != expected_status:
@@ -1211,11 +1215,11 @@ class SBStub:
                 f"concurrent_modification: expected status={expected_status} but found {current_status}"
             )
         if row.get("updated_at") != expected_updated_at:
-            raise RuntimeError("concurrent_modification: heuristic content changed since read")
+            raise RuntimeError("concurrent_modification: card content changed since read")
         if new_status not in self._QH_TRANSITIONS.get(current_status, set()):
             raise RuntimeError(f"transition_not_allowed: {current_status} -> {new_status} is not permitted")
         if current_status == "verified" and new_status == "needs_correction" and not (reviewer_notes or "").strip():
-            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a verified heuristic")
+            raise RuntimeError("invalid_reviewer_notes: reviewer_notes required when reopening a verified card")
 
         row["reviewer_status"] = new_status
         row["reviewed_by"] = actor_id
@@ -1227,16 +1231,85 @@ class SBStub:
         audit_id = str(_uuid.uuid4())
         self.db.setdefault("admin_audit_logs", []).append({
             "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
-            "admin_user_id": actor_id, "action": "quant_heuristic_status_transition",
-            "entity_type": "quant_heuristic", "entity_id": heuristic_id,
+            "admin_user_id": actor_id, "action": "content_card_status_transition",
+            "entity_type": "content_card", "entity_id": heuristic_id,
             "old_value": {"status": expected_status},
             "new_value": {"status": new_status, "reviewer_notes": reviewer_notes, "reason": reason.strip()},
             "notes": reason.strip(),
         })
         return {
-            "ok": True, "audit_id": audit_id, "heuristic_id": heuristic_id,
+            "ok": True, "audit_id": audit_id, "card_id": heuristic_id,
+            "content_type": row.get("content_type"),
             "prev_status": expected_status, "new_status": new_status,
         }
+
+    def _cms_set_content_card_active(self, params: dict[str, Any], activate: bool) -> dict[str, Any]:
+        """Emulate cms_activate_content_card / cms_deactivate_content_card
+        (migration 291, mirroring 226's writing-prompt lifecycle).
+
+        Activation is a PRECONDITION MACHINE, not a toggle: all blockers are
+        collected without short-circuit and a blocked activation is a NORMAL
+        result carrying ``eligible=False``. CAS failure and a missing actor stay
+        HARD errors, exactly as in the RPC.
+        """
+        import uuid as _uuid
+
+        card_id = params.get("p_card_id")
+        expected_updated_at = params.get("p_expected_updated_at")
+        reason = params.get("p_reason")
+        actor_id = params.get("p_actor_user_id")
+        actor_email = params.get("p_actor_email")
+
+        if not actor_id:
+            raise RuntimeError("missing_actor_id: p_actor_user_id must not be NULL")
+        if expected_updated_at is None:
+            raise RuntimeError("concurrent_modification: stale_card — p_expected_updated_at (CAS token) is required")
+
+        row = next((r for r in self.db.get("content_cards", []) if r.get("id") == card_id), None)
+        if row is None:
+            raise RuntimeError(f"not_found: content_card {card_id} does not exist")
+        if row.get("updated_at") != expected_updated_at:
+            raise RuntimeError("concurrent_modification: stale_card — card changed since read")
+
+        reason_ok = bool((reason or "").strip()) and 8 <= len((reason or "").strip()) <= 500
+        if not activate:
+            # Deactivation has no eligibility machine; a bad reason is a hard error.
+            if not reason_ok:
+                raise RuntimeError("invalid_reason: p_reason must be 8–500 characters")
+        else:
+            blockers = []
+            if not reason_ok:
+                blockers.append("reason_required")
+            if row.get("reviewer_status") != "verified":
+                blockers.append("card_not_verified")
+            if row.get("is_active") is True:
+                blockers.append("already_active")
+            if blockers:
+                return {
+                    "ok": True, "eligible": False, "blockers": blockers,
+                    "card_id": card_id, "content_type": row.get("content_type"),
+                }
+
+        row["is_active"] = activate
+        row["updated_at"] = "2026-07-12T00:00:02Z"
+        audit_id = str(_uuid.uuid4())
+        self.db.setdefault("admin_audit_logs", []).append({
+            "id": audit_id, "actor_id": actor_id, "actor_email": actor_email,
+            "admin_user_id": actor_id,
+            "action": "content_card_activated" if activate else "content_card_deactivated",
+            "entity_type": "content_card", "entity_id": card_id,
+            "old_value": {"is_active": not activate},
+            "new_value": {"is_active": activate, "content_type": row.get("content_type"),
+                          "reason": (reason or "").strip()},
+            "notes": (reason or "").strip(),
+        })
+        result = {
+            "ok": True, "audit_id": audit_id, "card_id": card_id,
+            "content_type": row.get("content_type"), "is_active": activate,
+        }
+        if activate:
+            result.update({"eligible": True, "blockers": []})
+        return result
 
     def _apply_mock_mastery_delta(self, params: dict[str, Any]) -> dict[str, Any]:
         """Emulate the atomic, idempotent mastery-apply function (migration 145).

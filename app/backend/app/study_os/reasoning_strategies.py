@@ -1,8 +1,11 @@
 """Reasoning strategy authority — verified-only reads + review wrapper (GQR-S3/S4/S7).
 
-Content Studio authors and reviews ``reasoning_strategies`` (migration 262). This
-module is the read/selection authority the learner-feedback path uses, plus a
-thin wrapper over the ``cms_review_reasoning_strategy`` lifecycle RPC.
+Content Studio authors and reviews reasoning strategies. Since migration 291
+they are rows in the merged ``content_cards`` table carrying
+``content_type='reasoning_strategy'``; this module is the read/selection
+authority the learner-feedback path uses, plus a thin wrapper over the
+``cms_review_content_card`` lifecycle RPC. Every read here filters on
+content_type, so a card of another type can never reach the Reasoning feed.
 
 Domain rule (CLAUDE.md): user-facing reads filter ``reviewer_status='verified'``
 CONJUNCTIVELY. A strategy reaches a learner only when BOTH the strategy row and
@@ -22,7 +25,8 @@ from app.study_os.subject_runtime_policy import FAMILY_REASONING, family_for_sub
 
 logger = logging.getLogger("career_copilot.study_os.reasoning_strategies")
 
-_STRATEGIES = "reasoning_strategies"
+_STRATEGIES = "content_cards"
+_CONTENT_TYPE = "reasoning_strategy"
 _LINKS = "reasoning_question_strategies"
 _STIMULUS_LINKS = "reasoning_stimulus_strategies"
 
@@ -36,7 +40,7 @@ _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
 _CONTENT_KEYS = (
     "id",
     "name",
-    "strategy_type",
+    "card_subtype",
     "formula_latex",
     "standard_method",
     "faster_method",
@@ -49,9 +53,9 @@ _STRATEGY_FIELDS = ",".join(
     (
         *_CONTENT_KEYS,
         *_INTERNAL_SCOPE_KEYS,
-        "topic:topics!reasoning_strategies_topic_id_fkey("
+        "topic:topics!content_cards_topic_id_fkey("
         "subject:subjects(slug,subject_group))",
-        "microtopic:topics!reasoning_strategies_microtopic_id_fkey("
+        "microtopic:topics!content_cards_microtopic_id_fkey("
         "parent_topic_id,subject:subjects(slug,subject_group))",
     )
 )
@@ -171,7 +175,7 @@ def strategies_for_questions(
     link_rows = _read(
         lambda: supabase.table(_LINKS)
         .select(
-            "question_id,strategy_id,relevance,"
+            "question_id,card_id,relevance,"
             "question:mock_question_bank!inner(topic_id,microtopic_id)"
         )
         .in_("question_id", ids)
@@ -185,9 +189,9 @@ def strategies_for_questions(
 
     strategy_ids = sorted(
         {
-            link.get("strategy_id")
+            link.get("card_id")
             for link in links
-            if isinstance(link, dict) and link.get("strategy_id")
+            if isinstance(link, dict) and link.get("card_id")
         }
     )
     if not strategy_ids:
@@ -197,6 +201,7 @@ def strategies_for_questions(
         lambda: supabase.table(_STRATEGIES)
         .select(_STRATEGY_FIELDS)
         .in_("id", strategy_ids)
+        .eq("content_type", _CONTENT_TYPE)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
@@ -212,7 +217,7 @@ def strategies_for_questions(
         if not isinstance(link, dict):
             continue
         question_id = link.get("question_id")
-        strategy = strat_by_id.get(link.get("strategy_id"))
+        strategy = strat_by_id.get(link.get("card_id"))
         if (
             question_id in out
             and strategy is not None
@@ -281,7 +286,7 @@ def strategies_for_stimuli(
     stimulus_ids = sorted(scopes)
     link_rows = _read(
         lambda: supabase.table(_STIMULUS_LINKS)
-        .select("stimulus_id,strategy_id,relevance")
+        .select("stimulus_id,card_id,relevance")
         .in_("stimulus_id", stimulus_ids)
         .eq("reviewer_status", "verified")
         .execute(),
@@ -293,9 +298,9 @@ def strategies_for_stimuli(
 
     strategy_ids = sorted(
         {
-            link.get("strategy_id")
+            link.get("card_id")
             for link in links
-            if isinstance(link, dict) and link.get("strategy_id")
+            if isinstance(link, dict) and link.get("card_id")
         }
     )
     if not strategy_ids:
@@ -305,6 +310,7 @@ def strategies_for_stimuli(
         lambda: supabase.table(_STRATEGIES)
         .select(_STRATEGY_FIELDS)
         .in_("id", strategy_ids)
+        .eq("content_type", _CONTENT_TYPE)
         .eq("reviewer_status", "verified")
         .eq("is_active", True)
         .execute(),
@@ -323,7 +329,7 @@ def strategies_for_stimuli(
         if not raw_stimulus_id:
             continue
         stimulus_id = str(raw_stimulus_id)
-        strategy = strat_by_id.get(link.get("strategy_id"))
+        strategy = strat_by_id.get(link.get("card_id"))
         question_scopes = scopes.get(stimulus_id)
         if (
             question_scopes
@@ -372,9 +378,9 @@ def review_strategy(
     reason, missing actor) — callers surface those as 4xx.
     """
     res = supabase.rpc(
-        "cms_review_reasoning_strategy",
+        "cms_review_content_card",
         {
-            "p_strategy_id": strategy_id,
+            "p_card_id": strategy_id,
             "p_expected_status": expected_status,
             "p_expected_updated_at": expected_updated_at,
             "p_new_status": new_status,

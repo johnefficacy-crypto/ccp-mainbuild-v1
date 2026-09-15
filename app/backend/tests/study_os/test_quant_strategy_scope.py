@@ -22,6 +22,7 @@ def _heuristic(
 ):
     return {
         "id": "h1",
+        "content_type": "quant_heuristic",
         "topic_id": topic,
         "microtopic_id": micro,
         "topic": {"subject": _subject(topic_family)} if topic else None,
@@ -30,10 +31,10 @@ def _heuristic(
             "subject": _subject(micro_family),
         } if micro else None,
         "name": "Scoped method",
-        "heuristic_type": "shortcut",
+        "card_subtype": "shortcut",
         "formula_latex": None,
         "standard_method": "method",
-        "shortcut_method": "shortcut",
+        "faster_method": "shortcut",
         "worked_example": None,
         "common_traps": None,
         "reviewer_status": "verified",
@@ -44,7 +45,7 @@ def _heuristic(
 def _link(*, topic="quant-topic", micro=None):
     return {
         "question_id": "q1",
-        "heuristic_id": "h1",
+        "card_id": "h1",
         "relevance": "primary",
         "reviewer_status": "verified",
         "question": {"topic_id": topic, "microtopic_id": micro},
@@ -53,7 +54,7 @@ def _link(*, topic="quant-topic", micro=None):
 
 def _read(heuristic, link):
     sb = SBStub({
-        "quant_heuristics": [heuristic],
+        "content_cards": [heuristic],
         "quant_question_heuristics": [link],
     })
     return qh.heuristics_for_questions(sb, ["q1"])["q1"]
@@ -61,7 +62,7 @@ def _read(heuristic, link):
 
 def test_link_read_embeds_question_scope_without_extra_query():
     sb = SBStub({
-        "quant_heuristics": [_heuristic()],
+        "content_cards": [_heuristic()],
         "quant_question_heuristics": [_link()],
     })
     selects = []
@@ -82,14 +83,14 @@ def test_link_read_embeds_question_scope_without_extra_query():
     qh.heuristics_for_questions(sb, ["q1"])
 
     link_select = next(columns for table, columns in selects if table == "quant_question_heuristics")
-    heuristic_select = next(columns for table, columns in selects if table == "quant_heuristics")
+    heuristic_select = next(columns for table, columns in selects if table == "content_cards")
     assert "question:mock_question_bank!inner(topic_id,microtopic_id)" in link_select
-    assert "quant_heuristics_topic_id_fkey" in heuristic_select
-    assert "quant_heuristics_microtopic_id_fkey" in heuristic_select
+    assert "content_cards_topic_id_fkey" in heuristic_select
+    assert "content_cards_microtopic_id_fkey" in heuristic_select
     assert "subject:subjects(slug,subject_group)" in heuristic_select
     assert [table for table, _columns in selects] == [
         "quant_question_heuristics",
-        "quant_heuristics",
+        "content_cards",
     ]
 
 

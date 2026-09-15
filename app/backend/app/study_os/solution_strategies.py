@@ -48,18 +48,22 @@ _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}
 def _project_quant(h: dict) -> dict:
     """Map a governed ``quant_heuristics`` row → the normalized learner DTO.
 
-    Renames ``heuristic_type`` → ``strategy_type`` and ``shortcut_method`` →
-    ``faster_method`` and tags ``subject_family='quant'``. Built from an explicit
-    allowlist, so governance columns present on the source row can never leak.
+    Migration 291 merged both authorities into ``content_cards`` and normalised
+    the two renamed columns away at the source (``heuristic_type`` and
+    ``strategy_type`` are now ``card_subtype``; ``shortcut_method`` is now
+    ``faster_method``), so this projector no longer renames anything — it tags
+    ``subject_family='quant'`` and maps ``card_subtype`` onto the DTO's
+    ``strategy_type``. Still built from an explicit allowlist, so governance
+    columns present on the source row can never leak.
     """
     return {
         "id": h.get("id"),
         "subject_family": "quant",
         "name": h.get("name"),
-        "strategy_type": h.get("heuristic_type"),
+        "strategy_type": h.get("card_subtype"),
         "formula_latex": h.get("formula_latex"),
         "standard_method": h.get("standard_method"),
-        "faster_method": h.get("shortcut_method"),
+        "faster_method": h.get("faster_method"),
         "worked_example": h.get("worked_example"),
         # Quant heuristics carry no discrete "key observation" column in v1.
         "key_observation": None,
@@ -71,15 +75,16 @@ def _project_quant(h: dict) -> dict:
 def _project_reasoning(s: dict) -> dict:
     """Map a governed ``reasoning_strategies`` row → the normalized learner DTO.
 
-    Migration 262 named the Reasoning content columns to match the shared DTO, so
-    this is a near-straight copy tagged ``subject_family='reasoning'``. It remains
-    an explicit allowlist, so governance columns can never leak.
+    Migration 262 named the Reasoning content columns to match the shared DTO and
+    291 carried them into ``content_cards`` unchanged, so this is a near-straight
+    copy tagged ``subject_family='reasoning'``. It remains an explicit allowlist,
+    so governance columns can never leak.
     """
     return {
         "id": s.get("id"),
         "subject_family": "reasoning",
         "name": s.get("name"),
-        "strategy_type": s.get("strategy_type"),
+        "strategy_type": s.get("card_subtype"),
         "formula_latex": s.get("formula_latex"),
         "standard_method": s.get("standard_method"),
         "faster_method": s.get("faster_method"),

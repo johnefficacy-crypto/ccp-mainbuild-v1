@@ -33,6 +33,21 @@ governs canonical content. Exam surfaces *consume* it; they do not own it.
 One sentence: **Content Studio = create/govern; Manage Exam = applicability +
 coverage; Study OS = select/deliver.**
 
+**Activation is a third authority inside Content Studio.** `content_studio.activate`
+is separate from `content_studio.author` and `content_studio.review`, and neither
+of those may flip `is_active`. *(Status, amended 2026-09-15, CONTENT-01: this
+shipped for `writing_prompts` in migration 226 and is now implemented for
+`content_cards` in migration 291 — `cms_activate_content_card` /
+`cms_deactivate_content_card`, exposed as
+`POST /content-cards/{id}/activate|deactivate`. Before 291 the content tables had
+no activate route at all, so `is_active` defaulted to true and could not be set
+through the API.)* As with writing prompts, the RPC is the sole eligibility
+authority: a blocked activation is a normal 200 carrying
+`{eligible:false, blockers:[…]}`, never an error, and the router never computes
+eligibility. `content_cards` activation has no applicability-target blocker —
+`writing_prompt_targets` is prompt-specific and content cards have no
+applicability model.
+
 ---
 
 ## 2. The three scopes (shared with domain-model.md and EWP §17)
@@ -55,6 +70,16 @@ dual-authority backdoor.
 Applicability precedence: `phase-specific > exam-specific > exam-family >
 global`. Applicability is **evergreen** — no `exam_cycle_id`; cycle rules stay in
 requirements.
+
+**`applicability_rule` was removed as unimplemented (migration 291, CONTENT-01).**
+Migrations 243 and 262 each gave their content table a structured
+`applicability_rule jsonb` column "so selection is not purely free-text
+matching". No matcher was ever written: across the whole repository the column
+was declared, stored, rendered in the admin UI, and read by nothing, and its only
+concrete values were two frontend test fixtures. Selection runs through the link
+tables instead. The column is gone and **must not be reintroduced from this
+document** — if structured selection is wanted later, it needs a matcher first,
+then a column.
 
 **DEFAULT-DENY (the single precise rule — replaces the earlier "no rows = global"
 baseline, which was fail-open).** A prompt is applicable to an exam/phase context
@@ -144,9 +169,37 @@ Content Studio is **one** content system, not a family of per-subject products.
 There is explicitly **NO** separate `/admin/english`, `/admin/quant`, or
 `/admin/reasoning` product.
 
-**Content types** (the `content_type` facet):
+**Content types** — the type set is **OPEN and row-discriminated**, not a fixed
+list. *(Amended 2026-09-15, CONTENT-01.)*
+
+The original version of this section enumerated seven values:
 `objective_question`, `writing_prompt`, `grammar_drill`, `quant_drill`,
-`reasoning_puzzle`, `passage_set`, `descriptive_prompt`.
+`reasoning_puzzle`, `passage_set`, `descriptive_prompt`. **That list was never
+enforced and was already wrong.** Migrations 243 and 262 shipped
+`quant_heuristics` and `reasoning_strategies` — neither of which is a
+`quant_drill` or a `reasoning_puzzle`; a drill is a practice item, whereas these
+hold explanatory prose *about* solving one — and neither was added here. The
+enumeration described an intention the codebase had already outgrown.
+
+Content cards now live in one table, `content_cards` (migration 291), keyed by a
+`content_type` column that is **format-checked, not value-checked**: lowercase
+snake_case, 1–64 characters, any value. Known types are:
+
+| `content_type` | subtype vocabulary |
+|---|---|
+| `quant_heuristic` | `shortcut`, `standard_method`, `trap`, `estimation` |
+| `reasoning_strategy` | `approach`, `pattern`, `elimination`, `diagram_method`, `set_method`, `trap` |
+
+Adding a type is **configuration**: one entry in `CARD_TYPES`
+(`contentStudioApi.js`) and one in `_CARD_TYPES` (`content_studio.py`). No new
+table, no new migration, no new route, no new component. A type this document
+does not name is still insertable — the database constrains the *shape* of the
+discriminator, never its membership. **Do not re-impose an enumerated type
+list here.**
+
+Objective questions (`mock_question_bank`) and writing prompts
+(`writing_prompts`) remain their own tables; `content_cards` merges the
+topic-scoped explanatory-content authorities only.
 
 **Subjects** (a filter, not a separate app): English, Quant, Reasoning, GA, …
 

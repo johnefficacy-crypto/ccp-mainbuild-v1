@@ -28,8 +28,9 @@ def _strategy(
 ) -> dict:
     return {
         "id": strategy_id,
+        "content_type": "reasoning_strategy",
         "name": strategy_id,
-        "strategy_type": "set_method",
+        "card_subtype": "set_method",
         "formula_latex": None,
         "standard_method": "Build one shared working grid.",
         "faster_method": None,
@@ -59,7 +60,7 @@ def _link(
     return {
         "id": f"{stimulus_id}:{strategy_id}",
         "stimulus_id": stimulus_id,
-        "strategy_id": strategy_id,
+        "card_id": strategy_id,
         "reviewer_status": status,
         "relevance": relevance,
     }
@@ -73,7 +74,7 @@ def test_malformed_or_empty_set_scope_fails_closed_without_shortening():
                 _link("stim-empty", "s1"),
                 _link("stim-malformed", "s1"),
             ],
-            "reasoning_strategies": [_strategy("s1")],
+            "content_cards": [_strategy("s1")],
         }
     )
 
@@ -108,7 +109,7 @@ def test_stimulus_gate_is_conjunctive_and_matches_every_question():
                 _link("stim-1", "micro-only"),
                 _link("stim-1", "cross-subject"),
             ],
-            "reasoning_strategies": [
+            "content_cards": [
                 _strategy("ok"),
                 _strategy("pending-link"),
                 _strategy("pending-strategy", status="pending"),
@@ -150,7 +151,7 @@ def test_shared_projection_normalizes_uuid_stimulus_ids():
     sb = SBStub(
         {
             "reasoning_stimulus_strategies": [_link(str(stimulus_id), "s1")],
-            "reasoning_strategies": [_strategy("s1")],
+            "content_cards": [_strategy("s1")],
         }
     )
 
