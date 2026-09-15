@@ -2,7 +2,7 @@
 --
 -- Proves the end-to-end governed readiness path WITHOUT a migration, using only
 -- existing paths: service-role INSERT into the authority tables + the existing
--- cms_review_quant_heuristic lifecycle RPC (migration 246) to reach verified.
+-- cms_review_content_card lifecycle RPC (migration 246) to reach verified.
 --
 -- Asserted invariants (the GQR-S2 data/operator gate):
 --   1. A reviewed (verified+active) heuristic with a verified link appears in the
@@ -45,19 +45,20 @@ on conflict (id) do nothing;
 
 -- Author a heuristic (pending) + assign it to the question (link pending) — the
 -- governed intake path is a service-role INSERT; verification is the RPC below.
-insert into public.quant_heuristics
-  (id, topic_id, heuristic_code, name, heuristic_type, applicability_rule,
-   shortcut_method, worked_example, reviewer_status, is_active, created_by)
+insert into public.content_cards
+  (id, content_type, topic_id, card_code, name, card_subtype,
+   faster_method, worked_example, reviewer_status, is_active, created_by)
 values ('a0000000-0000-0000-0000-000000000502'::uuid,
+        'quant_heuristic',
         '66660000-0000-0000-0000-000000000502'::uuid,
         'QH-VERIFY-SUCCESSIVE-PCT', 'Successive percentage change',
-        'shortcut', '{"pattern": "successive_percentage"}'::jsonb,
+        'shortcut',
         'net% = a + b + a*b/100 (signed)', '+20% then -20% → 20 - 20 - 400/100 = -4%',
         'pending', true, 'eeeeeeee-0000-0000-0000-000000000502'::uuid)
 on conflict (id) do nothing;
 
-insert into public.quant_question_heuristics
-  (id, question_id, heuristic_id, relevance, reviewer_status)
+insert into public.content_card_links
+  (id, question_id, card_id, relevance, reviewer_status)
 values ('11110000-0000-0000-0000-000000000502'::uuid,
         'b1110000-0000-0000-0000-000000000502'::uuid,
         'a0000000-0000-0000-0000-000000000502'::uuid, 'primary', 'pending')
@@ -67,8 +68,8 @@ on conflict (id) do nothing;
 create function pg_temp._qh_ready(p_question uuid) returns int
 language sql as $$
   select count(*)::int
-  from public.quant_question_heuristics l
-  join public.quant_heuristics h on h.id = l.heuristic_id
+  from public.content_card_links l
+  join public.content_cards h on h.id = l.card_id
   join public.mock_question_bank q on q.id = l.question_id
   where l.question_id = p_question
     and l.reviewer_status = 'verified'
@@ -91,8 +92,8 @@ begin
 
   -- Bad reason is rejected by the RPC (governance guard).
   begin
-    select updated_at into v_tok from public.quant_heuristics where id = v_h;
-    perform public.cms_review_quant_heuristic(v_h, 'pending', v_tok, 'verified', null, 'short', v_act, 'op@example.com');
+    select updated_at into v_tok from public.content_cards where id = v_h;
+    perform public.cms_review_content_card(v_h, 'pending', v_tok, 'verified', null, 'short', v_act, 'op@example.com');
     raise exception 'FAIL: short reason should be rejected';
   exception when others then
     if sqlerrm not like 'invalid_reason%' then raise; end if;
@@ -100,12 +101,12 @@ begin
   end;
 
   -- Verify the heuristic via the governed RPC (pending → verified).
-  select updated_at into v_tok from public.quant_heuristics where id = v_h;
-  perform public.cms_review_quant_heuristic(
+  select updated_at into v_tok from public.content_cards where id = v_h;
+  perform public.cms_review_content_card(
     v_h, 'pending', v_tok, 'verified', null, 'clear, correct successive-% shortcut', v_act, 'op@example.com');
   if (select count(*) from public.admin_audit_logs
-      where action = 'quant_heuristic_status_transition'
-        and entity_type = 'quant_heuristic'
+      where action = 'content_card_status_transition'
+        and entity_type = 'content_card'
         and entity_id = v_h::text) <> 1 then
     raise exception 'FAIL: governed verification must create exactly one audit row';
   end if;
@@ -117,7 +118,7 @@ begin
 
   -- Verify the link (governed assignment path = service-role UPDATE; links carry
   -- their own reviewer_status but have no separate RPC in v1).
-  update public.quant_question_heuristics
+  update public.content_card_links
     set reviewer_status = 'verified', reviewed_by = v_act, reviewed_at = now()
     where id = v_l;
 
@@ -126,20 +127,20 @@ begin
   raise notice 'PASS double-verified active heuristic IS learner-ready';
 
   -- Move the LINK out of verified → disappears.
-  update public.quant_question_heuristics set reviewer_status = 'rejected' where id = v_l;
+  update public.content_card_links set reviewer_status = 'rejected' where id = v_l;
   if pg_temp._qh_ready(v_q) <> 0 then raise exception 'FAIL: rejecting the link must remove the surface'; end if;
   raise notice 'PASS rejecting the link removes the surface';
-  update public.quant_question_heuristics set reviewer_status = 'verified' where id = v_l;
+  update public.content_card_links set reviewer_status = 'verified' where id = v_l;
 
   -- Retire the HEURISTIC (edit is_active=false) → disappears even with a verified link.
-  update public.quant_heuristics set is_active = false, updated_at = now() where id = v_h;
+  update public.content_cards set is_active = false, updated_at = now() where id = v_h;
   if pg_temp._qh_ready(v_q) <> 0 then raise exception 'FAIL: retiring (is_active=false) must remove the surface'; end if;
   raise notice 'PASS retiring the heuristic removes the surface';
-  update public.quant_heuristics set is_active = true, updated_at = now() where id = v_h;
+  update public.content_cards set is_active = true, updated_at = now() where id = v_h;
 
   -- Reopen the HEURISTIC for correction via the RPC (verified → needs_correction) → disappears.
-  select updated_at into v_tok from public.quant_heuristics where id = v_h;
-  perform public.cms_review_quant_heuristic(
+  select updated_at into v_tok from public.content_cards where id = v_h;
+  perform public.cms_review_content_card(
     v_h, 'verified', v_tok, 'needs_correction', 'applicability rule under review',
     'reopening to re-verify the applicability rule', v_act, 'op@example.com');
   if pg_temp._qh_ready(v_q) <> 0 then raise exception 'FAIL: needs_correction must remove the surface'; end if;

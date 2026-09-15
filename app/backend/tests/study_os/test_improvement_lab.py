@@ -79,16 +79,21 @@ def _empty_sources(**tables):
     """
     base = {
         "mock_attempts": [], "mock_attempt_responses": [],
-        "quant_question_heuristics": [],
-        "reasoning_question_strategies": [],
+        # Migration 292 merged the three junctions too, so this is one list.
+        "content_card_links": [],
         "content_cards": [],
     }
-    cards = []
+    cards, links = [], []
     for legacy in ("quant_heuristics", "reasoning_strategies"):
         cards.extend(tables.pop(legacy, []) or [])
+    for legacy in ("quant_question_heuristics", "reasoning_question_strategies",
+                   "reasoning_stimulus_strategies"):
+        links.extend(tables.pop(legacy, []) or [])
     base.update(tables)
     if cards:
         base["content_cards"] = [*base["content_cards"], *cards]
+    if links:
+        base["content_card_links"] = [*base["content_card_links"], *links]
     return base
 
 
@@ -138,29 +143,34 @@ def test_feed_excludes_skipped_unanswered_questions():
     assert out[0]["times_seen"] == 1 and out[0]["wrong_count"] == 1
 
 
-def test_feed_unrelated_subject_outage_does_not_break_this_feed():
+def test_feed_unrelated_subject_outage_does_not_break_this_feed(monkeypatch):
     # A Reasoning-side outage must NOT 502 the Quant feed — the aggregator reads
-    # only the requested subject in strict mode (Codex #999 isolation).
+    # each subject through its own reader and keeps one subject's failure to
+    # that subject (Codex #999 isolation).
     #
-    # Migration 291 NARROWED what "unrelated" can mean. Both subjects now read
-    # one merged `content_cards` table, so a failure of THAT table is no longer
-    # an unrelated-subject outage — it is a shared-dependency outage and hits
-    # both feeds. The link tables stay subject-specific
-    # (quant_question_heuristics vs reasoning_question_strategies), so that is
-    # where per-subject isolation still holds, and that is what this now proves.
+    # WHERE that isolation lives has moved twice, and this test moved with it.
+    # Originally the two subjects had separate content tables AND separate link
+    # tables, so the outage could be simulated by failing a table read and the
+    # isolation was a storage fact. Migration 291 merged the content tables;
+    # migration 292 merged the link tables. There is now NO table that belongs
+    # to one subject, so a table-level outage is a shared-dependency outage by
+    # construction and would correctly take down both feeds.
+    #
+    # What survives — and what the Improvement Lab actually depends on — is
+    # isolation in the READ PATH: solution_strategies calls each subject's
+    # reader inside its own try/except, so a reasoning read that raises yields
+    # empty reasoning strategies rather than failing the response. That is a
+    # real, load-bearing guarantee, and failing the reasoning reader is the
+    # honest way to prove it now.
     sb = SBStub(_empty_sources(
         mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
         mock_attempt_responses=[_resp("a1", "q1", False)],
         quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
     ))
-    orig = sb.table
-
-    def _reasoning_down(name):
-        if name == "reasoning_question_strategies":
-            raise RuntimeError("reasoning link table down")
-        return orig(name)
-
-    sb.table = _reasoning_down  # type: ignore[assignment]
+    monkeypatch.setattr(
+        il.solution_strategies.reasoning_strategies, "strategies_for_questions",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("reasoning source down")),
+    )
     assert [s["id"] for s in il.build_feed(sb, "u-1", "quant")] == ["h1"]  # healthy, no raise
     assert _client(sb).get("/api/study/improvement-lab/quant").status_code == 200
 
@@ -326,7 +336,7 @@ def test_feed_strategy_read_failure_propagates_not_disguised_as_empty():
     orig = sb.table
 
     def _boom(name):
-        if name == "quant_question_heuristics":
+        if name == "content_card_links":
             raise RuntimeError("strategy table down")
         return orig(name)
 

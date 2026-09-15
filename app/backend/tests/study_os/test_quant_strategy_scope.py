@@ -55,7 +55,7 @@ def _link(*, topic="quant-topic", micro=None):
 def _read(heuristic, link):
     sb = SBStub({
         "content_cards": [heuristic],
-        "quant_question_heuristics": [link],
+        "content_card_links": [link],
     })
     return qh.heuristics_for_questions(sb, ["q1"])["q1"]
 
@@ -63,7 +63,7 @@ def _read(heuristic, link):
 def test_link_read_embeds_question_scope_without_extra_query():
     sb = SBStub({
         "content_cards": [_heuristic()],
-        "quant_question_heuristics": [_link()],
+        "content_card_links": [_link()],
     })
     selects = []
     original_table = sb.table
@@ -82,14 +82,14 @@ def test_link_read_embeds_question_scope_without_extra_query():
     sb.table = _table  # type: ignore[assignment]
     qh.heuristics_for_questions(sb, ["q1"])
 
-    link_select = next(columns for table, columns in selects if table == "quant_question_heuristics")
+    link_select = next(columns for table, columns in selects if table == "content_card_links")
     heuristic_select = next(columns for table, columns in selects if table == "content_cards")
     assert "question:mock_question_bank!inner(topic_id,microtopic_id)" in link_select
     assert "content_cards_topic_id_fkey" in heuristic_select
     assert "content_cards_microtopic_id_fkey" in heuristic_select
     assert "subject:subjects(slug,subject_group)" in heuristic_select
     assert [table for table, _columns in selects] == [
-        "quant_question_heuristics",
+        "content_card_links",
         "content_cards",
     ]
 

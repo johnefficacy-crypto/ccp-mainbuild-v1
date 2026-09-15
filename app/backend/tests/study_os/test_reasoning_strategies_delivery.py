@@ -56,13 +56,13 @@ def _link(qid, sid, *, status="verified", relevance="primary", topic="rt1", micr
 def test_batched_read_one_link_one_strategy_query():
     calls = {"n": 0}
     sb = SBStub({
-        "reasoning_question_strategies": [_link("q1", "s1"), _link("q2", "s2")],
+        "content_card_links": [_link("q1", "s1"), _link("q2", "s2")],
         "content_cards": [_strat("s1", name="A"), _strat("s2", name="B")],
     })
     orig = sb.table
 
     def _counting(name):
-        if name in ("reasoning_question_strategies", "content_cards"):
+        if name in ("content_card_links", "content_cards"):
             calls["n"] += 1
         return orig(name)
 
@@ -76,7 +76,7 @@ def test_batched_read_one_link_one_strategy_query():
 
 def test_batched_gate_excludes_unverified_or_inactive():
     sb = SBStub({
-        "reasoning_question_strategies": [
+        "content_card_links": [
             _link("q1", "s-ok"),
             _link("q1", "s-pending"),
             _link("q1", "s-inactive"),
@@ -94,7 +94,7 @@ def test_batched_gate_excludes_unverified_or_inactive():
 
 def test_batched_rejects_wrong_scope_and_cross_subject():
     sb = SBStub({
-        "reasoning_question_strategies": [
+        "content_card_links": [
             _link("q-topic-mismatch", "s-topic", topic="other-topic"),
             _link("q-micro-mismatch", "s-micro", topic="rt1", micro="other-micro"),
             _link("q-quant-subject", "s-quant", topic="rt1"),
@@ -117,7 +117,7 @@ def test_batched_rejects_wrong_scope_and_cross_subject():
 
 def test_batched_no_cross_question_leak_and_ordering():
     sb = SBStub({
-        "reasoning_question_strategies": [
+        "content_card_links": [
             _link("q1", "s1", relevance="related"),
             _link("q1", "s2", relevance="primary"),
             _link("q2", "s1", relevance="primary"),
@@ -132,7 +132,7 @@ def test_batched_no_cross_question_leak_and_ordering():
 
 def test_batched_authority_strips_governance_fields():
     sb = SBStub({
-        "reasoning_question_strategies": [_link("q1", "s1")],
+        "content_card_links": [_link("q1", "s1")],
         "content_cards": [_strat("s1")],
     })
     raw = rs.strategies_for_questions(sb, ["q1"])["q1"][0]
@@ -146,14 +146,14 @@ def test_batched_authority_strips_governance_fields():
 
 def test_single_question_wrapper_delegates():
     sb = SBStub({
-        "reasoning_question_strategies": [_link("q1", "s1")],
+        "content_card_links": [_link("q1", "s1")],
         "content_cards": [_strat("s1")],
     })
     assert rs.strategies_for_question(sb, "q1") == rs.strategies_for_questions(sb, ["q1"])["q1"]
 
 
 def test_batched_empty_input_no_reads():
-    sb = SBStub({"reasoning_question_strategies": [], "content_cards": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     sb.table = lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no query on empty input"))
     assert rs.strategies_for_questions(sb, []) == {}
     assert rs.strategies_for_question(sb, "") == []
@@ -163,8 +163,7 @@ def test_batched_empty_input_no_reads():
 
 def test_aggregator_projects_reasoning_with_key_observation_and_subject_tag():
     sb = SBStub({
-        "quant_question_heuristics": [],
-        "reasoning_question_strategies": [_link("q1", "s1", relevance="secondary")],
+        "content_card_links": [_link("q1", "s1", relevance="secondary")],
         "content_cards": [_strat("s1", name="Elimination by fixed pivot")],
     })
     dto = ss.strategies_for_questions(sb, ["q1"])["q1"][0]
@@ -184,11 +183,14 @@ def test_aggregator_composes_sources_with_per_subject_isolation():
     # question's strategies to its own subject — proven with two questions, each
     # scoped to its own family; neither source leaks onto the other's question.
     sb = SBStub({
-        "quant_question_heuristics": [{
+        # Migration 292 merged the junctions, so the quant link and the
+        # reasoning link live in ONE list now — which is precisely what the
+        # readers see in production.
+        "content_card_links": [{
             "id": "ql", "question_id": "q-quant", "card_id": "h1",
             "relevance": "primary", "reviewer_status": "verified",
             "question": {"topic_id": "qt1", "microtopic_id": None},
-        }],
+        }, _link("q-reason", "s1", topic="rt1")],
         "content_cards": [{
             "id": "h1", "topic_id": "qt1", "microtopic_id": None,
             "topic": {"subject": _subject("quant")},
@@ -196,7 +198,6 @@ def test_aggregator_composes_sources_with_per_subject_isolation():
             "faster_method": "fast", "reviewer_status": "verified", "is_active": True,
             "content_type": "quant_heuristic",
         }, _strat("s1", name="Reasoning one", topic_id="rt1")],
-        "reasoning_question_strategies": [_link("q-reason", "s1", topic="rt1")],
     })
     out = ss.strategies_for_questions(sb, ["q-quant", "q-reason"])
     assert [d["subject_family"] for d in out["q-quant"]] == ["quant"]
@@ -204,8 +205,7 @@ def test_aggregator_composes_sources_with_per_subject_isolation():
 
 
 def test_aggregator_reasoning_source_fails_soft(monkeypatch):
-    sb = SBStub({"quant_question_heuristics": [], "content_cards": [],
-                 "reasoning_question_strategies": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     monkeypatch.setattr(
         ss.reasoning_strategies, "strategies_for_questions",
         lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
@@ -229,8 +229,8 @@ def test_get_review_attaches_reasoning_strategies():
              "selected_option_id": "o2", "is_correct": False, "time_spent_sec": 9},
         ],
         "mock_attempt_response_classification": [],
-        "quant_question_heuristics": [], "content_cards": [],
-        "reasoning_question_strategies": [_link("q1", "s1")],
+        "content_cards": [],
+        "content_card_links": [_link("q1", "s1")],
         "content_cards": [_strat("s1", name="Blood-relation chart")],
     })
     out = mock_engine.get_review(sb, "u-1", "att-1")
@@ -258,7 +258,7 @@ def _stimulus_link(stimulus_id, strategy_id, *, status="verified", relevance="pr
 def test_stimulus_read_is_batched_gated_and_matches_every_question_scope():
     calls = {"n": 0}
     sb = SBStub({
-        "reasoning_stimulus_strategies": [
+        "content_card_links": [
             _stimulus_link("stim-1", "s-set"),
             _stimulus_link("stim-1", "s-pending-link", status="pending"),
             _stimulus_link("stim-2", "s-micro"),
@@ -272,7 +272,7 @@ def test_stimulus_read_is_batched_gated_and_matches_every_question_scope():
     orig = sb.table
 
     def _counting(name):
-        if name in ("reasoning_stimulus_strategies", "content_cards"):
+        if name in ("content_card_links", "content_cards"):
             calls["n"] += 1
         return orig(name)
 
@@ -300,7 +300,7 @@ def test_stimulus_read_is_batched_gated_and_matches_every_question_scope():
 
 def test_stimulus_aggregator_is_fail_soft_and_projects_shared_dto(monkeypatch):
     sb = SBStub({
-        "reasoning_stimulus_strategies": [_stimulus_link("stim-1", "s1")],
+        "content_card_links": [_stimulus_link("stim-1", "s1")],
         "content_cards": [_strat("s1", name="Build the arrangement grid")],
     })
     dto = ss.strategies_for_stimuli(
@@ -360,10 +360,12 @@ def test_get_review_emits_one_shared_stimulus_group_and_preserves_question_strat
             },
         ],
         "mock_attempt_response_classification": [],
-        "quant_question_heuristics": [],
-        "content_cards": [],
-        "reasoning_question_strategies": [_link("q1", "s-question")],
-        "reasoning_stimulus_strategies": [_stimulus_link("stim-1", "s-set")],
+        # A question link and a stimulus link in ONE table after migration 292,
+        # discriminated by which target column is set.
+        "content_card_links": [
+            _link("q1", "s-question"),
+            _stimulus_link("stim-1", "s-set"),
+        ],
         "content_cards": [
             _strat("s-question", name="Question-specific elimination"),
             _strat("s-set", name="Build one arrangement grid"),

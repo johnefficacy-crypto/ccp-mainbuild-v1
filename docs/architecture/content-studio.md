@@ -201,6 +201,28 @@ Objective questions (`mock_question_bank`) and writing prompts
 (`writing_prompts`) remain their own tables; `content_cards` merges the
 topic-scoped explanatory-content authorities only.
 
+**Links are one table too** *(migration 292, CONTENT-02).* The three per-subject
+junctions — `quant_question_heuristics`, `reasoning_question_strategies`,
+`reasoning_stimulus_strategies` — are merged into `content_card_links`. A link
+row names its card and **exactly one** target, discriminated by which of
+`question_id` (→ `mock_question_bank`) or `stimulus_id` (→ `pyq_stimuli`) is
+set, under `CHECK num_nonnulls(question_id, stimulus_id) = 1`. This is two
+nullable typed FKs rather than `target_type` + `target_id`, because PostgreSQL
+cannot foreign-key one column at two tables and that shape would have traded
+referential integrity for generality; the same discriminated-target pattern is
+already used by `writing_prompt_targets`. A link row does **not** carry the card
+type — that lives on `content_cards.content_type` — so adding a card type
+touches this table not at all, and adding a third *target kind* is one nullable
+FK column plus one term in the CHECK.
+
+Consequence worth knowing: the two subjects no longer share any storage-level
+isolation. Before 291 they had separate content tables and separate link
+tables, so one subject's table failing left the other's feed healthy. Both are
+now merged. What remains is read-path isolation — `study_os.solution_strategies`
+calls each subject's reader inside its own `try/except`, so one subject's read
+failure yields empty strategies for that subject rather than failing the
+response.
+
 **Subjects** (a filter, not a separate app): English, Quant, Reasoning, GA, …
 
 Sub-surfaces (drill-in tabs inside the single destination — NOT new top-level

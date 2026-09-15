@@ -75,7 +75,7 @@ def test_returns_only_double_verified_active():
             _heuristic("h-pending", status="pending", active=True, name="A"),
             _heuristic("h-inactive", status="verified", active=False, name="C"),
         ],
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-ok", status="verified", relevance="primary"),
             _link("q1", "h-pending", status="verified", relevance="primary"),
             _link("q1", "h-inactive", status="verified", relevance="primary"),
@@ -88,7 +88,7 @@ def test_returns_only_double_verified_active():
 def test_unverified_link_excluded_even_if_heuristic_verified():
     sb = SBStub({
         "content_cards": [_heuristic("h-ok", status="verified")],
-        "quant_question_heuristics": [_link("q1", "h-ok", status="pending")],
+        "content_card_links": [_link("q1", "h-ok", status="pending")],
     })
     assert qh.heuristics_for_question(sb, "q1") == []
 
@@ -96,7 +96,7 @@ def test_unverified_link_excluded_even_if_heuristic_verified():
 def test_scope_mismatch_excluded_even_if_both_rows_verified():
     sb = SBStub({
         "content_cards": [_heuristic("h-ok", status="verified", topic="quant-topic")],
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-ok", status="verified", topic="reasoning-topic")
         ],
     })
@@ -108,7 +108,7 @@ def test_non_quant_canonical_scope_excluded_even_when_ids_match():
         "content_cards": [
             _heuristic("h-bad", topic="reasoning-topic", topic_family="reasoning")
         ],
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-bad", topic="reasoning-topic")
         ],
     })
@@ -120,7 +120,7 @@ def test_inconsistent_topic_microtopic_parent_excluded():
         "content_cards": [
             _heuristic("h-bad", topic="t1", micro="m1", micro_parent="other-topic")
         ],
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-bad", topic="t1", micro="m1")
         ],
     })
@@ -134,7 +134,7 @@ def test_ordered_by_relevance_then_name():
             _heuristic("h-b", name="Beta"),
             _heuristic("h-c", name="Gamma"),
         ],
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-c", relevance="related"),
             _link("q1", "h-b", relevance="secondary"),
             _link("q1", "h-a", relevance="primary"),
@@ -146,7 +146,7 @@ def test_ordered_by_relevance_then_name():
 
 
 def test_no_links_returns_empty():
-    sb = SBStub({"content_cards": [_heuristic("h-ok")], "quant_question_heuristics": []})
+    sb = SBStub({"content_cards": [_heuristic("h-ok")], "content_card_links": []})
     assert qh.heuristics_for_question(sb, "q1") == []
 
 
@@ -268,10 +268,10 @@ def test_readiness_lifecycle_appears_then_disappears():
     makes it DISAPPEAR on the next conjunctive read."""
     sb = SBStub({
         "content_cards": [_heuristic("h1", status="pending", active=True)],
-        "quant_question_heuristics": [_link("q1", "h1", status="pending")],
+        "content_card_links": [_link("q1", "h1", status="pending")],
         "admin_audit_logs": [],
     })
-    link = sb.db["quant_question_heuristics"][0]
+    link = sb.db["content_card_links"][0]
     heur = sb.db["content_cards"][0]
 
     # Pending heuristic + pending link → not learner-ready.

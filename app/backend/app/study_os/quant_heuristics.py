@@ -25,7 +25,13 @@ logger = logging.getLogger("career_copilot.study_os.quant_heuristics")
 
 _HEURISTICS = "content_cards"
 _CONTENT_TYPE = "quant_heuristic"
-_LINKS = "quant_question_heuristics"
+# Migration 292 merged the three per-subject junctions into one link table.
+# Card TYPE is not represented on a link row — it lives on
+# content_cards.content_type — so a question that carries both a quant and a
+# reasoning card yields BOTH link rows here. The card read below filters on
+# content_type, so the other subject's link simply resolves to no card and is
+# skipped. The gate is unchanged; only the row count read is slightly wider.
+_LINKS = "content_card_links"
 
 # Learner-facing display order for a question's heuristics.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}

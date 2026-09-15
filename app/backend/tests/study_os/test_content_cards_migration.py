@@ -168,3 +168,98 @@ def test_activation_invents_no_applicability_gate():
     assert "no_active_applicability_target" not in SQL
     assert "from public.writing_prompt_targets" not in SQL
     assert "v_has_active_target" not in SQL
+
+
+# ── migration 292: the merged link table ────────────────────────────────────
+# CONTENT-02. 291 merged the content tables and left three near-identical
+# junctions behind; 292 merges those too. These pin the part that was a real
+# design choice — how the target is discriminated without losing referential
+# integrity.
+
+LINKS_MIGRATION = (
+    Path(__file__).resolve().parents[3]
+    / "supabase/migrations/292_content_card_links_generalisation.sql"
+).read_text(encoding="utf-8").lower()
+LINKS_SQL = " ".join(LINKS_MIGRATION.split())
+
+# The migration's header explains at length WHY it does not use
+# target_type+target_id, so "absent" assertions must read the executable
+# surface, not the prose that justifies it.
+LINKS_DDL = " ".join(
+    line.split("--")[0]
+    for line in LINKS_MIGRATION.split("\n")
+).replace("  ", " ")
+while "  " in LINKS_DDL:
+    LINKS_DDL = LINKS_DDL.replace("  ", " ")
+
+
+def _links_table_body() -> str:
+    """The CREATE TABLE block only — no `--` prose, no `comment on` statements."""
+    body = LINKS_DDL.split("create table if not exists public.content_card_links")[1]
+    return body.split(");")[0]
+
+
+def test_target_is_two_real_fks_not_target_type_plus_target_id():
+    """The whole argument for this shape: PostgreSQL cannot foreign-key one
+    column at two tables, so target_type+target_id would buy generality by
+    giving up referential integrity. Both FKs and both cascades stay real."""
+    assert "question_id uuid references public.mock_question_bank(id) on delete cascade" in LINKS_SQL
+    assert "stimulus_id uuid references public.pyq_stimuli(id) on delete cascade" in LINKS_SQL
+    # The `comment on constraint` statement records the choice in the database
+    # itself and names the rejected shape, so scope this to the table body.
+    assert "target_type" not in _links_table_body()
+    assert "target_id" not in _links_table_body()
+
+
+def test_exactly_one_target_is_enforced_by_the_database():
+    assert "constraint content_card_links_one_target" in LINKS_SQL
+    assert "check (num_nonnulls(question_id, stimulus_id) = 1)" in LINKS_SQL
+
+
+def test_per_target_uniqueness_replaces_both_source_uniques():
+    """The sources had unique (question_id, heuristic_id) and
+    unique (stimulus_id, strategy_id). A plain UNIQUE would not reproduce those,
+    because the unused target column is NULL on every row."""
+    assert "content_card_links_question_card_uidx" in LINKS_SQL
+    assert "content_card_links_stimulus_card_uidx" in LINKS_SQL
+    assert "where question_id is not null" in LINKS_SQL
+    assert "where stimulus_id is not null" in LINKS_SQL
+
+
+def test_card_type_is_not_represented_on_a_link_row():
+    """Card type lives on content_cards.content_type. A link table that also
+    carried it would be a second place to get it wrong — and adding a card type
+    would touch this table again, which is what the merge exists to stop."""
+    assert "content_type" not in _links_table_body()
+
+
+def test_link_lifecycle_stays_three_valued_not_four():
+    """A link is never 'needs_correction': an unsound link is rejected and
+    re-made, not revised. Carried over from 243/262/263 unchanged."""
+    assert "check (reviewer_status in ('pending', 'verified', 'rejected'))" in LINKS_DDL
+    assert "needs_correction" not in LINKS_DDL
+
+
+def test_links_data_move_is_count_agnostic_and_checks_the_target_side():
+    """A bare count would pass a question/stimulus mix-up."""
+    assert "row count mismatch" in LINKS_SQL
+    for phrase in ("quant link(s) did not round-trip",
+                   "reasoning question link(s) did not round-trip",
+                   "stimulus link(s) did not round-trip"):
+        assert phrase in LINKS_SQL
+    assert "t.question_id = s.question_id and t.stimulus_id is null" in LINKS_SQL
+    assert "t.stimulus_id = s.stimulus_id and t.question_id is null" in LINKS_SQL
+
+
+def test_all_three_source_tables_are_dropped_without_cascade():
+    for table in ("quant_question_heuristics", "reasoning_question_strategies",
+                  "reasoning_stimulus_strategies"):
+        assert f"drop table if exists public.{table};" in LINKS_SQL
+        assert f"drop table if exists public.{table} cascade" not in LINKS_SQL
+
+
+def test_links_table_is_rls_enabled_and_service_role_only():
+    assert "alter table public.content_card_links enable row level security" in LINKS_SQL
+    assert "revoke all on public.content_card_links from anon" in LINKS_SQL
+    assert "revoke all on public.content_card_links from authenticated" in LINKS_SQL
+    assert "grant select, insert, update, delete on public.content_card_links to service_role" in LINKS_SQL

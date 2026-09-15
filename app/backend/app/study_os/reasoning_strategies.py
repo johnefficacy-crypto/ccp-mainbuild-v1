@@ -27,8 +27,16 @@ logger = logging.getLogger("career_copilot.study_os.reasoning_strategies")
 
 _STRATEGIES = "content_cards"
 _CONTENT_TYPE = "reasoning_strategy"
-_LINKS = "reasoning_question_strategies"
-_STIMULUS_LINKS = "reasoning_stimulus_strategies"
+# Migration 292 merged the three per-subject junctions into one link table, with
+# the target discriminated by which of question_id / stimulus_id is set. Both
+# names point at it: the question reader filters on question_id and the stimulus
+# reader on stimulus_id, and `in_` never matches a NULL, so each still sees only
+# its own target kind. Card TYPE is not on the link row — it lives on
+# content_cards.content_type — so a question carrying a quant card too yields
+# that link here as well; the card read filters on content_type, so it resolves
+# to no card and is skipped. The gate is unchanged.
+_LINKS = "content_card_links"
+_STIMULUS_LINKS = "content_card_links"
 
 # Learner-facing display order for a question's strategies.
 _RELEVANCE_RANK = {"primary": 0, "secondary": 1, "related": 2}

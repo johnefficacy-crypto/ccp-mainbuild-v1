@@ -1,4 +1,5 @@
--- GQR-S7 — live privilege/RLS proof for reasoning_stimulus_strategies.
+-- GQR-S7 — live privilege/RLS proof for content_card_links (migration 292,
+-- which merged reasoning_stimulus_strategies and the two question-link tables).
 --
 -- Run only after migration 263 has been applied to the target Supabase database:
 --
@@ -14,8 +15,8 @@ declare
   v_rls_enabled boolean;
   v_policy_count integer;
 begin
-  if to_regclass('public.reasoning_stimulus_strategies') is null then
-    raise exception 'FAIL: public.reasoning_stimulus_strategies does not exist; apply migration 263 first';
+  if to_regclass('public.content_card_links') is null then
+    raise exception 'FAIL: public.content_card_links does not exist; apply migration 292 first';
   end if;
 
   select c.relrowsecurity
@@ -23,17 +24,17 @@ begin
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public'
-     and c.relname = 'reasoning_stimulus_strategies';
+     and c.relname = 'content_card_links';
 
   if not coalesce(v_rls_enabled, false) then
-    raise exception 'FAIL: RLS is not enabled on reasoning_stimulus_strategies';
+    raise exception 'FAIL: RLS is not enabled on content_card_links';
   end if;
 
   select count(*)
     into v_policy_count
     from pg_policies
    where schemaname = 'public'
-     and tablename = 'reasoning_stimulus_strategies';
+     and tablename = 'content_card_links';
 
   if v_policy_count <> 0 then
     raise exception 'FAIL: expected zero direct client policies, found %', v_policy_count;
@@ -45,27 +46,27 @@ begin
     raise exception 'FAIL: Supabase roles anon/authenticated/service_role are required';
   end if;
 
-  if has_table_privilege('anon', 'public.reasoning_stimulus_strategies', 'SELECT')
-     or has_table_privilege('anon', 'public.reasoning_stimulus_strategies', 'INSERT')
-     or has_table_privilege('anon', 'public.reasoning_stimulus_strategies', 'UPDATE')
-     or has_table_privilege('anon', 'public.reasoning_stimulus_strategies', 'DELETE') then
+  if has_table_privilege('anon', 'public.content_card_links', 'SELECT')
+     or has_table_privilege('anon', 'public.content_card_links', 'INSERT')
+     or has_table_privilege('anon', 'public.content_card_links', 'UPDATE')
+     or has_table_privilege('anon', 'public.content_card_links', 'DELETE') then
     raise exception 'FAIL: anon has a direct table privilege';
   end if;
 
-  if has_table_privilege('authenticated', 'public.reasoning_stimulus_strategies', 'SELECT')
-     or has_table_privilege('authenticated', 'public.reasoning_stimulus_strategies', 'INSERT')
-     or has_table_privilege('authenticated', 'public.reasoning_stimulus_strategies', 'UPDATE')
-     or has_table_privilege('authenticated', 'public.reasoning_stimulus_strategies', 'DELETE') then
+  if has_table_privilege('authenticated', 'public.content_card_links', 'SELECT')
+     or has_table_privilege('authenticated', 'public.content_card_links', 'INSERT')
+     or has_table_privilege('authenticated', 'public.content_card_links', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.content_card_links', 'DELETE') then
     raise exception 'FAIL: authenticated has a direct table privilege';
   end if;
 
-  if not has_table_privilege('service_role', 'public.reasoning_stimulus_strategies', 'SELECT')
-     or not has_table_privilege('service_role', 'public.reasoning_stimulus_strategies', 'INSERT')
-     or not has_table_privilege('service_role', 'public.reasoning_stimulus_strategies', 'UPDATE')
-     or not has_table_privilege('service_role', 'public.reasoning_stimulus_strategies', 'DELETE') then
+  if not has_table_privilege('service_role', 'public.content_card_links', 'SELECT')
+     or not has_table_privilege('service_role', 'public.content_card_links', 'INSERT')
+     or not has_table_privilege('service_role', 'public.content_card_links', 'UPDATE')
+     or not has_table_privilege('service_role', 'public.content_card_links', 'DELETE') then
     raise exception 'FAIL: service_role is missing one or more required table privileges';
   end if;
 end
 $$;
 
-select 'ALL PASS — reasoning_stimulus_strategies is RLS-enabled and service-role-only' as result;
+select 'ALL PASS — content_card_links is RLS-enabled and service-role-only' as result;

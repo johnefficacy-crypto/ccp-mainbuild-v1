@@ -69,7 +69,7 @@ def _link(
 def test_malformed_or_empty_set_scope_fails_closed_without_shortening():
     sb = SBStub(
         {
-            "reasoning_stimulus_strategies": [
+            "content_card_links": [
                 _link("stim-valid", "s1"),
                 _link("stim-empty", "s1"),
                 _link("stim-malformed", "s1"),
@@ -101,7 +101,7 @@ def test_malformed_or_empty_set_scope_fails_closed_without_shortening():
 def test_stimulus_gate_is_conjunctive_and_matches_every_question():
     sb = SBStub(
         {
-            "reasoning_stimulus_strategies": [
+            "content_card_links": [
                 _link("stim-1", "ok"),
                 _link("stim-1", "pending-link", status="pending"),
                 _link("stim-1", "pending-strategy"),
@@ -150,7 +150,7 @@ def test_shared_projection_normalizes_uuid_stimulus_ids():
     stimulus_id = UUID("93417197-9b21-5e01-9460-fb5abdac2aa4")
     sb = SBStub(
         {
-            "reasoning_stimulus_strategies": [_link(str(stimulus_id), "s1")],
+            "content_card_links": [_link(str(stimulus_id), "s1")],
             "content_cards": [_strategy("s1")],
         }
     )

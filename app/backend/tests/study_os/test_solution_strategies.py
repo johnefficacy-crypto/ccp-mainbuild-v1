@@ -79,13 +79,13 @@ def _link(
 def test_batched_read_one_link_one_heuristic_query():
     calls = {"n": 0}
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1"), _link("q2", "h2")],
+        "content_card_links": [_link("q1", "h1"), _link("q2", "h2")],
         "content_cards": [_heur("h1", name="A"), _heur("h2", name="B")],
     })
     orig_table = sb.table
 
     def _counting_table(name):
-        if name in ("quant_question_heuristics", "content_cards"):
+        if name in ("content_card_links", "content_cards"):
             calls["n"] += 1
         return orig_table(name)
 
@@ -99,7 +99,7 @@ def test_batched_read_one_link_one_heuristic_query():
 
 def test_batched_gate_excludes_unverified_link_and_unverified_or_inactive_heuristic():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-ok"),
             _link("q1", "h-pending"),            # link ok, heuristic pending
             _link("q1", "h-inactive"),           # link ok, heuristic inactive
@@ -118,7 +118,7 @@ def test_batched_gate_excludes_unverified_link_and_unverified_or_inactive_heuris
 
 def test_batched_rejects_wrong_topic_or_microtopic_link():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q-topic-mismatch", "h-topic", topic="reasoning-topic"),
             _link("q-micro-mismatch", "h-micro", topic="t1", micro="other-micro"),
             _link("q-micro-match", "h-micro", topic="t1", micro="m1"),
@@ -139,7 +139,7 @@ def test_batched_rejects_wrong_topic_or_microtopic_link():
 
 def test_batched_no_cross_question_leakage_and_ordering():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h1", relevance="related"),
             _link("q1", "h2", relevance="primary"),
             _link("q2", "h1", relevance="primary"),
@@ -155,7 +155,7 @@ def test_batched_no_cross_question_leakage_and_ordering():
 
 def test_batched_same_name_order_is_stable_by_id():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-z", relevance="primary"),
             _link("q1", "h-a", relevance="primary"),
         ],
@@ -170,7 +170,7 @@ def test_batched_same_name_order_is_stable_by_id():
 
 def test_batched_authority_does_not_return_governance_fields():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
+        "content_card_links": [_link("q1", "h1")],
         "content_cards": [_heur("h1")],
     })
     raw = quant_heuristics.heuristics_for_questions(sb, ["q1"])["q1"][0]
@@ -184,7 +184,7 @@ def test_batched_authority_does_not_return_governance_fields():
 
 def test_single_question_helper_delegates_to_batched_contract():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
+        "content_card_links": [_link("q1", "h1")],
         "content_cards": [_heur("h1")],
     })
     assert quant_heuristics.heuristics_for_question(sb, "q1") == (
@@ -193,7 +193,7 @@ def test_single_question_helper_delegates_to_batched_contract():
 
 
 def test_batched_empty_input_performs_no_reads():
-    sb = SBStub({"quant_question_heuristics": [], "content_cards": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     sb.table = lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no query on empty input"))
     assert quant_heuristics.heuristics_for_questions(sb, []) == {}
     assert quant_heuristics.heuristics_for_question(sb, "") == []
@@ -203,7 +203,7 @@ def test_batched_empty_input_performs_no_reads():
 
 def test_projection_renames_and_strips_governance_fields():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1", relevance="secondary")],
+        "content_card_links": [_link("q1", "h1", relevance="secondary")],
         "content_cards": [_heur("h1", name="Base-100")],
     })
     out = ss.strategies_for_questions(sb, ["q1"])
@@ -231,7 +231,7 @@ def test_projection_renames_and_strips_governance_fields():
 
 def test_projection_every_requested_id_present_and_empty_for_none():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
+        "content_card_links": [_link("q1", "h1")],
         "content_cards": [_heur("h1")],
     })
     out = ss.strategies_for_questions(sb, ["q1", "q-none"])
@@ -240,7 +240,7 @@ def test_projection_every_requested_id_present_and_empty_for_none():
 
 
 def test_projection_fails_soft_on_source_error(monkeypatch):
-    sb = SBStub({"quant_question_heuristics": [], "content_cards": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     monkeypatch.setattr(
         ss.quant_heuristics, "heuristics_for_questions",
         lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
@@ -269,7 +269,7 @@ def _review_sb():
              "selected_option_id": "o2", "is_correct": False, "time_spent_sec": 9},
         ],
         "mock_attempt_response_classification": [],
-        "quant_question_heuristics": [_link("q1", "h1", topic="t1")],
+        "content_card_links": [_link("q1", "h1", topic="t1")],
         "content_cards": [_heur("h1", name="Base-100", topic_id="t1")],
     })
 
