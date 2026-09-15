@@ -33,6 +33,8 @@ class Q:
         self.table_name = table
         self.filters: dict = {}
         self.in_filters: dict = {}
+        #: key -> (wants_null, positive). positive=False negates via `.not_`.
+        self.null_filters: dict = {}
         self.limit_n: int | None = None
         self.payload: dict | None = None
         self.op = "select"
@@ -47,6 +49,18 @@ class Q:
     def in_(self, k, values):
         self.in_filters[k] = list(values)
         return self
+
+    # PostgREST spells null as the literal string "null" (`col=is.null`), which
+    # is what supabase-py sends and what the repo's other callers use
+    # (recompute_queue.py:138, content_studio.py:943). Model it the same way,
+    # or a real `is.null` filter would silently match everything here.
+    def is_(self, k, v):
+        self.null_filters[k] = (v in (None, "null"), True)
+        return self
+
+    @property
+    def not_(self):
+        return _Not(self)
 
     def order(self, *a, **k):
         return self
@@ -72,6 +86,10 @@ class Q:
     def _matches(self, row):
         if not all(row.get(k) == v for k, v in self.filters.items()):
             return False
+        for k, (wants_null, positive) in self.null_filters.items():
+            is_null = row.get(k) is None
+            if (is_null == wants_null) is not positive:
+                return False
         return all(row.get(k) in vals for k, vals in self.in_filters.items())
 
     def execute(self):
@@ -105,6 +123,17 @@ class Q:
         if self.limit_n is not None:
             out = out[: self.limit_n]
         return Resp(out)
+
+
+class _Not:
+    """`q.not_.is_(col, "null")` — negates the one filter chained off it."""
+
+    def __init__(self, query):
+        self._q = query
+
+    def is_(self, k, v):
+        self._q.null_filters[k] = (v in (None, "null"), False)
+        return self._q
 
 
 class SB:
@@ -716,3 +745,160 @@ def test_write_rate_limit_fires(sb):
     with pytest.raises(HTTPException) as exc:
         eb.create_block(body, user=_user("rl-user"))
     assert exc.value.status_code == 429
+
+
+# ── ESSAY-01 · the lens leak between the Spine and the Idea Canvas ────────
+#
+# Both surfaces read this endpoint with the same `theme_id`. Neither filtered
+# by lens server-side. The Spine filtered client-side (`isSpineBlock()`) and so
+# looked correct; the Canvas did not, so every lens-null Spine block fell
+# through `positionFor()` to the default {480, 420} anchor and stacked on the
+# central theme node. `lens_scope` is the server-side discriminator.
+
+
+def _seed_mixed_theme(sb):
+    """One theme carrying both surfaces' blocks, as a real aspirant's would."""
+    eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_B,
+            block_type="argument_for",
+            block_text="Canvas idea on the economic branch",
+            lens="economic_efficiency",
+        ),
+        user=_user("user-a"),
+    )
+    eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_B,
+            block_type="quote",
+            block_text="Canvas quote on the social branch",
+            lens="social_equity_access",
+        ),
+        user=_user("user-a"),
+    )
+    # Spine writes never send a lens (useSpineBlocks.js) — it defaults to null.
+    eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_B, block_type="hook", block_text="Spine hook"
+        ),
+        user=_user("user-a"),
+    )
+    eb.create_block(
+        eb.BlockCreate(
+            theme_id=THEME_B, block_type="argument_for", block_text="Spine supporting argument"
+        ),
+        user=_user("user-a"),
+    )
+
+
+def _texts(out):
+    return sorted(i["block_text"] for i in out["items"])
+
+
+def test_canvas_scoped_read_excludes_spine_blocks_for_the_same_theme(sb):
+    """THE regression. A lens-null Spine block must never reach the canvas."""
+    _seed_mixed_theme(sb)
+
+    out = eb.list_blocks(
+        theme_id=THEME_B, lens=None, block_type=None, limit=200,
+        user=_user("user-a"), lens_scope="canvas",
+    )
+
+    assert _texts(out) == [
+        "Canvas idea on the economic branch",
+        "Canvas quote on the social branch",
+    ]
+    assert all(i["lens"] is not None for i in out["items"])
+    # The exact symptom: nothing without a lens, so nothing can land on the
+    # {480, 420} default anchor.
+    assert "Spine hook" not in _texts(out)
+
+
+def test_spine_scoped_read_excludes_canvas_blocks_for_the_same_theme(sb):
+    """The reverse. The Spine's slots must not receive canvas content."""
+    _seed_mixed_theme(sb)
+
+    out = eb.list_blocks(
+        theme_id=THEME_B, lens=None, block_type=None, limit=200,
+        user=_user("user-a"), lens_scope="spine",
+    )
+
+    assert _texts(out) == ["Spine hook", "Spine supporting argument"]
+    assert all(i["lens"] is None for i in out["items"])
+
+
+def test_the_two_scopes_partition_the_theme(sb):
+    """Neither scope drops a row, and no row appears in both."""
+    _seed_mixed_theme(sb)
+    kw = dict(theme_id=THEME_B, lens=None, block_type=None, limit=200, user=_user("user-a"))
+
+    every = eb.list_blocks(**kw)
+    canvas = eb.list_blocks(**kw, lens_scope="canvas")
+    spine = eb.list_blocks(**kw, lens_scope="spine")
+
+    canvas_ids = {i["id"] for i in canvas["items"]}
+    spine_ids = {i["id"] for i in spine["items"]}
+    assert canvas_ids | spine_ids == {i["id"] for i in every["items"]}
+    assert canvas_ids & spine_ids == set()
+
+
+def test_argument_for_splits_by_lens_not_by_block_type(sb):
+    """The one block_type both surfaces write, so lens is the only separator."""
+    _seed_mixed_theme(sb)
+    kw = dict(theme_id=THEME_B, lens=None, block_type="argument_for", limit=200,
+              user=_user("user-a"))
+
+    assert _texts(eb.list_blocks(**kw, lens_scope="canvas")) == [
+        "Canvas idea on the economic branch"
+    ]
+    assert _texts(eb.list_blocks(**kw, lens_scope="spine")) == [
+        "Spine supporting argument"
+    ]
+
+
+def test_omitting_lens_scope_still_returns_both(sb):
+    """Back-compat: the theme scan wants every theme, whatever the surface."""
+    _seed_mixed_theme(sb)
+    out = eb.list_blocks(
+        theme_id=THEME_B, lens=None, block_type=None, limit=200, user=_user("user-a")
+    )
+    assert len(out["items"]) == 4
+
+
+def test_lens_scope_is_validated(sb):
+    with pytest.raises(HTTPException) as err:
+        eb.list_blocks(
+            theme_id=THEME_B, lens=None, block_type=None, limit=200,
+            user=_user("user-a"), lens_scope="canvas_",
+        )
+    assert err.value.status_code == 422
+
+
+def test_a_named_lens_cannot_be_combined_with_the_spine_scope(sb):
+    """Rows that cannot exist. Refuse, rather than return a plausible empty."""
+    with pytest.raises(HTTPException) as err:
+        eb.list_blocks(
+            theme_id=THEME_B, lens="economic_efficiency", block_type=None, limit=200,
+            user=_user("user-a"), lens_scope="spine",
+        )
+    assert err.value.status_code == 422
+
+
+def test_a_named_lens_still_narrows_within_the_canvas_scope(sb):
+    _seed_mixed_theme(sb)
+    out = eb.list_blocks(
+        theme_id=THEME_B, lens="social_equity_access", block_type=None, limit=200,
+        user=_user("user-a"), lens_scope="canvas",
+    )
+    assert _texts(out) == ["Canvas quote on the social branch"]
+
+
+def test_lens_scope_stays_owner_scoped(sb):
+    """Scoping by surface must not widen the ownership filter."""
+    _seed_mixed_theme(sb)
+    for scope in ("canvas", "spine", None):
+        out = eb.list_blocks(
+            theme_id=THEME_B, lens=None, block_type=None, limit=200,
+            user=_user("user-b"), lens_scope=scope,
+        )
+        assert out["items"] == [], scope

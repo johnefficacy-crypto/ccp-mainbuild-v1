@@ -267,3 +267,32 @@ test("with no theme and nothing brainstormed it explains where to start", async 
   expect(await screen.findByText("No essay theme yet")).toBeInTheDocument();
   expect(screen.queryByTestId("essay-spine-slots")).not.toBeInTheDocument();
 });
+
+// ── ESSAY-01 · the Spine asks the server for spine blocks only ───────────
+//
+// `isSpineBlock()` filtered client-side and so looked correct, but it was the
+// ONLY thing keeping canvas content out of the slots. The guarantee now lives
+// on the server; this pins that the Spine actually requests it.
+
+test("the slot read is scoped to lens-null blocks", async () => {
+  serve([block()]);
+  renderScreen();
+  await screen.findByTestId("essay-spine-slots");
+
+  const slotRead = api.get.mock.calls.find(([url]) => url.includes(`theme_id=${THEME}`));
+  expect(slotRead).toBeTruthy();
+  expect(slotRead[0]).toContain("lens_scope=spine");
+});
+
+test("the theme scan stays unscoped so brainstormed themes remain reachable", async () => {
+  serve([block()]);
+  renderScreen();
+  await screen.findByTestId("essay-spine-slots");
+
+  // The switcher lists every theme the aspirant has ANY block under. Scoping it
+  // would drop themes they have only brainstormed — a reachability change, not
+  // a leak fix.
+  const scan = api.get.mock.calls.find(([url]) => url.includes("limit=500"));
+  expect(scan).toBeTruthy();
+  expect(scan[0]).not.toContain("lens_scope");
+});

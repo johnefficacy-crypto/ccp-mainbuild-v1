@@ -30,9 +30,18 @@ export default function useSpineBlocks(themeId) {
   // With no theme selected this read duplicates the scan — one extra GET on a
   // screen that only renders the theme picker, which is not worth a workaround
   // that would break the rules of hooks.
+  // lens_scope=spine — the server returns only lens-null blocks, so the slots
+  // cannot receive Idea Canvas content. `isSpineBlock()` still runs downstream;
+  // it is now a second line of defence rather than the only one.
   const blocks = useApiCollection(BLOCKS_URL, [], {
-    params: themeId ? { theme_id: themeId } : undefined,
+    params: themeId
+      ? { theme_id: themeId, lens_scope: "spine" }
+      : { lens_scope: "spine" },
   });
+  // The theme scan is deliberately NOT lens-scoped. Its job is "every theme the
+  // aspirant has any block under", so a theme they have only brainstormed must
+  // still appear in the switcher — scoping it would remove those themes from
+  // the Spine entirely, which is a reachability change, not a leak fix.
   const themeScan = useApiCollection(BLOCKS_URL, [], {
     params: { limit: String(THEME_SCAN_LIMIT) },
   });

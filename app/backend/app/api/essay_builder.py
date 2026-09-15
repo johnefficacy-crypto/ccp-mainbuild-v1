@@ -90,6 +90,22 @@ Lens = Literal[
 BLOCK_TYPES: tuple[str, ...] = tuple(BlockType.__args__)  # type: ignore[attr-defined]
 LENSES: tuple[str, ...] = tuple(Lens.__args__)  # type: ignore[attr-defined]
 
+# Which SURFACE a read is for. `lens` alone cannot express this: the Idea
+# Canvas renders all six branches at once, so it needs "any lens", and the
+# Spine needs "no lens" — neither is one of the six values, and an absent
+# `lens` means "don't filter", which is what leaked Spine blocks onto the
+# canvas in the first place.
+#
+#   canvas — lens IS NOT NULL. Every block the aspirant put on a mind-map
+#            branch, whatever the branch.
+#   spine  — lens IS NULL. Every block written into an essay-structure slot.
+#
+# Omitting the parameter still returns both, unfiltered. That is the legacy
+# behaviour and stays available for the theme scan, which deliberately wants
+# every theme the aspirant has ANY block under.
+LensScope = Literal["canvas", "spine"]
+LENS_SCOPES: tuple[str, ...] = tuple(LensScope.__args__)  # type: ignore[attr-defined]
+
 
 class BlockCreate(BaseModel):
     theme_id: str
@@ -259,10 +275,38 @@ def list_blocks(
     block_type: str | None = Query(default=None),
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     user: dict = Depends(get_current_user),
+    # Appended rather than inserted, and a BARE default rather than
+    # `Query(default=None)`: a direct (non-FastAPI) call leaves a `Query(...)`
+    # default as the Query object itself, which is neither None nor a valid
+    # scope. FastAPI still infers this as a query parameter.
+    lens_scope: str | None = None,
 ) -> dict[str, Any]:
-    """The caller's own blocks, filterable by any combination of the three."""
+    """The caller's own blocks, filterable by any combination of the four.
+
+    ``lens_scope`` is the surface filter, and it is why the Idea Canvas used to
+    render the Spine's blocks. Both surfaces read this endpoint with the same
+    ``theme_id``; neither filtered by lens server-side. The Spine filtered
+    client-side and so looked correct; the Canvas did not, so every lens-null
+    Spine block fell through ``positionFor()`` to the default ``{480, 420}``
+    anchor and stacked on the central theme node.
+
+    Scoping here rather than in either client means the guarantee holds for any
+    future caller, and neither data layer has to re-derive it.
+    """
     if lens is not None and lens not in LENSES:
         raise HTTPException(status_code=422, detail=f"lens must be one of {LENSES}")
+    if lens_scope is not None and lens_scope not in LENS_SCOPES:
+        raise HTTPException(
+            status_code=422, detail=f"lens_scope must be one of {LENS_SCOPES}"
+        )
+    # A named lens IS a canvas block, so `lens=X&lens_scope=spine` asks for rows
+    # that cannot exist. Refuse rather than silently return nothing — an empty
+    # canvas is exactly the symptom this endpoint is being fixed for.
+    if lens and lens_scope == "spine":
+        raise HTTPException(
+            status_code=422,
+            detail="lens_scope='spine' selects lens-null blocks; it cannot be combined with a lens",
+        )
     if block_type is not None and block_type not in BLOCK_TYPES:
         raise HTTPException(
             status_code=422, detail=f"block_type must be one of {BLOCK_TYPES}"
@@ -276,6 +320,11 @@ def list_blocks(
         query = query.eq("theme_id", theme_id)
     if lens:
         query = query.eq("lens", lens)
+    elif lens_scope == "canvas":
+        # "null" is PostgREST's literal, not the Python None.
+        query = query.not_.is_("lens", "null")
+    if lens_scope == "spine":
+        query = query.is_("lens", "null")
     if block_type:
         query = query.eq("block_type", block_type)
     rows = (
