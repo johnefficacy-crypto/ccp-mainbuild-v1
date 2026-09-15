@@ -21,8 +21,12 @@ export default function useEssayBlocks(themeId) {
     const my = ++gen.current;
     setStatus("loading");
     try {
+      // lens_scope=canvas — the server returns only lens-bearing blocks.
+      // Without it this read also returned the theme's Spine blocks, which have
+      // no lens, so `positionFor()` fell through to the default {480,420}
+      // anchor and stacked every one of them on the central theme node.
       const res = await api.get(
-        `${BLOCKS_BASE}?theme_id=${encodeURIComponent(themeId)}`,
+        `${BLOCKS_BASE}?theme_id=${encodeURIComponent(themeId)}&lens_scope=canvas`,
       );
       if (my !== gen.current) return;
       setBlocks(Array.isArray(res?.items) ? res.items : []);

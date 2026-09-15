@@ -191,3 +191,27 @@ test("theme selector falls back to manual entry when no themes endpoint exists",
   // Canvas opens for the entered theme.
   await screen.findByTestId("idea-canvas");
 });
+
+// ── ESSAY-01 · the Canvas asks the server for canvas blocks only ─────────
+//
+// The leak was a read that filtered nothing: the Canvas fetched every block for
+// the theme, so lens-null Spine blocks fell through `positionFor()` to the
+// default {480, 420} anchor and stacked on the central theme node. The fix is
+// server-side, so what this pins is that the Canvas actually asks for it.
+
+test("the canvas read is scoped to lens-bearing blocks", async () => {
+  routeGet({ blocks: [] });
+  renderCanvas();
+
+  await waitFor(() =>
+    expect(
+      mockGet.mock.calls.some(([url]) => url.includes("/essay-brainstorm-blocks")),
+    ).toBe(true),
+  );
+
+  const [url] = mockGet.mock.calls.find(([u]) =>
+    u.includes("/essay-brainstorm-blocks"),
+  );
+  expect(url).toContain("lens_scope=canvas");
+  expect(url).toContain(`theme_id=${THEME}`);
+});
