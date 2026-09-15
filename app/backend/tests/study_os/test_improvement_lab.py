@@ -29,9 +29,10 @@ def _qheur(hid, *, name="H", status="verified", active=True, **over):
     row = {
         "id": hid, "topic_id": "t1", "microtopic_id": None,
         "topic": {"subject": {"slug": "quantitative-aptitude", "subject_group": "numerical"}},
-        "heuristic_code": f"c-{hid}", "name": name, "heuristic_type": "shortcut",
+        "content_type": "quant_heuristic",
+        "card_code": f"c-{hid}", "name": name, "card_subtype": "shortcut",
         "applicability_rule": {"op": "x"}, "formula_latex": "x", "standard_method": "s",
-        "shortcut_method": "f", "worked_example": "e", "common_traps": "t",
+        "faster_method": "f", "worked_example": "e", "common_traps": "t",
         "reviewer_status": status, "reviewer_notes": "n", "reviewed_by": "a",
         "created_by": "b", "is_active": active, "updated_at": "2026-07-14T00:00:00Z",
     }
@@ -40,7 +41,7 @@ def _qheur(hid, *, name="H", status="verified", active=True, **over):
 
 
 def _qlink(qid, hid, *, relevance="primary", status="verified"):
-    return {"id": f"l-{qid}-{hid}", "question_id": qid, "heuristic_id": hid,
+    return {"id": f"l-{qid}-{hid}", "question_id": qid, "card_id": hid,
             "relevance": relevance, "reviewer_status": status,
             "question": {"topic_id": "t1", "microtopic_id": None}}
 
@@ -49,7 +50,8 @@ def _rstrat(sid, *, name="S", status="verified", active=True, **over):
     row = {
         "id": sid, "topic_id": "rt1", "microtopic_id": None,
         "topic": {"subject": {"slug": "reasoning", "subject_group": "reasoning"}},
-        "strategy_code": f"c-{sid}", "name": name, "strategy_type": "approach",
+        "content_type": "reasoning_strategy",
+        "card_code": f"c-{sid}", "name": name, "card_subtype": "approach",
         "applicability_rule": {"op": "x"}, "formula_latex": "x", "standard_method": "s",
         "faster_method": "f", "key_observation": "k", "worked_example": "e",
         "common_traps": "t", "reviewer_status": status, "reviewer_notes": "n",
@@ -61,18 +63,37 @@ def _rstrat(sid, *, name="S", status="verified", active=True, **over):
 
 
 def _rlink(qid, sid, *, relevance="primary", status="verified"):
-    return {"id": f"l-{qid}-{sid}", "question_id": qid, "strategy_id": sid,
+    return {"id": f"l-{qid}-{sid}", "question_id": qid, "card_id": sid,
             "relevance": relevance, "reviewer_status": status,
             "question": {"topic_id": "rt1", "microtopic_id": None}}
 
 
 def _empty_sources(**tables):
+    """Build a stub database for the feed.
+
+    Migration 291 merged quant_heuristics and reasoning_strategies into one
+    ``content_cards`` table. Call sites still pass ``quant_heuristics=`` /
+    ``reasoning_strategies=`` because naming the subject keeps each test
+    readable; both are folded into the single merged list here, which is exactly
+    what the production readers now see.
+    """
     base = {
         "mock_attempts": [], "mock_attempt_responses": [],
-        "quant_question_heuristics": [], "quant_heuristics": [],
-        "reasoning_question_strategies": [], "reasoning_strategies": [],
+        # Migration 292 merged the three junctions too, so this is one list.
+        "content_card_links": [],
+        "content_cards": [],
     }
+    cards, links = [], []
+    for legacy in ("quant_heuristics", "reasoning_strategies"):
+        cards.extend(tables.pop(legacy, []) or [])
+    for legacy in ("quant_question_heuristics", "reasoning_question_strategies",
+                   "reasoning_stimulus_strategies"):
+        links.extend(tables.pop(legacy, []) or [])
     base.update(tables)
+    if cards:
+        base["content_cards"] = [*base["content_cards"], *cards]
+    if links:
+        base["content_card_links"] = [*base["content_card_links"], *links]
     return base
 
 
@@ -122,22 +143,34 @@ def test_feed_excludes_skipped_unanswered_questions():
     assert out[0]["times_seen"] == 1 and out[0]["wrong_count"] == 1
 
 
-def test_feed_unrelated_subject_outage_does_not_break_this_feed():
-    # A Reasoning strategy-table outage must NOT 502 the Quant feed — the aggregator
-    # reads only the requested subject in strict mode (Codex #999 isolation).
+def test_feed_unrelated_subject_outage_does_not_break_this_feed(monkeypatch):
+    # A Reasoning-side outage must NOT 502 the Quant feed — the aggregator reads
+    # each subject through its own reader and keeps one subject's failure to
+    # that subject (Codex #999 isolation).
+    #
+    # WHERE that isolation lives has moved twice, and this test moved with it.
+    # Originally the two subjects had separate content tables AND separate link
+    # tables, so the outage could be simulated by failing a table read and the
+    # isolation was a storage fact. Migration 291 merged the content tables;
+    # migration 292 merged the link tables. There is now NO table that belongs
+    # to one subject, so a table-level outage is a shared-dependency outage by
+    # construction and would correctly take down both feeds.
+    #
+    # What survives — and what the Improvement Lab actually depends on — is
+    # isolation in the READ PATH: solution_strategies calls each subject's
+    # reader inside its own try/except, so a reasoning read that raises yields
+    # empty reasoning strategies rather than failing the response. That is a
+    # real, load-bearing guarantee, and failing the reasoning reader is the
+    # honest way to prove it now.
     sb = SBStub(_empty_sources(
         mock_attempts=[_att("a1", "2026-07-10T00:00:00Z")],
         mock_attempt_responses=[_resp("a1", "q1", False)],
         quant_question_heuristics=[_qlink("q1", "h1")], quant_heuristics=[_qheur("h1")],
     ))
-    orig = sb.table
-
-    def _reasoning_down(name):
-        if name in ("reasoning_question_strategies", "reasoning_strategies"):
-            raise RuntimeError("reasoning table down")
-        return orig(name)
-
-    sb.table = _reasoning_down  # type: ignore[assignment]
+    monkeypatch.setattr(
+        il.solution_strategies.reasoning_strategies, "strategies_for_questions",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("reasoning source down")),
+    )
     assert [s["id"] for s in il.build_feed(sb, "u-1", "quant")] == ["h1"]  # healthy, no raise
     assert _client(sb).get("/api/study/improvement-lab/quant").status_code == 200
 
@@ -200,7 +233,7 @@ def test_feed_strips_governance_and_carries_evidence():
     for ev in ("times_seen", "wrong_count", "correct_count", "last_seen_at", "source_question_ids"):
         assert ev in item
     for forbidden in ("applicability_rule", "reviewer_status", "reviewer_notes",
-                      "reviewed_by", "created_by", "is_active", "heuristic_code"):
+                      "reviewed_by", "created_by", "is_active", "card_code"):
         assert forbidden not in item
 
 
@@ -303,7 +336,7 @@ def test_feed_strategy_read_failure_propagates_not_disguised_as_empty():
     orig = sb.table
 
     def _boom(name):
-        if name == "quant_question_heuristics":
+        if name == "content_card_links":
             raise RuntimeError("strategy table down")
         return orig(name)
 
@@ -371,7 +404,7 @@ def test_endpoint_maps_a_strategy_read_failure_to_non_2xx():
     orig = sb.table
 
     def _boom(name):
-        if name == "quant_heuristics":
+        if name == "content_cards":
             raise RuntimeError("strategy table down")
         return orig(name)
 

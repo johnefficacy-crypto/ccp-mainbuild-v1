@@ -37,20 +37,33 @@ declare
   v_ready_reachable       int;
   v_ready_ignoring_scope  int;
 begin
-  select count(*) into v_strategies_total from public.reasoning_strategies;
+  -- Migrations 291/292 merged the per-subject content and link tables into
+  -- public.content_cards and public.content_card_links. Reasoning rows are
+  -- selected by content_type rather than by table.
+  select count(*) into v_strategies_total
+    from public.content_cards where content_type = 'reasoning_strategy';
   select count(*) into v_strategies_verified
-    from public.reasoning_strategies
-    where reviewer_status = 'verified' and is_active = true;
+    from public.content_cards
+    where content_type = 'reasoning_strategy'
+      and reviewer_status = 'verified' and is_active = true;
 
-  select count(*) into v_links_total from public.reasoning_question_strategies;
+  select count(*) into v_links_total
+    from public.content_card_links l
+    join public.content_cards s on s.id = l.card_id
+    where s.content_type = 'reasoning_strategy' and l.question_id is not null;
   select count(*) into v_links_verified
-    from public.reasoning_question_strategies where reviewer_status = 'verified';
+    from public.content_card_links l
+    join public.content_cards s on s.id = l.card_id
+    where s.content_type = 'reasoning_strategy' and l.question_id is not null
+      and l.reviewer_status = 'verified';
 
   -- Learner-ready questions: the exact conjunctive + SCOPE gate GQR-S4 will apply
   -- (see reasoning_scope_matches CTE-style predicate below).
   select count(distinct l.question_id) into v_ready_questions
-    from public.reasoning_question_strategies l
-    join public.reasoning_strategies s on s.id = l.strategy_id
+    from public.content_card_links l
+    join public.content_cards s on s.id = l.card_id
+      and s.content_type = 'reasoning_strategy'
+      and l.question_id is not null
     join public.mock_question_bank q on q.id = l.question_id
     where l.reviewer_status = 'verified'
       and s.reviewer_status = 'verified'
@@ -81,8 +94,10 @@ begin
   -- gate admits only verified/live/published bank rows; mere existence is not
   -- sufficient (reviewed/draft/archived rows are not learner-reachable).
   select count(distinct l.question_id) into v_ready_reachable
-    from public.reasoning_question_strategies l
-    join public.reasoning_strategies s on s.id = l.strategy_id
+    from public.content_card_links l
+    join public.content_cards s on s.id = l.card_id
+      and s.content_type = 'reasoning_strategy'
+      and l.question_id is not null
     join public.mock_question_bank q on q.id = l.question_id
     where l.reviewer_status = 'verified'
       and s.reviewer_status = 'verified'
@@ -109,8 +124,10 @@ begin
   -- delta vs v_ready_questions flags null-scoped / cross-subject / mis-topic
   -- links that the real gate rejects — content that needs re-scoping, not a pass.
   select count(distinct l.question_id) into v_ready_ignoring_scope
-    from public.reasoning_question_strategies l
-    join public.reasoning_strategies s on s.id = l.strategy_id
+    from public.content_card_links l
+    join public.content_cards s on s.id = l.card_id
+      and s.content_type = 'reasoning_strategy'
+      and l.question_id is not null
     where l.reviewer_status = 'verified'
       and s.reviewer_status = 'verified'
       and s.is_active = true;

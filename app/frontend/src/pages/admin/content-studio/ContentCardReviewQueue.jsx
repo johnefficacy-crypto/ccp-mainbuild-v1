@@ -1,28 +1,36 @@
 /**
- * Reasoning Strategy Review Queue — the pending → verified|rejected|needs_correction
- * lifecycle for reasoning_strategies (migration 262, GQR-S3).
+ * Content Card Review Queue — the pending → verified|rejected|needs_correction
+ * lifecycle for `content_cards` (migration 291, CONTENT-01).
  *
- * The transition matrix matches quant heuristics (REASONING_REVIEW_TRANSITIONS):
- * needs_correction routes back to pending (never straight to verified), a verified
- * strategy can only be reopened for correction, and rejected can reopen to pending.
- * Reopening a verified strategy for correction REQUIRES a reviewer note (the RPC
- * enforces this too). Review dual-CAS-guards on BOTH the reviewer_status the reviewer
- * saw (`expected_status`) AND the content `updated_at` (`expected_updated_at`) — a
- * 409 means the strategy changed under review: refetch and re-read before deciding.
+ * ONE component for every card type; the type is a PROP. Before the merge there
+ * were two of these, the second made by copying the first.
  *
- * Opening a review fetches the FULL strategy snapshot so the reviewer never verifies
- * content they could not see; verifying never activates.
+ * The transition matrix (CARD_REVIEW_TRANSITIONS) DIFFERS from writing prompts:
+ * needs_correction routes back to pending (never straight to verified), a
+ * verified card can only be reopened for correction, and rejected can reopen to
+ * pending. Reopening a verified card for correction REQUIRES a reviewer note
+ * (the RPC enforces this too). Review dual-CAS-guards on the reviewer_status AND
+ * the content `updated_at` the reviewer read, so a 409 means the card changed
+ * under review: refetch and re-read before deciding.
+ *
+ * Opening a review fetches the FULL card snapshot so the reviewer never verifies
+ * content they could not see. Verifying never activates — activation is the
+ * separate content_studio.activate authority.
+ *
+ * applicability_rule is deliberately absent: migration 291 dropped the column
+ * (declared, stored, rendered here, never read by anything).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import PropTypes from "prop-types";
 import useApiCollection from "../../../lib/hooks/useApiCollection";
 import useApiAction from "../../../lib/hooks/useApiAction";
 import { getApiErrorMessage } from "../../../lib/api";
 import { ErrorState, EmptyState } from "../../../shared/ui/core";
 import MathRenderer from "../../study/mocks/components/questions/shared/MathRenderer";
-import { contentStudioApi, REASONING_REVIEW_TRANSITIONS, isValidReason } from "./contentStudioApi";
+import { contentStudioApi, CARD_REVIEW_TRANSITIONS, CARD_TYPES, isValidReason } from "./contentStudioApi";
 
-// `rejected` is included so a rejected strategy can be fetched and reopened to
-// pending (REASONING_REVIEW_TRANSITIONS.rejected === ["pending"]); without it the
+// `rejected` is included so a rejected card can be fetched and reopened to
+// pending (CARD_REVIEW_TRANSITIONS.rejected === ["pending"]); without it the
 // advertised rejected→pending lifecycle would be unreachable from the UI.
 const QUEUE_STATUSES = ["pending", "needs_correction", "verified", "rejected"];
 const PAGE_SIZE = 50;
@@ -34,15 +42,18 @@ function asMath(latex) {
 }
 
 const SNAPSHOT_ROWS = [
-  ["Type", "strategy_type"],
+  ["Type", "card_subtype"],
   ["Topic", "topic_name", "topic_id"],
   ["Microtopic", "microtopic_name", "microtopic_id"],
 ];
 
-// Every canonical review-bearing field (migration 262). A reviewer must see the
-// full method/observation/trap content before verifying — not just name + faster.
+// Every canonical review-bearing field. A reviewer must see the full
+// method/observation/trap content before verifying — not just name + formula.
+// key_observation is listed for every type and skipped when absent, so a type
+// that starts populating it needs no change here.
 const SNAPSHOT_TEXT_ROWS = [
   ["Standard method", "standard_method"],
+  ["Faster method", "faster_method"],
   ["Key observation", "key_observation"],
   ["Worked example", "worked_example"],
   ["Common traps", "common_traps"],
@@ -54,7 +65,7 @@ function fmt(v) {
   return String(v).replaceAll("_", " ");
 }
 
-function ReviewDialog({ strategyRow, onClose, onDone }) {
+function ReviewDialog({ cardRow, typeLabel, onClose, onDone }) {
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -71,11 +82,11 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
   useEffect(() => {
     let alive = true;
     contentStudioApi
-      .getStrategy(strategyRow.id)
-      .then((s) => {
+      .getCard(cardRow.id)
+      .then((c) => {
         if (!alive) return;
-        setSnapshot(s);
-        const transitions = REASONING_REVIEW_TRANSITIONS[s.reviewer_status] || [];
+        setSnapshot(c);
+        const transitions = CARD_REVIEW_TRANSITIONS[c.reviewer_status] || [];
         setStatus(transitions[0] || "");
         setLoading(false);
       })
@@ -85,43 +96,23 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
         setLoading(false);
       });
     return () => { alive = false; };
-  }, [strategyRow.id]);
+  }, [cardRow.id]);
 
   useEffect(() => {
     const prevFocus = typeof document !== "undefined" ? document.activeElement : null;
     const node = dialogRef.current;
     const first = node && node.querySelector("input, textarea, select, button");
     if (first) first.focus();
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        closeRef.current();
-        return;
-      }
-      if (e.key !== "Tab" || !node) return;
-      const focusables = node.querySelectorAll(
-        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey, true);
+    const onKey = (e) => { if (e.key === "Escape") closeRef.current(); };
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("keydown", onKey);
       if (prevFocus && typeof prevFocus.focus === "function") prevFocus.focus();
     };
   }, []);
 
-  const transitions = snapshot ? (REASONING_REVIEW_TRANSITIONS[snapshot.reviewer_status] || []) : [];
-  // Reopening a verified strategy for correction requires a note (RPC-enforced).
+  const transitions = snapshot ? (CARD_REVIEW_TRANSITIONS[snapshot.reviewer_status] || []) : [];
+  // Reopening a verified card for correction requires a note (RPC-enforced).
   const notesRequired = !!snapshot && snapshot.reviewer_status === "verified" && status === "needs_correction";
 
   const submit = async () => {
@@ -131,23 +122,23 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
       return;
     }
     if (notesRequired && !notes.trim()) {
-      setError("Reviewer notes are required when reopening a verified strategy.");
+      setError("Reviewer notes are required when reopening a verified card.");
       return;
     }
     setError("");
     setConflict(false);
     const res = await run({
       action: () =>
-        contentStudioApi.reviewStrategy(snapshot.id, {
+        contentStudioApi.reviewCard(snapshot.id, {
           status,
           expected_status: snapshot.reviewer_status,
-          // Content CAS bound to the exact revision the reviewer read; a 409 means
-          // the strategy changed under review.
+          // Content CAS bound to the exact revision the reviewer read; a 409
+          // means the card changed under review.
           expected_updated_at: snapshot.updated_at,
           reason: reason.trim(),
           reviewer_notes: notes.trim() || undefined,
         }),
-      successMessage: `Strategy marked ${status}.`,
+      successMessage: `${typeLabel} marked ${status}.`,
       errorMessage: " ",
       onSuccess: onDone,
     });
@@ -161,46 +152,39 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}
-      data-testid="strategy-review-dialog-overlay"
+      data-testid="card-review-dialog-overlay"
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Review reasoning strategy"
+        aria-label={`Review ${typeLabel.toLowerCase()}`}
         onClick={(e) => e.stopPropagation()}
         style={{ width: "min(560px, 95vw)", maxHeight: "85vh", overflowY: "auto", background: "var(--paper, #fff)", borderRadius: 6, padding: "1.25rem", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}
-        data-testid="strategy-review-dialog"
+        data-testid="card-review-dialog"
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Review strategy</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Review {typeLabel.toLowerCase()}</h2>
           <button type="button" className="btn small" onClick={onClose} aria-label="Close review">✕</button>
         </div>
 
-        {loading ? <div style={{ padding: "1.5rem", opacity: 0.7 }}>Loading full strategy…</div> : null}
+        {loading ? <div style={{ padding: "1.5rem", opacity: 0.7 }}>Loading full card…</div> : null}
         {loadError ? <div style={{ color: "var(--err, #c00)", fontSize: 12 }} role="alert">{loadError}</div> : null}
 
         {snapshot ? (
           <>
             <div style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{snapshot.name}</div>
-              <div style={{ fontSize: 12, opacity: 0.7, fontFamily: "monospace" }}>{snapshot.strategy_code}</div>
+              <div style={{ fontSize: 12, opacity: 0.7, fontFamily: "monospace" }}>{snapshot.card_code}</div>
             </div>
 
             {snapshot.formula_latex ? (
-              <div style={{ marginBottom: 10 }} data-testid="review-strategy-formula">
+              <div style={{ marginBottom: 10 }} data-testid="review-card-formula">
                 <MathRenderer text={asMath(snapshot.formula_latex)} />
               </div>
             ) : null}
 
-            {snapshot.faster_method ? (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>Faster method</div>
-                <p style={{ fontSize: 12, whiteSpace: "pre-wrap", margin: "2px 0 0" }}>{snapshot.faster_method}</p>
-              </div>
-            ) : null}
-
-            <table className="data-table" style={{ fontSize: 12, marginBottom: 12 }} data-testid="review-strategy-snapshot">
+            <table className="data-table" style={{ fontSize: 12, marginBottom: 12 }} data-testid="review-card-snapshot">
               <tbody>
                 {SNAPSHOT_ROWS.map(([label, key, fallbackKey]) => {
                   const val = snapshot[key];
@@ -222,23 +206,16 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
 
             {SNAPSHOT_TEXT_ROWS.map(([label, key]) =>
               snapshot[key] ? (
-                <div key={key} style={{ marginBottom: 10 }} data-testid={`review-strategy-${key}`}>
+                <div key={key} style={{ marginBottom: 10 }} data-testid={`review-card-${key}`}>
                   <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{label}</div>
                   <p style={{ fontSize: 12, whiteSpace: "pre-wrap", margin: "2px 0 0" }}>{snapshot[key]}</p>
                 </div>
               ) : null,
             )}
 
-            <div style={{ marginBottom: 12 }} data-testid="review-strategy-applicability_rule">
-              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>Applicability rule</div>
-              <pre style={{ fontSize: 11, background: "var(--paper-dim, #f5f6f7)", padding: "0.6rem", borderRadius: 4, overflowX: "auto", margin: 0 }}>
-                {JSON.stringify(snapshot.applicability_rule ?? {}, null, 2)}
-              </pre>
-            </div>
-
             {conflict ? (
               <div className="badge blocker" style={{ display: "block", padding: "0.6rem", marginBottom: 10, fontSize: 12 }} role="alert">
-                The strategy changed since you loaded it (409). Refresh the queue and
+                The card changed since you loaded it (409). Refresh the queue and
                 review the latest revision — do not verify content you have not seen.
               </div>
             ) : null}
@@ -250,21 +227,21 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
               <>
                 <label style={{ fontSize: 12, display: "block", marginBottom: 10 }}>
                   Decision
-                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} data-testid="strategy-review-status">
+                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} data-testid="card-review-status">
                     {transitions.map((t) => <option key={t} value={t}>{t.replaceAll("_", " ")}</option>)}
                   </select>
                 </label>
                 <label style={{ fontSize: 12, display: "block", marginBottom: 10 }}>
                   Reason (required, 8–500 chars — recorded in the audit log)
-                  <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="strategy-review-reason" />
+                  <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="card-review-reason" />
                 </label>
                 <label style={{ fontSize: 12, display: "block", marginBottom: 14 }}>
                   Reviewer notes{notesRequired ? " (required)" : " (optional — recorded in the audit log)"}
-                  <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} data-testid="strategy-review-notes" />
+                  <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} data-testid="card-review-notes" />
                 </label>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                   <button type="button" className="btn" onClick={onClose} disabled={busy}>Cancel</button>
-                  <button type="button" className="btn primary" onClick={submit} disabled={busy || !status} data-testid="strategy-review-submit">
+                  <button type="button" className="btn primary" onClick={submit} disabled={busy || !status} data-testid="card-review-submit">
                     {busy ? "Submitting…" : "Submit decision"}
                   </button>
                 </div>
@@ -278,18 +255,26 @@ function ReviewDialog({ strategyRow, onClose, onDone }) {
     </div>
   );
 }
+ReviewDialog.propTypes = {
+  cardRow: PropTypes.object.isRequired,
+  typeLabel: PropTypes.string.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onDone: PropTypes.func.isRequired,
+};
 
-export default function ReasoningStrategyReviewQueue({ perms }) {
+export default function ContentCardReviewQueue({ perms, contentType }) {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [offset, setOffset] = useState(0);
   const [reviewing, setReviewing] = useState(null);
 
+  const typeLabel = CARD_TYPES[contentType]?.label || contentType;
+
   const params = useMemo(
-    () => ({ reviewer_status: statusFilter, limit: PAGE_SIZE, offset }),
-    [statusFilter, offset],
+    () => ({ content_type: contentType, reviewer_status: statusFilter, limit: PAGE_SIZE, offset }),
+    [contentType, statusFilter, offset],
   );
   const { items, status, total, refresh } = useApiCollection(
-    "/api/admin/content-studio/reasoning-strategies",
+    "/api/admin/content-studio/content-cards",
     [],
     { params },
   );
@@ -299,11 +284,11 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
     total !== null ? offset + PAGE_SIZE < total : status === "live" && items.length === PAGE_SIZE;
 
   return (
-    <div style={{ padding: 16 }} data-testid="reasoning-strategy-review-queue">
+    <div style={{ padding: 16 }} data-testid="content-card-review-queue">
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 12 }}>
         <label style={{ fontSize: 12 }}>
           Queue
-          <select className="input" value={statusFilter} onChange={(e) => setQueue(e.target.value)} data-testid="strategy-review-queue-filter">
+          <select className="input" value={statusFilter} onChange={(e) => setQueue(e.target.value)} data-testid="card-review-queue-filter">
             {QUEUE_STATUSES.map((s) => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}
           </select>
         </label>
@@ -316,11 +301,13 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
 
       {status === "loading" ? <div style={{ padding: "2rem", opacity: 0.7 }}>Loading queue…</div> : null}
       {status === "error" ? <ErrorState message="Could not load the review queue." onRetry={refresh} /> : null}
-      {status === "empty" ? <EmptyState title="Queue is clear" description={`No ${statusFilter.replaceAll("_", " ")} strategies.`} /> : null}
+      {status === "empty" ? (
+        <EmptyState title="Queue is clear" description={`No ${statusFilter.replaceAll("_", " ")} ${typeLabel.toLowerCase()}s.`} />
+      ) : null}
 
       {status === "live" ? (
         <div style={{ overflowX: "auto" }}>
-          <table className="data-table" data-testid="strategy-review-queue-table">
+          <table className="data-table" data-testid="card-review-queue-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -331,17 +318,17 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
               </tr>
             </thead>
             <tbody>
-              {items.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontSize: 13 }}>{s.name}</td>
-                  <td style={{ fontSize: 12, fontFamily: "monospace", opacity: 0.8 }}>{s.strategy_code}</td>
-                  <td style={{ fontSize: 12 }}>{(s.strategy_type || "").replaceAll("_", " ")}</td>
-                  <td style={{ fontSize: 12, opacity: 0.85 }} data-testid={`strategy-review-taxonomy-${s.id}`}>
-                    {[s.topic_name || s.topic_id, s.microtopic_name].filter(Boolean).join(" › ") || "—"}
+              {items.map((c) => (
+                <tr key={c.id}>
+                  <td style={{ fontSize: 13 }}>{c.name}</td>
+                  <td style={{ fontSize: 12, fontFamily: "monospace", opacity: 0.8 }}>{c.card_code}</td>
+                  <td style={{ fontSize: 12 }}>{(c.card_subtype || "").replaceAll("_", " ")}</td>
+                  <td style={{ fontSize: 12, opacity: 0.85 }} data-testid={`card-review-taxonomy-${c.id}`}>
+                    {[c.topic_name || c.topic_id, c.microtopic_name].filter(Boolean).join(" › ") || "—"}
                   </td>
                   <td>
-                    {perms.canReview && (REASONING_REVIEW_TRANSITIONS[s.reviewer_status] || []).length > 0 ? (
-                      <button type="button" className="btn small" onClick={() => setReviewing(s)} data-testid={`strategy-review-open-${s.id}`}>
+                    {perms.canReview && (CARD_REVIEW_TRANSITIONS[c.reviewer_status] || []).length > 0 ? (
+                      <button type="button" className="btn small" onClick={() => setReviewing(c)} data-testid={`card-review-open-${c.id}`}>
                         Review
                       </button>
                     ) : null}
@@ -355,17 +342,17 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
 
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>
         {total !== null && (status === "live" || status === "empty") ? (
-          <span style={{ fontSize: 12, opacity: 0.7, marginRight: "auto" }} data-testid="strategy-review-pagination-summary">
+          <span style={{ fontSize: 12, opacity: 0.7, marginRight: "auto" }} data-testid="card-review-pagination-summary">
             {total === 0 ? "0" : `${offset + 1}–${offset + items.length}`} of {total}
           </span>
         ) : null}
         {offset > 0 ? (
-          <button type="button" className="btn small" onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} data-testid="strategy-review-prev">
+          <button type="button" className="btn small" onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} data-testid="card-review-prev">
             ← Prev
           </button>
         ) : null}
         {hasNext ? (
-          <button type="button" className="btn small" onClick={() => setOffset(offset + PAGE_SIZE)} data-testid="strategy-review-next">
+          <button type="button" className="btn small" onClick={() => setOffset(offset + PAGE_SIZE)} data-testid="card-review-next">
             Next →
           </button>
         ) : null}
@@ -373,7 +360,8 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
 
       {reviewing ? (
         <ReviewDialog
-          strategyRow={reviewing}
+          cardRow={reviewing}
+          typeLabel={typeLabel}
           onClose={() => setReviewing(null)}
           onDone={() => {
             setReviewing(null);
@@ -384,3 +372,7 @@ export default function ReasoningStrategyReviewQueue({ perms }) {
     </div>
   );
 }
+ContentCardReviewQueue.propTypes = {
+  perms: PropTypes.object.isRequired,
+  contentType: PropTypes.string.isRequired,
+};

@@ -6,8 +6,8 @@ import { parseCsv } from "../csv";
 import { normalizeRow, MAX_BULK_ROWS } from "../PromptBulkImport";
 import { buildPayload } from "../PromptEditor";
 import { validateRequiredWords, validateInt, isUuid } from "../validation";
-import { REVIEW_TRANSITIONS, isValidReason, HEURISTIC_REVIEW_TRANSITIONS, HEURISTIC_TYPES, contentStudioApi } from "../contentStudioApi";
-import { buildListParams } from "../QuantHeuristicLibrary";
+import { REVIEW_TRANSITIONS, isValidReason, CARD_REVIEW_TRANSITIONS, CARD_TYPES, contentStudioApi } from "../contentStudioApi";
+import { buildListParams } from "../ContentCardLibrary";
 import { studioPerms } from "../permissions";
 
 const mockUser = { user: { role: "admin", permissions: ["content_studio.author", "content_studio.review"] } };
@@ -381,20 +381,20 @@ describe("PromptReviewQueue screen", () => {
 
 describe("quant heuristic transition matrix", () => {
   test("differs from writing prompts: needs_correction never goes straight to verified", () => {
-    expect(HEURISTIC_REVIEW_TRANSITIONS.needs_correction).toEqual(["pending", "rejected"]);
-    expect(HEURISTIC_REVIEW_TRANSITIONS.needs_correction).not.toContain("verified");
+    expect(CARD_REVIEW_TRANSITIONS.needs_correction).toEqual(["pending", "rejected"]);
+    expect(CARD_REVIEW_TRANSITIONS.needs_correction).not.toContain("verified");
     // writing prompts DO allow that transition — proving the maps are distinct.
     expect(REVIEW_TRANSITIONS.needs_correction).toContain("verified");
   });
 
   test("verified reopens only to needs_correction; rejected reopens to pending", () => {
-    expect(HEURISTIC_REVIEW_TRANSITIONS.verified).toEqual(["needs_correction"]);
-    expect(HEURISTIC_REVIEW_TRANSITIONS.rejected).toEqual(["pending"]);
-    expect(HEURISTIC_REVIEW_TRANSITIONS.pending).toEqual(["verified", "rejected", "needs_correction"]);
+    expect(CARD_REVIEW_TRANSITIONS.verified).toEqual(["needs_correction"]);
+    expect(CARD_REVIEW_TRANSITIONS.rejected).toEqual(["pending"]);
+    expect(CARD_REVIEW_TRANSITIONS.pending).toEqual(["verified", "rejected", "needs_correction"]);
   });
 
-  test("heuristic type facet matches the migration-243 CHECK", () => {
-    expect(HEURISTIC_TYPES).toEqual(["shortcut", "standard_method", "trap", "estimation"]);
+  test("card subtype vocabularies match the migration-291 per-type CHECK", () => {
+    expect(CARD_TYPES.quant_heuristic.subtypes).toEqual(["shortcut", "standard_method", "trap", "estimation"]);
   });
 });
 
@@ -416,77 +416,79 @@ describe("ContentStudio shell — quant heuristics", () => {
   });
 });
 
-describe("QuantHeuristicReviewQueue screen", () => {
+describe("ContentCardReviewQueue screen", () => {
   // eslint-disable-next-line global-require
-  const QuantHeuristicReviewQueue = require("../QuantHeuristicReviewQueue").default;
+  const ContentCardReviewQueue = require("../ContentCardReviewQueue").default;
 
   const row = (over) => ({
-    id: U1, name: "Percentage to fraction", heuristic_code: "QH-PCT-01",
-    heuristic_type: "shortcut", reviewer_status: "pending",
+    id: U1, name: "Percentage to fraction", card_code: "QH-PCT-01",
+    card_subtype: "shortcut", reviewer_status: "pending",
     topic_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", topic_name: "Percentages", ...over,
   });
 
   test("queue renders topic NAME, not the UUID, and offers Review to reviewers", () => {
     mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
-    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
-    const cell = screen.getByTestId(`heuristic-review-taxonomy-${U1}`);
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="quant_heuristic" />);
+    const cell = screen.getByTestId(`card-review-taxonomy-${U1}`);
     expect(cell).toHaveTextContent("Percentages");
     expect(cell).not.toHaveTextContent("bbbbbbbb");
-    expect(screen.getByTestId(`heuristic-review-open-${U1}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`card-review-open-${U1}`)).toBeInTheDocument();
   });
 
   test("read-only reviewers get no Review button and see the gate hint", () => {
     mockCollection = { items: [row()], status: "live", total: 1, refresh: jest.fn() };
-    render(<QuantHeuristicReviewQueue perms={{ canReview: false }} />);
-    expect(screen.queryByTestId(`heuristic-review-open-${U1}`)).toBeNull();
+    render(<ContentCardReviewQueue perms={{ canReview: false }} contentType="quant_heuristic" />);
+    expect(screen.queryByTestId(`card-review-open-${U1}`)).toBeNull();
     expect(screen.getByText(/requires content_studio\.review/i)).toBeInTheDocument();
   });
 
   test("the queue exposes a rejected filter so rejected→pending is reachable", () => {
     mockCollection = { items: [row({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
-    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="quant_heuristic" />);
     // The requested-filter surface must include 'rejected' (not just an injected row).
-    const filter = screen.getByTestId("heuristic-review-queue-filter");
+    const filter = screen.getByTestId("card-review-queue-filter");
     const options = Array.from(filter.querySelectorAll("option")).map((o) => o.value);
     expect(options).toContain("rejected");
     // rejected → pending IS legal, so Review IS offered on the row.
-    expect(screen.getByTestId(`heuristic-review-open-${U1}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`card-review-open-${U1}`)).toBeInTheDocument();
   });
 });
 
-describe("QuantHeuristicReviewQueue dialog — full snapshot + reason gate", () => {
+describe("ContentCardReviewQueue dialog (quant) — full snapshot + reason gate", () => {
   // eslint-disable-next-line global-require
-  const QuantHeuristicReviewQueue = require("../QuantHeuristicReviewQueue").default;
+  const ContentCardReviewQueue = require("../ContentCardReviewQueue").default;
   const apiMock = require("../../../../lib/api").api;
 
   const fullSnapshot = (over = {}) => ({
-    id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "trap",
+    id: U1, name: "Alligation", card_code: "QH-ALG-01", card_subtype: "trap",
     reviewer_status: "pending", is_active: false, updated_at: "2026-07-10T00:00:00Z",
-    topic_id: U2, topic_name: "Mixtures", applicability_rule: { op: "ratio_mix" },
+    topic_id: U2, topic_name: "Mixtures",
     standard_method: "cross-multiplication method", shortcut_method: "swap the differences",
     worked_example: "40% & 10% blended to 30%", common_traps: "mislabel cheaper vs dearer",
     reviewer_notes: "a prior reviewer note", ...over,
   });
   const queueRow = (over = {}) => ({
-    id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "trap",
+    id: U1, name: "Alligation", card_code: "QH-ALG-01", card_subtype: "trap",
     reviewer_status: "pending", topic_name: "Mixtures", ...over,
   });
 
   test("renders EVERY canonical field and gates verify on a valid reason", async () => {
     apiMock.get.mockResolvedValueOnce(fullSnapshot());
     mockCollection = { items: [queueRow()], status: "live", total: 1, refresh: jest.fn() };
-    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
-    fireEvent.click(screen.getByTestId(`heuristic-review-open-${U1}`));
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="quant_heuristic" />);
+    fireEvent.click(screen.getByTestId(`card-review-open-${U1}`));
 
     // Every review-bearing canonical field is visible before a verify is possible.
-    expect(await screen.findByTestId("review-heuristic-standard_method")).toHaveTextContent("cross-multiplication method");
-    expect(screen.getByTestId("review-heuristic-worked_example")).toHaveTextContent("40% & 10% blended to 30%");
-    expect(screen.getByTestId("review-heuristic-common_traps")).toHaveTextContent("mislabel cheaper vs dearer");
-    expect(screen.getByTestId("review-heuristic-reviewer_notes")).toHaveTextContent("a prior reviewer note");
-    expect(screen.getByTestId("review-heuristic-applicability_rule")).toHaveTextContent("ratio_mix");
+    expect(await screen.findByTestId("review-card-standard_method")).toHaveTextContent("cross-multiplication method");
+    expect(screen.getByTestId("review-card-worked_example")).toHaveTextContent("40% & 10% blended to 30%");
+    expect(screen.getByTestId("review-card-common_traps")).toHaveTextContent("mislabel cheaper vs dearer");
+    expect(screen.getByTestId("review-card-reviewer_notes")).toHaveTextContent("a prior reviewer note");
+    // applicability_rule was dropped by migration 291 — declared, stored,
+    // rendered here, and never read by anything. The dialog must not render it.
+    expect(screen.queryByTestId("review-card-applicability_rule")).toBeNull();
 
     // Verify is gated on a valid audit reason — no request fires without one.
-    fireEvent.click(screen.getByTestId("heuristic-review-submit"));
+    fireEvent.click(screen.getByTestId("card-review-submit"));
     expect(await screen.findByText(/Reason must be 8/)).toBeInTheDocument();
     expect(mockRun).not.toHaveBeenCalled();
   });
@@ -495,22 +497,22 @@ describe("QuantHeuristicReviewQueue dialog — full snapshot + reason gate", () 
     apiMock.get.mockResolvedValueOnce(fullSnapshot({ reviewer_status: "rejected" }));
     mockRun = jest.fn(async ({ action }) => { await action(); return { ok: true, data: { ok: true, result: {} } }; });
     mockCollection = { items: [queueRow({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
-    render(<QuantHeuristicReviewQueue perms={{ canReview: true }} />);
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="quant_heuristic" />);
 
     // The rejected queue is selectable (not just an injected row).
-    fireEvent.change(screen.getByTestId("heuristic-review-queue-filter"), { target: { value: "rejected" } });
-    fireEvent.click(screen.getByTestId(`heuristic-review-open-${U1}`));
+    fireEvent.change(screen.getByTestId("card-review-queue-filter"), { target: { value: "rejected" } });
+    fireEvent.click(screen.getByTestId(`card-review-open-${U1}`));
 
     // Only rejected→pending is offered.
-    const decision = await screen.findByTestId("heuristic-review-status");
+    const decision = await screen.findByTestId("card-review-status");
     const options = Array.from(decision.querySelectorAll("option")).map((o) => o.value);
     expect(options).toEqual(["pending"]);
 
-    fireEvent.change(screen.getByTestId("heuristic-review-reason"), { target: { value: "reopening for rework" } });
-    fireEvent.click(screen.getByTestId("heuristic-review-submit"));
+    fireEvent.change(screen.getByTestId("card-review-reason"), { target: { value: "reopening for rework" } });
+    fireEvent.click(screen.getByTestId("card-review-submit"));
     await waitFor(() =>
       expect(apiMock.post).toHaveBeenCalledWith(
-        `/api/admin/content-studio/quant-heuristics/${U1}/review`,
+        `/api/admin/content-studio/content-cards/${U1}/review`,
         expect.objectContaining({
           status: "pending", expected_status: "rejected",
           expected_updated_at: "2026-07-10T00:00:00Z", reason: "reopening for rework",
@@ -524,43 +526,43 @@ describe("QuantHeuristicLibrary default request (undefined-param regression)", (
   test("buildListParams emits ONLY limit+offset when no filters are set", () => {
     // useApiCollection serializes via URLSearchParams; `undefined` would become the
     // literal string "undefined" and the backend would filter everything out.
-    expect(buildListParams({ heuristic_type: "", reviewer_status: "", q: "" }, 0)).toEqual({ limit: 50, offset: 0 });
-    expect(buildListParams({ heuristic_type: undefined, reviewer_status: undefined, q: undefined }, 50))
+    expect(buildListParams({ card_subtype: "", reviewer_status: "", q: "" }, 0)).toEqual({ limit: 50, offset: 0 });
+    expect(buildListParams({ card_subtype: undefined, reviewer_status: undefined, q: undefined }, 50))
       .toEqual({ limit: 50, offset: 50 });
   });
 
   test("buildListParams includes only the set filters (trimmed)", () => {
-    expect(buildListParams({ heuristic_type: "trap", reviewer_status: "pending", q: "  alligation  " }, 0))
-      .toEqual({ limit: 50, offset: 0, heuristic_type: "trap", reviewer_status: "pending", q: "alligation" });
+    expect(buildListParams({ card_subtype: "trap", reviewer_status: "pending", q: "  alligation  " }, 0))
+      .toEqual({ limit: 50, offset: 0, card_subtype: "trap", reviewer_status: "pending", q: "alligation" });
   });
 });
 
 describe("quant heuristic review write contract", () => {
-  test("reviewHeuristic carries the content CAS token + audit reason", () => {
+  test("reviewCard carries the content CAS token + audit reason", () => {
     const apiMock = require("../../../../lib/api").api;
-    contentStudioApi.reviewHeuristic(U1, {
+    contentStudioApi.reviewCard(U1, {
       status: "verified", expected_status: "pending",
       expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear shortcut, verified",
     });
     expect(apiMock.post).toHaveBeenCalledWith(
-      `/api/admin/content-studio/quant-heuristics/${U1}/review`,
+      `/api/admin/content-studio/content-cards/${U1}/review`,
       { status: "verified", expected_status: "pending",
         expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear shortcut, verified" },
     );
   });
 });
 
-describe("QuantHeuristicLibrary screen", () => {
+describe("ContentCardLibrary screen", () => {
   // eslint-disable-next-line global-require
-  const QuantHeuristicLibrary = require("../QuantHeuristicLibrary").default;
+  const ContentCardLibrary = require("../ContentCardLibrary").default;
 
   test("renders heuristic rows with a View action and no author/assign affordance", () => {
     mockCollection = {
-      items: [{ id: U1, name: "Alligation", heuristic_code: "QH-ALG-01", heuristic_type: "shortcut", reviewer_status: "verified", is_active: true, topic_name: "Mixtures" }],
+      items: [{ id: U1, name: "Alligation", card_code: "QH-ALG-01", card_subtype: "shortcut", reviewer_status: "verified", is_active: true, topic_name: "Mixtures" }],
       status: "live", total: 1, refresh: jest.fn(),
     };
-    render(<QuantHeuristicLibrary />);
-    expect(screen.getByTestId(`heuristic-open-${U1}`)).toBeInTheDocument();
+    render(<ContentCardLibrary contentType="quant_heuristic" />);
+    expect(screen.getByTestId(`card-open-${U1}`)).toBeInTheDocument();
     expect(screen.getByText("Alligation")).toBeInTheDocument();
     // Governance-read surface only — no create/assign controls exist here.
     expect(screen.queryByText(/new heuristic|create|assign/i)).toBeNull();
@@ -569,21 +571,21 @@ describe("QuantHeuristicLibrary screen", () => {
 
 // ---- Reasoning strategy authority (GQR-S3) ---------------------------------
 
-describe("reasoning strategy contract mirrors quant heuristics", () => {
+describe("reasoning strategy shares the merged card contract", () => {
   // eslint-disable-next-line global-require
-  const {
-    REASONING_STRATEGY_TYPES, REASONING_REVIEW_TRANSITIONS,
-  } = require("../contentStudioApi");
+  const { CARD_TYPES, CARD_REVIEW_TRANSITIONS } = require("../contentStudioApi");
+  // The SAME Library component and the SAME buildListParams serve both types
+  // (migration 291); there is no reasoning-specific module left to import.
   // eslint-disable-next-line global-require
-  const { buildListParams: buildStrategyParams } = require("../ReasoningStrategyLibrary");
+  const { buildListParams: buildStrategyParams } = require("../ContentCardLibrary");
 
-  test("strategy_type facet matches the migration-261 CHECK", () => {
-    expect(REASONING_STRATEGY_TYPES).toEqual(
+  test("reasoning subtype vocabulary matches the migration-291 CHECK", () => {
+    expect(CARD_TYPES.reasoning_strategy.subtypes).toEqual(
       ["approach", "pattern", "elimination", "diagram_method", "set_method", "trap"]);
   });
 
   test("review transition matrix matches the heuristic lifecycle", () => {
-    expect(REASONING_REVIEW_TRANSITIONS).toEqual({
+    expect(CARD_REVIEW_TRANSITIONS).toEqual({
       pending: ["verified", "rejected", "needs_correction"],
       needs_correction: ["pending", "rejected"],
       verified: ["needs_correction"],
@@ -591,24 +593,24 @@ describe("reasoning strategy contract mirrors quant heuristics", () => {
     });
   });
 
-  test("reviewStrategy carries the content CAS token + audit reason", () => {
+  test("reviewCard carries the content CAS token + audit reason", () => {
     const apiMock = require("../../../../lib/api").api;
-    contentStudioApi.reviewStrategy(U1, {
+    contentStudioApi.reviewCard(U1, {
       status: "verified", expected_status: "pending",
       expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear approach, verified",
     });
     expect(apiMock.post).toHaveBeenCalledWith(
-      `/api/admin/content-studio/reasoning-strategies/${U1}/review`,
+      `/api/admin/content-studio/content-cards/${U1}/review`,
       { status: "verified", expected_status: "pending",
         expected_updated_at: "2026-07-10T00:00:00Z", reason: "clear approach, verified" },
     );
   });
 
   test("buildListParams emits ONLY limit+offset when no filters are set", () => {
-    expect(buildStrategyParams({ strategy_type: "", reviewer_status: "", q: "" }, 0))
+    expect(buildStrategyParams({ card_subtype: "", reviewer_status: "", q: "" }, 0))
       .toEqual({ limit: 50, offset: 0 });
-    expect(buildStrategyParams({ strategy_type: "trap", reviewer_status: "pending", q: "  venn  " }, 0))
-      .toEqual({ limit: 50, offset: 0, strategy_type: "trap", reviewer_status: "pending", q: "venn" });
+    expect(buildStrategyParams({ card_subtype: "trap", reviewer_status: "pending", q: "  venn  " }, 0))
+      .toEqual({ limit: 50, offset: 0, card_subtype: "trap", reviewer_status: "pending", q: "venn" });
   });
 });
 
@@ -630,39 +632,39 @@ describe("ContentStudio shell — reasoning strategies", () => {
   });
 });
 
-describe("ReasoningStrategyReviewQueue dialog — full snapshot + reason gate", () => {
+describe("ContentCardReviewQueue dialog (reasoning) — full snapshot + reason gate", () => {
   // eslint-disable-next-line global-require
-  const ReasoningStrategyReviewQueue = require("../ReasoningStrategyReviewQueue").default;
+  const ContentCardReviewQueue = require("../ContentCardReviewQueue").default;
   const apiMock = require("../../../../lib/api").api;
 
   const fullSnapshot = (over = {}) => ({
-    id: U1, name: "Syllogism Venn method", strategy_code: "RS-SYL-01", strategy_type: "diagram_method",
+    id: U1, name: "Syllogism Venn method", card_code: "RS-SYL-01", card_subtype: "diagram_method",
     reviewer_status: "pending", is_active: false, updated_at: "2026-07-10T00:00:00Z",
-    topic_id: U2, topic_name: "Reasoning", applicability_rule: { op: "syllogism" },
+    topic_id: U2, topic_name: "Reasoning",
     standard_method: "draw all-case Venn diagrams", faster_method: "eliminate on definite-only",
     key_observation: "possibility cases flip some conclusions",
     worked_example: "all A are B, no B are C", common_traps: "assuming 'some' from 'all'",
     reviewer_notes: "a prior reviewer note", ...over,
   });
   const queueRow = (over = {}) => ({
-    id: U1, name: "Syllogism Venn method", strategy_code: "RS-SYL-01", strategy_type: "diagram_method",
+    id: U1, name: "Syllogism Venn method", card_code: "RS-SYL-01", card_subtype: "diagram_method",
     reviewer_status: "pending", topic_name: "Reasoning", ...over,
   });
 
   test("renders EVERY canonical field including key_observation and gates verify on a valid reason", async () => {
     apiMock.get.mockResolvedValueOnce(fullSnapshot());
     mockCollection = { items: [queueRow()], status: "live", total: 1, refresh: jest.fn() };
-    render(<ReasoningStrategyReviewQueue perms={{ canReview: true }} />);
-    fireEvent.click(screen.getByTestId(`strategy-review-open-${U1}`));
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="reasoning_strategy" />);
+    fireEvent.click(screen.getByTestId(`card-review-open-${U1}`));
 
-    expect(await screen.findByTestId("review-strategy-standard_method")).toHaveTextContent("draw all-case Venn diagrams");
-    expect(screen.getByTestId("review-strategy-key_observation")).toHaveTextContent("possibility cases flip some conclusions");
-    expect(screen.getByTestId("review-strategy-worked_example")).toHaveTextContent("all A are B");
-    expect(screen.getByTestId("review-strategy-common_traps")).toHaveTextContent("assuming 'some' from 'all'");
-    expect(screen.getByTestId("review-strategy-applicability_rule")).toHaveTextContent("syllogism");
+    expect(await screen.findByTestId("review-card-standard_method")).toHaveTextContent("draw all-case Venn diagrams");
+    expect(screen.getByTestId("review-card-key_observation")).toHaveTextContent("possibility cases flip some conclusions");
+    expect(screen.getByTestId("review-card-worked_example")).toHaveTextContent("all A are B");
+    expect(screen.getByTestId("review-card-common_traps")).toHaveTextContent("assuming 'some' from 'all'");
+    expect(screen.queryByTestId("review-card-applicability_rule")).toBeNull();
 
     // Verify is gated on a valid audit reason — no request fires without one.
-    fireEvent.click(screen.getByTestId("strategy-review-submit"));
+    fireEvent.click(screen.getByTestId("card-review-submit"));
     expect(await screen.findByText(/Reason must be 8/)).toBeInTheDocument();
     expect(mockRun).not.toHaveBeenCalled();
   });
@@ -671,20 +673,20 @@ describe("ReasoningStrategyReviewQueue dialog — full snapshot + reason gate", 
     apiMock.get.mockResolvedValueOnce(fullSnapshot({ reviewer_status: "rejected" }));
     mockRun = jest.fn(async ({ action }) => { await action(); return { ok: true, data: { ok: true, result: {} } }; });
     mockCollection = { items: [queueRow({ reviewer_status: "rejected" })], status: "live", total: 1, refresh: jest.fn() };
-    render(<ReasoningStrategyReviewQueue perms={{ canReview: true }} />);
+    render(<ContentCardReviewQueue perms={{ canReview: true }} contentType="reasoning_strategy" />);
 
-    fireEvent.change(screen.getByTestId("strategy-review-queue-filter"), { target: { value: "rejected" } });
-    fireEvent.click(screen.getByTestId(`strategy-review-open-${U1}`));
+    fireEvent.change(screen.getByTestId("card-review-queue-filter"), { target: { value: "rejected" } });
+    fireEvent.click(screen.getByTestId(`card-review-open-${U1}`));
 
-    const decision = await screen.findByTestId("strategy-review-status");
+    const decision = await screen.findByTestId("card-review-status");
     const options = Array.from(decision.querySelectorAll("option")).map((o) => o.value);
     expect(options).toEqual(["pending"]);
 
-    fireEvent.change(screen.getByTestId("strategy-review-reason"), { target: { value: "reopening for rework" } });
-    fireEvent.click(screen.getByTestId("strategy-review-submit"));
+    fireEvent.change(screen.getByTestId("card-review-reason"), { target: { value: "reopening for rework" } });
+    fireEvent.click(screen.getByTestId("card-review-submit"));
     await waitFor(() =>
       expect(apiMock.post).toHaveBeenCalledWith(
-        `/api/admin/content-studio/reasoning-strategies/${U1}/review`,
+        `/api/admin/content-studio/content-cards/${U1}/review`,
         expect.objectContaining({
           status: "pending", expected_status: "rejected",
           expected_updated_at: "2026-07-10T00:00:00Z", reason: "reopening for rework",

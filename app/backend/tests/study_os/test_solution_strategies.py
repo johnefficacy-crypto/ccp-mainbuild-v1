@@ -40,9 +40,10 @@ def _heur(
             ),
             "subject": _subject(microtopic_family),
         } if microtopic_id else None,
-        "heuristic_code": f"code-{hid}", "name": name, "heuristic_type": htype,
+        "content_type": "quant_heuristic",
+        "card_code": f"code-{hid}", "name": name, "card_subtype": htype,
         "applicability_rule": {"op": "secret"}, "formula_latex": r"\frac{a}{b}",
-        "standard_method": "long way", "shortcut_method": "fast way",
+        "standard_method": "long way", "faster_method": "fast way",
         "worked_example": "eg", "common_traps": "trap",
         "reviewer_status": status, "reviewer_notes": "internal note",
         "reviewed_by": "admin-x", "created_by": "author-y", "is_active": active,
@@ -64,7 +65,7 @@ def _link(
     return {
         "id": f"lnk-{qid}-{hid}",
         "question_id": qid,
-        "heuristic_id": hid,
+        "card_id": hid,
         "relevance": relevance,
         "reviewer_status": status,
         # SBStub deliberately ignores PostgREST select projections, so fixtures
@@ -78,13 +79,13 @@ def _link(
 def test_batched_read_one_link_one_heuristic_query():
     calls = {"n": 0}
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1"), _link("q2", "h2")],
-        "quant_heuristics": [_heur("h1", name="A"), _heur("h2", name="B")],
+        "content_card_links": [_link("q1", "h1"), _link("q2", "h2")],
+        "content_cards": [_heur("h1", name="A"), _heur("h2", name="B")],
     })
     orig_table = sb.table
 
     def _counting_table(name):
-        if name in ("quant_question_heuristics", "quant_heuristics"):
+        if name in ("content_card_links", "content_cards"):
             calls["n"] += 1
         return orig_table(name)
 
@@ -98,13 +99,13 @@ def test_batched_read_one_link_one_heuristic_query():
 
 def test_batched_gate_excludes_unverified_link_and_unverified_or_inactive_heuristic():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-ok"),
             _link("q1", "h-pending"),            # link ok, heuristic pending
             _link("q1", "h-inactive"),           # link ok, heuristic inactive
             _link("q1", "h-badlink", status="pending"),  # link not verified
         ],
-        "quant_heuristics": [
+        "content_cards": [
             _heur("h-ok", status="verified", active=True),
             _heur("h-pending", status="pending", active=True),
             _heur("h-inactive", status="verified", active=False),
@@ -117,12 +118,12 @@ def test_batched_gate_excludes_unverified_link_and_unverified_or_inactive_heuris
 
 def test_batched_rejects_wrong_topic_or_microtopic_link():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q-topic-mismatch", "h-topic", topic="reasoning-topic"),
             _link("q-micro-mismatch", "h-micro", topic="t1", micro="other-micro"),
             _link("q-micro-match", "h-micro", topic="t1", micro="m1"),
         ],
-        "quant_heuristics": [
+        "content_cards": [
             _heur("h-topic", topic_id="t1", microtopic_id=None),
             _heur("h-micro", topic_id="t1", microtopic_id="m1"),
         ],
@@ -138,12 +139,12 @@ def test_batched_rejects_wrong_topic_or_microtopic_link():
 
 def test_batched_no_cross_question_leakage_and_ordering():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h1", relevance="related"),
             _link("q1", "h2", relevance="primary"),
             _link("q2", "h1", relevance="primary"),
         ],
-        "quant_heuristics": [_heur("h1", name="Zeta"), _heur("h2", name="Alpha")],
+        "content_cards": [_heur("h1", name="Zeta"), _heur("h2", name="Alpha")],
     })
     out = quant_heuristics.heuristics_for_questions(sb, ["q1", "q2"])
     # q1: primary(h2) before related(h1); q2 only has h1 (its own relevance).
@@ -154,11 +155,11 @@ def test_batched_no_cross_question_leakage_and_ordering():
 
 def test_batched_same_name_order_is_stable_by_id():
     sb = SBStub({
-        "quant_question_heuristics": [
+        "content_card_links": [
             _link("q1", "h-z", relevance="primary"),
             _link("q1", "h-a", relevance="primary"),
         ],
-        "quant_heuristics": [
+        "content_cards": [
             _heur("h-z", name="Same name"),
             _heur("h-a", name="Same name"),
         ],
@@ -169,13 +170,13 @@ def test_batched_same_name_order_is_stable_by_id():
 
 def test_batched_authority_does_not_return_governance_fields():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
-        "quant_heuristics": [_heur("h1")],
+        "content_card_links": [_link("q1", "h1")],
+        "content_cards": [_heur("h1")],
     })
     raw = quant_heuristics.heuristics_for_questions(sb, ["q1"])["q1"][0]
     for forbidden in (
         "applicability_rule", "reviewer_status", "reviewer_notes", "reviewed_by",
-        "created_by", "updated_at", "is_active", "heuristic_code", "topic_id",
+        "created_by", "updated_at", "is_active", "card_code", "topic_id",
         "microtopic_id",
     ):
         assert forbidden not in raw
@@ -183,8 +184,8 @@ def test_batched_authority_does_not_return_governance_fields():
 
 def test_single_question_helper_delegates_to_batched_contract():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
-        "quant_heuristics": [_heur("h1")],
+        "content_card_links": [_link("q1", "h1")],
+        "content_cards": [_heur("h1")],
     })
     assert quant_heuristics.heuristics_for_question(sb, "q1") == (
         quant_heuristics.heuristics_for_questions(sb, ["q1"])["q1"]
@@ -192,7 +193,7 @@ def test_single_question_helper_delegates_to_batched_contract():
 
 
 def test_batched_empty_input_performs_no_reads():
-    sb = SBStub({"quant_question_heuristics": [], "quant_heuristics": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     sb.table = lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no query on empty input"))
     assert quant_heuristics.heuristics_for_questions(sb, []) == {}
     assert quant_heuristics.heuristics_for_question(sb, "") == []
@@ -202,27 +203,36 @@ def test_batched_empty_input_performs_no_reads():
 
 def test_projection_renames_and_strips_governance_fields():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1", relevance="secondary")],
-        "quant_heuristics": [_heur("h1", name="Base-100")],
+        "content_card_links": [_link("q1", "h1", relevance="secondary")],
+        "content_cards": [_heur("h1", name="Base-100")],
     })
     out = ss.strategies_for_questions(sb, ["q1"])
     dto = out["q1"][0]
     assert set(dto) == set(ss.ALLOWED_FIELDS)
     assert dto["subject_family"] == "quant"
-    assert dto["strategy_type"] == "shortcut"        # renamed from heuristic_type
-    assert dto["faster_method"] == "fast way"        # renamed from shortcut_method
+    # card_subtype is projected onto the DTO's strategy_type; faster_method now
+    # carries the SAME name on the source row (migration 291 normalised the old
+    # shortcut_method/faster_method split away), so the projector no longer
+    # renames it - it passes it through.
+    assert dto["strategy_type"] == "shortcut"        # from card_subtype
+    assert dto["faster_method"] == "fast way"
     assert dto["key_observation"] is None
     assert dto["relevance"] == "secondary"
+    # Governance and source-only columns must never reach the learner payload.
+    # card_subtype is here because the DTO exposes it as strategy_type, never
+    # under its source name; applicability_rule is here because a row read from
+    # an older snapshot could still carry it even though migration 291 dropped
+    # the column.
     for forbidden in ("applicability_rule", "reviewer_status", "reviewer_notes",
-                      "reviewed_by", "created_by", "heuristic_type",
-                      "shortcut_method", "is_active", "updated_at"):
+                      "reviewed_by", "created_by", "card_subtype",
+                      "content_type", "card_code", "is_active", "updated_at"):
         assert forbidden not in dto
 
 
 def test_projection_every_requested_id_present_and_empty_for_none():
     sb = SBStub({
-        "quant_question_heuristics": [_link("q1", "h1")],
-        "quant_heuristics": [_heur("h1")],
+        "content_card_links": [_link("q1", "h1")],
+        "content_cards": [_heur("h1")],
     })
     out = ss.strategies_for_questions(sb, ["q1", "q-none"])
     assert out["q-none"] == []
@@ -230,7 +240,7 @@ def test_projection_every_requested_id_present_and_empty_for_none():
 
 
 def test_projection_fails_soft_on_source_error(monkeypatch):
-    sb = SBStub({"quant_question_heuristics": [], "quant_heuristics": []})
+    sb = SBStub({"content_card_links": [], "content_cards": []})
     monkeypatch.setattr(
         ss.quant_heuristics, "heuristics_for_questions",
         lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
@@ -259,8 +269,8 @@ def _review_sb():
              "selected_option_id": "o2", "is_correct": False, "time_spent_sec": 9},
         ],
         "mock_attempt_response_classification": [],
-        "quant_question_heuristics": [_link("q1", "h1", topic="t1")],
-        "quant_heuristics": [_heur("h1", name="Base-100", topic_id="t1")],
+        "content_card_links": [_link("q1", "h1", topic="t1")],
+        "content_cards": [_heur("h1", name="Base-100", topic_id="t1")],
     })
 
 

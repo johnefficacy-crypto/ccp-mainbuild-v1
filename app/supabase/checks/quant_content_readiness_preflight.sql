@@ -28,21 +28,35 @@ declare
   v_ready_questions       int;
   v_ready_reachable       int;
 begin
-  select count(*) into v_heuristics_total from public.quant_heuristics;
+  -- Migrations 291/292 merged the per-subject content and link tables into
+  -- public.content_cards and public.content_card_links. Quant rows are selected
+  -- by content_type rather than by table, and a quant link is a link to a quant
+  -- card whose target is a question.
+  select count(*) into v_heuristics_total
+    from public.content_cards where content_type = 'quant_heuristic';
   select count(*) into v_heuristics_verified
-    from public.quant_heuristics
-    where reviewer_status = 'verified' and is_active = true;
+    from public.content_cards
+    where content_type = 'quant_heuristic'
+      and reviewer_status = 'verified' and is_active = true;
 
-  select count(*) into v_links_total from public.quant_question_heuristics;
+  select count(*) into v_links_total
+    from public.content_card_links l
+    join public.content_cards h on h.id = l.card_id
+    where h.content_type = 'quant_heuristic' and l.question_id is not null;
   select count(*) into v_links_verified
-    from public.quant_question_heuristics where reviewer_status = 'verified';
+    from public.content_card_links l
+    join public.content_cards h on h.id = l.card_id
+    where h.content_type = 'quant_heuristic' and l.question_id is not null
+      and l.reviewer_status = 'verified';
 
   -- Learner-ready questions: the exact conjunctive gate heuristics_for_question()
   -- applies — verified link AND verified+active heuristic.
   select count(distinct l.question_id) into v_ready_questions
-    from public.quant_question_heuristics l
-    join public.quant_heuristics h on h.id = l.heuristic_id
-    where l.reviewer_status = 'verified'
+    from public.content_card_links l
+    join public.content_cards h on h.id = l.card_id
+    where h.content_type = 'quant_heuristic'
+      and l.question_id is not null
+      and l.reviewer_status = 'verified'
       and h.reviewer_status = 'verified'
       and h.is_active = true;
 
@@ -50,10 +64,12 @@ begin
   -- gate admits only verified/live/published bank rows; mere existence is not
   -- sufficient (reviewed/draft/archived rows are not learner-reachable).
   select count(distinct l.question_id) into v_ready_reachable
-    from public.quant_question_heuristics l
-    join public.quant_heuristics h on h.id = l.heuristic_id
+    from public.content_card_links l
+    join public.content_cards h on h.id = l.card_id
     join public.mock_question_bank q on q.id = l.question_id
-    where l.reviewer_status = 'verified'
+    where h.content_type = 'quant_heuristic'
+      and l.question_id is not null
+      and l.reviewer_status = 'verified'
       and h.reviewer_status = 'verified'
       and h.is_active = true
       and q.reviewer_status in ('verified', 'live', 'published');

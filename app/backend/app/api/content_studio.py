@@ -49,8 +49,6 @@ from pydantic import (
 )
 
 from app.api.admin_exam_intel_cms import WriteEnvelope, _flag_enabled, _safe_select
-from app.study_os.quant_heuristics import review_heuristic as _review_quant_heuristic
-from app.study_os.reasoning_strategies import review_strategy as _review_reasoning_strategy
 from app.study_os.writing_practice.deterministic import tokenize_words as _tokenize_words
 from app.core.auth import get_current_user, require_permission
 from app.core.permissions import (
@@ -989,41 +987,56 @@ def get_writing_prompt_correction_note(
     return {"note": None}
 
 
-# ── Quant heuristic authority (GQR-Q7) ──────────────────────────────────────
+# ── Content cards — the merged content authority (CONTENT-01) ───────────────
 #
-# quant_heuristics (migration 243; review RPC hardened in 245) are subject/topic-
-# scoped canonical content governed here. The backend shipped read/selection + the
-# review-lifecycle RPC (`cms_review_quant_heuristic`) ahead of the UI; this section
-# is the operator API glue: a permission-gated Library read + the governance review
-# transition (dual CAS on status + content updated_at, mandatory audit reason).
-# There is NO create/edit/activate/assign path — migration 243 ships only the
-# review RPC (heuristics carry no publication/applicability lane), so authoring
-# is a later governed PR. Reads reuse the shared `_require_content_read` gate;
-# reviewing is content_studio.review, exactly like writing prompts.
+# Migration 291 merged quant_heuristics (243) and reasoning_strategies (262) into
+# one type-discriminated table, `content_cards`. This section is the single
+# operator API for every card type: a permission-gated Library read, the
+# governance review transition, and the activation lifecycle.
 #
-# The heuristic transition matrix (mirrored from migration 243) DIFFERS from the
-# writing-prompt one: needs_correction routes back to pending (never straight to
-# verified), a verified heuristic can only be reopened for correction, and a
-# rejected heuristic can be reopened to pending for rework.
-_QH_TRANSITIONS: dict[str, tuple[str, ...]] = {
+# ADDING A TYPE IS CONFIGURATION. A new content type needs one entry in
+# _CARD_TYPES below and nothing else here — no new route, no new body model, no
+# new enrichment helper. That is the whole point of the merge: the old surface
+# carried two copies of every one of these, the second made by copying the first.
+#
+# content_type is an OPEN discriminator in the database (format-checked, not
+# value-checked — see migration 291). _CARD_TYPES is this layer's *known* set,
+# used to validate the subtype vocabulary on filtered reads. An unknown type is
+# not rejected at the database; it simply has no subtype vocabulary to check
+# against here.
+#
+# The transition matrix (mirrored from migration 291, unchanged from 243/262):
+# needs_correction routes back to pending (never straight to verified), a
+# verified card can only be reopened for correction, and a rejected card can be
+# reopened to pending for rework.
+_CARD_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "pending": ("verified", "rejected", "needs_correction"),
     "needs_correction": ("pending", "rejected"),
     "verified": ("needs_correction",),
     "rejected": ("pending",),
 }
-_QH_TARGET_STATUSES = frozenset(s for t in _QH_TRANSITIONS.values() for s in t)
-_QH_TYPES = frozenset({"shortcut", "standard_method", "trap", "estimation"})
+_CARD_TARGET_STATUSES = frozenset(s for t in _CARD_TRANSITIONS.values() for s in t)
+
+# content_type -> the subtype vocabulary migration 291 constrains it to.
+_CARD_TYPES: dict[str, frozenset[str]] = {
+    "quant_heuristic": frozenset({"shortcut", "standard_method", "trap", "estimation"}),
+    "reasoning_strategy": frozenset(
+        {"approach", "pattern", "elimination", "diagram_method", "set_method", "trap"}),
+}
+
+_CARDS = "content_cards"
 
 
-class QuantHeuristicReviewBody(BaseModel):
-    """Review-lifecycle body for a quant heuristic.
+class ContentCardReviewBody(BaseModel):
+    """Review-lifecycle body for a content card.
 
-    The RPC (`cms_review_quant_heuristic`, migration 246) CAS-guards on BOTH
-    ``expected_status`` (the reviewer_status the client last saw) AND
-    ``expected_updated_at`` (the content-revision token — so a reviewer can never
-    verify a revision they did not read), requires an 8–500 char audit ``reason``
-    on every decision, and requires ``reviewer_notes`` when reopening a verified
-    heuristic for correction (enforced here AND in the RPC)."""
+    The RPC (`cms_review_content_card`, migration 291, carrying forward 246's
+    hardened shape) CAS-guards on BOTH ``expected_status`` (the reviewer_status
+    the client last saw) AND ``expected_updated_at`` (the content-revision token
+    — so a reviewer can never verify a revision they did not read), requires an
+    8–500 char audit ``reason`` on every decision, and requires
+    ``reviewer_notes`` when reopening a verified card for correction (enforced
+    here AND in the RPC)."""
     model_config = ConfigDict(extra="forbid")
     status: str
     expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
@@ -1032,20 +1045,191 @@ class QuantHeuristicReviewBody(BaseModel):
     reviewer_notes: str | None = Field(default=None, max_length=2000)
 
 
-def _enrich_heuristic_labels_batch(supabase, items: list) -> list:
-    """Attach topic_name/microtopic_name to a PAGE of quant_heuristics rows in a
-    single batched query (both columns reference `topics`); ids are never mutated."""
-    rows = [h for h in (items or []) if isinstance(h, dict)]
+class ContentCardActivateBody(BaseModel):
+    """Activate a verified card for learner delivery.
+
+    The activate authority is SEPARATE from author and review
+    (`content_studio.activate`) — neither author nor review may flip
+    ``is_active``. Mirrors WritingPromptActivateBody."""
+    model_config = ConfigDict(extra="forbid")
+    expected_updated_at: str = Field(..., description="updated_at the client last read (content CAS token)")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+class ContentCardDeactivateBody(BaseModel):
+    """Withdraw a card from learner delivery. Same separate authority."""
+    model_config = ConfigDict(extra="forbid")
+    expected_updated_at: str = Field(..., description="updated_at the client last read (content CAS token)")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+def _enrich_card_labels_batch(supabase, items: list) -> list:
+    """Attach topic/microtopic display names in one batched lookup (no N+1)."""
+    rows = [c for c in items if isinstance(c, dict)]
     if not rows:
         return items
     topics = _batch_name_map(
         supabase, "topics",
-        [h.get("topic_id") for h in rows] + [h.get("microtopic_id") for h in rows])
-    for h in rows:
-        tid, mid = h.get("topic_id"), h.get("microtopic_id")
-        h["topic_name"] = topics.get(str(tid)) if tid else None
-        h["microtopic_name"] = topics.get(str(mid)) if mid else None
+        [c.get("topic_id") for c in rows] + [c.get("microtopic_id") for c in rows])
+    for c in rows:
+        tid, mid = c.get("topic_id"), c.get("microtopic_id")
+        c["topic_name"] = topics.get(str(tid)) if tid else None
+        c["microtopic_name"] = topics.get(str(mid)) if mid else None
     return items
+
+
+@router.get("/content-cards")
+def list_content_cards(
+    content_type: str | None = Query(default=None, description="filter to one card type"),
+    topic_id: UUID | None = Query(default=None),
+    microtopic_id: UUID | None = Query(default=None),
+    card_subtype: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    q: str | None = Query(default=None, description="substring match on name"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    # A subtype filter only means something inside a type: the same token can be
+    # valid for one type and not another ('trap' is shared; 'set_method' is not).
+    if card_subtype is not None and content_type in _CARD_TYPES:
+        if card_subtype not in _CARD_TYPES[content_type]:
+            raise HTTPException(status_code=422, detail=(
+                f"card_subtype '{card_subtype}' is not valid for content_type "
+                f"'{content_type}'. Allowed: {sorted(_CARD_TYPES[content_type])}"))
+    supabase = get_supabase_admin()
+    query = supabase.table(_CARDS).select("*", count="exact").order("created_at", desc=True)
+    for col, val in (
+        ("content_type", content_type), ("topic_id", topic_id),
+        ("microtopic_id", microtopic_id), ("card_subtype", card_subtype),
+        ("reviewer_status", reviewer_status),
+    ):
+        if val is not None:
+            query = query.eq(col, str(val))
+    if is_active is not None:
+        query = query.eq("is_active", is_active)
+    if q:
+        query = query.ilike("name", f"%{q}%")
+    res = query.range(offset, offset + limit - 1).execute()
+    items = _enrich_card_labels_batch(supabase, res.data or [])
+    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.get("/content-cards/{card_id}")
+def get_content_card(
+    card_id: UUID,
+    _admin: dict = Depends(_require_content_read),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    card = _safe_select(supabase, _CARDS, id=str(card_id))
+    if not card:
+        raise HTTPException(status_code=404, detail="content_card not found")
+    return _enrich_card_labels_batch(supabase, [card])[0]
+
+
+@router.post("/content-cards/{card_id}/review")
+def review_content_card(
+    card_id: UUID,
+    body: ContentCardReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    if body.status not in _CARD_TARGET_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_CARD_TARGET_STATUSES)}")
+    # Guard the transition against the status the CLIENT actually saw; the RPC
+    # re-checks expected_status under the row lock (CAS) and owns the audit row.
+    if body.status not in _CARD_TRANSITIONS.get(body.expected_status, ()):
+        raise HTTPException(status_code=422, detail=(
+            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
+            f"Allowed: {list(_CARD_TRANSITIONS.get(body.expected_status, ()))}"))
+    # Reopening a verified card for correction must carry a note (mirrors the RPC).
+    notes = (body.reviewer_notes or "").strip() or None
+    if body.expected_status == "verified" and body.status == "needs_correction" and notes is None:
+        raise HTTPException(
+            status_code=422,
+            detail="reviewer_notes required when reopening a verified card")
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("cms_review_content_card", {
+            "p_card_id": str(card_id),
+            "p_expected_status": body.expected_status,
+            # CLIENT's content token — never a server-minted fresh read — so a
+            # content edit after the reviewer's read loses with 409.
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_new_status": body.status,
+            "p_reviewer_notes": notes,
+            "p_reason": body.reason,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "review_content_card") from exc
+    return {"ok": True, "result": _rpc_row(result)}
+
+
+# Activation lifecycle. The contract's §1.1 split — content_studio.activate is a
+# SEPARATE, higher-trust authority; neither author nor review may flip is_active
+# — was documented from the start but implemented for writing_prompts only
+# (migration 226). Before migration 291 the content tables had no activate route
+# at all, so is_active defaulted true and could not be set through the API.
+#
+# As with writing prompts, the RPC is the SOLE eligibility authority: a blocked
+# activation is a NORMAL 200 carrying {eligible:false, blockers:[...]}, not an
+# error. CAS mismatch → 409; missing card → 404; malformed body → 422. This
+# router NEVER computes eligibility.
+
+
+@router.post("/content-cards/{card_id}/activate")
+def activate_content_card(
+    card_id: UUID,
+    body: ContentCardActivateBody,
+    admin: dict = Depends(require_permission(PERM_ACTIVATE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("cms_activate_content_card", {
+            "p_card_id": str(card_id),
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_reason": body.reason,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "activate_content_card") from exc
+    return {"ok": True, "result": _rpc_row(result)}
+
+
+@router.post("/content-cards/{card_id}/deactivate")
+def deactivate_content_card(
+    card_id: UUID,
+    body: ContentCardDeactivateBody,
+    admin: dict = Depends(require_permission(PERM_ACTIVATE)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    try:
+        result = supabase.rpc("cms_deactivate_content_card", {
+            "p_card_id": str(card_id),
+            "p_expected_updated_at": body.expected_updated_at,
+            "p_reason": body.reason,
+            "p_actor_user_id": admin.get("id"),
+            "p_actor_email": admin.get("email"),
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        raise _map_rpc_error(exc, "deactivate_content_card") from exc
+    return {"ok": True, "result": _rpc_row(result)}
+
+
+# ── Legacy per-type aliases ─────────────────────────────────────────────────
+# The old /quant-heuristics and /reasoning-strategies routes delegate to the
+# generic handlers above so existing clients and deep links keep working, the
+# same way migration 214's route consolidation kept the removed Mock Content
+# routes alive as redirects (content-studio.md §3.1). They add no behaviour;
+# a new content type gets NO alias.
 
 
 @router.get("/quant-heuristics")
@@ -1058,138 +1242,32 @@ def list_quant_heuristics(
     q: str | None = Query(default=None, description="substring match on name"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: dict = Depends(_require_content_read),
-    __: None = Depends(_flag_enabled),
+    admin: dict = Depends(_require_content_read),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    query = supabase.table("quant_heuristics").select("*", count="exact").order("created_at", desc=True)
-    for col, val in (
-        ("topic_id", topic_id), ("microtopic_id", microtopic_id),
-        ("heuristic_type", heuristic_type), ("reviewer_status", reviewer_status),
-    ):
-        if val is not None:
-            query = query.eq(col, str(val))
-    if is_active is not None:
-        query = query.eq("is_active", is_active)
-    if q:
-        query = query.ilike("name", f"%{q}%")
-    res = query.range(offset, offset + limit - 1).execute()
-    items = _enrich_heuristic_labels_batch(supabase, res.data or [])
-    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+    return list_content_cards(
+        content_type="quant_heuristic", topic_id=topic_id, microtopic_id=microtopic_id,
+        card_subtype=heuristic_type, reviewer_status=reviewer_status, is_active=is_active,
+        q=q, limit=limit, offset=offset, _admin=admin, __=flag)
 
 
 @router.get("/quant-heuristics/{heuristic_id}")
 def get_quant_heuristic(
     heuristic_id: UUID,
-    _admin: dict = Depends(_require_content_read),
-    __: None = Depends(_flag_enabled),
+    admin: dict = Depends(_require_content_read),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    heuristic = _safe_select(supabase, "quant_heuristics", id=str(heuristic_id))
-    if not heuristic:
-        raise HTTPException(status_code=404, detail="quant_heuristic not found")
-    return _enrich_heuristic_labels_batch(supabase, [heuristic])[0]
+    return get_content_card(card_id=heuristic_id, _admin=admin, __=flag)
 
 
 @router.post("/quant-heuristics/{heuristic_id}/review")
 def review_quant_heuristic(
     heuristic_id: UUID,
-    body: QuantHeuristicReviewBody,
+    body: ContentCardReviewBody,
     admin: dict = Depends(require_permission(PERM_REVIEW)),
-    __: None = Depends(_flag_enabled),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    if body.status not in _QH_TARGET_STATUSES:
-        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_QH_TARGET_STATUSES)}")
-    # Guard the transition against the status the CLIENT actually saw; the RPC
-    # re-checks expected_status under the row lock (CAS) and owns the audit row.
-    if body.status not in _QH_TRANSITIONS.get(body.expected_status, ()):
-        raise HTTPException(status_code=422, detail=(
-            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
-            f"Allowed: {list(_QH_TRANSITIONS.get(body.expected_status, ()))}"))
-    # Reopening a verified heuristic for correction must carry a note (mirrors the RPC).
-    notes = (body.reviewer_notes or "").strip() or None
-    if body.expected_status == "verified" and body.status == "needs_correction" and notes is None:
-        raise HTTPException(
-            status_code=422,
-            detail="reviewer_notes required when reopening a verified heuristic")
-    supabase = get_supabase_admin()
-    try:
-        result = _review_quant_heuristic(
-            supabase,
-            heuristic_id=str(heuristic_id),
-            expected_status=body.expected_status,
-            # CLIENT's content token — never a server-minted fresh read — so a
-            # content edit after the reviewer's read loses with 409.
-            expected_updated_at=body.expected_updated_at,
-            new_status=body.status,
-            reviewer_notes=notes,
-            reason=body.reason,
-            actor_user_id=admin.get("id"),
-            actor_email=admin.get("email"),
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise _map_rpc_error(exc, "review_quant_heuristic") from exc
-    return {"ok": True, "result": result}
-
-
-# ── Reasoning strategy authority (GQR-S3) ───────────────────────────────────
-#
-# reasoning_strategies (migration 262) are the Reasoning-lane equivalent of quant
-# heuristics: subject/topic-scoped canonical solving strategies governed here. This
-# section is the operator API glue — a permission-gated Library read + the
-# governance review transition (dual CAS on status + content updated_at, mandatory
-# audit reason), mirroring the quant-heuristic surface exactly. There is NO
-# create/edit/activate/assign path in this PR (migration 262 ships only the review
-# RPC — authoring is a later governed slice, exactly as GQR-Q7 deferred quant
-# authoring). Reads reuse the shared `_require_content_read` gate; reviewing is
-# content_studio.review. GQR-S3 stops before learner delivery; the batched
-# projection is GQR-S4.
-#
-# The transition matrix (mirrored from migration 262) matches the heuristic one:
-# needs_correction routes back to pending (never straight to verified), a verified
-# strategy can only be reopened for correction, and a rejected strategy can be
-# reopened to pending for rework.
-_RS_TRANSITIONS: dict[str, tuple[str, ...]] = {
-    "pending": ("verified", "rejected", "needs_correction"),
-    "needs_correction": ("pending", "rejected"),
-    "verified": ("needs_correction",),
-    "rejected": ("pending",),
-}
-_RS_TARGET_STATUSES = frozenset(s for t in _RS_TRANSITIONS.values() for s in t)
-_RS_TYPES = frozenset({"approach", "pattern", "elimination", "diagram_method", "set_method", "trap"})
-
-
-class ReasoningStrategyReviewBody(BaseModel):
-    """Review-lifecycle body for a reasoning strategy.
-
-    The RPC (`cms_review_reasoning_strategy`, migration 262) CAS-guards on BOTH
-    ``expected_status`` (the reviewer_status the client last saw) AND
-    ``expected_updated_at`` (the content-revision token — so a reviewer can never
-    verify a revision they did not read), requires an 8–500 char audit ``reason``
-    on every decision, and requires ``reviewer_notes`` when reopening a verified
-    strategy for correction (enforced here AND in the RPC)."""
-    model_config = ConfigDict(extra="forbid")
-    status: str
-    expected_status: str = Field(..., description="reviewer_status the client last saw (CAS)")
-    expected_updated_at: str = Field(..., description="updated_at the client last read (content CAS token)")
-    reason: str = Field(..., min_length=8, max_length=500)
-    reviewer_notes: str | None = Field(default=None, max_length=2000)
-
-
-def _enrich_strategy_labels_batch(supabase, items: list) -> list:
-    """Attach topic_name/microtopic_name to a PAGE of reasoning_strategies rows in a
-    single batched query (both columns reference `topics`); ids are never mutated."""
-    rows = [s for s in (items or []) if isinstance(s, dict)]
-    if not rows:
-        return items
-    topics = _batch_name_map(
-        supabase, "topics",
-        [s.get("topic_id") for s in rows] + [s.get("microtopic_id") for s in rows])
-    for s in rows:
-        tid, mid = s.get("topic_id"), s.get("microtopic_id")
-        s["topic_name"] = topics.get(str(tid)) if tid else None
-        s["microtopic_name"] = topics.get(str(mid)) if mid else None
-    return items
+    return review_content_card(card_id=heuristic_id, body=body, admin=admin, __=flag)
 
 
 @router.get("/reasoning-strategies")
@@ -1202,78 +1280,33 @@ def list_reasoning_strategies(
     q: str | None = Query(default=None, description="substring match on name"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: dict = Depends(_require_content_read),
-    __: None = Depends(_flag_enabled),
+    admin: dict = Depends(_require_content_read),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    query = supabase.table("reasoning_strategies").select("*", count="exact").order("created_at", desc=True)
-    for col, val in (
-        ("topic_id", topic_id), ("microtopic_id", microtopic_id),
-        ("strategy_type", strategy_type), ("reviewer_status", reviewer_status),
-    ):
-        if val is not None:
-            query = query.eq(col, str(val))
-    if is_active is not None:
-        query = query.eq("is_active", is_active)
-    if q:
-        query = query.ilike("name", f"%{q}%")
-    res = query.range(offset, offset + limit - 1).execute()
-    items = _enrich_strategy_labels_batch(supabase, res.data or [])
-    return {"items": items, "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+    return list_content_cards(
+        content_type="reasoning_strategy", topic_id=topic_id, microtopic_id=microtopic_id,
+        card_subtype=strategy_type, reviewer_status=reviewer_status, is_active=is_active,
+        q=q, limit=limit, offset=offset, _admin=admin, __=flag)
 
 
 @router.get("/reasoning-strategies/{strategy_id}")
 def get_reasoning_strategy(
     strategy_id: UUID,
-    _admin: dict = Depends(_require_content_read),
-    __: None = Depends(_flag_enabled),
+    admin: dict = Depends(_require_content_read),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    supabase = get_supabase_admin()
-    strategy = _safe_select(supabase, "reasoning_strategies", id=str(strategy_id))
-    if not strategy:
-        raise HTTPException(status_code=404, detail="reasoning_strategy not found")
-    return _enrich_strategy_labels_batch(supabase, [strategy])[0]
+    return get_content_card(card_id=strategy_id, _admin=admin, __=flag)
 
 
 @router.post("/reasoning-strategies/{strategy_id}/review")
 def review_reasoning_strategy(
     strategy_id: UUID,
-    body: ReasoningStrategyReviewBody,
+    body: ContentCardReviewBody,
     admin: dict = Depends(require_permission(PERM_REVIEW)),
-    __: None = Depends(_flag_enabled),
+    flag: None = Depends(_flag_enabled),
 ) -> dict[str, Any]:
-    if body.status not in _RS_TARGET_STATUSES:
-        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_RS_TARGET_STATUSES)}")
-    # Guard the transition against the status the CLIENT actually saw; the RPC
-    # re-checks expected_status under the row lock (CAS) and owns the audit row.
-    if body.status not in _RS_TRANSITIONS.get(body.expected_status, ()):
-        raise HTTPException(status_code=422, detail=(
-            f"Transition '{body.expected_status}' → '{body.status}' is not allowed. "
-            f"Allowed: {list(_RS_TRANSITIONS.get(body.expected_status, ()))}"))
-    # Reopening a verified strategy for correction must carry a note (mirrors the RPC).
-    notes = (body.reviewer_notes or "").strip() or None
-    if body.expected_status == "verified" and body.status == "needs_correction" and notes is None:
-        raise HTTPException(
-            status_code=422,
-            detail="reviewer_notes required when reopening a verified strategy")
-    supabase = get_supabase_admin()
-    try:
-        result = _review_reasoning_strategy(
-            supabase,
-            strategy_id=str(strategy_id),
-            expected_status=body.expected_status,
-            # CLIENT's content token — never a server-minted fresh read — so a
-            # content edit after the reviewer's read loses with 409.
-            expected_updated_at=body.expected_updated_at,
-            new_status=body.status,
-            reviewer_notes=notes,
-            reason=body.reason,
-            actor_user_id=admin.get("id"),
-            actor_email=admin.get("email"),
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise _map_rpc_error(exc, "review_reasoning_strategy") from exc
-    return {"ok": True, "result": result}
+    return review_content_card(card_id=strategy_id, body=body, admin=admin, __=flag)
+
 
 
 # ── Current-affairs question candidates (GQR-G4a: operator review + promotion) ──

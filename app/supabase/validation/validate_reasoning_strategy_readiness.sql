@@ -3,7 +3,7 @@
 -- The Reasoning mirror of validate_quant_heuristic_readiness.sql (GQR-S2), hardened
 -- per checkpost #996 to prove the SCOPE gate the GQR-S4 read authority will enforce
 -- (mirrors quant_heuristics._scope_matches). Uses only existing paths: service-role
--- INSERT into the authority tables + the existing cms_review_reasoning_strategy
+-- INSERT into the authority tables + the existing cms_review_content_card
 -- lifecycle RPC (migration 262) to reach verified.
 --
 -- Asserted invariants (the GQR-S3b data/operator gate — what unblocks GQR-S4):
@@ -86,44 +86,40 @@ update public.mock_question_bank set microtopic_id = '66660000-0000-0000-0000-00
   where id = 'b2220000-0000-0000-0000-0000000005a2'::uuid;
 
 -- Strategies: a Reasoning one (Coding-Decoding scope) and a Quant one (cross-subject).
-insert into public.reasoning_strategies
-  (id, topic_id, strategy_code, name, strategy_type, applicability_rule,
+insert into public.content_cards
+  (id, content_type, topic_id, card_code, name, card_subtype,
    standard_method, faster_method, key_observation, worked_example, common_traps,
    reviewer_status, is_active, created_by) values
-  ('a0000000-0000-0000-0000-000000000503'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+  ('a0000000-0000-0000-0000-000000000503'::uuid, 'reasoning_strategy', '66660000-0000-0000-0000-000000000503'::uuid,
    'RS-VERIFY-CODING-LETTERSHIFT', 'Letter-shift coding', 'approach',
-   '{"pattern": "coding_decoding", "method": "positional_shift"}'::jsonb,
    'Find the constant shift between plain and coded letters, then apply it.',
    'Read the gap from the first letter pair and reuse it.',
    'A constant shift means every letter moves by the same gap.',
    'CAT→DBU is +1, so DOG→EPH.', 'Forgetting Z→A wrap-around.',
    'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
-  ('a0000000-0000-0000-0000-0000000005f0'::uuid, '66660000-0000-0000-0000-0000000005f0'::uuid,
+  ('a0000000-0000-0000-0000-0000000005f0'::uuid, 'reasoning_strategy', '66660000-0000-0000-0000-0000000005f0'::uuid,
    'RS-VERIFY-XSUB-QUANT', 'Cross-subject (Quant-scoped) strategy', 'approach',
-   '{"pattern": "successive_percentage"}'::jsonb,
    'net% = a + b + a*b/100 (signed).', 'Reuse the signed formula.',
    'The ab/100 term is the trap.', '+20% then -20% → -4%.', 'Dropping the ab/100 term.',
    'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
   -- Both-dimension strategies for the parent-consistency check.
-  ('a0000000-0000-0000-0000-0000000005a1'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+  ('a0000000-0000-0000-0000-0000000005a1'::uuid, 'reasoning_strategy', '66660000-0000-0000-0000-000000000503'::uuid,
    'RS-VERIFY-CD-MICRO-OK', 'Letter-shift (topic+micro, consistent)', 'approach',
-   '{"pattern": "coding_decoding"}'::jsonb,
    'Apply the constant shift.', 'Reuse the first-pair gap.', 'Constant gap.',
    'CAT→DBU is +1.', 'Wrap-around.', 'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid),
-  ('a0000000-0000-0000-0000-0000000005a2'::uuid, '66660000-0000-0000-0000-000000000503'::uuid,
+  ('a0000000-0000-0000-0000-0000000005a2'::uuid, 'reasoning_strategy', '66660000-0000-0000-0000-000000000503'::uuid,
    'RS-VERIFY-CD-MICRO-BAD', 'Letter-shift (topic+micro, INCONSISTENT parent)', 'approach',
-   '{"pattern": "coding_decoding"}'::jsonb,
    'Apply the constant shift.', 'Reuse the first-pair gap.', 'Constant gap.',
    'CAT→DBU is +1.', 'Wrap-around.', 'pending', true, 'eeeeeeee-0000-0000-0000-000000000503'::uuid)
 on conflict (id) do nothing;
 -- The micro dimensions are set post-insert so the strategy column list stays lean.
-update public.reasoning_strategies set microtopic_id = '66660000-0000-0000-0000-0000000005a1'::uuid
+update public.content_cards set microtopic_id = '66660000-0000-0000-0000-0000000005a1'::uuid
   where id = 'a0000000-0000-0000-0000-0000000005a1'::uuid;   -- child of …503 → consistent
-update public.reasoning_strategies set microtopic_id = '66660000-0000-0000-0000-0000000005a2'::uuid
+update public.content_cards set microtopic_id = '66660000-0000-0000-0000-0000000005a2'::uuid
   where id = 'a0000000-0000-0000-0000-0000000005a2'::uuid;   -- child of …5b0 → inconsistent
 
 -- Links (author pending; verified below). Each question links to a strategy.
-insert into public.reasoning_question_strategies (id, question_id, strategy_id, relevance, reviewer_status) values
+insert into public.content_card_links (id, question_id, card_id, relevance, reviewer_status) values
   ('11110000-0000-0000-0000-000000000503'::uuid, 'b2220000-0000-0000-0000-000000000503'::uuid,
    'a0000000-0000-0000-0000-000000000503'::uuid, 'primary', 'pending'),
   ('11110000-0000-0000-0000-0000000005b0'::uuid, 'b2220000-0000-0000-0000-0000000005b0'::uuid,
@@ -146,8 +142,8 @@ on conflict (id) do nothing;
 create function pg_temp._rs_ready(p_question uuid) returns int
 language sql as $$
   select count(*)::int
-  from public.reasoning_question_strategies l
-  join public.reasoning_strategies s on s.id = l.strategy_id
+  from public.content_card_links l
+  join public.content_cards s on s.id = l.card_id
   join public.mock_question_bank q on q.id = l.question_id
   where l.question_id = p_question
     and l.reviewer_status = 'verified'
@@ -195,8 +191,8 @@ begin
 
   -- Bad reason is rejected by the RPC (governance guard).
   begin
-    select updated_at into v_tok from public.reasoning_strategies where id = v_s;
-    perform public.cms_review_reasoning_strategy(v_s, 'pending', v_tok, 'verified', null, 'short', v_act, 'op@example.com');
+    select updated_at into v_tok from public.content_cards where id = v_s;
+    perform public.cms_review_content_card(v_s, 'pending', v_tok, 'verified', null, 'short', v_act, 'op@example.com');
     raise exception 'FAIL: short reason should be rejected';
   exception when others then
     if sqlerrm not like 'invalid_reason%' then raise; end if;
@@ -204,21 +200,21 @@ begin
   end;
 
   -- Verify BOTH strategies via the governed RPC (pending → verified).
-  select updated_at into v_tok from public.reasoning_strategies where id = v_s;
-  perform public.cms_review_reasoning_strategy(
+  select updated_at into v_tok from public.content_cards where id = v_s;
+  perform public.cms_review_content_card(
     v_s, 'pending', v_tok, 'verified', null, 'clear, correct letter-shift approach', v_act, 'op@example.com');
-  select updated_at into v_tok from public.reasoning_strategies where id = v_sx;
-  perform public.cms_review_reasoning_strategy(
+  select updated_at into v_tok from public.content_cards where id = v_sx;
+  perform public.cms_review_content_card(
     v_sx, 'pending', v_tok, 'verified', null, 'cross-subject fixture verified for the negative test', v_act, 'op@example.com');
-  select updated_at into v_tok from public.reasoning_strategies where id = v_sb_ok;
-  perform public.cms_review_reasoning_strategy(
+  select updated_at into v_tok from public.content_cards where id = v_sb_ok;
+  perform public.cms_review_content_card(
     v_sb_ok, 'pending', v_tok, 'verified', null, 'consistent topic+microtopic pair fixture', v_act, 'op@example.com');
-  select updated_at into v_tok from public.reasoning_strategies where id = v_sb_bad;
-  perform public.cms_review_reasoning_strategy(
+  select updated_at into v_tok from public.content_cards where id = v_sb_bad;
+  perform public.cms_review_content_card(
     v_sb_bad, 'pending', v_tok, 'verified', null, 'inconsistent parent pair fixture for the negative test', v_act, 'op@example.com');
   if (select count(*) from public.admin_audit_logs
-      where action = 'reasoning_strategy_status_transition'
-        and entity_type = 'reasoning_strategy'
+      where action = 'content_card_status_transition'
+        and entity_type = 'content_card'
         and entity_id = v_s::text) <> 1 then
     raise exception 'FAIL: governed verification must create exactly one audit row';
   end if;
@@ -230,7 +226,7 @@ begin
 
   -- Verify every link (governed assignment path = service-role UPDATE; links carry
   -- their own reviewer_status but have no separate RPC in v1).
-  update public.reasoning_question_strategies set reviewer_status = 'verified', reviewed_by = v_act, reviewed_at = now()
+  update public.content_card_links set reviewer_status = 'verified', reviewed_by = v_act, reviewed_at = now()
     where id in ('11110000-0000-0000-0000-000000000503'::uuid,
                  '11110000-0000-0000-0000-0000000005b0'::uuid,
                  '11110000-0000-0000-0000-0000000005c0'::uuid,
@@ -259,20 +255,20 @@ begin
   raise notice 'PASS inconsistent topic/microtopic parent fails closed';
 
   -- Move the correct-scope LINK out of verified → disappears.
-  update public.reasoning_question_strategies set reviewer_status = 'rejected' where id = v_l;
+  update public.content_card_links set reviewer_status = 'rejected' where id = v_l;
   if pg_temp._rs_ready(v_q) <> 0 then raise exception 'FAIL: rejecting the link must remove the surface'; end if;
   raise notice 'PASS rejecting the link removes the surface';
-  update public.reasoning_question_strategies set reviewer_status = 'verified' where id = v_l;
+  update public.content_card_links set reviewer_status = 'verified' where id = v_l;
 
   -- Retire the STRATEGY (edit is_active=false) → disappears even with a verified link.
-  update public.reasoning_strategies set is_active = false, updated_at = now() where id = v_s;
+  update public.content_cards set is_active = false, updated_at = now() where id = v_s;
   if pg_temp._rs_ready(v_q) <> 0 then raise exception 'FAIL: retiring (is_active=false) must remove the surface'; end if;
   raise notice 'PASS retiring the strategy removes the surface';
-  update public.reasoning_strategies set is_active = true, updated_at = now() where id = v_s;
+  update public.content_cards set is_active = true, updated_at = now() where id = v_s;
 
   -- Reopen the STRATEGY for correction via the RPC (verified → needs_correction) → disappears.
-  select updated_at into v_tok from public.reasoning_strategies where id = v_s;
-  perform public.cms_review_reasoning_strategy(
+  select updated_at into v_tok from public.content_cards where id = v_s;
+  perform public.cms_review_content_card(
     v_s, 'verified', v_tok, 'needs_correction', 'applicability rule under review',
     'reopening to re-verify the applicability rule', v_act, 'op@example.com');
   if pg_temp._rs_ready(v_q) <> 0 then raise exception 'FAIL: needs_correction must remove the surface'; end if;

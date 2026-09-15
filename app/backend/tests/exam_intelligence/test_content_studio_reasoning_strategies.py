@@ -88,7 +88,7 @@ class _CSRpc:
         if self._stub.rpc_error is not None:
             raise RuntimeError(self._stub.rpc_error)
         return _Exec(self._stub.rpc_result if self._stub.rpc_result is not None
-                     else {"ok": True, "audit_id": "aud-1", "strategy_id": _STRAT,
+                     else {"ok": True, "audit_id": "aud-1", "card_id": _STRAT,
                            "prev_status": "pending", "new_status": "verified"})
 
 
@@ -124,8 +124,9 @@ def _client(sb: CSSBStub, *, permissions=None, role="admin", anonymous=False) ->
 def _seed(**over) -> dict:
     row = {
         "id": _STRAT, "topic_id": _TOPIC, "microtopic_id": None,
-        "strategy_code": "RS-SYL-01", "name": "Syllogism Venn method",
-        "strategy_type": "diagram_method", "applicability_rule": {"op": "syllogism"},
+        "content_type": "reasoning_strategy",
+        "card_code": "RS-SYL-01", "name": "Syllogism Venn method",
+        "card_subtype": "diagram_method", "applicability_rule": {"op": "syllogism"},
         "formula_latex": None, "standard_method": "Draw all-case Venn diagrams",
         "faster_method": "Eliminate on definite-only conclusions",
         "key_observation": "Possibility cases flip 'some' conclusions",
@@ -133,7 +134,7 @@ def _seed(**over) -> dict:
         "created_at": "2026-07-10T00:00:00Z", "updated_at": "2026-07-10T00:00:00Z",
     }
     row.update(over)
-    return {"reasoning_strategies": [row], "topics": [{"id": _TOPIC, "name": "Reasoning"}],
+    return {"content_cards": [row], "topics": [{"id": _TOPIC, "name": "Reasoning"}],
             "admin_audit_logs": []}
 
 
@@ -165,9 +166,9 @@ def test_list_denied_for_anonymous():
 
 def test_list_filters_by_type_and_status():
     seed = _seed()
-    seed["reasoning_strategies"].append({
-        "id": "s2", "topic_id": _TOPIC, "strategy_code": "RS-2", "name": "Trap A",
-        "strategy_type": "trap", "reviewer_status": "verified", "is_active": True,
+    seed["content_cards"].append({
+        "id": "s2", "topic_id": _TOPIC, "card_code": "RS-2", "name": "Trap A",
+        "card_subtype": "trap", "reviewer_status": "verified", "is_active": True,
         "created_at": "2026-07-11T00:00:00Z", "updated_at": "2026-07-11T00:00:00Z"})
     sb = CSSBStub(seed)
     r = _client(sb).get(f"{_BASE}/reasoning-strategies?strategy_type=diagram_method&reviewer_status=pending")
@@ -216,8 +217,8 @@ def test_review_happy_path_calls_rpc_with_marshalled_params():
     assert r.status_code == 200, r.text
     assert r.json()["ok"] is True
     fn, params = sb.rpc_calls[-1]
-    assert fn == "cms_review_reasoning_strategy"
-    assert params["p_strategy_id"] == _STRAT
+    assert fn == "cms_review_content_card"
+    assert params["p_card_id"] == _STRAT
     assert params["p_expected_status"] == "pending"
     assert params["p_expected_updated_at"] == _TOKEN
     assert params["p_new_status"] == "verified"
