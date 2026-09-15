@@ -104,7 +104,13 @@ describe("F1 · Truth Panel mock trend", () => {
   test("the panel renders no [object Object] for the shape that produced it", async () => {
     wire({ review: { hours_studied: 6, mock_trend: MOCK_TREND, mocks_taken: 2, corrections: [] } });
     const { container } = render(<StudyPlan />);
-    await waitFor(() => expect(screen.getByText("52.4% · 61%")).toBeInTheDocument());
+    // PLAN-UI-03 moved this from a bare value in a dark metric card to a
+    // sentence in "How this week went", so the scores are no longer their own
+    // text node. The fault this test exists for is unchanged: the percentages
+    // are read from the rows, and nothing stringifies an object.
+    await waitFor(() =>
+      expect(screen.getByText(/52\.4% · 61%/)).toBeInTheDocument(),
+    );
     expect(container.textContent).not.toContain("[object Object]");
   });
 });
