@@ -235,6 +235,101 @@ def get_attempt(
         raise HTTPException(status_code=500, detail="That answer is temporarily unavailable.")
 
 
+class AnswerModeBody(BaseModel):
+    answer_mode: str
+
+
+class PageUploadRequest(BaseModel):
+    page_no: int
+    mime_type: str
+    size_bytes: int
+
+
+@router.put("/attempts/{attempt_id}/answer-mode")
+def set_answer_mode(
+    attempt_id: str,
+    body: AnswerModeBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Switch a draft between typing and uploading pages."""
+    try:
+        return service.set_answer_mode(
+            get_supabase_admin(), user.get("id"), attempt_id, body.answer_mode
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive answer mode failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="Couldn't switch modes.")
+
+
+@router.get("/attempts/{attempt_id}/pages")
+def get_attempt_pages(
+    attempt_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """This attempt's uploaded pages, each with a short-lived signed URL.
+
+    The bucket and object path never appear in the response: two aspirants'
+    paths differ only by a user id, so a client that learns one learns the
+    shape of them all.
+    """
+    try:
+        return service.list_attempt_pages(
+            get_supabase_admin(), user.get("id"), attempt_id
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive pages read failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="Your pages are temporarily unavailable.")
+
+
+@router.post("/attempts/{attempt_id}/pages")
+def create_page_upload(
+    attempt_id: str,
+    body: PageUploadRequest,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """A signed URL to upload one page to.
+
+    Type, size and page number are checked HERE, before a URL exists. A limit
+    enforced only in the browser is not a limit.
+    """
+    try:
+        return service.request_page_upload(
+            get_supabase_admin(),
+            user.get("id"),
+            attempt_id,
+            page_no=body.page_no,
+            mime_type=body.mime_type,
+            size_bytes=body.size_bytes,
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive page upload failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="Couldn't start that upload.")
+
+
+@router.delete("/attempts/{attempt_id}/pages/{page_no}")
+def remove_attempt_page(
+    attempt_id: str,
+    page_no: int,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Remove one page and its stored image."""
+    try:
+        return service.delete_attempt_page(
+            get_supabase_admin(), user.get("id"), attempt_id, page_no
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive page delete failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="Couldn't remove that page.")
+
+
 @router.get("/questions/{pyq_question_id}/attempts")
 def compare_question_attempts(
     pyq_question_id: str,

@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { api } from "../../../lib/api";
 import AnswerEditor from "./AnswerEditor";
+import HandwrittenPages from "./HandwrittenPages";
 import RubricPanel from "./RubricPanel";
 import useDescriptiveAttempt from "./useDescriptiveAttempt";
 import { formatDuration } from "./rubric";
@@ -33,6 +34,10 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
     submitted,
   } = useDescriptiveAttempt(question?.id);
 
+  // Type or Upload. The mode lives on the attempt, so it survives a reload and
+  // the history can say which of two attempts at one question was handwritten.
+  const [mode, setMode] = useState("typed");
+  const [modeError, setModeError] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState([]);
@@ -47,8 +52,33 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
 
   useEffect(() => {
     setReviewing(false);
+    setModeError("");
     loadHistory();
   }, [question?.id, loadHistory]);
+
+  useEffect(() => {
+    if (attempt?.answer_mode) setMode(attempt.answer_mode);
+  }, [attempt?.answer_mode]);
+
+  const switchMode = React.useCallback(
+    async (next) => {
+      if (!attempt?.id || next === mode) return;
+      setModeError("");
+      try {
+        await api.put(`/api/study/descriptive/attempts/${attempt.id}/answer-mode`, {
+          answer_mode: next,
+        });
+        setMode(next);
+      } catch (err) {
+        // Switching back to typing with pages still attached is refused by the
+        // server rather than silently deleting them. Say which, not "failed".
+        setModeError(
+          "Remove the uploaded pages first, then switch back to typing.",
+        );
+      }
+    },
+    [attempt?.id, mode],
+  );
 
   useEffect(() => {
     if (submitted) loadHistory();
@@ -108,20 +138,68 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
         )}
       </section>
 
-      <AnswerEditor
-        question={question}
-        answer={answer}
-        onChange={setAnswerText}
-        onBlur={save}
-        wordCount={wordCount}
-        saveState={saveState}
-        elapsed={elapsed}
-        timerRunning={timerRunning}
-        onStartTimer={startTimer}
-        onPauseTimer={pauseTimer}
-        onPaste={notePaste}
-        readOnly={submitted}
-      />
+      {!submitted && (
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="radiogroup"
+          aria-label="How do you want to answer?"
+        >
+          {[
+            { value: "typed", label: "Type" },
+            { value: "handwritten", label: "Upload" },
+          ].map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={mode === o.value}
+              className={`rounded-full border px-3 py-1 text-[12px] ${
+                mode === o.value
+                  ? "border-[#D9C7A7] bg-[#FFFDF9] font-semibold"
+                  : "border-clay-300 text-clay-700"
+              }`}
+              onClick={() => switchMode(o.value)}
+              data-testid={`descriptive-mode-${o.value}`}
+            >
+              {o.label}
+            </button>
+          ))}
+          <span className="text-[11px] text-clay-700">
+            {mode === "handwritten"
+              ? "Write on paper and photograph each side."
+              : "Type your answer here."}
+          </span>
+        </div>
+      )}
+
+      {modeError && (
+        <p role="status" className="text-[12px] text-rose-700" data-testid="descriptive-mode-error">
+          {modeError}
+        </p>
+      )}
+
+      {mode === "handwritten" ? (
+        <HandwrittenPages
+          attemptId={attempt?.id}
+          readOnly={submitted}
+          onModeChange={setMode}
+        />
+      ) : (
+        <AnswerEditor
+          question={question}
+          answer={answer}
+          onChange={setAnswerText}
+          onBlur={save}
+          wordCount={wordCount}
+          saveState={saveState}
+          elapsed={elapsed}
+          timerRunning={timerRunning}
+          onStartTimer={startTimer}
+          onPauseTimer={pauseTimer}
+          onPaste={notePaste}
+          readOnly={submitted}
+        />
+      )}
 
       {!submitted && !reviewing && (
         <div>

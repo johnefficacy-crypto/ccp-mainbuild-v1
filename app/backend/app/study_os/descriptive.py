@@ -1254,7 +1254,12 @@ def attempt_payload(row: dict[str, Any]) -> dict[str, Any]:
         "pyq_question_id": row.get("pyq_question_id"),
         "status": row.get("status") or "draft",
         "answer_text": row.get("answer_text") or "",
-        "word_count": _as_int(row.get("word_count")) or 0,
+        # None, not 0, for a handwritten attempt: nothing has read the pages,
+        # and 0 would read as "they wrote nothing".
+        "word_count": (
+            None if _answer_mode(row) == "handwritten"
+            else (_as_int(row.get("word_count")) or 0)
+        ),
         "time_spent_seconds": _as_int(row.get("time_spent_seconds")) or 0,
         "timer_target_seconds": _as_int(row.get("timer_target_seconds")),
         # Null and 0 are different answers: null is "this attempt predates
@@ -1417,7 +1422,11 @@ def save_attempt(
     if answer_text is not None:
         text = str(answer_text)
         patch["answer_text"] = text
-        patch["word_count"] = word_count(text)
+        # A handwritten attempt keeps its NULL count whatever text is saved
+        # beside the pages; nothing has read the answer itself.
+        patch["word_count"] = (
+            None if _answer_mode(attempt) == "handwritten" else word_count(text)
+        )
     seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
     if seconds is not None:
         patch["time_spent_seconds"] = seconds
@@ -1516,8 +1525,12 @@ def submit_attempt(
         "updated_at": now,
         # Recomputed from the stored text rather than trusted from the last
         # autosave: the count that goes into the record is the count of what is
-        # actually in the column.
-        "word_count": word_count(attempt.get("answer_text")),
+        # actually in the column. A handwritten attempt has no text to count —
+        # nothing reads the pages — so it keeps its NULL.
+        "word_count": (
+            None if _answer_mode(attempt) == "handwritten"
+            else word_count(attempt.get("answer_text"))
+        ),
     }
     seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
     if seconds is not None:
@@ -1636,6 +1649,7 @@ def attempt_history_row(
     paper: dict[str, Any] | None,
     label: str | None,
     topic: str | None,
+    page_count: int | None = None,
 ) -> dict[str, Any]:
     """One row of the answer history.
 
@@ -1651,6 +1665,9 @@ def attempt_history_row(
     return {
         **base,
         "answer_mode": _answer_mode(attempt),
+        # How many pages a handwritten attempt has, so the row can read
+        # "3 pages" where a typed row reads "260 words".
+        "page_count": page_count,
         # 0 and null are different answers, so the badge is a tri-state: pasted
         # (>0), clean (0), unknown (null, predating paste tracking).
         "has_pasted_text": (
@@ -1739,6 +1756,33 @@ def _attempt_facets(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _page_counts(supabase: Any, attempt_ids: list[str]) -> dict[str, int]:
+    """attempt_id → how many pages it has. Only for handwritten attempts."""
+    if not attempt_ids:
+        return {}
+    counts: dict[str, int] = {}
+    for chunk in _chunks(sorted(set(attempt_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempt_pages")
+                    .select("id, attempt_id")
+                    .in_("attempt_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            key = str(r.get("attempt_id") or "")
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def _owned_attempts(supabase: Any, user_id: str, **eq: Any) -> list[dict[str, Any]]:
     """Every attempt this user owns, paginated. Never another user's."""
     def _page(a: int, b: int) -> Any:
@@ -1768,6 +1812,8 @@ def _enrich_attempts(
     """Attach question, paper, label and topic to each attempt row."""
     qids = [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
     questions, papers = _attempt_questions(supabase, qids)
+    pages = _page_counts(supabase, [str(r.get("id")) for r in rows
+                                    if _answer_mode(r) == "handwritten"])
     _, labels = _paper_context(supabase, list(questions.values()))
     topics = _primary_topic_names(supabase, list(questions))
     out = []
@@ -1782,6 +1828,7 @@ def _enrich_attempts(
                 paper=paper,
                 label=labels.get(qid),
                 topic=topics.get(qid),
+                page_count=pages.get(str(row.get("id"))),
             )
         )
     return out
@@ -1837,6 +1884,366 @@ def list_attempts(
     }
 
 
+# ── handwritten pages (P3) ───────────────────────────────────────────────
+#
+# NO OCR. Nothing reads these images. They are the aspirant's own record, shown
+# back to them beside the same rubric a typed answer gets.
+
+#: What a phone camera and a scanner actually produce. HEIC is here because it
+#: is the iPhone default and an aspirant should not have to convert a photo to
+#: practise; nothing decodes it server-side, so it costs only the allowlist.
+PAGE_MIME_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "application/pdf": "pdf",
+}
+
+#: Per page. A phone photo of an A4 sheet is 2-5 MB; 10 leaves room for a
+#: high-resolution scan without letting a video through.
+MAX_PAGE_BYTES = 10 * 1024 * 1024
+
+#: A Mains answer is 150-250 words. Eight sides is a very long answer and a
+#: generous ceiling; past it, something other than an answer is being uploaded.
+MAX_ATTEMPT_PAGES = 8
+
+#: How long a view URL lives. Long enough to read the answer, short enough that
+#: a copied URL is not a permanent share.
+PAGE_URL_TTL_SECONDS = 900
+
+ANSWER_PAGES_BUCKET = "answer-pages"
+
+_PAGE_COLUMNS = (
+    "id, attempt_id, page_no, storage_bucket, storage_path, mime_type, bytes, "
+    "created_at"
+)
+
+
+def page_storage_path(user_id: str, attempt_id: str, page_no: int, mime: str) -> str:
+    """`<user_id>/<attempt_id>/page_<n>.<ext>`.
+
+    THE FIRST SEGMENT IS THE OWNER, and that is load-bearing: the storage
+    policy in migration 298 compares `(storage.foldername(name))[1]` to
+    `auth.uid()`, so the path itself is what makes one aspirant's folder
+    unreadable to another. Building it from anything the client sends would
+    hand them someone else's folder.
+    """
+    ext = PAGE_MIME_TYPES.get(mime, "bin")
+    return f"{user_id}/{attempt_id}/page_{int(page_no)}.{ext}"
+
+
+def page_payload(row: dict[str, Any], *, url: str | None = None) -> dict[str, Any]:
+    """One page as the client sees it. The bucket and path never leave the server.
+
+    A client that knows the object path knows another aspirant's path too —
+    they differ only by a user id. The surface needs a URL, not a location.
+    """
+    return {
+        "id": row.get("id"),
+        "page_no": _as_int(row.get("page_no")),
+        "mime_type": row.get("mime_type"),
+        "bytes": _as_int(row.get("bytes")),
+        "created_at": row.get("created_at"),
+        "url": url,
+    }
+
+
+def validate_page_upload(*, page_no: Any, mime_type: Any, size_bytes: Any) -> tuple[int, str, int]:
+    """(page_no, mime, bytes), or a DescriptiveError naming what is wrong.
+
+    Every limit is checked here, before a signed URL exists. A limit enforced
+    only in the browser is not a limit.
+    """
+    number = _as_int(page_no)
+    if number is None or number < 1 or number > MAX_ATTEMPT_PAGES:
+        raise DescriptiveError(
+            "page_number_invalid",
+            f"Pages are numbered 1 to {MAX_ATTEMPT_PAGES}.",
+            422,
+        )
+    mime = str(mime_type or "").strip().lower()
+    if mime not in PAGE_MIME_TYPES:
+        raise DescriptiveError(
+            "page_type_unsupported",
+            "Upload a photo or PDF — JPG, PNG, HEIC or PDF.",
+            422,
+        )
+    size = _as_int(size_bytes)
+    if size is None or size <= 0:
+        raise DescriptiveError("page_empty", "That file is empty.", 422)
+    if size > MAX_PAGE_BYTES:
+        raise DescriptiveError(
+            "page_too_large",
+            f"Each page must be under {MAX_PAGE_BYTES // (1024 * 1024)} MB.",
+            422,
+        )
+    return number, mime, size
+
+
+def _attempt_pages(supabase: Any, attempt_id: str) -> list[dict[str, Any]]:
+    rows = _safe(
+        lambda: (
+            supabase.table("descriptive_attempt_pages")
+            .select(_PAGE_COLUMNS)
+            .eq("attempt_id", attempt_id)
+            .order("page_no")
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if rows is None:
+        raise DescriptiveError(
+            "pages_read_failed", "Your uploaded pages are unavailable right now.", 503
+        )
+    return rows
+
+
+def _signed_page_url(supabase: Any, row: dict[str, Any]) -> str | None:
+    """A short-lived read URL, or None when storage cannot issue one.
+
+    None rather than a raise: one unreadable page must not take down the view
+    of the other seven, and the surface renders a page it cannot show as
+    missing rather than pretending the attempt is broken.
+    """
+    bucket = row.get("storage_bucket") or ANSWER_PAGES_BUCKET
+    path = row.get("storage_path")
+    if not path:
+        return None
+    try:
+        signed = supabase.storage.from_(bucket).create_signed_url(
+            path, PAGE_URL_TTL_SECONDS
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("answer page signed url failed for %s: %s", path, exc)
+        return None
+    if isinstance(signed, dict):
+        return signed.get("signedURL") or signed.get("signedUrl") or signed.get("url")
+    return getattr(signed, "signed_url", None) or getattr(signed, "signedURL", None)
+
+
+def list_attempt_pages(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
+    """This attempt's pages, each with a freshly signed view URL."""
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    rows = _attempt_pages(supabase, attempt_id)
+    return {
+        "attempt_id": attempt_id,
+        "answer_mode": _answer_mode(attempt),
+        "pages": [page_payload(r, url=_signed_page_url(supabase, r)) for r in rows],
+        "max_pages": MAX_ATTEMPT_PAGES,
+        "max_bytes": MAX_PAGE_BYTES,
+        "accepted_types": sorted(PAGE_MIME_TYPES),
+    }
+
+
+def request_page_upload(
+    supabase: Any,
+    user_id: str,
+    attempt_id: str,
+    *,
+    page_no: Any,
+    mime_type: Any,
+    size_bytes: Any,
+) -> dict[str, Any]:
+    """A signed URL to PUT one page to, and the row that will point at it.
+
+    The attempt must still be a draft. A submitted attempt is the record of
+    what was written under time; adding a page to it afterwards would let an
+    answer grow after it was scored, which is exactly what the rubric is meant
+    to be honest about.
+    """
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    number, mime, size = validate_page_upload(
+        page_no=page_no, mime_type=mime_type, size_bytes=size_bytes
+    )
+
+    existing = {_as_int(r.get("page_no")): r for r in _attempt_pages(supabase, attempt_id)}
+    # A REPLACEMENT is not a new page. Re-shooting a blurry page 3 must stay
+    # page 3, so the ceiling counts pages that do not exist yet.
+    if number not in existing and len(existing) >= MAX_ATTEMPT_PAGES:
+        raise DescriptiveError(
+            "too_many_pages",
+            f"An answer can have at most {MAX_ATTEMPT_PAGES} pages.",
+            422,
+        )
+
+    path = page_storage_path(user_id, attempt_id, number, mime)
+    try:
+        signed = supabase.storage.from_(ANSWER_PAGES_BUCKET).create_signed_upload_url(path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("answer page upload url failed for %s: %s", path, exc)
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        ) from None
+    upload_url = None
+    token = None
+    if isinstance(signed, dict):
+        upload_url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("url")
+        token = signed.get("token")
+    if not upload_url:
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        )
+
+    row = {
+        "attempt_id": attempt_id,
+        "page_no": number,
+        "storage_bucket": ANSWER_PAGES_BUCKET,
+        "storage_path": path,
+        "mime_type": mime,
+        "bytes": size,
+    }
+    # Replacing a page removes the old ROW; the object at that path is
+    # overwritten by the upload itself, because the path is derived from the
+    # page number rather than from the filename.
+    if number in existing:
+        _safe(
+            lambda: (
+                supabase.table("descriptive_attempt_pages")
+                .delete()
+                .eq("id", existing[number].get("id"))
+                .execute()
+            ),
+            default=None,
+        )
+    inserted = _safe(
+        lambda: supabase.table("descriptive_attempt_pages").insert(row).execute().data,
+        default=None,
+    )
+    if not inserted:
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        )
+
+    # An attempt with a page is a handwritten attempt, and its word count is no
+    # longer a fact about it.
+    _safe(
+        lambda: (
+            supabase.table("descriptive_attempts")
+            .update({"answer_mode": "handwritten", "word_count": None,
+                     "updated_at": _now_iso()})
+            .eq("id", attempt_id)
+            .eq("user_id", user_id)
+            .execute()
+        ),
+        default=None,
+    )
+    return {
+        "page": page_payload(inserted[0]),
+        "upload_url": upload_url,
+        "upload_token": token,
+        # The path is returned so the client can PUT to it, and for no other
+        # reason; it is never part of a read payload.
+        "storage_path": path,
+    }
+
+
+def delete_attempt_page(
+    supabase: Any, user_id: str, attempt_id: str, page_no: Any
+) -> dict[str, Any]:
+    """Remove one page, and its object. The aspirant can take their images back."""
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    number = _as_int(page_no)
+    rows = _attempt_pages(supabase, attempt_id)
+    target = next((r for r in rows if _as_int(r.get("page_no")) == number), None)
+    if target is None:
+        raise DescriptiveError("page_not_found", "That page isn't there.", 404)
+
+    path = target.get("storage_path")
+    if path:
+        try:
+            supabase.storage.from_(
+                target.get("storage_bucket") or ANSWER_PAGES_BUCKET
+            ).remove([path])
+        except Exception as exc:  # noqa: BLE001
+            # The ROW goes either way. An object nothing points at is storage
+            # to reclaim; a row pointing at a deleted object is a broken page
+            # the aspirant can see.
+            logger.warning("answer page object delete failed for %s: %s", path, exc)
+
+    deleted = _safe(
+        lambda: (
+            supabase.table("descriptive_attempt_pages")
+            .delete()
+            .eq("id", target.get("id"))
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if deleted is None:
+        raise DescriptiveError("page_delete_failed", "Couldn't remove that page.", 503)
+
+    remaining = [r for r in rows if r is not target]
+    if not remaining:
+        # The last page going means this is a typed attempt again — with an
+        # empty answer, which is what it has.
+        _safe(
+            lambda: (
+                supabase.table("descriptive_attempts")
+                .update({"answer_mode": "typed", "word_count": word_count(
+                    attempt.get("answer_text") or ""), "updated_at": _now_iso()})
+                .eq("id", attempt_id)
+                .eq("user_id", user_id)
+                .execute()
+            ),
+            default=None,
+        )
+    return {"deleted": number, "remaining": len(remaining)}
+
+
+def set_answer_mode(
+    supabase: Any, user_id: str, attempt_id: str, mode: Any
+) -> dict[str, Any]:
+    """Switch a draft between typing and uploading.
+
+    Switching to typed with pages still attached is refused rather than silently
+    deleting them: eight photographs of an answer are not something to discard
+    on a mis-click.
+    """
+    wanted = str(mode or "").strip().lower()
+    if wanted not in {"typed", "handwritten"}:
+        raise DescriptiveError("answer_mode_invalid", "Choose typing or upload.", 422)
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    if wanted == "typed" and _attempt_pages(supabase, attempt_id):
+        raise DescriptiveError(
+            "pages_present",
+            "Remove the uploaded pages first, then switch back to typing.",
+            409,
+        )
+    patch = {"answer_mode": wanted, "updated_at": _now_iso()}
+    patch["word_count"] = (
+        None if wanted == "handwritten" else word_count(attempt.get("answer_text") or "")
+    )
+    updated = _safe(
+        lambda: (
+            supabase.table("descriptive_attempts")
+            .update(patch)
+            .eq("id", attempt_id)
+            .eq("user_id", user_id)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if not updated:
+        raise DescriptiveError("attempt_save_failed", "Couldn't switch modes.", 503)
+    return attempt_payload(updated[0])
+
+
 def attempt_detail(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
     """One attempt of this user's, in full, with the question it answers.
 
@@ -1848,8 +2255,12 @@ def attempt_detail(supabase: Any, user_id: str, attempt_id: str) -> dict[str, An
     """
     row = _load_owned_attempt(supabase, user_id, attempt_id)
     enriched = _enrich_attempts(supabase, [row])[0]
+    pages = _attempt_pages(supabase, attempt_id) if _answer_mode(row) == "handwritten" else []
     return {
         "attempt": {**enriched, "answer_text": row.get("answer_text") or ""},
+        # Signed fresh on every read, and short-lived: a copied URL must not be
+        # a permanent share of someone's answer.
+        "pages": [page_payload(r, url=_signed_page_url(supabase, r)) for r in pages],
         # The aspirant can always write it again; the old attempt stays.
         "can_rewrite": bool(row.get("pyq_question_id")),
     }
