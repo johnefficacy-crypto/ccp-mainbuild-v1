@@ -4,6 +4,8 @@ status: architecture decision — APPROVED 2026-07-12 (johnefficacy-crypto); GAT
 last_verified_against_code: 2026-07-11
 source_of_truth: code
 related_code:
+  - app/backend/app/current_affairs/ingestion.py
+  - app/backend/app/current_affairs/sources.py
   - app/backend/app/scraping/fetcher.py
   - app/backend/app/scraping/sources.py
   - app/backend/app/scraping/runner.py
@@ -12,6 +14,7 @@ related_code:
   - app/backend/app/study_os/writing_practice/evaluation_worker.py
   - app/backend/app/study_os/attempt_evidence.py
 related_migrations:
+  - app/supabase/migrations/294_ca_rss_item_level_ingestion.sql
   - app/supabase/migrations/056_exam_policy_updates.sql
   - app/supabase/migrations/135_mock_engine_core.sql
   - app/supabase/migrations/159_mock_question_provenance.sql
@@ -136,6 +139,47 @@ Runs on the new `ca:ingest` job (§9), daily or more frequently per source capab
 extraction queue`. Before any LLM call, reject/deprioritise duplicates, routine/ceremonial/
 promotional releases, narrow local notices, documents with no stable examinable claim, and
 inaccessible/incomplete sources — each exclusion records a machine-readable reason.
+
+### 4.1 RSS sources are split per item (CA-RSS-01, migration 294)
+A feed body is a **listing, not evidence**. For `adapter_type='rss'` the ingest writes one
+`current_affairs_documents` row per feed ENTRY:
+
+- `title` = entry title, `source_url` = entry link, `published_at` = the parsed entry date
+  (RFC 2822 or ISO-8601). **Unparseable → NULL, never `now()`** — a fabricated publication date
+  would silently corrupt the relevance window (§3).
+- `raw_text` = the readable text of the entry's OWN page (`fetcher.strip_html`), not feed XML.
+- `canonical_item_url` = the entry link normalised (scheme/host lowercased, `www.`, fragment and
+  tracking params dropped, trailing slash stripped). This is the item identity, enforced by the
+  partial unique index `uq_cad_source_canonical_item (source_id, canonical_item_url)` — app-level
+  dedup is not the only guard. An already-seen link is skipped **without fetching its page**.
+- Content-hash dedup (`uq_cad_source_content_hash`) still applies on top.
+- The feed-level 304 short-circuit stays, but its validators now live on the source
+  (`current_affairs_sources.feed_etag` / `feed_last_modified`) — a document row's `etag` belongs to
+  that item's page, not to the feed.
+- New items per source per pass are capped (`crawl_schedule.max_items_per_pass`, default 30). The
+  remainder is picked up next pass; nothing is lost, because identity is the item link.
+- A failed item-page fetch is recorded per item and **no row is written**, so the next pass retries
+  it. One unreachable item never fails the whole source.
+
+Non-RSS adapters (html / api / pdf / sitemap) keep the whole-body snapshot: their fetch target
+already IS one document.
+
+### 4.2 Per-source identity
+`adapter_config.user_agent` overrides the default bot User-Agent for that source only. PIB requires
+it (42 consecutive `http_403` against the bot UA; a browser UA returns 200). The recruitment
+scraper's identity is unchanged — the override is opt-in per row.
+
+### 4.3 Publisher title deny-list
+`sources.py` carries per-publisher title patterns for strictly administrative instruments (SEBI:
+recovery certificate, notice of attachment, release order, general remittance order, adjudication
+order, settlement order, order for compliance). Matching is deterministic, case-insensitive
+substring — **no LLM, no scoring**. A match is evaluable from the feed entry alone, so the item page
+is never fetched. The row is still snapshotted with
+`ingestion_status='deprioritised'` and `metadata.prefilter_reason='publisher_denylist:<pattern>'`;
+it is never silently dropped.
+
+Only `snapshotted` documents are enqueued for generation (`_reconcile_pending_generation`), so
+deprioritised items never reach the LLM queue.
 
 ---
 

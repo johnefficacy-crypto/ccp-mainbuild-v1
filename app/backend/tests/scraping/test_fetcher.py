@@ -1,4 +1,10 @@
-from app.scraping.fetcher import FetchResult, fetch, fetch_page_html, fetch_page_text
+from app.scraping.fetcher import (
+    _DEFAULT_HEADERS as DEFAULT_HEADERS,
+    FetchResult,
+    fetch,
+    fetch_page_html,
+    fetch_page_text,
+)
 
 
 def test_fetch_empty_url_returns_error():
@@ -704,3 +710,63 @@ def test_fetch_api_paginated_cursor_mode_follows_next_path(monkeypatch):
         },
     )
     assert [e.title for e in entries] == ["c1", "c2"]
+
+
+# ─── per-call User-Agent / header override (CA-RSS-01) ──────────────────────
+#
+# Current-affairs sources may need a browser UA (PIB 403s the bot UA). The
+# override is per call: every existing caller keeps the scraper's identity.
+
+_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+
+def _capture_headers(monkeypatch, body='<rss><channel></channel></rss>'):
+    seen = {}
+
+    def _get(url, **kwargs):
+        seen.update(kwargs.get("headers") or {})
+        return _xml_resp(body)
+
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get", _get)
+    return seen
+
+
+def test_default_user_agent_is_unchanged_when_no_override(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    for adapter in ("html", "rss", "api", "sitemap"):
+        seen.clear()
+        fetch("https://example.gov.in/x", adapter_type=adapter)
+        assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+        assert "CareerCopilot-Scraper" in seen["User-Agent"]
+
+
+def test_user_agent_override_reaches_every_adapter(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    for adapter in ("html", "rss", "api", "sitemap"):
+        seen.clear()
+        fetch("https://example.gov.in/x", adapter_type=adapter, user_agent=_BROWSER_UA)
+        assert seen["User-Agent"] == _BROWSER_UA
+
+
+def test_extra_headers_merge_but_cannot_clobber_conditional_validators(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    fetch(
+        "https://example.gov.in/x",
+        headers={"X-Trace": "1", "If-None-Match": '"spoofed"'},
+        if_none_match='"real"',
+        if_modified_since="Wed, 01 Jul 2026 00:00:00 GMT",
+    )
+    assert seen["X-Trace"] == "1"
+    assert seen["If-None-Match"] == '"real"'
+    assert seen["If-Modified-Since"] == "Wed, 01 Jul 2026 00:00:00 GMT"
+    # Untouched defaults still ride along.
+    assert seen["Accept-Language"] == DEFAULT_HEADERS["Accept-Language"]
+
+
+def test_legacy_helpers_keep_the_bot_identity(monkeypatch):
+    seen = _capture_headers(monkeypatch, body="<html><body>hi</body></html>")
+    fetch_page_text("https://example.gov.in/p")
+    assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+    seen.clear()
+    fetch_page_html("https://example.gov.in/p")
+    assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
