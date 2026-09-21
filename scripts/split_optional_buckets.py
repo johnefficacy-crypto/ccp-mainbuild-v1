@@ -92,6 +92,18 @@ class BucketAbort(Exception):
 
 # ── pure planning (no IO, so it is testable without a database) ──────────────
 
+def _json_dumps_strict(value: Any) -> str:
+    """``json.dumps`` with no ``default=`` escape hatch.
+
+    Every json.dumps in this module goes through here. A ``default=str``
+    fallback would serialise a ``uuid.UUID`` silently and hide the same class of
+    type drift that broke ``--live`` (dry runs never reach a dump, so the bug
+    shipped green): values must already be JSON-native at construction. A
+    TypeError here is the intended failure — fix the construction site.
+    """
+    return json.dumps(value)
+
+
 def subject_slug(subject: str) -> str:
     """'Political Science & IR' -> 'POLITICAL-SCIENCE-IR'.
 
@@ -155,7 +167,11 @@ def plan_bucket(bucket: dict, questions: Iterable[dict]) -> list[dict]:
             "optional_subject": subject,
             "optional_paper_number": number,
             "year": year,
-            "split_from_bucket_id": bucket.get("id"),
+            # str() at construction, not default=str at dump time: asyncpg hands
+            # back uuid.UUID and this dict is serialised by json.dumps below.
+            "split_from_bucket_id": (
+                str(bucket.get("id")) if bucket.get("id") is not None else None
+            ),
             "question_count": len(qs),
         }
         for key in _CARRIED_METADATA_KEYS:
@@ -229,6 +245,19 @@ update public.pyq_papers
 """
 
 
+def retire_split_into_payload(planned: Iterable[dict]) -> str:
+    """The ``split_into`` JSON for ``_RETIRE_SQL``: the new papers' ids as strings.
+
+    Pure so it can be proven without a database. ``paper_id`` comes back from
+    asyncpg as ``uuid.UUID``; every id is stringified HERE, at construction,
+    because ``json.dumps`` in this module is deliberately called with no
+    ``default=`` fallback — see the note on ``_json_dumps_strict``.
+    """
+    return _json_dumps_strict(
+        [str(p["paper_id"]) if p.get("paper_id") is not None else None for p in planned]
+    )
+
+
 async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
     bucket_meta = bucket.get("metadata") or {}
     if isinstance(bucket_meta, str):
@@ -277,7 +306,7 @@ async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
             # not treat as a conflict today, but which would collide the moment
             # paper_date or shift were ever backfilled.
             plan["paper_code"],
-            json.dumps(plan["metadata"]),
+            _json_dumps_strict(plan["metadata"]),
         )
         plan["paper_id"] = new_id
         created.append(plan)
@@ -288,8 +317,9 @@ async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
             if plan["question_ids"] and plan["paper_id"]:
                 await conn.execute(_REPOINT_SQL, plan["paper_id"], plan["question_ids"])
                 moved += len(plan["question_ids"])
+        # bucket["id"] stays a UUID — it is an asyncpg bind param, not JSON.
         await conn.execute(
-            _RETIRE_SQL, bucket["id"], json.dumps([p["paper_id"] for p in planned])
+            _RETIRE_SQL, bucket["id"], retire_split_into_payload(planned)
         )
     else:
         moved = sum(len(p["question_ids"]) for p in planned)

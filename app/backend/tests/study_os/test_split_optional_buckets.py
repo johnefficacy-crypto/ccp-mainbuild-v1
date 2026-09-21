@@ -271,3 +271,125 @@ def test_second_run_is_a_noop_matched_on_paper_code():
     # Re-pointing to the rows that already exist stays idempotent.
     repoints = [a for s, a in conn.executed if "set pyq_paper_id" in s]
     assert sorted(a[0] for a in repoints) == ["old-0", "old-1"]
+
+
+# ── UUID serialisation (the --live-only crash) ─────────────────────────────
+# asyncpg returns uuid.UUID for every uuid column. Both json.dumps sites in the
+# script are reached ONLY on --live (a dry run never inserts and never retires),
+# and every test above feeds str ids — which is exactly why
+# "Object of type UUID is not JSON serializable" shipped green. These feed real
+# uuid.UUID objects down the same paths.
+
+import json
+import re
+import uuid
+
+_UUID_BUCKET = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+
+
+def test_plan_metadata_is_json_serialisable_when_the_bucket_id_is_a_uuid():
+    """plan_bucket's metadata is handed straight to json.dumps by _split_one."""
+    planned = sob.plan_bucket(
+        _bucket(id=_UUID_BUCKET), [_q(uuid.uuid4(), "History", 1)]
+    )
+
+    lineage = planned[0]["metadata"]["split_from_bucket_id"]
+    assert lineage == "aaaaaaaa-0000-0000-0000-000000000001"
+    assert isinstance(lineage, str)
+    # The whole dict must dump with NO default= fallback.
+    assert json.loads(json.dumps(planned[0]["metadata"]))["split_from_bucket_id"] == lineage
+
+
+def test_plan_metadata_keeps_a_null_bucket_id_null_rather_than_the_string_none():
+    planned = sob.plan_bucket(_bucket(id=None), [_q("q1", "History", 1)])
+    assert planned[0]["metadata"]["split_from_bucket_id"] is None
+
+
+def test_retire_payload_stringifies_uuid_paper_ids():
+    """The split_into lineage written onto the retired bucket."""
+    a, b = uuid.uuid4(), uuid.uuid4()
+    payload = sob.retire_split_into_payload([{"paper_id": a}, {"paper_id": b}])
+
+    assert isinstance(payload, str)
+    assert json.loads(payload) == [str(a), str(b)]
+    # Canonical lower-case hyphenated form, not UUID(...) repr.
+    assert "UUID(" not in payload
+
+
+def test_retire_payload_survives_a_plan_with_no_paper_id():
+    payload = sob.retire_split_into_payload([{"paper_id": None}, {}])
+    assert json.loads(payload) == [None, None]
+
+
+def test_live_run_end_to_end_with_uuid_ids_everywhere():
+    """The real --live shape: uuid bucket id, uuid question ids, uuid new paper
+    ids. Before the fix this raised TypeError at the insert's json.dumps."""
+    q1, q2 = uuid.uuid4(), uuid.uuid4()
+    new_ids = [uuid.uuid4(), uuid.uuid4()]
+
+    class UuidConn(FakeConn):
+        async def fetchval(self, sql, *args):
+            self.fetched.append((sql, args))
+            if "pyq_question_stimuli" in sql:
+                return self._stimulus_links
+            if sql.strip().startswith("insert"):
+                return new_ids[self._next_id_bump()]
+            raise AssertionError(f"unexpected fetchval: {sql}")
+
+        def _next_id_bump(self):
+            i = self._next_id
+            self._next_id += 1
+            return i
+
+    conn = UuidConn([_q(q1, "History", 1), _q(q2, "History", 2)])
+    out = _run(sob._split_one(conn, _bucket(id=_UUID_BUCKET), live=True))
+
+    assert out["created"] == 2 and out["moved"] == 2
+
+    # Insert: metadata arrives as a JSON *string*, with the lineage stringified.
+    inserts = [a for s, a in conn.fetched if s.strip().startswith("insert")]
+    assert len(inserts) == 2
+    for args in inserts:
+        meta = json.loads(args[-1])
+        assert meta["split_from_bucket_id"] == str(_UUID_BUCKET)
+
+    # Retire: $1 stays a UUID bind param, $2 is JSON text of stringified ids.
+    retires = [a for s, a in conn.executed if "'retired', true" in s]
+    assert len(retires) == 1
+    bucket_param, split_into = retires[0]
+    assert bucket_param is _UUID_BUCKET  # asyncpg param — NOT stringified
+    assert json.loads(split_into) == [str(i) for i in new_ids]
+
+
+def test_uuid_bind_params_are_never_stringified():
+    """Point 3 of the fix: only values entering json.dumps get str()'d. The
+    asyncpg bind params must stay UUID or the ::uuid casts break."""
+    exam, phase, cycle = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    q1 = uuid.uuid4()
+    conn = FakeConn([_q(q1, "History", 1)])
+    _run(sob._split_one(
+        conn,
+        _bucket(id=_UUID_BUCKET, exam_id=exam, exam_phase_id=phase, exam_cycle_id=cycle),
+        live=True,
+    ))
+
+    insert_args = [a for s, a in conn.fetched if s.strip().startswith("insert")][0]
+    assert insert_args[0] is exam
+    assert insert_args[1] is phase
+    assert insert_args[2] is cycle
+
+    repoint = [a for s, a in conn.executed if "set pyq_paper_id" in s][0]
+    assert repoint[1] == [q1]  # question ids stay UUID for the ::uuid[] cast
+
+    probe = [a for s, a in conn.fetched if "pyq_question_stimuli" in s][0]
+    assert probe[0] is _UUID_BUCKET
+
+
+def test_no_json_dumps_in_the_script_uses_a_default_fallback():
+    """The guard. default=str would serialise a UUID silently and hide the next
+    instance of this bug; every value must be JSON-native at construction."""
+    src = Path(sob.__file__).read_text(encoding="utf-8")
+    calls = re.findall(r"json\.dumps\((?:[^()]|\([^()]*\))*\)", src)
+    assert calls, "expected at least one json.dumps call to guard"
+    for call in calls:
+        assert "default=" not in call, f"json.dumps with a default= fallback: {call}"
