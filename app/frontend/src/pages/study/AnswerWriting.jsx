@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { api } from "../../lib/api";
-import { Card, Eyebrow, PageHeader } from "../../shared/ui/studyos";
+import { Card, Eyebrow, PageHeader, Tabs } from "../../shared/ui/studyos";
 import CatalogPicker from "../../features/study/descriptive/CatalogPicker";
+import MyAnswers from "../../features/study/descriptive/MyAnswers";
 import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
 
 /**
@@ -16,6 +17,12 @@ import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
  *
  * The selection lives in the query string so a paper is deep-linkable — which is
  * what lets other surfaces hand an aspirant straight to a filtered list.
+ *
+ * "My answers" is a VIEW of this surface, not a destination of its own. The
+ * no-new-surface rule (locked 2026-06-21) says a new top-level sidebar entry
+ * has to remove two; an answer history belongs beside the questions it is a
+ * history of anyway, so it is a tab and the tab lives in the query string with
+ * everything else.
  */
 export default function AnswerWriting() {
   const [params, setParams] = useSearchParams();
@@ -26,6 +33,7 @@ export default function AnswerWriting() {
   const [catalogError, setCatalogError] = useState("");
 
   const [questions, setQuestions] = useState([]);
+  const view = params.get("view") === "answers" ? "answers" : "write";
   const [excludedMap, setExcludedMap] = useState(0);
   const [listState, setListState] = useState("idle");
   const [activeIndex, setActiveIndex] = useState(null);
@@ -117,6 +125,31 @@ export default function AnswerWriting() {
       });
   }, [examId, hasFilter, selection]);
 
+  const setView = useCallback(
+    (next) => {
+      const query = {};
+      params.forEach((v, k) => {
+        if (k !== "view") query[k] = v;
+      });
+      if (next === "answers") query.view = "answers";
+      setParams(query, { replace: true });
+      setActiveIndex(null);
+    },
+    [params, setParams],
+  );
+
+  // Rewriting jumps back to the writing view on that question. The old answer
+  // is NOT carried across — `QuestionScreen` opens a fresh attempt and shows
+  // the previous one beside it.
+  const rewrite = useCallback(
+    (questionId) => {
+      if (!questionId) return;
+      setParams({ view: "write", question_id: String(questionId) }, { replace: true });
+      setActiveIndex(null);
+    },
+    [setParams],
+  );
+
   const active = activeIndex !== null ? questions[activeIndex] : null;
   const hasNext = activeIndex !== null && activeIndex + 1 < questions.length;
 
@@ -128,7 +161,18 @@ export default function AnswerWriting() {
         sub="Past questions from your optional, one at a time. You review your own answer against a rubric — nothing here is machine-scored."
       />
 
-      {!examId && (
+      <Tabs
+        value={view}
+        onChange={setView}
+        options={[
+          { value: "write", label: "Write" },
+          { value: "answers", label: "My answers" },
+        ]}
+      />
+
+      {view === "answers" && <MyAnswers onRewrite={rewrite} />}
+
+      {view === "write" && !examId && (
         <Card>
           <p className="text-sm text-clay-700">
             Pick your target exam on the Study Plan first, and this fills with its
@@ -137,7 +181,7 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {examId && !active && (
+      {view === "write" && examId && !active && (
         <Card>
           <CatalogPicker
             catalog={catalog}
@@ -149,7 +193,7 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {examId && !active && hasFilter && (
+      {view === "write" && examId && !active && hasFilter && (
         <Card padded={false}>
           <div className="px-7 pt-6 pb-3">
             <Eyebrow>Questions</Eyebrow>
@@ -208,7 +252,7 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {active && (
+      {view === "write" && active && (
         <>
           <button
             type="button"

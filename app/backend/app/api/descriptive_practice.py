@@ -178,15 +178,75 @@ def submit_attempt(
 @router.get("/attempts")
 def get_attempts(
     pyq_question_id: str | None = Query(default=None),
+    subject: str | None = Query(default=None),
+    paper_id: str | None = Query(default=None),
+    theme: str | None = Query(default=None),
+    status: str | None = Query(default=None, pattern="^(draft|submitted)$"),
+    since: str | None = Query(default=None, description="ISO date, inclusive"),
+    until: str | None = Query(default=None, description="ISO date, inclusive"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """This caller's attempt history, optionally for one question."""
+    """This caller's answer history — every attempt, newest first.
+
+    Scoped to the caller by `user.get("id")`, never by a query parameter: an
+    attempt is the most personal thing this product stores, and a user_id the
+    client could supply is a user_id the client could change.
+    """
     try:
         return service.list_attempts(
-            get_supabase_admin(), user.get("id"), pyq_question_id=pyq_question_id
+            get_supabase_admin(),
+            user.get("id"),
+            pyq_question_id=pyq_question_id,
+            subject=subject,
+            paper_id=paper_id,
+            theme=theme,
+            status=status,
+            since=since,
+            until=until,
+            limit=limit,
+            offset=offset,
         )
     except service.DescriptiveError as exc:
         raise _fail(exc) from None
     except Exception:  # noqa: BLE001
         logger.exception("descriptive attempts read failed for %s", user.get("id"))
+        raise HTTPException(status_code=500, detail="Your attempts are temporarily unavailable.")
+
+
+@router.get("/attempts/{attempt_id}")
+def get_attempt(
+    attempt_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """One of the caller's own attempts, read-only, with its question.
+
+    Ownership is enforced in the service by the same `user_id` predicate every
+    other attempt read uses, so another user's id in the path is a 404 rather
+    than a leak.
+    """
+    try:
+        return service.attempt_detail(get_supabase_admin(), user.get("id"), attempt_id)
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive attempt read failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="That answer is temporarily unavailable.")
+
+
+@router.get("/questions/{pyq_question_id}/attempts")
+def compare_question_attempts(
+    pyq_question_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Every attempt the caller has made at one question, oldest first."""
+    try:
+        return service.compare_attempts(
+            get_supabase_admin(), user.get("id"), pyq_question_id
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive compare failed for %s", pyq_question_id)
         raise HTTPException(status_code=500, detail="Your attempts are temporarily unavailable.")

@@ -77,8 +77,8 @@ RUBRIC_MAX_TOTAL = len(RUBRIC_KEYS) * RUBRIC_MAX_PER_KEY  # 12
 
 _ATTEMPT_COLUMNS = (
     "id, user_id, pyq_question_id, status, answer_text, word_count, "
-    "time_spent_seconds, timer_target_seconds, pasted_chars, self_scores, "
-    "self_total, notes, started_at, submitted_at, updated_at"
+    "time_spent_seconds, timer_target_seconds, pasted_chars, answer_mode, "
+    "self_scores, self_total, notes, started_at, submitted_at, updated_at"
 )
 
 _QUESTION_COLUMNS = (
@@ -1542,23 +1542,352 @@ def submit_attempt(
     return attempt_payload(updated[0])
 
 
-def list_attempts(
-    supabase: Any, user_id: str, *, pyq_question_id: str | None = None
+#: How much of the answer's own question a history row shows. Long enough to
+#: recognise the question, short enough that a hundred rows are still a list.
+_EXCERPT_CHARS = 180
+
+#: Attempt history page size. The surface pages; it never silently truncates.
+_ATTEMPT_PAGE = 50
+_MAX_ATTEMPT_PAGE = 200
+
+
+def _excerpt(text: Any, limit: int = _EXCERPT_CHARS) -> str:
+    """One line of a question, cut on a word boundary with an ellipsis."""
+    body = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(body) <= limit:
+        return body
+    cut = body[:limit]
+    space = cut.rfind(" ")
+    return (cut[: space if space > limit * 0.6 else limit]).rstrip(" ,;:") + "…"
+
+
+def _answer_mode(row: dict[str, Any]) -> str:
+    """'typed' or 'handwritten'.
+
+    Defaults to typed rather than to unknown: every attempt written before the
+    upload path existed was typed, and there is no third thing it could have
+    been.
+    """
+    mode = str(row.get("answer_mode") or "").strip().lower()
+    return mode if mode in {"typed", "handwritten"} else "typed"
+
+
+def _attempt_questions(
+    supabase: Any, question_ids: list[str]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """(question rows, paper rows) for a page of attempts, by id.
+
+    The history is not scoped to an exam — it is everything this aspirant has
+    written — so the questions are fetched by id rather than walked down from a
+    paper list. `reviewer_status` is deliberately NOT filtered: an attempt at a
+    question whose verification was later revoked is still the aspirant's
+    answer, and hiding their own work because the corpus changed under them
+    would be the surface lying about their history.
+    """
+    if not question_ids:
+        return {}, {}
+    questions: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(sorted(set(question_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_questions")
+                    .select(_QUESTION_COLUMNS)
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            questions[str(r.get("id"))] = r
+
+    paper_ids = sorted({
+        str(q.get("pyq_paper_id")) for q in questions.values() if q.get("pyq_paper_id")
+    })
+    papers: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(paper_ids):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_papers")
+                    .select(_PAPER_COLUMNS)
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            papers[str(r.get("id"))] = r
+    return questions, papers
+
+
+def attempt_history_row(
+    attempt: dict[str, Any],
+    *,
+    question: dict[str, Any] | None,
+    paper: dict[str, Any] | None,
+    label: str | None,
+    topic: str | None,
 ) -> dict[str, Any]:
-    """This user's attempt history, newest first."""
-    query = (
-        supabase.table("descriptive_attempts")
-        .select(_ATTEMPT_COLUMNS)
-        .eq("user_id", user_id)
-    )
-    if pyq_question_id:
-        query = query.eq("pyq_question_id", pyq_question_id)
-    rows = _safe(
-        lambda: query.order("started_at", desc=True).limit(200).execute().data,
-        default=None,
-    )
+    """One row of the answer history.
+
+    Carries the attempt's own facts and enough of the question to recognise it.
+    The full answer text is NOT here: a hundred-row page would carry a hundred
+    essays, and the row's job is to get the aspirant to the one they meant.
+    """
+    base = attempt_payload(attempt)
+    base.pop("answer_text", None)
+    question = question or {}
+    meta = _meta(question)
+    thematic = question_is_thematic(question, paper)
+    return {
+        **base,
+        "answer_mode": _answer_mode(attempt),
+        # 0 and null are different answers, so the badge is a tri-state: pasted
+        # (>0), clean (0), unknown (null, predating paste tracking).
+        "has_pasted_text": (
+            None if base.get("pasted_chars") is None else base["pasted_chars"] > 0
+        ),
+        "question": {
+            "id": question.get("id"),
+            "excerpt": _excerpt(question.get("question_text")),
+            "label": label,
+            "breadcrumb": breadcrumb_for(question, paper=paper, label=label, topic=topic),
+            "subject": subject_of(question, paper),
+            "paper_id": question.get("pyq_paper_id"),
+            "paper_number": paper_slot(paper or {})[0] or None,
+            "year": (paper or {}).get("year"),
+            "marks": _as_int(meta.get("marks")),
+            "word_limit": _as_int(meta.get("word_limit")),
+            "theme": topic if thematic else None,
+            "is_thematic": thematic,
+        },
+    }
+
+
+def _attempt_matches(row: dict[str, Any], **filters: Any) -> bool:
+    """Whether one enriched history row survives the surface's filters.
+
+    Applied here rather than in SQL because every axis but status and date
+    lives on the QUESTION, not on the attempt — subject, paper and theme are
+    all properties of what was answered. Pushing them into the attempts query
+    would mean a join PostgREST cannot express and a second round trip either
+    way.
+    """
+    q = row.get("question") or {}
+    if (subject := filters.get("subject")) and q.get("subject") != subject:
+        return False
+    if (paper_id := filters.get("paper_id")) and str(q.get("paper_id") or "") != str(paper_id):
+        return False
+    if (theme := filters.get("theme")) and q.get("theme") != theme:
+        return False
+    if (status := filters.get("status")) and row.get("status") != status:
+        return False
+    stamp = str(row.get("submitted_at") or row.get("started_at") or "")
+    if (since := filters.get("since")) and stamp[:10] < str(since)[:10]:
+        return False
+    if (until := filters.get("until")) and stamp[:10] > str(until)[:10]:
+        return False
+    return True
+
+
+def _attempt_facets(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """The filter values that actually occur in this history.
+
+    Built from the aspirant's own attempts, not from the catalogue: offering a
+    subject they have never written in is a filter that can only return
+    nothing.
+    """
+    subjects: dict[str, int] = {}
+    papers: dict[str, dict[str, Any]] = {}
+    themes: dict[str, int] = {}
+    statuses: dict[str, int] = {}
+    for row in rows:
+        q = row.get("question") or {}
+        if subject := q.get("subject"):
+            subjects[subject] = subjects.get(subject, 0) + 1
+        if paper_id := q.get("paper_id"):
+            key = str(paper_id)
+            entry = papers.setdefault(
+                key,
+                {
+                    "paper_id": key,
+                    "label": " · ".join(
+                        str(p) for p in (q.get("year"), f"P{q['paper_number']}"
+                                         if q.get("paper_number") else None) if p
+                    ) or "Paper",
+                    "count": 0,
+                },
+            )
+            entry["count"] += 1
+        if theme := q.get("theme"):
+            themes[theme] = themes.get(theme, 0) + 1
+        statuses[row.get("status") or "draft"] = statuses.get(row.get("status") or "draft", 0) + 1
+    return {
+        "subjects": [{"value": k, "count": v} for k, v in sorted(subjects.items())],
+        "papers": sorted(papers.values(), key=lambda p: p["label"], reverse=True),
+        "themes": [{"value": k, "count": v} for k, v in sorted(themes.items())],
+        "statuses": [{"value": k, "count": v} for k, v in sorted(statuses.items())],
+    }
+
+
+def _owned_attempts(supabase: Any, user_id: str, **eq: Any) -> list[dict[str, Any]]:
+    """Every attempt this user owns, paginated. Never another user's."""
+    def _page(a: int, b: int) -> Any:
+        query = (
+            supabase.table("descriptive_attempts")
+            .select(_ATTEMPT_COLUMNS)
+            .eq("user_id", user_id)
+        )
+        for key, value in eq.items():
+            if value:
+                query = query.eq(key, value)
+        # `started_at` is not unique, so it cannot partition the pages on its
+        # own; `id` breaks the tie and keeps newest-first.
+        return query.order("started_at", desc=True).order("id").range(a, b).execute().data
+
+    rows = _safe(lambda: _paginate_all(_page), default=None)
     if rows is None:
         raise DescriptiveError(
             "attempts_read_failed", "Your attempts are unavailable right now.", 503
         )
-    return {"items": [attempt_payload(r) for r in rows], "count": len(rows)}
+    return rows
+
+
+def _enrich_attempts(
+    supabase: Any, rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Attach question, paper, label and topic to each attempt row."""
+    qids = [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
+    questions, papers = _attempt_questions(supabase, qids)
+    _, labels = _paper_context(supabase, list(questions.values()))
+    topics = _primary_topic_names(supabase, list(questions))
+    out = []
+    for row in rows:
+        qid = str(row.get("pyq_question_id") or "")
+        question = questions.get(qid)
+        paper = papers.get(str((question or {}).get("pyq_paper_id") or ""))
+        out.append(
+            attempt_history_row(
+                row,
+                question=question,
+                paper=paper,
+                label=labels.get(qid),
+                topic=topics.get(qid),
+            )
+        )
+    return out
+
+
+def list_attempts(
+    supabase: Any,
+    user_id: str,
+    *,
+    pyq_question_id: str | None = None,
+    subject: str | None = None,
+    paper_id: str | None = None,
+    theme: str | None = None,
+    status: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    limit: Any = _ATTEMPT_PAGE,
+    offset: Any = 0,
+) -> dict[str, Any]:
+    """This user's answer history, newest first, with the filters applied.
+
+    EVERY ATTEMPT IS KEPT. A submitted attempt is never replaced by a later one
+    — that is the point of the surface, and the whole history is what makes a
+    comparison possible. Only the open draft is unique, one per question.
+    """
+    if not user_id:
+        raise DescriptiveError("user_required", "Sign in to see your answers.", 401)
+    cap = max(1, min(_as_int(limit) or _ATTEMPT_PAGE, _MAX_ATTEMPT_PAGE))
+    start = max(0, _as_int(offset) or 0)
+
+    rows = _owned_attempts(supabase, user_id, pyq_question_id=pyq_question_id)
+    enriched = _enrich_attempts(supabase, rows)
+
+    # Facets describe the WHOLE history, not the filtered page: a filter list
+    # that shrinks as you use it cannot be used to widen a selection again.
+    facets = _attempt_facets(enriched)
+    matched = [
+        r for r in enriched
+        if _attempt_matches(
+            r, subject=subject, paper_id=paper_id, theme=theme,
+            status=status, since=since, until=until,
+        )
+    ]
+    page = matched[start : start + cap]
+    return {
+        "items": page,
+        "count": len(page),
+        "total": len(matched),
+        "offset": start,
+        "limit": cap,
+        "has_more": start + len(page) < len(matched),
+        "facets": facets,
+    }
+
+
+def attempt_detail(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
+    """One attempt of this user's, in full, with the question it answers.
+
+    Read-only by construction: the payload carries no draft affordance. An
+    aspirant who wants to write this question again starts a NEW attempt — the
+    old text is shown beside the blank editor, never loaded into it, because
+    editing last month's answer in place would destroy the record of what they
+    could do last month.
+    """
+    row = _load_owned_attempt(supabase, user_id, attempt_id)
+    enriched = _enrich_attempts(supabase, [row])[0]
+    return {
+        "attempt": {**enriched, "answer_text": row.get("answer_text") or ""},
+        # The aspirant can always write it again; the old attempt stays.
+        "can_rewrite": bool(row.get("pyq_question_id")),
+    }
+
+
+def compare_attempts(
+    supabase: Any, user_id: str, pyq_question_id: str
+) -> dict[str, Any]:
+    """Every attempt this user has made at ONE question, oldest first.
+
+    Oldest first, unlike the history list: a comparison is read as a
+    progression, and a progression runs forwards.
+    """
+    if not pyq_question_id:
+        raise DescriptiveError("question_required", "Pick a question first.", 400)
+    rows = _owned_attempts(supabase, user_id, pyq_question_id=pyq_question_id)
+    enriched = _enrich_attempts(supabase, rows)
+    by_id = {str(r.get("id")): r for r in rows}
+    ordered = sorted(
+        enriched,
+        key=lambda r: (str(r.get("submitted_at") or r.get("started_at") or ""), str(r.get("id"))),
+    )
+    attempts = [
+        {**r, "answer_text": (by_id.get(str(r.get("id"))) or {}).get("answer_text") or ""}
+        for r in ordered
+    ]
+    submitted = [a for a in attempts if a.get("status") == "submitted"]
+    scored = [a["self_total"] for a in submitted if a.get("self_total") is not None]
+    words = [a["word_count"] for a in submitted if a.get("word_count") is not None]
+    return {
+        "question": (attempts[0]["question"] if attempts else None),
+        "attempts": attempts,
+        "count": len(attempts),
+        "submitted_count": len(submitted),
+        # Stated rather than computed in the client so two surfaces cannot
+        # disagree about what "improved" means.
+        "self_total_first": scored[0] if scored else None,
+        "self_total_last": scored[-1] if scored else None,
+        "word_count_first": words[0] if words else None,
+        "word_count_last": words[-1] if words else None,
+    }
