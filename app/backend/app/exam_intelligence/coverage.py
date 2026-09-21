@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Callable
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.coverage")
 
@@ -78,39 +79,14 @@ def _paginate(
     behaviour: a partial frequency map is more dangerous than an empty one,
     because every caller can recognise empty and none can recognise partial.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    exact_total: int | None = None
-    while True:
-        resp = _safe(
-            lambda o=offset: build_query(o, o + _PAGE - 1),
-            default=None,
-            table=table,
-            operation=operation,
-        )
-        if resp is None:
-            return None
-        rows = list(getattr(resp, "data", None) or [])
-        count = getattr(resp, "count", None)
-        if count is not None:
-            exact_total = int(count)
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            break
-        offset += _PAGE
-
-    if exact_total is None or len(all_rows) != exact_total:
-        logger.error(
-            "exam_intelligence coverage paginated read is incomplete",
-            extra={
-                "operation": operation or "read",
-                "table": table,
-                "rows_collected": len(all_rows),
-                "rows_expected": exact_total,
-            },
-        )
-        return None
-    return all_rows
+    return paginate(
+        lambda a, b: _safe(
+            lambda: build_query(a, b), default=None, table=table, operation=operation
+        ),
+        page_size=_PAGE,
+        table=table,
+        operation=operation,
+    ).verified_rows(table=table, operation=operation)
 
 
 def _paginate_in(

@@ -47,6 +47,7 @@ from app.study_os.update_context import policy_update_context
 from app.study_os.writing_practice import planner_tasks
 from app.study_os.writing_practice.launch import LAUNCH_ENGLISH_WRITING_SESSION
 from app.utils.safe import safe_required
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.study_os.planner")
 
@@ -287,23 +288,19 @@ def _paginate_all(
     gracefully ignore it; callers with a fail-closed contract (calibration's
     health flag) must not treat a prefix as a full read.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        page = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
-        if page is None:
-            logger.error(
-                "%s: paginated read failed after %d row(s) — result is a PREFIX, "
-                "not the full set",
-                op,
-                len(all_rows),
-            )
-            return all_rows, False
-        all_rows.extend(page)
-        if len(page) < _PAGE:
-            break
-        offset += _PAGE
-    return all_rows, True
+    walk = paginate(
+        lambda a, b: _safe(lambda: build_query(a, b), default=None),
+        page_size=_PAGE,
+        operation=op,
+    )
+    if not walk.complete:
+        logger.error(
+            "%s: paginated read failed after %d row(s) — result is a PREFIX, "
+            "not the full set",
+            op,
+            len(walk.rows),
+        )
+    return walk.rows, walk.complete
 
 
 def _load_locked_coverage(supabase: Any, exam_id: str) -> list[dict[str, Any]]:

@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.document_policy")
 
@@ -53,18 +54,13 @@ def _parse_ts(value: Any) -> datetime | None:
 
 def _fetch_paged(sb, table: str, select: str, eq: dict[str, Any]) -> list[dict]:
     """Paginated read (avoids silent truncation from a fixed .limit())."""
-    rows: list[dict] = []
-    offset = 0
-    while True:
+    def _page(from_n: int, to_n: int):
         q = sb.table(table).select(select)
         for k, v in eq.items():
             q = q.eq(k, v)
-        batch = q.range(offset, offset + _PAGE - 1).execute().data or []
-        rows.extend(batch)
-        if len(batch) < _PAGE:
-            break
-        offset += _PAGE
-    return rows
+        return q.order("id").range(from_n, to_n).execute().data or []
+
+    return paginate(_page, page_size=_PAGE, table=table).rows
 
 
 def _condition_applies(code: str, *, phase_kind: str | None, cycle_status: str | None) -> bool:

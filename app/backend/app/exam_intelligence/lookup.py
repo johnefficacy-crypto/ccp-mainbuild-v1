@@ -12,6 +12,7 @@ import re
 from typing import Any, Callable
 
 from cachetools import TTLCache
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.lookup")
 
@@ -80,16 +81,12 @@ def _paginate(build_query: Callable[[int, int], Any]) -> tuple[list[dict[str, An
     silently-missing row for the whole cache lifetime, which reads to an
     operator as "the endpoint dropped my exam" with no error anywhere.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        rows = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
-        if rows is None:
-            return all_rows, False
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            return all_rows, True
-        offset += _PAGE
+    walk = paginate(
+        lambda a, b: _safe(lambda: build_query(a, b), default=None),
+        page_size=_PAGE,
+        table="exams",
+    )
+    return walk.rows, walk.complete
 
 
 _EXAM_COLS = (

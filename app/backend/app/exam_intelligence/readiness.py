@@ -31,6 +31,7 @@ from typing import Any
 
 from app.db.utils import execute_or_raise
 from app.exam_intelligence.pyq_readiness import aggregate_pyq_evidence
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.readiness")
 
@@ -373,20 +374,17 @@ def _pyq_workbench(sb, exam_id: str, cycle_id: str | None) -> dict:
 
     def _paged(make_query, label):
         nonlocal _read_failed
-        out: list[dict] = []
-        start = 0
-        while True:
+        def _page(from_n: int, to_n: int):
             try:
-                page = make_query().order("id").range(start, start + _PAGE - 1).execute().data or []
+                return make_query().order("id").range(from_n, to_n).execute().data or []
             except Exception as exc:  # noqa: BLE001
                 logger.warning("pyq_workbench read failed (%s): %s", label, exc)
-                _read_failed = True
-                return out
-            out.extend(page)
-            if len(page) < _PAGE:
-                break
-            start += _PAGE
-        return out
+                return None
+
+        walk = paginate(_page, page_size=_PAGE, operation=label)
+        if not walk.complete:
+            _read_failed = True
+        return walk.rows
 
     papers = _paged(
         lambda: sb.table("pyq_papers").select("id, exam_cycle_id, trust_status").eq("exam_id", exam_id),
