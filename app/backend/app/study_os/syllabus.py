@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -111,6 +112,37 @@ def paper_number(paper_id: str | None) -> int | None:
     return sort if 1 <= sort <= 10 else None
 
 
+#: Canonical subject slugs. The GS shells `upsc-mains-gs1..4`,
+#: `upsc-mains-essay` and `upsc-gs-paper-1` are empty and are NOT these.
+_SLUG_PAPER = {
+    "upsc-cse-mains-gs1": "GS_1",
+    "upsc-cse-mains-gs2": "GS_2",
+    "upsc-cse-mains-gs3": "GS_3",
+    "upsc-cse-mains-gs4": "GS_4",
+}
+
+_OPT_SLUG = re.compile(r"\Aupsc-cse-mains-(opt-[a-z0-9-]+-p[12])\Z")
+
+
+def paper_id_from_subject_slug(slug: Any) -> str | None:
+    """`upsc-cse-mains-opt-psir-p1` -> `opt-psir-p1`; `...-gs1` -> `GS_1`.
+
+    THE PAPER AXIS IS THE TAG'S SUBJECT. A primary tag points at a microtopic,
+    a microtopic belongs to a subject, and for this exam the subject row IS the
+    paper. That holds for the thematic half too, which is what lets a theme
+    compilation be filed under Paper I without a sitting to read it from.
+
+    Returns None for anything else, including the empty GS shells
+    (`upsc-mains-gs1`, `upsc-gs-paper-1`) — they carry no tree, and guessing
+    that they mean GS1 would file real questions under a subject nobody tags.
+    """
+    text = str(slug or "").strip().lower()
+    if text in _SLUG_PAPER:
+        return _SLUG_PAPER[text]
+    m = _OPT_SLUG.match(text)
+    return m.group(1) if m else None
+
+
 def _meta(topic: Any) -> dict[str, Any]:
     raw = (topic or {}).get("metadata")
     return raw if isinstance(raw, dict) else {}
@@ -119,12 +151,15 @@ def _meta(topic: Any) -> dict[str, Any]:
 def place(topic: dict[str, Any]) -> dict[str, Any]:
     """Where this theme sits: paper id, section, and both sort keys.
 
-    Two sources, tried in order and never blended:
+    Three sources, tried in order and never blended:
 
     1. The metadata the ingest stamped on the row. Authoritative, because the
        ingest wrote it from the same syllabus file this index was compiled
        from.
-    2. The index, by EXACT theme name, for a topic created outside the ingest.
+    2. The row's position in the tree: `subject_slug` gives the paper (the
+       subject row IS the paper for this exam) and `parent_topic_name` gives
+       the syllabus section. Always present on an ingested microtopic.
+    3. The index, by EXACT theme name, for a topic created outside the ingest.
        A name that appears under two papers is not placed by this route — an
        ambiguous match is not a match.
 
@@ -137,6 +172,17 @@ def place(topic: dict[str, Any]) -> dict[str, Any]:
     paper_id = str(meta.get("paper_id") or "").strip() or None
     section = str(meta.get("macro_topic") or "").strip() or None
 
+    # Route 2: the row's own place in the tree. A tag points at a microtopic,
+    # whose parent topic is the syllabus section and whose subject is the
+    # paper. Both come off the row, so this works for every ingested topic
+    # whether or not the metadata stamp is present.
+    if not paper_id:
+        paper_id = paper_id_from_subject_slug(topic.get("subject_slug"))
+    if not section:
+        section = str(topic.get("parent_topic_name") or "").strip() or None
+
+    # Route 3: the compiled index, by EXACT theme name, for a topic created
+    # outside the ingest. An ambiguous name is not a match.
     if not (paper_id and section):
         matches = index().get("themes", {}).get(name) or []
         if len(matches) == 1:
@@ -164,5 +210,8 @@ def place(topic: dict[str, Any]) -> dict[str, Any]:
         if section
         else 10**6,
         "theme_sort": theme_order if theme_order is not None else 10**5,
+        # The official syllabus line for the section, shown as its subtitle.
+        # Stamped on the PARENT topic by the ingest.
+        "section_line": str(topic.get("parent_official_line") or "").strip() or None,
         "placed": bool(paper_id and section),
     }

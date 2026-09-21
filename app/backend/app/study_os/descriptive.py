@@ -92,6 +92,15 @@ _PAPER_COLUMNS = (
 #: PostgREST URL-length ceiling for an IN() filter.
 _IN_CHUNK = 200
 
+#: Rows per range-pagination page. Matches the exam_intelligence package.
+#: The walk does not depend on this matching the server ceiling — see
+#: `_paginate_all` — so it is a request-size choice, not a correctness one.
+_PAGE = 1000
+
+#: Hard stop for the pagination walk. 20k pages is far past any real
+#: corpus; reaching it means the server is not honouring `range`.
+_MAX_PAGES = 2_000
+
 _DEFAULT_QUESTION_LIMIT = 50
 _MAX_QUESTION_LIMIT = 200
 
@@ -194,6 +203,69 @@ def _chunks(items: list[Any], size: int = _IN_CHUNK) -> list[list[Any]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
+    """Range-paginate a PostgREST read so Supabase's ``db-max-rows`` cannot
+    silently truncate a bulk read into an arbitrary sample.
+
+    THIS IS THE BUG THAT MADE 1,351 QUESTIONS LOOK LIKE 19. Every bulk read in
+    this module called ``.execute()`` with no ``.range()`` and no ``.order()``,
+    so the server returned its first page and the module treated that page as
+    the whole corpus. The catalogue then counted a slice: a subject chip read
+    19, two papers read 5 each, and the thematic half — whose papers never
+    survived the papers read — read "no themes". Nothing errored, because a
+    truncated read is a successful one.
+
+    The rest of the codebase already knew: `api/exam_intelligence.py` and
+    `exam_intelligence/reachability.py` both carry this helper with the same
+    warning. This module was written without it.
+
+    ``build_query(from_n, to_n)`` returns the rows for the inclusive
+    ``[from_n, to_n]`` slice and MUST carry a stable ``.order(...)`` key, or
+    successive pages overlap and miss rows instead of partitioning them.
+
+    ADVANCE BY WHAT CAME BACK, NOT BY THE PAGE SIZE. The obvious loop — stop
+    as soon as a page is shorter than ``_PAGE`` — is itself a no-op whenever
+    the server's ceiling is lower than ``_PAGE``: the first request asks for a
+    thousand rows, the server returns its cap, the loop calls that a short page
+    and stops. Pagination that only works when you already know the server's
+    limit is not pagination.
+
+    STOP WHEN A PAGE ADDS NOTHING NEW, not when it is empty. That ends the walk
+    at the real end of the data, and it also ends it in one extra request
+    against a backend that ignores ``range`` and answers every request with the
+    same rows — which is what an in-memory test double does, and what a
+    misconfigured proxy could do. Waiting for an empty page there never returns.
+
+    Rows are deduplicated on ``id`` as a consequence, which is what the caller
+    of a paginated read wants anyway.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    offset = 0
+    for _ in range(_MAX_PAGES):
+        rows = build_query(offset, offset + _PAGE - 1) or []
+        if not rows:
+            return out
+        fresh = 0
+        for row in rows:
+            key = str(row.get("id") or "")
+            if key and key in seen:
+                continue
+            if key:
+                seen.add(key)
+            out.append(row)
+            fresh += 1
+        if fresh == 0:
+            return out
+        offset += len(rows)
+    logger.warning(
+        "descriptive read stopped at %d pages (%d rows); result may be partial",
+        _MAX_PAGES,
+        len(out),
+    )
+    return out
+
+
 def is_thematic(paper: dict[str, Any]) -> bool:
     """`corpus_half = 'thematic'` — a topic-wise compilation, not a real paper.
 
@@ -288,12 +360,151 @@ def paper_slot(paper: dict[str, Any]) -> tuple[int, str | None]:
 # ── question shaping ─────────────────────────────────────────────────────
 
 
+#: Sub-part letters, in order. Beyond 26 sub-parts a paper is not a paper.
+_SUB_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+
+
+def paper_question_labels(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """question_id → "Q5(b)", for every question in ONE paper that has one.
+
+    `question_number` IS NOT A LABEL. The optional corpus is block-encoded:
+    each subject's questions start at a hundreds boundary, so the seventh
+    question of a paper can be numbered 108. "Q108" told an aspirant nothing
+    except that the platform was showing them an internal key, and there is no
+    eighth-of-a-hundred-and-eight to compare it to.
+
+    So the label is POSITIONAL, derived from the paper itself:
+
+    * a question nobody names as a parent, and which names no parent, is a main
+      question — its label is its rank among the paper's main questions;
+    * a question naming `metadata.parent_question_number` is a sub-part — its
+      label is the parent's rank plus a letter for its rank among siblings.
+
+    A question the paper cannot place — no `question_number`, as every thematic
+    row has by design — gets no label and no entry here. Showing nothing is
+    correct; the thematic half has no question order to report.
+    """
+    numbered = [r for r in rows if _as_int(r.get("question_number")) is not None]
+    if not numbered:
+        return {}
+
+    parents_named = {
+        _as_int(_meta(r).get("parent_question_number"))
+        for r in numbered
+        if _as_int(_meta(r).get("parent_question_number")) is not None
+    }
+
+    mains = sorted(
+        (
+            r
+            for r in numbered
+            if _as_int(_meta(r).get("parent_question_number")) is None
+        ),
+        key=lambda r: _as_int(r.get("question_number")) or 0,
+    )
+    # A stem row is a main question even though its own children point at it.
+    main_rank: dict[int, int] = {}
+    for index, row in enumerate(mains, start=1):
+        number = _as_int(row.get("question_number"))
+        if number is not None:
+            main_rank[number] = index
+
+    # A parent named by a sub-part but absent from this paper's rows still
+    # needs a rank, or its children would be unlabelled. Rank it by where its
+    # number falls among the mains.
+    for number in sorted(parents_named - set(main_rank)):
+        ahead = sum(1 for n in main_rank if n < number)
+        main_rank[number] = ahead + 1
+
+    out: dict[str, str] = {}
+    children: dict[int, list[dict[str, Any]]] = {}
+    for row in numbered:
+        parent = _as_int(_meta(row).get("parent_question_number"))
+        if parent is None:
+            rank = main_rank.get(_as_int(row.get("question_number")))
+            if rank:
+                out[str(row.get("id"))] = f"Q{rank}"
+        else:
+            children.setdefault(parent, []).append(row)
+
+    for parent, kids in children.items():
+        rank = main_rank.get(parent)
+        if not rank:
+            continue
+        kids.sort(key=lambda r: _as_int(r.get("question_number")) or 0)
+        for index, kid in enumerate(kids):
+            letter = _SUB_LETTERS[index] if index < len(_SUB_LETTERS) else None
+            out[str(kid.get("id"))] = (
+                f"Q{rank}({letter})" if letter else f"Q{rank}"
+            )
+    return out
+
+
+def breadcrumb_for(
+    question: dict[str, Any],
+    *,
+    paper: dict[str, Any] | None,
+    label: str | None,
+    topic: str | None = None,
+) -> dict[str, Any]:
+    """Where this question came from, in words an aspirant recognises.
+
+    Two shapes, because the corpus has two halves and only one of them was sat:
+
+    * a real paper — "2019 · P1 · Q5(b) · 15 marks", with the subject, paper
+      and syllabus section above it;
+    * a thematic compilation — "Theme compilation · 2019", and nothing about
+      paper order, because there is none.
+
+    Every level is omitted when unknown. A breadcrumb with a blank in it is
+    worse than a shorter one: it invites the reader to wonder what is missing.
+    """
+    meta = _meta(question)
+    thematic = question_is_thematic(question, paper)
+    year = _as_int((paper or {}).get("year"))
+    marks = _as_int(meta.get("marks"))
+
+    trail: list[str] = []
+    subject = subject_of(question, paper)
+    if subject:
+        trail.append(subject)
+    if not thematic:
+        _, slot = paper_slot(paper or {})
+        if slot:
+            trail.append(slot)
+    section = str(meta.get("section_ref") or "").strip()
+    if section:
+        trail.append(section)
+    if topic:
+        trail.append(topic)
+
+    if thematic:
+        source = ["Theme compilation"]
+        if year:
+            source.append(str(year))
+    else:
+        source = []
+        if year:
+            source.append(str(year))
+        _, slot = paper_slot(paper or {})
+        if slot:
+            source.append(slot)
+        if label:
+            source.append(label)
+        if marks is not None:
+            source.append(f"{marks} marks")
+
+    return {"trail": trail, "source": " · ".join(source) or None}
+
+
 def question_payload(
     question: dict[str, Any],
     *,
     paper: dict[str, Any] | None = None,
     parent_text: str | None = None,
     attempt_count: int = 0,
+    label: str | None = None,
+    topic: str | None = None,
 ) -> dict[str, Any]:
     """One question as the practice surface renders it."""
     meta = _meta(question)
@@ -301,7 +512,14 @@ def question_payload(
     return {
         "id": question.get("id"),
         "pyq_paper_id": question.get("pyq_paper_id"),
+        # RAW, FOR SORTING AND DEBUGGING ONLY. Block-encoded, so "108" is the
+        # seventh question of a subject block, not question 108 of anything an
+        # aspirant can see. `label` is what a surface renders.
         "question_number": question.get("question_number"),
+        "label": label,
+        "breadcrumb": breadcrumb_for(
+            question, paper=paper, label=label, topic=topic
+        ),
         "text": question.get("question_text") or "",
         # A sub-part is meaningless without its stem — "(b) Examine this" needs
         # the question it is part (b) of.
@@ -350,12 +568,16 @@ def _papers_for_exam(supabase: Any, exam_id: str) -> list[dict[str, Any]] | None
     verified gate lives on the question rows this returns paper ids for.
     """
     rows = _safe(
-        lambda: (
-            supabase.table("pyq_papers")
-            .select(_PAPER_COLUMNS)
-            .eq("exam_id", exam_id)
-            .execute()
-            .data
+        lambda: _paginate_all(
+            lambda a, b: (
+                supabase.table("pyq_papers")
+                .select(_PAPER_COLUMNS)
+                .eq("exam_id", exam_id)
+                .order("id")
+                .range(a, b)
+                .execute()
+                .data
+            )
         ),
         default=None,
     )
@@ -374,14 +596,18 @@ def _verified_questions_for_papers(
     out: list[dict[str, Any]] = []
     for chunk in _chunks([str(p) for p in paper_ids]):
         rows = _safe(
-            lambda ids=chunk: (
-                supabase.table("pyq_questions")
-                .select(_QUESTION_COLUMNS)
-                .in_("pyq_paper_id", ids)
-                .eq("question_type", QUESTION_TYPE)
-                .eq("reviewer_status", QUESTION_REVIEWER_STATUS)
-                .execute()
-                .data
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_questions")
+                    .select(_QUESTION_COLUMNS)
+                    .in_("pyq_paper_id", ids)
+                    .eq("question_type", QUESTION_TYPE)
+                    .eq("reviewer_status", QUESTION_REVIEWER_STATUS)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
             ),
             default=None,
         )
@@ -414,14 +640,18 @@ def _primary_topics(
     tags: list[dict[str, Any]] = []
     for chunk in _chunks([str(q) for q in question_ids]):
         rows = _safe(
-            lambda ids=chunk: (
-                supabase.table("pyq_question_topic_tags")
-                .select("question_id, topic_id, tag_role, reviewer_status")
-                .in_("question_id", ids)
-                .eq("tag_role", "primary")
-                .eq("reviewer_status", "verified")
-                .execute()
-                .data
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_question_topic_tags")
+                    .select("question_id, topic_id, tag_role, reviewer_status")
+                    .in_("question_id", ids)
+                    .eq("tag_role", "primary")
+                    .eq("reviewer_status", "verified")
+                    .order("question_id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
             ),
             default=[],
         ) or []
@@ -433,18 +663,24 @@ def _primary_topics(
     topics: dict[str, dict[str, Any]] = {}
     for chunk in _chunks(topic_ids):
         rows = _safe(
-            lambda ids=chunk: (
-                supabase.table("topics")
-                .select("id, name, level, parent_topic_id, subject_id, metadata")
-                .in_("id", ids)
-                .execute()
-                .data
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("topics")
+                    .select("id, name, level, parent_topic_id, subject_id, metadata")
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
             ),
             default=[],
         ) or []
         for r in rows:
             if r.get("id"):
                 topics[str(r["id"])] = r
+
+    _attach_tree_position(supabase, topics)
 
     out: dict[str, dict[str, Any]] = {}
     for t in tags:
@@ -455,6 +691,81 @@ def _primary_topics(
             # ambiguity the tagging lifecycle owns, not this surface.
             out.setdefault(qid, topics[tid])
     return out
+
+
+def _attach_tree_position(supabase: Any, topics: dict[str, dict[str, Any]]) -> None:
+    """Stamp `subject_slug`, `parent_topic_name` and `parent_official_line`.
+
+    THIS IS WHERE THE SYLLABUS TREE COMES FROM ON REAL DATA. A primary tag
+    points at a microtopic; the microtopic's PARENT is the numbered syllabus
+    section, and its SUBJECT is the paper — `upsc-cse-mains-opt-psir-p1`,
+    `upsc-cse-mains-gs3`. Both are ordinary columns, so placement needs no
+    metadata stamp and no name matching, and it works for the thematic half
+    exactly as it does for a sat paper.
+
+    Two extra reads per catalogue build, both small: distinct parents and
+    distinct subjects of the topics already fetched. Failures degrade to an
+    unplaced theme rather than raising.
+    """
+    if not topics:
+        return
+
+    parent_ids = sorted({
+        str(t["parent_topic_id"]) for t in topics.values() if t.get("parent_topic_id")
+    })
+    parents: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(parent_ids):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("topics")
+                    .select("id, name, metadata")
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            if r.get("id"):
+                parents[str(r["id"])] = r
+
+    subject_ids = sorted({
+        str(t["subject_id"]) for t in topics.values() if t.get("subject_id")
+    })
+    subjects: dict[str, str] = {}
+    for chunk in _chunks(subject_ids):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("subjects")
+                    .select("id, slug")
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            if r.get("id"):
+                subjects[str(r["id"])] = r.get("slug") or ""
+
+    for topic in topics.values():
+        topic["subject_slug"] = subjects.get(str(topic.get("subject_id") or ""))
+        parent = parents.get(str(topic.get("parent_topic_id") or "")) or {}
+        topic["parent_topic_name"] = parent.get("name")
+        parent_meta = parent.get("metadata")
+        topic["parent_official_line"] = (
+            parent_meta.get("official_syllabus_line")
+            if isinstance(parent_meta, dict)
+            else None
+        )
 
 
 def _primary_topic_names(
@@ -506,6 +817,7 @@ def _syllabus_themes(
                 "paper_number": None,
                 "section": syllabus.UNPLACED_SECTION,
                 "section_part": None,
+                "section_line": None,
                 "section_sort": 10**6,
                 "theme_sort": 10**6,
                 "placed": False,
@@ -538,6 +850,8 @@ def _syllabus_themes(
             {
                 "section": section,
                 "part": spot["section_part"],
+                # The official syllabus line, shown under the section heading.
+                "line": spot.get("section_line"),
                 "question_count": 0,
                 "_sort": spot["section_sort"],
                 "themes": [],
@@ -855,13 +1169,19 @@ def list_questions(
     )
     page = questions[:cap]
 
-    parents = _parent_texts(supabase, live, page)
+    parents, labels = _paper_context(supabase, page)
+    # The theme a question sits under, for the breadcrumb's last level. Only
+    # the thematic half has one, and only when it carries a verified primary
+    # tag — the same rule the catalogue groups by.
+    page_topics = _primary_topics(supabase, [str(q["id"]) for q in page if q.get("id")])
     items = [
         question_payload(
             q,
             paper=live.get(str(q.get("pyq_paper_id"))),
             parent_text=parents.get(str(q.get("id"))),
             attempt_count=attempts.get(str(q.get("id")), 0),
+            label=labels.get(str(q.get("id"))),
+            topic=(page_topics.get(str(q.get("id"))) or {}).get("name"),
         )
         for q in page
     ]
@@ -879,47 +1199,63 @@ def _empty_questions() -> dict[str, Any]:
     return {"items": [], "count": 0, "total_matching": 0, "excluded_map_questions": 0}
 
 
-def _parent_texts(
-    supabase: Any, papers: dict[str, Any], page: list[dict[str, Any]]
-) -> dict[str, str]:
-    """question_id → its parent stem's text, for sub-parts only.
+def _paper_context(
+    supabase: Any, page: list[dict[str, Any]]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """(parent stem text, positional label) for every question on this page.
 
-    `parent_question_number` is a number within the same paper, not an id, so the
-    lookup is (paper, number) → text.
+    ONE READ FOR BOTH, because both need the same thing: every question on the
+    papers this page touches. A label is a question's rank within its paper, so
+    it cannot be computed from the page alone — the page is a filtered slice
+    and ranks would shift with the filter.
+
+    `parent_question_number` is a number within the same paper, not an id, so
+    the stem lookup is (paper, number) → text.
     """
-    wanted: dict[str, tuple[str, int]] = {}
-    for q in page:
-        parent = _as_int(_meta(q).get("parent_question_number"))
-        pid = str(q.get("pyq_paper_id") or "")
-        if parent is not None and pid:
-            wanted[str(q.get("id"))] = (pid, parent)
-    if not wanted:
-        return {}
+    paper_ids = sorted({str(q.get("pyq_paper_id") or "") for q in page if q.get("pyq_paper_id")})
+    if not paper_ids:
+        return {}, {}
 
-    paper_ids = sorted({pid for pid, _ in wanted.values()})
     rows: list[dict[str, Any]] = []
     for chunk in _chunks(paper_ids):
         got = _safe(
-            lambda ids=chunk: (
-                supabase.table("pyq_questions")
-                .select("id, pyq_paper_id, question_number, question_text")
-                .in_("pyq_paper_id", ids)
-                .execute()
-                .data
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_questions")
+                    .select("id, pyq_paper_id, question_number, question_text, metadata")
+                    .in_("pyq_paper_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
             ),
             default=[],
         ) or []
         rows.extend(got)
+
+    by_paper: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        by_paper.setdefault(str(r.get("pyq_paper_id") or ""), []).append(r)
+
+    labels: dict[str, str] = {}
+    for paper_rows in by_paper.values():
+        labels.update(paper_question_labels(paper_rows))
+
     by_key = {
         (str(r.get("pyq_paper_id")), _as_int(r.get("question_number"))): r.get("question_text")
         for r in rows
     }
-    out: dict[str, str] = {}
-    for qid, key in wanted.items():
-        text = by_key.get(key)
+    parents: dict[str, str] = {}
+    for q in page:
+        parent = _as_int(_meta(q).get("parent_question_number"))
+        pid = str(q.get("pyq_paper_id") or "")
+        if parent is None or not pid:
+            continue
+        text = by_key.get((pid, parent))
         if text:
-            out[qid] = text
-    return out
+            parents[str(q.get("id"))] = text
+    return parents, labels
 
 
 def _attempt_counts(
@@ -931,13 +1267,17 @@ def _attempt_counts(
     counts: dict[str, int] = {}
     for chunk in _chunks(question_ids):
         rows = _safe(
-            lambda ids=chunk: (
-                supabase.table("descriptive_attempts")
-                .select("pyq_question_id")
-                .eq("user_id", user_id)
-                .in_("pyq_question_id", ids)
-                .execute()
-                .data
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempts")
+                    .select("pyq_question_id, id")
+                    .eq("user_id", user_id)
+                    .in_("pyq_question_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
             ),
             default=[],
         ) or []

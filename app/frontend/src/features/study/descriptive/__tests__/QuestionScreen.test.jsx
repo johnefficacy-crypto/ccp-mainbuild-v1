@@ -37,7 +37,12 @@ const QUESTION = {
   verified_against_official: true,
   optional_subject: "PSIR",
   year: 2024,
-  question_number: 2,
+  question_number: 102,
+  label: "Q1(a)",
+  breadcrumb: {
+    trail: ["Political Science and International Relations", "P1", "Section A", "Sovereignty"],
+    source: "2024 · P1 · Q1(a) · 10 marks",
+  },
 };
 
 function draft(over = {}) {
@@ -469,4 +474,56 @@ test("a map question is refused with a reason rather than an empty editor", asyn
   expect(await screen.findByTestId("descriptive-error")).toHaveTextContent(
     /needs a map sheet/i,
   );
+});
+
+
+// ── labels and breadcrumbs (P1) ──────────────────────────────────────────
+
+
+test("the stem shows the breadcrumb trail and the source line", async () => {
+  wire();
+  await renderScreen();
+  expect(screen.getByTestId("descriptive-breadcrumb")).toHaveTextContent(
+    "Political Science and International Relations · P1 · Section A · Sovereignty",
+  );
+  expect(screen.getByTestId("descriptive-source")).toHaveTextContent(
+    "2024 · P1 · Q1(a) · 10 marks",
+  );
+});
+
+test("the raw block-encoded question number is never rendered", async () => {
+  wire();
+  await renderScreen();
+  // question_number is 102 — an internal key, not a label anyone can use.
+  expect(screen.queryByText(/Q102/)).not.toBeInTheDocument();
+});
+
+test("a thematic question shows no paper order", async () => {
+  wire();
+  render(
+    <QuestionScreen
+      question={{
+        ...QUESTION,
+        label: null,
+        breadcrumb: {
+          trail: ["Political Science and International Relations", "Sovereignty"],
+          source: "Theme compilation · 2019",
+        },
+      }}
+    />,
+  );
+  await screen.findByTestId("descriptive-question-screen");
+  expect(screen.getByTestId("descriptive-source")).toHaveTextContent(
+    "Theme compilation · 2019",
+  );
+});
+
+test("nothing is rendered for a question with no breadcrumb at all", async () => {
+  wire();
+  render(<QuestionScreen question={{ ...QUESTION, breadcrumb: undefined }} />);
+  await screen.findByTestId("descriptive-question-screen");
+  // Neither line is rendered — no empty element, no separator with nothing
+  // either side of it.
+  expect(screen.queryByTestId("descriptive-breadcrumb")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("descriptive-source")).not.toBeInTheDocument();
 });

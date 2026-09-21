@@ -41,6 +41,7 @@ const CATALOG = {
         {
           section: "1. Political Theory: meaning and approaches",
           part: "Section A",
+          line: "Political Theory: meaning and approaches to the study of political theory.",
           question_count: 12,
           themes: [
             { theme: "The State", question_count: 12 },
@@ -279,4 +280,18 @@ test("no paper tabs when there is only one paper of themes", () => {
     },
   });
   expect(screen.queryByTestId("descriptive-theme-paper-tab")).not.toBeInTheDocument();
+});
+
+
+test("a section shows its official syllabus line as a subtitle", () => {
+  renderPicker();
+  expect(screen.getAllByTestId("descriptive-section-line")[0]).toHaveTextContent(
+    "Political Theory: meaning and approaches to the study of political theory.",
+  );
+});
+
+test("a section with no recorded syllabus line shows no subtitle", () => {
+  renderPicker();
+  // Only the first section carries `line` in the fixture.
+  expect(screen.getAllByTestId("descriptive-section-line")).toHaveLength(1);
 });

@@ -186,10 +186,15 @@ export default function AnswerWriting() {
                   data-testid="descriptive-question-row"
                 >
                   <span className="text-[13px] leading-snug">{q.text}</span>
+                  {/* The breadcrumb's source line, which already reads
+                      "2019 · P1 · Q5(b) · 15 marks" and omits whatever is
+                      unknown. Never `question_number`: it is block-encoded, so
+                      "Q108" is an internal key, and never a "marks not
+                      recorded" placeholder — that is a sentence about the
+                      database, not about the question. */}
                   <span className="num-mono mt-1 block text-[10.5px] text-clay-700">
                     {[
-                      q.question_number ? `Q${q.question_number}` : null,
-                      typeof q.marks === "number" ? `${q.marks} marks` : "marks not recorded",
+                      q.breadcrumb?.source,
                       typeof q.word_limit === "number" ? `${q.word_limit} words` : null,
                       q.attempt_count ? `${q.attempt_count} attempted` : null,
                     ]

@@ -212,6 +212,16 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
                         {section.question_count}
                       </span>
                     </summary>
+                    {section.line && (
+                      // The official syllabus line for this unit, as the
+                      // syllabus prints it.
+                      <p
+                        className="mt-1 text-xs text-muted-foreground"
+                        data-testid="descriptive-section-line"
+                      >
+                        {section.line}
+                      </p>
+                    )}
                     <div className="mt-2 flex flex-wrap gap-2">
                       {section.themes.map((t) => (
                         <button
