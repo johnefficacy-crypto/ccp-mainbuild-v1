@@ -6,6 +6,7 @@ import { Card, Eyebrow, PageHeader, Tabs } from "../../shared/ui/studyos";
 import CatalogPicker from "../../features/study/descriptive/CatalogPicker";
 import Coverage from "../../features/study/descriptive/Coverage";
 import MyAnswers from "../../features/study/descriptive/MyAnswers";
+import Progress from "../../features/study/descriptive/Progress";
 import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
 
 /**
@@ -34,7 +35,7 @@ export default function AnswerWriting() {
   const [catalogError, setCatalogError] = useState("");
 
   const [questions, setQuestions] = useState([]);
-  const VIEWS = ["write", "answers", "coverage"];
+  const VIEWS = ["write", "answers", "coverage", "progress"];
   const view = VIEWS.includes(params.get("view")) ? params.get("view") : "write";
   // "Unattempted only" is a property of the list, so it rides in the query
   // string with the rest of the selection and survives a reload.
@@ -174,10 +175,13 @@ export default function AnswerWriting() {
           { value: "write", label: "Write" },
           { value: "answers", label: "My answers" },
           { value: "coverage", label: "Coverage" },
+          { value: "progress", label: "Progress" },
         ]}
       />
 
       {view === "answers" && <MyAnswers onRewrite={rewrite} />}
+
+      {view === "progress" && <Progress />}
 
       {view === "coverage" && (
         <Coverage

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date as _date, timedelta as _timedelta
 from datetime import datetime, timezone
 from typing import Any
 
@@ -1242,6 +1243,202 @@ def _attempt_counts(
             if qid:
                 counts[qid] = counts.get(qid, 0) + 1
     return counts
+
+
+# ── analytics (P5) ───────────────────────────────────────────────────────
+#
+# Everything here is computed from `descriptive_attempts` rows that already
+# exist. No new tracking, no new column, no event stream: what an aspirant
+# wrote, when, for how long, and how they judged it is the whole input.
+
+#: A topic needs this many submitted attempts before it is called strong or
+#: weak. Two answers is a mood; three is the smallest number from which a
+#: direction can be read at all, and saying "your weakest topic" off one
+#: attempt would be an accusation rather than a finding.
+MIN_ATTEMPTS_PER_TOPIC = 3
+
+#: How many weeks the trend covers. Long enough to see a direction, short
+#: enough that a month off does not bury this month.
+ANALYTICS_WEEKS = 8
+
+
+def _week_start(stamp: Any) -> str | None:
+    """The Monday of the ISO week this timestamp falls in, as YYYY-MM-DD."""
+    text = str(stamp or "")[:10]
+    if len(text) != 10:
+        return None
+    try:
+        day = _date.fromisoformat(text)
+    except ValueError:
+        return None
+    return (day - _timedelta(days=day.weekday())).isoformat()
+
+
+def _mean(values: list[float]) -> float | None:
+    """The average, or None over nothing. Never 0 for an empty list."""
+    return round(sum(values) / len(values), 1) if values else None
+
+
+def _rubric_means(attempts: list[dict[str, Any]]) -> dict[str, float | None]:
+    """Mean score per rubric criterion, over the attempts that scored it."""
+    buckets: dict[str, list[float]] = {k: [] for k in RUBRIC_KEYS}
+    for a in attempts:
+        scores = a.get("self_scores")
+        if not isinstance(scores, dict):
+            continue
+        for key in RUBRIC_KEYS:
+            value = _as_int(scores.get(key))
+            if value is not None:
+                buckets[key].append(value)
+    return {k: _mean(v) for k, v in buckets.items()}
+
+
+def _streak_weeks(weeks: list[dict[str, Any]], today: Any = None) -> int:
+    """Consecutive weeks with at least one submitted answer, ending now.
+
+    Counted BACKWARDS from the current week, and the current week does not
+    break it while it is still running: it is Tuesday for everyone at some
+    point, and a streak that resets every Monday morning measures the calendar
+    rather than the habit.
+    """
+    written = {w["week"] for w in weeks if w["submitted"] > 0}
+    if not written:
+        return 0
+    now = _date.fromisoformat(str(today)[:10]) if today else _date.today()
+    cursor = now - _timedelta(days=now.weekday())
+    # This week not being written yet is not a broken streak.
+    if cursor.isoformat() not in written:
+        cursor -= _timedelta(days=7)
+    count = 0
+    while cursor.isoformat() in written:
+        count += 1
+        cursor -= _timedelta(days=7)
+    return count
+
+
+def analytics(
+    supabase: Any, user_id: str, *, weeks: Any = ANALYTICS_WEEKS, today: Any = None
+) -> dict[str, Any]:
+    """How the aspirant's answer writing is going, week by week.
+
+    EVERY NUMBER IS OVER THE ATTEMPTS THAT CARRY IT. A question with no marks
+    has no time target, a question with no word limit has no over/under, and
+    ~87% of the corpus carries no marks — so an average "vs target" computed
+    over everything would be an average over a target that mostly does not
+    exist. Each comparison therefore states its own sample size, and is absent
+    when the sample is empty.
+    """
+    if not user_id:
+        raise DescriptiveError("user_required", "Sign in to see your progress.", 401)
+    span = max(1, min(_as_int(weeks) or ANALYTICS_WEEKS, 52))
+
+    rows = [
+        r for r in _owned_attempts(supabase, user_id)
+        if (r.get("status") or "draft") == "submitted"
+    ]
+    if not rows:
+        return _empty_analytics(span)
+
+    questions, _papers = _attempt_questions(
+        supabase, [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
+    )
+    topics = _primary_topic_names(supabase, list(questions))
+
+    by_week: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        week = _week_start(row.get("submitted_at") or row.get("started_at"))
+        if week:
+            by_week.setdefault(week, []).append(row)
+
+    recent = sorted(by_week)[-span:]
+    weekly = []
+    for week in recent:
+        attempts = by_week[week]
+        # Words only where the question states a limit: "260 words" against no
+        # limit is a number with nothing to compare it to.
+        word_pairs = []
+        time_pairs = []
+        for a in attempts:
+            question = questions.get(str(a.get("pyq_question_id") or "")) or {}
+            meta = _meta(question)
+            limit = _as_int(meta.get("word_limit"))
+            words = _as_int(a.get("word_count"))
+            if limit and words is not None:
+                word_pairs.append((words, limit))
+            target = timer_target_for(meta.get("marks"))
+            spent = _as_int(a.get("time_spent_seconds"))
+            if target and spent:
+                time_pairs.append((spent, target))
+        weekly.append({
+            "week": week,
+            "submitted": len(attempts),
+            "avg_self_total": _mean(
+                [s for s in (_as_int(a.get("self_total")) for a in attempts) if s is not None]
+            ),
+            "avg_words": _mean([float(w) for w, _ in word_pairs]),
+            "avg_word_limit": _mean([float(l) for _, l in word_pairs]),
+            "words_sample": len(word_pairs),
+            "avg_seconds": _mean([float(t) for t, _ in time_pairs]),
+            "avg_target_seconds": _mean([float(t) for _, t in time_pairs]),
+            "time_sample": len(time_pairs),
+            "rubric": _rubric_means(attempts),
+        })
+
+    overall_rubric = _rubric_means(rows)
+    scored = {k: v for k, v in overall_rubric.items() if v is not None}
+    # The weakest dimension is the lowest mean, and ties are reported as ties
+    # rather than resolved by dictionary order.
+    weakest = None
+    if scored:
+        low = min(scored.values())
+        weakest = sorted(k for k, v in scored.items() if v == low)
+
+    per_topic: dict[str, list[int]] = {}
+    for row in rows:
+        name = topics.get(str(row.get("pyq_question_id") or ""))
+        total = _as_int(row.get("self_total"))
+        if name and total is not None:
+            per_topic.setdefault(name, []).append(total)
+    ranked = sorted(
+        (
+            {"topic": name, "attempts": len(scores), "avg_self_total": _mean([float(s) for s in scores])}
+            for name, scores in per_topic.items()
+            if len(scores) >= MIN_ATTEMPTS_PER_TOPIC
+        ),
+        key=lambda t: (-(t["avg_self_total"] or 0), t["topic"]),
+    )
+
+    return {
+        "weeks": weekly,
+        "window_weeks": span,
+        "submitted_total": len(rows),
+        "streak_weeks": _streak_weeks(weekly, today=today),
+        "rubric": overall_rubric,
+        "weakest_dimensions": weakest,
+        "strongest_topics": ranked[:5],
+        "weakest_topics": list(reversed(ranked[-5:])) if ranked else [],
+        # Stated so the surface can say WHY a topic list is short, instead of
+        # looking like the aspirant has written in only two topics.
+        "min_attempts_per_topic": MIN_ATTEMPTS_PER_TOPIC,
+        "topics_below_threshold": sum(
+            1 for scores in per_topic.values() if len(scores) < MIN_ATTEMPTS_PER_TOPIC
+        ),
+    }
+
+
+def _empty_analytics(span: int) -> dict[str, Any]:
+    return {
+        "weeks": [],
+        "window_weeks": span,
+        "submitted_total": 0,
+        "streak_weeks": 0,
+        "rubric": {k: None for k in RUBRIC_KEYS},
+        "weakest_dimensions": None,
+        "strongest_topics": [],
+        "weakest_topics": [],
+        "min_attempts_per_topic": MIN_ATTEMPTS_PER_TOPIC,
+        "topics_below_threshold": 0,
+    }
 
 
 # ── coverage (P4) ────────────────────────────────────────────────────────

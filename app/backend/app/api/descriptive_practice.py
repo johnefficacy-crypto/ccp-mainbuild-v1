@@ -111,6 +111,24 @@ def get_questions(
         raise HTTPException(status_code=500, detail="Questions are temporarily unavailable.")
 
 
+@router.get("/analytics")
+def get_analytics(
+    weeks: int = Query(default=8, ge=1, le=52),
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """How this caller's answer writing is going, week by week.
+
+    Computed from the attempts that already exist. No new tracking.
+    """
+    try:
+        return service.analytics(get_supabase_admin(), user.get("id"), weeks=weeks)
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive analytics failed for %s", user.get("id"))
+        raise HTTPException(status_code=500, detail="Your progress is temporarily unavailable.")
+
+
 @router.get("/coverage")
 def get_coverage(
     exam_id: str = Query(...),
