@@ -39,6 +39,40 @@ _DEFAULT_HEADERS: Final[dict[str, str]] = {
 }
 
 
+def _request_headers(
+    *,
+    accept: str | None = None,
+    if_none_match: str | None = None,
+    if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Build the outgoing request headers for one fetch.
+
+    Starts from ``_DEFAULT_HEADERS`` (the bot UA the recruitment scraper has
+    always sent — unchanged when no override is supplied), applies the
+    adapter's ``accept`` override, then the caller's ``user_agent`` / extra
+    ``headers``, and finally the conditional-fetch validators (which callers
+    must never be able to clobber via ``headers``).
+
+    Per-source UA overrides exist because some publishers (PIB) 403 the bot UA
+    while serving a browser UA normally; the override is opt-in per source so
+    the recruitment scraper's identity is untouched.
+    """
+    out = dict(_DEFAULT_HEADERS)
+    if accept:
+        out["Accept"] = accept
+    if user_agent:
+        out["User-Agent"] = user_agent
+    if headers:
+        out.update({str(k): str(v) for k, v in headers.items()})
+    if if_none_match:
+        out["If-None-Match"] = if_none_match
+    if if_modified_since:
+        out["If-Modified-Since"] = if_modified_since
+    return out
+
+
 @dataclass
 class FetchResult:
     ok: bool
@@ -61,6 +95,8 @@ def fetch(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> FetchResult:
     """Fetch ``url`` and return a structured result.
 
@@ -70,6 +106,10 @@ def fetch(
     ``FetchResult`` and drops the parsed entries — callers that need
     the entries should call :func:`fetch_rss` / :func:`fetch_api` /
     :func:`fetch_sitemap` directly.
+
+    Identity: ``user_agent`` / ``headers`` override the default bot
+    User-Agent for this call only. Omit them and the recruitment
+    scraper's long-standing identity is sent unchanged.
 
     Conditional fetch: pass ``if_none_match`` (an ETag value) and/or
     ``if_modified_since`` (an HTTP-date string) to send the standard
@@ -86,23 +126,27 @@ def fetch(
         result, _ = fetch_rss(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
     if adapter == "api":
         result, _ = fetch_api(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
     if adapter == "pdf":
         return fetch_pdf(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
     if adapter == "sitemap":
         result, _ = fetch_sitemap(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
 
@@ -111,6 +155,8 @@ def fetch(
         timeout=timeout,
         if_none_match=if_none_match,
         if_modified_since=if_modified_since,
+        user_agent=user_agent,
+        headers=headers,
     )
 
 
@@ -120,15 +166,16 @@ def _fetch_html(
     timeout: float,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> FetchResult:
-    headers = dict(_DEFAULT_HEADERS)
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc))
@@ -302,6 +349,8 @@ def fetch_rss(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[RssEntry]]:
     """Fetch an RSS / Atom feed and return both the raw FetchResult and
     the parsed entries.
@@ -320,14 +369,13 @@ def fetch_rss(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    headers = dict(_DEFAULT_HEADERS)
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] rss request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc)), []
@@ -499,6 +547,8 @@ def fetch_api(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[ApiEntry]]:
     """Fetch a JSON endpoint and return a FetchResult plus parsed entries.
 
@@ -512,12 +562,11 @@ def fetch_api(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    api_headers = dict(_DEFAULT_HEADERS)
-    api_headers["Accept"] = "application/json, */*;q=0.9"
-    if if_none_match:
-        api_headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        api_headers["If-Modified-Since"] = if_modified_since
+    api_headers = _request_headers(
+        accept="application/json, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
         resp = httpx.get(url, headers=api_headers, timeout=timeout, follow_redirects=True)
@@ -789,6 +838,8 @@ def fetch_pdf(
     timeout: float = 30.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> FetchResult:
     """Fetch a PDF bulletin and return its extracted text in ``FetchResult.text``.
 
@@ -806,12 +857,11 @@ def fetch_pdf(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url")
 
-    pdf_headers = dict(_DEFAULT_HEADERS)
-    pdf_headers["Accept"] = "application/pdf, */*;q=0.9"
-    if if_none_match:
-        pdf_headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        pdf_headers["If-Modified-Since"] = if_modified_since
+    pdf_headers = _request_headers(
+        accept="application/pdf, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
         resp = httpx.get(url, headers=pdf_headers, timeout=timeout, follow_redirects=True)
@@ -989,6 +1039,8 @@ def fetch_sitemap(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[SitemapEntry]]:
     """Fetch a sitemap.xml and return both the FetchResult and parsed
     entries. Same conditional-fetch / 304 contract as ``fetch_rss`` /
@@ -997,15 +1049,14 @@ def fetch_sitemap(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    headers = dict(_DEFAULT_HEADERS)
-    headers["Accept"] = "application/xml, text/xml, */*;q=0.9"
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        accept="application/xml, text/xml, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] sitemap request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc)), []

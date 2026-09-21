@@ -2,16 +2,27 @@
 
 ``ingest_source`` runs one source through: resolve URL → conditional fetch
 (reusing ``app.scraping.fetcher``) → 304 short-circuit → content-hash dedup →
-immutable document snapshot → source-health update. It is the unit the future
-``ca:ingest`` scheduler job (pipeline §9, GQR-G5) will call per source; keeping
-it a pure ``(supabase, source) -> result`` function makes it testable now
-without the scheduler.
+immutable document snapshot → source-health update. It is the unit the
+``ca:ingest`` scheduler job (pipeline §9) calls per source; keeping it a pure
+``(supabase, source) -> result`` function makes it testable without the
+scheduler.
+
+RSS sources take the ITEM-SPLIT path (CA-RSS-01): the feed body is a listing, not
+evidence. One ``current_affairs_documents`` row is written per feed ENTRY, with
+the entry's own title / link / publication date and the readable text of the
+entry's own page. Snapshotting the whole feed body produced title-less 54k–253k
+char XML rows that re-snapshot on every feed shift and carry no single examinable
+claim; those legacy rows are deprioritised by migration 294.
+
+Every other adapter (html / api / pdf / sitemap) keeps the original
+whole-body snapshot: their fetch target already IS one document.
 
 No LLM, no extraction, no learner surface — this only lands evidence snapshots
 and keeps source health current.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -26,6 +37,24 @@ _DOCUMENTS = "current_affairs_documents"
 
 
 _DEFAULT_INTERVAL_HOURS = 24
+
+# Per-pass cap on NEW feed items fetched for one source. A feed that suddenly
+# lists 400 entries must not turn one ingest pass into 400 page fetches; the
+# remainder is picked up next pass (entries are deduped on their canonical link,
+# so nothing is lost). Overridable per source via
+# ``crawl_schedule.max_items_per_pass``.
+_DEFAULT_MAX_ITEMS_PER_PASS = 30
+
+# Bound on one ``IN (...)`` link-lookup so a long feed cannot build a giant query.
+_LINK_LOOKUP_CHUNK = 100
+
+# The feed summary is kept on the document as context, not as evidence — the item
+# page body is the evidence. Truncated so a verbose feed cannot bloat metadata.
+_FEED_SUMMARY_CHARS = 2000
+
+# Written to the source when a pass leaves work behind (capped remainder or a
+# failed item page): the next pass must re-read the feed rather than 304.
+_CLEARED_FEED_VALIDATORS = {"feed_etag": None, "feed_last_modified": None}
 
 
 def _now_iso() -> str:
@@ -74,10 +103,16 @@ def _update_health(
     success: bool,
     error: str | None = None,
     prev_failures: int = 0,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """Best-effort source-health write. A success resets the failure streak; a
     failure increments it. Never raises — health is operational, not correctness
-    critical, and must not sink an otherwise-successful ingest."""
+    critical, and must not sink an otherwise-successful ingest.
+
+    ``extra`` carries source-level columns the ingest owns alongside health —
+    today the RSS feed validators (``feed_etag`` / ``feed_last_modified``), which
+    cannot live on a document row any more now that one feed fetch produces many
+    item rows."""
     patch: dict[str, Any] = {
         "last_fetch_at": now_iso,
         "last_status": status,
@@ -87,6 +122,8 @@ def _update_health(
     }
     if success:
         patch["last_success_at"] = now_iso
+    if extra:
+        patch.update(extra)
     _safe(
         lambda: supabase.table(_SOURCES).update(patch).eq("id", source_id).execute(),
         default=None,
@@ -105,14 +142,16 @@ def ingest_source(
 
       - ``skipped``       — inactive source or no usable URL configured.
       - ``not_modified``  — server returned 304; nothing changed.
-      - ``error``         — fetch failed (network / HTTP / empty body).
-      - ``duplicate``     — content hash already snapshotted for this source.
-      - ``snapshotted``   — a new immutable document row was written.
+      - ``error``         — fetch failed (network / HTTP / empty body / empty feed).
+      - ``duplicate``     — nothing new: content hash (or, for RSS, every item
+                            link) already snapshotted for this source.
+      - ``snapshotted``   — at least one new immutable document row was written.
       - ``deprioritised`` — fetched but pre-filtered out (reason recorded).
 
-    Source health is updated on every terminal path. The document row (when
-    written) is immutable; a changed body on a later run creates a NEW row rather
-    than mutating this one.
+    RSS sources take the item-split path (one row per feed ENTRY); every other
+    adapter snapshots the fetched body as one document. Source health is updated
+    on every terminal path. Document rows are immutable; changed content on a
+    later run creates a NEW row rather than mutating an existing one.
     """
     now = now_iso or _now_iso()
     source_id = source.get("id")
@@ -129,12 +168,44 @@ def ingest_source(
         )
         return {"status": "skipped", "reason": "no_fetch_url", "source_id": source_id}
 
+    adapter = (source.get("adapter_type") or "html").lower()
+    # Per-source UA override (adapter_config.user_agent). Absent → the default bot
+    # UA, so the recruitment scraper's identity is untouched.
+    user_agent = ca_sources.user_agent_of(source)
+
+    if adapter == "rss":
+        return _ingest_rss_items(
+            supabase, source, url=url, fetch=fetch, now=now, user_agent=user_agent,
+        )
+    return _ingest_whole_body(
+        supabase, source, url=url, adapter=adapter, fetch=fetch, now=now,
+        user_agent=user_agent,
+    )
+
+
+def _ingest_whole_body(
+    supabase: Any,
+    source: dict[str, Any],
+    *,
+    url: str,
+    adapter: str,
+    fetch: Callable[..., Any],
+    now: str,
+    user_agent: str | None,
+) -> dict[str, Any]:
+    """Snapshot the fetched body as ONE document (html / api / pdf / sitemap).
+
+    Unchanged GQR-G2 behaviour: conditional fetch off the source's most recent
+    snapshot, 304 short-circuit, content-hash dedup, immutable insert.
+    """
+    source_id = source.get("id")
     prev = _latest_document(supabase, source_id) or {}
     result = fetch(
         url,
-        adapter_type=(source.get("adapter_type") or "html"),
+        adapter_type=adapter,
         if_none_match=prev.get("etag"),
         if_modified_since=prev.get("last_modified"),
+        user_agent=user_agent,
     )
 
     # 304 — the conditional-fetch validators matched; unchanged.
@@ -154,19 +225,10 @@ def ingest_source(
 
     # Content dedup: byte-identical body already snapshotted for this source.
     if content_hash:
-        existing = _safe(
-            lambda: supabase.table(_DOCUMENTS)
-            .select("id")
-            .eq("source_id", source_id)
-            .eq("content_hash", content_hash)
-            .limit(1)
-            .execute(),
-            default=None,
-        )
-        dupe = (getattr(existing, "data", None) or [])
-        if dupe:
+        dupe_id = _document_id_by_content_hash(supabase, source_id, content_hash)
+        if dupe_id is not None:
             _update_health(supabase, source_id, now_iso=now, status="duplicate", success=True)
-            return {"status": "duplicate", "source_id": source_id, "document_id": dupe[0].get("id")}
+            return {"status": "duplicate", "source_id": source_id, "document_id": dupe_id}
 
     accept, reason = ca_sources.prefilter_document(raw_text=getattr(result, "text", None))
     ingestion_status = "snapshotted" if accept else "deprioritised"
@@ -192,35 +254,359 @@ def ingest_source(
         "ingestion_status": ingestion_status,
     }
     prev_failures = int(source.get("consecutive_failures") or 0)
-    try:
-        inserted = supabase.table(_DOCUMENTS).insert(payload).execute()
-        rows = getattr(inserted, "data", None) or []
-    except Exception as exc:  # noqa: BLE001 — classify: content-race vs real write failure.
-        if _is_unique_violation(exc):
-            # A concurrent run won the unique content-hash race — the body IS captured,
-            # just not by this run. Non-fatal duplicate; health stays green.
-            _update_health(supabase, source_id, now_iso=now, status="write_contended", success=True)
-            return {"status": "duplicate", "source_id": source_id, "document_id": None}
-        # Genuine infrastructure write failure — surface it, red the health streak.
+    written, err = _insert_document(supabase, payload)
+    if err == "duplicate":
+        # A concurrent run won the unique content-hash race — the body IS captured,
+        # just not by this run. Non-fatal duplicate; health stays green.
+        _update_health(supabase, source_id, now_iso=now, status="write_contended", success=True)
+        return {"status": "duplicate", "source_id": source_id, "document_id": None}
+    if err:
         _update_health(
             supabase, source_id, now_iso=now, status="error", success=False,
-            error=f"write_failed: {exc}"[:200], prev_failures=prev_failures,
+            error=err[:200], prev_failures=prev_failures,
         )
-        return {"status": "error", "reason": "write_failed", "source_id": source_id}
-    if not rows:
-        _update_health(
-            supabase, source_id, now_iso=now, status="error", success=False,
-            error="empty_insert", prev_failures=prev_failures,
-        )
-        return {"status": "error", "reason": "empty_insert", "source_id": source_id}
+        return {
+            "status": "error",
+            "reason": "empty_insert" if err == "empty_insert" else "write_failed",
+            "source_id": source_id,
+        }
 
     _update_health(supabase, source_id, now_iso=now, status=ingestion_status, success=True)
     return {
         "status": ingestion_status,
         "source_id": source_id,
-        "document_id": rows[0].get("id"),
+        "document_id": (written or {}).get("id"),
         "reason": reason,
     }
+
+
+def _document_id_by_content_hash(supabase: Any, source_id: Any, content_hash: str) -> Any:
+    """Existing document id for this (source, content_hash), or ``None``."""
+    existing = _safe(
+        lambda: supabase.table(_DOCUMENTS)
+        .select("id")
+        .eq("source_id", source_id)
+        .eq("content_hash", content_hash)
+        .limit(1)
+        .execute(),
+        default=None,
+    )
+    rows = getattr(existing, "data", None) or []
+    return rows[0].get("id") if rows else None
+
+
+def _insert_document(supabase: Any, payload: dict[str, Any]) -> tuple[dict | None, str | None]:
+    """Insert one immutable document row.
+
+    Returns ``(row, None)`` on success, ``(None, "duplicate")`` for a benign unique
+    conflict (content-hash or item-link race won by a concurrent run), and
+    ``(None, "<error>")`` for a genuine write failure. Classification matters: a
+    fail-open "everything is a duplicate" would hide real infrastructure errors.
+    """
+    try:
+        inserted = supabase.table(_DOCUMENTS).insert(payload).execute()
+    except Exception as exc:  # noqa: BLE001 — classify: unique race vs real write failure.
+        if _is_unique_violation(exc):
+            return None, "duplicate"
+        return None, f"write_failed: {exc}"
+    rows = getattr(inserted, "data", None) or []
+    if not rows:
+        return None, "empty_insert"
+    return rows[0], None
+
+
+def _max_items_per_pass(source: dict[str, Any]) -> int:
+    """Per-pass new-item cap from ``crawl_schedule.max_items_per_pass``.
+
+    ``crawl_schedule`` is unconstrained JSONB, so a non-object or non-numeric value
+    falls back to the default rather than raising."""
+    sched = source.get("crawl_schedule")
+    if not isinstance(sched, dict):
+        return _DEFAULT_MAX_ITEMS_PER_PASS
+    try:
+        cap = int(sched.get("max_items_per_pass") or _DEFAULT_MAX_ITEMS_PER_PASS)
+    except (TypeError, ValueError):
+        return _DEFAULT_MAX_ITEMS_PER_PASS
+    return cap if cap > 0 else _DEFAULT_MAX_ITEMS_PER_PASS
+
+
+_LOOKUP_FAILED = object()
+
+
+def _known_item_links(supabase: Any, source_id: Any, links: list[str]) -> Any:
+    """Canonical item links this source has already snapshotted.
+
+    Queried in bounded chunks so a long feed cannot build an unbounded ``IN`` list.
+    Returns ``_LOOKUP_FAILED`` when the read fails: the caller must classify that as
+    a source error, not as "nothing new". Guessing either way would be wrong —
+    treating the links as known hides a DB outage behind a green pass, treating them
+    as new re-fetches every item page."""
+    known: set[str] = set()
+    for start in range(0, len(links), _LINK_LOOKUP_CHUNK):
+        chunk = links[start:start + _LINK_LOOKUP_CHUNK]
+        rows = _safe(
+            lambda c=chunk: supabase.table(_DOCUMENTS)
+            .select("canonical_item_url")
+            .eq("source_id", source_id)
+            .in_("canonical_item_url", c)
+            .execute(),
+            default=None,
+        )
+        if rows is None:
+            return _LOOKUP_FAILED
+        for row in (getattr(rows, "data", None) or []):
+            value = row.get("canonical_item_url")
+            if value:
+                known.add(str(value))
+    return known
+
+
+def _entry_digest(canonical: str, title: str, summary: str) -> str:
+    """Stable content hash for an item we never fetched a page for (deny-listed).
+
+    Derived from the feed entry itself so the row still carries a non-null
+    content_hash and re-reading the same entry cannot produce a second snapshot."""
+    return hashlib.sha256("\n".join((canonical, title or "", summary or "")).encode("utf-8")).hexdigest()
+
+
+def _ingest_rss_items(
+    supabase: Any,
+    source: dict[str, Any],
+    *,
+    url: str,
+    fetch: Callable[..., Any],
+    now: str,
+    user_agent: str | None,
+) -> dict[str, Any]:
+    """Item-split ingest for an RSS/Atom source (CA-RSS-01).
+
+    Fetch the feed once (conditional on the source's stored feed validators), then
+    write ONE document per NEW entry, carrying that entry's own title, link,
+    publication date and the readable text of its own page. The feed body itself is
+    never snapshotted — it is a listing, not evidence.
+    """
+    source_id = source.get("id")
+    prev_failures = int(source.get("consecutive_failures") or 0)
+    publisher = ca_sources.publisher_of(source)
+    defaults = ca_sources.adapter_defaults(source)
+    document_type = defaults.document_type if defaults else None
+
+    result = fetch(
+        url,
+        adapter_type="rss",
+        if_none_match=source.get("feed_etag"),
+        if_modified_since=source.get("feed_last_modified"),
+        user_agent=user_agent,
+    )
+
+    feed_validators = {
+        "feed_etag": getattr(result, "etag", None) or source.get("feed_etag"),
+        "feed_last_modified": getattr(result, "last_modified", None) or source.get("feed_last_modified"),
+    }
+
+    # Feed-level 304 short-circuit: the feed has not shifted, so no item can be new.
+    if getattr(result, "status_code", None) == 304 or getattr(result, "error", None) == "not_modified":
+        _update_health(
+            supabase, source_id, now_iso=now, status="not_modified", success=True,
+            extra=feed_validators,
+        )
+        return {"status": "not_modified", "source_id": source_id}
+
+    if not getattr(result, "ok", False):
+        err = getattr(result, "error", None) or "fetch_failed"
+        _update_health(
+            supabase, source_id, now_iso=now, status="error", success=False, error=err,
+            prev_failures=prev_failures,
+        )
+        return {"status": "error", "reason": err, "source_id": source_id}
+
+    entries = fetcher.parse_rss_feed(getattr(result, "text", None))
+    if not entries:
+        # Malformed XML parses to [] — indistinguishable from a genuinely empty
+        # feed, and both mean this source produced nothing. Red the health streak.
+        _update_health(
+            supabase, source_id, now_iso=now, status="error", success=False,
+            error="empty_feed", prev_failures=prev_failures,
+        )
+        return {"status": "error", "reason": "empty_feed", "source_id": source_id}
+
+    # Canonical link is the item identity. Entries without a usable link cannot be
+    # deduped or fetched, so they are counted and skipped.
+    candidates: list[tuple[str, Any]] = []
+    unusable = 0
+    seen_in_feed: set[str] = set()
+    for entry in entries:
+        canonical = ca_sources.canonical_item_link(getattr(entry, "link", None))
+        if not canonical:
+            unusable += 1
+            continue
+        if canonical in seen_in_feed:  # the same item listed twice in one feed
+            continue
+        seen_in_feed.add(canonical)
+        candidates.append((canonical, entry))
+
+    if not candidates:
+        # Entries parsed but none carried a usable link — a feed-shape problem, not
+        # a healthy empty pass. Surface it rather than reporting a quiet no-op.
+        _update_health(
+            supabase, source_id, now_iso=now, status="error", success=False,
+            error="no_usable_item_links", prev_failures=prev_failures,
+        )
+        return {
+            "status": "error", "reason": "no_usable_item_links",
+            "source_id": source_id, "items_seen": len(entries),
+            "items_unusable": unusable,
+        }
+
+    known = _known_item_links(supabase, source_id, [c for c, _ in candidates])
+    if known is _LOOKUP_FAILED:
+        _update_health(
+            supabase, source_id, now_iso=now, status="error", success=False,
+            error="item_link_lookup_failed", prev_failures=prev_failures,
+        )
+        return {"status": "error", "reason": "item_link_lookup_failed", "source_id": source_id}
+    fresh = [(c, e) for c, e in candidates if c not in known]
+    cap = _max_items_per_pass(source)
+    new_items = fresh[:cap]
+
+    counts = {
+        "items_seen": len(entries),
+        "items_known": len(candidates) - len(fresh),
+        "items_unusable": unusable,
+        "items_new": len(new_items),
+        "items_snapshotted": 0,
+        "items_deprioritised": 0,
+        "items_duplicate": 0,
+        "items_capped": len(fresh) > cap,
+    }
+    item_errors: list[dict[str, str]] = []
+    document_ids: list[Any] = []
+
+    for canonical, entry in new_items:
+        title = (getattr(entry, "title", "") or "").strip() or None
+        summary = (getattr(entry, "summary", "") or "").strip()
+        published_at = ca_sources.parse_published_at(getattr(entry, "published", None))
+        link = (getattr(entry, "link", "") or "").strip() or canonical
+
+        metadata: dict[str, Any] = {"publisher": publisher, "item_link": link}
+        if summary:
+            metadata["feed_summary"] = summary[:_FEED_SUMMARY_CHARS]
+
+        # Deny-list is evaluable from the feed entry alone — decide BEFORE paying
+        # for the item page fetch. Pipeline §4: the row is still snapshotted, with
+        # a machine-readable reason; it is never silently dropped.
+        denied = ca_sources.denylisted_title(publisher, title)
+        if denied:
+            payload = {
+                "source_id": source_id,
+                "source_url": link,
+                "canonical_item_url": canonical,
+                "final_url": None,
+                "title": title,
+                "document_type": document_type,
+                "published_at": published_at,
+                "fetched_at": now,
+                "content_hash": _entry_digest(canonical, title or "", summary),
+                "etag": None,
+                "last_modified": None,
+                "raw_text": summary or None,
+                "metadata": {**metadata,
+                             "prefilter_reason": f"{ca_sources.DENYLIST_REASON_PREFIX}{denied}"},
+                "ingestion_status": "deprioritised",
+            }
+            _record_item(supabase, payload, counts, item_errors, document_ids, link)
+            continue
+
+        page = fetch(link, adapter_type="html", user_agent=user_agent)
+        if not getattr(page, "ok", False):
+            # One unreachable item page must not sink the source. No row is written,
+            # so the item stays NEW and the next pass retries it.
+            err = getattr(page, "error", None) or "fetch_failed"
+            item_errors.append({"link": link, "error": str(err)})
+            continue
+
+        content_hash = getattr(page, "content_hash", None)
+        if content_hash and _document_id_by_content_hash(supabase, source_id, content_hash) is not None:
+            counts["items_duplicate"] += 1
+            continue
+
+        raw_text = getattr(page, "text", None)
+        accept, reason = ca_sources.prefilter_document(
+            raw_text=raw_text, title=title, publisher=publisher,
+        )
+        item_metadata = {**metadata, "content_type": getattr(page, "content_type", None)}
+        if not accept and reason:
+            item_metadata["prefilter_reason"] = reason
+
+        payload = {
+            "source_id": source_id,
+            "source_url": link,
+            "canonical_item_url": canonical,
+            "final_url": getattr(page, "final_url", None),
+            "title": title,
+            "document_type": document_type,
+            "published_at": published_at,
+            "fetched_at": now,
+            "content_hash": content_hash,
+            "etag": getattr(page, "etag", None),
+            "last_modified": getattr(page, "last_modified", None),
+            "raw_text": raw_text,
+            "metadata": item_metadata,
+            "ingestion_status": "snapshotted" if accept else "deprioritised",
+        }
+        _record_item(supabase, payload, counts, item_errors, document_ids, link)
+
+    if counts["items_snapshotted"]:
+        status = "snapshotted"
+    elif counts["items_deprioritised"]:
+        status = "deprioritised"
+    elif item_errors and not counts["items_duplicate"]:
+        status = "error"
+    else:
+        status = "duplicate"
+
+    # Feed validators are stored ONLY when this pass fully drained the feed. If
+    # items were capped or an item page failed, that work is still outstanding;
+    # storing the validators would 304 the next pass and strand it forever.
+    drained = not counts["items_capped"] and not item_errors and status != "error"
+    _update_health(
+        supabase, source_id, now_iso=now,
+        status=status, success=status != "error",
+        error="item_fetch_failed" if status == "error" else None,
+        prev_failures=prev_failures,
+        extra=feed_validators if drained else _CLEARED_FEED_VALIDATORS,
+    )
+    return {
+        "status": status,
+        "source_id": source_id,
+        "document_id": document_ids[0] if document_ids else None,
+        "document_ids": document_ids,
+        "item_errors": item_errors,
+        **counts,
+    }
+
+
+def _record_item(
+    supabase: Any,
+    payload: dict[str, Any],
+    counts: dict[str, Any],
+    item_errors: list[dict[str, str]],
+    document_ids: list[Any],
+    link: str,
+) -> None:
+    """Insert one item document and fold the outcome into the per-source counters."""
+    row, err = _insert_document(supabase, payload)
+    if err == "duplicate":
+        counts["items_duplicate"] += 1
+        return
+    if err:
+        item_errors.append({"link": link, "error": err[:200]})
+        return
+    document_ids.append((row or {}).get("id"))
+    if payload["ingestion_status"] == "snapshotted":
+        counts["items_snapshotted"] += 1
+    else:
+        counts["items_deprioritised"] += 1
 
 
 def _is_due(source: dict[str, Any], now: datetime) -> bool:
@@ -338,6 +724,9 @@ def run_ingest_pass(
         "checked": 0, "snapshotted": 0, "duplicate": 0, "not_modified": 0,
         "error": 0, "deprioritised": 0, "skipped": 0, "enqueued": 0,
         "enqueue_failed": 0, "source_query_failed": 0, "status": "ok",
+        # Item-split totals across RSS sources (documents, not sources).
+        "items_new": 0, "items_snapshotted": 0, "items_deprioritised": 0,
+        "items_duplicate": 0, "item_errors": 0,
     }
 
     try:
@@ -349,6 +738,10 @@ def run_ingest_pass(
                 result = ingest_source(supabase, source, fetch=fetch, now_iso=now_iso)
                 status = result.get("status") or "error"
                 counts[status] = counts.get(status, 0) + 1
+                for key in ("items_new", "items_snapshotted",
+                            "items_deprioritised", "items_duplicate"):
+                    counts[key] += int(result.get(key) or 0)
+                counts["item_errors"] += len(result.get("item_errors") or [])
             except Exception:  # noqa: BLE001 — isolate one source; later sources still run.
                 logger.exception("ca:ingest source failed id=%s", source.get("id"))
                 counts["error"] += 1
@@ -362,6 +755,6 @@ def run_ingest_pass(
 
     if counts["source_query_failed"] or recon.get("reconcile_failed"):
         counts["status"] = "failed"
-    elif counts["error"] or counts["enqueue_failed"]:
+    elif counts["error"] or counts["enqueue_failed"] or counts["item_errors"]:
         counts["status"] = "partial"
     return counts

@@ -1,9 +1,13 @@
-"""GQR-G2 — current-affairs ingestion primitive.
+"""GQR-G2 — current-affairs ingestion primitive (whole-body adapters).
 
 ``ingest_source`` must: resolve the fetch URL by adapter, pass prior-snapshot
 ETag/Last-Modified as conditional-fetch validators, short-circuit on 304,
 content-hash dedup, snapshot an immutable document, pre-filter thin bodies, and
 keep source health current on every path. No network — ``fetch`` is injected.
+
+Scope: the html / api / pdf / sitemap adapters, whose fetch target already IS
+one document. RSS sources take the item-split path (CA-RSS-01) and are covered
+in test_ca_rss_item_ingestion.py.
 """
 from __future__ import annotations
 
@@ -19,7 +23,8 @@ def _source(**over) -> dict:
         "id": "src-pib",
         "name": "PIB",
         "authority_level": "primary_official",
-        "adapter_type": "rss",
+        "adapter_type": "html",
+        "crawl_url": "https://pib.gov.in/release",
         "rss_url": "https://pib.gov.in/feed.xml",
         "official_url": "https://pib.gov.in/",
         "default_category": "national",
@@ -33,8 +38,8 @@ def _source(**over) -> dict:
 
 def _ok(text=_LONG_BODY, content_hash="hash-1", **over) -> FetchResult:
     kw = dict(
-        ok=True, url="https://pib.gov.in/feed.xml", status_code=200,
-        final_url="https://pib.gov.in/feed.xml", content_type="application/rss+xml",
+        ok=True, url="https://pib.gov.in/release", status_code=200,
+        final_url="https://pib.gov.in/release", content_type="text/html",
         etag='"abc"', last_modified="Wed, 01 Jul 2026 00:00:00 GMT",
         content_hash=content_hash, text=text,
     )
@@ -163,7 +168,7 @@ def test_prefilter_deprioritises_thin_body():
 
 
 def test_no_url_configured_skips_and_flags_health():
-    src = _source(adapter_type="rss", rss_url=None, crawl_url=None, official_url=None)
+    src = _source(rss_url=None, crawl_url=None, official_url=None)
     sb = SBStub({"current_affairs_sources": [src], "current_affairs_documents": []})
     called = {"n": 0}
 
