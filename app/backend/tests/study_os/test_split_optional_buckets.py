@@ -378,3 +378,254 @@ def test_uuid_str_is_narrow_by_design(value, expected):
     """Not `default=str`: anything that is not a UUID passes through unchanged,
     so an unexpected type still fails loudly instead of being stringified."""
     assert sob.uuid_str(value) == expected
+
+
+# ── scope: a split paper is not a bucket (PRACTICE-PAPER-03) ───────────────
+# The second --live re-split all 140 papers on the demo database. Cause: the
+# scope matched the code by LIKE prefix, and this script's own output carries
+# that same prefix with paper_kind='optional' and retired unset.
+
+
+@pytest.mark.parametrize("code,ok", [
+    ("UPSC-CSE-MAINS-OPT-2019", True),
+    ("UPSC-CSE-MAINS-OPT-2025", True),
+    ("UPSC-CSE-MAINS-OPT-2025-HISTORY-P1", False),          # this script's output
+    ("UPSC-CSE-MAINS-OPT-2019-ANTHROPOLOGY-P2", False),
+    ("UPSC-CSE-MAINS-OPT-202", False),                       # three digits
+    ("UPSC-CSE-MAINS-OPT-20255", False),                     # five digits
+    ("UPSC-CSE-MAINS-OPT-", False),
+    ("X-UPSC-CSE-MAINS-OPT-2019", False),                    # not anchored at the start
+    ("UPSC-CSE-MAINS-OPT-2019 ", False),                     # not anchored at the end
+    ("", False),
+    (None, False),
+])
+def test_is_bucket_code_anchors_both_ends(code, ok):
+    assert sob.is_bucket_code(code) is ok
+
+
+def test_scope_sql_matches_the_python_predicate():
+    """Guard the pair. _BUCKET_SQL is the authority at run time; scope_violation
+    mirrors it for the preflight and these tests. If one changes, so must the
+    other, and a LIKE must never come back."""
+    sql = sob._BUCKET_SQL
+    assert "like $1" not in sql.lower()
+    assert "~ $1" in sql
+    assert "metadata->>'split_from_bucket_id' is null" in sql
+    assert "metadata->>'paper_kind' = 'optional'" in sql
+    assert "'retired')::boolean, false) is not true" in sql
+    assert "metadata->>'corpus_half' is distinct from 'thematic'" in sql
+    # The pattern the query is given is the anchored one, not the prefix.
+    assert sob.BUCKET_CODE_SQL_PATTERN == r"^UPSC-CSE-MAINS-OPT-\d{4}$"
+
+
+def _row(code, **meta):
+    return {"id": _uuid(500), "paper_code": code,
+            "metadata": {"paper_kind": "optional", "paper_code": code, **meta}}
+
+
+def test_scope_selects_buckets_and_rejects_split_retired_and_split_from():
+    rows = {
+        "bucket": _row("UPSC-CSE-MAINS-OPT-2025"),
+        "split_shape": _row("UPSC-CSE-MAINS-OPT-2025-HISTORY-P1"),
+        "split_lineage": _row("UPSC-CSE-MAINS-OPT-2025", split_from_bucket_id=str(BUCKET_ID)),
+        "retired": _row("UPSC-CSE-MAINS-OPT-2025", retired=True),
+        "thematic": _row("UPSC-CSE-MAINS-OPT-2025", corpus_half="thematic"),
+    }
+    selected = {k for k, r in rows.items() if sob.is_in_scope(r)}
+    assert selected == {"bucket"}
+
+    assert "already a split paper" in sob.scope_violation(rows["split_lineage"])
+    assert "not a bucket code" in sob.scope_violation(rows["split_shape"])
+    assert sob.scope_violation(rows["retired"]) == "retired"
+
+
+def test_scope_falls_back_to_the_paper_code_column():
+    """A bucket may carry the code only on the column; a split row carries the
+    split code on both, so the fallback must not rescue it."""
+    assert sob.is_in_scope({"paper_code": "UPSC-CSE-MAINS-OPT-2025",
+                            "metadata": {"paper_kind": "optional"}})
+    assert not sob.is_in_scope({"paper_code": "UPSC-CSE-MAINS-OPT-2025-HISTORY-P1",
+                                "metadata": {"paper_kind": "optional"}})
+
+
+def test_scope_reads_metadata_delivered_as_text():
+    assert sob.is_in_scope({
+        "paper_code": None,
+        "metadata": '{"paper_kind": "optional", "paper_code": "UPSC-CSE-MAINS-OPT-2025"}',
+    })
+
+
+def test_assert_bucket_scope_aborts_the_whole_run_and_names_every_offender():
+    """Not a per-bucket skip: splitting 'the rest' on a wrong selection is what
+    produced the 140 re-split papers."""
+    rows = [
+        _row("UPSC-CSE-MAINS-OPT-2025"),
+        _row("UPSC-CSE-MAINS-OPT-2025-HISTORY-P1"),
+        _row("UPSC-CSE-MAINS-OPT-2024", split_from_bucket_id=str(BUCKET_ID)),
+    ]
+    with pytest.raises(sob.ScopeAbort) as exc:
+        sob.assert_bucket_scope(rows)
+    msg = str(exc.value)
+    assert "2 selected row(s) are not buckets" in msg
+    assert "nothing was written" in msg
+    assert "UPSC-CSE-MAINS-OPT-2025-HISTORY-P1" in msg
+    assert "UPSC-CSE-MAINS-OPT-2024" in msg
+    # ScopeAbort is not a BucketAbort: the caller must not treat it as skippable.
+    assert not isinstance(exc.value, sob.BucketAbort)
+
+
+def test_assert_bucket_scope_passes_a_clean_selection():
+    sob.assert_bucket_scope([_row("UPSC-CSE-MAINS-OPT-2024"), _row("UPSC-CSE-MAINS-OPT-2025")])
+
+
+# ── two runs (PRACTICE-PAPER-03) ───────────────────────────────────────────
+# The regression itself: run 1's OUTPUT, fed back as run 2's INPUT, must select
+# nothing. A FakeDb models the paper and question tables and applies the same
+# scope predicate the query does, so run 2 sees the world run 1 left behind.
+
+
+class FakeDb:
+    """Papers and questions as rows, mutated exactly as the live path does."""
+
+    def __init__(self, papers, questions):
+        self.papers = [dict(p) for p in papers]
+        self.questions = [dict(q) for q in questions]
+        self._n = 0
+
+    # -- what run() does: select, guard, split each --
+    def select_buckets(self):
+        return [p for p in self.papers if sob.is_in_scope(p)]
+
+    def questions_for(self, paper_id):
+        return [{"id": q["id"], "metadata": q["metadata"]}
+                for q in self.questions if q["pyq_paper_id"] == paper_id]
+
+    async def fetch(self, sql, *args):
+        if "from public.pyq_questions" in sql:
+            return self.questions_for(args[0])
+        if "from public.pyq_papers" in sql:  # _EXISTING_SPLIT_SQL
+            wanted = set(args[0])
+            return [{"paper_code": c, "id": p["id"]}
+                    for p in self.papers
+                    if (c := sob.as_metadata(p["metadata"]).get("paper_code")) in wanted]
+        raise AssertionError(sql)
+
+    async def fetchval(self, sql, *args):
+        if "pyq_question_stimuli" in sql:
+            return 0
+        if sql.strip().startswith("insert"):
+            self._n += 1
+            new_id = _uuid(900 + self._n)
+            exam_id, phase_id, cycle_id, year, paper_code, meta_json = args
+            self.papers.append({
+                "id": new_id, "exam_id": exam_id, "exam_phase_id": phase_id,
+                "exam_cycle_id": cycle_id, "year": year, "paper_code": paper_code,
+                "metadata": json.loads(meta_json),
+            })
+            return new_id
+        raise AssertionError(sql)
+
+    async def execute(self, sql, *args):
+        if "set pyq_paper_id" in sql:
+            target, qids = args
+            for q in self.questions:
+                if q["id"] in qids:
+                    q["pyq_paper_id"] = target
+            return
+        if "'retired', true" in sql:
+            bucket_id, split_into_json = args
+            for p in self.papers:
+                if p["id"] == bucket_id:
+                    p["metadata"] = {**sob.as_metadata(p["metadata"]),
+                                     "retired": True,
+                                     "split_into": json.loads(split_into_json)}
+            return
+        raise AssertionError(sql)
+
+
+def _pass(db):
+    """One run over the whole scope, mirroring run()'s body."""
+    import asyncio
+
+    selected = db.select_buckets()
+    sob.assert_bucket_scope(selected)  # aborts the run, not a bucket
+    created = moved = 0
+    for bucket in selected:
+        out = asyncio.run(sob._split_one(db, bucket, live=True))
+        created += out["created"]
+        moved += out["moved"]
+    return {"selected": len(selected), "created": created, "moved": moved}
+
+
+def _demo_db():
+    bucket = {
+        "id": BUCKET_ID, "exam_id": "e1", "exam_phase_id": "p1", "exam_cycle_id": "c1",
+        "year": 2025, "paper_code": "UPSC-CSE-MAINS-OPT-2025",
+        "metadata": {"paper_kind": "optional", "paper_code": "UPSC-CSE-MAINS-OPT-2025"},
+    }
+    questions = [
+        {**_q("h1", "History", 1), "pyq_paper_id": BUCKET_ID},
+        {**_q("h2", "History", 2), "pyq_paper_id": BUCKET_ID},
+        {**_q("g1", "Geography", 1), "pyq_paper_id": BUCKET_ID},
+    ]
+    return FakeDb([bucket], questions)
+
+
+def test_second_run_over_run_one_state_selects_nothing_and_writes_nothing():
+    db = _demo_db()
+
+    first = _pass(db)
+    assert first == {"selected": 1, "created": 3, "moved": 3}
+
+    # Run 2 input IS run 1 output — the bucket plus the three papers it made.
+    assert len(db.papers) == 4
+    second = _pass(db)
+    assert second == {"selected": 0, "created": 0, "moved": 0}
+
+
+def test_run_two_rejects_the_split_papers_for_both_reasons():
+    """Shape and lineage. Either alone would have stopped the demo re-split;
+    the split rows carry both, so removing one guard still fails a test."""
+    db = _demo_db()
+    _pass(db)
+
+    splits = [p for p in db.papers if p["id"] != BUCKET_ID]
+    assert len(splits) == 3
+    for p in splits:
+        meta = sob.as_metadata(p["metadata"])
+        assert meta["split_from_bucket_id"] == str(BUCKET_ID)
+        assert not sob.is_bucket_code(meta["paper_code"])
+        assert not sob.is_in_scope(p)
+        # ...and it looks exactly like a bucket on every other axis, which is
+        # why the prefix match could not tell them apart.
+        assert meta["paper_kind"] == "optional"
+        assert meta.get("retired") is not True
+
+
+def test_the_bucket_itself_is_out_of_scope_after_run_one():
+    db = _demo_db()
+    _pass(db)
+    bucket = next(p for p in db.papers if p["id"] == BUCKET_ID)
+    meta = sob.as_metadata(bucket["metadata"])
+    assert meta["retired"] is True
+    assert sob.scope_violation(bucket) == "retired"
+    # Questions all left the bucket.
+    assert [q for q in db.questions if q["pyq_paper_id"] == BUCKET_ID] == []
+
+
+def test_a_prefix_match_would_have_re_split_everything():
+    """Pins the regression. Under the old LIKE-prefix rule, run 2 selects the
+    three papers run 1 created; under the anchored rule it selects none."""
+    db = _demo_db()
+    _pass(db)
+
+    def old_prefix_rule(p):
+        meta = sob.as_metadata(p["metadata"])
+        return (meta.get("paper_kind") == "optional"
+                and str(meta.get("paper_code") or p.get("paper_code") or "")
+                    .startswith(sob.BUCKET_CODE_PREFIX)
+                and meta.get("corpus_half") != "thematic"
+                and meta.get("retired") is not True)
+
+    assert len([p for p in db.papers if old_prefix_rule(p)]) == 3
+    assert len(db.select_buckets()) == 0

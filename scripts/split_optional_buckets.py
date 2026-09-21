@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Split UPSC CSE Mains optional PYQ "bucket" papers into one paper per
+r"""Split UPSC CSE Mains optional PYQ "bucket" papers into one paper per
 (subject, paper number).
 
 WHY
@@ -18,9 +18,16 @@ keeps the lineage (``metadata.split_into``).
 SCOPE
 -----
 ``pyq_papers`` where metadata.paper_kind = 'optional'
-               AND metadata.paper_code LIKE 'UPSC-CSE-MAINS-OPT-%'
+               AND coalesce(metadata.paper_code, paper_code)
+                     MATCHES '^UPSC-CSE-MAINS-OPT-\d{4}$'
+               AND metadata.split_from_bucket_id IS NULL
                AND metadata.corpus_half IS DISTINCT FROM 'thematic'
                AND metadata.retired IS NOT TRUE
+
+The code match is ANCHORED, not a LIKE prefix. A split paper this script writes
+is ``UPSC-CSE-MAINS-OPT-2025-HISTORY-P1``: same prefix, paper_kind='optional',
+retired unset. Under a prefix match the second ``--live`` selected every paper
+the first one created and split the splits.
 
 The thematic half is excluded by design: it has no paper structure at all and
 ``question_number`` is NULL on purpose, so there is nothing to split.
@@ -31,7 +38,13 @@ Dry-run by default; ``--live`` applies. One transaction per bucket, so a bucket
 that fails leaves nothing half-moved and the others still run. Idempotent: a
 split paper is matched by ``metadata.paper_code``, so a re-run is a no-op.
 
-A bucket is ABORTED (not partially applied) when:
+The WHOLE RUN aborts, before any write, if the scope query returns a row that
+is not a year-level bucket — a non-bucket code, or one carrying
+``metadata.split_from_bucket_id``. If the query and that check ever disagree,
+the selection is wrong, and splitting "the rest" on a wrong selection is what
+caused the re-split.
+
+A single bucket is ABORTED (not partially applied) when:
   * any of its questions lacks optional_subject or optional_paper_number; or
   * any of its questions is linked to a stimulus (see STIMULUS below).
 
@@ -76,7 +89,25 @@ import uuid
 from typing import Any, Iterable
 
 BUCKET_CODE_PREFIX = "UPSC-CSE-MAINS-OPT-"
-BUCKET_CODE_LIKE = f"{BUCKET_CODE_PREFIX}%"
+
+# A bucket is one YEAR: the prefix plus exactly four digits, nothing after.
+#
+# A LIKE prefix match is NOT enough. This script's own output carries the same
+# prefix — "UPSC-CSE-MAINS-OPT-2025-HISTORY-P1" — and split papers are written
+# with paper_kind='optional' and retired unset, so a prefix match re-selects
+# every paper the previous run created. A second --live then split the splits.
+# The pattern is anchored at both ends so only the year-level bucket matches,
+# and it is shared between the SQL scope and the Python preflight so the two
+# can never drift.
+BUCKET_CODE_PATTERN = BUCKET_CODE_PREFIX + r"\d{4}"
+_BUCKET_CODE_RE = re.compile(rf"\A{BUCKET_CODE_PATTERN}\Z")
+BUCKET_CODE_SQL_PATTERN = rf"^{BUCKET_CODE_PATTERN}$"
+
+
+def is_bucket_code(code: Any) -> bool:
+    """True only for a year-level bucket code, never for a split paper's."""
+    return bool(code) and _BUCKET_CODE_RE.match(str(code)) is not None
+
 
 # Bucket metadata keys copied onto every split paper. Provenance travels with
 # the questions; a split paper that loses its extraction lineage is unauditable.
@@ -89,6 +120,16 @@ _CARRIED_METADATA_KEYS = (
 
 class BucketAbort(Exception):
     """One bucket cannot be split. Raised before any write for that bucket."""
+
+
+class ScopeAbort(Exception):
+    """The selected rows are not all buckets. Aborts the WHOLE run, unwritten.
+
+    BucketAbort skips one bucket and lets the rest proceed. This does not: if
+    the scope query can return a split paper at all, the selection logic is
+    wrong, and splitting "the rest" on a wrong selection is how the demo
+    database ended up with 140 re-split papers.
+    """
 
 
 def uuid_str(value: Any) -> Any:
@@ -190,13 +231,86 @@ def plan_bucket(bucket: dict, questions: Iterable[dict]) -> list[dict]:
     return planned
 
 
+# ── scope ───────────────────────────────────────────────────────────────────
+
+def as_metadata(value: Any) -> dict:
+    """pyq_papers.metadata as a dict, whether asyncpg hands back jsonb or text."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+    return {}
+
+
+def row_paper_code(row: dict) -> Any:
+    """The metadata code, falling back to the column — same as the scope SQL."""
+    return as_metadata(row.get("metadata")).get("paper_code") or row.get("paper_code")
+
+
+def scope_violation(row: dict) -> str | None:
+    """Why this row is not a splittable bucket, or None if it is.
+
+    One predicate, mirroring ``_BUCKET_SQL``'s WHERE clause, so the run-time
+    guard and the tests cannot drift from each other. The two conditions that
+    caused the re-split are checked first and named explicitly.
+    """
+    meta = as_metadata(row.get("metadata"))
+    code = row_paper_code(row)
+    if meta.get("split_from_bucket_id") is not None:
+        return (f"carries metadata.split_from_bucket_id "
+                f"({meta['split_from_bucket_id']}) — it is already a split paper")
+    if not is_bucket_code(code):
+        return f"not a bucket code (expected {BUCKET_CODE_SQL_PATTERN})"
+    if meta.get("retired") is True:
+        return "retired"
+    if meta.get("corpus_half") == "thematic":
+        return "thematic half — no paper structure to split"
+    if meta.get("paper_kind") != "optional":
+        return "paper_kind is not 'optional'"
+    return None
+
+
+def is_in_scope(row: dict) -> bool:
+    return scope_violation(row) is None
+
+
+def assert_bucket_scope(rows: Iterable[dict]) -> None:
+    """Raise ``ScopeAbort`` unless every selected row is a year-level bucket.
+
+    ``_BUCKET_SQL`` should already guarantee this. That is the point: if a
+    split paper reaches here, the query and this check disagree, and the safe
+    reading is that the query is wrong. Runs before the first write, so a bad
+    selection costs nothing.
+    """
+    offenders = [
+        f"{row_paper_code(row) or row.get('id')}: {why}"
+        for row in rows
+        if (why := scope_violation(row)) is not None
+    ]
+    if offenders:
+        raise ScopeAbort(
+            f"{len(offenders)} selected row(s) are not buckets; nothing was written:\n    "
+            + "\n    ".join(offenders)
+        )
+
+
 # ── IO ──────────────────────────────────────────────────────────────────────
 
 _BUCKET_SQL = """
 select id, exam_id, exam_phase_id, exam_cycle_id, paper_code, year, metadata
   from public.pyq_papers
  where metadata->>'paper_kind' = 'optional'
-   and coalesce(metadata->>'paper_code', paper_code) like $1
+   -- Anchored, not LIKE: the prefix alone also matches this script's own
+   -- output. The metadata code wins, with the column as fallback, because a
+   -- bucket may carry either.
+   and coalesce(metadata->>'paper_code', paper_code) ~ $1
+   -- Belt and braces with the pattern above: a split paper records its origin,
+   -- so it is excluded by lineage as well as by shape.
+   and metadata->>'split_from_bucket_id' is null
    and metadata->>'corpus_half' is distinct from 'thematic'
    and coalesce((metadata->>'retired')::boolean, false) is not true
  order by coalesce(metadata->>'paper_code', paper_code)
@@ -364,13 +478,19 @@ async def run(*, live: bool, bucket_code: str | None) -> int:
     conn = await asyncpg.connect(dsn)
     total_moved = total_created = aborted = 0
     try:
-        buckets = [dict(r) for r in await conn.fetch(_BUCKET_SQL, BUCKET_CODE_LIKE)]
+        buckets = [dict(r) for r in await conn.fetch(_BUCKET_SQL, BUCKET_CODE_SQL_PATTERN)]
+
+        # Before anything else, and before any write in either mode: prove the
+        # selection is buckets only. A run that would split its own output is
+        # stopped whole, not per bucket.
+        try:
+            assert_bucket_scope(buckets)
+        except ScopeAbort as exc:
+            print(f"SCOPE ABORT — {exc}", file=sys.stderr)
+            return 2
+
         if bucket_code:
-            buckets = [
-                b for b in buckets
-                if ((b.get("metadata") or {}) if isinstance(b.get("metadata"), dict)
-                    else json.loads(b.get("metadata") or "{}")).get("paper_code") == bucket_code
-            ]
+            buckets = [b for b in buckets if row_paper_code(b) == bucket_code]
         if not buckets:
             print("No buckets in scope.")
             return 0
