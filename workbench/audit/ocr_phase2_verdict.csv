@@ -1,0 +1,1024 @@
+﻿file,year,paper,question_number,paper_local_number,global_number,en_len,verdict,best_score,ocr_derived
+UPSCCSEMains2013ALL.json,2013,GS1,1,1,1,208,exact,100.0,true
+UPSCCSEMains2013ALL.json,2013,GS1,2,2,2,85,orphan,83.3,true
+UPSCCSEMains2013ALL.json,2013,GS1,3,3,3,100,orphan,83.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,4,4,4,117,orphan,69.9,true
+UPSCCSEMains2013ALL.json,2013,GS1,5,5,5,96,orphan,49.5,true
+UPSCCSEMains2013ALL.json,2013,GS1,6,6,6,129,orphan,52.0,true
+UPSCCSEMains2013ALL.json,2013,GS1,7,7,7,117,orphan,53.9,true
+UPSCCSEMains2013ALL.json,2013,GS1,8,8,8,126,orphan,46.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,9,9,9,80,orphan,55.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,10,10,10,85,orphan,56.1,true
+UPSCCSEMains2013ALL.json,2013,GS1,11,11,11,106,orphan,52.9,true
+UPSCCSEMains2013ALL.json,2013,GS1,12,12,12,102,orphan,57.4,true
+UPSCCSEMains2013ALL.json,2013,GS1,13,13,13,94,orphan,68.5,true
+UPSCCSEMains2013ALL.json,2013,GS1,14,14,14,86,orphan,51.8,true
+UPSCCSEMains2013ALL.json,2013,GS1,15,15,15,63,orphan,53.2,true
+UPSCCSEMains2013ALL.json,2013,GS1,16,16,16,99,orphan,63.3,true
+UPSCCSEMains2013ALL.json,2013,GS1,17,17,17,75,orphan,70.4,true
+UPSCCSEMains2013ALL.json,2013,GS1,18,18,18,68,orphan,56.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,19,19,19,68,orphan,56.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,20,20,20,99,orphan,53.1,true
+UPSCCSEMains2013ALL.json,2013,GS1,21,21,21,91,orphan,50.0,true
+UPSCCSEMains2013ALL.json,2013,GS1,22,22,22,87,orphan,68.6,true
+UPSCCSEMains2013ALL.json,2013,GS1,23,23,23,88,orphan,47.7,true
+UPSCCSEMains2013ALL.json,2013,GS1,24,24,24,81,orphan,51.2,true
+UPSCCSEMains2013ALL.json,2013,GS1,25,25,25,100,orphan,49.5,true
+UPSCCSEMains2013ALL.json,2013,GS2,26,1,21,93,orphan,53.8,true
+UPSCCSEMains2013ALL.json,2013,GS2,27,2,22,62,orphan,57.4,true
+UPSCCSEMains2013ALL.json,2013,GS2,28,3,23,115,orphan,51.3,true
+UPSCCSEMains2013ALL.json,2013,GS2,29,4,24,103,orphan,51.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,30,5,25,87,orphan,60.5,true
+UPSCCSEMains2013ALL.json,2013,GS2,31,6,26,128,orphan,50.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,32,7,27,120,orphan,49.1,true
+UPSCCSEMains2013ALL.json,2013,GS2,33,8,28,95,orphan,51.1,true
+UPSCCSEMains2013ALL.json,2013,GS2,34,9,29,95,orphan,52.2,true
+UPSCCSEMains2013ALL.json,2013,GS2,35,10,30,121,orphan,51.7,true
+UPSCCSEMains2013ALL.json,2013,GS2,36,11,31,120,orphan,49.6,true
+UPSCCSEMains2013ALL.json,2013,GS2,37,12,32,102,orphan,53.5,true
+UPSCCSEMains2013ALL.json,2013,GS2,38,13,33,122,orphan,51.2,true
+UPSCCSEMains2013ALL.json,2013,GS2,39,14,34,104,orphan,50.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,40,15,35,134,orphan,48.9,true
+UPSCCSEMains2013ALL.json,2013,GS2,41,16,36,84,orphan,53.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,42,17,37,71,orphan,51.4,true
+UPSCCSEMains2013ALL.json,2013,GS2,43,18,38,95,orphan,51.1,true
+UPSCCSEMains2013ALL.json,2013,GS2,44,19,39,121,orphan,48.7,true
+UPSCCSEMains2013ALL.json,2013,GS2,45,20,40,117,orphan,50.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,46,21,41,102,orphan,54.5,true
+UPSCCSEMains2013ALL.json,2013,GS2,47,22,42,114,orphan,52.7,true
+UPSCCSEMains2013ALL.json,2013,GS2,48,23,43,109,orphan,50.9,true
+UPSCCSEMains2013ALL.json,2013,GS2,49,24,44,99,orphan,51.0,true
+UPSCCSEMains2013ALL.json,2013,GS2,50,25,45,95,orphan,52.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,51,1,41,130,orphan,52.8,true
+UPSCCSEMains2013ALL.json,2013,GS3,52,2,42,132,orphan,48.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,53,3,43,94,orphan,51.6,true
+UPSCCSEMains2013ALL.json,2013,GS3,54,4,44,96,orphan,52.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,55,5,45,103,orphan,52.9,true
+UPSCCSEMains2013ALL.json,2013,GS3,56,6,46,110,orphan,50.5,true
+UPSCCSEMains2013ALL.json,2013,GS3,57,7,47,108,orphan,49.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,58,8,48,136,orphan,48.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,59,9,49,88,orphan,51.7,true
+UPSCCSEMains2013ALL.json,2013,GS3,60,10,50,131,orphan,49.6,true
+UPSCCSEMains2013ALL.json,2013,GS3,61,11,51,111,orphan,49.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,62,12,52,110,orphan,51.4,true
+UPSCCSEMains2013ALL.json,2013,GS3,63,13,53,133,orphan,51.5,true
+UPSCCSEMains2013ALL.json,2013,GS3,64,14,54,121,orphan,52.1,true
+UPSCCSEMains2013ALL.json,2013,GS3,65,15,55,122,orphan,49.2,true
+UPSCCSEMains2013ALL.json,2013,GS3,66,16,56,129,orphan,54.7,true
+UPSCCSEMains2013ALL.json,2013,GS3,67,17,57,116,orphan,50.0,true
+UPSCCSEMains2013ALL.json,2013,GS3,68,18,58,124,orphan,49.6,true
+UPSCCSEMains2013ALL.json,2013,GS3,69,19,59,85,orphan,59.5,true
+UPSCCSEMains2013ALL.json,2013,GS3,70,20,60,116,orphan,48.2,true
+UPSCCSEMains2013ALL.json,2013,GS3,71,21,61,117,orphan,48.7,true
+UPSCCSEMains2013ALL.json,2013,GS3,72,22,62,106,orphan,49.5,true
+UPSCCSEMains2013ALL.json,2013,GS3,73,23,63,130,orphan,52.3,true
+UPSCCSEMains2013ALL.json,2013,GS3,74,24,64,124,orphan,50.4,true
+UPSCCSEMains2013ALL.json,2013,GS3,75,25,65,138,orphan,50.7,true
+UPSCCSEMains2013ALL.json,2013,GS4,76,1,61,110,orphan,54.7,true
+UPSCCSEMains2013ALL.json,2013,GS4,77,1,61,93,orphan,52.7,true
+UPSCCSEMains2013ALL.json,2013,GS4,78,2,62,91,orphan,63.3,true
+UPSCCSEMains2013ALL.json,2013,GS4,79,2,62,114,orphan,51.9,true
+UPSCCSEMains2013ALL.json,2013,GS4,80,3,63,110,orphan,50.5,true
+UPSCCSEMains2013ALL.json,2013,GS4,81,3,63,120,orphan,56.0,true
+UPSCCSEMains2013ALL.json,2013,GS4,82,4,64,133,orphan,51.5,true
+UPSCCSEMains2013ALL.json,2013,GS4,83,4,64,106,orphan,49.5,true
+UPSCCSEMains2013ALL.json,2013,GS4,84,5,65,118,orphan,47.4,true
+UPSCCSEMains2013ALL.json,2013,GS4,85,5,65,100,orphan,55.4,true
+UPSCCSEMains2013ALL.json,2013,GS4,86,6,66,112,orphan,51.4,true
+UPSCCSEMains2013ALL.json,2013,GS4,87,7,67,155,orphan,48.7,true
+UPSCCSEMains2013ALL.json,2013,GS4,88,8,68,1386,orphan,47.9,true
+UPSCCSEMains2013ALL.json,2013,GS4,89,9,69,1367,orphan,45.4,true
+UPSCCSEMains2013ALL.json,2013,GS4,90,10,70,1452,orphan,45.9,true
+UPSCCSEMains2013ALL.json,2013,GS4,91,11,71,1533,orphan,45.5,true
+UPSCCSEMains2013ALL.json,2013,GS4,92,12,72,1632,orphan,45.1,true
+UPSCCSEMains2013ALL.json,2013,GS4,93,13,73,1686,orphan,45.3,true
+UPSCCSEMains2013GS1.json,2013,GS1,1,1,1,208,exact,100.0,true
+UPSCCSEMains2013GS1.json,2013,GS1,2,2,2,85,orphan,83.3,true
+UPSCCSEMains2013GS1.json,2013,GS1,3,3,3,100,orphan,83.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,4,4,4,117,orphan,69.9,true
+UPSCCSEMains2013GS1.json,2013,GS1,5,5,5,96,orphan,49.5,true
+UPSCCSEMains2013GS1.json,2013,GS1,6,6,6,129,orphan,52.0,true
+UPSCCSEMains2013GS1.json,2013,GS1,7,7,7,117,orphan,53.9,true
+UPSCCSEMains2013GS1.json,2013,GS1,8,8,8,126,orphan,46.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,9,9,9,80,orphan,55.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,10,10,10,85,orphan,56.1,true
+UPSCCSEMains2013GS1.json,2013,GS1,11,11,11,106,orphan,52.9,true
+UPSCCSEMains2013GS1.json,2013,GS1,12,12,12,102,orphan,57.4,true
+UPSCCSEMains2013GS1.json,2013,GS1,13,13,13,94,orphan,68.5,true
+UPSCCSEMains2013GS1.json,2013,GS1,14,14,14,86,orphan,51.8,true
+UPSCCSEMains2013GS1.json,2013,GS1,15,15,15,63,orphan,53.2,true
+UPSCCSEMains2013GS1.json,2013,GS1,16,16,16,99,orphan,63.3,true
+UPSCCSEMains2013GS1.json,2013,GS1,17,17,17,75,orphan,70.4,true
+UPSCCSEMains2013GS1.json,2013,GS1,18,18,18,68,orphan,56.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,19,19,19,68,orphan,56.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,20,20,20,99,orphan,53.1,true
+UPSCCSEMains2013GS1.json,2013,GS1,21,21,21,91,orphan,50.0,true
+UPSCCSEMains2013GS1.json,2013,GS1,22,22,22,87,orphan,68.6,true
+UPSCCSEMains2013GS1.json,2013,GS1,23,23,23,88,orphan,47.7,true
+UPSCCSEMains2013GS1.json,2013,GS1,24,24,24,81,orphan,51.2,true
+UPSCCSEMains2013GS1.json,2013,GS1,25,25,25,100,orphan,49.5,true
+UPSCCSEMains2013GS2.json,2013,GS2,1,1,21,93,orphan,53.8,true
+UPSCCSEMains2013GS2.json,2013,GS2,2,2,22,62,orphan,57.4,true
+UPSCCSEMains2013GS2.json,2013,GS2,3,3,23,115,orphan,51.3,true
+UPSCCSEMains2013GS2.json,2013,GS2,4,4,24,103,orphan,51.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,5,5,25,87,orphan,60.5,true
+UPSCCSEMains2013GS2.json,2013,GS2,6,6,26,128,orphan,50.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,7,7,27,120,orphan,49.1,true
+UPSCCSEMains2013GS2.json,2013,GS2,8,8,28,95,orphan,51.1,true
+UPSCCSEMains2013GS2.json,2013,GS2,9,9,29,95,orphan,52.2,true
+UPSCCSEMains2013GS2.json,2013,GS2,10,10,30,121,orphan,51.7,true
+UPSCCSEMains2013GS2.json,2013,GS2,11,11,31,120,orphan,49.6,true
+UPSCCSEMains2013GS2.json,2013,GS2,12,12,32,102,orphan,53.5,true
+UPSCCSEMains2013GS2.json,2013,GS2,13,13,33,122,orphan,51.2,true
+UPSCCSEMains2013GS2.json,2013,GS2,14,14,34,104,orphan,50.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,15,15,35,134,orphan,48.9,true
+UPSCCSEMains2013GS2.json,2013,GS2,16,16,36,84,orphan,53.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,17,17,37,71,orphan,51.4,true
+UPSCCSEMains2013GS2.json,2013,GS2,18,18,38,95,orphan,51.1,true
+UPSCCSEMains2013GS2.json,2013,GS2,19,19,39,121,orphan,48.7,true
+UPSCCSEMains2013GS2.json,2013,GS2,20,20,40,117,orphan,50.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,21,1,21,102,orphan,54.5,true
+UPSCCSEMains2013GS2.json,2013,GS2,22,2,22,114,orphan,52.7,true
+UPSCCSEMains2013GS2.json,2013,GS2,23,3,23,109,orphan,50.9,true
+UPSCCSEMains2013GS2.json,2013,GS2,24,4,24,99,orphan,51.0,true
+UPSCCSEMains2013GS2.json,2013,GS2,25,5,25,95,orphan,52.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,1,1,41,130,orphan,52.8,true
+UPSCCSEMains2013GS3.json,2013,GS3,2,2,42,132,orphan,48.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,3,3,43,94,orphan,51.6,true
+UPSCCSEMains2013GS3.json,2013,GS3,4,4,44,96,orphan,52.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,5,5,45,103,orphan,52.9,true
+UPSCCSEMains2013GS3.json,2013,GS3,6,6,46,110,orphan,50.5,true
+UPSCCSEMains2013GS3.json,2013,GS3,7,7,47,108,orphan,49.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,8,8,48,136,orphan,48.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,9,9,49,88,orphan,51.7,true
+UPSCCSEMains2013GS3.json,2013,GS3,10,10,50,131,orphan,49.6,true
+UPSCCSEMains2013GS3.json,2013,GS3,11,11,51,111,orphan,49.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,12,12,52,110,orphan,51.4,true
+UPSCCSEMains2013GS3.json,2013,GS3,13,13,53,133,orphan,51.5,true
+UPSCCSEMains2013GS3.json,2013,GS3,14,14,54,121,orphan,52.1,true
+UPSCCSEMains2013GS3.json,2013,GS3,15,15,55,122,orphan,49.2,true
+UPSCCSEMains2013GS3.json,2013,GS3,16,16,56,129,orphan,54.7,true
+UPSCCSEMains2013GS3.json,2013,GS3,17,17,57,116,orphan,50.0,true
+UPSCCSEMains2013GS3.json,2013,GS3,18,18,58,124,orphan,49.6,true
+UPSCCSEMains2013GS3.json,2013,GS3,19,19,59,85,orphan,59.5,true
+UPSCCSEMains2013GS3.json,2013,GS3,20,20,60,116,orphan,48.2,true
+UPSCCSEMains2013GS3.json,2013,GS3,21,21,21,117,orphan,48.7,true
+UPSCCSEMains2013GS3.json,2013,GS3,22,22,22,106,orphan,49.5,true
+UPSCCSEMains2013GS3.json,2013,GS3,23,23,23,130,orphan,52.3,true
+UPSCCSEMains2013GS3.json,2013,GS3,24,24,24,124,orphan,50.4,true
+UPSCCSEMains2013GS3.json,2013,GS3,25,25,25,138,orphan,50.7,true
+UPSCCSEMains2013GS4.json,2013,GS4,1a,1a,,110,orphan,54.7,true
+UPSCCSEMains2013GS4.json,2013,GS4,1b,1b,,93,orphan,52.7,true
+UPSCCSEMains2013GS4.json,2013,GS4,2a,2a,,91,orphan,63.3,true
+UPSCCSEMains2013GS4.json,2013,GS4,2b,2b,,114,orphan,51.9,true
+UPSCCSEMains2013GS4.json,2013,GS4,3a,3a,,110,orphan,50.5,true
+UPSCCSEMains2013GS4.json,2013,GS4,3b,3b,,120,orphan,56.0,true
+UPSCCSEMains2013GS4.json,2013,GS4,4a,4a,,133,orphan,51.5,true
+UPSCCSEMains2013GS4.json,2013,GS4,4b,4b,,106,orphan,49.5,true
+UPSCCSEMains2013GS4.json,2013,GS4,5a,5a,,118,orphan,47.4,true
+UPSCCSEMains2013GS4.json,2013,GS4,5b,5b,,100,orphan,55.4,true
+UPSCCSEMains2013GS4.json,2013,GS4,6,6,66,112,orphan,51.4,true
+UPSCCSEMains2013GS4.json,2013,GS4,7,7,67,155,orphan,48.7,true
+UPSCCSEMains2013GS4.json,2013,GS4,8,8,68,1386,orphan,47.9,true
+UPSCCSEMains2013GS4.json,2013,GS4,9,9,69,1367,orphan,45.4,true
+UPSCCSEMains2013GS4.json,2013,GS4,10,10,70,1452,orphan,45.9,true
+UPSCCSEMains2013GS4.json,2013,GS4,11,11,71,1533,orphan,45.5,true
+UPSCCSEMains2013GS4.json,2013,GS4,12,12,72,1632,orphan,45.1,true
+UPSCCSEMains2013GS4.json,2013,GS4,13,13,73,1686,orphan,45.3,true
+UPSCCSEMains2014ALL.json,2014,GS1,1,1,1,140,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,2,2,2,72,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,3,3,3,210,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,4,4,4,106,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,5,5,5,172,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,6,6,6,142,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,7,7,7,116,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,8,8,8,101,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,9,9,9,101,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,10,10,10,90,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,11,11,11,92,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,12,12,12,110,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,13,13,13,83,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,14,14,14,117,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,15,15,15,125,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,16,16,16,130,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,17,17,17,119,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,18,18,18,135,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,19,19,19,115,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS1,20,20,20,119,unverifiable,,true
+UPSCCSEMains2014ALL.json,2014,GS2,21,1,21,174,orphan,82.8,true
+UPSCCSEMains2014ALL.json,2014,GS2,22,2,22,141,orphan,50.0,true
+UPSCCSEMains2014ALL.json,2014,GS2,23,3,23,140,orphan,47.1,true
+UPSCCSEMains2014ALL.json,2014,GS2,24,4,24,117,orphan,51.8,true
+UPSCCSEMains2014ALL.json,2014,GS2,25,5,25,134,orphan,54.1,true
+UPSCCSEMains2014ALL.json,2014,GS2,26,6,26,131,orphan,48.8,true
+UPSCCSEMains2014ALL.json,2014,GS2,27,7,27,108,orphan,51.4,true
+UPSCCSEMains2014ALL.json,2014,GS2,28,8,28,128,orphan,50.8,true
+UPSCCSEMains2014ALL.json,2014,GS2,29,9,29,120,orphan,53.0,true
+UPSCCSEMains2014ALL.json,2014,GS2,30,10,30,112,orphan,51.4,true
+UPSCCSEMains2014ALL.json,2014,GS2,31,11,31,126,orphan,50.8,true
+UPSCCSEMains2014ALL.json,2014,GS2,32,12,32,125,orphan,54.0,true
+UPSCCSEMains2014ALL.json,2014,GS2,33,13,33,139,orphan,50.4,true
+UPSCCSEMains2014ALL.json,2014,GS2,34,14,34,117,orphan,50.0,true
+UPSCCSEMains2014ALL.json,2014,GS2,35,15,35,138,orphan,50.7,true
+UPSCCSEMains2014ALL.json,2014,GS2,36,16,36,109,orphan,50.9,true
+UPSCCSEMains2014ALL.json,2014,GS2,37,17,37,136,orphan,51.9,true
+UPSCCSEMains2014ALL.json,2014,GS2,38,18,38,124,orphan,50.4,true
+UPSCCSEMains2014ALL.json,2014,GS2,39,19,39,122,orphan,47.1,true
+UPSCCSEMains2014ALL.json,2014,GS2,40,20,40,149,orphan,47.9,true
+UPSCCSEMains2014ALL.json,2014,GS3,41,1,41,111,orphan,50.0,true
+UPSCCSEMains2014ALL.json,2014,GS3,42,2,42,116,orphan,51.3,true
+UPSCCSEMains2014ALL.json,2014,GS3,43,3,43,120,orphan,57.6,true
+UPSCCSEMains2014ALL.json,2014,GS3,44,4,44,122,orphan,48.7,true
+UPSCCSEMains2014ALL.json,2014,GS3,45,5,45,144,orphan,54.9,true
+UPSCCSEMains2014ALL.json,2014,GS3,46,6,46,127,orphan,50.4,true
+UPSCCSEMains2014ALL.json,2014,GS3,47,7,47,134,orphan,55.4,true
+UPSCCSEMains2014ALL.json,2014,GS3,48,8,48,110,orphan,51.4,true
+UPSCCSEMains2014ALL.json,2014,GS3,49,9,49,111,orphan,50.9,true
+UPSCCSEMains2014ALL.json,2014,GS3,50,10,50,115,orphan,48.7,true
+UPSCCSEMains2014ALL.json,2014,GS3,51,11,51,154,orphan,55.3,true
+UPSCCSEMains2014ALL.json,2014,GS3,52,12,52,133,orphan,45.7,true
+UPSCCSEMains2014ALL.json,2014,GS3,53,13,53,135,orphan,51.9,true
+UPSCCSEMains2014ALL.json,2014,GS3,54,14,54,145,orphan,47.2,true
+UPSCCSEMains2014ALL.json,2014,GS3,55,15,55,139,orphan,47.4,true
+UPSCCSEMains2014ALL.json,2014,GS3,56,16,56,120,orphan,52.5,true
+UPSCCSEMains2014ALL.json,2014,GS3,57,17,57,133,orphan,51.1,true
+UPSCCSEMains2014ALL.json,2014,GS3,58,18,58,137,orphan,54.1,true
+UPSCCSEMains2014ALL.json,2014,GS3,59,19,59,133,orphan,45.4,true
+UPSCCSEMains2014ALL.json,2014,GS3,60,20,60,140,orphan,51.4,true
+UPSCCSEMains2014ALL.json,2014,GS4,61,1,61,112,orphan,79.8,true
+UPSCCSEMains2014ALL.json,2014,GS4,62,1,61,138,orphan,55.0,true
+UPSCCSEMains2014ALL.json,2014,GS4,63,2,62,110,orphan,51.9,true
+UPSCCSEMains2014ALL.json,2014,GS4,64,2,62,115,orphan,47.8,true
+UPSCCSEMains2014ALL.json,2014,GS4,65,3,63,199,orphan,47.4,true
+UPSCCSEMains2014ALL.json,2014,GS4,66,3,63,110,orphan,50.9,true
+UPSCCSEMains2014ALL.json,2014,GS4,67,4,64,103,orphan,48.5,true
+UPSCCSEMains2014ALL.json,2014,GS4,68,4,64,144,orphan,50.7,true
+UPSCCSEMains2014ALL.json,2014,GS4,69,5,65,157,orphan,48.0,true
+UPSCCSEMains2014ALL.json,2014,GS4,70,5,65,135,orphan,48.4,true
+UPSCCSEMains2014ALL.json,2014,GS4,71,6,66,111,orphan,51.4,true
+UPSCCSEMains2014ALL.json,2014,GS4,72,7,67,118,orphan,48.3,true
+UPSCCSEMains2014ALL.json,2014,GS4,73,8,68,1347,orphan,45.2,true
+UPSCCSEMains2014ALL.json,2014,GS4,74,9,69,1410,orphan,44.9,true
+UPSCCSEMains2014ALL.json,2014,GS4,75,10,70,1507,orphan,45.1,true
+UPSCCSEMains2014ALL.json,2014,GS4,76,11,71,1306,orphan,45.8,true
+UPSCCSEMains2014ALL.json,2014,GS4,77,12,72,1574,orphan,45.1,true
+UPSCCSEMains2014ALL.json,2014,GS4,78,13,73,1324,orphan,45.2,true
+UPSCCSEMains2014GS1.json,2014,GS1,1,1,1,140,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,2,2,2,72,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,3,3,3,210,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,4,4,4,106,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,5,5,5,172,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,6,6,6,142,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,7,7,7,116,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,8,8,8,101,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,9,9,9,101,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,10,10,10,90,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,11,11,11,92,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,12,12,12,110,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,13,13,13,83,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,14,14,14,117,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,15,15,15,125,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,16,16,16,130,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,17,17,17,119,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,18,18,18,135,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,19,19,19,115,unverifiable,,true
+UPSCCSEMains2014GS1.json,2014,GS1,20,20,20,119,unverifiable,,true
+UPSCCSEMains2014GS2.json,2014,GS2,1,1,21,174,orphan,82.8,true
+UPSCCSEMains2014GS2.json,2014,GS2,2,2,22,141,orphan,50.0,true
+UPSCCSEMains2014GS2.json,2014,GS2,3,3,23,140,orphan,47.1,true
+UPSCCSEMains2014GS2.json,2014,GS2,4,4,24,117,orphan,51.8,true
+UPSCCSEMains2014GS2.json,2014,GS2,5,5,25,134,orphan,54.1,true
+UPSCCSEMains2014GS2.json,2014,GS2,6,6,26,131,orphan,48.8,true
+UPSCCSEMains2014GS2.json,2014,GS2,7,7,27,108,orphan,51.4,true
+UPSCCSEMains2014GS2.json,2014,GS2,8,8,28,128,orphan,50.8,true
+UPSCCSEMains2014GS2.json,2014,GS2,9,9,29,120,orphan,53.0,true
+UPSCCSEMains2014GS2.json,2014,GS2,10,10,30,112,orphan,51.4,true
+UPSCCSEMains2014GS2.json,2014,GS2,11,11,31,126,orphan,50.8,true
+UPSCCSEMains2014GS2.json,2014,GS2,12,12,32,125,orphan,54.0,true
+UPSCCSEMains2014GS2.json,2014,GS2,13,13,33,139,orphan,50.4,true
+UPSCCSEMains2014GS2.json,2014,GS2,14,14,34,117,orphan,50.0,true
+UPSCCSEMains2014GS2.json,2014,GS2,15,15,35,138,orphan,50.7,true
+UPSCCSEMains2014GS2.json,2014,GS2,16,16,36,109,orphan,50.9,true
+UPSCCSEMains2014GS2.json,2014,GS2,17,17,37,136,orphan,51.9,true
+UPSCCSEMains2014GS2.json,2014,GS2,18,18,38,124,orphan,50.4,true
+UPSCCSEMains2014GS2.json,2014,GS2,19,19,39,122,orphan,47.1,true
+UPSCCSEMains2014GS2.json,2014,GS2,20,20,40,149,orphan,47.9,true
+UPSCCSEMains2014GS3.json,2014,GS3,1,1,41,111,orphan,50.0,true
+UPSCCSEMains2014GS3.json,2014,GS3,2,2,42,116,orphan,51.3,true
+UPSCCSEMains2014GS3.json,2014,GS3,3,3,43,120,orphan,57.6,true
+UPSCCSEMains2014GS3.json,2014,GS3,4,4,44,122,orphan,48.7,true
+UPSCCSEMains2014GS3.json,2014,GS3,5,5,45,144,orphan,54.9,true
+UPSCCSEMains2014GS3.json,2014,GS3,6,6,46,127,orphan,50.4,true
+UPSCCSEMains2014GS3.json,2014,GS3,7,7,47,134,orphan,55.4,true
+UPSCCSEMains2014GS3.json,2014,GS3,8,8,48,110,orphan,51.4,true
+UPSCCSEMains2014GS3.json,2014,GS3,9,9,49,111,orphan,50.9,true
+UPSCCSEMains2014GS3.json,2014,GS3,10,10,50,115,orphan,48.7,true
+UPSCCSEMains2014GS3.json,2014,GS3,11,11,51,154,orphan,55.3,true
+UPSCCSEMains2014GS3.json,2014,GS3,12,12,52,133,orphan,45.7,true
+UPSCCSEMains2014GS3.json,2014,GS3,13,13,53,135,orphan,51.9,true
+UPSCCSEMains2014GS3.json,2014,GS3,14,14,54,145,orphan,47.2,true
+UPSCCSEMains2014GS3.json,2014,GS3,15,15,55,139,orphan,47.4,true
+UPSCCSEMains2014GS3.json,2014,GS3,16,16,56,120,orphan,52.5,true
+UPSCCSEMains2014GS3.json,2014,GS3,17,17,57,133,orphan,51.1,true
+UPSCCSEMains2014GS3.json,2014,GS3,18,18,58,137,orphan,54.1,true
+UPSCCSEMains2014GS3.json,2014,GS3,19,19,59,133,orphan,45.4,true
+UPSCCSEMains2014GS3.json,2014,GS3,20,20,60,140,orphan,51.4,true
+UPSCCSEMains2014GS4.json,2014,GS4,1a,1a,,112,orphan,79.8,true
+UPSCCSEMains2014GS4.json,2014,GS4,1b,1b,,138,orphan,55.0,true
+UPSCCSEMains2014GS4.json,2014,GS4,2a,2a,,110,orphan,51.9,true
+UPSCCSEMains2014GS4.json,2014,GS4,2b,2b,,115,orphan,47.8,true
+UPSCCSEMains2014GS4.json,2014,GS4,3a,3a,,199,orphan,47.4,true
+UPSCCSEMains2014GS4.json,2014,GS4,3b,3b,,110,orphan,50.9,true
+UPSCCSEMains2014GS4.json,2014,GS4,4a,4a,,103,orphan,48.5,true
+UPSCCSEMains2014GS4.json,2014,GS4,4b,4b,,144,orphan,50.7,true
+UPSCCSEMains2014GS4.json,2014,GS4,5a,5a,,157,orphan,48.0,true
+UPSCCSEMains2014GS4.json,2014,GS4,5b,5b,,135,orphan,48.4,true
+UPSCCSEMains2014GS4.json,2014,GS4,6,6,66,111,orphan,51.4,true
+UPSCCSEMains2014GS4.json,2014,GS4,7,7,67,118,orphan,48.3,true
+UPSCCSEMains2014GS4.json,2014,GS4,8,8,68,1347,orphan,45.2,true
+UPSCCSEMains2014GS4.json,2014,GS4,9,9,69,1410,orphan,44.9,true
+UPSCCSEMains2014GS4.json,2014,GS4,10,10,70,1507,orphan,45.1,true
+UPSCCSEMains2014GS4.json,2014,GS4,11,11,71,1306,orphan,45.8,true
+UPSCCSEMains2014GS4.json,2014,GS4,12,12,72,1574,orphan,45.1,true
+UPSCCSEMains2014GS4.json,2014,GS4,13,13,73,1324,orphan,45.2,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,39,1,1,196,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,40,2,2,94,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,41,3,3,128,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,42,4,4,83,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,43,5,5,113,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,44,6,6,78,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,45,7,7,107,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,46,8,8,93,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,47,9,9,154,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,48,10,10,115,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,49,11,11,92,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,50,12,12,93,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,51,13,13,137,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,52,14,14,72,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,53,15,15,114,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,54,16,16,116,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,55,17,17,72,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,56,18,18,124,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,57,19,19,82,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,58,20,20,108,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,59,1,21,133,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,60,2,22,104,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,61,3,23,123,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,62,4,24,125,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,63,5,25,135,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,64,6,26,123,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,65,7,27,88,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,66,8,28,134,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,67,9,29,114,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,68,10,30,107,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,69,11,31,113,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,70,12,32,142,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,71,13,33,131,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,72,14,34,111,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,73,15,35,98,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,74,16,36,151,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,75,17,37,130,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,76,18,38,102,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,77,19,39,134,unverifiable,,true
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS2,78,20,40,131,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,1,1,1,196,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,2,2,2,94,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,3,3,3,128,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,4,4,4,83,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,5,5,5,113,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,6,6,6,78,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,7,7,7,107,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,8,8,8,93,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,9,9,9,154,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,10,10,10,115,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,11,11,11,92,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,12,12,12,93,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,13,13,13,137,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,14,14,14,72,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,15,15,15,114,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,16,16,16,116,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,17,17,17,72,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,18,18,18,124,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,19,19,19,82,unverifiable,,true
+UPSCCSEMains2016GS1.json,2016,GS1,20,20,20,108,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,1,1,21,133,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,2,2,22,104,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,3,3,23,123,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,4,4,24,125,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,5,5,25,135,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,6,6,26,123,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,7,7,27,88,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,8,8,28,134,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,9,9,29,114,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,10,10,30,107,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,11,11,31,113,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,12,12,32,142,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,13,13,33,131,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,14,14,34,111,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,15,15,35,98,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,16,16,36,151,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,17,17,37,130,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,18,18,38,102,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,19,19,39,134,unverifiable,,true
+UPSCCSEMains2016GS2.json,2016,GS2,20,20,40,131,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,40,1,1,125,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,41,2,2,91,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,42,3,3,150,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,43,4,4,76,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,44,5,5,91,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,45,6,6,102,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,46,7,7,154,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,47,8,8,46,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,48,9,9,140,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,49,10,10,136,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,50,11,11,176,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,51,12,12,103,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,52,13,13,138,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,53,14,14,85,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,54,15,15,160,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,55,16,16,124,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,56,17,17,88,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,57,18,18,117,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,58,19,19,156,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,59,20,20,149,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,60,1,21,182,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,61,2,22,130,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,62,3,23,202,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,63,4,24,151,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,64,5,25,109,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,65,6,26,259,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,66,7,27,140,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,67,8,28,152,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,68,9,29,205,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,69,10,30,144,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,70,11,31,232,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,71,12,32,118,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,72,13,33,218,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,73,14,34,211,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,74,15,35,171,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,75,16,36,187,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,76,17,37,215,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,77,18,38,140,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,78,19,39,188,unverifiable,,true
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS2,79,20,40,161,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,1,1,1,72,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,2,2,2,119,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,3,3,3,87,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,4,4,4,100,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,5,5,5,55,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,6,6,6,60,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,7,7,7,75,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,8,8,8,126,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,9,9,9,155,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,10,10,10,96,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,11,11,11,110,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,12,12,12,102,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,13,13,13,144,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,14,14,14,138,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,15,15,15,100,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,16,16,16,128,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,17,17,17,167,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,18,18,18,113,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,19,19,19,167,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS1,20,20,20,114,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,21,1,21,206,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,22,2,22,190,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,23,3,23,160,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,24,4,24,146,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,25,5,25,195,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,26,6,26,196,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,27,7,27,122,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,28,8,28,158,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,29,9,29,116,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,30,10,30,200,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,31,11,31,146,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,32,12,32,194,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,33,13,33,111,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,34,14,34,154,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,35,15,35,194,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,36,16,36,251,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,37,17,37,188,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,38,18,38,226,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,39,19,39,147,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS2,40,20,40,146,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,41,1,41,186,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,42,2,42,167,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,43,3,43,106,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,44,4,44,145,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,45,5,45,133,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,46,6,46,222,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,47,7,47,143,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,48,8,48,111,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,49,9,49,229,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,50,10,50,190,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,51,11,51,122,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,52,12,52,130,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,53,13,53,191,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,54,14,54,158,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,55,15,55,132,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,56,16,56,146,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,57,17,57,122,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,58,18,58,212,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,59,19,59,311,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS3,60,20,60,314,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,61,1,61,115,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,62,1,61,82,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,63,2,62,129,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,64,2,62,141,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,65,3,63,135,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,66,3,63,259,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,67,4,64,215,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,68,4,64,210,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,69,5,65,223,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,70,5,65,75,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,71,6,66,464,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,72,6,66,82,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,73,6,66,93,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,74,7,67,1388,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,75,8,68,1674,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,76,9,69,1003,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,77,10,70,1191,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,78,11,71,1414,unverifiable,,true
+UPSCCSEMains2018ALL.json,2018,GS4,79,12,72,1115,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,1,1,1,129,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,2,2,2,89,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,3,3,3,96,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,4,4,4,63,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,5,5,5,87,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,6,6,6,102,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,7,7,7,119,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,8,8,8,122,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,9,9,9,79,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,10,10,10,107,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,11,11,11,130,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,12,12,12,82,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,13,13,13,136,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,14,14,14,171,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,15,15,15,141,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,16,16,16,112,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,17,17,17,91,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,18,18,18,91,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,19,19,19,77,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS1,20,20,20,131,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS2,21,1,21,164,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,22,2,22,149,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,23,3,23,160,exact,98.1,true
+UPSCCSEMains2020ALL.json,2020,GS2,24,4,24,217,exact,97.2,true
+UPSCCSEMains2020ALL.json,2020,GS2,25,5,25,238,exact,99.1,true
+UPSCCSEMains2020ALL.json,2020,GS2,26,6,26,182,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,27,7,27,146,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,28,8,28,139,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,29,9,29,100,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,30,10,30,131,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,31,11,31,229,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,32,12,32,254,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,33,13,33,294,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,34,14,34,209,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,35,15,35,221,exact,99.1,true
+UPSCCSEMains2020ALL.json,2020,GS2,36,16,36,194,exact,98.9,true
+UPSCCSEMains2020ALL.json,2020,GS2,37,17,37,233,exact,98.2,true
+UPSCCSEMains2020ALL.json,2020,GS2,38,18,38,195,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS2,39,19,39,135,variant,89.8,true
+UPSCCSEMains2020ALL.json,2020,GS2,40,20,40,146,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS3,41,1,41,136,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,42,2,42,137,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,43,3,43,90,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,44,4,44,172,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,45,5,45,80,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,46,6,46,142,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,47,7,47,122,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,48,8,48,134,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,49,9,49,93,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,50,10,50,179,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,51,11,51,200,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,52,12,52,179,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,53,13,53,145,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,54,14,54,115,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,55,15,55,231,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,56,16,56,183,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,57,17,57,106,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,58,18,58,133,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,59,19,59,208,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS3,60,20,60,208,unverifiable,,true
+UPSCCSEMains2020ALL.json,2020,GS4,61,1,61,199,orphan,69.8,true
+UPSCCSEMains2020ALL.json,2020,GS4,62,1,61,225,orphan,75.9,true
+UPSCCSEMains2020ALL.json,2020,GS4,63,2,62,144,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS4,64,2,62,90,variant,88.2,true
+UPSCCSEMains2020ALL.json,2020,GS4,65,3,63,66,variant,85.9,true
+UPSCCSEMains2020ALL.json,2020,GS4,66,3,63,172,orphan,49.7,true
+UPSCCSEMains2020ALL.json,2020,GS4,67,4,64,82,orphan,75.3,true
+UPSCCSEMains2020ALL.json,2020,GS4,68,4,64,195,orphan,62.2,true
+UPSCCSEMains2020ALL.json,2020,GS4,69,5,65,130,orphan,83.6,true
+UPSCCSEMains2020ALL.json,2020,GS4,70,5,65,143,exact,100.0,true
+UPSCCSEMains2020ALL.json,2020,GS4,71,6,66,212,orphan,65.5,true
+UPSCCSEMains2020ALL.json,2020,GS4,72,6,66,94,orphan,65.2,true
+UPSCCSEMains2020ALL.json,2020,GS4,73,6,66,176,orphan,62.9,true
+UPSCCSEMains2020ALL.json,2020,GS4,74,7,67,2550,orphan,78.1,true
+UPSCCSEMains2020ALL.json,2020,GS4,75,8,68,1642,variant,85.5,true
+UPSCCSEMains2020ALL.json,2020,GS4,76,9,69,1256,variant,85.2,true
+UPSCCSEMains2020ALL.json,2020,GS4,77,10,70,1954,variant,90.6,true
+UPSCCSEMains2020ALL.json,2020,GS4,78,11,71,2582,variant,85.8,true
+UPSCCSEMains2020ALL.json,2020,GS4,79,12,72,1364,orphan,66.2,true
+UPSCCSEMains2021ALL.json,2021,GS1,1,1,1,84,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,2,2,2,118,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,3,3,3,119,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,4,4,4,81,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,5,5,5,163,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,6,6,6,122,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,7,7,7,101,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,8,8,8,66,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,9,9,9,111,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,10,10,10,82,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,11,11,11,100,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,12,12,12,120,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,13,13,13,116,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,14,14,14,136,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,15,15,15,150,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,16,16,16,94,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,17,17,17,119,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,18,18,18,114,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,19,19,19,101,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS1,20,20,20,115,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,21,1,21,198,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,22,2,22,130,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,23,3,23,121,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,24,4,24,104,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,25,5,25,150,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,26,6,26,144,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,27,7,27,125,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,28,8,28,139,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,29,9,29,184,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,30,10,30,137,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,31,11,31,315,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,32,12,32,262,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,33,13,33,104,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,34,14,34,178,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,35,15,35,204,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,36,16,36,199,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,37,17,37,257,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,38,18,38,189,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,39,19,39,90,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS2,40,20,40,239,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,41,1,41,138,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,42,2,42,100,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,43,3,43,126,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,44,4,44,83,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,45,5,45,106,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,46,6,46,229,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,47,7,47,289,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,48,8,48,216,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,49,9,49,187,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,50,10,50,161,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,51,11,51,120,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,52,12,52,133,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,53,13,53,157,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,54,14,54,138,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,55,15,55,157,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,56,16,56,193,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,57,17,57,216,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,58,18,58,143,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,59,19,59,188,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS3,60,20,60,173,unverifiable,,true
+UPSCCSEMains2021ALL.json,2021,GS4,61,1,61,125,exact,100.0,true
+UPSCCSEMains2021ALL.json,2021,GS4,62,1,61,165,exact,100.0,true
+UPSCCSEMains2021ALL.json,2021,GS4,63,2,62,150,exact,100.0,true
+UPSCCSEMains2021ALL.json,2021,GS4,64,2,62,169,exact,100.0,true
+UPSCCSEMains2021ALL.json,2021,GS4,65,3,63,214,orphan,82.5,true
+UPSCCSEMains2021ALL.json,2021,GS4,66,3,63,110,exact,97.1,true
+UPSCCSEMains2021ALL.json,2021,GS4,67,3,63,144,orphan,75.7,true
+UPSCCSEMains2021ALL.json,2021,GS4,68,4,64,153,orphan,68.2,true
+UPSCCSEMains2021ALL.json,2021,GS4,69,4,64,184,exact,98.9,true
+UPSCCSEMains2021ALL.json,2021,GS4,70,5,65,243,exact,95.0,true
+UPSCCSEMains2021ALL.json,2021,GS4,71,5,65,147,exact,97.9,true
+UPSCCSEMains2021ALL.json,2021,GS4,72,6,66,197,variant,90.6,true
+UPSCCSEMains2021ALL.json,2021,GS4,73,6,66,89,orphan,69.4,true
+UPSCCSEMains2021ALL.json,2021,GS4,74,7,67,2183,variant,87.2,true
+UPSCCSEMains2021ALL.json,2021,GS4,75,8,68,1676,variant,91.9,true
+UPSCCSEMains2021ALL.json,2021,GS4,76,9,69,2144,variant,85.2,true
+UPSCCSEMains2021ALL.json,2021,GS4,77,10,70,1740,orphan,63.3,true
+UPSCCSEMains2021ALL.json,2021,GS4,78,11,71,1458,variant,94.2,true
+UPSCCSEMains2021ALL.json,2021,GS4,79,12,72,2456,orphan,82.8,true
+UPSCCSEMains2023ALL.json,2023,GS1,1,1,1,82,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,2,2,2,123,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,3,3,3,105,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,4,4,4,86,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,5,5,5,102,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,6,6,6,94,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,7,7,7,168,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,8,8,8,74,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,9,9,9,70,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,10,10,10,107,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,11,11,11,131,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,12,12,12,147,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,13,13,13,114,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,14,14,14,137,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,15,15,15,171,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,16,16,16,79,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,17,17,17,110,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,18,18,18,101,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,19,19,19,53,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS1,20,20,20,78,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,21,1,21,92,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,22,2,22,146,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,23,3,23,117,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,24,4,24,84,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,25,5,25,176,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,26,6,26,169,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,27,7,27,176,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,28,8,28,185,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,29,9,29,148,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,30,10,30,107,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,31,11,31,246,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,32,12,32,124,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,33,13,33,144,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,34,14,34,150,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,35,15,35,138,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,36,16,36,155,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,37,17,37,144,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,38,18,38,190,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,39,19,39,202,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS2,40,20,40,218,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,41,1,41,172,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,42,2,42,127,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,43,3,43,99,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,44,4,44,172,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,45,5,45,183,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,46,6,46,91,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,47,7,47,208,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,48,8,48,144,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,49,9,49,240,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,50,10,50,225,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,51,11,51,155,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,52,12,52,141,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,53,13,53,123,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,54,14,54,179,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,55,15,55,221,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,56,16,56,361,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,57,17,57,181,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,58,18,58,207,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,59,19,59,164,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS3,60,20,60,251,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,61,1,61,396,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,62,2,62,340,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,63,3,63,681,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,64,4,64,417,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,65,5,65,292,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,66,6,66,223,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,67,1,61,1202,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,68,2,62,1549,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,69,3,63,1622,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,70,4,64,1796,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,71,5,65,1993,unverifiable,,true
+UPSCCSEMains2023ALL.json,2023,GS4,72,6,66,2368,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,1,1,1,76,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,2,2,2,162,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,3,3,3,114,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,4,4,4,75,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,5,5,5,105,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,6,6,6,96,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,7,7,7,98,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,8,8,8,72,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,9,9,9,68,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,10,10,10,76,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,11,11,11,104,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,12,12,12,108,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,13,13,13,97,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,14,14,14,69,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,15,15,15,107,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,16,16,16,100,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,17,17,17,126,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,18,18,18,88,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,19,19,19,76,unverifiable,,true
+UPSCCSEMainsGS1 2019.json,2019,GS1,20,20,20,66,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,1,1,1,125,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,2,2,2,91,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,3,3,3,150,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,4,4,4,76,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,5,5,5,91,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,6,6,6,102,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,7,7,7,154,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,8,8,8,46,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,9,9,9,140,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,10,10,10,136,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,11,11,11,176,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,12,12,12,103,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,13,13,13,138,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,14,14,14,85,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,15,15,15,160,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,16,16,16,124,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,17,17,17,88,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,18,18,18,117,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,19,19,19,156,unverifiable,,true
+UPSCCSEMainsGS1-2017.json,2017,GS1,20,20,20,149,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,21,1,21,166,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,22,2,22,227,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,23,3,23,132,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,24,4,24,187,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,25,5,25,76,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,26,6,26,184,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,27,7,27,244,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,28,8,28,222,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,29,9,29,211,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,30,10,30,192,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,31,11,31,189,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,32,12,32,293,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,33,13,33,177,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,34,14,34,97,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,35,15,35,165,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,36,16,36,185,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,37,17,37,299,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,38,18,38,196,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,39,19,39,179,unverifiable,,true
+UPSCCSEMainsGS2 2019.json,2019,GS2,40,20,40,260,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,1,1,21,182,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,2,2,22,130,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,3,3,23,202,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,4,4,24,151,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,5,5,25,109,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,6,6,26,259,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,7,7,27,140,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,8,8,28,152,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,9,9,29,205,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,10,10,30,144,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,11,11,31,232,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,12,12,32,118,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,13,13,33,218,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,14,14,34,211,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,15,15,35,171,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,16,16,36,187,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,17,17,37,215,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,18,18,38,140,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,19,19,39,188,unverifiable,,true
+UPSCCSEMainsGS2-2017.json,2017,GS2,20,20,40,161,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,1,1,41,176,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,2,2,42,130,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,3,3,43,240,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,4,4,44,199,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,5,5,45,193,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,6,6,46,171,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,7,7,47,107,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,8,8,48,89,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,9,9,49,146,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,10,10,50,188,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,11,11,51,210,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,12,12,52,165,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,13,13,53,237,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,14,14,54,253,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,15,15,55,212,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,16,16,56,203,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,17,17,57,166,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,18,18,58,105,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,19,19,59,176,unverifiable,,true
+UPSCCSEMainsGS3 2016.json,2016,GS3,20,20,60,210,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,1,1,41,164,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,2,2,42,180,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,3,3,43,178,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,4,4,44,177,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,5,5,45,179,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,6,6,46,254,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,7,7,47,296,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,8,8,48,176,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,9,9,49,87,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,10,10,50,165,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,11,11,51,181,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,12,12,52,239,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,13,13,53,154,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,14,14,54,172,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,15,15,55,202,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,16,16,56,155,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,17,17,57,161,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,18,18,58,295,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,19,19,59,152,unverifiable,,true
+UPSCCSEMainsGS3 2017.json,2017,GS3,20,20,60,175,unverifiable,,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,41,1,41,189,orphan,63.6,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,42,2,42,154,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,43,3,43,89,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,44,4,44,115,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,45,5,45,170,exact,99.4,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,46,6,46,95,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,47,7,47,184,exact,98.9,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,48,8,48,233,orphan,83.9,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,49,9,49,298,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,50,10,50,96,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,51,11,51,158,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,52,12,52,158,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,53,13,53,109,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,54,14,54,107,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,55,15,55,119,exact,96.6,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,56,16,56,70,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,57,17,57,190,exact,97.3,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,58,18,58,168,exact,98.2,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,59,19,59,312,exact,100.0,true
+UPSCCSEMainsGS3 2019.json,2019,GS3,60,20,60,272,exact,100.0,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,1,1,41,164,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,2,2,42,179,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,3,3,43,99,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,4,4,44,187,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,5,5,45,179,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,6,6,46,255,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,7,7,47,226,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,8,8,48,196,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,9,9,49,161,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,10,10,50,189,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,11,11,51,177,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,12,12,52,237,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,13,13,53,172,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,14,14,54,188,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,15,15,55,155,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,16,16,56,159,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,17,17,57,266,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,18,18,58,216,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,19,19,59,165,unverifiable,,true
+UPSCCSEMainsGS3-2017.json,2017,GS3,20,20,60,211,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,21,1,61,62,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,22,1,61,194,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,23,2,62,93,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,24,2,62,47,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,25,3,63,69,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,26,3,63,93,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,27,4,64,157,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,28,4,64,93,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,29,5,65,248,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,30,6,66,548,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,31,7,67,205,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,32,8,68,296,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,33,9,69,1210,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,34,10,70,950,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,35,11,71,738,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,36,12,72,1533,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,37,13,73,1465,unverifiable,,true
+UPSCCSEMainsGS4 2016.json,2016,GS4,38,14,74,978,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,21,1,61,241,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,22,2,62,180,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,23,3,63,138,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,24,4,64,115,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,25,4,64,89,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,26,5,65,323,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,27,5,65,239,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,28,6,66,70,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,29,6,66,100,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,30,7,67,104,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,31,7,67,206,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,32,8,68,136,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,33,8,68,266,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,34,9,69,700,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,35,10,70,381,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,36,11,71,572,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,37,12,72,939,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,38,13,73,452,unverifiable,,true
+UPSCCSEMainsGS4 2017 (1).json,2017,GS4,39,14,74,960,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,21,1,61,241,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,22,2,62,180,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,23,3,63,138,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,24,4,64,115,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,25,4,64,89,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,26,5,65,323,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,27,5,65,239,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,28,6,66,70,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,29,6,66,100,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,30,7,67,104,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,31,7,67,206,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,32,8,68,136,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,33,8,68,266,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,34,9,69,700,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,35,10,70,381,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,36,11,71,572,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,37,12,72,939,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,38,13,73,452,unverifiable,,true
+UPSCCSEMainsGS4 2017.json,2017,GS4,39,14,74,960,unverifiable,,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,61,1,61,99,exact,100.0,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,62,1,61,100,exact,96.9,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,63,2,62,188,exact,97.3,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,64,2,62,120,exact,98.3,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,65,3,63,97,exact,97.8,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,66,3,63,90,variant,94.2,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,67,4,64,87,orphan,84.9,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,68,4,64,148,exact,98.6,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,69,5,65,142,exact,99.3,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,70,5,65,136,exact,100.0,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,71,6,66,108,orphan,69.0,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,72,6,66,139,orphan,73.4,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,73,6,66,355,orphan,75.1,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,74,7,67,780,exact,100.0,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,75,8,68,922,exact,100.0,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,76,9,69,961,exact,95.2,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,77,10,70,1222,exact,99.5,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,78,11,71,743,exact,99.9,true
+UPSCCSEMainsGS4 2019.json,2019,GS4,79,12,72,744,variant,87.1,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,1a,1a,,228,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,1b,1b,,159,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,2a,2a,,138,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,2b,2b,,115,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,3a,3a,,89,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,3b,3b,,288,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,4a,4a,,239,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,4b,4b,,190,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,5a,5a,,127,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,5b,5b,,571,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,6,6,66,225,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,7,7,67,420,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,8,8,68,207,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,9,9,69,303,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,10,10,70,347,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,11,11,71,351,unverifiable,,true
+UPSCCSEMainsGS4-2017.json,2017,GS4,12,12,72,267,unverifiable,,true
