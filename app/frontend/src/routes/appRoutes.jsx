@@ -25,6 +25,7 @@ const CalculationGymShell = lazy(() => import("../pages/study/CalculationGymShel
 const ImprovementLab = lazy(() => import("../pages/study/ImprovementLab"));
 const Subjects = lazy(() => import("../pages/study/Subjects"));
 const EssayIdeaCanvas = lazy(() => import("../pages/study/EssayIdeaCanvas"));
+const AnswerWriting = lazy(() => import("../pages/study/AnswerWriting"));
 const WeeklyReview = lazy(() => import("../pages/study/WeeklyReview"));
 const StudyCompare = lazy(() => import("../pages/study/Compare"));
 const Notes = lazy(() => import("../pages/Notes"));
@@ -126,6 +127,11 @@ export const appRouteElements = (
             same pattern as Improvement Lab / Calculation Gym. Spine is the
             deliberate next task this unblocks. */}
         <Route path="essay" element={<EssayIdeaCanvas />} />
+        {/* Answer writing (descriptive PYQ practice): mounted UNDER StudyShell
+            and inside RouteErrorBoundary, ABSENT from the sidebar — the
+            no-new-surface rule. Entered from the Learning hub, beside Mocks,
+            the same pattern as Improvement Lab / Essay canvas. */}
+        <Route path="answer-writing" element={<AnswerWriting />} />
         {/* Backward-compatible alias: the former Error Lab route redirects to
             the canonical Improvement Lab route so existing links keep working. */}
         <Route path="error-lab" element={<Navigate to="/app/study/improvement-lab" replace />} />

@@ -68,6 +68,7 @@ from app.api.notes import router as notes_router
 from app.api.reports import router as reports_router
 from app.api.revision import router as revision_router
 from app.api.exam_intelligence import router as exam_intelligence_router
+from app.api.descriptive_practice import router as descriptive_practice_router
 from app.api.essay_builder import router as essay_blocks_router
 from app.api.essay_builder import pyq_tags_router as essay_pyq_tags_router
 from app.api.essay_builder import themes_router as essay_themes_router
@@ -356,6 +357,7 @@ api.include_router(admin_eligibility_router)  # recompute queue, publish impact,
 api.include_router(admin_persona_router)  # PR4 admin persona controls
 api.include_router(admin_exam_intel_router)  # PR5 admin exam intelligence review
 api.include_router(exam_intelligence_router)  # PR5 verified-only exam intelligence reads
+api.include_router(descriptive_practice_router)  # Descriptive answer-writing practice (question-level)
 api.include_router(essay_blocks_router)  # Essay Builder: aspirant-owned Idea Canvas / Spine blocks
 api.include_router(essay_pyq_tags_router)  # Essay Builder: verified-only essay-theme PYQ tags (read-only)
 api.include_router(essay_themes_router)  # Essay Builder: aspirant-facing essay-theme catalogue (read-only)

@@ -56,6 +56,15 @@ const LIVE_CARDS = [
     icon: Trophy,
   },
   {
+    // Beside Mocks on purpose: the mock engine is MCQ-only, so a Mains
+    // aspirant looking for practice lands on it and finds nothing they sit.
+    key: "answer-writing",
+    title: "Answer writing",
+    description: "Write past Mains questions and review your own answer.",
+    to: "/app/study/answer-writing",
+    icon: PenLine,
+  },
+  {
     key: "mistakes",
     title: "Mistakes",
     description: "Patterns the engine has spotted from mock reviews.",
