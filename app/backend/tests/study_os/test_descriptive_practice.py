@@ -287,7 +287,14 @@ def test_catalog_excludes_retired_buckets_and_thematic_from_papers():
 
 def test_thematic_questions_appear_under_themes_grouped_by_verified_primary_tag():
     out = d.get_catalog(_sb(), EXAM)
-    by_theme = {t["theme"]: t["question_count"] for t in out["themes"]}
+    # Themes are nested paper → section → theme; these fixtures carry no
+    # syllabus metadata, so every theme lands in the explicit "Other" group.
+    by_theme = {
+        t["theme"]: t["question_count"]
+        for paper in out["themes"]
+        for section in paper["sections"]
+        for t in section["themes"]
+    }
 
     assert by_theme.get("Sovereignty") == 1
     # A secondary tag and an unverified primary tag are both non-themes, so this

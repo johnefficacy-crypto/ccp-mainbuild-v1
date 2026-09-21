@@ -168,6 +168,16 @@ def _ids(out):
     return [p["id"] for p in out["papers"]]
 
 
+def _theme_names(out):
+    """Every theme in the nested paper → section → theme tree."""
+    return {
+        t["theme"]
+        for paper in out["themes"]
+        for section in paper["sections"]
+        for t in section["themes"]
+    }
+
+
 # ── BUG 1: pending split papers are the papers ───────────────────────────
 
 
@@ -205,7 +215,7 @@ def test_thematic_rows_are_never_papers():
 def test_a_thematic_row_flagged_only_on_its_questions_is_still_thematic():
     out = d.get_catalog(_sb(), EXAM, subject=PSIR)
     assert "thematic-2018" not in _ids(out)
-    assert {t["theme"] for t in out["themes"]} == {"The State", "Legitimacy"}
+    assert _theme_names(out) == {"The State", "Legitimacy"}
 
 
 def test_retired_bucket_is_never_a_paper():
@@ -235,13 +245,13 @@ def test_themes_are_filtered_by_subject():
     psir = d.get_catalog(_sb(), EXAM, subject=PSIR)
     anthro = d.get_catalog(_sb(), EXAM, subject=ANTHRO)
 
-    assert {t["theme"] for t in psir["themes"]} == {"The State", "Legitimacy"}
-    assert {t["theme"] for t in anthro["themes"]} == {"Totemism"}
+    assert _theme_names(psir) == {"The State", "Legitimacy"}
+    assert _theme_names(anthro) == {"Totemism"}
 
 
 def test_unfiltered_catalog_still_shows_every_theme():
     out = d.get_catalog(_sb(), EXAM)
-    assert {t["theme"] for t in out["themes"]} == {"The State", "Totemism", "Legitimacy"}
+    assert _theme_names(out) == {"The State", "Totemism", "Legitimacy"}
 
 
 def test_theme_questions_are_filtered_by_subject_too():
