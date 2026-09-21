@@ -34,6 +34,9 @@ export default function AnswerWriting() {
     () => ({
       subject: params.get("subject"),
       paper_id: params.get("paper_id"),
+      // Which paper WITHIN the subject — Paper I, or GS3. Distinct from
+      // paper_id, which is one sitting.
+      paper_number: params.get("paper_number"),
       theme: params.get("theme"),
       year: params.get("year"),
     }),
@@ -67,12 +70,14 @@ export default function AnswerWriting() {
   // was not a display bug — the catalogue was genuinely returning every theme
   // in the corpus and the picker was faithfully rendering them.
   const subjectFilter = selection.subject || "";
+  const paperNumberFilter = selection.paper_number || "";
 
   useEffect(() => {
     if (!examId) return;
     setCatalogState("loading");
     const query = new URLSearchParams({ exam_id: examId });
     if (subjectFilter) query.set("subject", subjectFilter);
+    if (paperNumberFilter) query.set("paper_number", paperNumberFilter);
     api
       .get(`/api/study/descriptive/catalog?${query.toString()}`)
       .then((d) => {
@@ -84,7 +89,7 @@ export default function AnswerWriting() {
         setCatalogError("The question catalogue is unavailable right now. Reload the page.");
         setCatalogState("error");
       });
-  }, [examId, subjectFilter]);
+  }, [examId, subjectFilter, paperNumberFilter]);
 
   const hasFilter = Boolean(selection.paper_id || selection.theme || selection.subject);
 
@@ -95,7 +100,7 @@ export default function AnswerWriting() {
       return;
     }
     const query = new URLSearchParams({ exam_id: examId, limit: "100" });
-    ["subject", "paper_id", "theme", "year"].forEach((k) => {
+    ["subject", "paper_id", "paper_number", "theme", "year"].forEach((k) => {
       if (selection[k]) query.set(k, selection[k]);
     });
     setListState("loading");

@@ -29,6 +29,7 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
   const subjects = catalog?.subjects || [];
   const papers = catalog?.papers || [];
   const themes = catalog?.themes || [];
+  const themePapers = catalog?.theme_papers || [];
   const subjectChosen = Boolean(selection.subject);
 
   if (subjects.length === 0) {
@@ -132,9 +133,50 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
       <section>
         <h3 className="font-heading text-sm font-semibold">Themes</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Topic-wise compilations. No paper order, no year.
+          Topic-wise compilations, arranged as the syllabus is arranged. No
+          paper order, no year.
         </p>
-        <div className="mt-2 flex flex-wrap gap-2">
+
+        {/* Paper tabs. Derived from the themes actually present, so a subject
+            with one paper's worth gets one tab. Selecting one narrows the
+            sittings above as well — a Paper I tab that left Paper II sittings
+            on screen would be a filter that only half applies. */}
+        {themePapers.length > 1 && (
+          <div className="mt-2 flex flex-wrap gap-2" role="tablist" aria-label="Paper">
+            {themePapers.map((t) => {
+              const active = selection.paper_number === String(t.paper_number ?? "");
+              return (
+                <button
+                  key={t.paper_label}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={chip(active)}
+                  disabled={t.paper_number == null}
+                  title={`${t.question_count} ${
+                    t.question_count === 1 ? "question" : "questions"
+                  }`}
+                  onClick={() =>
+                    onSelect({
+                      ...selection,
+                      paper_number: active ? null : String(t.paper_number),
+                      theme: null,
+                      paper_id: null,
+                    })
+                  }
+                  data-testid="descriptive-theme-paper-tab"
+                >
+                  {t.paper_label}
+                  <span className="num-mono ml-2 text-xs text-muted-foreground">
+                    {t.question_count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-2 flex flex-col gap-3">
           {themes.length === 0 && (
             <span className="text-sm text-muted-foreground">
               {subjectChosen
@@ -142,30 +184,65 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
                 : "Pick a subject to see its themes."}
             </span>
           )}
-          {themes.map((t) => (
-            <button
-              key={t.theme}
-              type="button"
-              className={chip(selection.theme === t.theme)}
-              aria-pressed={selection.theme === t.theme}
-              onClick={() =>
-                onSelect({
-                  ...selection,
-                  theme: selection.theme === t.theme ? null : t.theme,
-                  paper_id: null,
-                  year: null,
-                })
-              }
-              title={`${t.question_count} ${
-                t.question_count === 1 ? "question" : "questions"
-              }`}
-              data-testid="descriptive-theme"
-            >
-              {t.theme}
-              <span className="num-mono ml-2 text-xs text-muted-foreground">
-                {t.question_count}
-              </span>
-            </button>
+          {themes.map((paper) => (
+            <div key={paper.paper_label} data-testid="descriptive-theme-paper">
+              {themes.length > 1 && (
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {paper.paper_label}
+                </h4>
+              )}
+              <div className="mt-1 flex flex-col gap-1">
+                {paper.sections.map((section) => (
+                  <details
+                    key={`${paper.paper_label}-${section.section}`}
+                    className="rounded-xl border border-clay-200 px-3 py-2"
+                    data-testid="descriptive-theme-section"
+                  >
+                    <summary className="cursor-pointer text-sm">
+                      {section.section}
+                      {section.part && (
+                        // M10-rev3: a syllabus's named parts are metadata, not
+                        // a level of their own. Shown beside the unit, never
+                        // as a grouping that eight of the twelve papers lack.
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {section.part}
+                        </span>
+                      )}
+                      <span className="num-mono ml-2 text-xs text-muted-foreground">
+                        {section.question_count}
+                      </span>
+                    </summary>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {section.themes.map((t) => (
+                        <button
+                          key={t.theme}
+                          type="button"
+                          className={chip(selection.theme === t.theme)}
+                          aria-pressed={selection.theme === t.theme}
+                          onClick={() =>
+                            onSelect({
+                              ...selection,
+                              theme: selection.theme === t.theme ? null : t.theme,
+                              paper_id: null,
+                              year: null,
+                            })
+                          }
+                          title={`${t.question_count} ${
+                            t.question_count === 1 ? "question" : "questions"
+                          }`}
+                          data-testid="descriptive-theme"
+                        >
+                          {t.theme}
+                          <span className="num-mono ml-2 text-xs text-muted-foreground">
+                            {t.question_count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>

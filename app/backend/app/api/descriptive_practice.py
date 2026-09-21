@@ -56,16 +56,21 @@ class AttemptSubmit(BaseModel):
 def get_catalog(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
+    paper_number: int | None = Query(default=None, ge=1, le=10),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Subjects, papers, themes and years for one exam, with counts.
 
     ``subject`` scopes papers, themes and years. The subject list itself is
-    never scoped — it is how the aspirant changes their mind.
+    never scoped — it is how the aspirant changes their mind. ``paper_number``
+    scopes to one paper within the subject, and scopes the sittings and the
+    syllabus themes alike.
     """
     del user
     try:
-        return service.get_catalog(get_supabase_admin(), exam_id, subject=subject)
+        return service.get_catalog(
+            get_supabase_admin(), exam_id, subject=subject, paper_number=paper_number
+        )
     except service.DescriptiveError as exc:
         raise _fail(exc) from None
     except Exception:  # noqa: BLE001
@@ -78,6 +83,7 @@ def get_questions(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
     paper_id: str | None = Query(default=None),
+    paper_number: int | None = Query(default=None, ge=1, le=10),
     theme: str | None = Query(default=None),
     year: int | None = Query(default=None),
     exclude_attempted: bool = Query(default=False),
@@ -92,6 +98,7 @@ def get_questions(
             exam_id=exam_id,
             subject=subject,
             paper_id=paper_id,
+            paper_number=paper_number,
             theme=theme,
             year=year,
             exclude_attempted=exclude_attempted,

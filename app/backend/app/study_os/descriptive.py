@@ -29,6 +29,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from app.study_os import syllabus
+
 logger = logging.getLogger("career_copilot.study_os.descriptive")
 
 #: `pyq_questions.question_type` value this surface serves.
@@ -389,17 +391,20 @@ def _verified_questions_for_papers(
     return out
 
 
-def _primary_topic_names(
+def _primary_topics(
     supabase: Any, question_ids: list[str]
-) -> dict[str, str]:
-    """question_id → its verified PRIMARY topic name.
+) -> dict[str, dict[str, Any]]:
+    """question_id → its verified PRIMARY topic ROW (id, name, metadata).
 
-    THE THEME FIELD. There is no dedicated theme column on a thematic paper —
-    see the module docstring and the PR body. `essay_pyq_tags.theme_id` exists
-    but is the Essay-paper taxonomy (quote_abstract / issue_concrete), wrong for
-    Mains optionals. The general, already-governed grouping is
-    `pyq_question_topic_tags`, verified + primary only, exactly as
-    `verified_pyq_topic_counts` reads it.
+    THE THEME FIELD. There is no dedicated theme column on a thematic paper.
+    `essay_pyq_tags.theme_id` exists but is the Essay-paper taxonomy
+    (quote_abstract / issue_concrete), wrong for Mains optionals. The general,
+    already-governed grouping is `pyq_question_topic_tags`, verified + primary
+    only, exactly as `verified_pyq_topic_counts` reads it.
+
+    `metadata` comes back with the row because it is what places the theme in
+    the syllabus: `scripts/ingest_upsc_gs_syllabus.py` stamps `paper_id` and
+    `macro_topic` on every microtopic it writes. See `study_os/syllabus.py`.
 
     A question with no verified primary tag is simply absent here; the caller
     groups it under an explicit "Untagged" bucket rather than dropping it.
@@ -425,12 +430,12 @@ def _primary_topic_names(
         return {}
 
     topic_ids = sorted({str(t["topic_id"]) for t in tags if t.get("topic_id")})
-    names: dict[str, str] = {}
+    topics: dict[str, dict[str, Any]] = {}
     for chunk in _chunks(topic_ids):
         rows = _safe(
             lambda ids=chunk: (
                 supabase.table("topics")
-                .select("id, name")
+                .select("id, name, level, parent_topic_id, subject_id, metadata")
                 .in_("id", ids)
                 .execute()
                 .data
@@ -439,25 +444,142 @@ def _primary_topic_names(
         ) or []
         for r in rows:
             if r.get("id"):
-                names[str(r["id"])] = r.get("name") or str(r["id"])
+                topics[str(r["id"])] = r
 
-    out: dict[str, str] = {}
+    out: dict[str, dict[str, Any]] = {}
     for t in tags:
         qid = str(t.get("question_id") or "")
         tid = str(t.get("topic_id") or "")
-        if qid and tid and tid in names:
+        if qid and tid and tid in topics:
             # First verified primary tag wins; a question with two is an
             # ambiguity the tagging lifecycle owns, not this surface.
-            out.setdefault(qid, names[tid])
+            out.setdefault(qid, topics[tid])
     return out
+
+
+def _primary_topic_names(
+    supabase: Any, question_ids: list[str]
+) -> dict[str, str]:
+    """question_id → its verified primary topic NAME. The filtering view."""
+    return {
+        qid: (row.get("name") or str(row.get("id")))
+        for qid, row in _primary_topics(supabase, question_ids).items()
+    }
 
 
 #: Bucket label for a thematic question carrying no verified primary tag.
 UNTAGGED_THEME = "Untagged"
 
 
+def _syllabus_themes(
+    thematic: list[dict[str, Any]],
+    topics_by_question: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Themes nested paper → section → theme, in syllabus order.
+
+    Returns the nested papers and a flat tab list. Counts are question counts
+    at every level, so a section's number is the sum of its themes and a
+    paper's is the sum of its sections.
+
+    Two explicit buckets, both visible:
+
+    * a theme the syllabus index cannot place goes under "Other" WITHIN its
+      paper when the paper is known, or under a trailing "Other" paper when it
+      is not — never hidden, never guessed into a section;
+    * a question with no verified primary tag stays "Untagged", as before.
+
+    Both sort last. An aspirant who cannot find a theme should be able to see
+    that it exists and where it is not, rather than conclude the corpus is
+    missing it.
+    """
+    counts: dict[tuple[str, str, str], int] = {}
+    placements: dict[str, dict[str, Any]] = {}
+
+    for q in thematic:
+        topic = topics_by_question.get(str(q.get("id")))
+        if topic is None:
+            name = UNTAGGED_THEME
+            spot = {
+                "paper_id": None,
+                "paper_label": syllabus.UNPLACED_PAPER_LABEL,
+                "paper_sort": 10**6,
+                "paper_number": None,
+                "section": syllabus.UNPLACED_SECTION,
+                "section_part": None,
+                "section_sort": 10**6,
+                "theme_sort": 10**6,
+                "placed": False,
+            }
+        else:
+            name = str(topic.get("name") or "").strip() or UNTAGGED_THEME
+            spot = syllabus.place(topic)
+        placements.setdefault(name, spot)
+        spot = placements[name]
+        key = (spot["paper_id"] or syllabus.UNPLACED_PAPER, spot["section"], name)
+        counts[key] = counts.get(key, 0) + 1
+
+    papers: dict[str, dict[str, Any]] = {}
+    for (paper_key, section, name), count in counts.items():
+        spot = placements[name]
+        paper = papers.setdefault(
+            paper_key,
+            {
+                "paper_id": spot["paper_id"],
+                "paper_label": spot["paper_label"],
+                "paper_number": spot["paper_number"],
+                "question_count": 0,
+                "_sort": spot["paper_sort"],
+                "_sections": {},
+            },
+        )
+        paper["question_count"] += count
+        sec = paper["_sections"].setdefault(
+            section,
+            {
+                "section": section,
+                "part": spot["section_part"],
+                "question_count": 0,
+                "_sort": spot["section_sort"],
+                "themes": [],
+            },
+        )
+        sec["question_count"] += count
+        sec["themes"].append(
+            {"theme": name, "question_count": count, "_sort": spot["theme_sort"]}
+        )
+
+    out: list[dict[str, Any]] = []
+    for paper in sorted(papers.values(), key=lambda p: (p["_sort"], p["paper_label"])):
+        sections = []
+        for sec in sorted(paper["_sections"].values(), key=lambda s: (s["_sort"], s["section"])):
+            sec["themes"].sort(key=lambda t: (t["_sort"], t["theme"]))
+            for theme in sec["themes"]:
+                theme.pop("_sort", None)
+            sec.pop("_sort", None)
+            sections.append(sec)
+        paper.pop("_sort", None)
+        paper.pop("_sections", None)
+        paper["sections"] = sections
+        out.append(paper)
+
+    tabs = [
+        {
+            "paper_id": p["paper_id"],
+            "paper_label": p["paper_label"],
+            "paper_number": p["paper_number"],
+            "question_count": p["question_count"],
+        }
+        for p in out
+    ]
+    return out, tabs
+
+
 def get_catalog(
-    supabase: Any, exam_id: str, *, subject: str | None = None
+    supabase: Any,
+    exam_id: str,
+    *,
+    subject: str | None = None,
+    paper_number: Any = None,
 ) -> dict[str, Any]:
     """Subjects, papers, themes and years, each with a question count.
 
@@ -468,6 +590,11 @@ def get_catalog(
     ``subject`` narrows papers, themes and years to one subject. It does not
     narrow ``subjects`` itself, which always lists every subject with a count,
     because that list is how the aspirant changes their mind.
+
+    ``paper_number`` narrows to one paper within the subject — Paper I, or GS3 —
+    and narrows BOTH halves: the themes of that paper's syllabus AND the
+    sittings of that paper. A Paper I tab that left Paper II sittings on screen
+    would be a filter that only half applies.
 
     Map questions are excluded from every count here, the same way
     ``list_questions`` excludes them from the list: a count that includes
@@ -515,10 +642,28 @@ def get_catalog(
     real_half = [q for q in scoped if not question_is_thematic(q, paper_of(q))]
     thematic_half = [q for q in scoped if question_is_thematic(q, paper_of(q))]
 
+    wanted_paper = _as_int(paper_number)
+    if wanted_paper is not None:
+        # A sitting's number comes off the paper row (`optional_paper_number`
+        # for a split optional, `gs_paper` for GS) — the same integer the
+        # syllabus index gives a theme's paper.
+        real_half = [
+            q for q in real_half if paper_slot(paper_of(q))[0] == wanted_paper
+        ]
+
     paper_counts: dict[str, int] = {}
     for q in real_half:
         pid = str(q.get("pyq_paper_id") or "")
-        if pid:
+        # A PAPER IS ONLY EVER LISTED UNDER A SUBJECT ITS QUESTIONS CLAIM.
+        #
+        # An unsplit GS bucket (paper_code NULL, paper_kind NULL, not thematic)
+        # carries questions with no `optional_subject` and sits on no GS paper
+        # kind, so `subject_of` returns None for every one of them. With a
+        # subject selected the scope already excluded it; with NO subject
+        # selected it used to be counted anyway, and 80 GS questions surfaced
+        # as a 2023 paper under an optional subject. An unplaceable question
+        # cannot name the paper it belongs to, so it names none.
+        if pid and subject_of(q, paper_of(q)):
             paper_counts[pid] = paper_counts.get(pid, 0) + 1
 
     paper_items = []
@@ -545,22 +690,19 @@ def get_catalog(
     for item in paper_items:
         item.pop("_slot_key", None)
 
-    theme_names = _primary_topic_names(
+    topics_by_question = _primary_topics(
         supabase, [str(q["id"]) for q in thematic_half if q.get("id")]
     )
-    theme_counts: dict[str, int] = {}
-    for q in thematic_half:
-        label = theme_names.get(str(q.get("id")), UNTAGGED_THEME)
-        theme_counts[label] = theme_counts.get(label, 0) + 1
-    theme_items = [
-        {"theme": name, "question_count": count}
-        for name, count in sorted(
-            theme_counts.items(), key=lambda kv: (-kv[1], kv[0])
-        )
-    ]
+    theme_items, theme_papers = _syllabus_themes(thematic_half, topics_by_question)
+    if wanted_paper is not None:
+        # The tabs keep every paper — they are how the aspirant switches — but
+        # the tree shows only the selected one.
+        theme_items = [p for p in theme_items if p["paper_number"] == wanted_paper]
 
     year_counts: dict[int, int] = {}
     for q in real_half:
+        if not subject_of(q, paper_of(q)):
+            continue
         y = _as_int(paper_of(q).get("year"))
         if y:
             year_counts[y] = year_counts.get(y, 0) + 1
@@ -568,12 +710,17 @@ def get_catalog(
     return {
         "exam_id": exam_id,
         "subject": wanted,
+        "paper_number": wanted_paper,
         "subjects": [
             {"subject": name, "question_count": count}
             for name, count in sorted(subjects.items(), key=lambda kv: (-kv[1], kv[0]))
         ],
         "papers": paper_items,
         "themes": theme_items,
+        # The Paper I / Paper II (or GS1..GS4) tabs. Derived from the themes
+        # actually present, not from a fixed list, so a subject with only one
+        # paper's worth of thematic questions gets one tab.
+        "theme_papers": theme_papers,
         "years": [
             {"year": y, "question_count": c}
             for y, c in sorted(year_counts.items(), reverse=True)
@@ -586,9 +733,11 @@ def _empty_catalog(exam_id: str, subject: str | None = None) -> dict[str, Any]:
     return {
         "exam_id": exam_id,
         "subject": (str(subject).strip() if subject else None) or None,
+        "paper_number": None,
         "subjects": [],
         "papers": [],
         "themes": [],
+        "theme_papers": [],
         "years": [],
         "total_questions": 0,
     }
@@ -616,6 +765,7 @@ def list_questions(
     exam_id: str,
     subject: str | None = None,
     paper_id: str | None = None,
+    paper_number: Any = None,
     theme: str | None = None,
     year: Any = None,
     exclude_attempted: bool = False,
@@ -672,6 +822,12 @@ def list_questions(
         # "General Studies" select nothing.
         wanted_subject = str(subject).strip()
         questions = [q for q in questions if subject_of(q, paper_of(q)) == wanted_subject]
+
+    wanted_paper = _as_int(paper_number)
+    if wanted_paper is not None and not theme:
+        # Only the sittings half has a paper number; a theme filter has already
+        # picked its paper through the theme itself.
+        questions = [q for q in questions if paper_slot(paper_of(q))[0] == wanted_paper]
     wanted_year = _as_int(year)
     if wanted_year is not None:
         questions = [
