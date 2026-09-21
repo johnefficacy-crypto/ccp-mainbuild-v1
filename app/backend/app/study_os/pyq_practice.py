@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import uuid as _uuid
+from typing import Any
 from datetime import datetime, timedelta, timezone
 
 from app.study_os.generated_mock_attempt import _load_questions
@@ -733,3 +734,115 @@ def start_pyq_practice(
         "source": source,
         "exam_id": resolved_exam_id,
     }
+
+
+# ── Paper-practice eligibility + empty-pool diagnosis (PRACTICE-PAPER-01) ────
+#
+# UPSC CSE Mains optional papers are entirely question_type='descriptive'. The
+# mock engine is MCQ-only, so descriptive questions are never projected into
+# pyq_mock_question_projections and `start_pyq_practice` correctly finds nothing.
+# The 409 is right; a generic 409 after the learner has already picked a paper is
+# not. These helpers let the picker hide what cannot launch, and let the launcher
+# say WHY when something slips through.
+
+# pyq_papers.metadata shapes that are never paper-practiceable, whatever their
+# projection state.
+#   thematic: the topic-wise half of the optional corpus. question_number is NULL
+#             by design and there is no paper structure to practise.
+#   retired:  superseded rows (e.g. a bucket that has been split). Kept for
+#             lineage, never offered.
+PAPER_PRACTICE_EXCLUDED_CODES = ("thematic_not_paper", "retired_paper")
+
+
+def paper_practice_exclusion(paper_metadata: Any) -> str | None:
+    """Return a stable code when a paper is structurally ineligible, else None.
+
+    Structural means "not a practiceable paper at all", independent of how many
+    projected questions it happens to have. Checked before any projection read so
+    a thematic collection is never counted, listed or launched.
+    """
+    meta = paper_metadata if isinstance(paper_metadata, dict) else {}
+    if meta.get("corpus_half") == "thematic":
+        return "thematic_not_paper"
+    if meta.get("retired") is True:
+        return "retired_paper"
+    return None
+
+
+def is_paper_practiceable(paper_metadata: Any) -> bool:
+    """True when the paper is not structurally excluded. Projection readiness is
+    a separate question, answered by ``practice_ready_counts_by_paper``."""
+    return paper_practice_exclusion(paper_metadata) is None
+
+
+# Diagnosis codes returned alongside the 409 detail.
+EMPTY_POOL_DEFAULT_CODE = "no_projected_questions"
+EMPTY_POOL_DEFAULT_DETAIL = (
+    "No verified, projected PYQ questions match this practice selection."
+)
+_EMPTY_POOL_DETAIL = {
+    "thematic_not_paper": (
+        "This is a topic-wise collection, not a paper. "
+        "Paper practice isn't available."
+    ),
+    "descriptive_paper": (
+        "Descriptive paper — answer-writing practice not available yet."
+    ),
+    "retired_paper": (
+        "This paper has been superseded and is no longer offered for practice."
+    ),
+}
+
+
+def diagnose_empty_pool(sb, *, mode: str, target_id: str) -> tuple[str, str]:
+    """Explain an empty practice pool as ``(code, detail)``.
+
+    Only paper mode can be diagnosed structurally — section and topic targets are
+    not papers, so they fall through to the generic answer. Every read here is
+    best-effort: a probe failure must not turn a clean 409 into a 500, so any
+    exception degrades to the generic code.
+    """
+    if mode != "paper" or not target_id:
+        return EMPTY_POOL_DEFAULT_CODE, EMPTY_POOL_DEFAULT_DETAIL
+    try:
+        res = (
+            sb.table("pyq_papers")
+            .select("id,metadata")
+            .eq("id", target_id)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+    except Exception:  # noqa: BLE001 — a diagnosis probe must never escalate
+        logger.warning("diagnose_empty_pool: paper read failed", exc_info=True)
+        return EMPTY_POOL_DEFAULT_CODE, EMPTY_POOL_DEFAULT_DETAIL
+    if not rows:
+        return EMPTY_POOL_DEFAULT_CODE, EMPTY_POOL_DEFAULT_DETAIL
+
+    structural = paper_practice_exclusion(rows[0].get("metadata"))
+    if structural:
+        return structural, _EMPTY_POOL_DETAIL[structural]
+
+    # Not structurally excluded: is every VERIFIED question on it descriptive?
+    # Only verified questions matter — the launcher would never select the rest,
+    # so a pending MCQ does not make this a mixed paper from the learner's side.
+    try:
+        res = (
+            sb.table("pyq_questions")
+            .select("question_type")
+            .eq("pyq_paper_id", target_id)
+            .eq("reviewer_status", "verified")
+            .limit(_PAGE)
+            .execute()
+        )
+        qrows = getattr(res, "data", None) or []
+    except Exception:  # noqa: BLE001
+        logger.warning("diagnose_empty_pool: question read failed", exc_info=True)
+        return EMPTY_POOL_DEFAULT_CODE, EMPTY_POOL_DEFAULT_DETAIL
+
+    types = {(r.get("question_type") or "").strip().lower() for r in qrows if isinstance(r, dict)}
+    types.discard("")
+    if types and types == {"descriptive"}:
+        return "descriptive_paper", _EMPTY_POOL_DETAIL["descriptive_paper"]
+
+    return EMPTY_POOL_DEFAULT_CODE, EMPTY_POOL_DEFAULT_DETAIL

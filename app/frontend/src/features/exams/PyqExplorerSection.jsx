@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { api } from "../../lib/api";
+import { api, getApiErrorMessage } from "../../lib/api";
 import useApiAction from "../../lib/hooks/useApiAction";
 import { setAttemptReturnContext } from "../../pages/study/mocks/attemptReturnContext";
 import PyqSummaryCharts from "./PyqSummaryCharts";
@@ -285,14 +285,22 @@ export default function PyqExplorerSection({ examSlug, examName }) {
               ...(examId ? { exam_id: examId } : {}),
             });
           } catch (e) {
-            if (e?.status === 409) return { emptyPool: true };
+            // 409 = no pool for this selection, with zero writes. The backend
+            // now says WHY in {detail, code}; surface its text rather than the
+            // old one-size-fits-all sentence, which told a learner who picked a
+            // descriptive optional paper to wait for verification that will
+            // never make it practiceable.
+            if (e?.status === 409) {
+              return { emptyPool: true, emptyPoolMessage: getApiErrorMessage(e) };
+            }
             throw e;
           }
         },
         onSuccess: (out) => {
           if (out?.emptyPool) {
             setPracticeError(
-              "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
+              out.emptyPoolMessage ||
+                "This paper isn't available for practice yet — its questions need to be verified and projected to the mock bank first."
             );
             return;
           }

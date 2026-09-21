@@ -18,7 +18,10 @@ from pydantic import BaseModel, Field
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.lookup import filter_exams_by_query, list_active_exams
-from app.study_os.pyq_practice import practice_ready_counts_by_paper
+from app.study_os.pyq_practice import (
+    is_paper_practiceable,
+    practice_ready_counts_by_paper,
+)
 from app.exam_intelligence.option_insights import option_insights
 from app.exam_intelligence.reachability import (
     BANDS as REACHABILITY_BANDS,
@@ -669,6 +672,13 @@ def get_exam_pyq_summary(
                 .data
             )
         )
+        # Structurally non-paper rows are dropped before anything else reads
+        # them (PRACTICE-PAPER-01). The thematic half of the optional corpus has
+        # no paper structure at all and retired rows are superseded lineage; both
+        # would otherwise be counted, charted and offered for paper practice.
+        # Shared with the launcher via pyq_practice.paper_practice_exclusion so
+        # the picker and the 409 can never disagree about what a paper is.
+        papers = [p for p in papers if is_paper_practiceable(p.get("metadata"))]
         paper_ids = [p["id"] for p in papers if p.get("id")]
         if not paper_ids:
             return {**empty, "exam_id": exam_id}
@@ -864,7 +874,14 @@ def get_exam_pyq_summary(
                     "set_label": _pyq_paper_set_label(meta),
                 }
             )
-        papers_out.sort(key=lambda r: (-(r["year"] or 0), r.get("phase_slug") or ""))
+        # `papers[]` drives the paper-practice picker (PyqPaperPracticeCards) and
+        # nothing else, so it carries only what can actually launch. A card that
+        # cannot start is worse than no card: the learner picks it and gets a 409.
+        # The summary's own totals stay over the full verified paper set, with the
+        # practiceable count reported separately rather than silently substituted.
+        practiceable_out = [r for r in papers_out if r["practice_enabled"]]
+        practiceable_out.sort(key=lambda r: (-(r["year"] or 0), r.get("phase_slug") or ""))
+        papers_out = practiceable_out
 
         return {
             "exam_id": exam_id,
@@ -873,6 +890,7 @@ def get_exam_pyq_summary(
                 "papers": len(papers),
                 "questions": len(questions),
                 "projected_practice_ready": int(sum(ready_by_paper.values())),
+                "practiceable_papers": len(papers_out),
             },
             "by_year": by_year,
             "by_phase": by_phase,

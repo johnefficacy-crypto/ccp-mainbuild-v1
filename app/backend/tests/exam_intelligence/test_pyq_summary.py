@@ -100,12 +100,33 @@ def _summary(sb: SBStub) -> dict:
     return r.json()
 
 
+def _all_papers_practiceable(seed: dict) -> dict:
+    """Make every seeded bank row actively projected.
+
+    `papers[]` now lists only launchable papers (PRACTICE-PAPER-01), so a test
+    about CARD IDENTITY must state that both its papers are practiceable —
+    otherwise it silently depends on the picker filter and fails for a reason
+    that has nothing to do with what it is testing.
+    """
+    seed["pyq_mock_question_projections"] = [
+        {"mock_question_id": b["id"], "sync_status": "active"}
+        for b in seed["mock_question_bank"]
+    ]
+    return seed
+
+
 def test_pyq_summary_verified_only():
     body = _summary(SBStub(_seed()))
     # p3 (pending paper) and q4 (pending question) / q5 (on pending paper) excluded.
     assert body["totals"]["papers"] == 2
     assert body["totals"]["questions"] == 3
-    assert {p["paper_id"] for p in body["papers"]} == {"p1", "p2"}
+    # `papers[]` is the practice picker's list, so it carries only what can
+    # launch (PRACTICE-PAPER-01). p2 has no active projection, so it is counted
+    # in totals but not offered as a card. Before this change it appeared as a
+    # permanently disabled card, which for a descriptive optional paper meant a
+    # card that could never become enabled.
+    assert {p["paper_id"] for p in body["papers"]} == {"p1"}
+    assert body["totals"]["practiceable_papers"] == 1
 
 
 def test_pyq_summary_counts_by_year_phase_subject_difficulty():
@@ -132,8 +153,9 @@ def test_pyq_summary_paper_practice_ready_count_uses_active_projection():
     assert papers["p1"]["practice_ready_count"] == 2
     assert papers["p1"]["practice_enabled"] is True
     # p2: b3 projection inactive → 0 ready, disabled (even though q3 is verified).
-    assert papers["p2"]["practice_ready_count"] == 0
-    assert papers["p2"]["practice_enabled"] is False
+    # p2's active projection points at a question that is not practice-ready, so
+    # it never reaches the picker at all.
+    assert "p2" not in papers
     assert body["totals"]["projected_practice_ready"] == 2
 
 
@@ -154,7 +176,13 @@ def test_practice_ready_ignores_active_projection_on_unverified_paper():
     body = _summary(SBStub(seed))
     # Still only p1's two ready rows — p3 is not a verified paper.
     assert body["totals"]["projected_practice_ready"] == 2
-    assert {p["paper_id"] for p in body["papers"]} == {"p1", "p2"}
+    # `papers[]` is the practice picker's list, so it carries only what can
+    # launch (PRACTICE-PAPER-01). p2 has no active projection, so it is counted
+    # in totals but not offered as a card. Before this change it appeared as a
+    # permanently disabled card, which for a descriptive optional paper meant a
+    # card that could never become enabled.
+    assert {p["paper_id"] for p in body["papers"]} == {"p1"}
+    assert body["totals"]["practiceable_papers"] == 1
 
 
 def test_practice_ready_excludes_snapshot_unready_row():
@@ -200,6 +228,7 @@ def test_pyq_summary_paper_card_exposes_reviewed_set_identity():
          "trust_status": "verified", "paper_code": "GS-PAPER-II-CSAT",
          "metadata": {"set_code": "B", "paper_set": "SET-B", "note": "internal-only"}},
     ]
+    _all_papers_practiceable(seed)
     body = _summary(SBStub(seed))
     cards = {p["paper_id"]: p for p in body["papers"]}
     assert cards["p1"]["paper_code"] == "GS-PAPER-II-CSAT"
@@ -225,6 +254,7 @@ def test_pyq_summary_set_label_falls_back_to_paper_set():
         {"id": "p2", "exam_id": "e1", "year": 2024, "exam_phase_id": "ph1",
          "trust_status": "verified", "paper_code": "GS-PAPER-I", "metadata": {}},
     ]
+    _all_papers_practiceable(seed)
     body = _summary(SBStub(seed))
     cards = {p["paper_id"]: p for p in body["papers"]}
     assert cards["p1"]["set_label"] == "Set B"
@@ -280,3 +310,57 @@ def test_pyq_list_includes_phase_and_subject_metadata():
     assert q1["phase_name"] == "Prelims"
     assert q1["subject_name"] == "General Studies"
     assert q1["topic_names"] == ["Polity"]
+
+
+# ── picker eligibility (PRACTICE-PAPER-01) ─────────────────────────────────
+
+def test_picker_excludes_descriptive_only_thematic_and_retired_papers():
+    """`papers[]` is the paper-practice picker's list. It must offer exactly the
+    papers that will launch:
+
+      * a descriptive-only paper (UPSC Mains optional) has no projection, so it
+        is excluded — that is the bug this work exists for;
+      * a thematic collection is not a paper at all and is excluded before any
+        projection read;
+      * a retired row is superseded lineage and is excluded the same way;
+      * an MCQ paper with an active projection is included.
+    """
+    seed = _seed()
+    seed["pyq_papers"] = [
+        {"id": "p1", "exam_id": "e1", "year": 2024, "exam_phase_id": "ph1",
+         "trust_status": "verified", "metadata": {}},
+        # descriptive optional paper — verified, but nothing projected
+        {"id": "pd", "exam_id": "e1", "year": 2019, "exam_phase_id": "ph1",
+         "trust_status": "verified", "metadata": {"paper_kind": "optional"}},
+        # thematic half of the optional corpus — never paper-shaped
+        {"id": "pt", "exam_id": "e1", "year": 2019, "exam_phase_id": "ph1",
+         "trust_status": "verified", "metadata": {"corpus_half": "thematic"}},
+        # retired bucket kept for lineage after a split
+        {"id": "pr", "exam_id": "e1", "year": 2019, "exam_phase_id": "ph1",
+         "trust_status": "verified", "metadata": {"retired": True}},
+    ]
+    seed["pyq_questions"] = [
+        {"id": "q1", "pyq_paper_id": "p1", "question_number": 1, "question_text": "Q1",
+         "observed_difficulty": "medium", "reviewer_status": "verified"},
+        {"id": "qd", "pyq_paper_id": "pd", "question_number": 101, "question_text": "Essay",
+         "observed_difficulty": "hard", "reviewer_status": "verified"},
+        {"id": "qt", "pyq_paper_id": "pt", "question_number": None, "question_text": "Thematic",
+         "observed_difficulty": "hard", "reviewer_status": "verified"},
+        {"id": "qr", "pyq_paper_id": "pr", "question_number": 1, "question_text": "Retired",
+         "observed_difficulty": "easy", "reviewer_status": "verified"},
+    ]
+    # Only the MCQ paper is projected. The descriptive/thematic/retired papers
+    # have verified questions but no bank rows at all - exactly the live shape.
+    seed["mock_question_bank"] = [
+        {"id": "b1", "exam_id": "e1", "pyq_paper_id": "p1", "pyq_question_id": "q1",
+         "reviewer_status": "verified", "valid_until": None, "question_text": "Q1",
+         "question_type": "mcq", "correct_option_id": "mo1a"},
+    ]
+    seed["pyq_mock_question_projections"] = [{"mock_question_id": "b1", "sync_status": "active"}]
+
+    body = _summary(SBStub(seed))
+    assert {p["paper_id"] for p in body["papers"]} == {"p1"}
+    assert body["totals"]["practiceable_papers"] == 1
+    # Thematic and retired rows are dropped from the summary entirely - they are
+    # not papers - so they do not inflate the paper count either.
+    assert body["totals"]["papers"] == 2  # p1 + pd; pt and pr are not papers

@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
-from app.study_os.pyq_practice import start_pyq_practice
+from app.study_os.pyq_practice import diagnose_empty_pool, start_pyq_practice
 from app.study_os.mastery_writer import (
     MasteryClassificationNotReady,
     MasteryWriter,
@@ -111,10 +111,15 @@ async def start_practice(
         )
         raise HTTPException(status_code=500, detail="Could not create practice attempt.")
     if result.get("outcome") == "empty_pool":
-        raise HTTPException(
-            status_code=409,
-            detail="No verified, projected PYQ questions match this practice selection.",
+        # Still a 409 with zero writes — the selection genuinely has no pool. But
+        # diagnose it first: a learner who picked a UPSC Mains optional paper
+        # deserves "descriptive, not available yet", not a generic dead end.
+        # Best-effort by construction; a probe failure degrades to the original
+        # message rather than turning a clean 409 into a 500.
+        code, detail = diagnose_empty_pool(
+            get_supabase_admin(), mode=body.mode, target_id=body.target_id
         )
+        raise HTTPException(status_code=409, detail={"detail": detail, "code": code})
     return result
 
 @router.post("/attempts/start")
