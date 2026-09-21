@@ -94,15 +94,18 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           </p>
         )}
         <p className="text-base leading-relaxed">{question.text}</p>
-        <p className="num-mono mt-2 text-xs text-muted-foreground">
-          {[
-            question.subject || question.optional_subject,
-            question.year ? `${question.year}` : null,
-            question.question_number ? `Q${question.question_number}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        {/* Subject · Paper · Section · Topic, then where it came from. Each
+            level is omitted when unknown rather than blanked. */}
+        {question.breadcrumb?.trail?.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="descriptive-breadcrumb">
+            {question.breadcrumb.trail.join(" · ")}
+          </p>
+        )}
+        {question.breadcrumb?.source && (
+          <p className="num-mono mt-1 text-xs text-muted-foreground" data-testid="descriptive-source">
+            {question.breadcrumb.source}
+          </p>
+        )}
       </section>
 
       <AnswerEditor
@@ -212,6 +215,11 @@ QuestionScreen.propTypes = {
     subject: PropTypes.string,
     year: PropTypes.number,
     question_number: PropTypes.number,
+    label: PropTypes.string,
+    breadcrumb: PropTypes.shape({
+      trail: PropTypes.arrayOf(PropTypes.string),
+      source: PropTypes.string,
+    }),
   }).isRequired,
   onNext: PropTypes.func,
   hasNext: PropTypes.bool,
