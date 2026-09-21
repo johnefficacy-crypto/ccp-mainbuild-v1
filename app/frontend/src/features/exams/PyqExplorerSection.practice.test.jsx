@@ -4,7 +4,17 @@ import ToastProvider from "../../shared/ui/ToastProvider";
 
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({ useNavigate: () => mockNavigate }));
-jest.mock("../../lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
+// The whole api module is stubbed (requireActual would construct the real
+// Supabase client). Two separate claims, two separate tests:
+//   * that getApiErrorMessage maps {detail, code} to the human text lives in
+//     src/lib/api.error.test.js, against the real formatter;
+//   * that this component RENDERS whatever that helper returns is what this
+//     file proves, so the stub just echoes the body back.
+jest.mock("../../lib/api", () => ({
+  api: { get: jest.fn(), post: jest.fn() },
+  getApiErrorMessage: (e) =>
+    (e && e.detail && e.detail.detail) || (e && e.message) || "",
+}));
 const { api } = require("../../lib/api");
 const PyqExplorerSection = require("./PyqExplorerSection").default;
 
@@ -54,7 +64,8 @@ test("starts paper practice through useApiAction and navigates to the attempt sh
 });
 
 test("shows a graceful inline message on 409 without navigating", async () => {
-  const err = new Error("empty pool");
+  // No structured body — the fallback sentence still applies.
+  const err = new Error();
   err.status = 409;
   api.post.mockRejectedValue(err);
   renderExplorer();
@@ -65,6 +76,35 @@ test("shows a graceful inline message on 409 without navigating", async () => {
 
   const banner = await screen.findByTestId("pyq-practice-error");
   expect(banner.textContent).toMatch(/isn't available for practice yet/i);
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+test.each([
+  [
+    "descriptive_paper",
+    "Descriptive paper — answer-writing practice not available yet.",
+  ],
+  [
+    "thematic_not_paper",
+    "This is a topic-wise collection, not a paper. Paper practice isn't available.",
+  ],
+])("surfaces the backend's specific 409 reason (%s)", async (code, detail) => {
+  // A descriptive UPSC Mains optional paper can NEVER become practice-ready, so
+  // the old "its questions need to be verified and projected" sentence was an
+  // instruction to wait for something that will not happen. The backend now
+  // says which of the three reasons applies; the UI must show that text.
+  const err = new Error("conflict");
+  err.status = 409;
+  err.detail = { detail, code };
+  api.post.mockRejectedValue(err);
+  renderExplorer();
+
+  fireEvent.click(await screen.findByTestId("pyq-browse-toggle"));
+  fireEvent.click(await screen.findByTestId("pyq-practice-paper-btn"));
+
+  const banner = await screen.findByTestId("pyq-practice-error");
+  expect(banner.textContent).toContain(detail);
+  expect(banner.textContent).not.toMatch(/need to be verified and projected/i);
   expect(mockNavigate).not.toHaveBeenCalled();
 });
 

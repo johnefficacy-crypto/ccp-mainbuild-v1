@@ -33,6 +33,10 @@ function formatApiErrorDetail(detail) {
       .join(" ");
   if (detail && typeof detail.msg === "string") return detail.msg;
   if (detail && typeof detail.message === "string") return detail.message;
+  // {"detail": "<human text>", "code": "<machine code>"} — a coded error whose
+  // prose is for the learner and whose code is for the caller. FastAPI nests it
+  // one level (detail.detail), so without this branch it renders "[object Object]".
+  if (detail && typeof detail.detail === "string") return detail.detail;
   if (detail && typeof detail.error === "string") {
     const fields = Array.isArray(detail.blocking_fields) ? detail.blocking_fields : [];
     if (fields.length > 0) return `${detail.error}: ${fields.join(", ")}`;
