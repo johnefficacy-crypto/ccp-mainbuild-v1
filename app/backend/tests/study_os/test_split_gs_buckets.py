@@ -1,0 +1,572 @@
+"""Assignment and abort contract for scripts/split_gs_buckets.py.
+
+The GS year-buckets carry nothing that says which of the four papers a question
+came from, so the script derives it from three independent signals and refuses
+to move anything when they disagree. Those rules are pure functions precisely so
+they can be proven here, without a database and without the 200 MB OCR cache.
+
+The counts per paper vary year to year, so nothing in the script — and nothing
+in these tests — may split by a question-number range.
+"""
+from __future__ import annotations
+
+import asyncio
+import importlib.util
+import json
+import sys
+import uuid
+from pathlib import Path
+
+import pytest
+
+_SPEC = importlib.util.spec_from_file_location(
+    "split_gs_buckets",
+    Path(__file__).resolve().parents[4] / "scripts/split_gs_buckets.py",
+)
+sgb = importlib.util.module_from_spec(_SPEC)
+sys.modules["split_gs_buckets"] = sgb
+_SPEC.loader.exec_module(sgb)
+
+YEAR = 2019
+# asyncpg decodes uuid columns to uuid.UUID, NOT str. The fixtures use real
+# UUID objects so the tests exercise the types the script receives at runtime —
+# str fixtures are exactly what let a --live json.dumps TypeError through once.
+BUCKET_ID = uuid.UUID("5466e62f-0000-0000-0000-000000000019")
+
+
+def _qid(label: str) -> uuid.UUID:
+    return uuid.uuid5(uuid.NAMESPACE_OID, f"gs-{label}")
+
+
+def _new(n: int) -> uuid.UUID:
+    return uuid.UUID(f"cccccccc-0000-0000-0000-{n:012d}")
+
+
+# Distinctive sentences: each belongs to exactly one paper, so a match is a
+# statement about provenance rather than about shared UPSC phrasing.
+TEXT = {
+    1: "Safeguarding the Indian art heritage is the need of the moment. Comment.",
+    2: "The Indian party system is passing through a phase of transition. Analyse.",
+    3: "Enumerate the indirect taxes subsumed under the Goods and Services Tax.",
+    4: "What do you understand by probity in governance? Illustrate with examples.",
+}
+ESSAY_TEXT = "Wisdom finds truth. Write an essay of about 1000-1200 words."
+
+
+def _corpus(*, papers=(1, 2, 3, 4), essay=False, year=YEAR):
+    """(year, paper) -> OCR text. Each paper's page contains only its own text."""
+    out = {(year, p): sgb._normalise("Section A " + TEXT[p] + " Section B") for p in papers}
+    if essay:
+        out[(year, sgb.ESSAY)] = sgb._normalise("Section A " + ESSAY_TEXT)
+    return out
+
+
+def _q(paper_or_text, number):
+    text = TEXT[paper_or_text] if isinstance(paper_or_text, int) else paper_or_text
+    return {"id": _qid(f"{number}"), "question_number": number, "question_text": text}
+
+
+def _bucket(**over):
+    b = {
+        "id": BUCKET_ID,
+        "exam_id": sgb.EXAM_ID,
+        "exam_phase_id": sgb.EXAM_PHASE_ID,
+        "exam_cycle_id": None,
+        "year": YEAR,
+        "paper_code": None,
+        "metadata": {"note": "unreliable — never read for assignment"},
+    }
+    b.update(over)
+    return b
+
+
+def _sitting():
+    """One question per paper, in printed order. The smallest honest bucket."""
+    questions = [_q(p, p) for p in (1, 2, 3, 4)]
+    tags = {str(q["id"]): p for p, q in zip((1, 2, 3, 4), questions)}
+    return questions, tags
+
+
+# ── 1. assignment comes from the primary tag ───────────────────────────────
+
+def test_primary_tag_subject_slug_assigns_the_paper():
+    q = _q(1, 1)
+    row = sgb.assign_question(q, tag_paper=1, ocr_papers=_corpus()[YEAR, 1] and
+                              {p: t for (y, p), t in _corpus().items()})
+    assert row["assigned"] == 1
+    assert row["method"] == "tag"
+    assert row["disagrees"] is False
+
+
+def test_tag_papers_maps_canonical_slugs_and_ignores_the_empty_shells():
+    rows = [
+        {"question_id": "q1", "subject_slug": "upsc-cse-mains-gs1"},
+        {"question_id": "q2", "subject_slug": "upsc-cse-mains-gs4"},
+        {"question_id": "q3", "subject_slug": "upsc-mains-gs2"},      # empty shell
+        {"question_id": "q4", "subject_slug": "upsc-mains-essay"},    # empty shell
+        {"question_id": "q5", "subject_slug": "upsc-gs-paper-1"},     # empty shell
+        {"question_id": "q6", "subject_slug": "indian-polity"},       # not a GS paper
+    ]
+    assert sgb._tag_papers(rows) == {"q1": 1, "q2": 4}
+
+
+def test_two_primary_tags_disagreeing_assign_nothing_rather_than_picking_one():
+    rows = [
+        {"question_id": "q1", "subject_slug": "upsc-cse-mains-gs1"},
+        {"question_id": "q1", "subject_slug": "upsc-cse-mains-gs3"},
+    ]
+    assert sgb._tag_papers(rows) == {}
+
+
+def test_a_clean_sitting_plans_one_paper_per_gs_with_the_real_counts():
+    """Counts come from the questions, never from a number range: GS1 gets three
+    questions here and GS2 one, and the plan must say so."""
+    questions = [_q(1, 1), _q(1, 2), _q(1, 3), _q(2, 4)]
+    tags = {str(q["id"]): (1 if i < 3 else 2) for i, q in enumerate(questions)}
+
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+
+    assert [p["paper_code"] for p in planned] == [
+        "UPSC-CSE-MAINS-GS-2019-GS1",
+        "UPSC-CSE-MAINS-GS-2019-GS2",
+    ]
+    assert [p["question_count"] for p in planned] == [3, 1]
+    assert [p["metadata"]["paper_kind"] for p in planned] == ["gs", "gs"]
+    assert [p["metadata"]["gs_paper"] for p in planned] == [1, 2]
+    moved = [qid for p in planned for qid in p["question_ids"]]
+    assert sorted(moved) == sorted(q["id"] for q in questions)
+    assert len(moved) == len(set(moved)) == 4
+    assert all(r["method"] == "tag" for r in rows)
+
+
+# ── 2. OCR disagreement aborts the bucket ──────────────────────────────────
+
+def test_ocr_matching_another_paper_while_the_tag_paper_misses_is_a_disagreement():
+    row = sgb.assign_question(
+        _q(3, 7),  # GS3's text...
+        tag_paper=1,  # ...tagged GS1
+        ocr_papers={p: t for (y, p), t in _corpus().items()},
+    )
+    assert row["disagrees"] is True
+    assert row["ocr_paper"] == 3 and row["tag_paper"] == 1
+    assert row["ocr_score"] >= sgb.OCR_MATCH_CUT
+    assert row["tag_score"] < sgb.OCR_MATCH_CUT
+
+
+def test_one_disagreement_aborts_the_whole_bucket_and_writes_nothing():
+    questions, tags = _sitting()
+    tags[str(questions[0]["id"])] = 3  # GS1's question tagged GS3
+
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+
+    msg = str(exc.value)
+    assert "disagreement" in msg
+    assert "nothing written for 2019" in msg
+    assert sgb.REVIEW_CSV.name in msg
+
+
+def test_text_that_also_matches_the_tag_paper_is_not_a_disagreement():
+    """Whole-paper partial_ratio is generous. A question whose wording clears the
+    cut against two papers of one sitting is ambiguous text, not evidence the tag
+    is wrong — vetoing on the winning score alone would abort every real bucket."""
+    shared = TEXT[2]
+    corpus = {(YEAR, 1): sgb._normalise(shared + " and more GS1"),
+              (YEAR, 2): sgb._normalise(shared)}
+    row = sgb.assign_question(
+        {"id": _qid("s"), "question_number": 1, "question_text": shared},
+        tag_paper=1,
+        ocr_papers={p: t for (y, p), t in corpus.items()},
+    )
+    assert row["tag_score"] >= sgb.OCR_MATCH_CUT
+    assert row["disagrees"] is False
+
+
+def test_a_year_with_no_ocr_at_all_aborts_rather_than_moving_on_the_tag_alone():
+    """2015 GS4, 2024 and 2025 have no OCR. One signal is not enough to give a
+    possibly-fabricated question a real paper's provenance."""
+    questions, tags = _sitting()
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus={})
+    assert "no OCR for 2019" in str(exc.value)
+
+
+# ── 3. untagged questions ──────────────────────────────────────────────────
+
+def test_untagged_question_matching_the_essay_source_becomes_essay():
+    questions, tags = _sitting()
+    questions.append(_q(ESSAY_TEXT, 5))  # no tag for it
+
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus=_corpus(essay=True)
+    )
+
+    essay = [p for p in planned if p["paper"] == sgb.ESSAY]
+    assert len(essay) == 1
+    assert essay[0]["paper_code"] == "UPSC-CSE-MAINS-GS-2019-ESSAY"
+    assert essay[0]["metadata"]["paper_kind"] == "essay"
+    assert essay[0]["metadata"]["gs_paper"] == sgb.ESSAY
+    assert essay[0]["question_count"] == 1
+    assert [r["method"] for r in rows if r["assigned"] == sgb.ESSAY] == ["ocr_essay"]
+    # Essay sorts last, after GS4.
+    assert [p["paper"] for p in planned] == [1, 2, 3, 4, sgb.ESSAY]
+
+
+def test_untagged_question_matching_no_essay_source_is_unassigned_and_aborts():
+    questions, tags = _sitting()
+    questions.append(_q("A question nobody tagged and no paper contains.", 5))
+
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus(essay=True))
+    assert "1 unassigned" in str(exc.value)
+
+
+# ── 4. monotonic order ─────────────────────────────────────────────────────
+
+def test_paper_index_falling_as_question_number_rises_is_flagged():
+    rows = [
+        {"assigned": 1, "question_number": 1},
+        {"assigned": 3, "question_number": 2},
+        {"assigned": 2, "question_number": 3},  # GS2 after GS3 — impossible
+        {"assigned": 4, "question_number": 4},
+    ]
+    flagged = sgb.order_violations(rows)
+    assert [r["question_number"] for r in flagged] == [3]
+
+
+def test_repeated_paper_index_is_not_a_violation():
+    rows = [{"assigned": 1, "question_number": n} for n in range(1, 21)]
+    rows += [{"assigned": 2, "question_number": n} for n in range(21, 41)]
+    assert sgb.order_violations(rows) == []
+
+
+def test_essay_after_gs4_is_in_order_and_essay_before_it_is_not():
+    ok = [{"assigned": 4, "question_number": 1}, {"assigned": sgb.ESSAY, "question_number": 2}]
+    bad = [{"assigned": sgb.ESSAY, "question_number": 1}, {"assigned": 4, "question_number": 2}]
+    assert sgb.order_violations(ok) == []
+    assert [r["question_number"] for r in sgb.order_violations(bad)] == [2]
+
+
+def test_an_out_of_order_bucket_aborts_even_when_every_signal_agrees():
+    """Tag and OCR can both be satisfied and the sitting still be impossible:
+    the printed order is the third signal, and it overrules agreement."""
+    questions = [_q(1, 1), _q(3, 2), _q(2, 3), _q(4, 4)]
+    tags = {str(q["id"]): p for q, p in zip(questions, (1, 3, 2, 4))}
+
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    assert "1 out-of-order" in str(exc.value)
+
+
+# ── 5. UUID serialisation on the live path ─────────────────────────────────
+
+def test_plan_metadata_json_serialises_with_a_uuid_bucket_id():
+    questions, tags = _sitting()
+    planned, _ = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    for plan in planned:
+        assert plan["metadata"]["split_from_bucket_id"] == str(BUCKET_ID)
+        assert isinstance(plan["metadata"]["split_from_bucket_id"], str)
+        json.dumps(plan["metadata"])  # would raise TypeError on a raw UUID
+
+
+def test_insert_args_build_a_jsonb_string_and_keep_the_column_types_native():
+    questions, tags = _sitting()
+    planned, _ = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    args = sgb.insert_args(_bucket(), planned[0])
+
+    exam_id, phase_id, cycle_id, year, paper_code, meta_json = args
+    assert (exam_id, phase_id) == (sgb.EXAM_ID, sgb.EXAM_PHASE_ID)
+    assert year == YEAR
+    # paper_code is the COLUMN, not only metadata: pyq_papers_unique_known_uidx
+    # is (exam_id, exam_phase_id, year, paper_date, shift, paper_code), and the
+    # four papers of one sitting share everything but the code.
+    assert paper_code == "UPSC-CSE-MAINS-GS-2019-GS1"
+    assert isinstance(meta_json, str)
+    assert json.loads(meta_json)["paper_code"] == paper_code
+
+
+def test_retire_args_stringify_ids_for_jsonb_but_not_the_uuid_column():
+    planned = [{"paper_id": _new(1)}, {"paper_id": _new(2)}]
+    bucket_id, split_into = sgb.retire_args(_bucket(), planned)
+
+    # $1 is a uuid column parameter — asyncpg encodes uuid.UUID natively there.
+    assert bucket_id == BUCKET_ID and isinstance(bucket_id, uuid.UUID)
+    # $2 is jsonb, so it must already be a JSON string of strings.
+    assert json.loads(split_into) == [str(_new(1)), str(_new(2))]
+
+
+def test_uuid_str_is_narrow_and_leaves_other_types_alone():
+    assert sgb.uuid_str(BUCKET_ID) == str(BUCKET_ID)
+    assert sgb.uuid_str("already-a-string") == "already-a-string"
+    assert sgb.uuid_str(None) is None
+    assert sgb.uuid_str(2019) == 2019  # not "2019" — no blanket default=str
+
+
+# ── 6. scope ───────────────────────────────────────────────────────────────
+
+def _row(**over):
+    r = {"id": _new(7), "year": YEAR, "paper_code": None, "metadata": {}}
+    r.update(over)
+    return r
+
+
+def test_scope_accepts_an_unsplit_bucket():
+    assert sgb.scope_violation(_row()) is None
+    assert sgb.is_in_scope(_row()) is True
+
+
+@pytest.mark.parametrize(
+    "row, fragment",
+    [
+        (_row(metadata={"split_from_bucket_id": str(BUCKET_ID)}), "split_from_bucket_id"),
+        (_row(paper_code="UPSC-CSE-MAINS-GS-2019-GS1"), "paper_code"),
+        (_row(metadata={"paper_code": "UPSC-CSE-MAINS-GS-2019-GS1"}), "paper_code"),
+        (_row(metadata={"retired": True}), "retired"),
+        (_row(metadata={"corpus_half": "thematic"}), "corpus_half"),
+        (_row(year=None), "no year"),
+    ],
+)
+def test_scope_rejects_rows_that_are_not_unsplit_buckets(row, fragment):
+    why = sgb.scope_violation(row)
+    assert why is not None and fragment in why
+    assert sgb.is_in_scope(row) is False
+
+
+def test_scope_abort_names_every_offender_and_is_not_skippable():
+    rows = [
+        _row(),
+        _row(year=2018, paper_code="UPSC-CSE-MAINS-GS-2018-GS2"),
+        _row(year=2017, metadata={"retired": True}),
+    ]
+    with pytest.raises(sgb.ScopeAbort) as exc:
+        sgb.assert_bucket_scope(rows)
+
+    msg = str(exc.value)
+    assert "nothing was written" in msg
+    assert "2018" in msg and "2017" in msg
+    # A ScopeAbort stops the run; a BucketAbort only skips one bucket. The
+    # caller distinguishes them by type, so they must not share one.
+    assert not isinstance(exc.value, sgb.BucketAbort)
+
+
+def test_scope_reads_metadata_from_json_text_as_well_as_a_dict():
+    assert sgb.scope_violation(_row(metadata='{"retired": true}')) == "retired"
+    assert sgb.as_metadata("not json") == {}
+    assert sgb.as_metadata(None) == {}
+
+
+def test_the_bucket_query_is_explicit_and_never_prefix_matches():
+    sql = sgb._BUCKET_SQL.lower()
+    assert "like" not in sql and "similar to" not in sql and "~" not in sql
+    for clause in (
+        "p.paper_code is null",
+        "metadata->>'paper_code' is null",
+        "metadata->>'corpus_half' is null",
+        "metadata->>'split_from_bucket_id' is null",
+        "'retired')::boolean, false) is not true",
+    ):
+        assert clause in sql
+
+
+# ── 7. _split_one and two-run idempotency ──────────────────────────────────
+
+
+class FakeDb:
+    """Papers and questions as rows, mutated exactly as the live path does."""
+
+    def __init__(self, papers, questions):
+        self.papers = [dict(p) for p in papers]
+        self.questions = [dict(q) for q in questions]
+        self.inserts = 0
+        self._n = 0
+
+    def select_buckets(self):
+        return [
+            p for p in self.papers
+            if sgb.is_in_scope(p)
+            and any(q["pyq_paper_id"] == p["id"] for q in self.questions)
+        ]
+
+    async def fetch(self, sql, *args):
+        if "from public.pyq_questions" in sql and "topic_tags" not in sql:
+            return sorted(
+                (q for q in self.questions if q["pyq_paper_id"] == args[0]),
+                key=lambda q: q["question_number"],
+            )
+        if "pyq_question_topic_tags" in sql:
+            return [
+                {"question_id": str(q["id"]), "subject_slug": f"upsc-cse-mains-gs{q['gs']}"}
+                for q in self.questions
+                if q["pyq_paper_id"] == args[0] and q.get("gs")
+            ]
+        if "from public.pyq_papers" in sql:
+            wanted = set(args[0])
+            return [{"paper_code": p["paper_code"], "id": p["id"]}
+                    for p in self.papers if p["paper_code"] in wanted]
+        raise AssertionError(sql)
+
+    async def fetchval(self, sql, *args):
+        if "pyq_question_stimuli" in sql:
+            return 0
+        if sql.strip().startswith("insert"):
+            self.inserts += 1
+            self._n += 1
+            new_id = _new(900 + self._n)
+            exam_id, phase_id, cycle_id, year, paper_code, meta_json = args
+            self.papers.append({
+                "id": new_id, "exam_id": exam_id, "exam_phase_id": phase_id,
+                "exam_cycle_id": cycle_id, "year": year, "paper_code": paper_code,
+                "trust_status": "pending", "metadata": json.loads(meta_json),
+            })
+            return new_id
+        raise AssertionError(sql)
+
+    async def execute(self, sql, *args):
+        if "set pyq_paper_id" in sql:
+            target, qids, label = args
+            for q in self.questions:
+                if q["id"] in qids:
+                    q["pyq_paper_id"] = target
+                    q["metadata"] = {**(q.get("metadata") or {}), "gs_paper": label}
+            return
+        if "'retired', true" in sql:
+            bucket_id, split_into_json = args
+            for p in self.papers:
+                if p["id"] == bucket_id:
+                    p["metadata"] = {**sgb.as_metadata(p["metadata"]),
+                                     "retired": True,
+                                     "split_into": json.loads(split_into_json)}
+            return
+        raise AssertionError(sql)
+
+
+def _demo_db():
+    questions = [
+        {**_q(p, n), "pyq_paper_id": BUCKET_ID, "gs": p, "metadata": {}}
+        for n, p in enumerate((1, 1, 2, 3, 4), start=1)
+    ]
+    # Two GS1 questions need distinct ids; _q keys on the number, so they are.
+    return FakeDb([_bucket()], questions)
+
+
+def _pass(db, corpus):
+    """One run over the whole scope, mirroring run()'s body."""
+    selected = db.select_buckets()
+    sgb.assert_bucket_scope(selected)
+    created = moved = 0
+    for bucket in selected:
+        out = asyncio.run(sgb._split_one(db, bucket, live=True, corpus=corpus))
+        created += out["created"]
+        moved += out["moved"]
+    return {"selected": len(selected), "created": created, "moved": moved}
+
+
+def test_live_run_inserts_repoints_and_retires_the_bucket():
+    db = _demo_db()
+    out = _pass(db, _corpus())
+
+    assert out == {"selected": 1, "created": 4, "moved": 5}
+    # The bucket row survives — retired, never deleted.
+    bucket = next(p for p in db.papers if p["id"] == BUCKET_ID)
+    assert sgb.as_metadata(bucket["metadata"])["retired"] is True
+    assert len(sgb.as_metadata(bucket["metadata"])["split_into"]) == 4
+    assert all(isinstance(i, str) for i in sgb.as_metadata(bucket["metadata"])["split_into"])
+    # Every question left the bucket and carries its paper stamp.
+    assert not any(q["pyq_paper_id"] == BUCKET_ID for q in db.questions)
+    assert [q["metadata"]["gs_paper"] for q in db.questions] == ["1", "1", "2", "3", "4"]
+    assert all(p["trust_status"] == "pending" for p in db.papers if p["id"] != BUCKET_ID)
+
+
+def test_dry_run_writes_nothing_but_reports_the_full_plan():
+    db = _demo_db()
+    out = asyncio.run(sgb._split_one(db, _bucket(), live=False, corpus=_corpus()))
+
+    assert db.inserts == 0
+    assert out["created"] == 4 and out["reused"] == 0 and out["moved"] == 5
+    assert all(q["pyq_paper_id"] == BUCKET_ID for q in db.questions)
+
+
+def test_stimulus_links_abort_the_bucket_before_anything_is_written():
+    """Migration 223's trg_pyq_questions_revalidate_paper_move refuses a
+    pyq_paper_id move when the question links to a stimulus on another paper.
+    Moving stimuli is out of scope, so the bucket is reported, not patched."""
+    db = _demo_db()
+
+    async def stimuli(sql, *args):
+        return 3 if "pyq_question_stimuli" in sql else 0
+    db.fetchval = stimuli
+
+    with pytest.raises(sgb.BucketAbort) as exc:
+        asyncio.run(sgb._split_one(db, _bucket(), live=True, corpus=_corpus()))
+    assert "trg_pyq_questions_revalidate_paper_move" in str(exc.value)
+    assert db.inserts == 0
+
+
+def test_second_run_over_run_one_state_selects_nothing_and_writes_nothing():
+    """The idempotency proof: run 1's OUTPUT, fed back as run 2's INPUT, must
+    select nothing — 0 selected, 0 created, 0 moved."""
+    db = _demo_db()
+    corpus = _corpus()
+
+    first = _pass(db, corpus)
+    assert first == {"selected": 1, "created": 4, "moved": 5}
+    assert len(db.papers) == 5  # the bucket plus the four papers it made
+
+    second = _pass(db, corpus)
+    assert second == {"selected": 0, "created": 0, "moved": 0}
+    assert len(db.papers) == 5
+
+
+def test_run_two_rejects_the_produced_rows_for_every_reason_independently():
+    """Shape and lineage both. Either guard alone would stop the re-split, so
+    removing one still fails a test rather than silently doubling the corpus."""
+    db = _demo_db()
+    _pass(db, _corpus())
+
+    splits = [p for p in db.papers if p["id"] != BUCKET_ID]
+    assert len(splits) == 4
+    for p in splits:
+        meta = sgb.as_metadata(p["metadata"])
+        assert meta["split_from_bucket_id"] == str(BUCKET_ID)
+        assert p["paper_code"] == meta["paper_code"]
+        assert sgb.scope_violation(p) is not None
+    assert sgb.scope_violation(next(p for p in db.papers if p["id"] == BUCKET_ID)) == "retired"
+
+
+# ── 8. reporting ───────────────────────────────────────────────────────────
+
+def test_summary_line_counts_each_category():
+    questions, tags = _sitting()
+    questions.append(_q(ESSAY_TEXT, 5))
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus(essay=True))
+
+    line = sgb.summarise(YEAR, rows)
+    assert "2019" in line
+    assert "tag-assigned 4" in line
+    assert "OCR-agreed 4" in line
+    assert "disagreements 0" in line
+    assert "untagged 1" in line
+    assert "essay 1" in line
+
+
+def test_review_csv_carries_the_evidence_for_every_row(tmp_path, monkeypatch):
+    questions, tags = _sitting()
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+
+    out = tmp_path / "gs_split_review.csv"
+    monkeypatch.setattr(sgb, "REVIEW_CSV", out)
+    sgb._write_review([{**r, "year": YEAR} for r in rows])
+
+    import csv
+    got = list(csv.DictReader(out.read_text(encoding="utf-8-sig").splitlines()))
+    assert len(got) == 4
+    assert got[0]["id"] == str(questions[0]["id"])  # UUID rendered, not repr'd
+    assert got[0]["tag_paper"] == "1" and got[0]["assigned"] == "1"
+    assert float(got[0]["ocr_score"]) >= sgb.OCR_MATCH_CUT
+    assert got[0]["excerpt"] == TEXT[1][:60]
+
+
+def test_paper_code_is_deterministic_and_year_scoped():
+    assert sgb.paper_code_for(2019, 1) == "UPSC-CSE-MAINS-GS-2019-GS1"
+    assert sgb.paper_code_for(2013, 4) == "UPSC-CSE-MAINS-GS-2013-GS4"
+    assert sgb.paper_code_for(2019, sgb.ESSAY) == "UPSC-CSE-MAINS-GS-2019-ESSAY"
