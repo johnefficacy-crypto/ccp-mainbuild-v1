@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 # Minimum stable body length below which a snapshot cannot carry an examinable
 # claim — deprioritised before any (future) extraction call. Deliberately
@@ -56,19 +56,51 @@ _ADAPTERS: dict[str, AdapterDefaults] = {
 # Matching is case-insensitive substring on the feed entry title. Deterministic by
 # design: no LLM, no heuristics scoring. Pipeline §4 requires the row still be
 # snapshotted with a machine-readable reason, never silently dropped.
-_TITLE_DENYLIST: dict[str, tuple[str, ...]] = {
+# A pattern is either a single substring, or a tuple of substrings that must ALL
+# appear (SEBI's RTI appeals are only identifiable by "Appeal No." AND "filed by"
+# together — "appeal no." alone would swallow legitimate appellate-tribunal news).
+_DenyPattern = "str | tuple[str, ...]"
+
+_TITLE_DENYLIST: dict[str, tuple[Any, ...]] = {
     "SEBI": (
         "recovery certificate",
         "notice of attachment",
         "release order",
         "general remittance order",
+        "general remittance advice",
         "adjudication order",
         "settlement order",
         "order for compliance",
+        "order of aa under the rti act",
+        ("appeal no.", "filed by"),
     ),
 }
 
 DENYLIST_REASON_PREFIX = "publisher_denylist:"
+
+# Per-publisher URL-path allow-list, matched as a prefix on the canonical item
+# link's PATH. Evaluated before the title deny-list and before any page fetch:
+# an item outside these sections is structurally not general-awareness material,
+# so paying for its page is waste.
+#
+# SEBI's feed is ~95% /enforcement/orders/... — party-specific RTI appeals and
+# interim orders with no examinable claim. Only the editorial/regulatory sections
+# below carry one.
+#
+# A publisher absent from this table has NO allow-list and is unfiltered by path
+# (RBI and PIB: their page structure is unverified until their first item-split
+# pass, and guessing a prefix would silently drop every item).
+_PATH_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "SEBI": (
+        "/media-and-notifications/press-releases/",
+        "/legal/circulars/",
+        "/legal/master-circulars/",
+        "/legal/regulations/",
+        "/reports-and-statistics/reports/",
+    ),
+}
+
+PATH_EXCLUDED_REASON_PREFIX = "publisher_path_excluded:"
 
 
 def publisher_of(source: dict[str, Any]) -> str | None:
@@ -128,30 +160,76 @@ def canonical_item_link(link: str | None) -> str | None:
     return urlunsplit((scheme, netloc, path, query, ""))
 
 
+# India has no DST, so a fixed +05:30 is exactly correct year-round and needs no
+# tzdata in the container. Naive feed dates are Indian-publisher local time.
+IST = timezone(timedelta(hours=5, minutes=30), "IST")
+
 _ISO_TRAILING_Z = re.compile(r"[Zz]$")
+
+# A trailing timezone token, stripped before the strptime attempts so one format
+# list covers "21 Sep, 2026", "21 Sep, 2026 IST" and "21 Sep, 2026 +0530".
+# The offset branch REQUIRES leading whitespace: without it, "21-09-2026" ends in
+# something that reads exactly like a "-2026" UTC offset and the year gets eaten.
+_TZ_SUFFIX = re.compile(
+    r"(?:\s*\((?P<paren>[A-Z]{2,5})\)"
+    r"|\s*\b(?P<name>IST|UTC|GMT)\b"
+    r"|\s+(?P<offset>[+-]\d{2}:?\d{2}))\s*$"
+)
+
+_NAMED_ZONES = {"IST": IST, "UTC": timezone.utc, "GMT": timezone.utc}
+
+# Indian government/regulator sites publish dates in a handful of shapes. Ordered
+# most-specific first; each is tried with and without a time component.
+_DATE_FORMATS: tuple[str, ...] = (
+    "%d %b, %Y", "%d %b %Y", "%d %B, %Y", "%d %B %Y",
+    "%b %d, %Y", "%b %d %Y", "%B %d, %Y", "%B %d %Y",
+    "%d-%b-%Y", "%d-%B-%Y",
+    "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y",
+)
+_TIME_SUFFIXES: tuple[str, ...] = ("", " %H:%M", " %H:%M:%S", " %I:%M %p", " %I:%M:%S %p")
+
+# "Sept" is not a %b token; normalise it before parsing rather than adding a
+# parallel format list.
+_SEPT = re.compile(r"\bSept\b", re.IGNORECASE)
 
 
 def parse_published_at(value: str | None) -> str | None:
     """Parse a feed entry's publication date into an ISO-8601 UTC string.
 
-    Accepts RFC 2822 (``<pubDate>`` in RSS 2.0) and ISO-8601 (``<published>`` /
-    ``<updated>`` in Atom). Returns ``None`` when the value is missing or
-    unparseable — the caller stores NULL. It must NEVER fall back to ``now()``:
-    a fabricated publication date would silently corrupt the relevance window.
+    Accepts RFC 2822 (``<pubDate>`` in RSS 2.0), ISO-8601 (Atom
+    ``<published>``/``<updated>``), and the day/month-name shapes Indian
+    publishers use (``21 Sep, 2026``, ``Sep 21, 2026``, with or without a time,
+    with or without a trailing ``IST`` / ``+0530``).
+
+    A value carrying no timezone is read as **Asia/Kolkata**, not UTC: every
+    source in scope is an Indian publisher, and assuming UTC silently back-dated
+    each item by 5.5 hours.
+
+    Returns ``None`` when the value is missing or unparseable — the caller stores
+    NULL and keeps the raw string in ``metadata.raw_pub_date``. It must NEVER
+    fall back to ``now()``: a fabricated publication date would corrupt the
+    relevance window.
     """
     raw = (value or "").strip()
     if not raw:
         return None
-    for parse in (_parse_rfc2822, _parse_iso8601):
-        dt = parse(raw)
-        if dt is not None:
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc).isoformat()
-    return None
+    dt = _parse_rfc2822(raw) or _parse_iso8601(raw) or _parse_common_formats(raw)
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=IST)
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+# ``parsedate_to_datetime`` is lenient to a fault: "Sep 21, 2026 02:30 PM" comes
+# back as 02:30, silently dropping the PM. Only hand it input that actually has
+# the RFC 2822 shape — optional day name, then DAY MONTH YEAR.
+_RFC2822_SHAPE = re.compile(r"^(?:[A-Za-z]{3,9},\s*)?\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b")
 
 
 def _parse_rfc2822(raw: str) -> datetime | None:
+    if not _RFC2822_SHAPE.match(raw):
+        return None
     try:
         return parsedate_to_datetime(raw)
     except (TypeError, ValueError):
@@ -165,11 +243,55 @@ def _parse_iso8601(raw: str) -> datetime | None:
         return None
 
 
+def _parse_common_formats(raw: str) -> datetime | None:
+    """strptime sweep over the Indian-site date shapes, timezone token first."""
+    text = _SEPT.sub("Sep", raw).strip()
+    tzinfo: timezone | None = None
+    match = _TZ_SUFFIX.search(text)
+    if match:
+        token = match.group("name") or match.group("paren")
+        offset = match.group("offset")
+        if token and token.upper() in _NAMED_ZONES:
+            tzinfo = _NAMED_ZONES[token.upper()]
+        elif offset:
+            tzinfo = _parse_offset(offset)
+        elif token:
+            # An unknown parenthesised zone: drop the token, keep the date, and
+            # let the IST default apply rather than failing the whole parse.
+            tzinfo = None
+        text = text[: match.start()].strip()
+
+    # Normalise separators a publisher may vary on ("21 Sep,2026", double spaces).
+    text = re.sub(r"\s*,\s*", ", ", text)
+    text = re.sub(r"\s{2,}", " ", text).strip()
+
+    for fmt in _DATE_FORMATS:
+        for suffix in _TIME_SUFFIXES:
+            try:
+                parsed = datetime.strptime(text, fmt + suffix)
+            except ValueError:
+                continue
+            return parsed.replace(tzinfo=tzinfo) if tzinfo else parsed
+    return None
+
+
+def _parse_offset(offset: str) -> timezone | None:
+    cleaned = offset.replace(":", "")
+    try:
+        sign = -1 if cleaned[0] == "-" else 1
+        hours, minutes = int(cleaned[1:3]), int(cleaned[3:5])
+    except (IndexError, ValueError):
+        return None
+    return timezone(sign * timedelta(hours=hours, minutes=minutes))
+
+
 def denylisted_title(publisher: str | None, title: str | None) -> str | None:
     """Return the matched deny-list pattern for ``title``, or ``None``.
 
-    Case-insensitive substring match against the publisher's patterns. An unknown
-    publisher has no deny-list and always returns ``None``.
+    Case-insensitive substring match against the publisher's patterns. A tuple
+    pattern requires EVERY substring to be present and reports itself joined by
+    ``+`` so the recorded reason stays machine-readable. An unknown publisher has
+    no deny-list and always returns ``None``.
     """
     if not publisher or not title:
         return None
@@ -178,9 +300,117 @@ def denylisted_title(publisher: str | None, title: str | None) -> str | None:
         return None
     lowered = title.lower()
     for pattern in patterns:
-        if pattern in lowered:
+        if isinstance(pattern, tuple):
+            if all(part in lowered for part in pattern):
+                return "+".join(pattern)
+        elif pattern in lowered:
             return pattern
     return None
+
+
+# ─── URL-path allow-list ────────────────────────────────────────────────────
+
+
+def _path_of(canonical_url: str | None) -> str:
+    try:
+        return urlsplit(canonical_url or "").path or "/"
+    except ValueError:
+        return "/"
+
+
+def path_section(canonical_url: str | None) -> str:
+    """The first two path segments of ``canonical_url`` (``/a/b``).
+
+    Used as the machine-readable tail of a ``publisher_path_excluded`` reason, so
+    an operator can see WHICH section was dropped without re-deriving it from the
+    URL. A shorter path reports what it has (``/a``, or ``/`` at the root).
+    """
+    segments = [seg for seg in _path_of(canonical_url).split("/") if seg][:2]
+    return "/" + "/".join(segments) if segments else "/"
+
+
+def path_allowed(publisher: str | None, canonical_url: str | None) -> bool:
+    """Whether this item's path is inside the publisher's allow-list.
+
+    A publisher with NO configured allow-list allows everything — absence of
+    config must never be read as "deny all".
+    """
+    if not publisher:
+        return True
+    allowed = _PATH_ALLOWLIST.get(str(publisher))
+    if not allowed:
+        return True
+    path = _path_of(canonical_url)
+    return any(path.startswith(prefix) for prefix in allowed)
+
+
+def path_excluded_reason(publisher: str | None, canonical_url: str | None) -> str | None:
+    """The ``publisher_path_excluded:<section>`` reason, or ``None`` when allowed."""
+    if path_allowed(publisher, canonical_url):
+        return None
+    return f"{PATH_EXCLUDED_REASON_PREFIX}{path_section(canonical_url)}"
+
+
+# ─── Embedded-PDF discovery ─────────────────────────────────────────────────
+
+# SEBI (and several other Indian regulators) render the item page as chrome plus
+# an embedded PDF viewer: the readable HTML is a breadcrumb, and the document
+# itself is the PDF. These are the shapes seen in the wild.
+_PDF_EMBED_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # <iframe src="...pdf">, <embed src=...>, <object data=...>
+    re.compile(r"""<(?:iframe|embed)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""", re.IGNORECASE),
+    re.compile(r"""<object\b[^>]*\bdata\s*=\s*["']([^"']+)["']""", re.IGNORECASE),
+    # <a href="...pdf"> — the primary document link on a viewer-less page.
+    re.compile(r"""<a\b[^>]*\bhref\s*=\s*["']([^"']+)["']""", re.IGNORECASE),
+)
+
+# pdf.js and friends: /viewer.html?file=<url-encoded pdf>
+_PDF_VIEWER_PARAM = re.compile(r"""[?&]file=([^"'&]+)""", re.IGNORECASE)
+
+
+def _looks_like_pdf(candidate: str) -> bool:
+    path = _path_of(candidate).lower()
+    return path.endswith(".pdf")
+
+
+def embedded_pdf_url(html: str | None, *, page_url: str) -> str | None:
+    """The URL of the PDF this item page embeds or links, or ``None``.
+
+    Checks, in order: a viewer ``?file=`` parameter, then ``iframe``/``embed``/
+    ``object`` sources, then anchors — taking the FIRST candidate that resolves to
+    a ``.pdf`` on the same host as the page. Same-host is deliberate: an
+    off-host PDF is an unvetted third party, not this source's evidence.
+    """
+    if not html:
+        return None
+    page_host = (urlsplit(page_url).hostname or "").lower().removeprefix("www.")
+
+    def _resolve(raw: str) -> str | None:
+        candidate = _html_attr_unescape(raw).strip()
+        if not candidate:
+            return None
+        absolute = urljoin(page_url, candidate)
+        host = (urlsplit(absolute).hostname or "").lower().removeprefix("www.")
+        if page_host and host and host != page_host:
+            return None
+        return absolute if _looks_like_pdf(absolute) else None
+
+    for match in _PDF_VIEWER_PARAM.finditer(html):
+        from urllib.parse import unquote
+        resolved = _resolve(unquote(match.group(1)))
+        if resolved:
+            return resolved
+    for pattern in _PDF_EMBED_PATTERNS:
+        for match in pattern.finditer(html):
+            resolved = _resolve(match.group(1))
+            if resolved:
+                return resolved
+    return None
+
+
+def _html_attr_unescape(value: str) -> str:
+    import html as _html
+    return _html.unescape(value)
 
 
 def adapter_defaults(source: dict[str, Any]) -> AdapterDefaults | None:

@@ -14,6 +14,7 @@ related_code:
   - app/backend/app/study_os/writing_practice/evaluation_worker.py
   - app/backend/app/study_os/attempt_evidence.py
 related_migrations:
+  - app/supabase/migrations/296_ca_sebi_path_allowlist_backfill.sql
   - app/supabase/migrations/294_ca_rss_item_level_ingestion.sql
   - app/supabase/migrations/056_exam_policy_updates.sql
   - app/supabase/migrations/135_mock_engine_core.sql
@@ -145,8 +146,8 @@ A feed body is a **listing, not evidence**. For `adapter_type='rss'` the ingest 
 `current_affairs_documents` row per feed ENTRY:
 
 - `title` = entry title, `source_url` = entry link, `published_at` = the parsed entry date
-  (RFC 2822 or ISO-8601). **Unparseable → NULL, never `now()`** — a fabricated publication date
-  would silently corrupt the relevance window (§3).
+  (see §4.6 for the accepted shapes). **Unparseable → NULL, never `now()`** — a fabricated
+  publication date would silently corrupt the relevance window (§3).
 - `raw_text` = the readable text of the entry's OWN page (`fetcher.strip_html`), not feed XML.
 - `canonical_item_url` = the entry link normalised (scheme/host lowercased, `www.`, fragment and
   tracking params dropped, trailing slash stripped). This is the item identity, enforced by the
@@ -169,14 +170,73 @@ already IS one document.
 it (42 consecutive `http_403` against the bot UA; a browser UA returns 200). The recruitment
 scraper's identity is unchanged — the override is opt-in per row.
 
-### 4.3 Publisher title deny-list
-`sources.py` carries per-publisher title patterns for strictly administrative instruments (SEBI:
-recovery certificate, notice of attachment, release order, general remittance order, adjudication
-order, settlement order, order for compliance). Matching is deterministic, case-insensitive
-substring — **no LLM, no scoring**. A match is evaluable from the feed entry alone, so the item page
-is never fetched. The row is still snapshotted with
+### 4.3 Publisher URL-path allow-list (CA-RSS-02, migration 296)
+The coarsest filter, and the first one applied: an item whose canonical link sits outside its
+publisher's allow-listed sections is structurally not general-awareness material, so its page is
+**never fetched**. SEBI's allow-list:
+
+```text
+/media-and-notifications/press-releases/
+/legal/circulars/
+/legal/master-circulars/
+/legal/regulations/
+/reports-and-statistics/reports/
+```
+
+The excluded row is still written (pipeline §4) with `ingestion_status='deprioritised'` and
+`metadata.prefilter_reason='publisher_path_excluded:/<seg1>/<seg2>'`, so an operator can see which
+section was dropped. A publisher with **no** configured allow-list is unfiltered by path — absence
+of config is never read as "deny all", which is why RBI and PIB are untouched until their page
+structure is verified by a live pass.
+
+Rationale (live, 2026-09-21): SEBI's first item-split pass snapshotted 15 documents, 14 of them
+`/enforcement/orders/...` RTI appeals and interim orders with no examinable claim.
+
+### 4.4 Embedded-PDF body extraction
+SEBI (and peers) render the item page as chrome around an embedded PDF viewer: the readable HTML is
+a breadcrumb and the document is the PDF. After fetching an allow-listed page, the ingest takes the
+PDF body when the readable HTML is below `crawl_schedule.pdf_fallback_below_chars` (default 800)
+**and** the page embeds or links a PDF — found via a viewer `?file=` parameter, an
+`iframe`/`embed`/`object` source, or an anchor, always resolved to a `.pdf` on the **same host** (an
+off-host PDF is an unvetted third party, not this source's evidence).
+
+Extraction reuses `fetcher.fetch_pdf` → `parse_pdf_bytes`, the same pypdf path `doc:text_extract`
+runs on library uploads. No new dependency. The stored body is the page title plus the extracted
+text; `metadata` records `body_source` (`html`|`pdf`), `pdf_url` and `extracted_chars`, and the
+document's `content_hash` becomes the PDF's so dedup keys on the body actually stored. The PDF fetch
+carries the same per-source User-Agent as the page and is capped at `crawl_schedule.max_pdf_bytes`
+(default 10 MB).
+
+**Minimum-body gate.** A final body below `crawl_schedule.min_body_chars` (default 400) writes **no
+row** and records a per-item error, exactly like an item-page fetch failure. This is deliberate:
+294's partial unique index on `(source_id, canonical_item_url)` means a written row permanently owns
+that item's slot, so storing a chrome-only body would block any later, better extraction of the same
+item.
+
+A PDF that cannot be fetched (including over the size cap) is only fatal when the HTML body alone
+does not clear the floor; otherwise the HTML body is kept and `metadata.pdf_error` records what
+happened.
+
+### 4.5 Publisher title deny-list
+The second layer, inside an allow-listed section. `sources.py` carries per-publisher title patterns
+for strictly administrative instruments (SEBI: recovery certificate, notice of attachment, release
+order, general remittance order, general remittance advice, adjudication order, settlement order,
+order for compliance, order of AA under the RTI Act, and `appeal no.` + `filed by` together).
+Matching is deterministic, case-insensitive substring — **no LLM, no scoring**; a tuple pattern
+requires every substring and reports itself joined by `+`. A match is evaluable from the feed entry
+alone, so the item page is never fetched. The row is still snapshotted with
 `ingestion_status='deprioritised'` and `metadata.prefilter_reason='publisher_denylist:<pattern>'`;
 it is never silently dropped.
+
+### 4.6 Publication dates
+`metadata.raw_pub_date` always keeps the feed's verbatim value, parsed or not — when a publisher
+changes its date shape, that string is what lets the parser be extended and the rows re-derived
+without re-crawling. `parse_published_at` accepts RFC 2822 (shape-checked first, because
+`email.utils` silently mis-parses `Sep 21, 2026 02:30 PM` as 02:30), ISO-8601, and the
+day/month-name shapes Indian publishers use, with or without a time and with or without a trailing
+`IST` / `+0530`. **A value carrying no timezone is read as Asia/Kolkata** (fixed +05:30 — India has
+no DST), not UTC; reading it as UTC back-dated every item by 5.5 hours. Unparseable still means
+`published_at` NULL, never `now()`.
 
 Only `snapshotted` documents are enqueued for generation (`_reconcile_pending_generation`), so
 deprioritised items never reach the LLM queue.

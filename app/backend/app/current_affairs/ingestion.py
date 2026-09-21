@@ -56,6 +56,21 @@ _FEED_SUMMARY_CHARS = 2000
 # failed item page): the next pass must re-read the feed rather than 304.
 _CLEARED_FEED_VALIDATORS = {"feed_etag": None, "feed_last_modified": None}
 
+# Below this many readable HTML characters an item page is assumed to be chrome
+# (breadcrumb + nav) wrapping an embedded document, so the embedded PDF is tried.
+# SEBI's live pages measured 290–600 chars of pure chrome.
+_DEFAULT_PDF_FALLBACK_CHARS = 800
+
+# Hard floor on the FINAL body. Below this there is no examinable claim, and
+# storing the row would burn the item's canonical-link slot in the unique index
+# so a later, better extraction could never replace it. Instead: no row, per-item
+# error, retried next pass.
+_DEFAULT_MIN_BODY_CHARS = 400
+
+# Cap on an embedded PDF. Over this the item records an error rather than
+# spending minutes of pypdf on a scanned bulk annexure.
+_DEFAULT_MAX_PDF_BYTES = 10 * 1024 * 1024
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -369,6 +384,118 @@ def _entry_digest(canonical: str, title: str, summary: str) -> str:
     return hashlib.sha256("\n".join((canonical, title or "", summary or "")).encode("utf-8")).hexdigest()
 
 
+def _schedule_int(source: dict[str, Any], key: str, default: int) -> int:
+    """Read an integer knob from ``crawl_schedule``, falling back to ``default``.
+
+    ``crawl_schedule`` is unconstrained JSONB, so a non-object or non-numeric
+    value must not raise. A non-positive value means "use the default" rather
+    than "disable", because every one of these knobs is a safety floor/ceiling.
+    """
+    sched = source.get("crawl_schedule")
+    if not isinstance(sched, dict):
+        return default
+    try:
+        value = int(sched.get(key) or default)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+def _page_html(page: Any) -> str:
+    """Raw HTML of a fetched page.
+
+    ``FetchResult.text`` is already reduced to plain text, which is exactly what
+    the readable-body check wants but useless for finding an embedded PDF. The
+    untouched bytes are on ``raw_bytes``; decode them with the response charset
+    when it names one, and never raise on a mis-declared encoding.
+    """
+    raw = getattr(page, "raw_bytes", None)
+    if not raw:
+        return ""
+    charset = "utf-8"
+    content_type = (getattr(page, "content_type", None) or "").lower()
+    if "charset=" in content_type:
+        charset = content_type.split("charset=", 1)[1].split(";")[0].strip() or "utf-8"
+    try:
+        return raw.decode(charset, errors="replace")
+    except (LookupError, UnicodeDecodeError):
+        return raw.decode("utf-8", errors="replace")
+
+
+def _resolve_item_body(
+    page: Any,
+    *,
+    title: str | None,
+    link: str,
+    fetch: Callable[..., Any],
+    user_agent: str | None,
+    min_chars: int,
+    pdf_threshold: int,
+    max_pdf_bytes: int,
+) -> tuple[str | None, dict[str, Any], str | None]:
+    """Decide what this item's ``raw_text`` is.
+
+    Returns ``(body, metadata, error)``. ``body`` is ``None`` when the item has no
+    usable body — the caller then records ``error`` per item and writes NO row.
+
+    The HTML text is used as-is when it is substantial. When it is thin, OR the
+    page embeds/links a PDF for this item, the PDF is fetched and its extracted
+    text becomes the body (prefixed with the page title, which the PDF itself
+    often omits). Extraction reuses ``fetcher.fetch_pdf`` → ``parse_pdf_bytes``,
+    the same pypdf path ``doc:text_extract`` runs on library uploads.
+
+    A PDF that cannot be fetched or parsed is NOT automatically fatal: when the
+    HTML body alone clears ``min_chars`` it is kept and the PDF error is recorded
+    alongside it. Only when neither source yields a usable body does the item
+    fail.
+    """
+    html_text = (getattr(page, "text", None) or "").strip()
+    page_url = getattr(page, "final_url", None) or link
+    pdf_url = ca_sources.embedded_pdf_url(_page_html(page), page_url=page_url)
+
+    # The PDF is only worth fetching when the page HAS one and its readable HTML
+    # is too thin to be the document. A rich HTML body plus a linked PDF means the
+    # HTML already IS the document and the PDF is an annexure.
+    if not (pdf_url and len(html_text) < pdf_threshold):
+        if len(html_text) >= min_chars:
+            return html_text, {"body_source": "html", "extracted_chars": len(html_text)}, None
+        return None, {}, "thin_body"
+
+    pdf = fetch(
+        pdf_url, adapter_type="pdf", user_agent=user_agent, max_bytes=max_pdf_bytes,
+    )
+    if not getattr(pdf, "ok", False):
+        pdf_error = str(getattr(pdf, "error", None) or "pdf_fetch_failed")
+        if len(html_text) >= min_chars:
+            return html_text, {
+                "body_source": "html",
+                "extracted_chars": len(html_text),
+                "pdf_url": pdf_url,
+                "pdf_error": pdf_error,
+            }, None
+        return None, {}, pdf_error
+
+    pdf_text = (getattr(pdf, "text", None) or "").strip()
+    body = f"{title}\n\n{pdf_text}".strip() if title else pdf_text
+    if len(body) < min_chars:
+        if len(html_text) >= min_chars:
+            return html_text, {
+                "body_source": "html",
+                "extracted_chars": len(html_text),
+                "pdf_url": pdf_url,
+                "pdf_error": "thin_pdf_text",
+            }, None
+        return None, {}, "thin_body"
+
+    return body, {
+        "body_source": "pdf",
+        "pdf_url": pdf_url,
+        "extracted_chars": len(body),
+        # Popped by the caller: dedup must key on the body actually stored.
+        "body_content_hash": getattr(pdf, "content_hash", None),
+    }, None
+
+
 def _ingest_rss_items(
     supabase: Any,
     source: dict[str, Any],
@@ -481,22 +608,36 @@ def _ingest_rss_items(
     }
     item_errors: list[dict[str, str]] = []
     document_ids: list[Any] = []
+    min_body_chars = _schedule_int(source, "min_body_chars", _DEFAULT_MIN_BODY_CHARS)
+    pdf_threshold = _schedule_int(source, "pdf_fallback_below_chars", _DEFAULT_PDF_FALLBACK_CHARS)
+    max_pdf_bytes = _schedule_int(source, "max_pdf_bytes", _DEFAULT_MAX_PDF_BYTES)
 
     for canonical, entry in new_items:
         title = (getattr(entry, "title", "") or "").strip() or None
         summary = (getattr(entry, "summary", "") or "").strip()
-        published_at = ca_sources.parse_published_at(getattr(entry, "published", None))
+        raw_pub_date = (getattr(entry, "published", None) or "").strip() or None
+        published_at = ca_sources.parse_published_at(raw_pub_date)
         link = (getattr(entry, "link", "") or "").strip() or canonical
 
+        # The raw feed value is kept verbatim ALWAYS, parsed or not: when a
+        # publisher changes its date shape, the stored string is what lets the
+        # parser be extended and the rows re-derived without re-crawling.
         metadata: dict[str, Any] = {"publisher": publisher, "item_link": link}
+        if raw_pub_date:
+            metadata["raw_pub_date"] = raw_pub_date
         if summary:
             metadata["feed_summary"] = summary[:_FEED_SUMMARY_CHARS]
 
-        # Deny-list is evaluable from the feed entry alone — decide BEFORE paying
-        # for the item page fetch. Pipeline §4: the row is still snapshotted, with
-        # a machine-readable reason; it is never silently dropped.
-        denied = ca_sources.denylisted_title(publisher, title)
-        if denied:
+        # Both structural filters are decidable from the feed entry alone, so they
+        # run BEFORE paying for the item page fetch. Pipeline §4: the row is still
+        # written with a machine-readable reason; it is never silently dropped.
+        # Path first — it is the coarser, publisher-section-level judgement.
+        excluded = ca_sources.path_excluded_reason(publisher, canonical)
+        denied = None if excluded else ca_sources.denylisted_title(publisher, title)
+        skip_reason = excluded or (
+            f"{ca_sources.DENYLIST_REASON_PREFIX}{denied}" if denied else None
+        )
+        if skip_reason:
             payload = {
                 "source_id": source_id,
                 "source_url": link,
@@ -510,8 +651,7 @@ def _ingest_rss_items(
                 "etag": None,
                 "last_modified": None,
                 "raw_text": summary or None,
-                "metadata": {**metadata,
-                             "prefilter_reason": f"{ca_sources.DENYLIST_REASON_PREFIX}{denied}"},
+                "metadata": {**metadata, "prefilter_reason": skip_reason},
                 "ingestion_status": "deprioritised",
             }
             _record_item(supabase, payload, counts, item_errors, document_ids, link)
@@ -530,11 +670,28 @@ def _ingest_rss_items(
             counts["items_duplicate"] += 1
             continue
 
-        raw_text = getattr(page, "text", None)
-        accept, reason = ca_sources.prefilter_document(
-            raw_text=raw_text, title=title, publisher=publisher,
+        body, body_meta, body_error = _resolve_item_body(
+            page, title=title, link=link, fetch=fetch, user_agent=user_agent,
+            min_chars=min_body_chars, pdf_threshold=pdf_threshold,
+            max_pdf_bytes=max_pdf_bytes,
         )
-        item_metadata = {**metadata, "content_type": getattr(page, "content_type", None)}
+        if body is None:
+            # No usable body: the item stays NEW so a later pass (or a fixed
+            # extractor) can retry it, exactly like an item-page fetch failure.
+            item_errors.append({"link": link, "error": body_error or "thin_body"})
+            continue
+        # Dedup must key on the body that was actually stored, not on the chrome
+        # page that merely pointed at it.
+        content_hash = body_meta.pop("body_content_hash", None) or content_hash
+
+        accept, reason = ca_sources.prefilter_document(
+            raw_text=body, title=title, publisher=publisher,
+        )
+        item_metadata = {
+            **metadata,
+            "content_type": getattr(page, "content_type", None),
+            **body_meta,
+        }
         if not accept and reason:
             item_metadata["prefilter_reason"] = reason
 
@@ -550,7 +707,7 @@ def _ingest_rss_items(
             "content_hash": content_hash,
             "etag": getattr(page, "etag", None),
             "last_modified": getattr(page, "last_modified", None),
-            "raw_text": raw_text,
+            "raw_text": body,
             "metadata": item_metadata,
             "ingestion_status": "snapshotted" if accept else "deprioritised",
         }
