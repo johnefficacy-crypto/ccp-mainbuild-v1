@@ -8,8 +8,16 @@ on:
 # PR branches are validated once via the pull_request event; main gets one
 # post-merge run via push. Cancel superseded PR runs, but never cancel a main
 # run (each merged commit gets its own authoritative run).
+#
+# The main-run guarantee lives in the GROUP KEY, not in cancel-in-progress.
+# cancel-in-progress=false only stops THIS run from cancelling others; GitHub
+# still evicts a queued run when a newer one joins the same group. Keying main
+# on github.sha gives every merge commit its own group, so two merges landing
+# seconds apart can never displace each other. Do not replace github.sha with
+# github.ref here: on push that is refs/heads/main for every commit, which is
+# exactly the bug this avoids (three merges in 50s, one survivor).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

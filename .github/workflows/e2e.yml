@@ -22,7 +22,7 @@ permissions:
 # A superseded PR-branch run (up to 40 min of Chromium) is cancelled when a
 # newer commit lands; pushes to main are never cancelled.
 concurrency:
-  group: e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
