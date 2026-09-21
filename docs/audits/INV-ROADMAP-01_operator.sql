@@ -1,5 +1,5 @@
 -- INV-ROADMAP-01 — read-only operator queries for the aspirant-roadmap investigation.
--- HEAD: 5f90e28419101da1a32e5d69b97d27548776587f   Date: 2026-09-19
+-- HEAD: f1a37b6916ebb901e2085a4f48adfdc384014dd0   Date: 2026-09-21 (re-verified)
 --
 -- Every statement is SELECT-only and schema-qualified. Run in Supabase Studio.
 -- Replace :exam_slug / :user_id before running. Nothing here mutates data.
@@ -214,3 +214,69 @@ select reviewer_status, relation_type, count(*) as edges
 from public.topic_prerequisites
 group by reviewer_status, relation_type
 order by reviewer_status, relation_type;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Q15 (C4, C8) — Is elective scoping populated? Every learner-facing coverage
+-- read now goes through planner.load_scoped_coverage, which filters on the
+-- section's selection_kind (migration 287) and the user's chosen optional. An
+-- empty user_exam_electives means the scoping is inert in practice and the new
+-- palette shows every optional paper to everyone.
+select selection_kind, count(*) as sections,
+       count(*) filter (where elective_group is not null) as with_group
+from public.exam_sections
+group by selection_kind
+order by selection_kind;
+
+select count(*) as elective_choices,
+       count(distinct user_id) as users_who_chose
+from public.user_exam_electives;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Q16 (C6) — Is the predictability axis populated? It is the only signal on a
+-- coverage row that is comparable across subject-papers, and the palette renders
+-- nothing where it is null (PaletteCard.jsx), so an unpopulated column makes the
+-- new axis invisible rather than wrong.
+select e.slug,
+       count(*) filter (where c.reviewer_status = 'locked') as locked_rows,
+       count(c.predictability_band) filter (where c.reviewer_status = 'locked')
+         as with_predictability_band,
+       count(distinct c.predictability_band) as distinct_bands,
+       count(distinct c.source_basis) as distinct_source_bases
+from public.exam_topic_coverage c
+join public.exams e on e.id = c.exam_id
+group by e.slug
+order by locked_rows desc;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Q17 (C4, K17) — How much of the palette's "unplaced" set is actually untouched?
+-- planner_board.list_candidates calls a topic placed only when it has a task in
+-- the 7-day window, so a topic mastered months ago reads the same as one never
+-- opened. This splits the unplaced set by whether the user has any mastery row.
+select case
+         when m.topic_id is null then 'no_mastery_row'
+         when m.mastery_score >= 75 then 'mastery_75_plus'
+         when m.mastery_score > 0 then 'mastery_partial'
+         else 'mastery_zero'
+       end as bucket,
+       count(*) as topics
+from public.exam_topic_coverage c
+join public.exams e on e.id = c.exam_id
+left join public.user_topic_mastery m
+       on m.topic_id = c.topic_id and m.user_id = :user_id
+where e.slug = :exam_slug
+  and c.reviewer_status = 'locked'
+group by bucket
+order by topics desc;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Q18 (C2, K5) — Do board placements and task origin actually carry? Migration
+-- 289 added study_tasks.source ('planner'|'user') and 290 added day_ordinal.
+select source, count(*) as tasks,
+       count(day_ordinal) as arranged,
+       count(topic_id) as with_topic_id,
+       count(*) filter (where status = 'completed') as completed
+from public.study_tasks
+where user_id = :user_id
+group by source
+order by source;
