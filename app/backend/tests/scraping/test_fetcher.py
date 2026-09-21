@@ -770,3 +770,78 @@ def test_legacy_helpers_keep_the_bot_identity(monkeypatch):
     seen.clear()
     fetch_page_html("https://example.gov.in/p")
     assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+
+
+# ─── entity decoding + PDF size cap (CA-RSS-02) ─────────────────────────────
+
+
+def test_strip_html_decodes_every_entity_not_just_five(monkeypatch):
+    from app.scraping.fetcher import strip_html
+
+    # The old hand-rolled table knew &amp;/&lt;/&gt;/&quot;/&nbsp; and left the
+    # rest sitting literally in the snapshot body.
+    assert strip_html("<p>A &raquo; B</p>") == "A » B"
+    assert strip_html("<p>&#8377;500 &amp; &#x20B9;600</p>") == "₹500 & ₹600"
+    assert strip_html("<p>a&nbsp;&nbsp;b</p>") == "a b"        # U+00A0 collapses
+    assert strip_html("<p>&quot;q&quot; &lt;tag&gt;</p>") == '"q" <tag>'
+
+
+def _pdf_resp(body: bytes, *, content_length: str | None = None):
+    headers = {"content-type": "application/pdf"}
+    if content_length is not None:
+        headers["content-length"] = content_length
+
+    class _Resp:
+        status_code = 200
+        text = ""
+        content = body
+        url = "https://example.gov.in/doc.pdf"
+
+        def raise_for_status(self):
+            pass
+
+    _Resp.headers = headers
+    return _Resp()
+
+
+def test_fetch_pdf_rejects_a_body_over_the_cap(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 2048))
+    result = fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=1024)
+    assert result.ok is False and result.error == "pdf_too_large"
+    assert result.text is None
+
+
+def test_fetch_pdf_rejects_on_declared_content_length(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 10, content_length="99999"))
+    result = fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=1024)
+    assert result.ok is False and result.error == "pdf_too_large"
+
+
+def test_fetch_pdf_under_the_cap_and_without_a_cap_are_unaffected(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 2048))
+    assert fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=8192).ok is True
+    assert fetch_pdf("https://example.gov.in/doc.pdf").ok is True   # no cap given
+
+
+def test_fetch_dispatches_max_bytes_to_the_pdf_adapter_only(monkeypatch):
+    seen = {}
+
+    def _fake_pdf(url, **kw):
+        seen.update(kw)
+        return FetchResult(ok=True, url=url, text="x")
+
+    monkeypatch.setattr("app.scraping.fetcher.fetch_pdf", _fake_pdf)
+    fetch("https://example.gov.in/doc.pdf", adapter_type="pdf", max_bytes=4096)
+    assert seen["max_bytes"] == 4096

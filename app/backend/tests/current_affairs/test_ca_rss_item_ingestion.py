@@ -318,10 +318,13 @@ class _SebiNet(_Net):
 def test_sebi_denylisted_title_is_deprioritised_with_a_reason_not_dropped():
     src = _sebi_source()
     sb = SBStub({"current_affairs_sources": [src], "current_affairs_documents": []})
+    # Both links sit INSIDE the SEBI path allow-list, so the title deny-list is
+    # the layer under test here (path exclusion is covered in the CA-RSS-02 file).
     feed = _feed(
-        ("Recovery Certificate No. 9169", "https://sebi.test/orders/9169",
+        ("Recovery Certificate No. 9169",
+         "https://sebi.test/media-and-notifications/press-releases/rc-9169",
          "Mon, 21 Sep 2026 10:00:00 +0530"),
-        ("Relaxations in KYC norms for FPIs", "https://sebi.test/legal/kyc",
+        ("Relaxations in KYC norms for FPIs", "https://sebi.test/legal/circulars/kyc",
          "Mon, 21 Sep 2026 11:00:00 +0530"),
     )
     net = _SebiNet(feed)
@@ -334,11 +337,12 @@ def test_sebi_denylisted_title_is_deprioritised_with_a_reason_not_dropped():
     assert denied["ingestion_status"] == "deprioritised"
     assert denied["metadata"]["prefilter_reason"] == "publisher_denylist:recovery certificate"
     # Still a snapshotted row (pipeline §4) — the item is recorded, never dropped.
-    assert denied["canonical_item_url"] == "https://sebi.test/orders/9169"
+    assert denied["canonical_item_url"] == (
+        "https://sebi.test/media-and-notifications/press-releases/rc-9169")
 
     assert docs["Relaxations in KYC norms for FPIs"]["ingestion_status"] == "snapshotted"
     # The deny-list decision is made from the feed entry: no page fetch is paid for.
-    assert net.item_urls == ["https://sebi.test/legal/kyc"]
+    assert net.item_urls == ["https://sebi.test/legal/circulars/kyc"]
 
 
 def test_denylist_patterns_are_case_insensitive_and_publisher_scoped():

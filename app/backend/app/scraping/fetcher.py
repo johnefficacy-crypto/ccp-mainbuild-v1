@@ -20,6 +20,7 @@ directly).
 from __future__ import annotations
 
 import hashlib
+import html as _html
 import logging
 import re
 from dataclasses import dataclass
@@ -97,6 +98,7 @@ def fetch(
     if_modified_since: str | None = None,
     user_agent: str | None = None,
     headers: dict[str, str] | None = None,
+    max_bytes: int | None = None,
 ) -> FetchResult:
     """Fetch ``url`` and return a structured result.
 
@@ -110,6 +112,9 @@ def fetch(
     Identity: ``user_agent`` / ``headers`` override the default bot
     User-Agent for this call only. Omit them and the recruitment
     scraper's long-standing identity is sent unchanged.
+
+    ``max_bytes`` applies to the ``pdf`` adapter only (see
+    :func:`fetch_pdf`); other adapters ignore it.
 
     Conditional fetch: pass ``if_none_match`` (an ETag value) and/or
     ``if_modified_since`` (an HTTP-date string) to send the standard
@@ -140,7 +145,7 @@ def fetch(
         return fetch_pdf(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
-            user_agent=user_agent, headers=headers,
+            user_agent=user_agent, headers=headers, max_bytes=max_bytes,
         )
     if adapter == "sitemap":
         result, _ = fetch_sitemap(
@@ -234,16 +239,23 @@ def strip_html(html: str) -> str:
 
 
 def _strip_html(html: str) -> str:
+    """HTML → readable plain text.
+
+    Order matters: scripts/styles first, then tags, and only THEN entity
+    decoding. Decoding earlier would turn an escaped ``&lt;script&gt;`` into
+    something the tag pass has already walked past.
+
+    Entities are decoded with ``html.unescape`` rather than a hand-rolled table
+    of five names — the old table left everything else (``&raquo;``, ``&#8377;``,
+    numeric references) sitting literally in the snapshot body. ``&nbsp;``
+    decodes to U+00A0, which is normalised to a plain space so the whitespace
+    collapse below treats it like any other gap.
+    """
     text = re.sub(r"<script[^>]*>[\s\S]*?</script>", " ", html, flags=re.IGNORECASE)
     text = re.sub(r"<style[^>]*>[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
-    text = (
-        text.replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", '"')
-    )
+    text = _html.unescape(text)
+    text = text.replace("\u00a0", " ").replace("\u200b", "")
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
@@ -756,6 +768,14 @@ def fetch_api_paginated(
 # ─── PDF adapter ────────────────────────────────────────────────────────────
 
 
+def _content_length(header: str | None) -> int | None:
+    """``Content-Length`` as an int, or ``None`` when absent/unparseable."""
+    try:
+        return int(header) if header else None
+    except (TypeError, ValueError):
+        return None
+
+
 def parse_pdf_bytes(raw_bytes: bytes | None) -> str:
     """Extract text from a PDF byte string using pypdf.
 
@@ -840,6 +860,7 @@ def fetch_pdf(
     if_modified_since: str | None = None,
     user_agent: str | None = None,
     headers: dict[str, str] | None = None,
+    max_bytes: int | None = None,
 ) -> FetchResult:
     """Fetch a PDF bulletin and return its extracted text in ``FetchResult.text``.
 
@@ -853,6 +874,12 @@ def fetch_pdf(
     standard caching headers; a 304 response yields
     ``FetchResult(ok=False, status_code=304, error="not_modified")`` so
     the runner can skip re-parsing an unchanged bulletin.
+
+    ``max_bytes`` rejects an oversized PDF with ``error="pdf_too_large"``
+    instead of parsing it. The declared ``Content-Length`` is checked first,
+    then the actual body. NOTE: the request is not streamed, so this bounds
+    what is parsed and stored, not what crosses the wire. Callers that omit
+    ``max_bytes`` are unaffected.
     """
     if not url:
         return FetchResult(ok=False, url="", error="empty_url")
@@ -891,6 +918,23 @@ def fetch_pdf(
             final_url=str(resp.url),
             error=f"http_{resp.status_code}",
         )
+
+    if max_bytes is not None and max_bytes > 0:
+        declared = _content_length(resp.headers.get("content-length"))
+        actual = len(resp.content or b"")
+        if (declared is not None and declared > max_bytes) or actual > max_bytes:
+            logger.warning(
+                "[fetcher] pdf over size cap url=%s declared=%s actual=%s cap=%s",
+                url, declared, actual, max_bytes,
+            )
+            return FetchResult(
+                ok=False,
+                url=url,
+                status_code=resp.status_code,
+                final_url=str(resp.url),
+                content_type=resp.headers.get("content-type"),
+                error="pdf_too_large",
+            )
 
     raw_bytes = resp.content
     content_hash = hashlib.sha256(raw_bytes).hexdigest() if raw_bytes else None
