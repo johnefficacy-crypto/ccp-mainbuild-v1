@@ -34,10 +34,25 @@ logger = logging.getLogger("career_copilot.study_os.descriptive")
 #: `pyq_questions.question_type` value this surface serves.
 QUESTION_TYPE = "descriptive"
 
-#: Verified-only, conjunctively: the paper must be trusted AND the question
-#: reviewed. Mirrors the PYQ read contract used everywhere else in Study OS.
-PAPER_TRUST = "verified"
+#: The verified gate is on the QUESTION, not the paper.
+#:
+#: `pyq_papers.trust_status` describes the provenance of a paper's *composition*
+#: — whether we can claim these questions were the paper, in this order. It is
+#: orthogonal to whether a question has been reviewed. Every paper the split
+#: script writes lands `pending` by design, so gating the catalogue on it hid
+#: all 140 split optional papers while leaving the thematic rows (verified,
+#: because their composition is not claimed) as the only thing on offer.
+#:
+#: A question the reviewer has verified is practisable wherever it sits.
 QUESTION_REVIEWER_STATUS = "verified"
+
+#: Paper kinds that are General Studies rather than an optional subject.
+#: Keyed on `paper_kind` + `metadata.gs_paper`, never on a list of subject
+#: names: the subject vocabulary is corpus data and grows without this file.
+GS_PAPER_KINDS = frozenset({"gs", "essay"})
+
+#: The subject GS and Essay papers are catalogued under.
+GENERAL_STUDIES = "General Studies"
 
 #: Seconds of writing time per mark. UPSC Mains GS is 250 marks in 180 minutes —
 #: roughly 43s/mark of pure writing, but an optional paper's 250 marks in the
@@ -59,8 +74,8 @@ RUBRIC_MAX_TOTAL = len(RUBRIC_KEYS) * RUBRIC_MAX_PER_KEY  # 12
 
 _ATTEMPT_COLUMNS = (
     "id, user_id, pyq_question_id, status, answer_text, word_count, "
-    "time_spent_seconds, timer_target_seconds, self_scores, self_total, notes, "
-    "started_at, submitted_at, updated_at"
+    "time_spent_seconds, timer_target_seconds, pasted_chars, self_scores, "
+    "self_total, notes, started_at, submitted_at, updated_at"
 )
 
 _QUESTION_COLUMNS = (
@@ -196,6 +211,78 @@ def is_retired(paper: dict[str, Any]) -> bool:
     return _as_bool(_meta(paper).get("retired"))
 
 
+def is_thematic_question(question: dict[str, Any]) -> bool:
+    """The thematic flag as the loader also stamps it on the QUESTION.
+
+    `workbench/scripts/load_thematic.py` writes `corpus_half: "thematic"` onto
+    both the paper row and every question row it creates. Reading both is not
+    belt-and-braces for its own sake: a question that says it is thematic must
+    never be offered as a sat paper, whichever row carries the flag, and a
+    single missing key on one paper row is the difference between "no paper
+    order" and a year label that claims a sitting.
+    """
+    return str(_meta(question).get("corpus_half") or "").strip().lower() == "thematic"
+
+
+def question_is_thematic(question: dict[str, Any], paper: dict[str, Any] | None) -> bool:
+    return is_thematic(paper or {}) or is_thematic_question(question)
+
+
+def paper_kind(paper: dict[str, Any]) -> str:
+    return str(_meta(paper).get("paper_kind") or "").strip().lower()
+
+
+def is_gs_paper(paper: dict[str, Any]) -> bool:
+    """A General Studies or Essay paper, by shape rather than by name.
+
+    Keyed on `paper_kind` in {'gs', 'essay'} or the presence of
+    `metadata.gs_paper`. No hardcoded subject list: GS papers arrive from a
+    separate split, and a catalogue that had to be edited to admit them would
+    be wrong again the next time the corpus grew.
+    """
+    meta = _meta(paper)
+    return paper_kind(paper) in GS_PAPER_KINDS or bool(
+        str(meta.get("gs_paper") or "").strip()
+    )
+
+
+def subject_of(question: dict[str, Any], paper: dict[str, Any] | None) -> str | None:
+    """The subject this question is catalogued under.
+
+    GS and Essay papers are "General Studies"; everything else carries its
+    optional subject on the question. The thematic half carries it too — the
+    loader stamps `optional_subject` on every thematic question — which is what
+    lets themes be filtered by the subject the aspirant picked instead of
+    showing Anthropology themes to a Political Science aspirant.
+    """
+    if paper is not None and is_gs_paper(paper):
+        return GENERAL_STUDIES
+    name = _meta(question).get("optional_subject")
+    text = str(name or "").strip()
+    return text or None
+
+
+def paper_slot(paper: dict[str, Any]) -> tuple[int, str | None]:
+    """(sort key, short label) for the paper's position within its year.
+
+    "P1"/"P2" for an optional, "GS1".."GS4" and "Essay" for General Studies.
+    Essay sorts last within its year because it is sat last.
+    """
+    meta = _meta(paper)
+    gs = str(meta.get("gs_paper") or "").strip()
+    if gs or paper_kind(paper) in GS_PAPER_KINDS:
+        if gs.lower() == "essay" or paper_kind(paper) == "essay":
+            return (99, "Essay")
+        number = _as_int(gs)
+        if number:
+            return (number, f"GS{number}")
+        return (98, "General Studies")
+    number = _as_int(meta.get("optional_paper_number"))
+    if number:
+        return (number, f"P{number}")
+    return (0, None)
+
+
 # ── question shaping ─────────────────────────────────────────────────────
 
 
@@ -229,6 +316,9 @@ def question_payload(
         "question_format": meta.get("question_format"),
         "section_ref": meta.get("section_ref"),
         "optional_subject": meta.get("optional_subject"),
+        # The subject as the CATALOGUE files it: "General Studies" for a GS
+        # or Essay paper, which carries no optional_subject at all.
+        "subject": subject_of(question, paper),
         "optional_paper_number": _as_int(meta.get("optional_paper_number")),
         "year": (paper or {}).get("year"),
         "attempt_count": attempt_count,
@@ -252,12 +342,16 @@ def requires_map_sheet(question: dict[str, Any]) -> bool:
 
 
 def _papers_for_exam(supabase: Any, exam_id: str) -> list[dict[str, Any]] | None:
+    """Every paper for this exam, at any `trust_status`.
+
+    Deliberately unfiltered on trust: see QUESTION_REVIEWER_STATUS above. The
+    verified gate lives on the question rows this returns paper ids for.
+    """
     rows = _safe(
         lambda: (
             supabase.table("pyq_papers")
             .select(_PAPER_COLUMNS)
             .eq("exam_id", exam_id)
-            .eq("trust_status", PAPER_TRUST)
             .execute()
             .data
         ),
@@ -362,12 +456,22 @@ def _primary_topic_names(
 UNTAGGED_THEME = "Untagged"
 
 
-def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
+def get_catalog(
+    supabase: Any, exam_id: str, *, subject: str | None = None
+) -> dict[str, Any]:
     """Subjects, papers, themes and years, each with a question count.
 
     Papers are the real-paper half: non-retired, non-thematic, holding at least
-    one verified descriptive question. Themes are the thematic half, grouped by
-    verified primary topic tag.
+    one verified descriptive question — at ANY paper trust_status. Themes are
+    the thematic half, grouped by verified primary topic tag.
+
+    ``subject`` narrows papers, themes and years to one subject. It does not
+    narrow ``subjects`` itself, which always lists every subject with a count,
+    because that list is how the aspirant changes their mind.
+
+    Map questions are excluded from every count here, the same way
+    ``list_questions`` excludes them from the list: a count that includes
+    questions the surface refuses to open is a promise it cannot keep.
     """
     if not exam_id:
         raise DescriptiveError("exam_required", "Pick an exam first.", 400)
@@ -379,7 +483,7 @@ def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
         )
     live = [p for p in papers if not is_retired(p)]
     if not live:
-        return _empty_catalog(exam_id)
+        return _empty_catalog(exam_id, subject)
 
     by_id = {str(p["id"]): p for p in live if p.get("id")}
     questions = _verified_questions_for_papers(supabase, list(by_id))
@@ -387,19 +491,29 @@ def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
         raise DescriptiveError(
             "catalog_read_failed", "Question papers are unavailable right now.", 503
         )
+    questions = [q for q in questions if not requires_map_sheet(q)]
     if not questions:
-        return _empty_catalog(exam_id)
+        return _empty_catalog(exam_id, subject)
 
-    real_half = [q for q in questions if not is_thematic(by_id.get(str(q.get("pyq_paper_id")), {}))]
-    thematic_half = [q for q in questions if is_thematic(by_id.get(str(q.get("pyq_paper_id")), {}))]
+    def paper_of(q: dict[str, Any]) -> dict[str, Any]:
+        return by_id.get(str(q.get("pyq_paper_id") or "")) or {}
 
-    # Subjects span BOTH halves: an aspirant picks their optional first, and the
-    # subject is on the question, not the paper.
+    # Subjects span BOTH halves and every trust status: an aspirant picks their
+    # optional first, and the subject is on the question, not the paper.
     subjects: dict[str, int] = {}
     for q in questions:
-        name = _meta(q).get("optional_subject")
+        name = subject_of(q, paper_of(q))
         if name:
-            subjects[str(name)] = subjects.get(str(name), 0) + 1
+            subjects[name] = subjects.get(name, 0) + 1
+
+    wanted = str(subject).strip() if subject else None
+    if wanted:
+        scoped = [q for q in questions if subject_of(q, paper_of(q)) == wanted]
+    else:
+        scoped = questions
+
+    real_half = [q for q in scoped if not question_is_thematic(q, paper_of(q))]
+    thematic_half = [q for q in scoped if question_is_thematic(q, paper_of(q))]
 
     paper_counts: dict[str, int] = {}
     for q in real_half:
@@ -411,19 +525,25 @@ def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
     for pid, count in paper_counts.items():
         paper = by_id.get(pid) or {}
         meta = _meta(paper)
+        slot_key, slot_label = paper_slot(paper)
         paper_items.append(
             {
                 "id": pid,
                 "label": _paper_label(paper),
-                "year": paper.get("year"),
+                "year": _as_int(paper.get("year")),
                 "paper_kind": meta.get("paper_kind"),
+                "paper_slot": slot_label,
                 "optional_paper_number": _as_int(meta.get("optional_paper_number")),
+                "gs_paper": meta.get("gs_paper"),
                 "question_count": count,
+                "_slot_key": slot_key,
             }
         )
-    paper_items.sort(
-        key=lambda p: (-(p["year"] or 0), str(p["label"])),
-    )
+    # Year descending, paper number ascending: the most recent sitting first,
+    # and within it Paper I before Paper II.
+    paper_items.sort(key=lambda p: (-(p["year"] or 0), p["_slot_key"], str(p["label"])))
+    for item in paper_items:
+        item.pop("_slot_key", None)
 
     theme_names = _primary_topic_names(
         supabase, [str(q["id"]) for q in thematic_half if q.get("id")]
@@ -441,13 +561,13 @@ def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
 
     year_counts: dict[int, int] = {}
     for q in real_half:
-        year = (by_id.get(str(q.get("pyq_paper_id")), {}) or {}).get("year")
-        y = _as_int(year)
+        y = _as_int(paper_of(q).get("year"))
         if y:
             year_counts[y] = year_counts.get(y, 0) + 1
 
     return {
         "exam_id": exam_id,
+        "subject": wanted,
         "subjects": [
             {"subject": name, "question_count": count}
             for name, count in sorted(subjects.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -458,13 +578,14 @@ def get_catalog(supabase: Any, exam_id: str) -> dict[str, Any]:
             {"year": y, "question_count": c}
             for y, c in sorted(year_counts.items(), reverse=True)
         ],
-        "total_questions": len(questions),
+        "total_questions": len(scoped),
     }
 
 
-def _empty_catalog(exam_id: str) -> dict[str, Any]:
+def _empty_catalog(exam_id: str, subject: str | None = None) -> dict[str, Any]:
     return {
         "exam_id": exam_id,
+        "subject": (str(subject).strip() if subject else None) or None,
         "subjects": [],
         "papers": [],
         "themes": [],
@@ -474,17 +595,16 @@ def _empty_catalog(exam_id: str) -> dict[str, Any]:
 
 
 def _paper_label(paper: dict[str, Any]) -> str:
-    meta = _meta(paper)
-    bits = [
-        str(meta.get("optional_subject") or "").strip(),
-        str(meta.get("paper_kind") or "").strip(),
-    ]
-    number = _as_int(meta.get("optional_paper_number"))
-    if number:
-        bits.append(f"Paper {number}")
-    year = paper.get("year")
-    if year:
-        bits.append(str(year))
+    """"2025 · P1", "2025 · GS3", "2025 · Essay".
+
+    Year and slot only. The subject is not repeated in the label because the
+    papers list is already scoped to one subject, and "Political Science and
+    International Relations · optional · Paper 1 · 2019" was a chip too wide to
+    read at a glance.
+    """
+    year = _as_int(paper.get("year"))
+    _, slot = paper_slot(paper)
+    bits = [str(year) if year else "", slot or ""]
     label = " · ".join(b for b in bits if b)
     return label or (paper.get("paper_code") or str(paper.get("id") or "Paper"))
 
@@ -532,8 +652,11 @@ def list_questions(
 
     # A theme filter selects the thematic half; a paper or year filter selects
     # the real-paper half. Asking for neither returns both.
+    def paper_of(q: dict[str, Any]) -> dict[str, Any]:
+        return live.get(str(q.get("pyq_paper_id") or "")) or {}
+
     if theme:
-        questions = [q for q in questions if is_thematic(live.get(str(q.get("pyq_paper_id")), {}))]
+        questions = [q for q in questions if question_is_thematic(q, paper_of(q))]
         names = _primary_topic_names(supabase, [str(q["id"]) for q in questions if q.get("id")])
         questions = [
             q
@@ -541,16 +664,14 @@ def list_questions(
             if names.get(str(q.get("id")), UNTAGGED_THEME) == str(theme)
         ]
     elif paper_id or year is not None:
-        questions = [
-            q for q in questions if not is_thematic(live.get(str(q.get("pyq_paper_id")), {}))
-        ]
+        questions = [q for q in questions if not question_is_thematic(q, paper_of(q))]
 
     if subject:
-        questions = [
-            q
-            for q in questions
-            if str(_meta(q).get("optional_subject") or "") == str(subject)
-        ]
+        # `subject_of`, not the raw metadata key: a GS paper carries no
+        # `optional_subject`, and matching on the key alone would make
+        # "General Studies" select nothing.
+        wanted_subject = str(subject).strip()
+        questions = [q for q in questions if subject_of(q, paper_of(q)) == wanted_subject]
     wanted_year = _as_int(year)
     if wanted_year is not None:
         questions = [
@@ -684,6 +805,10 @@ def attempt_payload(row: dict[str, Any]) -> dict[str, Any]:
         "word_count": _as_int(row.get("word_count")) or 0,
         "time_spent_seconds": _as_int(row.get("time_spent_seconds")) or 0,
         "timer_target_seconds": _as_int(row.get("timer_target_seconds")),
+        # Null and 0 are different answers: null is "this attempt predates
+        # paste tracking", 0 is "nothing was pasted". Only 0 and above
+        # justify the history line.
+        "pasted_chars": _as_int(row.get("pasted_chars")),
         "self_scores": row.get("self_scores"),
         "self_total": _as_int(row.get("self_total")),
         "notes": row.get("notes"),
@@ -785,6 +910,7 @@ def open_attempt(supabase: Any, user_id: str, question_id: str) -> dict[str, Any
         "answer_text": "",
         "word_count": 0,
         "time_spent_seconds": 0,
+        "pasted_chars": 0,
         "timer_target_seconds": timer_target_for(_meta(question).get("marks")),
         "started_at": _now_iso(),
         "updated_at": _now_iso(),
@@ -798,6 +924,22 @@ def open_attempt(supabase: Any, user_id: str, question_id: str) -> dict[str, Any
     return attempt_payload(created[0])
 
 
+def monotonic_counter(existing: Any, incoming: Any) -> int | None:
+    """``max(existing, incoming)``, or None when there is nothing to write.
+
+    Both counters this guards — elapsed time and pasted characters — only ever
+    go up. The client sends a running total, and requests do not arrive in the
+    order they were sent: a 10s autosave that overtakes a 20s one would
+    otherwise rewind the clock, and reloading a tab with a fresh counter would
+    erase the whole first sitting. Taking the max makes a late or restarted
+    client harmless.
+    """
+    value = _as_int(incoming)
+    if value is None:
+        return None
+    return max(0, value, _as_int(existing) or 0)
+
+
 def save_attempt(
     supabase: Any,
     user_id: str,
@@ -805,6 +947,7 @@ def save_attempt(
     *,
     answer_text: Any = None,
     time_spent_seconds: Any = None,
+    pasted_chars: Any = None,
 ) -> dict[str, Any]:
     """Autosave. The SERVER computes `word_count` — the client never sends one.
 
@@ -823,9 +966,12 @@ def save_attempt(
         text = str(answer_text)
         patch["answer_text"] = text
         patch["word_count"] = word_count(text)
-    seconds = _as_int(time_spent_seconds)
+    seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
     if seconds is not None:
-        patch["time_spent_seconds"] = max(0, seconds)
+        patch["time_spent_seconds"] = seconds
+    pasted = monotonic_counter(attempt.get("pasted_chars"), pasted_chars)
+    if pasted is not None:
+        patch["pasted_chars"] = pasted
 
     updated = _safe(
         lambda: (
@@ -893,8 +1039,14 @@ def submit_attempt(
     *,
     self_scores: Any,
     notes: Any = None,
+    time_spent_seconds: Any = None,
+    pasted_chars: Any = None,
 ) -> dict[str, Any]:
-    """Close the attempt with the aspirant's own rubric judgement."""
+    """Close the attempt with the aspirant's own rubric judgement.
+
+    Takes the final counters too. The last autosave can be up to ten seconds
+    old, and the submit is the one moment the elapsed time must be right.
+    """
     attempt = _load_owned_attempt(supabase, user_id, attempt_id)
     if (attempt.get("status") or "draft") != "draft":
         raise DescriptiveError(
@@ -915,6 +1067,12 @@ def submit_attempt(
         # actually in the column.
         "word_count": word_count(attempt.get("answer_text")),
     }
+    seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
+    if seconds is not None:
+        patch["time_spent_seconds"] = seconds
+    pasted = monotonic_counter(attempt.get("pasted_chars"), pasted_chars)
+    if pasted is not None:
+        patch["pasted_chars"] = pasted
     updated = _safe(
         lambda: (
             supabase.table("descriptive_attempts")

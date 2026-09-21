@@ -29,6 +29,7 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
   const subjects = catalog?.subjects || [];
   const papers = catalog?.papers || [];
   const themes = catalog?.themes || [];
+  const subjectChosen = Boolean(selection.subject);
 
   if (subjects.length === 0) {
     return (
@@ -64,6 +65,13 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
                   year: null,
                 })
               }
+              // The number is a question count and nothing else. It read as a
+              // paper count, a year count or anything the reader guessed,
+              // which is how "Anthropology 45 · PolSci 1" looked plausible
+              // while measuring the wrong thing entirely.
+              title={`${s.question_count} ${
+                s.question_count === 1 ? "question" : "questions"
+              }`}
               data-testid="descriptive-subject"
             >
               {s.subject}
@@ -77,12 +85,22 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
 
       <section>
         <h3 className="font-heading text-sm font-semibold">Papers</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Sat papers, in question order.
-        </p>
+        {/* The claim is only made when there is something to claim it about.
+            Thematic compilations were leaking into this list and inheriting
+            "in question order" — a promise the thematic half cannot keep,
+            since its question_number is NULL by design. */}
+        {papers.length > 0 && (
+          <p className="mt-1 text-xs text-muted-foreground" data-testid="descriptive-papers-hint">
+            Sat papers, in question order.
+          </p>
+        )}
         <div className="mt-2 flex flex-wrap gap-2">
           {papers.length === 0 && (
-            <span className="text-sm text-muted-foreground">No papers yet.</span>
+            <span className="text-sm text-muted-foreground">
+              {subjectChosen
+                ? "No papers for this subject yet."
+                : "Pick a subject to see its papers."}
+            </span>
           )}
           {papers.map((p) => (
             <button
@@ -97,6 +115,9 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
                   theme: null,
                 })
               }
+              title={`${p.question_count} ${
+                p.question_count === 1 ? "question" : "questions"
+              }`}
               data-testid="descriptive-paper"
             >
               {p.label}
@@ -115,7 +136,11 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {themes.length === 0 && (
-            <span className="text-sm text-muted-foreground">No themes yet.</span>
+            <span className="text-sm text-muted-foreground">
+              {subjectChosen
+                ? "No themes for this subject yet."
+                : "Pick a subject to see its themes."}
+            </span>
           )}
           {themes.map((t) => (
             <button
@@ -131,6 +156,9 @@ export default function CatalogPicker({ catalog, selection, onSelect, loading, e
                   year: null,
                 })
               }
+              title={`${t.question_count} ${
+                t.question_count === 1 ? "question" : "questions"
+              }`}
               data-testid="descriptive-theme"
             >
               {t.theme}
