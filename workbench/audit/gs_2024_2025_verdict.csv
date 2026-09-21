@@ -1,0 +1,159 @@
+﻿file,year,paper,question_number,paper_local_number,global_number,en_len,verdict,best_score,ocr_derived
+GS1 2024.json,2024,GS1,1,1,1,260,exact,100.0,false
+GS1 2024.json,2024,GS1,2,2,2,228,exact,100.0,false
+GS1 2024.json,2024,GS1,3,3,3,204,exact,100.0,false
+GS1 2024.json,2024,GS1,4,4,4,230,exact,100.0,false
+GS1 2024.json,2024,GS1,5,5,5,298,exact,100.0,false
+GS1 2024.json,2024,GS1,6,6,6,130,exact,100.0,false
+GS1 2024.json,2024,GS1,7,7,7,257,exact,100.0,false
+GS1 2024.json,2024,GS1,8,8,8,386,exact,100.0,false
+GS1 2024.json,2024,GS1,9,9,9,341,exact,100.0,false
+GS1 2024.json,2024,GS1,10,10,10,323,exact,100.0,false
+GS1 2024.json,2024,GS1,11,11,11,381,exact,100.0,false
+GS1 2024.json,2024,GS1,12,12,12,247,exact,100.0,false
+GS1 2024.json,2024,GS1,13,13,13,260,exact,100.0,false
+GS1 2024.json,2024,GS1,14,14,14,258,exact,100.0,false
+GS1 2024.json,2024,GS1,15,15,15,179,exact,100.0,false
+GS1 2024.json,2024,GS1,16,16,16,228,exact,100.0,false
+GS1 2024.json,2024,GS1,17,17,17,267,exact,100.0,false
+GS1 2024.json,2024,GS1,18,18,18,383,exact,100.0,false
+GS1 2024.json,2024,GS1,19,19,19,411,exact,100.0,false
+GS1 2024.json,2024,GS1,20,20,20,295,exact,100.0,false
+GS2 2024.json,2024,GS2,21,1,21,154,exact,100.0,false
+GS2 2024.json,2024,GS2,22,2,22,210,exact,100.0,false
+GS2 2024.json,2024,GS2,23,3,23,177,exact,100.0,false
+GS2 2024.json,2024,GS2,24,4,24,191,exact,100.0,false
+GS2 2024.json,2024,GS2,25,5,25,212,exact,100.0,false
+GS2 2024.json,2024,GS2,26,6,26,189,exact,100.0,false
+GS2 2024.json,2024,GS2,27,7,27,207,exact,100.0,false
+GS2 2024.json,2024,GS2,28,8,28,218,exact,100.0,false
+GS2 2024.json,2024,GS2,29,9,29,225,exact,100.0,false
+GS2 2024.json,2024,GS2,30,10,30,245,exact,100.0,false
+GS2 2024.json,2024,GS2,31,11,31,227,exact,100.0,false
+GS2 2024.json,2024,GS2,32,12,32,232,exact,100.0,false
+GS2 2024.json,2024,GS2,33,13,33,215,exact,100.0,false
+GS2 2024.json,2024,GS2,34,14,34,221,exact,100.0,false
+GS2 2024.json,2024,GS2,35,15,35,215,exact,100.0,false
+GS2 2024.json,2024,GS2,36,16,36,208,exact,100.0,false
+GS2 2024.json,2024,GS2,37,17,37,230,exact,100.0,false
+GS2 2024.json,2024,GS2,38,18,38,253,exact,100.0,false
+GS2 2024.json,2024,GS2,39,19,39,203,exact,100.0,false
+GS2 2024.json,2024,GS2,40,20,40,307,exact,100.0,false
+GS3 2024.json,2024,GS3,41,1,41,279,exact,100.0,false
+GS3 2024.json,2024,GS3,42,2,42,223,exact,100.0,false
+GS3 2024.json,2024,GS3,43,3,43,219,exact,100.0,false
+GS3 2024.json,2024,GS3,44,4,44,167,exact,100.0,false
+GS3 2024.json,2024,GS3,45,5,45,288,exact,100.0,false
+GS3 2024.json,2024,GS3,46,6,46,269,exact,100.0,false
+GS3 2024.json,2024,GS3,47,7,47,217,exact,100.0,false
+GS3 2024.json,2024,GS3,48,8,48,247,exact,100.0,false
+GS3 2024.json,2024,GS3,49,9,49,207,exact,100.0,false
+GS3 2024.json,2024,GS3,50,10,50,195,exact,100.0,false
+GS3 2024.json,2024,GS3,51,11,51,202,exact,100.0,false
+GS3 2024.json,2024,GS3,52,12,52,220,exact,100.0,false
+GS3 2024.json,2024,GS3,53,13,53,216,exact,100.0,false
+GS3 2024.json,2024,GS3,54,14,54,221,exact,100.0,false
+GS3 2024.json,2024,GS3,55,15,55,230,exact,100.0,false
+GS3 2024.json,2024,GS3,56,16,56,225,exact,100.0,false
+GS3 2024.json,2024,GS3,57,17,57,258,exact,100.0,false
+GS3 2024.json,2024,GS3,58,18,58,262,exact,100.0,false
+GS3 2024.json,2024,GS3,59,19,59,250,exact,100.0,false
+GS3 2024.json,2024,GS3,60,20,60,244,exact,100.0,false
+GS4 2024.json,2024,GS4,61,1,61,441,unverifiable,,false
+GS4 2024.json,2024,GS4,62,1,61,650,unverifiable,,false
+GS4 2024.json,2024,GS4,63,2,62,905,unverifiable,,false
+GS4 2024.json,2024,GS4,64,2,62,649,unverifiable,,false
+GS4 2024.json,2024,GS4,65,3,63,517,unverifiable,,false
+GS4 2024.json,2024,GS4,66,3,63,517,unverifiable,,false
+GS4 2024.json,2024,GS4,67,3,63,558,unverifiable,,false
+GS4 2024.json,2024,GS4,68,4,64,557,unverifiable,,false
+GS4 2024.json,2024,GS4,69,4,64,534,unverifiable,,false
+GS4 2024.json,2024,GS4,70,5,65,605,unverifiable,,false
+GS4 2024.json,2024,GS4,71,5,65,503,unverifiable,,false
+GS4 2024.json,2024,GS4,72,6,66,804,unverifiable,,false
+GS4 2024.json,2024,GS4,73,6,66,612,unverifiable,,false
+GS4 2024.json,2024,GS4,74,7,67,4468,unverifiable,,false
+GS4 2024.json,2024,GS4,75,8,68,5080,unverifiable,,false
+GS4 2024.json,2024,GS4,76,9,69,5400,unverifiable,,false
+GS4 2024.json,2024,GS4,77,10,70,2515,unverifiable,,false
+GS4 2024.json,2024,GS4,78,11,71,3028,unverifiable,,false
+GS4 2024.json,2024,GS4,79,12,72,2806,unverifiable,,false
+final_GS1.json,2025,GS1,1,1,1,182,variant,90.9,false
+final_GS1.json,2025,GS1,2,2,2,188,variant,89.8,false
+final_GS1.json,2025,GS1,3,3,3,261,variant,93.4,false
+final_GS1.json,2025,GS1,4,4,4,326,variant,94.3,false
+final_GS1.json,2025,GS1,5,5,5,349,variant,94.9,false
+final_GS1.json,2025,GS1,6,6,6,285,variant,94.1,false
+final_GS1.json,2025,GS1,7,7,7,265,variant,93.5,false
+final_GS1.json,2025,GS1,8,8,8,248,variant,93.1,false
+final_GS1.json,2025,GS1,9,9,9,310,variant,94.6,false
+final_GS1.json,2025,GS1,10,10,10,283,variant,92.9,false
+final_GS1.json,2025,GS1,11,11,11,310,variant,94.5,false
+final_GS1.json,2025,GS1,12,12,12,369,variant,94.5,false
+final_GS1.json,2025,GS1,13,13,13,219,variant,92.5,false
+final_GS1.json,2025,GS1,14,14,14,343,exact,95.5,false
+final_GS1.json,2025,GS1,15,15,15,343,variant,94.8,false
+final_GS1.json,2025,GS1,16,16,16,374,exact,95.3,false
+final_GS1.json,2025,GS1,17,17,17,313,variant,94.8,false
+final_GS1.json,2025,GS1,18,18,18,397,exact,95.5,false
+final_GS1.json,2025,GS1,19,19,19,367,exact,95.5,false
+final_GS1.json,2025,GS1,20,20,20,277,exact,95.4,false
+final_GS2.json,2025,GS2,21,1,21,686,variant,90.7,false
+final_GS2.json,2025,GS2,22,2,22,490,orphan,84.6,false
+final_GS2.json,2025,GS2,23,3,23,422,variant,89.9,false
+final_GS2.json,2025,GS2,24,4,24,486,variant,94.6,false
+final_GS2.json,2025,GS2,25,5,25,549,variant,90.8,false
+final_GS2.json,2025,GS2,26,6,26,289,variant,85.9,false
+final_GS2.json,2025,GS2,27,7,27,350,variant,94.4,false
+final_GS2.json,2025,GS2,28,8,28,399,orphan,81.7,false
+final_GS2.json,2025,GS2,29,9,29,325,variant,94.6,false
+final_GS2.json,2025,GS2,30,10,30,291,variant,93.2,false
+final_GS2.json,2025,GS2,31,11,31,728,exact,98.1,false
+final_GS2.json,2025,GS2,32,12,32,573,exact,95.0,false
+final_GS2.json,2025,GS2,33,13,33,456,exact,96.2,false
+final_GS2.json,2025,GS2,34,14,34,457,variant,91.4,false
+final_GS2.json,2025,GS2,35,15,35,432,variant,87.9,false
+final_GS2.json,2025,GS2,36,16,36,357,variant,90.1,false
+final_GS2.json,2025,GS2,37,17,37,491,exact,96.5,false
+final_GS2.json,2025,GS2,38,18,38,522,variant,94.8,false
+final_GS2.json,2025,GS2,39,19,39,559,exact,96.9,false
+final_GS2.json,2025,GS2,40,20,40,563,exact,97.7,false
+final_GS3.json,2025,GS3,41,1,41,465,variant,94.7,false
+final_GS3.json,2025,GS3,42,2,42,440,exact,96.3,false
+final_GS3.json,2025,GS3,43,3,43,328,variant,94.2,false
+final_GS3.json,2025,GS3,44,4,44,334,variant,92.8,false
+final_GS3.json,2025,GS3,45,5,45,524,variant,90.1,false
+final_GS3.json,2025,GS3,46,6,46,424,variant,86.7,false
+final_GS3.json,2025,GS3,47,7,47,433,variant,87.1,false
+final_GS3.json,2025,GS3,48,8,48,425,variant,86.7,false
+final_GS3.json,2025,GS3,49,9,49,366,variant,90.5,false
+final_GS3.json,2025,GS3,50,10,50,529,variant,90.2,false
+final_GS3.json,2025,GS3,51,11,51,423,exact,97.1,false
+final_GS3.json,2025,GS3,52,12,52,455,variant,89.8,false
+final_GS3.json,2025,GS3,53,13,53,463,exact,95.7,false
+final_GS3.json,2025,GS3,54,14,54,436,variant,93.3,false
+final_GS3.json,2025,GS3,55,15,55,379,exact,97.4,false
+final_GS3.json,2025,GS3,56,16,56,433,exact,96.8,false
+final_GS3.json,2025,GS3,57,17,57,524,exact,96.9,false
+final_GS3.json,2025,GS3,58,18,58,595,variant,92.8,false
+final_GS3.json,2025,GS3,59,19,59,459,exact,96.8,false
+final_GS3.json,2025,GS3,60,20,60,345,exact,96.9,false
+final_GS4.json,2025,GS4,61,1,61,463,exact,100.0,false
+final_GS4.json,2025,GS4,62,1,61,591,exact,100.0,false
+final_GS4.json,2025,GS4,63,2,62,389,exact,100.0,false
+final_GS4.json,2025,GS4,64,2,62,427,exact,100.0,false
+final_GS4.json,2025,GS4,65,3,63,430,exact,98.2,false
+final_GS4.json,2025,GS4,66,3,63,496,orphan,70.5,false
+final_GS4.json,2025,GS4,67,3,63,472,orphan,74.3,false
+final_GS4.json,2025,GS4,68,4,64,468,exact,100.0,false
+final_GS4.json,2025,GS4,69,4,64,209,exact,100.0,false
+final_GS4.json,2025,GS4,70,5,65,420,exact,100.0,false
+final_GS4.json,2025,GS4,71,5,65,428,exact,100.0,false
+final_GS4.json,2025,GS4,72,6,66,466,exact,100.0,false
+final_GS4.json,2025,GS4,73,6,66,920,exact,100.0,false
+final_GS4.json,2025,GS4,74,7,67,3321,exact,100.0,false
+final_GS4.json,2025,GS4,75,8,68,3478,exact,100.0,false
+final_GS4.json,2025,GS4,76,9,69,5044,exact,100.0,false
+final_GS4.json,2025,GS4,77,10,70,5036,exact,100.0,false
+final_GS4.json,2025,GS4,78,11,71,3965,exact,100.0,false
+final_GS4.json,2025,GS4,79,12,72,2951,exact,100.0,false
