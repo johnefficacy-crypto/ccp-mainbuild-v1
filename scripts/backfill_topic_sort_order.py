@@ -22,6 +22,16 @@ only from the same source string; the name is what both sides actually hold. A
 name that matches no node, or matches more than one, is REPORTED AND SKIPPED —
 never given a guessed position.
 
+AND TWO VOCABULARIES NAME THE SAME THEME. A micro_theme in the syllabus file is
+a full line — "Aurangzeb: religious policy phases, temples/jizyah, territorial
+consolidation, ...". Many `topics` rows hold the short label alone —
+"Aurangzeb". Comparing whole strings matched neither from the other, so every
+GS microtopic was skipped as "no unique microtopic in GS_n" while the theme sat
+in the index the whole time. Resolution therefore goes through
+`study_os.syllabus.theme_hits`, which tries the whole line and then its head
+(the text before the first colon). One resolver, used by this script and by the
+catalogue, so the two cannot drift apart again.
+
     export DATABASE_URL=postgresql://...
     python scripts/backfill_topic_sort_order.py           # dry run (default)
     python scripts/backfill_topic_sort_order.py --live    # apply
@@ -38,17 +48,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INDEX = ROOT / "app" / "backend" / "app" / "study_os" / "syllabus_index.json"
 
-#: Subject slug -> paper id, mirroring `study_os/syllabus.py`. The empty GS
-#: shells (`upsc-mains-gs1`, `upsc-gs-paper-1`) are deliberately absent.
-def _paper_of(slug: str) -> str | None:
-    import re
+# The catalogue's own placement module, imported rather than restated. It pulls
+# in json, logging and re and nothing else, so a script can use it without the
+# backend's dependencies. A second copy of the subject map or the name rules is
+# how the two came to disagree in the first place.
+sys.path.insert(0, str(ROOT / "app" / "backend"))
+from app.study_os import syllabus  # noqa: E402
 
-    text = (slug or "").strip().lower()
-    m = re.fullmatch(r"upsc-cse-mains-gs([1-4])", text)
-    if m:
-        return f"GS_{m.group(1)}"
-    m = re.fullmatch(r"upsc-cse-mains-(opt-[a-z0-9-]+-p[12])", text)
-    return m.group(1) if m else None
+#: Subject slug -> paper id. The empty GS shells (`upsc-mains-gs1`,
+#: `upsc-gs-paper-1`) are deliberately absent from it — they carry no tree.
+_paper_of = syllabus.paper_id_from_subject_slug
 
 
 _TOPICS_SQL = """
@@ -77,12 +86,8 @@ def _plan(index: dict, rows: list[dict]) -> tuple[list[tuple[str, int]], list[st
     sections: dict[tuple[str, str], int] = {}
     for paper in index.get("papers", []):
         for section in paper.get("sections", []):
-            sections[(paper["paper_id"], section["section"])] = section["order"]
-
-    themes: dict[tuple[str, str], list[int]] = {}
-    for name, hits in index.get("themes", {}).items():
-        for hit in hits:
-            themes.setdefault((hit["paper_id"], name), []).append(hit["order"])
+            sections[(syllabus.theme_key(paper["paper_id"]),
+                      syllabus.theme_key(section["section"]))] = section["order"]
 
     writes: list[tuple[str, int]] = []
     skipped: list[str] = []
@@ -92,12 +97,13 @@ def _plan(index: dict, rows: list[dict]) -> tuple[list[tuple[str, int]], list[st
             skipped.append(f"{row['name'][:60]} — subject {row['subject_slug']} is not a paper")
             continue
         if row["level"] == "topic":
-            order = sections.get((paper, row["name"]))
+            order = sections.get((syllabus.theme_key(paper), syllabus.theme_key(row["name"])))
         else:
-            hits = themes.get((paper, row["name"]) , [])
+            hits = syllabus.theme_hits(row["name"], paper_id=paper)
             # More than one position for the same name in the same paper is an
             # ambiguity, not a tie to break.
-            order = hits[0] if len(hits) == 1 else None
+            orders = {h["order"] for h in hits}
+            order = hits[0]["order"] if len(orders) == 1 else None
         if order is None:
             skipped.append(f"{row['name'][:60]} — no unique {row['level']} in {paper}")
             continue
@@ -131,10 +137,10 @@ async def run(*, live: bool) -> int:
         print(f"  topics read      : {len(rows)}")
         print(f"  sort_order to set: {len(writes)}")
         print(f"  skipped          : {len(skipped)}")
-        for line in skipped[:25]:
+        # Every skip, not the first 25. A truncated list is how "all GS" looked
+        # like a handful of odd names instead of a whole vocabulary missing.
+        for line in skipped:
             print(f"      {line}")
-        if len(skipped) > 25:
-            print(f"      … and {len(skipped) - 25} more")
 
         if live and writes:
             async with conn.transaction():

@@ -149,17 +149,91 @@ def test_an_unknown_theme_is_unplaced_not_guessed():
 def test_a_missing_index_degrades_to_flat_rather_than_raising(monkeypatch):
     """A build artefact must not be able to take down the answer-writing
     surface. Losing it costs the nesting, not the page."""
-    syl.index.cache_clear()
-    syl._papers_by_id.cache_clear()
-    syl._section_order.cache_clear()
-    syl._section_part.cache_clear()
+    syl.reset_caches()
     monkeypatch.setattr(syl, "_INDEX_PATH", ROOT / "does-not-exist.json")
     try:
         assert syl.index() == {"papers": [], "themes": {}}
         assert syl.place({"name": "x", "metadata": {}})["placed"] is False
     finally:
         monkeypatch.undo()
-        syl.index.cache_clear()
-        syl._papers_by_id.cache_clear()
-        syl._section_order.cache_clear()
-        syl._section_part.cache_clear()
+        syl.reset_caches()
+
+
+# ── the catalogue's GS ordering (the same vocabulary bug) ──────────────────
+# A GS theme was PLACED correctly — routes 1 and 2 read the stamped metadata
+# and the tree — but `theme_sort` came from an exact whole-line lookup that a
+# short label never matched. Every GS theme in a section therefore tied at the
+# fallback, and the catalogue showed them in arbitrary order while claiming
+# syllabus order.
+
+GS_SHORT_LABELS = [
+    ("French Revolution", "GS_1"),
+    ("Aurangzeb", "GS_1"),
+    ("Interior of the Earth", "GS_1"),
+    ("Indo-Islamic architecture", "GS_1"),
+]
+
+
+@pytest.mark.parametrize("name,paper", GS_SHORT_LABELS)
+def test_a_short_gs_label_gets_its_real_theme_sort_not_the_fallback(name, paper):
+    spot = syl.place({
+        "name": name,
+        "metadata": {},
+        "subject_slug": f"upsc-cse-mains-gs{paper[-1]}",
+        "parent_topic_name": None,
+    })
+    hit = syl.theme_hits(name, paper_id=paper)
+    assert len(hit) == 1
+    assert spot["paper_id"] == paper
+    assert spot["theme_sort"] == hit[0]["order"]
+    assert spot["theme_sort"] < 10**5  # the fallback the bug left behind
+
+
+def test_short_labels_in_one_section_come_out_in_syllabus_order():
+    """The user-visible half: two themes of one section must not tie."""
+    section = "Indian Culture"
+    names = [n for n, hits in syl.index()["themes"].items()
+             if any(h["paper_id"] == "GS_1" and h["section"] == section for h in hits)]
+    assert len(names) > 2
+    placed = [
+        (syl.place({"name": n.split(":", 1)[0].strip(), "metadata": {},
+                    "subject_slug": "upsc-cse-mains-gs1",
+                    "parent_topic_name": section})["theme_sort"], n)
+        for n in names
+    ]
+    sorts = [s for s, _ in placed]
+    assert len(set(sorts)) == len(sorts), "themes tied — ordering is arbitrary again"
+    expected = [next(h["order"] for h in syl.index()["themes"][n]
+                     if h["paper_id"] == "GS_1" and h["section"] == section)
+                for n in names]
+    assert sorts == expected
+
+
+def test_the_whole_line_is_preferred_over_a_head_that_matches_elsewhere():
+    """Adding the head key must not divert a row that carries the full line."""
+    lines = sorted(n for n in syl.index()["themes"]
+                   if n.lower().startswith("constitutional bodies:"))
+    assert len(lines) == 2
+    orders = {syl.place({"name": line, "metadata": {},
+                         "subject_slug": "upsc-cse-mains-gs2"})["theme_sort"]
+              for line in lines}
+    assert len(orders) == 2 and 10**5 not in orders
+
+
+def test_a_label_shared_by_two_themes_keeps_the_fallback_rather_than_guessing():
+    spot = syl.place({"name": "Case studies", "metadata": {},
+                      "subject_slug": "upsc-cse-mains-gs4"})
+    assert spot["paper_id"] == "GS_4"
+    assert spot["theme_sort"] == 10**5
+
+
+def test_theme_hits_is_narrowed_by_paper():
+    assert syl.theme_hits("Aurangzeb", paper_id="GS_1")
+    assert syl.theme_hits("Aurangzeb", paper_id="GS_3") == []
+
+
+def test_theme_key_folds_encoding_and_whitespace_only():
+    assert syl.theme_key("  Indo-Islamic   architecture ") == syl.theme_key("indo-islamic architecture")
+    assert syl.theme_key("Aurangzeb") != syl.theme_key("Akbar")
+    assert syl.theme_head("Aurangzeb: religious policy phases") == syl.theme_key("Aurangzeb")
+    assert syl.theme_head("French Revolution") == syl.theme_key("French Revolution")

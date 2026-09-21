@@ -20,10 +20,25 @@ document: `syllabus_index.json`, compiled by `scripts/build_syllabus_index.py`
 and checked against its sources by `test_syllabus_index.py`.
 
 DETERMINISM OVER HEURISTICS. Placement reads stamped metadata first and the
-index by exact theme name second. There is no fuzzy match and no scoring: a
-theme this module cannot place is reported as unplaced and shown to the
-aspirant in an explicit "Other" group, never guessed into a section it might
-not belong to.
+index by theme name second. There is no fuzzy match and no scoring: a theme
+this module cannot place is reported as unplaced and shown to the aspirant in
+an explicit "Other" group, never guessed into a section it might not belong to.
+
+TWO VOCABULARIES NAME THE SAME THEME. A micro_theme in the syllabus files is a
+full descriptive line — "Aurangzeb: religious policy phases, temples/jizyah,
+territorial consolidation, popular revolts (Jats, Satnamis, Sikhs), and the
+climax/crisis of the empire". Many `topics` rows predating that ingest hold the
+short label alone — "Aurangzeb". Matching on the whole string finds neither
+from the other, which is why GS themes had no order at all: `theme_sort` fell
+back to its default for every one of them and a section came out in arbitrary
+sequence.
+
+So a name is resolved on TWO exact keys, tried in order: the whole line, then
+its HEAD — the text before the first colon. Both are exact string equality on a
+deterministically derived key, not a fuzzy match, and a head that is not unique
+within its paper resolves to nothing rather than to a guess. `theme_hits` is
+the only place either key is computed; every caller, this module and
+`scripts/backfill_topic_sort_order.py` alike, goes through it.
 """
 from __future__ import annotations
 
@@ -78,6 +93,64 @@ def _section_order() -> dict[tuple[str, str], int]:
     return out
 
 
+def theme_key(name: Any) -> str:
+    """The comparison key for a theme name: collapsed, case-folded, no colon tail.
+
+    `unicodedata` normalisation and whitespace collapsing only — the same
+    string in two encodings or with a doubled space is the same theme, and
+    nothing else is treated as equal to anything.
+    """
+    import unicodedata
+
+    text = unicodedata.normalize("NFKC", str(name or ""))
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
+
+def theme_head(name: Any) -> str:
+    """`theme_key` of the text before the first colon.
+
+    The syllabus writes a micro_theme as "<label>: <elaboration>", so the head
+    is the label the older `topics` rows hold on their own. A name with no colon
+    is its own head, which is why the two indexes below can safely overlap.
+    """
+    return theme_key(str(name or "").split(":", 1)[0])
+
+
+@lru_cache(maxsize=1)
+def _themes_by_key() -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for name, hits in index().get("themes", {}).items():
+        out.setdefault(theme_key(name), []).extend(hits)
+    return out
+
+
+@lru_cache(maxsize=1)
+def _themes_by_head() -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for name, hits in index().get("themes", {}).items():
+        out.setdefault(theme_head(name), []).extend(hits)
+    return out
+
+
+def theme_hits(name: Any, *, paper_id: str | None = None) -> list[dict[str, Any]]:
+    """Every index entry this theme name refers to, narrowed to one paper.
+
+    The whole line is tried first and the head only if it matched nothing, so a
+    row that carries the full micro_theme can never be diverted to a different
+    theme that happens to share its label.
+
+    Ambiguity is the caller's to reject, not this function's to resolve: two
+    hits are returned as two. `Flagship schemes` in GS2 and `Case studies` in
+    GS4 are real examples — several distinct syllabus themes share that label,
+    and no rule here can say which one a row named `Case studies` meant.
+    """
+    key = theme_key(name)
+    hits = _themes_by_key().get(key) or _themes_by_head().get(theme_head(name)) or []
+    if paper_id:
+        hits = [h for h in hits if h.get("paper_id") == paper_id]
+    return list(hits)
+
+
 @lru_cache(maxsize=1)
 def _section_part() -> dict[tuple[str, str], str | None]:
     out: dict[tuple[str, str], str | None] = {}
@@ -85,6 +158,18 @@ def _section_part() -> dict[tuple[str, str], str | None]:
         for section in paper.get("sections", []):
             out[(paper["paper_id"], section["section"])] = section.get("part")
     return out
+
+
+def reset_caches() -> None:
+    """Drop every compiled view of the index.
+
+    Tests that swap the index file call this. It exists so adding a cache here
+    does not silently leave a test reading a stale one — enumerate them once,
+    in the module that owns them.
+    """
+    for cached in (index, _papers_by_id, _section_order, _section_part,
+                   _themes_by_key, _themes_by_head):
+        cached.cache_clear()
 
 
 def paper_label(paper_id: str | None) -> str:
@@ -181,21 +266,26 @@ def place(topic: dict[str, Any]) -> dict[str, Any]:
     if not section:
         section = str(topic.get("parent_topic_name") or "").strip() or None
 
-    # Route 3: the compiled index, by EXACT theme name, for a topic created
-    # outside the ingest. An ambiguous name is not a match.
+    # Route 3: the compiled index, by theme name, for a topic created outside
+    # the ingest. An ambiguous name is not a match.
     if not (paper_id and section):
-        matches = index().get("themes", {}).get(name) or []
+        matches = theme_hits(name)
         if len(matches) == 1:
             hit = matches[0]
             paper_id = paper_id or hit["paper_id"]
             section = section or hit["section"]
 
     theme_order: int | None = None
-    if paper_id and section:
-        for hit in index().get("themes", {}).get(name) or []:
-            if hit["paper_id"] == paper_id and hit["section"] == section:
-                theme_order = hit["order"]
-                break
+    if paper_id:
+        within = theme_hits(name, paper_id=paper_id)
+        exact = [h for h in within if h.get("section") == section]
+        # The section is preferred, but a name unique within its PAPER is still
+        # unambiguous — and the two vocabularies disagree about section names
+        # more often than about theme names. One hit in the paper is a match;
+        # two are not, whatever their sections say.
+        chosen = exact if len(exact) == 1 else (within if len(within) == 1 else [])
+        if chosen:
+            theme_order = chosen[0]["order"]
 
     return {
         "paper_id": paper_id,
