@@ -1,0 +1,23 @@
+{
+  "_comment": "ONE list of cases, read by BOTH sides of the word rule: app/backend/tests/study_os/test_descriptive_practice.py and app/frontend/src/features/study/essay/__tests__/wordCountParity.test.js. A live counter that disagrees with the stored one is worse than no counter, so neither implementation can drift without the other's test going red.",
+  "cases": [
+    { "name": "empty string", "text": "", "expected": 0 },
+    { "name": "whitespace only", "text": "   \n\t  ", "expected": 0 },
+    { "name": "one word", "text": "swaraj", "expected": 1 },
+    { "name": "leading and trailing whitespace", "text": "  two words  ", "expected": 2 },
+    { "name": "hyphenated compound counts once", "text": "self-reliance is swaraj", "expected": 3 },
+    { "name": "double hyphen inside a word counts once", "text": "socio--economic", "expected": 1 },
+    { "name": "em dash surrounded by spaces is its own token", "text": "justice — as fairness", "expected": 4 },
+    { "name": "newlines separate like spaces", "text": "one\ntwo\nthree", "expected": 3 },
+    { "name": "blank lines collapse", "text": "para one\n\n\npara two", "expected": 4 },
+    { "name": "tabs collapse", "text": "a\t\tb", "expected": 2 },
+    { "name": "mixed whitespace run collapses", "text": "one \n\t  two", "expected": 2 },
+    { "name": "trailing newline ignored", "text": "final thought\n", "expected": 2 },
+    { "name": "devanagari words", "text": "संविधान की नैतिकता", "expected": 3 },
+    { "name": "devanagari with danda attached", "text": "यह लोकतंत्र है।", "expected": 3 },
+    { "name": "mixed script", "text": "Gandhian विचार today", "expected": 3 },
+    { "name": "numbers and punctuation are words", "text": "Article 370, repealed 2019.", "expected": 4 },
+    { "name": "parenthesised marker", "text": "(a) Examine this claim", "expected": 4 },
+    { "name": "non breaking space separates", "text": "one two", "expected": 2 }
+  ]
+}
