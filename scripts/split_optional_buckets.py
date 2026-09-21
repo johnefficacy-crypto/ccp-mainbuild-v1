@@ -72,6 +72,7 @@ import os
 import re
 import sys
 import unicodedata
+import uuid
 from typing import Any, Iterable
 
 BUCKET_CODE_PREFIX = "UPSC-CSE-MAINS-OPT-"
@@ -88,6 +89,19 @@ _CARRIED_METADATA_KEYS = (
 
 class BucketAbort(Exception):
     """One bucket cannot be split. Raised before any write for that bucket."""
+
+
+def uuid_str(value: Any) -> Any:
+    """Render a ``uuid.UUID`` as its canonical string; pass everything else on.
+
+    asyncpg decodes ``uuid`` columns to ``uuid.UUID`` objects, which
+    ``json.dumps`` cannot serialise. Every id that ends up INSIDE a jsonb
+    payload has to come through here first. Deliberately narrow: no
+    ``default=str`` on the dumps call, because that would also silently
+    stringify a date, a Decimal or a Record we did not mean to put in jsonb,
+    and we would find out in production instead of in the type error.
+    """
+    return str(value) if isinstance(value, uuid.UUID) else value
 
 
 # ── pure planning (no IO, so it is testable without a database) ──────────────
@@ -155,7 +169,8 @@ def plan_bucket(bucket: dict, questions: Iterable[dict]) -> list[dict]:
             "optional_subject": subject,
             "optional_paper_number": number,
             "year": year,
-            "split_from_bucket_id": bucket.get("id"),
+            # A jsonb value, so the UUID must be a string here, not at dumps time.
+            "split_from_bucket_id": uuid_str(bucket.get("id")),
             "question_count": len(qs),
         }
         for key in _CARRIED_METADATA_KEYS:
@@ -229,6 +244,50 @@ update public.pyq_papers
 """
 
 
+# ── live-path payload builders ──────────────────────────────────────────────
+# Kept out of _split_one so the exact argument tuples that reach asyncpg can be
+# asserted without a database. Both produce a jsonb payload, and jsonb is where
+# a uuid.UUID blows up.
+
+def insert_args(bucket: dict, plan: dict) -> tuple:
+    """Positional arguments for ``_INSERT_SQL``.
+
+    ``paper_code`` is set as a COLUMN, not only inside metadata:
+    ``pyq_papers_unique_known_uidx`` covers
+    (exam_id, exam_phase_id, year, paper_date, shift, paper_code) where
+    exam_phase_id is not null. Every split row of one bucket shares
+    exam/phase/year, so a NULL paper_code column would leave them
+    distinguishable only by NULL-vs-NULL — which that index does not treat as a
+    conflict today, but which would collide the moment paper_date or shift were
+    ever backfilled.
+
+    The uuid columns ($1-$3) stay as asyncpg handed them over: asyncpg encodes
+    ``uuid.UUID`` for a uuid parameter natively. Only the jsonb payload needs
+    strings.
+    """
+    return (
+        bucket["exam_id"],
+        bucket["exam_phase_id"],
+        bucket["exam_cycle_id"],
+        plan["year"],
+        plan["paper_code"],
+        json.dumps(plan["metadata"]),
+    )
+
+
+def retire_args(bucket: dict, planned: list[dict]) -> tuple:
+    """Positional arguments for ``_RETIRE_SQL``.
+
+    ``split_into`` is a jsonb array of the split papers' ids. Those ids come
+    back from the INSERT's RETURNING (or from the existing-row lookup on a
+    re-run) as ``uuid.UUID``, so each one is stringified here.
+    """
+    return (
+        bucket["id"],
+        json.dumps([uuid_str(p["paper_id"]) for p in planned]),
+    )
+
+
 async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
     bucket_meta = bucket.get("metadata") or {}
     if isinstance(bucket_meta, str):
@@ -265,20 +324,7 @@ async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
             plan["paper_id"] = None
             created.append(plan)
             continue
-        new_id = await conn.fetchval(
-            _INSERT_SQL,
-            bucket["exam_id"], bucket["exam_phase_id"], bucket["exam_cycle_id"],
-            plan["year"],
-            # The COLUMN too, not only metadata: pyq_papers_unique_known_uidx
-            # covers (exam_id, exam_phase_id, year, paper_date, shift, paper_code)
-            # where exam_phase_id is not null. Every split row of one bucket
-            # shares exam/phase/year, so a NULL paper_code column would leave
-            # them distinguishable only by NULL-vs-NULL — which that index does
-            # not treat as a conflict today, but which would collide the moment
-            # paper_date or shift were ever backfilled.
-            plan["paper_code"],
-            json.dumps(plan["metadata"]),
-        )
+        new_id = await conn.fetchval(_INSERT_SQL, *insert_args(bucket, plan))
         plan["paper_id"] = new_id
         created.append(plan)
 
@@ -288,9 +334,7 @@ async def _split_one(conn, bucket: dict, *, live: bool) -> dict:
             if plan["question_ids"] and plan["paper_id"]:
                 await conn.execute(_REPOINT_SQL, plan["paper_id"], plan["question_ids"])
                 moved += len(plan["question_ids"])
-        await conn.execute(
-            _RETIRE_SQL, bucket["id"], json.dumps([p["paper_id"] for p in planned])
-        )
+        await conn.execute(_RETIRE_SQL, *retire_args(bucket, planned))
     else:
         moved = sum(len(p["question_ids"]) for p in planned)
 
