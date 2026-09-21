@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { Card, Eyebrow, PageHeader, Tabs } from "../../shared/ui/studyos";
 import CatalogPicker from "../../features/study/descriptive/CatalogPicker";
+import Coverage from "../../features/study/descriptive/Coverage";
 import MyAnswers from "../../features/study/descriptive/MyAnswers";
 import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
 
@@ -33,7 +34,11 @@ export default function AnswerWriting() {
   const [catalogError, setCatalogError] = useState("");
 
   const [questions, setQuestions] = useState([]);
-  const view = params.get("view") === "answers" ? "answers" : "write";
+  const VIEWS = ["write", "answers", "coverage"];
+  const view = VIEWS.includes(params.get("view")) ? params.get("view") : "write";
+  // "Unattempted only" is a property of the list, so it rides in the query
+  // string with the rest of the selection and survives a reload.
+  const unattemptedOnly = params.get("unattempted") === "1";
   const [excludedMap, setExcludedMap] = useState(0);
   const [listState, setListState] = useState("idle");
   const [activeIndex, setActiveIndex] = useState(null);
@@ -111,6 +116,7 @@ export default function AnswerWriting() {
     ["subject", "paper_id", "paper_number", "theme", "year"].forEach((k) => {
       if (selection[k]) query.set(k, selection[k]);
     });
+    if (unattemptedOnly) query.set("exclude_attempted", "true");
     setListState("loading");
     api
       .get(`/api/study/descriptive/questions?${query.toString()}`)
@@ -123,7 +129,7 @@ export default function AnswerWriting() {
         setQuestions([]);
         setListState("error");
       });
-  }, [examId, hasFilter, selection]);
+  }, [examId, hasFilter, selection, unattemptedOnly]);
 
   const setView = useCallback(
     (next) => {
@@ -131,7 +137,7 @@ export default function AnswerWriting() {
       params.forEach((v, k) => {
         if (k !== "view") query[k] = v;
       });
-      if (next === "answers") query.view = "answers";
+      if (next !== "write") query.view = next;
       setParams(query, { replace: true });
       setActiveIndex(null);
     },
@@ -167,10 +173,21 @@ export default function AnswerWriting() {
         options={[
           { value: "write", label: "Write" },
           { value: "answers", label: "My answers" },
+          { value: "coverage", label: "Coverage" },
         ]}
       />
 
       {view === "answers" && <MyAnswers onRewrite={rewrite} />}
+
+      {view === "coverage" && (
+        <Coverage
+          examId={examId}
+          onPickQuestion={(q) => q?.paper_id && setParams(
+            { view: "write", paper_id: String(q.paper_id) },
+            { replace: true },
+          )}
+        />
+      )}
 
       {view === "write" && !examId && (
         <Card>
@@ -200,6 +217,23 @@ export default function AnswerWriting() {
             <h2 className="font-heading mt-1 text-[22px] leading-tight">
               {listState === "loading" ? "Loading…" : `${questions.length} to write`}
             </h2>
+            <label className="mt-2 flex items-center gap-2 text-[12px] text-clay-700">
+              <input
+                type="checkbox"
+                checked={unattemptedOnly}
+                onChange={(e) => {
+                  const query = {};
+                  params.forEach((v, k) => {
+                    if (k !== "unattempted") query[k] = v;
+                  });
+                  if (e.target.checked) query.unattempted = "1";
+                  setParams(query, { replace: true });
+                  setActiveIndex(null);
+                }}
+                data-testid="descriptive-unattempted-only"
+              />
+              Unattempted only
+            </label>
             {excludedMap > 0 && (
               // Counted, not silently dropped. "Three aren't here" is
               // information; a shorter list with no explanation is not.

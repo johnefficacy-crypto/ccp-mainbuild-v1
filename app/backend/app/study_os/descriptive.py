@@ -1244,6 +1244,212 @@ def _attempt_counts(
     return counts
 
 
+# ── coverage (P4) ────────────────────────────────────────────────────────
+
+
+def _submitted_question_stats(
+    supabase: Any, user_id: str, question_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """question_id → {attempts, scores} over this user's SUBMITTED attempts.
+
+    SUBMITTED, not every attempt. An open draft is a question the aspirant is
+    in the middle of, not one they have covered, and counting it would let the
+    coverage number go up by opening questions and closing the tab.
+    """
+    if not question_ids or not user_id:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(sorted(set(question_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempts")
+                    .select("id, pyq_question_id, self_total, status")
+                    .eq("user_id", user_id)
+                    .eq("status", "submitted")
+                    .in_("pyq_question_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            qid = str(r.get("pyq_question_id") or "")
+            if not qid:
+                continue
+            entry = out.setdefault(qid, {"attempts": 0, "scores": []})
+            entry["attempts"] += 1
+            score = _as_int(r.get("self_total"))
+            if score is not None:
+                entry["scores"].append(score)
+    return out
+
+
+def _coverage_bucket(label: str, *, sort: Any = 0) -> dict[str, Any]:
+    return {
+        "label": label,
+        "available": 0,
+        "attempted": 0,
+        "_scores": [],
+        "_sort": sort,
+        "unattempted": [],
+    }
+
+
+def _seal_bucket(bucket: dict[str, Any], *, unattempted_cap: int) -> dict[str, Any]:
+    scores = bucket.pop("_scores")
+    bucket.pop("_sort", None)
+    unattempted = bucket["unattempted"]
+    return {
+        **bucket,
+        # An average over nothing is not 0, it is absent. A 0 here would read
+        # as "everything they wrote scored zero".
+        "avg_self_score": round(sum(scores) / len(scores), 1) if scores else None,
+        "scored_attempts": len(scores),
+        # The list is capped and the REMAINDER is stated, because "and 340
+        # more" is information and a silently shortened list is not.
+        "unattempted": unattempted[:unattempted_cap],
+        "unattempted_total": len(unattempted),
+    }
+
+
+#: How many not-yet-attempted questions a group names before it starts
+#: counting instead. A list longer than this is a corpus, not a to-do list.
+_UNATTEMPTED_SHOWN = 20
+
+
+def coverage(
+    supabase: Any,
+    user_id: str,
+    *,
+    exam_id: str,
+    subject: str | None = None,
+) -> dict[str, Any]:
+    """What this aspirant has written, and what is still waiting, by group.
+
+    THREE GROUPINGS, IN ORDER OF HOW MUCH THEY KNOW:
+
+    1. the syllabus tree, when the question's verified primary tag places it
+       (`study_os/syllabus.py`, from the compiled index);
+    2. the topic tag's own name, when the tag exists but the syllabus cannot
+       place it;
+    3. the paper and year, when there is no verified primary tag at all.
+
+    Nothing is dropped between them. A question the first two cannot reach
+    still appears under its paper, because an aspirant deciding what to write
+    next needs the whole corpus, not the well-tagged part of it.
+    """
+    if not exam_id:
+        raise DescriptiveError("exam_required", "Pick an exam first.", 400)
+
+    papers = _papers_for_exam(supabase, exam_id)
+    if papers is None:
+        raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    live = {str(p["id"]): p for p in papers if p.get("id") and not is_retired(p)}
+    if not live:
+        return {"exam_id": exam_id, "subjects": [], "totals": _coverage_totals([])}
+
+    questions = _verified_questions_for_papers(supabase, list(live))
+    if questions is None:
+        raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    # Map questions cannot be practised here, so counting them as "available"
+    # would make a subject permanently incompletable.
+    questions = [q for q in questions if not requires_map_sheet(q)]
+    if subject:
+        questions = [
+            q for q in questions
+            if subject_of(q, live.get(str(q.get("pyq_paper_id")))) == str(subject).strip()
+        ]
+
+    topics = _primary_topics(supabase, [str(q["id"]) for q in questions if q.get("id")])
+    _attach_tree_position(supabase, topics)
+    stats = _submitted_question_stats(
+        supabase, user_id, [str(q["id"]) for q in questions if q.get("id")]
+    )
+    _, labels = _paper_context(supabase, questions)
+
+    tree: dict[str, dict[str, Any]] = {}
+    for question in questions:
+        qid = str(question.get("id") or "")
+        paper = live.get(str(question.get("pyq_paper_id") or ""))
+        subject_name = subject_of(question, paper) or "Unfiled"
+        topic = topics.get(qid)
+
+        spot = syllabus.place(topic) if topic else None
+        if spot and spot.get("placed"):
+            group_key = f"{spot['paper_label']} · {spot['section']}"
+            group_sort = (spot["paper_sort"], spot["section_sort"])
+            source = "syllabus"
+        elif topic and (topic.get("name") or "").strip():
+            group_key = str(topic["name"]).strip()
+            group_sort = (10**5, 0)
+            source = "topic"
+        else:
+            # No verified primary tag. The paper is still a true statement
+            # about where the question came from.
+            group_key = _paper_label(paper or {})
+            group_sort = (10**6, -(_as_int((paper or {}).get("year")) or 0))
+            source = "paper"
+
+        subject_bucket = tree.setdefault(subject_name, {
+            "subject": subject_name, "groups": {}, "available": 0,
+            "attempted": 0, "_scores": [],
+        })
+        group = subject_bucket["groups"].setdefault(
+            group_key, {**_coverage_bucket(group_key, sort=group_sort), "source": source}
+        )
+
+        done = stats.get(qid)
+        for bucket in (subject_bucket, group):
+            bucket["available"] += 1
+            if done:
+                bucket["attempted"] += 1
+                bucket["_scores"].extend(done["scores"])
+        if not done:
+            group["unattempted"].append({
+                "id": qid,
+                "label": labels.get(qid),
+                "excerpt": _excerpt(question.get("question_text"), 120),
+                "paper_id": question.get("pyq_paper_id"),
+                "marks": _as_int(_meta(question).get("marks")),
+            })
+
+    subjects = []
+    for bucket in tree.values():
+        groups = sorted(bucket.pop("groups").values(), key=lambda g: (g["_sort"], g["label"]))
+        scores = bucket.pop("_scores")
+        subjects.append({
+            **bucket,
+            "avg_self_score": round(sum(scores) / len(scores), 1) if scores else None,
+            "scored_attempts": len(scores),
+            "groups": [_seal_bucket(g, unattempted_cap=_UNATTEMPTED_SHOWN) for g in groups],
+        })
+    subjects.sort(key=lambda s: s["subject"])
+    return {"exam_id": exam_id, "subjects": subjects, "totals": _coverage_totals(subjects)}
+
+
+def _coverage_totals(subjects: list[dict[str, Any]]) -> dict[str, Any]:
+    available = sum(s["available"] for s in subjects)
+    attempted = sum(s["attempted"] for s in subjects)
+    scored = sum(s["scored_attempts"] for s in subjects)
+    weighted = sum(
+        (s["avg_self_score"] or 0) * s["scored_attempts"]
+        for s in subjects if s["avg_self_score"] is not None
+    )
+    return {
+        "available": available,
+        "attempted": attempted,
+        # Stated as a fraction, never as a bare percentage: "18 of 1,351" is
+        # honest about the size of what is left in a way that "1%" is not.
+        "unattempted": available - attempted,
+        "avg_self_score": round(weighted / scored, 1) if scored else None,
+        "subjects": len(subjects),
+    }
+
+
 # ── attempts ─────────────────────────────────────────────────────────────
 
 

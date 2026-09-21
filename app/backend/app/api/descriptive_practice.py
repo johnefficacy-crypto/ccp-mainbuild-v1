@@ -111,6 +111,24 @@ def get_questions(
         raise HTTPException(status_code=500, detail="Questions are temporarily unavailable.")
 
 
+@router.get("/coverage")
+def get_coverage(
+    exam_id: str = Query(...),
+    subject: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """What this caller has written and what is still waiting, by group."""
+    try:
+        return service.coverage(
+            get_supabase_admin(), user.get("id"), exam_id=exam_id, subject=subject
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("descriptive coverage failed for exam=%s", exam_id)
+        raise HTTPException(status_code=500, detail="Coverage is temporarily unavailable.")
+
+
 @router.post("/attempts")
 def create_attempt(
     body: AttemptCreate,
