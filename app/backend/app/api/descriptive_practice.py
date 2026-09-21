@@ -38,23 +38,34 @@ class AttemptPatch(BaseModel):
     """Autosave. `word_count` is deliberately absent — the server computes it."""
 
     answer_text: str | None = Field(default=None, max_length=200_000)
+    # Both counters are running totals and the server keeps the max, so an
+    # out-of-order or restarted client can only ever be ignored, never rewind.
     time_spent_seconds: int | None = Field(default=None, ge=0)
+    pasted_chars: int | None = Field(default=None, ge=0)
 
 
 class AttemptSubmit(BaseModel):
     self_scores: dict[str, Any]
     notes: str | None = Field(default=None, max_length=4000)
+    # The last autosave can be ten seconds stale; submit carries the finals.
+    time_spent_seconds: int | None = Field(default=None, ge=0)
+    pasted_chars: int | None = Field(default=None, ge=0)
 
 
 @router.get("/catalog")
 def get_catalog(
     exam_id: str = Query(...),
+    subject: str | None = Query(default=None),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Subjects, papers, themes and years for one exam, with counts."""
+    """Subjects, papers, themes and years for one exam, with counts.
+
+    ``subject`` scopes papers, themes and years. The subject list itself is
+    never scoped — it is how the aspirant changes their mind.
+    """
     del user
     try:
-        return service.get_catalog(get_supabase_admin(), exam_id)
+        return service.get_catalog(get_supabase_admin(), exam_id, subject=subject)
     except service.DescriptiveError as exc:
         raise _fail(exc) from None
     except Exception:  # noqa: BLE001
@@ -124,6 +135,7 @@ def patch_attempt(
             attempt_id,
             answer_text=body.answer_text,
             time_spent_seconds=body.time_spent_seconds,
+            pasted_chars=body.pasted_chars,
         )
     except service.DescriptiveError as exc:
         raise _fail(exc) from None
@@ -146,6 +158,8 @@ def submit_attempt(
             attempt_id,
             self_scores=body.self_scores,
             notes=body.notes,
+            time_spent_seconds=body.time_spent_seconds,
+            pasted_chars=body.pasted_chars,
         )
     except service.DescriptiveError as exc:
         raise _fail(exc) from None

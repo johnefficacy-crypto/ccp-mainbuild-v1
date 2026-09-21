@@ -29,6 +29,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
     pauseTimer,
     save,
     submit,
+    notePaste,
     submitted,
   } = useDescriptiveAttempt(question?.id);
 
@@ -95,7 +96,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
         <p className="text-base leading-relaxed">{question.text}</p>
         <p className="num-mono mt-2 text-xs text-muted-foreground">
           {[
-            question.optional_subject,
+            question.subject || question.optional_subject,
             question.year ? `${question.year}` : null,
             question.question_number ? `Q${question.question_number}` : null,
           ]
@@ -115,6 +116,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
         timerRunning={timerRunning}
         onStartTimer={startTimer}
         onPauseTimer={pauseTimer}
+        onPaste={notePaste}
         readOnly={submitted}
       />
 
@@ -149,6 +151,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
             {attempt.time_spent_seconds
               ? ` · ${formatDuration(attempt.time_spent_seconds)} spent`
               : ""}
+            {attempt.pasted_chars > 0 ? " · contains pasted text" : ""}
           </p>
           {attempt.notes && <p className="mt-2 text-sm">{attempt.notes}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -182,6 +185,13 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
                   {h.self_total !== null && h.self_total !== undefined
                     ? ` · ${h.self_total}/12`
                     : ""}
+                  {h.time_spent_seconds
+                    ? ` · ${formatDuration(h.time_spent_seconds)}`
+                    : ""}
+                  {/* Only for 0-and-above. `null` means the attempt predates
+                      paste tracking, which is not the same as "nothing was
+                      pasted" and must not be reported as if it were. */}
+                  {h.pasted_chars > 0 ? " · contains pasted text" : ""}
                 </span>
                 {h.notes && <p className="mt-1 text-muted-foreground">{h.notes}</p>}
               </li>
@@ -199,6 +209,7 @@ QuestionScreen.propTypes = {
     text: PropTypes.string,
     parent_text: PropTypes.string,
     optional_subject: PropTypes.string,
+    subject: PropTypes.string,
     year: PropTypes.number,
     question_number: PropTypes.number,
   }).isRequired,

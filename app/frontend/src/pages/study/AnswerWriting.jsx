@@ -62,11 +62,19 @@ export default function AnswerWriting() {
       .catch(() => setExamId(""));
   }, []);
 
+  // The catalogue is re-read when the subject changes: papers, themes and years
+  // are all scoped to it. Showing Anthropology's themes under Political Science
+  // was not a display bug — the catalogue was genuinely returning every theme
+  // in the corpus and the picker was faithfully rendering them.
+  const subjectFilter = selection.subject || "";
+
   useEffect(() => {
     if (!examId) return;
     setCatalogState("loading");
+    const query = new URLSearchParams({ exam_id: examId });
+    if (subjectFilter) query.set("subject", subjectFilter);
     api
-      .get(`/api/study/descriptive/catalog?exam_id=${encodeURIComponent(examId)}`)
+      .get(`/api/study/descriptive/catalog?${query.toString()}`)
       .then((d) => {
         setCatalog(d);
         setCatalogError("");
@@ -76,7 +84,7 @@ export default function AnswerWriting() {
         setCatalogError("The question catalogue is unavailable right now. Reload the page.");
         setCatalogState("error");
       });
-  }, [examId]);
+  }, [examId, subjectFilter]);
 
   const hasFilter = Boolean(selection.paper_id || selection.theme || selection.subject);
 
