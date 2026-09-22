@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import date as _date, timedelta as _timedelta
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -332,17 +333,39 @@ def subject_short(name: Any) -> str | None:
 #: paper with nothing in it yet is still a tab that says so. A missing tab
 #: reads as "this paper does not exist"; an empty tab reads as "not loaded
 #: yet", and only one of those is true.
+#:
+#: `slot` IS THE WIRE CONTRACT. `paper_number` is a display-order integer and
+#: is not one: Essay carried 99, a magic number only the frontend knew, and the
+#: endpoint validated `1 <= paper_number <= 10`, so every Essay tab click
+#: answered 422 and the tab was unreachable on demo. GS3 and an optional's
+#: Paper III would also share the integer 3. The slot code says which paper of
+#: which structure, is the same token on both sides, and is the only thing the
+#: API reads.
 OPTIONAL_PAPER_SLOTS = (
-    {"paper_number": 1, "label": "Paper I", "slot": "P1"},
-    {"paper_number": 2, "label": "Paper II", "slot": "P2"},
+    {"slot": "P1", "paper_number": 1, "label": "Paper I"},
+    {"slot": "P2", "paper_number": 2, "label": "Paper II"},
 )
 GS_PAPER_SLOTS = (
-    {"paper_number": 1, "label": "GS1", "slot": "GS1"},
-    {"paper_number": 2, "label": "GS2", "slot": "GS2"},
-    {"paper_number": 3, "label": "GS3", "slot": "GS3"},
-    {"paper_number": 4, "label": "GS4", "slot": "GS4"},
-    {"paper_number": 99, "label": "Essay", "slot": "Essay"},
+    {"slot": "GS1", "paper_number": 1, "label": "GS1"},
+    {"slot": "GS2", "paper_number": 2, "label": "GS2"},
+    {"slot": "GS3", "paper_number": 3, "label": "GS3"},
+    {"slot": "GS4", "paper_number": 4, "label": "GS4"},
+    {"slot": "ESSAY", "paper_number": 99, "label": "Essay"},
 )
+
+#: Every slot code the API accepts, in the order a client should render them.
+PAPER_SLOT_CODES: tuple[str, ...] = tuple(
+    s["slot"] for s in GS_PAPER_SLOTS + OPTIONAL_PAPER_SLOTS
+)
+
+#: The Essay slot. It has no syllabus tree — the Essay paper's tags are the
+#: Essay taxonomy (quote_abstract / issue_concrete), not GS microtopics — so
+#: it is browsed by year alone and the surface says so.
+ESSAY_SLOT = "ESSAY"
+
+_SLOT_BY_CODE = {
+    s["slot"]: s for s in GS_PAPER_SLOTS + OPTIONAL_PAPER_SLOTS
+}
 
 
 def paper_slots_for(subject: Any) -> tuple[dict[str, Any], ...]:
@@ -350,6 +373,65 @@ def paper_slots_for(subject: Any) -> tuple[dict[str, Any], ...]:
     if not subject:
         return ()
     return GS_PAPER_SLOTS if str(subject).strip() == GENERAL_STUDIES else OPTIONAL_PAPER_SLOTS
+
+
+def parse_paper_slot(value: Any, *, subject: Any = None) -> str | None:
+    """A slot code off the wire, normalised. ``None`` when nothing was sent.
+
+    Case-insensitive, and `Essay` is accepted alongside `ESSAY` because that is
+    the label the tab shows. Anything else is refused by name rather than
+    coerced: a slot the server does not understand must not silently become
+    "no filter", which would answer a GS3 request with the whole subject.
+
+    ``subject`` is not required, but when given, a slot belonging to the other
+    structure (GS3 under an optional) is refused for the same reason.
+    """
+    text = str(value or "").strip().upper()
+    if not text:
+        return None
+    if text not in _SLOT_BY_CODE:
+        raise DescriptiveError(
+            "paper_slot_invalid",
+            f"{value!r} is not a paper. Use one of: "
+            + ", ".join(PAPER_SLOT_CODES) + ".",
+            400,
+        )
+    if subject:
+        allowed = {s["slot"] for s in paper_slots_for(subject)}
+        if text not in allowed:
+            raise DescriptiveError(
+                "paper_slot_invalid",
+                f"{text} is not a paper of {str(subject).strip()}. Use one of: "
+                + ", ".join(sorted(allowed)) + ".",
+                400,
+            )
+    return text
+
+
+def slot_from_paper_number(value: Any, subject: Any) -> str | None:
+    """The slot a legacy ``paper_number`` meant, within a subject.
+
+    Kept so links already in the wild — and the 99 the old frontend sent —
+    resolve instead of 422ing. New callers send ``paper``.
+    """
+    number = _as_int(value)
+    if number is None:
+        return None
+    for slot in paper_slots_for(subject):
+        if slot["paper_number"] == number:
+            return slot["slot"]
+    raise DescriptiveError(
+        "paper_slot_invalid",
+        f"There is no paper {number} in "
+        f"{str(subject).strip() if subject else 'this subject'}.",
+        400,
+    )
+
+
+def slot_sort_key(slot: Any) -> int | None:
+    """The display-order integer behind a slot code. ``ESSAY`` sorts last."""
+    entry = _SLOT_BY_CODE.get(str(slot or "").strip().upper())
+    return entry["paper_number"] if entry else None
 
 
 def paper_slot(paper: dict[str, Any]) -> tuple[int, str | None]:
@@ -371,6 +453,18 @@ def paper_slot(paper: dict[str, Any]) -> tuple[int, str | None]:
     if number:
         return (number, f"P{number}")
     return (0, None)
+
+
+def paper_slot_code(paper: dict[str, Any]) -> str | None:
+    """The canonical slot code this paper sits in — "GS3", "ESSAY", "P1".
+
+    ``None`` for a paper no slot claims, which is the unsplit GS bucket and the
+    thematic compilations. Derived from `paper_slot` so the tab a paper appears
+    under and the code the API filters on can never disagree.
+    """
+    _, label = paper_slot(paper)
+    code = str(label or "").strip().upper()
+    return code if code in _SLOT_BY_CODE else None
 
 
 # ── question shaping ─────────────────────────────────────────────────────
@@ -631,6 +725,88 @@ def _verified_questions_for_papers(
             return None
         out.extend(rows)
     return out
+
+
+#: How long one exam's corpus is reused before it is read again.
+#:
+#: THE 12-15 SECOND CATALOGUE. Every catalogue and every question list re-read
+#: the same two things from scratch: every paper for the exam, and every
+#: verified descriptive question on them — twelve thousand rows, a page at a
+#: time. Four tab clicks meant four full corpus reads, and a tab switch
+#: cancelled the previous one mid-flight without cancelling its work here.
+#:
+#: The corpus is exam-scoped and user-independent, so it is the part that can
+#: be shared. It changes only when an ingest or a split script runs, which is
+#: out of process, so the invalidation is a short TTL plus an explicit
+#: `reset_caches()` — not a write hook this module could honour anyway. Nothing
+#: user-scoped is cached here: attempts are read per request, every time.
+CORPUS_TTL_SECONDS = 60.0
+
+#: exam_id -> (expires_at, papers, questions)
+_corpus_cache: dict[str, tuple[float, list[dict[str, Any]], list[dict[str, Any]]]] = {}
+#: exam_id -> (expires_at, question_id -> primary topic row)
+_topic_cache: dict[str, tuple[float, dict[str, dict[str, Any]]]] = {}
+
+
+def reset_caches() -> None:
+    """Drop every cached corpus. For tests, and for a process that just wrote."""
+    _corpus_cache.clear()
+    _topic_cache.clear()
+
+
+def _monotonic() -> float:
+    return time.monotonic()
+
+
+def _exam_corpus(
+    supabase: Any, exam_id: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
+    """(papers, verified descriptive questions) for one exam. ``None`` on error.
+
+    A failed read is never cached: an error must not become the answer for the
+    next minute, which is how a transient outage turns into "this exam has no
+    questions" for everyone who asks during it.
+    """
+    hit = _corpus_cache.get(exam_id)
+    if hit and hit[0] > _monotonic():
+        return hit[1], hit[2]
+
+    papers = _papers_for_exam(supabase, exam_id)
+    if papers is None:
+        return None
+    live_ids = [str(p["id"]) for p in papers if p.get("id") and not is_retired(p)]
+    questions = _verified_questions_for_papers(supabase, live_ids) if live_ids else []
+    if questions is None:
+        return None
+    _corpus_cache[exam_id] = (
+        _monotonic() + CORPUS_TTL_SECONDS, list(papers), list(questions)
+    )
+    return papers, questions
+
+
+def _primary_topics_cached(
+    supabase: Any, exam_id: str, question_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """`_primary_topics`, reused across calls within one exam.
+
+    Only the ids not already known are read, so the first catalogue of a minute
+    pays for the tree and the next three tab clicks pay for nothing. The rows
+    arrive already placed — `_primary_topics` attaches the tree position — so
+    the cache holds the placed form and every surface sees the same tree.
+    """
+    expires, known = _topic_cache.get(exam_id, (0.0, {}))
+    if expires <= _monotonic():
+        known = {}
+    wanted = [str(q) for q in question_ids if q]
+    missing = [q for q in wanted if q not in known]
+    if missing:
+        known = {**known, **_primary_topics(supabase, missing)}
+        # The ids that resolved to nothing are remembered as nothing, or every
+        # call would re-read the untagged half.
+        for qid in missing:
+            known.setdefault(qid, {})
+        _topic_cache[exam_id] = (_monotonic() + CORPUS_TTL_SECONDS, known)
+    return {q: known[q] for q in wanted if known.get(q)}
 
 
 def _primary_topics(
@@ -969,30 +1145,39 @@ def _paper_slot_counts(
     Counts span BOTH halves, because a tab is a paper and a paper's questions
     are wherever they are: a Paper II tab reading 0 while Paper II themes exist
     would be a tab contradicting the tree beneath it.
+
+    THE HALVES PASSED HERE MUST BE UNFILTERED BY THE SELECTED TAB. They were
+    not, and every tab but the selected one read 0 — GS1 0, GS2 0, GS3 0, GS4
+    192, Essay 0 on a subject the same response said held 934 questions. A tab
+    is how the aspirant LEAVES the current paper, so it has to report what it
+    holds, not what the current filter left of it.
     """
     slots = paper_slots_for(subject)
     if not slots:
         return []
-    real_by_slot: dict[int, list[dict[str, Any]]] = {}
+    real_by_slot: dict[str, list[dict[str, Any]]] = {}
     for q in real_half:
-        real_by_slot.setdefault(paper_slot(paper_of(q))[0], []).append(q)
+        code = paper_slot_code(paper_of(q))
+        if code:
+            real_by_slot.setdefault(code, []).append(q)
     # The thematic half has no sitting, so its paper comes off the theme's
     # syllabus placement, which `_syllabus_themes` already resolved.
-    thematic_by_slot: dict[int, int] = {}
+    thematic_by_slot: dict[str, int] = {}
+    by_code = {s["paper_number"]: s["slot"] for s in slots}
     for q in thematic_half:
         number = _as_int(_meta(q).get("optional_paper_number")) or _as_int(
             _meta(paper_of(q)).get("optional_paper_number")
         )
-        if number:
-            thematic_by_slot[number] = thematic_by_slot.get(number, 0) + 1
+        code = by_code.get(number) if number else None
+        if code:
+            thematic_by_slot[code] = thematic_by_slot.get(code, 0) + 1
 
     out = []
     for slot in slots:
-        number = slot["paper_number"]
-        rows = real_by_slot.get(number, [])
+        rows = real_by_slot.get(slot["slot"], [])
         out.append({
             **slot,
-            "question_count": len(rows) + thematic_by_slot.get(number, 0),
+            "question_count": len(rows) + thematic_by_slot.get(slot["slot"], 0),
             "attempted_count": sum(
                 1 for q in rows if str(q.get("id")) in attempted_ids
             ),
@@ -1006,6 +1191,7 @@ def get_catalog(
     *,
     user_id: Any = None,
     subject: str | None = None,
+    paper: Any = None,
     paper_number: Any = None,
 ) -> dict[str, Any]:
     """Subjects, papers, themes and years, each with a question count.
@@ -1018,10 +1204,15 @@ def get_catalog(
     narrow ``subjects`` itself, which always lists every subject with a count,
     because that list is how the aspirant changes their mind.
 
-    ``paper_number`` narrows to one paper within the subject — Paper I, or GS3 —
-    and narrows BOTH halves: the themes of that paper's syllabus AND the
-    sittings of that paper. A Paper I tab that left Paper II sittings on screen
-    would be a filter that only half applies.
+    ``paper`` is a slot code — ``P1``, ``P2``, ``GS1``..``GS4``, ``ESSAY`` — and
+    narrows BOTH halves: the themes of that paper's syllabus AND the sittings of
+    that paper. A Paper I tab that left Paper II sittings on screen would be a
+    filter that only half applies. ``paper_number`` is the legacy integer form
+    and is resolved to a slot within the subject; it is kept so links already in
+    the wild still open.
+
+    The tabs themselves are NEVER narrowed by the selection — see
+    ``_paper_slot_counts``.
 
     Map questions are excluded from every count here, the same way
     ``list_questions`` excludes them from the list: a count that includes
@@ -1030,21 +1221,17 @@ def get_catalog(
     if not exam_id:
         raise DescriptiveError("exam_required", "Pick an exam first.", 400)
 
-    papers = _papers_for_exam(supabase, exam_id)
-    if papers is None:
+    corpus = _exam_corpus(supabase, exam_id)
+    if corpus is None:
         raise DescriptiveError(
             "catalog_read_failed", "Question papers are unavailable right now.", 503
         )
+    papers, questions = corpus
     live = [p for p in papers if not is_retired(p)]
     if not live:
         return _empty_catalog(exam_id, subject)
 
     by_id = {str(p["id"]): p for p in live if p.get("id")}
-    questions = _verified_questions_for_papers(supabase, list(by_id))
-    if questions is None:
-        raise DescriptiveError(
-            "catalog_read_failed", "Question papers are unavailable right now.", 503
-        )
     questions = [q for q in questions if not requires_map_sheet(q)]
     if not questions:
         return _empty_catalog(exam_id, subject)
@@ -1066,16 +1253,24 @@ def get_catalog(
     else:
         scoped = questions
 
-    real_half = [q for q in scoped if not question_is_thematic(q, paper_of(q))]
-    thematic_half = [q for q in scoped if question_is_thematic(q, paper_of(q))]
+    # Unfiltered, and kept that way: the tabs are counted off these, because a
+    # tab is how the aspirant leaves the paper they are on.
+    real_all = [q for q in scoped if not question_is_thematic(q, paper_of(q))]
+    thematic_all = [q for q in scoped if question_is_thematic(q, paper_of(q))]
 
-    wanted_paper = _as_int(paper_number)
-    if wanted_paper is not None:
-        # A sitting's number comes off the paper row (`optional_paper_number`
-        # for a split optional, `gs_paper` for GS) — the same integer the
-        # syllabus index gives a theme's paper.
+    wanted_slot = parse_paper_slot(paper, subject=wanted) or slot_from_paper_number(
+        paper_number, wanted
+    )
+    wanted_paper = slot_sort_key(wanted_slot)
+
+    real_half = real_all
+    thematic_half = thematic_all
+    if wanted_slot is not None:
+        # The slot a paper sits in comes off the paper row (`gs_paper` for GS,
+        # `optional_paper_number` for a split optional) — the same slot the tab
+        # was rendered from.
         real_half = [
-            q for q in real_half if paper_slot(paper_of(q))[0] == wanted_paper
+            q for q in real_all if paper_slot_code(paper_of(q)) == wanted_slot
         ]
 
     paper_counts: dict[str, int] = {}
@@ -1139,11 +1334,42 @@ def get_catalog(
         supabase, user_id, [str(q["id"]) for q in scoped if q.get("id")]
     )
 
-    topics_by_question = _primary_topics(
-        supabase, [str(q["id"]) for q in thematic_half if q.get("id")]
+    # THE SYLLABUS TREE'S SOURCE. For an optional subject it is the thematic
+    # half: the sittings are untagged and the compilations are tagged, so the
+    # tree is the compilations.
+    #
+    # General Studies has NO thematic half — the GS split produced 55 real
+    # sittings and nothing else — so a tree built from the thematic half alone
+    # was empty and the lens read "No syllabus themes" on 873 tagged questions.
+    # GS sittings carry the tags themselves, pointing at microtopics under
+    # `upsc-cse-mains-gs1..4`, which `syllabus.place` already resolves to
+    # GS_1..GS_4. So for GS the tree is the sittings.
+    #
+    # The Essay paper is excluded: its tags are the Essay taxonomy
+    # (quote_abstract / issue_concrete), not GS microtopics, so a tree built
+    # from them would be a tree of the wrong vocabulary. Essay is by-year only,
+    # and `syllabus_supported` below says so rather than leaving the lens to
+    # render an empty state that looks like missing data.
+    gs_sittings = [
+        q for q in real_half
+        if is_gs_paper(paper_of(q)) and paper_kind(paper_of(q)) != "essay"
+    ]
+    syllabus_supported = wanted_slot != ESSAY_SLOT
+
+    topics_by_question = _primary_topics_cached(
+        supabase, exam_id,
+        [str(q["id"]) for q in thematic_half + gs_sittings if q.get("id")],
     )
+    # A GS sitting with no verified primary tag does not join the tree. The
+    # thematic half has an explicit "Untagged" bucket because a compilation
+    # exists only as its theme, so one that lost its tag would otherwise vanish;
+    # a sitting is still reachable by year, and an "Untagged" pile on a learner
+    # surface is the platform's to-do list, not something an aspirant can use.
+    tree_source = list(thematic_half) + [
+        q for q in gs_sittings if topics_by_question.get(str(q.get("id")))
+    ]
     theme_items, theme_papers = _syllabus_themes(
-        thematic_half, topics_by_question, attempted_ids
+        tree_source, topics_by_question, attempted_ids
     )
     if wanted_paper is not None:
         # The tabs keep every paper — they are how the aspirant switches — but
@@ -1170,7 +1396,14 @@ def get_catalog(
     return {
         "exam_id": exam_id,
         "subject": wanted,
+        # The slot is the contract; `paper_number` rides along for the clients
+        # that still read it, and is derived from the slot so they agree.
+        "paper": wanted_slot,
         "paper_number": wanted_paper,
+        # False for Essay, whose tags are a different taxonomy: the by-syllabus
+        # lens has nothing to draw and the surface says so instead of showing an
+        # empty tree that reads as missing data.
+        "syllabus_supported": syllabus_supported,
         "subjects": [
             {"subject": name, "question_count": count}
             for name, count in sorted(subjects.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -1198,7 +1431,7 @@ def get_catalog(
         # not exist", an empty one reads as "not loaded yet", and only the
         # second is true.
         "paper_slots": _paper_slot_counts(
-            wanted, real_half, thematic_half, paper_of, attempted_ids
+            wanted, real_all, thematic_all, paper_of, attempted_ids
         ),
         "subject_short": subject_short(wanted),
         "total_questions": len(scoped),
@@ -1209,7 +1442,9 @@ def _empty_catalog(exam_id: str, subject: str | None = None) -> dict[str, Any]:
     return {
         "exam_id": exam_id,
         "subject": (str(subject).strip() if subject else None) or None,
+        "paper": None,
         "paper_number": None,
+        "syllabus_supported": True,
         "subjects": [],
         "papers": [],
         "themes": [],
@@ -1243,6 +1478,7 @@ def list_questions(
     exam_id: str,
     subject: str | None = None,
     paper_id: str | None = None,
+    paper: Any = None,
     paper_number: Any = None,
     theme: str | None = None,
     year: Any = None,
@@ -1262,11 +1498,12 @@ def list_questions(
     cap = _as_int(limit) or _DEFAULT_QUESTION_LIMIT
     cap = max(1, min(cap, _MAX_QUESTION_LIMIT))
 
-    papers = _papers_for_exam(supabase, exam_id)
-    if papers is None:
+    corpus = _exam_corpus(supabase, exam_id)
+    if corpus is None:
         raise DescriptiveError(
             "questions_read_failed", "Questions are unavailable right now.", 503
         )
+    papers, all_questions = corpus
     live = {str(p["id"]): p for p in papers if p.get("id") and not is_retired(p)}
     if paper_id:
         live = {k: v for k, v in live.items() if k == str(paper_id)}
@@ -1275,11 +1512,7 @@ def list_questions(
     if not live:
         return _empty_questions()
 
-    questions = _verified_questions_for_papers(supabase, list(live))
-    if questions is None:
-        raise DescriptiveError(
-            "questions_read_failed", "Questions are unavailable right now.", 503
-        )
+    questions = [q for q in all_questions if str(q.get("pyq_paper_id") or "") in live]
 
     # A theme filter selects the thematic half; a paper or year filter selects
     # the real-paper half. Asking for neither returns both.
@@ -1287,7 +1520,15 @@ def list_questions(
         return live.get(str(q.get("pyq_paper_id") or "")) or {}
 
     if theme:
-        questions = [q for q in questions if question_is_thematic(q, paper_of(q))]
+        # The tree's source, same rule as `get_catalog`: the thematic half, plus
+        # the GS sittings, which ARE General Studies' tagged half. Restricting a
+        # theme to the thematic half alone opened every GS microtopic on an
+        # empty list.
+        questions = [
+            q for q in questions
+            if question_is_thematic(q, paper_of(q))
+            or (is_gs_paper(paper_of(q)) and paper_kind(paper_of(q)) != "essay")
+        ]
         names = _primary_topic_names(supabase, [str(q["id"]) for q in questions if q.get("id")])
         questions = [
             q
@@ -1304,11 +1545,13 @@ def list_questions(
         wanted_subject = str(subject).strip()
         questions = [q for q in questions if subject_of(q, paper_of(q)) == wanted_subject]
 
-    wanted_paper = _as_int(paper_number)
-    if wanted_paper is not None and not theme:
-        # Only the sittings half has a paper number; a theme filter has already
+    wanted_slot = parse_paper_slot(paper, subject=subject) or slot_from_paper_number(
+        paper_number, subject
+    )
+    if wanted_slot is not None and not theme:
+        # Only the sittings half has a paper slot; a theme filter has already
         # picked its paper through the theme itself.
-        questions = [q for q in questions if paper_slot(paper_of(q))[0] == wanted_paper]
+        questions = [q for q in questions if paper_slot_code(paper_of(q)) == wanted_slot]
     wanted_year = _as_int(year)
     if wanted_year is not None:
         questions = [
@@ -1772,16 +2015,15 @@ def coverage(
     if not exam_id:
         raise DescriptiveError("exam_required", "Pick an exam first.", 400)
 
-    papers = _papers_for_exam(supabase, exam_id)
-    if papers is None:
+    corpus = _exam_corpus(supabase, exam_id)
+    if corpus is None:
         raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    papers, questions = corpus
     live = {str(p["id"]): p for p in papers if p.get("id") and not is_retired(p)}
     if not live:
         return {"exam_id": exam_id, "subjects": [], "totals": _coverage_totals([])}
 
-    questions = _verified_questions_for_papers(supabase, list(live))
-    if questions is None:
-        raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    questions = [q for q in questions if str(q.get("pyq_paper_id") or "") in live]
     # Map questions cannot be practised here, so counting them as "available"
     # would make a subject permanently incompletable.
     questions = [q for q in questions if not requires_map_sheet(q)]
@@ -1791,8 +2033,10 @@ def coverage(
             if subject_of(q, live.get(str(q.get("pyq_paper_id")))) == str(subject).strip()
         ]
 
-    topics = _primary_topics(supabase, [str(q["id"]) for q in questions if q.get("id")])
-    _attach_tree_position(supabase, topics)
+    # Already placed in the tree by `_primary_topics`.
+    topics = _primary_topics_cached(
+        supabase, exam_id, [str(q["id"]) for q in questions if q.get("id")]
+    )
     stats = _submitted_question_stats(
         supabase, user_id, [str(q["id"]) for q in questions if q.get("id")]
     )

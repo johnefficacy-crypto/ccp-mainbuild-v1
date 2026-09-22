@@ -52,19 +52,34 @@ class AttemptSubmit(BaseModel):
     pasted_chars: int | None = Field(default=None, ge=0)
 
 
+#: The paper slot vocabulary, verbatim from the service so the route, the
+#: OpenAPI schema and the filter can never name three different things.
+PAPER_SLOT_CODES = service.PAPER_SLOT_CODES
+
+_PAPER_SLOT_DESC = (
+    "Which paper within the subject: " + ", ".join(PAPER_SLOT_CODES) + ". "
+    "Case-insensitive. Prefer this over the legacy integer `paper_number`."
+)
+
+
 @router.get("/catalog")
 def get_catalog(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
-    paper_number: int | None = Query(default=None, ge=1, le=10),
+    paper: str | None = Query(default=None, description=_PAPER_SLOT_DESC),
+    # DEPRECATED, and widened to admit the Essay slot it used to reject. The
+    # frontend encoded Essay as 99 while this validated `1 <= n <= 10`, so every
+    # Essay tab click answered 422 — a magic number only one side knew. New
+    # callers send `paper`; this stays so links already in the wild still open.
+    paper_number: int | None = Query(default=None, ge=1, le=99),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Subjects, papers, themes and years for one exam, with counts.
 
     ``subject`` scopes papers, themes and years. The subject list itself is
-    never scoped — it is how the aspirant changes their mind. ``paper_number``
-    scopes to one paper within the subject, and scopes the sittings and the
-    syllabus themes alike.
+    never scoped — it is how the aspirant changes their mind. ``paper`` scopes
+    to one paper within the subject, and scopes the sittings and the syllabus
+    themes alike. The paper TABS are never scoped by it.
     """
     try:
         return service.get_catalog(
@@ -74,6 +89,7 @@ def get_catalog(
             # the caller by the token, never by a parameter.
             user_id=user.get("id"),
             subject=subject,
+            paper=paper,
             paper_number=paper_number,
         )
     except service.DescriptiveError as exc:
@@ -88,7 +104,8 @@ def get_questions(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
     paper_id: str | None = Query(default=None),
-    paper_number: int | None = Query(default=None, ge=1, le=10),
+    paper: str | None = Query(default=None, description=_PAPER_SLOT_DESC),
+    paper_number: int | None = Query(default=None, ge=1, le=99),  # deprecated
     theme: str | None = Query(default=None),
     year: int | None = Query(default=None),
     year_from: int | None = Query(default=None, description="inclusive"),
@@ -106,6 +123,7 @@ def get_questions(
             exam_id=exam_id,
             subject=subject,
             paper_id=paper_id,
+            paper=paper,
             paper_number=paper_number,
             theme=theme,
             year=year,
