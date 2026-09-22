@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.db.supabase_client import get_supabase_admin
+from app.common.pagination import paginate
 
 
 # Public-ish (signed-in) reporter surface.
@@ -185,7 +186,19 @@ class AssignBody(BaseModel):
 @router.get("/admin/moderation/rubric")
 def get_rubric(user: dict = Depends(_require_moderator)) -> dict:
     sb = get_supabase_admin()
-    rows = sb.table("moderation_severity_rubric").select("*").order("created_at", desc=True).execute().data or []
+    rows = paginate(
+        lambda a, b: (
+            sb.table("moderation_severity_rubric")
+            .select("*")
+            .order("created_at", desc=True)
+            .order("id")
+            .range(a, b)
+            .execute()
+            .data
+            or []
+        ),
+        table="moderation_severity_rubric",
+    ).rows
     return {"rubrics": rows}
 
 

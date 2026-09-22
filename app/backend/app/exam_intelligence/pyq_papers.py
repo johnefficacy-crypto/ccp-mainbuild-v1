@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Callable
+from app.common.pagination import chunks, paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.pyq_papers")
 
@@ -27,7 +28,7 @@ def _safe(call: Callable[[], Any], default: Any = None) -> Any:
 
 
 def _chunks(items: list[Any], n: int) -> list[list[Any]]:
-    return [items[i : i + n] for i in range(0, len(items), n)]
+    return chunks(items, n)
 
 
 def _paginate(build_query: Callable[[int, int], Any]) -> list[dict[str, Any]]:
@@ -41,17 +42,11 @@ def _paginate(build_query: Callable[[int, int], Any]) -> list[dict[str, Any]]:
     Stops at the first short page or on a read failure (partial result — same
     graceful-degradation contract as ``_safe``).
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        rows = _safe(lambda o=offset: build_query(o, o + _PAGE - 1), default=None)
-        if rows is None:
-            break
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            break
-        offset += _PAGE
-    return all_rows
+    return paginate(
+        lambda a, b: _safe(lambda: build_query(a, b), default=None),
+        page_size=_PAGE,
+        table="pyq_papers",
+    ).rows
 
 
 def _normalize_difficulty(value: Any) -> str:

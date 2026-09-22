@@ -21,6 +21,7 @@ from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
 from app.persona.queue import enqueue_persona_recompute, process_pending_persona_recompute
 from app.persona_questions.bank import invalidate_bank_cache
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.api.admin_persona")
 
@@ -77,10 +78,14 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     since_24h = _iso_hours_ago(24)
 
     snapshots_total = len(
-        _safe(
-            lambda: sb.table("aspirant_persona_snapshots").select("id").limit(10000).execute().data,
-            default=[],
-        )
+        paginate(
+            lambda a, b: _safe(
+                lambda: sb.table("aspirant_persona_snapshots")
+                .select("id").order("id").range(a, b).execute().data,
+                default=None,
+            ),
+            table="aspirant_persona_snapshots",
+        ).rows
         or []
     )
     snapshots_24h = len(
@@ -110,10 +115,16 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     ) or []
     latest_version = latest_version_row[0]["persona_version"] if latest_version_row else None
 
-    bank_rows = _safe(
-        lambda: sb.table("persona_question_bank").select("id, is_active").limit(1000).execute().data,
-        default=[],
-    ) or []
+    # .limit(1000) was exactly db-max-rows: the cap and the intent were the
+    # same number, so the truncation was invisible by construction.
+    bank_rows = paginate(
+        lambda a, b: _safe(
+            lambda: sb.table("persona_question_bank")
+            .select("id, is_active").order("id").range(a, b).execute().data,
+            default=None,
+        ),
+        table="persona_question_bank",
+    ).rows
     active_questions = sum(1 for r in bank_rows if r.get("is_active"))
     inactive_questions = len(bank_rows) - active_questions
 
@@ -132,16 +143,17 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
         or []
     )
 
-    queue_rows = _safe(
-        lambda: (
+    queue_rows = paginate(
+        lambda a, b: (
             sb.table("persona_recompute_queue")
             .select("id, status, processed_at, created_at")
-            .limit(10000)
+            .order("id")
+            .range(a, b)
             .execute()
             .data
         ),
-        default=[],
-    ) or []
+        table="persona_recompute_queue",
+    ).rows
     pending = sum(1 for r in queue_rows if r.get("status") == "pending")
     failed = sum(1 for r in queue_rows if r.get("status") == "failed")
     completed_24h = sum(
@@ -183,16 +195,17 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     # Snapshot detail read — drives risk cohorts, staleness, dimension
     # distribution, and policy-generation health. One extra read, capped
     # like every other read in this overview.
-    snapshot_detail = _safe(
-        lambda: (
+    snapshot_detail = paginate(
+        lambda a, b: (
             sb.table("aspirant_persona_snapshots")
             .select("id, scores, dimensions, study_policy, computed_at")
-            .limit(10000)
+            .order("id")
+            .range(a, b)
             .execute()
             .data
         ),
-        default=[],
-    ) or []
+        table="aspirant_persona_snapshots",
+    ).rows
     stale_cutoff = _iso_hours_ago(_STALE_SNAPSHOT_HOURS)
     high_study_risk = 0
     high_dropoff_risk = 0

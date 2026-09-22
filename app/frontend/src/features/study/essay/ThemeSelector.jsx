@@ -1,51 +1,88 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
+
+import ErrorState from "../../../shared/ui/ErrorState";
+import EmptyState from "../../../shared/ui/EmptyState";
 import { api } from "../../../lib/api";
 
-// ThemeSelector — entry point before the canvas loads.
-//
-// DEFERRED (see PR body): there is no aspirant-facing essay-themes list
-// endpoint yet — only the admin CMS route (gated behind exam_intelligence.cms).
-// This component reads from the natural future endpoint GET /api/essay-themes
-// and is forward-compatible: the moment that route lands, the picker lights up.
-// Until then the fetch fails and we fall back to a clear "not available yet"
-// note PLUS a manual theme-id entry, so the fully-wired canvas is still
-// exercisable against a real theme_id today (the canvas itself is NOT stubbed).
-//
-// Only `active` themes are selectable; `reserved` themes are shown but
-// disabled (not yet opened for aspirant brainstorming).
-export default function ThemeSelector({ onPick }) {
-  const [status, setStatus] = useState("loading"); // loading | ready | unavailable
+/**
+ * Essay theme picker — the entry step for both essay screens.
+ *
+ * Reads `GET /api/essay-themes` (PR #1041): shared reference data, no
+ * ownership scoping, active themes only unless a caller opts into reserved
+ * ones. Response shape is `{ items: [{ id, theme_code, theme_name,
+ * description, status }], count }`.
+ *
+ * Shared by the Idea Canvas and the Spine. The fetch, the four states and the
+ * active-vs-reserved rule are identical on both screens, so they live here
+ * once; the only per-screen differences are the heading copy and what picking
+ * a theme does, and those are props.
+ *
+ * `status`: the endpoint defaults to active-only, so `reserved` rows normally
+ * never arrive. The disabled branch stays because a caller may later ask for
+ * them, and a reserved theme must be visible-but-unopenable rather than
+ * silently missing.
+ */
+export default function ThemeSelector({ onPick, title, subtitle }) {
+  const [status, setStatus] = useState("loading"); // loading | ready | empty | error
   const [themes, setThemes] = useState([]);
-  const [manual, setManual] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let live = true;
+    setStatus("loading");
     api
       .get("/api/essay-themes")
       .then((res) => {
         if (!live) return;
         const items = Array.isArray(res?.items) ? res.items : [];
         setThemes(items);
-        setStatus("ready");
+        setStatus(items.length === 0 ? "empty" : "ready");
       })
-      .catch(() => { if (live) setStatus("unavailable"); });
-    return () => { live = false; };
+      .catch(() => {
+        if (!live) return;
+        // Never fall through to a blank picker: a failed read is its own
+        // state, distinct from "the catalogue is genuinely empty".
+        setThemes([]);
+        setStatus("error");
+      });
+    return () => {
+      live = false;
+    };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   return (
     <section className="space-y-4" data-testid="essay-theme-selector">
-      <h1 className="font-heading text-2xl">Essay Idea Canvas</h1>
-      <p className="text-sm text-slate-600">
-        Pick an essay theme to open its idea canvas — six thematic lenses, a
-        helper rail, and your own draggable stickies.
-      </p>
+      {title && <h1 className="font-heading text-2xl">{title}</h1>}
+      {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
 
-      {status === "loading" ? (
+      {status === "loading" && (
         <p className="text-sm text-slate-500" role="status" data-testid="theme-loading">
           Loading themes…
         </p>
-      ) : status === "ready" && themes.length > 0 ? (
+      )}
+
+      {status === "error" && (
+        <div data-testid="theme-error">
+          <ErrorState
+            title="Could not load essay themes"
+            message="The theme catalogue could not be reached. Nothing you have written is affected."
+            onRetry={load}
+          />
+        </div>
+      )}
+
+      {status === "empty" && (
+        <div data-testid="theme-empty">
+          <EmptyState
+            title="No essay themes available"
+            description="The theme catalogue is empty. Once themes are published you will be able to pick one here."
+          />
+        </div>
+      )}
+
+      {status === "ready" && (
         <ul className="grid gap-2 sm:grid-cols-2" data-testid="theme-list">
           {themes.map((t) => {
             const selectable = t.status === "active";
@@ -57,14 +94,15 @@ export default function ThemeSelector({ onPick }) {
                   onClick={() => onPick(t.id, t.theme_name)}
                   data-testid={`theme-option-${t.id}`}
                   className={
-                    "w-full rounded border p-3 text-left text-sm " +
-                    (selectable
-                      ? "hover:border-slate-400"
-                      : "cursor-not-allowed opacity-50")
+                    "h-full w-full rounded border p-3 text-left text-sm " +
+                    (selectable ? "hover:border-slate-400" : "cursor-not-allowed opacity-50")
                   }
                 >
                   <div className="font-medium">{t.theme_name || t.theme_code}</div>
-                  <div className="text-xs text-slate-500">
+                  {t.description && (
+                    <p className="mt-1 text-xs text-slate-600">{t.description}</p>
+                  )}
+                  <div className="mt-1 text-xs text-slate-500">
                     {selectable ? t.theme_code : `${t.theme_code} · reserved`}
                   </div>
                 </button>
@@ -72,34 +110,6 @@ export default function ThemeSelector({ onPick }) {
             );
           })}
         </ul>
-      ) : (
-        // Deferred/empty: no aspirant themes endpoint yet, or it returned none.
-        // Fall back to manual entry so the canvas is still reachable.
-        <div className="rounded border p-3" data-testid="theme-unavailable">
-          <p className="text-sm text-slate-600">
-            The theme picker isn&apos;t available yet (no aspirant-facing themes
-            endpoint). Enter a theme id to open its canvas.
-          </p>
-          <form
-            className="mt-2 flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (manual.trim()) onPick(manual.trim(), null);
-            }}
-          >
-            <input
-              value={manual}
-              onChange={(e) => setManual(e.target.value)}
-              placeholder="theme_id (uuid)"
-              className="input flex-1 text-sm"
-              data-testid="theme-manual-input"
-              aria-label="Theme id"
-            />
-            <button type="submit" className="btn btn-ghost text-sm" data-testid="theme-manual-open">
-              Open
-            </button>
-          </form>
-        </div>
       )}
     </section>
   );
@@ -107,4 +117,6 @@ export default function ThemeSelector({ onPick }) {
 
 ThemeSelector.propTypes = {
   onPick: PropTypes.func.isRequired,
+  title: PropTypes.string,
+  subtitle: PropTypes.string,
 };

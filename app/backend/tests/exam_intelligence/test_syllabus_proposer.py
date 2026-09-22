@@ -83,6 +83,7 @@ class _TableStub:
         self._filters: dict = {}
         self._in_filters: dict = {}
         self._order_col = None
+        self._range = None
         self._limit_n = None
         self._selected_cols = None
 
@@ -103,6 +104,10 @@ class _TableStub:
 
     def order(self, col, **kw):
         self._order_col = col
+        return self
+
+    def range(self, from_n, to_n):
+        self._range = (from_n, to_n)
         return self
 
     def limit(self, n):

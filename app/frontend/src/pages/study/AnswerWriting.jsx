@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { api } from "../../lib/api";
-import { Card, Eyebrow, PageHeader } from "../../shared/ui/studyos";
+import { Card, Eyebrow, PageHeader, Tabs } from "../../shared/ui/studyos";
 import CatalogPicker from "../../features/study/descriptive/CatalogPicker";
+import Coverage from "../../features/study/descriptive/Coverage";
+import MyAnswers from "../../features/study/descriptive/MyAnswers";
+import Progress from "../../features/study/descriptive/Progress";
 import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
 
 /**
@@ -16,6 +19,12 @@ import QuestionScreen from "../../features/study/descriptive/QuestionScreen";
  *
  * The selection lives in the query string so a paper is deep-linkable — which is
  * what lets other surfaces hand an aspirant straight to a filtered list.
+ *
+ * "My answers" is a VIEW of this surface, not a destination of its own. The
+ * no-new-surface rule (locked 2026-06-21) says a new top-level sidebar entry
+ * has to remove two; an answer history belongs beside the questions it is a
+ * history of anyway, so it is a tab and the tab lives in the query string with
+ * everything else.
  */
 export default function AnswerWriting() {
   const [params, setParams] = useSearchParams();
@@ -26,6 +35,11 @@ export default function AnswerWriting() {
   const [catalogError, setCatalogError] = useState("");
 
   const [questions, setQuestions] = useState([]);
+  const VIEWS = ["write", "answers", "coverage", "progress"];
+  const view = VIEWS.includes(params.get("view")) ? params.get("view") : "write";
+  // "Unattempted only" is a property of the list, so it rides in the query
+  // string with the rest of the selection and survives a reload.
+  const unattemptedOnly = params.get("unattempted") === "1";
   const [excludedMap, setExcludedMap] = useState(0);
   const [listState, setListState] = useState("idle");
   const [activeIndex, setActiveIndex] = useState(null);
@@ -34,6 +48,9 @@ export default function AnswerWriting() {
     () => ({
       subject: params.get("subject"),
       paper_id: params.get("paper_id"),
+      // Which paper WITHIN the subject — Paper I, or GS3. Distinct from
+      // paper_id, which is one sitting.
+      paper_number: params.get("paper_number"),
       theme: params.get("theme"),
       year: params.get("year"),
     }),
@@ -62,11 +79,21 @@ export default function AnswerWriting() {
       .catch(() => setExamId(""));
   }, []);
 
+  // The catalogue is re-read when the subject changes: papers, themes and years
+  // are all scoped to it. Showing Anthropology's themes under Political Science
+  // was not a display bug — the catalogue was genuinely returning every theme
+  // in the corpus and the picker was faithfully rendering them.
+  const subjectFilter = selection.subject || "";
+  const paperNumberFilter = selection.paper_number || "";
+
   useEffect(() => {
     if (!examId) return;
     setCatalogState("loading");
+    const query = new URLSearchParams({ exam_id: examId });
+    if (subjectFilter) query.set("subject", subjectFilter);
+    if (paperNumberFilter) query.set("paper_number", paperNumberFilter);
     api
-      .get(`/api/study/descriptive/catalog?exam_id=${encodeURIComponent(examId)}`)
+      .get(`/api/study/descriptive/catalog?${query.toString()}`)
       .then((d) => {
         setCatalog(d);
         setCatalogError("");
@@ -76,7 +103,7 @@ export default function AnswerWriting() {
         setCatalogError("The question catalogue is unavailable right now. Reload the page.");
         setCatalogState("error");
       });
-  }, [examId]);
+  }, [examId, subjectFilter, paperNumberFilter]);
 
   const hasFilter = Boolean(selection.paper_id || selection.theme || selection.subject);
 
@@ -87,9 +114,10 @@ export default function AnswerWriting() {
       return;
     }
     const query = new URLSearchParams({ exam_id: examId, limit: "100" });
-    ["subject", "paper_id", "theme", "year"].forEach((k) => {
+    ["subject", "paper_id", "paper_number", "theme", "year"].forEach((k) => {
       if (selection[k]) query.set(k, selection[k]);
     });
+    if (unattemptedOnly) query.set("exclude_attempted", "true");
     setListState("loading");
     api
       .get(`/api/study/descriptive/questions?${query.toString()}`)
@@ -102,7 +130,32 @@ export default function AnswerWriting() {
         setQuestions([]);
         setListState("error");
       });
-  }, [examId, hasFilter, selection]);
+  }, [examId, hasFilter, selection, unattemptedOnly]);
+
+  const setView = useCallback(
+    (next) => {
+      const query = {};
+      params.forEach((v, k) => {
+        if (k !== "view") query[k] = v;
+      });
+      if (next !== "write") query.view = next;
+      setParams(query, { replace: true });
+      setActiveIndex(null);
+    },
+    [params, setParams],
+  );
+
+  // Rewriting jumps back to the writing view on that question. The old answer
+  // is NOT carried across — `QuestionScreen` opens a fresh attempt and shows
+  // the previous one beside it.
+  const rewrite = useCallback(
+    (questionId) => {
+      if (!questionId) return;
+      setParams({ view: "write", question_id: String(questionId) }, { replace: true });
+      setActiveIndex(null);
+    },
+    [setParams],
+  );
 
   const active = activeIndex !== null ? questions[activeIndex] : null;
   const hasNext = activeIndex !== null && activeIndex + 1 < questions.length;
@@ -115,7 +168,32 @@ export default function AnswerWriting() {
         sub="Past questions from your optional, one at a time. You review your own answer against a rubric — nothing here is machine-scored."
       />
 
-      {!examId && (
+      <Tabs
+        value={view}
+        onChange={setView}
+        options={[
+          { value: "write", label: "Write" },
+          { value: "answers", label: "My answers" },
+          { value: "coverage", label: "Coverage" },
+          { value: "progress", label: "Progress" },
+        ]}
+      />
+
+      {view === "answers" && <MyAnswers onRewrite={rewrite} />}
+
+      {view === "progress" && <Progress />}
+
+      {view === "coverage" && (
+        <Coverage
+          examId={examId}
+          onPickQuestion={(q) => q?.paper_id && setParams(
+            { view: "write", paper_id: String(q.paper_id) },
+            { replace: true },
+          )}
+        />
+      )}
+
+      {view === "write" && !examId && (
         <Card>
           <p className="text-sm text-clay-700">
             Pick your target exam on the Study Plan first, and this fills with its
@@ -124,7 +202,7 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {examId && !active && (
+      {view === "write" && examId && !active && (
         <Card>
           <CatalogPicker
             catalog={catalog}
@@ -136,13 +214,30 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {examId && !active && hasFilter && (
+      {view === "write" && examId && !active && hasFilter && (
         <Card padded={false}>
           <div className="px-7 pt-6 pb-3">
             <Eyebrow>Questions</Eyebrow>
             <h2 className="font-heading mt-1 text-[22px] leading-tight">
               {listState === "loading" ? "Loading…" : `${questions.length} to write`}
             </h2>
+            <label className="mt-2 flex items-center gap-2 text-[12px] text-clay-700">
+              <input
+                type="checkbox"
+                checked={unattemptedOnly}
+                onChange={(e) => {
+                  const query = {};
+                  params.forEach((v, k) => {
+                    if (k !== "unattempted") query[k] = v;
+                  });
+                  if (e.target.checked) query.unattempted = "1";
+                  setParams(query, { replace: true });
+                  setActiveIndex(null);
+                }}
+                data-testid="descriptive-unattempted-only"
+              />
+              Unattempted only
+            </label>
             {excludedMap > 0 && (
               // Counted, not silently dropped. "Three aren't here" is
               // information; a shorter list with no explanation is not.
@@ -173,10 +268,15 @@ export default function AnswerWriting() {
                   data-testid="descriptive-question-row"
                 >
                   <span className="text-[13px] leading-snug">{q.text}</span>
+                  {/* The breadcrumb's source line, which already reads
+                      "2019 · P1 · Q5(b) · 15 marks" and omits whatever is
+                      unknown. Never `question_number`: it is block-encoded, so
+                      "Q108" is an internal key, and never a "marks not
+                      recorded" placeholder — that is a sentence about the
+                      database, not about the question. */}
                   <span className="num-mono mt-1 block text-[10.5px] text-clay-700">
                     {[
-                      q.question_number ? `Q${q.question_number}` : null,
-                      typeof q.marks === "number" ? `${q.marks} marks` : "marks not recorded",
+                      q.breadcrumb?.source,
                       typeof q.word_limit === "number" ? `${q.word_limit} words` : null,
                       q.attempt_count ? `${q.attempt_count} attempted` : null,
                     ]
@@ -190,7 +290,7 @@ export default function AnswerWriting() {
         </Card>
       )}
 
-      {active && (
+      {view === "write" && active && (
         <>
           <button
             type="button"

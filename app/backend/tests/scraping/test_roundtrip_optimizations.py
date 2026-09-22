@@ -79,6 +79,7 @@ class _CountingRegistrySB:
     def __init__(self, rows):
         self._rows = rows
         self.select_calls = 0
+        self._range = None
 
     def table(self, name):
         assert name == "source_registry"
@@ -86,13 +87,25 @@ class _CountingRegistrySB:
 
     def select(self, _cols):
         self.select_calls += 1
+        self._range = None
+        return self
+
+    def order(self, _col, **_kw):
+        return self
+
+    def range(self, from_n, to_n):
+        self._range = (from_n, to_n)
         return self
 
     def execute(self):
         class _R:
             pass
         r = _R()
-        r.data = list(self._rows)
+        # An inclusive window, like PostgREST. A stub that ignores .range() and
+        # re-serves every row for any window makes a paginated read look like
+        # an extra round trip that is really the walk proving it reached the end.
+        a, b = self._range or (0, len(self._rows) - 1)
+        r.data = list(self._rows)[a : b + 1]
         return r
 
 
@@ -101,19 +114,25 @@ def test_registry_host_cache_serves_repeat_reads_within_ttl():
     sb = _CountingRegistrySB([{"id": "s1", "official_url": "https://a.gov.in/x"}])
     # First read hits the DB; subsequent reads within TTL are served from cache.
     drafts_mod._load_registry_for_host_match(sb)
+    # The read is paginated, so ONE load is its pages plus the request that
+    # proves it reached the end. What the cache guarantees is that the next two
+    # loads cost nothing — not that the first cost exactly one request.
+    one_load = sb.select_calls
+    assert one_load >= 1
     drafts_mod._load_registry_for_host_match(sb)
     drafts_mod._load_registry_for_host_match(sb)
-    assert sb.select_calls == 1
+    assert sb.select_calls == one_load
 
 
 def test_registry_host_cache_refetches_after_invalidate():
     drafts_mod.invalidate_source_registry_cache()
     sb = _CountingRegistrySB([{"id": "s1", "official_url": "https://a.gov.in/x"}])
     drafts_mod._load_registry_for_host_match(sb)
-    assert sb.select_calls == 1
+    one_load = sb.select_calls
+    assert one_load >= 1
     drafts_mod.invalidate_source_registry_cache()
     drafts_mod._load_registry_for_host_match(sb)
-    assert sb.select_calls == 2
+    assert sb.select_calls == 2 * one_load  # invalidation costs a second load
 
 
 def test_two_runs_share_cache_until_invalidated():
@@ -123,9 +142,10 @@ def test_two_runs_share_cache_until_invalidated():
     sb = _CountingRegistrySB([{"id": "s1", "official_url": "https://a.gov.in/x"}])
     # "run 1"
     drafts_mod._existing_by_host(sb, ["a.gov.in"])
-    # "run 2" — cache hot, no new GET
+    one_run = sb.select_calls
+    # "run 2" — cache hot, no new GET at all
     drafts_mod._existing_by_host(sb, ["a.gov.in"])
-    assert sb.select_calls == 1
+    assert sb.select_calls == one_run
 
 
 # ════════════════════════════════════════════════════════════════════════

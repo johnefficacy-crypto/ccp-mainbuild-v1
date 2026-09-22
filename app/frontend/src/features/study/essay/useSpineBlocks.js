@@ -9,10 +9,10 @@ import useApiCollection from "../../../lib/hooks/useApiCollection";
  * One API source of truth: `/api/essay-brainstorm-blocks` (PR #1035), scoped
  * server-side to the authenticated aspirant's own rows.
  *
- * Two reads, deliberately:
- *   - `blocks`  — the selected theme's blocks, the authoritative slot content.
- *   - `themes`  — every theme the aspirant already has a block under, so the
- *                 screen can offer a switcher between essays in progress.
+ * One read: the selected theme's blocks, the authoritative slot content. The
+ * theme catalogue itself comes from `GET /api/essay-themes` via the shared
+ * `ThemeSelector`, so this hook no longer scans every block the aspirant owns
+ * just to recover a list of theme ids.
  *
  * Writes never send `lens` or `canvas_x`/`canvas_y`: a Spine block is not on
  * the canvas, and the columns default to null. Sending them would be the one
@@ -20,16 +20,8 @@ import useApiCollection from "../../../lib/hooks/useApiCollection";
  */
 
 const BLOCKS_URL = "/api/essay-brainstorm-blocks";
-// The endpoint caps `limit` at 500; ask for the ceiling on the switcher read so
-// a prolific aspirant's older themes don't silently drop out of the list.
-const THEME_SCAN_LIMIT = 500;
 
 export default function useSpineBlocks(themeId) {
-  // Server-side filtering, not client-side: the theme scan below is capped, so
-  // filtering the scan would silently drop blocks past the cap on a busy theme.
-  // With no theme selected this read duplicates the scan — one extra GET on a
-  // screen that only renders the theme picker, which is not worth a workaround
-  // that would break the rules of hooks.
   // lens_scope=spine — the server returns only lens-null blocks, so the slots
   // cannot receive Idea Canvas content. `isSpineBlock()` still runs downstream;
   // it is now a second line of defence rather than the only one.
@@ -37,13 +29,6 @@ export default function useSpineBlocks(themeId) {
     params: themeId
       ? { theme_id: themeId, lens_scope: "spine" }
       : { lens_scope: "spine" },
-  });
-  // The theme scan is deliberately NOT lens-scoped. Its job is "every theme the
-  // aspirant has any block under", so a theme they have only brainstormed must
-  // still appear in the switcher — scoping it would remove those themes from
-  // the Spine entirely, which is a reachability change, not a leak fix.
-  const themeScan = useApiCollection(BLOCKS_URL, [], {
-    params: { limit: String(THEME_SCAN_LIMIT) },
   });
 
   const createBlock = useCallback(
@@ -63,17 +48,17 @@ export default function useSpineBlocks(themeId) {
 
   const deleteBlock = useCallback((blockId) => api.delete(`${BLOCKS_URL}/${blockId}`), []);
 
+  // Kept as the single write-completion hook the slots call, so a later
+  // second read can be added here without touching every call site.
   const refreshAll = useCallback(async () => {
-    await Promise.all([blocks.refresh(), themeScan.refresh()]);
-  }, [blocks, themeScan]);
+    await blocks.refresh();
+  }, [blocks]);
 
   return {
     blocks: blocks.items,
     status: blocks.status,
     refresh: blocks.refresh,
     refreshAll,
-    themeScanBlocks: themeScan.items,
-    themeScanStatus: themeScan.status,
     createBlock,
     updateBlock,
     deleteBlock,

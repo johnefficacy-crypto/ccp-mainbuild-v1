@@ -32,7 +32,13 @@ export default function EssayIdeaCanvas() {
   };
 
   if (!themeId) {
-    return <ThemeSelector onPick={pick} />;
+    return (
+      <ThemeSelector
+        onPick={pick}
+        title="Essay Idea Canvas"
+        subtitle="Pick an essay theme to open its idea canvas — six thematic lenses, a helper rail, and your own draggable stickies."
+      />
+    );
   }
 
   return (

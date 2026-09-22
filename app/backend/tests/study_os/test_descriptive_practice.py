@@ -287,7 +287,14 @@ def test_catalog_excludes_retired_buckets_and_thematic_from_papers():
 
 def test_thematic_questions_appear_under_themes_grouped_by_verified_primary_tag():
     out = d.get_catalog(_sb(), EXAM)
-    by_theme = {t["theme"]: t["question_count"] for t in out["themes"]}
+    # Themes are nested paper → section → theme; these fixtures carry no
+    # syllabus metadata, so every theme lands in the explicit "Other" group.
+    by_theme = {
+        t["theme"]: t["question_count"]
+        for paper in out["themes"]
+        for section in paper["sections"]
+        for t in section["themes"]
+    }
 
     assert by_theme.get("Sovereignty") == 1
     # A secondary tag and an unverified primary tag are both non-themes, so this
@@ -298,9 +305,12 @@ def test_thematic_questions_appear_under_themes_grouped_by_verified_primary_tag(
 
 def test_catalog_counts_only_verified_descriptive_questions():
     out = d.get_catalog(_sb(), EXAM)
-    # 5 real-paper + 2 thematic. The mcq, the pending row and the bucket copy
-    # are all excluded.
-    assert out["total_questions"] == 7
+    # 4 real-paper + 2 thematic. The mcq, the pending row and the bucket copy
+    # are all excluded — and so is the map question, which list_questions also
+    # refuses to serve. A count that includes questions the surface will not
+    # open is a promise it cannot keep.
+    assert out["total_questions"] == 6
+    assert sum(s["question_count"] for s in out["subjects"]) == 6
     assert {s["subject"] for s in out["subjects"]} == {"PSIR"}
     assert [y["year"] for y in out["years"]] == [2024, 2023]
 

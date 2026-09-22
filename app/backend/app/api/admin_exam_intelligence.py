@@ -46,6 +46,7 @@ from app.exam_intelligence.score_snapshots import (
 )
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.api.admin_exam_intelligence")
 
@@ -165,6 +166,27 @@ _REVIEWABLE = {
         ),
         "supports_notes": False,
     },
+    # Essay-theme tagging of real Essay-paper PYQs (migration 265). Direct
+    # analog of pyq_question_topic_tag: a tag row pointing a question at a
+    # taxonomy entry (here an essay_theme), keyed via question_id → paper →
+    # exam, with the same pending/verified/rejected/needs_correction lifecycle
+    # and no child cascade. reviewed_by/reviewed_at exist; there is no
+    # reviewer_notes column (notes would ride metadata), so supports_notes is
+    # False. Flows through the generic review_item plain-update path — no RPC,
+    # no new endpoint code. Registering it here (plus the exam-scope branch in
+    # list_items, same as the analog) lets the existing generic GET items /
+    # PATCH items/{kind}/{id}/review routes drive essay_pyq_tags, which were
+    # otherwise permanently stuck 'pending' (admin_exam_intel_cms's PATCH
+    # allowlist excludes reviewer_status).
+    "essay_pyq_tag": {
+        "table": "essay_pyq_tags",
+        "select": (
+            "id, question_id, theme_id, secondary_theme_id, essay_type, "
+            "quote_source_type, tagging_source, confidence_score, "
+            "reviewer_status, reviewed_by, reviewed_at, created_at"
+        ),
+        "supports_notes": False,
+    },
     "pyq_question": {
         "table": "pyq_questions",
         "select": (
@@ -233,10 +255,13 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
             )
         out["tables"][kind] = {"total": len(rows), **counts}
     # Active exam count for context.
-    exam_rows = _safe(
-        lambda: sb.table("exams").select("id, is_active").limit(10000).execute().data,
-        default=[],
-    ) or []
+    exam_rows = paginate(
+        lambda a, b: _safe(
+            lambda: sb.table("exams").select("id, is_active").order("id").range(a, b).execute().data,
+            default=None,
+        ),
+        table="exams",
+    ).rows
     out["exams"] = {
         "total": len(exam_rows),
         "active": sum(1 for r in exam_rows if r.get("is_active")),
@@ -245,16 +270,22 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     # Topic coverage status breakdown. Only `locked` rows reach the Study OS
     # planner — surfacing the funnel tells operators how much verified
     # intelligence is actually planner-ready.
-    coverage_rows = _safe(
-        lambda: (
-            sb.table("exam_topic_coverage")
-            .select("reviewer_status, is_high_yield")
-            .limit(20000)
-            .execute()
-            .data
+    # This is a funnel COUNT, so a truncated read is an operator reading a
+    # number that is simply wrong with nothing to say so.
+    coverage_rows = paginate(
+        lambda a, b: _safe(
+            lambda: (
+                sb.table("exam_topic_coverage")
+                .select("id, reviewer_status, is_high_yield")
+                .order("id")
+                .range(a, b)
+                .execute()
+                .data
+            ),
+            default=None,
         ),
-        default=[],
-    ) or []
+        table="exam_topic_coverage",
+    ).rows
     coverage_counts = {s: 0 for s in _COVERAGE_STATUSES}
     for r in coverage_rows:
         st = r.get("reviewer_status") or "draft"
@@ -643,6 +674,85 @@ def management_exam_detail(
 
 
 # ─── 3. Items for a specific exam (filtered by reviewer_status) ───────────
+# Pagination + IN()-batching constants. PostgREST caps every select at
+# db-max-rows (app/supabase/config.toml `[api] max_rows`), so a single
+# `.limit(N)` silently truncates once the true row count exceeds the cap, and a
+# `.limit(limit + offset)` + Python-slice returns an empty page past the cap —
+# the exact class root-caused in #1016 (and fixed for list_topic_coverage in
+# this file). An oversized `.in_()` likewise exceeds the PostgREST URL-length
+# ceiling and 414s (#1022). Both are removed here by range-paginating every read
+# and batching every id-list IN() at _LIST_IN_BATCH.
+_LIST_PAGE = 1000       # rows per range() window
+_LIST_IN_BATCH = 250    # max ids per IN() filter (PostgREST URL-length ceiling)
+
+
+def _list_chunks(items: list[Any], n: int) -> list[list[Any]]:
+    return [items[i : i + n] for i in range(0, len(items), n)]
+
+
+def _read_all_paginated(make_query, order_col: str = "id") -> list[dict[str, Any]] | None:
+    """Read EVERY row of ``make_query()`` via ``.order().range()`` windows.
+
+    ``make_query`` returns a fresh PostgREST builder each call (builders are
+    single-use). Deterministic ``order_col`` makes the windows stable so a row
+    is never skipped or duplicated across pages. Returns ``None`` on a read
+    error so the caller can fail closed rather than serve a partial set.
+    """
+    out: list[dict[str, Any]] = []
+    frm = 0
+    while True:
+        try:
+            page = (
+                make_query()
+                .order(order_col)
+                .range(frm, frm + _LIST_PAGE - 1)
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("list_items paginated read failed: %s", exc)
+            return None
+        out.extend(page)
+        if len(page) < _LIST_PAGE:
+            return out
+        frm += _LIST_PAGE
+
+
+def _scoped_ids(
+    sb: Any,
+    table: str,
+    id_col: str,
+    *,
+    eq: tuple[str, Any] | None = None,
+    in_pair: tuple[str, list[Any]] | None = None,
+) -> list[Any] | None:
+    """All values of ``id_col`` in ``table`` matching the scope.
+
+    Range-paginated; an ``in_`` filter is batched at _LIST_IN_BATCH so the id
+    list can never overflow the URL-length ceiling. Returns ``None`` on a read
+    error (caller fails closed).
+    """
+    if eq is not None:
+        rows = _read_all_paginated(
+            lambda: sb.table(table).select(id_col).eq(eq[0], eq[1]), order_col=id_col
+        )
+        if rows is None:
+            return None
+        return [r[id_col] for r in rows if r.get(id_col)]
+    assert in_pair is not None
+    col, ids = in_pair
+    out: list[Any] = []
+    for chunk in _list_chunks(ids, _LIST_IN_BATCH):
+        part = _read_all_paginated(
+            lambda c=chunk: sb.table(table).select(id_col).in_(col, c), order_col=id_col
+        )
+        if part is None:
+            return None
+        out.extend(r[id_col] for r in part if r.get(id_col))
+    return out
+
+
 @router.get("/exams/{exam_id}/items")
 def list_items(
     exam_id: str,
@@ -659,68 +769,72 @@ def list_items(
     cfg = _REVIEWABLE[kind]
     sb = get_supabase_admin()
 
-    def _builder():
+    def _base():
+        # Fresh builder each call: select + the status filter, before scoping.
         q = sb.table(cfg["table"]).select(cfg["select"])
-        # syllabus mentions and pyq question topic tags have exam-side joins.
-        if kind == "syllabus_topic_mention":
-            q = q.eq("exam_id", exam_id)
-        elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus"}:
-            # All keyed via question → paper → exam. pyq_question_stimulus (the
-            # question↔stimulus LINK) filters on its own question_id, exactly
-            # like the topic-tag / option children.
-            paper_rows = _safe(
-                lambda: (
-                    sb.table("pyq_papers")
-                    .select("id")
-                    .eq("exam_id", exam_id)
-                    .limit(5000)
-                    .execute()
-                    .data
-                ),
-                default=[],
-            ) or []
-            paper_ids = [r["id"] for r in paper_rows if r.get("id")]
-            if not paper_ids:
-                return []
-            question_rows = _safe(
-                lambda: (
-                    sb.table("pyq_questions")
-                    .select("id")
-                    .in_("pyq_paper_id", paper_ids)
-                    .limit(10000)
-                    .execute()
-                    .data
-                ),
-                default=[],
-            ) or []
-            question_ids = [r["id"] for r in question_rows if r.get("id")]
-            if not question_ids:
-                return []
-            q = q.in_("question_id", question_ids)
-        elif kind in {"pyq_question", "pyq_stimulus"}:
-            # Both hang directly off the paper (pyq_paper_id → exam). A stimulus
-            # is shared passage/table CONTENT owned by a paper, so it scopes the
-            # same way a question does.
-            paper_rows = _safe(
-                lambda: (
-                    sb.table("pyq_papers")
-                    .select("id")
-                    .eq("exam_id", exam_id)
-                    .limit(5000)
-                    .execute()
-                    .data
-                ),
-                default=[],
-            ) or []
-            paper_ids = [r["id"] for r in paper_rows if r.get("id")]
-            if not paper_ids:
-                return []
-            q = q.in_("pyq_paper_id", paper_ids)
         if status != "all":
             q = q.eq("reviewer_status", status)
-        return q.order("created_at", desc=True).limit(limit + offset).execute().data
+        return q
 
-    rows = _safe(_builder, default=[]) or []
+    rows: list[dict[str, Any]] | None
+    if kind == "syllabus_topic_mention":
+        rows = _read_all_paginated(lambda: _base().eq("exam_id", exam_id))
+    elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus", "essay_pyq_tag"}:
+        # All keyed via question → paper → exam. essay_pyq_tag (essay-theme
+        # tagging of Essay-paper PYQs) is the same shape — question_id →
+        # pyq_questions → paper → exam. The exam can have well over db-max-rows
+        # questions (UPSC CSE ~1400-2000+), so the question-id list is fetched
+        # paginated and the tag read is batched over it at _LIST_IN_BATCH — an
+        # unbatched .in_() of that many ids 414s and returns nothing.
+        paper_ids = _scoped_ids(sb, "pyq_papers", "id", eq=("exam_id", exam_id))
+        if paper_ids is None:
+            rows = None
+        elif not paper_ids:
+            rows = []
+        else:
+            question_ids = _scoped_ids(
+                sb, "pyq_questions", "id", in_pair=("pyq_paper_id", paper_ids)
+            )
+            if question_ids is None:
+                rows = None
+            elif not question_ids:
+                rows = []
+            else:
+                rows = []
+                for chunk in _list_chunks(question_ids, _LIST_IN_BATCH):
+                    part = _read_all_paginated(lambda c=chunk: _base().in_("question_id", c))
+                    if part is None:
+                        rows = None
+                        break
+                    rows.extend(part)
+    elif kind in {"pyq_question", "pyq_stimulus"}:
+        # Both hang directly off the paper (pyq_paper_id → exam). A stimulus is
+        # shared passage/table CONTENT owned by a paper, so it scopes the same
+        # way a question does.
+        paper_ids = _scoped_ids(sb, "pyq_papers", "id", eq=("exam_id", exam_id))
+        if paper_ids is None:
+            rows = None
+        elif not paper_ids:
+            rows = []
+        else:
+            rows = []
+            for chunk in _list_chunks(paper_ids, _LIST_IN_BATCH):
+                part = _read_all_paginated(lambda c=chunk: _base().in_("pyq_paper_id", c))
+                if part is None:
+                    rows = None
+                    break
+                rows.extend(part)
+    else:  # defensive: a registered kind with no scope branch reads unscoped
+        rows = _read_all_paginated(_base)
+
+    if rows is None:
+        # A read failed mid-fetch: fail closed with an empty page rather than
+        # serve a silently partial set.
+        return {"items": [], "count": 0}
+    # Display order: newest first, id as a deterministic tiebreaker so equal
+    # timestamps never reorder between requests. The complete set is in memory,
+    # so this slice is over ALL matching rows — not a DB-capped window.
+    rows.sort(key=lambda r: (r.get("created_at") or "", str(r.get("id") or "")), reverse=True)
     return {"items": rows[offset : offset + limit], "count": len(rows)}
 
 

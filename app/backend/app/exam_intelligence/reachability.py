@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from app.common.pagination import chunks, paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.reachability")
 
@@ -71,7 +72,7 @@ ELIGIBLE = "eligible"
 
 
 def _chunks(items: list[Any], n: int) -> list[list[Any]]:
-    return [items[i : i + n] for i in range(0, len(items), n)]
+    return chunks(items, n)
 
 
 def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
@@ -82,17 +83,10 @@ def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
     successive pages partition the result deterministically. Exceptions
     propagate — a truncated read here would produce a paper that looks
     uniformly 'medium' because the rest of its rows were never fetched, which
-    is exactly the failure this module exists to prevent.
+    is exactly the failure this module exists to prevent, and which the old
+    stop-on-a-short-page rule caused on any server capped below ``_PAGE``.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        rows = build_query(offset, offset + _PAGE - 1) or []
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            break
-        offset += _PAGE
-    return all_rows
+    return paginate(build_query, page_size=_PAGE, table="reachability").rows
 
 
 def _band_of(raw: Any) -> str | None:

@@ -405,9 +405,11 @@ def test_mission_control_caches_repeat_reads_within_one_call():
     #   - filter by id/slug (target lookup from exam_intelligence_status)
     #   - filter by is_active=true (eligibility_summary's active-exams
     #     list — completely different read pattern, not a duplicate).
-    # Cap at 2 to catch any new accidental duplicate.
-    assert reads.get("exams", 0) <= 2, (
-        f"exams read {reads.get('exams')}× (expected ≤2); counts={reads}"
+    # The active-exams list is a paginated walk: its pages, plus the one
+    # request that proves it reached the end. That is a constant, not a
+    # per-row cost. Cap at 3 to catch any new accidental duplicate.
+    assert reads.get("exams", 0) <= 3, (
+        f"exams read {reads.get('exams')}× (expected ≤3); counts={reads}"
     )
 
 
@@ -511,10 +513,11 @@ def test_mission_control_does_not_duplicate_study_plans_or_sessions():
         by_table[name] = by_table.get(name, 0) + 1
     # Allow ≤1 read per logical table for the deduped tables; others can
     # legitimately appear N times (e.g. study_tasks has 5 distinct slices,
-    # `exams` has 2 distinct chains — target lookup + active-exams list).
+    # `exams` has 2 distinct chains — target lookup + active-exams list, the
+    # latter a paginated walk costing one request more than its pages).
     assert by_table.get("study_plans", 0) <= 1, f"study_plans={by_table.get('study_plans')}; calls={calls}"
     assert by_table.get("study_sessions", 0) <= 1, f"study_sessions={by_table.get('study_sessions')}; calls={calls}"
-    assert by_table.get("exams", 0) <= 2, f"exams={by_table.get('exams')}; calls={calls}"
+    assert by_table.get("exams", 0) <= 3, f"exams={by_table.get('exams')}; calls={calls}"
 
 
 # ── Item 5: per-exam intelligence TTL cache ───────────────────────────────

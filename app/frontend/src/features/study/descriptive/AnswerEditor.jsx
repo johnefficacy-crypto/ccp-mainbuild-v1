@@ -32,6 +32,7 @@ export default function AnswerEditor({
   timerRunning,
   onStartTimer,
   onPauseTimer,
+  onPaste,
   readOnly,
 }) {
   const areaRef = useRef(null);
@@ -110,6 +111,14 @@ export default function AnswerEditor({
         rows={18}
         value={answer}
         onChange={(e) => onChange(e.target.value)}
+        // Recorded, never blocked. Pasting is allowed — an aspirant drafting in
+        // another editor is doing nothing wrong — but the history says so, and
+        // saying so is what keeps "I wrote this" meaningful six months later.
+        onPaste={(e) => {
+          if (readOnly || !onPaste) return;
+          const text = e.clipboardData?.getData?.("text") ?? "";
+          onPaste(text);
+        }}
         onBlur={onBlur}
         readOnly={readOnly}
         placeholder="Write your answer here."
@@ -150,5 +159,6 @@ AnswerEditor.propTypes = {
   timerRunning: PropTypes.bool,
   onStartTimer: PropTypes.func,
   onPauseTimer: PropTypes.func,
+  onPaste: PropTypes.func,
   readOnly: PropTypes.bool,
 };

@@ -4,6 +4,8 @@ status: architecture decision — APPROVED 2026-07-12 (johnefficacy-crypto); GAT
 last_verified_against_code: 2026-07-11
 source_of_truth: code
 related_code:
+  - app/backend/app/current_affairs/ingestion.py
+  - app/backend/app/current_affairs/sources.py
   - app/backend/app/scraping/fetcher.py
   - app/backend/app/scraping/sources.py
   - app/backend/app/scraping/runner.py
@@ -12,6 +14,8 @@ related_code:
   - app/backend/app/study_os/writing_practice/evaluation_worker.py
   - app/backend/app/study_os/attempt_evidence.py
 related_migrations:
+  - app/supabase/migrations/296_ca_sebi_path_allowlist_backfill.sql
+  - app/supabase/migrations/294_ca_rss_item_level_ingestion.sql
   - app/supabase/migrations/056_exam_policy_updates.sql
   - app/supabase/migrations/135_mock_engine_core.sql
   - app/supabase/migrations/159_mock_question_provenance.sql
@@ -82,7 +86,8 @@ current_affairs_sources
 
 `authority_level` maps directly onto ADR 0007 (aggregators discovery-only): **a `discovery_only`
 source may never be the sole evidence for a promoted question.** The LLM cannot assign or alter
-`authority_level`.
+`authority_level`. At ingest (CA-RSS-03, §4.8) a `discovery_only` source stores title + link + feed
+summary only — no page fetch, no article text, no generation job.
 
 **Reuse, don't rebuild:** the fetch layer is directly reusable — `scraping/fetcher.py` already does
 ETag / Last-Modified conditional fetch and returns a dedicated `not_modified` (304) result across
@@ -93,6 +98,22 @@ current-affairs rows through the recruitment runner.
 Initial scope: PIB, RBI, a small set of high-value Union ministries, major statutory/constitutional
 bodies, official gazette/circular sources where retrieval is reliable. State/international/specialised
 sources are added only after the first sources pass operational quality gates.
+
+Seeded sources (migrations 241, 294, 299):
+
+| Source | authority_level | publisher marker | cadence |
+|---|---|---|---|
+| PIB (Regid=3, Hindi feed → English follow) | primary_official | `PIB` | 12h |
+| RBI press releases | primary_official | `RBI` | 24h |
+| RBI notifications | primary_official | `RBI`, `feed=notifications` | 24h |
+| RBI speeches | primary_official | `RBI`, `feed=speeches` | 48h |
+| SEBI | primary_official | `SEBI` | 24h |
+| UNESCO World Heritage Centre | primary_official (`international_body`) | `UNESCO_WHC` | 48h |
+| The Hindu — National | discovery_only (`news_media`) | `THE_HINDU` | 12h |
+
+Several sources may share a publisher marker (three RBI feeds). The marker selects per-publisher
+behaviour (document typing, allow/deny lists, page-date shape, language follow); every identity and
+dedup lookup is by `source_id`.
 
 ---
 
@@ -136,6 +157,164 @@ Runs on the new `ca:ingest` job (§9), daily or more frequently per source capab
 extraction queue`. Before any LLM call, reject/deprioritise duplicates, routine/ceremonial/
 promotional releases, narrow local notices, documents with no stable examinable claim, and
 inaccessible/incomplete sources — each exclusion records a machine-readable reason.
+
+### 4.1 RSS sources are split per item (CA-RSS-01, migration 294)
+A feed body is a **listing, not evidence**. For `adapter_type='rss'` the ingest writes one
+`current_affairs_documents` row per feed ENTRY:
+
+- `title` = entry title, `source_url` = entry link, `published_at` = the parsed entry date
+  (see §4.6 for the accepted shapes). **Unparseable → NULL, never `now()`** — a fabricated
+  publication date would silently corrupt the relevance window (§3).
+- `raw_text` = the readable text of the entry's OWN page (`fetcher.strip_html`), not feed XML.
+- `canonical_item_url` = the entry link normalised (scheme/host lowercased, `www.`, fragment and
+  tracking params dropped, trailing slash stripped). This is the item identity, enforced by the
+  partial unique index `uq_cad_source_canonical_item (source_id, canonical_item_url)` — app-level
+  dedup is not the only guard. An already-seen link is skipped **without fetching its page**.
+- Content-hash dedup (`uq_cad_source_content_hash`) still applies on top.
+- The feed-level 304 short-circuit stays, but its validators now live on the source
+  (`current_affairs_sources.feed_etag` / `feed_last_modified`) — a document row's `etag` belongs to
+  that item's page, not to the feed.
+- New items per source per pass are capped (`crawl_schedule.max_items_per_pass`, default 30). The
+  remainder is picked up next pass; nothing is lost, because identity is the item link.
+- A failed item-page fetch is recorded per item and **no row is written**, so the next pass retries
+  it. One unreachable item never fails the whole source.
+
+Non-RSS adapters (html / api / pdf / sitemap) keep the whole-body snapshot: their fetch target
+already IS one document.
+
+### 4.2 Per-source identity
+`adapter_config.user_agent` overrides the default bot User-Agent for that source only. PIB requires
+it (42 consecutive `http_403` against the bot UA; a browser UA returns 200). The recruitment
+scraper's identity is unchanged — the override is opt-in per row.
+
+### 4.3 Publisher URL-path allow-list (CA-RSS-02, migration 296)
+The coarsest filter, and the first one applied: an item whose canonical link sits outside its
+publisher's allow-listed sections is structurally not general-awareness material, so its page is
+**never fetched**. SEBI's allow-list:
+
+```text
+/media-and-notifications/press-releases/
+/legal/circulars/
+/legal/master-circulars/
+/legal/regulations/
+/reports-and-statistics/reports/
+```
+
+The excluded row is still written (pipeline §4) with `ingestion_status='deprioritised'` and
+`metadata.prefilter_reason='publisher_path_excluded:/<seg1>/<seg2>'`, so an operator can see which
+section was dropped. A publisher with **no** configured allow-list is unfiltered by path — absence
+of config is never read as "deny all", which is why RBI and PIB are untouched until their page
+structure is verified by a live pass.
+
+Rationale (live, 2026-09-21): SEBI's first item-split pass snapshotted 15 documents, 14 of them
+`/enforcement/orders/...` RTI appeals and interim orders with no examinable claim.
+
+### 4.4 Embedded-PDF body extraction
+SEBI (and peers) render the item page as chrome around an embedded PDF viewer: the readable HTML is
+a breadcrumb and the document is the PDF. After fetching an allow-listed page, the ingest takes the
+PDF body when the readable HTML is below `crawl_schedule.pdf_fallback_below_chars` (default 800)
+**and** the page embeds or links a PDF — found via a viewer `?file=` parameter, an
+`iframe`/`embed`/`object` source, or an anchor, always resolved to a `.pdf` on the **same host** (an
+off-host PDF is an unvetted third party, not this source's evidence).
+
+Extraction reuses `fetcher.fetch_pdf` → `parse_pdf_bytes`, the same pypdf path `doc:text_extract`
+runs on library uploads. No new dependency. The stored body is the page title plus the extracted
+text; `metadata` records `body_source` (`html`|`pdf`), `pdf_url` and `extracted_chars`, and the
+document's `content_hash` becomes the PDF's so dedup keys on the body actually stored. The PDF fetch
+carries the same per-source User-Agent as the page and is capped at `crawl_schedule.max_pdf_bytes`
+(default 10 MB).
+
+**Minimum-body gate.** A final body below `crawl_schedule.min_body_chars` (default 400) writes **no
+row** and records a per-item error, exactly like an item-page fetch failure. This is deliberate:
+294's partial unique index on `(source_id, canonical_item_url)` means a written row permanently owns
+that item's slot, so storing a chrome-only body would block any later, better extraction of the same
+item.
+
+A PDF that cannot be fetched (including over the size cap) is only fatal when the HTML body alone
+does not clear the floor; otherwise the HTML body is kept and `metadata.pdf_error` records what
+happened.
+
+### 4.5 Publisher title deny-list
+The second layer, inside an allow-listed section. `sources.py` carries per-publisher title patterns
+for strictly administrative instruments (SEBI: recovery certificate, notice of attachment, release
+order, general remittance order, general remittance advice, adjudication order, settlement order,
+order for compliance, order of AA under the RTI Act, and `appeal no.` + `filed by` together).
+Matching is deterministic, case-insensitive substring — **no LLM, no scoring**; a tuple pattern
+requires every substring and reports itself joined by `+`. A match is evaluable from the feed entry
+alone, so the item page is never fetched. The row is still snapshotted with
+`ingestion_status='deprioritised'` and `metadata.prefilter_reason='publisher_denylist:<pattern>'`;
+it is never silently dropped.
+
+### 4.6 Publication dates
+`metadata.raw_pub_date` always keeps the feed's verbatim value, parsed or not — when a publisher
+changes its date shape, that string is what lets the parser be extended and the rows re-derived
+without re-crawling. `parse_published_at` accepts RFC 2822 (shape-checked first, because
+`email.utils` silently mis-parses `Sep 21, 2026 02:30 PM` as 02:30), ISO-8601, and the
+day/month-name shapes Indian publishers use, with or without a time and with or without a trailing
+`IST` / `+0530`. **A value carrying no timezone is read as Asia/Kolkata** (fixed +05:30 — India has
+no DST), not UTC; reading it as UTC back-dated every item by 5.5 hours. Unparseable still means
+`published_at` NULL, never `now()`.
+
+**Page-printed dates (CA-RSS-03).** When the feed gives no parseable date, the date printed on the
+stored item page is used, per publisher. PIB: the whitespace after `Posted On:` (English) or
+`प्रविष्टि तिथि:` (Hindi) is collapsed and `DD MON YYYY h:mmAM/PM` is parsed as Asia/Kolkata — by a
+dedicated `strptime`, not `parse_published_at`, whose RFC 2822 branch would accept the shape and drop
+the PM. `metadata.date_source` records `feed` or `page`, and `metadata.raw_page_date` keeps the
+matched string. No feed date and no page date still means NULL, never `now()`.
+
+Only `snapshotted` documents are enqueued for generation (`_reconcile_pending_generation`), so
+deprioritised items never reach the LLM queue.
+
+### 4.7 PIB English-version follow (CA-RSS-03, migrations 299 + 300)
+PIB's only non-empty feed is `RssMain.aspx?ModId=6&Lang=1&Regid=3`, and every item in it is Hindi
+(Lang, Accept-Language and the other Regid values return empty or the same Hindi feed). Items carry
+title + link only, and link `PressReleaseIframePage.aspx?PRID=<hi>`. For publisher `PIB`:
+
+1. The feed link is rewritten to `PressReleasePage.aspx?PRID=<hi>` (the page with the language
+   switcher) and fetched with the PIB User-Agent. The Iframe page is never fetched.
+2. The anchor whose trimmed visible text is `English` gives the English PRID. The page holds several
+   PRIDs (itself, its `lang=2` self-link, other languages, related releases) and the English one has
+   no arithmetic relation to the Hindi one, so it is **only** selected by anchor text.
+3. `PressReleasePage.aspx?PRID=<en>&lang=1` is fetched. The row stores the ENGLISH release: title from
+   `h2#Titleh2`, `source_url` and `canonical_item_url` = the English URL, and
+   `metadata.source_prid_hi` / `source_prid_en` / `source_url_hi` (the Hindi feed link).
+4. Body trim: the release text is the HTML between the `#PrDateTime` block and `span#ReleaseId`.
+   Everything else — header/nav, ministry and title block, Release ID, visitor counter, the "Read this
+   release in" switcher, related-release tags/links, share widgets, the hidden print copy and the
+   footer — is cut. If either marker is missing the whole-page text is kept (`metadata.body_trim`
+   = `none`).
+
+**Outcomes.** A failed fetch at either hop is a per-item error with no row, retried next pass
+(§4.1). No `English` anchor, or an English body below `min_body_chars`, writes the Hindi page as
+`deprioritised` / `language_mismatch` (`metadata.language_follow` = `no_english_link` |
+`english_page_thin`), keyed on the Hindi **full-page** URL.
+
+**Dedup and skip-without-fetch.** The English canonical URL is the row identity under 294's partial
+unique index. "Already handled" is keyed on `metadata.source_url_hi` (expression index
+`idx_cad_source_url_hi`, migration 299), so a Hindi item already resolved — to English or to a
+mismatch row — is skipped on the next pass with **zero** fetches. No side table: the document row is
+the resolution record.
+
+**Pre-CA-RSS-03 Hindi rows.** Migration 300 moves the PIB Hindi snapshots to `deprioritised` /
+`language_mismatch_pre_rss03` and fails their pending/running generation jobs. Those rows carry no
+`source_url_hi` and their `canonical_item_url` is the Iframe link, so the next pass re-resolves each
+item to English and writes a new row with a different canonical URL — no unique-index collision.
+Apply 300 before deploying the code.
+
+### 4.8 Language guard and discovery_only (CA-RSS-03)
+**Language guard (every source).** The final stored body's dominant script is measured by a
+Devanagari-vs-Latin character count (`sources.detect_language`; no dependency) and stored as
+`metadata.detected_language` (`hi` | `en`, or `null` below 40 script characters). A body whose script
+contradicts the source's `default_language` is written `deprioritised` / `language_mismatch`. The
+guard abstains when nothing is detected or the declared language is neither `en` nor `hi`.
+
+**discovery_only (ADR 0007).** A `discovery_only` RSS source's entry is written with
+`ingestion_status='discovery_only'` (added to the CHECK by migration 299), `raw_text` NULL, the feed
+summary in `metadata.feed_summary`, and `metadata.prefilter_reason='discovery_only'`. Its page is
+never fetched. The status is not `snapshotted`, so the ingest pass never enqueues a job, and the
+validator's `sole_evidence_discovery_only` check stays as the second line. A `discovery_only` source
+on a whole-body adapter is not ingested (`skipped` / `discovery_only_non_rss`): a whole-body fetch is
+article text and has no entry to take a title and link from.
 
 ---
 

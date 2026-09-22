@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { api } from "../../../lib/api";
 import AnswerEditor from "./AnswerEditor";
+import HandwrittenPages from "./HandwrittenPages";
 import RubricPanel from "./RubricPanel";
 import useDescriptiveAttempt from "./useDescriptiveAttempt";
 import { formatDuration } from "./rubric";
@@ -29,9 +30,14 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
     pauseTimer,
     save,
     submit,
+    notePaste,
     submitted,
   } = useDescriptiveAttempt(question?.id);
 
+  // Type or Upload. The mode lives on the attempt, so it survives a reload and
+  // the history can say which of two attempts at one question was handwritten.
+  const [mode, setMode] = useState("typed");
+  const [modeError, setModeError] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState([]);
@@ -46,8 +52,33 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
 
   useEffect(() => {
     setReviewing(false);
+    setModeError("");
     loadHistory();
   }, [question?.id, loadHistory]);
+
+  useEffect(() => {
+    if (attempt?.answer_mode) setMode(attempt.answer_mode);
+  }, [attempt?.answer_mode]);
+
+  const switchMode = React.useCallback(
+    async (next) => {
+      if (!attempt?.id || next === mode) return;
+      setModeError("");
+      try {
+        await api.put(`/api/study/descriptive/attempts/${attempt.id}/answer-mode`, {
+          answer_mode: next,
+        });
+        setMode(next);
+      } catch (err) {
+        // Switching back to typing with pages still attached is refused by the
+        // server rather than silently deleting them. Say which, not "failed".
+        setModeError(
+          "Remove the uploaded pages first, then switch back to typing.",
+        );
+      }
+    },
+    [attempt?.id, mode],
+  );
 
   useEffect(() => {
     if (submitted) loadHistory();
@@ -93,30 +124,82 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           </p>
         )}
         <p className="text-base leading-relaxed">{question.text}</p>
-        <p className="num-mono mt-2 text-xs text-muted-foreground">
-          {[
-            question.optional_subject,
-            question.year ? `${question.year}` : null,
-            question.question_number ? `Q${question.question_number}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        {/* Subject · Paper · Section · Topic, then where it came from. Each
+            level is omitted when unknown rather than blanked. */}
+        {question.breadcrumb?.trail?.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="descriptive-breadcrumb">
+            {question.breadcrumb.trail.join(" · ")}
+          </p>
+        )}
+        {question.breadcrumb?.source && (
+          <p className="num-mono mt-1 text-xs text-muted-foreground" data-testid="descriptive-source">
+            {question.breadcrumb.source}
+          </p>
+        )}
       </section>
 
-      <AnswerEditor
-        question={question}
-        answer={answer}
-        onChange={setAnswerText}
-        onBlur={save}
-        wordCount={wordCount}
-        saveState={saveState}
-        elapsed={elapsed}
-        timerRunning={timerRunning}
-        onStartTimer={startTimer}
-        onPauseTimer={pauseTimer}
-        readOnly={submitted}
-      />
+      {!submitted && (
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="radiogroup"
+          aria-label="How do you want to answer?"
+        >
+          {[
+            { value: "typed", label: "Type" },
+            { value: "handwritten", label: "Upload" },
+          ].map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={mode === o.value}
+              className={`rounded-full border px-3 py-1 text-[12px] ${
+                mode === o.value
+                  ? "border-[#D9C7A7] bg-[#FFFDF9] font-semibold"
+                  : "border-clay-300 text-clay-700"
+              }`}
+              onClick={() => switchMode(o.value)}
+              data-testid={`descriptive-mode-${o.value}`}
+            >
+              {o.label}
+            </button>
+          ))}
+          <span className="text-[11px] text-clay-700">
+            {mode === "handwritten"
+              ? "Write on paper and photograph each side."
+              : "Type your answer here."}
+          </span>
+        </div>
+      )}
+
+      {modeError && (
+        <p role="status" className="text-[12px] text-rose-700" data-testid="descriptive-mode-error">
+          {modeError}
+        </p>
+      )}
+
+      {mode === "handwritten" ? (
+        <HandwrittenPages
+          attemptId={attempt?.id}
+          readOnly={submitted}
+          onModeChange={setMode}
+        />
+      ) : (
+        <AnswerEditor
+          question={question}
+          answer={answer}
+          onChange={setAnswerText}
+          onBlur={save}
+          wordCount={wordCount}
+          saveState={saveState}
+          elapsed={elapsed}
+          timerRunning={timerRunning}
+          onStartTimer={startTimer}
+          onPauseTimer={pauseTimer}
+          onPaste={notePaste}
+          readOnly={submitted}
+        />
+      )}
 
       {!submitted && !reviewing && (
         <div>
@@ -149,6 +232,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
             {attempt.time_spent_seconds
               ? ` · ${formatDuration(attempt.time_spent_seconds)} spent`
               : ""}
+            {attempt.pasted_chars > 0 ? " · contains pasted text" : ""}
           </p>
           {attempt.notes && <p className="mt-2 text-sm">{attempt.notes}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -182,6 +266,13 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
                   {h.self_total !== null && h.self_total !== undefined
                     ? ` · ${h.self_total}/12`
                     : ""}
+                  {h.time_spent_seconds
+                    ? ` · ${formatDuration(h.time_spent_seconds)}`
+                    : ""}
+                  {/* Only for 0-and-above. `null` means the attempt predates
+                      paste tracking, which is not the same as "nothing was
+                      pasted" and must not be reported as if it were. */}
+                  {h.pasted_chars > 0 ? " · contains pasted text" : ""}
                 </span>
                 {h.notes && <p className="mt-1 text-muted-foreground">{h.notes}</p>}
               </li>
@@ -199,8 +290,14 @@ QuestionScreen.propTypes = {
     text: PropTypes.string,
     parent_text: PropTypes.string,
     optional_subject: PropTypes.string,
+    subject: PropTypes.string,
     year: PropTypes.number,
     question_number: PropTypes.number,
+    label: PropTypes.string,
+    breadcrumb: PropTypes.shape({
+      trail: PropTypes.arrayOf(PropTypes.string),
+      source: PropTypes.string,
+    }),
   }).isRequired,
   onNext: PropTypes.func,
   hasNext: PropTypes.bool,
