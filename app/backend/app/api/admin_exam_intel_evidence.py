@@ -40,6 +40,7 @@ from app.core.auth import get_current_user, require_permission
 from app.core.permissions import EXAM_INTELLIGENCE_MANAGE, EXAM_INTELLIGENCE_REVIEW
 from app.db.supabase_client import get_supabase_admin
 from app.exam_intelligence.document_policy import evaluate_required_phases_complete
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.api.admin_exam_intel_evidence")
 
@@ -328,15 +329,21 @@ def list_sources(
 ) -> dict[str, Any]:
     """source_registry rows for the evidence source picker, each with the D05 authority verdict."""
     sb = get_supabase_admin()
-    rows = (
-        sb.table("source_registry")
-        .select("id, source_name, source_type, state, is_active, is_official_source, discovery_only")
-        .order("source_name", desc=False)
-        .limit(2000)
-        .execute()
-        .data
-        or []
-    )
+    rows = paginate(
+        lambda a, b: (
+            sb.table("source_registry")
+            .select("id, source_name, source_type, state, is_active, is_official_source, discovery_only")
+            # `source_name` is not unique, so it cannot partition the pages on
+            # its own; `id` breaks the tie and keeps the display order.
+            .order("source_name", desc=False)
+            .order("id")
+            .range(a, b)
+            .execute()
+            .data
+            or []
+        ),
+        table="source_registry",
+    ).rows
     if q:
         needle = q.lower()
         rows = [r for r in rows if needle in (r.get("source_name") or "").lower()]

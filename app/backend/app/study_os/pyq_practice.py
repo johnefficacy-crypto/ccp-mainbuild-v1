@@ -30,6 +30,7 @@ from datetime import datetime, timedelta, timezone
 from app.study_os.generated_mock_attempt import _load_questions
 from app.study_os.mock_engine import _question_snapshot
 from app.utils.safe import safe_required
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.study_os.pyq_practice")
 
@@ -90,21 +91,14 @@ def _read_paged(build, *, op: str) -> list[dict] | None:
     ``build(from_n, to_n)`` must return the query for the inclusive row slice and
     MUST carry a stable ``.order(...)`` so successive pages partition the result.
     """
-    out: list[dict] = []
-    offset = 0
-    while True:
-        rows = safe_required(
-            lambda f=offset: build(f, f + _PAGE - 1).execute(),
-            op=op,
-            log=logger,
-            allow_empty=True,
-        )
-        if rows is None:
-            return None
-        out.extend(rows)
-        if len(rows) < _PAGE:
-            return out
-        offset += _PAGE
+    walk = paginate(
+        lambda a, b: safe_required(
+            lambda: build(a, b).execute(), op=op, log=logger, allow_empty=True
+        ),
+        page_size=_PAGE,
+        operation=op,
+    )
+    return walk.rows if walk.complete else None
 
 
 def _active_projection_ids(sb, candidate_ids: list[str]) -> frozenset[str]:

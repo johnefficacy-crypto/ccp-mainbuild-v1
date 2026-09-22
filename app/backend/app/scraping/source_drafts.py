@@ -35,6 +35,7 @@ import logging
 import time
 from typing import Any, Iterable
 from urllib.parse import urlparse
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.scraping.source_drafts")
 
@@ -67,13 +68,18 @@ def _load_registry_for_host_match(supabase) -> list[dict[str, Any]]:
     rows = _registry_host_cache.get("rows")
     if rows is not None and now < _registry_host_cache.get("expires_at", 0.0):
         return rows
-    fetched = (
-        supabase.table("source_registry")
-        .select(_HOST_MATCH_COLUMNS)
-        .execute()
-        .data
-        or []
-    )
+    fetched = paginate(
+        lambda a, b: (
+            supabase.table("source_registry")
+            .select(_HOST_MATCH_COLUMNS)
+            .order("id")
+            .range(a, b)
+            .execute()
+            .data
+            or []
+        ),
+        table="source_registry",
+    ).rows
     _registry_host_cache["rows"] = fetched
     _registry_host_cache["expires_at"] = now + _REGISTRY_CACHE_TTL_SECONDS
     return fetched

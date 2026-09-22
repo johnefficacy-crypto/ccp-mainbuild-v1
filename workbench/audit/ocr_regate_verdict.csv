@@ -1,0 +1,281 @@
+﻿file,year,paper,question_number,paper_local_number,global_number,en_len,verdict,best_score,ocr_derived,gate_relaxed,origin_phase
+UPSCCSEMains2014ALL.json,2014,GS1,1,1,1,140,exact,100.0,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,2,2,2,72,exact,100.0,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,3,3,3,210,exact,95.2,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,4,4,4,106,exact,97.1,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,5,5,5,172,variant,90.5,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,6,6,6,142,variant,85.1,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,7,7,7,116,variant,87.8,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,8,8,8,101,orphan,70.4,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,9,9,9,101,orphan,50.0,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,10,10,10,90,orphan,64.4,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,11,11,11,92,orphan,50.5,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,12,12,12,110,orphan,48.1,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,13,13,13,83,orphan,50.0,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,14,14,14,117,orphan,50.0,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,15,15,15,125,orphan,51.2,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,16,16,16,130,orphan,50.4,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,17,17,17,119,orphan,49.2,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,18,18,18,135,orphan,49.6,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,19,19,19,115,orphan,51.3,true,true,phase2
+UPSCCSEMains2014ALL.json,2014,GS1,20,20,20,119,orphan,50.4,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,1,1,1,140,exact,100.0,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,2,2,2,72,exact,100.0,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,3,3,3,210,exact,95.2,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,4,4,4,106,exact,97.1,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,5,5,5,172,variant,90.5,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,6,6,6,142,variant,85.1,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,7,7,7,116,variant,87.8,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,8,8,8,101,orphan,70.4,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,9,9,9,101,orphan,50.0,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,10,10,10,90,orphan,64.4,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,11,11,11,92,orphan,50.5,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,12,12,12,110,orphan,48.1,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,13,13,13,83,orphan,50.0,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,14,14,14,117,orphan,50.0,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,15,15,15,125,orphan,51.2,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,16,16,16,130,orphan,50.4,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,17,17,17,119,orphan,49.2,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,18,18,18,135,orphan,49.6,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,19,19,19,115,orphan,51.3,true,true,phase2
+UPSCCSEMains2014GS1.json,2014,GS1,20,20,20,119,orphan,50.4,true,true,phase2
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,39,1,1,196,orphan,48.5,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,40,2,2,94,orphan,51.1,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,41,3,3,128,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,42,4,4,83,exact,95.1,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,43,5,5,113,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,44,6,6,78,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,45,7,7,107,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,46,8,8,93,exact,98.9,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,47,9,9,154,exact,98.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,48,10,10,115,orphan,70.3,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,49,11,11,92,orphan,50.5,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,50,12,12,93,orphan,56.5,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,51,13,13,137,orphan,55.2,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,52,14,14,72,orphan,53.5,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,53,15,15,114,orphan,76.8,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,54,16,16,116,orphan,59.1,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,55,17,17,72,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,56,18,18,124,exact,100.0,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,57,19,19,82,orphan,84.8,true,true,phase3
+UPSCCSEMains2016APPENDGS1GS2.json,2016,GS1,58,20,20,108,variant,88.7,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,1,1,1,196,orphan,48.5,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,2,2,2,94,orphan,51.1,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,3,3,3,128,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,4,4,4,83,exact,95.1,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,5,5,5,113,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,6,6,6,78,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,7,7,7,107,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,8,8,8,93,exact,98.9,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,9,9,9,154,exact,98.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,10,10,10,115,orphan,70.3,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,11,11,11,92,orphan,50.5,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,12,12,12,93,orphan,56.5,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,13,13,13,137,orphan,55.2,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,14,14,14,72,orphan,53.5,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,15,15,15,114,orphan,76.8,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,16,16,16,116,orphan,59.1,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,17,17,17,72,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,18,18,18,124,exact,100.0,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,19,19,19,82,orphan,84.8,true,true,phase3
+UPSCCSEMains2016GS1.json,2016,GS1,20,20,20,108,variant,88.7,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,40,1,1,125,exact,98.4,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,41,2,2,91,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,42,3,3,150,exact,97.3,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,43,4,4,76,variant,92.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,44,5,5,91,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,45,6,6,102,exact,99.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,46,7,7,154,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,47,8,8,46,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,48,9,9,140,orphan,47.1,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,49,10,10,136,orphan,59.3,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,50,11,11,176,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,51,12,12,103,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,52,13,13,138,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,53,14,14,85,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,54,15,15,160,exact,98.1,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,55,16,16,124,orphan,51.2,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,56,17,17,88,orphan,51.7,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,57,18,18,117,orphan,50.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,58,19,19,156,exact,100.0,true,true,phase3
+UPSCCSEMains2017APPENDGS1GS2Essay.json,2017,GS1,59,20,20,149,variant,91.7,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,1,1,1,125,exact,98.4,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,2,2,2,91,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,3,3,3,150,exact,97.3,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,4,4,4,76,variant,92.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,5,5,5,91,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,6,6,6,102,exact,99.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,7,7,7,154,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,8,8,8,46,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,9,9,9,140,orphan,47.1,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,10,10,10,136,orphan,59.3,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,11,11,11,176,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,12,12,12,103,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,13,13,13,138,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,14,14,14,85,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,15,15,15,160,exact,98.1,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,16,16,16,124,orphan,51.2,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,17,17,17,88,orphan,51.7,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,18,18,18,117,orphan,50.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,19,19,19,156,exact,100.0,true,true,phase3
+UPSCCSEMainsGS1-2017.json,2017,GS1,20,20,20,149,variant,91.7,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,1,1,1,72,variant,91.4,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,2,2,2,119,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,3,3,3,87,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,4,4,4,100,exact,97.9,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,5,5,5,55,orphan,79.6,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,6,6,6,60,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,7,7,7,75,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,8,8,8,126,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,9,9,9,155,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,10,10,10,96,exact,96.8,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,11,11,11,110,exact,99.1,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,12,12,12,102,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,13,13,13,144,exact,99.3,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,14,14,14,138,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,15,15,15,100,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,16,16,16,128,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,17,17,17,167,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,18,18,18,113,exact,100.0,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,19,19,19,167,exact,98.8,true,true,phase3
+UPSCCSEMains2018ALL.json,2018,GS1,20,20,20,114,exact,99.1,true,true,phase3
+UPSCCSEMainsGS1 2019.json,2019,GS1,1,1,1,76,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,2,2,2,162,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,3,3,3,114,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,4,4,4,75,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,5,5,5,105,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,6,6,6,96,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,7,7,7,98,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,8,8,8,72,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,9,9,9,68,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,10,10,10,76,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,11,11,11,104,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,12,12,12,108,exact,98.1,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,13,13,13,97,exact,96.9,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,14,14,14,69,exact,97.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,15,15,15,107,orphan,84.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,16,16,16,100,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,17,17,17,126,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,18,18,18,88,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,19,19,19,76,exact,100.0,true,true,phase2
+UPSCCSEMainsGS1 2019.json,2019,GS1,20,20,20,66,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,21,1,21,166,variant,87.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,22,2,22,227,orphan,84.7,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,23,3,23,132,exact,97.7,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,24,4,24,187,variant,93.9,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,25,5,25,76,exact,98.7,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,26,6,26,184,orphan,49.7,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,27,7,27,244,orphan,47.3,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,28,8,28,222,orphan,67.3,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,29,9,29,211,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,30,10,30,192,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,31,11,31,189,exact,99.5,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,32,12,32,293,orphan,77.2,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,33,13,33,177,orphan,67.6,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,34,14,34,97,orphan,77.4,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,35,15,35,165,exact,99.4,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,36,16,36,185,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,37,17,37,299,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,38,18,38,196,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,39,19,39,179,exact,100.0,true,true,phase2
+UPSCCSEMainsGS2 2019.json,2019,GS2,40,20,40,260,exact,98.2,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,1,1,1,129,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,2,2,2,89,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,3,3,3,96,exact,98.9,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,4,4,4,63,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,5,5,5,87,exact,97.6,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,6,6,6,102,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,7,7,7,119,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,8,8,8,122,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,9,9,9,79,orphan,67.5,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,10,10,10,107,orphan,71.4,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,11,11,11,130,orphan,82.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,12,12,12,82,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,13,13,13,136,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,14,14,14,171,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,15,15,15,141,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,16,16,16,112,orphan,64.5,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,17,17,17,91,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,18,18,18,91,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,19,19,19,77,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS1,20,20,20,131,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,41,1,41,136,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,42,2,42,137,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,43,3,43,90,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,44,4,44,172,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,45,5,45,80,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,46,6,46,142,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,47,7,47,122,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,48,8,48,134,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,49,9,49,93,exact,98.9,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,50,10,50,179,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,51,11,51,200,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,52,12,52,179,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,53,13,53,145,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,54,14,54,115,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,55,15,55,231,orphan,83.3,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,56,16,56,183,exact,97.8,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,57,17,57,106,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,58,18,58,133,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,59,19,59,208,exact,100.0,true,true,phase2
+UPSCCSEMains2020ALL.json,2020,GS3,60,20,60,208,orphan,82.3,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,21,1,21,198,orphan,59.4,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,22,2,22,130,orphan,60.9,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,23,3,23,121,orphan,62.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,24,4,24,104,orphan,67.3,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,25,5,25,150,orphan,71.9,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,26,6,26,144,orphan,78.4,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,27,7,27,125,variant,94.1,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,28,8,28,139,exact,100.0,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,29,9,29,184,orphan,82.6,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,30,10,30,137,orphan,66.7,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,31,11,31,315,orphan,82.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,32,12,32,262,exact,97.7,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,33,13,33,104,variant,91.3,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,34,14,34,178,exact,97.2,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,35,15,35,204,orphan,77.2,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,36,16,36,199,variant,89.6,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,37,17,37,257,orphan,70.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,38,18,38,189,orphan,46.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,39,19,39,90,exact,100.0,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS2,40,20,40,239,orphan,82.6,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,41,1,41,138,orphan,77.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,42,2,42,100,variant,89.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,43,3,43,126,exact,100.0,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,44,4,44,83,exact,97.6,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,45,5,45,106,exact,98.1,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,46,6,46,229,exact,97.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,47,7,47,289,variant,85.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,48,8,48,216,exact,100.0,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,49,9,49,187,exact,97.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,50,10,50,161,orphan,77.2,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,51,11,51,120,variant,93.2,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,52,12,52,133,orphan,78.3,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,53,13,53,157,orphan,82.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,54,14,54,138,exact,98.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,55,15,55,157,exact,100.0,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,56,16,56,193,orphan,66.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,57,17,57,216,variant,94.8,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,58,18,58,143,orphan,74.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,59,19,59,188,exact,99.5,true,true,phase2
+UPSCCSEMains2021ALL.json,2021,GS3,60,20,60,173,exact,100.0,true,true,phase2
+UPSCCSEMains2023ALL.json,2023,GS1,1,1,1,82,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,2,2,2,123,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,3,3,3,105,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,4,4,4,86,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,5,5,5,102,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,6,6,6,94,exact,95.7,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,7,7,7,168,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,8,8,8,74,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,9,9,9,70,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,10,10,10,107,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,11,11,11,131,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,12,12,12,147,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,13,13,13,114,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,14,14,14,137,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,15,15,15,171,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,16,16,16,79,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,17,17,17,110,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,18,18,18,101,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,19,19,19,53,exact,100.0,true,true,phase3
+UPSCCSEMains2023ALL.json,2023,GS1,20,20,20,78,exact,100.0,true,true,phase3

@@ -1,4 +1,10 @@
-from app.scraping.fetcher import FetchResult, fetch, fetch_page_html, fetch_page_text
+from app.scraping.fetcher import (
+    _DEFAULT_HEADERS as DEFAULT_HEADERS,
+    FetchResult,
+    fetch,
+    fetch_page_html,
+    fetch_page_text,
+)
 
 
 def test_fetch_empty_url_returns_error():
@@ -704,3 +710,138 @@ def test_fetch_api_paginated_cursor_mode_follows_next_path(monkeypatch):
         },
     )
     assert [e.title for e in entries] == ["c1", "c2"]
+
+
+# ─── per-call User-Agent / header override (CA-RSS-01) ──────────────────────
+#
+# Current-affairs sources may need a browser UA (PIB 403s the bot UA). The
+# override is per call: every existing caller keeps the scraper's identity.
+
+_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+
+def _capture_headers(monkeypatch, body='<rss><channel></channel></rss>'):
+    seen = {}
+
+    def _get(url, **kwargs):
+        seen.update(kwargs.get("headers") or {})
+        return _xml_resp(body)
+
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get", _get)
+    return seen
+
+
+def test_default_user_agent_is_unchanged_when_no_override(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    for adapter in ("html", "rss", "api", "sitemap"):
+        seen.clear()
+        fetch("https://example.gov.in/x", adapter_type=adapter)
+        assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+        assert "CareerCopilot-Scraper" in seen["User-Agent"]
+
+
+def test_user_agent_override_reaches_every_adapter(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    for adapter in ("html", "rss", "api", "sitemap"):
+        seen.clear()
+        fetch("https://example.gov.in/x", adapter_type=adapter, user_agent=_BROWSER_UA)
+        assert seen["User-Agent"] == _BROWSER_UA
+
+
+def test_extra_headers_merge_but_cannot_clobber_conditional_validators(monkeypatch):
+    seen = _capture_headers(monkeypatch)
+    fetch(
+        "https://example.gov.in/x",
+        headers={"X-Trace": "1", "If-None-Match": '"spoofed"'},
+        if_none_match='"real"',
+        if_modified_since="Wed, 01 Jul 2026 00:00:00 GMT",
+    )
+    assert seen["X-Trace"] == "1"
+    assert seen["If-None-Match"] == '"real"'
+    assert seen["If-Modified-Since"] == "Wed, 01 Jul 2026 00:00:00 GMT"
+    # Untouched defaults still ride along.
+    assert seen["Accept-Language"] == DEFAULT_HEADERS["Accept-Language"]
+
+
+def test_legacy_helpers_keep_the_bot_identity(monkeypatch):
+    seen = _capture_headers(monkeypatch, body="<html><body>hi</body></html>")
+    fetch_page_text("https://example.gov.in/p")
+    assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+    seen.clear()
+    fetch_page_html("https://example.gov.in/p")
+    assert seen["User-Agent"] == DEFAULT_HEADERS["User-Agent"]
+
+
+# ─── entity decoding + PDF size cap (CA-RSS-02) ─────────────────────────────
+
+
+def test_strip_html_decodes_every_entity_not_just_five(monkeypatch):
+    from app.scraping.fetcher import strip_html
+
+    # The old hand-rolled table knew &amp;/&lt;/&gt;/&quot;/&nbsp; and left the
+    # rest sitting literally in the snapshot body.
+    assert strip_html("<p>A &raquo; B</p>") == "A » B"
+    assert strip_html("<p>&#8377;500 &amp; &#x20B9;600</p>") == "₹500 & ₹600"
+    assert strip_html("<p>a&nbsp;&nbsp;b</p>") == "a b"        # U+00A0 collapses
+    assert strip_html("<p>&quot;q&quot; &lt;tag&gt;</p>") == '"q" <tag>'
+
+
+def _pdf_resp(body: bytes, *, content_length: str | None = None):
+    headers = {"content-type": "application/pdf"}
+    if content_length is not None:
+        headers["content-length"] = content_length
+
+    class _Resp:
+        status_code = 200
+        text = ""
+        content = body
+        url = "https://example.gov.in/doc.pdf"
+
+        def raise_for_status(self):
+            pass
+
+    _Resp.headers = headers
+    return _Resp()
+
+
+def test_fetch_pdf_rejects_a_body_over_the_cap(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 2048))
+    result = fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=1024)
+    assert result.ok is False and result.error == "pdf_too_large"
+    assert result.text is None
+
+
+def test_fetch_pdf_rejects_on_declared_content_length(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 10, content_length="99999"))
+    result = fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=1024)
+    assert result.ok is False and result.error == "pdf_too_large"
+
+
+def test_fetch_pdf_under_the_cap_and_without_a_cap_are_unaffected(monkeypatch):
+    from app.scraping.fetcher import fetch_pdf
+
+    monkeypatch.setattr("app.scraping.fetcher.parse_pdf_bytes", lambda raw: "extracted")
+    monkeypatch.setattr("app.scraping.fetcher.httpx.get",
+                        lambda url, **kw: _pdf_resp(b"x" * 2048))
+    assert fetch_pdf("https://example.gov.in/doc.pdf", max_bytes=8192).ok is True
+    assert fetch_pdf("https://example.gov.in/doc.pdf").ok is True   # no cap given
+
+
+def test_fetch_dispatches_max_bytes_to_the_pdf_adapter_only(monkeypatch):
+    seen = {}
+
+    def _fake_pdf(url, **kw):
+        seen.update(kw)
+        return FetchResult(ok=True, url=url, text="x")
+
+    monkeypatch.setattr("app.scraping.fetcher.fetch_pdf", _fake_pdf)
+    fetch("https://example.gov.in/doc.pdf", adapter_type="pdf", max_bytes=4096)
+    assert seen["max_bytes"] == 4096

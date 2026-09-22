@@ -45,6 +45,7 @@ from pydantic import BaseModel, Field
 from app.core.auth import require_permission
 from app.db.supabase_client import get_supabase_admin
 from app.exam_eligibility.evaluator import invalidate_eligibility_rules_cache
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.api.admin_exam_eligibility")
 
@@ -322,14 +323,19 @@ def list_exams_with_rule_counts(
         .data
         or []
     )
-    rules = (
-        supabase.table("exam_eligibility_rules")
-        .select("exam_id, reviewer_status")
-        .limit(5000)
-        .execute()
-        .data
-        or []
-    )
+    # .limit(5000) meant "all of them" and delivered db-max-rows.
+    rules = paginate(
+        lambda a, b: (
+            supabase.table("exam_eligibility_rules")
+            .select("exam_id, reviewer_status")
+            .order("id")
+            .range(a, b)
+            .execute()
+            .data
+            or []
+        ),
+        table="exam_eligibility_rules",
+    ).rows
     counts: dict[str, dict[str, int]] = {}
     for r in rules:
         bucket = counts.setdefault(

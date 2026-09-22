@@ -20,6 +20,7 @@ directly).
 from __future__ import annotations
 
 import hashlib
+import html as _html
 import logging
 import re
 from dataclasses import dataclass
@@ -37,6 +38,40 @@ _DEFAULT_HEADERS: Final[dict[str, str]] = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-IN,en;q=0.9",
 }
+
+
+def _request_headers(
+    *,
+    accept: str | None = None,
+    if_none_match: str | None = None,
+    if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Build the outgoing request headers for one fetch.
+
+    Starts from ``_DEFAULT_HEADERS`` (the bot UA the recruitment scraper has
+    always sent — unchanged when no override is supplied), applies the
+    adapter's ``accept`` override, then the caller's ``user_agent`` / extra
+    ``headers``, and finally the conditional-fetch validators (which callers
+    must never be able to clobber via ``headers``).
+
+    Per-source UA overrides exist because some publishers (PIB) 403 the bot UA
+    while serving a browser UA normally; the override is opt-in per source so
+    the recruitment scraper's identity is untouched.
+    """
+    out = dict(_DEFAULT_HEADERS)
+    if accept:
+        out["Accept"] = accept
+    if user_agent:
+        out["User-Agent"] = user_agent
+    if headers:
+        out.update({str(k): str(v) for k, v in headers.items()})
+    if if_none_match:
+        out["If-None-Match"] = if_none_match
+    if if_modified_since:
+        out["If-Modified-Since"] = if_modified_since
+    return out
 
 
 @dataclass
@@ -61,6 +96,9 @@ def fetch(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
+    max_bytes: int | None = None,
 ) -> FetchResult:
     """Fetch ``url`` and return a structured result.
 
@@ -70,6 +108,13 @@ def fetch(
     ``FetchResult`` and drops the parsed entries — callers that need
     the entries should call :func:`fetch_rss` / :func:`fetch_api` /
     :func:`fetch_sitemap` directly.
+
+    Identity: ``user_agent`` / ``headers`` override the default bot
+    User-Agent for this call only. Omit them and the recruitment
+    scraper's long-standing identity is sent unchanged.
+
+    ``max_bytes`` applies to the ``pdf`` adapter only (see
+    :func:`fetch_pdf`); other adapters ignore it.
 
     Conditional fetch: pass ``if_none_match`` (an ETag value) and/or
     ``if_modified_since`` (an HTTP-date string) to send the standard
@@ -86,23 +131,27 @@ def fetch(
         result, _ = fetch_rss(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
     if adapter == "api":
         result, _ = fetch_api(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
     if adapter == "pdf":
         return fetch_pdf(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers, max_bytes=max_bytes,
         )
     if adapter == "sitemap":
         result, _ = fetch_sitemap(
             url, timeout=timeout,
             if_none_match=if_none_match, if_modified_since=if_modified_since,
+            user_agent=user_agent, headers=headers,
         )
         return result
 
@@ -111,6 +160,8 @@ def fetch(
         timeout=timeout,
         if_none_match=if_none_match,
         if_modified_since=if_modified_since,
+        user_agent=user_agent,
+        headers=headers,
     )
 
 
@@ -120,15 +171,16 @@ def _fetch_html(
     timeout: float,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> FetchResult:
-    headers = dict(_DEFAULT_HEADERS)
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc))
@@ -187,16 +239,23 @@ def strip_html(html: str) -> str:
 
 
 def _strip_html(html: str) -> str:
+    """HTML → readable plain text.
+
+    Order matters: scripts/styles first, then tags, and only THEN entity
+    decoding. Decoding earlier would turn an escaped ``&lt;script&gt;`` into
+    something the tag pass has already walked past.
+
+    Entities are decoded with ``html.unescape`` rather than a hand-rolled table
+    of five names — the old table left everything else (``&raquo;``, ``&#8377;``,
+    numeric references) sitting literally in the snapshot body. ``&nbsp;``
+    decodes to U+00A0, which is normalised to a plain space so the whitespace
+    collapse below treats it like any other gap.
+    """
     text = re.sub(r"<script[^>]*>[\s\S]*?</script>", " ", html, flags=re.IGNORECASE)
     text = re.sub(r"<style[^>]*>[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
-    text = (
-        text.replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", '"')
-    )
+    text = _html.unescape(text)
+    text = text.replace("\u00a0", " ").replace("\u200b", "")
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
@@ -237,63 +296,178 @@ class RssEntry:
     published: str | None = None  # ISO-ish date string when parseable
 
 
-def parse_rss_feed(xml_text: str | None) -> list[RssEntry]:
-    """Parse an RSS 2.0 or Atom feed into a flat list of entries.
+# Feed formats this parser understands. ``unknown`` is returned rather than
+# guessed: a caller that cannot identify the shape should record an error, not
+# silently ingest zero items from a feed that is actually fine.
+FEED_RSS: Final[str] = "rss"
+FEED_ATOM: Final[str] = "atom"
+FEED_GNEWS_SITEMAP: Final[str] = "gnews_sitemap"
+FEED_UNKNOWN: Final[str] = "unknown"
 
-    Uses stdlib ``xml.etree`` so we don't pull in feedparser just for two
-    feed shapes. Both ``<rss><channel><item>`` and ``<feed><entry>`` are
-    accepted; namespaced Atom tags are stripped before tag-name compare.
-    Malformed XML returns ``[]`` rather than raising — the runner treats
-    that as an empty feed and bumps source failure.
+_GNEWS_NS = "http://www.google.com/schemas/sitemap-news"
+
+
+def _localname(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _parse_xml(xml_text: str | None):
+    """Parse feed XML, tolerating a BOM or stray leading whitespace.
+
+    Publishers emit these: CPR India's feed ships tabs and newlines before the
+    ``<?xml?>`` declaration, which makes ``ET.fromstring`` raise "XML or text
+    declaration not at start of entity" and cost the whole feed. Stripping the
+    prologue costs nothing and is not a correctness compromise — the declaration
+    is still parsed, just from the first real character.
     """
     if not xml_text:
-        return []
+        return None
+    text = xml_text.lstrip("\ufeff \t\r\n")
+    if not text:
+        return None
     try:
         import xml.etree.ElementTree as ET  # local import keeps cold path cheap
-        root = ET.fromstring(xml_text)
+        return ET.fromstring(text)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("[fetcher] rss parse failed: %s", exc)
-        return []
+        logger.warning("[fetcher] feed parse failed: %s", exc)
+        return None
 
-    def _localname(tag: str) -> str:
-        return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
-    def _text_of(node, tag: str) -> str:
-        for child in node:
-            if _localname(child.tag) == tag:
-                return (child.text or "").strip()
-        return ""
+def detect_feed_format(xml_text: str | None) -> str:
+    """Identify a feed's shape from its ROOT element, not its filename.
 
-    def _link_of(node) -> str:
-        # RSS: <link>url</link>. Atom: <link href="url" rel="alternate"/>.
-        for child in node:
-            if _localname(child.tag) != "link":
-                continue
-            if child.text and child.text.strip():
-                return child.text.strip()
-            href = child.attrib.get("href")
-            if href and child.attrib.get("rel", "alternate") == "alternate":
-                return href.strip()
-        return ""
+    Filenames lie: several Indian publishers serve plain RSS 2.0 from a path
+    called ``google_feeds.xml``, and a feed that merely declares ``xmlns:atom``
+    for its self-link is still RSS. Only the root element and the Google-News
+    namespace decide.
+    """
+    root = _parse_xml(xml_text)
+    if root is None:
+        return FEED_UNKNOWN
+    return _format_of_root(root)
 
+
+def _format_of_root(root) -> str:
+    name = _localname(root.tag)
+    if name == "rss":
+        return FEED_RSS
+    if name == "feed":
+        return FEED_ATOM
+    if name == "urlset":
+        # A Google-News sitemap is a urlset whose entries carry <news:news>.
+        for node in root.iter():
+            if _localname(node.tag) == "news" and _GNEWS_NS in node.tag:
+                return FEED_GNEWS_SITEMAP
+        return FEED_UNKNOWN
+    return FEED_UNKNOWN
+
+
+def _text_of(node, tag: str) -> str:
+    for child in node:
+        if _localname(child.tag) == tag:
+            return (child.text or "").strip()
+    return ""
+
+
+def _deep_text_of(node, tag: str) -> str:
+    """First descendant (any depth) with this local name — Google-News puts
+    ``<news:title>`` inside ``<news:news>`` inside ``<url>``."""
+    for child in node.iter():
+        if child is node:
+            continue
+        if _localname(child.tag) == tag:
+            return (child.text or "").strip()
+    return ""
+
+
+def _link_of(node) -> str:
+    # RSS: <link>url</link>. Atom: <link href="url" rel="alternate"/>, falling
+    # back to the first href when no rel is marked alternate.
+    first_href = ""
+    for child in node:
+        if _localname(child.tag) != "link":
+            continue
+        if child.text and child.text.strip():
+            return child.text.strip()
+        href = (child.attrib.get("href") or "").strip()
+        if not href:
+            continue
+        if child.attrib.get("rel", "alternate") == "alternate":
+            return href
+        first_href = first_href or href
+    return first_href
+
+
+def _parse_rss_atom(root) -> list[RssEntry]:
     entries: list[RssEntry] = []
-    # RSS 2.0
     for item in root.iter():
         if _localname(item.tag) not in {"item", "entry"}:
             continue
         title = _text_of(item, "title")
         link = _link_of(item)
-        summary = _text_of(item, "description") or _text_of(item, "summary") or _text_of(item, "content")
-        published = _text_of(item, "pubDate") or _text_of(item, "published") or _text_of(item, "updated") or None
+        # ``description`` (RSS) or ``summary`` (Atom) only. Atom ``<content>`` and
+        # RSS ``<content:encoded>`` carry the FULL article body, which a
+        # discovery_only source must never store (ADR 0007) and which no source
+        # needs here — the item page is the evidence everywhere else.
+        summary = _text_of(item, "description") or _text_of(item, "summary")
+        published = (
+            _text_of(item, "pubDate")
+            or _text_of(item, "published")
+            or _text_of(item, "updated")
+            or None
+        )
         if not link and not title:
             continue
-        entries.append(RssEntry(
-            title=title,
-            link=link,
-            summary=summary,
-            published=published or None,
-        ))
+        entries.append(RssEntry(title=title, link=link, summary=summary, published=published or None))
     return entries
+
+
+def _parse_gnews_sitemap(root) -> list[RssEntry]:
+    """Google-News sitemap: ``<url>`` carrying ``<loc>`` plus a ``<news:news>``
+    block with ``<news:title>`` and ``<news:publication_date>``.
+
+    There is no summary in this shape — a sitemap lists locations, not extracts —
+    so ``summary`` is always empty rather than back-filled from anywhere.
+    """
+    entries: list[RssEntry] = []
+    for url_node in root.iter():
+        if _localname(url_node.tag) != "url":
+            continue
+        link = _text_of(url_node, "loc")
+        title = _deep_text_of(url_node, "title")
+        published = _deep_text_of(url_node, "publication_date") or _text_of(url_node, "lastmod")
+        if not link and not title:
+            continue
+        entries.append(RssEntry(title=title, link=link, summary="", published=published or None))
+    return entries
+
+
+def parse_feed(xml_text: str | None) -> tuple[str, list[RssEntry]]:
+    """Detect a feed's format and parse it into ``RssEntry`` rows.
+
+    Returns ``(format, entries)``. Every shape maps onto the same ``RssEntry``
+    so the ingest downstream is format-blind. Malformed XML yields
+    ``(FEED_UNKNOWN, [])`` rather than raising — the caller treats that as an
+    empty feed and bumps source failure.
+    """
+    root = _parse_xml(xml_text)
+    if root is None:
+        return FEED_UNKNOWN, []
+    fmt = _format_of_root(root)
+    if fmt == FEED_GNEWS_SITEMAP:
+        return fmt, _parse_gnews_sitemap(root)
+    if fmt in (FEED_RSS, FEED_ATOM):
+        return fmt, _parse_rss_atom(root)
+    return FEED_UNKNOWN, []
+
+
+def parse_rss_feed(xml_text: str | None) -> list[RssEntry]:
+    """Parse an RSS 2.0 / Atom / Google-News-sitemap feed into a flat entry list.
+
+    Thin wrapper over :func:`parse_feed` for callers that do not need the
+    detected format. RSS behaviour is unchanged.
+    """
+    return parse_feed(xml_text)[1]
 
 
 def fetch_rss(
@@ -302,6 +476,8 @@ def fetch_rss(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[RssEntry]]:
     """Fetch an RSS / Atom feed and return both the raw FetchResult and
     the parsed entries.
@@ -320,14 +496,13 @@ def fetch_rss(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    headers = dict(_DEFAULT_HEADERS)
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] rss request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc)), []
@@ -499,6 +674,8 @@ def fetch_api(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[ApiEntry]]:
     """Fetch a JSON endpoint and return a FetchResult plus parsed entries.
 
@@ -512,12 +689,11 @@ def fetch_api(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    api_headers = dict(_DEFAULT_HEADERS)
-    api_headers["Accept"] = "application/json, */*;q=0.9"
-    if if_none_match:
-        api_headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        api_headers["If-Modified-Since"] = if_modified_since
+    api_headers = _request_headers(
+        accept="application/json, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
         resp = httpx.get(url, headers=api_headers, timeout=timeout, follow_redirects=True)
@@ -707,6 +883,14 @@ def fetch_api_paginated(
 # ─── PDF adapter ────────────────────────────────────────────────────────────
 
 
+def _content_length(header: str | None) -> int | None:
+    """``Content-Length`` as an int, or ``None`` when absent/unparseable."""
+    try:
+        return int(header) if header else None
+    except (TypeError, ValueError):
+        return None
+
+
 def parse_pdf_bytes(raw_bytes: bytes | None) -> str:
     """Extract text from a PDF byte string using pypdf.
 
@@ -789,6 +973,9 @@ def fetch_pdf(
     timeout: float = 30.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
+    max_bytes: int | None = None,
 ) -> FetchResult:
     """Fetch a PDF bulletin and return its extracted text in ``FetchResult.text``.
 
@@ -802,16 +989,21 @@ def fetch_pdf(
     standard caching headers; a 304 response yields
     ``FetchResult(ok=False, status_code=304, error="not_modified")`` so
     the runner can skip re-parsing an unchanged bulletin.
+
+    ``max_bytes`` rejects an oversized PDF with ``error="pdf_too_large"``
+    instead of parsing it. The declared ``Content-Length`` is checked first,
+    then the actual body. NOTE: the request is not streamed, so this bounds
+    what is parsed and stored, not what crosses the wire. Callers that omit
+    ``max_bytes`` are unaffected.
     """
     if not url:
         return FetchResult(ok=False, url="", error="empty_url")
 
-    pdf_headers = dict(_DEFAULT_HEADERS)
-    pdf_headers["Accept"] = "application/pdf, */*;q=0.9"
-    if if_none_match:
-        pdf_headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        pdf_headers["If-Modified-Since"] = if_modified_since
+    pdf_headers = _request_headers(
+        accept="application/pdf, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
         resp = httpx.get(url, headers=pdf_headers, timeout=timeout, follow_redirects=True)
@@ -841,6 +1033,23 @@ def fetch_pdf(
             final_url=str(resp.url),
             error=f"http_{resp.status_code}",
         )
+
+    if max_bytes is not None and max_bytes > 0:
+        declared = _content_length(resp.headers.get("content-length"))
+        actual = len(resp.content or b"")
+        if (declared is not None and declared > max_bytes) or actual > max_bytes:
+            logger.warning(
+                "[fetcher] pdf over size cap url=%s declared=%s actual=%s cap=%s",
+                url, declared, actual, max_bytes,
+            )
+            return FetchResult(
+                ok=False,
+                url=url,
+                status_code=resp.status_code,
+                final_url=str(resp.url),
+                content_type=resp.headers.get("content-type"),
+                error="pdf_too_large",
+            )
 
     raw_bytes = resp.content
     content_hash = hashlib.sha256(raw_bytes).hexdigest() if raw_bytes else None
@@ -989,6 +1198,8 @@ def fetch_sitemap(
     timeout: float = 15.0,
     if_none_match: str | None = None,
     if_modified_since: str | None = None,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[FetchResult, list[SitemapEntry]]:
     """Fetch a sitemap.xml and return both the FetchResult and parsed
     entries. Same conditional-fetch / 304 contract as ``fetch_rss`` /
@@ -997,15 +1208,14 @@ def fetch_sitemap(
     if not url:
         return FetchResult(ok=False, url="", error="empty_url"), []
 
-    headers = dict(_DEFAULT_HEADERS)
-    headers["Accept"] = "application/xml, text/xml, */*;q=0.9"
-    if if_none_match:
-        headers["If-None-Match"] = if_none_match
-    if if_modified_since:
-        headers["If-Modified-Since"] = if_modified_since
+    req_headers = _request_headers(
+        accept="application/xml, text/xml, */*;q=0.9",
+        if_none_match=if_none_match, if_modified_since=if_modified_since,
+        user_agent=user_agent, headers=headers,
+    )
 
     try:
-        resp = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        resp = httpx.get(url, headers=req_headers, timeout=timeout, follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[fetcher] sitemap request failed url=%s error=%s", url, exc)
         return FetchResult(ok=False, url=url, error=str(exc)), []

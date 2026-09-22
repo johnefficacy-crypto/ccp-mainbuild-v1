@@ -16,6 +16,7 @@ from typing import Any
 
 from app.exam_intelligence.document_policy import evaluate_required_phases_complete
 from app.exam_intelligence.pyq_readiness import aggregate_pyq_evidence
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.cycle_readiness")
 
@@ -110,22 +111,20 @@ def _get_exam_doc_ids(sb, exam_id: str, cycle_id: str | None = None) -> list[str
     different cycle's readiness.  Docs tagged to a different cycle are also
     excluded.  Uses paged queries (500 at a time).
     """
-    all_rows: list[dict] = []
-    offset = 0
-    while True:
-        batch = (
+    all_rows = paginate(
+        lambda a, b: (
             sb.table("document_assets")
             .select("id, metadata")
             .eq("scope", "admin_exam_intelligence")
-            .range(offset, offset + _PAGE - 1)
+            .order("id")
+            .range(a, b)
             .execute()
             .data
             or []
-        )
-        all_rows.extend(batch)
-        if len(batch) < _PAGE:
-            break
-        offset += _PAGE
+        ),
+        page_size=_PAGE,
+        table="document_assets",
+    ).rows
 
     result = []
     for r in all_rows:

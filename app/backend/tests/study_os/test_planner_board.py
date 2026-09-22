@@ -627,9 +627,11 @@ def test_palette_reads_do_not_scale_with_topic_count():
     # 1,317 Mains topics each held a second row on a template phase.
     assert len(out["items"]) == 4
     assert len({i["topic_id"] for i in out["items"]}) == 4
-    # `topics` is read twice in total: once by the coverage loader for the
-    # rows themselves, once here for parent names the loader could not carry.
-    assert reads["topics"] == 2
+    # `topics` is read by two logical callers: the coverage loader for the rows
+    # themselves, and the parent-name read the loader could not carry. Each is a
+    # paginated walk, so each costs its pages plus the request that proves it
+    # reached the end — the guarantee is that neither scales with topic count.
+    assert reads["topics"] == 3
     assert reads["exam_phase_sections"] == 1
 
 
@@ -651,7 +653,10 @@ def test_parent_name_read_failure_leaves_the_palette_usable():
             return super().table(name)
 
     seeded = _seed_with_syllabus()
-    sb = _NoTopicNames(seeded.db, block_after=1)
+    # One paginated read of `topics` is two requests against a stub that
+    # ignores .range(): the page, then the one that proves there is no more.
+    # Blocking after those two is what leaves the parent-name read failing.
+    sb = _NoTopicNames(seeded.db, block_after=2)
     out = board.list_candidates(sb, "u-1")
     by_topic = {i["topic_id"]: i for i in out["items"]}
 

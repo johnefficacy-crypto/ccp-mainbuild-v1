@@ -34,6 +34,7 @@ export default function useDescriptiveAttempt(questionId) {
   const [error, setError] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [pastedChars, setPastedChars] = useState(0);
 
   // Refs, not state: the autosave interval closes over these once and must see
   // current values without re-subscribing on every keystroke.
@@ -42,6 +43,16 @@ export default function useDescriptiveAttempt(questionId) {
   const elapsedRef = useRef(0);
   const attemptRef = useRef(null);
   const savingRef = useRef(false);
+  const pastedRef = useRef(0);
+
+  /** Characters arriving by paste, summed. Reported, never enforced. */
+  const notePaste = useCallback((text) => {
+    const chars = String(text || "").length;
+    if (!chars) return;
+    pastedRef.current += chars;
+    setPastedChars(pastedRef.current);
+    dirtyRef.current = true;
+  }, []);
 
   const setAnswerText = useCallback((text) => {
     setAnswer(text);
@@ -68,6 +79,9 @@ export default function useDescriptiveAttempt(questionId) {
         const seconds = row?.time_spent_seconds || 0;
         setElapsed(seconds);
         elapsedRef.current = seconds;
+        const pasted = row?.pasted_chars || 0;
+        setPastedChars(pasted);
+        pastedRef.current = pasted;
         dirtyRef.current = false;
         setSaveState("saved");
         setStatus("ready");
@@ -86,19 +100,32 @@ export default function useDescriptiveAttempt(questionId) {
     };
   }, [questionId]);
 
-  // ── the timer ──────────────────────────────────────────────────────────
-  // Advisory. It counts up and nothing happens when it passes the target: a
-  // real Mains answer is written against a clock the aspirant keeps themselves,
-  // and a surface that locked the editor would be inventing an exam rule.
+  // ── the clock ──────────────────────────────────────────────────────────
+  //
+  // TIME IS TRACKED WHETHER OR NOT THE TIMER IS RUNNING. `timerRunning` drives
+  // the advisory countdown UI, which is only offered for a question carrying
+  // marks (~13% of the corpus) and only once the aspirant presses Start. Tying
+  // the stored elapsed time to it meant `time_spent_seconds` was 0 on almost
+  // every attempt: the number was not "time spent" but "time spent with the
+  // stopwatch running".
+  //
+  // It is still not wall-clock time. The interval stops while the tab is
+  // hidden, so a question left open overnight records the minutes actually
+  // spent on it rather than nine hours. The timer remains advisory and nothing
+  // here enforces anything.
   useEffect(() => {
-    if (!timerRunning) return undefined;
-    const id = setInterval(() => {
+    if (status !== "ready") return undefined;
+    const tick = () => {
+      // Submitted attempts are closed records; the clock stops with them.
+      if (attemptRef.current?.status !== "draft") return;
+      if (typeof document !== "undefined" && document.hidden) return;
       elapsedRef.current += 1;
       setElapsed(elapsedRef.current);
       dirtyRef.current = true;
-    }, 1000);
+    };
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [timerRunning]);
+  }, [status]);
 
   // ── save ───────────────────────────────────────────────────────────────
   const save = useCallback(async () => {
@@ -110,7 +137,10 @@ export default function useDescriptiveAttempt(questionId) {
     try {
       const row = await api.patch(`${BASE}/attempts/${current.id}`, {
         answer_text: answerRef.current,
+        // Running totals, both of them. The server keeps the max, so a save
+        // that arrives late cannot undo a later one.
         time_spent_seconds: elapsedRef.current,
+        pasted_chars: pastedRef.current,
       });
       dirtyRef.current = false;
       setAttempt(row);
@@ -145,6 +175,10 @@ export default function useDescriptiveAttempt(questionId) {
         const row = await api.post(`${BASE}/attempts/${current.id}/submit`, {
           self_scores: selfScores,
           notes: notes || null,
+          // The last autosave can be up to ten seconds old, and this is the
+          // one moment the elapsed time has to be right.
+          time_spent_seconds: elapsedRef.current,
+          pasted_chars: pastedRef.current,
         });
         setAttempt(row);
         attemptRef.current = row;
@@ -179,6 +213,8 @@ export default function useDescriptiveAttempt(questionId) {
     pauseTimer: () => setTimerRunning(false),
     save,
     submit,
+    pastedChars,
+    notePaste,
     submitted: attempt?.status === "submitted",
   };
 }

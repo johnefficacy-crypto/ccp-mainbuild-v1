@@ -37,7 +37,12 @@ const QUESTION = {
   verified_against_official: true,
   optional_subject: "PSIR",
   year: 2024,
-  question_number: 2,
+  question_number: 102,
+  label: "Q1(a)",
+  breadcrumb: {
+    trail: ["Political Science and International Relations", "P1", "Section A", "Sovereignty"],
+    source: "2024 · P1 · Q1(a) · 10 marks",
+  },
 };
 
 function draft(over = {}) {
@@ -143,13 +148,117 @@ test("autosave fires on the interval, carrying the answer and elapsed time", asy
       jest.advanceTimersByTime(AUTOSAVE_INTERVAL_MS);
     });
 
+    // Ten seconds of clock, and the timer was never started. That is the bug:
+    // time_spent_seconds used to ride on the optional countdown UI, so it was
+    // 0 unless the aspirant pressed Start on a question that had marks.
     expect(mockPatch).toHaveBeenCalledWith("/api/study/descriptive/attempts/att-1", {
       answer_text: "one two three",
-      time_spent_seconds: 0,
+      time_spent_seconds: 10,
+      pasted_chars: 0,
     });
   } finally {
     jest.useRealTimers();
   }
+});
+
+test("the clock runs without the timer ever being started", async () => {
+  jest.useFakeTimers();
+  try {
+    wire();
+    render(<QuestionScreen question={QUESTION} />);
+    await act(async () => {});
+    // No click on descriptive-timer-toggle anywhere in this test. Two autosave
+    // windows, so the second proves the clock keeps accumulating across saves
+    // rather than restarting from whatever the server echoed back.
+    await act(async () => {
+      jest.advanceTimersByTime(AUTOSAVE_INTERVAL_MS);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(AUTOSAVE_INTERVAL_MS);
+    });
+
+    const seconds = mockPatch.mock.calls.map(([, body]) => body.time_spent_seconds);
+    expect(seconds).toEqual([10, 20]);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("the clock pauses while the tab is hidden", async () => {
+  jest.useFakeTimers();
+  const original = Object.getOwnPropertyDescriptor(Document.prototype, "hidden");
+  let hidden = false;
+  Object.defineProperty(document, "hidden", {
+    configurable: true,
+    get: () => hidden,
+  });
+  try {
+    wire();
+    render(<QuestionScreen question={QUESTION} />);
+    await act(async () => {});
+
+    await act(async () => {
+      jest.advanceTimersByTime(5_000);
+    });
+    hidden = true;
+    // A question left open in a background tab overnight must not record nine
+    // hours of "writing".
+    await act(async () => {
+      jest.advanceTimersByTime(600_000);
+    });
+    hidden = false;
+    await act(async () => {
+      jest.advanceTimersByTime(5_000);
+    });
+
+    // 5s visible + 10 minutes hidden + 5s visible = 10s recorded.
+    const seconds = mockPatch.mock.calls
+      .map(([, body]) => body.time_spent_seconds)
+      .filter((v) => typeof v === "number");
+    expect(Math.max(...seconds)).toBe(10);
+  } finally {
+    jest.useRealTimers();
+    if (original) Object.defineProperty(Document.prototype, "hidden", original);
+    else delete document.hidden;
+  }
+});
+
+test("pasted characters are counted and sent, never blocked", async () => {
+  wire();
+  await renderScreen();
+  const input = screen.getByTestId("descriptive-answer-input");
+
+  fireEvent.paste(input, {
+    clipboardData: { getData: () => "a pasted sentence" },
+  });
+  fireEvent.change(input, { target: { value: "a pasted sentence" } });
+  fireEvent.blur(input);
+
+  await waitFor(() =>
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/study/descriptive/attempts/att-1",
+      expect.objectContaining({ pasted_chars: "a pasted sentence".length }),
+    ),
+  );
+  // Recorded, not prevented: the text is still there.
+  expect(input).toHaveValue("a pasted sentence");
+});
+
+test("successive pastes accumulate", async () => {
+  wire();
+  await renderScreen();
+  const input = screen.getByTestId("descriptive-answer-input");
+
+  fireEvent.paste(input, { clipboardData: { getData: () => "abc" } });
+  fireEvent.paste(input, { clipboardData: { getData: () => "de" } });
+  fireEvent.blur(input);
+
+  await waitFor(() =>
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/study/descriptive/attempts/att-1",
+      expect.objectContaining({ pasted_chars: 5 }),
+    ),
+  );
 });
 
 test("autosave fires on blur without waiting for the interval", async () => {
@@ -281,6 +390,10 @@ test("submitting sends every criterion and the notes", async () => {
           within_limit: 1,
         },
         notes: "Ran out of time.",
+        // Submit carries the finals: the last autosave can be ten seconds old,
+        // and this is the moment the elapsed time has to be right.
+        time_spent_seconds: expect.any(Number),
+        pasted_chars: 0,
       },
     ),
   );
@@ -361,4 +474,56 @@ test("a map question is refused with a reason rather than an empty editor", asyn
   expect(await screen.findByTestId("descriptive-error")).toHaveTextContent(
     /needs a map sheet/i,
   );
+});
+
+
+// ── labels and breadcrumbs (P1) ──────────────────────────────────────────
+
+
+test("the stem shows the breadcrumb trail and the source line", async () => {
+  wire();
+  await renderScreen();
+  expect(screen.getByTestId("descriptive-breadcrumb")).toHaveTextContent(
+    "Political Science and International Relations · P1 · Section A · Sovereignty",
+  );
+  expect(screen.getByTestId("descriptive-source")).toHaveTextContent(
+    "2024 · P1 · Q1(a) · 10 marks",
+  );
+});
+
+test("the raw block-encoded question number is never rendered", async () => {
+  wire();
+  await renderScreen();
+  // question_number is 102 — an internal key, not a label anyone can use.
+  expect(screen.queryByText(/Q102/)).not.toBeInTheDocument();
+});
+
+test("a thematic question shows no paper order", async () => {
+  wire();
+  render(
+    <QuestionScreen
+      question={{
+        ...QUESTION,
+        label: null,
+        breadcrumb: {
+          trail: ["Political Science and International Relations", "Sovereignty"],
+          source: "Theme compilation · 2019",
+        },
+      }}
+    />,
+  );
+  await screen.findByTestId("descriptive-question-screen");
+  expect(screen.getByTestId("descriptive-source")).toHaveTextContent(
+    "Theme compilation · 2019",
+  );
+});
+
+test("nothing is rendered for a question with no breadcrumb at all", async () => {
+  wire();
+  render(<QuestionScreen question={{ ...QUESTION, breadcrumb: undefined }} />);
+  await screen.findByTestId("descriptive-question-screen");
+  // Neither line is rendered — no empty element, no separator with nothing
+  // either side of it.
+  expect(screen.queryByTestId("descriptive-breadcrumb")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("descriptive-source")).not.toBeInTheDocument();
 });

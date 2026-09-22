@@ -20,6 +20,85 @@ left join exam_topic_coverage c on c.exam_phase_id = p.id
 where p.exam_id = '5466e62f-7382-4a38-ba96-2fe5fbfeaba2'
 group by p.id, p.phase_slug, p.exam_cycle_id
 order by p.phase_slug, kind;
+[
+  {
+    "exam_phase_id": "aec937d6-cbb8-4e7b-8270-8e9585d7ab75",
+    "phase_slug": "mains",
+    "exam_cycle_id": "881832c8-4b70-4b58-adc1-b9584ede75fe",
+    "kind": "cycle-attached",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "f42ffb84-082e-49db-9154-9fd973e8b6e5",
+    "phase_slug": "mains",
+    "exam_cycle_id": "787b0067-b7c4-4311-a1c0-d488395927b6",
+    "kind": "cycle-attached",
+    "locked_rows": 1497
+  },
+  {
+    "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+    "phase_slug": "mains",
+    "exam_cycle_id": null,
+    "kind": "template",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "7d18bfa9-c79f-45b4-88ff-8a52f5f348d0",
+    "phase_slug": "personality-test",
+    "exam_cycle_id": "881832c8-4b70-4b58-adc1-b9584ede75fe",
+    "kind": "cycle-attached",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "60a04169-8456-448d-b689-88fcf37aa11a",
+    "phase_slug": "personality-test",
+    "exam_cycle_id": null,
+    "kind": "template",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "6566d50e-7f1c-4410-aa36-8142dfe9a79b",
+    "phase_slug": "prelims",
+    "exam_cycle_id": "787b0067-b7c4-4311-a1c0-d488395927b6",
+    "kind": "cycle-attached",
+    "locked_rows": 13
+  },
+  {
+    "exam_phase_id": "d58661ee-33c3-4020-9012-38781ae2e601",
+    "phase_slug": "prelims",
+    "exam_cycle_id": "881832c8-4b70-4b58-adc1-b9584ede75fe",
+    "kind": "cycle-attached",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "d813043d-22f5-440b-8992-4a7466191d02",
+    "phase_slug": "prelims",
+    "exam_cycle_id": "5944895e-4024-4d77-a94e-72b405b42b80",
+    "kind": "cycle-attached",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "715de35f-6caa-410a-9805-23bbe561e060",
+    "phase_slug": "prelims",
+    "exam_cycle_id": null,
+    "kind": "template",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "9349fe7b-17b9-49dd-8895-ce447e7e0c7b",
+    "phase_slug": "prelims-csat",
+    "exam_cycle_id": "5944895e-4024-4d77-a94e-72b405b42b80",
+    "kind": "cycle-attached",
+    "locked_rows": 0
+  },
+  {
+    "exam_phase_id": "1d6611c7-d749-45e1-9fbd-232d936b005b",
+    "phase_slug": "prelims-csat-pyq-archive",
+    "exam_cycle_id": null,
+    "kind": "template",
+    "locked_rows": 0
+  }
+]
 
 -- ── §2 the orphans: locked coverage on the template, none on the cycle ────
 -- Expected before consolidation: 180 rows.
@@ -42,7 +121,11 @@ cycle as (
 select count(*) as orphan_topics from (
   select topic_id from template except select topic_id from cycle
 ) o;
-
+[
+  {
+    "orphan_topics": 0
+  }
+]
 -- §2b the orphans themselves, by subject — this is the list an operator
 -- checks the re-derive against.
 with template as (
@@ -65,6 +148,7 @@ join topics t on t.id = o.topic_id
 left join subjects s on s.id = t.subject_id
 group by s.name
 order by orphan_topics desc;
+No rows.
 
 -- ── §3 can the derivation even produce them? ──────────────────────────────
 -- The derivation copies evidence numbers verbatim from a LOCKED score
@@ -100,6 +184,9 @@ left join lateral (
     and p.exam_cycle_id is not null
   limit 1
 ) snap on true;
+Failed to run sql query: ERROR:  42703: column s.reviewer_status does not exist
+LINE 25:     and s.reviewer_status = 'locked'
+                 ^
 
 -- ── §4 the duplication, by topic ──────────────────────────────────────────
 -- Expected before consolidation: ~1,317 topics at 2 locked rows.
@@ -112,7 +199,12 @@ select locked_rows, count(*) as topics from (
 ) t
 group by locked_rows
 order by locked_rows;
-
+[
+  {
+    "locked_rows": 1,
+    "topics": 1510
+  }
+]
 -- ── §5 AFTER the runbook: no orphan remains ───────────────────────────────
 -- Re-run §2. Healthy: orphan_topics = 0.
 
@@ -140,3 +232,9 @@ select kind, count(*) as topics from (
 ) canonical
 group by kind
 order by topics desc;
+[
+  {
+    "kind": "cycle-attached",
+    "topics": 1510
+  }
+]
