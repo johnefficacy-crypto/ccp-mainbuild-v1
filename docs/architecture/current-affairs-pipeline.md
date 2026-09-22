@@ -99,7 +99,7 @@ Initial scope: PIB, RBI, a small set of high-value Union ministries, major statu
 bodies, official gazette/circular sources where retrieval is reliable. State/international/specialised
 sources are added only after the first sources pass operational quality gates.
 
-Seeded sources (migrations 241, 294, 297):
+Seeded sources (migrations 241, 294, 299):
 
 | Source | authority_level | publisher marker | cadence |
 |---|---|---|---|
@@ -265,7 +265,7 @@ matched string. No feed date and no page date still means NULL, never `now()`.
 Only `snapshotted` documents are enqueued for generation (`_reconcile_pending_generation`), so
 deprioritised items never reach the LLM queue.
 
-### 4.7 PIB English-version follow (CA-RSS-03, migrations 297 + 298)
+### 4.7 PIB English-version follow (CA-RSS-03, migrations 299 + 300)
 PIB's only non-empty feed is `RssMain.aspx?ModId=6&Lang=1&Regid=3`, and every item in it is Hindi
 (Lang, Accept-Language and the other Regid values return empty or the same Hindi feed). Items carry
 title + link only, and link `PressReleaseIframePage.aspx?PRID=<hi>`. For publisher `PIB`:
@@ -291,15 +291,15 @@ title + link only, and link `PressReleaseIframePage.aspx?PRID=<hi>`. For publish
 
 **Dedup and skip-without-fetch.** The English canonical URL is the row identity under 294's partial
 unique index. "Already handled" is keyed on `metadata.source_url_hi` (expression index
-`idx_cad_source_url_hi`, migration 297), so a Hindi item already resolved — to English or to a
+`idx_cad_source_url_hi`, migration 299), so a Hindi item already resolved — to English or to a
 mismatch row — is skipped on the next pass with **zero** fetches. No side table: the document row is
 the resolution record.
 
-**Pre-CA-RSS-03 Hindi rows.** Migration 298 moves the PIB Hindi snapshots to `deprioritised` /
+**Pre-CA-RSS-03 Hindi rows.** Migration 300 moves the PIB Hindi snapshots to `deprioritised` /
 `language_mismatch_pre_rss03` and fails their pending/running generation jobs. Those rows carry no
 `source_url_hi` and their `canonical_item_url` is the Iframe link, so the next pass re-resolves each
 item to English and writes a new row with a different canonical URL — no unique-index collision.
-Apply 298 before deploying the code.
+Apply 300 before deploying the code.
 
 ### 4.8 Language guard and discovery_only (CA-RSS-03)
 **Language guard (every source).** The final stored body's dominant script is measured by a
@@ -309,7 +309,7 @@ contradicts the source's `default_language` is written `deprioritised` / `langua
 guard abstains when nothing is detected or the declared language is neither `en` nor `hi`.
 
 **discovery_only (ADR 0007).** A `discovery_only` RSS source's entry is written with
-`ingestion_status='discovery_only'` (added to the CHECK by migration 297), `raw_text` NULL, the feed
+`ingestion_status='discovery_only'` (added to the CHECK by migration 299), `raw_text` NULL, the feed
 summary in `metadata.feed_summary`, and `metadata.prefilter_reason='discovery_only'`. Its page is
 never fetched. The status is not `snapshotted`, so the ingest pass never enqueues a job, and the
 validator's `sole_evidence_discovery_only` check stays as the second line. A `discovery_only` source

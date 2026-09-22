@@ -1,4 +1,4 @@
--- 297_ca_rss03_language_follow_and_wave1_sources.sql
+-- 299_ca_rss03_language_follow_and_wave1_sources.sql
 --
 -- CA-RSS-03 — PIB English-version follow, discovery_only enforcement, wave-1
 -- current-affairs sources.
@@ -8,8 +8,12 @@
 -- Builds on 241 (sources + documents), 294 (item-split ingest) and 296.
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 297 = MAX(filesystem)+1 at write time.
+-- state at apply time (operator step); 299 = MAX(filesystem)+1 at write time.
 -- Confirm with: SELECT MAX(version) FROM schema_migrations; before applying.
+-- RENUMBERED: landed in #1135 as 297, colliding with #1134's
+-- 297_descriptive_attempts_answer_mode.sql (duplicate schema_migrations version broke
+-- the E2E Supabase start on main). Never applied anywhere under 297, so the
+-- file was renamed rather than superseded; the SQL body is unchanged.
 --
 -- WHAT THIS DOES
 -- --------------

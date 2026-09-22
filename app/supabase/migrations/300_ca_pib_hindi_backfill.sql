@@ -1,15 +1,19 @@
--- 298_ca_pib_hindi_backfill.sql
+-- 300_ca_pib_hindi_backfill.sql
 --
 -- CA-RSS-03 — retire the Hindi PIB documents snapshotted before the English
 -- follow existed.
 --
 -- Contract: docs/architecture/current-affairs-pipeline.md §4 (every exclusion
 -- records a machine-readable reason). Builds on 294 (item-split ingest), 247
--- (generation jobs) and 297 (metadata.source_url_hi lookup index).
+-- (generation jobs) and 299 (metadata.source_url_hi lookup index).
 --
 -- Applied version must be reconciled against the deployed schema_migrations
--- state at apply time (operator step); 298 = MAX(filesystem)+1 at write time.
+-- state at apply time (operator step); 300 = MAX(filesystem)+1 at write time.
 -- Confirm with: SELECT MAX(version) FROM schema_migrations; before applying.
+-- RENUMBERED: landed in #1135 as 298, colliding with #1134's
+-- 298_descriptive_attempt_pages.sql (duplicate schema_migrations version broke
+-- the E2E Supabase start on main). Never applied anywhere under 298, so the
+-- file was renamed rather than superseded; the SQL body is unchanged.
 -- Apply BEFORE deploying the CA-RSS-03 ingest code: the new code re-resolves
 -- these items to English on its first pass, and the Hindi rows must already be
 -- out of the generation queue by then.

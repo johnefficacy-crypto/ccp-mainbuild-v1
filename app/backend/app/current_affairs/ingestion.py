@@ -404,7 +404,7 @@ def _known_item_links(
 
 
 # Where a language-follow publisher records the feed link it resolved. Backed
-# by the expression index idx_cad_source_url_hi (migration 297).
+# by the expression index idx_cad_source_url_hi (migration 299).
 _SOURCE_URL_HI = "metadata->>source_url_hi"
 
 

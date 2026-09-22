@@ -1,6 +1,7 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import EssayIdeaCanvas from "../../../../pages/study/EssayIdeaCanvas";
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
@@ -16,7 +17,6 @@ jest.mock("../../../../lib/api", () => ({
   },
 }));
 
-import EssayIdeaCanvas from "../../../../pages/study/EssayIdeaCanvas";
 
 const THEME = "11111111-1111-1111-1111-111111111111";
 
@@ -182,14 +182,45 @@ test("theme selector makes active themes selectable and reserved themes disabled
   expect(screen.getByTestId("theme-option-th-reserved")).toBeDisabled();
 });
 
-test("theme selector falls back to manual entry when no themes endpoint exists", async () => {
-  routeGet({ themes: null }); // /essay-themes rejects (404) — the real state today
+test("picking a theme opens its canvas and deep-links via ?theme=", async () => {
+  routeGet({
+    themes: [
+      {
+        id: THEME,
+        theme_code: "ECO",
+        theme_name: "Economy and development",
+        description: "Growth, welfare and the state's role.",
+        status: "active",
+      },
+    ],
+  });
   renderSelector();
-  await screen.findByTestId("theme-unavailable");
-  fireEvent.change(screen.getByTestId("theme-manual-input"), { target: { value: THEME } });
-  fireEvent.click(screen.getByTestId("theme-manual-open"));
-  // Canvas opens for the entered theme.
+
+  // The description is part of what makes the catalogue usable, not just the name.
+  expect(await screen.findByText("Growth, welfare and the state's role.")).toBeInTheDocument();
+  fireEvent.click(screen.getByTestId(`theme-option-${THEME}`));
+
   await screen.findByTestId("idea-canvas");
+  expect(screen.queryByTestId("essay-theme-selector")).not.toBeInTheDocument();
+});
+
+test("theme selector surfaces a fetch failure instead of a blank picker", async () => {
+  routeGet({ themes: null }); // /api/essay-themes rejects
+  renderSelector();
+
+  await screen.findByTestId("theme-error");
+  expect(screen.getByText("Could not load essay themes")).toBeInTheDocument();
+  expect(screen.queryByTestId("theme-list")).not.toBeInTheDocument();
+  // No silent blank state and no canvas opened off a failed read.
+  expect(screen.queryByTestId("idea-canvas")).not.toBeInTheDocument();
+});
+
+test("an empty catalogue reads as empty, not as an error", async () => {
+  routeGet({ themes: [] });
+  renderSelector();
+
+  await screen.findByTestId("theme-empty");
+  expect(screen.queryByTestId("theme-error")).not.toBeInTheDocument();
 });
 
 // ── ESSAY-01 · the Canvas asks the server for canvas blocks only ─────────
