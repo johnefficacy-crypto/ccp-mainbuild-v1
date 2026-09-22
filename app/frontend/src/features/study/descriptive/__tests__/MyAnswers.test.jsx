@@ -34,10 +34,24 @@ const HANDWRITTEN = {
   ...ROW,
   id: "a-3",
   answer_mode: "handwritten",
-  word_count: 0,
+  // NULL by design: nothing reads the images, so there is no count to print.
+  word_count: null,
+  page_count: 2,
   has_pasted_text: null,
   question: { ...ROW.question, id: "q-b", excerpt: "Discuss coalition politics in India." },
 };
+
+function hwPage(n) {
+  return {
+    id: `pg-${n}`,
+    page_no: n,
+    mime_type: "image/png",
+    bytes: 2048,
+    url: `https://storage.test/read/page_${n}.png`,
+    url_expires_in: 900,
+    url_error: null,
+  };
+}
 
 const LIST = {
   items: [ROW, HANDWRITTEN],
@@ -57,6 +71,30 @@ function route(url) {
     return Promise.resolve({
       attempt: { ...ROW, answer_text: "Sovereignty is contested because…" },
       can_rewrite: true,
+    });
+  }
+  if (url.match(/\/attempts\/a-3$/)) {
+    // The demo attempt's shape: submitted, handwritten, no text, real pages.
+    return Promise.resolve({
+      attempt: { ...HANDWRITTEN, answer_text: "" },
+      pages: [hwPage(1), hwPage(2)],
+      page_count: 2,
+      url_ttl_seconds: 900,
+      can_rewrite: true,
+    });
+  }
+  if (url.match(/\/attempts\/a-3\/pages$/)) {
+    return Promise.resolve({ pages: [hwPage(1), hwPage(2)] });
+  }
+  if (url.includes("/questions/q-b/attempts")) {
+    return Promise.resolve({
+      attempts: [
+        { ...HANDWRITTEN, id: "a-4", answer_text: "", pages: [hwPage(1)] },
+        { ...ROW, id: "a-5", question: HANDWRITTEN.question, answer_text: "Typed go." },
+      ],
+      count: 2,
+      submitted_count: 2,
+      url_ttl_seconds: 900,
     });
   }
   if (url.includes("/questions/q-a/attempts")) {
@@ -237,5 +275,80 @@ describe("attemptMeta", () => {
 
   test("omits a time that was never spent", () => {
     expect(attemptMeta({ ...ROW, time_spent_seconds: 0 }).join(" · ")).not.toMatch(/min/);
+  });
+});
+
+
+// ── the handwritten attempt IS its pages ──────────────────────────────────
+//
+// THE DEMO BUG. 69689f58-…, answer_mode='handwritten', submitted, one row in
+// descriptive_attempt_pages and the object present in storage, opened reading
+// "This attempt has no text yet" with nothing rendered.
+
+test("opening a handwritten attempt renders its pages, not 'no text yet'", async () => {
+  render(<MyAnswers />);
+  const rows = await screen.findAllByTestId("my-answers-row");
+  fireEvent.click(within(rows[1]).getByText(/coalition politics/));
+
+  const pages = await screen.findByTestId("attempt-pages");
+  expect(within(pages).getAllByRole("img")).toHaveLength(2);
+  expect(screen.queryByText(/no text yet/i)).not.toBeInTheDocument();
+  expect(screen.queryByTestId("my-answers-detail-text")).not.toBeInTheDocument();
+});
+
+test("a handwritten attempt states its page count", async () => {
+  render(<MyAnswers />);
+  const rows = await screen.findAllByTestId("my-answers-row");
+  fireEvent.click(within(rows[1]).getByText(/coalition politics/));
+
+  expect(await screen.findByTestId("attempt-pages-count")).toHaveTextContent("2 pages");
+});
+
+test("a handwritten attempt can still be rewritten and compared", async () => {
+  render(<MyAnswers />);
+  const rows = await screen.findAllByTestId("my-answers-row");
+  fireEvent.click(within(rows[1]).getByText(/coalition politics/));
+
+  expect(await screen.findByTestId("my-answers-rewrite")).toBeInTheDocument();
+  expect(screen.getByTestId("my-answers-compare")).toBeInTheDocument();
+});
+
+test("a typed attempt still shows its text", async () => {
+  render(<MyAnswers />);
+  const rows = await screen.findAllByTestId("my-answers-row");
+  fireEvent.click(within(rows[0]).getByText(/sovereignty/i));
+
+  expect(await screen.findByTestId("my-answers-detail-text")).toHaveTextContent(
+    "Sovereignty is contested because…",
+  );
+  expect(screen.queryByTestId("attempt-pages")).not.toBeInTheDocument();
+});
+
+test("comparing puts a handwritten attempt's pages beside a typed one's text", async () => {
+  render(<MyAnswers />);
+  const rows = await screen.findAllByTestId("my-answers-row");
+  fireEvent.click(within(rows[1]).getByText(/coalition politics/));
+  fireEvent.click(await screen.findByTestId("my-answers-compare"));
+
+  const columns = await screen.findAllByTestId("my-answers-compare-column");
+  expect(within(columns[0]).getByTestId("attempt-pages")).toBeInTheDocument();
+  expect(within(columns[1]).getByText("Typed go.")).toBeInTheDocument();
+});
+
+describe("attemptMeta, handwritten", () => {
+  test("reads its pages where a typed attempt reads its words", () => {
+    expect(attemptMeta(HANDWRITTEN).join(" · ")).toMatch(/2 pages/);
+    expect(attemptMeta(HANDWRITTEN).join(" · ")).not.toMatch(/words/);
+  });
+
+  test("a draft with nothing uploaded says 0 pages rather than nothing", () => {
+    // Silence here read as a typed attempt, so an aspirant could not tell a
+    // handwritten draft waiting for its photos from one never started.
+    const line = attemptMeta({ ...HANDWRITTEN, page_count: 0, status: "draft" }).join(" · ");
+    expect(line).toMatch(/0 pages/);
+  });
+
+  test("one page is singular", () => {
+    expect(attemptMeta({ ...HANDWRITTEN, page_count: 1 }).join(" · ")).toMatch(/1 page\b/);
   });
 });
