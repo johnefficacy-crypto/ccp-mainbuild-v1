@@ -1,0 +1,662 @@
+{
+  "year": 2026,
+  "paper": "GS4",
+  "paper_code": "UPSC-CSE-MAINS-GS-2026-GS4",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+  "mode": "anchored",
+  "printed_question_count": 12,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": "a",
+      "section": "A",
+      "text": "Owing to paucity of time, a university professor generates a Ph.D. evaluation report using Artificial Intelligence and submits it with some modifications. Discuss this from the perspective of accountability and integrity.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        65,
+        69
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 65,
+          "text": "Owing to paucity of time, a university professor generates a Ph.D. evaluation",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "06dd4f6e4e052b64274a98ba675eb0efa5a5ef8030d66aad52b9746f824e8908",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 1,
+      "sub_part": "b",
+      "section": "A",
+      "text": "A business house is working on a project that could displace a forest community from their habitat. As the administrative officer of that district, what ethical challenges are you likely to face?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        75,
+        77
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "7c04f04e9ec36b9bef0730c0732a4dce30d238135f22d6baff46c32c6ee73580",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": "a",
+      "section": "A",
+      "text": "An endangered tribe has developed a severe skeletal deformity. A university research has identified a mineral supplement as a possible remedy, though clinical trials are yet to be conducted. Should the District Magistrate (DM) use this research on the tribe?. Discuss from the perspective of medical and administrative ethics.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        84,
+        89
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 84,
+          "text": "An endangered tribe has developed a severe skeletal deformity. A university",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "1b5a70bce86a191952b63b9c33ed9d9573a1d92530868d32d42eeb6c4ffa8ecd",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": "b",
+      "section": "A",
+      "text": "Discuss how national security can be balanced with concerns of human rights.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        93,
+        94
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "c9651b3db7e408ab8f857e26dfa0632639174e1105b3896daa92f3b183554e65",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": "a",
+      "section": "A",
+      "text": "Dr. B. R. Ambedkar had cautioned that employing civil disobedience within a constitutional democracy equates to endorsing ‘anarchy’. How should modern democracies navigate the ethical dilemmas posed by civil disobedience movements that aim to promote social justice against policies that may raise genuine concerns?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        101,
+        106
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 101,
+          "text": "Dr. B. R. Ambedkar had cautioned that employing civil disobedience within a",
+          "flags": [
+            "stray_caps"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "42dc059f61c85f268801918cc0afc64fc5e4f7a3ccf19a6507f0d47cb3b48fdb",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": "b",
+      "section": "A",
+      "text": "In what ways can an Indian Administrative Officer apply Gandhi’s notion of ‘trusteeship’ to ensure fairness in governance?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        135,
+        136
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "18b859fa6731f241f3e1d8fb7a16e5f7573af40fec861e3a66c8132d37676753",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": "c",
+      "section": "A",
+      "text": "Shakespeare in Henry IV says, “The arms are fair when the intent of bearing them is just”. What ethical implications does this have in governance?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        141,
+        143
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "219745b03cc21537198e6f34dced8efafc83331a06baaba77f0b717c7f7e099e",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": "a",
+      "section": "A",
+      "text": "Citing the serious adverse effects of long-term medication, a doctor convinces the family of a female patient for surgery. This led the patient to reluctantly consent for the surgery, though her original choice was to opt for medication. Explain the concepts of paternalism and beneficence by analysing the doctor’s action.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        151,
+        156
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 154,
+          "text": "Explain the concepts of paternalism and beneficence by analysing the doctor’s",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "6d276d2b7b5afc6bb02cb0605d08df0856371665cdd2e785d38d01067b863c01",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": "b",
+      "section": "A",
+      "text": "Efficiency is doing things right, while effectiveness is doing the right thing. How do you strike a balance between the two to enhance productivity?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        160,
+        162
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "61202d86848eee3cdf1c53a14af6f45e7c2e75dcdf49c5cb4926bf272f959763",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": "a",
+      "section": "A",
+      "text": "Usually schools, working in remote areas, do not fully comply with government regulations. However, if the rules are enforced strictly, it would lead to most schools closing down. How should an administrator strike a balance between enforcement of rules and educational rights of children?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        171,
+        176
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "0c62eb132ccfaba8785f5e3c3ffa9044d54934603e7cc465eaeb9f9408ee3887",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": "b",
+      "section": "A",
+      "text": "In international relations, ethical considerations are often subjugated to the strategic interests of nation-states. Discuss this from an ethical perspective.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        180,
+        183
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "ebe1dc9238c636907ff52004ac3975ce94c326c5ba7385bf217299996de74a0d",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": "a",
+      "section": "A",
+      "text": "On the request of his Personal Assistant (PA), the District Magistrate (DM) stops the transfer of a schoolteacher who takes private tuition for his daughter diagnosed with learning disability. In this context, discuss the aspects of empathy versus compliance with rules.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        203,
+        206
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "de5b35f4aefa6a4259648d8eb191a937efee9672bac05e01992b9de564fc024c",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": "b",
+      "section": "A",
+      "text": "Some moral philosophers argue that spending some of your resources— without significantly affecting your financial stability—to help other people who badly suffer is our moral duty and not merely a matter of charity. Justify this claim by explaining the distinction between duty and charity.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        214,
+        219
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "10563b7c3290c8a923ab6f3b70b67f1c4fee433d720ffe11d9b31364f0781923",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": "B",
+      "text": "Lata, a mother of two children, was admitted to a hospital for acute abdominal pain. Her sister-in-law, Sujatha, accompanied her. Dr. Mansi examined Lata and recommended a diagnostic laparoscopy. Lata’s consent was taken to conduct the medical procedure under general anesthesia. During the laparoscopy, Dr. Mansi’s team discovered a tumor in Lata’s uterus. A closer examination suggested that the tumor could be malignant. One option before Dr. Mansi was to extract a sample for biopsy. In that case, if the tumor was malignant, Lata would have to undergo another surgery for removal of the uterus. An alternative was to remove the uterus immediately. Dr. Mansi had to take a quick decision. As Lata was under general anesthesia, Dr. Mansi explained the situation to Sujatha. Sujatha agreed with Dr. Mansi’s recommendations for a hysterectomy, wherein Lata’s uterus would be removed to avoid the risk and pain of undergoing another surgery. Dr. Mansi removed Lata’s uterus after receiving Sujatha’s consent in writing. Lata was informed of this the next day. She was very upset and felt betrayed as she had not consented to the removal of her uterus. Lata complained to the police who tried to convince her that Dr. Mansi had acted with good intention to help a patient. Sujatha was of the same opinion, however Lata was not convinced and decided to approach the court. (a) Discuss the ethical issues involved in this case. (b) Discuss the moral conduct of the doctor in this situation.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        249,
+        276
+      ],
+      "page": 6,
+      "low_confidence_lines": [
+        {
+          "line": 250,
+          "text": "Her sister-in-law, Sujatha, accompanied her. Dr. Mansi examined Lata and",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 254,
+          "text": "During the laparoscopy, Dr. Mansi’s team discovered a tumor in Lata’s uterus.",
+          "flags": [
+            "unknown_words",
+            "weak_english"
+          ]
+        },
+        {
+          "line": 258,
+          "text": "tumor was malignant, Lata would have to undergo another surgery for removal of",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 262,
+          "text": "As Lata was under general anesthesia, Dr. Mansi explained the situation to Sujatha.",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 263,
+          "text": "Sujatha agreed with Dr. Mansi’s recommendations for a hysterectomy, wherein",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 265,
+          "text": "surgery. Dr. Mansi removed Lata’s uterus after receiving Sujatha’s consent in",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "373683795ff2e87891abebe5c3ae8031edeb34f4bbac3587aac99eeeade3e6ef",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": "B",
+      "text": "Ravi is a senior police officer with vast experience in riot control and cyber-policing. Since one year, he has been the Superintendent of Police (SP) of a district with a history of frequent rioting. Last year, Ravi had sought installation of an AI enabled software for predictive policing. This system has been operational for approximately six months. This new system employs advanced algorithms for capturing the biometric data of persons in a crowd and swiftly relating it to a data library. This has enabled the police to identify the persons involved in various crimes. The system has identified an immigrant and low-income neighbourhood as a centre for gang violence and drug trafficking. Aided by this AI analysis, the local police has focused its patrolling, preventive detentions and establishing checkposts. Consequently, public order and law enforcement has visibly improved. Last week, some community leaders, civil rights lawyers and human rights activists visited Ravi’s office. They submitted a memorandum that the new system is faulty as it is based on incorrect historical data caused by social biases and discriminatory policing. The memorandum also alleges that the increased surveillance has created a climate of tension amongst residents. This feeling is aggravated by the fact that the residents are not aware of the data noted against their names. (a) What are the ethical issues including biases involved in the use of AI in datadriven policing? (b) Place yourself in Ravi’s role and discuss the alternatives available. Justify the action that optimises compliance with ethics.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        307,
+        328
+      ],
+      "page": 7,
+      "low_confidence_lines": [
+        {
+          "line": 317,
+          "text": "focused its patrolling, preventive detentions and establishing checkposts.",
+          "flags": [
+            "unknown_words",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "c960d5bb4101a7b9103c7abc960c60efd3648bb50125d7cd46b0845e40c69e4a",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": "B",
+      "text": "Seema is a senior bureaucrat with a reputation of honesty and professional efficiency. She has recently been posted as the District Collector (DC) to Surinder Nagar, where a large industrial area is being established. The new industrial area had caused many farmers to submit applications for change of land use (CLU) to convert their farmlands into residential areas. There is an unusually large backlog of these applications awaiting processing. Seema noticed that some applications had been approved selectively with no visible chronological pattern. The case files showed a few complaints of some approvals being subject to receipt of large bribes from the applicants. On further fact-finding, Seema realized that a small group of touts was controlling this illegal activity through some subordinate officials in the Collectorate. This had created a fear in the other employees who were reluctant to process any application. The resultant backlog has been piling up thereby hindering local economic progress and causing public dissatisfaction. Seema was faced with a major moral and administrative challenge of dismantling this corruption network without hampering daily administrative operations. An aggressive internal investigation would result in institutional resistance and, possibly, a backlash from labour unions. Conversely, ignoring this situation would encourage the wrongdoers and unnecessarily continue this avoidable harassment to the populace. (a) What are the ethical issues involved in this case? (b) Discuss the options open to Seema. Identify the recommended option and justify it.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        362,
+        389
+      ],
+      "page": 8,
+      "low_confidence_lines": [
+        {
+          "line": 367,
+          "text": "change of land use (CLU) to convert their farmlands into residential areas. There is",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 368,
+          "text": "an unusually large backlog of these applications awaiting processing. Seema",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 383,
+          "text": "encourage the wrongdoers and unnecessarily continue this avoidable harassment to",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 384,
+          "text": "the populace.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "91a0603c5571054ceeadbf3ccd7cec0b8183e9094a323534bf372c327c126124",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": "B",
+      "text": "Vikas is a government officer with over a decade of service in public administration. He has recently moved as the District Collector (DC) of Nainipura, a remote hilly district bordering a forest. Due to Nainipura’s low levels of economic development, one of his major duties is to ensure proper functioning of the public distribution system (PDS) amongst the economically weaker sections (EWS). During his on-site visits, Vikas was apprised of a typical administrative challenge in operating the PDS. To prevent leakages, all distributors were required to carry out real-time biometric identification of the beneficiaries, whose fingerprints were tallied with identity card records. This was creating problems as the operating system sometimes rejected fingerprint matching in the cases of growing children, manual labourers and senior citizens. The problem was further compounded in periods of low WiFi connectivity. The distributors, in such cases, resorted to personal discretion when they could identify the recipient. Vikas had to address this problem on priority. Strictly adhering to government regulations would ensure fiscal probity but would greatly trouble the proposed beneficiary, i.e., EWS. It may even impinge on their fundamental right to life as per Article 21 of the Constitution. Conversely, leaving the resolution solely to the discretion of the distributors could lead to misuse and leakages. (a) What are the options open to Vikas? How should he balance fiscal probity with empathy towards the designated beneficiaries? (b) Discuss the ethics of using technology as a gatekeeper for welfare schemes.",
+      "marks": "20",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        419,
+        442
+      ],
+      "page": 9,
+      "low_confidence_lines": [
+        {
+          "line": 431,
+          "text": "discretion when they could identify the recipient.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "142cef075e1dc1d6c0321f57d048ed58ea0a9e4450db65a1c06e08264c1ed1c4",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": "B",
+      "text": "Rajapuram is a border district. Jhara and Biru, its two major communities are in continual conflict with each other. The social fabric is fractured and demands mending. Ethnic tensions between the two communities have erupted into violence resulting in a large number of deaths. The stated causes are conflicting land claims, uneven resource allocation and inadequate political representation in government bodies. Separate relief camps had to be created for the two communities. The situation is volatile and appears to be getting out of control. Rajan has been appointed the District Magistrate (DM) of Rajapuram and tasked to quickly get the situation under control. His immediate tasks include restoring administrative authority, reopening the highway and initiating peace talks. On taking over his appointment, Rajan realized that the inter-community rivalry had even seeped into the local administration and police. With functional neutrality being the immediate casualty, it had made both communities distrustful of the government. The neighbouring country could utilize the opportunity to spur insurgent activity and further aggravate the situation. Rajan favoured a controlled approach starting with opening the highway to restore food and medical supplies. He toyed with the idea of requisitioning CRPF units to help restore administrative control. (a) Discuss the ethical issues that need to be addressed in this case. (b) What are the options open to Rajan? Which option would ensure protection of his non-partisan image without compromising ethics?",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        470,
+        495
+      ],
+      "page": 10,
+      "low_confidence_lines": [
+        {
+          "line": 472,
+          "text": "mending.",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 481,
+          "text": "administrative authority, reopening the highway and initiating peace talks. On",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 486,
+          "text": "insurgent activity and further aggravate the situation. Rajan favoured a controlled",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "2cebb6fff2ceda5e00d5ef5c5abcd02b5edc5e2cc2ee3064b3997383ab431e54",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": "B",
+      "text": "Ajit has been recently promoted as the Head of the Department of Weapon Sales (DWS) in the Ministry of Defence Production (MDP). His charter of duties includes international sales of weapons produced domestically by MDP. In two recent wars, MDP weapons have performed admirably, resulting in many countries showing interest in buying them, particularly long-range artillery and missiles. Country A and country B have asked for these weapons. However, production constraints restrict DWS to accept only one purchase order. Country A is a developing nation with a sound technology base. MDP is planning R&D collaboration with it for the next generation of weapons. It is not part of any security alliance and needs weapons for protection from a troublesome neighbour. It seeks a large acquisition on a long-term loan. Country B is also a developing nation. Military strength is its priority, with the military budget often ingressing into allocations for human resources and infrastructure development. It is in security alliance with a superpower who hasa large military base there and periodically allots it financial grants. It is a member of an economic bloc with which the government is currently negotiating a free trade agreement. It is not a signatory of NPT but possesses smaller nuclear weapons and delivery systems. It supports some guerrilla forces abroad. It has sought a smaller acquisition and is prepared to make some advance payment. It is currently negotiating arms purchases from another nation too. Ajit discussed this case with his counterparts in the related departments. Therein, the significant economic benefits, employment generation and stronger diplomatic relations arising from this sale were highlighted. It was also emphasized that refusing the deal could result in country B purchasing weapons from some other supplier. Ajit was aware that in arms sales, due diligence at each stage was pivotal to ensure conformity to national policy and international treaties. (a) Discuss the options available to Ajit. Which option should he select and why? (b) How can Ajit balance nation’s economic and strategic interests with ethical considerations?",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS4.txt",
+      "line_span": [
+        534,
+        569
+      ],
+      "page": 12,
+      "low_confidence_lines": [
+        {
+          "line": 542,
+          "text": "R&D collaboration with it for the next generation of weapons. It is not part of any",
+          "flags": [
+            "stray_caps"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "d2f6056140e35fc6807d0fb20b2bf90a0d8a7997963e12418560ab6936927c9f",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    }
+  ]
+}

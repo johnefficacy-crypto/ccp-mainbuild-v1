@@ -1,0 +1,70 @@
+{
+  "year": 2019,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2019-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2019_GS2.txt",
+  "mode": "unanchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "“The reservation of seats for wo ‘mited i on the patriarcha had a limited impact oe P eae tale t.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2019_GS2.txt",
+      "line_span": [
+        107,
+        112
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 107,
+          "text": "“The reservation of seats for wo",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 109,
+          "text": "‘mited i on the patriarcha",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 110,
+          "text": "had a limited impact oe P eae tale",
+          "flags": [
+            "unknown_words",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "6de5cd0db02cd81965ae00cf67ed637d724813142827669a0aa8751e4a854954",
+      "best_db_match": {
+        "score": 0.5961,
+        "measure": "sequence",
+        "id": "3ca92b62-6938-45e1-941d-64ca9f670c5a",
+        "text": "reservation of seats for women in the institutions of local self-government has had a limited impact on the patriarchal character of the Indian Political Comment."
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -1,0 +1,414 @@
+{
+  "year": 2014,
+  "paper": "GS4",
+  "paper_code": "UPSC-CSE-MAINS-GS-2014-GS4",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+  "mode": "anchored",
+  "printed_question_count": 14,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": "A",
+      "text": "What does ethics seek to promote in human life? Why is it all the more important in public administration?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        69,
+        70
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "fe58bd7218e99316e2794c33826d826e6a004ffb565042a9d0e8dcadb0832225",
+      "best_db_match": {
+        "score": 0.4444,
+        "measure": "sequence",
+        "id": "94a50064-e6cf-4750-beff-044de9c94409",
+        "text": "What are Intellectual Property Rights (IPR)? Discuss the friction areas between India's IPR policy and international patent standards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": "A",
+      "text": "What do you understand by ‘probity’ in public life? What are the difficulties in practicing it in the present times? How can these difficulties be overcome?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        85,
+        88
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "3a007df18d9aa9122422aef04317fb97682431ea68a583ec7b1a76b6368f6675",
+      "best_db_match": {
+        "score": 0.3891,
+        "measure": "sequence",
+        "id": "e30003a0-f207-45f8-afd7-54f6ad8c869f",
+        "text": "What are the primary constraints hindering the growth of the food processing industry in India? How can the Mega Food Parks scheme resolve them?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": "A",
+      "text": "“Integrity without knowledge is weak and useless, but knowledge without integrity is dangerous and dreadful.” What do you understand by this statement? Explain your stand with illustrations from the modern context.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        94,
+        98
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "b9e298fc3751be836b7d0181f52f93553d237061e2eabcb2baea654064f6345f",
+      "best_db_match": {
+        "score": 0.358,
+        "measure": "sequence",
+        "id": "9a560eef-08d2-4773-94ce-5dc330e6d364",
+        "text": "Analyze the role of pressure groups in Indian politics and explain how they differ from registered political parties."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": "A",
+      "text": "“Human beings should always be treated as ‘ends’ in themselves and never as merely ‘means’.” Explain the meaning and significance of this statement, giving its implications in the modern techno-economic society.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        104,
+        106
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "a85824a8e8e48e07c5473ee9eaa39ad44a52d6dc5e63616a0faa24bd0bd7c498",
+      "best_db_match": {
+        "score": 0.395,
+        "measure": "sequence",
+        "id": "152ba856-c550-43c2-ad9c-ce9e26b0b7f0",
+        "text": "Discuss the strategic and economic significance of India's participation in the Shanghai Cooperation Organization (SCO)."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": "A",
+      "text": "Which eminent personality has inspired you the most in the context of ethical conduct in life? Give the gist of his/her teachings. Giving specific examples, describe how you have been able to apply these teachings for your own ethical development.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        123,
+        126
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "8fd204c771c837aaff86e9a17ffc9ecfe31393781b630de5a62a19871d6dd758",
+      "best_db_match": {
+        "score": 0.3127,
+        "measure": "sequence",
+        "id": "fa58ab13-0ef0-4507-86a6-74b1e02b8f1c",
+        "text": "\"Honesty is the first chapter in the book of wisdom.\" - Thomas Jefferson. How does intellectual honesty differ from functional honesty?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": "A",
+      "text": "There is a heavy ethical responsibility on the public servants because they occupy positions of power, handle huge amounts of public funds, and their decisions have wide-ranging impact on society and environment. What steps have you taken to improve your ethical competence to handle such responsibility?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        132,
+        136
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "43c8cd6efe7311c5926e8d240467f3bf9a72a5ce31dd81fa66fa57c7c61b92f9",
+      "best_db_match": {
+        "score": 0.3249,
+        "measure": "sequence",
+        "id": "e9fc3fcf-2079-40ec-9667-6349b16b95ce",
+        "text": "Discuss the constitutional provisions governing the amendment process of the Indian Constitution. Is the process too rigid or too flexible?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": "A",
+      "text": "The current society is plagued with widespread trust-deficit. What are the consequences of this situation for personal well-being and for societal well-being? What can you do at the personal level to make yourself trustworthy?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        141,
+        144
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 144,
+          "text": "trustworthy? (150 words) 10",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "03ec84e05a8b9a69be754de0063f2d8b73747ef2fedc288405afd7da17d6dbd6",
+      "best_db_match": {
+        "score": 0.3622,
+        "measure": "sequence",
+        "id": "bb72edfa-edba-4f65-8782-aa90a61b7b1e",
+        "text": "Starting from inventing the 'basic structure' doctrine, the judiciary has played a highly proactive role in ensuring that the Constitution remains a living document. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": "A",
+      "text": "It is often said that poverty leads to corruption. However, there is no dearth of instances where affluent and powerful people indulge in corruption in a big way. What are the basic causes of corruption among people? Support your answer with examples.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        149,
+        152
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "03e4b6bfa55803854f8cd8b8dd062f81d7f66a0583f423bb2c34a73851983dc5",
+      "best_db_match": {
+        "score": 0.3913,
+        "measure": "sequence",
+        "id": "40c7abae-da4d-4d1b-957a-13d61127a0f2",
+        "text": "Sufis and Saint movements failed to modify either the religious ideas and practices or the outward structure of Hindu / Muslim societies to any appreciable extent. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": "A",
+      "text": "What does ‘accountability’ mean in the context of public service? What measures can be adopted to ensure individual and collective accountability of public servants?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        169,
+        171
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "bd9b5f3587b5fddadf69a816b29ab98157cc0067bb132d66fa280de5dd2f8fda",
+      "best_db_match": {
+        "score": 0.4055,
+        "measure": "sequence",
+        "id": "94a50064-e6cf-4750-beff-044de9c94409",
+        "text": "What are Intellectual Property Rights (IPR)? Discuss the friction areas between India's IPR policy and international patent standards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": "A",
+      "text": "We are witnessing increasing instances of sexual violence against women in the country. Despite existing legal provisions against it, the number of such incidences is on the rise. Suggest some innovative measures to tackle this menace.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        180,
+        182
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "0e2fd0c2898d16a52abd6928b5697588d23dbd601ade1b47efb36e8901ab1834",
+      "best_db_match": {
+        "score": 0.3533,
+        "measure": "sequence",
+        "id": "e9fc3fcf-2079-40ec-9667-6349b16b95ce",
+        "text": "Discuss the constitutional provisions governing the amendment process of the Indian Constitution. Is the process too rigid or too flexible?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": "B",
+      "text": "Suppose one of your close friends, who is also aspiring for civil services, comes to you for discussing some of the issues related to ethical conduct in public service. He raises the following points: fi) Inthe present times, when unethical environment is quite prevalent, individual attempts to stick to ethical principles may cause a lot of problems in one’s career. It may also cause hardship to the family members as well as risk to one’s life. Why should we not be pragmatic and follow the path of least resistance, and be happy with doing whatever good we can? (ii) When so many people are adopting wrong means and are grossly harming the system, what difference would it make if only a small minority tries to be ethical? They are going to be rather ineffective and are bound to get frustrated. (iii) If we become fussy about ethical considerations, will it not hamper the economic progress of our country? After all, in the present age of high competition, we cannot afford to be left behind in the race of development. {iv) It is understandable that we should not get involved in grossly unethical practices, but giving and accepting small gratifications and doing smail favours increases everybody’s motivation. It also makes the system more efficient. What is wrong in adopting such practices? Critically analyze the above viewpoints. On the basis of this analysis, what will be your advice to your friend?",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        246,
+        271
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 250,
+          "text": "fi) Inthe present times, when unethical environment is quite prevalent, individual",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 264,
+          "text": "{iv) It is understandable that we should not get involved in grossly unethical",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "4c0f0a073af2547cbff5c6931b20e1912608968ae37dbe6468f41e3fed57296b",
+      "best_db_match": {
+        "score": 0.2747,
+        "measure": "sequence",
+        "id": "9c005b9c-30e9-4742-90d7-15f90f3e0c66",
+        "text": "You are a senior officer working in the national drug regulatory authority. A highly reputable domestic pharmaceutical company has developed a new, low-cost drug for treating a rare, terminal type of pediatric cancer that kills thousands of poor children in India every year. The drug has shown extremely promising results in initial phases of clinical trials. However, during a routine compliance audit of the phase-III trial data, your team discovers that the company has committed serious procedural and ethical violations. They bypassed the strict informed consent protocols for several trial subjects from marginalized socio-economic backgrounds and suppressed data regarding mild-to-moderate long-term hepatic side effects in a small percentage of patients. The company management approaches you, admitting the procedural lapses but pleading for a cover-up or a conditional fast-track approval. They argue that stalling the drug's launch for a fresh round of trials will take at least three years, double the production cost, and result in the preventable deaths of thousands of poor children who cannot afford the highly expensive imported alternatives. (a) What are the ethical dilemmas and professional conflicts in this case? (b) As a regulatory officer, what decision would you take, and how would you justify it?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": "B",
+      "text": "section of employees. They do not work themselves and also disrupt the working of others. You first warned the troublemakers to mend their ways or else face disciplinary action. When the warning had little effect, you issued a show cause notice to the ringleaders. As a retaliatory measure, these troublemakers instigated a woman employee amongst them to file a complaint of sexual harassment against you with the Women’s Commission. The Commission promptly seeks your explanation, The matter is also publicized in the media to embarrass you further. Some of the options to handle this situation could be as follows: fi) Give your explanation to the Commission and go soft on the disciplinary action. (ti) Ignore the Commission and proceed firmly with the disciplinary action. (ii) Brief your higher-ups, seek directions from them and act accordingly. Suggest any other possible option(s). Evaluate all of them and suggest the best course of action, giving your reasons for it.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        303,
+        319
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 306,
+          "text": "notice to the ringleaders. As a retaliatory measure, these troublemakers instigated",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 312,
+          "text": "fi) Give your explanation to the Commission and go soft on the disciplinary",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 315,
+          "text": "(ti) Ignore the Commission and proceed firmly with the disciplinary action.",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 317,
+          "text": "(ii) Brief your higher-ups, seek directions from them and act accordingly.",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "e229a2fe5f023ac778fce49f6aa6ceb99e4509074bac9e22b9599c0d966dd3ca",
+      "best_db_match": {
+        "score": 0.2236,
+        "measure": "sequence",
+        "id": "93a92483-cce5-44f2-a100-f3734291c146",
+        "text": "Supposing you are the Officer-in-Charge of a central procurement department which has invited global tenders for a highly advanced radar defense system. The procurement process is in its final evaluation stage. You are under intense pressure from the ministry to wrap up the contract quickly due to escalating border tensions. Your technical expert committee has evaluated the bids and shortlisted two foreign defense manufacturers, Company X and Company Y. Company X has quoted the lowest price (L1) and complies with all basic tender conditions. However, your intelligence desk provides you with a highly confidential report stating that Company X has a history of installing encrypted spyware 'backdoors' in its electronic systems, which could allow foreign intelligence agencies to access sensitive national defense communication data. Company Y is technically superior, has a pristine security record, but its bid is 15% more expensive than Company X. If you award the contract to Company X, you save millions of dollars of public money and satisfy the ministry's demand for speed. If you select Company Y, you protect national security but face allegations of financial favoritism, audit objections, and delays. (a) What are the ethical challenges and administrative conflicts in this case? (b) How would you proceed to resolve this dilemma?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": "B",
+      "text": "What feasible steps can you suggest which will be effective in controlling this serious problem of our country?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2014_GS4.txt",
+      "line_span": [
+        418,
+        419
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "5cf53dad0ef7d73479e475b7cd61c2b642ef4d7ea059f824ec48502fc6cda0a7",
+      "best_db_match": {
+        "score": 0.3854,
+        "measure": "sequence",
+        "id": "936e03f9-d9e2-4a7b-9e81-27ec4f539bb9",
+        "text": "Explain how globalization is affecting the multi-lingual profile of Indian society."
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -1,0 +1,771 @@
+{
+  "year": 2013,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2013-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+  "mode": "unanchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "dropped_instruction:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "The role of individual MPs (Members of Parliament) has diminished over the years and as a result healthy constructive debates on policy issues are not usually witnessed. How far can this be attributed to the anti-defection law which was legislated but with a different intention? [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        53,
+        57
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "89a183bb640f643949cbae6a2b059d2cbfaa499ef34a7e6c8178b1c46aaaf91b",
+      "best_db_match": {
+        "score": 0.2955,
+        "measure": "sequence",
+        "id": "4a88fdab-4500-4fd7-9126-44354bd974bc",
+        "text": "What are the major structural issues hindering the performance of public sector banks in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss Section 66A of IT Act, with reference to its alleged violation of Article 19 of the Constitution. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        62,
+        63
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "36d03a6664b8d2144da5e191b55d8a29fdf25c5c5aeb7d5e053b84b06c76d121",
+      "best_db_match": {
+        "score": 0.4766,
+        "measure": "sequence",
+        "id": "dc07d172-89b2-47af-ba32-8e20d9366adb",
+        "text": "Discuss the need for electoral reforms in India with special reference to criminalization of politics."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "Recent directives from Ministry of Petroleum and Natural Gas are perceived by the ‘Nagas’ as a threat to override the exceptional status enjoyed by the State. Discuss in light of Article 371A of the Indian Constitution. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        69,
+        72
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 71,
+          "text": "by the ‘Nagas’ as a threat to override the exceptional status enjoyed by the",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "f2742465c341f5ca733aec01d997fd1e6d681ec640ef55eee83548f5be54c4dc",
+      "best_db_match": {
+        "score": 0.3438,
+        "measure": "sequence",
+        "id": "b7200ec0-01d7-4457-9027-23dc79581387",
+        "text": "The Central Vigilance Commission (CVC) has emerged as an important body to fight corruption. Discuss its powers and limitations."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "‘The Supreme Court of India keeps a check on arbitrary power of the Parliament in amending the Constitution.’ Discuss critically. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        77,
+        79
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "e0405cd8c55053f589aa0ba2b0660e484ccc4ac2287db68c69cb6957da5d3d4b",
+      "best_db_match": {
+        "score": 0.4135,
+        "measure": "sequence",
+        "id": "56abac36-0a65-4262-b6da-320cca13c5e2",
+        "text": "Discuss the significance of the 73rd and 74th Constitutional Amendment Acts in empowering local bodies."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "Many State Governments further bifurcate geographical administrative areas like Districts and Talukas for better governance. In light of the above, can it also be justified that more number of smaller States would bring in effective governance at State level? Discuss. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        88,
+        91
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "379a9fa692d6a6fd48ce62efcb3a4ab06e8ed52a3d9b3340f968d86cc41ed208",
+      "best_db_match": {
+        "score": 0.3256,
+        "measure": "sequence",
+        "id": "4584fe10-f1f0-4893-9234-f99a2e2122bd",
+        "text": "Defying the barriers of age, gender and religion, the Bhakti movement opened the doors of liberation to all. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "Constitutional mechanisms to resolve the inter-state water disputes have failed to address and solve the problems. Is the failure due to structural or process inadequacy or both? Discuss. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        97,
+        99
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "70390b092716f3dce543df456f40061fa05800e5d1f35783291b792641107ac6",
+      "best_db_match": {
+        "score": 0.3493,
+        "measure": "sequence",
+        "id": "379252ad-95f1-4a91-b6e5-cc0fcfef2994",
+        "text": "Chola architecture represents a high watermark in the history of South Indian architecture. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the recommendations of the 13*® Finance Commission which have been a departure from the previous commissions for strengthening the local government finances. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        103,
+        105
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "8856d7b361dd545ca6f03bbda7fccd7a4bedd9a679b9192869244f16eacb45c9",
+      "best_db_match": {
+        "score": 0.4884,
+        "measure": "sequence",
+        "id": "9a2ec8d6-75d5-413c-9787-bf85353a3a70",
+        "text": "Examine the role of the Finance Commission in strengthening fiscal federalism in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "The product diversification of financial institutions and insurance companies, resulting in overlapping of products and services strengthens the case for the merger of the two regulatory agencies, namely SEBI and IRDA. Justify. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        111,
+        115
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "3e13ac9ffb4e25c085abd94e3b7fe88c0b5cb9abf95feb85eb6d4dec6cc9cdfc",
+      "best_db_match": {
+        "score": 0.3457,
+        "measure": "sequence",
+        "id": "b6218bce-4fd5-424b-b0ef-710f2cfbe656",
+        "text": "How do social institutions like school and media impact value formation in citizens? Analyze."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "The concept of Mid Day Meal (MDM) scheme is almost a century old in India with early beginnings in Madras Presidency in pre-independent India. The scheme has again been given impetus in most states in the last two decades. Critically examine its twin objectives, latest mandates and success.: [200 words] 10 (A-BRL-M-HTUB]",
+      "marks": "3",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        122,
+        129
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 123,
+          "text": "with early beginnings in Madras Presidency in pre-independent India. The",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 129,
+          "text": "(A-BRL-M-HTUB] 3",
+          "flags": [
+            "unknown_words",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "79798fd4d2947413819fa8cf4ae62a718c420092211f2efe2646a28c6d74fd39",
+      "best_db_match": {
+        "score": 0.314,
+        "measure": "sequence",
+        "id": "1aaeadcd-3358-4c26-9095-50e0e79155ee",
+        "text": "Though not very useful from the point of view of a connected political history of South India, the Sangam literature portrays the social and economic conditions of its time with remarkable vividness. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Pressure group politics is sometimes seen as the informal face of politics. With regards to the above, assess the structure and functioning of pressure groups in India. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        145,
+        149
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "d16e49f658c5a63446e69be4ecbad28290e1bae84cfd9a9f5b6c6b720674d122",
+      "best_db_match": {
+        "score": 0.4,
+        "measure": "sequence",
+        "id": "c95de3ed-b7d7-44ad-8bef-9deda7a05f7a",
+        "text": "The Regulating Act of 1773 was the first step towards the centralization of British administration in India. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "The legitimacy and accountability of Self Help Groups (SHGs) and their patrons, the micro-finance outfits, need systematic assessment and scrutiny for the sustained success of the concept. Discuss. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        154,
+        157
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "1ef4988dc45fe4d818c2a31e67f1ad5a25565024cc72a8d96542ab5951d74181",
+      "best_db_match": {
+        "score": 0.3228,
+        "measure": "sequence",
+        "id": "c95de3ed-b7d7-44ad-8bef-9deda7a05f7a",
+        "text": "The Regulating Act of 1773 was the first step towards the centralization of British administration in India. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "The Central Government frequently complains on the poor performance of the State Governments in eradicating suffering of the vulnerable sections of the society. Restructuring of Centrally sponsored schemes across the sectors for ameliorating the cause of vulnerable sections of population aims at providing flexibility to the States in better implementation. Critically evaluate. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        164,
+        171
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "f8cc27f5b70d25c59fd74280bc14c126e822fe5c3aeee0b3cf85a422a36bf433",
+      "best_db_match": {
+        "score": 0.2918,
+        "measure": "sequence",
+        "id": "c6f8fc19-39b5-4aaf-8897-71409b72d86d",
+        "text": "Discuss the challenges faced in managing security parameters across the non-demarcated segments of India's international borders."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "Electronic cash transfer system for the welfare schemes is an ambitious project to minimize corruption, eliminate wastage and facilitate reforms. Comment.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        177,
+        179
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "2e62fb62679d79be1b08896495d6921c860442b92ffedff744eaa82e835ef670",
+      "best_db_match": {
+        "score": 0.4,
+        "measure": "sequence",
+        "id": "b7200ec0-01d7-4457-9027-23dc79581387",
+        "text": "The Central Vigilance Commission (CVC) has emerged as an important body to fight corruption. Discuss its powers and limitations."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "The basis of providing urban amenities in rural areas (PURA) is rooted in establishing connectivity. Comment. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        197,
+        199
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "df9e1d24b7972be3cf7329b14c38d979513969080e53c65387c5ceb2b180753d",
+      "best_db_match": {
+        "score": 0.4369,
+        "measure": "sequence",
+        "id": "20ca8db4-c912-4317-a3ee-f03f6da608e1",
+        "text": "The dynamic nature of the Indian Constitution is reflected in its amendment process. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Identify the Millennium Development Goals (MDGs) that are related to health. Discuss the success of the actions taken by the Government for achieving the same. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        203,
+        205
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "4f6bb719681d663e25714b81a1a2761a8cf71ed9465ca29a513e94e2fb814422",
+      "best_db_match": {
+        "score": 0.3941,
+        "measure": "sequence",
+        "id": "2282d2fd-ea70-4eb9-91f6-f26f4792a581",
+        "text": "What were the major reasons for the outbreak of the French Revolution? How did it affect the modern world?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "Though Citizens’ charters have been formulated by many public service delivery organizations, there is no corresponding improvement in the level of citizens’ satisfaction and quality of services being provided. Analyse. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        211,
+        215
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "399152fedc9c5939fd23b94847171805801e773f3e1bda2766f2e6b9429eefa3",
+      "best_db_match": {
+        "score": 0.4036,
+        "measure": "sequence",
+        "id": "4584fe10-f1f0-4893-9234-f99a2e2122bd",
+        "text": "Defying the barriers of age, gender and religion, the Bhakti movement opened the doors of liberation to all. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "‘A national Lokpal, however strong it may be, cannot resolve the problems of immorality in public affairs.’ Discuss. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        219,
+        220
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "3f15eb14c104679f74b29f819ceb76b5f759aca35eb5b78366a3ca65b29e8ea4",
+      "best_db_match": {
+        "score": 0.4072,
+        "measure": "sequence",
+        "id": "2229e800-0153-4cc9-b942-6b8b3e00882a",
+        "text": "Critically examine the factors responsible for the rise of Fascism in Italy after the First World War."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "The proposed withdrawal of International Security Assistance Force (ISAF) from Afghanistan in 2014 is fraught with major security implications for the countries of the region. Examine in light of the fact that India is faced with a plethora of challenges and needs to safeguard its own strategic interests. [200 words] 10 {A-BRL-M-HTUB]",
+      "marks": "5",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        226,
+        234
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 234,
+          "text": "{A-BRL-M-HTUB] 5",
+          "flags": [
+            "unknown_words",
+            "garble_chars",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "a39f4bb4ba65882958684438e8d090263efae19004bb6cf51bda73eff4ff1781",
+      "best_db_match": {
+        "score": 0.3063,
+        "measure": "sequence",
+        "id": "4e11fbe2-b93d-40dd-b894-97e354c7f3a4",
+        "text": "What is intellectual property piracy? Discuss its impact on the economic growth of the creative and technology software industries."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you understand by ‘The String of Pearls’? How does it impact India? Briefly outline the steps taken by India to counter this. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        254,
+        255
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "c9d3ac9ce0ee5a2e8782eadc2a4f83ca3673c56f8805186f0fc24ff3252b32ff",
+      "best_db_match": {
+        "score": 0.5276,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "Economic ties between India and Japan while growing in the recent years are still far below their potential. Elucidate the policy constraints which are inhibiting this growth. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        261,
+        263
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "748d578944dd22f6d81bc9ee2702bd8fe374db0cd3ab0b35cee08d53d5ab4858",
+      "best_db_match": {
+        "score": 0.3649,
+        "measure": "sequence",
+        "id": "4584fe10-f1f0-4893-9234-f99a2e2122bd",
+        "text": "Defying the barriers of age, gender and religion, the Bhakti movement opened the doors of liberation to all. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 21,
+      "sub_part": null,
+      "section": null,
+      "text": "The protests in Shahbag Square in Dhaka in Bangladesh reveal a fundamental split in society between the nationalists and Islamic forces. What is its significance for India? [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        269,
+        271
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 269,
+          "text": "The protests in Shahbag Square in Dhaka in Bangladesh reveal a fundamental",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "999f5b01637f4df16b20c8fe027255934fa786ba68afc2c60ad2f4088739aa7c",
+      "best_db_match": {
+        "score": 0.3577,
+        "measure": "sequence",
+        "id": "f8c4dddb-a91d-4941-aab5-f789df801021",
+        "text": "Examine the role of civil society organizations in the formulation of public policies in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 22,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the political developments in Maldives in the last two years. Should they be of any cause of concern to India? [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        275,
+        277
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "7f1d23542e3b8d3f5ab42524a4f98f6eae2a5b01bd7b472ce47b1f13afc1cd20",
+      "best_db_match": {
+        "score": 0.4466,
+        "measure": "sequence",
+        "id": "5d776088-bd44-434e-b212-3f0b217dc2a8",
+        "text": "Discuss the challenges faced by women working in the unorganized sector in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 23,
+      "sub_part": null,
+      "section": null,
+      "text": "In respect of India—Sri Lanka relations, discuss how domestic factors influence foreign policy. [200 words]",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        281,
+        283
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "65fe5dc890e664b46e8c0a6d49c0607b82af9c51debc11079fbbb64104912a45",
+      "best_db_match": {
+        "score": 0.4162,
+        "measure": "sequence",
+        "id": "f8c4dddb-a91d-4941-aab5-f789df801021",
+        "text": "Examine the role of civil society organizations in the formulation of public policies in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 24,
+      "sub_part": null,
+      "section": null,
+      "text": "What is meant by Gujral doctrine? Does it have any relevance today? Discuss. [200 words] (A-BRL-M-HTUB] 6 p",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        288,
+        293
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 291,
+          "text": "(A-BRL-M-HTUB] 6",
+          "flags": [
+            "unknown_words",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "e91e116d66b9261c26949eba2d49eb9fd2b723963189b5e1941e7286eacd52c2",
+      "best_db_match": {
+        "score": 0.4327,
+        "measure": "sequence",
+        "id": "df88d229-d05e-4aaa-af0b-04d22c5126f7",
+        "text": "What is the 'continental drift' theory? Discuss the evidence supporting it."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 25,
+      "sub_part": null,
+      "section": null,
+      "text": "The World Bank and the IMF, collectively known as the Bretton Woods Institutions, are the two inter-governmental pillars supporting the structure of the world’s economic and financial order. Superficially, the World Bank and the IMF exhibit many common characteristics, yet their role, functions and mandate are distinctly different. Elucidate. [200 words] 10 (a-BRL-M-HTUB] 7 i",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS2.txt",
+      "line_span": [
+        312,
+        320
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 318,
+          "text": "(a-BRL-M-HTUB] 7",
+          "flags": [
+            "unknown_words",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "991587497e6dca998fcb54039c87be8c098792a28fadcd424d62c98f5bd4d360",
+      "best_db_match": {
+        "score": 0.3077,
+        "measure": "sequence",
+        "id": "c95de3ed-b7d7-44ad-8bef-9deda7a05f7a",
+        "text": "The Regulating Act of 1773 was the first step towards the centralization of British administration in India. Discuss."
+      },
+      "route": "insert"
+    }
+  ]
+}

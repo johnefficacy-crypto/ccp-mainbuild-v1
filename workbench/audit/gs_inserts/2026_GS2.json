@@ -1,0 +1,515 @@
+{
+  "year": 2026,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2026-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+  "mode": "anchored",
+  "printed_question_count": 20,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "Right to privacy relating to self-identity is very dear to every human being and well protected under Article 21 of the Constitution. In this context, examine the effect of the amendment in 2026, to the Transgender Persons (Protection of Rights) Act, 2019.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        57,
+        62
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "1e1e869c56b0651da88e961ed06bd877c8cb1d4b1cbcbde24a61a9864c9dc6d4",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "“Women as a class neither belong to a minority group nor are they regarded as forming a backward class.” In the light of this statement, discuss the evolution of women’s reservation from local bodies to Parliament.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        69,
+        73
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "bc2b3d922882517317cb95834ed31654694c5d52cf270e1ee4f74e4bdecf5fac",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "Examine whether the constitutional office of the Lok Sabha Speaker has become vulnerable to partisan politics under the current anti-defection regime. What institutional changes are required to ensure the neutrality of the Lok Sabha Speaker in managing a polarised House?",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        80,
+        85
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "396ce4062f281a9b56c860ad4c0a6c2a5086259afd90218bd9c5250ebea70767",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "Is the right to vote a fundamental right? Discuss the position of the Election Commission of India while undertaking the revision of electoral rolls. Can it also examine the question of citizenship of voters?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        100,
+        105
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "06e3eb9ee8b00e2fd9c9296f55b34a13196f28b8a27feb1c55bc293a4e4e6c45",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "Do constitutional bodies like the National Commission for Scheduled Castes (NCSC) and the National Commission for Scheduled Tribes (NCST) possess adequate enforcement powers to secure substantive social equality? Suggest measures to enhance their institutional effectiveness.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        112,
+        117
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "67c96bf6bace9a9415c1081c35701471f97785154aadac0adc7d9acdc1a8467d",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "Does India’s tribal development policy reflect the aspirations for a socially grounded and equity-based governance? Justify your answer.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        124,
+        127
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "796ce61f210cc0d3386d35558aab3c25f3ea761e5fb90bd7700d09a9d413ad32",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Malnutrition in India is not merely a public health concern; it is also a challenge of social equity, human development and effective welfare governance. Discuss.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        134,
+        139
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "6a28c56cca3660217235b62381712478e160360a53cdbe8d6eed84e2d7613327",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Analyse the advantages and limitations of the generalist structure of the Indian Civil Services in contemporary governance.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        156,
+        159
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "3ddd2bde0c82c5015baf9651b8fcbf069ba4bdbdfb7319d41588b7c50b773902",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "“IPMDA (Indo-Pacific Partnership for Maritime Domain Awareness) bridges the gap between India’s SAGAR (Security and Growth for All in the Region) vision and the Quad’s collective Indo-Pacific strategy.” Make a critical assessment of the statement focusing on IPMDA.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        166,
+        170
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "ca0d8947d13374e3ddfdbc85b77a0d8341908477c5686c14f2bee884b997dd46",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "“BRICS acts as a powerful counterweight in global governance, actively amplifying the voice and influence of the Global South.” Explain the role of BRICS in projecting itself as an alternative to other groupings.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        177,
+        181
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "41aa0f2ad494d262434d77a7b58549c5b0a2e2c153d5a31dea33f32be6d89db8",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the position of the Governor in the federal polity of India. What is the nature of his power while giving assent to a bill passed by the State Legislature? Is he bound by the aid and advice of his Council of Ministers in all his functions?",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        189,
+        194
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "84ee0735b44845863919b43da1fe762b776b2617931b29f1e032ab0d53fdee2f",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "What is meant by judicial legislation? In this context, discuss the verdicts of the apex court allowing “passive euthanasia” and a “living will”.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        216,
+        219
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "3bf3522e03efecfb40b41164669751165b99117e433ee2010155252306c24b72",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "How far has the Indian federal framework been successful in accommodating regional and cultural diversities? Highlight the role of asymmetric federalism and suggest measures to make dispute resolution mechanisms more effective.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        225,
+        229
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "2772c4db124c19e3a84da9d334541e159ff2e88c6609b54184ad992052149f8a",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Examine how the separation of powers is practised in India compared to the rigid presidential model of the United States of America. In this context, compare the actual authority of the Indian Prime Minister with that of the President of the USA.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        235,
+        239
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "f8cc0654dfbe8b1b5bee07010da44191cc4d53719f18e8d68c6ccda7e9ac99b1",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "To what extent do pressure groups, social movements and corporate lobbies deepen pluralistic democracy in India by representing excluded interests? Analyse whether the growing convergence of corporate wealth and political power poses a threat to the autonomy of formal democratic institutions.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        247,
+        252
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "c744d6a12244dac2257be075fc3d36bfe98eac3bba317d658d1d762f71d331d1",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“Transparency and accountability in governance are not about controlling corruption but about creating the trust of stakeholders in the policy process by following the Rule of Law and Participatory Governance.” Comment.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        269,
+        273
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "dd98fc7d6e0b77bdcec0f1dc4d41d7f01d9ef0502e2d471d37da4757ccf0770e",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Can the constitutional mandate of rights-based welfare be effectively realised in the context of non-integrated governance and minimal public investment? Examine.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        280,
+        285
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "9d035c11bd4748bd28145dd31cd97e2bf9284f4580de23246f12a6c7ef38ace3",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "Should education be treated primarily as a welfare obligation of the state or as a strategic investment for building a globally competitive, knowledge-driven nation? Critically evaluate.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        293,
+        297
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "dd2670625e54f43db4fb32f0b4afbdbbbb990e2ca9e2d3ff1dab58e5e798f626",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "“India’s global diaspora acts as a living bridge, as a critical economic factor and knowledge network in transforming cultural heritage into geopolitical influence and strategic leverage worldwide.” Critically examine this statement.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        305,
+        310
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "494bc057c6433412e847a885f2ab999331452d0246fd95099b725828319926ba",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "“China’s Belt and Road Initiative (BRI) has transformed South Asia from a regional space into a theatre of great power competition.” Analyse the strategic implications of the BRI for India’s security and regional influence in South Asia.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS2.txt",
+      "line_span": [
+        319,
+        325
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "ebd0051ac070e51aeae105584f5eea88b7377601d41d70bc9532a8532325b1c7",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    }
+  ]
+}

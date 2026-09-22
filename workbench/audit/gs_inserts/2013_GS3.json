@@ -1,0 +1,818 @@
+{
+  "year": 2013,
+  "paper": "GS3",
+  "paper_code": "UPSC-CSE-MAINS-GS-2013-GS3",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+  "mode": "unanchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_instruction:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "With a consideration towards the strategy of inclusive growth, the new Companies Bill, 2013 has indirectly made CSR a mandatory obligation. Discuss the challenges expected in its implementation in right earnest. Also discuss other provisions in the Bill and their implications. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        67,
+        71
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "4599cdee323ac106a53d3e3b8bee68dee17c9b4510516f0afd5cef0bf880c20e",
+      "best_db_match": {
+        "score": 0.3518,
+        "measure": "sequence",
+        "id": "92d11573-7ffd-485d-950a-7a6eb578ac2f",
+        "text": "Analyze the institutional challenges faced by the Election Commission of India in conducting free and fair elections."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "What were the reasons for the introduction of Fiscal Responsibility and Budget Management (FRBM) Act, 2003? Discuss critically its salient features and their effectiveness. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        75,
+        77
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "a7acb0bed7a31ac774cec8819ad58a714cf602736a5b9347d9e9ccb61a91b0d9",
+      "best_db_match": {
+        "score": 0.427,
+        "measure": "sequence",
+        "id": "2282d2fd-ea70-4eb9-91f6-f26f4792a581",
+        "text": "What were the major reasons for the outbreak of the French Revolution? How did it affect the modern world?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "What is the meaning of the term ‘tax expenditure’? Taking housing sector as an example, discuss how it influences the budgetary policies of the government. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        83,
+        85
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "25eb4d147ea71aabcceccf876c53b3ae1acd4b18c3b17f87a4e79b301cd01d27",
+      "best_db_match": {
+        "score": 0.4167,
+        "measure": "sequence",
+        "id": "2282d2fd-ea70-4eb9-91f6-f26f4792a581",
+        "text": "What were the major reasons for the outbreak of the French Revolution? How did it affect the modern world?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "Food Security Bill is expected to eliminate hunger and malnutrition in India. Critically discuss various apprehensions in its effective implementation along with the concerns it has generated in WTO. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        91,
+        94
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "5c8f690155b8841821da33009979db87f1310ec317f89c85c72b8d432bd71779",
+      "best_db_match": {
+        "score": 0.3963,
+        "measure": "sequence",
+        "id": "c004895e-1129-436f-b6ee-920f78faaf77",
+        "text": "What is the Right to Information (RTI) Act? Discuss its role in enhancing accountability and transparency in governance."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the different types of agriculture subsidies given to farmers at the national and at state levels? Critically analyse the agricultural subsidy regime with reference to the distortions created by it. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        100,
+        102
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "2027a7be583a47a80401b7890f4da178bcf5e9525d425d7e2987099d3d50c71d",
+      "best_db_match": {
+        "score": 0.3722,
+        "measure": "sequence",
+        "id": "6e4d97dd-e7c9-4f0e-abe1-30da267125d9",
+        "text": "Discuss the impact of farm subsidies on the fiscal health of state budgets and environment degradation."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "India needs to strengthen measures to promote the pink revolution in food industry for ensuring better nutrition and health. Critically elucidate the statement. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        115,
+        117
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "12c1c8baad1d5d4ba50c2373cbcc8437a5d3bb8b315534bd2b36c54759cccda0",
+      "best_db_match": {
+        "score": 0.3481,
+        "measure": "sequence",
+        "id": "12ad4b64-713d-4fbe-b113-7c298211ce24",
+        "text": "India's relations with its neighbors are crucial for its internal security and economic growth. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Examine the impact of liberalization on companies owned by Indians. Are they competing with the MNCs satisfactorily? Discuss. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        122,
+        123
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "71d993d8d47eaf06e042528251b6ea46a0a898d733b41fb68be4a07ae0d9cddc",
+      "best_db_match": {
+        "score": 0.4653,
+        "measure": "sequence",
+        "id": "5ac18a28-0b1c-4ace-a2a5-ba76b5165338",
+        "text": "Examine the challenges faced by India in managing its maritime borders."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Establish relationship between land reforms, agriculture productivity and elimination of poverty in the Indian economy. Discuss the difficulties in designing and implementation of agriculturefriendly land reforms in India. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        127,
+        130
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "a15a52bde07fb1727ac31ce6833a20adb24bbee49735f7c090076ec3fb95332f",
+      "best_db_match": {
+        "score": 0.3876,
+        "measure": "sequence",
+        "id": "4a61817d-1b33-475e-8d7f-9f4ca6fade1e",
+        "text": "Discuss the relationship between savings rate, investment pattern, and capital-output ratio in the context of growth acceleration."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the impact of FDI entry into Multi-trade retail sector on supply chain management in commodity trade pattern of the economy. [100 words]",
+      "marks": "5",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        136,
+        138
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "eba632c448c69aa5320832c048bc441cd0b54c466364f6acbb86563dba124ca8",
+      "best_db_match": {
+        "score": 0.4132,
+        "measure": "sequence",
+        "id": "79aab0a3-5348-4b70-bec7-4100394faee0",
+        "text": "Analyze the impact of coalition politics on the stability and policy-making of the Central Government."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Though India allowed Foreign Direct Investment (FDI) in what is called multi-brand retail through the joint venture route in September 2012, the FDI, even after a year, has not picked up. Discuss the reasons. [100 words]",
+      "marks": "5",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        145,
+        148
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "f3deda087e2337ccb8db651a46dae702bb61ba042dfb2452df0a0c2fd0ca925d",
+      "best_db_match": {
+        "score": 0.3049,
+        "measure": "sequence",
+        "id": "799f8d92-6f0d-465d-8a25-2f2e8c915d27",
+        "text": "What is the mandate of the National Security Council (NSC)? Evaluate its advisory role in internal security policymaking."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the rationale for introducing Goods and Services Tax (GST) in India. Bring out critically the reasons for the delay in roll out for its regime. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        156,
+        158
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "3107061959fd92a58691a80957f6ba2cd5950eaac84e1869a2ffb4a008b1ccc0",
+      "best_db_match": {
+        "score": 0.4225,
+        "measure": "sequence",
+        "id": "4a61817d-1b33-475e-8d7f-9f4ca6fade1e",
+        "text": "Discuss the relationship between savings rate, investment pattern, and capital-output ratio in the context of growth acceleration."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "Write a note on India’s green energy corridor to alleviate the problem of conventional energy. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        162,
+        164
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "f8197435cabf79c139378d1149471fb3e2a728de128c4555e21e8671f1f4d31a",
+      "best_db_match": {
+        "score": 0.402,
+        "measure": "sequence",
+        "id": "dc07d172-89b2-47af-ba32-8e20d9366adb",
+        "text": "Discuss the need for electoral reforms in India with special reference to criminalization of politics."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "Adoption of PPP model for infrastructure development of the country has not been free of criticism. Critically discuss pros and cons of the model. [200 words] 10 aredtr unet after fiat (Patent Law) 1970 #t ara 3(d) AX at 2005 A seid",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        178,
+        181
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 181,
+          "text": "aredtr unet after fiat (Patent Law) 1970 #t ara 3(d) AX at 2005 A seid",
+          "flags": [
+            "unknown_words",
+            "garble_chars",
+            "suspect_token",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "9d20d553e6c07acb8aaabbad3c5bd1d4a46b9df6becf145961612c232f225146",
+      "best_db_match": {
+        "score": 0.3312,
+        "measure": "sequence",
+        "id": "0c6318d3-0de1-4bb2-9962-c068a2f8f7d6",
+        "text": "Examine the role of the caste system as a barrier to social mobility in contemporary India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Bringing out the circumstances in 2005 which forced amendment to the section 3(d) in Indian Patent Law, 1970, discuss how it has been utilized by the Supreme Court in its judgement in rejecting Novratis’ patent application for ‘Glivec’. Discuss briefly the pros and cons of the decision. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        186,
+        189
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "64729d7077a5f67c8842eafe4de94bbb9f418712c4bc5bf8fcf9a9473ea06daf",
+      "best_db_match": {
+        "score": 0.3462,
+        "measure": "sequence",
+        "id": "607d528d-8326-41e9-a218-a0b3445075ef",
+        "text": "Bring out the factors that led to the commercialization of agriculture in India during the colonial rule. State its consequences."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you understand by Fixed Dose Drug Combinations (FDCs)? Discuss their merits and demerits. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        194,
+        195
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "e16953ef8a0ab798c3536c82e0da6a19804001067f1fb2f5d04a4f2d76f290fe",
+      "best_db_match": {
+        "score": 0.5933,
+        "measure": "sequence",
+        "id": "e7402ca3-010c-4a97-9fd0-31bba30087e0",
+        "text": "What do you understand by 'ethical human conduct'? Discuss its determinants and consequences in human actions."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you understand by Umpire Decision Review System in Cricket? Discuss its various components. Explain how silicone tape on the edge of a bat may fool the system? [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        200,
+        203
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 202,
+          "text": "its various components. Explain how silicone tape on the edge of a bat may fool the",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "f419d44195282dc3282c01bd7cc6fed0688b3f22c46c92e4c5ae934674f00e16",
+      "best_db_match": {
+        "score": 0.4357,
+        "measure": "sequence",
+        "id": "e7402ca3-010c-4a97-9fd0-31bba30087e0",
+        "text": "What do you understand by 'ethical human conduct'? Discuss its determinants and consequences in human actions."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "What is a digital signature? What does its authentication mean? Give various salient built-in features of a digital signature. [100 words]",
+      "marks": "5",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        208,
+        210
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "518be69397099cd64ce8c640de8878702dc2bb78d8d7570a97c705762540048b",
+      "best_db_match": {
+        "score": 0.4069,
+        "measure": "sequence",
+        "id": "379252ad-95f1-4a91-b6e5-cc0fcfef2994",
+        "text": "Chola architecture represents a high watermark in the history of South Indian architecture. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "How does the 3D printing technology work? List out the advantages and disadvantages of the technology. [100 words] S",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        215,
+        216
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "eb7894f8f7dfa505e00716036c705179820988d0ade0229ba29aaf8eea13a4d8",
+      "best_db_match": {
+        "score": 0.4301,
+        "measure": "sequence",
+        "id": "5d795b0f-38ab-4175-8f7e-1ad4f296d2f6",
+        "text": "Science and technology is the panacea for the growth and security of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "What is an FRP composite material? How are they manufactured? Discuss their applications in aviation and automobile industries. [100 words] >",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        222,
+        224
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 224,
+          "text": "in aviation and automobile industries. [100 words] >",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "e51df88d90235f527b5150ac20404a33fbf78b86467f8ab6c80376f0b2643889",
+      "best_db_match": {
+        "score": 0.4487,
+        "measure": "sequence",
+        "id": "4e11fbe2-b93d-40dd-b894-97e354c7f3a4",
+        "text": "What is intellectual property piracy? Discuss its impact on the economic growth of the creative and technology software industries."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you understand by Run-of-river hydroelectricity project? How is it different from any other hydroelectricity project? [100 words]",
+      "marks": "5",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        242,
+        243
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "ea1be8e63dd52ddf3abddc6df09107e6ad7631a73398e4888c77c92dcd569d33",
+      "best_db_match": {
+        "score": 0.4854,
+        "measure": "sequence",
+        "id": "e7402ca3-010c-4a97-9fd0-31bba30087e0",
+        "text": "What do you understand by 'ethical human conduct'? Discuss its determinants and consequences in human actions."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 21,
+      "sub_part": null,
+      "section": null,
+      "text": "How important are vulnerability and risk assessment for pre-disaster management? As an administrator, what are key areas that you would focus on in a Disaster Management System. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        247,
+        250
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "099b3151f2b69b6a80aa3479be3d2f858b7a3c26cdc5734850bf429d9e01285a",
+      "best_db_match": {
+        "score": 0.3688,
+        "measure": "sequence",
+        "id": "d7ef4a9e-6798-49ff-996b-76cbe3a618a1",
+        "text": "What are the major challenges associated with the management of urban solid waste in Indian cities?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 22,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the consequences of Illegal mining? Discuss the Ministry of Environment and Forests’ concept of GO AND NO GO zones for coal mining sector. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        255,
+        257
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "f220c9b08e19d5f22994f5cf0e1a785de0948806ea38cf679b0c1357ed3a0159",
+      "best_db_match": {
+        "score": 0.4178,
+        "measure": "sequence",
+        "id": "df88d229-d05e-4aaa-af0b-04d22c5126f7",
+        "text": "What is the 'continental drift' theory? Discuss the evidence supporting it."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 23,
+      "sub_part": null,
+      "section": null,
+      "text": "Enumerate the National Water Policy of India. Taking river Ganges as an example, discuss the strategies which may be adopted for river water pollution control and management. What are the legal provisions of management and handling of hazardous wastes in India? [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        263,
+        266
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 266,
+          "text": "India ? [200 words] | 10",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "45bb89b8449e8353ede8a27ac8709be7b76389bc5f481238c1673406d6787b76",
+      "best_db_match": {
+        "score": 0.3241,
+        "measure": "sequence",
+        "id": "af739e4e-5ea8-4c21-b52d-091338a65be1",
+        "text": "What is cross-border money laundering? Discuss the structural coordination challenges between international intelligence branches."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 24,
+      "sub_part": null,
+      "section": null,
+      "text": "Money laundering poses a serious security threat to a country’s economic sovereignty. What is its significance for India and what steps are required to be taken to control this menace? [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        272,
+        276
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "a937e1b2352bbb2c8ba868f6a8f890ca2d3a7862f4228fe5518d4d95b59832c2",
+      "best_db_match": {
+        "score": 0.3699,
+        "measure": "sequence",
+        "id": "607d528d-8326-41e9-a218-a0b3445075ef",
+        "text": "Bring out the factors that led to the commercialization of agriculture in India during the colonial rule. State its consequences."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 25,
+      "sub_part": null,
+      "section": null,
+      "text": "What are social networking sites and what security implications do these sites present? [200 words] spare 1)",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        280,
+        281
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "b4dbf9555ca9473efd599a1b3d1f0a4219546526f31d98e81dc72ae5968574fa",
+      "best_db_match": {
+        "score": 0.4746,
+        "measure": "sequence",
+        "id": "6a71e050-bd44-4df0-bcae-1c3aa23f5f84",
+        "text": "Analyze the role of social media networks in driving internal security disruptions and spreading misinformation during crisis events."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 26,
+      "sub_part": null,
+      "section": null,
+      "text": "Cyber warfare is considered by some defense analysts to be a larger threat than even Al Qaeda or terrorism. What do you understand by Cyber warfare? Outline the cyber threats which India is vulnerable to and bring out the state of the country’s preparedness to deal with the same. [200 words] an)",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        291,
+        294
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "5b3b3a3faaef3ef1a006f79361e1d56e486092a67bba9a16181f894dbe8c5009",
+      "best_db_match": {
+        "score": 0.3127,
+        "measure": "sequence",
+        "id": "b8d7b7d3-f4ae-40dc-8267-032375860fa2",
+        "text": "The Governor's discretionary powers have often been a source of tension between the Centre and the States. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 27,
+      "sub_part": null,
+      "section": null,
+      "text": "Article 244 of the Indian Constitution relates to administration of scheduled areas and tribal areas. Analyse the impact of non-implementation of the provisions of the Fifth schedule on the growth of Left Wing extremism. [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        298,
+        301
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "2625b560debc9ded0352c8c92ee1d35d87be939e4b445d41eaf261ca7d983a09",
+      "best_db_match": {
+        "score": 0.3511,
+        "measure": "sequence",
+        "id": "20ca8db4-c912-4317-a3ee-f03f6da608e1",
+        "text": "The dynamic nature of the Indian Constitution is reflected in its amendment process. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 28,
+      "sub_part": null,
+      "section": null,
+      "text": "How far are India’s internal security challenges linked with border management particularly in view of the long porous borders with most countries of South Asia and Myanmar? [200 words]",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2013_GS3.txt",
+      "line_span": [
+        305,
+        308
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored"
+      ],
+      "content_hash": "75fe605bb9118004af2592e8627894c1fc93e728e31a0b47b1b4b4a60148e830",
+      "best_db_match": {
+        "score": 0.4234,
+        "measure": "sequence",
+        "id": "21ea578c-6b05-439d-8401-8293e861c1be",
+        "text": "Discuss the major challenges in the implementation of the National Rural Health Mission (NRHM)."
+      },
+      "route": "insert"
+    }
+  ]
+}

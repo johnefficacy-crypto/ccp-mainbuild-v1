@@ -1,0 +1,631 @@
+{
+  "year": 2014,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2014-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+  "mode": "unanchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "dropped_instruction:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "~ What: were the ‘évents: that led to. the Suée Crisis in- 1956\" 2. Sibw did | it deal a.. final blow to Britain’s s self-image as a world power.: ~ PTR",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        144,
+        146
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 144,
+          "text": "~ What: were the ‘évents: that led to. the Suée Crisis in- 1956\" 2. Sibw did | it deal a.",
+          "flags": [
+            "garble_chars"
+          ]
+        },
+        {
+          "line": 146,
+          "text": ". final blow to Britain’s s self-image as a world power. : ~ PTR",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "5202138463a8dbb5396a2e9acc56d8c15f0858041179e076f95b121b0a8dd432",
+      "best_db_match": {
+        "score": 0.3971,
+        "measure": "sequence",
+        "id": "e30003a0-f207-45f8-afd7-54f6ad8c869f",
+        "text": "What are the primary constraints hindering the growth of the food processing industry in India? How can the Mega Food Parks scheme resolve them?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "The New Economic Policy — 1921 of. Lenin: had influenced. the policies adopted an byl India soon after independence Evaluate. we ec tf a ar fee a How does patriarchy impact the ¢ position of ' a middle class veonkings » woman. in India?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        156,
+        162
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 157,
+          "text": "an byl India soon after independence Evaluate.",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 159,
+          "text": "we ec tf a ar fee a",
+          "flags": [
+            "unknown_words",
+            "suspect_token",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "6bf2adb18fb4c2f60949f4b4bd87802322868cce4d8e93fad96f52277b4e9305",
+      "best_db_match": {
+        "score": 0.3549,
+        "measure": "sequence",
+        "id": "29abdea9-2e5a-4a45-b75a-783e7425705c",
+        "text": "Discuss the major challenges associated with land reforms in India since independence. Why has land records digitization lagged behind?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "i CLIENT): oS 3 Why do some of the most prosperous: regions sof India have. an adverse sex Yatio: for women?? Give your arguments.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        168,
+        172
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 168,
+          "text": "i CLIENT) : oS 3",
+          "flags": [
+            "unknown_words"
+          ]
+        },
+        {
+          "line": 170,
+          "text": "Why do some of the most prosperous: regions sof India have. an adverse sex Yatio :",
+          "flags": [
+            "unknown_words",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "80c7242a073fd02c9c63c05584e088ab5ed92e66dc4cdbb89f5b80f9a3c4d6e8",
+      "best_db_match": {
+        "score": 0.4085,
+        "measure": "sequence",
+        "id": "cab4e4d4-6ea1-4230-9f23-7864b5f3ca78",
+        "text": "What is cyber warfare? Discuss the steps required to augment India's national cyber security defense architectures."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "=. _The life cycle. of a joint family’ depends on: economic. faciora rather than social - values. Discuss.; yo ia",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        189,
+        190
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 190,
+          "text": "- values. Discuss. ; yo ia :",
+          "flags": [
+            "unknown_words",
+            "suspect_token",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "7e6ee063ee2dd2249a876d716f38d6221bd4ae807f65a6bffef64a81e00f4c27",
+      "best_db_match": {
+        "score": 0.4242,
+        "measure": "sequence",
+        "id": "920e8b2b-3855-401a-b3a2-1e4f8f6527ed",
+        "text": "The coastal ecosystems of India are increasingly exposed to oceanic pollution and oil spills. Discuss the long-term ecological risks."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "‘increasing feminization of agriculture in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        196,
+        196
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "ba2fab5f340a4c3f1419836d7a8d75adb38d47c0cc73a99b8ef74450da959e78",
+      "best_db_match": {
+        "score": 0.4471,
+        "measure": "sequence",
+        "id": "dde162af-c895-449f-97f5-aa5cf1ff9d2c",
+        "text": "Sting operation: An invasion of privacy?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the various. economic. and socio-cultural forces that. are driving - ‘How do the Indian debates‘on: ‘secularism differ from the debatés in the West 7 a",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        204,
+        206
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "0f33f38e783ea0f8ca2eb563ea74da7175d9215c6b871e5035c3f111f980f3ca",
+      "best_db_match": {
+        "score": 0.4337,
+        "measure": "sequence",
+        "id": "c4ee59ed-ce9c-43b5-b584-48bd36c5abbc",
+        "text": "What were the major political, economic and social forces that led to the French Revolution? Analyze."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Most of the unusual climatic happenings: are e explained as an outcome of the | EL “Nino. effect. ‘Do you agree? 2",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        211,
+        212
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 211,
+          "text": "Most of the unusual climatic happenings : are e explained as an outcome of the |",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "e91c68269d5e2e4e8630e16b79a6fe5f023e0069d555bc9aca90415104945fc5",
+      "best_db_match": {
+        "score": 0.3874,
+        "measure": "sequence",
+        "id": "9a560eef-08d2-4773-94ce-5dc330e6d364",
+        "text": "Analyze the role of pressure groups in Indian politics and explain how they differ from registered political parties."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain the formation of thousands of islands in Indonesian and Philippines archipelagos. symptoms of climate change in the Indian sub- continent.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        231,
+        235
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 233,
+          "text": "archipelagos.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "c8567e1b768699170a64d9e657e10fc542281b3f6d6e260c724e395947796e4f",
+      "best_db_match": {
+        "score": 0.4029,
+        "measure": "sequence",
+        "id": "ac1d9fc9-6fef-4883-a78e-3074a09e34ae",
+        "text": "Analyze the National Disaster Management Guidelines for earthquake risk reduction. Highlight the gaps in their institutional enforcement."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Why’ ‘are the world’s fold mountain: systems located along the margins of ~seontinents.? Bring out the association between. the global d distribution of: fold",
+      "marks": "7",
+      "marks_source": "printed_inline",
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        241,
+        243
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 243,
+          "text": "~seontinents. ? Bring out the association between. the global d distribution of: fold : 7",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr"
+      ],
+      "content_hash": "4a4e00bc0a8352c29acff9665c0b4b149e80cf57f9a475cd7f3a2edd7085c7cb",
+      "best_db_match": {
+        "score": 0.3883,
+        "measure": "sequence",
+        "id": "a8e41d09-6c8a-4dc0-bd15-f7f2b34daed8",
+        "text": "What are the major oceanic currents of the Atlantic Ocean? Discuss their influence on the regional climates of coastal areas."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "' Tropical cyclones are largely confined to South China Sea, Bay ‘of Bengal « aad. Gulf of Mexico. Why?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        252,
+        253
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 252,
+          "text": "' Tropical cyclones are largely confined to South China Sea, Bay ‘of Bengal « aad .",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "4fe7f6a2008be33b3dfece853d4c6604ce7dd2bb6058e3fe041052b150c178cc",
+      "best_db_match": {
+        "score": 0.3733,
+        "measure": "sequence",
+        "id": "920e8b2b-3855-401a-b3a2-1e4f8f6527ed",
+        "text": "The coastal ecosystems of India are increasingly exposed to oceanic pollution and oil spills. Discuss the long-term ecological risks."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Bring out the ‘relationship between the: shrinking. Himalayan glaciers and the oS",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        259,
+        259
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 259,
+          "text": "| : Bring out the ‘relationship between the: shrinking. Himalayan glaciers and the oS",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "3777f87f37cabef2b2021b8e7a21303ff143e7dbdbb86e61ea9cc483811b5233",
+      "best_db_match": {
+        "score": 0.427,
+        "measure": "sequence",
+        "id": "14985438-91ca-4c2c-860e-4d13f40c7fbb",
+        "text": "Discuss the consequences of the two World Wars on the geopolitical balance of power across the globe."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "Why ‘did the Green Revolution in. ‘India virtually by-pass ‘the eastern region =",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        265,
+        265
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "71d46cdbb614c110350bd0c2c84f21bc1f007835417fd9f0aae47dcc843e12ea",
+      "best_db_match": {
+        "score": 0.4596,
+        "measure": "sequence",
+        "id": "4c12aa04-d40a-4488-a69e-75b0d017c86b",
+        "text": "How does the concept of 'Secularism' in India differ from the Western model of secularism?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 21,
+      "sub_part": null,
+      "section": null,
+      "text": "Whereas | the British plariters had developed tea gardens all along the Shivaliks ‘ and Lesser Himalayas from Assam to Himachal Pradesh, in effect they did not | succeed beyond the Darjeeling. area. Explain.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        274,
+        276
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 274,
+          "text": "; Whereas | the British plariters had developed tea gardens all along the Shivaliks ‘",
+          "flags": [
+            "unknown_words",
+            "garble_chars",
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 275,
+          "text": "and Lesser Himalayas from Assam to Himachal Pradesh, in effect they did not |",
+          "flags": [
+            "unknown_words",
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "293c82f282958208ecec41173ea6c0a3b1802b2be1fb846d08844e69b54cdb24",
+      "best_db_match": {
+        "score": 0.3475,
+        "measure": "sequence",
+        "id": "07ac8c1f-5876-43b2-9791-bfcdf6c0183f",
+        "text": "What is Citizen's Charter? Discuss its utility and limitations in ensuring time-bound public service delivery."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 22,
+      "sub_part": null,
+      "section": null,
+      "text": "despite fertile soil ¢ and good availability of water?.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        282,
+        282
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "c4dc8a7e62a110e6f3a8e62db546ac0dfe88f52603926e76f3d7df01205bd7b1",
+      "best_db_match": {
+        "score": 0.427,
+        "measure": "sequence",
+        "id": "dde162af-c895-449f-97f5-aa5cf1ff9d2c",
+        "text": "Sting operation: An invasion of privacy?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 23,
+      "sub_part": null,
+      "section": null,
+      "text": ") ‘Account for the change i in the. spatial pattern, of the Iron and Steel: industry in: 7 the world.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        286,
+        287
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "fcf2ecd1458570db820380e892a961eaa3bdbb553d6987f092cf690acc915458",
+      "best_db_match": {
+        "score": 0.4457,
+        "measure": "sequence",
+        "id": "75403514-a52a-4dd3-a0c4-956ba7fd357b",
+        "text": "Analyse the causes and spatial distribution of communal violence in post-independence India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 24,
+      "sub_part": null,
+      "section": null,
+      "text": "Critically evaluate the various resources -of the oceans which can be hamessed ‘to meet the resource crisis in 1 the world. os",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        291,
+        292
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 292,
+          "text": "‘to meet the resource crisis in 1 the world. os",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "83eef86c12151f5bec604d776c9ea8fc88041fdc9f20c69265ac4fbd764573a1",
+      "best_db_match": {
+        "score": 0.4309,
+        "measure": "sequence",
+        "id": "a8e41d09-6c8a-4dc0-bd15-f7f2b34daed8",
+        "text": "What are the major oceanic currents of the Atlantic Ocean? Discuss their influence on the regional climates of coastal areas."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 25,
+      "sub_part": null,
+      "section": null,
+      "text": "How. does India see its place in the economic space of rising natural resource rich Africa 7 2.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS1.txt",
+      "line_span": [
+        296,
+        297
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "97a81b180b5ee0d2d1ecfca2f3d36ed5293f79bf8b1fd5629231d6792403e630",
+      "best_db_match": {
+        "score": 0.4231,
+        "measure": "sequence",
+        "id": "7b2a94b2-4727-4f00-92ad-f5bf515344b3",
+        "text": "In what ways did the naval mutiny of 1946 prove to be the last nail in the coffin of British colonial rule in India?"
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -1,0 +1,510 @@
+{
+  "year": 2013,
+  "paper": "GS4",
+  "paper_code": "UPSC-CSE-MAINS-GS-2013-GS4",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+  "mode": "anchored",
+  "printed_question_count": 14,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "subpart_labels_unread:labels=14,parts=17"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": "A",
+      "text": "What do you understand by ‘values’ and ‘ethics’? In what way is it important to be ethical along with being professionally competent?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        54,
+        55
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "4cba1ebe4c18016df2ca67c70a1f51a59e93720e380d7273b90a925d66f65179",
+      "best_db_match": {
+        "score": 0.4527,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": "A",
+      "text": "What do you understand by the following terms in the context of public service?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        57,
+        58
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 58,
+          "text": "service? (250 words) 3*O=15",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "dc0ce444662645a8111ddfa368e7493e309f56c6847228da0f468d32fd91bca3",
+      "best_db_match": {
+        "score": 0.5052,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": "A",
+      "text": "Indicate two more attributes which you consider important for public service. Justify your answer.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        67,
+        68
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "7f7d9f598652d68142cd107319ce1117fe7757eb69ad6a0c1317a04018b3bf28",
+      "best_db_match": {
+        "score": 0.3895,
+        "measure": "sequence",
+        "id": "f8c4dddb-a91d-4941-aab5-f789df801021",
+        "text": "Examine the role of civil society organizations in the formulation of public policies in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": "A",
+      "text": "Some people feel that values keep changing with time and situation, while others strongly believe that there are certain universal and eternal human values. Give your perception in this regard with due justification.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        72,
+        74
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "90ead57861f5b241673fc2a43d6bb2eeade3c6c18f4965b6c3c7e68cc382c547",
+      "best_db_match": {
+        "score": 0.3625,
+        "measure": "sequence",
+        "id": "0d66eae7-39f5-4457-98a9-3cc906c0ee24",
+        "text": "Evaluate the performance of the Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA) in rural asset creation."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": "A",
+      "text": "What is ‘emotional intelligence’ and how can it be developed in people? How does it help an individual in taking ethical decisions?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        79,
+        80
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "26f528973c6fe2e19096cdcb54e89e758a4b159af4656136833c54c95113b2e2",
+      "best_db_match": {
+        "score": 0.5438,
+        "measure": "sequence",
+        "id": "ac1f3fbb-9987-45f2-8eb6-2df7dce6a02c",
+        "text": "What is emotional intelligence and what are its utilities in civil services administration?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": "A",
+      "text": "What do you understand by the term ‘voice of conscience’? How do you prepare yourself to heed to the voice of conscience?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        84,
+        85
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "51172f64265d309a195ac5216875ee3c46f35062d3738ca7351cd7ad1b8d2f7c",
+      "best_db_match": {
+        "score": 0.4979,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": "A",
+      "text": "What is meant by ‘crisis of conscience’? Narrate one incident in your life when you were faced with such a crisis and how you resolved the same.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        89,
+        90
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "fb0a43a662ea0d85c4b4865ca85a4dedd5b65715c66be35a0d6239d57982e8d6",
+      "best_db_match": {
+        "score": 0.3782,
+        "measure": "sequence",
+        "id": "72eb93a8-d32b-48c9-b68b-cdcf6d4200c4",
+        "text": "Discuss the role of e-governance initiatives in reducing corruption and improving service delivery."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": "A",
+      "text": "“There is enough on this earth for every one’s need but for no one’s greed.” —Mahatma Gandhi",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        103,
+        104
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "35b612cd1c2585a5e185a1b97851a219e8e5182a276213e3e43d9a450f326534",
+      "best_db_match": {
+        "score": 0.4333,
+        "measure": "sequence",
+        "id": "f7c6f259-d3a7-4900-97ba-6b9731d11ef8",
+        "text": "\"The weak can never forgive. Forgiveness is the attribute of the strong.\" - Mahatma Gandhi. Analyze."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": "A",
+      "text": "“Nearly all men can withstand adversity, but if you want to test a man’s character, give him power.”—Abraham Lincoln",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        109,
+        111
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "a12f8148a8ea2d4efd9661ffd97f678ebb9aae0363b72bac831b432f02e5cce7",
+      "best_db_match": {
+        "score": 0.3774,
+        "measure": "sequence",
+        "id": "1c102c05-729c-4df8-8272-2fd01ade4166",
+        "text": "Be the change you want to see in others - Gandhiji."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": "A",
+      "text": "“I count him braver who overcomes his desires than him who overcomes his enemies.”—Aristotle",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        116,
+        118
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 118,
+          "text": "enemies.”—Aristotle (150 words) 10",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "numbering_unverified"
+      ],
+      "content_hash": "67ec0a1b739eae8047b48a82f8cf1c0066c473d980e00bcb8f8e3e1281b90381",
+      "best_db_match": {
+        "score": 0.3497,
+        "measure": "sequence",
+        "id": "4a88fdab-4500-4fd7-9126-44354bd974bc",
+        "text": "What are the major structural issues hindering the performance of public sector banks in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": "A",
+      "text": "a ue feat at WHat 8? (150 we) “The good of an individual is contained in the good of all.” What do you understand by this statement? How can this principle be implemented in public life?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        121,
+        124
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 121,
+          "text": "a ue feat at WHat 8? (150 we)",
+          "flags": [
+            "unknown_words",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "possible_truncation",
+        "numbering_unverified"
+      ],
+      "content_hash": "8519711109fe1e3fef3f30e458b4737cf25784955d93b3ba826c5f22bad81809",
+      "best_db_match": {
+        "score": 0.3732,
+        "measure": "sequence",
+        "id": "e7402ca3-010c-4a97-9fd0-31bba30087e0",
+        "text": "What do you understand by 'ethical human conduct'? Discuss its determinants and consequences in human actions."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": "A",
+      "text": "It is often said that ‘politics’ and ‘ethics’ do not go together. What is your opinion in this regard? Justify your answer with illustrations.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        128,
+        129
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "114362b44ccb26495ac34a5df417428e24c8477cd0f84a0a17c57f2fc42261a9",
+      "best_db_match": {
+        "score": 0.3969,
+        "measure": "sequence",
+        "id": "4a61817d-1b33-475e-8d7f-9f4ca6fade1e",
+        "text": "Discuss the relationship between savings rate, investment pattern, and capital-output ratio in the context of growth acceleration."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": "B",
+      "text": "Also please indicate (without necessarily restricting to the above options) what you would like to advise, giving proper reasons.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        196,
+        197
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "3afe4af38c9c3545e3e30bce3acd331b47746d82e99ec923f266eb91dc1f207d",
+      "best_db_match": {
+        "score": 0.3734,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": "B",
+      "text": "You are working as an Executive Engineer in the construction cell of a Municipal Corporation and are presently in-charge of the construction of a flyover. There are two Junior Engineers under you who have the responsibility of day-to-day inspection of the site and are reporting to you, while you are finally reporting to the Chief Engineer who heads the cell. While the construction is heading towards completion, the Junior Engineers have been regularly reporting that all construction is taking place as per design specifications. However, in one of your surprise inspections, you have noticed some serious deviations and lacunae which, in your opinion, are likely to affect the safety of the flyover. Rectification of these lacunae at this stage would require a substantial amount of demolition and rework which will cause a tangible loss to the contractor and will also delay completion. There is a lot of public pressure on the Corporation to get this construction completed because of heavy traffic congestion in the area. When you brought this matter to the notice of the Chief Engineer, he advised you that in his opinion it is not a very serious lapse and may be ignored. He advised for further expediting the project for completion in time. However, you are convinced that this was a serious matter which might affect public safety and should not be left unaddressed. What will you do in such a situation? Some of the options are given below. Evaluate the merits and demerits of each of these options and finally suggest what course of action you would like to take, giving reasons.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        218,
+        238
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "a9e10a2e03512ff87f302a6bba8e04dcc077307b1a4e01d637a01d437e3d6570",
+      "best_db_match": {
+        "score": 0.2406,
+        "measure": "sequence",
+        "id": "c0db8741-8c72-481c-9160-8cb1c23b3e43",
+        "text": "You are a senior officer working in the environment impact clearing branch of a state government. A major multinational automobile manufacturer seeks clearance to set up a massive electric vehicle and battery manufacturing plant inside an industrial zone. The project represents the single largest foreign direct investment (FDI) in the state's history, promises to revitalize a stagnant local manufacturing sector, and create over 15,000 highly skilled jobs for the youth. However, during the technical evaluation of the project's waste disposal framework, your team discovers that the battery manufacturing process will generate vast quantities of highly hazardous chemical waste containing toxic lithium and cobalt compounds. The company's proposed treatment model complies with the letter of the current state environmental laws, which are outdated. However, your team points out that according to the latest international environmental research, the company's treatment model is deeply flawed and will inevitably lead to long-term heavy metal leaching into the groundwater table, destroying the drinking water sources of the entire industrial belt within ten years. The industrial department bureaucrats are putting immense pressure on you to clear the file quickly, arguing that strict enforcement of international standards outside the written domestic law will scare away the investor and destroy the state's economic prospects. (a) Discuss the ethical dimensions of enforcing unwritten higher standards versus adhering strictly to written, outdated domestic regulations. (b) What course of action will you choose to balance industrial growth with long-term ecological security?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": "B",
+      "text": "Evaluate each of these options and choose the option which you would adopt, giving reasons.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        346,
+        347
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "ee38d6731d1f913b3ca74bb47f8900a389e4e2dd171f70307ab49710019d7ed7",
+      "best_db_match": {
+        "score": 0.4444,
+        "measure": "sequence",
+        "id": "5cb9daf8-900a-4f2f-ae1e-718532e3c973",
+        "text": "Evaluate the role of the Indian National Army (INA) in the freedom struggle of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": "B",
+      "text": "Evaluate each of these options and choose the option which you would adopt, giving reasons.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        376,
+        377
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "ee38d6731d1f913b3ca74bb47f8900a389e4e2dd171f70307ab49710019d7ed7",
+      "best_db_match": {
+        "score": 0.4444,
+        "measure": "sequence",
+        "id": "5cb9daf8-900a-4f2f-ae1e-718532e3c973",
+        "text": "Evaluate the role of the Indian National Army (INA) in the freedom struggle of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": "B",
+      "text": "Evaluate each of these options and choose the option you would adopt, giving reasons.",
+      "marks": "20",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2013_GS4.txt",
+      "line_span": [
+        413,
+        414
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "c7c3b8f34a256ced24490f5a23234bce5679c36159b219e79471fd102179447c",
+      "best_db_match": {
+        "score": 0.4606,
+        "measure": "sequence",
+        "id": "5cb9daf8-900a-4f2f-ae1e-718532e3c973",
+        "text": "Evaluate the role of the Indian National Army (INA) in the freedom struggle of India."
+      },
+      "route": "insert"
+    }
+  ]
+}
