@@ -3567,10 +3567,13 @@ def update_essay_theme(
 # ─── Essay PYQ theme tags ──────────────────────────────────────────────
 
 _ESSAY_TAG_FIELDS = {
-    "question_id", "theme_id", "secondary_theme_id", "essay_type",
+    "question_id", "theme_id", "secondary_theme_id", "format", "essay_type",
     "quote_source_type", "tagging_source", "confidence_score", "metadata",
 }
 _ESSAY_TAG_CREATE_FIELDS = _ESSAY_TAG_FIELDS | {"reviewer_status"}
+# Migration 304. `format` is NOT NULL with no DB default on purpose, so it is
+# required here rather than guessed — see that migration's header note A.
+_ESSAY_FORMATS = ("essay", "precis", "comprehension")
 _ESSAY_TYPES = ("quote_abstract", "issue_concrete")
 _ESSAY_QUOTE_SOURCE_TYPES = (
     "indian_thinker", "western_philosopher", "proverb", "literary",
@@ -3617,8 +3620,21 @@ def create_essay_pyq_tag(
     row = {k: v for k, v in body.payload.items() if k in _ESSAY_TAG_FIELDS}
     if not row.get("question_id") or not row.get("theme_id"):
         raise HTTPException(status_code=422, detail="question_id and theme_id are required")
+    if not row.get("format"):
+        raise HTTPException(status_code=422, detail=f"format is required and must be one of {_ESSAY_FORMATS}")
+    if row["format"] not in _ESSAY_FORMATS:
+        raise HTTPException(status_code=422, detail=f"format must be one of {_ESSAY_FORMATS}")
     if row.get("essay_type") and row["essay_type"] not in _ESSAY_TYPES:
         raise HTTPException(status_code=422, detail=f"essay_type must be one of {_ESSAY_TYPES}")
+    # Mirrors essay_pyq_tags_essay_type_format_check (migration 304) so the
+    # operator gets a named 422 instead of a raw constraint violation as a 409.
+    if row["format"] == "essay" and not row.get("essay_type"):
+        raise HTTPException(status_code=422, detail="essay_type is required when format is 'essay'")
+    if row["format"] != "essay" and row.get("essay_type"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"essay_type must be omitted when format is '{row['format']}'",
+        )
     if row.get("quote_source_type") and row["quote_source_type"] not in _ESSAY_QUOTE_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"quote_source_type must be one of {_ESSAY_QUOTE_SOURCE_TYPES}")
     if row.get("tagging_source") and row["tagging_source"] not in _ESSAY_TAGGING_SOURCES:
@@ -4685,7 +4701,10 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
     "essay-pyq-tags": {
         "table": "essay_pyq_tags",
         "allowed": _ESSAY_TAG_FIELDS,
-        "required": ["question_id", "theme_id"],
+        # `format` is required for the same reason it has no DB default
+        # (migration 304 note A): a bulk row that omits it would otherwise hit a
+        # NOT NULL violation mid-batch rather than be rejected up front.
+        "required": ["question_id", "theme_id", "format"],
         "forced": {"reviewer_status": "pending"},
         "fks": {
             "question_id": "pyq_questions",
@@ -4693,6 +4712,7 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
             "secondary_theme_id": "essay_themes",
         },
         "enums": {
+            "format": _ESSAY_FORMATS,
             "essay_type": _ESSAY_TYPES,
             "quote_source_type": _ESSAY_QUOTE_SOURCE_TYPES,
             "tagging_source": _ESSAY_TAGGING_SOURCES,
