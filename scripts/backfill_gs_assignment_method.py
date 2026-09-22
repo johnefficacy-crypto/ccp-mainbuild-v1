@@ -14,6 +14,12 @@ that stamp. It never moves a question, never touches `pyq_paper_id`, and never
 creates or retires a paper — the split already happened and was verified
 correct; this is the label that should have gone on with it.
 
+SCOPED TO THE GS SPLIT'S OWN PAPERS (`UPSC-CSE-MAINS-GS-%`). The optional split
+stamps the same `split_from_bucket_id` on the same exam and phase, so without
+the paper-code filter this also scanned 4,040 optional questions and reported
+every one of them as having no tag — they have optional-subject tags, which is
+a different taxonomy and none of this script's business.
+
 THE METHOD IS RECOMPUTED FROM THE SAME INPUTS THE SPLIT USED, in the same
 order of precedence:
 
@@ -56,9 +62,20 @@ sys.modules["split_gs_buckets"] = sgb
 _SPEC.loader.exec_module(sgb)
 
 
-#: Every question sitting on a paper the split produced. `split_from_bucket_id`
-#: is the mark the split leaves, so this reaches exactly the rows it moved and
-#: nothing else — no unsplit bucket, no optional paper, no hand-made row.
+#: The GS split's own paper codes: `UPSC-CSE-MAINS-GS-<year>-GS<n>` and
+#: `-ESSAY`. The optional split writes `UPSC-CSE-MAINS-OPT-...`, so this prefix
+#: is what separates the two — and a test pins it against
+#: `split_gs_buckets.paper_code_for`, which is where the codes are minted.
+GS_PAPER_CODE_PREFIX = "UPSC-CSE-MAINS-GS-"
+
+#: Every question sitting on a paper the GS split produced.
+#:
+#: `split_from_bucket_id` ALONE IS NOT THE GS MARK. `split_optional_buckets.py`
+#: stamps the same key, and both splits share this exam and phase, so the
+#: filter reached all 4,040 optional questions as well. They carry
+#: `optional_subject` tags rather than GS topic tags, so every one of them came
+#: back as "no tag, no essay tag and no override" — 4,040 rows reported as
+#: unexplained, which is a statement about the wrong corpus.
 _MOVED_SQL = """
 select q.id, q.pyq_paper_id, q.question_number, q.metadata,
        p.year, p.metadata as paper_metadata
@@ -67,6 +84,7 @@ select q.id, q.pyq_paper_id, q.question_number, q.metadata,
  where p.exam_id = $1::uuid
    and p.exam_phase_id = $2::uuid
    and p.metadata->>'split_from_bucket_id' is not null
+   and p.paper_code like $3
  order by p.year, q.question_number, q.id
 """
 
@@ -189,7 +207,12 @@ async def run(*, live: bool, overrides_path: Path, tag_only_years: frozenset[int
 
     conn = await asyncpg.connect(dsn)
     try:
-        rows = [dict(r) for r in await conn.fetch(_MOVED_SQL, sgb.EXAM_ID, sgb.EXAM_PHASE_ID)]
+        rows = [
+            dict(r) for r in await conn.fetch(
+                _MOVED_SQL, sgb.EXAM_ID, sgb.EXAM_PHASE_ID,
+                f"{GS_PAPER_CODE_PREFIX}%",
+            )
+        ]
         if not rows:
             print("No split GS questions found — nothing to stamp.")
             return 0
