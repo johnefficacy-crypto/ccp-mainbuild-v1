@@ -1,5 +1,5 @@
 -- INV-ROADMAP-01 — read-only operator queries for the aspirant-roadmap investigation.
--- HEAD: f1a37b6916ebb901e2085a4f48adfdc384014dd0   Date: 2026-09-21 (re-verified)
+-- HEAD: f43e6d1383bf5a2ab523f060d7134b7ddc0c4d48   Date: 2026-09-22 (re-verified twice)
 --
 -- Every statement is SELECT-only and schema-qualified. Run in Supabase Studio.
 -- Replace :exam_slug / :user_id before running. Nothing here mutates data.

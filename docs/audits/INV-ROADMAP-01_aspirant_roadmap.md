@@ -1,17 +1,21 @@
 # INV-ROADMAP-01 — Aspirant preparation roadmap / journey: what exists, what is missing
 
-- **HEAD:** `f1a37b6916ebb901e2085a4f48adfdc384014dd0` (`main`, clean tree)
-- **Date:** 2026-09-19, **re-verified against a new HEAD 2026-09-21**
+- **HEAD:** `f43e6d1383bf5a2ab523f060d7134b7ddc0c4d48` (`main`, clean tree)
+- **Date:** 2026-09-19, **re-verified 2026-09-21 and again 2026-09-22**
 
 > **Revision note.** The first pass ran against `5f90e28`, which was 167 commits
 > behind `origin/main` — a stale clone, not a stale branch. Every `file:line` below
-> has been re-read at `f1a37b69`. Four capability rows and five conflicts changed
+> has been re-read at `f1a37b69`, then again at `f43e6d13`. Four capability rows and five conflicts changed
 > materially and are rewritten, not patched: **C1, C4, C6, C10** and **K10**
 > (resolved), plus the new planner board, elective scoping and predictability axis.
 > Rows that re-verified unchanged keep their original wording with corrected line
 > numbers. What landed in between: `planner_board.py` (760 lines), `descriptive.py`
 > (954), `planner.py` +595, `api/study_os.py` +355, the `planner-board/` frontend,
-> and migrations 287–293.
+> and migrations 287–293. The second re-check (`f1a37b69` → `f43e6d13`) touched exactly
+> one cited file, `planner.py`, via `0d5314ec` ("one shared paginated read; delete nine
+> short-page copies"): line numbers shifted by up to 3 and are corrected below. No finding
+> changed — K9 is still unscoped with `.limit(5000)` and K10 is still resolved, both
+> re-read at the new HEAD.
 - **Mode:** read-only investigation. No code, schema, API or UI changes. No live DB, no network.
 - **Question:** can an aspirant see the roadmap/journey of their preparation — per-subject
   completion status, what is pending, what is completed, which topics need revision, and how
@@ -49,8 +53,8 @@ wired to no screen.
 | **C5** | "Needs revision" — decay, last-studied, SRS interval, due date, error trigger | **partial** | `033:50-51`; `mastery.py:36,72,224`; `mastery_engine/mastery_delta.py:36-37`; `093_revision_calendar.sql:7-27`; `api/study_os.py:1326` | `user_topic_mastery.next_revision_at`, `revision_items`, `user_topic_error_patterns` | partly | unchanged: `next_revision_at` reaches no screen; `revision_due` is inverted |
 | **C6** | Rollup microtopic → macro → subject → exam | **partial** *(rewritten)* | `subjects.py:259-260`; `subjects.py:455-466`; `plan_timeline.py:506-528`; `subjects.py:404`; **new:** `syllabusTree.js:6-11`, `planner.py:334-343` (`source_basis`, `predictability_band`), `288_predictability_axis.sql:33-38` | `exam_topic_coverage` + `user_topic_mastery` | partly | a macro tier now exists, but only in the palette tree and only as *structure*: it carries counts, not per-user state. Mastery rollup is still an equal-weighted subject average. `level='concept'` still excluded (`subjects.py:404`) |
 | **C7** | Journey / history a timeline could be rebuilt from | **partial** | `144:16-27`; `205:499-546`; `033:88-113`; `100_study_os_report_cards.sql:1-29`; `plan_timeline.py:398-451` | audit + evidence + adaptation-event tables | partly | unchanged: both history endpoints still broken (K1, K2); only the plan's planned-vs-actual series is surfaced |
-| **C8** | Exam scoping across multiple target exams | **partial, leaky** *(nuance added)* | `planner.py:761-786`; `planner.py:788-791`; `shared_core.py:11-17,204`; `065_study_os_behavior_foundation.sql:61-72`; **new:** `287_exam_electives.sql:26-53,78`, `planner.py:655-704`, `subjects.py:489-520` | `user_topic_mastery`, `user_exam_goals`, `user_exam_electives` | partly | **elective** scoping (which optional paper, within one exam) now exists and is enforced on every learner read. **Cross-exam** scoping is unchanged: the planner mastery read still has no exam filter (K9) |
-| **C9** | Hours / pace data for "on track / behind" | **partial** | `002_core_runtime_schema.sql:25`; `061_user_study_plan_preferences.sql:8-30`; `planner.py:70`; `mission_control.py:1053`; `plan_timeline.py:326,515-518` | `study_tasks.planned_minutes`, `study_sessions.duration_mins`, `study_plans.weekly_hours_goal` | y | unchanged: no per-topic or per-subject time estimate (H6); pace is task throughput, not syllabus burn-down |
+| **C8** | Exam scoping across multiple target exams | **partial, leaky** *(nuance added)* | `planner.py:760-783`; `planner.py:788-791`; `shared_core.py:11-17,204`; `065_study_os_behavior_foundation.sql:61-72`; **new:** `287_exam_electives.sql:26-53,78`, `planner.py:652-701`, `subjects.py:489-520` | `user_topic_mastery`, `user_exam_goals`, `user_exam_electives` | partly | **elective** scoping (which optional paper, within one exam) now exists and is enforced on every learner read. **Cross-exam** scoping is unchanged: the planner mastery read still has no exam filter (K9) |
+| **C9** | Hours / pace data for "on track / behind" | **partial** | `002_core_runtime_schema.sql:25`; `061_user_study_plan_preferences.sql:8-30`; `planner.py:71`; `mission_control.py:1053`; `plan_timeline.py:326,515-518` | `study_tasks.planned_minutes`, `study_sessions.duration_mins`, `study_plans.weekly_hours_goal` | y | unchanged: no per-topic or per-subject time estimate (H6); pace is task throughput, not syllabus burn-down |
 | **C10** | Host surface for a roadmap view | **exists** *(rewritten)* | `StudyShell.jsx:6-9`; `appRoutes.jsx:100`; `StudyProgressHub.jsx:1-22`; `StudyPlan.jsx:667-694` | — | y | two hosts now: the Progress tab (still empty of coverage) and the Plan page's tab strip, which already carries "Arrange" and "Plan changes" and has absorbed two drill-ins without a new sidebar entry |
 
 ### 2.1 C1 — surfaces, endpoints, and traced fields
@@ -89,7 +93,7 @@ the schema alone, and neither is `evidence_summary.mock_score_block.trust_label`
 
 | table | key columns | writer | reader |
 |---|---|---|---|
-| `user_topic_mastery` (`033:36`) | `mastery_score numeric(5,2) 0..100`, `accuracy/speed/retention_score`, `confidence_score`, `last_practiced_at`, `next_revision_at`, `evidence_count` | `mastery.py:223-224` (mock breakdowns); `mastery_writer.py` gated by `FF_MOCK_MASTERY_WRITES` (`:521`); `writing_practice/mastery_outbox_worker.py` via `writing:mastery_outbox`; `calibration.py` (self-report) | `planner.py:761`, `subjects.py`, `report_cards.py`, `shared_core.py:204`, `api/study_os.py:1240+` |
+| `user_topic_mastery` (`033:36`) | `mastery_score numeric(5,2) 0..100`, `accuracy/speed/retention_score`, `confidence_score`, `last_practiced_at`, `next_revision_at`, `evidence_count` | `mastery.py:223-224` (mock breakdowns); `mastery_writer.py` gated by `FF_MOCK_MASTERY_WRITES` (`:521`); `writing_practice/mastery_outbox_worker.py` via `writing:mastery_outbox`; `calibration.py` (self-report) | `planner.py:760`, `subjects.py`, `report_cards.py`, `shared_core.py:204`, `api/study_os.py:1240+` |
 | `user_topic_error_patterns` (`033:67`) | `error_type` (9-value CHECK), `frequency_count`, `last_seen_at` | `mastery.py` | `planner.py:788-791`, `subjects.py:240` |
 | `user_topic_mastery_audit` (`144:16`) | `before_mastery_db`, `after_mastery_db`, `delta_applied_db`, `reason`, `at`; unique `(user_id, topic_id, attempt_id)` | `145_mock_attempt_jobs.sql:106` | `api/study_os.py:1185` (**broken, see K1**); also read correctly for plan-impact events at `api/study_os.py:1128` |
 | `user_topic_mastery_evidence` (`205:499`) | append-only; `evidence_tier` ∈ recognition/correction/production/retention, `observed_at`, `evidence_op`, `supersedes_evidence_key` with a one-successor unique index (`205:547`) | EWP evaluation outbox | none on any aspirant surface |
@@ -102,7 +106,7 @@ the schema alone, and neither is `evidence_summary.mock_score_block.trust_label`
 | `user_study_plan_preferences` (`061:8`) | `focus`, `max_tasks_per_day`, `preferred_task_size`, `pinned_topic_ids`, `muted_topic_ids`, `auto_regenerate` | `/plan/preferences` | `planner.py` |
 | `user_exam_goals` (`065:61`) | `priority_rank`, `weekly_weight_pct`, `status`, `target_date` | goals API | multi-exam weighting |
 
-| `user_exam_electives` (`287:78`) *(new)* | the optional paper this user chose; `exam_sections.selection_kind` ∈ compulsory\|elective, `elective_group` (`287:26-53`) | elective-choice API | `planner.load_scoped_coverage` (`planner.py:655-704`) — every learner-facing coverage read |
+| `user_exam_electives` (`287:78`) *(new)* | the optional paper this user chose; `exam_sections.selection_kind` ∈ compulsory\|elective, `elective_group` (`287:26-53`) | elective-choice API | `planner.load_scoped_coverage` (`planner.py:652-701`) — every learner-facing coverage read |
 | `descriptive_attempts` (`293:18`) *(new)* | `status` ∈ draft\|submitted, `word_count`, `time_spent_seconds`, `self_total` 0–12 | `/app/study/answer-writing` | the answer-writing surface only — **writes no `user_topic_mastery`** |
 
 Not defined in any migration but read by the API: **`subject_mastery_snapshots`** — re-checked at
@@ -152,7 +156,7 @@ Two further operator-only facts are not SQL: the deployed value of `FF_MOCK_MAST
 | **H7** | No table named `user_syllabus_progress` | **confirmed** | Zero matches across `*.sql`, `*.py`, `*.jsx`, `*.js` |
 | **H8** | `/app/study/progress` exists; locked IA rule bars a new top-level surface unless ≥2 are removed | **confirmed** | `routes/appRoutes.jsx:100` → `StudyProgressHub`; tab registered `StudyShell.jsx:9`. Rule at `AGENTS.md` "No-new-surface rule (locked)" and Patterns §18 |
 | **H9** | UPSC Mains GS = 456 verified topics (30 macro + 426 microtopic) under syllabus_document `2bfbc4bb-…`; plus 18 orphaned pre-split topic rows not in the reviewed set | **partially true — and the unit is wrong** | The 456 / 30 / 426 split is documented, but it counts **`syllabus_topic_mentions`, not `topics`**: `docs/runbooks/EI-DATA-02_upsc_mains_syllabus_mention_review.md:4` ("456 `syllabus_topic_mentions`") and `:23-24` (30 `explicit` + 426 `derived`). The document id matches (`:44`); re-verified unchanged at this HEAD. The 18-orphan claim appears nowhere in the repo — **pending operator SQL** (Q2, Q3) |
-| **H10** | Aspirant reads verified-only and scoped by `subject_id`, not `topic_id` alone | **partially true** | Coverage side holds: `planner.py:314-355` takes `reviewer_status='locked'` only, and `load_scoped_coverage` (`planner.py:655-704`) now additionally applies elective scope; `subjects.py:419` requires the coverage row's `subject_id` to match. But the **structure** read still has no review gate — `subjects.py:399-410` filters `topics` on `subject_id` + `level` + `is_active` only, with no `reviewer_status`; and `planner.py:761-765` / `:788-791` still read `user_topic_mastery` and `user_topic_error_patterns` with **no exam scoping at all** |
+| **H10** | Aspirant reads verified-only and scoped by `subject_id`, not `topic_id` alone | **partially true** | Coverage side holds: `planner.py:311-354` takes `reviewer_status='locked'` only, and `load_scoped_coverage` (`planner.py:652-701`) now additionally applies elective scope; `subjects.py:419` requires the coverage row's `subject_id` to match. But the **structure** read still has no review gate — `subjects.py:399-410` filters `topics` on `subject_id` + `level` + `is_active` only, with no `reviewer_status`; and `planner.py:760-764` / `:788-791` still read `user_topic_mastery` and `user_topic_error_patterns` with **no exam scoping at all** |
 
 ---
 
@@ -215,7 +219,7 @@ Non-high-yield syllabus is absent from both numerator and denominator. The read 
 scoped (`report_cards.py:310`), which narrows the base further without changing what it means.
 
 **K9 — cross-exam mastery leakage in the planner read.** *(still live, unchanged)*
-`planner.py:761-765` reads `user_topic_mastery` filtered on `user_id` only, with `.limit(5000)`.
+`planner.py:760-764` reads `user_topic_mastery` filtered on `user_id` only, with `.limit(5000)`.
 The preference loop at `:777-786` skips a non-exam row **only when an exam-scoped row for that
 topic was already seen**, so for any topic without a row for the current exam a row belonging to a
 *different* exam is used. `error_topics` (`:788-791`) has no exam filter at all. `shared_core.py:11-17`
@@ -225,8 +229,8 @@ was hardened thoroughly while this cross-exam read was left as it was.
 
 **K10 — RESOLVED.** The first pass found `.limit(2000)` and no phase filter on the locked-coverage
 read. Both are fixed at this HEAD: the read is now fully paginated with an exact count
-(`planner.py:327-354`, `_paginate_all`), and phase duplicates are collapsed by
-`_canonical_coverage_rows(coverage, phase_rows)` under COV-PHASE-01 (`planner.py:684-704`). The
+(`planner.py:324-354`, `_paginate_all`), and phase duplicates are collapsed by
+`_canonical_coverage_rows(coverage, phase_rows)` under COV-PHASE-01 (`planner.py:681-701`). The
 mastery and error reads still carry `.limit(5000)` (K9).
 
 **K11 — session-to-subject matching is by display name.** *(still live)* `plan_timeline.py:493-498`
@@ -255,7 +259,7 @@ with no `reviewer_status` filter, and `:455-466` still keeps parent-less rows at
 no topic is dropped". Q3 settles whether any orphans exist.
 
 **K16 — elective scoping is thorough within an exam and absent across exams.** *(new)*
-`load_scoped_coverage` (`planner.py:655-704`) filters coverage by the user's chosen optional via
+`load_scoped_coverage` (`planner.py:652-701`) filters coverage by the user's chosen optional via
 `exam_sections.selection_kind` (`287_exam_electives.sql:26-53`) and `user_exam_electives`
 (`287:78`), and every learner read was migrated onto it: `subjects.py:205-216`, `:392`, `:414`,
 `report_cards.py:310`, `plan_timeline.py:717-719`, `planner_board.py:365`. Launch gates were made
@@ -316,7 +320,7 @@ No recommendation is made. Decisions 1–8 survive the re-verification with corr
    "Plan changes" without a new sidebar entry. Both satisfy the locked no-new-surface rule; they
    put the roadmap next to different things.
 10. **Is the `exam_phase_id` question closed?** *(rewritten — K10 is resolved.)* Phase duplicates
-    are now collapsed by `_canonical_coverage_rows` (`planner.py:684-704`) and the read is
+    are now collapsed by `_canonical_coverage_rows` (`planner.py:681-701`) and the read is
     paginated (`:327-354`). What remains open is whether an aspirant should see Prelims and Mains
     progress *separately*, which no surface offers.
 11. **Should the palette distinguish "never studied" from "studied, not on this week's board"?**
