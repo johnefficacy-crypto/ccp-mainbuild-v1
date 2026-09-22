@@ -502,7 +502,7 @@ def list_essay_pyq_tags(
     query = (
         supabase.table("essay_pyq_tags")
         .select(
-            "id, question_id, theme_id, secondary_theme_id, essay_type, "
+            "id, question_id, theme_id, secondary_theme_id, format, essay_type, "
             "quote_source_type, created_at"
         )
         .eq("reviewer_status", "verified")
@@ -555,6 +555,9 @@ def list_essay_pyq_tags(
                 "question_id": tag.get("question_id"),
                 "theme_id": tag.get("theme_id"),
                 "secondary_theme_id": tag.get("secondary_theme_id"),
+                # Migration 304: essay | precis | comprehension. Nullable in the
+                # payload only because a pre-304 stub row may not carry it.
+                "format": tag.get("format"),
                 "essay_type": tag.get("essay_type"),
                 "quote_source_type": tag.get("quote_source_type"),
                 "question_text": question.get("question_text"),
