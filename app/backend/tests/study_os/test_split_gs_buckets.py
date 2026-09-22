@@ -247,15 +247,38 @@ def test_essay_after_gs4_is_in_order_and_essay_before_it_is_not():
     assert [r["question_number"] for r in sgb.order_violations(bad)] == [2]
 
 
-def test_an_out_of_order_bucket_aborts_even_when_every_signal_agrees():
-    """Tag and OCR can both be satisfied and the sitting still be impossible:
-    the printed order is the third signal, and it overrules agreement."""
+def test_an_out_of_order_bucket_splits_and_records_a_warning():
+    """CORRECTED RULE. The check assumed a bucket's `question_number` runs in
+    printed paper order. On the real corpus it does not — the dry run rejected
+    up to 51 rows in a bucket whose tags the OCR agreed with, against 29
+    disagreements in the whole corpus. An assumption that fires that often
+    against evidence that agrees is the assumption that is wrong.
+
+    So the drop is still computed and still written to the review sheet, and it
+    no longer stops the bucket."""
     questions = [_q(1, 1), _q(3, 2), _q(2, 3), _q(4, 4)]
     tags = {str(q["id"]): p for q, p in zip(questions, (1, 3, 2, 4))}
 
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                                    corpus=_corpus())
+
+    assert [p["paper"] for p in planned] == [1, 2, 3, 4]
+    flagged = [r for r in rows if r["reason"] == "order_warning"]
+    assert [r["question_number"] for r in flagged] == [3]
+
+
+def test_an_order_warning_does_not_stop_a_bucket_but_a_disagreement_does():
+    """The two are separated on purpose: one is an assumption about printing
+    order, the other is evidence about content."""
+    questions = [_q(1, 1), _q(3, 2), _q(2, 3)]
+    tags = {str(q["id"]): p for q, p in zip(questions, (1, 3, 2))}
+    sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+
+    tags[str(questions[0]["id"])] = 3  # now GS1's text is tagged GS3
     with pytest.raises(sgb.BucketAbort) as exc:
         sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
-    assert "1 out-of-order" in str(exc.value)
+    assert "disagreement" in str(exc.value)
+    assert "not blocking" in str(exc.value)
 
 
 # ── 5. UUID serialisation on the live path ─────────────────────────────────
@@ -393,6 +416,10 @@ class FakeDb:
                 (q for q in self.questions if q["pyq_paper_id"] == args[0]),
                 key=lambda q: q["question_number"],
             )
+        if "essay_pyq_tags" in sql:
+            return [{"question_id": str(q["id"])}
+                    for q in self.questions
+                    if q["pyq_paper_id"] == args[0] and q.get("essay")]
         if "pyq_question_topic_tags" in sql:
             return [
                 {"question_id": str(q["id"]), "subject_slug": f"upsc-cse-mains-gs{q['gs']}"}
@@ -560,13 +587,249 @@ def test_review_csv_carries_the_evidence_for_every_row(tmp_path, monkeypatch):
     import csv
     got = list(csv.DictReader(out.read_text(encoding="utf-8-sig").splitlines()))
     assert len(got) == 4
-    assert got[0]["id"] == str(questions[0]["id"])  # UUID rendered, not repr'd
-    assert got[0]["tag_paper"] == "1" and got[0]["assigned"] == "1"
+    assert got[0]["question_id"] == str(questions[0]["id"])  # UUID, not repr'd
+    assert got[0]["tag_paper"] == "1"
     assert float(got[0]["ocr_score"]) >= sgb.OCR_MATCH_CUT
-    assert got[0]["excerpt"] == TEXT[1][:60]
+    assert got[0]["excerpt"] == TEXT[1][:sgb.REVIEW_EXCERPT_CHARS]
+    # A clean row carries an empty reason rather than being left out: the sheet
+    # is the whole bucket, so a reviewer can see what was NOT flagged too.
+    assert got[0]["reason"] == ""
+    assert list(got[0]) == ["year", "question_id", "question_number", "tag_paper",
+                            "ocr_paper", "ocr_score", "reason", "excerpt"]
 
 
 def test_paper_code_is_deterministic_and_year_scoped():
     assert sgb.paper_code_for(2019, 1) == "UPSC-CSE-MAINS-GS-2019-GS1"
     assert sgb.paper_code_for(2013, 4) == "UPSC-CSE-MAINS-GS-2013-GS4"
     assert sgb.paper_code_for(2019, sgb.ESSAY) == "UPSC-CSE-MAINS-GS-2019-ESSAY"
+
+
+# ── 9. Essay comes from its own tag table ──────────────────────────────────
+#
+# THE BUG THE DRY RUN FOUND. 13 of 13 buckets aborted, ~8 unassigned per year,
+# 100 in total. Every one was an Essay question: they carry no GS topic tag —
+# they are not GS topics — so the first pass read them as untagged, and essay
+# OCR exists for 2026 alone. Their tag was never missing. It was in
+# `essay_pyq_tags`, which IS the statement "this is an Essay question".
+
+def test_an_essay_tagged_question_is_essay_without_any_ocr():
+    """Twelve of the thirteen years have no essay page at all."""
+    row = sgb.assign_question(
+        {"id": _qid("e"), "question_number": 9, "question_text": ESSAY_TEXT},
+        tag_paper=None,
+        ocr_papers={p: t for (y, p), t in _corpus().items()},  # GS pages only
+        has_essay_tag=True,
+    )
+    assert row["assigned"] == sgb.ESSAY
+    assert row["method"] == "essay_tag"
+    assert row["disagrees"] is False
+
+
+def test_the_essay_tag_resolves_the_unassigned_rows_that_blocked_every_bucket():
+    questions, tags = _sitting()
+    essays = [_q(ESSAY_TEXT, n) for n in (5, 6, 7, 8)]
+    questions += essays
+    essay_ids = {str(q["id"]) for q in essays}
+
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus=_corpus(),
+        essay_tagged=essay_ids,
+    )
+
+    assert [r for r in rows if r["assigned"] is None] == []
+    essay_paper = next(p for p in planned if p["paper"] == sgb.ESSAY)
+    assert essay_paper["question_count"] == 4
+    assert essay_paper["metadata"]["assignment_method"] == ["essay_tag"]
+
+
+def test_a_gs_tag_still_beats_an_essay_tag():
+    """A question carrying both is a GS question someone also filed under an
+    essay theme; the GS tag is the one that names a paper."""
+    row = sgb.assign_question(
+        _q(2, 1), tag_paper=2,
+        ocr_papers={p: t for (y, p), t in _corpus().items()},
+        has_essay_tag=True,
+    )
+    assert row["assigned"] == 2 and row["method"] == "tag"
+
+
+def test_the_essay_page_verifies_the_essay_tag_where_one_exists():
+    """2026 is the one year with an essay page. A GS page matching this text
+    while the essay page does not is the same disagreement the tag path
+    refuses on."""
+    corpus = _corpus(essay=True)
+    row = sgb.assign_question(
+        _q(3, 1),  # GS3's text...
+        tag_paper=None,
+        ocr_papers={p: t for (y, p), t in corpus.items()},
+        has_essay_tag=True,  # ...claimed as Essay
+    )
+    assert row["disagrees"] is True
+
+
+def test_no_essay_page_means_no_veto_on_the_essay_tag():
+    """An absent page is not evidence. Without this, the twelve years with no
+    essay OCR would abort on the very rows the tag just resolved."""
+    row = sgb.assign_question(
+        _q(3, 1), tag_paper=None,
+        ocr_papers={p: t for (y, p), t in _corpus().items()},  # no essay page
+        has_essay_tag=True,
+    )
+    assert row["assigned"] == sgb.ESSAY and row["disagrees"] is False
+
+
+def test_an_untagged_question_with_no_essay_tag_is_still_unassigned():
+    """The rule widened by exactly one table, not into a catch-all."""
+    questions, tags = _sitting()
+    questions.append(_q("A question nobody tagged anywhere.", 5))
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    assert "1 unassigned" in str(exc.value)
+
+
+# ── 10. human overrides ────────────────────────────────────────────────────
+
+def _overrides_csv(tmp_path, rows):
+    path = tmp_path / "gs_split_overrides.csv"
+    lines = ["question_id,paper,reason"]
+    lines += [f"{qid},{paper},{reason}" for qid, paper, reason in rows]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def test_an_override_beats_the_tag_and_the_ocr(tmp_path):
+    row = sgb.assign_question(
+        _q(1, 1), tag_paper=1,
+        ocr_papers={p: t for (y, p), t in _corpus().items()},
+        override=4,
+    )
+    assert row["assigned"] == 4
+    assert row["method"] == "override"
+    assert row["disagrees"] is False
+
+
+def test_an_override_resolves_a_row_the_signals_could_not(tmp_path):
+    questions, tags = _sitting()
+    questions.append(_q("A question nobody tagged anywhere.", 5))
+    overrides = {str(questions[-1]["id"]): sgb.ESSAY}
+
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus=_corpus(),
+        overrides=overrides,
+    )
+    assert [r for r in rows if r["assigned"] is None] == []
+    essay = next(p for p in planned if p["paper"] == sgb.ESSAY)
+    assert essay["metadata"]["assignment_method"] == ["override"]
+
+
+def test_an_override_is_named_in_the_papers_metadata(tmp_path):
+    """The row says how it was decided rather than implying the signals
+    agreed."""
+    questions, tags = _sitting()
+    planned, _ = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus=_corpus(),
+        overrides={str(questions[0]["id"]): 1},
+    )
+    gs1 = next(p for p in planned if p["paper"] == 1)
+    assert "override" in gs1["metadata"]["assignment_method"]
+
+
+def test_the_override_sheet_reads_every_paper_name(tmp_path):
+    ids = [str(_qid(str(i))) for i in range(5)]
+    path = _overrides_csv(tmp_path, [
+        (ids[0], "GS1", "read the paper"),
+        (ids[1], "GS4", "ethics case study"),
+        (ids[2], "ESSAY", "it is an essay"),
+        (ids[3], "gs2", "lowercase is fine"),
+        (ids[4], " ESSAY ", "whitespace is fine"),
+    ])
+    got = sgb.load_overrides(path)
+    assert got == {ids[0]: 1, ids[1]: 4, ids[2]: sgb.ESSAY, ids[3]: 2,
+                   ids[4]: sgb.ESSAY}
+
+
+def test_a_missing_override_sheet_is_the_normal_case(tmp_path):
+    assert sgb.load_overrides(tmp_path / "nothing.csv") == {}
+
+
+def test_a_typo_in_the_override_sheet_is_refused_loudly(tmp_path):
+    """A typo in an override is a human decision that did not happen."""
+    path = _overrides_csv(tmp_path, [(str(_qid("x")), "GS5", "no such paper")])
+    with pytest.raises(sgb.ScopeAbort) as exc:
+        sgb.load_overrides(path)
+    assert "GS5" in str(exc.value)
+    assert "line 2" in str(exc.value)
+
+
+def test_an_override_row_with_no_question_id_is_skipped(tmp_path):
+    path = _overrides_csv(tmp_path, [("", "GS1", "blank line")])
+    assert sgb.load_overrides(path) == {}
+
+
+# ── 11. the review sheet is written on a dry run ───────────────────────────
+#
+# 13 aborts and 0 rows on disk: the operator was told something was wrong and
+# given no way to see what. The rows ride on the exception now.
+
+def test_the_abort_carries_its_review_rows():
+    questions, tags = _sitting()
+    questions.append(_q("Nobody tagged this.", 5))
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+
+    assert len(exc.value.rows) == 5           # the WHOLE bucket, not just the bad row
+    reasons = {r["reason"] for r in exc.value.rows}
+    assert "unassigned" in reasons and "" in reasons
+
+
+def test_every_row_carries_exactly_one_reason():
+    questions, tags = _sitting()
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    assert all(r["reason"] in {"", "unassigned", "disagreement", "order_warning"}
+               for r in rows)
+
+
+def test_a_disagreement_outranks_an_order_warning_in_the_reason():
+    """One reason per row, and the blocking one is the one that gets said."""
+    questions, tags = _sitting()
+    tags[str(questions[0]["id"])] = 3
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    flagged = [r for r in exc.value.rows if r["reason"]]
+    assert all(r["reason"] == "disagreement" for r in flagged if r["disagrees"])
+
+
+def test_the_review_sheet_is_written_even_with_nothing_to_report(tmp_path, monkeypatch):
+    """A stale sheet from a previous run is worse than an empty one."""
+    out = tmp_path / "gs_split_review.csv"
+    monkeypatch.setattr(sgb, "REVIEW_CSV", out)
+    sgb._write_review([])
+    assert out.is_file()
+    header = out.read_text(encoding="utf-8-sig").splitlines()[0]
+    assert header.startswith("year,question_id,question_number")
+
+
+def test_the_review_sheet_records_the_reason_for_each_flagged_row(tmp_path, monkeypatch):
+    questions, tags = _sitting()
+    questions.append(_q("Nobody tagged this.", 5))
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=_corpus())
+    rows = exc.value.rows
+
+    out = tmp_path / "gs_split_review.csv"
+    monkeypatch.setattr(sgb, "REVIEW_CSV", out)
+    sgb._write_review([{**r, "year": YEAR} for r in rows])
+
+    import csv
+    got = list(csv.DictReader(out.read_text(encoding="utf-8-sig").splitlines()))
+    assert len(got) == 5
+    assert [r["reason"] for r in got].count("unassigned") == 1
+    assert all(r["year"] == str(YEAR) for r in got)
+
+
+def test_the_excerpt_is_the_briefs_eighty_characters():
+    long_text = "Examine " + ("the nature of sovereignty in a globalised order " * 5)
+    row = sgb.assign_question({"id": _qid("l"), "question_number": 1,
+                               "question_text": long_text},
+                              tag_paper=1, ocr_papers={})
+    assert len(row["excerpt"]) == 80 == sgb.REVIEW_EXCERPT_CHARS
