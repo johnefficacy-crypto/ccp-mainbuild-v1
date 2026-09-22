@@ -270,7 +270,7 @@ def test_second_pass_on_a_mismatch_item_fetches_nothing():
 
 def test_legacy_hindi_row_re_resolves_to_english():
     # A pre-CA-RSS-03 row: canonical = the Iframe feed link, Hindi body, no
-    # source_url_hi — exactly what migration 298 deprioritises.
+    # source_url_hi — exactly what migration 300 deprioritises.
     legacy = {
         "id": "doc-legacy",
         "source_id": "src-pib",
