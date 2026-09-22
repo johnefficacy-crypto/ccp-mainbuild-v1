@@ -27,6 +27,75 @@ def test_family_falls_back_to_slug_then_none():
     assert srp.family_for_subject() is None
 
 
+# ── GA resolves on BOTH keys, not just the slug fallback ───────────────────
+# The live general-awareness subject (f8034c83-cb92-4878-a4ce-eef118b0ecec) carries the
+# exam slug 'ssc-cgl' in subject_group, so before the alias landed the governed lookup
+# missed and GA's mastery-free fences held only because the slug also matched. These
+# tests pin both paths: reverting the _GROUP_FAMILY entry must fail the group cases.
+_GA_FENCES = {"mastery_enabled": False, "correction_enabled": False,
+              "retry_policy": "ephemeral_ca", "attempt_kind": "current_affairs_attempt"}
+
+
+def _fences(policy):
+    return {k: getattr(policy, k) for k in _GA_FENCES}
+
+
+def test_ga_resolves_by_governed_group_alias():
+    assert srp.family_for_subject(subject_group="ssc-cgl") == "general_awareness"
+    policy = srp.policy_for_family(srp.family_for_subject(subject_group="ssc-cgl"))
+    assert _fences(policy) == _GA_FENCES
+
+
+def test_ga_resolves_by_slug_to_the_same_policy():
+    by_group = srp.policy_for_family(srp.family_for_subject(subject_group="ssc-cgl"))
+    by_slug = srp.policy_for_family(srp.family_for_subject(slug="general-awareness"))
+    assert by_slug is by_group
+    assert _fences(by_slug) == _GA_FENCES
+
+
+def test_ga_still_fenced_when_slug_changes_but_group_is_ssc_cgl():
+    # The exact silent-failure case being closed: rename the subject slug and the slug
+    # fallback stops matching. Without the group alias this resolves to the generic
+    # policy and silently switches mastery ON — the outcome §1.1 forbids.
+    family = srp.family_for_subject(slug="ga-renamed", subject_group="ssc-cgl")
+    assert family == "general_awareness", "GA fell through to the generic policy"
+    policy = srp.policy_for_family(family)
+    assert policy.mastery_enabled is False
+    assert _fences(policy) == _GA_FENCES
+    assert srp.resolve_subject_modes(
+        slug="ga-renamed", subject_group="ssc-cgl",
+        ctx=_ctx(eng=True, topics=["t-1"]),
+    ) == [srp.WIRED_RUNTIME_MODES["weekly_current_affairs"].hub_mode()]
+
+
+def test_ga_group_alias_never_stamps_pyq_practice():
+    for slug in ("general-awareness", "ga-renamed", None):
+        assert srp.resolve_planner_launch(
+            "retrieval_practice", subject_slug=slug, subject_group="ssc-cgl",
+            topic_id="t-1", exam_id="e-1",
+        ) is None, slug
+        assert srp.resolve_planner_launch(
+            "revision", subject_slug=slug, subject_group="ssc-cgl",
+            topic_id="t-1", exam_id="e-1",
+        ) is None, slug
+
+
+def test_general_knowledge_stays_generic_with_mastery_enabled():
+    # GK is a body-agnostic PYQ-backed subject (cf18392b-3ee8-4046-b6bf-8a0b415bf209,
+    # subject_group='general_studies'). The durable RBI GA carve-out routes content here
+    # deliberately, so GK must NOT be fenced — mastery stays ON.
+    assert srp.family_for_subject(
+        slug="general-knowledge", subject_group="general_studies") is None
+    policy = srp.policy_for_family(None)
+    assert policy.subject_family == "generic"
+    assert policy.mastery_enabled is True
+    assert policy.retry_policy == "normal_srs"
+    assert srp.resolve_planner_launch(
+        "retrieval_practice", subject_slug="general-knowledge",
+        subject_group="general_studies", topic_id="t-1", exam_id="e-1",
+    )["launch_type"] == "pyq_practice"
+
+
 def test_initial_policies_match_contract_families():
     assert set(srp.SUBJECT_RUNTIME_POLICIES) == {
         "english", "quant", "reasoning", "general_awareness",
