@@ -1852,6 +1852,48 @@ def _plan_day_number(start_date: Any, today: date) -> int | None:
     return delta + 1 if delta >= 0 else None
 
 
+# PLAN-UX-01. The nightly sweep and a user's own regeneration are
+# INDISTINGUISHABLE by event_type: regen.py passes
+# ``event_type="manual_regeneration"`` for the sweep too, so
+# ``study_os._derive_plan_trigger`` reports the sweep as {"type": "manual"}.
+# What does separate them is the reason string the sweep sets —
+# ``reason="scheduled_stale_refresh"`` (regen.py) — which ``generate_plan``
+# persists verbatim onto ``study_plan_versions.reason``. Read-only, derived
+# from a column that already exists; no migration, no new endpoint.
+_SWEEP_REASON = "scheduled_stale_refresh"
+
+
+def _plan_last_refresh(supabase, plan_id: str) -> dict | None:
+    """``{trigger, at}`` for the plan's newest version row, or None.
+
+    ``trigger`` is ``"scheduled"`` for the nightly sweep and ``"manual"`` for
+    every other producer. ``at`` is when that version became active. Returns
+    None when the plan has no version row — a real state for a plan created
+    before versions were written, and never guessed at from the plan's own
+    timestamps.
+    """
+    rows = _safe(
+        lambda: supabase.table("study_plan_versions")
+        .select("reason, activated_at, created_at")
+        .eq("plan_id", plan_id)
+        .order("version_number", desc=True)
+        .limit(1)
+        .execute()
+        .data,
+        default=None,
+    )
+    if not rows:
+        return None
+    row = rows[0]
+    at = row.get("activated_at") or row.get("created_at")
+    if not at:
+        return None
+    return {
+        "trigger": "scheduled" if row.get("reason") == _SWEEP_REASON else "manual",
+        "at": at,
+    }
+
+
 @router_study.get("/plan")
 async def get_plan(user: dict = Depends(get_current_user)):
     supabase = get_supabase_admin()
@@ -1915,6 +1957,10 @@ async def get_plan(user: dict = Depends(get_current_user)):
             "day": _plan_day_number(
                 plan_row.get("start_date"), datetime.now(timezone.utc).date()
             ),
+            # PLAN-UX-01: what last produced this plan, so the page can say
+            # "auto-refreshed today" truthfully instead of implying nothing
+            # moves without an explicit apply. None when unknowable.
+            "last_refresh": _plan_last_refresh(supabase, plan_id),
         },
         "tasks": out_tasks,
     }
