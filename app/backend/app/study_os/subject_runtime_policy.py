@@ -80,6 +80,12 @@ _GROUP_FAMILY: dict[str, str] = {
     "general-awareness": FAMILY_GENERAL_AWARENESS,
     "general_awareness": FAMILY_GENERAL_AWARENESS,
     "current-affairs": FAMILY_GENERAL_AWARENESS,
+    # Alias for a known-misconfigured live subject_group: the general-awareness subject
+    # (f8034c83-cb92-4878-a4ce-eef118b0ecec) carries the EXAM slug 'ssc-cgl' in its
+    # subject_group column, so the governed lookup below missed and GA reached its
+    # fences only via the _SLUG_FAMILY fallback. Mapping it here makes the primary
+    # path hit too; the live value is not renamed by this change.
+    "ssc-cgl": FAMILY_GENERAL_AWARENESS,
 }
 
 # Canonical slug -> family (secondary key, used when subject_group is absent/unknown).
