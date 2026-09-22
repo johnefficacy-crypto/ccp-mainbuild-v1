@@ -32,7 +32,9 @@ _SEEDS = [
      "polity", 12, "news_media"),
     ("livelaw", "LIVELAW", "https://www.livelaw.in/google_feeds.xml",
      "polity", 12, "news_media"),
-    ("indiaspend", "INDIASPEND", "https://www.indiaspend.com/google_feeds.xml",
+    # fixture filename records where the capture came from; the publisher key
+    # follows the IndiaSpend -> ISignal rebrand.
+    ("indiaspend", "ISIGNAL", "https://www.indiaspend.com/google_feeds.xml",
      "social", 24, "news_media"),
 ]
 
@@ -102,4 +104,4 @@ def test_format_and_identity_caveats_are_recorded_in_the_header():
     # in the migration, not just in a PR description.
     assert "all six are rss 2.0" in _NORM
     assert "google_feeds.xml but are" in _NORM
-    assert "isignal" in _NORM
+    assert "indiaspend -> isignal rebrand" in _NORM

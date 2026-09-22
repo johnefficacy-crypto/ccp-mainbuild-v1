@@ -116,7 +116,7 @@ Seeded sources (migrations 241, 294, 299):
 | Centre for Policy Research | discovery_only (`think_tank`) | `CPR_INDIA` | 48h |
 | Bar & Bench | discovery_only (`news_media`) | `BAR_AND_BENCH` | 12h |
 | LiveLaw | discovery_only (`news_media`) | `LIVELAW` | 12h |
-| IndiaSpend | discovery_only (`news_media`) | `INDIASPEND` | 24h |
+| ISignal (formerly IndiaSpend) | discovery_only (`news_media`) | `ISIGNAL` | 24h |
 
 Several sources may share a publisher marker (three RBI feeds). The marker selects per-publisher
 behaviour (document typing, allow/deny lists, page-date shape, language follow); every identity and

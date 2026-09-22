@@ -40,7 +40,7 @@ _WAVE_1B = [
     ("cpr_india", "CPR_INDIA", "https://cprindia.org/feed/", 10),
     ("barandbench", "BAR_AND_BENCH", "https://www.barandbench.com/feed", 1),
     ("livelaw", "LIVELAW", "https://www.livelaw.in/google_feeds.xml", 60),
-    ("indiaspend", "INDIASPEND", "https://www.indiaspend.com/google_feeds.xml", 3),
+    ("indiaspend", "ISIGNAL", "https://www.indiaspend.com/google_feeds.xml", 3),
 ]
 
 

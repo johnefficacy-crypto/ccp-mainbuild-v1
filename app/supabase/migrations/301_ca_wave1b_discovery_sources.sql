@@ -32,11 +32,15 @@
 -- what was observed, so a later format change shows up as a mismatch rather
 -- than silently altering what is ingested.
 --
--- IndiaSpend caveat: the feed captured from https://www.indiaspend.com/google_feeds.xml
--- carries channel title "ISignal: India's Data Desk", <link>https://www.isignal.in</link>
--- and isignal.in item links. The URL and name below are seeded as briefed; if
--- the publisher has genuinely rebranded, the name/official_url need a follow-up
--- migration. Flagged rather than silently renamed.
+-- IndiaSpend -> ISignal rebrand (confirmed by the repo owner 2026-09-22): same
+-- organisation, same team, new masthead. The feed captured from
+-- https://www.indiaspend.com/google_feeds.xml carries channel title
+-- "ISignal: India's Data Desk", <link>https://www.isignal.in</link> and
+-- isignal.in item links. The row is therefore seeded as
+-- "ISignal (formerly IndiaSpend)" with publisher key ISIGNAL, while rss_url
+-- stays on the indiaspend.com path because that is what serves the feed today.
+-- The test fixture keeps its indiaspend.xml filename — it records where the
+-- capture came from, not who publishes it now.
 --
 -- publisher_type has no CHECK constraint (plain text since migration 241), so
 -- 'think_tank' and 'news_media' need no constraint change. Verified at write time.
@@ -126,15 +130,15 @@ where not exists (
   where rss_url = 'https://www.livelaw.in/google_feeds.xml'
 );
 
--- ── IndiaSpend — data journalism (see the ISignal caveat in the header) ────
+-- ── ISignal (formerly IndiaSpend) — data journalism; see the header note ──
 insert into public.current_affairs_sources
   (name, authority_level, publisher_type, adapter_type,
    official_url, rss_url, default_category, default_language,
    adapter_config, crawl_schedule)
-select 'IndiaSpend', 'discovery_only', 'news_media', 'rss',
-       'https://www.indiaspend.com/', 'https://www.indiaspend.com/google_feeds.xml',
+select 'ISignal (formerly IndiaSpend)', 'discovery_only', 'news_media', 'rss',
+       'https://www.isignal.in/', 'https://www.indiaspend.com/google_feeds.xml',
        'social', 'en',
-       '{"publisher": "INDIASPEND", "feed_format": "rss"}'::jsonb,
+       '{"publisher": "ISIGNAL", "feed_format": "rss"}'::jsonb,
        '{"interval_hours": 24, "priority": "normal"}'::jsonb
 where not exists (
   select 1 from public.current_affairs_sources
@@ -147,13 +151,13 @@ begin
   select count(*) into v_seeded
   from public.current_affairs_sources
   where adapter_config->>'publisher' in (
-    'MONGABAY_INDIA', 'VIDHI', 'CPR_INDIA', 'BAR_AND_BENCH', 'LIVELAW', 'INDIASPEND');
+    'MONGABAY_INDIA', 'VIDHI', 'CPR_INDIA', 'BAR_AND_BENCH', 'LIVELAW', 'ISIGNAL');
   raise notice 'CA-SRC-01: % wave-1b discovery source(s) present (expected 6)', v_seeded;
 
   if exists (
     select 1 from public.current_affairs_sources
     where adapter_config->>'publisher' in (
-      'MONGABAY_INDIA', 'VIDHI', 'CPR_INDIA', 'BAR_AND_BENCH', 'LIVELAW', 'INDIASPEND')
+      'MONGABAY_INDIA', 'VIDHI', 'CPR_INDIA', 'BAR_AND_BENCH', 'LIVELAW', 'ISIGNAL')
       and authority_level <> 'discovery_only'
   ) then
     raise exception 'CA-SRC-01: a wave-1b source is not discovery_only';
