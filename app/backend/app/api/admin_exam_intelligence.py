@@ -166,6 +166,27 @@ _REVIEWABLE = {
         ),
         "supports_notes": False,
     },
+    # Essay-theme tagging of real Essay-paper PYQs (migration 265). Direct
+    # analog of pyq_question_topic_tag: a tag row pointing a question at a
+    # taxonomy entry (here an essay_theme), keyed via question_id → paper →
+    # exam, with the same pending/verified/rejected/needs_correction lifecycle
+    # and no child cascade. reviewed_by/reviewed_at exist; there is no
+    # reviewer_notes column (notes would ride metadata), so supports_notes is
+    # False. Flows through the generic review_item plain-update path — no RPC,
+    # no new endpoint code. Registering it here (plus the exam-scope branch in
+    # list_items, same as the analog) lets the existing generic GET items /
+    # PATCH items/{kind}/{id}/review routes drive essay_pyq_tags, which were
+    # otherwise permanently stuck 'pending' (admin_exam_intel_cms's PATCH
+    # allowlist excludes reviewer_status).
+    "essay_pyq_tag": {
+        "table": "essay_pyq_tags",
+        "select": (
+            "id, question_id, theme_id, secondary_theme_id, essay_type, "
+            "quote_source_type, tagging_source, confidence_score, "
+            "reviewer_status, reviewed_by, reviewed_at, created_at"
+        ),
+        "supports_notes": False,
+    },
     "pyq_question": {
         "table": "pyq_questions",
         "select": (
@@ -674,10 +695,12 @@ def list_items(
         # syllabus mentions and pyq question topic tags have exam-side joins.
         if kind == "syllabus_topic_mention":
             q = q.eq("exam_id", exam_id)
-        elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus"}:
+        elif kind in {"pyq_question_topic_tag", "pyq_option", "pyq_question_stimulus", "essay_pyq_tag"}:
             # All keyed via question → paper → exam. pyq_question_stimulus (the
             # question↔stimulus LINK) filters on its own question_id, exactly
-            # like the topic-tag / option children.
+            # like the topic-tag / option children. essay_pyq_tag (essay-theme
+            # tagging of Essay-paper PYQs) is the same shape — its question_id
+            # → pyq_questions → paper → exam — so it scopes identically.
             paper_rows = _safe(
                 lambda: (
                     sb.table("pyq_papers")
