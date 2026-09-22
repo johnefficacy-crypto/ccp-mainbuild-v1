@@ -66,10 +66,15 @@ def get_catalog(
     scopes to one paper within the subject, and scopes the sittings and the
     syllabus themes alike.
     """
-    del user
     try:
         return service.get_catalog(
-            get_supabase_admin(), exam_id, subject=subject, paper_number=paper_number
+            get_supabase_admin(),
+            exam_id,
+            # Carried so every count can also say how many are DONE. Scoped to
+            # the caller by the token, never by a parameter.
+            user_id=user.get("id"),
+            subject=subject,
+            paper_number=paper_number,
         )
     except service.DescriptiveError as exc:
         raise _fail(exc) from None
@@ -86,7 +91,10 @@ def get_questions(
     paper_number: int | None = Query(default=None, ge=1, le=10),
     theme: str | None = Query(default=None),
     year: int | None = Query(default=None),
+    year_from: int | None = Query(default=None, description="inclusive"),
+    year_to: int | None = Query(default=None, description="inclusive"),
     exclude_attempted: bool = Query(default=False),
+    has_marks: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -101,7 +109,10 @@ def get_questions(
             paper_number=paper_number,
             theme=theme,
             year=year,
+            year_from=year_from,
+            year_to=year_to,
             exclude_attempted=exclude_attempted,
+            has_marks=has_marks,
             limit=limit,
         )
     except service.DescriptiveError as exc:
