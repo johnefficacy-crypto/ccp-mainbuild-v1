@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 from app.study_os.mock_blueprint_selection import build_blueprint_with_selection
 from app.study_os.mock_engine import _question_snapshot
 from app.utils.safe import safe_required
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.study_os.generated_mock_attempt")
 
@@ -76,21 +77,14 @@ def _read_paged(build, *, op: str) -> list[dict] | None:
     """Range-paginate one PostgREST read. ``None`` on read failure — never a
     partial page set. ``build(from_n, to_n)`` must carry a stable ``.order(...)``.
     """
-    out: list[dict] = []
-    offset = 0
-    while True:
-        rows = safe_required(
-            lambda f=offset: build(f, f + _PAGE - 1).execute(),
-            op=op,
-            log=logger,
-            allow_empty=True,
-        )
-        if rows is None:
-            return None
-        out.extend(rows)
-        if len(rows) < _PAGE:
-            return out
-        offset += _PAGE
+    walk = paginate(
+        lambda a, b: safe_required(
+            lambda: build(a, b).execute(), op=op, log=logger, allow_empty=True
+        ),
+        page_size=_PAGE,
+        operation=op,
+    )
+    return walk.rows if walk.complete else None
 
 
 def _parse_negative_marking(value) -> float:

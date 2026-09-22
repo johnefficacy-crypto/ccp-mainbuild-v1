@@ -39,6 +39,7 @@ from app.exam_intelligence.trap_drill import (
     log_drill_attempts,
 )
 from app.study_os.trap_drill_shadow import record_trap_drill_shadow
+from app.common.pagination import chunks, paginate
 
 logger = logging.getLogger("career_copilot.api.exam_intelligence")
 
@@ -49,7 +50,7 @@ _BATCH = 250   # max ids per IN() filter (PostgREST URL-length ceiling)
 
 
 def _chunks(items: list[Any], n: int) -> list[list[Any]]:
-    return [items[i : i + n] for i in range(0, len(items), n)]
+    return chunks(items, n)
 
 
 def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
@@ -62,16 +63,12 @@ def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
     propagate to the caller's error handler (``get_exam_pyq_summary`` fails
     closed to empty arrays) rather than returning a silently truncated — and
     therefore internally inconsistent — page set.
+
+    The walk itself is :func:`app.common.pagination.paginate`. This copy used
+    to stop on a page shorter than ``_PAGE``, which returns page one whenever
+    the server's cap is below it.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        rows = build_query(offset, offset + _PAGE - 1) or []
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            break
-        offset += _PAGE
-    return all_rows
+    return paginate(build_query, page_size=_PAGE, table="exam_intelligence").rows
 
 
 def _pyq_paper_set_label(metadata: Any) -> str | None:

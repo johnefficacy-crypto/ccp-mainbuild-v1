@@ -23,6 +23,7 @@ from typing import Any
 
 from app.exam_intelligence.phase_inheritance import resolve_template_phase_id
 from app.exam_intelligence.predictability import score_paper
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.score_snapshots")
 
@@ -108,52 +109,14 @@ def _paginate(
     collected do not match that count. A partial read is more dangerous than a
     failed one precisely because it looks like success.
     """
-    all_rows: list[dict[str, Any]] = []
-    offset = 0
-    exact_total: int | None = None
-    while True:
-        resp = _safe(
-            lambda o=offset: build_query(o, o + _PAGE - 1),
-            default=None,
-            table=table,
-            operation=operation,
-        )
-        if resp is None:
-            return None
-        rows = list(getattr(resp, "data", None) or [])
-        count = getattr(resp, "count", None)
-        if count is not None:
-            # Re-read each page: a concurrent write changes the total, and the
-            # mismatch below is then the correct (fail-closed) outcome.
-            exact_total = int(count)
-        all_rows.extend(rows)
-        if len(rows) < _PAGE:
-            break
-        offset += _PAGE
-
-    if exact_total is None:
-        logger.error(
-            "exam_intelligence score_snapshots paginated read reported no exact count",
-            extra={
-                "operation": operation or "read",
-                "table": table,
-                "rows_collected": len(all_rows),
-            },
-        )
-        return None
-    if len(all_rows) != exact_total:
-        logger.error(
-            "exam_intelligence score_snapshots paginated read is incomplete",
-            extra={
-                "operation": operation or "read",
-                "table": table,
-                "rows_collected": len(all_rows),
-                "rows_expected": exact_total,
-            },
-        )
-        return None
-    return all_rows
-
+    return paginate(
+        lambda a, b: _safe(
+            lambda: build_query(a, b), default=None, table=table, operation=operation
+        ),
+        page_size=_PAGE,
+        table=table,
+        operation=operation,
+    ).verified_rows(table=table, operation=operation)
 
 def _cohort_stats(
     primary_counts: dict[str, int],

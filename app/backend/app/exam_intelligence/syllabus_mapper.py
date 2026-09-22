@@ -33,6 +33,7 @@ import logging
 from typing import Any
 
 from app.exam_intelligence.text_utils import levenshtein_ratio, normalize_text
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.exam_intelligence.syllabus_mapper")
 
@@ -145,16 +146,17 @@ def propose_syllabus_mentions(
     # We query topic_aliases joined through topics that belong to this exam.
     # Since Supabase doesn't do cross-table joins in the client, we load
     # exam's subject-scoped topics first, then their aliases.
-    topic_rows = _safe(
-        lambda: (
+    topic_rows = paginate(
+        lambda a, b: (
             sb.table("topics")
             .select("id, subject_id")
-            .limit(20000)
+            .order("id")
+            .range(a, b)
             .execute()
             .data
         ),
-        default=[],
-    ) or []
+        table="topics",
+    ).rows
 
     # Scope to exam's subjects via exam_subject_map
     esm_rows = _safe(

@@ -732,6 +732,10 @@ class TestOverviewSnapshotPin:
             q.in_.return_value = q
             q.order.return_value = q
             q.limit.return_value = q
+            # Bulk reads paginate now, so the stub has to chain .range() too —
+            # a MagicMock returns a fresh mock for an unconfigured method, and
+            # the read would silently come back as a mock instead of rows.
+            q.range.return_value = q
             res = MagicMock()
             if name == "syllabus_topic_mentions":
                 res.data = syllabus_rows

@@ -45,6 +45,7 @@ from app.scraping.promotion_gate import (
     RECRUITMENT_LEVEL_FIELDS as _RECRUITMENT_LEVEL_FIELDS,
     evaluate_promotion_gate,
 )
+from app.common.pagination import paginate
 
 # Reviewer statuses that count a field as resolved. MUST match the gate's
 # ``_VERIFIED_STATUSES`` so list_scrape_queue's ``unverified_fields`` hint can
@@ -1079,13 +1080,18 @@ def list_scrape_queue(
     if source_type:
         wanted = source_type.strip().lower()
         if wanted:
-            src_rows = (
-                supabase.table("source_registry")
-                .select("id, source_type")
-                .execute()
-                .data
-                or []
-            )
+            src_rows = paginate(
+                lambda a, b: (
+                    supabase.table("source_registry")
+                    .select("id, source_type")
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                    or []
+                ),
+                table="source_registry",
+            ).rows
             type_by_id = {s.get("id"): (s.get("source_type") or "").lower() for s in src_rows}
             rows = [r for r in rows if type_by_id.get(r.get("source_id")) == wanted]
 

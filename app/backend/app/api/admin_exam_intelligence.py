@@ -46,6 +46,7 @@ from app.exam_intelligence.score_snapshots import (
 )
 from app.study_os.mission_control import invalidate_per_exam_intelligence
 from app.study_os.plan_impact import compute_plan_impact, record_plan_impact_decision
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.api.admin_exam_intelligence")
 
@@ -233,10 +234,13 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
             )
         out["tables"][kind] = {"total": len(rows), **counts}
     # Active exam count for context.
-    exam_rows = _safe(
-        lambda: sb.table("exams").select("id, is_active").limit(10000).execute().data,
-        default=[],
-    ) or []
+    exam_rows = paginate(
+        lambda a, b: _safe(
+            lambda: sb.table("exams").select("id, is_active").order("id").range(a, b).execute().data,
+            default=None,
+        ),
+        table="exams",
+    ).rows
     out["exams"] = {
         "total": len(exam_rows),
         "active": sum(1 for r in exam_rows if r.get("is_active")),
@@ -245,16 +249,22 @@ def overview(_admin: dict = Depends(require_permission(ADMIN_PERM))) -> dict[str
     # Topic coverage status breakdown. Only `locked` rows reach the Study OS
     # planner — surfacing the funnel tells operators how much verified
     # intelligence is actually planner-ready.
-    coverage_rows = _safe(
-        lambda: (
-            sb.table("exam_topic_coverage")
-            .select("reviewer_status, is_high_yield")
-            .limit(20000)
-            .execute()
-            .data
+    # This is a funnel COUNT, so a truncated read is an operator reading a
+    # number that is simply wrong with nothing to say so.
+    coverage_rows = paginate(
+        lambda a, b: _safe(
+            lambda: (
+                sb.table("exam_topic_coverage")
+                .select("id, reviewer_status, is_high_yield")
+                .order("id")
+                .range(a, b)
+                .execute()
+                .data
+            ),
+            default=None,
         ),
-        default=[],
-    ) or []
+        table="exam_topic_coverage",
+    ).rows
     coverage_counts = {s: 0 for s in _COVERAGE_STATUSES}
     for r in coverage_rows:
         st = r.get("reviewer_status") or "draft"

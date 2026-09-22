@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.study_os import syllabus
+from app.common.pagination import paginate
 
 logger = logging.getLogger("career_copilot.study_os.descriptive")
 
@@ -204,8 +205,7 @@ def _chunks(items: list[Any], size: int = _IN_CHUNK) -> list[list[Any]]:
 
 
 def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
-    """Range-paginate a PostgREST read so Supabase's ``db-max-rows`` cannot
-    silently truncate a bulk read into an arbitrary sample.
+    """Range-paginate a PostgREST read. See :mod:`app.common.pagination`.
 
     THIS IS THE BUG THAT MADE 1,351 QUESTIONS LOOK LIKE 19. Every bulk read in
     this module called ``.execute()`` with no ``.range()`` and no ``.order()``,
@@ -215,56 +215,12 @@ def _paginate_all(build_query: Any) -> list[dict[str, Any]]:
     survived the papers read — read "no themes". Nothing errored, because a
     truncated read is a successful one.
 
-    The rest of the codebase already knew: `api/exam_intelligence.py` and
-    `exam_intelligence/reachability.py` both carry this helper with the same
-    warning. This module was written without it.
-
-    ``build_query(from_n, to_n)`` returns the rows for the inclusive
-    ``[from_n, to_n]`` slice and MUST carry a stable ``.order(...)`` key, or
-    successive pages overlap and miss rows instead of partitioning them.
-
-    ADVANCE BY WHAT CAME BACK, NOT BY THE PAGE SIZE. The obvious loop — stop
-    as soon as a page is shorter than ``_PAGE`` — is itself a no-op whenever
-    the server's ceiling is lower than ``_PAGE``: the first request asks for a
-    thousand rows, the server returns its cap, the loop calls that a short page
-    and stops. Pagination that only works when you already know the server's
-    limit is not pagination.
-
-    STOP WHEN A PAGE ADDS NOTHING NEW, not when it is empty. That ends the walk
-    at the real end of the data, and it also ends it in one extra request
-    against a backend that ignores ``range`` and answers every request with the
-    same rows — which is what an in-memory test double does, and what a
-    misconfigured proxy could do. Waiting for an empty page there never returns.
-
-    Rows are deduplicated on ``id`` as a consequence, which is what the caller
-    of a paginated read wants anyway.
+    The walk, and the reason it stops on a page that adds nothing new rather
+    than on a short one, now live in the shared module; this module was where
+    the rule was worked out.
     """
-    out: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    offset = 0
-    for _ in range(_MAX_PAGES):
-        rows = build_query(offset, offset + _PAGE - 1) or []
-        if not rows:
-            return out
-        fresh = 0
-        for row in rows:
-            key = str(row.get("id") or "")
-            if key and key in seen:
-                continue
-            if key:
-                seen.add(key)
-            out.append(row)
-            fresh += 1
-        if fresh == 0:
-            return out
-        offset += len(rows)
-    logger.warning(
-        "descriptive read stopped at %d pages (%d rows); result may be partial",
-        _MAX_PAGES,
-        len(out),
-    )
-    return out
-
+    return paginate(build_query, page_size=_PAGE, max_pages=_MAX_PAGES,
+                    table="descriptive").rows
 
 def is_thematic(paper: dict[str, Any]) -> bool:
     """`corpus_half = 'thematic'` — a topic-wise compilation, not a real paper.

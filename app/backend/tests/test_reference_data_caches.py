@@ -80,8 +80,13 @@ def test_list_active_exams_caches_within_ttl():
     sb = _CountingSupabase({"exams": [{"id": "x1", "slug": "ssc", "name": "SSC", "is_active": True}]})
     lookup_module.invalidate_exam_lookup_cache()
     lookup_module.list_active_exams(sb, limit=100)
+    after_first = sb.counts["exams"][0]
     lookup_module.list_active_exams(sb, limit=100)
-    assert sb.counts["exams"][0] == 1
+    # The cache is proven by the SECOND call costing nothing, not by the first
+    # costing exactly one request: a paginated read is one request per page
+    # plus one that proves it reached the end.
+    assert after_first >= 1
+    assert sb.counts["exams"][0] == after_first
 
 
 def test_invalidate_exam_lookup_cache_forces_refetch():
