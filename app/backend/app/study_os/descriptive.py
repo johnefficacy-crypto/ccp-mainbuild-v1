@@ -80,7 +80,8 @@ RUBRIC_MAX_TOTAL = len(RUBRIC_KEYS) * RUBRIC_MAX_PER_KEY  # 12
 _ATTEMPT_COLUMNS = (
     "id, user_id, pyq_question_id, status, answer_text, word_count, "
     "time_spent_seconds, timer_target_seconds, pasted_chars, answer_mode, "
-    "self_scores, self_total, notes, started_at, submitted_at, updated_at"
+    "self_scores, self_total, notes, started_at, submitted_at, updated_at, "
+    "structure_version, covered_point_ids"
 )
 
 _QUESTION_COLUMNS = (
@@ -1816,6 +1817,11 @@ def analytics(
         supabase, [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
     )
     topics = _primary_topic_names(supabase, list(questions))
+    from app.study_os.answer_structures import attempt_coverage
+
+    # Points covered is over the attempts that CARRY ticks — an attempt whose
+    # question has no verified structure, or that was never ticked, is not a 0.
+    coverage = attempt_coverage(supabase, rows)
 
     by_week: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
@@ -1842,6 +1848,9 @@ def analytics(
             spent = _as_int(a.get("time_spent_seconds"))
             if target and spent:
                 time_pairs.append((spent, target))
+        week_cov = [
+            v for v in (coverage.get(str(a.get("id"))) for a in attempts) if v is not None
+        ]
         weekly.append({
             "week": week,
             "submitted": len(attempts),
@@ -1854,6 +1863,8 @@ def analytics(
             "avg_seconds": _mean([float(t) for t, _ in time_pairs]),
             "avg_target_seconds": _mean([float(t) for _, t in time_pairs]),
             "time_sample": len(time_pairs),
+            "avg_points_covered_pct": _mean(week_cov),
+            "points_sample": len(week_cov),
             "rubric": _rubric_means(attempts),
         })
 
@@ -1887,6 +1898,10 @@ def analytics(
         "submitted_total": len(rows),
         "streak_weeks": _streak_weeks(weekly, today=today),
         "rubric": overall_rubric,
+        "points_covered": {
+            "avg_pct": _mean([v for v in coverage.values() if v is not None]),
+            "sample": sum(1 for v in coverage.values() if v is not None),
+        },
         "weakest_dimensions": weakest,
         "strongest_topics": ranked[:5],
         "weakest_topics": list(reversed(ranked[-5:])) if ranked else [],
@@ -1906,6 +1921,7 @@ def _empty_analytics(span: int) -> dict[str, Any]:
         "submitted_total": 0,
         "streak_weeks": 0,
         "rubric": {k: None for k in RUBRIC_KEYS},
+        "points_covered": {"avg_pct": None, "sample": 0},
         "weakest_dimensions": None,
         "strongest_topics": [],
         "weakest_topics": [],
@@ -2146,6 +2162,11 @@ def attempt_payload(row: dict[str, Any]) -> dict[str, Any]:
         "self_scores": row.get("self_scores"),
         "self_total": _as_int(row.get("self_total")),
         "notes": row.get("notes"),
+        # The answer-structure body points the aspirant ticked after submitting,
+        # and which verified version they ticked against (migration 303). Both
+        # null until the comparison is opened and ticked.
+        "structure_version": _as_int(row.get("structure_version")),
+        "covered_point_ids": row.get("covered_point_ids"),
         "started_at": row.get("started_at"),
         "submitted_at": row.get("submitted_at"),
         "updated_at": row.get("updated_at"),
@@ -2540,6 +2561,7 @@ def attempt_history_row(
     label: str | None,
     topic: str | None,
     page_count: int | None = None,
+    points_covered_pct: float | None = None,
 ) -> dict[str, Any]:
     """One row of the answer history.
 
@@ -2558,6 +2580,9 @@ def attempt_history_row(
         # How many pages a handwritten attempt has, so the row can read
         # "3 pages" where a typed row reads "260 words".
         "page_count": page_count,
+        # Share of the answer structure's body points the aspirant ticked.
+        # None when they have not ticked, or the question has no structure.
+        "points_covered_pct": points_covered_pct,
         # 0 and null are different answers, so the badge is a tri-state: pasted
         # (>0), clean (0), unknown (null, predating paste tracking).
         "has_pasted_text": (
@@ -2710,6 +2735,9 @@ def _enrich_attempts(
                                     if _answer_mode(r) == "handwritten"])
     _, labels = _paper_context(supabase, list(questions.values()))
     topics = _primary_topic_names(supabase, list(questions))
+    from app.study_os.answer_structures import attempt_coverage
+
+    coverage = attempt_coverage(supabase, rows)
     out = []
     for row in rows:
         qid = str(row.get("pyq_question_id") or "")
@@ -2723,6 +2751,7 @@ def _enrich_attempts(
                 label=labels.get(qid),
                 topic=topics.get(qid),
                 page_count=pages.get(str(row.get("id"))),
+                points_covered_pct=coverage.get(str(row.get("id"))),
             )
         )
     return out

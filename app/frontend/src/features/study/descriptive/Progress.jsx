@@ -143,6 +143,9 @@ export default function Progress() {
                 {week.avg_self_total !== null && week.avg_self_total !== undefined
                   ? ` · ${week.avg_self_total}/12 average`
                   : ""}
+                {week.points_sample > 0
+                  ? ` · ${week.avg_points_covered_pct}% points covered`
+                  : ""}
               </p>
               {/* Absent, not zeroed: a week whose questions carried no marks
                   and no word limit has nothing to compare, and saying "0 min
@@ -161,6 +164,19 @@ export default function Progress() {
           ))}
         </ul>
       </Card>
+
+      {data.points_covered?.sample > 0 && (
+        <Card>
+          <Eyebrow>Answer-structure points covered</Eyebrow>
+          <h2 className="font-heading mt-1 text-[22px] leading-tight" data-testid="progress-points-covered">
+            {data.points_covered.avg_pct}% on average
+          </h2>
+          <p className="mt-1 text-[11px] text-clay-700" data-testid="progress-points-sample">
+            Based on {data.points_covered.sample}{" "}
+            {data.points_covered.sample === 1 ? "answer" : "answers"} you compared.
+          </p>
+        </Card>
+      )}
 
       <Card>
         <Eyebrow>Your rubric, on average</Eyebrow>

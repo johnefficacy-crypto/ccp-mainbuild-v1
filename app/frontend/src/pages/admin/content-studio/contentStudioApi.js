@@ -123,7 +123,37 @@ export const contentStudioApi = {
     }),
   promoteCaCandidate: (id, { expected_status = "approved" } = {}) =>
     api.post(`${BASE}/ca-question-candidates/${id}/promote`, { expected_status }),
+
+  // Answer structures (migration 303). AI-drafted, human-verified checklists
+  // for descriptive PYQs. Every write is CAS-guarded on the `updated_at` the
+  // reviewer read (409 = changed under review) and audited server-side. Edit is
+  // content_studio.author OR review; review = content_studio.review;
+  // regenerate = content_studio.author and always creates a NEW draft version.
+  listAnswerStructures: (params) => api.get(`${BASE}/answer-structures${qs(params)}`),
+  getAnswerStructure: (id) => api.get(`${BASE}/answer-structures/${id}`),
+  updateAnswerStructure: (id, { expected_updated_at, reason, payload }) =>
+    api.patch(`${BASE}/answer-structures/${id}`, { expected_updated_at, reason, payload }),
+  reviewAnswerStructure: (id, { status, expected_status, expected_updated_at, review_notes }) =>
+    api.post(`${BASE}/answer-structures/${id}/review`, {
+      status,
+      expected_status,
+      expected_updated_at,
+      ...(review_notes ? { review_notes } : {}),
+    }),
+  regenerateAnswerStructure: (id, { reason }) =>
+    api.post(`${BASE}/answer-structures/${id}/regenerate`, { reason }),
 };
+
+// Answer-structure review transitions — mirror of `TRANSITIONS` in
+// app/study_os/answer_structure_schema.py and the RPC in migration 303.
+// Rejected is terminal: regenerate creates a new version instead.
+export const ANSWER_STRUCTURE_TRANSITIONS = {
+  draft: ["in_review", "verified", "rejected"],
+  in_review: ["verified", "rejected", "draft"],
+  verified: ["rejected"],
+  rejected: [],
+};
+export const ANSWER_STRUCTURE_STATUSES = ["draft", "in_review", "verified", "rejected"];
 
 // Legal candidate review transitions (mirror of the backend `_CA_REVIEW_TRANSITIONS`).
 // Promotion (approved → promoted) is NOT here — it is the separate publish action.

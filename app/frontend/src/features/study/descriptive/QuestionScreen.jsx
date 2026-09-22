@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { api } from "../../../lib/api";
 import AnswerEditor from "./AnswerEditor";
+import AnswerStructurePanel from "./AnswerStructurePanel";
 import HandwrittenPages from "./HandwrittenPages";
 import RubricPanel from "./RubricPanel";
 import useDescriptiveAttempt from "./useDescriptiveAttempt";
@@ -45,6 +46,9 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
   // said — an unknown count must not read as zero and disable Submit on a
   // slow connection.
   const [pageCount, setPageCount] = useState(null);
+  // The answer structure opens only after submit, and only when asked for:
+  // it sits beside the answer, never over it while it is being written.
+  const [comparing, setComparing] = useState(false);
 
   const loadHistory = React.useCallback(() => {
     if (!question?.id) return;
@@ -56,6 +60,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
 
   useEffect(() => {
     setReviewing(false);
+    setComparing(false);
     setModeError("");
     loadHistory();
   }, [question?.id, loadHistory]);
@@ -187,6 +192,13 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
         </p>
       )}
 
+      {/* After submit, "Compare with answer structure" puts the checklist BESIDE
+          the answer — typed text or photographed pages alike. Before submit
+          there is no affordance at all, and the server refuses the read. */}
+      <div
+        className={submitted && comparing ? "grid gap-4 lg:grid-cols-2" : ""}
+        data-testid="descriptive-answer-area"
+      >
       {mode === "handwritten" ? (
         <HandwrittenPages
           attemptId={attempt?.id}
@@ -210,6 +222,10 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           readOnly={submitted}
         />
       )}
+      {submitted && comparing && attempt?.id && (
+        <AnswerStructurePanel attemptId={attempt.id} />
+      )}
+      </div>
 
       {!submitted && !reviewing && (
         <div>
@@ -259,6 +275,15 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           </p>
           {attempt.notes && <p className="mt-2 text-sm">{attempt.notes}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn"
+              aria-expanded={comparing}
+              onClick={() => setComparing((v) => !v)}
+              data-testid="descriptive-compare-structure"
+            >
+              {comparing ? "Hide answer structure" : "Compare with answer structure"}
+            </button>
             {hasNext && (
               <button
                 type="button"
