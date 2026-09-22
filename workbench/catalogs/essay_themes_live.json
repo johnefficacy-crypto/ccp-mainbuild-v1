@@ -1,0 +1,152 @@
+[
+  {
+    "theme_code": "SLF",
+    "theme_name": "Self & Human Nature",
+    "description": "Introspective: how we know, grow, understand ourselves. Not moral judgment (that's ETH) and not action/success-oriented (that's PER).",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 1,
+    "parent_theme_id": null,
+    "id": "83da4097-bb79-4d80-8f8a-fc216da4a261"
+  },
+  {
+    "theme_code": "ETH",
+    "theme_name": "Ethics & Values",
+    "description": "Right/wrong, character, integrity -- normatively loaded. Domain-specific ethics (business, political) still tags here as primary.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 2,
+    "parent_theme_id": null,
+    "id": "9ef8b81c-04f8-4c06-9c0d-4cb9283a6a12"
+  },
+  {
+    "theme_code": "SOC",
+    "theme_name": "Society & Social Issues",
+    "description": "Concrete social structures/groups -- gender, caste, media's social role, education access. Closest bucket to old-style GS1 Society content.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 3,
+    "parent_theme_id": null,
+    "id": "eed4c802-adc3-4488-aeec-97472b381754"
+  },
+  {
+    "theme_code": "GOV",
+    "theme_name": "Governance & Polity",
+    "description": "State machinery, federalism, democracy's mechanics. Almost entirely pre-2019 -- post-2018 essays stopped asking about institutions directly.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 4,
+    "parent_theme_id": null,
+    "id": "40c6b49a-90b7-4464-8d02-dffaf8a3f093"
+  },
+  {
+    "theme_code": "ECO",
+    "theme_name": "Economy & Development",
+    "description": "Growth models, inequality, capitalism vs welfare -- the economic-philosophy angle, not policy mechanics.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 5,
+    "parent_theme_id": null,
+    "id": "6abb9a63-c84f-4aa1-969b-f59d1b78904c"
+  },
+  {
+    "theme_code": "SCI",
+    "theme_name": "Science, Tech & Innovation",
+    "description": "Tech's effect on society/knowledge, not tech mechanics.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 6,
+    "parent_theme_id": null,
+    "id": "5be86afc-5f6c-4eca-83c7-535cefc5b06c"
+  },
+  {
+    "theme_code": "ENV",
+    "theme_name": "Environment & Nature",
+    "description": "Ecology, forests, human-nature relationship at civilizational scale. Small bucket historically.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 7,
+    "parent_theme_id": null,
+    "id": "332c594e-5eb4-4de1-b73c-c6adc88742b4"
+  },
+  {
+    "theme_code": "NAT",
+    "theme_name": "Nation & Identity",
+    "description": "India-specific civilizational/national character, not generic patriotism. Small bucket.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 8,
+    "parent_theme_id": null,
+    "id": "9db59dff-44df-4a2d-b0de-8b55154a5470"
+  },
+  {
+    "theme_code": "PER",
+    "theme_name": "Personal Growth & Leadership",
+    "description": "Action-oriented life-quotes: courage, resilience, decision-making, success. Largest bucket post-2018.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 9,
+    "parent_theme_id": null,
+    "id": "f06ada8b-bba5-4ac5-b429-a973ed52cbeb"
+  },
+  {
+    "theme_code": "IR",
+    "theme_name": "International Relations & Geopolitics",
+    "description": "Global order, war/peace, India's world role. Small, at most one per year.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 10,
+    "parent_theme_id": null,
+    "id": "4d49e79c-18ad-4284-b13b-e5121a185cc0"
+  },
+  {
+    "theme_code": "ABS",
+    "theme_name": "Abstract / Universal",
+    "description": "Pure aphorisms resisting any domain -- ambiguity, time, contentment, epistemology with no clear subject-matter hook.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 11,
+    "parent_theme_id": null,
+    "id": "4de874ef-b71b-4c8e-9dbf-e1788f9f99e3"
+  },
+  {
+    "theme_code": "HLW",
+    "theme_name": "Health & Wellbeing",
+    "description": "Reserved -- mental health, wellbeing, healthcare-as-lived-experience (distinct from SOC's structural healthcare-access angle). Promote to active on first clear PYQ hit.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 12,
+    "parent_theme_id": null,
+    "id": "3a78804a-269e-4fc8-8368-f5094bf994a7"
+  },
+  {
+    "theme_code": "CLM",
+    "theme_name": "Climate & Sustainability",
+    "description": "Reserved -- climate action/lifestyle-choice angle distinct from ENV's civilizational nature-relationship framing. Promote on first clear PYQ hit.",
+    "status": "reserved",
+    "first_seen_year": null,
+    "sort_order": 13,
+    "parent_theme_id": null,
+    "id": "7356ba50-6a5c-43ee-a92f-d4e993e804fc"
+  },
+  {
+    "theme_code": "AIE",
+    "theme_name": "AI Ethics & Future of Work",
+    "description": "Reserved -- split candidate from SCI if UPSC keeps returning to AI/automation specifically rather than tech-in-society generally.",
+    "status": "active",
+    "first_seen_year": null,
+    "sort_order": 14,
+    "parent_theme_id": null,
+    "id": "9289eb5d-a919-4e42-9ace-d48d46b77c62"
+  },
+  {
+    "theme_code": "FED",
+    "theme_name": "Federalism & Centre-State Relations",
+    "description": "Reserved -- split candidate from GOV if federalism-specific essays recur; currently folded into GOV.",
+    "status": "reserved",
+    "first_seen_year": null,
+    "sort_order": 15,
+    "parent_theme_id": null,
+    "id": "556eb5ac-b861-4d25-b2a2-0cb5f23f380e"
+  }
+]
