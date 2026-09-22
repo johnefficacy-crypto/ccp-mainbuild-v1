@@ -29,13 +29,26 @@ Three independent signals, and a question moves only when they agree:
    `workbench/audit/ocr_cache/`. If the best match is a different paper from
    the tag's, that is a DISAGREEMENT and the bucket does not move.
 
-3. MONOTONIC ORDER (verification). A sitting is printed in order, so walking a
-   bucket by `question_number` the paper index may repeat but must never go
-   DOWN. GS3 appearing between two GS4 questions means one of them is
-   misassigned, whichever signal says otherwise.
+3. MONOTONIC ORDER (a WARNING, not a veto). A sitting is printed in order, so
+   walking a bucket by `question_number` the paper index may repeat but should
+   not go DOWN. On the real corpus it does, in many years — the first dry run
+   rejected up to 51 rows in a bucket whose tags the OCR agreed with, against
+   29 disagreements in the entire corpus. An assumption that fires that often
+   against evidence that agrees is the assumption that is wrong, so the drop is
+   recorded in the review sheet and does not stop the bucket.
 
-An untagged question is Essay only if it matches that year's essay source;
-otherwise it is UNASSIGNED, and one unassigned question aborts its bucket.
+THE ESSAY PAPER IS TAGGED IN A DIFFERENT TABLE. Essay questions carry no GS
+topic tag — they are not GS topics — so the first pass read all 100 of them as
+untagged and every one of the thirteen buckets aborted. Their tag was never
+missing: it is in `essay_pyq_tags`, which IS the statement "this is an Essay
+question". A question with no GS primary tag and a row there is Essay; the
+essay OCR verifies it for 2026, the one year that has an essay page. Anything
+still unplaced is UNASSIGNED, and one unassigned question aborts its bucket.
+
+A HUMAN CAN OVERRULE ALL OF IT. `workbench/audit/gs_split_overrides.csv`
+(question_id, paper, reason) places a question by hand, wins over every signal,
+and is recorded as `assignment_method='override'` so the row says how it was
+decided.
 
 WHY SO STRICT. The GS corpus is partly fabricated
 (`docs/status/2026-09-14-gs-corpus-fabrication-audit.md`): 2013 and 2014 have
@@ -96,6 +109,10 @@ ESSAY = "ESSAY"
 #: The audit's own reconcile used a single 85 cut; the same number is used
 #: here so a question this script calls matched is a question that reconcile
 #: would also have called matched.
+#: How much of a question the review CSV carries. Enough to recognise it
+#: without opening the database.
+REVIEW_EXCERPT_CHARS = 80
+
 OCR_MATCH_CUT = 85.0
 
 #: There is deliberately no second, lower threshold. A weak hit cannot veto a
@@ -105,11 +122,62 @@ OCR_MATCH_CUT = 85.0
 
 
 class BucketAbort(Exception):
-    """One bucket cannot be split. Raised before any write for that bucket."""
+    """One bucket cannot be split. Raised before any write for that bucket.
+
+    CARRIES ITS REVIEW ROWS. The rows are the entire point of an abort — they
+    are what a human uses to fix the bucket — and the caller only ever saw them
+    on the success path, so a run where every bucket aborted wrote an empty
+    CSV. The evidence is attached to the refusal rather than left behind it.
+    """
+
+    def __init__(self, message: str, rows: list[dict[str, Any]] | None = None):
+        super().__init__(message)
+        self.rows = rows or []
+
+
+#: A human's decision about one question, read from
+#: `workbench/audit/gs_split_overrides.csv`. This is the escape hatch for the
+#: cases the three signals cannot settle: someone reads the paper, writes the
+#: answer down, and the script stops arguing.
+OVERRIDES_CSV = ROOT / "workbench" / "audit" / "gs_split_overrides.csv"
 
 
 class ScopeAbort(Exception):
     """The selected rows are not all buckets. Aborts the WHOLE run, unwritten."""
+
+
+def load_overrides(path: Path = OVERRIDES_CSV) -> dict[str, Any]:
+    """question_id -> paper, from the human override sheet.
+
+    Columns: `question_id`, `paper` (GS1..GS4 or ESSAY), `reason`. The reason
+    is not read by the script — it is there so the next person to open the file
+    knows why the row is in it, which is the only thing that makes an override
+    sheet safe to keep.
+
+    A missing file is the normal case and is not an error. A row naming a paper
+    outside the vocabulary is refused loudly rather than silently ignored: a
+    typo in an override is a human decision that did not happen.
+    """
+    out: dict[str, Any] = {}
+    if not path.is_file():
+        return out
+    with path.open("r", encoding="utf-8-sig", newline="") as fh:
+        for line_no, row in enumerate(csv.DictReader(fh), start=2):
+            qid = str(row.get("question_id") or "").strip()
+            raw = str(row.get("paper") or "").strip().upper()
+            if not qid:
+                continue
+            if raw == ESSAY:
+                out[qid] = ESSAY
+                continue
+            m = re.fullmatch(r"GS([1-4])", raw)
+            if not m:
+                raise ScopeAbort(
+                    f"{path.name} line {line_no}: paper {raw!r} is not one of "
+                    "GS1, GS2, GS3, GS4, ESSAY"
+                )
+            out[qid] = int(m.group(1))
+    return out
 
 
 def uuid_str(value: Any) -> Any:
@@ -246,11 +314,21 @@ def assign_question(
     *,
     tag_paper: Any,
     ocr_papers: dict[Any, str],
+    has_essay_tag: bool = False,
+    override: Any = None,
 ) -> dict[str, Any]:
     """One question's assignment and the evidence behind it.
 
     `tag_paper` is GS1..GS4 from the primary tag, or None when the question is
     untagged or its tag points into an empty shell.
+
+    `has_essay_tag` is whether the question has a row in `essay_pyq_tags`. THE
+    ESSAY PAPER IS TAGGED IN A DIFFERENT TABLE. Essay questions carry no GS
+    topic tag — they are not GS topics — so the first pass read all 100 of them
+    as untagged and every bucket aborted. Their tag exists; it is in the Essay
+    taxonomy, which is exactly the statement "this is an Essay question".
+
+    `override` is a human's decision and beats every signal below it.
     """
     text = question.get("question_text") or ""
     scores = ocr_scores(text, ocr_papers)
@@ -258,9 +336,13 @@ def assign_question(
     matched = ocr_paper if score >= OCR_MATCH_CUT else None
     tag_score = round(scores.get(tag_paper, 0.0), 1)
 
-    if tag_paper is not None:
+    if override is not None:
+        method = "override"
+        assigned: Any = override
+        disagrees = False
+    elif tag_paper is not None:
         method = "tag"
-        assigned: Any = tag_paper
+        assigned = tag_paper
         # A disagreement is the tag's paper FAILING to match while another
         # paper matches — not merely another paper scoring higher. Whole-paper
         # `partial_ratio` matching is generous: a short, generically worded
@@ -271,6 +353,20 @@ def assign_question(
             matched is not None
             and matched != tag_paper
             and tag_score < OCR_MATCH_CUT
+        )
+    elif has_essay_tag:
+        method = "essay_tag"
+        assigned = ESSAY
+        # The essay OCR verifies where it exists — which is 2026 alone. A GS
+        # page matching this text while the essay page does not is the same
+        # disagreement the tag path refuses on; everywhere else there is no
+        # essay page to check against, and an absent page is not evidence.
+        essay_score = round(scores.get(ESSAY, 0.0), 1)
+        disagrees = (
+            ESSAY in ocr_papers
+            and matched is not None
+            and matched != ESSAY
+            and essay_score < OCR_MATCH_CUT
         )
     elif matched == ESSAY:
         method = "ocr_essay"
@@ -291,16 +387,24 @@ def assign_question(
         "tag_score": tag_score,
         "method": method,
         "disagrees": disagrees,
-        "excerpt": re.sub(r"\s+", " ", str(text))[:60],
+        "has_essay_tag": bool(has_essay_tag),
+        "excerpt": re.sub(r"\s+", " ", str(text))[:REVIEW_EXCERPT_CHARS],
     }
 
 
 def order_violations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Rows where the paper index DROPS as question_number rises.
 
-    A sitting is printed in order. The index may repeat — a paper has many
-    questions — but a fall means two rows disagree about where the boundary is,
-    and this script does not get to pick which.
+    A WARNING, NOT A REFUSAL — which is a correction. The rule assumed a
+    bucket's `question_number` runs in printed paper order; on the real corpus
+    it does not, in many years, and the check was rejecting up to 51 rows in a
+    bucket whose tags the OCR agreed with. An assumption that fires 51 times
+    against evidence that agrees 29-out-of-1200 times is the assumption that is
+    wrong.
+
+    So the drop is still computed and still written to the review CSV — a real
+    boundary error would show here — but it no longer stops a bucket. Only an
+    unassigned question or a tag/OCR disagreement does.
     """
     ordered = sorted(
         (r for r in rows if r["assigned"] is not None and r["question_number"] is not None),
@@ -323,12 +427,15 @@ def plan_bucket(
     *,
     tag_papers: dict[str, Any],
     corpus: dict[tuple[int, Any], str],
+    essay_tagged: set[str] | None = None,
+    overrides: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """(planned papers, per-question rows) for one year bucket.
 
-    Raises ``BucketAbort`` on any unassigned question, any tag/OCR
-    disagreement, or any order violation. Nothing is written for a bucket that
-    aborts, and the review CSV records every row either way.
+    Raises ``BucketAbort`` on any unassigned question or any tag/OCR
+    disagreement, WITH the review rows attached to the exception. An
+    out-of-order row is a warning: it is written to the review CSV and does not
+    stop the bucket — see `order_violations`.
     """
     year = bucket.get("year")
     if year is None:
@@ -336,25 +443,45 @@ def plan_bucket(
     if not questions:
         raise BucketAbort("bucket has no questions to split")
 
+    essay_tagged = essay_tagged or set()
+    overrides = overrides or {}
     ocr_papers = papers_for_year(corpus, int(year))
     rows = [
-        assign_question(q, tag_paper=tag_papers.get(str(q.get("id"))), ocr_papers=ocr_papers)
+        assign_question(
+            q,
+            tag_paper=tag_papers.get(str(q.get("id"))),
+            ocr_papers=ocr_papers,
+            has_essay_tag=str(q.get("id")) in essay_tagged,
+            override=overrides.get(str(q.get("id"))),
+        )
         for q in questions
     ]
 
     unassigned = [r for r in rows if r["assigned"] is None]
     disagreements = [r for r in rows if r["disagrees"]]
     violations = order_violations(rows)
-    if unassigned or disagreements or violations:
+    out_of_order = {id(r) for r in violations}
+    for row in rows:
+        row["reason"] = (
+            "unassigned" if row["assigned"] is None
+            else "disagreement" if row["disagrees"]
+            else "order_warning" if id(row) in out_of_order
+            else ""
+        )
+
+    if unassigned or disagreements:
         raise BucketAbort(
             f"{len(unassigned)} unassigned, {len(disagreements)} tag/OCR "
-            f"disagreement(s), {len(violations)} out-of-order — nothing written "
-            f"for {year}; see {REVIEW_CSV.name}"
+            f"disagreement(s) — nothing written for {year}; see "
+            f"{REVIEW_CSV.name} ({len(violations)} out-of-order warning(s) "
+            "recorded, not blocking)",
+            rows=rows,
         )
     if not ocr_papers:
         raise BucketAbort(
             f"no OCR for {year} under {OCR_DIR.name}/, so the tags cannot be "
-            "verified; refusing to move on one signal"
+            "verified; refusing to move on one signal",
+            rows=rows,
         )
 
     by_paper: dict[Any, list[dict[str, Any]]] = {}
@@ -380,6 +507,9 @@ def plan_bucket(
                     "year": int(year),
                     "split_from_bucket_id": uuid_str(bucket.get("id")),
                     "question_count": len(members),
+                    # 'override' appears here when a human placed any of this
+                    # paper's questions by hand, so the row says how it was
+                    # decided rather than implying the signals agreed.
                     "assignment_method": sorted({r["method"] for r in members}),
                     "min_ocr_score": min(scores) if scores else None,
                 },
@@ -483,6 +613,17 @@ select tag.question_id::text as question_id, s.slug as subject_slug
    and tag.tag_role = 'primary'
 """
 
+#: Which of this bucket's questions are tagged in the ESSAY taxonomy. No
+#: reviewer_status filter, for the same reason the GS tag read has none: the
+#: tag's existence is the corpus's own statement that this is an Essay
+#: question, and the OCR is what verifies it where a page exists.
+_ESSAY_TAGS_SQL = """
+select distinct t.question_id::text as question_id
+  from public.essay_pyq_tags t
+  join public.pyq_questions q on q.id = t.question_id
+ where q.pyq_paper_id = $1
+"""
+
 _STIMULUS_LINK_SQL = """
 select count(*)::bigint
   from public.pyq_question_stimuli qs
@@ -569,7 +710,12 @@ def _tag_papers(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 async def _split_one(
-    conn, bucket: dict[str, Any], *, live: bool, corpus: dict[tuple[int, Any], str]
+    conn,
+    bucket: dict[str, Any],
+    *,
+    live: bool,
+    corpus: dict[tuple[int, Any], str],
+    overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     bucket = {**bucket, "metadata": as_metadata(bucket.get("metadata"))}
 
@@ -586,7 +732,14 @@ async def _split_one(
         )
 
     tags = _tag_papers([dict(r) for r in await conn.fetch(_TAGS_SQL, bucket["id"])])
-    planned, review = plan_bucket(bucket, questions, tag_papers=tags, corpus=corpus)
+    essay_tagged = {
+        str(r["question_id"])
+        for r in await conn.fetch(_ESSAY_TAGS_SQL, bucket["id"])
+    }
+    planned, review = plan_bucket(
+        bucket, questions, tag_papers=tags, corpus=corpus,
+        essay_tagged=essay_tagged, overrides=overrides,
+    )
 
     codes = [p["paper_code"] for p in planned]
     existing = {r["paper_code"]: r["id"] for r in await conn.fetch(_EXISTING_SQL, codes)}
@@ -628,27 +781,31 @@ async def _split_one(
 
 
 def _write_review(rows: list[dict[str, Any]]) -> None:
+    """The review sheet. Written on EVERY run, including a dry run.
+
+    A dry run that refuses every bucket and writes nothing has told the
+    operator that something is wrong and given them no way to see what — which
+    is what happened: 13 aborts, 0 rows on disk. It is also written when there
+    is nothing to report, because a stale file from a previous run is worse
+    than an empty one.
+    """
     REVIEW_CSV.parent.mkdir(parents=True, exist_ok=True)
     with REVIEW_CSV.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(
             fh,
-            fieldnames=["year", "id", "number", "tag_paper", "ocr_paper",
-                        "ocr_score", "tag_score", "assigned", "method",
-                        "disagrees", "excerpt"],
+            fieldnames=["year", "question_id", "question_number", "tag_paper",
+                        "ocr_paper", "ocr_score", "reason", "excerpt"],
         )
         writer.writeheader()
         for row in rows:
             writer.writerow({
                 "year": row.get("year"),
-                "id": uuid_str(row.get("id")),
-                "number": row.get("question_number"),
+                "question_id": uuid_str(row.get("id")),
+                "question_number": row.get("question_number"),
                 "tag_paper": row.get("tag_paper"),
                 "ocr_paper": row.get("ocr_paper"),
                 "ocr_score": row.get("ocr_score"),
-                "tag_score": row.get("tag_score"),
-                "assigned": row.get("assigned"),
-                "method": row.get("method"),
-                "disagrees": row.get("disagrees"),
+                "reason": row.get("reason") or "",
                 "excerpt": row.get("excerpt"),
             })
 
@@ -663,8 +820,23 @@ def summarise(year: Any, rows: list[dict[str, Any]]) -> str:
     dis = sum(1 for r in rows if r["disagrees"])
     untagged = sum(1 for r in rows if r["tag_paper"] is None)
     essay = sum(1 for r in rows if r["assigned"] == ESSAY)
-    return (f"  {year}: tag-assigned {tag}, OCR-agreed {agreed}, "
-            f"disagreements {dis}, untagged {untagged}, essay {essay}")
+    # Broken out because it is the rule that unblocked the corpus: how many of
+    # this year's Essay questions were placed by essay_pyq_tags rather than by
+    # an OCR page that, for twelve of the thirteen years, does not exist.
+    essay_tagged = sum(1 for r in rows if r["method"] == "essay_tag")
+    overridden = sum(1 for r in rows if r["method"] == "override")
+    unassigned = sum(1 for r in rows if r["assigned"] is None)
+    warnings = sum(1 for r in rows if r.get("reason") == "order_warning")
+    bits = [
+        f"  {year}: tag-assigned {tag}, OCR-agreed {agreed}, "
+        f"disagreements {dis}, untagged {untagged}, essay {essay} "
+        f"({essay_tagged} via essay_pyq_tags), unassigned {unassigned}"
+    ]
+    if overridden:
+        bits.append(f", overrides {overridden}")
+    if warnings:
+        bits.append(f", out-of-order warnings {warnings}")
+    return "".join(bits)
 
 
 async def run(*, live: bool, year: int | None) -> int:
@@ -682,6 +854,14 @@ async def run(*, live: bool, year: int | None) -> int:
     if not corpus:
         print(f"no OCR cache under {OCR_DIR}", file=sys.stderr)
         return 2
+
+    try:
+        overrides = load_overrides()
+    except ScopeAbort as exc:
+        print(f"OVERRIDE SHEET — {exc}", file=sys.stderr)
+        return 2
+    if overrides:
+        print(f"{len(overrides)} human override(s) from {OVERRIDES_CSV.name}\n")
 
     conn = await asyncpg.connect(dsn)
     review_rows: list[dict[str, Any]] = []
@@ -706,13 +886,18 @@ async def run(*, live: bool, year: int | None) -> int:
             try:
                 if live:
                     async with conn.transaction():
-                        out = await _split_one(conn, bucket, live=True, corpus=corpus)
+                        out = await _split_one(conn, bucket, live=True,
+                                               corpus=corpus, overrides=overrides)
                 else:
-                    out = await _split_one(conn, bucket, live=False, corpus=corpus)
+                    out = await _split_one(conn, bucket, live=False,
+                                           corpus=corpus, overrides=overrides)
             except BucketAbort as exc:
                 aborted += 1
-                # The review rows are the point of an abort, so rebuild them
-                # for the CSV even though the bucket is not moving.
+                # THE ROWS ARE THE POINT OF AN ABORT. They ride on the
+                # exception, so a run where every bucket refuses still leaves
+                # the operator the sheet that says why.
+                for row in exc.rows:
+                    review_rows.append({**row, "year": bucket.get("year")})
                 print(f"  ABORT {bucket.get('year')}: {exc}\n", file=sys.stderr)
                 continue
 
@@ -726,9 +911,19 @@ async def run(*, live: bool, year: int | None) -> int:
             total_created += out["created"]
             total_moved += out["moved"]
 
-        if review_rows:
-            _write_review(review_rows)
-            print(f"\nwrote {len(review_rows)} row(s) to {REVIEW_CSV.relative_to(ROOT)}")
+        # Always, including an empty result: a stale sheet from a previous run
+        # is worse than one that says there is nothing to review.
+        _write_review(review_rows)
+        print(f"\nwrote {len(review_rows)} row(s) to {REVIEW_CSV.relative_to(ROOT)}")
+        flagged = sum(1 for r in review_rows if r.get("reason"))
+        if flagged:
+            print(f"  of which {flagged} flagged "
+                  f"({sum(1 for r in review_rows if r.get('reason') == 'unassigned')} "
+                  "unassigned, "
+                  f"{sum(1 for r in review_rows if r.get('reason') == 'disagreement')} "
+                  "disagreement, "
+                  f"{sum(1 for r in review_rows if r.get('reason') == 'order_warning')} "
+                  "order warning)")
         print(f"\nTOTAL: {total_created} paper(s) created, {total_moved} question(s) "
               f"moved, {aborted} bucket(s) aborted")
         if not live:
