@@ -30,17 +30,25 @@ const ITEMS = [
   },
 ];
 
-const getMock = jest.fn();
+const mockApiGet = jest.fn();
 
 jest.mock("../../lib/api", () => ({
   api: {
-    get: (...args) => getMock(...args),
+    get: (...args) => mockApiGet(...args),
     post: jest.fn().mockResolvedValue({}),
   },
 }));
 
 jest.mock("../../lib/authContext", () => ({
   useAuth: () => ({ user: { id: "u1", goal_exams: [] } }),
+}));
+
+// env.js throws without REACT_APP_BACKEND_URL, which the CI frontend job does
+// not set. Mocked so the lane behaviour is tested without a backend URL, and
+// with demo data off so only the API items above are rendered.
+jest.mock("../../shared/config/env", () => ({
+  ENABLE_DEMO_DATA: false,
+  BACKEND_URL: "http://backend.test",
 }));
 
 function renderScreen() {
@@ -58,8 +66,8 @@ async function titlesAfterLane(lane) {
 }
 
 beforeEach(() => {
-  getMock.mockReset();
-  getMock.mockResolvedValue({ items: ITEMS });
+  mockApiGet.mockReset();
+  mockApiGet.mockResolvedValue({ items: ITEMS });
 });
 
 test("category lanes show only their own resources", async () => {
@@ -97,12 +105,12 @@ test("an empty lane renders nothing rather than falling back to all", async () =
 
 test("lane is never sent to the API, which has no lane parameter", async () => {
   renderScreen();
-  await waitFor(() => expect(getMock).toHaveBeenCalled());
+  await waitFor(() => expect(mockApiGet).toHaveBeenCalled());
 
   fireEvent.click(screen.getByTestId("res-lane-current_affairs"));
   await waitFor(() => screen.getByTestId("resources-page"));
 
-  for (const [url] of getMock.mock.calls) {
+  for (const [url] of mockApiGet.mock.calls) {
     expect(url).not.toContain("lane=");
   }
 });
