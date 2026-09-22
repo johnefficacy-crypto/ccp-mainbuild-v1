@@ -1,0 +1,564 @@
+{
+  "year": 2026,
+  "paper": "GS3",
+  "paper_code": "UPSC-CSE-MAINS-GS-2026-GS3",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+  "mode": "anchored",
+  "printed_question_count": 20,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you mean by Digital Rupee? In this context, explain the working and progress of India’s Central Bank Digital Currency (CBDC).",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        51,
+        52
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "5d9cc1c134985429bceb46bc2108235ccd24f8bf562c2be657efefc2f1724424",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "Examine the view that financial inclusion is an integral part of social and economic inclusion in a country like India. Also throw light on the usefulness of the R.B.I.’s Financial Inclusion Index.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        59,
+        61
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 60,
+          "text": "inclusion in a country like India. Also throw light on the usefulness of the R.B.I.’s",
+          "flags": [
+            "stray_caps"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "73fac9bcf548afdc87d0c1ca77f217e5d251534bf51a136b1ca9d1b66a65f183",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "Describe the various Technology Missions initiated in Indian agriculture and examine their role in food security.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        66,
+        67
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "7600d4bf534d79413351b0d6956fae3b78f2f5644a95197d19dd2799f9c6c3e2",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain the factors responsible for inefficiency of agri-produce marketing. How e-commerce helps to reduce inefficiency of agri-produce marketing? Explain.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        73,
+        75
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "86459a2ecb02fc0a8a799b2c192476b76804821701a1ca035de198fd6d9decee",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain by giving two examples, how biotechnology has helped the Indian farmers in processing their perishable crops.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        82,
+        83
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "0c41ecd0561334ded365d2009e3c5d5bffed7cf67408b01b9c3196663d389387",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "Distinguish between a Fast Breeder Reactor (FBR) and a thermal nuclear reactor. In the context of first indigenously developed prototype FBR at Kalpakkam, explain the term ‘criticality’. What are its implications for ose energy future of our country?",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        90,
+        93
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 92,
+          "text": "term ‘criticality’. What are its implications for ose energy future of our country ?",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "91aebe7af62f361424476a20f8f1abd774f3f3a75edf0329a66afa521983eac2",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss how the contradiction between ‘rapid infrastructure development’ and ‘disaster-risk reduction’ in ecologically-sensitive areas of India can be managed, with suitable examples.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        99,
+        101
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "151b16bd66068c294df5a82e0ecf2dcba66f47d87c96cd5cd4891b794ab803f8",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the aim and goals of Kunming-Montreal global biodiversity framework. Mention India’s commitments and initiatives to achieve the goals and targets of this framework giving suitable examples.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        107,
+        109
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "c9ccdfd2514618e18ab1d594f69fa50f060d85e4ff44ec6876598330bbad0648",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain how fake news and disinformation pose threat to Internal Security and Public Order in Indian context? In this regard, discuss salient features of amendments in respect of Information Technology (Intermediatory Guidelines and Digital Media Ethics Code) Rules 2021.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        118,
+        121
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "42f508bf92e78678374acabf487f831a3c44e2f3591996b23fbeb8442181edbc",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Ladakh is strategically located between China and Pakistan. As a measure to win hearts and minds of locals, discuss the Border Area Development Programmes (BADP) by the Central Government and civic actions by the Army. Also discuss demand of promulgation of provision of the Sixth Schedule of constitution for Ladakh.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        128,
+        132
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 132,
+          "text": "Ladakh. (Answer in 150 words) 10",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "4bff20c26d8aca96d64d4676bde8a712c38dc1560d8e24c670f3dfbc1cea4d66",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain the key challenges for India’s energy security. What measures do you suggest for ensuring energy security along with economic growth and sustainability?",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        138,
+        140
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "0b92502d3e3d4cd14fd29795238eb76b3c44aedfc491577318c76c0286dd0b22",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "How are startups in India promoting entrepreneurship, innovation and employment? Discuss the global and domestic challenges in their working and suggest suitable measures to overcome these challenges.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        146,
+        148
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "87c4363f36add48a5438be691cb23e22f7292972ae51f8c0eae81b2ac5da4e36",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "How Indian agriculture has been transformed from food scarcity to food surplus level? Explain the various government policies implemented for diversification of Indian agriculture.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        164,
+        166
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "4223de297353184da700a8b342a1f09e0c2a76960897ee01431b26848bbf109a",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the different types of subsidies and supports provided by the Government of India to agricultural sector. Examine the related issues pertaining to Agreement on Agriculture of World Trade Organisation (WTO).",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        172,
+        174
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "deff5cc89fb9047387ff76016d2a9aa84ba3fa9cc555a85e90f5643be1d96dfb",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Mention salient features of ‘Mission Drishti’. Discuss the imaging techniques used in the satellite launched on 3rd May 2026. Why it is being considered world’s first satellite of its kind?",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        180,
+        182
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "a0210f8da15ad80322d1ce6641fdc73d363f1e660c4973d46d08466cd2490ad5",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "What is agentic Artificial Intelligence (AI)? Explain its working. Describe its applications with suitable examples. Discuss the advantages, risks and challenges associated with agentic AI systems.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        188,
+        190
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "ece0c91917ad1122ba3d05a512f67c09e3af5313766d7de11ee9ac3c030731f1",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the challenges to solid waste management in India? Discuss the governmental policy framework on solid waste management. Discuss the success/ failure cases of Delhi and Indore cities highlighting the salient feature of their solid waste management initiatives.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        199,
+        202
+      ],
+      "page": 6,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "e0013f8e69907d6f901ef6659578f48e5ad644abd707875c9a5b0970f54e09f4",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "“Community participation is the cornerstone of effective disaster management”. Analyse this statement with suitable examples from India. Also discuss the challenges to community participation and measures to strengthen it.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        208,
+        210
+      ],
+      "page": 6,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "30f7fb03200c79d9cc694860629b537b07af2b89c1ea5f50146559ef45031f2d",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Separatist movements have been one of the major factors contributing to militancy and instability in Jammu & Kashmir (J & K). Bring out actions taken by the Government to bring J&K into national mainstream. Discuss pre and post abrogation status of Articles 370 and 35A. Also bring out positive impacts of abrogation of both articles in mainstreaming the state.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        219,
+        224
+      ],
+      "page": 6,
+      "low_confidence_lines": [
+        {
+          "line": 220,
+          "text": "and instability in Jammu & Kashmir (J & K). Bring out actions taken by the",
+          "flags": [
+            "stray_caps"
+          ]
+        },
+        {
+          "line": 221,
+          "text": "Government to bring J&K into national mainstream. Discuss pre and post",
+          "flags": [
+            "stray_caps"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "dfd7322f11026b5080d99b9e58e34941a27ebfe50db325c67c4e639fc6c11eb8",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss counterfeit currency and money laundering as major sources of terror funding in India. State the actions being taken at International level to check these menaces. Highlight the role of Financial Action Task Force (FATF) and methods of compliance by its member states in preventing terror funding.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS3.txt",
+      "line_span": [
+        237,
+        240
+      ],
+      "page": 7,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "f9b4043f6844a1161cfab3e25351331e67deb82c294d45e4da9221af54ba57bc",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -1,0 +1,557 @@
+{
+  "year": 2026,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2026-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+  "mode": "anchored",
+  "printed_question_count": 20,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "Analyze the importance of Ashokan inscriptions for reconstructing Mauryan history.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        54,
+        55
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 54,
+          "text": "Analyze the importance of Ashokan inscriptions for reconstructing Mauryan history.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "ebe489b832915c52dae096805b2282dee3ce95e869d1a186398491682cb503fd",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the impact of Macaulay’s Minute on colonial administration and education in India.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        60,
+        61
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "4516d2ec6d942907efb95bf383f319c68ee89f1dc40a14bbffc3895ed05a58ea",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "The significance of the Gandhian movements lay in the masses they mobilized. Elucidate.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        66,
+        67
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 66,
+          "text": "The significance of the Gandhian movements lay in the masses they mobilized.",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "928d9a9fbb294811458025207dd6670017a38376474ecb12c03f7f7980111c03",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "What is the Fujiwhara effect? Explain its impact on the movement and intensity of tropical cyclones.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        72,
+        73
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "06604d324b581d610cca455ec4ffdaf538365bda45d9fcab1fa863aeebb0269f",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "“Tundra regions are ecologically fragile but economically important.” Examine this statement critically.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        78,
+        79
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "a0406368469539cbe89ed51a3449be17e64ac4b14ccd41a0aaf608f24c0aef14",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the role of aeolian processes in desertification and land degradation.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        84,
+        85
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "22ff98c97e419580dc9d5afce34d951f69e3f0850e221526b0cff4f68901fa01",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "“Water resources are both an asset and a source of conflict in South Asia.” Examine this statement giving examples.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        90,
+        91
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "dd5c85f507c886efdf0cefc72c39367fd4aa580236872a03befe5124ea311ba0",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Unity in diversity remains the defining feature of Indian society despite the challenges from communalism and regionalism. Comment.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        122,
+        125
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "51551f877c932969bb68d90be021193b3f7426d9ad3964070c28bb15031854ca",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "How do you understand disability? Substantiate the need for inclusive policy framework in India in this regard.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        130,
+        131
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "c3a399bb3230cde652ff6d8efa9f672d77a0a4d275261e8d2eeb35c2834f78d3",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Do you think digital technology promotes social empowerment? Explain with examples.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        136,
+        137
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "a59d03c0fe4aed3e7697927d27f85708297805d6a342f482525fad830ef0c65d",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "Vijayanagara architecture exemplifies the amalgamation of past traditions with contemporary practices. Elucidate with examples.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        142,
+        143
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 142,
+          "text": "Vijayanagara architecture exemplifies the amalgamation of past traditions with",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "35e918ca03ef7f9cb0df80cdbfeaff2efbad7b46458eb35bcb5f704316d2822c",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "Linguistic reorganization of Indian States was driven by popular pressure from below. Comment.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        148,
+        149
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "aac5912e6e256a1d3a906ef3a50eff8e655411b431974089fcb3f3b453181ab4",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "The model of planned economy was adopted in India to address the regional imbalances left behind by colonial rule. Comment.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        154,
+        155
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "8be5ac1c1432d478f2310c686aff8ff274fc2cd26e78a7244c4b41a17c5c9cb9",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Compare the Loo, Chinook and Foehn winds with respect to their regions of prevalence, their nature and climatic impacts.",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        160,
+        161
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "63697e2217ccd277b80d2012bd01eac30d8f19aad5b6405700dc82dfce713228",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Analyze the role of satellite-based technologies in achieving climate-smart agriculture and food security in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        194,
+        195
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "1b13adec415a32601bb5d47235e934dc73bb902e9d6913cd13a6485d0e85c8ba",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“The centre of global trade is gradually shifting from the Atlantic region to the Indo-Pacific region.” Examine this statement.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        200,
+        201
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "917ac1615a000f597999b8b1489bb20412f12153c635e0624cdb51389a589ff7",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Analyze the major drivers of human-induced land-use changes in India and their geographical consequences.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        206,
+        207
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "fa8853558011d27682d2c6e0e1d9245bb86a4f9a309617e658f02e9b308f1526",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "Is caste disappearing in urban India? Illustrate your answer with examples.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        212,
+        213
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "141117f1db783b62d1d6d86a34f9701deba08f10c7443591bde84275809dc31b",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Critically examine the challenges of demographic transition in contemporary India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        218,
+        219
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "561913bd5bb5fd5036bdb246bc4d262767327cccedcf87d8c362fbd7d7a5aef3",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "Evaluate the impact of globalization on Indian youths with reference to social, political, economic and cultural spheres.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2026_GS1.txt",
+      "line_span": [
+        225,
+        227
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "331847560644ff6913e62a1a29daadb49dca81f389b770a2862d081db516ed37",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "year": 2017,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2017-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+  "mode": "anchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "count_mismatch:printed=20,extracted=19"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "“The emergence of the Self-Help Groups (SHGs) in contemporary times points to the slow but steady withdrawal of the State from developmental activities.” Examine the role of the SHGs in developmental activities and the measures taken by the Government of India to promote the SHGs.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+      "line_span": [
+        218,
+        221
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "bb8ba128d87e5df9e79465bc34fd604e4ec50fe60306373ba061aa4d36a84d77",
+      "best_db_match": {
+        "score": 0.4126,
+        "measure": "sequence",
+        "id": "3d94f66e-aabc-4b34-a404-b3081edfc007",
+        "text": "Simultaneous election to the Lok Sabha and the State Assemblies will limit the amount of time and money spent in electioneering but it will reduce the government's accountability to the people. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“Poverty alleviation programmes in India remain mere showpieces until and unless they are backed up by political will.” Discuss with reference to the performance of the major poverty alleviation programmes in India.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+      "line_span": [
+        227,
+        230
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "4b6950b2f4d8c6d768bd518af335a00146da0afe49de119c72f43093071b285c",
+      "best_db_match": {
+        "score": 0.3896,
+        "measure": "sequence",
+        "id": "aec49396-4667-4b81-b56c-fa90ea6159c4",
+        "text": "Explain various types of revolutions, took place in Agriculture after independence in India. How these revolutions have helped in poverty alleviation and food security in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Initially Civil Services in India were designed to achieve the goals of neutrality and effectiveness, which seems to be lacking in the present context. Do you agree with the view that drastic reforms are required in Civil Services? Comment.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+      "line_span": [
+        235,
+        239
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "68d6e214a9b278811011a79a73f10fda20d8533dd8d5b12bc415944c0aacc8d3",
+      "best_db_match": {
+        "score": 0.4104,
+        "measure": "sequence",
+        "id": "2273929f-6dc6-485f-932d-2c3636d8e8b4",
+        "text": "How do pressure groups influence Indian political process? Do you agree with the view that informal pressure groups are more powerful than formal ones?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "The question of India’s Energy Security constitutes the most important part of India’s economic progress. Analyze India’s energy policy cooperation with West Asian countries.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+      "line_span": [
+        243,
+        246
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "0e16220831a6efb88cc68896d22afd00726b00b8e5929cd6ad7b74558de9a99d",
+      "best_db_match": {
+        "score": 0.4,
+        "measure": "sequence",
+        "id": "92e40f39-d925-4fef-aa90-53aba906d8c4",
+        "text": "One of the tests of integrity is complete refusal to be compromised. Explain with reference to a real life example."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Indian diaspora has an important role to play in South-East Asian countries’ economy and society. Appraise the role of Indian diaspora in South-East Asia in this context.",
+      "marks": "15",
+      "marks_source": "printed_inline",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS2.txt",
+      "line_span": [
+        250,
+        253
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "0ae19b016e6bdb79add7b369e51103e2a0f086e9304cf58ff64a45ba815efea9",
+      "best_db_match": {
+        "score": 0.3922,
+        "measure": "sequence",
+        "id": "d7684627-c726-43dd-8964-898f626e4d6a",
+        "text": "Evaluate the economic and strategic dimensions of India's Look East Policy in the context of post-Cold War international relations scenario."
+      },
+      "route": "insert"
+    }
+  ]
+}

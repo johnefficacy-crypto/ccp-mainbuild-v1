@@ -1,0 +1,520 @@
+{
+  "year": 2015,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2015-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+  "mode": "unanchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "dropped_instruction:1"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "Mahatma Gandhi and Dr. B.R. Ambedkar, despite having divergent approaches and strategies, had a common goal of amelioration of the downtrodden. Elucidate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        81,
+        82
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 81,
+          "text": "Mahatma Gandhi and Dr. B.R. Ambedkar, despite having divergent approaches and strategies,",
+          "flags": [
+            "stray_caps"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "504788731840d057dd6681e9866aeb16a1afd44f16d2c18e0ff7752ad00280a1",
+      "best_db_match": {
+        "score": 0.4506,
+        "measure": "sequence",
+        "id": "b6271163-d688-46fe-8d3f-7cb227d8442d",
+        "text": "Mahatma Gandhi and Subhash Chandra Bose had differing views on how to achieve Indian independence. Analyze."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "It would have been difficult for the Constituent Assembly to complete its historic task of drafting the Constitution for Independent India in just three years but for the experience gained with the Government of India Act, 1935. Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        88,
+        90
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "426cef8a5c8043e220734e8fbee7b51c1e24712760aa3be23bf96698a9f35349",
+      "best_db_match": {
+        "score": 0.3646,
+        "measure": "sequence",
+        "id": "b2239c42-c358-46e8-adb6-f28a9528dfac",
+        "text": "Discuss the role of international aid in developmental ethics. What are the ethical concerns surrounding aid with political conditionalities?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "To what extent can Germany be held responsible for causing the two World Wars? Discuss critically.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        118,
+        119
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "9dfb9e37cac8075e6253a918c01f852bbc68d1b1d365cba229545b0525c8a336",
+      "best_db_match": {
+        "score": 0.4554,
+        "measure": "sequence",
+        "id": "7ca87b92-dfb6-4dac-acc1-5b8f68b23290",
+        "text": "To what extent can the economic reforms of 1991 be linked to the changing profile of urban spaces in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Describe any four cultural elements of diversity in India and rate their relative significance in building a national identity.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        123,
+        125
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "43aaf0f6ce05650166438b73830186308fecdd5eaf9b3853c3b3fe5a5bdd2d2c",
+      "best_db_match": {
+        "score": 0.4167,
+        "measure": "sequence",
+        "id": "07ac9886-411a-47c0-ac1e-1e44f2ed5773",
+        "text": "Public servants are the trustees of public power and financial resources. In this context, discuss the significance of 'probity in governance'."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Critically examine whether growing population is the cause of poverty OR poverty is the main cause of population increase in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        129,
+        130
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "86ff6818c159cb821d0a813edbf1ca27a80e62cca032ad3b177313741433c88d",
+      "best_db_match": {
+        "score": 0.5646,
+        "measure": "sequence",
+        "id": "d6601ce4-5660-448c-9a96-ef76b2ead8db",
+        "text": "Critically examine the effects of globalization on the aged population in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "How do you explain the statistics that show that the sex ratio in Tribes in India is more favourable to women than the sex ratio among Scheduled Castes?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        134,
+        135
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 134,
+          "text": "How do you explain the statistics that show that the sex ratio in Tribes in India is more",
+          "flags": [
+            "suspect_token"
+          ]
+        },
+        {
+          "line": 135,
+          "text": "favourable to women than the sex ratio among Scheduled Castes ? 12%",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "87a73732b3e9ea7561e5951a03dff73c6c03fe629c1e60005ca3c02e3fbb6b15",
+      "best_db_match": {
+        "score": 0.4078,
+        "measure": "sequence",
+        "id": "2ee7b2fa-949e-4eb9-a9c6-0039747d590d",
+        "text": "Evaluate the impact of civil society organizations on policy formulation in India with suitable examples."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "we wal wife | Discuss the changes in the trends of labour migration within and outside India in the last four decades.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        137,
+        140
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 137,
+          "text": "we wal wife |",
+          "flags": [
+            "unknown_words",
+            "garble_chars",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "46617fe6330a4a595e1398cd51250e464b527793ede169d9003a371e51e5ddd7",
+      "best_db_match": {
+        "score": 0.4359,
+        "measure": "sequence",
+        "id": "1c295c62-cb1b-41bb-9f9c-19152819dbd1",
+        "text": "Analyze the challenges faced by the cooperative sector in India and suggest steps to revitalize it for agrarian welfare."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the positive and negative effects of globalization on women in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        143,
+        143
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "8c45eda2bab597a14ad226aee6cbbafaa21748c616bf08916ee6e7ba521d8571",
+      "best_db_match": {
+        "score": 0.5935,
+        "measure": "sequence",
+        "id": "d6601ce4-5660-448c-9a96-ef76b2ead8db",
+        "text": "Critically examine the effects of globalization on the aged population in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "Debate the issue of whether and how contemporary movements for assertion of Dalit identity work towards annihilation of caste.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        147,
+        148
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "47ff80d8b88fcca7e6eab26ffebf33ac3bada5198d59dbc688d48de6691f6805",
+      "best_db_match": {
+        "score": 0.4649,
+        "measure": "sequence",
+        "id": "a3a4d908-377e-4801-8c03-fe4cdfade217",
+        "text": "Evaluate the role of the press in the Indian national movement from the late nineteenth century onwards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain the factors responsible for the origin of ocean currents. How do they influence regional climates, fishing and navigation? 12'4",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        152,
+        154
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "738cf7c6e67d475eee9d5ccde5ae385be9a464459f1f9d75717e89794addf1e6",
+      "best_db_match": {
+        "score": 0.484,
+        "measure": "sequence",
+        "id": "c7a7de66-85ca-47cf-bcb2-fe2c7bec261f",
+        "text": "Discuss the major factors responsible for the origin and intensity of tropical cyclones."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Mumbai, Delhi and Kolkata are the three mega cities of the country but the air pollution is much more serious problem in Delhi as compared to the other two. Why is this so?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        170,
+        172
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "2b8c1608a6c8699ddfc0d21d667c478d3cb7d561c0106a759cd879512b0764f3",
+      "best_db_match": {
+        "score": 0.4069,
+        "measure": "sequence",
+        "id": "73e19448-f010-4550-8a58-4b3f17003643",
+        "text": "What are the essential elements of an effective code of conduct for public officials? Distinguish it from a code of ethics."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "India is well endowed with fresh water resources. Critically examine why it still suffers from water scarcity.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        179,
+        181
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 181,
+          "text": "from water scarcity. 12%",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "d7f96b3c729ccc1a77343f2d418384b6bf5aaab3b39188325ea50baa77fe587d",
+      "best_db_match": {
+        "score": 0.3636,
+        "measure": "sequence",
+        "id": "d6601ce4-5660-448c-9a96-ef76b2ead8db",
+        "text": "Critically examine the effects of globalization on the aged population in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "The states of Jammu and Kashmir, Himachal Pradesh and Uttarakhand are reaching the limits of their ecological carrying capacity due to tourism. Critically evaluate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        185,
+        187
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "12a2f3830793544c3e1ba89f2063c9bda1abdcd846b7a537e8bfd13d58bd45b8",
+      "best_db_match": {
+        "score": 0.4067,
+        "measure": "sequence",
+        "id": "b2239c42-c358-46e8-adb6-f28a9528dfac",
+        "text": "Discuss the role of international aid in developmental ethics. What are the ethical concerns surrounding aid with political conditionalities?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "How far do you agree that the behaviour of the Indian monsoon has been changing due to humanizing landscapes? Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        191,
+        192
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 192,
+          "text": "humanizing landscapes ? Discuss. 12%",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "e1d0d6eb60e97084af379ab2f096455e620b1700d36401b99cb8dd5057c2f639",
+      "best_db_match": {
+        "score": 0.4558,
+        "measure": "sequence",
+        "id": "511dbb3e-11c4-42b8-bce9-2ec8378b2142",
+        "text": "How different would have been the achievement of Indian Independence without Mahatma Gandhi? Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Smart cities in India cannot sustain without smart villages. Discuss this statement in the backdrop of rural urban integration.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        196,
+        198
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "8359a7490d2b33862462842197329424d3f79e76856b00baaa737311cf44cabb",
+      "best_db_match": {
+        "score": 0.432,
+        "measure": "sequence",
+        "id": "7a656ea2-5512-4a3d-bdd8-182d66e379f1",
+        "text": "\"An unexamined life is not worth living.\" - Socrates. What does this statement mean to you in your personal and professional sphere?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the economic significances of discovery of oil in Arctic Sea and its possible environmental consequences?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS1.txt",
+      "line_span": [
+        202,
+        204
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "4887edceff60307ff6673ca0b100142cff06f21e0f90e419a7f111a2d5c26c50",
+      "best_db_match": {
+        "score": 0.4696,
+        "measure": "sequence",
+        "id": "1f387c78-48f4-4dc5-8951-cb577e703b70",
+        "text": "Discuss the strategic importance of the India-US civil nuclear deal and its impact on India's global energy diplomacy."
+      },
+      "route": "insert"
+    }
+  ]
+}

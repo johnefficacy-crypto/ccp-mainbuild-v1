@@ -1,0 +1,632 @@
+{
+  "year": 2013,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2013-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+  "mode": "anchored",
+  "printed_question_count": 25,
+  "paper_flags": [
+    "subpart_labels_unread:labels=9,parts=29"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "Several foreigners made India their homeland and participated in various movements. Analyze their role in the Indian struggle for freedom.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        72,
+        73
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 72,
+          "text": "Several foreigners made India their homeland and participated in various",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "442da5bdc375ca7198364f01c9f9f03a3263b4e3b9c845a8784d924acb408edd",
+      "best_db_match": {
+        "score": 0.4545,
+        "measure": "dice",
+        "id": "5cb9daf8-900a-4f2f-ae1e-718532e3c973",
+        "text": "Evaluate the role of the Indian National Army (INA) in the freedom struggle of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "“In many ways, Lord Dalhousie was the founder of modern India.” Elaborate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        76,
+        77
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "b4e1bde83a7505cf4545cbc2b37cfc1284fd51a23be84df7cb170f234948a129",
+      "best_db_match": {
+        "score": 0.4183,
+        "measure": "sequence",
+        "id": "a0576ed7-c996-4a38-9f53-128a3983224b",
+        "text": "Analyze the impact of global trade protectionism on India's software export matrices."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Write a critical note on the evolution and significance of the slogan, Jai Jawan Jai Kisan’.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        87,
+        88
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 88,
+          "text": "Jai Kisan’. (200 words)",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "9eb6e7795b5c3aa58192e0162424ec8ff6df0392c0f39925ccb51aeca86d53f4",
+      "best_db_match": {
+        "score": 0.4615,
+        "measure": "sequence",
+        "id": "53a689c3-d86a-446e-9bd5-626c7f8042d5",
+        "text": "Discuss the ecological and economic importance of wetlands in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the contributions of Maulana Abul Kalam Azad to pre- and _ postindependent India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        91,
+        92
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "984957b6ded9a64c5ce1d01a990ecbf1242cb9b6b9a6682b74830d10c30c196a",
+      "best_db_match": {
+        "score": 0.5342,
+        "measure": "sequence",
+        "id": "7f72f92f-e1c4-4df8-b8aa-571b52c63cbe",
+        "text": "Discuss the scope and limitations of judicial review in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Analyze the circumstances that led to the Tashkent Agreement in 1966. Discuss the highlights of the Agreement.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        97,
+        98
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "6e11775128839a064ba27c20d72e8856a489f6d47cdb104cfb93a47e8266458d",
+      "best_db_match": {
+        "score": 0.4681,
+        "measure": "sequence",
+        "id": "607d528d-8326-41e9-a218-a0b3445075ef",
+        "text": "Bring out the factors that led to the commercialization of agriculture in India during the colonial rule. State its consequences."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Critically examine the compulsions which prompted India to play a decisive role in the emergence of Bangladesh.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        142,
+        143
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "f4fc247e2cdcfea242a42ec7e4183761e2722da83036ca401fd142c3f88cfe5d",
+      "best_db_match": {
+        "score": 0.4688,
+        "measure": "sequence",
+        "id": "5cb9daf8-900a-4f2f-ae1e-718532e3c973",
+        "text": "Evaluate the role of the Indian National Army (INA) in the freedom struggle of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "“Tatecomer’ Industrial Revolution in Japan involved certain factors that were markedly different from what West had experienced.” Analyze.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        148,
+        149
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "a57e429f2880a88ab65eb158af94258eaaf2f81b16fde7fc693f53470444fbd9",
+      "best_db_match": {
+        "score": 0.4015,
+        "measure": "sequence",
+        "id": "875f00e7-536d-425d-90ee-a86cbe7bf9be",
+        "text": "What are the major structural limitations of the manufacturing sector that prevent it from absorbing surplus labor from agriculture?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "“Africa was chopped into States artificially created by accidents of European competition.” Analyze.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        154,
+        155
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "a67949361f15952fda40782bd930a039ac7284faac71d4f0a740edf4bbb9f9ee",
+      "best_db_match": {
+        "score": 0.4204,
+        "measure": "sequence",
+        "id": "7f72f92f-e1c4-4df8-b8aa-571b52c63cbe",
+        "text": "Discuss the scope and limitations of judicial review in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "What policy instruments were deployed to contain the Great Economic Depression?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        162,
+        163
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "97fc93fd5ec3bcde2faad36aa4f210be265f9ac077f8b6ef148f1080e919d7c5",
+      "best_db_match": {
+        "score": 0.392,
+        "measure": "sequence",
+        "id": "733362f5-c970-491f-8230-7dc9aabb5cdf",
+        "text": "Discuss the relevance of the look East Policy in the context of changing geopolitical dynamics in the Asia-Pacific region."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the various social problems which originated out of the speedy process of urbanization in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        168,
+        169
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "ee365fe13d5481c6972eb14d6f116bae6be0ebc46199fdd0599b4b65c256bb89",
+      "best_db_match": {
+        "score": 0.5714,
+        "measure": "sequence",
+        "id": "c08872c9-b90e-443b-ab8a-dda43f6d2035",
+        "text": "Discuss the socio-economic impacts of globalization on the elderly population in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“Male membership needs to be encouraged in order to make women’s organization free from gender bias.” Comment.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        174,
+        175
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "27f4cec5d28e8519ff17c38a10a59dfa1884c61b72d1e350f42dcc5aebf9c8fd",
+      "best_db_match": {
+        "score": 0.3938,
+        "measure": "sequence",
+        "id": "09b709bb-b098-4665-babd-90716d30b24f",
+        "text": "Explain the design features of the three-stage nuclear power expansion program of India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "Growing feeling of regionalism is an important factor in generation of demand for a separate State. Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        182,
+        183
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "fc9ce6c4f6c90517a1994d8f17f7b9505048629ac311108be478e38704aba439",
+      "best_db_match": {
+        "score": 0.4292,
+        "measure": "sequence",
+        "id": "4584fe10-f1f0-4893-9234-f99a2e2122bd",
+        "text": "Defying the barriers of age, gender and religion, the Bhakti movement opened the doors of liberation to all. Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "The recent cyclone on east coast of India was called ‘Phailin’, How are the tropical cyclones named across the world? Elaborate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        225,
+        226
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "6900e4ce5efae0a0f0dddaedb3a0ca2e520be668310da38d834b0fb334c55787",
+      "best_db_match": {
+        "score": 0.3814,
+        "measure": "sequence",
+        "id": "b8d7b7d3-f4ae-40dc-8267-032375860fa2",
+        "text": "The Governor's discretionary powers have often been a source of tension between the Centre and the States. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 21,
+      "sub_part": null,
+      "section": null,
+      "text": "Bring out the causes for the formation of heat islands in the urban habitat of the world.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        229,
+        230
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "af0461ad0a4452c3b42003e60c82058e4655e8f7dfe42d807fe070a219cdc0f4",
+      "best_db_match": {
+        "score": 0.4868,
+        "measure": "sequence",
+        "id": "2229e800-0153-4cc9-b942-6b8b3e00882a",
+        "text": "Critically examine the factors responsible for the rise of Fascism in Italy after the First World War."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 22,
+      "sub_part": null,
+      "section": null,
+      "text": "What do you understand by the phenomenon of ‘temperature inversion’ in meteorology? How does it affect weather and the habitants of the place?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        234,
+        237
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "cc68cd188561d295863fd0ec222f0a7df41885728b55206bcf9848f93da9d4f6",
+      "best_db_match": {
+        "score": 0.4803,
+        "measure": "sequence",
+        "id": "1d9500fc-9435-4103-b4c5-baaa582c8125",
+        "text": "What do you understand by the concept of 'utilitarianism'? Critique its limitations when applied to minority protection."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 23,
+      "sub_part": null,
+      "section": null,
+      "text": "Major hot deserts in northern hemisphere are located between 20-30 deg N latitudes and on the western side of the continents. Why?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        242,
+        243
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 242,
+          "text": "Major hot deserts in northern hemisphere are located between 20-30 deg N",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "95a996163656de340a8021214958704987a09f4d3de1c0c8befbaf05baad19ab",
+      "best_db_match": {
+        "score": 0.4398,
+        "measure": "sequence",
+        "id": "b8d7b7d3-f4ae-40dc-8267-032375860fa2",
+        "text": "The Governor's discretionary powers have often been a source of tension between the Centre and the States. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 24,
+      "sub_part": null,
+      "section": null,
+      "text": "Bring out the causes for more frequent occurrence of landslides in the Himalayas than in the Western Ghats.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        246,
+        247
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "32e6589595e76a64c8bee4f06e3e37b7ff5a9b2834e6a8fbb06c50f0dca25ed0",
+      "best_db_match": {
+        "score": 0.4907,
+        "measure": "sequence",
+        "id": "9a7e287a-8bd4-4b2b-8713-b1a4d14d6c5e",
+        "text": "Trace the causes and mitigation strategies for major landslide vulnerabilities inside the Western Ghats region."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 25,
+      "sub_part": null,
+      "section": null,
+      "text": "There is no formation of deltas by rivers of the Western Ghats. Why?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        250,
+        250
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "7097ad65d8971ef3bf83eed34303201c7152a18fb588b367230d2f76e1449cba",
+      "best_db_match": {
+        "score": 0.5,
+        "measure": "sequence",
+        "id": "9a7e287a-8bd4-4b2b-8713-b1a4d14d6c5e",
+        "text": "Trace the causes and mitigation strategies for major landslide vulnerabilities inside the Western Ghats region."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 26,
+      "sub_part": null,
+      "section": null,
+      "text": "Do you agree that there is a growing trend of opening new sugar mills in southern States of India? Discuss with justification.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 100,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        255,
+        256
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "6faaac89d5eab7d7b2f5f9970a05aba5a9a7c410cc1587f432bbd3f656784a25",
+      "best_db_match": {
+        "score": 0.4206,
+        "measure": "sequence",
+        "id": "c6f8fc19-39b5-4aaf-8897-71409b72d86d",
+        "text": "Discuss the challenges faced in managing security parameters across the non-demarcated segments of India's international borders."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 28,
+      "sub_part": null,
+      "section": null,
+      "text": "With growing scarcity of fossil fuels, the atomic energy is gaining more and more significance in India. Discuss the availability of raw material required for the generation of atomic energy in India and in the world.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        266,
+        270
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "3d2423c9f8a839e504ee1d8cae69ae10777af50e3f038e3b328090cbab2d5ea0",
+      "best_db_match": {
+        "score": 0.3492,
+        "measure": "sequence",
+        "id": "2229e800-0153-4cc9-b942-6b8b3e00882a",
+        "text": "Critically examine the factors responsible for the rise of Fascism in Italy after the First World War."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 29,
+      "sub_part": null,
+      "section": null,
+      "text": "It is said that India has substantial reserves of sale oil and gas, which can feed the needs of the country for quarter century. However, tapping of the resource does not appear to be high on the agenda. Discuss critically the availability and issues involved.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 200,
+      "source_file": "workbench/audit/ocr_cache/2013_GS1.txt",
+      "line_span": [
+        278,
+        283
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "e2cdbd30d45a100c7a468d2a9ca72b04838c7e6fb17b1c86cc6482029a19f686",
+      "best_db_match": {
+        "score": 0.3235,
+        "measure": "sequence",
+        "id": "c004895e-1129-436f-b6ee-920f78faaf77",
+        "text": "What is the Right to Information (RTI) Act? Discuss its role in enhancing accountability and transparency in governance."
+      },
+      "route": "insert"
+    }
+  ]
+}

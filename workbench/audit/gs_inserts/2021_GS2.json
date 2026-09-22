@@ -1,0 +1,82 @@
+{
+  "year": 2021,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2021-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2021_GS2.txt",
+  "mode": "anchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_fragment:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "challenging than the erstwhile Sider Pea pe ae a China, that!",
+      "marks": "10",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2021_GS2.txt",
+      "line_span": [
+        162,
+        164
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 162,
+          "text": "challenging than the erstwhile Sider Pea pe ae a China, that!",
+          "flags": [
+            "unknown_words",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "possible_truncation"
+      ],
+      "content_hash": "022b87421ff48c161c7559845415837e6bf06ae5ac1b2b0b2affe34206ed49a2",
+      "best_db_match": {
+        "score": 0.4252,
+        "measure": "sequence",
+        "id": "4a05c8c5-0f43-41e5-be7b-76843ae6aaaf",
+        "text": "Philosophy of wantlessness is Utopian, while materialism is a chimera."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "(ICT) accessibility hindered socio-economi t? Examine with justification",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2021_GS2.txt",
+      "line_span": [
+        256,
+        259
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "marks_unread"
+      ],
+      "content_hash": "18d8e8dcee651a46ee25e367813fa83d8700badfa337d7229debf05ba26c73dd",
+      "best_db_match": {
+        "score": 0.5267,
+        "measure": "sequence",
+        "id": "1c5030b5-d653-4c3d-a871-cb89f274938c",
+        "text": "Has digital illiteracy, particularly in rural areas, coupled with lack of Information and Communication Technology (ICT) accessibility hindered socio-economic development? Examine with justification."
+      },
+      "route": "insert"
+    }
+  ]
+}

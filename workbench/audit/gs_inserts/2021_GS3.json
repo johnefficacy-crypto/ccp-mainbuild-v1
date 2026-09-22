@@ -1,0 +1,42 @@
+{
+  "year": 2021,
+  "paper": "GS3",
+  "paper_code": "UPSC-CSE-MAINS-GS-2021-GS3",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2021_GS3.txt",
+  "mode": "anchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "SCuss in the light of India’s experience.",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2021_GS3.txt",
+      "line_span": [
+        143,
+        144
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "416d188e5f714490c927655f34db9336b3caeade9efbd4066169ec930cc3f5a8",
+      "best_db_match": {
+        "score": 0.4734,
+        "measure": "sequence",
+        "id": "012097d2-0dc3-4040-baca-3f3e957a1020",
+        "text": "\"Investment in infrastructure is essential for more rapid and inclusive economic growth.\" Discuss in the light of India's experience."
+      },
+      "route": "insert"
+    }
+  ]
+}
