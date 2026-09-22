@@ -39,15 +39,29 @@ def _qid(n: int) -> uuid.UUID:
     return uuid.UUID(f"cf790942-0000-0000-0000-{n:012d}")
 
 
-def _row(n, *, year=2018, metadata=None, question_number=None):
+def _row(n, *, year=2018, metadata=None, question_number=None, paper_code=None):
     return {
         "id": _qid(n),
         "pyq_paper_id": uuid.UUID("5466e62f-0000-0000-0000-000000000001"),
         "question_number": question_number if question_number is not None else n,
         "metadata": metadata if metadata is not None else {"gs_paper": "1"},
         "year": year,
+        # The GS split's own code. An optional split paper carries
+        # `UPSC-CSE-MAINS-OPT-...` and the same `split_from_bucket_id`, which is
+        # exactly why the code is part of the filter.
+        "paper_code": paper_code or f"UPSC-CSE-MAINS-GS-{year}-GS1",
         "paper_metadata": {"split_from_bucket_id": "b"},
     }
+
+
+def _optional_row(n, *, year=2018):
+    """What the OTHER split leaves behind: same bucket mark, same exam."""
+    return _row(
+        n,
+        year=year,
+        metadata={"optional_subject": "Political Science and International Relations"},
+        paper_code=f"UPSC-CSE-MAINS-OPT-{year}-PSIR-P1",
+    )
 
 
 def _plan(rows, **over):
@@ -207,11 +221,32 @@ def test_the_stamp_merges_into_existing_metadata_rather_than_replacing_it():
 
 
 def test_only_questions_on_split_papers_are_selected():
-    """`split_from_bucket_id` is the mark the split leaves. Without it this
-    would reach optional papers, unsplit buckets and hand-made rows."""
+    """`split_from_bucket_id` is the mark A split leaves. Without it this would
+    reach unsplit buckets and hand-made rows."""
     assert "split_from_bucket_id" in bf._MOVED_SQL
     assert "is not null" in bf._MOVED_SQL
     assert "exam_phase_id = $2::uuid" in bf._MOVED_SQL
+
+
+def test_the_scope_is_the_gs_splits_own_paper_codes():
+    """`split_from_bucket_id` ALONE IS NOT THE GS MARK. The optional split
+    stamps the same key on the same exam and phase, so this scanned all 4,040
+    optional questions and reported every one as untagged — they carry
+    optional-subject tags, a taxonomy this script knows nothing about."""
+    assert "p.paper_code like $3" in bf._MOVED_SQL
+    assert bf.GS_PAPER_CODE_PREFIX == "UPSC-CSE-MAINS-GS-"
+
+
+def test_the_prefix_matches_every_code_the_split_actually_mints():
+    """Pinned against `paper_code_for`, which is where the codes come from: a
+    prefix copied by hand is how the two come to disagree."""
+    for year in (2013, 2025):
+        for paper in (1, 2, 3, 4, sgb.ESSAY):
+            assert sgb.paper_code_for(year, paper).startswith(bf.GS_PAPER_CODE_PREFIX)
+
+
+def test_the_prefix_does_not_match_an_optional_split_paper():
+    assert not "UPSC-CSE-MAINS-OPT-2025-PSIR-P1".startswith(bf.GS_PAPER_CODE_PREFIX)
 
 
 def test_the_tag_query_reads_primary_tags_only():
@@ -252,7 +287,11 @@ class FakeConn:
 
     async def fetch(self, sql, *args):
         if "split_from_bucket_id" in sql:
-            return self.rows
+            # The LIKE pattern is applied here too, so the scope is exercised
+            # rather than only asserted as a substring of the SQL.
+            prefix = str(args[2]).rstrip("%") if len(args) > 2 else ""
+            return [r for r in self.rows
+                    if str(r.get("paper_code") or "").startswith(prefix)]
         if "essay_pyq_tags" in sql:
             return [{"question_id": q} for q in self.essay]
         if "pyq_question_topic_tags" in sql:
@@ -383,3 +422,37 @@ def test_an_empty_corpus_is_reported_and_not_an_error(monkeypatch, tmp_path, cap
     assert _run(monkeypatch, tmp_path, conn, live=True) == 0
     assert "nothing to stamp" in capsys.readouterr().out
     assert conn.executed == []
+
+
+# ── 6. the optional corpus is not this script's business ──────────────────
+
+def test_the_optional_splits_rows_are_never_scanned(monkeypatch, tmp_path, capsys):
+    """4,040 rows reported as "no tag, no essay tag and no override" was a
+    statement about the wrong corpus: they have optional-subject tags."""
+    conn = FakeConn(
+        [_row(1), _optional_row(2), _optional_row(3)],
+        tags={str(_qid(1)): 1},
+        essay=[],
+    )
+    rc = _run(monkeypatch, tmp_path, conn, live=False)
+
+    out, err = capsys.readouterr()
+    assert "1 of 1 moved question(s) to stamp" in out
+    assert "no tag, no essay tag and no override" not in err
+    assert rc == 0
+
+
+def test_an_exam_with_only_optional_splits_reports_nothing_to_do(
+    monkeypatch, tmp_path, capsys
+):
+    conn = FakeConn([_optional_row(2), _optional_row(3)], tags={}, essay=[])
+    assert _run(monkeypatch, tmp_path, conn, live=True) == 0
+    assert "nothing to stamp" in capsys.readouterr().out
+    assert conn.executed == []
+
+
+def test_an_essay_paper_is_still_in_scope():
+    """`UPSC-CSE-MAINS-GS-<year>-ESSAY` shares the GS prefix, and its questions
+    are the ones stamped `essay_tag`."""
+    code = sgb.paper_code_for(2019, sgb.ESSAY)
+    assert code.startswith(bf.GS_PAPER_CODE_PREFIX)
