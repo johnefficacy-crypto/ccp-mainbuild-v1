@@ -117,12 +117,3 @@ export function plannedWordCount(blocks) {
     .filter((b) => isSpineBlock(b) && SPINE_BLOCK_TYPES.includes(b.block_type))
     .reduce((sum, b) => sum + wordCount(b.block_text), 0);
 }
-
-/** Distinct theme ids the aspirant already has any block under. */
-export function themeIdsFromBlocks(blocks) {
-  const seen = [];
-  (blocks || []).forEach((b) => {
-    if (b?.theme_id && !seen.includes(b.theme_id)) seen.push(b.theme_id);
-  });
-  return seen;
-}

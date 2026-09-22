@@ -41,8 +41,36 @@ function block(over = {}) {
 }
 
 /** Serve every GET from one block list, regardless of which read asks. */
-function serve(items) {
-  api.get.mockImplementation(() => Promise.resolve({ items }));
+const THEMES = [
+  {
+    id: THEME,
+    theme_code: "ECO",
+    theme_name: "Economy and development",
+    description: "Growth, welfare and the state's role.",
+    status: "active",
+  },
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    theme_code: "GOV",
+    theme_name: "Governance",
+    description: "Institutions, accountability, delivery.",
+    status: "active",
+  },
+];
+
+/**
+ * Route GETs by URL: the block reads and the theme catalogue are different
+ * endpoints, so one blanket mock would feed blocks to the picker.
+ * `themes: null` makes /api/essay-themes reject, for the error-state path.
+ */
+function serve(items, { themes = THEMES } = {}) {
+  api.get.mockImplementation((url) => {
+    if (String(url).includes("/api/essay-themes")) {
+      return themes ? Promise.resolve({ items: themes, count: themes.length })
+        : Promise.reject(new Error("boom"));
+    }
+    return Promise.resolve({ items });
+  });
 }
 
 function renderScreen(props = {}) {
@@ -241,22 +269,7 @@ test("a failed read shows the error state with a retry, not an empty spine", asy
   await screen.findByTestId("essay-spine-slots");
 });
 
-test("with no theme it offers the aspirant's in-progress themes", async () => {
-  serve([block({ theme_id: THEME }), block({ id: "b2", theme_id: "22222222-2222-4222-8222-222222222222" })]);
-  render(
-    <ToastProvider>
-      <EssaySpineScreen />
-    </ToastProvider>,
-  );
-
-  const picker = await screen.findByTestId("essay-spine-theme-picker");
-  expect(within(picker).getByText(THEME)).toBeInTheDocument();
-
-  fireEvent.click(within(picker).getByText(THEME));
-  await screen.findByTestId("essay-spine-slots");
-});
-
-test("with no theme and nothing brainstormed it explains where to start", async () => {
+test("with no theme it offers the real theme catalogue, named and described", async () => {
   serve([]);
   render(
     <ToastProvider>
@@ -264,8 +277,57 @@ test("with no theme and nothing brainstormed it explains where to start", async 
     </ToastProvider>,
   );
 
-  expect(await screen.findByText("No essay theme yet")).toBeInTheDocument();
-  expect(screen.queryByTestId("essay-spine-slots")).not.toBeInTheDocument();
+  const picker = await screen.findByTestId("essay-spine-theme-picker");
+  expect(within(picker).getByText("Economy and development")).toBeInTheDocument();
+  expect(within(picker).getByText("Growth, welfare and the state's role.")).toBeInTheDocument();
+  expect(within(picker).getByText("Governance")).toBeInTheDocument();
+  // The raw uuid is no longer the label.
+  expect(within(picker).queryByText(THEME)).not.toBeInTheDocument();
+});
+
+test("picking a theme opens that theme's spine", async () => {
+  serve([]);
+  render(
+    <ToastProvider>
+      <EssaySpineScreen />
+    </ToastProvider>,
+  );
+
+  fireEvent.click(await screen.findByTestId(`theme-option-${THEME}`));
+
+  await screen.findByTestId("essay-spine-slots");
+  expect(screen.queryByTestId("essay-spine-theme-picker")).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      api.get.mock.calls.some(([url]) => String(url).includes(`theme_id=${THEME}`)),
+    ).toBe(true),
+  );
+});
+
+test("a themeId deep-link skips the picker entirely", async () => {
+  serve([]);
+  renderScreen(); // themeId={THEME}, i.e. the :themeId route param
+
+  await screen.findByTestId("essay-spine-slots");
+  expect(screen.queryByTestId("essay-spine-theme-picker")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("essay-theme-selector")).not.toBeInTheDocument();
+});
+
+test("a failed theme fetch shows an error with retry, not a blank picker", async () => {
+  serve([], { themes: null });
+  render(
+    <ToastProvider>
+      <EssaySpineScreen />
+    </ToastProvider>,
+  );
+
+  const errorBox = await screen.findByTestId("theme-error");
+  expect(within(errorBox).getByText("Could not load essay themes")).toBeInTheDocument();
+  expect(screen.queryByTestId("theme-list")).not.toBeInTheDocument();
+
+  serve([]); // catalogue comes back
+  fireEvent.click(within(errorBox).getByRole("button", { name: "Retry" }));
+  expect(await screen.findByTestId("theme-list")).toBeInTheDocument();
 });
 
 // ── ESSAY-01 · the Spine asks the server for spine blocks only ───────────
@@ -284,15 +346,25 @@ test("the slot read is scoped to lens-null blocks", async () => {
   expect(slotRead[0]).toContain("lens_scope=spine");
 });
 
-test("the theme scan stays unscoped so brainstormed themes remain reachable", async () => {
-  serve([block()]);
-  renderScreen();
-  await screen.findByTestId("essay-spine-slots");
+test("every active theme stays reachable, including ones with no blocks yet", async () => {
+  // Replaces the old unscoped theme-scan guard. That scan listed the themes the
+  // aspirant already had blocks under, and had to stay lens-unscoped so a
+  // canvas-only theme was not dropped. The catalogue makes the guarantee
+  // directly: every active theme is offered whether or not anything is written
+  // under it, so a first-time aspirant is no longer locked out.
+  serve([]);
+  render(
+    <ToastProvider>
+      <EssaySpineScreen />
+    </ToastProvider>,
+  );
 
-  // The switcher lists every theme the aspirant has ANY block under. Scoping it
-  // would drop themes they have only brainstormed — a reachability change, not
-  // a leak fix.
-  const scan = api.get.mock.calls.find(([url]) => url.includes("limit=500"));
-  expect(scan).toBeTruthy();
-  expect(scan[0]).not.toContain("lens_scope");
+  await screen.findByTestId("theme-list");
+  expect(screen.getByTestId(`theme-option-${THEME}`)).toBeEnabled();
+  expect(
+    screen.getByTestId("theme-option-22222222-2222-4222-8222-222222222222"),
+  ).toBeEnabled();
+
+  // And the wasteful 500-row scan of every block the aspirant owns is gone.
+  expect(api.get.mock.calls.some(([url]) => String(url).includes("limit=500"))).toBe(false);
 });

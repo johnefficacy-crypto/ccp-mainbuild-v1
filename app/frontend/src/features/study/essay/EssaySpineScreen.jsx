@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 
-import EmptyState from "../../../shared/ui/EmptyState";
 import ErrorState from "../../../shared/ui/ErrorState";
 import LoadingSkeleton from "../../../shared/ui/LoadingSkeleton";
 import SpineSlot from "./SpineSlot";
+import ThemeSelector from "./ThemeSelector";
 import useSpineBlocks from "./useSpineBlocks";
 import {
   SPINE_SECTIONS,
@@ -14,7 +14,6 @@ import {
   blocksForSlot,
   plannedWordCount,
   promotedBlocks,
-  themeIdsFromBlocks,
 } from "./spineSlots";
 
 /**
@@ -24,17 +23,17 @@ import {
  * Spine blocks carry no `lens` and no canvas position: this is a linear
  * sequence, not the spatial Idea Canvas, so nothing here sends those fields.
  *
- * Theme selection is intentionally self-contained — this screen assumes no
- * shared selector, no shared shell, and no Idea Canvas mount point exists.
- * Stitching the two screens into one flow is a separate task.
+ * With no theme chosen the screen renders the shared `ThemeSelector`, which
+ * reads the real catalogue from `GET /api/essay-themes` (PR #1041). That
+ * replaced an earlier stopgap that listed the raw `theme_id`s of blocks the
+ * aspirant already had — it could not show theme names and gave a first-time
+ * aspirant no way in at all.
  *
- * KNOWN GAP: there is no aspirant-facing endpoint that lists `essay_themes`.
- * The only one is `GET /api/admin/exam-intelligence-cms/essay-themes`, gated on
- * the `exam_intelligence.cms` permission and the admin Study OS flag, so an
- * aspirant cannot call it. The switcher below therefore lists the themes the
- * aspirant already has blocks under — which is real and useful for continuing
- * an essay, but cannot show theme *names* and cannot start a brand-new theme.
- * A `themeId` prop (from the route) covers the deep-link case meanwhile.
+ * The `themeId` prop (the `:themeId` route param) still deep-links straight
+ * past the picker; the picker is an alternate entry path, not a replacement.
+ *
+ * Stitching this screen and the Idea Canvas into one navigable flow remains a
+ * separate task.
  */
 export default function EssaySpineScreen({ themeId: themeIdProp = null }) {
   const [selectedTheme, setSelectedTheme] = useState(themeIdProp || null);
@@ -45,14 +44,11 @@ export default function EssaySpineScreen({ themeId: themeIdProp = null }) {
     status,
     refresh,
     refreshAll,
-    themeScanBlocks,
-    themeScanStatus,
     createBlock,
     updateBlock,
     deleteBlock,
   } = useSpineBlocks(themeId);
 
-  const knownThemeIds = useMemo(() => themeIdsFromBlocks(themeScanBlocks), [themeScanBlocks]);
   const planned = useMemo(() => plannedWordCount(blocks), [blocks]);
   const promoted = useMemo(() => promotedBlocks(blocks), [blocks]);
 
@@ -70,42 +66,11 @@ export default function EssaySpineScreen({ themeId: themeIdProp = null }) {
     return (
       <div className="mx-auto max-w-3xl p-4" data-testid="essay-spine">
         {header}
-        <div className="mt-6">
-          {themeScanStatus === "loading" && <LoadingSkeleton variant="card" />}
-          {themeScanStatus === "error" && (
-            <ErrorState
-              title="Could not load your essay themes"
-              message="We could not reach your brainstorm blocks."
-              onRetry={refreshAll}
-            />
-          )}
-          {(themeScanStatus === "empty" || (themeScanStatus === "live" && knownThemeIds.length === 0)) && (
-            <EmptyState
-              title="No essay theme yet"
-              description="The Spine builds on a theme you have already brainstormed against. Start a theme from your brainstorm, then come back here to sequence it."
-            />
-          )}
-          {themeScanStatus === "live" && knownThemeIds.length > 0 && (
-            <section data-testid="essay-spine-theme-picker">
-              <h2 className="font-heading text-lg font-semibold">Continue an essay</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Themes you already have brainstorm material under.
-              </p>
-              <ul className="mt-3 space-y-2">
-                {knownThemeIds.map((id) => (
-                  <li key={id}>
-                    <button
-                      type="button"
-                      className="btn btn-ghost w-full justify-start font-mono text-xs"
-                      onClick={() => setSelectedTheme(id)}
-                    >
-                      {id}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+        <div className="mt-6" data-testid="essay-spine-theme-picker">
+          <ThemeSelector
+            onPick={(id) => setSelectedTheme(id)}
+            subtitle="Pick the essay theme you want to sequence."
+          />
         </div>
       </div>
     );
@@ -120,7 +85,7 @@ export default function EssaySpineScreen({ themeId: themeIdProp = null }) {
           Planned length: <b>{planned}</b> words
           <span className="text-xs"> · target {SPINE_TARGET_WORDS_LOW}–{SPINE_TARGET_WORDS_HIGH}</span>
         </p>
-        {!themeIdProp && knownThemeIds.length > 1 && (
+        {!themeIdProp && (
           <button type="button" className="btn btn-ghost" onClick={() => setSelectedTheme(null)}>
             Switch theme
           </button>
