@@ -141,6 +141,22 @@ class BucketAbort(Exception):
 #: answer down, and the script stops arguing.
 OVERRIDES_CSV = ROOT / "workbench" / "audit" / "gs_split_overrides.csv"
 
+#: The DOCX reconciliation of 2024 and 2025 — the one independent statement of
+#: which paper those questions came from. Those two years have no OCR at all
+#: (`workbench/audit/gs_2024_2025.md`), so without this they are tag-only; with
+#: it they have a real second signal, just not an optical one.
+VERDICT_CSV = ROOT / "workbench" / "audit" / "gs_2024_2025_verdict.csv"
+
+#: A verdict that CORROBORATES the source file's paper claim. `unverifiable`
+#: (2024 GS4, no raw DOCX) and `orphan` say the text was not matched, so the
+#: paper is the source file's word alone — which is what the tag already is,
+#: and one claim repeated twice is not two signals.
+CORROBORATING_VERDICTS = frozenset({"exact", "variant"})
+
+#: Below this share of tag/verification agreement, a year is not verified in
+#: any meaningful sense and the script refuses it unless a human names it.
+TAG_ONLY_CUT = 0.50
+
 
 class ScopeAbort(Exception):
     """The selected rows are not all buckets. Aborts the WHOLE run, unwritten."""
@@ -178,6 +194,77 @@ def load_overrides(path: Path = OVERRIDES_CSV) -> dict[str, Any]:
                 )
             out[qid] = int(m.group(1))
     return out
+
+
+def load_verdict_papers(path: Path = VERDICT_CSV) -> dict[tuple[int, int], Any]:
+    """(year, question_number) -> the paper the DOCX reconciliation places it on.
+
+    Only corroborated rows. `global_number` is not unique — a question with
+    sub-parts shares one — but every duplicate resolves to the SAME paper, so
+    the mapping is well defined even though it is not injective. That is
+    checked here rather than assumed: a global number claimed by two papers
+    would mean the reconciliation disagrees with itself, and this must not
+    quietly pick one.
+    """
+    out: dict[tuple[int, int], Any] = {}
+    if not path.is_file():
+        return out
+    claims: dict[tuple[int, int], set[str]] = {}
+    with path.open("r", encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if str(row.get("verdict") or "").strip() not in CORROBORATING_VERDICTS:
+                continue
+            year = _as_int(row.get("year"))
+            number = _as_int(row.get("global_number"))
+            paper = str(row.get("paper") or "").strip().upper()
+            if year is None or number is None or not paper:
+                continue
+            claims.setdefault((year, number), set()).add(paper)
+    for key, papers in claims.items():
+        if len(papers) > 1:
+            raise ScopeAbort(
+                f"{path.name}: {key[0]} question {key[1]} is claimed by "
+                f"{', '.join(sorted(papers))} — the reconciliation disagrees "
+                "with itself and cannot verify anything"
+            )
+        name = next(iter(papers))
+        if name == ESSAY:
+            out[key] = ESSAY
+            continue
+        m = re.fullmatch(r"GS([1-4])", name)
+        if m:
+            out[key] = int(m.group(1))
+    return out
+
+
+def _as_int(value: Any) -> int | None:
+    """Best-effort int, for CSV cells and database columns alike."""
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def agreement_rate(rows: list[dict[str, Any]]) -> tuple[int, int]:
+    """(agreed, checkable) over the TAG-PLACED rows a verification signal reached.
+
+    The denominator is rows the signal actually covered, not every row: a year
+    whose OCR failed to extract has no opinion about most of its questions, and
+    counting those as disagreement would read as evidence against the tags when
+    it is only an absence of evidence.
+
+    Only rows that HAVE a tag count, because the question this rate answers is
+    whether the second signal corroborates the TAGS. An override is a human
+    contradicting the signals on purpose — counting the 27 of them as
+    disagreement would drive a year below the bar for the very reason a human
+    already fixed it.
+    """
+    checkable = [
+        r for r in rows
+        if r.get("tag_paper") is not None and r.get("verified_against") is not None
+    ]
+    agreed = sum(1 for r in checkable if r["verified_against"] == r["tag_paper"])
+    return agreed, len(checkable)
 
 
 def uuid_str(value: Any) -> Any:
@@ -316,6 +403,7 @@ def assign_question(
     ocr_papers: dict[Any, str],
     has_essay_tag: bool = False,
     override: Any = None,
+    verdict_paper: Any = None,
 ) -> dict[str, Any]:
     """One question's assignment and the evidence behind it.
 
@@ -329,12 +417,26 @@ def assign_question(
     taxonomy, which is exactly the statement "this is an Essay question".
 
     `override` is a human's decision and beats every signal below it.
+
+    `verdict_paper` is the DOCX reconciliation's placement, used INSTEAD of OCR
+    where it exists. 2024 and 2025 have no OCR at all, so it is the only second
+    signal those two years have; where both exist the OCR is the one on disk
+    for that year and the verdict file covers no other year, so they never
+    compete.
     """
     text = question.get("question_text") or ""
     scores = ocr_scores(text, ocr_papers)
     ocr_paper, score = best_ocr_paper(text, ocr_papers)
     matched = ocr_paper if score >= OCR_MATCH_CUT else None
     tag_score = round(scores.get(tag_paper, 0.0), 1)
+
+    # THE VERIFICATION SIGNAL, whichever exists for this year. `verified_against`
+    # is what the second signal says the paper is, or None when it has no
+    # opinion — which is different from saying the tag is wrong.
+    if verdict_paper is not None:
+        verified_against: Any = verdict_paper
+    else:
+        verified_against = matched
 
     if override is not None:
         method = "override"
@@ -349,11 +451,18 @@ def assign_question(
         # question can clear the cut against two papers of the same sitting, and
         # that is ambiguous text, not evidence the tag is wrong. Vetoing on the
         # winner alone would abort every bucket containing one such question.
-        disagrees = (
-            matched is not None
-            and matched != tag_paper
-            and tag_score < OCR_MATCH_CUT
-        )
+        if verdict_paper is not None:
+            # The reconciliation matched this question's text against the
+            # official DOCX for the paper it names. There is no "the wording
+            # also appears elsewhere" escape here, because it did not score the
+            # other papers — it either placed the question or said it could not.
+            disagrees = verdict_paper != tag_paper
+        else:
+            disagrees = (
+                matched is not None
+                and matched != tag_paper
+                and tag_score < OCR_MATCH_CUT
+            )
     elif has_essay_tag:
         method = "essay_tag"
         assigned = ESSAY
@@ -386,6 +495,7 @@ def assign_question(
         "ocr_score": round(score, 1),
         "tag_score": tag_score,
         "method": method,
+        "verified_against": verified_against,
         "disagrees": disagrees,
         "has_essay_tag": bool(has_essay_tag),
         "excerpt": re.sub(r"\s+", " ", str(text))[:REVIEW_EXCERPT_CHARS],
@@ -429,6 +539,8 @@ def plan_bucket(
     corpus: dict[tuple[int, Any], str],
     essay_tagged: set[str] | None = None,
     overrides: dict[str, Any] | None = None,
+    verdict_papers: dict[tuple[int, int], Any] | None = None,
+    tag_only_years: frozenset[int] = frozenset(),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """(planned papers, per-question rows) for one year bucket.
 
@@ -445,6 +557,7 @@ def plan_bucket(
 
     essay_tagged = essay_tagged or set()
     overrides = overrides or {}
+    verdict_papers = verdict_papers or {}
     ocr_papers = papers_for_year(corpus, int(year))
     rows = [
         assign_question(
@@ -453,9 +566,36 @@ def plan_bucket(
             ocr_papers=ocr_papers,
             has_essay_tag=str(q.get("id")) in essay_tagged,
             override=overrides.get(str(q.get("id"))),
+            verdict_paper=verdict_papers.get(
+                (int(year), _as_int(q.get("question_number")) or -1)
+            ),
         )
         for q in questions
     ]
+
+    # THE TAG-ONLY RULE, one rule for every year. When the second signal agrees
+    # with the tags less than half the time it is not verifying them — 2013
+    # agreed on 1 of 93 — and calling such a year "verified" is the lie this
+    # rule exists to stop. The year can still be split, but only when a human
+    # has named it, and its questions are stamped `tag_only` so the row says
+    # the tag was the only thing that placed it.
+    agreed, checkable = agreement_rate(rows)
+    rate = (agreed / checkable) if checkable else 0.0
+    tag_only = checkable == 0 or rate < TAG_ONLY_CUT
+    if tag_only and int(year) not in tag_only_years:
+        raise BucketAbort(
+            f"{year}: the verification signal agrees with the tags on "
+            f"{agreed}/{checkable} questions"
+            + (f" ({rate:.0%})" if checkable else " (nothing to check against)")
+            + f" — below the {TAG_ONLY_CUT:.0%} bar, so this year is tag-only. "
+            f"Re-run with --tag-only-years {year} to split it on the tags "
+            "alone; its questions will be stamped 'tag_only'.",
+            rows=rows,
+        )
+    if tag_only:
+        for row in rows:
+            if row["method"] == "tag":
+                row["method"] = "tag_only"
 
     unassigned = [r for r in rows if r["assigned"] is None]
     disagreements = [r for r in rows if r["disagrees"]]
@@ -477,12 +617,6 @@ def plan_bucket(
             "recorded, not blocking)",
             rows=rows,
         )
-    if not ocr_papers:
-        raise BucketAbort(
-            f"no OCR for {year} under {OCR_DIR.name}/, so the tags cannot be "
-            "verified; refusing to move on one signal",
-            rows=rows,
-        )
 
     by_paper: dict[Any, list[dict[str, Any]]] = {}
     for row in rows:
@@ -499,6 +633,13 @@ def plan_bucket(
                 "paper_code": code,
                 "year": int(year),
                 "question_ids": [r["id"] for r in members],
+                # Parallel to `question_ids`, and zipped with it by the UPDATE.
+                "methods": [r["method"] for r in members],
+                # None where nothing scored it — 2024 and 2025 have no OCR at
+                # all, and a 0.0 there would read as "scored, and scored zero".
+                "ocr_scores": [
+                    (r["ocr_score"] if r["ocr_score"] > 0 else None) for r in members
+                ],
                 "question_count": len(members),
                 "metadata": {
                     "paper_code": code,
@@ -515,6 +656,9 @@ def plan_bucket(
                 },
             }
         )
+    for row in rows:
+        row["_agreed"] = agreed
+        row["_checkable"] = checkable
     return planned, rows
 
 
@@ -642,11 +786,27 @@ values ($1, $2, $3, $4, $5, 'pending', $6::jsonb)
 returning id
 """
 
+#: THE STAMP. The previous version wrote `gs_paper` and nothing else, so a
+#: moved question said which paper it was on and not how that was decided — and
+#: the 27 operator overrides became invisible the moment they were applied.
+#: `assignment_method` lived only on the PAPER's metadata, where it is a set
+#: over the whole paper and cannot answer "why is THIS question here".
+#:
+#: Per-question values arrive as parallel arrays and are zipped by `unnest`, so
+#: this is still one statement per paper rather than one per question.
+#: `jsonb_strip_nulls` drops `ocr_score` when nothing scored it: a null there
+#: would claim a measurement that was never made.
 _REPOINT_SQL = """
-update public.pyq_questions
+update public.pyq_questions q
    set pyq_paper_id = $1,
-       metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('gs_paper', $3::text)
- where id = any($2::uuid[])
+       metadata = coalesce(q.metadata, '{}'::jsonb) || jsonb_strip_nulls(
+         jsonb_build_object(
+           'gs_paper', $2::text,
+           'assignment_method', s.method,
+           'ocr_score', s.score
+         ))
+  from unnest($3::uuid[], $4::text[], $5::float8[]) as s(id, method, score)
+ where q.id = s.id
 """
 
 _RETIRE_SQL = """
@@ -716,6 +876,8 @@ async def _split_one(
     live: bool,
     corpus: dict[tuple[int, Any], str],
     overrides: dict[str, Any] | None = None,
+    verdict_papers: dict[tuple[int, int], Any] | None = None,
+    tag_only_years: frozenset[int] = frozenset(),
 ) -> dict[str, Any]:
     bucket = {**bucket, "metadata": as_metadata(bucket.get("metadata"))}
 
@@ -739,6 +901,7 @@ async def _split_one(
     planned, review = plan_bucket(
         bucket, questions, tag_papers=tags, corpus=corpus,
         essay_tagged=essay_tagged, overrides=overrides,
+        verdict_papers=verdict_papers, tag_only_years=tag_only_years,
     )
 
     codes = [p["paper_code"] for p in planned]
@@ -762,7 +925,14 @@ async def _split_one(
         for plan in planned:
             if plan["question_ids"] and plan["paper_id"]:
                 label = ESSAY if plan["paper"] == ESSAY else str(plan["paper"])
-                await conn.execute(_REPOINT_SQL, plan["paper_id"], plan["question_ids"], label)
+                await conn.execute(
+                    _REPOINT_SQL,
+                    plan["paper_id"],
+                    label,
+                    plan["question_ids"],
+                    plan["methods"],
+                    plan["ocr_scores"],
+                )
                 moved += len(plan["question_ids"])
         await conn.execute(_RETIRE_SQL, *retire_args(bucket, planned))
     else:
@@ -794,7 +964,8 @@ def _write_review(rows: list[dict[str, Any]]) -> None:
         writer = csv.DictWriter(
             fh,
             fieldnames=["year", "question_id", "question_number", "tag_paper",
-                        "ocr_paper", "ocr_score", "reason", "excerpt"],
+                        "ocr_paper", "ocr_score", "method", "verified_against",
+                        "reason", "excerpt"],
         )
         writer.writeheader()
         for row in rows:
@@ -805,6 +976,11 @@ def _write_review(rows: list[dict[str, Any]]) -> None:
                 "tag_paper": row.get("tag_paper"),
                 "ocr_paper": row.get("ocr_paper"),
                 "ocr_score": row.get("ocr_score"),
+                # The stamp this row will carry, and what the second signal
+                # said — the two columns that make a disagreement readable
+                # without opening the database.
+                "method": row.get("method"),
+                "verified_against": row.get("verified_against"),
                 "reason": row.get("reason") or "",
                 "excerpt": row.get("excerpt"),
             })
@@ -827,11 +1003,19 @@ def summarise(year: Any, rows: list[dict[str, Any]]) -> str:
     overridden = sum(1 for r in rows if r["method"] == "override")
     unassigned = sum(1 for r in rows if r["assigned"] is None)
     warnings = sum(1 for r in rows if r.get("reason") == "order_warning")
+    tag_only = sum(1 for r in rows if r["method"] == "tag_only")
+    checkable = rows[0].get("_checkable", 0) if rows else 0
+    verified = rows[0].get("_agreed", 0) if rows else 0
+    rate = f"{verified}/{checkable}" + (
+        f" = {verified / checkable:.0%}" if checkable else " (nothing to check)"
+    )
     bits = [
-        f"  {year}: tag-assigned {tag}, OCR-agreed {agreed}, "
+        f"  {year}: agreement {rate}; tag-assigned {tag}, OCR-agreed {agreed}, "
         f"disagreements {dis}, untagged {untagged}, essay {essay} "
         f"({essay_tagged} via essay_pyq_tags), unassigned {unassigned}"
     ]
+    if tag_only:
+        bits.append(f", TAG-ONLY {tag_only}")
     if overridden:
         bits.append(f", overrides {overridden}")
     if warnings:
@@ -839,7 +1023,9 @@ def summarise(year: Any, rows: list[dict[str, Any]]) -> str:
     return "".join(bits)
 
 
-async def run(*, live: bool, year: int | None) -> int:
+async def run(
+    *, live: bool, year: int | None, tag_only_years: frozenset[int] = frozenset()
+) -> int:
     try:
         import asyncpg
     except ImportError:
@@ -854,6 +1040,17 @@ async def run(*, live: bool, year: int | None) -> int:
     if not corpus:
         print(f"no OCR cache under {OCR_DIR}", file=sys.stderr)
         return 2
+
+    try:
+        verdict_papers = load_verdict_papers()
+    except ScopeAbort as exc:
+        print(f"VERDICT SHEET — {exc}", file=sys.stderr)
+        return 2
+    if verdict_papers:
+        years = sorted({y for y, _ in verdict_papers})
+        print(f"{len(verdict_papers)} corroborated placement(s) from "
+              f"{VERDICT_CSV.name} for {', '.join(str(y) for y in years)} "
+              "— used instead of OCR for those years\n")
 
     try:
         overrides = load_overrides()
@@ -886,11 +1083,15 @@ async def run(*, live: bool, year: int | None) -> int:
             try:
                 if live:
                     async with conn.transaction():
-                        out = await _split_one(conn, bucket, live=True,
-                                               corpus=corpus, overrides=overrides)
+                        out = await _split_one(
+                            conn, bucket, live=True, corpus=corpus,
+                            overrides=overrides, verdict_papers=verdict_papers,
+                            tag_only_years=tag_only_years)
                 else:
-                    out = await _split_one(conn, bucket, live=False,
-                                           corpus=corpus, overrides=overrides)
+                    out = await _split_one(
+                        conn, bucket, live=False, corpus=corpus,
+                        overrides=overrides, verdict_papers=verdict_papers,
+                        tag_only_years=tag_only_years)
             except BucketAbort as exc:
                 aborted += 1
                 # THE ROWS ARE THE POINT OF AN ABORT. They ride on the
@@ -898,7 +1099,16 @@ async def run(*, live: bool, year: int | None) -> int:
                 # the operator the sheet that says why.
                 for row in exc.rows:
                     review_rows.append({**row, "year": bucket.get("year")})
-                print(f"  ABORT {bucket.get('year')}: {exc}\n", file=sys.stderr)
+                # The agreement rate is printed for EVERY year, refused or
+                # not. A bucket that aborts on disagreements is exactly the
+                # one whose rate the operator needs to decide what to do next.
+                agreed, checkable = agreement_rate(exc.rows)
+                rate = f"{agreed}/{checkable}" + (
+                    f" = {agreed / checkable:.0%}" if checkable
+                    else " (nothing to check)"
+                )
+                print(f"  ABORT {bucket.get('year')} [agreement {rate}]: {exc}\n",
+                      file=sys.stderr)
                 continue
 
             for row in out["review"]:
@@ -938,8 +1148,14 @@ def main(argv: list[str] | None = None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--live", action="store_true", help="apply changes (default: dry run)")
     ap.add_argument("--year", type=int, default=None, help="restrict to one year bucket")
+    ap.add_argument(
+        "--tag-only-years", type=int, nargs="*", default=[],
+        help="years to split on the tags alone, when the verification signal "
+             "agrees on less than half. Their questions are stamped 'tag_only'.",
+    )
     args = ap.parse_args(argv)
-    return asyncio.run(run(live=args.live, year=args.year))
+    return asyncio.run(run(live=args.live, year=args.year,
+                           tag_only_years=frozenset(args.tag_only_years)))
 
 
 if __name__ == "__main__":

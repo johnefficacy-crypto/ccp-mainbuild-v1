@@ -182,13 +182,30 @@ def test_text_that_also_matches_the_tag_paper_is_not_a_disagreement():
     assert row["disagrees"] is False
 
 
-def test_a_year_with_no_ocr_at_all_aborts_rather_than_moving_on_the_tag_alone():
+def test_a_year_with_no_verification_at_all_is_refused_as_tag_only():
     """2015 GS4, 2024 and 2025 have no OCR. One signal is not enough to give a
-    possibly-fabricated question a real paper's provenance."""
+    possibly-fabricated question a real paper's provenance — but the refusal is
+    now the tag-only rule's, which a human can lift year by year."""
     questions, tags = _sitting()
     with pytest.raises(sgb.BucketAbort) as exc:
         sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus={})
-    assert "no OCR for 2019" in str(exc.value)
+    msg = str(exc.value)
+    assert "tag-only" in msg
+    assert "nothing to check against" in msg
+    assert "--tag-only-years 2019" in msg
+
+
+def test_a_named_tag_only_year_splits_and_stamps_every_row_tag_only():
+    questions, tags = _sitting()
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus={},
+        tag_only_years=frozenset({YEAR}),
+    )
+    assert [p["paper"] for p in planned] == [1, 2, 3, 4]
+    # `tag_only`, not `tag`: the row says the tag was the only thing that
+    # placed it, which is exactly what 2013 (1/93) and 2014 (5/78) were.
+    assert {r["method"] for r in rows} == {"tag_only"}
+    assert all(m == "tag_only" for p in planned for m in p["methods"])
 
 
 # ── 3. untagged questions ──────────────────────────────────────────────────
@@ -450,11 +467,18 @@ class FakeDb:
 
     async def execute(self, sql, *args):
         if "set pyq_paper_id" in sql:
-            target, qids, label = args
+            target, label, qids, methods, scores = args
+            # Mirrors the UPDATE's unnest: the three arrays are parallel, and
+            # a null score is dropped rather than stored (jsonb_strip_nulls).
+            by_id = dict(zip(qids, zip(methods, scores)))
             for q in self.questions:
-                if q["id"] in qids:
+                if q["id"] in by_id:
+                    method, score = by_id[q["id"]]
+                    stamp = {"gs_paper": label, "assignment_method": method}
+                    if score is not None:
+                        stamp["ocr_score"] = score
                     q["pyq_paper_id"] = target
-                    q["metadata"] = {**(q.get("metadata") or {}), "gs_paper": label}
+                    q["metadata"] = {**(q.get("metadata") or {}), **stamp}
             return
         if "'retired', true" in sql:
             bucket_id, split_into_json = args
@@ -595,7 +619,8 @@ def test_review_csv_carries_the_evidence_for_every_row(tmp_path, monkeypatch):
     # is the whole bucket, so a reviewer can see what was NOT flagged too.
     assert got[0]["reason"] == ""
     assert list(got[0]) == ["year", "question_id", "question_number", "tag_paper",
-                            "ocr_paper", "ocr_score", "reason", "excerpt"]
+                            "ocr_paper", "ocr_score", "method",
+                            "verified_against", "reason", "excerpt"]
 
 
 def test_paper_code_is_deterministic_and_year_scoped():
@@ -833,3 +858,299 @@ def test_the_excerpt_is_the_briefs_eighty_characters():
                                "question_text": long_text},
                               tag_paper=1, ocr_papers={})
     assert len(row["excerpt"]) == 80 == sgb.REVIEW_EXCERPT_CHARS
+
+
+# ── 9. the assignment stamp ────────────────────────────────────────────────
+#
+# THE BUG THIS SECTION EXISTS FOR. The split moved 957 questions and stamped
+# each one with `gs_paper` — which paper it is on — and nothing about HOW that
+# was decided. `assignment_method` went onto the PAPER, where it is a set over
+# the whole paper and cannot answer "why is THIS question here". The 27
+# operator overrides were applied correctly and then became invisible:
+# `assignment_method='override'` counted zero on demo.
+
+def test_every_moved_question_carries_the_method_that_placed_it():
+    db = _demo_db()
+    _pass(db, _corpus())
+    for q in db.questions:
+        assert q["metadata"]["assignment_method"] == "tag"
+        # `gs_paper` is the label column, so it is text — unchanged by this PR.
+        assert q["metadata"]["gs_paper"] in {"1", "2", "3", "4"}
+
+
+def test_an_overridden_question_carries_override_on_the_question_itself(tmp_path):
+    db = _demo_db()
+    moved = db.questions[2]           # tagged GS2, hand-placed onto GS3
+    overrides = {str(moved["id"]): 3}
+    for bucket in db.select_buckets():
+        asyncio.run(sgb._split_one(db, bucket, live=True, corpus=_corpus(),
+                                   overrides=overrides))
+    assert moved["metadata"]["assignment_method"] == "override"
+    assert moved["metadata"]["gs_paper"] == "3"
+    # Every other row keeps its own method — the stamp is per question, not a
+    # property of the paper the override happened to land on.
+    assert {q["metadata"]["assignment_method"] for q in db.questions
+            if q["id"] != moved["id"]} == {"tag"}
+
+
+def test_the_ocr_score_is_stamped_where_one_was_computed():
+    db = _demo_db()
+    _pass(db, _corpus())
+    for q in db.questions:
+        assert q["metadata"]["ocr_score"] >= sgb.OCR_MATCH_CUT
+
+
+def test_a_question_nothing_scored_carries_no_ocr_score_key_at_all():
+    """A 0.0 there would read as "scored, and scored zero"; the absence is the
+    honest statement. 2024 and 2025 have no OCR page at all."""
+    db = _demo_db()
+    for bucket in db.select_buckets():
+        asyncio.run(sgb._split_one(db, bucket, live=True, corpus={},
+                                   tag_only_years=frozenset({YEAR})))
+    for q in db.questions:
+        assert "ocr_score" not in q["metadata"]
+        assert q["metadata"]["assignment_method"] == "tag_only"
+
+
+def test_the_essay_tag_stamps_essay_tag_not_tag():
+    questions, tags = _sitting()
+    essay = _q(ESSAY_TEXT, 5)
+    questions.append(essay)
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus=_corpus(essay=True),
+        essay_tagged={str(essay["id"])},
+    )
+    by_paper = {p["paper"]: p for p in planned}
+    assert by_paper[sgb.ESSAY]["methods"] == ["essay_tag"]
+
+
+def test_the_method_arrays_stay_parallel_to_the_question_ids():
+    """The UPDATE zips these three arrays by position. A plan whose arrays are
+    built in different orders would stamp questions with each other's methods,
+    which is worse than not stamping at all."""
+    questions, tags = _sitting()
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                                    corpus=_corpus())
+    by_id = {r["id"]: r for r in rows}
+    for plan in planned:
+        assert len(plan["methods"]) == len(plan["question_ids"])
+        assert len(plan["ocr_scores"]) == len(plan["question_ids"])
+        for qid, method, score in zip(plan["question_ids"], plan["methods"],
+                                      plan["ocr_scores"]):
+            assert method == by_id[qid]["method"]
+            assert score == by_id[qid]["ocr_score"]
+
+
+# ── 10. the verdict sheet: verification without OCR ────────────────────────
+
+def _verdict_csv(tmp_path, rows):
+    path = tmp_path / "gs_2024_2025_verdict.csv"
+    lines = ["year,paper,global_number,verdict,best_score"]
+    lines += [f"{y},{p},{n},{v},95" for y, p, n, v in rows]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def test_the_verdict_sheet_reads_only_corroborated_rows(tmp_path):
+    """`unverifiable` (2024 GS4, no raw DOCX) and `orphan` say the text was
+    never matched, so the paper is the source file's word alone — which is
+    what the tag already is. One claim repeated twice is not two signals."""
+    path = _verdict_csv(tmp_path, [
+        (2024, "GS1", 1, "exact"),
+        (2024, "GS2", 2, "variant"),
+        (2024, "GS4", 3, "unverifiable"),
+        (2025, "GS3", 4, "orphan"),
+    ])
+    assert sgb.load_verdict_papers(path) == {(2024, 1): 1, (2024, 2): 2}
+
+
+def test_a_global_number_shared_by_sub_parts_resolves_to_one_paper(tmp_path):
+    """`global_number` is not unique — a question with sub-parts shares one —
+    but every duplicate names the same paper, so the mapping is well defined
+    even though it is not injective."""
+    path = _verdict_csv(tmp_path, [
+        (2024, "GS4", 11, "exact"),
+        (2024, "GS4", 11, "exact"),
+    ])
+    assert sgb.load_verdict_papers(path) == {(2024, 11): 4}
+
+
+def test_a_global_number_claimed_by_two_papers_aborts_the_whole_run(tmp_path):
+    path = _verdict_csv(tmp_path, [
+        (2024, "GS1", 7, "exact"),
+        (2024, "GS3", 7, "variant"),
+    ])
+    with pytest.raises(sgb.ScopeAbort) as exc:
+        sgb.load_verdict_papers(path)
+    assert "disagrees with itself" in str(exc.value)
+
+
+def test_a_missing_verdict_sheet_is_not_an_error(tmp_path):
+    assert sgb.load_verdict_papers(tmp_path / "absent.csv") == {}
+
+
+def test_the_verdict_sheet_reads_the_essay_paper(tmp_path):
+    path = _verdict_csv(tmp_path, [(2025, "ESSAY", 1, "exact")])
+    assert sgb.load_verdict_papers(path) == {(2025, 1): sgb.ESSAY}
+
+
+def test_the_verdict_verifies_a_year_that_has_no_ocr_at_all():
+    """2024 and 2025 aborted as "no OCR". They are not tag-only: the DOCX
+    reconciliation corroborates 60/79 and 75/79 of them, both far above the
+    50% bar, so they have a real second signal — just not an optical one."""
+    questions, tags = _sitting()
+    verdicts = {(YEAR, p): p for p in (1, 2, 3, 4)}
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                                    corpus={}, verdict_papers=verdicts)
+    assert [p["paper"] for p in planned] == [1, 2, 3, 4]
+    # `tag`, not `tag_only` — the year WAS verified, by the verdict sheet.
+    assert {r["method"] for r in rows} == {"tag"}
+    assert [r["verified_against"] for r in rows] == [1, 2, 3, 4]
+
+
+def test_a_verdict_contradicting_the_tag_is_a_disagreement():
+    questions, tags = _sitting()
+    verdicts = {(YEAR, p): p for p in (1, 2, 3, 4)}
+    verdicts[(YEAR, 3)] = 1
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus={},
+                        verdict_papers=verdicts)
+    assert "1 tag/OCR disagreement" in str(exc.value)
+    assert [r["disagrees"] for r in exc.value.rows] == [False, False, True, False]
+
+
+def test_the_verdict_replaces_ocr_rather_than_competing_with_it():
+    """Where both exist the verdict wins, because it read the official DOCX and
+    the OCR read a scan. They never actually compete — the verdict sheet covers
+    2024/2025 and those years have no OCR — but the precedence must be stated."""
+    row = sgb.assign_question(_q(1, 1), tag_paper=1,
+                              ocr_papers=sgb.papers_for_year(_corpus(), YEAR),
+                              verdict_paper=1)
+    assert row["verified_against"] == 1
+    assert row["ocr_paper"] == 1          # the OCR is still recorded
+    assert row["disagrees"] is False
+
+
+def test_a_question_the_verdict_never_placed_is_not_counted_against_the_tags():
+    """2024's GS4 has no raw DOCX, so 19 of its 79 rows are `unverifiable`. An
+    absence of evidence must not read as evidence against."""
+    questions, tags = _sitting()
+    verdicts = {(YEAR, 1): 1, (YEAR, 2): 2}    # 3 and 4 uncorroborated
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                                    corpus={}, verdict_papers=verdicts)
+    assert sgb.agreement_rate(rows) == (2, 2)
+    assert len(planned) == 4
+
+
+# ── 11. the tag-only rule, one rule for every year ─────────────────────────
+
+def test_agreement_rate_counts_only_what_the_signal_reached():
+    rows = [
+        {"tag_paper": 1, "verified_against": 1},
+        {"tag_paper": 3, "verified_against": 2},
+        {"tag_paper": 4, "verified_against": None},   # the signal had no opinion
+        {"tag_paper": None, "verified_against": 2},   # an override, not a tag
+    ]
+    assert sgb.agreement_rate(rows) == (1, 2)
+
+
+def test_agreement_rate_of_a_year_nothing_could_check_is_zero_over_zero():
+    assert sgb.agreement_rate([{"tag_paper": 1, "verified_against": None}]) == (0, 0)
+
+
+def test_a_year_agreeing_below_half_is_refused_with_its_rate():
+    """2013 agreed on 1 of 93 and 2014 on 5 of 78. Both split anyway, stamped
+    `tag` — which said they were verified. They were not.
+
+    The shape is the real one: each paper's OCR page matches a different
+    question, so no single row is a disagreement — the year simply has almost
+    no corroboration."""
+    questions, _ = _sitting()
+    corpus = {(YEAR, p): sgb._normalise(TEXT[p]) for p in (1, 2, 3, 4)}
+    tags = {str(q["id"]): 4 for q in questions}
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus=corpus)
+    msg = str(exc.value)
+    assert "agrees with the tags on 1/4" in msg
+    assert "(25%)" in msg
+    assert "below the 50% bar" in msg
+    assert f"--tag-only-years {YEAR}" in msg
+
+
+def test_a_year_agreeing_at_exactly_half_is_not_tag_only():
+    """The bar is `< 50%`, so a year that splits evenly is verified. Stated
+    because an off-by-one here silently relabels a whole year."""
+    questions, tags = _sitting()
+    verdicts = {(YEAR, 1): 1, (YEAR, 2): 2}
+    planned, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                                    corpus={}, verdict_papers=verdicts)
+    assert sgb.agreement_rate(rows) == (2, 2)
+    assert {r["method"] for r in rows} == {"tag"}
+
+
+def test_the_tag_only_rule_is_the_same_rule_for_the_verdict_signal():
+    """One rule for all years, whichever signal the year has. A verdict year
+    that corroborates under half the tags is refused exactly as an OCR year is.
+
+    The rows the verdict places elsewhere carry no tag to contradict, so they
+    are not disagreements — only uncorroborated."""
+    questions, _ = _sitting()
+    tags = {str(questions[3]["id"]): 4}
+    verdicts = {(YEAR, 1): 1, (YEAR, 2): 2, (YEAR, 3): 3, (YEAR, 4): 1}
+    with pytest.raises(sgb.BucketAbort) as exc:
+        sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus={},
+                        verdict_papers=verdicts)
+    assert "tag-only" in str(exc.value)
+    assert "0/1" in str(exc.value)
+
+
+def test_a_named_tag_only_year_leaves_overrides_and_essay_tags_alone():
+    """Only `tag` becomes `tag_only`. An override is still a human decision and
+    an essay tag is still a tag in another table — neither is less certain
+    because the year's OCR failed."""
+    questions, tags = _sitting()
+    essay = _q(ESSAY_TEXT, 5)
+    questions.append(essay)
+    overrides = {str(questions[0]["id"]): 2}
+    planned, rows = sgb.plan_bucket(
+        _bucket(), questions, tag_papers=tags, corpus={},
+        essay_tagged={str(essay["id"])}, overrides=overrides,
+        tag_only_years=frozenset({YEAR}),
+    )
+    by_method: dict[str, int] = {}
+    for r in rows:
+        by_method[r["method"]] = by_method.get(r["method"], 0) + 1
+    assert by_method == {"override": 1, "tag_only": 3, "essay_tag": 1}
+
+
+# ── 12. the dry-run summary reports the rate ───────────────────────────────
+
+def test_the_summary_line_leads_with_the_agreement_rate():
+    questions, tags = _sitting()
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                              corpus=_corpus())
+    line = sgb.summarise(YEAR, rows)
+    assert "agreement 4/4 = 100%" in line
+
+
+def test_the_summary_says_so_when_there_was_nothing_to_check():
+    questions, tags = _sitting()
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags, corpus={},
+                              tag_only_years=frozenset({YEAR}))
+    line = sgb.summarise(YEAR, rows)
+    assert "agreement 0/0 (nothing to check)" in line
+    assert "TAG-ONLY 4" in line
+
+
+def test_the_review_sheet_records_the_method_and_the_verification(tmp_path, monkeypatch):
+    questions, tags = _sitting()
+    _, rows = sgb.plan_bucket(_bucket(), questions, tag_papers=tags,
+                              corpus=_corpus())
+    out = tmp_path / "gs_split_review.csv"
+    monkeypatch.setattr(sgb, "REVIEW_CSV", out)
+    sgb._write_review([{**r, "year": YEAR} for r in rows])
+
+    import csv
+    got = list(csv.DictReader(out.read_text(encoding="utf-8-sig").splitlines()))
+    assert [r["method"] for r in got] == ["tag"] * 4
+    assert [r["verified_against"] for r in got] == ["1", "2", "3", "4"]
