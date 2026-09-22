@@ -291,3 +291,91 @@ def test_listed_resources_all_carry_a_category():
     })
     body = _client(sb).get("/api/community/resources").json()
     assert [i["category"] for i in body["items"]] == ["study_material", "pyq"]
+
+
+# ─── exam family expansion (CA-RES-01) ──────────────────────────────────────
+#
+# profiles store goal_exams as FAMILY keys (lib/profileFields.js
+# EXAM_FAMILY_OPTIONS) while community_resources.exam stores an exam SLUG, so
+# the API bridges them. Before this the default filter matched nothing.
+
+_READING_ROWS = [
+    {"id": "a", "title": "PIB", "resource_type": "reading_source", "exam": "upsc-cse",
+     "status": "approved", "source_trust": "official", "upvote_count": 9},
+    {"id": "b", "title": "PIB", "resource_type": "reading_source", "exam": "ibps-po",
+     "status": "approved", "source_trust": "official", "upvote_count": 8},
+    {"id": "c", "title": "PIB", "resource_type": "reading_source", "exam": "sbi-po",
+     "status": "approved", "source_trust": "official", "upvote_count": 7},
+    {"id": "d", "title": "SEBI", "resource_type": "reading_source", "exam": "sebi-grade-a",
+     "status": "approved", "source_trust": "official", "upvote_count": 6},
+    {"id": "e", "title": "NABARD", "resource_type": "reading_source",
+     "exam": "national-nabard-grade-a", "status": "approved",
+     "source_trust": "official", "upvote_count": 5},
+    {"id": "f", "title": "PIB", "resource_type": "reading_source",
+     "exam": "national-ssc-combined-graduate-level-cgl", "status": "approved",
+     "source_trust": "official", "upvote_count": 4},
+]
+
+
+def _reading_client():
+    return _client(SBStub({"community_resources": list(_READING_ROWS),
+                           "community_resource_votes": []}))
+
+
+def _ids(params: str) -> list[str]:
+    return [i["id"] for i in _reading_client().get(
+        f"/api/community/resources{params}").json()["items"]]
+
+
+def test_family_key_expands_to_every_exam_slug_it_covers():
+    assert sorted(_ids("?exam=upsc")) == ["a"]
+    assert sorted(_ids("?exam=banking")) == ["b", "c"]
+    assert sorted(_ids("?exam=regulatory_bodies")) == ["d", "e"]
+    assert sorted(_ids("?exam=ssc")) == ["f"]
+
+
+def test_an_exam_slug_still_filters_to_exactly_that_exam():
+    assert sorted(_ids("?exam=upsc-cse")) == ["a"]
+    assert sorted(_ids("?exam=sbi-po")) == ["c"]
+
+
+def test_all_and_absent_return_everything():
+    assert len(_ids("?exam=all")) == len(_READING_ROWS)
+    assert len(_ids("")) == len(_READING_ROWS)
+
+
+def test_an_unknown_exam_value_matches_nothing_rather_than_widening():
+    # A typo must not silently behave like "all".
+    assert _ids("?exam=not-an-exam") == []
+
+
+def test_exam_family_slugs_helper():
+    assert community_runtime.exam_family_slugs("banking") == ["ibps-po", "sbi-po"]
+    assert community_runtime.exam_family_slugs("upsc-cse") is None   # a slug, not a family
+    assert community_runtime.exam_family_slugs(None) is None
+    assert community_runtime.exam_family_slugs("") is None
+
+
+def test_the_inactive_sandbox_and_superseded_nabard_slugs_are_never_served():
+    served = {s for slugs in community_runtime.EXAM_FAMILY_SLUGS.values() for s in slugs}
+    assert "ssc-cgl-legacy-sandbox-do-not-use" not in served
+    assert "nabard-grade-a" not in served          # superseded by national-nabard-grade-a
+    assert "national-nabard-grade-a" in served
+
+
+def test_list_response_serves_the_family_map_to_the_client():
+    body = _reading_client().get("/api/community/resources").json()
+    assert body["examFamilies"]["banking"] == ["ibps-po", "sbi-po"]
+    assert set(body["examFamilies"]) == set(community_runtime.EXAM_FAMILY_SLUGS)
+
+
+def test_reading_source_is_an_accepted_resource_type_in_the_current_affairs_lane():
+    assert "reading_source" in community_runtime._RESOURCE_TYPES
+    assert community_runtime.resource_category("reading_source") == "current_affairs"
+
+
+def test_shape_resource_exposes_the_linked_ca_source():
+    shaped = community_runtime._shape_resource(
+        {"id": "r", "resource_type": "reading_source", "ca_source_id": "cas-1"})
+    assert shaped["caSourceId"] == "cas-1"
+    assert community_runtime._shape_resource({"id": "r"})["caSourceId"] is None

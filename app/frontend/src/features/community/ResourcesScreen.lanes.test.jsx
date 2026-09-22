@@ -114,3 +114,53 @@ test("lane is never sent to the API, which has no lane parameter", async () => {
     expect(url).not.toContain("lane=");
   }
 });
+
+// ─── exam family chips (CA-RES-01) ─────────────────────────────────────────
+//
+// goal_exams stores a FAMILY key; community_resources.exam stores an exam slug.
+// The API owns the expansion, so the screen sends the key straight through and
+// does not re-filter by exam client-side.
+
+test("exam chips come from the family map the API reports", async () => {
+  mockApiGet.mockResolvedValue({
+    items: ITEMS,
+    examFamilies: {
+      upsc: ["upsc-cse"],
+      banking: ["ibps-po", "sbi-po"],
+      regulatory_bodies: ["rbi-grade-b"],
+      ssc: ["national-ssc-combined-graduate-level-cgl"],
+    },
+  });
+  renderScreen();
+  await waitFor(() => screen.getByTestId("res-exam-upsc"));
+
+  for (const key of ["all", "upsc", "banking", "regulatory_bodies", "ssc"]) {
+    expect(screen.getByTestId(`res-exam-${key}`)).toBeInTheDocument();
+  }
+  // The old hardcoded per-exam chips are gone.
+  expect(screen.queryByTestId("res-exam-upsc-cse")).toBeNull();
+});
+
+test("a family key is sent to the API verbatim and not re-filtered client-side", async () => {
+  mockApiGet.mockResolvedValue({
+    // The API already filtered; every row it returns must render, even though
+    // none of their `exam` values equals the family key the user picked.
+    items: [{ ...ITEMS[0], exam: "upsc-cse" }],
+    examFamilies: { upsc: ["upsc-cse"] },
+  });
+  renderScreen();
+  await waitFor(() => screen.getByTestId("res-exam-upsc"));
+
+  fireEvent.click(screen.getByTestId("res-exam-upsc"));
+  await waitFor(() =>
+    expect(mockApiGet.mock.calls.some(([url]) => url.includes("exam=upsc"))).toBe(true),
+  );
+  expect(screen.getByText("Weekly current-affairs digest")).toBeInTheDocument();
+});
+
+test("chips still render when the API call fails", async () => {
+  mockApiGet.mockRejectedValue(new Error("offline"));
+  renderScreen();
+  await waitFor(() => screen.getByTestId("res-exam-upsc"));
+  expect(screen.getByTestId("res-exam-banking")).toBeInTheDocument();
+});
