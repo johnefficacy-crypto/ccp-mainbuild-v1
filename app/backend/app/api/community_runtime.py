@@ -923,12 +923,47 @@ _RESOURCE_TYPES = {
     "pyq_solution", "mindmap", "revision_sheet",
 }
 
+# Resource-library lane for each resource_type. The Resources screen groups types
+# into lanes, and until now it filtered on a ``category`` field the API never
+# returned — so every lane except "All" rendered empty. Derived here rather than
+# stored, because the lane is a presentation grouping of resource_type, not an
+# independent fact a contributor could set inconsistently.
+_TYPE_CATEGORY: dict[str, str] = {
+    "notes": "study_material",
+    "concept_note": "study_material",
+    "book": "study_material",
+    "strategy_guide": "study_material",
+    "course_link": "study_material",
+    "video_link": "study_material",
+    "pyq_paper": "pyq",
+    "pyq_solution": "pyq",
+    "formula_sheet": "sheets",
+    "grammar_sheet": "sheets",
+    "vocabulary_sheet": "sheets",
+    "revision_sheet": "sheets",
+    "mindmap": "sheets",
+    "scheme_card": "sheets",
+    "drill_set": "practice",
+    "practice_set": "practice",
+    "current_affairs_digest": "current_affairs",
+}
+
+
+def resource_category(resource_type: str | None) -> str | None:
+    """Lane for a resource_type, or ``None`` for a type with no lane.
+
+    ``None`` rather than a catch-all bucket: an unmapped type should be visible
+    under "All" and absent from every lane, not silently filed somewhere wrong.
+    """
+    return _TYPE_CATEGORY.get(resource_type or "")
+
 
 def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, Any]:
     return {
         "id": row.get("id"),
         "title": row.get("title"),
         "type": row.get("resource_type"),
+        "category": resource_category(row.get("resource_type")),
         "exam": row.get("exam"),
         "examId": row.get("exam_id"),
         "examPhaseId": row.get("exam_phase_id"),

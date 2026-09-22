@@ -62,13 +62,21 @@ export default function ResourcesScreen() {
   }, []);
 
   useEffect(() => {
-    reload({ exam, type, trust, lane: lane !== "all" ? lane : undefined });
-  }, [reload, exam, type, trust, lane]);
+    // `lane` is deliberately NOT sent: /api/community/resources has no lane
+    // parameter, so it was silently ignored. Lane is applied client-side below.
+    reload({ exam, type, trust });
+  }, [reload, exam, type, trust]);
 
   const filtered = useMemo(
     () =>
       items.filter((r) => {
-        if (lane !== "all" && r.category !== lane) return false;
+        // Two of the lanes are source-trust views ("Official", "Community"); the
+        // rest group resource types by category. Comparing every lane against
+        // r.category left both of those permanently empty.
+        if (lane !== "all") {
+          const matches = TRUST_LANES.has(lane) ? r.sourceTrust === lane : r.category === lane;
+          if (!matches) return false;
+        }
         if (type !== "all" && r.type !== type) return false;
         if (trust !== "all" && r.sourceTrust !== trust) return false;
         if (exam !== "all" && r.exam !== exam) return false;
@@ -182,6 +190,9 @@ export default function ResourcesScreen() {
     </FieldPage>
   );
 }
+
+// Lanes that filter on sourceTrust rather than category.
+const TRUST_LANES = new Set(["official", "community"]);
 
 const LANES = [
   { k: "all", label: "All" },
