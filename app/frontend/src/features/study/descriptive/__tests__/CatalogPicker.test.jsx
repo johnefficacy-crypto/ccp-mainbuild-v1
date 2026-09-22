@@ -83,7 +83,7 @@ function renderPicker(props = {}) {
   render(
     <CatalogPicker
       catalog={CATALOG}
-      selection={{ subject: PSIR, paper_id: null, paper_number: null, theme: null, year: null }}
+      selection={{ subject: PSIR, paper: null, paper_id: null, paper_number: null, theme: null, year: null }}
       onSelect={onSelect}
       lens="syllabus"
       onLensChange={onLensChange}
@@ -118,7 +118,7 @@ test("picking a subject clears every selection below it", () => {
   const { onSelect } = renderPicker({ selection: { subject: null } });
   fireEvent.click(screen.getAllByTestId("descriptive-subject")[0]);
   expect(onSelect).toHaveBeenCalledWith({
-    subject: PSIR, paper_id: null, paper_number: null, theme: null, year: null,
+    subject: PSIR, paper: null, paper_id: null, paper_number: null, theme: null, year: null,
   });
 });
 
@@ -150,11 +150,11 @@ test("General Studies gets GS1..GS4 and Essay", () => {
       ...CATALOG,
       subject: "General Studies",
       paper_slots: [
-        { paper_number: 1, label: "GS1", question_count: 300, attempted_count: 0 },
-        { paper_number: 2, label: "GS2", question_count: 300, attempted_count: 0 },
-        { paper_number: 3, label: "GS3", question_count: 300, attempted_count: 0 },
-        { paper_number: 4, label: "GS4", question_count: 280, attempted_count: 0 },
-        { paper_number: 99, label: "Essay", question_count: 100, attempted_count: 0 },
+        { slot: "GS1", paper_number: 1, label: "GS1", question_count: 300, attempted_count: 0 },
+        { slot: "GS2", paper_number: 2, label: "GS2", question_count: 300, attempted_count: 0 },
+        { slot: "GS3", paper_number: 3, label: "GS3", question_count: 300, attempted_count: 0 },
+        { slot: "GS4", paper_number: 4, label: "GS4", question_count: 280, attempted_count: 0 },
+        { slot: "ESSAY", paper_number: 99, label: "Essay", question_count: 84, attempted_count: 0 },
       ],
     },
     selection: { subject: "General Studies" },
@@ -174,10 +174,10 @@ test("a tab with nothing in it is still a tab, and says which", () => {
       ...CATALOG,
       paper_slots: [
         OPT_SLOTS[0],
-        { paper_number: 2, label: "Paper II", question_count: 0, attempted_count: 0 },
+        { slot: "P2", paper_number: 2, label: "Paper II", question_count: 0, attempted_count: 0 },
       ],
     },
-    selection: { subject: PSIR, paper_number: "2" },
+    selection: { subject: PSIR, paper: "P2" },
   });
   expect(screen.getAllByTestId("descriptive-paper-tab")).toHaveLength(2);
   expect(screen.getByTestId("descriptive-slot-empty")).toHaveTextContent(
@@ -191,12 +191,12 @@ test("selecting a tab clears the selections below it", () => {
   const { onSelect } = renderPicker();
   fireEvent.click(screen.getAllByTestId("descriptive-paper-tab")[1]);
   expect(onSelect).toHaveBeenCalledWith(
-    expect.objectContaining({ paper_number: "2", paper_id: null, theme: null, year: null }),
+    expect.objectContaining({ paper: "P2", paper_number: null, paper_id: null, theme: null, year: null }),
   );
 });
 
 test("the selected tab is the one marked selected", () => {
-  renderPicker({ selection: { subject: PSIR, paper_number: "1" } });
+  renderPicker({ selection: { subject: PSIR, paper: "P1" } });
   const tabs = screen.getAllByTestId("descriptive-paper-tab");
   expect(tabs[0]).toHaveAttribute("aria-selected", "true");
   expect(tabs[1]).toHaveAttribute("aria-selected", "false");

@@ -79,7 +79,10 @@ export function PaperTabs({ slots, active, onSelect }) {
   return (
     <div className="flex flex-wrap gap-2" role="tablist" aria-label="Paper">
       {slots.map((slot) => {
-        const value = String(slot.paper_number);
+        // THE SLOT CODE, not `paper_number`. Essay's number was 99, which the
+        // catalogue endpoint rejected as out of range — so the tab existed,
+        // rendered, and answered 422 on every click.
+        const value = String(slot.slot);
         const selected = active === value;
         return (
           <button
@@ -182,10 +185,23 @@ YearLens.propTypes = {
 };
 
 /** Sections → microtopics, in syllabus order, collapsible. */
-export function SyllabusLens({ themes, selectedTheme, onPickTheme }) {
+export function SyllabusLens({ themes, selectedTheme, onPickTheme, supported }) {
   const sections = themes.flatMap((paper) =>
     (paper.sections || []).map((s) => ({ ...s, paperLabel: paper.paper_label })),
   );
+  if (supported === false) {
+    // The Essay paper has no syllabus: its questions are prompts, not topics.
+    // Saying so is different from "no themes yet", which reads as missing data
+    // and invites the aspirant to wait for something that is never coming.
+    return (
+      <p
+        className="py-4 text-sm text-muted-foreground"
+        data-testid="descriptive-syllabus-unsupported"
+      >
+        The Essay paper has no syllabus to browse. Pick a year instead.
+      </p>
+    );
+  }
   if (!sections.length) {
     return (
       <p className="py-4 text-sm text-muted-foreground" data-testid="descriptive-syllabus-empty">
@@ -245,6 +261,7 @@ SyllabusLens.propTypes = {
   themes: PropTypes.array.isRequired,
   selectedTheme: PropTypes.string,
   onPickTheme: PropTypes.func.isRequired,
+  supported: PropTypes.bool,
 };
 
 export default function CatalogPicker({
@@ -288,15 +305,18 @@ export default function CatalogPicker({
       <SubjectPicker
         subjects={subjects}
         onPick={(subject) =>
-          onSelect({ subject, paper_id: null, paper_number: null, theme: null, year: null })
+          onSelect({
+            subject, paper: null, paper_id: null, paper_number: null,
+            theme: null, year: null,
+          })
         }
       />
     );
   }
 
   const slots = catalog?.paper_slots || [];
-  const activeSlot = slots.find((s) => String(s.paper_number) === selection.paper_number);
-  const slotChosen = Boolean(selection.paper_number);
+  const activeSlot = slots.find((s) => String(s.slot) === selection.paper);
+  const slotChosen = Boolean(selection.paper);
   const emptySlot = slotChosen && activeSlot && activeSlot.question_count === 0;
 
   return (
@@ -314,7 +334,10 @@ export default function CatalogPicker({
           type="button"
           className="link-under text-[12px] text-clay-700"
           onClick={() =>
-            onSelect({ subject: null, paper_id: null, paper_number: null, theme: null, year: null })
+            onSelect({
+              subject: null, paper: null, paper_id: null, paper_number: null,
+              theme: null, year: null,
+            })
           }
           data-testid="descriptive-change-subject"
         >
@@ -324,9 +347,12 @@ export default function CatalogPicker({
 
       <PaperTabs
         slots={slots}
-        active={selection.paper_number}
+        active={selection.paper}
         onSelect={(value) =>
-          onSelect({ ...selection, paper_number: value, paper_id: null, theme: null, year: null })
+          onSelect({
+            ...selection, paper: value, paper_number: null,
+            paper_id: null, theme: null, year: null,
+          })
         }
       />
 
@@ -392,6 +418,7 @@ export default function CatalogPicker({
             />
           ) : (
             <SyllabusLens
+              supported={catalog?.syllabus_supported !== false}
               themes={catalog?.themes || []}
               selectedTheme={selection.theme}
               onPickTheme={(theme) =>
