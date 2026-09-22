@@ -1,6 +1,6 @@
 -- validate_ca_rss03_pib_english.sql — CA-RSS-03 VERIFY DB.
 --
--- Exercises migrations 297 + 298 against a real Postgres: the 'discovery_only'
+-- Exercises migrations 299 + 300 against a real Postgres: the 'discovery_only'
 -- ingestion status, the metadata.source_url_hi lookup index, seed idempotency,
 -- the Hindi-backfill predicate, the guarantee that no retired document keeps a
 -- claimable generation job, and that an English re-resolution row does not
@@ -13,7 +13,7 @@
 
 begin;
 
--- ── 297 A: 'discovery_only' is an accepted ingestion status ───────────────
+-- ── 299 A: 'discovery_only' is an accepted ingestion status ───────────────
 insert into public.current_affairs_sources
   (id, name, authority_level, adapter_type, rss_url, adapter_config, default_language)
 values
@@ -31,29 +31,29 @@ values
    'vh-discovery-1', 'discovery_only', '{"prefilter_reason": "discovery_only"}'::jsonb);
 
 do $$ begin
-  raise notice 'PASS 297-A discovery_only status accepted';
+  raise notice 'PASS 299-A discovery_only status accepted';
 end $$;
 
 do $$ begin
   begin
     insert into public.current_affairs_documents (source_id, source_url, ingestion_status)
     values ('eeeeeeee-0000-0000-0000-000000000002', 'https://verify-news.test/x', 'bogus');
-    raise exception 'FAIL 297-A an unknown ingestion_status was accepted';
+    raise exception 'FAIL 299-A an unknown ingestion_status was accepted';
   exception when check_violation then
-    raise notice 'PASS 297-A unknown ingestion_status still rejected';
+    raise notice 'PASS 299-A unknown ingestion_status still rejected';
   end;
 end $$;
 
--- ── 297 B: the source_url_hi index exists ─────────────────────────────────
+-- ── 299 B: the source_url_hi index exists ─────────────────────────────────
 do $$ begin
   if not exists (select 1 from pg_indexes
                  where schemaname = 'public' and indexname = 'idx_cad_source_url_hi') then
-    raise exception 'FAIL 297-B idx_cad_source_url_hi missing';
+    raise exception 'FAIL 299-B idx_cad_source_url_hi missing';
   end if;
-  raise notice 'PASS 297-B idx_cad_source_url_hi present';
+  raise notice 'PASS 299-B idx_cad_source_url_hi present';
 end $$;
 
--- ── 297 C: seeds are present exactly once and are idempotent on re-insert ──
+-- ── 299 C: seeds are present exactly once and are idempotent on re-insert ──
 do $$
 declare v int;
 begin
@@ -63,7 +63,7 @@ begin
                     'https://whc.unesco.org/en/news/rss/',
                     'https://www.thehindu.com/news/national/feeder/default.rss');
   if v <> 4 then
-    raise exception 'FAIL 297-C expected 4 wave-1 sources, found %', v;
+    raise exception 'FAIL 299-C expected 4 wave-1 sources, found %', v;
   end if;
 
   -- Replay one seed statement: WHERE NOT EXISTS must make it a no-op.
@@ -78,23 +78,23 @@ begin
   select count(*) into v from public.current_affairs_sources
   where rss_url = 'https://www.rbi.org.in/speeches_rss.xml';
   if v <> 1 then
-    raise exception 'FAIL 297-C seed not idempotent (% rows)', v;
+    raise exception 'FAIL 299-C seed not idempotent (% rows)', v;
   end if;
 
   select count(*) into v from public.current_affairs_sources
   where adapter_config->>'publisher' = 'RBI';
   if v < 3 then
-    raise exception 'FAIL 297-C expected >= 3 RBI sources (press releases + 2 wave-1), found %', v;
+    raise exception 'FAIL 299-C expected >= 3 RBI sources (press releases + 2 wave-1), found %', v;
   end if;
 
   if (select authority_level from public.current_affairs_sources
       where rss_url = 'https://www.thehindu.com/news/national/feeder/default.rss') <> 'discovery_only' then
-    raise exception 'FAIL 297-C The Hindu must be discovery_only';
+    raise exception 'FAIL 299-C The Hindu must be discovery_only';
   end if;
-  raise notice 'PASS 297-C wave-1 seeds present once, idempotent, multi-RBI';
+  raise notice 'PASS 299-C wave-1 seeds present once, idempotent, multi-RBI';
 end $$;
 
--- ── 298: Hindi backfill predicate ─────────────────────────────────────────
+-- ── 300: Hindi backfill predicate ─────────────────────────────────────────
 insert into public.current_affairs_documents
   (id, source_id, source_url, canonical_item_url, title, raw_text, content_hash,
    ingestion_status, metadata)
@@ -145,7 +145,7 @@ begin
 
   select count(*) into v_docs from _v_hi;
   if v_docs <> 1 or not exists (select 1 from _v_hi where id = 'eeeeeeee-1000-0000-0000-000000000001') then
-    raise exception 'FAIL 298 predicate matched % rows, expected exactly the legacy Hindi row', v_docs;
+    raise exception 'FAIL 300 predicate matched % rows, expected exactly the legacy Hindi row', v_docs;
   end if;
 
   update public.current_affairs_documents d
@@ -163,13 +163,13 @@ begin
   if exists (select 1 from public.current_affairs_generation_jobs
              where document_id = 'eeeeeeee-1000-0000-0000-000000000001'
                and status in ('pending', 'running')) then
-    raise exception 'FAIL 298 retired Hindi document still has a claimable job';
+    raise exception 'FAIL 300 retired Hindi document still has a claimable job';
   end if;
   if not exists (select 1 from public.current_affairs_generation_jobs
                  where document_id = 'eeeeeeee-2000-0000-0000-000000000001' and status = 'pending') then
-    raise exception 'FAIL 298 an out-of-scope English document lost its job';
+    raise exception 'FAIL 300 an out-of-scope English document lost its job';
   end if;
-  raise notice 'PASS 298 backfill predicate + job termination scoped correctly';
+  raise notice 'PASS 300 backfill predicate + job termination scoped correctly';
 end $$;
 
 -- ── Re-resolution: the English row for the legacy Hindi item does not collide ──
