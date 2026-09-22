@@ -1110,6 +1110,14 @@ def get_catalog(
             {
                 "id": pid,
                 "label": _paper_label(paper),
+                # THE LABEL FOR ANYWHERE THERE IS NO SUBJECT ON SCREEN —
+                # "PSIR · 2025 · P1". `label` alone is "2025 · P1", which names
+                # six different papers across six subjects, so any surface
+                # rendering a paper outside its subject uses this one. Composed
+                # here so the two never disagree.
+                "label_with_subject": " · ".join(
+                    b for b in (subject_short(paper_subject), _paper_label(paper)) if b
+                ),
                 "subject": paper_subject,
                 "subject_short": subject_short(paper_subject),
                 "year": _as_int(paper.get("year")),
@@ -1238,7 +1246,10 @@ def list_questions(
     paper_number: Any = None,
     theme: str | None = None,
     year: Any = None,
+    year_from: Any = None,
+    year_to: Any = None,
     exclude_attempted: bool = False,
+    has_marks: bool = False,
     limit: Any = _DEFAULT_QUESTION_LIMIT,
 ) -> dict[str, Any]:
     """Verified descriptive questions matching the filters.
@@ -1306,6 +1317,26 @@ def list_questions(
             if _as_int((live.get(str(q.get("pyq_paper_id")), {}) or {}).get("year"))
             == wanted_year
         ]
+
+    # A YEAR RANGE, for the by-year lens. Inclusive at both ends, and each end
+    # is independent: "since 2019" is a range with no upper bound, not a
+    # request for one year.
+    low, high = _as_int(year_from), _as_int(year_to)
+    if low is not None or high is not None:
+        def in_range(q: dict[str, Any]) -> bool:
+            y = _as_int((live.get(str(q.get("pyq_paper_id")), {}) or {}).get("year"))
+            if y is None:
+                # The thematic half has no sitting and therefore no year. A
+                # year range is a question about sittings, so a row without one
+                # is outside every range rather than inside all of them.
+                return False
+            return (low is None or y >= low) and (high is None or y <= high)
+        questions = [q for q in questions if in_range(q)]
+
+    if has_marks:
+        # ~87% of the corpus carries no marks. This is the filter that finds
+        # the questions a timed attempt can actually be timed against.
+        questions = [q for q in questions if _as_int(_meta(q).get("marks"))]
 
     map_questions = [q for q in questions if requires_map_sheet(q)]
     questions = [q for q in questions if not requires_map_sheet(q)]

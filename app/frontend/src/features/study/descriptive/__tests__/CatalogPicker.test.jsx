@@ -1,35 +1,40 @@
 /**
- * The catalogue picker, against the payload the fixed API returns.
+ * The catalogue navigator: subject → paper tab → lens.
  *
- * What broke was visible here and caused elsewhere: thematic compilations
- * arrived in `papers` and were rendered under "Sat papers, in question order",
- * a claim the thematic half cannot keep — its question_number is NULL by
- * design. These pin the rendering half of that contract.
+ * WHAT THIS REPLACES. With no subject chosen the picker rendered all 140
+ * papers as chips labelled "2025 · P1" — a label six subjects share. The wall
+ * was unreadable and every chip in it was ambiguous, both for the same reason:
+ * a paper only means something inside a subject.
+ *
+ * So the first thing these hold is that nothing renders before a subject.
  */
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import CatalogPicker from "../CatalogPicker";
+import CatalogPicker, { countLabel } from "../CatalogPicker";
 
 const PSIR = "Political Science and International Relations";
+
+const SUBJECTS = [
+  { subject: PSIR, question_count: 140 },
+  { subject: "Anthropology", question_count: 96 },
+  { subject: "General Studies", question_count: 1351 },
+];
+
+const OPT_SLOTS = [
+  { paper_number: 1, label: "Paper I", slot: "P1", question_count: 76, attempted_count: 4 },
+  { paper_number: 2, label: "Paper II", slot: "P2", question_count: 64, attempted_count: 0 },
+];
 
 const CATALOG = {
   exam_id: "exam-1",
   subject: PSIR,
-  subjects: [
-    { subject: PSIR, question_count: 140 },
-    { subject: "Anthropology", question_count: 96 },
-    { subject: "General Studies", question_count: 1 },
-  ],
+  subject_short: "PSIR",
+  subjects: SUBJECTS,
+  paper_slots: OPT_SLOTS,
   papers: [
-    { id: "p1", label: "2025 · P1", year: 2025, paper_slot: "P1", question_count: 10 },
-    { id: "p2", label: "2025 · P2", year: 2025, paper_slot: "P2", question_count: 8 },
-    { id: "p3", label: "2024 · P1", year: 2024, paper_slot: "P1", question_count: 9 },
-  ],
-  theme_papers: [
-    { paper_id: "opt-psir-p1", paper_label: "P1", paper_number: 1, question_count: 20 },
-    { paper_id: "opt-psir-p2", paper_label: "P2", paper_number: 2, question_count: 9 },
-    { paper_id: null, paper_label: "Other", paper_number: null, question_count: 3 },
+    { id: "p1", label: "2025 · P1", subject: PSIR, subject_short: "PSIR",
+      year: 2025, paper_slot: "P1", question_count: 10 },
   ],
   themes: [
     {
@@ -37,261 +42,275 @@ const CATALOG = {
       paper_label: "P1",
       paper_number: 1,
       question_count: 20,
+      attempted_count: 3,
       sections: [
         {
-          section: "1. Political Theory: meaning and approaches",
-          part: "Section A",
-          line: "Political Theory: meaning and approaches to the study of political theory.",
+          section: "Political Theory",
+          part: "Part A",
+          line: "Political theory: meaning and approaches.",
           question_count: 12,
+          attempted_count: 3,
           themes: [
-            { theme: "The State", question_count: 12 },
+            { theme: "Sovereignty", question_count: 7, attempted_count: 3 },
+            { theme: "Justice", question_count: 5, attempted_count: 0 },
           ],
         },
         {
-          section: "2. Theories of the state",
-          part: "Section A",
+          section: "Indian Government",
+          part: null,
+          line: null,
           question_count: 8,
-          themes: [{ theme: "Liberal", question_count: 8 }],
-        },
-      ],
-    },
-    {
-      paper_id: "opt-psir-p2",
-      paper_label: "P2",
-      paper_number: 2,
-      question_count: 9,
-      sections: [
-        {
-          section: "1. Comparative Politics",
-          part: null,
-          question_count: 9,
-          themes: [{ theme: "Nature and approaches", question_count: 9 }],
-        },
-      ],
-    },
-    {
-      paper_id: null,
-      paper_label: "Other",
-      paper_number: null,
-      question_count: 3,
-      sections: [
-        {
-          section: "Other",
-          part: null,
-          question_count: 3,
-          themes: [{ theme: "Untagged", question_count: 3 }],
+          attempted_count: 0,
+          themes: [{ theme: "Federalism", question_count: 8, attempted_count: 0 }],
         },
       ],
     },
   ],
-  years: [{ year: 2025, question_count: 18 }],
-  total_questions: 27,
+  years: [
+    { year: 2025, question_count: 28, attempted_count: 5, paper_ids: ["p1"] },
+    { year: 2024, question_count: 24, attempted_count: 0, paper_ids: ["p3"] },
+    { year: 2023, question_count: 20, attempted_count: 20, paper_ids: ["p5"] },
+  ],
+  total_questions: 140,
 };
 
-const SELECTION = {
-  subject: PSIR,
-  paper_id: null,
-  paper_number: null,
-  theme: null,
-  year: null,
-};
+const NO_FILTERS = { unattempted: false, hasMarks: false, yearFrom: "", yearTo: "" };
 
-const renderPicker = (props = {}) =>
+function renderPicker(props = {}) {
+  const onSelect = jest.fn();
+  const onLensChange = jest.fn();
+  const onFilterChange = jest.fn();
   render(
     <CatalogPicker
       catalog={CATALOG}
-      selection={SELECTION}
-      onSelect={jest.fn()}
+      selection={{ subject: PSIR, paper_id: null, paper_number: null, theme: null, year: null }}
+      onSelect={onSelect}
+      lens="syllabus"
+      onLensChange={onLensChange}
+      filters={NO_FILTERS}
+      onFilterChange={onFilterChange}
       {...props}
     />,
   );
+  return { onSelect, onLensChange, onFilterChange };
+}
 
-test("papers are labelled year then paper number, in that order", () => {
-  renderPicker();
-  // The trailing count lives in its own span; the label is the text before it.
-  const labels = screen
-    .getAllByTestId("descriptive-paper")
-    .map((b) => Array.from(b.childNodes)
-      .filter((n) => n.nodeType === Node.TEXT_NODE)
-      .map((n) => n.textContent)
-      .join("")
-      .trim());
-  expect(labels).toEqual(["2025 · P1", "2025 · P2", "2024 · P1"]);
+// ── 1. no subject → the picker, and nothing else ───────────────────────────
+
+test("with no subject it shows the subject picker only", () => {
+  renderPicker({ selection: { subject: null } });
+
+  expect(screen.getByTestId("descriptive-subject-picker")).toBeInTheDocument();
+  expect(screen.getAllByTestId("descriptive-subject")).toHaveLength(3);
+  // The chip wall, gone: no papers, no tabs, no lens, no themes, no years.
+  expect(screen.queryByTestId("descriptive-paper-tab")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("descriptive-syllabus-lens")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("descriptive-year-lens")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("descriptive-lens-syllabus")).not.toBeInTheDocument();
 });
 
-test("the question-order claim is made only when there are papers", () => {
-  renderPicker();
-  expect(screen.getByTestId("descriptive-papers-hint")).toHaveTextContent(
-    "Sat papers, in question order.",
-  );
+test("the picker says why it is asking", () => {
+  renderPicker({ selection: { subject: null } });
+  expect(screen.getByText(/means a different paper in each subject/i)).toBeInTheDocument();
 });
 
-test("no question-order claim when the papers list is empty", () => {
-  // A subject with only thematic questions. The old picker still printed
-  // "Sat papers, in question order." over whatever had leaked into the list.
-  renderPicker({ catalog: { ...CATALOG, papers: [] } });
-  expect(screen.queryByTestId("descriptive-papers-hint")).not.toBeInTheDocument();
-  expect(screen.getByText("No papers for this subject yet.")).toBeInTheDocument();
-});
-
-test("themes always keep their own no-order wording", () => {
-  renderPicker();
-  expect(
-    screen.getByText(/No\s+paper order, no year\./),
-  ).toBeInTheDocument();
-});
-
-test("every count says what it counts", () => {
-  renderPicker();
-  const subject = screen
-    .getAllByTestId("descriptive-subject")
-    .find((b) => b.textContent.startsWith(PSIR));
-  expect(subject).toHaveAttribute("title", "140 questions");
-  expect(screen.getAllByTestId("descriptive-paper")[0]).toHaveAttribute(
-    "title",
-    "10 questions",
-  );
-  expect(screen.getAllByTestId("descriptive-theme")[0]).toHaveAttribute(
-    "title",
-    "12 questions",
-  );
-});
-
-test("a count of one is singular", () => {
-  renderPicker();
-  const gs = screen
-    .getAllByTestId("descriptive-subject")
-    .find((b) => b.textContent.startsWith("General Studies"));
-  expect(gs).toHaveAttribute("title", "1 question");
-});
-
-test("choosing a subject clears the paper and theme below it", () => {
-  const onSelect = jest.fn();
-  renderPicker({
-    onSelect,
-    selection: { ...SELECTION, subject: "Anthropology", paper_id: "p9" },
-  });
-  const psir = screen
-    .getAllByTestId("descriptive-subject")
-    .find((b) => b.textContent.startsWith(PSIR));
-  fireEvent.click(psir);
-
+test("picking a subject clears every selection below it", () => {
+  const { onSelect } = renderPicker({ selection: { subject: null } });
+  fireEvent.click(screen.getAllByTestId("descriptive-subject")[0]);
   expect(onSelect).toHaveBeenCalledWith({
-    subject: PSIR,
-    paper_id: null,
-    theme: null,
-    year: null,
+    subject: PSIR, paper_id: null, paper_number: null, theme: null, year: null,
   });
 });
 
-test("with no subject chosen the lists say why they are empty", () => {
-  renderPicker({
-    catalog: { ...CATALOG, subject: null, papers: [], themes: [], theme_papers: [] },
-    selection: { subject: null, paper_id: null, paper_number: null, theme: null, year: null },
-  });
-  expect(screen.getByText("Pick a subject to see its papers.")).toBeInTheDocument();
-  expect(screen.getByText("Pick a subject to see its themes.")).toBeInTheDocument();
+test("an exam with no descriptive questions says so rather than showing a picker", () => {
+  renderPicker({ catalog: { subjects: [] }, selection: { subject: null } });
+  expect(screen.getByTestId("descriptive-catalog-empty")).toBeInTheDocument();
 });
 
+// ── 2. subject header and paper tabs ───────────────────────────────────────
 
-// ── the syllabus tree ────────────────────────────────────────────────────
-
-
-test("themes are grouped into syllabus sections, in the order given", () => {
+test("the subject is named in a header once chosen", () => {
   renderPicker();
-  const sections = screen
-    .getAllByTestId("descriptive-theme-section")
-    .map((el) => el.querySelector("summary").textContent);
-
-  // Section 1 before section 2, and P2's section after both of P1's.
-  expect(sections[0]).toMatch(/^1\. Political Theory/);
-  expect(sections[1]).toMatch(/^2\. Theories of the state/);
-  expect(sections[2]).toMatch(/^1\. Comparative Politics/);
+  expect(screen.getByTestId("descriptive-subject-header")).toHaveTextContent(PSIR);
+  expect(screen.getByTestId("descriptive-change-subject")).toBeInTheDocument();
 });
 
-test("a section carries its syllabus part when the paper has parts", () => {
+test("an optional gets Paper I and Paper II tabs", () => {
   renderPicker();
-  const first = screen.getAllByTestId("descriptive-theme-section")[0];
-  expect(first.querySelector("summary").textContent).toContain("Section A");
-  // Comparative Politics has no part — eight of the twelve papers have none.
-  const third = screen.getAllByTestId("descriptive-theme-section")[2];
-  expect(third.querySelector("summary").textContent).not.toContain("Section");
+  const tabs = screen.getAllByTestId("descriptive-paper-tab");
+  expect(tabs.map((t) => t.textContent)).toEqual([
+    expect.stringContaining("Paper I"),
+    expect.stringContaining("Paper II"),
+  ]);
 });
 
-test("sections are collapsible and carry their own count", () => {
-  renderPicker();
-  const first = screen.getAllByTestId("descriptive-theme-section")[0];
-  expect(first.tagName).toBe("DETAILS");
-  expect(first.querySelector("summary").textContent).toContain("12");
-});
-
-test("paper tabs are rendered for each paper with themes", () => {
-  renderPicker();
-  // The trailing count lives in its own span; the label is the text before it.
-  const labels = screen
-    .getAllByTestId("descriptive-theme-paper-tab")
-    .map((t) =>
-      Array.from(t.childNodes)
-        .filter((n) => n.nodeType === Node.TEXT_NODE)
-        .map((n) => n.textContent)
-        .join("")
-        .trim(),
-    );
-  expect(labels).toEqual(["P1", "P2", "Other"]);
-});
-
-test("choosing a paper tab sets paper_number and clears the theme and sitting", () => {
-  const onSelect = jest.fn();
-  renderPicker({ onSelect });
-  fireEvent.click(screen.getAllByTestId("descriptive-theme-paper-tab")[0]);
-
-  expect(onSelect).toHaveBeenCalledWith(
-    expect.objectContaining({ paper_number: "1", theme: null, paper_id: null }),
-  );
-});
-
-test("the Other tab cannot be selected — it is a label, not a paper", () => {
-  renderPicker();
-  const tabs = screen.getAllByTestId("descriptive-theme-paper-tab");
-  expect(tabs[2]).toBeDisabled();
-});
-
-test("clicking the selected paper tab again clears the filter", () => {
-  const onSelect = jest.fn();
-  renderPicker({ onSelect, selection: { ...SELECTION, paper_number: "1" } });
-  fireEvent.click(screen.getAllByTestId("descriptive-theme-paper-tab")[0]);
-  expect(onSelect).toHaveBeenCalledWith(
-    expect.objectContaining({ paper_number: null }),
-  );
-});
-
-test("an unplaced theme is visible in its own Other group", () => {
-  renderPicker();
-  const papers = screen.getAllByTestId("descriptive-theme-paper");
-  expect(papers[papers.length - 1].textContent).toContain("Untagged");
-});
-
-test("no paper tabs when there is only one paper of themes", () => {
+test("General Studies gets GS1..GS4 and Essay", () => {
   renderPicker({
     catalog: {
       ...CATALOG,
-      theme_papers: [CATALOG.theme_papers[0]],
-      themes: [CATALOG.themes[0]],
+      subject: "General Studies",
+      paper_slots: [
+        { paper_number: 1, label: "GS1", question_count: 300, attempted_count: 0 },
+        { paper_number: 2, label: "GS2", question_count: 300, attempted_count: 0 },
+        { paper_number: 3, label: "GS3", question_count: 300, attempted_count: 0 },
+        { paper_number: 4, label: "GS4", question_count: 280, attempted_count: 0 },
+        { paper_number: 99, label: "Essay", question_count: 100, attempted_count: 0 },
+      ],
     },
+    selection: { subject: "General Studies" },
   });
-  expect(screen.queryByTestId("descriptive-theme-paper-tab")).not.toBeInTheDocument();
+  expect(screen.getAllByTestId("descriptive-paper-tab").map((t) => t.textContent.trim()))
+    .toEqual([
+      expect.stringContaining("GS1"), expect.stringContaining("GS2"),
+      expect.stringContaining("GS3"), expect.stringContaining("GS4"),
+      expect.stringContaining("Essay"),
+    ]);
 });
 
+test("a tab with nothing in it is still a tab, and says which", () => {
+  /* A missing tab reads as "this paper does not exist", which is false. */
+  renderPicker({
+    catalog: {
+      ...CATALOG,
+      paper_slots: [
+        OPT_SLOTS[0],
+        { paper_number: 2, label: "Paper II", question_count: 0, attempted_count: 0 },
+      ],
+    },
+    selection: { subject: PSIR, paper_number: "2" },
+  });
+  expect(screen.getAllByTestId("descriptive-paper-tab")).toHaveLength(2);
+  expect(screen.getByTestId("descriptive-slot-empty")).toHaveTextContent(
+    "Paper II — not available yet.",
+  );
+  // ...and the lens is not offered for a paper with nothing behind it.
+  expect(screen.queryByTestId("descriptive-syllabus-lens")).not.toBeInTheDocument();
+});
 
-test("a section shows its official syllabus line as a subtitle", () => {
-  renderPicker();
-  expect(screen.getAllByTestId("descriptive-section-line")[0]).toHaveTextContent(
-    "Political Theory: meaning and approaches to the study of political theory.",
+test("selecting a tab clears the selections below it", () => {
+  const { onSelect } = renderPicker();
+  fireEvent.click(screen.getAllByTestId("descriptive-paper-tab")[1]);
+  expect(onSelect).toHaveBeenCalledWith(
+    expect.objectContaining({ paper_number: "2", paper_id: null, theme: null, year: null }),
   );
 });
 
-test("a section with no recorded syllabus line shows no subtitle", () => {
+test("the selected tab is the one marked selected", () => {
+  renderPicker({ selection: { subject: PSIR, paper_number: "1" } });
+  const tabs = screen.getAllByTestId("descriptive-paper-tab");
+  expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  expect(tabs[1]).toHaveAttribute("aria-selected", "false");
+});
+
+// ── 3. the two lenses ──────────────────────────────────────────────────────
+
+test("by syllabus is the default and shows sections in syllabus order", () => {
   renderPicker();
-  // Only the first section carries `line` in the fixture.
-  expect(screen.getAllByTestId("descriptive-section-line")).toHaveLength(1);
+  expect(screen.getByTestId("descriptive-lens-syllabus")).toHaveAttribute("aria-checked", "true");
+  const sections = screen.getAllByTestId("descriptive-theme-section");
+  expect(sections.map((s) => s.textContent)).toEqual([
+    expect.stringContaining("Political Theory"),
+    expect.stringContaining("Indian Government"),
+  ]);
+});
+
+test("a section shows its syllabus line and its microtopics with counts", () => {
+  renderPicker();
+  expect(screen.getByTestId("descriptive-section-line")).toHaveTextContent(
+    "Political theory: meaning and approaches.",
+  );
+  const themes = screen.getAllByTestId("descriptive-theme");
+  expect(themes[0]).toHaveTextContent("Sovereignty");
+  expect(themes[0]).toHaveTextContent("3/7");   // attempted / available
+  expect(themes[1]).toHaveTextContent("Justice");
+  expect(themes[1]).toHaveTextContent("5");
+});
+
+test("by year shows one row per year, newest first — not a chip wall", () => {
+  renderPicker({ lens: "year" });
+  const rows = screen.getAllByTestId("descriptive-year-row");
+  expect(rows).toHaveLength(3);
+  expect(rows.map((r) => r.textContent)).toEqual([
+    expect.stringContaining("2025"),
+    expect.stringContaining("2024"),
+    expect.stringContaining("2023"),
+  ]);
+  expect(rows[0]).toHaveTextContent("28 questions · 5 done");
+  expect(screen.queryByTestId("descriptive-syllabus-lens")).not.toBeInTheDocument();
+});
+
+test("a year with nothing done shows the plain count", () => {
+  renderPicker({ lens: "year" });
+  expect(screen.getAllByTestId("descriptive-year-row")[1]).toHaveTextContent("24 questions");
+  expect(screen.getAllByTestId("descriptive-year-row")[1]).not.toHaveTextContent("done");
+});
+
+test("picking a year clears the theme and the paper", () => {
+  const { onSelect } = renderPicker({ lens: "year" });
+  fireEvent.click(screen.getAllByTestId("descriptive-year-row")[0]);
+  expect(onSelect).toHaveBeenCalledWith(
+    expect.objectContaining({ year: "2025", theme: null, paper_id: null }),
+  );
+});
+
+test("the lens toggle reports the change rather than holding it itself", () => {
+  const { onLensChange } = renderPicker();
+  fireEvent.click(screen.getByTestId("descriptive-lens-year"));
+  expect(onLensChange).toHaveBeenCalledWith("year");
+});
+
+test("an empty lens says so instead of rendering nothing", () => {
+  renderPicker({ catalog: { ...CATALOG, themes: [] } });
+  expect(screen.getByTestId("descriptive-syllabus-empty")).toBeInTheDocument();
+  renderPicker({ catalog: { ...CATALOG, years: [] }, lens: "year" });
+  expect(screen.getByTestId("descriptive-year-empty")).toBeInTheDocument();
+});
+
+// ── 4. filters ─────────────────────────────────────────────────────────────
+
+test("the filters report their changes by name", () => {
+  const { onFilterChange } = renderPicker();
+  fireEvent.click(screen.getByTestId("descriptive-filter-unattempted"));
+  expect(onFilterChange).toHaveBeenCalledWith("unattempted", true);
+  fireEvent.click(screen.getByTestId("descriptive-filter-has-marks"));
+  expect(onFilterChange).toHaveBeenCalledWith("hasMarks", true);
+});
+
+test("the year range belongs to the by-year lens alone", () => {
+  /* A year range is a question about sittings. The syllabus lens has none. */
+  renderPicker();
+  expect(screen.queryByTestId("descriptive-filter-year-from")).not.toBeInTheDocument();
+
+  renderPicker({ lens: "year" });
+  expect(screen.getByTestId("descriptive-filter-year-from")).toBeInTheDocument();
+  expect(screen.getByTestId("descriptive-filter-year-to")).toBeInTheDocument();
+});
+
+test("the year range inputs are labelled for a screen reader", () => {
+  renderPicker({ lens: "year" });
+  expect(screen.getByLabelText("Year from")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year to")).toBeInTheDocument();
+});
+
+test("a filter renders the value it was given rather than its own", () => {
+  renderPicker({ filters: { ...NO_FILTERS, unattempted: true, yearFrom: "2019" }, lens: "year" });
+  expect(screen.getByTestId("descriptive-filter-unattempted")).toBeChecked();
+  expect(screen.getByTestId("descriptive-filter-year-from")).toHaveValue(2019);
+});
+
+// ── countLabel ─────────────────────────────────────────────────────────────
+
+describe("countLabel", () => {
+  test("omits the done count when nothing is done", () => {
+    expect(countLabel(28, 0)).toBe("28 questions");
+    expect(countLabel(1, 0)).toBe("1 question");
+  });
+
+  test("states it when there is one", () => {
+    expect(countLabel(28, 5)).toBe("28 questions · 5 done");
+  });
+
+  test("treats missing counts as zero rather than as NaN", () => {
+    expect(countLabel(undefined, undefined)).toBe("0 questions");
+  });
 });

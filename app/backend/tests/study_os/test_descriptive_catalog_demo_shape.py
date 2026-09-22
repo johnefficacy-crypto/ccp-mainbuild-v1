@@ -335,3 +335,46 @@ def test_general_studies_is_derived_not_listed():
     assert d.paper_slot({"metadata": {"gs_paper": 2}}) == (2, "GS2")
     assert d.subject_of({"metadata": {}}, {"metadata": {"gs_paper": 2}}) == d.GENERAL_STUDIES
     assert d.subject_of({"metadata": {"optional_subject": PSIR}}, {"metadata": {}}) == PSIR
+
+
+# ── subject is required context (catalog navigation) ───────────────────────
+
+def test_subject_short_names_fit_inside_a_paper_label():
+    """"PSIR · 2025 · P1" has to fit on a phone."""
+    assert d.subject_short("Political Science and International Relations") == "PSIR"
+    assert d.subject_short("Public Administration") == "Pub Ad"
+    assert d.subject_short("General Studies") == "GS"
+    # Short enough already — abbreviating it would cost clarity for nothing.
+    assert d.subject_short("Anthropology") == "Anthropology"
+    assert d.subject_short("Geography") == "Geography"
+
+
+def test_an_unknown_long_subject_falls_back_to_initials():
+    """Worse than a real abbreviation, better than a truncation that could
+    mean two different subjects."""
+    assert d.subject_short("Agricultural Engineering Studies") == "AES"
+
+
+def test_subject_short_of_nothing_is_nothing():
+    assert d.subject_short(None) is None
+    assert d.subject_short("  ") is None
+
+
+def test_an_optional_has_two_paper_tabs_and_gs_has_five():
+    assert [s["label"] for s in d.paper_slots_for("Anthropology")] == ["Paper I", "Paper II"]
+    assert [s["label"] for s in d.paper_slots_for("General Studies")] == [
+        "GS1", "GS2", "GS3", "GS4", "Essay",
+    ]
+
+
+def test_no_subject_means_no_tabs():
+    """The tabs are a property of a subject. Without one there is nothing to
+    tab between — which is the whole reason the surface asks first."""
+    assert d.paper_slots_for(None) == ()
+    assert d.paper_slots_for("") == ()
+
+
+def test_the_essay_slot_sorts_after_gs4():
+    numbers = [s["paper_number"] for s in d.paper_slots_for("General Studies")]
+    assert numbers == sorted(numbers)
+    assert numbers[-1] == 99
