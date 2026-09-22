@@ -33,6 +33,7 @@ from app.study_os import plan_timeline as plan_timeline_service
 from app.study_os import subjects as subjects_service
 from app.study_os import weekly_review as weekly_review_service
 from app.study_os import report_cards as report_cards_service
+from app.study_os import roadmap as roadmap_service
 from app.study_os.improvement_lab import build_feed as _build_improvement_lab_feed
 
 logger = logging.getLogger("career_copilot.api.study_os")
@@ -169,6 +170,38 @@ def _require_canonical_target(supabase: Any, user_id: str) -> str | None:
     return value
 
 
+def _locked_coverage_counts(supabase: Any, exam_ids: list[str]) -> dict[str, int] | None:
+    """Locked ``exam_topic_coverage`` row count per exam, or ``None`` when the
+    read failed. One bulk read — the exam drawer and the roadmap share it."""
+    coverage_rows = _safe(
+        lambda: (
+            supabase.table("exam_topic_coverage")
+            .select("exam_id")
+            .in_("exam_id", exam_ids)
+            .eq("reviewer_status", "locked")
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if coverage_rows is None:
+        return None
+    counts: dict[str, int] = {}
+    for c in coverage_rows:
+        key = str(c.get("exam_id"))
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _is_planner_ready(exam: dict[str, Any], locked_counts: dict[str, int] | None) -> bool:
+    """The exam drawer's planner-ready rule: active AND at least one locked
+    coverage row. Fails closed on a coverage read failure (``None``): reporting
+    ready off a failed read would send a user into a planner with no syllabus."""
+    if locked_counts is None:
+        return False
+    return bool(exam.get("is_active")) and locked_counts.get(str(exam.get("id")), 0) > 0
+
+
 class SetTargetExamBody(BaseModel):
     exam_id: UUID
 
@@ -217,22 +250,9 @@ async def list_study_exams(
     # One read for every exam's locked-coverage subject ids. `count="exact"` per
     # exam is what forced the old loop; pulling the exam_id column and counting
     # in Python costs one request instead of N.
-    locked_counts: dict[str, int] = {}
-    coverage_rows = _safe(
-        lambda: (
-            supabase.table("exam_topic_coverage")
-            .select("exam_id")
-            .in_("exam_id", exam_ids)
-            .eq("reviewer_status", "locked")
-            .execute()
-            .data
-        ),
-        default=None,
-    )
-    coverage_ok = coverage_rows is not None
-    for c in coverage_rows or []:
-        key = str(c.get("exam_id"))
-        locked_counts[key] = locked_counts.get(key, 0) + 1
+    counts = _locked_coverage_counts(supabase, exam_ids)
+    coverage_ok = counts is not None
+    locked_counts: dict[str, int] = counts or {}
 
     # One read for the soonest verified upcoming cycle per exam. Ordered
     # ascending so the first row seen for an exam is its soonest.
@@ -258,9 +278,8 @@ async def list_study_exams(
     for r in rows:
         locked_count = locked_counts.get(str(r["id"]), 0)
         # Fail closed on a coverage read failure: an exam is only planner-ready
-        # when we actually READ locked coverage for it. Reporting ready=True off
-        # a failed read would send a user into a planner with no syllabus.
-        ready = bool(r.get("is_active")) and coverage_ok and locked_count > 0
+        # when we actually READ locked coverage for it (see _is_planner_ready).
+        ready = _is_planner_ready(r, counts)
         row = {
             **r,
             "locked_coverage_count": locked_count,
@@ -1195,6 +1214,49 @@ async def reports_subject_mastery(user: dict = Depends(get_current_user)) -> dic
     sb = get_supabase_admin(); user_id = user.get("id")
     rows = (sb.table("subject_mastery_snapshots").select("subject_id, subject_name, topic_id, topic_name, mastery, mastery_delta, attempt_volume").eq("user_id", user_id).order("attempt_volume", desc=True).limit(100).execute().data or [])
     return {"items": rows}
+
+# ─────────────────────────── Syllabus roadmap ───────────────────────────────
+@router.get("/progress/roadmap")
+async def progress_roadmap(
+    exam_id: UUID,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """ROADMAP-01 — the user's syllabus roadmap for one exam (read-only).
+
+    Subject → macro topic → microtopic over the user's scoped locked coverage,
+    each node carrying a state derived at read time (``study_os.roadmap``).
+    409 when the exam is not planner-ready by the exam drawer's rule; 503 when
+    any read behind the tree fails, so a partial tree never renders as complete.
+    """
+    user_id = user.get("id")
+    supabase = get_supabase_admin()
+    exam_key = str(exam_id)
+
+    exam_rows = _safe(
+        lambda: (
+            supabase.table("exams")
+            .select("id,is_active")
+            .eq("id", exam_key)
+            .limit(1)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if exam_rows is None:
+        raise HTTPException(status_code=503, detail={"reason": "roadmap_read_failed"})
+    counts = _locked_coverage_counts(supabase, [exam_key])
+    if counts is None:
+        raise HTTPException(status_code=503, detail={"reason": "roadmap_read_failed"})
+    if not exam_rows or not _is_planner_ready(exam_rows[0], counts):
+        raise HTTPException(status_code=409, detail={"reason": "not_planner_ready"})
+
+    try:
+        return roadmap_service.build_roadmap(supabase, user_id, exam_key)
+    except roadmap_service.RoadmapReadError:
+        logger.exception("roadmap read failed for %s / %s", user_id, exam_key)
+        raise HTTPException(status_code=503, detail={"reason": "roadmap_read_failed"})
+
 
 # ───────────────────────────── Subjects ─────────────────────────────────────
 @router.get("/subjects")
