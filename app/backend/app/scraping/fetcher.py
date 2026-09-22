@@ -296,63 +296,178 @@ class RssEntry:
     published: str | None = None  # ISO-ish date string when parseable
 
 
-def parse_rss_feed(xml_text: str | None) -> list[RssEntry]:
-    """Parse an RSS 2.0 or Atom feed into a flat list of entries.
+# Feed formats this parser understands. ``unknown`` is returned rather than
+# guessed: a caller that cannot identify the shape should record an error, not
+# silently ingest zero items from a feed that is actually fine.
+FEED_RSS: Final[str] = "rss"
+FEED_ATOM: Final[str] = "atom"
+FEED_GNEWS_SITEMAP: Final[str] = "gnews_sitemap"
+FEED_UNKNOWN: Final[str] = "unknown"
 
-    Uses stdlib ``xml.etree`` so we don't pull in feedparser just for two
-    feed shapes. Both ``<rss><channel><item>`` and ``<feed><entry>`` are
-    accepted; namespaced Atom tags are stripped before tag-name compare.
-    Malformed XML returns ``[]`` rather than raising — the runner treats
-    that as an empty feed and bumps source failure.
+_GNEWS_NS = "http://www.google.com/schemas/sitemap-news"
+
+
+def _localname(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _parse_xml(xml_text: str | None):
+    """Parse feed XML, tolerating a BOM or stray leading whitespace.
+
+    Publishers emit these: CPR India's feed ships tabs and newlines before the
+    ``<?xml?>`` declaration, which makes ``ET.fromstring`` raise "XML or text
+    declaration not at start of entity" and cost the whole feed. Stripping the
+    prologue costs nothing and is not a correctness compromise — the declaration
+    is still parsed, just from the first real character.
     """
     if not xml_text:
-        return []
+        return None
+    text = xml_text.lstrip("\ufeff \t\r\n")
+    if not text:
+        return None
     try:
         import xml.etree.ElementTree as ET  # local import keeps cold path cheap
-        root = ET.fromstring(xml_text)
+        return ET.fromstring(text)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("[fetcher] rss parse failed: %s", exc)
-        return []
+        logger.warning("[fetcher] feed parse failed: %s", exc)
+        return None
 
-    def _localname(tag: str) -> str:
-        return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
-    def _text_of(node, tag: str) -> str:
-        for child in node:
-            if _localname(child.tag) == tag:
-                return (child.text or "").strip()
-        return ""
+def detect_feed_format(xml_text: str | None) -> str:
+    """Identify a feed's shape from its ROOT element, not its filename.
 
-    def _link_of(node) -> str:
-        # RSS: <link>url</link>. Atom: <link href="url" rel="alternate"/>.
-        for child in node:
-            if _localname(child.tag) != "link":
-                continue
-            if child.text and child.text.strip():
-                return child.text.strip()
-            href = child.attrib.get("href")
-            if href and child.attrib.get("rel", "alternate") == "alternate":
-                return href.strip()
-        return ""
+    Filenames lie: several Indian publishers serve plain RSS 2.0 from a path
+    called ``google_feeds.xml``, and a feed that merely declares ``xmlns:atom``
+    for its self-link is still RSS. Only the root element and the Google-News
+    namespace decide.
+    """
+    root = _parse_xml(xml_text)
+    if root is None:
+        return FEED_UNKNOWN
+    return _format_of_root(root)
 
+
+def _format_of_root(root) -> str:
+    name = _localname(root.tag)
+    if name == "rss":
+        return FEED_RSS
+    if name == "feed":
+        return FEED_ATOM
+    if name == "urlset":
+        # A Google-News sitemap is a urlset whose entries carry <news:news>.
+        for node in root.iter():
+            if _localname(node.tag) == "news" and _GNEWS_NS in node.tag:
+                return FEED_GNEWS_SITEMAP
+        return FEED_UNKNOWN
+    return FEED_UNKNOWN
+
+
+def _text_of(node, tag: str) -> str:
+    for child in node:
+        if _localname(child.tag) == tag:
+            return (child.text or "").strip()
+    return ""
+
+
+def _deep_text_of(node, tag: str) -> str:
+    """First descendant (any depth) with this local name — Google-News puts
+    ``<news:title>`` inside ``<news:news>`` inside ``<url>``."""
+    for child in node.iter():
+        if child is node:
+            continue
+        if _localname(child.tag) == tag:
+            return (child.text or "").strip()
+    return ""
+
+
+def _link_of(node) -> str:
+    # RSS: <link>url</link>. Atom: <link href="url" rel="alternate"/>, falling
+    # back to the first href when no rel is marked alternate.
+    first_href = ""
+    for child in node:
+        if _localname(child.tag) != "link":
+            continue
+        if child.text and child.text.strip():
+            return child.text.strip()
+        href = (child.attrib.get("href") or "").strip()
+        if not href:
+            continue
+        if child.attrib.get("rel", "alternate") == "alternate":
+            return href
+        first_href = first_href or href
+    return first_href
+
+
+def _parse_rss_atom(root) -> list[RssEntry]:
     entries: list[RssEntry] = []
-    # RSS 2.0
     for item in root.iter():
         if _localname(item.tag) not in {"item", "entry"}:
             continue
         title = _text_of(item, "title")
         link = _link_of(item)
-        summary = _text_of(item, "description") or _text_of(item, "summary") or _text_of(item, "content")
-        published = _text_of(item, "pubDate") or _text_of(item, "published") or _text_of(item, "updated") or None
+        # ``description`` (RSS) or ``summary`` (Atom) only. Atom ``<content>`` and
+        # RSS ``<content:encoded>`` carry the FULL article body, which a
+        # discovery_only source must never store (ADR 0007) and which no source
+        # needs here — the item page is the evidence everywhere else.
+        summary = _text_of(item, "description") or _text_of(item, "summary")
+        published = (
+            _text_of(item, "pubDate")
+            or _text_of(item, "published")
+            or _text_of(item, "updated")
+            or None
+        )
         if not link and not title:
             continue
-        entries.append(RssEntry(
-            title=title,
-            link=link,
-            summary=summary,
-            published=published or None,
-        ))
+        entries.append(RssEntry(title=title, link=link, summary=summary, published=published or None))
     return entries
+
+
+def _parse_gnews_sitemap(root) -> list[RssEntry]:
+    """Google-News sitemap: ``<url>`` carrying ``<loc>`` plus a ``<news:news>``
+    block with ``<news:title>`` and ``<news:publication_date>``.
+
+    There is no summary in this shape — a sitemap lists locations, not extracts —
+    so ``summary`` is always empty rather than back-filled from anywhere.
+    """
+    entries: list[RssEntry] = []
+    for url_node in root.iter():
+        if _localname(url_node.tag) != "url":
+            continue
+        link = _text_of(url_node, "loc")
+        title = _deep_text_of(url_node, "title")
+        published = _deep_text_of(url_node, "publication_date") or _text_of(url_node, "lastmod")
+        if not link and not title:
+            continue
+        entries.append(RssEntry(title=title, link=link, summary="", published=published or None))
+    return entries
+
+
+def parse_feed(xml_text: str | None) -> tuple[str, list[RssEntry]]:
+    """Detect a feed's format and parse it into ``RssEntry`` rows.
+
+    Returns ``(format, entries)``. Every shape maps onto the same ``RssEntry``
+    so the ingest downstream is format-blind. Malformed XML yields
+    ``(FEED_UNKNOWN, [])`` rather than raising — the caller treats that as an
+    empty feed and bumps source failure.
+    """
+    root = _parse_xml(xml_text)
+    if root is None:
+        return FEED_UNKNOWN, []
+    fmt = _format_of_root(root)
+    if fmt == FEED_GNEWS_SITEMAP:
+        return fmt, _parse_gnews_sitemap(root)
+    if fmt in (FEED_RSS, FEED_ATOM):
+        return fmt, _parse_rss_atom(root)
+    return FEED_UNKNOWN, []
+
+
+def parse_rss_feed(xml_text: str | None) -> list[RssEntry]:
+    """Parse an RSS 2.0 / Atom / Google-News-sitemap feed into a flat entry list.
+
+    Thin wrapper over :func:`parse_feed` for callers that do not need the
+    detected format. RSS behaviour is unchanged.
+    """
+    return parse_feed(xml_text)[1]
 
 
 def fetch_rss(
