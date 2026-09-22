@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -629,3 +630,73 @@ def test_a_prefix_match_would_have_re_split_everything():
 
     assert len([p for p in db.papers if old_prefix_rule(p)]) == 3
     assert len(db.select_buckets()) == 0
+
+
+# ── run() with an empty scope ──────────────────────────────────────────────
+# Everything above drives _split_one. This drives run(), which owns the
+# connection and the early return — the path a SECOND --live run takes once
+# _BUCKET_SQL's three guards (anchored code, split_from_bucket_id is null,
+# retired is not true) have nothing left to select.
+
+
+def test_live_run_with_no_buckets_in_scope_exits_zero_and_writes_nothing():
+    """A re-run after a successful split must be a clean exit, not a partial
+    pass: no INSERT, no UPDATE, no transaction opened, and rc 0 so a re-run in
+    a pipeline does not read as failure."""
+
+    class EmptyScopeConn:
+        def __init__(self):
+            self.fetched, self.executed, self.transactions = [], [], 0
+            self.closed = False
+
+        async def fetch(self, sql, *args):
+            self.fetched.append((sql, args))
+            assert "from public.pyq_papers" in sql, f"unexpected fetch: {sql}"
+            return []  # nothing un-retired, un-split and anchored in scope
+
+        async def fetchval(self, sql, *args):  # pragma: no cover - must not run
+            raise AssertionError(f"no read should happen past the bucket query: {sql}")
+
+        async def execute(self, sql, *args):  # pragma: no cover - must not run
+            raise AssertionError(f"nothing may be written: {sql}")
+
+        def transaction(self):
+            self.transactions += 1
+            raise AssertionError("no transaction may be opened for an empty scope")
+
+        async def close(self):
+            self.closed = True
+
+    conn = EmptyScopeConn()
+
+    class FakeAsyncpg:
+        @staticmethod
+        async def connect(dsn):
+            assert dsn == "postgres://stub"
+            return conn
+
+    prev_module = sys.modules.get("asyncpg")
+    prev_dsn = os.environ.get("DATABASE_URL")
+    sys.modules["asyncpg"] = FakeAsyncpg
+    os.environ["DATABASE_URL"] = "postgres://stub"
+    try:
+        rc = _run(sob.run(live=True, bucket_code=None))
+    finally:
+        if prev_module is None:
+            sys.modules.pop("asyncpg", None)
+        else:
+            sys.modules["asyncpg"] = prev_module
+        if prev_dsn is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prev_dsn
+
+    assert rc == 0
+    assert conn.executed == []
+    assert conn.transactions == 0
+    assert conn.closed is True
+    # Exactly one read — the bucket query — and nothing after it. This also
+    # stops the test passing vacuously off run()'s rc 2 paths (asyncpg missing
+    # / DATABASE_URL unset), which never reach the connection at all.
+    assert len(conn.fetched) == 1
+    assert sob.BUCKET_CODE_SQL_PATTERN in conn.fetched[0][1]
