@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date as _date, timedelta as _timedelta
 from datetime import datetime, timezone
 from typing import Any
 
@@ -77,8 +78,8 @@ RUBRIC_MAX_TOTAL = len(RUBRIC_KEYS) * RUBRIC_MAX_PER_KEY  # 12
 
 _ATTEMPT_COLUMNS = (
     "id, user_id, pyq_question_id, status, answer_text, word_count, "
-    "time_spent_seconds, timer_target_seconds, pasted_chars, self_scores, "
-    "self_total, notes, started_at, submitted_at, updated_at"
+    "time_spent_seconds, timer_target_seconds, pasted_chars, answer_mode, "
+    "self_scores, self_total, notes, started_at, submitted_at, updated_at"
 )
 
 _QUESTION_COLUMNS = (
@@ -1244,6 +1245,408 @@ def _attempt_counts(
     return counts
 
 
+# ── analytics (P5) ───────────────────────────────────────────────────────
+#
+# Everything here is computed from `descriptive_attempts` rows that already
+# exist. No new tracking, no new column, no event stream: what an aspirant
+# wrote, when, for how long, and how they judged it is the whole input.
+
+#: A topic needs this many submitted attempts before it is called strong or
+#: weak. Two answers is a mood; three is the smallest number from which a
+#: direction can be read at all, and saying "your weakest topic" off one
+#: attempt would be an accusation rather than a finding.
+MIN_ATTEMPTS_PER_TOPIC = 3
+
+#: How many weeks the trend covers. Long enough to see a direction, short
+#: enough that a month off does not bury this month.
+ANALYTICS_WEEKS = 8
+
+
+def _week_start(stamp: Any) -> str | None:
+    """The Monday of the ISO week this timestamp falls in, as YYYY-MM-DD."""
+    text = str(stamp or "")[:10]
+    if len(text) != 10:
+        return None
+    try:
+        day = _date.fromisoformat(text)
+    except ValueError:
+        return None
+    return (day - _timedelta(days=day.weekday())).isoformat()
+
+
+def _mean(values: list[float]) -> float | None:
+    """The average, or None over nothing. Never 0 for an empty list."""
+    return round(sum(values) / len(values), 1) if values else None
+
+
+def _rubric_means(attempts: list[dict[str, Any]]) -> dict[str, float | None]:
+    """Mean score per rubric criterion, over the attempts that scored it."""
+    buckets: dict[str, list[float]] = {k: [] for k in RUBRIC_KEYS}
+    for a in attempts:
+        scores = a.get("self_scores")
+        if not isinstance(scores, dict):
+            continue
+        for key in RUBRIC_KEYS:
+            value = _as_int(scores.get(key))
+            if value is not None:
+                buckets[key].append(value)
+    return {k: _mean(v) for k, v in buckets.items()}
+
+
+def _streak_weeks(weeks: list[dict[str, Any]], today: Any = None) -> int:
+    """Consecutive weeks with at least one submitted answer, ending now.
+
+    Counted BACKWARDS from the current week, and the current week does not
+    break it while it is still running: it is Tuesday for everyone at some
+    point, and a streak that resets every Monday morning measures the calendar
+    rather than the habit.
+    """
+    written = {w["week"] for w in weeks if w["submitted"] > 0}
+    if not written:
+        return 0
+    now = _date.fromisoformat(str(today)[:10]) if today else _date.today()
+    cursor = now - _timedelta(days=now.weekday())
+    # This week not being written yet is not a broken streak.
+    if cursor.isoformat() not in written:
+        cursor -= _timedelta(days=7)
+    count = 0
+    while cursor.isoformat() in written:
+        count += 1
+        cursor -= _timedelta(days=7)
+    return count
+
+
+def analytics(
+    supabase: Any, user_id: str, *, weeks: Any = ANALYTICS_WEEKS, today: Any = None
+) -> dict[str, Any]:
+    """How the aspirant's answer writing is going, week by week.
+
+    EVERY NUMBER IS OVER THE ATTEMPTS THAT CARRY IT. A question with no marks
+    has no time target, a question with no word limit has no over/under, and
+    ~87% of the corpus carries no marks — so an average "vs target" computed
+    over everything would be an average over a target that mostly does not
+    exist. Each comparison therefore states its own sample size, and is absent
+    when the sample is empty.
+    """
+    if not user_id:
+        raise DescriptiveError("user_required", "Sign in to see your progress.", 401)
+    span = max(1, min(_as_int(weeks) or ANALYTICS_WEEKS, 52))
+
+    rows = [
+        r for r in _owned_attempts(supabase, user_id)
+        if (r.get("status") or "draft") == "submitted"
+    ]
+    if not rows:
+        return _empty_analytics(span)
+
+    questions, _papers = _attempt_questions(
+        supabase, [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
+    )
+    topics = _primary_topic_names(supabase, list(questions))
+
+    by_week: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        week = _week_start(row.get("submitted_at") or row.get("started_at"))
+        if week:
+            by_week.setdefault(week, []).append(row)
+
+    recent = sorted(by_week)[-span:]
+    weekly = []
+    for week in recent:
+        attempts = by_week[week]
+        # Words only where the question states a limit: "260 words" against no
+        # limit is a number with nothing to compare it to.
+        word_pairs = []
+        time_pairs = []
+        for a in attempts:
+            question = questions.get(str(a.get("pyq_question_id") or "")) or {}
+            meta = _meta(question)
+            limit = _as_int(meta.get("word_limit"))
+            words = _as_int(a.get("word_count"))
+            if limit and words is not None:
+                word_pairs.append((words, limit))
+            target = timer_target_for(meta.get("marks"))
+            spent = _as_int(a.get("time_spent_seconds"))
+            if target and spent:
+                time_pairs.append((spent, target))
+        weekly.append({
+            "week": week,
+            "submitted": len(attempts),
+            "avg_self_total": _mean(
+                [s for s in (_as_int(a.get("self_total")) for a in attempts) if s is not None]
+            ),
+            "avg_words": _mean([float(w) for w, _ in word_pairs]),
+            "avg_word_limit": _mean([float(l) for _, l in word_pairs]),
+            "words_sample": len(word_pairs),
+            "avg_seconds": _mean([float(t) for t, _ in time_pairs]),
+            "avg_target_seconds": _mean([float(t) for _, t in time_pairs]),
+            "time_sample": len(time_pairs),
+            "rubric": _rubric_means(attempts),
+        })
+
+    overall_rubric = _rubric_means(rows)
+    scored = {k: v for k, v in overall_rubric.items() if v is not None}
+    # The weakest dimension is the lowest mean, and ties are reported as ties
+    # rather than resolved by dictionary order.
+    weakest = None
+    if scored:
+        low = min(scored.values())
+        weakest = sorted(k for k, v in scored.items() if v == low)
+
+    per_topic: dict[str, list[int]] = {}
+    for row in rows:
+        name = topics.get(str(row.get("pyq_question_id") or ""))
+        total = _as_int(row.get("self_total"))
+        if name and total is not None:
+            per_topic.setdefault(name, []).append(total)
+    ranked = sorted(
+        (
+            {"topic": name, "attempts": len(scores), "avg_self_total": _mean([float(s) for s in scores])}
+            for name, scores in per_topic.items()
+            if len(scores) >= MIN_ATTEMPTS_PER_TOPIC
+        ),
+        key=lambda t: (-(t["avg_self_total"] or 0), t["topic"]),
+    )
+
+    return {
+        "weeks": weekly,
+        "window_weeks": span,
+        "submitted_total": len(rows),
+        "streak_weeks": _streak_weeks(weekly, today=today),
+        "rubric": overall_rubric,
+        "weakest_dimensions": weakest,
+        "strongest_topics": ranked[:5],
+        "weakest_topics": list(reversed(ranked[-5:])) if ranked else [],
+        # Stated so the surface can say WHY a topic list is short, instead of
+        # looking like the aspirant has written in only two topics.
+        "min_attempts_per_topic": MIN_ATTEMPTS_PER_TOPIC,
+        "topics_below_threshold": sum(
+            1 for scores in per_topic.values() if len(scores) < MIN_ATTEMPTS_PER_TOPIC
+        ),
+    }
+
+
+def _empty_analytics(span: int) -> dict[str, Any]:
+    return {
+        "weeks": [],
+        "window_weeks": span,
+        "submitted_total": 0,
+        "streak_weeks": 0,
+        "rubric": {k: None for k in RUBRIC_KEYS},
+        "weakest_dimensions": None,
+        "strongest_topics": [],
+        "weakest_topics": [],
+        "min_attempts_per_topic": MIN_ATTEMPTS_PER_TOPIC,
+        "topics_below_threshold": 0,
+    }
+
+
+# ── coverage (P4) ────────────────────────────────────────────────────────
+
+
+def _submitted_question_stats(
+    supabase: Any, user_id: str, question_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """question_id → {attempts, scores} over this user's SUBMITTED attempts.
+
+    SUBMITTED, not every attempt. An open draft is a question the aspirant is
+    in the middle of, not one they have covered, and counting it would let the
+    coverage number go up by opening questions and closing the tab.
+    """
+    if not question_ids or not user_id:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(sorted(set(question_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempts")
+                    .select("id, pyq_question_id, self_total, status")
+                    .eq("user_id", user_id)
+                    .eq("status", "submitted")
+                    .in_("pyq_question_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            qid = str(r.get("pyq_question_id") or "")
+            if not qid:
+                continue
+            entry = out.setdefault(qid, {"attempts": 0, "scores": []})
+            entry["attempts"] += 1
+            score = _as_int(r.get("self_total"))
+            if score is not None:
+                entry["scores"].append(score)
+    return out
+
+
+def _coverage_bucket(label: str, *, sort: Any = 0) -> dict[str, Any]:
+    return {
+        "label": label,
+        "available": 0,
+        "attempted": 0,
+        "_scores": [],
+        "_sort": sort,
+        "unattempted": [],
+    }
+
+
+def _seal_bucket(bucket: dict[str, Any], *, unattempted_cap: int) -> dict[str, Any]:
+    scores = bucket.pop("_scores")
+    bucket.pop("_sort", None)
+    unattempted = bucket["unattempted"]
+    return {
+        **bucket,
+        # An average over nothing is not 0, it is absent. A 0 here would read
+        # as "everything they wrote scored zero".
+        "avg_self_score": round(sum(scores) / len(scores), 1) if scores else None,
+        "scored_attempts": len(scores),
+        # The list is capped and the REMAINDER is stated, because "and 340
+        # more" is information and a silently shortened list is not.
+        "unattempted": unattempted[:unattempted_cap],
+        "unattempted_total": len(unattempted),
+    }
+
+
+#: How many not-yet-attempted questions a group names before it starts
+#: counting instead. A list longer than this is a corpus, not a to-do list.
+_UNATTEMPTED_SHOWN = 20
+
+
+def coverage(
+    supabase: Any,
+    user_id: str,
+    *,
+    exam_id: str,
+    subject: str | None = None,
+) -> dict[str, Any]:
+    """What this aspirant has written, and what is still waiting, by group.
+
+    THREE GROUPINGS, IN ORDER OF HOW MUCH THEY KNOW:
+
+    1. the syllabus tree, when the question's verified primary tag places it
+       (`study_os/syllabus.py`, from the compiled index);
+    2. the topic tag's own name, when the tag exists but the syllabus cannot
+       place it;
+    3. the paper and year, when there is no verified primary tag at all.
+
+    Nothing is dropped between them. A question the first two cannot reach
+    still appears under its paper, because an aspirant deciding what to write
+    next needs the whole corpus, not the well-tagged part of it.
+    """
+    if not exam_id:
+        raise DescriptiveError("exam_required", "Pick an exam first.", 400)
+
+    papers = _papers_for_exam(supabase, exam_id)
+    if papers is None:
+        raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    live = {str(p["id"]): p for p in papers if p.get("id") and not is_retired(p)}
+    if not live:
+        return {"exam_id": exam_id, "subjects": [], "totals": _coverage_totals([])}
+
+    questions = _verified_questions_for_papers(supabase, list(live))
+    if questions is None:
+        raise DescriptiveError("coverage_read_failed", "Coverage is unavailable right now.", 503)
+    # Map questions cannot be practised here, so counting them as "available"
+    # would make a subject permanently incompletable.
+    questions = [q for q in questions if not requires_map_sheet(q)]
+    if subject:
+        questions = [
+            q for q in questions
+            if subject_of(q, live.get(str(q.get("pyq_paper_id")))) == str(subject).strip()
+        ]
+
+    topics = _primary_topics(supabase, [str(q["id"]) for q in questions if q.get("id")])
+    _attach_tree_position(supabase, topics)
+    stats = _submitted_question_stats(
+        supabase, user_id, [str(q["id"]) for q in questions if q.get("id")]
+    )
+    _, labels = _paper_context(supabase, questions)
+
+    tree: dict[str, dict[str, Any]] = {}
+    for question in questions:
+        qid = str(question.get("id") or "")
+        paper = live.get(str(question.get("pyq_paper_id") or ""))
+        subject_name = subject_of(question, paper) or "Unfiled"
+        topic = topics.get(qid)
+
+        spot = syllabus.place(topic) if topic else None
+        if spot and spot.get("placed"):
+            group_key = f"{spot['paper_label']} · {spot['section']}"
+            group_sort = (spot["paper_sort"], spot["section_sort"])
+            source = "syllabus"
+        elif topic and (topic.get("name") or "").strip():
+            group_key = str(topic["name"]).strip()
+            group_sort = (10**5, 0)
+            source = "topic"
+        else:
+            # No verified primary tag. The paper is still a true statement
+            # about where the question came from.
+            group_key = _paper_label(paper or {})
+            group_sort = (10**6, -(_as_int((paper or {}).get("year")) or 0))
+            source = "paper"
+
+        subject_bucket = tree.setdefault(subject_name, {
+            "subject": subject_name, "groups": {}, "available": 0,
+            "attempted": 0, "_scores": [],
+        })
+        group = subject_bucket["groups"].setdefault(
+            group_key, {**_coverage_bucket(group_key, sort=group_sort), "source": source}
+        )
+
+        done = stats.get(qid)
+        for bucket in (subject_bucket, group):
+            bucket["available"] += 1
+            if done:
+                bucket["attempted"] += 1
+                bucket["_scores"].extend(done["scores"])
+        if not done:
+            group["unattempted"].append({
+                "id": qid,
+                "label": labels.get(qid),
+                "excerpt": _excerpt(question.get("question_text"), 120),
+                "paper_id": question.get("pyq_paper_id"),
+                "marks": _as_int(_meta(question).get("marks")),
+            })
+
+    subjects = []
+    for bucket in tree.values():
+        groups = sorted(bucket.pop("groups").values(), key=lambda g: (g["_sort"], g["label"]))
+        scores = bucket.pop("_scores")
+        subjects.append({
+            **bucket,
+            "avg_self_score": round(sum(scores) / len(scores), 1) if scores else None,
+            "scored_attempts": len(scores),
+            "groups": [_seal_bucket(g, unattempted_cap=_UNATTEMPTED_SHOWN) for g in groups],
+        })
+    subjects.sort(key=lambda s: s["subject"])
+    return {"exam_id": exam_id, "subjects": subjects, "totals": _coverage_totals(subjects)}
+
+
+def _coverage_totals(subjects: list[dict[str, Any]]) -> dict[str, Any]:
+    available = sum(s["available"] for s in subjects)
+    attempted = sum(s["attempted"] for s in subjects)
+    scored = sum(s["scored_attempts"] for s in subjects)
+    weighted = sum(
+        (s["avg_self_score"] or 0) * s["scored_attempts"]
+        for s in subjects if s["avg_self_score"] is not None
+    )
+    return {
+        "available": available,
+        "attempted": attempted,
+        # Stated as a fraction, never as a bare percentage: "18 of 1,351" is
+        # honest about the size of what is left in a way that "1%" is not.
+        "unattempted": available - attempted,
+        "avg_self_score": round(weighted / scored, 1) if scored else None,
+        "subjects": len(subjects),
+    }
+
+
 # ── attempts ─────────────────────────────────────────────────────────────
 
 
@@ -1254,7 +1657,12 @@ def attempt_payload(row: dict[str, Any]) -> dict[str, Any]:
         "pyq_question_id": row.get("pyq_question_id"),
         "status": row.get("status") or "draft",
         "answer_text": row.get("answer_text") or "",
-        "word_count": _as_int(row.get("word_count")) or 0,
+        # None, not 0, for a handwritten attempt: nothing has read the pages,
+        # and 0 would read as "they wrote nothing".
+        "word_count": (
+            None if _answer_mode(row) == "handwritten"
+            else (_as_int(row.get("word_count")) or 0)
+        ),
         "time_spent_seconds": _as_int(row.get("time_spent_seconds")) or 0,
         "timer_target_seconds": _as_int(row.get("timer_target_seconds")),
         # Null and 0 are different answers: null is "this attempt predates
@@ -1417,7 +1825,11 @@ def save_attempt(
     if answer_text is not None:
         text = str(answer_text)
         patch["answer_text"] = text
-        patch["word_count"] = word_count(text)
+        # A handwritten attempt keeps its NULL count whatever text is saved
+        # beside the pages; nothing has read the answer itself.
+        patch["word_count"] = (
+            None if _answer_mode(attempt) == "handwritten" else word_count(text)
+        )
     seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
     if seconds is not None:
         patch["time_spent_seconds"] = seconds
@@ -1516,8 +1928,12 @@ def submit_attempt(
         "updated_at": now,
         # Recomputed from the stored text rather than trusted from the last
         # autosave: the count that goes into the record is the count of what is
-        # actually in the column.
-        "word_count": word_count(attempt.get("answer_text")),
+        # actually in the column. A handwritten attempt has no text to count —
+        # nothing reads the pages — so it keeps its NULL.
+        "word_count": (
+            None if _answer_mode(attempt) == "handwritten"
+            else word_count(attempt.get("answer_text"))
+        ),
     }
     seconds = monotonic_counter(attempt.get("time_spent_seconds"), time_spent_seconds)
     if seconds is not None:
@@ -1542,23 +1958,750 @@ def submit_attempt(
     return attempt_payload(updated[0])
 
 
-def list_attempts(
-    supabase: Any, user_id: str, *, pyq_question_id: str | None = None
+#: How much of the answer's own question a history row shows. Long enough to
+#: recognise the question, short enough that a hundred rows are still a list.
+_EXCERPT_CHARS = 180
+
+#: Attempt history page size. The surface pages; it never silently truncates.
+_ATTEMPT_PAGE = 50
+_MAX_ATTEMPT_PAGE = 200
+
+
+def _excerpt(text: Any, limit: int = _EXCERPT_CHARS) -> str:
+    """One line of a question, cut on a word boundary with an ellipsis."""
+    body = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(body) <= limit:
+        return body
+    cut = body[:limit]
+    space = cut.rfind(" ")
+    return (cut[: space if space > limit * 0.6 else limit]).rstrip(" ,;:") + "…"
+
+
+def _answer_mode(row: dict[str, Any]) -> str:
+    """'typed' or 'handwritten'.
+
+    Defaults to typed rather than to unknown: every attempt written before the
+    upload path existed was typed, and there is no third thing it could have
+    been.
+    """
+    mode = str(row.get("answer_mode") or "").strip().lower()
+    return mode if mode in {"typed", "handwritten"} else "typed"
+
+
+def _attempt_questions(
+    supabase: Any, question_ids: list[str]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """(question rows, paper rows) for a page of attempts, by id.
+
+    The history is not scoped to an exam — it is everything this aspirant has
+    written — so the questions are fetched by id rather than walked down from a
+    paper list. `reviewer_status` is deliberately NOT filtered: an attempt at a
+    question whose verification was later revoked is still the aspirant's
+    answer, and hiding their own work because the corpus changed under them
+    would be the surface lying about their history.
+    """
+    if not question_ids:
+        return {}, {}
+    questions: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(sorted(set(question_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_questions")
+                    .select(_QUESTION_COLUMNS)
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            questions[str(r.get("id"))] = r
+
+    paper_ids = sorted({
+        str(q.get("pyq_paper_id")) for q in questions.values() if q.get("pyq_paper_id")
+    })
+    papers: dict[str, dict[str, Any]] = {}
+    for chunk in _chunks(paper_ids):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("pyq_papers")
+                    .select(_PAPER_COLUMNS)
+                    .in_("id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            papers[str(r.get("id"))] = r
+    return questions, papers
+
+
+def attempt_history_row(
+    attempt: dict[str, Any],
+    *,
+    question: dict[str, Any] | None,
+    paper: dict[str, Any] | None,
+    label: str | None,
+    topic: str | None,
+    page_count: int | None = None,
 ) -> dict[str, Any]:
-    """This user's attempt history, newest first."""
-    query = (
-        supabase.table("descriptive_attempts")
-        .select(_ATTEMPT_COLUMNS)
-        .eq("user_id", user_id)
-    )
-    if pyq_question_id:
-        query = query.eq("pyq_question_id", pyq_question_id)
-    rows = _safe(
-        lambda: query.order("started_at", desc=True).limit(200).execute().data,
-        default=None,
-    )
+    """One row of the answer history.
+
+    Carries the attempt's own facts and enough of the question to recognise it.
+    The full answer text is NOT here: a hundred-row page would carry a hundred
+    essays, and the row's job is to get the aspirant to the one they meant.
+    """
+    base = attempt_payload(attempt)
+    base.pop("answer_text", None)
+    question = question or {}
+    meta = _meta(question)
+    thematic = question_is_thematic(question, paper)
+    return {
+        **base,
+        "answer_mode": _answer_mode(attempt),
+        # How many pages a handwritten attempt has, so the row can read
+        # "3 pages" where a typed row reads "260 words".
+        "page_count": page_count,
+        # 0 and null are different answers, so the badge is a tri-state: pasted
+        # (>0), clean (0), unknown (null, predating paste tracking).
+        "has_pasted_text": (
+            None if base.get("pasted_chars") is None else base["pasted_chars"] > 0
+        ),
+        "question": {
+            "id": question.get("id"),
+            "excerpt": _excerpt(question.get("question_text")),
+            "label": label,
+            "breadcrumb": breadcrumb_for(question, paper=paper, label=label, topic=topic),
+            "subject": subject_of(question, paper),
+            "paper_id": question.get("pyq_paper_id"),
+            "paper_number": paper_slot(paper or {})[0] or None,
+            "year": (paper or {}).get("year"),
+            "marks": _as_int(meta.get("marks")),
+            "word_limit": _as_int(meta.get("word_limit")),
+            "theme": topic if thematic else None,
+            "is_thematic": thematic,
+        },
+    }
+
+
+def _attempt_matches(row: dict[str, Any], **filters: Any) -> bool:
+    """Whether one enriched history row survives the surface's filters.
+
+    Applied here rather than in SQL because every axis but status and date
+    lives on the QUESTION, not on the attempt — subject, paper and theme are
+    all properties of what was answered. Pushing them into the attempts query
+    would mean a join PostgREST cannot express and a second round trip either
+    way.
+    """
+    q = row.get("question") or {}
+    if (subject := filters.get("subject")) and q.get("subject") != subject:
+        return False
+    if (paper_id := filters.get("paper_id")) and str(q.get("paper_id") or "") != str(paper_id):
+        return False
+    if (theme := filters.get("theme")) and q.get("theme") != theme:
+        return False
+    if (status := filters.get("status")) and row.get("status") != status:
+        return False
+    stamp = str(row.get("submitted_at") or row.get("started_at") or "")
+    if (since := filters.get("since")) and stamp[:10] < str(since)[:10]:
+        return False
+    if (until := filters.get("until")) and stamp[:10] > str(until)[:10]:
+        return False
+    return True
+
+
+def _attempt_facets(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """The filter values that actually occur in this history.
+
+    Built from the aspirant's own attempts, not from the catalogue: offering a
+    subject they have never written in is a filter that can only return
+    nothing.
+    """
+    subjects: dict[str, int] = {}
+    papers: dict[str, dict[str, Any]] = {}
+    themes: dict[str, int] = {}
+    statuses: dict[str, int] = {}
+    for row in rows:
+        q = row.get("question") or {}
+        if subject := q.get("subject"):
+            subjects[subject] = subjects.get(subject, 0) + 1
+        if paper_id := q.get("paper_id"):
+            key = str(paper_id)
+            entry = papers.setdefault(
+                key,
+                {
+                    "paper_id": key,
+                    "label": " · ".join(
+                        str(p) for p in (q.get("year"), f"P{q['paper_number']}"
+                                         if q.get("paper_number") else None) if p
+                    ) or "Paper",
+                    "count": 0,
+                },
+            )
+            entry["count"] += 1
+        if theme := q.get("theme"):
+            themes[theme] = themes.get(theme, 0) + 1
+        statuses[row.get("status") or "draft"] = statuses.get(row.get("status") or "draft", 0) + 1
+    return {
+        "subjects": [{"value": k, "count": v} for k, v in sorted(subjects.items())],
+        "papers": sorted(papers.values(), key=lambda p: p["label"], reverse=True),
+        "themes": [{"value": k, "count": v} for k, v in sorted(themes.items())],
+        "statuses": [{"value": k, "count": v} for k, v in sorted(statuses.items())],
+    }
+
+
+def _page_counts(supabase: Any, attempt_ids: list[str]) -> dict[str, int]:
+    """attempt_id → how many pages it has. Only for handwritten attempts."""
+    if not attempt_ids:
+        return {}
+    counts: dict[str, int] = {}
+    for chunk in _chunks(sorted(set(attempt_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempt_pages")
+                    .select("id, attempt_id")
+                    .in_("attempt_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            key = str(r.get("attempt_id") or "")
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _owned_attempts(supabase: Any, user_id: str, **eq: Any) -> list[dict[str, Any]]:
+    """Every attempt this user owns, paginated. Never another user's."""
+    def _page(a: int, b: int) -> Any:
+        query = (
+            supabase.table("descriptive_attempts")
+            .select(_ATTEMPT_COLUMNS)
+            .eq("user_id", user_id)
+        )
+        for key, value in eq.items():
+            if value:
+                query = query.eq(key, value)
+        # `started_at` is not unique, so it cannot partition the pages on its
+        # own; `id` breaks the tie and keeps newest-first.
+        return query.order("started_at", desc=True).order("id").range(a, b).execute().data
+
+    rows = _safe(lambda: _paginate_all(_page), default=None)
     if rows is None:
         raise DescriptiveError(
             "attempts_read_failed", "Your attempts are unavailable right now.", 503
         )
-    return {"items": [attempt_payload(r) for r in rows], "count": len(rows)}
+    return rows
+
+
+def _enrich_attempts(
+    supabase: Any, rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Attach question, paper, label and topic to each attempt row."""
+    qids = [str(r.get("pyq_question_id")) for r in rows if r.get("pyq_question_id")]
+    questions, papers = _attempt_questions(supabase, qids)
+    pages = _page_counts(supabase, [str(r.get("id")) for r in rows
+                                    if _answer_mode(r) == "handwritten"])
+    _, labels = _paper_context(supabase, list(questions.values()))
+    topics = _primary_topic_names(supabase, list(questions))
+    out = []
+    for row in rows:
+        qid = str(row.get("pyq_question_id") or "")
+        question = questions.get(qid)
+        paper = papers.get(str((question or {}).get("pyq_paper_id") or ""))
+        out.append(
+            attempt_history_row(
+                row,
+                question=question,
+                paper=paper,
+                label=labels.get(qid),
+                topic=topics.get(qid),
+                page_count=pages.get(str(row.get("id"))),
+            )
+        )
+    return out
+
+
+def list_attempts(
+    supabase: Any,
+    user_id: str,
+    *,
+    pyq_question_id: str | None = None,
+    subject: str | None = None,
+    paper_id: str | None = None,
+    theme: str | None = None,
+    status: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    limit: Any = _ATTEMPT_PAGE,
+    offset: Any = 0,
+) -> dict[str, Any]:
+    """This user's answer history, newest first, with the filters applied.
+
+    EVERY ATTEMPT IS KEPT. A submitted attempt is never replaced by a later one
+    — that is the point of the surface, and the whole history is what makes a
+    comparison possible. Only the open draft is unique, one per question.
+    """
+    if not user_id:
+        raise DescriptiveError("user_required", "Sign in to see your answers.", 401)
+    cap = max(1, min(_as_int(limit) or _ATTEMPT_PAGE, _MAX_ATTEMPT_PAGE))
+    start = max(0, _as_int(offset) or 0)
+
+    rows = _owned_attempts(supabase, user_id, pyq_question_id=pyq_question_id)
+    enriched = _enrich_attempts(supabase, rows)
+
+    # Facets describe the WHOLE history, not the filtered page: a filter list
+    # that shrinks as you use it cannot be used to widen a selection again.
+    facets = _attempt_facets(enriched)
+    matched = [
+        r for r in enriched
+        if _attempt_matches(
+            r, subject=subject, paper_id=paper_id, theme=theme,
+            status=status, since=since, until=until,
+        )
+    ]
+    page = matched[start : start + cap]
+    return {
+        "items": page,
+        "count": len(page),
+        "total": len(matched),
+        "offset": start,
+        "limit": cap,
+        "has_more": start + len(page) < len(matched),
+        "facets": facets,
+    }
+
+
+# ── handwritten pages (P3) ───────────────────────────────────────────────
+#
+# NO OCR. Nothing reads these images. They are the aspirant's own record, shown
+# back to them beside the same rubric a typed answer gets.
+
+#: What a phone camera and a scanner actually produce. HEIC is here because it
+#: is the iPhone default and an aspirant should not have to convert a photo to
+#: practise; nothing decodes it server-side, so it costs only the allowlist.
+PAGE_MIME_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "application/pdf": "pdf",
+}
+
+#: Per page. A phone photo of an A4 sheet is 2-5 MB; 10 leaves room for a
+#: high-resolution scan without letting a video through.
+MAX_PAGE_BYTES = 10 * 1024 * 1024
+
+#: A Mains answer is 150-250 words. Eight sides is a very long answer and a
+#: generous ceiling; past it, something other than an answer is being uploaded.
+MAX_ATTEMPT_PAGES = 8
+
+#: How long a view URL lives. Long enough to read the answer, short enough that
+#: a copied URL is not a permanent share.
+PAGE_URL_TTL_SECONDS = 900
+
+ANSWER_PAGES_BUCKET = "answer-pages"
+
+_PAGE_COLUMNS = (
+    "id, attempt_id, page_no, storage_bucket, storage_path, mime_type, bytes, "
+    "created_at"
+)
+
+
+def page_storage_path(user_id: str, attempt_id: str, page_no: int, mime: str) -> str:
+    """`<user_id>/<attempt_id>/page_<n>.<ext>`.
+
+    THE FIRST SEGMENT IS THE OWNER, and that is load-bearing: the storage
+    policy in migration 298 compares `(storage.foldername(name))[1]` to
+    `auth.uid()`, so the path itself is what makes one aspirant's folder
+    unreadable to another. Building it from anything the client sends would
+    hand them someone else's folder.
+    """
+    ext = PAGE_MIME_TYPES.get(mime, "bin")
+    return f"{user_id}/{attempt_id}/page_{int(page_no)}.{ext}"
+
+
+def page_payload(row: dict[str, Any], *, url: str | None = None) -> dict[str, Any]:
+    """One page as the client sees it. The bucket and path never leave the server.
+
+    A client that knows the object path knows another aspirant's path too —
+    they differ only by a user id. The surface needs a URL, not a location.
+    """
+    return {
+        "id": row.get("id"),
+        "page_no": _as_int(row.get("page_no")),
+        "mime_type": row.get("mime_type"),
+        "bytes": _as_int(row.get("bytes")),
+        "created_at": row.get("created_at"),
+        "url": url,
+    }
+
+
+def validate_page_upload(*, page_no: Any, mime_type: Any, size_bytes: Any) -> tuple[int, str, int]:
+    """(page_no, mime, bytes), or a DescriptiveError naming what is wrong.
+
+    Every limit is checked here, before a signed URL exists. A limit enforced
+    only in the browser is not a limit.
+    """
+    number = _as_int(page_no)
+    if number is None or number < 1 or number > MAX_ATTEMPT_PAGES:
+        raise DescriptiveError(
+            "page_number_invalid",
+            f"Pages are numbered 1 to {MAX_ATTEMPT_PAGES}.",
+            422,
+        )
+    mime = str(mime_type or "").strip().lower()
+    if mime not in PAGE_MIME_TYPES:
+        raise DescriptiveError(
+            "page_type_unsupported",
+            "Upload a photo or PDF — JPG, PNG, HEIC or PDF.",
+            422,
+        )
+    size = _as_int(size_bytes)
+    if size is None or size <= 0:
+        raise DescriptiveError("page_empty", "That file is empty.", 422)
+    if size > MAX_PAGE_BYTES:
+        raise DescriptiveError(
+            "page_too_large",
+            f"Each page must be under {MAX_PAGE_BYTES // (1024 * 1024)} MB.",
+            422,
+        )
+    return number, mime, size
+
+
+def _attempt_pages(supabase: Any, attempt_id: str) -> list[dict[str, Any]]:
+    rows = _safe(
+        lambda: (
+            supabase.table("descriptive_attempt_pages")
+            .select(_PAGE_COLUMNS)
+            .eq("attempt_id", attempt_id)
+            .order("page_no")
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if rows is None:
+        raise DescriptiveError(
+            "pages_read_failed", "Your uploaded pages are unavailable right now.", 503
+        )
+    return rows
+
+
+def _signed_page_url(supabase: Any, row: dict[str, Any]) -> str | None:
+    """A short-lived read URL, or None when storage cannot issue one.
+
+    None rather than a raise: one unreadable page must not take down the view
+    of the other seven, and the surface renders a page it cannot show as
+    missing rather than pretending the attempt is broken.
+    """
+    bucket = row.get("storage_bucket") or ANSWER_PAGES_BUCKET
+    path = row.get("storage_path")
+    if not path:
+        return None
+    try:
+        signed = supabase.storage.from_(bucket).create_signed_url(
+            path, PAGE_URL_TTL_SECONDS
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("answer page signed url failed for %s: %s", path, exc)
+        return None
+    if isinstance(signed, dict):
+        return signed.get("signedURL") or signed.get("signedUrl") or signed.get("url")
+    return getattr(signed, "signed_url", None) or getattr(signed, "signedURL", None)
+
+
+def list_attempt_pages(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
+    """This attempt's pages, each with a freshly signed view URL."""
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    rows = _attempt_pages(supabase, attempt_id)
+    return {
+        "attempt_id": attempt_id,
+        "answer_mode": _answer_mode(attempt),
+        "pages": [page_payload(r, url=_signed_page_url(supabase, r)) for r in rows],
+        "max_pages": MAX_ATTEMPT_PAGES,
+        "max_bytes": MAX_PAGE_BYTES,
+        "accepted_types": sorted(PAGE_MIME_TYPES),
+    }
+
+
+def request_page_upload(
+    supabase: Any,
+    user_id: str,
+    attempt_id: str,
+    *,
+    page_no: Any,
+    mime_type: Any,
+    size_bytes: Any,
+) -> dict[str, Any]:
+    """A signed URL to PUT one page to, and the row that will point at it.
+
+    The attempt must still be a draft. A submitted attempt is the record of
+    what was written under time; adding a page to it afterwards would let an
+    answer grow after it was scored, which is exactly what the rubric is meant
+    to be honest about.
+    """
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    number, mime, size = validate_page_upload(
+        page_no=page_no, mime_type=mime_type, size_bytes=size_bytes
+    )
+
+    existing = {_as_int(r.get("page_no")): r for r in _attempt_pages(supabase, attempt_id)}
+    # A REPLACEMENT is not a new page. Re-shooting a blurry page 3 must stay
+    # page 3, so the ceiling counts pages that do not exist yet.
+    if number not in existing and len(existing) >= MAX_ATTEMPT_PAGES:
+        raise DescriptiveError(
+            "too_many_pages",
+            f"An answer can have at most {MAX_ATTEMPT_PAGES} pages.",
+            422,
+        )
+
+    path = page_storage_path(user_id, attempt_id, number, mime)
+    try:
+        signed = supabase.storage.from_(ANSWER_PAGES_BUCKET).create_signed_upload_url(path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("answer page upload url failed for %s: %s", path, exc)
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        ) from None
+    upload_url = None
+    token = None
+    if isinstance(signed, dict):
+        upload_url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("url")
+        token = signed.get("token")
+    if not upload_url:
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        )
+
+    row = {
+        "attempt_id": attempt_id,
+        "page_no": number,
+        "storage_bucket": ANSWER_PAGES_BUCKET,
+        "storage_path": path,
+        "mime_type": mime,
+        "bytes": size,
+    }
+    # Replacing a page removes the old ROW; the object at that path is
+    # overwritten by the upload itself, because the path is derived from the
+    # page number rather than from the filename.
+    if number in existing:
+        _safe(
+            lambda: (
+                supabase.table("descriptive_attempt_pages")
+                .delete()
+                .eq("id", existing[number].get("id"))
+                .execute()
+            ),
+            default=None,
+        )
+    inserted = _safe(
+        lambda: supabase.table("descriptive_attempt_pages").insert(row).execute().data,
+        default=None,
+    )
+    if not inserted:
+        raise DescriptiveError(
+            "page_upload_unavailable", "Couldn't start that upload. Try again.", 503
+        )
+
+    # An attempt with a page is a handwritten attempt, and its word count is no
+    # longer a fact about it.
+    _safe(
+        lambda: (
+            supabase.table("descriptive_attempts")
+            .update({"answer_mode": "handwritten", "word_count": None,
+                     "updated_at": _now_iso()})
+            .eq("id", attempt_id)
+            .eq("user_id", user_id)
+            .execute()
+        ),
+        default=None,
+    )
+    return {
+        "page": page_payload(inserted[0]),
+        "upload_url": upload_url,
+        "upload_token": token,
+        # The path is returned so the client can PUT to it, and for no other
+        # reason; it is never part of a read payload.
+        "storage_path": path,
+    }
+
+
+def delete_attempt_page(
+    supabase: Any, user_id: str, attempt_id: str, page_no: Any
+) -> dict[str, Any]:
+    """Remove one page, and its object. The aspirant can take their images back."""
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    number = _as_int(page_no)
+    rows = _attempt_pages(supabase, attempt_id)
+    target = next((r for r in rows if _as_int(r.get("page_no")) == number), None)
+    if target is None:
+        raise DescriptiveError("page_not_found", "That page isn't there.", 404)
+
+    path = target.get("storage_path")
+    if path:
+        try:
+            supabase.storage.from_(
+                target.get("storage_bucket") or ANSWER_PAGES_BUCKET
+            ).remove([path])
+        except Exception as exc:  # noqa: BLE001
+            # The ROW goes either way. An object nothing points at is storage
+            # to reclaim; a row pointing at a deleted object is a broken page
+            # the aspirant can see.
+            logger.warning("answer page object delete failed for %s: %s", path, exc)
+
+    deleted = _safe(
+        lambda: (
+            supabase.table("descriptive_attempt_pages")
+            .delete()
+            .eq("id", target.get("id"))
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if deleted is None:
+        raise DescriptiveError("page_delete_failed", "Couldn't remove that page.", 503)
+
+    remaining = [r for r in rows if r is not target]
+    if not remaining:
+        # The last page going means this is a typed attempt again — with an
+        # empty answer, which is what it has.
+        _safe(
+            lambda: (
+                supabase.table("descriptive_attempts")
+                .update({"answer_mode": "typed", "word_count": word_count(
+                    attempt.get("answer_text") or ""), "updated_at": _now_iso()})
+                .eq("id", attempt_id)
+                .eq("user_id", user_id)
+                .execute()
+            ),
+            default=None,
+        )
+    return {"deleted": number, "remaining": len(remaining)}
+
+
+def set_answer_mode(
+    supabase: Any, user_id: str, attempt_id: str, mode: Any
+) -> dict[str, Any]:
+    """Switch a draft between typing and uploading.
+
+    Switching to typed with pages still attached is refused rather than silently
+    deleting them: eight photographs of an answer are not something to discard
+    on a mis-click.
+    """
+    wanted = str(mode or "").strip().lower()
+    if wanted not in {"typed", "handwritten"}:
+        raise DescriptiveError("answer_mode_invalid", "Choose typing or upload.", 422)
+    attempt = _load_owned_attempt(supabase, user_id, attempt_id)
+    if (attempt.get("status") or "draft") != "draft":
+        raise DescriptiveError(
+            "attempt_submitted", "This attempt is already submitted.", 409
+        )
+    if wanted == "typed" and _attempt_pages(supabase, attempt_id):
+        raise DescriptiveError(
+            "pages_present",
+            "Remove the uploaded pages first, then switch back to typing.",
+            409,
+        )
+    patch = {"answer_mode": wanted, "updated_at": _now_iso()}
+    patch["word_count"] = (
+        None if wanted == "handwritten" else word_count(attempt.get("answer_text") or "")
+    )
+    updated = _safe(
+        lambda: (
+            supabase.table("descriptive_attempts")
+            .update(patch)
+            .eq("id", attempt_id)
+            .eq("user_id", user_id)
+            .execute()
+            .data
+        ),
+        default=None,
+    )
+    if not updated:
+        raise DescriptiveError("attempt_save_failed", "Couldn't switch modes.", 503)
+    return attempt_payload(updated[0])
+
+
+def attempt_detail(supabase: Any, user_id: str, attempt_id: str) -> dict[str, Any]:
+    """One attempt of this user's, in full, with the question it answers.
+
+    Read-only by construction: the payload carries no draft affordance. An
+    aspirant who wants to write this question again starts a NEW attempt — the
+    old text is shown beside the blank editor, never loaded into it, because
+    editing last month's answer in place would destroy the record of what they
+    could do last month.
+    """
+    row = _load_owned_attempt(supabase, user_id, attempt_id)
+    enriched = _enrich_attempts(supabase, [row])[0]
+    pages = _attempt_pages(supabase, attempt_id) if _answer_mode(row) == "handwritten" else []
+    return {
+        "attempt": {**enriched, "answer_text": row.get("answer_text") or ""},
+        # Signed fresh on every read, and short-lived: a copied URL must not be
+        # a permanent share of someone's answer.
+        "pages": [page_payload(r, url=_signed_page_url(supabase, r)) for r in pages],
+        # The aspirant can always write it again; the old attempt stays.
+        "can_rewrite": bool(row.get("pyq_question_id")),
+    }
+
+
+def compare_attempts(
+    supabase: Any, user_id: str, pyq_question_id: str
+) -> dict[str, Any]:
+    """Every attempt this user has made at ONE question, oldest first.
+
+    Oldest first, unlike the history list: a comparison is read as a
+    progression, and a progression runs forwards.
+    """
+    if not pyq_question_id:
+        raise DescriptiveError("question_required", "Pick a question first.", 400)
+    rows = _owned_attempts(supabase, user_id, pyq_question_id=pyq_question_id)
+    enriched = _enrich_attempts(supabase, rows)
+    by_id = {str(r.get("id")): r for r in rows}
+    ordered = sorted(
+        enriched,
+        key=lambda r: (str(r.get("submitted_at") or r.get("started_at") or ""), str(r.get("id"))),
+    )
+    attempts = [
+        {**r, "answer_text": (by_id.get(str(r.get("id"))) or {}).get("answer_text") or ""}
+        for r in ordered
+    ]
+    submitted = [a for a in attempts if a.get("status") == "submitted"]
+    scored = [a["self_total"] for a in submitted if a.get("self_total") is not None]
+    words = [a["word_count"] for a in submitted if a.get("word_count") is not None]
+    return {
+        "question": (attempts[0]["question"] if attempts else None),
+        "attempts": attempts,
+        "count": len(attempts),
+        "submitted_count": len(submitted),
+        # Stated rather than computed in the client so two surfaces cannot
+        # disagree about what "improved" means.
+        "self_total_first": scored[0] if scored else None,
+        "self_total_last": scored[-1] if scored else None,
+        "word_count_first": words[0] if words else None,
+        "word_count_last": words[-1] if words else None,
+    }
