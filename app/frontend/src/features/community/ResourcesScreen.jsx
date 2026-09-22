@@ -29,7 +29,20 @@ const TYPE_ICONS = {
   video_link: { glyph: "▷", label: "Video" },
   course_link: { glyph: "⊞", label: "Course" },
   book: { glyph: "❒", label: "Book" },
+  reading_source: { glyph: "◈", label: "Reading source" },
 };
+
+// Presentation labels for the exam families. The KEYS come from the API
+// (`examFamilies` in the list response), which owns the family -> exam-slug
+// expansion; this map only supplies human labels and chip order. Used as the
+// fallback so the chips still render if that request fails.
+const EXAM_FAMILY_LABELS = {
+  upsc: "UPSC",
+  banking: "Banking",
+  regulatory_bodies: "Regulatory",
+  ssc: "SSC",
+};
+const EXAM_FAMILY_FALLBACK = Object.keys(EXAM_FAMILY_LABELS);
 
 export default function ResourcesScreen() {
   const { user } = useAuth();
@@ -41,6 +54,7 @@ export default function ResourcesScreen() {
   const [trust, setTrust] = useState("all");
   const [exam, setExam] = useState(defaultExam);
   const [items, setItems] = useState(ENABLE_DEMO_DATA ? RESOURCES : []);
+  const [familyKeys, setFamilyKeys] = useState(EXAM_FAMILY_FALLBACK);
   const [resourcesError, setResourcesError] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
   const [reportFor, setReportFor] = useState(null);
@@ -55,6 +69,9 @@ export default function ResourcesScreen() {
         setItems(d.items);
         setResourcesError(false);
       }
+      if (d?.examFamilies && typeof d.examFamilies === "object") {
+        setFamilyKeys(Object.keys(d.examFamilies));
+      }
     } catch {
       if (!ENABLE_DEMO_DATA) setItems([]);
       setResourcesError(true);
@@ -62,19 +79,40 @@ export default function ResourcesScreen() {
   }, []);
 
   useEffect(() => {
-    reload({ exam, type, trust, lane: lane !== "all" ? lane : undefined });
-  }, [reload, exam, type, trust, lane]);
+    // `lane` is deliberately NOT sent: /api/community/resources has no lane
+    // parameter, so it was silently ignored. Lane is applied client-side below.
+    reload({ exam, type, trust });
+  }, [reload, exam, type, trust]);
 
   const filtered = useMemo(
     () =>
       items.filter((r) => {
-        if (lane !== "all" && r.category !== lane) return false;
+        // Two of the lanes are source-trust views ("Official", "Community"); the
+        // rest group resource types by category. Comparing every lane against
+        // r.category left both of those permanently empty.
+        if (lane !== "all") {
+          const matches = TRUST_LANES.has(lane) ? r.sourceTrust === lane : r.category === lane;
+          if (!matches) return false;
+        }
         if (type !== "all" && r.type !== type) return false;
         if (trust !== "all" && r.sourceTrust !== trust) return false;
-        if (exam !== "all" && r.exam !== exam) return false;
+        // Exam is NOT re-filtered here. `exam` may be a family key, and only the
+        // API knows which slugs a family covers — re-checking it client-side
+        // would mean duplicating that map and guaranteeing it drifts. The
+        // request already filtered on it.
         return true;
       }),
-    [items, lane, type, trust, exam],
+    [items, lane, type, trust],
+  );
+
+  const examFamilies = useMemo(
+    () => [
+      { key: "all", label: "All" },
+      ...familyKeys
+        .filter((k) => EXAM_FAMILY_LABELS[k])
+        .map((k) => ({ key: k, label: EXAM_FAMILY_LABELS[k] })),
+    ],
+    [familyKeys],
   );
 
   async function vote(r) {
@@ -139,6 +177,7 @@ export default function ResourcesScreen() {
           trust={trust}
           setTrust={setTrust}
           exam={exam}
+          examFamilies={examFamilies}
           setExam={setExam}
         />
 
@@ -183,6 +222,9 @@ export default function ResourcesScreen() {
   );
 }
 
+// Lanes that filter on sourceTrust rather than category.
+const TRUST_LANES = new Set(["official", "community"]);
+
 const LANES = [
   { k: "all", label: "All" },
   { k: "study_material", label: "Study Material" },
@@ -223,20 +265,20 @@ function LaneFilter({ lane, setLane }) {
   );
 }
 
-function FilterSidebar({ type, setType, trust, setTrust, exam, setExam }) {
+function FilterSidebar({ type, setType, trust, setTrust, exam, setExam, examFamilies }) {
   return (
     <aside className="space-y-4 lg:sticky lg:top-4 self-start" data-testid="resources-filters">
       <FieldCard>
         <FieldLabel>Exam</FieldLabel>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {["all", "UPSC CSE", "SSC CGL", "IBPS PO", "RBI Grade B"].map((e) => (
+          {examFamilies.map(({ key, label }) => (
             <FilterChip
-              key={e}
-              active={exam === e}
-              onClick={() => setExam(e)}
-              testId={`res-exam-${e === "all" ? "all" : e.replace(/\s+/g, "-").toLowerCase()}`}
+              key={key}
+              active={exam === key}
+              onClick={() => setExam(key)}
+              testId={`res-exam-${key}`}
             >
-              {e === "all" ? "All" : e}
+              {label}
             </FilterChip>
           ))}
         </div>
@@ -272,6 +314,7 @@ function FilterSidebar({ type, setType, trust, setTrust, exam, setExam }) {
           {[
             ["all", "All"],
             ["official", "Official"],
+            ["publication", "Publication"],
             ["community", "Community"],
             ["coaching", "Coaching"],
             ["unknown", "Unknown · needs review"],
@@ -548,7 +591,7 @@ function ContributeDrawer({ onClose, onContributed }) {
   const [form, setForm] = useState({
     title: "",
     type: "notes",
-    exam: "UPSC CSE",
+    exam: "upsc-cse",
     subject: "Meta",
     sourceTrust: "community",
     sourceUrl: "",

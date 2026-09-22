@@ -920,8 +920,79 @@ _RESOURCE_TYPES = {
     "pyq_paper", "notes", "strategy_guide", "video_link", "course_link", "book",
     "concept_note", "formula_sheet", "grammar_sheet", "vocabulary_sheet",
     "drill_set", "practice_set", "current_affairs_digest", "scheme_card",
-    "pyq_solution", "mindmap", "revision_sheet",
+    "pyq_solution", "mindmap", "revision_sheet", "reading_source",
 }
+
+# Exam-family key -> the exam slugs it covers. THE single source of truth for
+# expansion: profiles store goal_exams as family keys (lib/profileFields.js
+# EXAM_FAMILY_OPTIONS), while community_resources.exam stores an exam slug, so
+# something has to bridge them and it must not be duplicated on the client.
+# Served to the frontend in the list response so the chips come from this map.
+#
+# ssc-cgl-legacy-sandbox-do-not-use is deliberately absent: it is an inactive
+# sandbox exam, and nabard-grade-a is superseded by national-nabard-grade-a.
+EXAM_FAMILY_SLUGS: dict[str, list[str]] = {
+    "upsc": ["upsc-cse"],
+    "banking": ["ibps-po", "sbi-po"],
+    "regulatory_bodies": [
+        "rbi-grade-b", "sebi-grade-a", "national-nabard-grade-a",
+        "pfrda-grade-a", "ifsca-grade-a",
+    ],
+    "ssc": [
+        "national-ssc-combined-graduate-level-cgl",
+        "national-ssc-combined-higher-secondary-level-chsl",
+        "national-ssc-cpo-delhi-police-capf-sub-inspector",
+        "national-ssc-gd-constable",
+        "national-ssc-multi-tasking-staff-mts-havaldar",
+    ],
+}
+
+
+def exam_family_slugs(value: str | None) -> list[str] | None:
+    """Slugs for an exam-family key, or ``None`` when ``value`` is not a family.
+
+    A non-family value is an exam slug and is matched exactly by the caller — so
+    an unknown string filters to nothing rather than quietly widening to every
+    exam.
+    """
+    if not value:
+        return None
+    return EXAM_FAMILY_SLUGS.get(value)
+
+# Resource-library lane for each resource_type. The Resources screen groups types
+# into lanes, and until now it filtered on a ``category`` field the API never
+# returned — so every lane except "All" rendered empty. Derived here rather than
+# stored, because the lane is a presentation grouping of resource_type, not an
+# independent fact a contributor could set inconsistently.
+_TYPE_CATEGORY: dict[str, str] = {
+    "notes": "study_material",
+    "concept_note": "study_material",
+    "book": "study_material",
+    "strategy_guide": "study_material",
+    "course_link": "study_material",
+    "video_link": "study_material",
+    "pyq_paper": "pyq",
+    "pyq_solution": "pyq",
+    "formula_sheet": "sheets",
+    "grammar_sheet": "sheets",
+    "vocabulary_sheet": "sheets",
+    "revision_sheet": "sheets",
+    "mindmap": "sheets",
+    "scheme_card": "sheets",
+    "drill_set": "practice",
+    "practice_set": "practice",
+    "current_affairs_digest": "current_affairs",
+    "reading_source": "current_affairs",
+}
+
+
+def resource_category(resource_type: str | None) -> str | None:
+    """Lane for a resource_type, or ``None`` for a type with no lane.
+
+    ``None`` rather than a catch-all bucket: an unmapped type should be visible
+    under "All" and absent from every lane, not silently filed somewhere wrong.
+    """
+    return _TYPE_CATEGORY.get(resource_type or "")
 
 
 def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, Any]:
@@ -929,6 +1000,7 @@ def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, An
         "id": row.get("id"),
         "title": row.get("title"),
         "type": row.get("resource_type"),
+        "category": resource_category(row.get("resource_type")),
         "exam": row.get("exam"),
         "examId": row.get("exam_id"),
         "examPhaseId": row.get("exam_phase_id"),
@@ -940,6 +1012,7 @@ def _shape_resource(row: dict[str, Any], uid: str | None = None) -> dict[str, An
         "resourceLevel": row.get("resource_level"),
         "contentFormat": row.get("content_format"),
         "sourceKind": row.get("source_kind"),
+        "caSourceId": row.get("ca_source_id"),
         "reviewerStatus": row.get("reviewer_status"),
         "validFrom": row.get("valid_from"),
         "validUntil": row.get("valid_until"),
@@ -978,7 +1051,10 @@ async def list_resources(
     sb = get_supabase_admin()
     q = sb.table("community_resources").select("*").eq("status", "approved")
     if exam and exam != "all":
-        q = q.eq("exam", exam)
+        # A family key (the format profiles store in goal_exams) expands to its
+        # exam slugs; anything else is an exam slug and is matched exactly.
+        family = exam_family_slugs(exam)
+        q = q.in_("exam", family) if family else q.eq("exam", exam)
     if exam_id:
         q = q.eq("exam_id", exam_id)
     if exam_phase_id:
@@ -1007,7 +1083,13 @@ async def list_resources(
         q = q.eq("source_trust", trust)
     q = q.order("created_at", desc=True) if sort == "new" else q.order("upvote_count", desc=True)
     rows = _rows(q.limit(100))
-    return {"items": [_shape_resource(r, (user or {}).get("id")) for r in rows], "total": len(rows)}
+    return {
+        "items": [_shape_resource(r, (user or {}).get("id")) for r in rows],
+        "total": len(rows),
+        # The client renders one chip per family and sends the key straight back;
+        # it never needs the slug list, so expansion stays server-side only.
+        "examFamilies": {k: list(v) for k, v in EXAM_FAMILY_SLUGS.items()},
+    }
 
 
 @router.get("/community/resources/{resource_id}")
