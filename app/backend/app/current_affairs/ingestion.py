@@ -50,6 +50,13 @@ _DEFAULT_INTERVAL_HOURS = 24
 # ``crawl_schedule.max_items_per_pass``.
 _DEFAULT_MAX_ITEMS_PER_PASS = 30
 
+# A discovery_only source costs ZERO item-page fetches (ADR 0007), so the reason
+# the cap above exists does not apply to it. Leaving it at 30 would throttle a
+# fast publisher below its own feed window — LiveLaw ships 60 items and rotates,
+# so a 30-per-pass ceiling on a 12h cadence drops anything past 60/day before it
+# is ever seen. Still overridable per source.
+_DEFAULT_DISCOVERY_MAX_ITEMS_PER_PASS = 200
+
 # Bound on one ``IN (...)`` link-lookup so a long feed cannot build a giant query.
 _LINK_LOOKUP_CHUNK = 100
 
@@ -70,6 +77,11 @@ _DEFAULT_PDF_FALLBACK_CHARS = 800
 # storing the row would burn the item's canonical-link slot in the unique index
 # so a later, better extraction could never replace it. Instead: no row, per-item
 # error, retried next pass.
+# Cap on a discovery_only entry's stored summary. Short by design: ADR 0007 says
+# such a source contributes a pointer, not an article, and a generous cap invites
+# a publisher's full body to arrive inside <description>.
+_DEFAULT_SUMMARY_CHARS = 500
+
 _DEFAULT_MIN_BODY_CHARS = 400
 
 # Cap on an embedded PDF. Over this the item records an error rather than
@@ -347,19 +359,25 @@ def _insert_document(supabase: Any, payload: dict[str, Any]) -> tuple[dict | Non
     return rows[0], None
 
 
-def _max_items_per_pass(source: dict[str, Any]) -> int:
+def _max_items_per_pass(source: dict[str, Any], *, discovery_only: bool = False) -> int:
     """Per-pass new-item cap from ``crawl_schedule.max_items_per_pass``.
 
-    ``crawl_schedule`` is unconstrained JSONB, so a non-object or non-numeric value
-    falls back to the default rather than raising."""
+    The default depends on what a new item costs: an ordinary source pays an
+    item-page fetch each, a discovery_only source pays none. ``crawl_schedule``
+    is unconstrained JSONB, so a non-object or non-numeric value falls back to
+    that default rather than raising."""
+    default = (
+        _DEFAULT_DISCOVERY_MAX_ITEMS_PER_PASS if discovery_only
+        else _DEFAULT_MAX_ITEMS_PER_PASS
+    )
     sched = source.get("crawl_schedule")
     if not isinstance(sched, dict):
-        return _DEFAULT_MAX_ITEMS_PER_PASS
+        return default
     try:
-        cap = int(sched.get("max_items_per_pass") or _DEFAULT_MAX_ITEMS_PER_PASS)
+        cap = int(sched.get("max_items_per_pass") or default)
     except (TypeError, ValueError):
-        return _DEFAULT_MAX_ITEMS_PER_PASS
-    return cap if cap > 0 else _DEFAULT_MAX_ITEMS_PER_PASS
+        return default
+    return cap if cap > 0 else default
 
 
 _LOOKUP_FAILED = object()
@@ -414,6 +432,16 @@ def _entry_digest(canonical: str, title: str, summary: str) -> str:
     Derived from the feed entry itself so the row still carries a non-null
     content_hash and re-reading the same entry cannot produce a second snapshot."""
     return hashlib.sha256("\n".join((canonical, title or "", summary or "")).encode("utf-8")).hexdigest()
+
+
+def _discovery_summary(summary: str, cap: int) -> str:
+    """Feed summary reduced to stored form for a discovery_only entry.
+
+    Publishers put markup in ``<description>`` (CPR India and Vidhi both ship
+    ``<p>`` tags and numeric entities), so the summary goes through the same
+    HTML reducer as any other stored text before it is capped.
+    """
+    return fetcher.strip_html(summary)[:cap]
 
 
 def _schedule_int(source: dict[str, Any], key: str, default: int) -> int:
@@ -565,7 +593,7 @@ def _ingest_rss_items(
         )
         return {"status": "error", "reason": err, "source_id": source_id}
 
-    entries = fetcher.parse_rss_feed(getattr(result, "text", None))
+    feed_format, entries = fetcher.parse_feed(getattr(result, "text", None))
     if not entries:
         # Malformed XML parses to [] — indistinguishable from a genuinely empty
         # feed, and both mean this source produced nothing. Red the health streak.
@@ -618,7 +646,7 @@ def _ingest_rss_items(
         )
         return {"status": "error", "reason": "item_link_lookup_failed", "source_id": source_id}
     fresh = [(c, e) for c, e in candidates if c not in known]
-    cap = _max_items_per_pass(source)
+    cap = _max_items_per_pass(source, discovery_only=discovery_only)
     new_items = fresh[:cap]
 
     counts = {
@@ -634,6 +662,7 @@ def _ingest_rss_items(
     }
     item_errors: list[dict[str, str]] = []
     document_ids: list[Any] = []
+    summary_chars = _schedule_int(source, "summary_chars", _DEFAULT_SUMMARY_CHARS)
     min_body_chars = _schedule_int(source, "min_body_chars", _DEFAULT_MIN_BODY_CHARS)
     pdf_threshold = _schedule_int(source, "pdf_fallback_below_chars", _DEFAULT_PDF_FALLBACK_CHARS)
     max_pdf_bytes = _schedule_int(source, "max_pdf_bytes", _DEFAULT_MAX_PDF_BYTES)
@@ -648,13 +677,21 @@ def _ingest_rss_items(
         # The raw feed value is kept verbatim ALWAYS, parsed or not: when a
         # publisher changes its date shape, the stored string is what lets the
         # parser be extended and the rows re-derived without re-crawling.
-        metadata: dict[str, Any] = {"publisher": publisher, "item_link": link}
+        metadata: dict[str, Any] = {
+            "publisher": publisher, "item_link": link, "feed_format": feed_format,
+        }
         if raw_pub_date:
             metadata["raw_pub_date"] = raw_pub_date
         if published_at:
             metadata["date_source"] = "feed"
         if summary:
-            metadata["feed_summary"] = summary[:_FEED_SUMMARY_CHARS]
+            # On a discovery_only source the summary IS the stored content, so it
+            # is reduced to readable text and capped. Elsewhere it is only context
+            # beside the item page's own body, and is left as the feed sent it.
+            metadata["feed_summary"] = (
+                _discovery_summary(summary, summary_chars) if discovery_only
+                else summary[:_FEED_SUMMARY_CHARS]
+            )
         if follows_language:
             metadata["source_url_hi"] = canonical
 

@@ -14,6 +14,7 @@ related_code:
   - app/backend/app/study_os/writing_practice/evaluation_worker.py
   - app/backend/app/study_os/attempt_evidence.py
 related_migrations:
+  - app/supabase/migrations/301_ca_wave1b_discovery_sources.sql
   - app/supabase/migrations/296_ca_sebi_path_allowlist_backfill.sql
   - app/supabase/migrations/294_ca_rss_item_level_ingestion.sql
   - app/supabase/migrations/056_exam_policy_updates.sql
@@ -110,6 +111,12 @@ Seeded sources (migrations 241, 294, 299):
 | SEBI | primary_official | `SEBI` | 24h |
 | UNESCO World Heritage Centre | primary_official (`international_body`) | `UNESCO_WHC` | 48h |
 | The Hindu — National | discovery_only (`news_media`) | `THE_HINDU` | 12h |
+| Mongabay India | discovery_only (`news_media`) | `MONGABAY_INDIA` | 12h |
+| Vidhi Centre for Legal Policy | discovery_only (`think_tank`) | `VIDHI` | 24h |
+| Centre for Policy Research | discovery_only (`think_tank`) | `CPR_INDIA` | 48h |
+| Bar & Bench | discovery_only (`news_media`) | `BAR_AND_BENCH` | 12h |
+| LiveLaw | discovery_only (`news_media`) | `LIVELAW` | 12h |
+| ISignal (formerly IndiaSpend) | discovery_only (`news_media`) | `ISIGNAL` | 24h |
 
 Several sources may share a publisher marker (three RBI feeds). The marker selects per-publisher
 behaviour (document typing, allow/deny lists, page-date shape, language follow); every identity and
@@ -315,6 +322,41 @@ never fetched. The status is not `snapshotted`, so the ingest pass never enqueue
 validator's `sole_evidence_discovery_only` check stays as the second line. A `discovery_only` source
 on a whole-body adapter is not ingested (`skipped` / `discovery_only_non_rss`): a whole-body fetch is
 article text and has no entry to take a title and link from.
+
+### 4.9 Feed-format detection (CA-SRC-01, migration 301)
+A feed's shape is decided by its **root element**, never its filename or its declared namespaces
+(`fetcher.detect_feed_format` / `parse_feed`):
+
+| Root | Format | Title | Link | Date | Summary |
+|---|---|---|---|---|---|
+| `<rss><channel><item>` | `rss` | `title` | `link` | `pubDate` | `description` |
+| `<feed><entry>` | `atom` | `title` | `link rel=alternate`, else first `href` | `published`, else `updated` | `summary` |
+| `<urlset><url>` with `news:news` | `gnews_sitemap` | `news:title` | `loc` | `news:publication_date` | *(none)* |
+
+Anything else is `unknown` and parses to zero entries — a caller records an error rather than
+ingesting a guess. All three shapes map onto the same `RssEntry`, so the ingest is format-blind, and
+dates flow through the §4.6 parser with the raw value kept in `metadata.raw_pub_date`. The detected
+format is stored on every document as `metadata.feed_format`.
+
+**Never the article body.** Only `description` (RSS) / `summary` (Atom) is read. Atom `<content>`
+and RSS `<content:encoded>` carry the full body, which a `discovery_only` source must never store
+(ADR 0007) and which every other source takes from the item page instead.
+
+**Leading prologue tolerated.** A BOM or stray whitespace before `<?xml?>` is stripped before
+parsing. CPR India ships tabs and newlines there, which previously made `ET.fromstring` raise, the
+feed parse to zero entries, and the source score a failure on every pass.
+
+**Filenames lie.** Wave-1b confirmed this from captured fixtures: Bar & Bench merely declares
+`xmlns:atom` for an `<atom:link>` self-reference, and LiveLaw and IndiaSpend serve plain RSS 2.0
+from a path named `google_feeds.xml`. All six wave-1b feeds are RSS 2.0.
+
+**Discovery summary.** On a `discovery_only` source the summary IS the stored content, so it is
+reduced by `strip_html` and capped at `crawl_schedule.summary_chars` (default 500). Elsewhere the
+summary is only context beside the item page's own body and is stored as the feed sent it.
+
+**Per-pass item cap.** The §4.1 cap exists to bound item-page fetches. A `discovery_only` source
+performs none, so its default cap is 200 rather than 30 — at 30 a fast publisher (LiveLaw ships 60
+per feed window) would fall behind its own rotation and lose items unseen.
 
 ---
 
