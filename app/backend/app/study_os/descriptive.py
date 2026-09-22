@@ -293,6 +293,65 @@ def subject_of(question: dict[str, Any], paper: dict[str, Any] | None) -> str | 
     return text or None
 
 
+#: Short forms for the subjects whose full names are too wide to sit inside a
+#: label. Only the ones that actually need it: a name that reads fine at chip
+#: width is left alone rather than abbreviated into something an aspirant has
+#: to decode.
+SUBJECT_SHORT_NAMES = {
+    "Political Science and International Relations": "PSIR",
+    "Political Science & International Relations": "PSIR",
+    "Public Administration": "Pub Ad",
+    "General Studies": "GS",
+}
+
+#: The longest a subject name may be before it is shortened by initials.
+_SHORT_NAME_CUT = 14
+
+
+def subject_short(name: Any) -> str | None:
+    """A subject name short enough to sit inside a paper label.
+
+    "PSIR · 2025 · P1" has to fit on a phone. A known subject uses its real
+    abbreviation; an unknown long one is reduced to initials, which is worse
+    than a real abbreviation and better than a truncation that could mean two
+    different subjects. A short name is returned unchanged.
+    """
+    text = str(name or "").strip()
+    if not text:
+        return None
+    if text in SUBJECT_SHORT_NAMES:
+        return SUBJECT_SHORT_NAMES[text]
+    if len(text) <= _SHORT_NAME_CUT:
+        return text
+    initials = "".join(w[0] for w in re.split(r"[\s&]+", text) if w and w[0].isalpha())
+    return initials.upper() if len(initials) >= 2 else text[:_SHORT_NAME_CUT]
+
+
+#: Every paper an optional subject has, and every paper General Studies has.
+#: The tabs come from THIS, not from the questions that happen to exist, so a
+#: paper with nothing in it yet is still a tab that says so. A missing tab
+#: reads as "this paper does not exist"; an empty tab reads as "not loaded
+#: yet", and only one of those is true.
+OPTIONAL_PAPER_SLOTS = (
+    {"paper_number": 1, "label": "Paper I", "slot": "P1"},
+    {"paper_number": 2, "label": "Paper II", "slot": "P2"},
+)
+GS_PAPER_SLOTS = (
+    {"paper_number": 1, "label": "GS1", "slot": "GS1"},
+    {"paper_number": 2, "label": "GS2", "slot": "GS2"},
+    {"paper_number": 3, "label": "GS3", "slot": "GS3"},
+    {"paper_number": 4, "label": "GS4", "slot": "GS4"},
+    {"paper_number": 99, "label": "Essay", "slot": "Essay"},
+)
+
+
+def paper_slots_for(subject: Any) -> tuple[dict[str, Any], ...]:
+    """The canonical tab list for a subject. Empty when no subject is chosen."""
+    if not subject:
+        return ()
+    return GS_PAPER_SLOTS if str(subject).strip() == GENERAL_STUDIES else OPTIONAL_PAPER_SLOTS
+
+
 def paper_slot(paper: dict[str, Any]) -> tuple[int, str | None]:
     """(sort key, short label) for the paper's position within its year.
 
@@ -742,6 +801,7 @@ UNTAGGED_THEME = "Untagged"
 def _syllabus_themes(
     thematic: list[dict[str, Any]],
     topics_by_question: dict[str, dict[str, Any]],
+    attempted_ids: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Themes nested paper → section → theme, in syllabus order.
 
@@ -761,6 +821,10 @@ def _syllabus_themes(
     missing it.
     """
     counts: dict[tuple[str, str, str], int] = {}
+    # Attempted counts ride alongside the question counts at every level, so a
+    # microtopic can read "7 · 3 done" without a second pass over the tree.
+    done_counts: dict[tuple[str, str, str], int] = {}
+    attempted_ids = attempted_ids or set()
     placements: dict[str, dict[str, Any]] = {}
 
     for q in thematic:
@@ -786,6 +850,8 @@ def _syllabus_themes(
         spot = placements[name]
         key = (spot["paper_id"] or syllabus.UNPLACED_PAPER, spot["section"], name)
         counts[key] = counts.get(key, 0) + 1
+        if str(q.get("id")) in attempted_ids:
+            done_counts[key] = done_counts.get(key, 0) + 1
 
     papers: dict[str, dict[str, Any]] = {}
     for (paper_key, section, name), count in counts.items():
@@ -797,11 +863,14 @@ def _syllabus_themes(
                 "paper_label": spot["paper_label"],
                 "paper_number": spot["paper_number"],
                 "question_count": 0,
+                "attempted_count": 0,
                 "_sort": spot["paper_sort"],
                 "_sections": {},
             },
         )
+        done = done_counts.get((paper_key, section, name), 0)
         paper["question_count"] += count
+        paper["attempted_count"] += done
         sec = paper["_sections"].setdefault(
             section,
             {
@@ -810,13 +879,20 @@ def _syllabus_themes(
                 # The official syllabus line, shown under the section heading.
                 "line": spot.get("section_line"),
                 "question_count": 0,
+                "attempted_count": 0,
                 "_sort": spot["section_sort"],
                 "themes": [],
             },
         )
         sec["question_count"] += count
+        sec["attempted_count"] += done
         sec["themes"].append(
-            {"theme": name, "question_count": count, "_sort": spot["theme_sort"]}
+            {
+                "theme": name,
+                "question_count": count,
+                "attempted_count": done,
+                "_sort": spot["theme_sort"],
+            }
         )
 
     out: list[dict[str, Any]] = []
@@ -839,16 +915,96 @@ def _syllabus_themes(
             "paper_label": p["paper_label"],
             "paper_number": p["paper_number"],
             "question_count": p["question_count"],
+            "attempted_count": p["attempted_count"],
         }
         for p in out
     ]
     return out, tabs
 
 
+def _attempted_question_ids(
+    supabase: Any, user_id: Any, question_ids: list[str]
+) -> set[str]:
+    """Which of these questions this user has SUBMITTED an answer to.
+
+    Submitted, not every attempt — the same rule coverage uses, so the two
+    surfaces cannot disagree about what "done" means. No user, no attempts.
+    """
+    if not user_id or not question_ids:
+        return set()
+    done: set[str] = set()
+    for chunk in _chunks(sorted(set(question_ids))):
+        rows = _safe(
+            lambda ids=chunk: _paginate_all(
+                lambda a, b, ids=ids: (
+                    supabase.table("descriptive_attempts")
+                    .select("id, pyq_question_id")
+                    .eq("user_id", user_id)
+                    .eq("status", "submitted")
+                    .in_("pyq_question_id", ids)
+                    .order("id")
+                    .range(a, b)
+                    .execute()
+                    .data
+                )
+            ),
+            default=[],
+        ) or []
+        for r in rows:
+            qid = str(r.get("pyq_question_id") or "")
+            if qid:
+                done.add(qid)
+    return done
+
+
+def _paper_slot_counts(
+    subject: Any,
+    real_half: list[dict[str, Any]],
+    thematic_half: list[dict[str, Any]],
+    paper_of: Any,
+    attempted_ids: set[str],
+) -> list[dict[str, Any]]:
+    """The canonical tabs for this subject, each with its counts.
+
+    Counts span BOTH halves, because a tab is a paper and a paper's questions
+    are wherever they are: a Paper II tab reading 0 while Paper II themes exist
+    would be a tab contradicting the tree beneath it.
+    """
+    slots = paper_slots_for(subject)
+    if not slots:
+        return []
+    real_by_slot: dict[int, list[dict[str, Any]]] = {}
+    for q in real_half:
+        real_by_slot.setdefault(paper_slot(paper_of(q))[0], []).append(q)
+    # The thematic half has no sitting, so its paper comes off the theme's
+    # syllabus placement, which `_syllabus_themes` already resolved.
+    thematic_by_slot: dict[int, int] = {}
+    for q in thematic_half:
+        number = _as_int(_meta(q).get("optional_paper_number")) or _as_int(
+            _meta(paper_of(q)).get("optional_paper_number")
+        )
+        if number:
+            thematic_by_slot[number] = thematic_by_slot.get(number, 0) + 1
+
+    out = []
+    for slot in slots:
+        number = slot["paper_number"]
+        rows = real_by_slot.get(number, [])
+        out.append({
+            **slot,
+            "question_count": len(rows) + thematic_by_slot.get(number, 0),
+            "attempted_count": sum(
+                1 for q in rows if str(q.get("id")) in attempted_ids
+            ),
+        })
+    return out
+
+
 def get_catalog(
     supabase: Any,
     exam_id: str,
     *,
+    user_id: Any = None,
     subject: str | None = None,
     paper_number: Any = None,
 ) -> dict[str, Any]:
@@ -942,10 +1098,20 @@ def get_catalog(
         paper = by_id.get(pid) or {}
         meta = _meta(paper)
         slot_key, slot_label = paper_slot(paper)
+        # The subject its questions claim — carried so a `paper_id` arriving in
+        # a URL can resolve the subject it implies, and so a label rendered
+        # outside subject context can say which subject it is.
+        paper_subject = next(
+            (subject_of(q, paper) for q in real_half
+             if str(q.get("pyq_paper_id") or "") == pid and subject_of(q, paper)),
+            None,
+        )
         paper_items.append(
             {
                 "id": pid,
                 "label": _paper_label(paper),
+                "subject": paper_subject,
+                "subject_short": subject_short(paper_subject),
                 "year": _as_int(paper.get("year")),
                 "paper_kind": meta.get("paper_kind"),
                 "paper_slot": slot_label,
@@ -961,22 +1127,37 @@ def get_catalog(
     for item in paper_items:
         item.pop("_slot_key", None)
 
+    attempted_ids = _attempted_question_ids(
+        supabase, user_id, [str(q["id"]) for q in scoped if q.get("id")]
+    )
+
     topics_by_question = _primary_topics(
         supabase, [str(q["id"]) for q in thematic_half if q.get("id")]
     )
-    theme_items, theme_papers = _syllabus_themes(thematic_half, topics_by_question)
+    theme_items, theme_papers = _syllabus_themes(
+        thematic_half, topics_by_question, attempted_ids
+    )
     if wanted_paper is not None:
         # The tabs keep every paper — they are how the aspirant switches — but
         # the tree shows only the selected one.
         theme_items = [p for p in theme_items if p["paper_number"] == wanted_paper]
 
+    # THE BY-YEAR LENS. One row per year for the selected paper tab, carrying
+    # the paper ids that row opens and how many of its questions are done — a
+    # year the aspirant has finished should say so before they open it.
     year_counts: dict[int, int] = {}
+    year_papers: dict[int, set[str]] = {}
+    year_questions: dict[int, list[str]] = {}
     for q in real_half:
         if not subject_of(q, paper_of(q)):
             continue
         y = _as_int(paper_of(q).get("year"))
         if y:
             year_counts[y] = year_counts.get(y, 0) + 1
+            pid = str(q.get("pyq_paper_id") or "")
+            if pid:
+                year_papers.setdefault(y, set()).add(pid)
+            year_questions.setdefault(y, []).append(str(q.get("id")))
 
     return {
         "exam_id": exam_id,
@@ -993,9 +1174,25 @@ def get_catalog(
         # paper's worth of thematic questions gets one tab.
         "theme_papers": theme_papers,
         "years": [
-            {"year": y, "question_count": c}
+            {
+                "year": y,
+                "question_count": c,
+                "attempted_count": sum(
+                    1 for qid in year_questions.get(y, []) if qid in attempted_ids
+                ),
+                "paper_ids": sorted(year_papers.get(y, ())),
+            }
             for y, c in sorted(year_counts.items(), reverse=True)
         ],
+        # The canonical tabs for this subject — Paper I / Paper II, or
+        # GS1..GS4 / Essay — each with what it actually holds. A slot with
+        # nothing in it is still a tab: a missing tab reads as "this paper does
+        # not exist", an empty one reads as "not loaded yet", and only the
+        # second is true.
+        "paper_slots": _paper_slot_counts(
+            wanted, real_half, thematic_half, paper_of, attempted_ids
+        ),
+        "subject_short": subject_short(wanted),
         "total_questions": len(scoped),
     }
 
@@ -1010,6 +1207,8 @@ def _empty_catalog(exam_id: str, subject: str | None = None) -> dict[str, Any]:
         "themes": [],
         "theme_papers": [],
         "years": [],
+        "paper_slots": list(paper_slots_for(subject)),
+        "subject_short": subject_short(subject),
         "total_questions": 0,
     }
 
