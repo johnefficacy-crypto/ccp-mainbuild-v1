@@ -17,6 +17,11 @@ claim; those legacy rows are deprioritised by migration 294.
 Every other adapter (html / api / pdf / sitemap) keeps the original
 whole-body snapshot: their fetch target already IS one document.
 
+CA-RSS-03 adds: a PIB-only English-version follow (the only PIB feed is Hindi),
+a script-based language guard on every stored body, page-printed publication
+dates when the feed has none, and ADR 0007 enforcement at ingest — a
+``discovery_only`` source stores title + link + feed summary only.
+
 No LLM, no extraction, no learner surface — this only lands evidence snapshots
 and keeps source health current.
 """
@@ -214,6 +219,12 @@ def _ingest_whole_body(
     snapshot, 304 short-circuit, content-hash dedup, immutable insert.
     """
     source_id = source.get("id")
+    if ca_sources.is_discovery_only(source):
+        # ADR 0007: a discovery_only source contributes a feed entry's title +
+        # link + summary and never article text. A whole-body fetch IS article
+        # text, and there is no entry to take a title/link from, so it is not
+        # ingested at all rather than stored as evidence it may never be.
+        return {"status": "skipped", "reason": "discovery_only_non_rss", "source_id": source_id}
     prev = _latest_document(supabase, source_id) or {}
     result = fetch(
         url,
@@ -246,11 +257,17 @@ def _ingest_whole_body(
             return {"status": "duplicate", "source_id": source_id, "document_id": dupe_id}
 
     accept, reason = ca_sources.prefilter_document(raw_text=getattr(result, "text", None))
+    detected = ca_sources.detect_language(getattr(result, "text", None))
+    if accept and ca_sources.language_mismatch(detected, source.get("default_language")):
+        accept, reason = False, ca_sources.LANGUAGE_MISMATCH
     ingestion_status = "snapshotted" if accept else "deprioritised"
 
     defaults = ca_sources.adapter_defaults(source)
     document_type = defaults.document_type if defaults else None
-    metadata: dict[str, Any] = {"content_type": getattr(result, "content_type", None)}
+    metadata: dict[str, Any] = {
+        "content_type": getattr(result, "content_type", None),
+        "detected_language": detected,
+    }
     if not accept and reason:
         metadata["prefilter_reason"] = reason
 
@@ -348,8 +365,15 @@ def _max_items_per_pass(source: dict[str, Any]) -> int:
 _LOOKUP_FAILED = object()
 
 
-def _known_item_links(supabase: Any, source_id: Any, links: list[str]) -> Any:
-    """Canonical item links this source has already snapshotted.
+def _known_item_links(
+    supabase: Any, source_id: Any, links: list[str], *, column: str = "canonical_item_url",
+) -> Any:
+    """Feed item links this source has already snapshotted.
+
+    ``column`` is where the feed link is recorded: ``canonical_item_url`` for a
+    row that stores the linked page itself, ``metadata->>source_url_hi`` for a
+    language-follow publisher (PIB), whose row stores a DIFFERENT page (the
+    English release) and keeps the Hindi feed link as provenance.
 
     Queried in bounded chunks so a long feed cannot build an unbounded ``IN`` list.
     Returns ``_LOOKUP_FAILED`` when the read fails: the caller must classify that as
@@ -361,19 +385,27 @@ def _known_item_links(supabase: Any, source_id: Any, links: list[str]) -> Any:
         chunk = links[start:start + _LINK_LOOKUP_CHUNK]
         rows = _safe(
             lambda c=chunk: supabase.table(_DOCUMENTS)
-            .select("canonical_item_url")
+            .select("canonical_item_url,metadata")
             .eq("source_id", source_id)
-            .in_("canonical_item_url", c)
+            .in_(column, c)
             .execute(),
             default=None,
         )
         if rows is None:
             return _LOOKUP_FAILED
         for row in (getattr(rows, "data", None) or []):
-            value = row.get("canonical_item_url")
+            if column == "canonical_item_url":
+                value = row.get("canonical_item_url")
+            else:
+                value = (row.get("metadata") or {}).get(column.split("->>", 1)[1])
             if value:
                 known.add(str(value))
     return known
+
+
+# Where a language-follow publisher records the feed link it resolved. Backed
+# by the expression index idx_cad_source_url_hi (migration 297).
+_SOURCE_URL_HI = "metadata->>source_url_hi"
 
 
 def _entry_digest(canonical: str, title: str, summary: str) -> str:
@@ -401,25 +433,7 @@ def _schedule_int(source: dict[str, Any], key: str, default: int) -> int:
     return value if value > 0 else default
 
 
-def _page_html(page: Any) -> str:
-    """Raw HTML of a fetched page.
-
-    ``FetchResult.text`` is already reduced to plain text, which is exactly what
-    the readable-body check wants but useless for finding an embedded PDF. The
-    untouched bytes are on ``raw_bytes``; decode them with the response charset
-    when it names one, and never raise on a mis-declared encoding.
-    """
-    raw = getattr(page, "raw_bytes", None)
-    if not raw:
-        return ""
-    charset = "utf-8"
-    content_type = (getattr(page, "content_type", None) or "").lower()
-    if "charset=" in content_type:
-        charset = content_type.split("charset=", 1)[1].split(";")[0].strip() or "utf-8"
-    try:
-        return raw.decode(charset, errors="replace")
-    except (LookupError, UnicodeDecodeError):
-        return raw.decode("utf-8", errors="replace")
+_page_html = ca_sources.page_html
 
 
 def _resolve_item_body(
@@ -517,6 +531,10 @@ def _ingest_rss_items(
     publisher = ca_sources.publisher_of(source)
     defaults = ca_sources.adapter_defaults(source)
     document_type = defaults.document_type if defaults else None
+    discovery_only = ca_sources.is_discovery_only(source)
+    # PIB: the feed link is the Hindi release; the stored row is the English one.
+    follows_language = publisher in ca_sources.LANGUAGE_FOLLOW_PUBLISHERS
+    expected_language = source.get("default_language")
 
     result = fetch(
         url,
@@ -585,7 +603,14 @@ def _ingest_rss_items(
             "items_unusable": unusable,
         }
 
-    known = _known_item_links(supabase, source_id, [c for c, _ in candidates])
+    # A language-follow row's canonical_item_url is the page it STORES (English
+    # release, or the Hindi full page for a mismatch), so "already handled" is
+    # keyed on the Hindi feed link it recorded. Pre-CA-RSS-03 PIB rows never
+    # recorded one, so their items re-resolve to English on the next pass.
+    known = _known_item_links(
+        supabase, source_id, [c for c, _ in candidates],
+        column=_SOURCE_URL_HI if follows_language else "canonical_item_url",
+    )
     if known is _LOOKUP_FAILED:
         _update_health(
             supabase, source_id, now_iso=now, status="error", success=False,
@@ -604,6 +629,7 @@ def _ingest_rss_items(
         "items_snapshotted": 0,
         "items_deprioritised": 0,
         "items_duplicate": 0,
+        "items_discovery": 0,
         "items_capped": len(fresh) > cap,
     }
     item_errors: list[dict[str, str]] = []
@@ -625,8 +651,35 @@ def _ingest_rss_items(
         metadata: dict[str, Any] = {"publisher": publisher, "item_link": link}
         if raw_pub_date:
             metadata["raw_pub_date"] = raw_pub_date
+        if published_at:
+            metadata["date_source"] = "feed"
         if summary:
             metadata["feed_summary"] = summary[:_FEED_SUMMARY_CHARS]
+        if follows_language:
+            metadata["source_url_hi"] = canonical
+
+        # ADR 0007: discovery_only → title + link + feed summary, nothing else.
+        # No page fetch, no article text (raw_text stays NULL), and a status that
+        # _reconcile_pending_generation never enqueues.
+        if discovery_only:
+            payload = {
+                "source_id": source_id,
+                "source_url": link,
+                "canonical_item_url": canonical,
+                "final_url": None,
+                "title": title,
+                "document_type": document_type,
+                "published_at": published_at,
+                "fetched_at": now,
+                "content_hash": _entry_digest(canonical, title or "", summary),
+                "etag": None,
+                "last_modified": None,
+                "raw_text": None,
+                "metadata": {**metadata, "prefilter_reason": ca_sources.DISCOVERY_ONLY},
+                "ingestion_status": ca_sources.DISCOVERY_ONLY,
+            }
+            _record_item(supabase, payload, counts, item_errors, document_ids, link)
+            continue
 
         # Both structural filters are decidable from the feed entry alone, so they
         # run BEFORE paying for the item page fetch. Pipeline §4: the row is still
@@ -657,39 +710,83 @@ def _ingest_rss_items(
             _record_item(supabase, payload, counts, item_errors, document_ids, link)
             continue
 
-        page = fetch(link, adapter_type="html", user_agent=user_agent)
-        if not getattr(page, "ok", False):
-            # One unreachable item page must not sink the source. No row is written,
-            # so the item stays NEW and the next pass retries it.
-            err = getattr(page, "error", None) or "fetch_failed"
-            item_errors.append({"link": link, "error": str(err)})
-            continue
+        forced_reason: str | None = None
+        stored_url = link
+        stored_canonical = canonical
+        if follows_language:
+            followed = ca_sources.follow_pib_english(
+                link, fetch=fetch, user_agent=user_agent, min_chars=min_body_chars,
+            )
+            if followed.error:
+                # Transient: no row, so the item stays NEW and is retried.
+                item_errors.append({"link": link, "error": followed.error})
+                continue
+            page = followed.page
+            body: str | None = followed.body
+            body_meta: dict[str, Any] = {"body_source": "html",
+                                         "extracted_chars": len(body or ""),
+                                         **followed.metadata}
+            forced_reason = followed.forced_reason
+            # The row describes the page whose content it stores. A mismatch row
+            # keys on the Hindi FULL page, never the feed's Iframe link, so it
+            # cannot collide with a pre-CA-RSS-03 row holding that link's slot.
+            stored_url = followed.url or link
+            stored_canonical = ca_sources.canonical_item_link(stored_url) or canonical
+            if followed.title and not forced_reason:
+                title = followed.title
+        else:
+            page = fetch(link, adapter_type="html", user_agent=user_agent)
+            if not getattr(page, "ok", False):
+                # One unreachable item page must not sink the source. No row is
+                # written, so the item stays NEW and the next pass retries it.
+                err = getattr(page, "error", None) or "fetch_failed"
+                item_errors.append({"link": link, "error": str(err)})
+                continue
 
         content_hash = getattr(page, "content_hash", None)
         if content_hash and _document_id_by_content_hash(supabase, source_id, content_hash) is not None:
             counts["items_duplicate"] += 1
             continue
 
-        body, body_meta, body_error = _resolve_item_body(
-            page, title=title, link=link, fetch=fetch, user_agent=user_agent,
-            min_chars=min_body_chars, pdf_threshold=pdf_threshold,
-            max_pdf_bytes=max_pdf_bytes,
-        )
-        if body is None:
-            # No usable body: the item stays NEW so a later pass (or a fixed
-            # extractor) can retry it, exactly like an item-page fetch failure.
-            item_errors.append({"link": link, "error": body_error or "thin_body"})
-            continue
-        # Dedup must key on the body that was actually stored, not on the chrome
-        # page that merely pointed at it.
-        content_hash = body_meta.pop("body_content_hash", None) or content_hash
+        if not follows_language:
+            body, body_meta, body_error = _resolve_item_body(
+                page, title=title, link=link, fetch=fetch, user_agent=user_agent,
+                min_chars=min_body_chars, pdf_threshold=pdf_threshold,
+                max_pdf_bytes=max_pdf_bytes,
+            )
+            if body is None:
+                # No usable body: the item stays NEW so a later pass (or a fixed
+                # extractor) can retry it, exactly like an item-page fetch failure.
+                item_errors.append({"link": link, "error": body_error or "thin_body"})
+                continue
+            # Dedup must key on the body that was actually stored, not on the
+            # chrome page that merely pointed at it.
+            content_hash = body_meta.pop("body_content_hash", None) or content_hash
+
+        # Feed carried no parseable date → the date printed on the stored page.
+        # Still never now(): no page date means published_at stays NULL.
+        if not published_at:
+            raw_page_date, page_date = ca_sources.page_published_at(
+                publisher, getattr(page, "text", None),
+            )
+            if raw_page_date:
+                metadata["raw_page_date"] = raw_page_date
+            if page_date:
+                published_at = page_date
+                metadata["date_source"] = "page"
 
         accept, reason = ca_sources.prefilter_document(
             raw_text=body, title=title, publisher=publisher,
         )
+        detected = ca_sources.detect_language(body)
+        if forced_reason:
+            accept, reason = False, forced_reason
+        elif accept and ca_sources.language_mismatch(detected, expected_language):
+            accept, reason = False, ca_sources.LANGUAGE_MISMATCH
         item_metadata = {
             **metadata,
             "content_type": getattr(page, "content_type", None),
+            "detected_language": detected,
             **body_meta,
         }
         if not accept and reason:
@@ -697,8 +794,8 @@ def _ingest_rss_items(
 
         payload = {
             "source_id": source_id,
-            "source_url": link,
-            "canonical_item_url": canonical,
+            "source_url": stored_url,
+            "canonical_item_url": stored_canonical,
             "final_url": getattr(page, "final_url", None),
             "title": title,
             "document_type": document_type,
@@ -717,6 +814,8 @@ def _ingest_rss_items(
         status = "snapshotted"
     elif counts["items_deprioritised"]:
         status = "deprioritised"
+    elif counts["items_discovery"]:
+        status = ca_sources.DISCOVERY_ONLY
     elif item_errors and not counts["items_duplicate"]:
         status = "error"
     else:
@@ -762,6 +861,8 @@ def _record_item(
     document_ids.append((row or {}).get("id"))
     if payload["ingestion_status"] == "snapshotted":
         counts["items_snapshotted"] += 1
+    elif payload["ingestion_status"] == ca_sources.DISCOVERY_ONLY:
+        counts["items_discovery"] += 1
     else:
         counts["items_deprioritised"] += 1
 
@@ -883,7 +984,7 @@ def run_ingest_pass(
         "enqueue_failed": 0, "source_query_failed": 0, "status": "ok",
         # Item-split totals across RSS sources (documents, not sources).
         "items_new": 0, "items_snapshotted": 0, "items_deprioritised": 0,
-        "items_duplicate": 0, "item_errors": 0,
+        "items_duplicate": 0, "items_discovery": 0, "item_errors": 0,
     }
 
     try:
@@ -895,8 +996,8 @@ def run_ingest_pass(
                 result = ingest_source(supabase, source, fetch=fetch, now_iso=now_iso)
                 status = result.get("status") or "error"
                 counts[status] = counts.get(status, 0) + 1
-                for key in ("items_new", "items_snapshotted",
-                            "items_deprioritised", "items_duplicate"):
+                for key in ("items_new", "items_snapshotted", "items_deprioritised",
+                            "items_duplicate", "items_discovery"):
                     counts[key] += int(result.get(key) or 0)
                 counts["item_errors"] += len(result.get("item_errors") or [])
             except Exception:  # noqa: BLE001 — isolate one source; later sources still run.

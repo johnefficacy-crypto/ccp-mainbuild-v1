@@ -15,12 +15,13 @@ LLM concern deferred to GQR-G3.
 """
 from __future__ import annotations
 
+import html as _html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from typing import Any, Callable
+from urllib.parse import parse_qsl, urljoin, urlsplit, urlunsplit
 
 # Minimum stable body length below which a snapshot cannot carry an examinable
 # claim — deprioritised before any (future) extraction call. Deliberately
@@ -30,6 +31,11 @@ _MIN_EXAMINABLE_CHARS = 120
 # ADR 0007: a discovery_only source may never be the SOLE evidence for a promoted
 # question. Surfaced here so callers can gate evidence without re-deriving it.
 DISCOVERY_ONLY = "discovery_only"
+
+# Machine-readable reason for a body whose script does not match the source's
+# declared ``default_language`` (CA-RSS-03). Also the reason for a PIB item whose
+# English version could not be followed.
+LANGUAGE_MISMATCH = "language_mismatch"
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,8 @@ _ADAPTERS: dict[str, AdapterDefaults] = {
     "PIB": AdapterDefaults(document_type="press_release", category="national"),
     "RBI": AdapterDefaults(document_type="press_release", category="economy"),
     "SEBI": AdapterDefaults(document_type="press_release", category="economy"),
+    "UNESCO_WHC": AdapterDefaults(document_type="news", category="culture"),
+    "THE_HINDU": AdapterDefaults(document_type="news_article", category="general"),
 }
 
 
@@ -409,8 +417,275 @@ def embedded_pdf_url(html: str | None, *, page_url: str) -> str | None:
 
 
 def _html_attr_unescape(value: str) -> str:
-    import html as _html
     return _html.unescape(value)
+
+
+def is_discovery_only(source: dict[str, Any]) -> bool:
+    """ADR 0007: a ``discovery_only`` source contributes a title + link + feed
+    summary and nothing else — no item-page fetch, no article text, no job."""
+    return (source.get("authority_level") or "") == DISCOVERY_ONLY
+
+
+def page_html(page: Any) -> str:
+    """Raw HTML of a fetched page.
+
+    ``FetchResult.text`` is already reduced to plain text, which is exactly what
+    the readable-body check wants but useless for structural selection (an
+    embedded PDF, a language switcher, a release-text block). The untouched
+    bytes are on ``raw_bytes``; decode them with the response charset when it
+    names one, and never raise on a mis-declared encoding.
+    """
+    raw = getattr(page, "raw_bytes", None)
+    if not raw:
+        return ""
+    charset = "utf-8"
+    content_type = (getattr(page, "content_type", None) or "").lower()
+    if "charset=" in content_type:
+        charset = content_type.split("charset=", 1)[1].split(";")[0].strip() or "utf-8"
+    try:
+        return raw.decode(charset, errors="replace")
+    except (LookupError, UnicodeDecodeError):
+        return raw.decode("utf-8", errors="replace")
+
+
+def _plain(fragment: str) -> str:
+    """HTML fragment → collapsed plain text (the fetcher's own reduction)."""
+    from app.scraping.fetcher import strip_html
+    return strip_html(fragment or "")
+
+
+# ─── Language guard ─────────────────────────────────────────────────────────
+
+_DEVANAGARI = re.compile(r"[ऀ-ॿ]")
+_LATIN = re.compile(r"[A-Za-z]")
+
+# Below this many script-bearing characters there is too little text to call a
+# language; the guard abstains rather than guessing.
+_MIN_SCRIPT_CHARS = 40
+
+
+def detect_language(text: str | None) -> str | None:
+    """Dominant script of ``text``: ``'hi'`` (Devanagari) or ``'en'`` (Latin).
+
+    Deliberately a character-ratio count, not a language model: every source in
+    scope declares English or Hindi, and the failure being guarded against is a
+    Hindi body landing on an English source (PIB's only feed is Hindi). Returns
+    ``None`` when there is too little text to decide.
+    """
+    body = text or ""
+    dev = len(_DEVANAGARI.findall(body))
+    lat = len(_LATIN.findall(body))
+    if dev + lat < _MIN_SCRIPT_CHARS:
+        return None
+    return "hi" if dev >= lat else "en"
+
+
+def language_mismatch(detected: str | None, expected: str | None) -> bool:
+    """Whether a detected script contradicts the source's ``default_language``.
+
+    Abstains (``False``) when nothing was detected or the source declares a
+    language this detector cannot distinguish — absence of signal is never a
+    mismatch.
+    """
+    want = (expected or "en").strip().lower()[:2]
+    if detected is None or want not in ("en", "hi"):
+        return False
+    return detected != want
+
+
+# ─── Page-date extraction ───────────────────────────────────────────────────
+
+# Per-publisher "posted" line on the item page, matched against the page's
+# whitespace-collapsed plain text. PIB English prints "Posted On:" then a newline
+# and indentation, then "21 SEP 2026 7:44PM by PIB Delhi"; the Hindi page prints
+# the same value after "प्रविष्टि तिथि:".
+_PAGE_DATE_PATTERNS: dict[str, re.Pattern[str]] = {
+    "PIB": re.compile(
+        r"(?:Posted On|प्रविष्टि तिथि)\s*:\s*"
+        r"(?P<value>\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\s+\d{1,2}:\d{2}\s*[AaPp][Mm])"
+    ),
+}
+
+_PAGE_DATE_FORMATS = ("%d %b %Y %I:%M %p", "%d %B %Y %I:%M %p")
+
+
+def page_published_at(publisher: str | None, page_text: str | None) -> tuple[str | None, str | None]:
+    """Publication date printed on the item page, as ``(raw, iso_utc)``.
+
+    Used only when the feed carried no parseable pubDate. The value is naive
+    local time and is read as Asia/Kolkata. Returns ``(None, None)`` for a
+    publisher with no known page-date shape or a page that lacks it, and
+    ``(raw, None)`` for a matched but unparseable value — never ``now()``.
+    """
+    pattern = _PAGE_DATE_PATTERNS.get(str(publisher)) if publisher else None
+    if pattern is None or not page_text:
+        return None, None
+    match = pattern.search(page_text)
+    if not match:
+        return None, None
+    raw = re.sub(r"\s+", " ", match.group("value")).strip()
+    # "7:44PM" → "7:44 PM" so %p has its own token. Deliberately NOT routed
+    # through parse_published_at: its RFC 2822 branch accepts "21 SEP 2026 ..."
+    # and email.utils drops the PM.
+    normalised = re.sub(r"(\d)\s*([AaPp][Mm])$", r"\1 \2", raw).upper()
+    for fmt in _PAGE_DATE_FORMATS:
+        try:
+            parsed = datetime.strptime(normalised, fmt)
+        except ValueError:
+            continue
+        return raw, parsed.replace(tzinfo=IST).astimezone(timezone.utc).isoformat()
+    return raw, None
+
+
+# ─── PIB English-version follow ─────────────────────────────────────────────
+#
+# PIB's only non-empty feed (Regid=3) lists HINDI releases, and its items link the
+# PressReleaseIframePage. The full PressReleasePage for the same PRID carries a
+# language switcher; the anchor whose visible text is "English" links the English
+# release, which has a DIFFERENT PRID with no arithmetic relation to the Hindi
+# one. The page holds several PRIDs (itself, its lang=2 self-link, other
+# languages, related releases), so the English one is selected by anchor text
+# only — never by position.
+
+LANGUAGE_FOLLOW_PUBLISHERS = frozenset({"PIB"})
+
+_PIB_BASE = "https://pib.gov.in/PressReleasePage.aspx"
+_ANCHOR = re.compile(r"<a\b(?P<attrs>[^>]*)>(?P<inner>.*?)</a\s*>", re.IGNORECASE | re.DOTALL)
+_HREF = re.compile(r"""\bhref\s*=\s*(["'])(?P<href>.*?)\1""", re.IGNORECASE | re.DOTALL)
+_PIB_TITLE = re.compile(r"""<h2\b[^>]*\bid\s*=\s*["']Titleh2["'][^>]*>(?P<t>.*?)</h2\s*>""",
+                        re.IGNORECASE | re.DOTALL)
+# The release text sits between the "Posted On" block and the "(Release ID: n)"
+# line. Everything outside it — header/nav, ministry + title block, then the
+# Release ID, visitor counter, "Read this release in" switcher, related-release
+# tags/links, share widgets, the hidden print copy and the footer — is chrome.
+_PIB_BODY_START = re.compile(r"""<div\b[^>]*\bid\s*=\s*["']PrDateTime["'][^>]*>.*?</div\s*>""",
+                             re.IGNORECASE | re.DOTALL)
+_PIB_BODY_END = re.compile(r"""<span\b[^>]*\bid\s*=\s*["']ReleaseId["']""", re.IGNORECASE)
+
+
+def pib_prid(url: str | None) -> str | None:
+    """The ``PRID`` query value of a PIB URL (key matched case-insensitively)."""
+    try:
+        query = urlsplit(url or "").query
+    except ValueError:
+        return None
+    for key, value in parse_qsl(query):
+        if key.lower() == "prid" and value.strip().isdigit():
+            return value.strip()
+    return None
+
+
+def pib_full_page_url(link: str | None) -> str | None:
+    """Rewrite a feed item's ``PressReleaseIframePage.aspx?PRID=n`` link to the
+    full ``PressReleasePage.aspx?PRID=n`` — the page with the language switcher."""
+    prid = pib_prid(link)
+    return f"{_PIB_BASE}?PRID={prid}" if prid else None
+
+
+def pib_english_url(prid: str) -> str:
+    return f"{_PIB_BASE}?PRID={prid}&lang=1"
+
+
+def pib_english_prid(html: str | None) -> str | None:
+    """PRID linked by the anchor whose trimmed visible text is ``English``."""
+    for match in _ANCHOR.finditer(html or ""):
+        if _plain(match.group("inner")).strip().casefold() != "english":
+            continue
+        href = _HREF.search(match.group("attrs"))
+        prid = pib_prid(_html.unescape(href.group("href"))) if href else None
+        if prid:
+            return prid
+    return None
+
+
+def pib_title(html: str | None) -> str | None:
+    match = _PIB_TITLE.search(html or "")
+    title = _plain(match.group("t")).strip() if match else ""
+    return title or None
+
+
+def pib_release_body(html: str | None) -> str | None:
+    """The release text of a PIB PressReleasePage with the chrome cut.
+
+    ``None`` when either marker is missing — the caller then keeps the whole-page
+    text rather than guessing a cut.
+    """
+    source = html or ""
+    start = _PIB_BODY_START.search(source)
+    if not start:
+        return None
+    end = _PIB_BODY_END.search(source, start.end())
+    if not end:
+        return None
+    body = _plain(source[start.end():end.start()]).strip()
+    return body or None
+
+
+@dataclass
+class FollowedItem:
+    """Outcome of following a feed item to the page whose content is stored.
+
+    ``error`` set → transient failure: record per item, write no row, retry next
+    pass. Otherwise ``page`` / ``url`` / ``body`` describe the stored document,
+    and ``forced_reason`` (when set) deprioritises it whatever its body.
+    """
+
+    error: str | None = None
+    page: Any = None
+    url: str | None = None
+    title: str | None = None
+    body: str | None = None
+    forced_reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def follow_pib_english(
+    link: str,
+    *,
+    fetch: Callable[..., Any],
+    user_agent: str | None,
+    min_chars: int,
+) -> FollowedItem:
+    """Resolve a PIB Hindi feed item to its English release.
+
+    Hindi full page → "English" anchor → ``PressReleasePage.aspx?PRID=<en>&lang=1``.
+    No English anchor, or an English page too thin to be the release, yields the
+    Hindi page as a ``language_mismatch`` row. A failed fetch at either hop is an
+    error, retried next pass (CA-RSS-01 semantics).
+    """
+    hi_url = pib_full_page_url(link) or link
+    hi_page = fetch(hi_url, adapter_type="html", user_agent=user_agent)
+    if not getattr(hi_page, "ok", False):
+        return FollowedItem(error=str(getattr(hi_page, "error", None) or "fetch_failed"))
+    hi_html = page_html(hi_page)
+    meta: dict[str, Any] = {"source_prid_hi": pib_prid(hi_url)}
+
+    def _mismatch(why: str) -> FollowedItem:
+        body = pib_release_body(hi_html) or (getattr(hi_page, "text", None) or "").strip()
+        return FollowedItem(
+            page=hi_page, url=hi_url, body=body or None,
+            forced_reason=LANGUAGE_MISMATCH,
+            metadata={**meta, "language_follow": why},
+        )
+
+    en_prid = pib_english_prid(hi_html)
+    if not en_prid:
+        return _mismatch("no_english_link")
+
+    en_url = pib_english_url(en_prid)
+    en_page = fetch(en_url, adapter_type="html", user_agent=user_agent)
+    if not getattr(en_page, "ok", False):
+        return FollowedItem(error=str(getattr(en_page, "error", None) or "fetch_failed"))
+    en_html = page_html(en_page)
+    trimmed = pib_release_body(en_html)
+    body = trimmed or (getattr(en_page, "text", None) or "").strip()
+    if len(body) < min_chars:
+        return _mismatch("english_page_thin")
+    return FollowedItem(
+        page=en_page, url=en_url, title=pib_title(en_html), body=body,
+        metadata={**meta, "source_prid_en": en_prid, "language_follow": "english",
+                  "body_trim": "pib" if trimmed else "none"},
+    )
 
 
 def adapter_defaults(source: dict[str, Any]) -> AdapterDefaults | None:

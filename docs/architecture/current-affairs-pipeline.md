@@ -86,7 +86,8 @@ current_affairs_sources
 
 `authority_level` maps directly onto ADR 0007 (aggregators discovery-only): **a `discovery_only`
 source may never be the sole evidence for a promoted question.** The LLM cannot assign or alter
-`authority_level`.
+`authority_level`. At ingest (CA-RSS-03, §4.8) a `discovery_only` source stores title + link + feed
+summary only — no page fetch, no article text, no generation job.
 
 **Reuse, don't rebuild:** the fetch layer is directly reusable — `scraping/fetcher.py` already does
 ETag / Last-Modified conditional fetch and returns a dedicated `not_modified` (304) result across
@@ -97,6 +98,22 @@ current-affairs rows through the recruitment runner.
 Initial scope: PIB, RBI, a small set of high-value Union ministries, major statutory/constitutional
 bodies, official gazette/circular sources where retrieval is reliable. State/international/specialised
 sources are added only after the first sources pass operational quality gates.
+
+Seeded sources (migrations 241, 294, 297):
+
+| Source | authority_level | publisher marker | cadence |
+|---|---|---|---|
+| PIB (Regid=3, Hindi feed → English follow) | primary_official | `PIB` | 12h |
+| RBI press releases | primary_official | `RBI` | 24h |
+| RBI notifications | primary_official | `RBI`, `feed=notifications` | 24h |
+| RBI speeches | primary_official | `RBI`, `feed=speeches` | 48h |
+| SEBI | primary_official | `SEBI` | 24h |
+| UNESCO World Heritage Centre | primary_official (`international_body`) | `UNESCO_WHC` | 48h |
+| The Hindu — National | discovery_only (`news_media`) | `THE_HINDU` | 12h |
+
+Several sources may share a publisher marker (three RBI feeds). The marker selects per-publisher
+behaviour (document typing, allow/deny lists, page-date shape, language follow); every identity and
+dedup lookup is by `source_id`.
 
 ---
 
@@ -238,8 +255,66 @@ day/month-name shapes Indian publishers use, with or without a time and with or 
 no DST), not UTC; reading it as UTC back-dated every item by 5.5 hours. Unparseable still means
 `published_at` NULL, never `now()`.
 
+**Page-printed dates (CA-RSS-03).** When the feed gives no parseable date, the date printed on the
+stored item page is used, per publisher. PIB: the whitespace after `Posted On:` (English) or
+`प्रविष्टि तिथि:` (Hindi) is collapsed and `DD MON YYYY h:mmAM/PM` is parsed as Asia/Kolkata — by a
+dedicated `strptime`, not `parse_published_at`, whose RFC 2822 branch would accept the shape and drop
+the PM. `metadata.date_source` records `feed` or `page`, and `metadata.raw_page_date` keeps the
+matched string. No feed date and no page date still means NULL, never `now()`.
+
 Only `snapshotted` documents are enqueued for generation (`_reconcile_pending_generation`), so
 deprioritised items never reach the LLM queue.
+
+### 4.7 PIB English-version follow (CA-RSS-03, migrations 297 + 298)
+PIB's only non-empty feed is `RssMain.aspx?ModId=6&Lang=1&Regid=3`, and every item in it is Hindi
+(Lang, Accept-Language and the other Regid values return empty or the same Hindi feed). Items carry
+title + link only, and link `PressReleaseIframePage.aspx?PRID=<hi>`. For publisher `PIB`:
+
+1. The feed link is rewritten to `PressReleasePage.aspx?PRID=<hi>` (the page with the language
+   switcher) and fetched with the PIB User-Agent. The Iframe page is never fetched.
+2. The anchor whose trimmed visible text is `English` gives the English PRID. The page holds several
+   PRIDs (itself, its `lang=2` self-link, other languages, related releases) and the English one has
+   no arithmetic relation to the Hindi one, so it is **only** selected by anchor text.
+3. `PressReleasePage.aspx?PRID=<en>&lang=1` is fetched. The row stores the ENGLISH release: title from
+   `h2#Titleh2`, `source_url` and `canonical_item_url` = the English URL, and
+   `metadata.source_prid_hi` / `source_prid_en` / `source_url_hi` (the Hindi feed link).
+4. Body trim: the release text is the HTML between the `#PrDateTime` block and `span#ReleaseId`.
+   Everything else — header/nav, ministry and title block, Release ID, visitor counter, the "Read this
+   release in" switcher, related-release tags/links, share widgets, the hidden print copy and the
+   footer — is cut. If either marker is missing the whole-page text is kept (`metadata.body_trim`
+   = `none`).
+
+**Outcomes.** A failed fetch at either hop is a per-item error with no row, retried next pass
+(§4.1). No `English` anchor, or an English body below `min_body_chars`, writes the Hindi page as
+`deprioritised` / `language_mismatch` (`metadata.language_follow` = `no_english_link` |
+`english_page_thin`), keyed on the Hindi **full-page** URL.
+
+**Dedup and skip-without-fetch.** The English canonical URL is the row identity under 294's partial
+unique index. "Already handled" is keyed on `metadata.source_url_hi` (expression index
+`idx_cad_source_url_hi`, migration 297), so a Hindi item already resolved — to English or to a
+mismatch row — is skipped on the next pass with **zero** fetches. No side table: the document row is
+the resolution record.
+
+**Pre-CA-RSS-03 Hindi rows.** Migration 298 moves the PIB Hindi snapshots to `deprioritised` /
+`language_mismatch_pre_rss03` and fails their pending/running generation jobs. Those rows carry no
+`source_url_hi` and their `canonical_item_url` is the Iframe link, so the next pass re-resolves each
+item to English and writes a new row with a different canonical URL — no unique-index collision.
+Apply 298 before deploying the code.
+
+### 4.8 Language guard and discovery_only (CA-RSS-03)
+**Language guard (every source).** The final stored body's dominant script is measured by a
+Devanagari-vs-Latin character count (`sources.detect_language`; no dependency) and stored as
+`metadata.detected_language` (`hi` | `en`, or `null` below 40 script characters). A body whose script
+contradicts the source's `default_language` is written `deprioritised` / `language_mismatch`. The
+guard abstains when nothing is detected or the declared language is neither `en` nor `hi`.
+
+**discovery_only (ADR 0007).** A `discovery_only` RSS source's entry is written with
+`ingestion_status='discovery_only'` (added to the CHECK by migration 297), `raw_text` NULL, the feed
+summary in `metadata.feed_summary`, and `metadata.prefilter_reason='discovery_only'`. Its page is
+never fetched. The status is not `snapshotted`, so the ingest pass never enqueues a job, and the
+validator's `sole_evidence_discovery_only` check stays as the second line. A `discovery_only` source
+on a whole-body adapter is not ingested (`skipped` / `discovery_only_non_rss`): a whole-body fetch is
+article text and has no entry to take a title and link from.
 
 ---
 

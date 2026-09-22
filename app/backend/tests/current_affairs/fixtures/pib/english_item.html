@@ -1,0 +1,1085 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1"><title>
+	Press Release Page | Press Information Bureau
+</title><link href="css/style.css" rel="stylesheet" type="text/css" /><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><link rel="alternate stylesheet" href="css/change.css" media="screen" title="change" /><link rel="alternate stylesheet" href="css/green.css" media="screen" title="green" /><link rel="alternate stylesheet" href="css/yellow.css" media="screen" title="yellow" /><link rel="stylesheet" type="text/css" href="css/prtint.css" media="print" /><link rel="stylesheet" href="css/style3.1.css" type="text/css" /><link id="pibA11yCss" rel="stylesheet" href="/css/accessibility.css?v=3" type="text/css" />
+      <script type="text/javascript">
+        /* Stamps the saved theme on <html> before the page paints. The
+           switcher in js/accessibility.js settles the rest, but on inner
+           pages it does not run until the end of the body and inside the
+           release frame it is a separate download - either way the reader
+           would otherwise watch a light page turn dark in front of them. */
+        (function (d) {
+            var t = "";
+            try {
+                t = window.localStorage.getItem("pibStyle") || "";
+            } catch (e) {
+                t = "";
+            }
+            if (t === "orange") {
+                t = "yellow";
+            }
+            var c = t === "change" ? " pib-hc"
+                : t === "green" ? " pib-theme-green"
+                : t === "yellow" ? " pib-theme-yellow" : "";
+            d.documentElement.className += c + " pib-a11y-content";
+        }(document));
+      </script>
+
+
+      <script src="js/jquery.min.js" type="text/javascript"></script>
+      <script type="text/javascript" src="/js/accessibility.js?v=7"></script>
+      <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="true" /><link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet" />
+
+      <script type="text/javascript">
+            $(document).ready(function () {
+                  function getParameterByName(name) {
+                        var url = window.location.href;
+                        name = name.replace(/[\[\]]/g, '\\$&');
+                        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                              results = regex.exec(url);
+                        if (!results) return null;
+                        if (!results[2]) return '';
+                        return decodeURIComponent(results[2].replace(/\+/g, ' '));
+                  }
+                  // Get the IDs from the current page's URL
+                  let prid = parseInt(getParameterByName('PRID'), 10);
+
+                  if (!isNaN(prid) && prid > 0) {
+                        $.ajax({
+                              type: "POST",
+                              url: "AjaxMethod.aspx/UpdatePRHitCount",
+                              async: false,
+                              data: JSON.stringify({ 'PermId': prid }),
+                              contentType: "application/json; charset=utf-8",
+                              dataType: "json",
+                              success: function (response) {
+                                    console.log(response);
+                              },
+                              error: function (error) {
+                                    console.log("Error in AJAX request", error);
+                              }
+                        });
+                  } else {
+                        console.log("Invalid parameters:", prid);
+                  }
+
+            });
+      </script>
+      <style type="text/css">
+            .table-responsive {
+                  width: 100%;
+                  overflow-x: auto;
+            }
+
+            .banner {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  background-color: #000;
+                  color: #fff;
+                  padding: 20px;
+            }
+
+            full-width {
+                  width: 100%;
+            }
+
+            .logo-left, .logo-center, .countdown {
+                  display: flex;
+                  align-items: center;
+            }
+
+                  .logo-left img, .logo-center img {
+                        height: 70px;
+                  }
+
+            .countdown {
+                  text-align: center;
+                  background-color: #444;
+                  border-radius: 10px;
+                  padding: 10px;
+                  border: 2px solid grey;
+            }
+
+            .firstnumber {
+                  color: #000000;
+                  position: absolute;
+                  top: 50px;
+                  right: 90px;
+                  font-size: 30px;
+            }
+
+            .secondnumber {
+                  position: absolute;
+                  color: #000000;
+                  right: 45px;
+                  top: 50px;
+                  font-size: 30px;
+            }
+
+            .countdown .days {
+                  font-size: 35px;
+                  color: gold;
+            }
+
+            .countdown p {
+                  margin: 0;
+            }
+
+            .countdown .text {
+                  font-size: 16px;
+            }
+
+            a {
+                  word-break: break-all;
+            }
+
+            iframe, img {
+                  max-width: 100%;
+            }
+
+            @media(max-width:1199px) {
+                  .firstnumber {
+                        top: 40px;
+                        right: 72px;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 35px;
+                        top: 40px;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:990px) {
+                  .firstnumber {
+                        top: 25px;
+                        right: 54px;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 25px;
+                        top: 25px;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:768px) {
+                  .countdown, .days {
+                        font-size: 12px !important;
+                  }
+
+
+                  .firstnumber {
+                        top: 25%;
+                        right: 8%;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 4.5%;
+                        top: 25%;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:475px) {
+                  .countdown, .days {
+                        font-size: 10px !important;
+                        top: 20%;
+                  }
+
+                  .bannerimgdiv {
+                        padding: 0 !important;
+                  }
+
+                  .bannerimg {
+                        width: 108% !important;
+                  }
+            }
+      </style>
+      <script type="text/javascript">
+            $(function () {
+                  $("[id*=printPDF]").click(function () {
+                        $("[id*=hfGridHtml]").val($("#PdfDiv").html());
+                  });
+            });
+            $(function () {
+                  $("[id*=printPDFEvent]").click(function () {
+                        $("[id*=hfGridHtml]").val($("#PdfDiv").html());
+                  });
+            });
+      </script>
+
+      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-112591026-1"></script>
+      <script>
+
+            window.dataLayer = window.dataLayer || [];
+
+            function gtag() { dataLayer.push(arguments); }
+
+            gtag('js', new Date());
+
+
+
+            gtag('config', 'UA-112591026-1');
+
+      </script>
+
+<meta property="og:title" content="DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;" /><meta property="og:url" content="www.pib.gov.in/Pressreleaseshare.aspx?PRID=2313185" /><meta property="og:description" content="Continuing its sustained crackdown on illicit drug trafficking, the Directorate of Revenue Intellige" /><meta property="og:image" content="https:/pib.gov.in/images/indian-emblem.png" />
+                                <script>!function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="C4E7H-KSCMC-422L4-W3EM5-U36MF",function(){function e(){if(!i){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.parentNode.appendChild(e),i=!0}}function t(e){i=!0;var n,t,a,r,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o.parentNode,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",r=(a.frameElement||a).style,r.width=0,r.height=0,r.border=0,r.display="none",o.parentNode.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void(0);",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write("<bo"+"dy onload='document._boomrl();'>");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=12,window.BOOMR.url=n+"C4E7H-KSCMC-422L4-W3EM5-U36MF";var o=document.currentScript||document.getElementsByTagName("script")[0],i=!1,r=document.createElement("link");if(r.relList&&"function"==typeof r.relList.supports&&r.relList.supports("preload")&&"as"in r)window.BOOMR.snippetMethod="p",r.href=window.BOOMR.url,r.rel="preload",r.as="script",r.addEventListener("load",e),r.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!i)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.parentNode.appendChild(r);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="",a="eqausagep7sbujqacqhqabaaabvlczpa-f-d9b4e19b6-clienttons-s.akamaihd.net",o="false"=="true"?2:1,i={"ak.v":"41","ak.cp":"1825201","ak.ai":parseInt("1215205",10),"ak.ol":"0","ak.cr":54,"ak.ipv":6,"ak.proto":"http/1.1","ak.rid":"d1d777a","ak.r":37702,"ak.a2":n,"ak.m":"dscb","ak.n":"ff","ak.cport":61030,"ak.gh":"23.54.81.119","ak.quicv":"","ak.tlsv":"tls1.2","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"bbr","ak.t":"1790010848","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==dIU17gbD3Ss1zIzk/ahu6ftGBEl6ms7xOL5YXg4Z4B8pF8o1y/bPjomf8mI+EXw1YsNNSEydlVxc5+3THW159CsW/+Lv16bz/NTlkO9eNSDldzj48wQOnsprje/E4xQZ+AX49DgxnzUsr0bzZyoCQ6RnbnyL6M0jAd+daJ5FVM97dcerRabr4GnXE0vRmc7GbaWbAmAGrBba/ThvLTFwmtyxhKco3skUCHAWCRh9MjSSEmhuFD9c1ZltEHdHZOP/V4aN0QPLaDgbDKneFxGSxjz/kc3UVuPH3VvgLA7y1hoUOBf6+gboWD7ofAo2f/uMrv/TeMjTW9/MkTfoHUCRRekjikhR1cS5s2x40mY7++n0TELkwWLzQj8Bd2oRxCCX56J45QGImYWw9U5Akiz0VlP0eI5HtZKz7e72WX/wzpE=","ak.pv":"9","ak.dpoabenc":"","ak.tf":o};if(""!==t)i["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))i["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(i)},rv:function(){var e=["ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:i,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);</script></head>
+<body>
+      <form method="post" action="./PressReleasePage.aspx?PRID=2313185&amp;reg=48&amp;lang=1" id="form1">
+<div class="aspNetHidden">
+<input type="hidden" name="sc_HiddenField" id="sc_HiddenField" value="" />
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZPQet1wIx1Q48y3xJY2k25Y7qxH5RrQ9qQcN-OiTC9guZtri9w2&amp;t=639246315009809930" type="text/javascript"></script>
+
+
+<script src="/ScriptResource.axd?d=x6wALODbMJK5e0eRC_p1LdIxBJXt0U_WW5GWfJqHAqo6frgCmGRfEywglicTersO2OKrFhK1gAIp0Wk2al2YrpdR3uWqH6f4nfjBsCyRUfTUUVmb0&amp;t=ffffffffecf8d3f2" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=P5lTttoqSeZXoYRLQMIScH645UK3RD852IErF2548Wz9Ssv0rLjB4fhVKnHcMpqkaMHpNAGOeWY02Lf4aBYN9-dVBme_SNK5KJwmFQNpMixYDZ7M0&amp;t=ffffffffecf8d3f2" type="text/javascript"></script>
+<script src="/PressReleasePage.aspx?_TSM_HiddenField_=sc_HiddenField&amp;_TSM_CombinedScripts_=%3b%3bAjaxControlToolkit%2c+Version%3d3.5.7.123%2c+Culture%3dneutral%2c+PublicKeyToken%3d28f01b0e84b6d53e%3aen-US%3a5a4df314-b4a2-4da2-a207-9284f1b1e96c%3ade1feab2%3af2c8e708%3a8613aea7%3af9cec9bc%3a3202a5a2%3aab09e3fe%3a87104b7c%3a720a52bf%3a589eaa30%3aa67c2700%3abe6fb298" type="text/javascript"></script>
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="59B53027" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="9zn1FRC5+9+oVkyOYB7tKi9x/0hJtUvNZzRLo4oAI5l+nw8sFJCMJKaRCjYw9RPd2bSB/ZNECLifWuIL9x46+7wGHSPJd+JVEYtgt+yjBM/9/qvdTzVN2dOdN7AmTjh5wDhyxAOdGkQ9eFpfcdqai+IGZX3bzagFs79HaLqPcie2e5ezLxudhFESYDwRDZ7pH7tEDFfBjZfYr22/9P1jNADbzuF3+tpT+yi8oB9NFD98ThlZoyhYG/nj75lzChEODAz/Yoo5ojVfjMCngPzL8pVuRtw=" />
+</div>
+                              
+            <div id="templateCss"></div>
+            <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('sc', 'form1', ['tupdate12','update12'], [], [], 90, '');
+//]]>
+</script>
+
+            <input type="hidden" name="hfGridHtml" id="hfGridHtml" />
+            <div class="container" style='margin-bottom: 50px;'>
+                  <div id="accessories">
+
+                        
+                        <div class="pull-right" style="display: flex">
+                              <div id="voll"></div>
+                              <div id="vollDT"></div>
+                              
+                              
+<div class="print-icons">
+<input type="image" name="Print1$print" id="Print1_print" aria-label="Print" src="images/printer_icon.png" alt="print page button" style="padding: 5px 10px 5px 10px;" />
+</div>
+                        </div>
+                  </div>
+                  <input type="hidden" name="hydpermid" id="hydpermid" value="2313185" />
+                  
+
+
+
+                  <div class="innner-page-main-about-us-content-right-part">
+
+                        <div id="MinistryName" class="MinistryNameSubhead text-center">
+                              Ministry of Finance
+                        </div>
+                        
+                        <div id="lg_g"><div class='log_oo'>  <img src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2026/sep/ph_9768_20260902_10000501.png' alt='azadi ka amrit mahotsav' /> </div></div>
+
+
+
+
+
+                        <div class="text-center event-heading-background">
+                              
+                              <h2 id="Titleh2">
+                                    DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;
+                              </h2>
+                              <h3 id="Subtitleh3">
+                                    <span id="ltrSubtitle"><br/>Significant quantities of ganja, charas, cocaine and amphetamine seized; 15 persons arrested</span>
+                              </h3>
+                        </div>
+
+                        <div id="PrDateTime" class="ReleaseDateSubHeaddateTime text-center pt20">
+                              Posted On:
+                21 SEP 2026 7:44PM by PIB Delhi
+                        </div>
+                        
+                        <div class='pt20'>
+                        </div>
+                        <input type="hidden" name="hydphotoUrl" id="hydphotoUrl" />
+                        
+                        <p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">Continuing its sustained crackdown on illicit drug trafficking, the Directorate of Revenue Intelligence (DRI), has effected significant seizures of narcotic drugs and psychotropic substances in multiple intelligence-led operations across the country. <strong>Over 845 kg contraband, including <em>ganja</em>/cannabis, <em>charas</em>, Amphetamine has been seized and 15 persons have been arrested</strong> under the provisions of the Narcotic Drugs and Psychotropic Substances Act, 1985.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of <em>charas </em>and cannabis</strong></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">On 20.09.2026, based on specific intelligence regarding smuggling of Charas/Hashish from Nepal, DRI officers intercepted two female passengers travelling by Jan Nayak Express at Gorakhpur Railway Station. Their personal search resulted in the recovery of around <strong>6 kg of Charas/Hashish</strong>, concealed in knee caps wrapped around their thighs and hidden under their sarees. The contraband was seized and both passengers were arrested under the NDPS Act, 1985.</span></span></p>
+
+<p style="text-align:center"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194321_20260921194715_a5d112.png" style="height:400px; width:400px" /></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In addition, DRI officers also seized around 801 kg cannabis in two significant operations. On 17.09.2026, in an intelligence led operation, DRI officers intercepted a container truck near Jindapur Toll Plaza, Bodh Gaya. Search of the vehicle resulted in the recovery of around <strong>752.3 kg <em>ganja</em>/cannabis</strong>, packed in 737 packets and concealed in rice husk. The contraband, vehicle and rice husk were seized and the driver was arrested.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194334_20260921194807_d38bfc.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">On 11.09.2026, DRI, in coordination with the Ghariyaband Forest Department, intercepted two persons at Mentri village in Odisha, who were allegedly proceeding to deliver narcotic drugs.&nbsp; Search resulted in the recovery of around <strong>48.5 kg of Ganja</strong>, packed in 25 packets in 3 sacks along with the scooter used for transportation. The contraband and vehicle were seized and both persons were arrested. </span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194349_20260921194833_915c09.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In addition, based on intelligence shared by DRI, Customs authorities at Mumbai and Bengaluru international airports seized approximately <strong>28 kg high-grade cannabis/hydroponic weed</strong> from four passengers arriving from Thailand and Vietnam. The contraband was seized under the provisions of the NDPS Act, 1985, and all four passengers were arrested.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of cocaine</strong></span></span><br />
+<span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In another major intelligence led operation at IGI Airport, New Delhi, on 15.09.2026, DRI officers intercepted an Indian passenger arriving from Dubai via Doha. Detailed examination of his checked-in baggage resulted in the recovery of around <strong>5.8 kg white-coloured powder packed in nine packets</strong>, which tested positive for Cocaine during field testing. The contraband was seized and the passenger was arrested under the NDPS Act, 1985.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194403_20260921194903_56f483.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of Amphetamine</strong></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In series of operations, DRI intercepted multiple consignments of Amphetamine and seized cumulativelyaround 4.5 kgs of Amphetamine type stimulants<strong> </strong>and a total of five persons were arrested in these three operations.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Mumbai, on 16.09.2026, an Indian woman passenger travelling from Delhi was intercepted and around <strong>493 grams pills</strong> concealed inside bottles marked as Baby Powder were recovered; the pills tested positive for Amphetamine/Ecstasy. The suspected pills were seized and the passenger was arrested.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Calicut Airport, on 09.09.2026, around <strong>1.9 kg of Amphetamine</strong> was recovered from a passenger&#39;s baggage and a subsequent operation resulted in the arrest of the receiver and organiser, with an additional <strong>17 grams Amphetamine</strong> and Rs. 3.45 lakh in cash recovered from their possession/vehicle. </span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Indore, on the same date, DRI officers intercepted a passenger travelling by bus from Delhi and recovered around <strong>2 kg Amphetamine</strong>, concealed inside salwar suit sets. The contraband was seized and person was arrested.<strong> </strong></span></span></p>
+
+<p style="text-align:center"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194412_20260921194926_387a0c.png" style="height:250px; width:600px" /></p>
+
+<p style="text-align:justify">&nbsp;</p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">These operations underscore DRI&#39;s continued focus on disrupting organised drug-trafficking networks, intercepting narcotic consignments at different stages of their movement and detecting innovative methods of concealment.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">****</span></span></p>
+
+<p style="text-align:justify"><strong><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">SR/KMN</span></span></strong></p>
+
+
+                        
+                        <div id="reel_pic">
+                        </div>
+
+
+
+                        
+                        <br />
+                        <span id="ReleaseId">(Release ID: 2313185)</span>
+                        <span id="lblViews">Visitor Counter : 231</span>
+                        <div>
+                              
+                        </div>
+                        
+
+                        <span id="lblRefPhoto"></span>
+
+                        <div class="BackgroundRelease">
+                              
+                        </div>
+                        <div>
+                              
+                        </div>
+                        <div class="ReleaseLang">Read this release in: 
+                        
+                                    
+                                    <a href='https://pib.gov.in/PressReleasePage.aspx?PRID=2313220' target="_blank">
+                                          Urdu </a>
+                              
+                                    ,
+                              
+                                    
+                                    <a href='https://pib.gov.in/PressReleasePage.aspx?PRID=2313241' target="_blank">
+                                          हिन्दी </a>
+                              
+                                    ,
+                              
+                                    
+                                    <a href='https://pib.gov.in/PressReleasePage.aspx?PRID=2313268' target="_blank">
+                                          Tamil </a>
+                              
+                        </div>
+
+                        <div class="RelTag">
+                              <ul>
+                                    
+                              </ul>
+                        </div>
+                        <div class="clear">
+                        </div>
+                        <div id="RelLink" class="RelLink">
+                              <ul>
+                                    
+                                    
+                              </ul>
+                        </div>
+                        <center>
+                              
+                        </center>
+                  </div>
+
+                  <div id="update12">
+	
+                              
+                              <input type="hidden" name="Hidden" id="Hidden" />
+                              <div id="P_CategoryManagement" class="ModalWindow" style="border-width:0px;height:60%;width:60%;overflow:auto;display: none">
+		
+                                    <div>
+                                          <input type="image" name="btnClose" id="btnClose" src="images/close_flat_icon.png" />
+                                    </div>
+                                    <div id="description">
+                                    </div>
+                                    <div class="text-center">
+                                          <h2>
+                                                
+                                                <br>
+                                                
+                                          </h2>
+                                    </div>
+                                    <br />
+                                    <div class="clear">
+                                    </div>
+                                    
+                              
+	</div>
+                        
+</div>
+            </div>
+            
+            <div id="PdfDiv" style="display: none;">
+                  <table width="100%">
+                        <tr>
+                              <td style="font-weight: 200; text-align: center">
+                                    Ministry of Finance
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: center; font-size: 30px;">
+                                          DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: center; font-size: 30px;">
+                                          <div style='height:30px;width:100%;'></div>Significant quantities of ganja, charas, cocaine and amphetamine seized; 15 persons arrested
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="text-align: center; font-size: 14px;">
+                                          Posted On:
+                        21 SEP 2026 7:44PM by PIB Delhi
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: left; font-size: 16px;">
+                                          <p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">Continuing its sustained crackdown on illicit drug trafficking, the Directorate of Revenue Intelligence (DRI), has effected significant seizures of narcotic drugs and psychotropic substances in multiple intelligence-led operations across the country. <strong>Over 845 kg contraband, including <em>ganja</em>/cannabis, <em>charas</em>, Amphetamine has been seized and 15 persons have been arrested</strong> under the provisions of the Narcotic Drugs and Psychotropic Substances Act, 1985.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of <em>charas </em>and cannabis</strong></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">On 20.09.2026, based on specific intelligence regarding smuggling of Charas/Hashish from Nepal, DRI officers intercepted two female passengers travelling by Jan Nayak Express at Gorakhpur Railway Station. Their personal search resulted in the recovery of around <strong>6 kg of Charas/Hashish</strong>, concealed in knee caps wrapped around their thighs and hidden under their sarees. The contraband was seized and both passengers were arrested under the NDPS Act, 1985.</span></span></p>
+
+<p style="text-align:center"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194321_20260921194715_a5d112.png" style="height:400px; width:400px" /></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In addition, DRI officers also seized around 801 kg cannabis in two significant operations. On 17.09.2026, in an intelligence led operation, DRI officers intercepted a container truck near Jindapur Toll Plaza, Bodh Gaya. Search of the vehicle resulted in the recovery of around <strong>752.3 kg <em>ganja</em>/cannabis</strong>, packed in 737 packets and concealed in rice husk. The contraband, vehicle and rice husk were seized and the driver was arrested.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194334_20260921194807_d38bfc.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">On 11.09.2026, DRI, in coordination with the Ghariyaband Forest Department, intercepted two persons at Mentri village in Odisha, who were allegedly proceeding to deliver narcotic drugs.&nbsp; Search resulted in the recovery of around <strong>48.5 kg of Ganja</strong>, packed in 25 packets in 3 sacks along with the scooter used for transportation. The contraband and vehicle were seized and both persons were arrested. </span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194349_20260921194833_915c09.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In addition, based on intelligence shared by DRI, Customs authorities at Mumbai and Bengaluru international airports seized approximately <strong>28 kg high-grade cannabis/hydroponic weed</strong> from four passengers arriving from Thailand and Vietnam. The contraband was seized under the provisions of the NDPS Act, 1985, and all four passengers were arrested.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of cocaine</strong></span></span><br />
+<span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In another major intelligence led operation at IGI Airport, New Delhi, on 15.09.2026, DRI officers intercepted an Indian passenger arriving from Dubai via Doha. Detailed examination of his checked-in baggage resulted in the recovery of around <strong>5.8 kg white-coloured powder packed in nine packets</strong>, which tested positive for Cocaine during field testing. The contraband was seized and the passenger was arrested under the NDPS Act, 1985.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194403_20260921194903_56f483.png" style="height:300px; width:600px" /></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px"><strong>Seizure of Amphetamine</strong></span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">In series of operations, DRI intercepted multiple consignments of Amphetamine and seized cumulativelyaround 4.5 kgs of Amphetamine type stimulants<strong> </strong>and a total of five persons were arrested in these three operations.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Mumbai, on 16.09.2026, an Indian woman passenger travelling from Delhi was intercepted and around <strong>493 grams pills</strong> concealed inside bottles marked as Baby Powder were recovered; the pills tested positive for Amphetamine/Ecstasy. The suspected pills were seized and the passenger was arrested.</span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Calicut Airport, on 09.09.2026, around <strong>1.9 kg of Amphetamine</strong> was recovered from a passenger&#39;s baggage and a subsequent operation resulted in the arrest of the receiver and organiser, with an additional <strong>17 grams Amphetamine</strong> and Rs. 3.45 lakh in cash recovered from their possession/vehicle. </span></span></p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">At Indore, on the same date, DRI officers intercepted a passenger travelling by bus from Delhi and recovered around <strong>2 kg Amphetamine</strong>, concealed inside salwar suit sets. The contraband was seized and person was arrested.<strong> </strong></span></span></p>
+
+<p style="text-align:center"><img alt="" src="https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194412_20260921194926_387a0c.png" style="height:250px; width:600px" /></p>
+
+<p style="text-align:justify">&nbsp;</p>
+
+<p style="text-align:justify"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">These operations underscore DRI&#39;s continued focus on disrupting organised drug-trafficking networks, intercepting narcotic consignments at different stages of their movement and detecting innovative methods of concealment.</span></span></p>
+
+<p style="text-align:center"><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">****</span></span></p>
+
+<p style="text-align:justify"><strong><span style="font-family:Times New Roman,Times,serif"><span style="font-size:16px">SR/KMN</span></span></strong></p>
+
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 100; text-align: left; font-size: 16px;">
+                                          (Release ID: 2313185)
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                              </td>
+                        </tr>
+                        <tr>
+                              <td style="font-weight: 200; text-align: center; font-size: 24px;"></td>
+                        </tr>
+                  </table>
+            </div>
+            <div class="clearfix">
+            </div>
+
+            
+
+            <div class="section1">
+                  <div id="frst_t">
+                        <div id="arr_rm"><div class='sticky-social_mb'><ul class='social_mb'><a href='http://www.facebook.com/share.php?u=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185' target='_blank'><li class='fb_b'   ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/facebook.jpg' alt='Share on facebook'  width='40' /></li></a><a href='https://twitter.com/intent/tweet?url=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&text=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;' target='_blank'><li class='twitter_r'  ><img  src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2023/aug/ph2023818240601.jpg' alt='Share on twitter' width='40' /> </li></a><a href='https://api.whatsapp.com/send?text=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185' target='_blank'><li class='whatsapp_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/whatsapp1.png' alt='Share on whatsapp' width='40' /></li></a><a href='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;&body=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&ui=2&tf=1&pli=1' title='Share by Email' target='_blank'><li class='fa-envelope_r' ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/email1.png' alt='Share on email'  width='40' /></li></a><a href='https://www.linkedin.com/shareArticle?mini=true&url=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&title=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;&summary=My%20favorite%20developer%20program&source=LinkedIn' target='_blank'><li class='fa-linkedin_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/linkedin.png' alt='Share on linkedin' width='40' /></li></a></ul></div></div>
+                  </div>
+                  <div id="second_t">
+                        <div id="sndr_rm"><div class='sticky-social'><ul class='social'><a href='http://www.facebook.com/share.php?u=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185' target='_blank'><li class='fb_b'   ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/facebook.jpg' alt='Share on facebook'  width='35' /></li></a><a href='https://twitter.com/intent/tweet?url=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&text=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;' target='_blank'><li class='twitter_r'  ><img  src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2023/aug/ph2023818240601.jpg' alt='Share on twitter' width='35' /> </li></a><a href='https://api.whatsapp.com/send?text=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185' target='_blank'><li class='whatsapp_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/whatsapp1.png' alt='Share on whatsapp' width='35' /></li></a><a href='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;&body=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&ui=2&tf=1&pli=1' title='Share by Email' target='_blank'><li class='fa-envelope_r' ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/email1.png' alt='Share on email'  width='35' /></li></a><a href='https://www.linkedin.com/shareArticle?mini=true&url=https://pib.gov.in/PressReleasePage.aspx?PRID=2313185&title=DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;&summary=My%20favorite%20developer%20program&source=LinkedIn' target='_blank'><li class='fa-linkedin_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/linkedin.png' alt='Share on linkedin' width='35' /></li></a></ul></div></div>
+                  </div>
+            </div>
+            <input type="hidden" name="ltrTitlee" id="ltrTitlee" value="DRI seizes over 845 kg contraband drugs at various locations in intensified crackdown on drug trafficking;" />
+            <input type="hidden" name="ltrSubtitlee" id="ltrSubtitlee" value="&lt;br/>Significant quantities of ganja, charas, cocaine and amphetamine seized; 15 persons arrested" />
+            <input type="hidden" name="ltrDescriptionn" id="ltrDescriptionn" value="&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>Continuing its sustained crackdown on illicit drug trafficking, the Directorate of Revenue Intelligence (DRI), has effected significant seizures of narcotic drugs and psychotropic substances in multiple intelligence-led operations across the country. &lt;strong>Over 845 kg contraband, including &lt;em>ganja&lt;/em>/cannabis, &lt;em>charas&lt;/em>, Amphetamine has been seized and 15 persons have been arrested&lt;/strong> under the provisions of the Narcotic Drugs and Psychotropic Substances Act, 1985.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;strong>Seizure of &lt;em>charas &lt;/em>and cannabis&lt;/strong>&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>On 20.09.2026, based on specific intelligence regarding smuggling of Charas/Hashish from Nepal, DRI officers intercepted two female passengers travelling by Jan Nayak Express at Gorakhpur Railway Station. Their personal search resulted in the recovery of around &lt;strong>6 kg of Charas/Hashish&lt;/strong>, concealed in knee caps wrapped around their thighs and hidden under their sarees. The contraband was seized and both passengers were arrested under the NDPS Act, 1985.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;img alt=&quot;&quot; src=&quot;https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194321_20260921194715_a5d112.png&quot; style=&quot;height:400px; width:400px&quot; />&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>In addition, DRI officers also seized around 801 kg cannabis in two significant operations. On 17.09.2026, in an intelligence led operation, DRI officers intercepted a container truck near Jindapur Toll Plaza, Bodh Gaya. Search of the vehicle resulted in the recovery of around &lt;strong>752.3 kg &lt;em>ganja&lt;/em>/cannabis&lt;/strong>, packed in 737 packets and concealed in rice husk. The contraband, vehicle and rice husk were seized and the driver was arrested.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;img alt=&quot;&quot; src=&quot;https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194334_20260921194807_d38bfc.png&quot; style=&quot;height:300px; width:600px&quot; />&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>On 11.09.2026, DRI, in coordination with the Ghariyaband Forest Department, intercepted two persons at Mentri village in Odisha, who were allegedly proceeding to deliver narcotic drugs.&amp;nbsp; Search resulted in the recovery of around &lt;strong>48.5 kg of Ganja&lt;/strong>, packed in 25 packets in 3 sacks along with the scooter used for transportation. The contraband and vehicle were seized and both persons were arrested. &lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;img alt=&quot;&quot; src=&quot;https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194349_20260921194833_915c09.png&quot; style=&quot;height:300px; width:600px&quot; />&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>In addition, based on intelligence shared by DRI, Customs authorities at Mumbai and Bengaluru international airports seized approximately &lt;strong>28 kg high-grade cannabis/hydroponic weed&lt;/strong> from four passengers arriving from Thailand and Vietnam. The contraband was seized under the provisions of the NDPS Act, 1985, and all four passengers were arrested.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;strong>Seizure of cocaine&lt;/strong>&lt;/span>&lt;/span>&lt;br />
+&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>In another major intelligence led operation at IGI Airport, New Delhi, on 15.09.2026, DRI officers intercepted an Indian passenger arriving from Dubai via Doha. Detailed examination of his checked-in baggage resulted in the recovery of around &lt;strong>5.8 kg white-coloured powder packed in nine packets&lt;/strong>, which tested positive for Cocaine during field testing. The contraband was seized and the passenger was arrested under the NDPS Act, 1985.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;img alt=&quot;&quot; src=&quot;https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194403_20260921194903_56f483.png&quot; style=&quot;height:300px; width:600px&quot; />&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>&lt;strong>Seizure of Amphetamine&lt;/strong>&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>In series of operations, DRI intercepted multiple consignments of Amphetamine and seized cumulativelyaround 4.5 kgs of Amphetamine type stimulants&lt;strong> &lt;/strong>and a total of five persons were arrested in these three operations.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>At Mumbai, on 16.09.2026, an Indian woman passenger travelling from Delhi was intercepted and around &lt;strong>493 grams pills&lt;/strong> concealed inside bottles marked as Baby Powder were recovered; the pills tested positive for Amphetamine/Ecstasy. The suspected pills were seized and the passenger was arrested.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>At Calicut Airport, on 09.09.2026, around &lt;strong>1.9 kg of Amphetamine&lt;/strong> was recovered from a passenger&amp;#39;s baggage and a subsequent operation resulted in the arrest of the receiver and organiser, with an additional &lt;strong>17 grams Amphetamine&lt;/strong> and Rs. 3.45 lakh in cash recovered from their possession/vehicle. &lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>At Indore, on the same date, DRI officers intercepted a passenger travelling by bus from Delhi and recovered around &lt;strong>2 kg Amphetamine&lt;/strong>, concealed inside salwar suit sets. The contraband was seized and person was arrested.&lt;strong> &lt;/strong>&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;img alt=&quot;&quot; src=&quot;https://static.pib.gov.in/WriteReadData/userfiles/image/2026/sep/Screenshot2026-09-21194412_20260921194926_387a0c.png&quot; style=&quot;height:250px; width:600px&quot; />&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&amp;nbsp;&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>These operations underscore DRI&amp;#39;s continued focus on disrupting organised drug-trafficking networks, intercepting narcotic consignments at different stages of their movement and detecting innovative methods of concealment.&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>****&lt;/span>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;strong>&lt;span style=&quot;font-family:Times New Roman,Times,serif&quot;>&lt;span style=&quot;font-size:16px&quot;>SR/KMN&lt;/span>&lt;/span>&lt;/strong>&lt;/p>
+" />
+            <script type="text/javascript">
+                  var mPlayer = document.getElementById("background_music");
+                  var mPlayAction = document.getElementById("playbutton");
+
+                  var isPlaying = false;
+
+                  function playAudio() {
+                        mPlayer.play();
+                        isPlaying = true;
+                        document.getElementById('stopA').style.display = "block";
+                        document.getElementById('playA').style.display = "none";
+                  }
+
+                  function pauseAudio() {
+                        mPlayer.pause();
+                        isPlaying = false;
+                        document.getElementById('playA').style.display = "block";
+                        document.getElementById('stopA').style.display = "none";
+                  }
+                  //function HandleAudio() {
+                  //    if (isPlaying == true) {
+                  //        //Playing already Pause it
+                  //        pauseAudio();
+                  //    } else {
+                  //        //Play the music
+                  //        playAudio();
+                  //    }
+                  //}
+            </script>
+            <script type="text/javascript">
+                  var synth = window.speechSynthesis;
+
+            
+                  function CleanHtml(html) {
+
+                        html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+                        return html;
+                  }
+                  function stripHtml(html) {
+                        let tmp = document.createElement("DIV");
+                        tmp.innerHTML = CleanHtml(html);
+                        return tmp.textContent || tmp.innerText || "";
+                  }
+            </script>
+            <script type="text/javascript">
+                  $(document).ready(function () {
+                        //for responsive tables
+                        $("table").each(function () {
+                              if (!$(this).closest(".table-responsive").length) {
+                                    $(this).wrap("<div class='table-responsive'></div>");
+                              }
+                        });
+
+                        var width = $(window).width();
+                        if (width < 768) {
+
+                              // Extra Small Device
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+
+                        } else if (width < 991) {
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+                              // Small Device
+
+                        } else if (width < 1199) {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Medium Device
+
+                        } else {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Large Device
+
+                        }
+                  });
+            </script>
+            <script type="text/javascript">
+                  $(document).ready(function () {
+                        var width = $(window).width();
+                        if (width < 768) {
+
+                              // Extra Small Device
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+
+                        } else if (width < 991) {
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+                              // Small Device
+
+                        } else if (width < 1199) {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Medium Device
+
+                        } else {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Large Device
+
+                        }
+                  });
+            </script>
+            
+            <style type="text/css">
+                  @media print {
+                        .sticky-social, .sticky-social_mb, .pull-right, #printPDF {
+                              display: none !important;
+                        }
+                  }
+
+                  .f_vl {
+                        padding-right: 30px;
+                        font-size: 17px;
+                        cursor: pointer;
+                  }
+
+                  .log_oo {
+                        // width: 20%;
+                        display: flex;
+                        justify-content: space-between;
+                  }
+
+                        .log_oo img {
+                              width: 150px;
+                              /*width: 100%;
+                    height: auto;*/
+                        }
+
+                  .sticky-social_mb {
+                        position: fixed;
+                        bottom: 0px;
+                        padding: 0px;
+                        margin: 0px;
+                        width: 100%;
+                  }
+
+                  .social_mb {
+                        list-style: none;
+                        display: flex;
+                        width: 100%;
+                        margin-bottom: -8px;
+                  }
+
+                        .social_mb a {
+                              padding: 8px 0px;
+                              font-size: 30px;
+                              transition: all 0.8s ease-in-out;
+                              width: 20% !important;
+                              text-align: center;
+                        }
+            </style>
+            <style type="text/css">
+                  .section1 {
+                        position: relative;
+                        padding: 10px 0px;
+                        width: 100%;
+                  }
+
+
+
+                  .sticky-social {
+                        position: fixed;
+                        top: 20px;
+                        left: 0px;
+                        padding: 0px;
+                        margin: 0px;
+                  }
+
+                  .social {
+                        list-style: none;
+                  }
+
+                        .social a li {
+                              padding: 8px 12px;
+                              font-size: 25px;
+                              transition: all 0.8s ease-in-out;
+                        }
+
+                              .social a li:hover {
+                                    margin-right: -30px;
+                                    box-shadow: 2px 5px 10px grey;
+                              }
+
+                                    .social a li:hover .fa {
+                                          margin-left: 20px;
+                                    }
+
+                  .fb_b {
+                        /* background-color: rgb(59, 89, 152);*/
+                        background-color: rgba(65,103,178,255);
+                  }
+
+                  .twitter_r {
+                        /* background-color: rgb(29, 161, 242);*/
+                        background-color: #000000;
+                  }
+
+                  .whatsapp_r {
+                        /* background-color: rgb(77, 194, 71);*/
+                        background-color: rgba(13,191,67,255);
+                  }
+
+                  .fa-envelope_r {
+                        /* background-color: rgb(219, 68, 55);*/
+                        background-color: #e2123d;
+                  }
+
+                  .fa-linkedin_r {
+                        background-color: rgb(0, 119, 181);
+                  }
+            </style>
+            <style type="text/css">
+                  @media only screen and (max-device-width: 767px) {
+                        p span img {
+                              max-width: 90% !important;
+                              height: auto !important;
+                        }
+
+                        p img {
+                              max-width: 90% !important;
+                              height: auto !important;
+                        }
+
+                        h2 {
+                              font-size: 20px !important;
+                              font-weight: 600 !important;
+                        }
+
+                        h3 {
+                              font-size: 18px !important;
+                              font-weight: 600 !important;
+                        }
+                  }
+            </style>
+            <style type="text/css">
+                  /* === Film Roll Badge Styling(IFFI2025 countdown) === */
+                  .film-roll-badge {
+                        position: absolute;
+                        top:82%;
+                        right: 20px;
+                        width: 230px;
+                        height: 70px;
+                        background: repeating-linear-gradient( to right, #9a2375 0px, #9a2375 18px, #6e2b8b 18px, #6e2b8b 36px );
+                        border-top: 8px solid #9a2375;
+                        border-bottom: 8px solid #9a2375;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                        animation: moveFilm 8s linear infinite;
+                        z-index: 10;
+                  }
+
+                        /* film sprocket holes */
+                        .film-roll-badge::before,
+                        .film-roll-badge::after {
+                              content: "";
+                              position: absolute;
+                              width: 100%;
+                              height: 10px;
+                              background: repeating-linear-gradient( to right, #9a2375 0px, #9a2375 10px, #fff 10px, #fff 20px );
+                              left: 0;
+                              z-index: 2;
+                        }
+
+                        .film-roll-badge::before {
+                              top: -4px;
+                        }
+
+                        .film-roll-badge::after {
+                              bottom: -4px;
+                        }
+
+                  .film-roll-inner {
+                        position: relative;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        animation: flicker 2s infinite ease-in-out;
+                  }
+
+                  .countdown-text {
+                        font-size: 1.3rem;
+                        font-weight: 700;
+                        color: #fff;
+                        text-shadow: 0 0 6px rgba(255, 255, 255, 0.4), 0 0 10px #000;
+                        white-space: nowrap;
+                  }
+
+                  /* === Animations === */
+                  @keyframes moveFilm {
+                        0% {
+                              background-position: 0 0;
+                        }
+
+                        100% {
+                              background-position: 120px 0;
+                        }
+                  }
+
+                  @keyframes flicker {
+                        0%, 100% {
+                              opacity: 1;
+                        }
+
+                        50% {
+                              opacity: 0.9;
+                        }
+
+                        25% {
+                              opacity: 0.95;
+                        }
+
+                        75% {
+                              opacity: 0.85;
+                        }
+                  }
+
+                  /* === Responsive Adjustments === */
+                  @media (max-width: 1500px) {
+                        .film-roll-badge {
+                              top: 68%;
+                              right: 18px;
+                              /* width: 220px; */
+                              height: 65px;
+                              font-size: 0.85rem;
+                        }
+
+                        .press-section {
+                              margin-top: 35px;
+                        }
+                  }
+
+                  @media (max-width: 992px) {
+                        .film-roll-badge {
+                              top: 52%;
+                              right: 10px;
+                               width: 200px; 
+                              height: 60px;
+                        }
+                  }
+
+                  @media (max-width: 768px) {
+                        .film-roll-badge {
+                              top: 56%;
+                              right: 10px;
+                               width: 124px; 
+                              height: 55px;
+                        }
+
+                        .countdown-text {
+                              font-size: 0.9rem;
+                        }
+                  }
+
+                  @media (max-width: 576px) {
+                        .film-roll-badge {
+                              top: 59%;
+                              right: 5px;
+                              /* width: 160px; */
+                              height: 50px;
+                        }
+
+                        .countdown-text {
+                              font-size: 0.85rem;
+                        }
+                  }
+            </style>
+          <script type="text/javascript">
+                const festivalStart = new Date("2025-11-20T00:00:00").getTime();
+                const festivalEnd = new Date("2025-11-28T23:59:59").getTime();
+
+                const countdownElement = document.getElementById("countdown");
+
+                const interval = setInterval(() => {
+                      const now = new Date().getTime();
+
+                      // BEFORE FESTIVAL — show days + hours left
+                      if (now < festivalStart) {
+                            const diff = festivalStart - now;
+                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+                            countdownElement.innerHTML = `
+              ${days} Day${days !== 1 ? 's' : ''} 
+              ${hours} Hour${hours !== 1 ? 's' : ''} to go
+          `;
+
+                      }
+
+                      // DURING FESTIVAL — show 56th IFFI - Day X
+                      else if (now >= festivalStart && now <= festivalEnd) {
+                            const dayNumber = Math.floor((now - festivalStart) / (1000 * 60 * 60 * 24)) + 1;
+                            countdownElement.innerHTML = `56th IFFI - Day ${dayNumber}`;
+                      }
+
+                      // AFTER FESTIVAL — new message
+                      else {
+                            countdownElement.innerHTML = `✨ IFFI closes but never ends…`;
+
+                            // Width change logic
+                            const elements = document.querySelectorAll('.film-roll-badge');
+                            elements.forEach(el => el.style.width = "350px");
+
+                            clearInterval(interval);
+                      }
+
+                }, 1000);
+          </script>
+ <script type="text/javascript">
+
+               const miffStart = new Date("2026-06-15T00:00:00").getTime();
+               const miffEnd = new Date("2026-06-15T23:59:59").getTime();
+
+               const miffElement = document.getElementById("miff");
+
+               if (miffElement) {
+
+                   const miffInterval = setInterval(() => {
+
+                       const now = new Date().getTime();
+
+                       // Before MIFF
+                       if (now < miffStart) {
+
+                           const diff = miffStart - now;
+                           const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                           const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        
+
+                   /*  miffElement.innerHTML = `${days} Day${days !== 1 ? 's' : ''} ${hours} Hour${hours !== 1 ? 's' : ''} to MIFF`;*/
+                           miffElement.innerHTML = `${days} Day${days === 1 ? '' : 's'} to MIFF ...`;
+
+
+                     }
+
+                       // During MIFF
+                       else if (now >= miffStart && now <= miffEnd) {
+
+                           const dayNumber =
+                               Math.floor((now - miffStart) / (1000 * 60 * 60 * 24)) + 1;
+
+                           miffElement.innerHTML = `19th MIFF - Day ${dayNumber}`;
+                       }
+
+                       // After MIFF
+                       else {
+
+                           miffElement.innerHTML = `✨ MIFF concludes, cinema lives on...`;
+
+                           document.querySelectorAll('.film-roll-badge')
+                               .forEach(el => el.style.width = "350px");
+
+                           clearInterval(miffInterval);
+                       }
+
+                   }, 1000);
+               }
+
+</script>
+
+      
+
+<script type="text/javascript">
+//<![CDATA[
+(function() {var fn = function() {$get("sc_HiddenField").value = '';Sys.Application.remove_init(fn);};Sys.Application.add_init(fn);})();Sys.Application.add_init(function() {
+    $create(Sys.Extended.UI.ModalPopupBehavior, {"BackgroundCssClass":"modalBackground","PopupControlID":"P_CategoryManagement","dynamicServicePath":"/PressReleasePage.aspx","id":"mpe"}, null, null, $get("Hidden"));
+});
+//]]>
+</script>
+<input type="hidden" name="__ncforminfo" value="S_-uWDFypT0Xp4wep5OMG66uRzlZIhb-rPkg3NZybWDGlbRxgaZMMGt1XdleiwMqFouY7o3qSGKlp9wtAKbJxNYCEOJfQgo-3ilzcJdr1ly0mN7iNV2pFg=="/></form>
+</body>
+</html>
+
