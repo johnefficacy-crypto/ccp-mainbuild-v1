@@ -527,3 +527,85 @@ test("nothing is rendered for a question with no breadcrumb at all", async () =>
   expect(screen.queryByTestId("descriptive-breadcrumb")).not.toBeInTheDocument();
   expect(screen.queryByTestId("descriptive-source")).not.toBeInTheDocument();
 });
+
+
+// ── the submit gate on a handwritten attempt ──────────────────────────────
+//
+// A handwritten attempt's word count is NULL by design — nothing reads the
+// images — so a submit with no pages would record a self-score over nothing at
+// all. The server refuses it (409 no_pages); this is the same rule, said
+// before the aspirant fills in a rubric they cannot use.
+
+function wireHandwritten({ pages = [], attempt } = {}) {
+  const row = attempt || draft({ answer_mode: "handwritten", word_count: null });
+  mockPost.mockImplementation((url) => {
+    if (url.endsWith("/attempts")) return Promise.resolve(row);
+    return Promise.resolve({ ...row, status: "submitted" });
+  });
+  mockPatch.mockImplementation((_url, body) => Promise.resolve({ ...row, ...body }));
+  mockGet.mockImplementation((url) => {
+    if (url.includes("/pages")) return Promise.resolve({ pages });
+    return Promise.resolve({ items: [] });
+  });
+  return row;
+}
+
+test("a handwritten attempt with no pages cannot be taken to the rubric", async () => {
+  wireHandwritten({ pages: [] });
+  await renderScreen();
+
+  await screen.findByTestId("handwritten-pages");
+  await waitFor(() =>
+    expect(screen.getByTestId("descriptive-finish")).toBeDisabled(),
+  );
+  expect(screen.getByTestId("descriptive-needs-pages")).toHaveTextContent(
+    /upload at least one page/i,
+  );
+});
+
+test("one uploaded page opens the gate", async () => {
+  wireHandwritten({
+    pages: [{ id: "pg-1", page_no: 1, mime_type: "image/png", url: "u", bytes: 1 }],
+  });
+  await renderScreen();
+
+  await screen.findByTestId("handwritten-pages");
+  await waitFor(() =>
+    expect(screen.getByTestId("descriptive-finish")).not.toBeDisabled(),
+  );
+  expect(screen.queryByTestId("descriptive-needs-pages")).not.toBeInTheDocument();
+});
+
+test("a typed attempt is never held to the page rule", async () => {
+  wire();
+  await renderScreen();
+  expect(screen.getByTestId("descriptive-finish")).not.toBeDisabled();
+  expect(screen.queryByTestId("descriptive-needs-pages")).not.toBeInTheDocument();
+});
+
+test("the gate does not close on a count nobody has reported yet", async () => {
+  // `null` is "the uploader has not answered", not "zero". Treating the two
+  // alike would disable the button for as long as a slow request takes.
+  let release;
+  const pending = new Promise((resolve) => {
+    release = () => resolve({ pages: [] });
+  });
+  const row = draft({ answer_mode: "handwritten", word_count: null });
+  mockPost.mockImplementation((url) =>
+    url.endsWith("/attempts") ? Promise.resolve(row) : Promise.resolve(row),
+  );
+  mockPatch.mockResolvedValue(row);
+  mockGet.mockImplementation((url) =>
+    url.includes("/pages") ? pending : Promise.resolve({ items: [] }),
+  );
+
+  await renderScreen();
+  expect(screen.getByTestId("descriptive-finish")).not.toBeDisabled();
+
+  await act(async () => {
+    release();
+  });
+  await waitFor(() =>
+    expect(screen.getByTestId("descriptive-finish")).toBeDisabled(),
+  );
+});

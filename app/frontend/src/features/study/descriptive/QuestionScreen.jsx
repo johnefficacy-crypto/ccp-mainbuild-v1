@@ -41,6 +41,10 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
   const [reviewing, setReviewing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState([]);
+  // How many pages the handwritten attempt has. `null` until the uploader has
+  // said — an unknown count must not read as zero and disable Submit on a
+  // slow connection.
+  const [pageCount, setPageCount] = useState(null);
 
   const loadHistory = React.useCallback(() => {
     if (!question?.id) return;
@@ -109,6 +113,11 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
   // Past attempts EXCLUDING the one on screen — the current attempt is the
   // page, not an entry in its own history.
   const past = history.filter((h) => h.id !== attempt?.id && h.status === "submitted");
+
+  // `pageCount === 0`, not `!pageCount`: null means the uploader has not
+  // reported yet, and disabling on an unknown count would block a typed
+  // attempt's own button for as long as a request takes.
+  const needsPages = mode === "handwritten" && pageCount === 0;
 
   return (
     <div className="flex flex-col gap-4" data-testid="descriptive-question-screen">
@@ -183,6 +192,7 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           attemptId={attempt?.id}
           readOnly={submitted}
           onModeChange={setMode}
+          onCountChange={setPageCount}
         />
       ) : (
         <AnswerEditor
@@ -206,6 +216,11 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           <button
             type="button"
             className="btn btn-primary"
+            // THE SAME RULE THE SERVER ENFORCES (409 no_pages). A handwritten
+            // attempt with nothing uploaded has no answer to review: its word
+            // count is NULL by design, so submitting would record a self-score
+            // over nothing at all.
+            disabled={needsPages}
             onClick={async () => {
               await save();
               setReviewing(true);
@@ -214,6 +229,14 @@ export default function QuestionScreen({ question, onNext, hasNext }) {
           >
             Finish and review
           </button>
+          {needsPages && (
+            <p
+              className="mt-2 text-[12px] text-clay-700"
+              data-testid="descriptive-needs-pages"
+            >
+              Upload at least one page before reviewing this answer.
+            </p>
+          )}
         </div>
       )}
 

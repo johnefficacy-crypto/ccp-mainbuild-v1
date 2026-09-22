@@ -2390,6 +2390,19 @@ def submit_attempt(
         raise DescriptiveError(
             "attempt_submitted", "This attempt is already submitted.", 409
         )
+    # A HANDWRITTEN ATTEMPT WITH NO PAGES IS NOT AN ANSWER. Its word count is
+    # NULL by design — nothing reads the images — so without this the record
+    # would be a submitted attempt with no text, no pages and a self-score,
+    # which says the aspirant wrote something and cannot show it. The gate is
+    # here and not only in the browser: a disabled button is not a rule.
+    if _answer_mode(attempt) == "handwritten" and not _attempt_pages(
+        supabase, attempt_id
+    ):
+        raise DescriptiveError(
+            "no_pages",
+            "Upload at least one page before submitting this answer.",
+            409,
+        )
     scores, total = validate_self_scores(self_scores)
 
     now = _now_iso()
@@ -2637,7 +2650,11 @@ def _page_counts(supabase: Any, attempt_ids: list[str]) -> dict[str, int]:
     """attempt_id → how many pages it has. Only for handwritten attempts."""
     if not attempt_ids:
         return {}
-    counts: dict[str, int] = {}
+    # SEEDED AT ZERO. A handwritten draft with nothing uploaded yet must read
+    # "0 pages", not fall through to the typed row's shape: an absent count is
+    # "this is a typed attempt", and a zero is "this one is waiting for its
+    # pages". The list showed the first where it meant the second.
+    counts: dict[str, int] = {str(a): 0 for a in attempt_ids if a}
     for chunk in _chunks(sorted(set(attempt_ids))):
         rows = _safe(
             lambda ids=chunk: _paginate_all(
@@ -2823,6 +2840,12 @@ def page_payload(row: dict[str, Any], *, url: str | None = None) -> dict[str, An
         "bytes": _as_int(row.get("bytes")),
         "created_at": row.get("created_at"),
         "url": url,
+        # WHY A SIGNED URL IS ABSENT, so the surface can say the right thing.
+        # `url_expires_in` is how long this one lasts: the client refetches
+        # before it runs out rather than after, and a page that 404s at fetch
+        # time is a missing OBJECT, which the client reports per page.
+        "url_expires_in": PAGE_URL_TTL_SECONDS if url else None,
+        "url_error": None if url else "url_unavailable",
     }
 
 
@@ -3132,12 +3155,18 @@ def attempt_detail(supabase: Any, user_id: str, attempt_id: str) -> dict[str, An
     """
     row = _load_owned_attempt(supabase, user_id, attempt_id)
     enriched = _enrich_attempts(supabase, [row])[0]
-    pages = _attempt_pages(supabase, attempt_id) if _answer_mode(row) == "handwritten" else []
+    handwritten = _answer_mode(row) == "handwritten"
+    pages = _attempt_pages(supabase, attempt_id) if handwritten else []
     return {
         "attempt": {**enriched, "answer_text": row.get("answer_text") or ""},
         # Signed fresh on every read, and short-lived: a copied URL must not be
         # a permanent share of someone's answer.
         "pages": [page_payload(r, url=_signed_page_url(supabase, r)) for r in pages],
+        # Stated separately from `len(pages)` so a handwritten attempt says
+        # "0 pages" rather than borrowing the typed empty state. A typed
+        # attempt has no page count at all.
+        "page_count": len(pages) if handwritten else None,
+        "url_ttl_seconds": PAGE_URL_TTL_SECONDS,
         # The aspirant can always write it again; the old attempt stays.
         "can_rewrite": bool(row.get("pyq_question_id")),
     }
@@ -3160,8 +3189,20 @@ def compare_attempts(
         enriched,
         key=lambda r: (str(r.get("submitted_at") or r.get("started_at") or ""), str(r.get("id"))),
     )
+    # A HANDWRITTEN ATTEMPT COMPARES BY ITS PAGES. Comparing on `answer_text`
+    # alone put an empty column beside a typed one and read as "nothing was
+    # written here" — the same lie the detail view told. The pages are signed
+    # per attempt, the same short-lived way every other read signs them.
     attempts = [
-        {**r, "answer_text": (by_id.get(str(r.get("id"))) or {}).get("answer_text") or ""}
+        {
+            **r,
+            "answer_text": (by_id.get(str(r.get("id"))) or {}).get("answer_text") or "",
+            "pages": (
+                [page_payload(pg, url=_signed_page_url(supabase, pg))
+                 for pg in _attempt_pages(supabase, str(r.get("id")))]
+                if r.get("answer_mode") == "handwritten" else []
+            ),
+        }
         for r in ordered
     ]
     submitted = [a for a in attempts if a.get("status") == "submitted"]
@@ -3178,4 +3219,5 @@ def compare_attempts(
         "self_total_last": scored[-1] if scored else None,
         "word_count_first": words[0] if words else None,
         "word_count_last": words[-1] if words else None,
+        "url_ttl_seconds": PAGE_URL_TTL_SECONDS,
     }

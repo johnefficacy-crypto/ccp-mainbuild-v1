@@ -504,3 +504,212 @@ def test_word_count_became_nullable():
     sql = MIGRATION.read_text()
     assert "alter column word_count drop not null" in sql
     assert "alter column word_count drop default" in sql
+
+
+# ── the detail view: a handwritten attempt IS its pages ────────────────────
+#
+# THE BUG THIS SECTION EXISTS FOR. A submitted handwritten attempt with a real
+# object in storage opened in "My answers" reading "This attempt has no text
+# yet" and rendered no images. The pages were in the table, the object was in
+# the bucket, and the payload carried them; nothing showed them.
+
+
+def _upload(db, attempt=ATTEMPT_A, user=A, page_no=1, mime="image/png"):
+    return d.request_page_upload(
+        db, user, attempt, page_no=page_no, mime_type=mime, size_bytes=2048
+    )
+
+
+def test_a_handwritten_attempt_detail_carries_its_pages_with_urls():
+    db = Db()
+    _upload(db, page_no=1)
+    _upload(db, page_no=2)
+
+    out = d.attempt_detail(db, A, ATTEMPT_A)
+
+    assert [p["page_no"] for p in out["pages"]] == [1, 2]
+    assert all(p["url"] for p in out["pages"])
+    assert out["page_count"] == 2
+    assert out["url_ttl_seconds"] == d.PAGE_URL_TTL_SECONDS
+
+
+def test_the_detail_pages_are_ordered_by_page_number_not_by_upload_order():
+    """Page 3 re-shot after page 1 must still read 1, 2, 3."""
+    db = Db()
+    for n in (3, 1, 2):
+        _upload(db, page_no=n)
+    assert [p["page_no"] for p in d.attempt_detail(db, A, ATTEMPT_A)["pages"]] == [1, 2, 3]
+
+
+def test_a_handwritten_attempt_with_no_pages_says_zero_not_nothing():
+    """`page_count` 0 and `page_count` None are different claims: the first is
+    a handwritten answer waiting for its photos, the second is a typed one."""
+    db = Db()
+    d.set_answer_mode(db, A, ATTEMPT_A, "handwritten")
+    out = d.attempt_detail(db, A, ATTEMPT_A)
+    assert out["pages"] == []
+    assert out["page_count"] == 0
+
+
+def test_a_typed_attempt_has_no_page_count_at_all():
+    out = d.attempt_detail(Db(), A, ATTEMPT_A)
+    assert out["page_count"] is None
+    assert out["pages"] == []
+
+
+def test_a_handwritten_attempt_can_still_be_rewritten():
+    """"Write this question again" is about the question, not the mode."""
+    db = Db()
+    _upload(db)
+    assert d.attempt_detail(db, A, ATTEMPT_A)["can_rewrite"] is True
+
+
+def test_a_page_whose_url_cannot_be_signed_says_which_rather_than_going_blank():
+    """One unreadable page must not take down the other seven, and the payload
+    has to say WHY there is no URL — the surface renders a different sentence
+    for "can't be shown right now" than for a page that is simply absent."""
+    db = Db()
+    _upload(db, page_no=1)
+    _upload(db, page_no=2)
+
+    original = db.storage.create_signed_url
+
+    def flaky(path, ttl):
+        if path.endswith("page_2.png"):
+            raise RuntimeError("storage said no")
+        return original(path, ttl)
+
+    db.storage.create_signed_url = flaky
+    pages = d.attempt_detail(db, A, ATTEMPT_A)["pages"]
+
+    assert pages[0]["url"] and pages[0]["url_error"] is None
+    assert pages[1]["url"] is None
+    assert pages[1]["url_error"] == "url_unavailable"
+    assert pages[1]["url_expires_in"] is None
+
+
+def test_the_detail_payload_still_never_carries_the_object_location():
+    """The signed URL contains the path — that is what a signed URL is, and it
+    expires. What must not ship is the LOCATION as a field: a client holding
+    `storage_path` holds another aspirant's path too, since the two differ only
+    by a user id, and that one does not expire."""
+    db = Db()
+    _upload(db)
+    pages = d.attempt_detail(db, A, ATTEMPT_A)["pages"]
+    assert "storage_path" not in pages[0]
+    assert "storage_bucket" not in pages[0]
+
+
+def test_user_b_cannot_open_user_as_handwritten_attempt():
+    db = Db()
+    _upload(db)
+    with pytest.raises(d.DescriptiveError) as exc:
+        d.attempt_detail(db, B, ATTEMPT_A)
+    # 404, not 403: whether that attempt exists is not user B's business.
+    assert exc.value.status == 404
+
+
+# ── the submit gate: no pages is not an answer ─────────────────────────────
+
+def _scores():
+    return {k: 2 for k in d.RUBRIC_KEYS}
+
+
+def test_a_handwritten_attempt_with_no_pages_cannot_be_submitted():
+    """Its word count is NULL by design — nothing reads the images — so without
+    this the record would be a submitted attempt with no text, no pages and a
+    self-score: a claim that something was written and cannot be shown."""
+    db = Db()
+    d.set_answer_mode(db, A, ATTEMPT_A, "handwritten")
+    with pytest.raises(d.DescriptiveError) as exc:
+        d.submit_attempt(db, A, ATTEMPT_A, self_scores=_scores())
+    assert exc.value.status == 409
+    assert exc.value.code == "no_pages"
+    # And it is still a draft: a refused submit changes nothing.
+    assert db.tables["descriptive_attempts"][0]["status"] == "draft"
+
+
+def test_the_same_attempt_submits_once_a_page_is_uploaded():
+    db = Db()
+    _upload(db)
+    out = d.submit_attempt(db, A, ATTEMPT_A, self_scores=_scores())
+    assert out["status"] == "submitted"
+    assert out["word_count"] is None
+
+
+def test_deleting_the_last_page_before_submitting_re_closes_the_gate():
+    """Removing the only page returns the attempt to typing with empty text,
+    so the gate that catches it is the typed one — but the submit must not go
+    through on the strength of pages that are no longer there."""
+    db = Db()
+    _upload(db)
+    d.delete_attempt_page(db, A, ATTEMPT_A, 1)
+    d.set_answer_mode(db, A, ATTEMPT_A, "handwritten")
+    with pytest.raises(d.DescriptiveError) as exc:
+        d.submit_attempt(db, A, ATTEMPT_A, self_scores=_scores())
+    assert exc.value.code == "no_pages"
+
+
+def test_a_typed_attempt_is_not_held_to_the_page_rule():
+    db = Db()
+    db.tables["descriptive_attempts"][0]["answer_text"] = "An answer."
+    out = d.submit_attempt(db, A, ATTEMPT_A, self_scores=_scores())
+    assert out["status"] == "submitted"
+
+
+def test_the_gate_runs_before_the_rubric_is_validated():
+    """Otherwise an aspirant with no pages is told to fix their scores."""
+    db = Db()
+    d.set_answer_mode(db, A, ATTEMPT_A, "handwritten")
+    with pytest.raises(d.DescriptiveError) as exc:
+        d.submit_attempt(db, A, ATTEMPT_A, self_scores={})
+    assert exc.value.code == "no_pages"
+
+
+# ── the history list: a handwritten draft reads "0 pages" ─────────────────
+
+def test_a_handwritten_draft_with_no_pages_counts_zero_not_null():
+    """The row read like a typed attempt, so the aspirant could not tell a
+    handwritten draft waiting for its photos from one that was never started."""
+    db = Db()
+    d.set_answer_mode(db, A, ATTEMPT_A, "handwritten")
+    row = d.list_attempts(db, A)["items"][0]
+    assert row["answer_mode"] == "handwritten"
+    assert row["page_count"] == 0
+
+
+def test_a_handwritten_row_counts_the_pages_it_has():
+    db = Db()
+    _upload(db, page_no=1)
+    _upload(db, page_no=2)
+    assert d.list_attempts(db, A)["items"][0]["page_count"] == 2
+
+
+def test_a_typed_row_has_no_page_count():
+    assert d.list_attempts(Db(), A)["items"][0]["page_count"] is None
+
+
+# ── compare: pages beside pages, not beside an empty paragraph ─────────────
+
+def test_compare_carries_each_handwritten_attempts_pages():
+    db = Db()
+    _upload(db)
+    d.submit_attempt(db, A, ATTEMPT_A, self_scores=_scores())
+
+    out = d.compare_attempts(db, A, "q-1")
+    handwritten = [a for a in out["attempts"] if a["answer_mode"] == "handwritten"]
+    assert handwritten and [p["page_no"] for p in handwritten[0]["pages"]] == [1]
+    assert handwritten[0]["pages"][0]["url"]
+    assert out["url_ttl_seconds"] == d.PAGE_URL_TTL_SECONDS
+
+
+def test_compare_gives_a_typed_attempt_no_pages_rather_than_a_missing_key():
+    out = d.compare_attempts(Db(), A, "q-1")
+    assert out["attempts"][0]["pages"] == []
+
+
+def test_compare_never_reaches_another_users_attempt():
+    """Both fixtures answer q-1; only the caller's own may come back."""
+    db = Db()
+    out = d.compare_attempts(db, A, "q-1")
+    assert [a["id"] for a in out["attempts"]] == [ATTEMPT_A]
