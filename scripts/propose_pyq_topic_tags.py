@@ -83,9 +83,11 @@ Live, against the provider::
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
+import pathlib
 import re
 import sys
 import time
@@ -107,7 +109,61 @@ TAG_ROLE = "primary"
 EXTRACTOR_VERSION = "pyq-topic-proposer-v1"
 
 MICROTOPIC = "microtopic"
+
+# The bodies this module was written for. NO LONGER A HARD GATE: --body accepts
+# any key, and --any-body drops the body filter entirely for a catalogue that
+# is body-agnostic. The SSC CGL subjects (quantitative-aptitude,
+# general-intelligence-reasoning, english-language) are shared with RBI Phase I,
+# CSAT and the regulators and carry NO ``topics.metadata.exams`` key at all, so
+# filtering them by body would return an empty candidate set for every
+# question — and an empty candidate set produces a recorded UNMAPPED, which
+# would read as "the catalogue does not cover SSC" when the truth is "the
+# filter does not apply to it".
 KNOWN_BODIES = ("sebi", "pfrda", "ifsca")
+
+# Placeholder body for a corpus whose catalogue is body-agnostic. It is carried
+# through to the output so a proposal file still records which run produced it,
+# and it is never matched against ``metadata.exams`` — under --any-body that
+# comparison does not happen.
+BODY_AGNOSTIC = "any"
+
+# ``pyq_questions.observed_difficulty``. Mirrors DIFFICULTIES in
+# scripts/pyq_question_review.py, which is the tool that writes the column, and
+# the CMS route that is its only enforcement point. ``very_hard`` is absent and
+# must stay absent: migration 239's projection to mock_question_bank rewrites
+# anything outside these three to 'medium'.
+DIFFICULTIES = ("easy", "medium", "hard")
+
+# The locked QRE rubric. STEP COUNT, not perceived hardness: two reviewers
+# disagree about whether a question is "tricky" and agree about how many steps
+# it takes. Stated to the model verbatim so a proposal is reproducible and a
+# reviewer can check it against the same sentence.
+DIFFICULTY_RUBRIC = (
+    "easy   = a single formula or rule, one step.\n"
+    "medium = two to three steps, a standard pattern.\n"
+    "hard   = multi-step, a non-obvious setup or an unusual pattern."
+)
+
+# The worksheet ``scripts/pyq_question_review.py apply`` reads. Mirrored rather
+# than imported: that script lives outside any package and loading it by path
+# from here would make this module's import depend on its. The mirror is held
+# honest by a test that asserts the two lists are identical, so a column added
+# there and forgotten here fails the suite rather than a run.
+WORKSHEET_FIELDS = [
+    "row_type", "row_id", "paper_year", "question_number_or_topic_id",
+    "text_preview", "flags", "sample_reason", "decision", "notes",
+    "assign_topic_id", "difficulty", "stimulus_preview",
+    "paper_id", "section", "current_primary_topic_id",
+]
+
+# Appended to a PROPOSAL worksheet only, after every column `apply` reads, so
+# the file is still a valid worksheet. They carry the proposer's reasoning,
+# which `apply` ignores and a reviewer needs.
+PROPOSAL_FIELDS = ["proposal_status", "proposal_confidence",
+                   "proposal_rationale", "proposal_reason",
+                   "proposal_candidate_count"]
+
+QUESTION_ROW = "question"
 
 STATUS_MAPPED = "MAPPED"
 STATUS_UNMAPPED = "UNMAPPED"
@@ -169,6 +225,38 @@ def _read_jsonl(path: str) -> list[tuple[int, dict]]:
     if not rows:
         raise ProposerError(f"{path}: no rows")
     return rows
+
+
+def _read_rows(path: str) -> list[tuple[int, dict]]:
+    """Read either a JSONL file or a JSON list of objects.
+
+    The proposer's own contract is JSONL. ``pyq_question_review.py export``
+    writes a JSON LIST, and re-shaping 850 rows through a conversion step only
+    to feed them back in is a transformation nobody audits. The two are
+    distinguishable without guessing — a JSON list starts with ``[`` — so both
+    are accepted and the "line number" of a list element is its index, which
+    keeps every error message pointing at something the operator can find.
+    """
+    with open(path, encoding="utf-8-sig") as fh:
+        raw = fh.read()
+    if raw.lstrip().startswith("["):
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ProposerError(f"{path}: not valid JSON — {exc}") from exc
+        if not isinstance(data, list):
+            raise ProposerError(f"{path}: expected a JSON list")
+        rows = []
+        for i, obj in enumerate(data):
+            if not isinstance(obj, dict):
+                raise ProposerError(
+                    f"{path}[{i}]: expected a JSON object, got {type(obj).__name__}"
+                )
+            rows.append((i, obj))
+        if not rows:
+            raise ProposerError(f"{path}: no rows")
+        return rows
+    return _read_jsonl(path)
 
 
 def _require(obj: dict, key: str, where: str, types: tuple[type, ...]) -> Any:
@@ -255,23 +343,57 @@ def load_catalogue(path: str) -> list[dict]:
     return rows
 
 
-def load_questions(path: str, alias_map: dict[str, str]) -> list[dict]:
+def load_questions(path: str, alias_map: dict[str, str], *,
+                   bodies: Sequence[str] = KNOWN_BODIES,
+                   any_body: bool = False,
+                   subject_field: str = "subject",
+                   options_by_question: dict[str, list[dict]] | None = None
+                   ) -> list[dict]:
     """Load questions and resolve each one's subject through the alias map.
 
     Every unresolved subject is collected and reported together: an operator
     extending the alias map wants the whole list, not one name per run.
+
+    ``subject_field`` names the key the printed subject is read from. The
+    proposer's own export writes ``subject``; ``pyq_question_review.py export``
+    writes ``section`` (the exam-phase section label — "Quantitative Aptitude",
+    "General Intelligence and Reasoning", "English Comprehension"), which is
+    the same kind of value under a different name. The alias map still does the
+    resolving, so nothing is matched by string equality either way.
+
+    ``any_body`` drops the body requirement: a row need not carry one, and the
+    candidate filter will not use it. That is the shape a body-agnostic
+    catalogue needs — see BODY_AGNOSTIC.
+
+    ``options_by_question`` supplies option rows from a separate export file,
+    for a questions file that carries none of its own. Options already present
+    on the row win, so a file that has them is unaffected.
     """
+    allowed = {str(b).strip().casefold() for b in bodies if str(b).strip()}
     rows: list[dict] = []
     unresolved: dict[str, list[str]] = {}
-    for lineno, obj in _read_jsonl(path):
+    for lineno, obj in _read_rows(path):
         where = f"{path}:{lineno}"
-        raw_subject = _require(obj, "subject", where, (str,))
-        body = _require(obj, "body", where, (str,)).strip().casefold()
-        if body not in KNOWN_BODIES:
-            raise ProposerError(
-                f"{where}: body {body!r} is not one of {'/'.join(KNOWN_BODIES)}"
-            )
-        options = obj.get("options") or []
+        raw_subject = _require(obj, subject_field, where, (str,))
+        if any_body:
+            body = str(obj.get("body") or BODY_AGNOSTIC).strip().casefold()
+        else:
+            body = _require(obj, "body", where, (str,)).strip().casefold()
+            if body not in allowed:
+                raise ProposerError(
+                    f"{where}: body {body!r} is not one of "
+                    f"{'/'.join(sorted(allowed))}"
+                )
+        options = obj.get("options")
+        if options is None and options_by_question is not None:
+            options = [
+                {"label": o.get("option_label"), "text": o.get("option_text")}
+                for o in sorted(options_by_question.get(obj.get("id"), []),
+                                key=lambda o: (o.get("display_order") is None,
+                                               o.get("display_order") or 0,
+                                               str(o.get("option_label") or "")))
+            ]
+        options = options or []
         if not isinstance(options, list):
             raise ProposerError(f"{where}: 'options' is not a list")
         parsed_options = []
@@ -296,6 +418,14 @@ def load_questions(path: str, alias_map: dict[str, str]) -> list[dict]:
             "subject": resolved,
             "body": body,
             "options": parsed_options,
+            # Carried through untouched, for the worksheet. Every one is
+            # optional: a questions file without them still proposes, and the
+            # worksheet column is simply blank.
+            "paper_id": str(obj.get("paper_id") or ""),
+            "paper_year": str(obj.get("year") or obj.get("paper_year") or ""),
+            "section": str(obj.get("section") or ""),
+            "question_number": obj.get("question_number"),
+            "current_primary_topic_id": str(obj.get("current_primary_topic_id") or ""),
         })
 
     if unresolved:
@@ -318,7 +448,8 @@ def load_questions(path: str, alias_map: dict[str, str]) -> list[dict]:
 # ── 1. candidate builder ─────────────────────────────────────────────────────
 
 
-def build_candidates(question: dict, catalogue: Sequence[dict]) -> list[dict]:
+def build_candidates(question: dict, catalogue: Sequence[dict], *,
+                     any_body: bool = False) -> list[dict]:
     """The microtopics this question is allowed to be tagged with.
 
     Three conjunctive filters, in the order that discards the most first:
@@ -331,7 +462,11 @@ def build_candidates(question: dict, catalogue: Sequence[dict]) -> list[dict]:
     body                    the row's ``metadata.exams`` must name this
                             question's regulator. A SEBI question cannot be
                             tagged with a PFRDA-only microtopic however well the
-                            text matches.
+                            text matches. SKIPPED under ``any_body``, which is
+                            the only correct setting for a catalogue whose rows
+                            carry no ``metadata.exams`` at all — applied there,
+                            it would empty every candidate set and turn a
+                            perfectly taggable corpus into 850 UNMAPPEDs.
 
     The model never sees a topic this returns nothing for, which is what keeps
     a proposal inside the catalogue instead of inventing a slug.
@@ -342,7 +477,7 @@ def build_candidates(question: dict, catalogue: Sequence[dict]) -> list[dict]:
         row for row in catalogue
         if row["level"] == MICROTOPIC
         and row["subject"] == subject
-        and body in row["exams"]
+        and (any_body or body in row["exams"])
     ]
 
 
@@ -356,6 +491,7 @@ Return ONE JSON object and nothing else — no prose, no code fence:
    "status": "MAPPED" | "UNMAPPED",
    "topic_slug": "<slug from that question's candidate list>" | null,
    "confidence": <number 0.0-1.0>,
+   "difficulty": "easy" | "medium" | "hard",
    "rationale": "<at most 20 words>",
    "reason": "<why no candidate fits; UNMAPPED only, else null>"}
 ]}
@@ -372,6 +508,11 @@ Rules:
   0.5-0.69 plausible, competing candidate exists; below 0.5 a guess worth
   reviewing. For UNMAPPED it is your confidence that nothing fits.
   Do not emit the same number for every question.
+- difficulty is required on EVERY entry, MAPPED or UNMAPPED, and is graded on
+  STEP COUNT alone — not on how tricky, long or unfamiliar the question feels:
+  easy   = a single formula or rule, one step.
+  medium = two to three steps, a standard pattern.
+  hard   = multi-step, a non-obvious setup or an unusual pattern.
 """
 
 
@@ -491,6 +632,19 @@ def parse_response(
                 f"{where}: rationale is {words} words, capped at {RATIONALE_WORD_CAP}"
             )
 
+        difficulty = item.get("difficulty")
+        if not isinstance(difficulty, str) or difficulty.strip().lower() not in DIFFICULTIES:
+            hint = ""
+            if isinstance(difficulty, str) and difficulty.strip().lower() == "very_hard":
+                hint = (" — 'very_hard' is not a valid observed_difficulty: the "
+                        "PYQ->mock projection rewrites it to 'medium' while the "
+                        "heatmap reads it as 'hard'. Use 'hard'.")
+            raise ProposerError(
+                f"{where}: difficulty {difficulty!r} is not one of "
+                f"{'/'.join(DIFFICULTIES)}{hint}"
+            )
+        difficulty = difficulty.strip().lower()
+
         slug = item.get("topic_slug")
         reason = item.get("reason") or ""
         if not isinstance(reason, str):
@@ -523,6 +677,7 @@ def parse_response(
             "question_id": qid,
             "status": status,
             "topic_slug": slug,
+            "difficulty": difficulty,
             "confidence": conf,
             "rationale": rationale,
             "reason": reason.strip(),
@@ -556,9 +711,11 @@ def propose(
     *,
     client: Callable[[str], str],
     batch_size: int,
+    any_body: bool = False,
 ) -> list[dict]:
     """Run the proposer over every question, one batch at a time."""
-    candidates = {q["id"]: build_candidates(q, catalogue) for q in questions}
+    candidates = {q["id"]: build_candidates(q, catalogue, any_body=any_body)
+                  for q in questions}
     out: list[dict] = []
     for batch in batched(questions, batch_size):
         response = client(build_prompt(batch, candidates))
@@ -941,6 +1098,142 @@ def write_sql(proposals: Sequence[dict], catalogue: Sequence[dict], path: str) -
     return sum(1 for p in proposals if p["status"] == STATUS_MAPPED)
 
 
+# ── 4. worksheet emitter ─────────────────────────────────────────────────────
+
+
+def _preview(text: str, width: int = 140) -> str:
+    return re.sub(r"\s+", " ", (text or "")).strip()[:width]
+
+
+def worksheet_rows(questions: Sequence[dict], proposals: Sequence[dict],
+                   topic_ids: dict[str, str]) -> list[dict]:
+    """One review worksheet row per question, with the proposal PRE-FILLED.
+
+    The file is a ``pyq_question_review.py`` worksheet — same columns, same
+    order — so the existing apply path consumes it with no new code and no new
+    write route. What differs is what is already in the cells, and two rules
+    govern that:
+
+    ``decision`` IS ALWAYS BLANK. A proposal is not a verdict. Run apply with
+    ``--require-decision`` and a row nobody has typed a decision into is
+    skipped whatever else it carries, which is what keeps a model's output out
+    of the corpus.
+
+    ``assign_topic_id`` IS BLANK UNLESS THE TAG WOULD CHANGE.
+    ``uq_pyq_question_one_primary_tag`` permits one primary tag per question
+    and the CMS create route cannot replace one, so re-asserting a tag a
+    question already carries can only produce a 409. Three cases:
+
+      no existing tag           -> the resolved microtopic id is written.
+      existing tag == proposal  -> BLANK, flagged ``tag_unchanged``.
+      existing tag != proposal  -> BLANK, flagged ``tag_conflict``. Replacing a
+                                   primary tag is a delete-then-create an
+                                   operator authorises; a worksheet cell cannot
+                                   express it and must not imply it.
+
+    An UNMAPPED proposal also leaves the cell blank — there is nothing to
+    write — and is flagged, so the row still reaches a human.
+
+    ``difficulty`` carries the proposal on every row. It is independent of the
+    tag: a question whose tag is unchanged or conflicting still gets a graded
+    difficulty, which is the whole of what apply will write for it.
+    """
+    by_id = {p["question_id"]: p for p in proposals}
+    rows: list[dict] = []
+    for q in questions:
+        prop = by_id.get(q["id"])
+        if prop is None:
+            # propose() covers every question or raises, so this is a caller
+            # passing mismatched lists. Named rather than silently dropped —
+            # a worksheet missing questions is indistinguishable from a paper
+            # that was short.
+            raise ProposerError(
+                f"no proposal for question {q['id']} — the questions and "
+                f"proposals do not describe the same run"
+            )
+        current = q.get("current_primary_topic_id") or ""
+        proposed_id = topic_ids.get(prop["topic_slug"], "") if prop["topic_slug"] else ""
+
+        flags: list[str] = []
+        assign = ""
+        if prop["status"] == STATUS_UNMAPPED:
+            flags.append("unmapped")
+        elif not current:
+            assign = proposed_id
+        elif current == proposed_id:
+            flags.append("tag_unchanged")
+        else:
+            flags.append("tag_conflict")
+        if prop["candidate_count"] == 0:
+            flags.append("no_candidates")
+        if prop["status"] == STATUS_MAPPED and prop["confidence"] < 0.5:
+            flags.append("low_confidence")
+
+        rows.append({
+            "row_type": QUESTION_ROW,
+            "row_id": q["id"],
+            "paper_year": q.get("paper_year", ""),
+            "question_number_or_topic_id": q.get("question_number") or "",
+            "text_preview": _preview(q["question_text"]),
+            "flags": ";".join(flags),
+            "sample_reason": "",
+            "decision": "",
+            "notes": "",
+            "assign_topic_id": assign,
+            "difficulty": prop["difficulty"],
+            "stimulus_preview": "",
+            "paper_id": q.get("paper_id", ""),
+            "section": q.get("section", ""),
+            "current_primary_topic_id": current,
+            "proposal_status": prop["status"],
+            "proposal_confidence": prop["confidence"],
+            "proposal_rationale": prop["rationale"],
+            "proposal_reason": prop["reason"],
+            "proposal_candidate_count": prop["candidate_count"],
+        })
+    return rows
+
+
+def _slug(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "")).strip("-")
+    return cleaned[:64] or "unassigned"
+
+
+def write_worksheets(rows: Sequence[dict], out_dir: str) -> dict[str, int]:
+    """One CSV per paper. Returns {path: row count}.
+
+    Per PAPER, not per year: SSC CGL 2024 Tier I is thirteen papers sharing one
+    year, and a single 850-row sheet is neither reviewable in one sitting nor
+    reportable per paper afterwards.
+    """
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(str(r.get("paper_id") or ""), []).append(r)
+    base = pathlib.Path(out_dir)
+    base.mkdir(parents=True, exist_ok=True)
+    fields = WORKSHEET_FIELDS + PROPOSAL_FIELDS
+    written: dict[str, int] = {}
+    for paper_id, group in sorted(groups.items()):
+        path = base / f"worksheet-{_slug(paper_id)}.csv"
+        with path.open("w", newline="", encoding="utf-8-sig") as fh:
+            w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+            w.writeheader()
+            w.writerows(group)
+        written[str(path)] = len(group)
+    return written
+
+
+def load_options_export(path: str) -> dict[str, list[dict]]:
+    """``question_id -> option rows`` from an ``options_export.json``."""
+    rows = _read_rows(path)
+    by_q: dict[str, list[dict]] = {}
+    for _where, o in rows:
+        qid = o.get("question_id")
+        if qid:
+            by_q.setdefault(str(qid), []).append(o)
+    return by_q
+
+
 # ── cli ──────────────────────────────────────────────────────────────────────
 
 
@@ -948,7 +1241,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--questions", required=True, help="Exported questions JSONL")
+    ap.add_argument("--questions", required=True,
+                    help="Exported questions. JSONL, or the JSON LIST that "
+                         "`pyq_question_review.py export` writes — both are "
+                         "accepted and told apart by the first character.")
     ap.add_argument("--catalogue", required=True, help="Exported topic catalogue JSONL")
     ap.add_argument("--alias-map", required=True,
                     help="JSON object: printed subject -> catalogue subject slug")
@@ -970,6 +1266,30 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"Retries per batch on rate limits and transient errors "
                          f"(default {DEFAULT_MAX_RETRIES}). A batch still failing "
                          f"after these aborts the run.")
+    ap.add_argument("--body", action="append", default=None,
+                    help=f"Body key a question may declare; repeatable. "
+                         f"Default: {'/'.join(KNOWN_BODIES)}.")
+    ap.add_argument("--any-body", action="store_true",
+                    help="Drop the body filter entirely. REQUIRED for a "
+                         "body-agnostic catalogue — the shared SSC / RBI "
+                         "Phase I / CSAT subjects carry no topics.metadata."
+                         "exams key, so filtering by body would empty every "
+                         "candidate set and record the whole corpus UNMAPPED.")
+    ap.add_argument("--subject-field", default="subject",
+                    help="Key the printed subject is read from (default "
+                         "'subject'; use 'section' for an export written by "
+                         "pyq_question_review.py). The alias map still resolves "
+                         "it — nothing is matched by string equality.")
+    ap.add_argument("--options-export", default=None,
+                    help="options_export.json, for a questions file that "
+                         "carries no options of its own. Options already on a "
+                         "question row win.")
+    ap.add_argument("--out-worksheet-dir", default=None,
+                    help="Write one review worksheet per paper here, with the "
+                         "tag and difficulty proposals PRE-FILLED and 'decision' "
+                         "blank. Apply it with `pyq_question_review.py apply "
+                         "--require-decision`, which skips every row a human "
+                         "has not signed.")
     ap.add_argument("--report", action="store_true", help="Parse summary to stderr")
     args = ap.parse_args(argv)
 
@@ -989,7 +1309,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         alias_map = load_alias_map(args.alias_map)
         catalogue = load_catalogue(args.catalogue)
-        questions = load_questions(args.questions, alias_map)
+        options_by_question = (load_options_export(args.options_export)
+                               if args.options_export else None)
+        questions = load_questions(
+            args.questions, alias_map,
+            bodies=args.body or KNOWN_BODIES,
+            any_body=args.any_body,
+            subject_field=args.subject_field,
+            options_by_question=options_by_question,
+        )
         if args.dry_run:
             client = fixture_client(args.fixture)
         elif args.live:
@@ -999,10 +1327,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             client = no_client
         proposals = propose(
-            questions, catalogue, client=client, batch_size=args.batch_size
+            questions, catalogue, client=client, batch_size=args.batch_size,
+            any_body=args.any_body,
         )
         written = write_jsonl(proposals, args.out_jsonl)
         rows = write_sql(proposals, catalogue, args.out_sql)
+        sheets: dict[str, int] = {}
+        if args.out_worksheet_dir:
+            sheets = write_worksheets(
+                worksheet_rows(questions, proposals,
+                               resolve_topic_ids(proposals, catalogue)),
+                args.out_worksheet_dir)
     except ProposerError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -1024,6 +1359,11 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"wrote {written} proposal(s) to {args.out_jsonl} and {rows} upsert(s) "
           f"to {args.out_sql}", file=sys.stderr)
+    for path, n in sorted(sheets.items()):
+        print(f"  {n:>4} worksheet row(s) -> {path}", file=sys.stderr)
+    if sheets:
+        print("  worksheets carry BLANK decisions. Apply with "
+              "`pyq_question_review.py apply --require-decision`.", file=sys.stderr)
     return 0
 
 
