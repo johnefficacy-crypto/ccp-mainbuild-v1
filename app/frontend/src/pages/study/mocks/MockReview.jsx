@@ -212,6 +212,11 @@ export default function MockReview() {
               numeric_tolerance: current.question_snapshot?.numeric_answer?.tolerance ?? null,
               // Live verified-only Solution Strategy list (GQR-S1); missing → [].
               solution_strategies: current.solution_strategies ?? [],
+              // Live verified-only structured explanation (EXPL-READ-01); a
+              // sibling of question_snapshot, never merged into it. Null when the
+              // question has no verified explanation, which is every question
+              // until one is verified — the panel renders nothing for those.
+              pyq_explanation: current.pyq_explanation ?? null,
             }}
           />
         </div>

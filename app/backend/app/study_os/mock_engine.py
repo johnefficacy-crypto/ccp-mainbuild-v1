@@ -17,6 +17,7 @@ from typing import Any
 
 from app.study_os.attempt_events import record_server_event
 from app.study_os.solution_strategies import strategies_for_questions, strategies_for_stimuli
+from app.study_os.pyq_explanations import explanations_for_pyq_questions
 from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
     ATTEMPT_AUTO_SUBMITTED,
@@ -1470,6 +1471,33 @@ def get_analytics(supabase: Any, user_id: str, attempt_id: str) -> dict:
     }
 
 
+def _explanation_for_snapshot(explanation: dict | None, snap: dict) -> dict | None:
+    """Fit a verified explanation DTO to one frozen question snapshot.
+
+    ``option_rationales`` carries an ``option_index`` recomputed from the PYQ
+    options verified NOW, while the snapshot froze the option list that held at
+    projection time. If an option's verification changed in between the two can
+    disagree, so any rationale whose index is not present among the frozen
+    options is dropped here rather than rendered against the wrong option.
+    Rationales that never resolved (``option_index=None``) are dropped for the
+    same reason: with no index there is no option to attach them to.
+    """
+    if not explanation:
+        return None
+    frozen_indexes = {
+        o.get("option_index")
+        for o in (snap.get("options") or [])
+        if isinstance(o, dict) and o.get("option_index") is not None
+    }
+    return {
+        **explanation,
+        "option_rationales": [
+            r for r in explanation.get("option_rationales") or []
+            if r.get("option_index") in frozen_indexes
+        ],
+    }
+
+
 def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
     attempt = _fetch_attempt(supabase, user_id, attempt_id)
     if attempt.get("status") != "submitted":
@@ -1499,6 +1527,21 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
     # subsequent review reads. Fail-soft inside strategies_for_questions: a source
     # error yields [] and never breaks the review response.
     strategies = strategies_for_questions(supabase, ordered_ids)
+
+    # Verified-only structured PYQ explanations (EXPL-READ-01), read ONCE for the
+    # whole attempt on the same terms as the strategies above: a LIVE read, NOT
+    # frozen into question_snapshot, so an explanation later unverified disappears
+    # from subsequent review reads and a newly verified one reaches attempts
+    # already taken. Keyed on pyq_questions.id, so bank ids are mapped through the
+    # snapshot's frozen pyq_question_id; authored questions carry none and are
+    # simply absent. Fail-soft inside explanations_for_pyq_questions.
+    pyq_id_by_qid = {
+        qid: (by_qid[qid].get("question_snapshot") or {}).get("pyq_question_id")
+        for qid in ordered_ids
+    }
+    explanations_by_pyq_id = explanations_for_pyq_questions(
+        supabase, [pid for pid in pyq_id_by_qid.values() if pid]
+    )
 
     # Set-aware strategies are keyed by canonical pyq_stimuli.id retained in each
     # frozen question snapshot. Keep one payload entry per shared stimulus instead
@@ -1550,6 +1593,12 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "explanation": snap.get("explanation"),
             # Sibling of question_snapshot (never merged into it — it's a live read).
             "solution_strategies": strategies.get(qid, []),
+            # Same contract: a live, verified-only sibling. None when the question
+            # is authored, has no PYQ lineage, or has no verified explanation —
+            # in which case nothing about this row changes from before.
+            "pyq_explanation": _explanation_for_snapshot(
+                explanations_by_pyq_id.get(pyq_id_by_qid.get(qid)), snap
+            ),
             "time_spent_sec": int(r.get("time_spent_sec") or 0),
         })
     strategy_groups = [

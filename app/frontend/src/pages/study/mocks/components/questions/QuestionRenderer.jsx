@@ -7,6 +7,7 @@ import MatchFollowing from "./types/MatchFollowing";
 import NumericalAnswer from "./types/NumericalAnswer";
 import QuestionStimuli from "./shared/QuestionStimuli";
 import SolutionStrategyPanel from "./shared/SolutionStrategyPanel";
+import PyqExplanationPanel from "./shared/PyqExplanationPanel";
 
 // Keys cover both the frontend renderer vocabulary (mcq_single, …) and the
 // backend question_type enum values (mcq, integer). An unknown type falls back
@@ -21,6 +22,16 @@ export default function QuestionRenderer(props) {
     <>
       <QuestionStimuli stimuli={props.question?.stimuli} />
       <C {...props} />
+      {/* Structured PYQ explanation renders once here for every question type
+          (review-only, null when there is no verified explanation), so no
+          per-type renderer needs to know about it — including the four types
+          that never rendered the flat `explanation` at all. It takes `options`
+          so each option rationale can be printed against its own option label. */}
+      <PyqExplanationPanel
+        mode={props.mode}
+        explanation={props.question?.pyq_explanation}
+        options={props.question?.options}
+      />
       {/* Solution Strategy renders once here for every question type (review-only,
           null when empty), so no per-type renderer needs to know about it. */}
       <SolutionStrategyPanel mode={props.mode} strategies={props.question?.solution_strategies} />
