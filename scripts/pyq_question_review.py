@@ -1000,8 +1000,29 @@ def load_topic_catalog(path: str) -> tuple[set[str], set[str], dict[str, str]]:
 
 # ─── catalog (build the --topic-catalog file) ─────────────────────────────
 def catalog_rows(topics: Iterable[dict], bodies: Iterable[str],
-                 any_body: bool = False) -> list[dict]:
+                 any_body: bool = False,
+                 subject_slugs: dict[str, str] | None = None) -> list[dict]:
     """Narrow taxonomy rows to the catalogue this tool will accept.
+
+    THE ROW SHAPE IS THE PROPOSER'S CONTRACT. This used to emit
+    ``{id, text, slug, subject_id, level, exams}``, which
+    ``propose_pyq_topic_tags.py`` cannot read: it wants ``name``, a subject
+    SLUG and ``metadata.exams``. Chained as the SSC runbook prints them, the
+    subject never resolved, every candidate set was empty and 850 questions
+    recorded UNMAPPED with nothing raised. Fixed HERE rather than only in the
+    reader, because the file is the interface between the two steps and there
+    is exactly one writer of it; a reader-side translation would leave the next
+    consumer to rediscover the same mismatch.
+
+    ``text``, ``subject_id`` and top-level ``exams`` are still written
+    alongside the new keys. They cost bytes and keep every existing reader —
+    ``load_topic_catalog`` reads ``text`` or ``name``, the committed
+    ``workbench/catalogs/*.json`` dumps are indexed by ``text`` — working
+    unchanged.
+
+    ``subject_slugs`` maps subject_id -> slug. Absent, the rows carry no
+    ``subject`` and the proposer reports the uuid by name instead of silently
+    emptying its candidate sets.
 
     Conjunctive, and both halves matter:
 
@@ -1048,15 +1069,25 @@ def catalog_rows(topics: Iterable[dict], bodies: Iterable[str],
             matched = sorted(listed & wanted)
             if not matched:
                 continue
-        out.append({
+        label = t.get("name") or t.get("slug") or t.get("id")
+        subject_id = t.get("subject_id")
+        row = {
             "id": t.get("id"),
-            "text": t.get("name") or t.get("slug") or t.get("id"),
+            # The proposer's contract.
+            "name": label,
             "slug": t.get("slug"),
-            "subject_id": t.get("subject_id"),
             "level": MICROTOPIC_LEVEL,
+            "metadata": {"exams": matched},
+            # Kept for every existing reader of this file.
+            "text": label,
+            "subject_id": subject_id,
             "exams": matched,
-        })
-    out.sort(key=lambda r: (str(r.get("subject_id") or ""), str(r.get("text") or ""),
+        }
+        slug = (subject_slugs or {}).get(str(subject_id or ""))
+        if slug:
+            row["subject"] = slug
+        out.append(row)
+    out.sort(key=lambda r: (str(r.get("subject_id") or ""), str(r.get("name") or ""),
                             str(r.get("id") or "")))
     return out
 
@@ -1096,7 +1127,26 @@ def do_catalog(c: Client, args: argparse.Namespace) -> int:
     else:
         topics.extend(c.all_items(f"{CMS}/topics", params))
 
-    rows = catalog_rows(topics, bodies, any_body=args.any_body)
+    # THE SUBJECT SLUG. `GET {CMS}/topics` returns `subject_id` and no slug;
+    # `GET {CMS}/subjects` returns both. One extra read turns a uuid the
+    # proposer cannot match into the slug it resolves questions by.
+    subject_slugs: dict[str, str] = {}
+    for sub in c.all_items(f"{CMS}/subjects", {}):
+        sid, slug = str(sub.get("id") or ""), sub.get("slug")
+        if sid and slug:
+            subject_slugs[sid] = slug
+
+    rows = catalog_rows(topics, bodies, any_body=args.any_body,
+                        subject_slugs=subject_slugs)
+    unnamed = sorted({str(r.get("subject_id") or "") for r in rows
+                      if not r.get("subject")})
+    if unnamed:
+        # Not fatal: the file is still a valid topic catalogue for `apply`.
+        # But the proposer cannot resolve a uuid, so say it here rather than
+        # letting it surface as an empty candidate set later.
+        print(f"warning: no subject slug found for {len(unnamed)} subject id(s) "
+              f"{unnamed} — propose_pyq_topic_tags.py will refuse those rows "
+              "until the slug is in --alias-map", file=sys.stderr)
     by_body: dict[str, int] = {}
     for r in rows:
         for b in r["exams"]:
@@ -1121,7 +1171,9 @@ def do_catalog(c: Client, args: argparse.Namespace) -> int:
 
     if not args.apply:
         for r in rows[:10]:
-            print(f"  {r['id']}  {r['text'][:70]}  exams={r['exams']}")
+            print(f"  {r['id']}  {r['name'][:70]}  "
+                  f"subject={r.get('subject') or r.get('subject_id')}  "
+                  f"exams={r['exams']}")
         if len(rows) > 10:
             print(f"  ... and {len(rows) - 10} more")
         print("\nDRY RUN — nothing written. Re-run with --apply to write the file.")
