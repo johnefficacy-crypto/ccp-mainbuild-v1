@@ -648,7 +648,7 @@ def test_dry_run_validates_and_reports_the_new_fields_without_writing(tmp_path, 
     assert fake.calls == []
     out = capsys.readouterr().out
     assert "DRY RUN" in out
-    assert "assign_topic_id" in out and "difficulty:hard" in out and "verified" in out
+    assert "tag:create" in out and "difficulty:hard" in out and "verified" in out
 
 
 # ─── export helpers (pure) ───────────────────────────────────────────────────
@@ -1192,12 +1192,20 @@ def test_worksheet_without_options_does_not_flag_a_broken_mcq():
     assert "no_option_marked_correct" not in q["flags"]
 
 
-def test_new_column_is_appended_so_older_worksheets_still_read():
-    assert mod.WORKSHEET_FIELDS[-1] == "stimulus_preview"
-    assert mod.WORKSHEET_FIELDS[:11] == [
+def test_new_columns_are_appended_so_older_worksheets_still_read():
+    """Every column an older worksheet carried keeps its position.
+
+    ``apply`` reads by header name, so a worksheet written before a column
+    existed must still read back: the check is that nothing was inserted or
+    reordered ahead of the columns that were already there, and that each new
+    one was APPENDED after them.
+    """
+    assert mod.WORKSHEET_FIELDS[:12] == [
         "row_type", "row_id", "paper_year", "question_number_or_topic_id",
         "text_preview", "flags", "sample_reason", "decision", "notes",
-        "assign_topic_id", "difficulty"]
+        "assign_topic_id", "difficulty", "stimulus_preview"]
+    assert mod.WORKSHEET_FIELDS[12:] == [
+        "paper_id", "section", "current_primary_topic_id"]
 
 
 # ─── export fetch shapes ─────────────────────────────────────────────────────
@@ -1354,3 +1362,430 @@ def test_export_makes_no_write_calls(tmp_path):
     c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
     mod.do_export(c, _export_args(tmp_path, apply=True))
     assert not hasattr(c, "patch") and not hasattr(c, "post")
+
+# ─── pagination: never treat a short page as the last page ───────────────────
+class PagingStub:
+    """A ``Client`` with only ``get`` — enough to exercise ``all_items``.
+
+    Built with ``__new__`` so no ``requests`` session is created: the walk is
+    pure control flow over whatever ``get`` returns.
+    """
+
+    def __init__(self, rows, server_cap, *, total=None, repeat_forever=False):
+        self.rows = rows
+        self.server_cap = server_cap
+        self.total = total
+        self.repeat_forever = repeat_forever
+        self.requests = []
+
+    def get(self, path, params=None):
+        params = params or {}
+        limit = params["limit"]
+        offset = params["offset"]
+        self.requests.append((limit, offset))
+        # The server ignores the caller's limit above its own ceiling — which
+        # is exactly the condition a short-page termination rule misreads.
+        served = min(limit, self.server_cap)
+        if self.repeat_forever:
+            window = self.rows[:served]
+        else:
+            window = self.rows[offset:offset + served]
+        body = {"items": window}
+        if self.total is not None:
+            body["total"] = self.total
+        return body
+
+
+def _walk(stub, page=200, path="/x"):
+    return mod.Client.all_items(stub, path, {}, page=page)
+
+
+def test_a_short_page_is_not_the_end_when_the_server_caps_below_the_limit():
+    """The bug app/common/pagination.py exists to name: ask for 200, get the
+    server's 50, and a short-page rule calls 50 the whole corpus."""
+    rows = [{"id": f"q{i}"} for i in range(130)]
+    stub = PagingStub(rows, server_cap=50)
+    assert [r["id"] for r in _walk(stub, page=200)] == [r["id"] for r in rows]
+
+
+def test_the_walk_terminates_at_the_real_end_of_the_data():
+    rows = [{"id": f"q{i}"} for i in range(30)]
+    stub = PagingStub(rows, server_cap=50)
+    assert len(_walk(stub, page=50)) == 30
+
+
+def test_an_exact_total_saves_the_extra_request_but_is_not_the_rule():
+    """The server's own count ends the walk the moment every row has arrived —
+    an optimisation. Without it the walk costs one more request and returns
+    exactly the same rows."""
+    rows = [{"id": f"q{i}"} for i in range(100)]
+    with_total = PagingStub(rows, server_cap=50, total=100)
+    without = PagingStub(rows, server_cap=50)
+    assert _walk(with_total, page=50) == _walk(without, page=50)
+    assert len(with_total.requests) < len(without.requests)
+
+
+def test_repeated_rows_across_pages_are_deduplicated_on_id():
+    """A range page over a non-total order can repeat rows. Dedupe on id is
+    what makes the content rule terminate instead of looping."""
+    rows = [{"id": "q1"}, {"id": "q2"}]
+    stub = PagingStub(rows, server_cap=2, repeat_forever=True)
+    assert [r["id"] for r in _walk(stub, page=2)] == ["q1", "q2"]
+    # It stopped on content, not on a page ceiling.
+    assert len(stub.requests) == 2
+
+
+def test_a_backend_that_never_advances_raises_rather_than_returning_a_prefix():
+    """A prefix presented as the data is worse than an error: every caller can
+    recognise a failure and none can recognise a silently short read."""
+    rows = [{"id": f"q{i}"} for i in range(5)]
+
+    class NeverNew(PagingStub):
+        def get(self, path, params=None):
+            self.requests.append(None)
+            # Always a FULL page of brand-new ids — the walk can never
+            # terminate on content.
+            n = len(self.requests)
+            return {"items": [{"id": f"new{n}-{i}"} for i in range(params["limit"])]}
+
+    stub = NeverNew(rows, server_cap=2)
+    with pytest.raises(RuntimeError, match=r"did not terminate within"):
+        _walk(stub, page=2)
+
+
+def test_option_pages_use_the_routes_own_cap():
+    """/pyq-options is le=50. Paging it at 200 would 422 before any
+    termination rule mattered."""
+    rows = [{"id": f"o{i}"} for i in range(120)]
+    stub = PagingStub(rows, server_cap=50)
+    assert len(_walk(stub, page=mod._OPTIONS_PAGE)) == 120
+    assert all(limit == 50 for limit, _offset in stub.requests)
+
+
+# ─── apply: --require-decision ───────────────────────────────────────────────
+def test_require_decision_skips_a_prefilled_row_with_no_verdict(tmp_path):
+    """A proposal worksheet arrives with a tag and a difficulty in every row.
+    Without this flag, applying it would write a model's output into the corpus
+    with nobody having reviewed a single row."""
+    rows = [
+        _row(row_type="question", row_id="q1", paper_id="p1",
+             assign_topic_id="TID", difficulty="hard"),            # no decision
+        _row(row_type="question", row_id="q2", paper_id="p1",
+             assign_topic_id="TID2", difficulty="easy", decision="verified"),
+    ]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True,
+                       **{"require-decision": True})
+    assert mod.do_apply(fake, args) == 0
+    touched = {c["path"] for c in fake.calls}
+    assert all("/q1" not in p for p in touched)
+    assert any("/q2" in p for p in touched)
+
+
+def test_without_the_flag_a_tag_only_row_still_applies(tmp_path):
+    """The difficulty-only sheets the regulatory exams use carry no decision at
+    all. The flag is opt-in precisely so they keep working."""
+    rows = [_row(row_type="question", row_id="q1", paper_id="p1", difficulty="hard")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert len(fake.calls) == 1
+
+
+# ─── apply: existing primary tags never reach the network ────────────────────
+def test_an_unchanged_tag_is_not_posted(tmp_path):
+    """Re-asserting the tag a question already carries can only 409. The
+    worksheet convention blanks the cell; a sheet that carries it anyway must
+    be idempotent rather than noisy."""
+    rows = [_row(row_type="question", row_id="q1", paper_id="p1",
+                 assign_topic_id="TID", current_primary_topic_id="TID",
+                 decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert [c["method"] for c in fake.calls] == ["PATCH"]  # the decision only
+    assert not any(c["method"] == "POST" for c in fake.calls)
+
+
+def test_a_conflicting_tag_is_skipped_offline_and_the_decision_still_lands(tmp_path):
+    """uq_pyq_question_one_primary_tag permits one primary tag and the create
+    route cannot replace. Firing the POST would report a knowable 409 as a
+    failure AND suppress the row's decision."""
+    rows = [_row(row_type="question", row_id="q1", paper_id="p1",
+                 assign_topic_id="TID2", current_primary_topic_id="TID",
+                 decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    assert not any(c["method"] == "POST" for c in fake.calls)
+    assert any("/q1/review" in c["path"] for c in fake.calls)
+
+
+def test_a_new_tag_on_an_untagged_question_is_posted(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_id="p1",
+                 assign_topic_id="TID")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 0
+    [post] = [c for c in fake.calls if c["method"] == "POST"]
+    assert post["body"]["payload"]["topic_id"] == "TID"
+
+
+@pytest.mark.parametrize("current,wanted,expected", [
+    ("", "TID", "create"),
+    ("TID", "TID", "unchanged"),
+    ("TID", "TID2", "conflict"),
+    ("TID", "", "none"),
+])
+def test_tag_action_decides_offline(current, wanted, expected):
+    row = _row(assign_topic_id=wanted, current_primary_topic_id=current)
+    assert mod.tag_action(row)[0] == expected
+
+
+# ─── apply: per-paper batching and the written-back worksheet ────────────────
+def test_batches_are_keyed_on_paper_not_year(tmp_path, capsys):
+    """Thirteen papers in one year collapse into one indistinguishable batch
+    under paper_year."""
+    rows = [
+        _row(row_type="question", row_id="q1", paper_id="pA", paper_year="2024",
+             decision="verified"),
+        _row(row_type="question", row_id="q2", paper_id="pB", paper_year="2024",
+             decision="rejected"),
+    ]
+    ws = _write_worksheet(tmp_path, rows)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(FakeClient(), args) == 0
+    out = capsys.readouterr().out
+    assert "paper pA: verified=1" in out
+    assert "paper pB:" in out and "rejected=1" in out
+
+
+def test_a_worksheet_without_paper_id_still_batches_by_year(tmp_path, capsys):
+    rows = [_row(row_type="question", row_id="q1", paper_year="2020",
+                 decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(FakeClient(), args) == 0
+    assert "paper 2020:" in capsys.readouterr().out
+
+
+def test_applied_out_records_what_happened_to_every_row(tmp_path):
+    """reviewer_notes are dropped server-side, so the worksheet is the only
+    audit trail — and one with no record of the run is half of one."""
+    rows = [
+        _row(row_type="question", row_id="q1", paper_id="p1", decision="verified"),
+        _row(row_type="question", row_id="q2", paper_id="p1"),  # blank
+        _row(row_type="question", row_id="q3", paper_id="p1",
+             assign_topic_id="TID2", current_primary_topic_id="TID"),
+    ]
+    ws = _write_worksheet(tmp_path, rows)
+    out = tmp_path / "applied" / "worksheet.applied.csv"
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    args.applied_out = str(out)
+    assert mod.do_apply(FakeClient(), args) == 0
+
+    with out.open(encoding="utf-8-sig") as fh:
+        got = {r["row_id"]: r for r in csv.DictReader(fh)}
+    assert got["q1"]["apply_result"] == "verified"
+    assert got["q2"]["apply_result"] == "skipped"
+    assert got["q3"]["apply_result"] == "tag_conflict"
+    assert "TID" in got["q3"]["apply_detail"]
+    # Every original column survives, so the file re-reads as a worksheet.
+    assert set(mod.WORKSHEET_FIELDS).issubset(got["q1"].keys())
+
+
+def test_dry_run_writes_no_applied_worksheet(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", paper_id="p1", decision="verified")]
+    ws = _write_worksheet(tmp_path, rows)
+    out = tmp_path / "applied.csv"
+    args = _apply_args(ws, _catalog(tmp_path))  # dry run
+    args.applied_out = str(out)
+    fake = FakeClient()
+    assert mod.do_apply(fake, args) == 0
+    assert fake.calls == []
+    assert not out.exists()
+
+
+# ─── sweep: per-paper worksheets and the new read-only columns ───────────────
+def _sweep_questions():
+    return [
+        {"id": "q1", "paper_id": "pA", "year": 2024, "question_number": 1,
+         "section": "Quantitative Aptitude",
+         "question_text": "A properly long and valid question stem here?"},
+        {"id": "q2", "paper_id": "pB", "year": 2024, "question_number": 1,
+         "section": "English Comprehension",
+         "question_text": "Another properly long and valid question stem?"},
+    ]
+
+
+def test_worksheet_rows_carry_paper_section_and_the_existing_primary_tag():
+    tags = [{"id": "t1", "question_id": "q1", "topic_id": "TID",
+             "tag_role": "primary"}]
+    rows = mod.build_worksheet(_sweep_questions(), tags, {"TID"}, set(),
+                               {"TID": "Topic"}, set())
+    q1 = [r for r in rows if r["row_id"] == "q1"][0]
+    q2 = [r for r in rows if r["row_id"] == "q2"][0]
+    assert q1["paper_id"] == "pA" and q1["section"] == "Quantitative Aptitude"
+    assert q1["current_primary_topic_id"] == "TID"
+    assert q2["current_primary_topic_id"] == ""
+    assert "no_primary_tag" in q2["flags"]
+
+
+def test_a_tag_row_inherits_its_questions_paper_so_a_split_keeps_them_together():
+    tags = [{"id": "t1", "question_id": "q1", "topic_id": "TID",
+             "tag_role": "primary"}]
+    rows = mod.build_worksheet(_sweep_questions(), tags, {"TID"}, set(),
+                               {"TID": "Topic"}, set())
+    t1 = [r for r in rows if r["row_type"] == "tag"][0]
+    assert t1["paper_id"] == "pA"
+    # assign_topic_id / difficulty / current_primary_topic_id are question-only.
+    assert t1["current_primary_topic_id"] == ""
+
+
+def test_split_by_paper_groups_every_row(tmp_path):
+    rows = mod.build_worksheet(_sweep_questions(), [], set(), set(), {}, set())
+    groups = mod.split_by_paper(rows)
+    assert sorted(groups) == ["pA", "pB"]
+    assert sum(len(v) for v in groups.values()) == len(rows)
+
+
+def test_rows_with_no_paper_id_are_kept_under_one_group():
+    rows = [_row(row_type="question", row_id="q1")]
+    assert list(mod.split_by_paper(rows)) == [""]
+
+
+def test_sweep_writes_one_worksheet_per_paper_in_addition_to_the_combined_one(tmp_path):
+    q_path = tmp_path / "q.json"
+    t_path = tmp_path / "t.json"
+    q_path.write_text(json.dumps(_sweep_questions()), encoding="utf-8")
+    t_path.write_text(json.dumps([]), encoding="utf-8")
+    combined = tmp_path / "worksheet.csv"
+    per_paper = tmp_path / "per_paper"
+
+    args = mod.build_parser().parse_args([
+        "sweep", "--questions", str(q_path), "--tags", str(t_path),
+        "--topic-catalog", str(_catalog(tmp_path)),
+        "--out", str(combined), "--per-paper-dir", str(per_paper), "--apply"])
+    assert mod.do_sweep(args) == 0
+    assert combined.exists()
+    written = sorted(p.name for p in per_paper.glob("*.csv"))
+    assert written == ["worksheet-pA.csv", "worksheet-pB.csv"]
+    with (per_paper / "worksheet-pA.csv").open(encoding="utf-8-sig") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [r["row_id"] for r in rows] == ["q1"]
+
+
+def test_sweep_dry_run_writes_no_per_paper_files(tmp_path):
+    q_path = tmp_path / "q.json"
+    t_path = tmp_path / "t.json"
+    q_path.write_text(json.dumps(_sweep_questions()), encoding="utf-8")
+    t_path.write_text(json.dumps([]), encoding="utf-8")
+    per_paper = tmp_path / "per_paper"
+    args = mod.build_parser().parse_args([
+        "sweep", "--questions", str(q_path), "--tags", str(t_path),
+        "--topic-catalog", str(_catalog(tmp_path)),
+        "--out", str(tmp_path / "w.csv"), "--per-paper-dir", str(per_paper)])
+    assert mod.do_sweep(args) == 0
+    assert not per_paper.exists()
+
+
+# ─── the catalogue gate is the only thing standing between a topic-level id
+#     and mock_question_bank ────────────────────────────────────────────────
+def test_a_topic_level_row_in_the_catalogue_file_aborts_the_load(tmp_path):
+    p = tmp_path / "cat.json"
+    p.write_text(json.dumps([
+        {"id": "T1", "text": "Arithmetic", "level": "topic"},
+        {"id": "M1", "text": "Percentage", "level": "microtopic"}]),
+        encoding="utf-8")
+    with pytest.raises(ValueError, match=r"non-microtopic row"):
+        mod.load_topic_catalog(str(p))
+
+
+def test_a_topic_level_id_typed_into_a_worksheet_is_rejected_as_unknown(tmp_path):
+    """`catalog` emits leaves only, so a parent id is simply not in the file —
+    and an id that is not in the file aborts the run before any network call."""
+    errors = mod._validate_worksheet(
+        [_row(row_type="question", row_id="q1", assign_topic_id="T1")],
+        {"M1"})
+    assert len(errors) == 1
+    assert "not in the topic catalog" in errors[0]
+
+
+def test_an_unknown_topic_id_aborts_before_the_first_call(tmp_path):
+    rows = [_row(row_type="question", row_id="q1", assign_topic_id="NOPE")]
+    ws = _write_worksheet(tmp_path, rows)
+    fake = FakeClient()
+    args = _apply_args(ws, _catalog(tmp_path), apply=True, confirm=True)
+    assert mod.do_apply(fake, args) == 2
+    assert fake.calls == []
+
+
+# ─── export: the paper rows the projection-readiness report reads ────────────
+def test_export_writes_the_paper_provenance_rows(tmp_path):
+    stim, links, opts = _export_fixture()
+    c = ExportClient(options_by_q=opts, stimuli=[stim], links=links)
+    assert mod.do_export(c, _export_args(tmp_path, apply=True)) == 0
+    papers = json.loads((tmp_path / "papers_export.json").read_text(encoding="utf-8"))
+    assert papers, "papers_export.json must not be empty for an in-scope export"
+    for row in papers:
+        for field in ("id", "source_type", "source_url", "source_document_id",
+                      "question_count"):
+            assert field in row
+
+
+# ─── catalog: body-agnostic subject sets ─────────────────────────────────────
+def _bare_topic(tid, subject, exams=None, level="microtopic", active=True):
+    row = {"id": tid, "name": f"Topic {tid}", "slug": tid, "level": level,
+           "subject_id": subject, "is_active": active}
+    if exams is not None:
+        row["metadata"] = {"exams": list(exams)}
+    return row
+
+
+def test_the_body_filter_rejects_every_row_of_a_body_agnostic_subject():
+    """The three SSC CGL subjects are shared with RBI Phase I, CSAT and the
+    regulators and carry no metadata.exams key at all."""
+    topics = [_bare_topic("m1", "quantitative-aptitude")]
+    assert mod.catalog_rows(topics, ["ssc"]) == []
+
+
+def test_any_body_keeps_rows_with_no_exams_key():
+    rows = mod.catalog_rows([_bare_topic("m1", "quantitative-aptitude")], [],
+                            any_body=True)
+    assert [r["id"] for r in rows] == ["m1"]
+    assert rows[0]["exams"] == []
+
+
+def test_any_body_still_emits_leaves_only():
+    topics = [_bare_topic("m1", "qa"), _bare_topic("t1", "qa", level="topic")]
+    assert [r["id"] for r in mod.catalog_rows(topics, [], any_body=True)] == ["m1"]
+
+
+def test_any_body_still_drops_inactive_rows():
+    topics = [_bare_topic("m1", "qa"), _bare_topic("m2", "qa", active=False)]
+    assert [r["id"] for r in mod.catalog_rows(topics, [], any_body=True)] == ["m1"]
+
+
+def test_no_body_and_no_any_body_is_still_an_error():
+    with pytest.raises(ValueError, match=r"at least one body key"):
+        mod.catalog_rows([_bare_topic("m1", "qa")], [])
+
+
+def test_any_body_without_a_subject_id_is_refused(tmp_path, capsys):
+    """Neither filter would emit every microtopic in the taxonomy as a legal
+    tag for every question — the opposite of what a catalogue is for."""
+    args = mod.build_parser().parse_args(
+        ["catalog", "--any-body", "--out", str(tmp_path / "c.json")])
+
+    class Unused:
+        def all_items(self, *a, **kw):  # pragma: no cover - must never run
+            raise AssertionError("no fetch should happen")
+
+    assert mod.do_catalog(Unused(), args) == 2
+    assert "--subject-id is required" in capsys.readouterr().err
+

@@ -13,6 +13,7 @@ rather than fail:
 """
 from __future__ import annotations
 
+import csv
 import importlib.util
 import json
 import pathlib
@@ -102,9 +103,11 @@ def _response(entries):
     return json.dumps({"proposals": entries})
 
 
-def _mapped(qid, slug, confidence=0.82, rationale="Stem names the instrument."):
+def _mapped(qid, slug, confidence=0.82, rationale="Stem names the instrument.",
+            difficulty="medium"):
     return {"question_id": qid, "status": "MAPPED", "topic_slug": slug,
-            "confidence": confidence, "rationale": rationale, "reason": None}
+            "confidence": confidence, "difficulty": difficulty,
+            "rationale": rationale, "reason": None}
 
 
 # ── 1. candidate builder ─────────────────────────────────────────────────────
@@ -184,7 +187,8 @@ def test_unmapped_response_parses_cleanly(tmp_path):
     cands = {questions[0]["id"]: mod.build_candidates(questions[0], catalogue)}
     text = _response([{
         "question_id": QID_1, "status": "UNMAPPED", "topic_slug": None,
-        "confidence": 0.71, "rationale": "No candidate covers treasury bills.",
+        "confidence": 0.71, "difficulty": "easy",
+        "rationale": "No candidate covers treasury bills.",
         "reason": "Candidates address equity markets only.",
     }])
 
@@ -200,6 +204,7 @@ def test_unmapped_without_a_reason_is_rejected(tmp_path):
     cands = {QID_1: mod.build_candidates(questions[0], catalogue)}
     text = _response([{"question_id": QID_1, "status": "UNMAPPED",
                        "topic_slug": None, "confidence": 0.5,
+                       "difficulty": "medium",
                        "rationale": "None fit.", "reason": ""}])
     with pytest.raises(mod.ProposerError, match=r"UNMAPPED requires a non-empty reason"):
         mod.parse_response(text, questions, cands)
@@ -331,9 +336,11 @@ def test_no_client_refuses_to_reach_the_network(tmp_path):
 # ── 3. writer ────────────────────────────────────────────────────────────────
 
 
-def _proposal(qid=QID_1, slug="money-market-instruments", confidence=0.82):
+def _proposal(qid=QID_1, slug="money-market-instruments", confidence=0.82,
+              difficulty="medium"):
     return {"question_id": qid, "status": "MAPPED", "topic_slug": slug,
-            "confidence": confidence, "rationale": "Stem names the instrument.",
+            "confidence": confidence, "difficulty": difficulty,
+            "rationale": "Stem names the instrument.",
             "reason": "", "subject": "economics", "body": "sebi",
             "candidate_count": 1}
 
@@ -421,7 +428,8 @@ def test_module_constants_cannot_be_flipped_to_verified():
 def test_unmapped_proposals_reach_the_jsonl_but_not_the_sql(tmp_path):
     catalogue = mod.load_catalogue(_write_jsonl(tmp_path / "c.jsonl", _catalogue()))
     unmapped = {"question_id": QID_2, "status": "UNMAPPED", "topic_slug": None,
-                "confidence": 0.6, "rationale": "Nothing matches.",
+                "confidence": 0.6, "difficulty": "hard",
+                "rationale": "Nothing matches.",
                 "reason": "Out of catalogue scope.", "subject": "economics",
                 "body": "sebi", "candidate_count": 1}
     jsonl = tmp_path / "o.jsonl"
@@ -462,7 +470,8 @@ def test_dry_run_produces_jsonl_and_sql_with_no_network_or_database(tmp_path):
         _response([_mapped(QID_1, "money-market-instruments", confidence=0.88)]),
         _response([{
             "question_id": QID_2, "status": "UNMAPPED", "topic_slug": None,
-            "confidence": 0.64, "rationale": "Board rules do not cover this.",
+            "confidence": 0.64, "difficulty": "medium",
+            "rationale": "Board rules do not cover this.",
             "reason": "No candidate addresses the stem.",
         }]),
     ])
@@ -821,3 +830,319 @@ def test_the_live_path_reuses_the_injection_seam(monkeypatch, tmp_path):
     proposals = mod.propose(questions, catalogue, client=client, batch_size=10)
     assert [p["status"] for p in proposals] == ["MAPPED"]
     assert proposals[0]["topic_slug"] == "money-market-instruments"
+
+# ── body-agnostic catalogues ─────────────────────────────────────────────────
+#
+# The SSC CGL subjects (quantitative-aptitude, general-intelligence-reasoning,
+# english-language) are SHARED with RBI Phase I, CSAT and the regulators and
+# carry no `topics.metadata.exams` key at all. Applying the body filter to them
+# empties every candidate set, and an empty candidate set is recorded as
+# UNMAPPED — which would read as "the catalogue does not cover SSC" when the
+# truth is "the filter does not apply to it".
+
+SSC_TID = "eeeeeeee-5555-4555-8555-eeeeeeeeeeee"
+SSC_QID = "33333333-3333-4333-8333-333333333333"
+
+
+def _agnostic_catalogue():
+    row = _catalogue_row(SSC_TID, "time-and-work", "quantitative-aptitude", [])
+    return [row]
+
+
+def _ssc_question(**kw):
+    base = {
+        "id": SSC_QID,
+        "question_text": "A alone finishes the work in 12 days. How long for B?",
+        "section": "Quantitative Aptitude",
+        "paper_id": "pA",
+        "year": 2024,
+        "question_number": 7,
+    }
+    base.update(kw)
+    return base
+
+
+SSC_ALIAS = {"Quantitative Aptitude": "quantitative-aptitude"}
+
+
+def _ssc_loaded(tmp_path, questions=None, **kw):
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", SSC_ALIAS))
+    cat = mod.load_catalogue(
+        _write_jsonl(tmp_path / "c.jsonl", _agnostic_catalogue()))
+    qs = mod.load_questions(
+        _write_jsonl(tmp_path / "q.jsonl", questions or [_ssc_question()]),
+        amap, any_body=True, subject_field="section", **kw)
+    return qs, cat
+
+
+def test_the_body_filter_would_empty_a_body_agnostic_catalogue(tmp_path):
+    qs, cat = _ssc_loaded(tmp_path)
+    assert mod.build_candidates(qs[0], cat) == []
+
+
+def test_any_body_keeps_the_subject_filter_and_drops_only_the_body_one(tmp_path):
+    qs, cat = _ssc_loaded(tmp_path)
+    [candidate] = mod.build_candidates(qs[0], cat, any_body=True)
+    assert candidate["slug"] == "time-and-work"
+
+
+def test_any_body_still_refuses_a_different_subject(tmp_path):
+    """Dropping the body filter must not drop the subject one — that is the
+    filter doing the actual narrowing."""
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", SSC_ALIAS))
+    cat = mod.load_catalogue(_write_jsonl(
+        tmp_path / "c.jsonl",
+        [_catalogue_row(SSC_TID, "syllogism", "general-intelligence-reasoning", [])]))
+    qs = mod.load_questions(
+        _write_jsonl(tmp_path / "q.jsonl", [_ssc_question()]),
+        amap, any_body=True, subject_field="section")
+    assert mod.build_candidates(qs[0], cat, any_body=True) == []
+
+
+def test_any_body_still_refuses_a_topic_level_row(tmp_path):
+    """Microtopic-only is not a body rule and is not relaxed by --any-body: a
+    parent id routes the projected mock_question_bank row to the wrong node,
+    which migration 270 exists to undo."""
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", SSC_ALIAS))
+    cat = mod.load_catalogue(_write_jsonl(
+        tmp_path / "c.jsonl",
+        [_catalogue_row(SSC_TID, "arithmetic", "quantitative-aptitude", [],
+                        level="topic")]))
+    qs = mod.load_questions(
+        _write_jsonl(tmp_path / "q.jsonl", [_ssc_question()]),
+        amap, any_body=True, subject_field="section")
+    assert mod.build_candidates(qs[0], cat, any_body=True) == []
+
+
+def test_a_declared_body_outside_the_default_list_is_accepted_with_body(tmp_path):
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", ALIAS_MAP))
+    qs = mod.load_questions(
+        _write_jsonl(tmp_path / "q.jsonl", [_question(body="ssc")]),
+        amap, bodies=("ssc",))
+    assert qs[0]["body"] == "ssc"
+
+
+def test_an_undeclared_body_is_still_rejected_by_name(tmp_path):
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", ALIAS_MAP))
+    with pytest.raises(mod.ProposerError, match=r"body 'ssc' is not one of"):
+        mod.load_questions(
+            _write_jsonl(tmp_path / "q.jsonl", [_question(body="ssc")]), amap)
+
+
+def test_an_unresolved_section_is_reported_not_silently_dropped(tmp_path):
+    """A question whose printed subject has no alias would get an empty
+    candidate set and a spurious UNMAPPED. Reported instead."""
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", {}))
+    with pytest.raises(mod.ProposerError, match=r"no entry in the alias map"):
+        mod.load_questions(
+            _write_jsonl(tmp_path / "q.jsonl", [_ssc_question()]),
+            amap, any_body=True, subject_field="section")
+
+
+# ── export-shaped input ──────────────────────────────────────────────────────
+def test_a_json_list_export_is_read_as_well_as_jsonl(tmp_path):
+    """`pyq_question_review.py export` writes a JSON LIST. Re-shaping 850 rows
+    through a conversion step only to feed them back in is a transformation
+    nobody audits."""
+    amap = mod.load_alias_map(_write_json(tmp_path / "a.json", SSC_ALIAS))
+    path = _write_json(tmp_path / "q.json", [_ssc_question()])
+    qs = mod.load_questions(path, amap, any_body=True, subject_field="section")
+    assert [q["id"] for q in qs] == [SSC_QID]
+
+
+def test_export_fields_are_carried_through_to_the_worksheet_columns(tmp_path):
+    qs, _cat = _ssc_loaded(tmp_path)
+    q = qs[0]
+    assert q["paper_id"] == "pA"
+    assert q["section"] == "Quantitative Aptitude"
+    assert q["question_number"] == 7
+    assert q["paper_year"] == "2024"
+
+
+def test_options_can_come_from_a_separate_export_file(tmp_path):
+    qs, _cat = _ssc_loaded(tmp_path, options_by_question={
+        SSC_QID: [
+            {"option_label": "b", "option_text": "Six", "display_order": 2},
+            {"option_label": "a", "option_text": "Four", "display_order": 1},
+        ]})
+    assert [o["label"] for o in qs[0]["options"]] == ["a", "b"]
+
+
+def test_options_already_on_the_row_win(tmp_path):
+    qs, _cat = _ssc_loaded(
+        tmp_path,
+        questions=[_ssc_question(options=[{"label": "z", "text": "Own"}])],
+        options_by_question={SSC_QID: [{"option_label": "a", "option_text": "X"}]})
+    assert [o["label"] for o in qs[0]["options"]] == ["z"]
+
+
+# ── difficulty ───────────────────────────────────────────────────────────────
+def test_difficulty_is_required_on_every_entry(tmp_path):
+    questions, catalogue = _loaded(tmp_path)
+    cands = {QID_1: mod.build_candidates(questions[0], catalogue)}
+    entry = _mapped(QID_1, "money-market-instruments")
+    entry.pop("difficulty")
+    with pytest.raises(mod.ProposerError, match=r"difficulty None is not one of"):
+        mod.parse_response(_response([entry]), questions, cands)
+
+
+def test_very_hard_is_rejected_with_the_reason_it_is_rejected(tmp_path):
+    """The projection rewrites anything outside easy/medium/hard to 'medium'
+    while the heatmap reads it as 'hard' — the same value meaning two things."""
+    questions, catalogue = _loaded(tmp_path)
+    cands = {QID_1: mod.build_candidates(questions[0], catalogue)}
+    entry = _mapped(QID_1, "money-market-instruments", difficulty="very_hard")
+    with pytest.raises(mod.ProposerError, match=r"very_hard"):
+        mod.parse_response(_response([entry]), questions, cands)
+
+
+def test_difficulty_is_required_on_unmapped_entries_too(tmp_path):
+    """An UNMAPPED question still needs grading: the difficulty is the whole of
+    what apply will write for it."""
+    questions, catalogue = _loaded(tmp_path)
+    cands = {QID_1: mod.build_candidates(questions[0], catalogue)}
+    text = _response([{"question_id": QID_1, "status": "UNMAPPED",
+                       "topic_slug": None, "confidence": 0.5,
+                       "rationale": "None fit.", "reason": "Out of scope."}])
+    with pytest.raises(mod.ProposerError, match=r"difficulty"):
+        mod.parse_response(text, questions, cands)
+
+
+@pytest.mark.parametrize("value", ["easy", "medium", "hard", "HARD", " easy "])
+def test_the_three_valid_difficulties_are_accepted_and_canonicalised(tmp_path, value):
+    questions, catalogue = _loaded(tmp_path)
+    cands = {QID_1: mod.build_candidates(questions[0], catalogue)}
+    entry = _mapped(QID_1, "money-market-instruments", difficulty=value)
+    [p] = mod.parse_response(_response([entry]), questions, cands)
+    assert p["difficulty"] == value.strip().lower()
+
+
+def test_the_prompt_states_the_step_count_rubric(tmp_path):
+    """Two reviewers disagree about whether a question is 'tricky' and agree
+    about how many steps it takes. The rubric is stated verbatim so a proposal
+    is reproducible."""
+    questions, catalogue = _loaded(tmp_path)
+    prompt = mod.build_prompt(questions, {QID_1: catalogue[:1]})
+    assert "STEP COUNT" in prompt
+    assert "a single formula or rule, one step" in prompt
+    assert "multi-step" in prompt
+
+
+# ── worksheet emitter ────────────────────────────────────────────────────────
+def _pyq_question_review_module():
+    spec = importlib.util.spec_from_file_location(
+        "pyq_question_review",
+        pathlib.Path(__file__).resolve().parents[4] / "scripts" / "pyq_question_review.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_the_worksheet_columns_match_the_tool_that_reads_them():
+    """WORKSHEET_FIELDS is mirrored here rather than imported. A column added
+    to pyq_question_review.py and forgotten here must fail the suite, not a
+    run."""
+    assert mod.WORKSHEET_FIELDS == _pyq_question_review_module().WORKSHEET_FIELDS
+
+
+def test_the_proposal_columns_are_appended_after_every_column_apply_reads():
+    assert not set(mod.PROPOSAL_FIELDS) & set(mod.WORKSHEET_FIELDS)
+
+
+def _ws(tmp_path, *, current="", status=mod.STATUS_MAPPED, slug="time-and-work",
+        confidence=0.8, difficulty="medium"):
+    qs, cat = _ssc_loaded(tmp_path,
+                          questions=[_ssc_question(current_primary_topic_id=current)])
+    proposals = [{
+        "question_id": SSC_QID, "status": status,
+        "topic_slug": slug if status == mod.STATUS_MAPPED else None,
+        "difficulty": difficulty, "confidence": confidence,
+        "rationale": "Work rate question.",
+        "reason": "" if status == mod.STATUS_MAPPED else "No candidate fits.",
+        "subject": "quantitative-aptitude", "body": mod.BODY_AGNOSTIC,
+        "candidate_count": 1,
+    }]
+    return mod.worksheet_rows(qs, proposals, {slug: SSC_TID}), cat
+
+
+def test_decision_is_always_blank_on_a_proposal_worksheet(tmp_path):
+    """A proposal is not a verdict."""
+    [row], _cat = _ws(tmp_path)
+    assert row["decision"] == ""
+    assert row["sample_reason"] == ""
+
+
+def test_an_untagged_question_gets_the_resolved_microtopic_id(tmp_path):
+    [row], _cat = _ws(tmp_path)
+    assert row["assign_topic_id"] == SSC_TID
+    assert row["flags"] == ""
+
+
+def test_a_tag_that_would_not_change_leaves_the_cell_blank(tmp_path):
+    """Blank assign_topic_id unless the tag changes — re-asserting the tag a
+    question already carries can only 409."""
+    [row], _cat = _ws(tmp_path, current=SSC_TID)
+    assert row["assign_topic_id"] == ""
+    assert "tag_unchanged" in row["flags"]
+
+
+def test_a_conflicting_tag_leaves_the_cell_blank_and_says_so(tmp_path):
+    [row], _cat = _ws(tmp_path, current="ffffffff-6666-4666-8666-ffffffffffff")
+    assert row["assign_topic_id"] == ""
+    assert "tag_conflict" in row["flags"]
+    assert row["current_primary_topic_id"] == "ffffffff-6666-4666-8666-ffffffffffff"
+
+
+def test_an_unmapped_proposal_writes_no_tag_but_still_carries_a_difficulty(tmp_path):
+    [row], _cat = _ws(tmp_path, status=mod.STATUS_UNMAPPED, difficulty="hard")
+    assert row["assign_topic_id"] == ""
+    assert "unmapped" in row["flags"]
+    assert row["difficulty"] == "hard"
+
+
+def test_a_low_confidence_mapping_is_flagged_for_a_human(tmp_path):
+    [row], _cat = _ws(tmp_path, confidence=0.3)
+    assert "low_confidence" in row["flags"]
+
+
+def test_the_worksheet_carries_the_paper_and_section_columns(tmp_path):
+    [row], _cat = _ws(tmp_path)
+    assert row["paper_id"] == "pA"
+    assert row["section"] == "Quantitative Aptitude"
+    assert row["question_number_or_topic_id"] == 7
+    assert row["row_type"] == mod.QUESTION_ROW
+
+
+def test_a_question_with_no_proposal_aborts_rather_than_vanishing(tmp_path):
+    qs, _cat = _ssc_loaded(tmp_path)
+    with pytest.raises(mod.ProposerError, match=r"no proposal for question"):
+        mod.worksheet_rows(qs, [], {})
+
+
+def test_worksheets_are_written_one_per_paper(tmp_path):
+    rows = [
+        {"row_id": "q1", "paper_id": "pA", "decision": ""},
+        {"row_id": "q2", "paper_id": "pB", "decision": ""},
+        {"row_id": "q3", "paper_id": "pA", "decision": ""},
+    ]
+    written = mod.write_worksheets(rows, str(tmp_path / "sheets"))
+    assert len(written) == 2
+    names = sorted(pathlib.Path(p).name for p in written)
+    assert names == ["worksheet-pA.csv", "worksheet-pB.csv"]
+    with (tmp_path / "sheets" / "worksheet-pA.csv").open(encoding="utf-8-sig") as fh:
+        got = list(csv.DictReader(fh))
+    assert [r["row_id"] for r in got] == ["q1", "q3"]
+    assert set(mod.WORKSHEET_FIELDS + mod.PROPOSAL_FIELDS) == set(got[0].keys())
+
+
+def test_a_written_worksheet_is_readable_by_the_apply_validator(tmp_path):
+    """The whole point of mirroring the columns: the existing apply path
+    consumes these files with no new code and no new write route."""
+    review = _pyq_question_review_module()
+    rows, _cat = _ws(tmp_path)
+    mod.write_worksheets(rows, str(tmp_path / "sheets"))
+    with (tmp_path / "sheets" / "worksheet-pA.csv").open(encoding="utf-8-sig") as fh:
+        read_back = list(csv.DictReader(fh))
+    assert review._validate_worksheet(read_back, {SSC_TID}) == []
+    # And a row whose proposal is outside the catalogue aborts the run.
+    assert review._validate_worksheet(read_back, {"other"})
