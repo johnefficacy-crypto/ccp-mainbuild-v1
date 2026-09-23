@@ -39,6 +39,25 @@ Precis and comprehension rows are **not** split. Each is one row with `row_id` =
 - **Essay prompt** → tagged by the theme the candidate must *argue through*, the same as the UPSC essay corpus. `essay_type` is set (`quote_abstract` | `issue_concrete`).
 - **Precis / comprehension** → tagged by the theme of the **source passage**. The candidate summarises or extracts; they take no position of their own. The theme tells a learner "what the passage is about", not "what stance to take". Every one of these 8 rows says so in `notes`. `essay_type` and `quote_source_type` are blank on them (see gap G4).
 - `quote_source_type` is filled only when the prompt itself names who said the quote. The two quote prompts (2022 P1 "Peace cannot be kept by force…", 2024 P4 "Anyone who stops learning is old…") name no one, so both are blank. They are not filled from outside knowledge of who said them.
+- **Attribution is recorded separately from `quote_source_type`.** The two axes are
+  not the same question. `quote_source_type` describes *the stem* — what the paper
+  printed — so it stays blank when the paper printed no name, and is never inferred.
+  Who actually said the line is a different fact, and withholding it helps no
+  aspirant. It is therefore recorded in the tag's `metadata` as
+  `quote_attribution`, with `quote_attribution_basis: "editorial"` marking that it
+  came from the tagger and not from the paper, plus a `quote_attribution_note`
+  giving the provenance and its strength:
+  - 2022 Q1 P1 "Peace cannot be kept by force…" → **Albert Einstein**. Appears in
+    his 1930s writing and correspondence on pacifism.
+  - 2024 Q1 P4 "Anyone who stops learning is old…" → **Henry Ford**. Widely
+    attributed and circulated in his lifetime; no single primary source is
+    verified, and the note says so rather than implying one.
+
+  `/api/essay-pyq-tags` lifts `quote_attribution` out of `metadata` and returns it
+  as its own field, and `PyqTagsSidebar` renders it under the question as
+  "— Albert Einstein". Only that one key is lifted; the rest of `metadata` is
+  tagging bookkeeping (parent ids, prompt indexes, worksheet row refs) and stays
+  in the backend, per the no-internal-state-on-learner-surfaces rule.
 - Secondary theme: one primary tag plus an optional `secondary_theme_code`, used only where the prompt or passage really spans two themes, as in the UPSC corpus. A dual theme never splits a row.
 
 ## 4. Theme distribution
