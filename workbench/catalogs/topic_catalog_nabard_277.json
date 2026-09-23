@@ -193,7 +193,7 @@
   },
   {
     "id": "47d00077-5f85-ba3b-fc49-cf7405914aa2",
-    "text": "Pr├⌐cis Writing",
+    "text": "Précis Writing",
     "slug": "precis-writing-general",
     "subject": "english-language"
   },
@@ -2173,13 +2173,13 @@
   },
   {
     "id": "b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a",
-    "text": "Number series ΓÇö arithmetic and difference patterns",
+    "text": "Number series — arithmetic and difference patterns",
     "slug": "qa-number-series-arithmetic-and-difference-patterns-130693e5",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "89b27d9f-7081-4930-9186-c41b93349e1a",
-    "text": "Number series ΓÇö multiplicative and mixed patterns",
+    "text": "Number series — multiplicative and mixed patterns",
     "slug": "qa-number-series-multiplicative-and-mixed-patterns-340f34bd",
     "subject": "quantitative-aptitude"
   },
@@ -2209,7 +2209,7 @@
   },
   {
     "id": "01f2ee8f-c655-4c2e-912e-e0f18a2d3201",
-    "text": "Quadratic equations ΓÇö root comparison (x vs y)",
+    "text": "Quadratic equations — root comparison (x vs y)",
     "slug": "qa-quadratic-equations-root-comparison-x-vs-y-03936368",
     "subject": "quantitative-aptitude"
   },
@@ -2251,7 +2251,7 @@
   },
   {
     "id": "ff082708-c649-46b6-980f-4a66363e6eab",
-    "text": "Percentage comparison ΓÇö what percent of / more than",
+    "text": "Percentage comparison — what percent of / more than",
     "slug": "qa-percentage-comparison-what-percent-of-more-than-b5ef5d48",
     "subject": "quantitative-aptitude"
   },
@@ -2317,13 +2317,13 @@
   },
   {
     "id": "cd574056-f811-4f7b-8fdd-a4e37d0c9772",
-    "text": "Ages ΓÇö present, past and future",
+    "text": "Ages — present, past and future",
     "slug": "qa-ages-present-past-and-future-0a8b95a2",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "528ffbb5-94cb-438d-a875-c854d0f65ec5",
-    "text": "Averages ΓÇö simple and weighted",
+    "text": "Averages — simple and weighted",
     "slug": "qa-averages-simple-and-weighted-1f479970",
     "subject": "quantitative-aptitude"
   },
@@ -2347,7 +2347,7 @@
   },
   {
     "id": "9a417628-ca65-4a32-bac1-87c365f40334",
-    "text": "Trains ΓÇö crossing platforms and each other",
+    "text": "Trains — crossing platforms and each other",
     "slug": "qa-trains-crossing-platforms-and-each-other-fbf3e1f2",
     "subject": "quantitative-aptitude"
   },
@@ -2389,13 +2389,13 @@
   },
   {
     "id": "424d99d5-720f-409e-ba66-8660ac95a486",
-    "text": "Area and perimeter ΓÇö rectangle, square, triangle",
+    "text": "Area and perimeter — rectangle, square, triangle",
     "slug": "qa-area-and-perimeter-rectangle-square-triangle-e23db61d",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "a704c46a-26db-43f5-9ece-3e339a15ac3b",
-    "text": "Circle ΓÇö area, circumference and sectors",
+    "text": "Circle — area, circumference and sectors",
     "slug": "qa-circle-area-circumference-and-sectors-e98b662b",
     "subject": "quantitative-aptitude"
   },
@@ -2455,25 +2455,25 @@
   },
   {
     "id": "cd48d660-2fee-415a-8bd5-e6e78324d73c",
-    "text": "Linear row ΓÇö single row, one direction",
+    "text": "Linear row — single row, one direction",
     "slug": "reas-linear-row-single-row-one-direction-3c93ae0f",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "c7ccbff3-da69-4369-90fe-f5f8b13ff7b9",
-    "text": "Linear row ΓÇö facing both directions",
+    "text": "Linear row — facing both directions",
     "slug": "reas-linear-row-facing-both-directions-08c55ceb",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "49d20336-ad3d-48c7-b172-fdd9c3d17e7f",
-    "text": "Circular arrangement ΓÇö facing centre",
+    "text": "Circular arrangement — facing centre",
     "slug": "reas-circular-arrangement-facing-centre-49054cf2",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "b2e396d9-e67b-4242-904e-7424662e7615",
-    "text": "Circular arrangement ΓÇö mixed facing",
+    "text": "Circular arrangement — mixed facing",
     "slug": "reas-circular-arrangement-mixed-facing-5596b070",
     "subject": "general-intelligence-reasoning"
   },
@@ -2743,7 +2743,7 @@
   },
   {
     "id": "71faffff-a24e-49ae-918e-1216b65553d8",
-    "text": "Statement and argument ΓÇö strong or weak",
+    "text": "Statement and argument — strong or weak",
     "slug": "reas-statement-and-argument-strong-or-weak-c34d0b36",
     "subject": "general-intelligence-reasoning"
   },

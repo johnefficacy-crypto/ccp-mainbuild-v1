@@ -101,6 +101,19 @@ diagnosing them unless the failure pattern changes.
 - Do not investigate, retry, or block merge on this. The deploy will succeed automatically on the next PR once the quota resets (~24 h).
 - Remove this entry after 2026-07-02 once the quota has naturally reset.
 
+**backend — `tests/test_profile_completion_parallel.py` (fixed 2026-09-23)**
+- `test_profile_completion_runs_eight_fetchers_in_parallel` used to assert
+  wall-clock `< 0.4 s` against eight fetchers sleeping 0.1 s each. On a
+  saturated runner it measured 0.828 s, and PR #1166 merged with `backend` red
+  because of it.
+- It now asserts structure, not timing: the profile read finishes before any
+  other read starts, and at least two of the seven gathered reads are in flight
+  at once. A serial regression still fails deterministically (in about 35 s:
+  7 × the 5 s overlap timeout).
+- A red result from this test is now actionable. It means the gather really
+  re-serialised or the profile read stopped running first. Do not treat it as a
+  flake.
+
 **validate-pr-body (first run only)**
 - `pr-body-check.yml` triggers on `pull_request` events including
   `synchronize`. The very first run fires before the PR description is
