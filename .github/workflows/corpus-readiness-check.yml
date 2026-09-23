@@ -1,0 +1,44 @@
+name: Corpus Readiness Check
+
+# A PR that changes the shape of the corpus must regenerate
+# docs/status/corpus-readiness.md, or say in its body why it could not.
+#
+# No database, no secrets: the job reads the changed-file list and the PR body
+# only. That is what lets it run on a fork, where secrets are unavailable.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: corpus-readiness-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  corpus-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need the base commit to diff against.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect changed files
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}" || true
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD > changed-files.txt
+          echo "--- changed files ---"
+          cat changed-files.txt
+
+      - name: Gate
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/ci/check-corpus-readiness.js changed-files.txt
+
+      - name: Self-tests
+        run: node --test scripts/__tests__/check-corpus-readiness.test.js

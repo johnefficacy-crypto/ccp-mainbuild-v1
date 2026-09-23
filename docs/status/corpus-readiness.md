@@ -1,0 +1,84 @@
+# Corpus readiness
+
+> **Example output — fixture data, not live counts.** Every number below comes from a committed test fixture. An operator regenerates this file against a real database with `python scripts/corpus_readiness_report.py --live --source demo`.
+
+- generated-at: 2026-09-22
+- mode: fixture
+- source: demo
+- script version: 1.0
+
+<details><summary>Exact queries used</summary>
+
+```sql
+subjects        select id, name, slug from subjects
+exams           select id, slug, name, is_active from exams
+topics          select id, subject_id, parent_topic_id, level, is_active from topics
+                  where is_active is not false
+papers          select id, exam_id, trust_status, source_type, source_url,
+                       source_document_id, metadata from pyq_papers
+questions       select id, pyq_paper_id, exam_id, reviewer_status, question_type,
+                       metadata from pyq_questions
+tags            select question_id, topic_id, tag_role, reviewer_status
+                  from pyq_question_topic_tags
+                  where tag_role = 'primary' and reviewer_status = 'verified'
+projection      select id, pyq_question_id, topic_id, microtopic_id
+                  from mock_question_bank
+coverage        select exam_id, topic_id, reviewer_status, exam_phase_id
+                  from exam_topic_coverage
+Every read paginates via app/common/pagination.py — a short page is not the
+last page. No statement in this script writes, and none calls a review RPC.
+```
+
+</details>
+
+**Exclusions, applied in every section below.** Retired buckets (`metadata.retired` truthy) are dropped along with everything hanging off them. Thematic optional rows (`metadata.corpus_half='thematic'`) are counted as questions but never as papers — they carry no paper order. Topics with `is_active = false` are dropped, and never supply a subject to a question. Subjects reach their counts through `topics.subject_id`, never through `metadata.exams`: the shared body-agnostic subjects do not carry that key and any exam filter would empty them.
+
+## 1. Corpus per subject × exam
+
+| subject | exam | micro | macro | tagged | verified | descriptive | projected |
+|---|---|---:|---:|---:|---:|---:|---:|
+| General Intelligence and Reasoning | national-nabard-grade-a | 1 | 1 | 1 | 1 | 0 | 1 |
+| General Studies I | upsc-cse | 1 | 1 | 3 | 3 | 3 | 0 |
+| Quantitative Aptitude | national-nabard-grade-a | 2 | 1 | 2 | 2 | 0 | 2 |
+
+## 2. Feature readiness per subject
+
+Derived from the counts in section 1, never asserted. The rule for each column, in one line:
+
+- `mcq_practice` — projected > 0
+- `topic_mastery` — projected rows carrying microtopic_id AND >=1 locked coverage row
+- `answer_writing` — verified descriptive questions AND tags present
+- `syllabus_navigation` — macro AND micro layers both present
+
+| subject | mcq_practice | topic_mastery | answer_writing | syllabus_navigation |
+|---|---|---|---|---|
+| General Intelligence and Reasoning | yes | no | no | yes |
+| General Studies I | no | no | yes | yes |
+| Quantitative Aptitude | yes | yes | no | yes |
+
+## 3. Blocked corpora
+
+**This section reports the gate's INPUTS, not its verdict.** `review_pyq_paper` is a review action rather than a predicate — calling it would promote papers — and it is PL/pgSQL (migration `271_review_pyq_paper_question_count_gate.sql`, previously 185/186), not importable into Python. So what follows is the observable provenance fields the gate reads. A gate that moves cannot silently desync this document, because this document never claims to know what it decides.
+
+### ssc-cgl
+
+- 2 questions exist; 2 are not verified, 2 carry no verified primary tag, 2 objective questions are not projected.
+- 2 papers in scope. Observed provenance fields: 2 are not `source_type='official'`; 1 has no `source_url`; 2 have no `source_document_id`; 2 are not `trust_status='verified'`; 0 carry no questions.
+
+## 4. Catalogues with zero questions
+
+- Banking
+- Capital Market
+- English Language
+- Orphan Microtopics
+
+## 5. Topic trees
+
+| subject | macro | micro | micro without a macro layer |
+|---|---:|---:|---|
+| English Language | 1 | 1 | no |
+| General Intelligence and Reasoning | 1 | 1 | no |
+| General Studies I | 1 | 1 | no |
+| Orphan Microtopics | 0 | 2 | **yes** |
+| Quantitative Aptitude | 1 | 2 | no |
+
