@@ -78,6 +78,16 @@ row stating any other level aborts every tool that reads the file, so a
 topic-level id typed into a worksheet is rejected as not in the catalogue
 before any network call.
 
+The file is a JSON **list**, and it carries both shapes: `name` / `subject`
+(the slug) / `metadata.exams` for `propose_pyq_topic_tags.py`, and `text` /
+`subject_id` / `exams` for `load_topic_catalog`, which `apply` uses at the end.
+Step 4 reads it directly — there is no conversion step between them.
+
+The subject slug comes from a second read of `{CMS}/subjects`; `{CMS}/topics`
+returns only `subject_id`. If a subject id cannot be named, `catalog` warns and
+the proposer refuses those rows rather than handing back an empty candidate
+set.
+
 Hand-writing the file is also fine as
 `[{"id": ..., "text": ..., "level": "microtopic"}]`, under the same rule.
 
@@ -110,29 +120,63 @@ names every paper whose document check it could not run.
 
 Proposals only. This step never writes a tag.
 
+**Run one paper first.** 850 questions is the whole corpus; `--papers` (and
+`--limit`) exist so a mistake in the alias map costs one paper's worth of calls
+instead of thirteen.
+
 ```bash
+# pilot: one paper, reviewed by hand before the rest is spent
 python scripts/propose_pyq_topic_tags.py \
     --questions review_out_ssc/questions_export.json \
     --options-export review_out_ssc/options_export.json \
-    --catalogue catalogue_ssc.jsonl \
-    --alias-map ssc_section_aliases.json \
+    --catalogue topic_catalog_ssc.json \
+    --alias-map workbench/audit/ssc_cgl/ssc_section_aliases.json \
+    --subject-field section \
+    --any-body \
+    --papers <one-paper-id> \
+    --batch-size 10 \
+    --live --model claude-opus-5 \
+    --report \
+    --out-jsonl workbench/audit/ssc_cgl/proposals-pilot.jsonl \
+    --out-sql   workbench/audit/ssc_cgl/proposals-pilot.sql \
+    --out-worksheet-dir workbench/audit/ssc_cgl/worksheets
+
+# then the rest, same command without --papers
+python scripts/propose_pyq_topic_tags.py \
+    --questions review_out_ssc/questions_export.json \
+    --options-export review_out_ssc/options_export.json \
+    --catalogue topic_catalog_ssc.json \
+    --alias-map workbench/audit/ssc_cgl/ssc_section_aliases.json \
     --subject-field section \
     --any-body \
     --batch-size 10 \
     --live --model claude-opus-5 \
+    --report \
     --out-jsonl workbench/audit/ssc_cgl/proposals.jsonl \
     --out-sql   workbench/audit/ssc_cgl/proposals.sql \
     --out-worksheet-dir workbench/audit/ssc_cgl/worksheets
 ```
 
-`ssc_section_aliases.json` maps the printed section label to the catalogue
-subject slug:
+`--catalogue` is the file step 2 wrote — the same path, a JSON list, no
+conversion. `--report` prints `N mapped, N unmapped, N with no candidates` to
+stderr; **`with no candidates` above zero means the subject did not resolve**,
+not that the catalogue is thin. Stop and check the alias map before spending
+the rest.
+
+`workbench/audit/ssc_cgl/ssc_section_aliases.json` is committed. It maps the
+printed section label to the catalogue subject slug, and also maps the three
+subject ids, so a catalogue exported before the slug was written still
+resolves:
 
 ```json
 {
   "General Intelligence and Reasoning": "general-intelligence-reasoning",
   "Quantitative Aptitude": "quantitative-aptitude",
-  "English Comprehension": "english-language"
+  "English Comprehension": "english-language",
+
+  "55555555-5555-5555-5555-555555555551": "quantitative-aptitude",
+  "55555555-5555-5555-5555-555555555552": "english-language",
+  "55555555-5555-5555-5555-555555555553": "general-intelligence-reasoning"
 }
 ```
 

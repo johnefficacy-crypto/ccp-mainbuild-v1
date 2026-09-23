@@ -307,18 +307,79 @@ def load_alias_map(path: str) -> dict[str, str]:
     return out
 
 
-def load_catalogue(path: str) -> list[dict]:
-    """Load catalogue rows, validating the fields the filter depends on."""
+#: A bare uuid where a subject slug belongs. `catalog` used to write
+#: `subject_id` and nothing else, and a uuid matches no alias-mapped question
+#: subject, so every candidate set came back empty and the whole corpus
+#: recorded UNMAPPED without one error being raised.
+_UUID_RE = re.compile(
+    r"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z", re.I
+)
+
+
+def _first_str(obj: dict, keys: Sequence[str], where: str, what: str) -> str:
+    """The first of `keys` carrying a non-empty string, or an error naming all."""
+    for key in keys:
+        value = obj.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    raise ProposerError(
+        f"{where}: none of {'/'.join(keys)} carries {what}"
+    )
+
+
+def load_catalogue(path: str, alias_map: dict[str, str] | None = None) -> list[dict]:
+    """Load catalogue rows, validating the fields the filter depends on.
+
+    TWO SHAPES, ONE CONTRACT. This function's own contract is
+    ``{id, slug, name, level, subject, metadata.exams}``, and
+    ``pyq_question_review.py catalog`` now writes exactly that. It used to write
+    ``{id, text, slug, subject_id, level, exams}`` — a different name for the
+    label, a uuid where the subject slug belongs, and the exam list one level
+    up. Chained as the SSC runbook prints it, the subject never resolved, every
+    candidate set was empty and 850 questions recorded UNMAPPED with no error.
+
+    So the older keys are accepted too:
+
+    ``text``        for ``name`` — the hand-written UPSC catalogues use it, and
+                    ``load_topic_catalog`` has always read either.
+    ``exams``       top-level, for ``metadata.exams``.
+    ``subject_id``  for ``subject``, resolved through the SAME alias map the
+                    questions use. A uuid is just another string that names a
+                    subject, so the map that already answers "what subject is
+                    'Quantitative Aptitude'?" can answer "what subject is
+                    5555…551?" with one more line and no new flag. A uuid that
+                    the map does not name is refused BY NAME rather than
+                    silently emptying its candidate set — which is the whole
+                    bug.
+
+    Accepts a JSON list as well as JSONL, by first character, exactly as
+    ``--questions`` already does: ``catalog --out topic_catalog_ssc.json``
+    writes a list, and re-shaping it by hand between two steps of one runbook
+    is a transformation nobody audits.
+    """
     rows: list[dict] = []
     seen_slugs: dict[str, str] = {}
-    for lineno, obj in _read_jsonl(path):
+    for lineno, obj in _read_rows(path):
         where = f"{path}:{lineno}"
+        raw_subject = _first_str(obj, ("subject", "subject_slug", "subject_id"),
+                                 where, "a subject")
+        subject = raw_subject
+        if alias_map:
+            subject = alias_map.get(normalise_subject(raw_subject), raw_subject)
+        if _UUID_RE.match(subject):
+            raise ProposerError(
+                f"{where}: subject {raw_subject!r} is a uuid, not a subject slug, "
+                "and the alias map does not name it. Re-export the catalogue "
+                "with `pyq_question_review.py catalog` (which now writes the "
+                "slug), or add a line mapping that id to its slug to "
+                "--alias-map."
+            )
         row = {
             "id": _require(obj, "id", where, (str,)),
             "slug": _require(obj, "slug", where, (str,)),
-            "name": _require(obj, "name", where, (str,)),
+            "name": _first_str(obj, ("name", "text"), where, "a name"),
             "level": _require(obj, "level", where, (str,)),
-            "subject": _require(obj, "subject", where, (str,)),
+            "subject": subject,
             "description": obj.get("description") or "",
         }
         if not isinstance(row["description"], str):
@@ -326,9 +387,11 @@ def load_catalogue(path: str) -> list[dict]:
         meta = obj.get("metadata") or {}
         if not isinstance(meta, dict):
             raise ProposerError(f"{where}: 'metadata' is not an object")
-        exams = meta.get("exams") or []
+        exams = meta.get("exams")
+        if exams is None:
+            exams = obj.get("exams") or []
         if not isinstance(exams, list) or any(not isinstance(e, str) for e in exams):
-            raise ProposerError(f"{where}: metadata.exams is not a list of strings")
+            raise ProposerError(f"{where}: exams is not a list of strings")
         row["exams"] = [e.strip().casefold() for e in exams]
         # A slug is the writer's only handle on a topic_id, so two rows sharing
         # one slug would make the resolution ambiguous rather than merely
@@ -442,6 +505,43 @@ def load_questions(path: str, alias_map: dict[str, str], *,
     dupes = sorted({i for i in ids if ids.count(i) > 1})
     if dupes:
         raise ProposerError(f"{path}: duplicated question id(s) {dupes}")
+    return rows
+
+
+def select_questions(questions: Sequence[dict], *,
+                     papers: Sequence[str] | None = None,
+                     limit: int | None = None) -> list[dict]:
+    """Narrow a loaded corpus to a pilot slice, paper filter first.
+
+    Order is the questions file's own, so a `--limit 20` run is reproducible
+    and its worksheet lines up with the head of the export rather than with a
+    sample nobody can recover.
+
+    A `--papers` value matching nothing is an ERROR, not an empty run: a typo
+    in a paper id would otherwise cost a full-corpus run's worth of confidence
+    in a file with no rows in it.
+    """
+    rows = list(questions)
+    wanted = {str(p).strip() for p in (papers or []) if str(p).strip()}
+    if wanted:
+        rows = [r for r in rows if str(r.get("paper_id") or "") in wanted]
+        if not rows:
+            raise ProposerError(
+                "no question matches --papers "
+                f"{sorted(wanted)} — check the paper ids against "
+                "papers_export.json"
+            )
+        seen = {str(r.get("paper_id") or "") for r in rows}
+        missing = sorted(wanted - seen)
+        if missing:
+            raise ProposerError(
+                f"--papers named {missing} but the questions file has no "
+                "question on those papers"
+            )
+    if limit is not None:
+        rows = rows[:limit]
+    if not rows:
+        raise ProposerError("no question left to propose for after --papers/--limit")
     return rows
 
 
@@ -1290,6 +1390,15 @@ def main(argv: list[str] | None = None) -> int:
                          "blank. Apply it with `pyq_question_review.py apply "
                          "--require-decision`, which skips every row a human "
                          "has not signed.")
+    # A PILOT BEFORE THE BILL. 850 questions at one live call per batch of ten
+    # is the whole corpus; running one paper first is how an operator finds out
+    # the alias map is wrong for nine rupees instead of nine hundred.
+    ap.add_argument("--papers", action="append", default=None,
+                    help="Restrict to these paper_id values (repeatable). "
+                         "Applied before --limit.")
+    ap.add_argument("--limit", type=int, default=None,
+                    help="Propose for at most this many questions, in the "
+                         "questions file's own order. For a pilot run.")
     ap.add_argument("--report", action="store_true", help="Parse summary to stderr")
     args = ap.parse_args(argv)
 
@@ -1305,10 +1414,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.max_retries < 0:
         print("--max-retries cannot be negative", file=sys.stderr)
         return 2
+    if args.limit is not None and args.limit < 1:
+        print("--limit must be at least 1", file=sys.stderr)
+        return 2
 
     try:
         alias_map = load_alias_map(args.alias_map)
-        catalogue = load_catalogue(args.catalogue)
+        # The alias map is passed so a catalogue carrying `subject_id` can be
+        # resolved by the same table the questions are — see load_catalogue.
+        catalogue = load_catalogue(args.catalogue, alias_map)
         options_by_question = (load_options_export(args.options_export)
                                if args.options_export else None)
         questions = load_questions(
@@ -1318,6 +1432,8 @@ def main(argv: list[str] | None = None) -> int:
             subject_field=args.subject_field,
             options_by_question=options_by_question,
         )
+        questions = select_questions(questions, papers=args.papers,
+                                     limit=args.limit)
         if args.dry_run:
             client = fixture_client(args.fixture)
         elif args.live:
