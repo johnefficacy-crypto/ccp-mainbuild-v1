@@ -193,7 +193,7 @@
   },
   {
     "id": "47d00077-5f85-ba3b-fc49-cf7405914aa2",
-    "text": "Pr├⌐cis Writing",
+    "text": "Précis Writing",
     "slug": "precis-writing-general",
     "subject": "english-language"
   },
@@ -415,7 +415,7 @@
   },
   {
     "id": "3837dacd-cfd3-4432-8e4b-6a0961279185",
-    "text": "Cost classification by behaviour ΓÇö fixed, variable, semi-variable",
+    "text": "Cost classification by behaviour — fixed, variable, semi-variable",
     "slug": "cost-cost-classification-by-behaviour-fixed-variable-semi-variabl-e25ab568",
     "subject": "costing"
   },
@@ -469,13 +469,13 @@
   },
   {
     "id": "923b92bb-97fd-40d1-9333-a114ba4ae2ed",
-    "text": "Contract costing ΓÇö WIP, retention, profit on incomplete contracts",
+    "text": "Contract costing — WIP, retention, profit on incomplete contracts",
     "slug": "cost-contract-costing-wip-retention-profit-on-incomplete-contract-102b6dcd",
     "subject": "costing"
   },
   {
     "id": "d6246251-b168-4972-9322-4ebcbd4c87bf",
-    "text": "Equivalent production ΓÇö FIFO and weighted average",
+    "text": "Equivalent production — FIFO and weighted average",
     "slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
     "subject": "costing"
   },
@@ -487,43 +487,43 @@
   },
   {
     "id": "31892b66-83af-4b55-8895-936606413969",
-    "text": "Joint products and by-products ΓÇö apportionment bases",
+    "text": "Joint products and by-products — apportionment bases",
     "slug": "cost-joint-products-and-by-products-apportionment-bases-a6a74b59",
     "subject": "costing"
   },
   {
     "id": "e61d07dd-9af2-4ba8-8b01-26d35b7e7ff0",
-    "text": "Operating / service sector costing ΓÇö transport, hotel, healthcare",
+    "text": "Operating / service sector costing — transport, hotel, healthcare",
     "slug": "cost-operating-service-sector-costing-transport-hotel-healthcare-ad2bb07c",
     "subject": "costing"
   },
   {
     "id": "51647430-90d5-410b-b819-858f07b6683c",
-    "text": "Standard costing ΓÇö types of standards and ideal standard",
+    "text": "Standard costing — types of standards and ideal standard",
     "slug": "cost-standard-costing-types-of-standards-and-ideal-standard-4097314a",
     "subject": "costing"
   },
   {
     "id": "3938fbb2-3914-4303-8c5b-3cd10171861a",
-    "text": "Material variances ΓÇö price, usage, mix, yield",
+    "text": "Material variances — price, usage, mix, yield",
     "slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
     "subject": "costing"
   },
   {
     "id": "25a29f87-d2f6-40d8-a129-ce8261b22117",
-    "text": "Labour variances ΓÇö rate and efficiency",
+    "text": "Labour variances — rate and efficiency",
     "slug": "cost-labour-variances-rate-and-efficiency-71d9cffe",
     "subject": "costing"
   },
   {
     "id": "cb52594d-78f3-448d-a1ee-8c4eb5d6f2fd",
-    "text": "Overhead variances ΓÇö variable and fixed",
+    "text": "Overhead variances — variable and fixed",
     "slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
     "subject": "costing"
   },
   {
     "id": "ca912f5e-9d89-4d70-84ba-038d75901383",
-    "text": "Sales variances ΓÇö price, volume, mix",
+    "text": "Sales variances — price, volume, mix",
     "slug": "cost-sales-variances-price-volume-mix-cc222e43",
     "subject": "costing"
   },
@@ -535,7 +535,7 @@
   },
   {
     "id": "d7552288-cec8-4bf0-a99a-1f546c81ad0c",
-    "text": "Marginal costing ΓÇö contribution and P/V ratio",
+    "text": "Marginal costing — contribution and P/V ratio",
     "slug": "cost-marginal-costing-contribution-and-p-v-ratio-5dbaee83",
     "subject": "costing"
   },
@@ -565,7 +565,7 @@
   },
   {
     "id": "12d0d3f7-2c54-4842-bf73-6b88b195d776",
-    "text": "Absorption vs marginal costing ΓÇö profit reconciliation",
+    "text": "Absorption vs marginal costing — profit reconciliation",
     "slug": "cost-absorption-vs-marginal-costing-profit-reconciliation-3c2b2d47",
     "subject": "costing"
   },
@@ -649,7 +649,7 @@
   },
   {
     "id": "477e5dfd-2a09-4e42-9704-e6d82082e24d",
-    "text": "Six Sigma ΓÇö DMAIC, belts, defect level",
+    "text": "Six Sigma — DMAIC, belts, defect level",
     "slug": "cost-six-sigma-dmaic-belts-defect-level-af9d959b",
     "subject": "costing"
   },
@@ -685,7 +685,7 @@
   },
   {
     "id": "89d2eb6c-a94d-4d39-aa37-a5801ab55e8b",
-    "text": "Material valuation ΓÇö FIFO and moving average",
+    "text": "Material valuation — FIFO and moving average",
     "slug": "cost-material-valuation-fifo-and-moving-average-b84d56ab",
     "subject": "costing"
   },
@@ -697,49 +697,49 @@
   },
   {
     "id": "0a1b5d12-e642-49a7-be68-9b545ac5e829",
-    "text": "Waste, scrap, spoilage and defectives ΓÇö treatment",
+    "text": "Waste, scrap, spoilage and defectives — treatment",
     "slug": "cost-waste-scrap-spoilage-and-defectives-treatment-8068f1c3",
     "subject": "costing"
   },
   {
     "id": "8fb8f286-0b96-4b9d-9710-5b47fb5895b4",
-    "text": "Labour turnover ΓÇö causes and measurement",
+    "text": "Labour turnover — causes and measurement",
     "slug": "cost-labour-turnover-causes-and-measurement-d4cb4ea3",
     "subject": "costing"
   },
   {
     "id": "0a3e91cf-c759-47ac-b7fc-9207bdc1e447",
-    "text": "Idle time and overtime ΓÇö normal vs abnormal treatment",
+    "text": "Idle time and overtime — normal vs abnormal treatment",
     "slug": "cost-idle-time-and-overtime-normal-vs-abnormal-treatment-08bfcf6d",
     "subject": "costing"
   },
   {
     "id": "350a1410-578d-485f-91d6-a2f4f666d9e9",
-    "text": "Overhead absorption ΓÇö bases and rates",
+    "text": "Overhead absorption — bases and rates",
     "slug": "cost-overhead-absorption-bases-and-rates-65feb5ec",
     "subject": "costing"
   },
   {
     "id": "bde1f682-75ac-478a-8ff1-1ba2845ff0f8",
-    "text": "Under- and over-absorption ΓÇö normal vs abnormal factors",
+    "text": "Under- and over-absorption — normal vs abnormal factors",
     "slug": "cost-under-and-over-absorption-normal-vs-abnormal-factors-c4746f5e",
     "subject": "costing"
   },
   {
     "id": "72ee041b-2cf9-49e9-b1b5-3d4f355b33ca",
-    "text": "Activity-based costing ΓÇö cost pools and drivers",
+    "text": "Activity-based costing — cost pools and drivers",
     "slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
     "subject": "costing"
   },
   {
     "id": "64a0d03a-4bc1-4d43-9e1a-4fe2e748dc32",
-    "text": "Cost concepts ΓÇö prime, production, conversion cost",
+    "text": "Cost concepts — prime, production, conversion cost",
     "slug": "cost-cost-concepts-prime-production-conversion-cost-adcadb60",
     "subject": "costing"
   },
   {
     "id": "440c8813-032d-4fab-955f-99dd9a3acde3",
-    "text": "Process costing ΓÇö normal loss, abnormal loss, abnormal gain",
+    "text": "Process costing — normal loss, abnormal loss, abnormal gain",
     "slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
     "subject": "costing"
   },
@@ -805,43 +805,43 @@
   },
   {
     "id": "22f081a2-6718-436e-ac55-594bcf98fb5a",
-    "text": "AS 2 ΓÇö inventories, NRV, abnormal wastage",
+    "text": "AS 2 — inventories, NRV, abnormal wastage",
     "slug": "comm-as-2-inventories-nrv-abnormal-wastage-49107646",
     "subject": "commerce-accountancy"
   },
   {
     "id": "29113dfe-5091-4e5a-a635-737ad71bb894",
-    "text": "AS 3 ΓÇö cash flow classification",
+    "text": "AS 3 — cash flow classification",
     "slug": "comm-as-3-cash-flow-classification-a6724448",
     "subject": "commerce-accountancy"
   },
   {
     "id": "445936e7-578a-4756-a0aa-ad240a9ef4a8",
-    "text": "AS 9 ΓÇö revenue recognition",
+    "text": "AS 9 — revenue recognition",
     "slug": "comm-as-9-revenue-recognition-09897109",
     "subject": "commerce-accountancy"
   },
   {
     "id": "4bec3262-4880-4023-8d36-35f6619f9caf",
-    "text": "AS 10 ΓÇö property, plant and equipment; revaluation",
+    "text": "AS 10 — property, plant and equipment; revaluation",
     "slug": "comm-as-10-property-plant-and-equipment-revaluation-fb287c47",
     "subject": "commerce-accountancy"
   },
   {
     "id": "6d24067a-2f6d-4b56-8814-9176219d4de4",
-    "text": "Depreciation ΓÇö methods, change in estimate, commencement",
+    "text": "Depreciation — methods, change in estimate, commencement",
     "slug": "comm-depreciation-methods-change-in-estimate-commencement-f82e6d00",
     "subject": "commerce-accountancy"
   },
   {
     "id": "893c3058-a22f-46b8-818b-768a6d7bdeb5",
-    "text": "AS 11 ΓÇö foreign exchange, FCMITDA, non-integrated operations",
+    "text": "AS 11 — foreign exchange, FCMITDA, non-integrated operations",
     "slug": "comm-as-11-foreign-exchange-fcmitda-non-integrated-operations-37e9937e",
     "subject": "commerce-accountancy"
   },
   {
     "id": "ec330902-c759-4057-81ce-7c7b8dea6f1c",
-    "text": "AS 13 ΓÇö investments",
+    "text": "AS 13 — investments",
     "slug": "comm-as-13-investments-dfe9a43a",
     "subject": "commerce-accountancy"
   },
@@ -853,37 +853,37 @@
   },
   {
     "id": "9f1b83f6-5c62-4c3f-a859-1a95d03caf99",
-    "text": "Ind AS 7 ΓÇö statement of cash flows",
+    "text": "Ind AS 7 — statement of cash flows",
     "slug": "comm-ind-as-7-statement-of-cash-flows-b102076c",
     "subject": "commerce-accountancy"
   },
   {
     "id": "f711665c-2d94-490d-83c3-92dece0f4800",
-    "text": "Ind AS 16 ΓÇö property, plant and equipment",
+    "text": "Ind AS 16 — property, plant and equipment",
     "slug": "comm-ind-as-16-property-plant-and-equipment-03ea51c0",
     "subject": "commerce-accountancy"
   },
   {
     "id": "ac8f41f0-78d6-46d6-9938-57b5778ecab9",
-    "text": "Ind AS 21 ΓÇö translation of non-monetary items",
+    "text": "Ind AS 21 — translation of non-monetary items",
     "slug": "comm-ind-as-21-translation-of-non-monetary-items-ea4ffcab",
     "subject": "commerce-accountancy"
   },
   {
     "id": "3158483a-772c-4c02-81e6-602e4f943897",
-    "text": "Ind AS 36 ΓÇö impairment of assets",
+    "text": "Ind AS 36 — impairment of assets",
     "slug": "comm-ind-as-36-impairment-of-assets-8b33d129",
     "subject": "commerce-accountancy"
   },
   {
     "id": "22e6e517-14fc-4f79-9b19-cbb121681c15",
-    "text": "Ind AS 105 ΓÇö non-current assets held for sale",
+    "text": "Ind AS 105 — non-current assets held for sale",
     "slug": "comm-ind-as-105-non-current-assets-held-for-sale-6362ca63",
     "subject": "commerce-accountancy"
   },
   {
     "id": "93669c53-13c1-40d0-8b2b-51b9d67f2b06",
-    "text": "Ind AS 113 ΓÇö fair value hierarchy",
+    "text": "Ind AS 113 — fair value hierarchy",
     "slug": "comm-ind-as-113-fair-value-hierarchy-8df0d07d",
     "subject": "commerce-accountancy"
   },
@@ -895,31 +895,31 @@
   },
   {
     "id": "41a1e4c0-7341-49ce-8574-50943dcd1292",
-    "text": "Liquidity ratios ΓÇö current and quick",
+    "text": "Liquidity ratios — current and quick",
     "slug": "comm-liquidity-ratios-current-and-quick-e5512198",
     "subject": "commerce-accountancy"
   },
   {
     "id": "bdc504eb-8d08-466c-954c-f8705705f53c",
-    "text": "Leverage ratios ΓÇö debt-equity and capital gearing",
+    "text": "Leverage ratios — debt-equity and capital gearing",
     "slug": "comm-leverage-ratios-debt-equity-and-capital-gearing-c8273948",
     "subject": "commerce-accountancy"
   },
   {
     "id": "500ed241-df0d-4f73-8472-409748326e55",
-    "text": "Coverage ratios ΓÇö interest, DSCR, asset coverage",
+    "text": "Coverage ratios — interest, DSCR, asset coverage",
     "slug": "comm-coverage-ratios-interest-dscr-asset-coverage-a722be92",
     "subject": "commerce-accountancy"
   },
   {
     "id": "092d9550-09b4-4f5a-a5b2-c1add1aac460",
-    "text": "Profitability ratios ΓÇö GP, NP, EBIT margin, ROE, ROCE",
+    "text": "Profitability ratios — GP, NP, EBIT margin, ROE, ROCE",
     "slug": "comm-profitability-ratios-gp-np-ebit-margin-roe-roce-451f2443",
     "subject": "commerce-accountancy"
   },
   {
     "id": "640cfa6f-a758-40c4-9657-b719bd6ce6b5",
-    "text": "Turnover ratios ΓÇö receivables, working capital, inventory",
+    "text": "Turnover ratios — receivables, working capital, inventory",
     "slug": "comm-turnover-ratios-receivables-working-capital-inventory-04cc4369",
     "subject": "commerce-accountancy"
   },
@@ -931,7 +931,7 @@
   },
   {
     "id": "61fcfac5-b29c-4a0a-a9bc-32e33563312a",
-    "text": "Market ratios ΓÇö EPS, book value per share, dividend yield, P/E",
+    "text": "Market ratios — EPS, book value per share, dividend yield, P/E",
     "slug": "comm-market-ratios-eps-book-value-per-share-dividend-yield-p-e-02edf471",
     "subject": "commerce-accountancy"
   },
@@ -949,7 +949,7 @@
   },
   {
     "id": "025a36aa-e8da-426c-a9b7-44f678eb17be",
-    "text": "Cash and cash equivalents ΓÇö the three-month test",
+    "text": "Cash and cash equivalents — the three-month test",
     "slug": "comm-cash-and-cash-equivalents-the-three-month-test-49487a8d",
     "subject": "commerce-accountancy"
   },
@@ -961,13 +961,13 @@
   },
   {
     "id": "8174cb02-9611-4073-9192-531634615ff0",
-    "text": "Control of subsidiaries ΓÇö separate presentation",
+    "text": "Control of subsidiaries — separate presentation",
     "slug": "comm-control-of-subsidiaries-separate-presentation-945d7aec",
     "subject": "commerce-accountancy"
   },
   {
     "id": "69cdc941-3ceb-4237-a49f-35d9407e4d12",
-    "text": "Fund flow ΓÇö sources and applications",
+    "text": "Fund flow — sources and applications",
     "slug": "comm-fund-flow-sources-and-applications-24cfb293",
     "subject": "commerce-accountancy"
   },
@@ -997,7 +997,7 @@
   },
   {
     "id": "6376eec0-d336-4b65-9274-f5f8ee5b0a17",
-    "text": "Rights issue ΓÇö ex-right price and value of right",
+    "text": "Rights issue — ex-right price and value of right",
     "slug": "comm-rights-issue-ex-right-price-and-value-of-right-028d888c",
     "subject": "commerce-accountancy"
   },
@@ -1009,13 +1009,13 @@
   },
   {
     "id": "c378a9dd-5680-4e1d-9419-9a7b7ea4f5fd",
-    "text": "Rights issue ΓÇö offer period and procedure",
+    "text": "Rights issue — offer period and procedure",
     "slug": "comm-rights-issue-offer-period-and-procedure-4255a1f2",
     "subject": "commerce-accountancy"
   },
   {
     "id": "0e0ec77a-1cc5-439c-9901-332a7879934c",
-    "text": "Bonus issue ΓÇö effect on shareholders and entity",
+    "text": "Bonus issue — effect on shareholders and entity",
     "slug": "comm-bonus-issue-effect-on-shareholders-and-entity-75ceb504",
     "subject": "commerce-accountancy"
   },
@@ -1027,13 +1027,13 @@
   },
   {
     "id": "f09fe982-a28f-4a96-a5bc-9c5dfcb28a28",
-    "text": "Buy-back ΓÇö conditions and section 68",
+    "text": "Buy-back — conditions and section 68",
     "slug": "comm-buy-back-conditions-and-section-68-e0437e31",
     "subject": "commerce-accountancy"
   },
   {
     "id": "550e4f33-4f30-4218-88ff-d3b92df7b26b",
-    "text": "Debentures ΓÇö features and classification",
+    "text": "Debentures — features and classification",
     "slug": "comm-debentures-features-and-classification-ceaec689",
     "subject": "commerce-accountancy"
   },
@@ -1045,7 +1045,7 @@
   },
   {
     "id": "ace20924-961e-4cb7-b0fa-af1bfb4a65b9",
-    "text": "ESOP ΓÇö vesting and exercise conditions",
+    "text": "ESOP — vesting and exercise conditions",
     "slug": "comm-esop-vesting-and-exercise-conditions-888af080",
     "subject": "commerce-accountancy"
   },
@@ -1063,7 +1063,7 @@
   },
   {
     "id": "20d46b1a-d0d4-4211-8d9c-829a9e68c15f",
-    "text": "Schedule III ΓÇö Balance Sheet heads and sub-heads",
+    "text": "Schedule III — Balance Sheet heads and sub-heads",
     "slug": "comm-schedule-iii-balance-sheet-heads-and-sub-heads-b645c8b7",
     "subject": "commerce-accountancy"
   },
@@ -1087,7 +1087,7 @@
   },
   {
     "id": "186ba6e8-19e4-478f-9d5a-b3acf8d1f9cf",
-    "text": "Consolidation ΓÇö when required",
+    "text": "Consolidation — when required",
     "slug": "comm-consolidation-when-required-fc8549a1",
     "subject": "commerce-accountancy"
   },
@@ -1099,19 +1099,19 @@
   },
   {
     "id": "45fdd5a8-54b2-4f57-86f8-e3dbcb964dd9",
-    "text": "AS 22 ΓÇö deferred tax",
+    "text": "AS 22 — deferred tax",
     "slug": "comm-as-22-deferred-tax-57e93280",
     "subject": "commerce-accountancy"
   },
   {
     "id": "0c404c89-75ad-4fe6-9d45-3ed00b5e9804",
-    "text": "Leases ΓÇö operating and finance",
+    "text": "Leases — operating and finance",
     "slug": "comm-leases-operating-and-finance-3fc7f587",
     "subject": "commerce-accountancy"
   },
   {
     "id": "5ccd5a20-bc3e-446f-9ae6-f2714ae925ac",
-    "text": "Partnership accounts ΓÇö deed absent, profit sharing, current account",
+    "text": "Partnership accounts — deed absent, profit sharing, current account",
     "slug": "comm-partnership-accounts-deed-absent-profit-sharing-current-acco-d617a5b2",
     "subject": "commerce-accountancy"
   },
@@ -1123,7 +1123,7 @@
   },
   {
     "id": "06c6dc13-3a3f-4af1-96a7-869e8708004e",
-    "text": "Kurt Lewin styles ΓÇö autocratic, democratic, laissez-faire",
+    "text": "Kurt Lewin styles — autocratic, democratic, laissez-faire",
     "slug": "mgmt-kurt-lewin-styles-autocratic-democratic-laissez-faire-6f5e8f58",
     "subject": "management"
   },
@@ -1135,7 +1135,7 @@
   },
   {
     "id": "afd4a13d-c570-493d-8b6a-3923c701219f",
-    "text": "Trait approach ΓÇö personality, intelligence, emotion",
+    "text": "Trait approach — personality, intelligence, emotion",
     "slug": "mgmt-trait-approach-personality-intelligence-emotion-4fd09f0e",
     "subject": "management"
   },
@@ -1147,13 +1147,13 @@
   },
   {
     "id": "66dc2fd4-86f0-4ef5-a5cb-beb282194223",
-    "text": "HerseyΓÇôBlanchard situational leadership",
+    "text": "Hersey–Blanchard situational leadership",
     "slug": "mgmt-hersey-blanchard-situational-leadership-082ac8ad",
     "subject": "management"
   },
   {
     "id": "e715c8be-8171-414c-bb32-e3a159f40848",
-    "text": "PathΓÇôGoal theory",
+    "text": "Path–Goal theory",
     "slug": "mgmt-path-goal-theory-a09f2b6b",
     "subject": "management"
   },
@@ -1195,13 +1195,13 @@
   },
   {
     "id": "a2fd859f-b648-4bf2-96f5-1bade330b04f",
-    "text": "Mintzberg interpersonal roles ΓÇö figurehead, leader, liaison",
+    "text": "Mintzberg interpersonal roles — figurehead, leader, liaison",
     "slug": "mgmt-mintzberg-interpersonal-roles-figurehead-leader-liaison-49fc125c",
     "subject": "management"
   },
   {
     "id": "abf5bb02-a95c-415c-b96d-3fe7872b9adc",
-    "text": "Mintzberg informational roles ΓÇö monitor, disseminator, spokesperson",
+    "text": "Mintzberg informational roles — monitor, disseminator, spokesperson",
     "slug": "mgmt-mintzberg-informational-roles-monitor-disseminator-spokesper-baf36484",
     "subject": "management"
   },
@@ -1225,7 +1225,7 @@
   },
   {
     "id": "cd2697fb-dd5c-4afd-98a4-3128223a3a9e",
-    "text": "Planning ΓÇö steps and sequence",
+    "text": "Planning — steps and sequence",
     "slug": "mgmt-planning-steps-and-sequence-6bfbdfe2",
     "subject": "management"
   },
@@ -1243,7 +1243,7 @@
   },
   {
     "id": "46d3aced-cf67-4c05-b1c1-674912681c57",
-    "text": "Organising ΓÇö meaning and scope",
+    "text": "Organising — meaning and scope",
     "slug": "mgmt-organising-meaning-and-scope-0ae6aa0f",
     "subject": "management"
   },
@@ -1297,7 +1297,7 @@
   },
   {
     "id": "5a9b61eb-b1be-4bbe-acd5-ae322ac8d56a",
-    "text": "Katz's managerial skills ΓÇö technical, human, conceptual",
+    "text": "Katz's managerial skills — technical, human, conceptual",
     "slug": "mgmt-katz-s-managerial-skills-technical-human-conceptual-5726a053",
     "subject": "management"
   },
@@ -1345,7 +1345,7 @@
   },
   {
     "id": "ea4a8537-7ec6-4b55-8370-cf46944e9e7f",
-    "text": "Herzberg two-factor theory ΓÇö motivators vs hygiene",
+    "text": "Herzberg two-factor theory — motivators vs hygiene",
     "slug": "mgmt-herzberg-two-factor-theory-motivators-vs-hygiene-36490ed2",
     "subject": "management"
   },
@@ -1357,7 +1357,7 @@
   },
   {
     "id": "2fe2dab9-4e8f-40b0-98f6-68c19bc64180",
-    "text": "Vroom expectancy theory ΓÇö valence, instrumentality, expectancy",
+    "text": "Vroom expectancy theory — valence, instrumentality, expectancy",
     "slug": "mgmt-vroom-expectancy-theory-valence-instrumentality-expectancy-68fb804d",
     "subject": "management"
   },
@@ -1417,7 +1417,7 @@
   },
   {
     "id": "6ac81505-9840-4714-8fc3-b92114f6cd2e",
-    "text": "Competency mapping ΓÇö technical and behavioural",
+    "text": "Competency mapping — technical and behavioural",
     "slug": "mgmt-competency-mapping-technical-and-behavioural-f79927c5",
     "subject": "management"
   },
@@ -1465,7 +1465,7 @@
   },
   {
     "id": "8003eb93-8b12-4a0b-8d02-30bcc64eb70b",
-    "text": "Semantic barriers ΓÇö jargon and terminology",
+    "text": "Semantic barriers — jargon and terminology",
     "slug": "mgmt-semantic-barriers-jargon-and-terminology-fcabceac",
     "subject": "management"
   },
@@ -1573,13 +1573,13 @@
   },
   {
     "id": "2639183b-6d54-45d7-abed-52c1977edbe8",
-    "text": "Mechanisms ΓÇö board, audit committee, disclosure",
+    "text": "Mechanisms — board, audit committee, disclosure",
     "slug": "mgmt-mechanisms-board-audit-committee-disclosure-5b828720",
     "subject": "management"
   },
   {
     "id": "d82a2b25-119f-4552-88b1-d53dd525f8a1",
-    "text": "Committees and codes ΓÇö Birla, Narayana Murthy, Kotak",
+    "text": "Committees and codes — Birla, Narayana Murthy, Kotak",
     "slug": "mgmt-committees-and-codes-birla-narayana-murthy-kotak-e606753b",
     "subject": "management"
   },
@@ -1687,13 +1687,13 @@
   },
   {
     "id": "c2ed046b-2177-4913-bef8-acb009ab53ef",
-    "text": "NNP at factor cost ΓÇö computation",
+    "text": "NNP at factor cost — computation",
     "slug": "econ-nnp-at-factor-cost-computation-b2d7994e",
     "subject": "economics"
   },
   {
     "id": "2c353c7f-8bd9-42bc-85d2-11774785126e",
-    "text": "Personal income and disposable income ΓÇö derivation",
+    "text": "Personal income and disposable income — derivation",
     "slug": "econ-personal-income-and-disposable-income-derivation-a90c9643",
     "subject": "economics"
   },
@@ -1711,7 +1711,7 @@
   },
   {
     "id": "73c004a2-00b5-4fc9-8e71-b289c0147752",
-    "text": "Measurement methods ΓÇö income, expenditure, product",
+    "text": "Measurement methods — income, expenditure, product",
     "slug": "econ-measurement-methods-income-expenditure-product-87140e4a",
     "subject": "economics"
   },
@@ -1765,7 +1765,7 @@
   },
   {
     "id": "7b3b2b30-eb02-40e1-a3b9-f12024dbb089",
-    "text": "Unemployment types ΓÇö structural, frictional, cyclical",
+    "text": "Unemployment types — structural, frictional, cyclical",
     "slug": "econ-unemployment-types-structural-frictional-cyclical-8ec365f1",
     "subject": "economics"
   },
@@ -1795,7 +1795,7 @@
   },
   {
     "id": "0fa91fea-2271-4b8d-83e2-d66253286bba",
-    "text": "Demand for money ΓÇö transactions, precautionary, speculative",
+    "text": "Demand for money — transactions, precautionary, speculative",
     "slug": "econ-demand-for-money-transactions-precautionary-speculative-0c364c3e",
     "subject": "economics"
   },
@@ -1807,7 +1807,7 @@
   },
   {
     "id": "a5f18325-af4e-4040-95ca-5007d0ed75ab",
-    "text": "Direct vs indirect monetary instruments ΓÇö OMO, CRR, SLR, repo, MSF",
+    "text": "Direct vs indirect monetary instruments — OMO, CRR, SLR, repo, MSF",
     "slug": "econ-direct-vs-indirect-monetary-instruments-omo-crr-slr-repo-msf-5acdce3b",
     "subject": "economics"
   },
@@ -1861,7 +1861,7 @@
   },
   {
     "id": "38570226-9451-435b-a9ee-ee5b19c91fec",
-    "text": "Phillips curve ΓÇö short run and long run",
+    "text": "Phillips curve — short run and long run",
     "slug": "econ-phillips-curve-short-run-and-long-run-35035ce8",
     "subject": "economics"
   },
@@ -1885,7 +1885,7 @@
   },
   {
     "id": "5b7a61a8-c69b-45fd-adcb-d929eab4d3dc",
-    "text": "Fiscal deficit ΓÇö definition and components",
+    "text": "Fiscal deficit — definition and components",
     "slug": "econ-fiscal-deficit-definition-and-components-b87d5782",
     "subject": "economics"
   },
@@ -1957,7 +1957,7 @@
   },
   {
     "id": "147643da-a998-4a56-928b-961aef10a6f3",
-    "text": "Balance of payments ΓÇö current and capital account",
+    "text": "Balance of payments — current and capital account",
     "slug": "econ-balance-of-payments-current-and-capital-account-45c3f9c0",
     "subject": "economics"
   },
@@ -1981,7 +1981,7 @@
   },
   {
     "id": "0a2bea54-898e-44df-9325-48b7239e0baa",
-    "text": "Foreign direct investment ΓÇö modes and routes",
+    "text": "Foreign direct investment — modes and routes",
     "slug": "econ-foreign-direct-investment-modes-and-routes-07866e15",
     "subject": "economics"
   },
@@ -1999,7 +1999,7 @@
   },
   {
     "id": "ebff9225-240b-4f49-8716-356e97765194",
-    "text": "International Monetary Fund ΓÇö quota, SDR, facilities",
+    "text": "International Monetary Fund — quota, SDR, facilities",
     "slug": "econ-international-monetary-fund-quota-sdr-facilities-15695c49",
     "subject": "economics"
   },
@@ -2023,7 +2023,7 @@
   },
   {
     "id": "15e5b403-5be3-49c4-a4c5-8c3805cc2694",
-    "text": "RBI, SEBI, IRDAI, PFRDA ΓÇö mandate boundaries",
+    "text": "RBI, SEBI, IRDAI, PFRDA — mandate boundaries",
     "slug": "fin-rbi-sebi-irdai-pfrda-mandate-boundaries-10d10c48",
     "subject": "finance"
   },
@@ -2035,7 +2035,7 @@
   },
   {
     "id": "7aa6a5c3-2e2a-46c9-b5cf-d8a2168f4f88",
-    "text": "Development financial institutions ΓÇö NABARD, SIDBI, NHB, NaBFID, EXIM",
+    "text": "Development financial institutions — NABARD, SIDBI, NHB, NaBFID, EXIM",
     "slug": "fin-development-financial-institutions-nabard-sidbi-nhb-nabfid-e-95bc9803",
     "subject": "finance"
   },
@@ -2047,7 +2047,7 @@
   },
   {
     "id": "3b2daf4c-ec9b-45cd-a101-ebe08e55f530",
-    "text": "International bodies ΓÇö IOSCO, BIS, FATF",
+    "text": "International bodies — IOSCO, BIS, FATF",
     "slug": "fin-international-bodies-iosco-bis-fatf-f5166db0",
     "subject": "finance"
   },
@@ -2065,13 +2065,13 @@
   },
   {
     "id": "aa771f11-bf97-4208-865b-e85f784f6c9a",
-    "text": "Commercial paper ΓÇö eligibility and net worth",
+    "text": "Commercial paper — eligibility and net worth",
     "slug": "fin-commercial-paper-eligibility-and-net-worth-b032568c",
     "subject": "finance"
   },
   {
     "id": "aadffd0f-e754-42e1-9395-bb2589fa1c37",
-    "text": "Certificates of deposit ΓÇö denomination and maturity",
+    "text": "Certificates of deposit — denomination and maturity",
     "slug": "fin-certificates-of-deposit-denomination-and-maturity-49b00cd6",
     "subject": "finance"
   },
@@ -2083,7 +2083,7 @@
   },
   {
     "id": "177b68be-4bce-4c12-bc99-f7fabcbc1de6",
-    "text": "Bank advances ΓÇö cash credit, overdraft, bill discounting",
+    "text": "Bank advances — cash credit, overdraft, bill discounting",
     "slug": "fin-bank-advances-cash-credit-overdraft-bill-discounting-5a3cb714",
     "subject": "finance"
   },
@@ -2125,7 +2125,7 @@
   },
   {
     "id": "1959fdbb-aa4d-4d2b-ad00-2ba2ba1da295",
-    "text": "Minimum face value ΓÇö NCD and NCRPS",
+    "text": "Minimum face value — NCD and NCRPS",
     "slug": "fin-minimum-face-value-ncd-and-ncrps-2e2e3e87",
     "subject": "finance"
   },
@@ -2215,7 +2215,7 @@
   },
   {
     "id": "b8aa6c4d-7880-4c5a-a78d-134faa5d6749",
-    "text": "Swaps ΓÇö interest rate and currency",
+    "text": "Swaps — interest rate and currency",
     "slug": "fin-swaps-interest-rate-and-currency-1b32b9ba",
     "subject": "finance"
   },
@@ -2239,7 +2239,7 @@
   },
   {
     "id": "8725d916-ccfc-4b37-8cc8-ce931ec98592",
-    "text": "Margining ΓÇö initial and variation",
+    "text": "Margining — initial and variation",
     "slug": "fin-margining-initial-and-variation-efc94546",
     "subject": "finance"
   },
@@ -2269,7 +2269,7 @@
   },
   {
     "id": "297ad27e-8c0b-4d60-aa9c-14356fb9f86d",
-    "text": "NRI and OCI investment ΓÇö repatriation basis",
+    "text": "NRI and OCI investment — repatriation basis",
     "slug": "fin-nri-and-oci-investment-repatriation-basis-26df9864",
     "subject": "finance"
   },
@@ -2353,7 +2353,7 @@
   },
   {
     "id": "eedab1ad-56e1-4f9a-bf27-e6b077af1760",
-    "text": "GST ΓÇö supply, input tax credit, zero-rated, exports",
+    "text": "GST — supply, input tax credit, zero-rated, exports",
     "slug": "fin-gst-supply-input-tax-credit-zero-rated-exports-9d84554b",
     "subject": "finance"
   },
@@ -2365,13 +2365,13 @@
   },
   {
     "id": "033fa30b-ae86-4b44-8a16-5b64de7eb0e3",
-    "text": "Income-tax ΓÇö assessment and rectification",
+    "text": "Income-tax — assessment and rectification",
     "slug": "fin-income-tax-assessment-and-rectification-15ac02be",
     "subject": "finance"
   },
   {
     "id": "08143302-6a31-4d6c-9957-83d1948aa124",
-    "text": "Income-tax ΓÇö penalties and PAN provisions",
+    "text": "Income-tax — penalties and PAN provisions",
     "slug": "fin-income-tax-penalties-and-pan-provisions-1532a8d7",
     "subject": "finance"
   },
@@ -2383,7 +2383,7 @@
   },
   {
     "id": "0c61f5f4-a798-4f91-ba11-c8d3e9755f5c",
-    "text": "Fiscal policy ΓÇö instruments and stance",
+    "text": "Fiscal policy — instruments and stance",
     "slug": "fin-fiscal-policy-instruments-and-stance-20eb50f6",
     "subject": "finance"
   },
@@ -2449,19 +2449,19 @@
   },
   {
     "id": "7e1e6fc8-4e40-4e18-bfb7-660c80143603",
-    "text": "RBI Act 1934 ΓÇö constitution, note issue, functions",
+    "text": "RBI Act 1934 — constitution, note issue, functions",
     "slug": "fin-rbi-act-1934-constitution-note-issue-functions-5fdbce16",
     "subject": "finance"
   },
   {
     "id": "357d442c-52db-40ef-af2d-b5616e316756",
-    "text": "Banking Regulation Act 1949 ΓÇö licensing, s.35A, scheduled banks",
+    "text": "Banking Regulation Act 1949 — licensing, s.35A, scheduled banks",
     "slug": "fin-banking-regulation-act-1949-licensing-s-35a-scheduled-banks-bc585c11",
     "subject": "finance"
   },
   {
     "id": "bad0e283-9954-4173-82e8-29efa9aa37a5",
-    "text": "Monetary policy operations ΓÇö SDF, VRRR, LAF",
+    "text": "Monetary policy operations — SDF, VRRR, LAF",
     "slug": "fin-monetary-policy-operations-sdf-vrrr-laf-96922ebe",
     "subject": "finance"
   },
@@ -2479,7 +2479,7 @@
   },
   {
     "id": "e8fccc09-a2c9-4076-a001-ad1c2378a23f",
-    "text": "NBFC categories ΓÇö IFC, Factor, P2P",
+    "text": "NBFC categories — IFC, Factor, P2P",
     "slug": "fin-nbfc-categories-ifc-factor-p2p-5f0e69e2",
     "subject": "finance"
   },
@@ -2503,7 +2503,7 @@
   },
   {
     "id": "4d85c12a-062f-461e-874b-a7456e8afa65",
-    "text": "SEBI Act 1992 ΓÇö establishment, powers, penalties",
+    "text": "SEBI Act 1992 — establishment, powers, penalties",
     "slug": "fin-sebi-act-1992-establishment-powers-penalties-56fa085c",
     "subject": "finance"
   },
@@ -2521,7 +2521,7 @@
   },
   {
     "id": "0a50b1a0-199a-490d-b09b-f4d110cdd9c1",
-    "text": "ICDR Regulations ΓÇö essentials",
+    "text": "ICDR Regulations — essentials",
     "slug": "fin-icdr-regulations-essentials-f95c9cd4",
     "subject": "finance"
   },
@@ -2563,7 +2563,7 @@
   },
   {
     "id": "390cb8c4-537c-469c-b3d1-14d9194d8cea",
-    "text": "NPCI systems ΓÇö UPI, IMPS, NEFT, RTGS",
+    "text": "NPCI systems — UPI, IMPS, NEFT, RTGS",
     "slug": "fin-npci-systems-upi-imps-neft-rtgs-a9d4f5a2",
     "subject": "finance"
   },
@@ -2611,7 +2611,7 @@
   },
   {
     "id": "9044d257-b50a-4e24-8ef1-f69b59b78a91",
-    "text": "Valuation ratios ΓÇö price to book, price to earnings",
+    "text": "Valuation ratios — price to book, price to earnings",
     "slug": "fin-valuation-ratios-price-to-book-price-to-earnings-7ae43126",
     "subject": "finance"
   },
@@ -2695,7 +2695,7 @@
   },
   {
     "id": "6df5a213-940b-4151-9138-2c92b0c6d81f",
-    "text": "Special auditor ΓÇö who appoints",
+    "text": "Special auditor — who appoints",
     "slug": "cos-special-auditor-who-appoints-ab384079",
     "subject": "companies-act"
   },
@@ -2707,7 +2707,7 @@
   },
   {
     "id": "bee942a1-547c-4e90-a51e-ec85d7929b5c",
-    "text": "Board composition ΓÇö minimum and maximum directors",
+    "text": "Board composition — minimum and maximum directors",
     "slug": "cos-board-composition-minimum-and-maximum-directors-81ee33dd",
     "subject": "companies-act"
   },
@@ -2719,7 +2719,7 @@
   },
   {
     "id": "64c13fc5-76e1-4e82-91ff-b7fff31de44b",
-    "text": "Independent directors ΓÇö criteria and tenure",
+    "text": "Independent directors — criteria and tenure",
     "slug": "cos-independent-directors-criteria-and-tenure-4a63ab88",
     "subject": "companies-act"
   },
@@ -2791,7 +2791,7 @@
   },
   {
     "id": "7df7e466-6207-4f14-a7e1-69914aa5cc11",
-    "text": "Preference shares ΓÇö issue, redemption and maximum tenure",
+    "text": "Preference shares — issue, redemption and maximum tenure",
     "slug": "cos-preference-shares-issue-redemption-and-maximum-tenure-a36ad927",
     "subject": "companies-act"
   },
@@ -2803,25 +2803,25 @@
   },
   {
     "id": "73329123-a8d8-45f1-b085-b7f357eb498d",
-    "text": "Bonus shares ΓÇö conditions",
+    "text": "Bonus shares — conditions",
     "slug": "cos-bonus-shares-conditions-81a5d883",
     "subject": "companies-act"
   },
   {
     "id": "9819dd19-eba4-4ec7-b821-c6463a0e4630",
-    "text": "ESOP and sweat equity ΓÇö s.54 lock-in",
+    "text": "ESOP and sweat equity — s.54 lock-in",
     "slug": "cos-esop-and-sweat-equity-s-54-lock-in-ce77fa51",
     "subject": "companies-act"
   },
   {
     "id": "cb6ce678-0190-48be-975b-bef3b053a4b3",
-    "text": "s.52 securities premium ΓÇö permitted applications",
+    "text": "s.52 securities premium — permitted applications",
     "slug": "cos-s-52-securities-premium-permitted-applications-e2c9f050",
     "subject": "companies-act"
   },
   {
     "id": "afba73a7-118a-4364-8352-b7d533120706",
-    "text": "Buy-back of securities ΓÇö s.68 conditions and limits",
+    "text": "Buy-back of securities — s.68 conditions and limits",
     "slug": "cos-buy-back-of-securities-s-68-conditions-and-limits-78870170",
     "subject": "companies-act"
   },
@@ -2857,7 +2857,7 @@
   },
   {
     "id": "a53a2319-80c8-4102-ab38-e076b82b1680",
-    "text": "Issue of shares at a discount ΓÇö exceptions",
+    "text": "Issue of shares at a discount — exceptions",
     "slug": "cos-issue-of-shares-at-a-discount-exceptions-6e4d64ca",
     "subject": "companies-act"
   },
@@ -2881,7 +2881,7 @@
   },
   {
     "id": "bbf89bc7-a311-4d7e-b032-be8ab0bb0b7d",
-    "text": "NCLAT chairperson ΓÇö age limit",
+    "text": "NCLAT chairperson — age limit",
     "slug": "cos-nclat-chairperson-age-limit-ef26c89a",
     "subject": "companies-act"
   },
@@ -2917,7 +2917,7 @@
   },
   {
     "id": "1fa97223-1ca0-4648-942a-fedd3a466d3f",
-    "text": "Interim dividend ΓÇö permitted sources",
+    "text": "Interim dividend — permitted sources",
     "slug": "cos-interim-dividend-permitted-sources-29ad1710",
     "subject": "companies-act"
   },
@@ -2953,7 +2953,7 @@
   },
   {
     "id": "83bd9251-f493-4860-8e39-d6df81d7c929",
-    "text": "IEPF ΓÇö permitted and prohibited uses",
+    "text": "IEPF — permitted and prohibited uses",
     "slug": "cos-iepf-permitted-and-prohibited-uses-238257fd",
     "subject": "companies-act"
   },
@@ -2977,7 +2977,7 @@
   },
   {
     "id": "c48e538b-6d57-4bf9-b8df-0269bc6bd9d0",
-    "text": "Prospectus ΓÇö matters to be stated",
+    "text": "Prospectus — matters to be stated",
     "slug": "cos-prospectus-matters-to-be-stated-32a01360",
     "subject": "companies-act"
   },
@@ -2989,13 +2989,13 @@
   },
   {
     "id": "939d0aed-cd37-46da-bc38-0da589bfd48e",
-    "text": "Misstatement in prospectus ΓÇö civil and criminal liability",
+    "text": "Misstatement in prospectus — civil and criminal liability",
     "slug": "cos-misstatement-in-prospectus-civil-and-criminal-liability-a76a4447",
     "subject": "companies-act"
   },
   {
     "id": "7071a3b2-1324-47c1-a870-94ebcd189d9e",
-    "text": "Private placement ΓÇö procedure and limits",
+    "text": "Private placement — procedure and limits",
     "slug": "cos-private-placement-procedure-and-limits-6dfbad90",
     "subject": "companies-act"
   },
@@ -3013,13 +3013,13 @@
   },
   {
     "id": "24a8a157-a476-485e-b0fe-b9040993d4b6",
-    "text": "Beneficial owner ΓÇö when a third person qualifies",
+    "text": "Beneficial owner — when a third person qualifies",
     "slug": "cos-beneficial-owner-when-a-third-person-qualifies-90e3acff",
     "subject": "companies-act"
   },
   {
     "id": "1d4e91aa-069c-4ceb-af39-59aa6819dc70",
-    "text": "Board meetings ΓÇö frequency and first meeting timing",
+    "text": "Board meetings — frequency and first meeting timing",
     "slug": "cos-board-meetings-frequency-and-first-meeting-timing-612ad98e",
     "subject": "companies-act"
   },
@@ -3055,7 +3055,7 @@
   },
   {
     "id": "83935d3b-fe54-47ec-aa59-ff4a4e8ec5a3",
-    "text": "Audit Committee ΓÇö composition and role",
+    "text": "Audit Committee — composition and role",
     "slug": "cos-audit-committee-composition-and-role-a4e5f01c",
     "subject": "companies-act"
   },
@@ -3313,7 +3313,7 @@
   },
   {
     "id": "ae3d406e-d3f7-43df-95e5-78a621cfc421",
-    "text": "PFRDA Act 2013 ΓÇö powers and functions",
+    "text": "PFRDA Act 2013 — powers and functions",
     "slug": "pens-pfrda-act-2013-powers-and-functions-27c40e29",
     "subject": "pension-sector"
   },
@@ -3355,7 +3355,7 @@
   },
   {
     "id": "b77e7e84-163c-4a38-95b3-6c6ba6729d6d",
-    "text": "IFSCA Act 2019 ΓÇö establishment and composition",
+    "text": "IFSCA Act 2019 — establishment and composition",
     "slug": "ifsc-ifsca-act-2019-establishment-and-composition-6acb11c9",
     "subject": "ifsca-gift-city"
   },
@@ -3571,7 +3571,7 @@
   },
   {
     "id": "43af1e60-ef5e-43aa-b06b-fd7aa0878edc",
-    "text": "NBFC vs bank ΓÇö distinction",
+    "text": "NBFC vs bank — distinction",
     "slug": "bank-nbfc-vs-bank-distinction-38bd7cea",
     "subject": "banking"
   },
@@ -3637,13 +3637,13 @@
   },
   {
     "id": "e8cc3ad5-8340-4ee8-b949-6763525b1ee6",
-    "text": "Primary market ΓÇö instruments and issuance",
+    "text": "Primary market — instruments and issuance",
     "slug": "cmkt-primary-market-instruments-and-issuance-8ba43032",
     "subject": "capital-market"
   },
   {
     "id": "42d0c90e-84ec-4600-a6e6-0715cec1b3a8",
-    "text": "Secondary market ΓÇö trading and settlement",
+    "text": "Secondary market — trading and settlement",
     "slug": "cmkt-secondary-market-trading-and-settlement-2b16bcfe",
     "subject": "capital-market"
   },
@@ -3883,7 +3883,7 @@
   },
   {
     "id": "8b7921cf-e18e-489a-b064-521439563b66",
-    "text": "Measurement of growth ΓÇö national income and per capita income",
+    "text": "Measurement of growth — national income and per capita income",
     "slug": "fawa-measurement-of-growth-national-income-and-per-capita-income-cea20e3f",
     "subject": "financial-awareness"
   },
@@ -4015,13 +4015,13 @@
   },
   {
     "id": "b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a",
-    "text": "Number series ΓÇö arithmetic and difference patterns",
+    "text": "Number series — arithmetic and difference patterns",
     "slug": "qa-number-series-arithmetic-and-difference-patterns-130693e5",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "89b27d9f-7081-4930-9186-c41b93349e1a",
-    "text": "Number series ΓÇö multiplicative and mixed patterns",
+    "text": "Number series — multiplicative and mixed patterns",
     "slug": "qa-number-series-multiplicative-and-mixed-patterns-340f34bd",
     "subject": "quantitative-aptitude"
   },
@@ -4051,7 +4051,7 @@
   },
   {
     "id": "01f2ee8f-c655-4c2e-912e-e0f18a2d3201",
-    "text": "Quadratic equations ΓÇö root comparison (x vs y)",
+    "text": "Quadratic equations — root comparison (x vs y)",
     "slug": "qa-quadratic-equations-root-comparison-x-vs-y-03936368",
     "subject": "quantitative-aptitude"
   },
@@ -4093,7 +4093,7 @@
   },
   {
     "id": "ff082708-c649-46b6-980f-4a66363e6eab",
-    "text": "Percentage comparison ΓÇö what percent of / more than",
+    "text": "Percentage comparison — what percent of / more than",
     "slug": "qa-percentage-comparison-what-percent-of-more-than-b5ef5d48",
     "subject": "quantitative-aptitude"
   },
@@ -4159,13 +4159,13 @@
   },
   {
     "id": "cd574056-f811-4f7b-8fdd-a4e37d0c9772",
-    "text": "Ages ΓÇö present, past and future",
+    "text": "Ages — present, past and future",
     "slug": "qa-ages-present-past-and-future-0a8b95a2",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "528ffbb5-94cb-438d-a875-c854d0f65ec5",
-    "text": "Averages ΓÇö simple and weighted",
+    "text": "Averages — simple and weighted",
     "slug": "qa-averages-simple-and-weighted-1f479970",
     "subject": "quantitative-aptitude"
   },
@@ -4189,7 +4189,7 @@
   },
   {
     "id": "9a417628-ca65-4a32-bac1-87c365f40334",
-    "text": "Trains ΓÇö crossing platforms and each other",
+    "text": "Trains — crossing platforms and each other",
     "slug": "qa-trains-crossing-platforms-and-each-other-fbf3e1f2",
     "subject": "quantitative-aptitude"
   },
@@ -4231,13 +4231,13 @@
   },
   {
     "id": "424d99d5-720f-409e-ba66-8660ac95a486",
-    "text": "Area and perimeter ΓÇö rectangle, square, triangle",
+    "text": "Area and perimeter — rectangle, square, triangle",
     "slug": "qa-area-and-perimeter-rectangle-square-triangle-e23db61d",
     "subject": "quantitative-aptitude"
   },
   {
     "id": "a704c46a-26db-43f5-9ece-3e339a15ac3b",
-    "text": "Circle ΓÇö area, circumference and sectors",
+    "text": "Circle — area, circumference and sectors",
     "slug": "qa-circle-area-circumference-and-sectors-e98b662b",
     "subject": "quantitative-aptitude"
   },
@@ -4297,25 +4297,25 @@
   },
   {
     "id": "cd48d660-2fee-415a-8bd5-e6e78324d73c",
-    "text": "Linear row ΓÇö single row, one direction",
+    "text": "Linear row — single row, one direction",
     "slug": "reas-linear-row-single-row-one-direction-3c93ae0f",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "c7ccbff3-da69-4369-90fe-f5f8b13ff7b9",
-    "text": "Linear row ΓÇö facing both directions",
+    "text": "Linear row — facing both directions",
     "slug": "reas-linear-row-facing-both-directions-08c55ceb",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "49d20336-ad3d-48c7-b172-fdd9c3d17e7f",
-    "text": "Circular arrangement ΓÇö facing centre",
+    "text": "Circular arrangement — facing centre",
     "slug": "reas-circular-arrangement-facing-centre-49054cf2",
     "subject": "general-intelligence-reasoning"
   },
   {
     "id": "b2e396d9-e67b-4242-904e-7424662e7615",
-    "text": "Circular arrangement ΓÇö mixed facing",
+    "text": "Circular arrangement — mixed facing",
     "slug": "reas-circular-arrangement-mixed-facing-5596b070",
     "subject": "general-intelligence-reasoning"
   },
@@ -4585,7 +4585,7 @@
   },
   {
     "id": "71faffff-a24e-49ae-918e-1216b65553d8",
-    "text": "Statement and argument ΓÇö strong or weak",
+    "text": "Statement and argument — strong or weak",
     "slug": "reas-statement-and-argument-strong-or-weak-c34d0b36",
     "subject": "general-intelligence-reasoning"
   },
