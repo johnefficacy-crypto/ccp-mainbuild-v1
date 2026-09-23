@@ -3567,10 +3567,13 @@ def update_essay_theme(
 # ─── Essay PYQ theme tags ──────────────────────────────────────────────
 
 _ESSAY_TAG_FIELDS = {
-    "question_id", "theme_id", "secondary_theme_id", "essay_type",
+    "question_id", "theme_id", "secondary_theme_id", "format", "essay_type",
     "quote_source_type", "tagging_source", "confidence_score", "metadata",
 }
 _ESSAY_TAG_CREATE_FIELDS = _ESSAY_TAG_FIELDS | {"reviewer_status"}
+# Migration 304. `format` is NOT NULL with no DB default on purpose, so it is
+# required here rather than guessed — see that migration's header note A.
+_ESSAY_FORMATS = ("essay", "precis", "comprehension")
 _ESSAY_TYPES = ("quote_abstract", "issue_concrete")
 _ESSAY_QUOTE_SOURCE_TYPES = (
     "indian_thinker", "western_philosopher", "proverb", "literary",
@@ -3617,8 +3620,21 @@ def create_essay_pyq_tag(
     row = {k: v for k, v in body.payload.items() if k in _ESSAY_TAG_FIELDS}
     if not row.get("question_id") or not row.get("theme_id"):
         raise HTTPException(status_code=422, detail="question_id and theme_id are required")
+    if not row.get("format"):
+        raise HTTPException(status_code=422, detail=f"format is required and must be one of {_ESSAY_FORMATS}")
+    if row["format"] not in _ESSAY_FORMATS:
+        raise HTTPException(status_code=422, detail=f"format must be one of {_ESSAY_FORMATS}")
     if row.get("essay_type") and row["essay_type"] not in _ESSAY_TYPES:
         raise HTTPException(status_code=422, detail=f"essay_type must be one of {_ESSAY_TYPES}")
+    # Mirrors essay_pyq_tags_essay_type_format_check (migration 304) so the
+    # operator gets a named 422 instead of a raw constraint violation as a 409.
+    if row["format"] == "essay" and not row.get("essay_type"):
+        raise HTTPException(status_code=422, detail="essay_type is required when format is 'essay'")
+    if row["format"] != "essay" and row.get("essay_type"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"essay_type must be omitted when format is '{row['format']}'",
+        )
     if row.get("quote_source_type") and row["quote_source_type"] not in _ESSAY_QUOTE_SOURCE_TYPES:
         raise HTTPException(status_code=422, detail=f"quote_source_type must be one of {_ESSAY_QUOTE_SOURCE_TYPES}")
     if row.get("tagging_source") and row["tagging_source"] not in _ESSAY_TAGGING_SOURCES:
@@ -4457,6 +4473,224 @@ def delete_pyq_question_topic_tag(
 
 
 # ════════════════════════════════════════════════════════════════════════
+#  PYQ question explanations — created at reviewer_status='pending'
+# ════════════════════════════════════════════════════════════════════════
+#
+# Migration 230 landed the table, its fail-closed verification guard, and the
+# service_role review RPC ``cms_review_pyq_question_explanation`` — but no
+# write path, so nothing could create a row. These endpoints are that path.
+#
+# Uniqueness is ``unique (question_id, explanation_source_type)``: one
+# explanation per question PER SOURCE, deliberately, so the operator import of
+# coaching/official reference material described in
+# docs/architecture/pyq-explanations.md stays possible alongside a
+# platform-authored row. The create path pre-checks that pair and returns a 422
+# naming both, rather than letting the operator see a raw integrity error.
+#
+# ``reviewer_status`` is forced to 'pending' on create and is NOT in the PATCH
+# allowlist — promotion belongs to the review RPC. Note that the guard trigger
+# additionally downgrades a verified row to 'needs_correction' when any
+# learner-facing or provenance field is edited, so a PATCH over a verified row
+# is safe by construction rather than by a check here.
+
+
+# Operator-settable columns from migration 230. ``question_id`` is create-only
+# (same convention as pyq_options): re-parenting an explanation would strand
+# final_answer_option_id/alternate_answer_option_id, which the DB trigger
+# proves against the OLD question. ``reviewer_status`` and the
+# reviewed_by/reviewed_at pair are review-queue-owned. ``updated_at`` is
+# maintained by trg_pyq_question_explanations_updated_at.
+_EXPLANATION_FIELDS = {
+    "short_explanation", "explanation_text", "solution_steps",
+    "option_rationales", "formula_used", "common_traps",
+    "final_answer_option_id", "alternate_answer_option_id",
+    "ambiguity_status", "explanation_source_type", "source_url",
+    "source_document_id", "source_hash", "license_status", "metadata",
+}
+_EXPLANATION_CREATE_FIELDS = _EXPLANATION_FIELDS | {"question_id", "reviewer_status"}
+_EXPLANATION_AMBIGUITY_STATUSES = ("none", "disputed", "multiple_possible", "source_conflict")
+_EXPLANATION_SOURCE_TYPES = ("official", "platform_original", "coaching", "community", "imported")
+_EXPLANATION_LICENSE_STATUSES = ("owned", "licensed", "public_domain", "permission_pending", "restricted")
+_EXPLANATION_DEFAULT_SOURCE_TYPE = "platform_original"  # matches the column default
+# NOT NULL jsonb columns and the shape each one actually expects. Postgres
+# accepts a bare scalar as valid jsonb, so a string sent for ``formula_used``
+# would land silently as `"..."` instead of `[...]`; these checks reject the
+# wrong container up front rather than letting a malformed shape reach a
+# learner surface.
+_EXPLANATION_JSON_ARRAY_FIELDS = ("solution_steps", "formula_used", "common_traps")
+_EXPLANATION_JSON_OBJECT_FIELDS = ("option_rationales", "metadata")
+
+
+def _validate_explanation_shapes(payload: dict[str, Any]) -> None:
+    for col in _EXPLANATION_JSON_ARRAY_FIELDS:
+        if col in payload and not isinstance(payload[col], list):
+            raise HTTPException(status_code=422, detail=f"{col} must be a JSON array")
+    for col in _EXPLANATION_JSON_OBJECT_FIELDS:
+        if col in payload and not isinstance(payload[col], dict):
+            raise HTTPException(status_code=422, detail=f"{col} must be a JSON object")
+
+
+def _validate_explanation_enums(payload: dict[str, Any]) -> None:
+    if payload.get("ambiguity_status") and payload["ambiguity_status"] not in _EXPLANATION_AMBIGUITY_STATUSES:
+        raise HTTPException(status_code=422, detail=f"ambiguity_status must be one of {_EXPLANATION_AMBIGUITY_STATUSES}")
+    if payload.get("explanation_source_type") and payload["explanation_source_type"] not in _EXPLANATION_SOURCE_TYPES:
+        raise HTTPException(status_code=422, detail=f"explanation_source_type must be one of {_EXPLANATION_SOURCE_TYPES}")
+    if payload.get("license_status") and payload["license_status"] not in _EXPLANATION_LICENSE_STATUSES:
+        raise HTTPException(status_code=422, detail=f"license_status must be one of {_EXPLANATION_LICENSE_STATUSES}")
+
+
+def _explanation_option_scope_error(supabase, *, question_id: Any, row: dict[str, Any]) -> str | None:
+    """Mirror the same-question integrity half of pyq_question_explanations_guard
+    so a mis-mapped option id is a named 422 rather than a raw trigger exception
+    surfaced as a 409."""
+    for col in ("final_answer_option_id", "alternate_answer_option_id"):
+        oid = row.get(col)
+        if not oid:
+            continue
+        option = _safe_select(supabase, "pyq_options", id=oid)
+        if not option:
+            return f"{col}={oid!r} does not resolve in pyq_options"
+        if option.get("question_id") != question_id:
+            return f"{col}={oid!r} belongs to a different question"
+    return None
+
+
+@router.get("/pyq-question-explanations")
+def list_pyq_question_explanations(
+    question_id: str | None = Query(default=None),
+    reviewer_status: str | None = Query(default=None),
+    explanation_source_type: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    query = supabase.table("pyq_question_explanations").select(
+        "id, question_id, short_explanation, explanation_text, solution_steps, "
+        "option_rationales, formula_used, common_traps, final_answer_option_id, "
+        "alternate_answer_option_id, ambiguity_status, explanation_source_type, "
+        "source_url, source_document_id, source_hash, license_status, "
+        "reviewer_status, metadata, created_at, updated_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if question_id:
+        query = query.eq("question_id", question_id)
+    if reviewer_status:
+        query = query.eq("reviewer_status", reviewer_status)
+    if explanation_source_type:
+        query = query.eq("explanation_source_type", explanation_source_type)
+    res = query.range(offset, offset + limit - 1).execute()
+    return {"items": res.data or [], "total": getattr(res, "count", None), "limit": limit, "offset": offset}
+
+
+@router.post("/pyq-question-explanations")
+def create_pyq_question_explanation(
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    supabase = get_supabase_admin()
+    _reject_unknown(body.payload, _EXPLANATION_CREATE_FIELDS, "pyq_question_explanations")
+    row = {k: v for k, v in body.payload.items() if k in _EXPLANATION_FIELDS}
+    question_id = body.payload.get("question_id")
+    if not question_id:
+        raise HTTPException(status_code=422, detail="question_id is required")
+    row["question_id"] = question_id
+    _validate_explanation_enums(row)
+    _validate_explanation_shapes(row)
+    if not _safe_select(supabase, "pyq_questions", id=question_id):
+        raise HTTPException(status_code=422, detail="question_id does not resolve")
+    if row.get("source_document_id") and not _safe_select(supabase, "document_assets", id=row["source_document_id"]):
+        raise HTTPException(status_code=422, detail="source_document_id does not resolve")
+    scope_error = _explanation_option_scope_error(supabase, question_id=question_id, row=row)
+    if scope_error:
+        raise HTTPException(status_code=422, detail=scope_error)
+    # unique (question_id, explanation_source_type): write the effective source
+    # type explicitly so the duplicate probe and the insert agree even when the
+    # caller relied on the column default.
+    source_type = row.get("explanation_source_type") or _EXPLANATION_DEFAULT_SOURCE_TYPE
+    row["explanation_source_type"] = source_type
+    if _safe_select(
+        supabase, "pyq_question_explanations",
+        question_id=question_id, explanation_source_type=source_type,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"an explanation already exists for question_id={question_id!r} "
+                f"with explanation_source_type={source_type!r}"
+            ),
+        )
+    # CMS feeds the review queue — an explanation can never be born verified.
+    row["reviewer_status"] = "pending"
+    try:
+        inserted = supabase.table("pyq_question_explanations").insert(row).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=409, detail=f"Insert failed: {exc}")
+    new = inserted[0] if inserted else row
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_explanation.create",
+        entity_type="pyq_question_explanation", entity_id=new.get("id"),
+        new_value={"reason": body.reason, "row": new},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": new}
+
+
+@router.patch("/pyq-question-explanations/{explanation_id}")
+def update_pyq_question_explanation(
+    explanation_id: str,
+    body: WriteEnvelope,
+    admin: dict = Depends(require_permission(PERM_CMS)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Edit non-status fields. ``reviewer_status`` (and reviewed_by/reviewed_at)
+    move only through ``cms_review_pyq_question_explanation``."""
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_explanations", id=explanation_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ question explanation not found")
+    _reject_unknown(body.payload, _EXPLANATION_FIELDS, "pyq_question_explanations")
+    patch = {k: v for k, v in body.payload.items() if k in _EXPLANATION_FIELDS}
+    if not patch:
+        raise HTTPException(status_code=422, detail="No allowed fields in payload")
+    _validate_explanation_enums(patch)
+    _validate_explanation_shapes(patch)
+    if patch.get("source_document_id") and not _safe_select(supabase, "document_assets", id=patch["source_document_id"]):
+        raise HTTPException(status_code=422, detail="source_document_id does not resolve")
+    scope_error = _explanation_option_scope_error(
+        supabase, question_id=existing.get("question_id"), row=patch,
+    )
+    if scope_error:
+        raise HTTPException(status_code=422, detail=scope_error)
+    # Changing explanation_source_type moves the row onto a different
+    # (question_id, explanation_source_type) slot, so it needs the same probe.
+    new_source_type = patch.get("explanation_source_type")
+    if new_source_type and new_source_type != existing.get("explanation_source_type"):
+        if _safe_select(
+            supabase, "pyq_question_explanations",
+            question_id=existing.get("question_id"), explanation_source_type=new_source_type,
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"an explanation already exists for question_id={existing.get('question_id')!r} "
+                    f"with explanation_source_type={new_source_type!r}"
+                ),
+            )
+    updated = (
+        supabase.table("pyq_question_explanations")
+        .update(patch).eq("id", explanation_id).execute().data or []
+    )
+    audit_id = _audit(
+        supabase, admin, "exam_intel.cms.pyq_explanation.update",
+        entity_type="pyq_question_explanation", entity_id=explanation_id,
+        new_value={"reason": body.reason, "patch": patch, "previous": existing},
+    )
+    return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
+
+
+# ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
 #
@@ -4685,7 +4919,10 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
     "essay-pyq-tags": {
         "table": "essay_pyq_tags",
         "allowed": _ESSAY_TAG_FIELDS,
-        "required": ["question_id", "theme_id"],
+        # `format` is required for the same reason it has no DB default
+        # (migration 304 note A): a bulk row that omits it would otherwise hit a
+        # NOT NULL violation mid-batch rather than be rejected up front.
+        "required": ["question_id", "theme_id", "format"],
         "forced": {"reviewer_status": "pending"},
         "fks": {
             "question_id": "pyq_questions",
@@ -4693,6 +4930,7 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
             "secondary_theme_id": "essay_themes",
         },
         "enums": {
+            "format": _ESSAY_FORMATS,
             "essay_type": _ESSAY_TYPES,
             "quote_source_type": _ESSAY_QUOTE_SOURCE_TYPES,
             "tagging_source": _ESSAY_TAGGING_SOURCES,
@@ -4700,7 +4938,63 @@ _IMPORT_CONFIG: dict[str, dict[str, Any]] = {
         "audit": "exam_intel.cms.essay_tag.bulk_create",
         "max_rows": 500,  # 100-row corpus today; default cap is plenty
     },
+    "pyq-question-explanations": {
+        "table": "pyq_question_explanations",
+        "allowed": _EXPLANATION_FIELDS | {"question_id"},
+        "required": ["question_id"],
+        "forced": {"reviewer_status": "pending"},
+        "fks": {
+            "question_id": "pyq_questions",
+            "final_answer_option_id": "pyq_options",
+            "alternate_answer_option_id": "pyq_options",
+            "source_document_id": "document_assets",
+        },
+        "enums": {
+            "ambiguity_status": _EXPLANATION_AMBIGUITY_STATUSES,
+            "explanation_source_type": _EXPLANATION_SOURCE_TYPES,
+            "license_status": _EXPLANATION_LICENSE_STATUSES,
+        },
+        # jsonb container shapes + same-question option integrity + the
+        # (question_id, explanation_source_type) uniqueness probe, so a bad row
+        # is an attributed per-row error instead of a raw DB failure mid-batch.
+        "row_validator": lambda sb, cleaned: _explanation_bulk_row_error(sb, cleaned),
+        "audit": "exam_intel.cms.pyq_explanation.bulk_create",
+        # One explanation per question per source over a multi-year archive, so
+        # the corpus scales with questions — same reasoning as PYQ topic tags.
+        "max_rows": 2000,
+    },
 }
+
+
+def _explanation_bulk_row_error(supabase, cleaned: dict[str, Any]) -> str | None:
+    """Per-row semantic validation for bulk explanation import.
+
+    The generic validator already covers allowlist / required / enums / FK
+    existence. This adds what is specific to this table: the NOT NULL jsonb
+    container shapes, the same-question option check the DB trigger enforces,
+    and the ``unique (question_id, explanation_source_type)`` pair.
+    """
+    for col in _EXPLANATION_JSON_ARRAY_FIELDS:
+        if col in cleaned and not isinstance(cleaned[col], list):
+            return f"{col} must be a JSON array"
+    for col in _EXPLANATION_JSON_OBJECT_FIELDS:
+        if col in cleaned and not isinstance(cleaned[col], dict):
+            return f"{col} must be a JSON object"
+    question_id = cleaned.get("question_id")
+    scope_error = _explanation_option_scope_error(supabase, question_id=question_id, row=cleaned)
+    if scope_error:
+        return scope_error
+    source_type = cleaned.get("explanation_source_type") or _EXPLANATION_DEFAULT_SOURCE_TYPE
+    cleaned["explanation_source_type"] = source_type
+    if _safe_select(
+        supabase, "pyq_question_explanations",
+        question_id=question_id, explanation_source_type=source_type,
+    ):
+        return (
+            f"an explanation already exists for question_id={question_id!r} "
+            f"with explanation_source_type={source_type!r}"
+        )
+    return None
 
 
 def _validate_bulk_row(cfg: dict[str, Any], row: dict[str, Any], supabase, fk_cache: dict) -> tuple[dict | None, str | None]:

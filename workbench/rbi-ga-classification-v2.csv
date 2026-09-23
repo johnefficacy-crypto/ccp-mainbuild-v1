@@ -1,0 +1,321 @@
+year,question_number,question_id,classification,test_fired,reason,confidence,prior_combined,changed
+2023,1,06a71546-9158-4fe8-bc64-b5a1f84f9ce4,PERISHABLE,T2,BSR anniversary count tied to October 2022 (rule §2 T2 example),high,PERISHABLE,no
+2023,2,a2d5fb94-dfdd-4b55-9f4b-6de9fa8aa402,PERISHABLE,T1,FRB share of issuances for 2022-23 (rule §2 T1 example),high,PERISHABLE,no
+2023,3,464407e5-93ca-4d89-a707-b74f17271000,PERISHABLE,T2,Gender-parity leader in that year's index (rule §2 T2 example),high,PERISHABLE,no
+2023,4,a86a0030-3ae4-400d-ae2d-a146919e6bea,PERISHABLE,T1,Civilian honour conferred on the President (rule §2 T1 example),high,PERISHABLE,no
+2023,5,ba69621f-99ba-442c-9d13-5ae8db01c04d,DURABLE,T3,Scheme design threshold (rule §2 T3 example),medium,DURABLE,no
+2023,6,ff2a43cf-19d2-4b71-9e78-815af74a91a9,DURABLE,T3,Fixed project geography (rule §2 T3 example),medium,DURABLE,no
+2023,7,3539cfd7-1980-4538-9e4e-651f2e663682,PERISHABLE,T1,NITI Aayog initiative launched at a dated visit (rule §2 T1 example),high,PERISHABLE,no
+2023,8,c6eb9d90-7e69-422d-918e-478ba00876c7,PERISHABLE,T1,Economic Survey growth forecast for a stated year (rule §2 T1 example),high,PERISHABLE,no
+2023,9,d4ce74ef-4c4d-4e3e-834c-5a1e2da5321e,PERISHABLE,T1,Inauguration of first international cruise vessel (rule §2 T1 example),high,PERISHABLE,no
+2023,10,dc375824-9bd8-42ee-a07b-acdf2ac88636,DURABLE,T3,Full form of a TRAI facility (rule §2 T3 example),medium,DURABLE,no
+2023,11,4dd92204-71ba-458a-9500-48a79bcc87bd,PERISHABLE,T1,CAG selected as external auditor - appointment (rule §2 T1 example),high,PERISHABLE,no
+2023,12,92ec9348-e725-4bc2-86c1-6484d7617e01,DURABLE,T3,Forum membership (rule §2 T3 example),medium,DURABLE,no
+2023,13,779435d4-7055-45c5-a488-1f384541c7ce,PERISHABLE,T1,PLI sector performance per a DPIIT data release,medium,PERISHABLE,no
+2023,14,828f8e49-5f89-434a-8d4c-dce4ada36b90,DURABLE,T3,Common membership of ASEAN and BIMSTEC (rule §2 T3 example),medium,DURABLE,no
+2023,15,44ce8df3-df4e-43bf-9d39-a821dafa06e6,DURABLE,T3,Statutory MPC rule (rule §2 T3 example),medium,DURABLE,no
+2023,16,6001a265-5a4e-4f10-8209-57ab1bf98c83,PERISHABLE,T1,Branch-growth leader for FY 2022-23,high,PERISHABLE,no
+2023,17,b89a3e1c-57bb-4aae-8e2a-0c9e914cf3f9,DURABLE,T3,DPI base period (rule §2 T3 example),medium,DURABLE,no
+2023,18,a333bbf9-fdbe-4896-9c05-56b42367ffed,DURABLE,T3,Institutional mascots (rule §2 T3 example),medium,DURABLE,no
+2023,19,adaf7230-321a-4eec-b993-97639fcbcb53,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,20,568ded3d-be7c-40ea-9a7f-158457df1ddf,PERISHABLE,T1,Budget 2023-24 allocation figures,high,PERISHABLE,no
+2023,21,dde30b8f-dfc9-4401-99e4-c2eed0653cd6,PERISHABLE,T1,Bank that launched a named portal,high,PERISHABLE,no
+2023,22,cf7c64b7-c5c5-46dc-a84a-43207cef04db,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,23,d7922705-0b2c-4951-9181-b2d15370bd9c,PERISHABLE,T1,MoU signing partner,high,PERISHABLE,no
+2023,24,18f853c3-ce55-45eb-a81f-be96333dcbe0,PERISHABLE,T1,ECB 25th-anniversary occasion,medium,PERISHABLE,no
+2023,25,e3f0fa96-1e21-4308-8b6b-e29caa3236ce,PERISHABLE,T1,First stock to cross Rs 1 lakh - market event,high,PERISHABLE,no
+2023,26,6cae56ac-d728-447c-a155-ad062d02e25c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,27,ed85a17d-941f-426c-b997-fbda496d4843,PERISHABLE,T1,Launcher of a dashboard launched June 2023,medium,DURABLE,yes
+2023,28,31907b64-c79f-4ceb-882a-88b2a33207f5,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,29,0f70f032-86ad-4a9d-8dab-dc7c694f6f78,PERISHABLE,T2,NIRF 2023 rankings,high,PERISHABLE,no
+2023,30,d599a55c-74fb-4b0a-a2a5-9cb96c250c38,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,31,c71d1019-cdb5-49bf-a290-8c4934b8ac38,DURABLE,T3,LIC asset allocation - structural; figures in stem are context (§3.1),medium,PERISHABLE,yes
+2023,32,a5817e98-78ab-4dbd-abb2-27f1e3c22b35,DURABLE,T3,Policy pillars - scheme design (§3.4),medium,DURABLE,no
+2023,33,779e152e-0400-4c63-8a9b-8d474c4407fc,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,34,92d4dab5-29a2-4ea2-a544-a105d8dcc623,PERISHABLE,T1,Household-savings share for 2022-23,high,PERISHABLE,no
+2023,35,3224fa53-8136-48dc-adbd-43fa99bba0f1,PERISHABLE,T1,CBDC pilot launch date,medium,DURABLE,yes
+2023,36,66d95685-ad8f-4372-b481-9a41bc8d2f51,PERISHABLE,T1,Small-savings rate for a stated quarter,high,PERISHABLE,no
+2023,37,07ec5f4f-506f-49a4-b325-850d1aea8ef9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,38,fb85f00d-5fa9-4fe8-aaaa-239e35d338f7,PERISHABLE,T1,Signatories of a dated declaration,medium,DURABLE,yes
+2023,39,ee1c526a-1da6-4de1-9686-7a8e5e37adde,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,40,646fe96f-61b0-4645-b460-b210d2f97da5,PERISHABLE,T2,Chair of B20 under a dated G20 presidency,high,PERISHABLE,no
+2023,41,920648ed-bb31-4e77-bada-88659f9bd8ad,DURABLE,T3,Committee composition - design (§3.4),medium,DURABLE,no
+2023,42,bd3d649a-e201-4113-8b56-ac6b79022eb0,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,43,a4b2c61b-cfa6-4096-8bb2-a27bbab9016e,DURABLE,T3,Statement attributed to a named RBI Annual Report (§3.3),medium,PERISHABLE,yes
+2023,44,70ec8b68-f75d-4f26-96e9-f91436d03b9a,PERISHABLE,T1,Professional forecasters survey figures for 2023-24,high,PERISHABLE,no
+2023,45,740ab0f8-3705-49a3-a375-46e52682be94,PERISHABLE,T1,Assembly terms relative to January 2024,medium,PERISHABLE,no
+2023,46,c3f3f398-3537-4897-83f9-208043670daa,DURABLE,T3,"Current base year, no date in stem (§3.1)",medium,DURABLE,no
+2023,47,f325058f-1c5e-435d-9c74-ed805923ebaf,DURABLE,T3,"Launch year of flagship missions - fixed history, not a current-affairs occasion",medium,DURABLE,no
+2023,48,c8a89a5b-7f4f-4290-b18d-fd44672489cf,DURABLE,T3,UPSI event list - regulatory design (§3.4),medium,DURABLE,no
+2023,49,a728015a-edac-4246-8609-3e4890ca001a,PERISHABLE,T1,Prize conferred on a named scientist,high,PERISHABLE,no
+2023,50,39f753a0-722b-4749-9679-9bbf0a5107cc,PERISHABLE,T1,Category of the 2023 Malaysia Masters,medium,PERISHABLE,no
+2023,51,0229dee0-40e9-4af5-a6e6-1e7bb4ec1a4a,PERISHABLE,T2,State Food Safety Index top states,high,PERISHABLE,no
+2023,52,fa8af60b-8e86-4400-8911-ac2d56ecc684,PERISHABLE,T1,Agriculture GVA share for 2022-23,high,PERISHABLE,no
+2023,53,e62ee044-1c93-40af-b4cd-d1926efcec11,PERISHABLE,T1,Services-export contributor for Apr-Dec 2021,high,PERISHABLE,no
+2023,54,ece24678-98ac-427f-9044-df2546c45e65,PERISHABLE,T2,Top FDI source countries for FY23,high,PERISHABLE,no
+2023,55,89def589-836a-4d4d-9933-9081ec2cea5f,PERISHABLE,T1,Twenty Point Programme achievement figure,high,PERISHABLE,no
+2023,56,13a60b17-c78d-4d04-8eb8-cddd11a4165d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,57,cc8b82f4-0a2e-4ce5-a071-4278b0bb21cb,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,58,4e97483b-787b-4b3d-b50f-c6ea37dd26b0,PERISHABLE,T1,US rejoining UNESCO - dated event,high,PERISHABLE,no
+2023,59,8465c7fd-8cfe-4b7f-a3a7-4d51b2fe9653,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,60,fc688826-eec8-4593-9f75-90a67a191e68,DURABLE,T3,"Composition of a commemorative coin - property of the object, not the occasion",medium,DURABLE,no
+2023,61,72b60dc6-6ac5-4560-9869-1bbbcb48bb92,PERISHABLE,T1,NPS subscription figures per Economic Survey 2022-23,high,PERISHABLE,no
+2023,62,8a06af86-118d-4089-af14-20f64728ddd7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,63,e5c98da9-732f-40c7-aac2-cc1d05c5e6d6,DURABLE,T3,Definition of transition bonds (§3.4),medium,DURABLE,no
+2023,64,9d689a3a-0f88-4927-bb18-0500b0c79819,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,65,b9d6a044-93fd-439d-b2d2-fccd2b5bc02c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,66,2072bcce-cf00-44b7-b6e0-ba6f707ec04f,PERISHABLE,T2,Current CIO of the SWAMIH fund,high,PERISHABLE,no
+2023,67,8ce49aa5-bda8-438c-ac00-92e28ab53677,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,68,0453ae7c-d895-45c3-af13-8ad11ae01751,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,69,d45288ea-3086-455e-a2f7-3b86ccb182ca,PERISHABLE,T1,Themes of a dated SAI20 summit,medium,PERISHABLE,no
+2023,70,1e23b271-6759-40c2-845a-93b0f48c4f61,DURABLE,T3,Location of the climate clock,medium,DURABLE,no
+2023,71,67c276e5-2f91-45f5-b1d7-33d38a4bd376,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,72,b4f5f20f-b40d-48c5-9e91-0189760913db,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,73,c70742d0-94f7-42a6-9d17-1d38860e76c3,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,74,f0abc93c-7023-4b6f-a1ca-300dce26ff5e,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,75,7343f9ba-a106-42fb-9b93-532bbe0eeb4c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,76,362a02d5-a932-44c8-a8b5-4fb0bbed52d4,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,77,33b11bae-3149-4094-8a02-a209c867dc95,DURABLE,T3,Publisher of a named strategy document (§3.2),medium,DURABLE,no
+2023,78,3395bf01-c064-431b-8735-d7b9811b7ada,PERISHABLE,T2,Top gold-producing country - rank,medium,PERISHABLE,no
+2023,79,a60b1c74-242e-400e-9aa2-d6b6deb6437c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2023,80,518bd8f3-af42-4782-9d84-186be53a4b6b,PERISHABLE,T1,D-SII list released March 2023,medium,PERISHABLE,no
+2024,1,000f179a-e88b-438d-98e6-da4f64fe66e3,DURABLE,T3,"Scheme outlay, no date in stem (§3.1)",medium,DURABLE,no
+2024,2,c03cf54f-6f27-4e8e-a958-f11435df69ef,PERISHABLE,T1,Union Budget 2024-25 change to the Tarun limit - dated announcement,high,DURABLE,yes
+2024,3,1eac5e45-a56c-4514-bdc4-c2d64bc5b156,PERISHABLE,T1,Union Budget 2024-25 de-penalisation,high,DURABLE,yes
+2024,4,e68ee927-612c-4717-b89b-4d1628d8897c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,5,09bdd252-7913-4235-a3ad-f204400ce21a,PERISHABLE,T1,Union Budget 2024-25 proposal,high,DURABLE,yes
+2024,6,ff22c6f5-286f-4ab9-97e2-aedf24118a15,PERISHABLE,T2,Top achiever for FY 2023-24,high,PERISHABLE,no
+2024,7,206667d0-5750-4ee4-ae1b-80e027ebd0de,PERISHABLE,T1,Initiative launched by DAY-NRLM,medium,DURABLE,yes
+2024,8,8723cf3a-e4af-413c-866f-ee2e9fdf3f2d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,9,21a031cf-d598-43d6-9700-906c616ff60f,PERISHABLE,T1,MSME export share for FY 2023-24,high,PERISHABLE,no
+2024,10,3a9d6660-e922-4bc5-b390-dac5b922a38f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,11,8b842231-525d-4bfa-84d7-4b939eae8f85,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,12,a7298c3c-5b54-4c3c-9a6b-610180a97137,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,13,07fe7881-ce89-4636-8d7b-70dabff148f2,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,14,1883318d-a7ac-411b-aeaa-534b54780c7a,PERISHABLE,T1,Budget allocation for 2024-25,high,PERISHABLE,no
+2024,15,6c6fabd9-b2b5-403b-8d72-3f5cfb7cdb7e,PERISHABLE,T1,Proposed UPI tax-payment limit in a recent policy statement - announcement,medium,DURABLE,yes
+2024,16,d37da05c-2330-413d-aad0-cb8457ad536c,PERISHABLE,T1,Index weight to be reached by 31 March 2025,high,DURABLE,yes
+2024,17,e2563c71-a97c-4aeb-8a14-ea9407a8b9a4,PERISHABLE,T1,FI-Index driver for March 2024,high,PERISHABLE,no
+2024,18,c3b184d4-7376-4b01-b27d-d13ae73fff6a,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,19,38c4bde8-2363-4753-b7b0-de9f4fffc5f7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,20,e04c9562-3075-4c29-9562-143eb186c86f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,21,3c8aefb0-6b1c-4917-86c6-8119831e00ac,PERISHABLE,T1,Bank partnering with RXIL - dated partnership,high,PERISHABLE,no
+2024,22,25bf3b60-a3f7-4fd5-b440-799f15c4fa54,PERISHABLE,T1,Repo increase over May 2022-Feb 2023,high,DURABLE,yes
+2024,23,aa7f15a2-756d-4e3b-84f4-a446c59cd7ea,DURABLE,T3,Standing regulatory criterion (§3.4),medium,DURABLE,no
+2024,24,b64a8b53-b990-4039-9de8-4c09f8451bd9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,25,4fc90b0f-6ed7-4354-9010-ad78c0d78f6e,DURABLE,T3,"Current rule, no date in stem (§3.1)",medium,DURABLE,no
+2024,26,fe284090-9d9a-4778-b5d7-8077b79b8919,DURABLE,T3,"Current threshold, no date in stem (§3.1)",medium,DURABLE,no
+2024,27,b2a52ab0-82ae-4a9f-8dab-c2236aade5b9,DURABLE,T3,Current FAR rule (§3.1),medium,DURABLE,no
+2024,28,9c570193-9a1e-4cbd-b7b3-681465a46cc8,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,29,75a85026-bcd3-4129-af8e-f18aa5c654c8,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,30,5c3e362e-0dba-4003-958b-ceadce1d9318,DURABLE,T3,Current risk-weight treatment (§3.1),medium,DURABLE,no
+2024,31,896c2b31-f466-409b-b800-641be3efc1f0,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,32,fbb7d25c-0b56-4599-b422-c45b381efb42,DURABLE,T3,Statements attributed to a named RBI report (§3.3),medium,DURABLE,no
+2024,33,e0dd0b78-f9d6-405e-87ea-9b10832a9650,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,34,bd0aaed2-51ee-40bb-934c-4143bf4f79f9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,35,feb37eb8-99d5-4dfa-aa89-74c58233eafe,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,36,8db74694-48dd-4f21-84a8-e02c0da21137,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,37,da7110b3-e6c4-4818-a774-82aaf5d16e42,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,38,55094ce0-40a8-4990-9eaf-03ffc2186a32,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,39,cbf8c8e6-eb92-4b50-bcb5-17d4206cf7b6,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,40,7fb6efd1-134f-4c24-8dc9-ca288daeb7b2,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,41,798d40be-1be7-4acf-8f24-875065255b8c,PERISHABLE,T1,IRDAI penalty on a named NBFC,high,PERISHABLE,no
+2024,42,639680ba-7e80-4f08-a577-ecd031b9f062,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,43,4f04deeb-e43b-4ab1-aa7a-b598d75d3e61,PERISHABLE,T1,HaRBInger 2024 problem statements,high,PERISHABLE,no
+2024,44,1af91cef-9299-4846-8359-82d9dc8c63d2,DURABLE,T3,Current permission value (§3.1),medium,DURABLE,no
+2024,45,0cb19ff4-2eaf-4191-b2a9-ad0ce688bd37,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,46,b61bbbac-da6c-4286-a75f-5a618ca7fd9d,DURABLE,T3,"Current minimum, no date in stem (§3.1)",medium,DURABLE,no
+2024,47,4a6c88b5-3ae7-4594-84b6-690a3aa7dfb7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,48,043697de-6bf4-4c94-b702-b6da06187ec2,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,49,08524ce8-d0a8-47a9-92c0-7f4655ae1e74,DURABLE,T3,Asked fact is a person's nationality - static; the appointment is only the hook,medium,PERISHABLE,yes
+2024,50,0b8b22ff-925a-4d0f-9519-e7897fad65a4,PERISHABLE,T2,Current UNFCCC troika,high,PERISHABLE,no
+2024,51,502ce244-eebd-45d6-873c-07b8e0daec11,PERISHABLE,T2,Country with most Gen AI patents - rank,medium,PERISHABLE,no
+2024,52,9bcb0ef0-a3f5-4943-b99f-0df2c20550d0,PERISHABLE,T2,Grand Slams won/not won by a player,high,PERISHABLE,no
+2024,53,e9341b3c-8605-4df3-9bbc-a4ddc0d5528e,DURABLE,T3,Fixed Olympic history (2008),medium,DURABLE,no
+2024,54,75db4cef-c2c5-4107-abe7-abc2c9b2058f,PERISHABLE,T2,EPI ranks,high,PERISHABLE,no
+2024,55,10af97a2-2afc-49f3-9394-df831d4706cc,PERISHABLE,T1,Kit-sponsor deal signed,high,PERISHABLE,no
+2024,56,ebbc4dd1-e619-499d-aa50-57e603aaf3ff,PERISHABLE,T2,India's current G20 Sherpa,high,PERISHABLE,no
+2024,57,b072a614-e11b-43ef-a926-102f8e4f61bb,PERISHABLE,T2,Global Peace Index 2024,high,PERISHABLE,no
+2024,58,fc5a9390-640e-44c7-9656-3c93bdf37c62,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,59,5ea75317-93e0-45f6-b713-e15661a4ea83,DURABLE,T3,Resource geography - stable,medium,DURABLE,no
+2024,60,5b44f24f-1c7b-4a42-b822-3393a48b648e,PERISHABLE,T2,IMO top countries,high,PERISHABLE,no
+2024,61,53f4f623-2ab7-46e8-9dfb-efb45ce9d735,PERISHABLE,T1,Insurer that launched a named plan,high,PERISHABLE,no
+2024,62,ce005ad8-65c4-4c19-984b-3d3ef073fd23,PERISHABLE,T1,Aditya L1 first halo-orbit duration - mission event,medium,DURABLE,yes
+2024,63,476a1b17-5848-47ba-9a60-c7015b1a2ef6,DURABLE,T3,Tenth Schedule - static,medium,DURABLE,no
+2024,64,8c723e8f-6790-411a-8249-8b60a512b3ce,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,65,0b0c9568-a2f0-4dd5-a57f-42866eeb2434,DURABLE,T3,Houthis' home country - static,medium,DURABLE,no
+2024,66,2735f8fd-d4a7-4666-b67d-02cb8992a0d9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,67,6e1a77de-bc75-4417-88c8-c6435759514a,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,68,2f3f55fb-f6e3-4a9d-a0bf-ee2749f1dc66,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,69,4cc1af65-893b-4548-ae4c-af73d2077672,PERISHABLE,T2,Randstad 2024 top brands,high,PERISHABLE,no
+2024,70,1633fb70-e013-4f85-8c9f-ad306f6e63d0,PERISHABLE,T2,Kantar report brand ranking,high,PERISHABLE,no
+2024,71,ba2458c3-0fa8-4521-bac7-fbd4c2507133,PERISHABLE,T1,Paris Olympics participation,high,PERISHABLE,no
+2024,72,c156f5f1-1850-4f96-b60b-1ec4a8f82850,PERISHABLE,T2,ICOMOS 2024 AGM host,high,PERISHABLE,no
+2024,73,d699bb86-2cf3-4195-8a66-7b4d2c5faec9,DURABLE,T3,"Answer is the naming register, not the naming event",medium,DURABLE,no
+2024,74,be6b9e3c-7dbe-4638-b76c-f66406815e0f,DURABLE,T3,Author of a named book (§3.3),medium,DURABLE,no
+2024,75,c2377279-c3a4-4bce-9fac-ad9fe5bce7e8,PERISHABLE,T1,SFB merger effective 1 April 2024,high,DURABLE,yes
+2024,76,b4e1528c-a68c-452c-8e6c-80260a6f03e9,PERISHABLE,T2,G7 2025 host venue,high,PERISHABLE,no
+2024,77,65c278c8-5e09-4b68-80ca-0aa0a5db073a,PERISHABLE,T1,RBI-Nepal payment-linkage agreement,high,PERISHABLE,no
+2024,78,a3fb5fe1-9d94-4d21-9416-8b696ba1e82c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2024,79,1143acaa-b912-4b79-86a0-2fd5dfabf6db,PERISHABLE,T1,Focus areas of a dated Budget speech,high,PERISHABLE,no
+2024,80,7141e43d-e2ad-481a-aba5-d0c402af0930,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,1,b7108e45-936d-4893-870f-624e6e2bef72,PERISHABLE,T2,Leading producer states per the Economic Survey - rank,medium,DURABLE,yes
+2025,2,df958959-d249-42ea-81c0-7f0b24db6d71,DURABLE,T3,"Product identity, no date in stem",medium,PERISHABLE,yes
+2025,3,1cd7dcac-dae6-4539-87d1-57333a5f7193,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,4,a4679a2f-94e7-4caf-adc8-c709420959c4,PERISHABLE,T1,GoI-WFP collaboration announcement,medium,PERISHABLE,no
+2025,5,d7989933-1358-4c7d-bd31-13187372961d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,6,01e9246e-c036-493d-8981-9d4739dcdb35,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,7,c2ec4fae-6110-4573-ac56-3821d770401c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,8,65139476-3941-422f-99a9-0f46bd22a325,PERISHABLE,T2,QS World University Rankings 2026,high,PERISHABLE,no
+2025,9,619759c6-e9ee-425b-bf4c-7305035fe1f9,PERISHABLE,T1,GST rate change effective 22 September 2025,high,DURABLE,yes
+2025,10,dfd8376e-b493-4685-9978-9cd0c56a6655,PERISHABLE,T2,Current Director General of ICMR (as of 2025),high,PERISHABLE,no
+2025,11,17855327-6e9c-44e3-8000-3a19ee8f3519,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,12,a563bf34-cab2-4001-aeb0-245426a3a1a6,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,13,129a6ae1-1ede-4f52-847a-e0ab53efb929,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,14,924f659f-a4d9-4819-afac-6cd769e417b7,DURABLE,T3,Fixed annual observance date,medium,PERISHABLE,yes
+2025,15,8394cecb-162c-40a6-a338-f78884177bc1,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,16,34547acf-12eb-44c4-abb5-9174c085435d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,17,99e371db-149a-4cdf-81f3-d853748e0d60,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,18,261b501a-3b31-42cd-8642-7e5658dbec87,PERISHABLE,T1,Banks partnering with PCAF,high,PERISHABLE,no
+2025,19,bf87a311-73c2-40f8-9b01-70dc6c4249ea,DURABLE,T3,Portfolios held historically - not a current-occupant question,medium,PERISHABLE,yes
+2025,20,7495cfb4-9663-49a4-99a7-2d0b9e555b7a,PERISHABLE,T1,Campaign launched September 2025,high,PERISHABLE,no
+2025,21,91c8e0da-0f3d-42c8-890b-6b68fe32250b,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,22,3f519bc3-a2a0-4f94-b6dc-211e29911ee5,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,23,8f9e55f9-5f75-4838-bb62-891a601437ec,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,24,308cffed-e8b3-4dd3-8b93-4a8642a6d792,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,25,c391d9ef-8630-4643-84a1-83f3db790666,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,26,3d598a6c-7449-42fa-863b-2bad65abae03,PERISHABLE,T2,Current ISRO Chairperson,high,PERISHABLE,no
+2025,27,363e032b-722a-4211-b81a-91a1729e1a25,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,28,5522f400-2925-48cf-bbcc-588e713fac1b,PERISHABLE,T1,GCF approval for IGFF,high,PERISHABLE,no
+2025,29,308ef4be-d09b-42c0-970e-0cf7baea5fcd,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,30,7b50ed9a-79a9-4723-b307-188c86c6ef1b,DURABLE,T3,"Current UPI limit, no date in stem (§3.1)",medium,DURABLE,no
+2025,31,da740899-0bcf-41c2-9c3c-a4cdf027d473,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,32,ac021134-3d01-4a54-95b6-5bcf930f62e3,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,33,22de39f7-55a9-4303-a94a-b70b5b2456b5,DURABLE,T3,Fixed annual observance date,medium,PERISHABLE,yes
+2025,34,5896bb1b-4f1b-4b85-93cb-f8b7e0753f25,PERISHABLE,T1,Citizen Charter count after the June 2025 update,high,PERISHABLE,no
+2025,35,6e5c838c-4818-43cc-b3d2-356c7a87bde9,PERISHABLE,T1,"Capital-market daily volume, 2025 data",high,PERISHABLE,no
+2025,36,9606ad52-7f77-4113-a731-4a0cc675f0c3,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,37,2a3e0fa5-a303-437d-8dbc-3495a3d1b808,DURABLE,T3,Theme of a named annual edition (§3.2),medium,PERISHABLE,yes
+2025,38,430386e5-b4a7-448d-bc03-958e27df17c1,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,39,5ed0efe5-278c-49ee-896a-27af0c7de69c,PERISHABLE,T2,Winner of 2025 FIDE Women's Grand Swiss,high,PERISHABLE,no
+2025,40,068ac1e8-bab9-4a16-aa19-3f255dde38ab,PERISHABLE,T1,"Sovereign rating upgrade, September 2025",high,PERISHABLE,no
+2025,41,e208a9fa-790f-48b7-8039-3db1372c6662,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,42,35b8579a-a850-4859-8cd4-5e0c9bbc3429,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,43,28dca866-0234-4caf-803c-9ae5fb8348c4,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,44,b690d07e-4fcf-49ed-babf-1de0fa149b7e,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,45,78e01d61-48df-48b0-aed6-bdeb5830e5d3,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,46,21fc1dee-890e-453b-be65-1c58efbc56ed,PERISHABLE,T1,Maharatna count as of 2025 - dated as-of figure,medium,PERISHABLE,no
+2025,47,459e3f57-9caa-400f-bb22-9bebcb79999d,DURABLE,T3,Country-area ranks - stable geography,medium,DURABLE,no
+2025,48,323d182a-1639-4a16-a640-28b2d8cc2934,PERISHABLE,T1,First fintech to operationalise the e-rupee wallet,medium,PERISHABLE,no
+2025,49,fdd2c284-61f6-45bb-a90e-d516f6cccffb,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,50,c46e52a6-5364-45c1-b5e5-a913a0733f36,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,51,489185ed-ce45-4b98-a13d-e7c16aac301a,PERISHABLE,T2,IMD World Competitiveness Ranking 2025,high,PERISHABLE,no
+2025,52,930e47fd-cd36-4608-bf65-9f276c7e78ce,PERISHABLE,T1,Naval base inaugurated September 2025,high,PERISHABLE,no
+2025,53,d85e6f2f-d72a-4ec7-a0b0-eb50baa1dc99,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,54,a4a8360a-3d89-4e01-ae18-7942167191f9,PERISHABLE,T2,CII President for 2025-26,high,PERISHABLE,no
+2025,55,d4eb19f3-b01e-43a9-8914-8b18eb6b75f7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,56,b59c62bf-e5d7-496f-b9ca-a06dba55d2b8,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,57,8cc66305-2aa4-4cc7-8028-3337646bb664,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,58,452f1e81-c5d2-47c4-8d36-f8cc3863bb00,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,59,76d56717-5b7e-4806-bc23-4e6be92f4da2,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,60,1776f819-be8f-4bd8-9ee7-7fee01f72a3b,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,61,316601a9-1e15-4476-8732-580f584827c4,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,62,b1344732-0b5e-4dae-ac84-ffad33f04440,PERISHABLE,T1,"Infosys partnership, August 2025",high,PERISHABLE,no
+2025,63,cf3faf75-ac41-4024-a832-3ef1c230bada,PERISHABLE,T1,HDR 2025 India sub-component figures,medium,PERISHABLE,no
+2025,64,67ad6288-b1ea-4d89-932e-670a65c565b0,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,65,0187dc2a-c63d-43db-87d5-19149ae39a53,DURABLE,T3,Project geography of a plant (cf. §2 T3 highway example),medium,DURABLE,no
+2025,66,b8859b98-5bd2-4736-be71-6346397bdb8f,DURABLE,T3,Project geography,medium,DURABLE,no
+2025,67,11d4eb3d-a5bf-44a6-b9e1-3bd735df0fd6,PERISHABLE,T1,Operational SMRs as of 2025,medium,PERISHABLE,no
+2025,68,fb41e2c9-dec4-47cd-91a4-8e26f77d0c5e,PERISHABLE,T2,Global Innovation Index 2025 ranks,high,PERISHABLE,no
+2025,69,817e9feb-25c7-49d8-bb89-8a5c67e00833,DURABLE,T3,Fixed founding facts of a summit,medium,DURABLE,no
+2025,70,58c5c56d-b0db-4e67-ad1b-2d7e4bfcd500,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,71,00ac2d8f-3e72-4b55-b0e9-f0611b410010,PERISHABLE,T1,Name of a flagged-off expedition,medium,DURABLE,yes
+2025,72,da0846a8-fb42-49c4-b9df-7447a5295d75,DURABLE,T3,Fixed history,medium,DURABLE,no
+2025,73,7539b035-f878-4bc9-8e7d-3f5582a964db,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,74,da16eef0-aef4-4ece-985a-cf05db36caf6,PERISHABLE,T1,Ministry of Agriculture statements incl. 2024 sugarcane price,medium,PERISHABLE,no
+2025,75,71fd899a-b967-418a-8079-7cbb08fbf975,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,76,160fbfab-367a-48c8-a5bf-7c2233001177,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,77,e336a437-36d8-4600-a35f-b38f44d4436b,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,78,ea5cbcc8-b3b5-4731-aae2-21b6837d81cf,PERISHABLE,T1,Guinness record set in 2025,high,PERISHABLE,no
+2025,79,4134fd56-569d-48c1-b72e-c5a2b126cd4d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2025,80,e7dae8e3-af8f-461e-b9db-6259a422c869,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,1,04ffc54a-812b-4c61-b25c-1f908ede131f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,2,2f2031eb-b068-4189-9c44-8520a689b3e9,DURABLE,T3,OPEC membership - forum membership (cf. §2 T3 example),medium,PERISHABLE,yes
+2026,3,ef3abb4d-658b-48b1-af7e-d8f6b0bfd75d,PERISHABLE,T1,CEPA signed December 2025,high,DURABLE,yes
+2026,4,de1fe05f-4db9-4e7d-b736-bc661891ccd3,PERISHABLE,T1,Honour conferred 18 May 2026,high,PERISHABLE,no
+2026,5,6b0f11cc-917a-4b79-a528-d7d31821cf55,DURABLE,T3,Fixed annual observance date,medium,PERISHABLE,yes
+2026,6,9d688c8e-f58d-4519-9d70-63bbf51e5eb6,DURABLE,T3,Fixed annual observance date,medium,PERISHABLE,yes
+2026,7,2022e57d-54e8-48b3-a1ca-9a6ae593ef20,PERISHABLE,T1,Cricketer becoming co-owner of a team,high,PERISHABLE,no
+2026,8,91a65ba0-669c-4fbe-a590-bbb544b1b0ac,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,9,b1b9849f-bd96-4cc0-a1ec-47a8ba1c769a,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,10,4a0e3cc6-8e0b-42ea-a182-4b0a4761a47f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,11,567adce5-89df-4dc8-8e92-f2716b321b54,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,12,d5975b37-c0aa-4532-9030-178ce9bc6a3e,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,13,e0785b24-5a22-4270-903f-29bf8ca8ce88,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,14,db8e599f-e6a6-4020-85db-ce46a0258cf9,DURABLE,T3,Location of a centre - installation geography,medium,PERISHABLE,yes
+2026,15,74e8eb73-feda-431e-ae1e-d817ecc2f3bc,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,16,df98d6c3-307d-42d2-9d88-9fc3cba2b14f,DURABLE,T3,"Product identity, no date in stem",medium,PERISHABLE,yes
+2026,17,29e05594-470e-4f38-87df-2db9ad5bf3b8,DURABLE,T3,Strategy framework design (§3.4),medium,DURABLE,no
+2026,18,16ebb855-d630-4b16-aa86-160abcbb225f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,19,f3891a94-4292-4271-8cd8-098f2d7c9347,PERISHABLE,T2,ICC Women's T20 World Cup 2026 host,high,PERISHABLE,no
+2026,20,c6f4a179-832d-4d00-8e21-d3851ae27ee5,PERISHABLE,T1,Census 2027 plan announcements,medium,PERISHABLE,no
+2026,21,687061dd-0502-4743-90c1-808b215ebbbe,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,22,fba8b074-a1ac-4ac1-ac0b-ae4423d6e9b0,PERISHABLE,T1,Award for 2024-25,high,PERISHABLE,no
+2026,23,435e6157-3134-451d-a3b0-d7e169ea32a4,DURABLE,T3,Project geography of a proposed tunnel,medium,PERISHABLE,yes
+2026,24,731f7ea2-af59-4434-963c-ec99b77bf40e,DURABLE,T3,"Current IUCN status, no date in stem (§3.1)",medium,DURABLE,no
+2026,25,96983e4c-9443-438f-ba1d-4a9622cb33a7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,26,e31db937-4117-4543-944a-0ffa11ad37c6,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,27,81ef43fd-1890-405f-9ce2-48ecb8b555ec,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,28,a7cd2a57-d363-4ead-ba0b-5290d0ceb402,PERISHABLE,T1,Licence cancelled April 2026,high,PERISHABLE,no
+2026,29,d05258b3-b61d-47be-b1c6-752e578da1ca,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,30,fd588fbf-d6de-4553-809b-0941ae676f05,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,31,50a601b2-a5b1-4d35-972c-b57d1937cd63,DURABLE,T3,Historic Bharat Ratna conferrals - not a current occasion,medium,PERISHABLE,yes
+2026,32,0a1a3638-6d31-46b8-b17d-2fa4af6dcdbd,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,33,be6cee63-52ce-4af0-a166-65ee63ac9904,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,34,799413a5-0a2a-4717-a6c4-b34dde156250,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,35,e632c832-0d26-4c61-bb8c-abbde570ac90,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,36,c3a497a7-9821-4a3b-99c5-11961fefda9c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,37,d55a8109-c3ce-4e08-8800-2ba9574fed77,PERISHABLE,T1,MoU signed April 2026,high,PERISHABLE,no
+2026,38,9d3bf2a4-fd78-4666-8562-3117423f24c7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,39,978308d3-3020-45b1-bee7-e05d9a8237ab,DURABLE,T3,Asked fact is a player's nationality - static,medium,PERISHABLE,yes
+2026,40,7b6e13e8-ac4c-444c-b3b6-b10f0094aa31,DURABLE,T3,Project geography of a proposed museum,medium,PERISHABLE,yes
+2026,41,9f00a91a-b5cd-4d75-b20f-1c91b2e71336,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,42,6c929b39-df7d-40a7-9df7-d26ae33bc1bd,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,43,977fc7d2-9209-41a9-b086-aa58f10c4ae9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,44,b51c3c4e-a34c-49f9-a14c-e66bb964a02d,DURABLE,T3,Standing rule,medium,DURABLE,no
+2026,45,2e6d4e64-95cf-44de-8875-01b25c1f48ba,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,46,68e42cf5-bdc0-44dc-b55e-0b32cccf5dc6,PERISHABLE,T2,Chairman of the 16th Finance Commission,medium,PERISHABLE,no
+2026,47,b8b7b526-5f4a-4e6c-a745-c7278d4d8b9c,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,48,3bc9fd7d-5859-43f1-9dcd-5851b548e7f9,PERISHABLE,T2,27th Chief of the Naval Staff - officeholder,medium,PERISHABLE,no
+2026,49,4fe8bf7a-616d-4429-98ff-24bfa1d9ac7f,PERISHABLE,T1,"RCB acquisition consortium, 2026",high,PERISHABLE,no
+2026,50,cbaa3783-ccfe-4e0b-a8b3-204aad07c090,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,51,b6154be5-0c97-4d1b-9085-61db1b0ff915,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,52,589f35cb-b76f-42b3-9703-2da6982a1ab4,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,53,b15cae37-0c87-4b04-a5fc-b7a382470347,PERISHABLE,T1,Guinness record event,high,PERISHABLE,no
+2026,54,86002779-8904-4179-8b03-6ba2d7001140,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,55,b30bbf95-5f03-42dd-9f17-ea9dd47c0b55,PERISHABLE,T1,PFRDA National Award conferral,high,PERISHABLE,no
+2026,56,7105ad1e-b88f-4afa-b261-7a33a4eb90bc,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,57,7802b29f-d1c9-4981-a09f-a339deaa043f,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,58,922d1947-2b01-4243-83aa-789c7ba407c9,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,59,91675498-0569-496e-8d80-11c891abf42b,PERISHABLE,T1,Release of a satellite-tagged turtle,medium,PERISHABLE,no
+2026,60,928c8863-88b8-4b61-91f4-32d682e5b755,PERISHABLE,T2,Host of the inaugural ICC Women's Challenge Trophy,high,PERISHABLE,no
+2026,61,4ac4735e-ef03-4ce1-8b15-565c201734d3,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,62,dd38a08c-5445-49ca-bbdb-d5fd4185aec5,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,63,c02fea59-8401-4fb7-b276-a448bde38fa8,PERISHABLE,T2,World Press Freedom Index 2026 rank,high,PERISHABLE,no
+2026,64,44a29ded-7bfb-43d7-949b-c1fc34797e05,PERISHABLE,T1,ADB announcement of a US$70bn push,high,PERISHABLE,no
+2026,65,d435def6-8729-4739-9750-91403668a092,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,66,94ce286e-c5cb-447f-bc2f-65c818c4becc,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,67,c26a338e-8567-4748-becf-9d81c59255b4,PERISHABLE,T1,Export restriction extended May 2026,high,PERISHABLE,no
+2026,68,54dd9e3e-17f2-4d72-9939-b53c93cb873e,PERISHABLE,T2,International Booker Prize 2026 winner,high,PERISHABLE,no
+2026,69,7ecdb3f0-003c-4c2e-9d80-1ece9f65d7eb,PERISHABLE,T1,"NBFC licence approval, April 2026",high,PERISHABLE,no
+2026,70,02a9bdaa-c40f-4977-876d-ed4f107251ee,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,71,acbee2a8-8961-4ffb-a443-22eeb4dc2f4b,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,72,db183f8d-748a-4340-ad0e-5a44a026bf1a,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,73,1801d1c0-7922-4a17-adb6-374031799f1d,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,74,4e6985ab-cded-482f-b6c6-9969afc31733,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,75,41ffa638-a718-46e0-8c78-10588af603ac,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,76,3b5103c4-e6d0-452c-9366-d7d58a3b779a,PERISHABLE,T1,Bank credit growth as on end-March 2026,high,PERISHABLE,no
+2026,77,b2e9bac9-ffee-4db3-b5cb-0737ec403527,DURABLE,T3,Publisher of a named report (§3.2),medium,DURABLE,no
+2026,78,d96cfb79-19ef-49de-93be-1538fcddb0d9,PERISHABLE,T2,Hurun Unlisted Gems 2026 rank,high,PERISHABLE,no
+2026,79,150337ff-ae50-44a6-aabc-fc772b95a9d7,DURABLE,T3,"Residual: static fact, structural rule or current value with no dated anchor",high,DURABLE,no
+2026,80,46a64e8c-60c2-4cc2-9c66-c22985622365,PERISHABLE,T1,Renewable-energy figures incl. July 2025,high,PERISHABLE,no

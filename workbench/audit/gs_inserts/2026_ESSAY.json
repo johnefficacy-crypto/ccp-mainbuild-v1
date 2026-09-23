@@ -1,0 +1,246 @@
+{
+  "year": 2026,
+  "paper": "ESSAY",
+  "paper_code": "UPSC-CSE-MAINS-GS-2026-ESSAY",
+  "paper_kind": "essay",
+  "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+  "mode": "essay",
+  "printed_question_count": 8,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": "A",
+      "text": "Oxymorons reflect the ironies of life.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        58,
+        58
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 58,
+          "text": "Oxymorons reflect the ironies of life.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "e894814494708e505ed14fe86636aa64f9a5914a7b1d2a8fe196504de2a1ebbf",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": "A",
+      "text": "A grateful mind is very beautiful.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        62,
+        62
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "d3cfc7dee0cb7a5a4fc5e46eb1987c282853f977238c05b665fdc724fa2fad65",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": "A",
+      "text": "A thorn is a changed bud.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        66,
+        66
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 66,
+          "text": "A thorn is a changed bud.",
+          "flags": [
+            "unknown_words",
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "c8f35e7b250eae6f6b723b5981ac7271677f09f4182ee0ef7355f310a18a5c3e",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": "A",
+      "text": "When two elephants fight, it is the grass that gets trampled.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        70,
+        70
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 70,
+          "text": "When two elephants fight, it is the grass that gets trampled.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr"
+      ],
+      "content_hash": "98a5181c8abb32adeeb7208c6a0a7f1cff2eee405182e253ac4a6f6d56c40b8b",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": "B",
+      "text": "Nature is the symbol of the spirit.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        87,
+        87
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "5f274b052fecd991aca6550086f142ae42044b5e5d8052a6a7692513621b1d5f",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": "B",
+      "text": "A well-educated mind will always have more questions than answers.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        91,
+        91
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "be0987b1fafd8d019b2adb22e548e854acf64d3c18bd109e76e9c5c758ff62e2",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": "B",
+      "text": "Shelving hard decisions is the least ethical course.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        95,
+        95
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "18aca00f3a163ff355aa3b3fb0b16bb3b710ae1400a26f8f0b8afe7c1326a854",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": "B",
+      "text": "A good leader is one who follows the followers.",
+      "marks": "125",
+      "marks_source": "printed_header",
+      "word_limit": "1000-1200",
+      "source_file": "workbench/audit/ocr_cache/phase3_raw/QP-CSM-26-010926-ESSAY.txt",
+      "line_span": [
+        99,
+        99
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "c7f9f4e5c738eb8537f1a8996e8d3bde3d832980903399b6fbcb236603000bf9",
+      "best_db_match": {
+        "score": 0.0,
+        "measure": "none",
+        "id": null,
+        "text": null
+      },
+      "route": "insert"
+    }
+  ]
+}

@@ -481,6 +481,24 @@ def list_essay_themes(
 # ── Shared essay PYQ tags (read-only reference data) ───────────────────────
 
 
+def _quote_attribution(tag: dict[str, Any]) -> str | None:
+    """Read the single learner-safe key out of a tag's ``metadata`` blob.
+
+    ``essay_pyq_tags.metadata`` also carries tagging bookkeeping (parent ids,
+    prompt indexes, worksheet row refs). None of that belongs on a learner
+    surface, so exactly one key is lifted out and the rest never leaves the
+    backend.
+    """
+    metadata = tag.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get("quote_attribution")
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
 @pyq_tags_router.get("")
 def list_essay_pyq_tags(
     theme_id: str | None = Query(default=None),
@@ -502,8 +520,8 @@ def list_essay_pyq_tags(
     query = (
         supabase.table("essay_pyq_tags")
         .select(
-            "id, question_id, theme_id, secondary_theme_id, essay_type, "
-            "quote_source_type, created_at"
+            "id, question_id, theme_id, secondary_theme_id, format, essay_type, "
+            "quote_source_type, metadata, created_at"
         )
         .eq("reviewer_status", "verified")
     )
@@ -555,8 +573,15 @@ def list_essay_pyq_tags(
                 "question_id": tag.get("question_id"),
                 "theme_id": tag.get("theme_id"),
                 "secondary_theme_id": tag.get("secondary_theme_id"),
+                # Migration 304: essay | precis | comprehension. Nullable in the
+                # payload only because a pre-304 stub row may not carry it.
+                "format": tag.get("format"),
                 "essay_type": tag.get("essay_type"),
                 "quote_source_type": tag.get("quote_source_type"),
+                # Who said the quote, when the tagger knows it reliably. The
+                # stem often carries the quote with no name attached, so this
+                # is the only place an aspirant can see the attribution.
+                "quote_attribution": _quote_attribution(tag),
                 "question_text": question.get("question_text"),
                 "question_number": question.get("question_number"),
                 "year": year_by_paper.get(paper_id),

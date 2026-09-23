@@ -42,7 +42,12 @@ export function rejectReason(file, { pageCount = 0, replacing = false } = {}) {
   return null;
 }
 
-export default function HandwrittenPages({ attemptId, readOnly, onModeChange }) {
+export default function HandwrittenPages({
+  attemptId,
+  readOnly,
+  onModeChange,
+  onCountChange,
+}) {
   const [pages, setPages] = useState([]);
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
@@ -61,6 +66,20 @@ export default function HandwrittenPages({ attemptId, readOnly, onModeChange }) 
   }, [attemptId]);
 
   useEffect(load, [load]);
+
+  // THE SUBMIT GATE NEEDS THIS NUMBER. A handwritten attempt with no pages is
+  // refused by the server (409 no_pages), so the screen that owns the Submit
+  // button has to know before offering it — a button that always fails is
+  // worse than one that says what is missing.
+  //
+  // `null` UNTIL THE PAGES HAVE ACTUALLY BEEN READ. Reporting 0 while the
+  // request is still in flight disables Submit and prints "upload at least one
+  // page" on an attempt that has eight of them, for as long as the read takes.
+  // An unknown count is not zero.
+  useEffect(() => {
+    if (!onCountChange) return;
+    onCountChange(state === "ready" ? pages.length : null);
+  }, [state, pages.length, onCountChange]);
 
   const upload = useCallback(
     async (file, pageNo) => {
@@ -230,4 +249,5 @@ HandwrittenPages.propTypes = {
   attemptId: PropTypes.string,
   readOnly: PropTypes.bool,
   onModeChange: PropTypes.func,
+  onCountChange: PropTypes.func,
 };

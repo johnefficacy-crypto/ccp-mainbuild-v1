@@ -39,6 +39,7 @@ from app.api.admin_study_os import router as admin_study_os_router
 from app.api.admin_exam_intel_cms import router as admin_exam_intel_cms_router
 from app.api.admin_exam_intel_manage import router as admin_exam_intel_manage_router
 from app.api.content_studio import router as content_studio_router
+from app.api.admin_answer_structures import router as admin_answer_structures_router
 from app.api.admin_exam_intel_documents import router as admin_exam_intel_documents_router
 from app.api.admin_exam_intel_evidence import router as admin_exam_intel_evidence_router
 from app.api.admin_community_governance import router as admin_community_governance_router
@@ -381,6 +382,7 @@ api.include_router(admin_study_os_router)  # admin Study OS ops (flagged via ADM
 api.include_router(admin_exam_intel_cms_router)  # admin Exam Intelligence CMS — Phase 4 (same flag)
 api.include_router(admin_exam_intel_manage_router)  # J2 Manage Exam operational editors (exam_intelligence.manage)
 api.include_router(content_studio_router)  # Content Studio — subject-scoped writing-prompt ops (EWP Stage 1)
+api.include_router(admin_answer_structures_router)  # Content Studio — answer structure review queue (migration 303)
 api.include_router(admin_exam_intel_documents_router)  # admin Exam Intelligence PDF uploads (same flag)
 api.include_router(admin_exam_intel_evidence_router)  # D05 document-evidence registration + trust review (PR-4, same flag)
 api.include_router(admin_community_governance_router)  # admin Community / Mentors / Resources governance (§4.1–§4.4)

@@ -187,9 +187,14 @@ export default function useDescriptiveAttempt(questionId) {
         return { ok: true, data: row };
       } catch (e) {
         setError(
-          e?.status === 422
-            ? "Score all six criteria before saving."
-            : "Couldn't save your review. Your answer is still here.",
+          e?.code === "no_pages" || e?.status === 409
+            // The server refuses a handwritten attempt with nothing uploaded.
+            // Saying "couldn't save your review" for it would send the
+            // aspirant back to the rubric, which is not what is missing.
+            ? "Upload at least one page before submitting this answer."
+            : e?.status === 422
+              ? "Score all six criteria before saving."
+              : "Couldn't save your review. Your answer is still here.",
         );
         return { ok: false, error: e };
       }

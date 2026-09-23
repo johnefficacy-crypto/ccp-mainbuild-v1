@@ -1,0 +1,2227 @@
+[
+ {
+  "subject": "General Studies IV (Ethics)",
+  "macro_topic": "Applied Ethics and Case Studies",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 29,
+     "asked_children": 15,
+     "never_asked_children": 14,
+     "never_asked_share": 0.483,
+     "total_questions": 82,
+     "questions_per_asked_child": 5.47
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "null": 14,
+      "occasional": 6,
+      "near_certain": 3,
+      "likely": 3,
+      "rare": 3
+     },
+     "asked_band_mix": {
+      "occasional": 6,
+      "near_certain": 3,
+      "likely": 3,
+      "rare": 3
+     },
+     "dominant_band": "null",
+     "high_yield_share": 0.4,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.476,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 7,
+      "2014": 6,
+      "2015": 8,
+      "2016": 4,
+      "2017": 4,
+      "2018": 6,
+      "2019": 3,
+      "2020": 5,
+      "2021": 8,
+      "2022": 8,
+      "2023": 6,
+      "2024": 9,
+      "2025": 8
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 18,
+      "evaluate": 12,
+      "examine": 9,
+      "suggest": 9,
+      "critically examine": 7,
+      "justify": 5,
+      "describe": 3,
+      "analyze": 2,
+      "critically analyse": 2,
+      "explain": 2,
+      "comment": 1,
+      "illustrate": 1
+     },
+     "verb_bearing_questions": 56,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 18,
+       "leader": "discuss",
+       "leader_share": 0.444
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 9,
+       "leader": "discuss",
+       "leader_share": 0.333
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 29,
+       "leader": "examine",
+       "leader_share": 0.276
+      }
+     ],
+     "shift_reason": "window(s) 2017-2020 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.11,
+     "fired": false,
+     "top_terms": [
+      "<year-literal>",
+      "period",
+      "modern"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.098,
+     "fired": false,
+     "top_terms": [
+      "river",
+      "kerala",
+      "europe",
+      "russia",
+      "delhi"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.049,
+     "fired": false,
+     "top_terms": [
+      "trade-off",
+      "on the one hand",
+      "versus"
+     ],
+     "in_topic_title_or_children": [
+      "trade-off",
+      "vs"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.012,
+     "fired": false,
+     "top_terms": [
+      "gandhi"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.207,
+     "fired": true,
+     "top_terms": [
+      "act",
+      "authorities",
+      "agencies",
+      "pillars",
+      "institution"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.244,
+     "fired": true,
+     "top_terms": [
+      "process",
+      "mechanism",
+      "steps",
+      "procedures",
+      "implementation"
+     ],
+     "in_topic_title_or_children": [
+      "implementation",
+      "steps"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 82 questions over 15 asked children = 5.47 each, at or above 2.50"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "none",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Case studies: crisis & resource-allocation dilemmas: drought-relief tanker capture by a 't",
+    "snippet": "You are the District Magistrate of a highly sensitive, drought-prone district that is currently…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Case studies: public-service integrity & corruption dilemmas: welfare-scheme 'ghost benefi",
+    "snippet": "As a senior officer in the Ministry, you have access to important policy decisions…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "Public discourse & rights ethics (case studies): internet-shutdown ethics, free speech on ",
+    "snippet": "You hold a responsible position in a ministry in the government. One day in…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies II",
+  "macro_topic": "Union and State Executive, Legislature and Judiciary",
+  "artefact_type": "form_timeline",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 17,
+     "asked_children": 13,
+     "never_asked_children": 4,
+     "never_asked_share": 0.235,
+     "total_questions": 78,
+     "questions_per_asked_child": 6.0
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "occasional": 5,
+      "near_certain": 3,
+      "null": 4,
+      "likely": 3,
+      "rare": 2
+     },
+     "asked_band_mix": {
+      "occasional": 5,
+      "near_certain": 3,
+      "likely": 3,
+      "rare": 2
+     },
+     "dominant_band": "occasional",
+     "high_yield_share": 0.462,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.41,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 8,
+      "2014": 4,
+      "2015": 5,
+      "2016": 6,
+      "2017": 4,
+      "2018": 8,
+      "2019": 6,
+      "2020": 5,
+      "2021": 7,
+      "2022": 6,
+      "2023": 6,
+      "2024": 7,
+      "2025": 6
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 25,
+      "examine": 11,
+      "explain": 10,
+      "comment": 6,
+      "analyze": 3,
+      "suggest": 3,
+      "assess": 3,
+      "critically examine": 3,
+      "highlight": 2,
+      "evaluate": 2,
+      "elucidate": 2,
+      "compare": 2,
+      "enumerate": 1,
+      "analyse": 1,
+      "contrast": 1
+     },
+     "verb_bearing_questions": 68,
+     "shift_detected": true,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 22,
+       "leader": "examine",
+       "leader_share": 0.455
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 17,
+       "leader": "discuss",
+       "leader_share": 0.353
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 29,
+       "leader": "discuss",
+       "leader_share": 0.379
+      }
+     ],
+     "leader_first_window": "examine",
+     "leader_last_window": "discuss",
+     "departing_leader_share_fall": 0.455,
+     "arriving_leader_share_rise": 0.016,
+     "shift_path": "one_sided_collapse",
+     "shift_reason": "examine led 2013-2016 at 0.45 and fell to 0.00 by 2021-2025, a drop of 0.45; the ask changed by losing a verb rather than gaining one"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.077,
+     "fired": false,
+     "top_terms": [
+      "<year-literal>",
+      "independence"
+     ],
+     "in_topic_title_or_children": [
+      "independence"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.013,
+     "fired": false,
+     "top_terms": [
+      "delhi"
+     ],
+     "in_topic_title_or_children": [
+      "ladakh"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.026,
+     "fired": false,
+     "top_terms": [
+      "compare",
+      "contrast"
+     ],
+     "in_topic_title_or_children": [
+      "comparison"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.346,
+     "fired": true,
+     "top_terms": [
+      "commission",
+      "bodies",
+      "act",
+      "acts",
+      "commissions"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "amendment",
+      "article",
+      "bodies",
+      "commission"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.09,
+     "fired": false,
+     "top_terms": [
+      "evolution",
+      "process",
+      "procedures",
+      "steps",
+      "mechanism"
+     ],
+     "in_topic_title_or_children": [
+      "procedure",
+      "process"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R1 form_timeline: examine led 2013-2016 at 0.45 and fell to 0.00 by 2021-2025, a drop of 0.45; the ask changed by losing a verb rather than gaining one"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "none",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Constitutional Bodies: appointment transparency (CEC/EC selection process, CAG appointment",
+    "snippet": "The role of the Comptroller and Auditor General (CAG) has become increasingly critical in…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Local government: 73rd/74th Amendment provisions, functions of municipal corporations/coun",
+    "snippet": "Assess the importance of the Panchayat system in India as a part of local…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "The President: importance, qualification, election procedure, powers (executive/legislativ",
+    "snippet": "Account for the legal and political factors responsible for the reduced frequency of using…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies I",
+  "macro_topic": "Indian Society",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 23,
+     "asked_children": 19,
+     "never_asked_children": 4,
+     "never_asked_share": 0.174,
+     "total_questions": 66,
+     "questions_per_asked_child": 3.47
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "likely": 6,
+      "near_certain": 6,
+      "occasional": 5,
+      "rare": 2,
+      "null": 4
+     },
+     "asked_band_mix": {
+      "likely": 6,
+      "near_certain": 6,
+      "occasional": 5,
+      "rare": 2
+     },
+     "dominant_band": "likely",
+     "high_yield_share": 0.632,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.333,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 5,
+      "2014": 3,
+      "2015": 6,
+      "2016": 8,
+      "2017": 3,
+      "2018": 6,
+      "2019": 6,
+      "2020": 7,
+      "2021": 1,
+      "2022": 4,
+      "2023": 7,
+      "2024": 6,
+      "2025": 4
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 14,
+      "explain": 6,
+      "elaborate": 5,
+      "comment": 3,
+      "justify": 3,
+      "examine": 2,
+      "suggest": 2,
+      "elucidate": 2,
+      "substantiate": 2,
+      "analyze": 1,
+      "evaluate": 1,
+      "illustrate": 1,
+      "critically examine": 1,
+      "enumerate": 1,
+      "critically analyse": 1,
+      "assess": 1
+     },
+     "verb_bearing_questions": 46,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 16,
+       "leader": "discuss",
+       "leader_share": 0.25
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 16,
+       "leader": "discuss",
+       "leader_share": 0.375
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 14,
+       "leader": "discuss",
+       "leader_share": 0.286
+      }
+     ],
+     "leader_first_window": "discuss",
+     "leader_last_window": "discuss",
+     "departing_leader_share_fall": -0.036,
+     "arriving_leader_share_rise": 0.036,
+     "shift_reason": "leading verb discuss -> discuss with fall -0.04 and rise 0.04; below the 0.15 two-sided and 0.30 collapse margins required to call the ask changed"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.045,
+     "fired": false,
+     "top_terms": [
+      "modern",
+      "independence"
+     ],
+     "in_topic_title_or_children": [
+      "colonial",
+      "independence",
+      "post-independence"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.03,
+     "fired": false,
+     "top_terms": [
+      "distinguish between"
+     ],
+     "in_topic_title_or_children": [
+      "comparison",
+      "vs"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "gandhian",
+      "sen"
+     ]
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.03,
+     "fired": false,
+     "top_terms": [
+      "forms",
+      "enumerate"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "institutions",
+      "kinds",
+      "types"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.121,
+     "fired": false,
+     "top_terms": [
+      "how do",
+      "how does",
+      "implementation",
+      "process"
+     ],
+     "in_topic_title_or_children": [
+      "transition"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 66 questions over 19 asked children = 3.47 each, at or above 2.50"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "none",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Caste system: structural resilience as a barrier to social mobility, and its adaptation to",
+    "snippet": "Examine the role of the caste system as a barrier to social mobility in…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Effects of globalization on Indian society: kinds of impact (economic, political, developm",
+    "snippet": "'Globalisation is generally said to promote cultural homogenisation but due to this cultural specificities…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "Urbanization challenges: growth of the informal urban sector, smart cities as a management",
+    "snippet": "Does urbanization lead to more segregation and/or marginalization of the poor in Indian metropolises?"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies I",
+  "macro_topic": "Physical Geography of India, Human Geography, and Economic Geography",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 26,
+     "asked_children": 18,
+     "never_asked_children": 8,
+     "never_asked_share": 0.308,
+     "total_questions": 63,
+     "questions_per_asked_child": 3.5
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "occasional": 9,
+      "null": 8,
+      "likely": 6,
+      "near_certain": 3
+     },
+     "asked_band_mix": {
+      "occasional": 9,
+      "likely": 6,
+      "near_certain": 3
+     },
+     "dominant_band": "occasional",
+     "high_yield_share": 0.5,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.476,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 2,
+      "2014": 3,
+      "2015": 2,
+      "2016": 5,
+      "2017": 6,
+      "2018": 1,
+      "2019": 6,
+      "2020": 8,
+      "2021": 9,
+      "2022": 4,
+      "2023": 7,
+      "2024": 4,
+      "2025": 6
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 16,
+      "explain": 6,
+      "examine": 4,
+      "suggest": 3,
+      "elaborate": 3,
+      "describe": 2,
+      "contrast": 1,
+      "comment": 1,
+      "highlight": 1,
+      "critically examine": 1,
+      "assess": 1,
+      "enumerate": 1,
+      "substantiate": 1
+     },
+     "verb_bearing_questions": 36,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 9,
+       "leader": "discuss",
+       "leader_share": 0.667
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 12,
+       "leader": "discuss",
+       "leader_share": 0.25
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 15,
+       "leader": "discuss",
+       "leader_share": 0.467
+      }
+     ],
+     "shift_reason": "window(s) 2013-2016 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.016,
+     "fired": false,
+     "top_terms": [
+      "ancient"
+     ],
+     "in_topic_title_or_children": [
+      "modern"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.175,
+     "fired": false,
+     "top_terms": [
+      "river",
+      "monsoon",
+      "himalayan",
+      "north-east",
+      "asia"
+     ],
+     "in_topic_title_or_children": [
+      "africa",
+      "america",
+      "asia",
+      "basin",
+      "china"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.032,
+     "fired": false,
+     "top_terms": [
+      "differentiate",
+      "contrast"
+     ],
+     "in_topic_title_or_children": [
+      "vs"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.048,
+     "fired": false,
+     "top_terms": [
+      "components",
+      "enumerate",
+      "bodies"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "amendment",
+      "classification",
+      "types"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.063,
+     "fired": false,
+     "top_terms": [
+      "how does",
+      "how do",
+      "mechanism"
+     ],
+     "in_topic_title_or_children": [
+      "mechanism",
+      "transition"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 63 questions over 18 asked children = 3.50 each, at or above 2.50"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "map",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Climate of India: factors influencing climate, monsoon mechanism (classical/modern/air-mas",
+    "snippet": "Explain the origin and distribution of the monsoon climate in India."
+   },
+   {
+    "year": 2020,
+    "child_topic": "Mineral and energy resources: metallic/non-metallic mineral types, distribution and mining",
+    "snippet": "India has immense potential of solar energy though there are regional variations in its…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "Water resources: underground/surface/inland/oceanic water resources, utilization patterns,",
+    "snippet": "Why is the world today confronted with a crisis of availability of and access…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies II",
+  "macro_topic": "International Relations",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 15,
+     "asked_children": 14,
+     "never_asked_children": 1,
+     "never_asked_share": 0.067,
+     "total_questions": 59,
+     "questions_per_asked_child": 4.21
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "rare": 5,
+      "null": 1,
+      "likely": 6,
+      "near_certain": 2,
+      "occasional": 1
+     },
+     "asked_band_mix": {
+      "rare": 5,
+      "likely": 6,
+      "near_certain": 2,
+      "occasional": 1
+     },
+     "dominant_band": "likely",
+     "high_yield_share": 0.571,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.339,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 6,
+      "2014": 5,
+      "2015": 5,
+      "2016": 5,
+      "2017": 5,
+      "2018": 5,
+      "2019": 4,
+      "2020": 4,
+      "2021": 4,
+      "2022": 4,
+      "2023": 4,
+      "2024": 4,
+      "2025": 4
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 19,
+      "explain": 6,
+      "evaluate": 5,
+      "examine": 5,
+      "elaborate": 3,
+      "comment": 3,
+      "analyze": 3,
+      "critically examine": 2,
+      "describe": 2,
+      "elucidate": 1,
+      "critically analyse": 1,
+      "enumerate": 1
+     },
+     "verb_bearing_questions": 49,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 19,
+       "leader": "discuss",
+       "leader_share": 0.474
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 15,
+       "leader": "discuss",
+       "leader_share": 0.4
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 15,
+       "leader": "discuss",
+       "leader_share": 0.267
+      }
+     ],
+     "leader_first_window": "discuss",
+     "leader_last_window": "discuss",
+     "departing_leader_share_fall": 0.207,
+     "arriving_leader_share_rise": -0.207,
+     "shift_reason": "leading verb discuss -> discuss with fall 0.21 and rise -0.21; below the 0.15 two-sided and 0.30 collapse margins required to call the ask changed"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.017,
+     "fired": false,
+     "top_terms": [
+      "<year-literal>"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.322,
+     "fired": true,
+     "top_terms": [
+      "china",
+      "asia",
+      "africa",
+      "indo-pacific",
+      "sea"
+     ],
+     "in_topic_title_or_children": [
+      "afghanistan",
+      "africa",
+      "arctic",
+      "arunachal",
+      "asia"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.017,
+     "fired": false,
+     "top_terms": [
+      "vs."
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.085,
+     "fired": false,
+     "top_terms": [
+      "act",
+      "commissions",
+      "body",
+      "enumerate",
+      "institutions"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "agencies",
+      "amendment",
+      "institutions"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.034,
+     "fired": false,
+     "top_terms": [
+      "process",
+      "steps"
+     ],
+     "in_topic_title_or_children": [
+      "evolution"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 59 questions over 14 asked children = 4.21 each, at or above 2.50"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "map",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Evolution and key principles of Indian foreign policy: determinants, NAM/NAM 2.0, Panchshe",
+    "snippet": "Discuss the relevance of the look East Policy in the context of changing geopolitical…"
+   },
+   {
+    "year": 2017,
+    "child_topic": "Multilateral relations: WTO (decision-making, Nairobi Package, IPR, reforms, agriculture i",
+    "snippet": "What are the major challenges before the World Trade Organisation (WTO) in the context…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "Strategic partnerships & major-power relations: NATO's 75th anniversary, India-US strategi",
+    "snippet": "'The expansion and strengthening of NATO and a stronger US-Europe strategic partnership works well…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies III",
+  "macro_topic": "Agriculture",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 14,
+     "asked_children": 13,
+     "never_asked_children": 1,
+     "never_asked_share": 0.071,
+     "total_questions": 55,
+     "questions_per_asked_child": 4.23
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "rare": 3,
+      "likely": 2,
+      "occasional": 4,
+      "near_certain": 4,
+      "null": 1
+     },
+     "asked_band_mix": {
+      "rare": 3,
+      "likely": 2,
+      "occasional": 4,
+      "near_certain": 4
+     },
+     "dominant_band": "occasional",
+     "high_yield_share": 0.462,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.309,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 3,
+      "2014": 5,
+      "2015": 6,
+      "2016": 4,
+      "2017": 5,
+      "2018": 7,
+      "2019": 4,
+      "2020": 4,
+      "2021": 3,
+      "2022": 4,
+      "2023": 4,
+      "2024": 3,
+      "2025": 3
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 11,
+      "explain": 8,
+      "elaborate": 6,
+      "suggest": 2,
+      "analyze": 2,
+      "examine": 2,
+      "evaluate": 2,
+      "elucidate": 1,
+      "assess": 1,
+      "describe": 1,
+      "comment": 1
+     },
+     "verb_bearing_questions": 33,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 15,
+       "leader": "discuss",
+       "leader_share": 0.533
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 7,
+       "leader": "explain",
+       "leader_share": 0.429
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 11,
+       "leader": "elaborate",
+       "leader_share": 0.364
+      }
+     ],
+     "shift_reason": "window(s) 2017-2020 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.109,
+     "fired": false,
+     "top_terms": [
+      "<year-literal>",
+      "independence"
+     ],
+     "in_topic_title_or_children": [
+      "colonial",
+      "era",
+      "independence"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.018,
+     "fired": false,
+     "top_terms": [
+      "sikkim"
+     ],
+     "in_topic_title_or_children": [
+      "sikkim"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "comparison"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.055,
+     "fired": false,
+     "top_terms": [
+      "act",
+      "types"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "classification",
+      "institutions"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.218,
+     "fired": true,
+     "top_terms": [
+      "chain",
+      "steps",
+      "how do",
+      "process",
+      "implementation"
+     ],
+     "in_topic_title_or_children": [
+      "chain",
+      "process",
+      "steps"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 55 questions over 13 asked children = 4.23 each, at or above 2.50"
+  ],
+  "confidence": "high",
+  "content_artefact_needed": "none",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Cold-chain and price-volatility management: long-term cold-chain solutions for vegetable-p",
+    "snippet": "Discuss the impact of farm subsidies on the fiscal health of state budgets and…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Agriculture marketing: process and structure in India, importance, government measures (AP",
+    "snippet": "Examine the role of supermarkets in supply chain management of fruits, vegetables and food…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "Wetland conservation and the Ramsar 'wise use' concept with Indian Ramsar-site examples; t",
+    "snippet": "Comment on the National Wetland Conservation Programme initiated by the Government of India and…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies III",
+  "macro_topic": "Environment, Ecology and Bio-diversity",
+  "artefact_type": "frequency_chart",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 30,
+     "asked_children": 17,
+     "never_asked_children": 13,
+     "never_asked_share": 0.433,
+     "total_questions": 37,
+     "questions_per_asked_child": 2.18
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "likely": 5,
+      "null": 13,
+      "rare": 7,
+      "occasional": 4,
+      "near_certain": 1
+     },
+     "asked_band_mix": {
+      "likely": 5,
+      "rare": 7,
+      "occasional": 4,
+      "near_certain": 1
+     },
+     "dominant_band": "null",
+     "high_yield_share": 0.353,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [
+      2015
+     ],
+     "share_in_last_5_years": 0.514,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 2,
+      "2014": 1,
+      "2016": 1,
+      "2017": 1,
+      "2018": 4,
+      "2019": 5,
+      "2020": 4,
+      "2021": 3,
+      "2022": 4,
+      "2023": 3,
+      "2024": 4,
+      "2025": 5
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "explain": 9,
+      "discuss": 8,
+      "describe": 2,
+      "justify": 2,
+      "comment": 2,
+      "assess": 1,
+      "analyze": 1,
+      "examine": 1
+     },
+     "verb_bearing_questions": 22,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 3,
+       "leader": "discuss",
+       "leader_share": 1.0
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 8,
+       "leader": "explain",
+       "leader_share": 0.375
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 11,
+       "leader": "explain",
+       "leader_share": 0.545
+      }
+     ],
+     "shift_reason": "window(s) 2013-2016, 2017-2020 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.216,
+     "fired": true,
+     "top_terms": [
+      "<year-literal>",
+      "modern"
+     ],
+     "in_topic_title_or_children": [
+      "modern"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.216,
+     "fired": true,
+     "top_terms": [
+      "coastal",
+      "himalayan",
+      "ocean",
+      "sea",
+      "river"
+     ],
+     "in_topic_title_or_children": [
+      "arctic",
+      "coastal",
+      "desert",
+      "himalayan",
+      "monsoon"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "vs"
+     ]
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.027,
+     "fired": false,
+     "top_terms": [
+      "act"
+     ],
+     "in_topic_title_or_children": [
+      "act",
+      "amendment",
+      "body",
+      "categories",
+      "classification"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.189,
+     "fired": false,
+     "top_terms": [
+      "how do",
+      "how does",
+      "evolution",
+      "process",
+      "steps"
+     ],
+     "in_topic_title_or_children": [
+      "cycle",
+      "evolution",
+      "process",
+      "stage",
+      "transition"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R3 frequency_chart: 30 children, 17 asked, 43% never asked, only 2.18 questions per asked child"
+  ],
+  "confidence": "medium",
+  "content_artefact_needed": "map",
+  "evidence": [
+   {
+    "year": 2021,
+    "child_topic": "Climate mitigation & industrial transition: Anthropocene debate, green industrialisation, ",
+    "snippet": "Explain the purpose of the Green Grid Initiative launched at World Leaders Summit of…"
+   },
+   {
+    "year": 2021,
+    "child_topic": "Climate mitigation & industrial transition: Anthropocene debate, green industrialisation, ",
+    "snippet": "Describe the major outcomes of the 26th session of the Conference of the Parties…"
+   },
+   {
+    "year": 2022,
+    "child_topic": "Climate mitigation & industrial transition: Anthropocene debate, green industrialisation, ",
+    "snippet": "Do you think India will meet 50 percent of its energy needs from renewable…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies IV (Ethics)",
+  "macro_topic": "Human Values — Contributions of Moral Thinkers and Administrative Thinkers",
+  "artefact_type": "ask_record",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 6,
+     "asked_children": 5,
+     "never_asked_children": 1,
+     "never_asked_share": 0.167,
+     "total_questions": 38,
+     "questions_per_asked_child": 7.6
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "rare": 1,
+      "near_certain": 1,
+      "occasional": 1,
+      "null": 1,
+      "likely": 2
+     },
+     "asked_band_mix": {
+      "rare": 1,
+      "near_certain": 1,
+      "occasional": 1,
+      "likely": 2
+     },
+     "dominant_band": "likely",
+     "high_yield_share": 0.6,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [],
+     "share_in_last_5_years": 0.368,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 3,
+      "2014": 3,
+      "2015": 2,
+      "2016": 3,
+      "2017": 2,
+      "2018": 4,
+      "2019": 3,
+      "2020": 4,
+      "2021": 3,
+      "2022": 3,
+      "2023": 2,
+      "2024": 3,
+      "2025": 3
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 6,
+      "explain": 3,
+      "analyse": 2,
+      "critically analyse": 1,
+      "elaborate": 1,
+      "analyze": 1
+     },
+     "verb_bearing_questions": 14,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 9,
+       "leader": "discuss",
+       "leader_share": 0.556
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 3,
+       "leader": "analyse",
+       "leader_share": 0.333
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 2,
+       "leader": "explain",
+       "leader_share": 1.0
+      }
+     ],
+     "shift_reason": "window(s) 2013-2016, 2017-2020, 2021-2025 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.026,
+     "fired": false,
+     "top_terms": [
+      "difference between"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.658,
+     "fired": true,
+     "top_terms": [
+      "gandhi",
+      "thinkers",
+      "vivekananda",
+      "socrates",
+      "nehru"
+     ],
+     "in_topic_title_or_children": [
+      "ambedkar",
+      "aristotle",
+      "aurobindo",
+      "bentham",
+      "confucius"
+     ]
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.053,
+     "fired": false,
+     "top_terms": [
+      "acts"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.053,
+     "fired": false,
+     "top_terms": [
+      "how does",
+      "how do"
+     ],
+     "in_topic_title_or_children": []
+    }
+   }
+  ],
+  "decision_trace": [
+   "R2 ask_record: 38 questions over 5 asked children = 7.60 each, at or above 2.50"
+  ],
+  "confidence": "medium",
+  "content_artefact_needed": "mindmap",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Frequently cited quotation-anchors for ethics answer-writing: Gandhi's 'Seven Sins' and 't",
+    "snippet": "\"Seven Sins\" according to Mahatma Gandhi are highly relevant to understand contemporary economic anomalies…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Indian moral/spiritual exemplars used as case anchors: Mahatma Gandhi, Dr S. Radhakrishnan",
+    "snippet": "\"Anger and intolerance are the enemies of correct understanding.\" - Mahatma Gandhi"
+   },
+   {
+    "year": 2022,
+    "child_topic": "Global moral/civic exemplars used as case anchors: Abraham Lincoln, Nelson Mandela, Martin",
+    "snippet": "\"Judge your success by what you had to give up in order to get…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies I",
+  "macro_topic": "Indian Culture",
+  "artefact_type": "frequency_chart",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 30,
+     "asked_children": 16,
+     "never_asked_children": 14,
+     "never_asked_share": 0.467,
+     "total_questions": 25,
+     "questions_per_asked_child": 1.56
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "occasional": 7,
+      "likely": 2,
+      "rare": 7,
+      "null": 14
+     },
+     "asked_band_mix": {
+      "occasional": 7,
+      "likely": 2,
+      "rare": 7
+     },
+     "dominant_band": "null",
+     "high_yield_share": 0.125,
+     "graded": true
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "even",
+     "first_year": 2013,
+     "last_year": 2025,
+     "years_absent": [
+      2023
+     ],
+     "share_in_last_5_years": 0.28,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2013": 3,
+      "2014": 2,
+      "2015": 1,
+      "2016": 2,
+      "2017": 2,
+      "2018": 4,
+      "2019": 1,
+      "2020": 3,
+      "2021": 1,
+      "2022": 3,
+      "2024": 1,
+      "2025": 2
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "discuss": 9,
+      "comment": 5,
+      "evaluate": 2,
+      "explain": 2,
+      "analyze": 1,
+      "highlight": 1,
+      "assess": 1,
+      "justify": 1,
+      "elucidate": 1,
+      "analyse": 1
+     },
+     "verb_bearing_questions": 24,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 8,
+       "leader": "discuss",
+       "leader_share": 0.375
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 9,
+       "leader": "discuss",
+       "leader_share": 0.444
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 7,
+       "leader": "discuss",
+       "leader_share": 0.286
+      }
+     ],
+     "shift_reason": "window(s) 2013-2016, 2017-2020, 2021-2025 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.32,
+     "fired": true,
+     "top_terms": [
+      "bhakti",
+      "medieval",
+      "medieval india",
+      "harappan",
+      "gupta"
+     ],
+     "in_topic_title_or_children": [
+      "ancient",
+      "bhakti",
+      "century",
+      "era",
+      "gupta"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "assam",
+      "deccan",
+      "delhi",
+      "gujarat",
+      "kerala"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "classification",
+      "forms",
+      "institutions",
+      "instruments",
+      "pillars"
+     ]
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.08,
+     "fired": false,
+     "top_terms": [
+      "evolution",
+      "how do"
+     ],
+     "in_topic_title_or_children": [
+      "evolution"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R3 frequency_chart: 30 children, 16 asked, 47% never asked, only 1.56 questions per asked child"
+  ],
+  "confidence": "low",
+  "content_artefact_needed": "timeline",
+  "evidence": [
+   {
+    "year": 2013,
+    "child_topic": "Bhakti and Sufi movements: reach across age/gender/religious barriers; Sri Chaitanya's re-",
+    "snippet": "Defying the barriers of age, gender and religion, the Bhakti movement opened the doors…"
+   },
+   {
+    "year": 2014,
+    "child_topic": "Bhakti and Sufi movements: reach across age/gender/religious barriers; Sri Chaitanya's re-",
+    "snippet": "Sufis and Saint movements failed to modify either the religious ideas and practices or…"
+   },
+   {
+    "year": 2018,
+    "child_topic": "Bhakti and Sufi movements: reach across age/gender/religious barriers; Sri Chaitanya's re-",
+    "snippet": "The Bhakti movement received a remarkable re-orientation with the advent of Sri Chaitanya Mahaprabhu…"
+   }
+  ]
+ },
+ {
+  "subject": "General Studies I",
+  "macro_topic": "Medieval India",
+  "artefact_type": "roadmap",
+  "signals_fired": [
+   {
+    "signal": "s1",
+    "reads": "child count and never-asked share",
+    "observed": {
+     "child_count": 15,
+     "asked_children": 3,
+     "never_asked_children": 12,
+     "never_asked_share": 0.8,
+     "total_questions": 4,
+     "questions_per_asked_child": 1.33
+    }
+   },
+   {
+    "signal": "s2",
+    "reads": "predictability band distribution",
+    "observed": {
+     "bands": {
+      "null": 12,
+      "occasional": 3
+     },
+     "asked_band_mix": {
+      "occasional": 3
+     },
+     "dominant_band": "null",
+     "high_yield_share": 0.0,
+     "graded": false
+    }
+   },
+   {
+    "signal": "s3",
+    "reads": "year spread of the questions",
+    "observed": {
+     "shape": "clustered_recent",
+     "first_year": 2020,
+     "last_year": 2025,
+     "years_absent": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2021,
+      2022
+     ],
+     "share_in_last_5_years": 0.75,
+     "years_since_last_asked": 0,
+     "questions_per_year": {
+      "2020": 1,
+      "2023": 1,
+      "2024": 1,
+      "2025": 1
+     }
+    }
+   },
+   {
+    "signal": "s4",
+    "reads": "directive verb mix and whether it shifts",
+    "observed": {
+     "verb_mix": {
+      "examine": 1,
+      "enumerate": 1
+     },
+     "verb_bearing_questions": 2,
+     "shift_detected": false,
+     "windows": [
+      {
+       "window": "2013-2016",
+       "verb_questions": 0,
+       "leader": null,
+       "leader_share": null
+      },
+      {
+       "window": "2017-2020",
+       "verb_questions": 1,
+       "leader": "enumerate",
+       "leader_share": 1.0
+      },
+      {
+       "window": "2021-2025",
+       "verb_questions": 1,
+       "leader": "examine",
+       "leader_share": 1.0
+      }
+     ],
+     "shift_reason": "window(s) 2013-2016, 2017-2020, 2021-2025 carry fewer than 10 verb-bearing questions; a verb mix that thin cannot demonstrate a change"
+    }
+   },
+   {
+    "signal": "s5",
+    "reads": "dates, periods and era words",
+    "observed": {
+     "question_share": 0.5,
+     "fired": true,
+     "top_terms": [
+      "period",
+      "sultanate"
+     ],
+     "in_topic_title_or_children": [
+      "century",
+      "dynasties",
+      "dynasty",
+      "empire",
+      "medieval"
+     ]
+    }
+   },
+   {
+    "signal": "s6",
+    "reads": "place, region and country names",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "asia",
+      "deccan",
+      "delhi"
+     ]
+    }
+   },
+   {
+    "signal": "s7",
+    "reads": "contrastive structure",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s8",
+    "reads": "named persons or thinkers",
+    "observed": {
+     "question_share": 0.25,
+     "fired": true,
+     "top_terms": [
+      "akbar"
+     ],
+     "in_topic_title_or_children": [
+      "akbar",
+      "aurangzeb",
+      "shivaji"
+     ]
+    }
+   },
+   {
+    "signal": "s9",
+    "reads": "enumeration words",
+    "observed": {
+     "question_share": 0.25,
+     "fired": true,
+     "top_terms": [
+      "enumerate"
+     ],
+     "in_topic_title_or_children": []
+    }
+   },
+   {
+    "signal": "s10",
+    "reads": "process words",
+    "observed": {
+     "question_share": 0.0,
+     "fired": false,
+     "top_terms": [],
+     "in_topic_title_or_children": [
+      "evolution"
+     ]
+    }
+   }
+  ],
+  "decision_trace": [
+   "R0 corpus floor: 4 questions < 8; no corpus-derived type",
+   "R4 roadmap: 15 children carry official syllabus wording; no question volume required"
+  ],
+  "confidence": "low",
+  "content_artefact_needed": "timeline",
+  "evidence": [
+   {
+    "year": 2020,
+    "child_topic": "Major early medieval dynasties (750-1200): Pratiharas, Palas, Rashtrakutas, tripartite con",
+    "snippet": "Pala period is the most significant phase in the history of Buddhism in India…"
+   },
+   {
+    "year": 2023,
+    "child_topic": "The Delhi Sultanate (1206-1526): Slave, Khalji, Tughlaq, Sayyid, and Lodi dynasties; Mongo",
+    "snippet": "What were the major technological changes introduced during the Sultanate period? How did those…"
+   }
+  ]
+ }
+]

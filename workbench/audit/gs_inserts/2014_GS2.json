@@ -1,0 +1,753 @@
+{
+  "year": 2014,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2014-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+  "mode": "unanchored",
+  "printed_question_count": null,
+  "paper_flags": [
+    "dropped_instruction:1",
+    "printed_count_unread"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "Though the federal principle i is dominant i in our Constitution and that principle is one of its.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        63,
+        63
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "3304465e8b3429980be519bbd8a15478144e51be459d0255823aca0709318932",
+      "best_db_match": {
+        "score": 0.4359,
+        "measure": "sequence",
+        "id": "e7e05765-6bfe-4ff8-bc0c-1457418f313e",
+        "text": "With the rise of competition, youth is losing its creativity."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "~ basic: features, but it is equally true that federalism under the Indian Constitution jeans in. >",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        80,
+        80
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 80,
+          "text": "~ basic: features, but it is equally true that federalism under the Indian Constitution jeans in. >",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "6acceee3c3644a3e7aa57fe66e44a5e3fe957f3a6547212f20972020bad96b2b",
+      "best_db_match": {
+        "score": 0.4889,
+        "measure": "sequence",
+        "id": "a4054330-6e19-48b3-abf6-12d9e8be5b3d",
+        "text": "Discuss the institutional mechanism for dispute resolution between States over inter-state river waters under the Indian Constitution."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "favour of a strong Centre, a feature that militates against the concept of strong federalism. Discuss..",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        86,
+        87
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "28f68a6ffe14912ba33cf14a7978f0fce0a631ecdb8ee98d2f9da3e6395534a2",
+      "best_db_match": {
+        "score": 0.4299,
+        "measure": "sequence",
+        "id": "7b2a94b2-4727-4f00-92ad-f5bf515344b3",
+        "text": "In what ways did the naval mutiny of 1946 prove to be the last nail in the coffin of British colonial rule in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "The ‘Powers, Privileges and Immunities of Parliament and its Members’ as envisaged in Article 105 of the Constitution leave room for a large number of un-codified and un-enumerated — privileges to continue. Assess the reasons for the absence of legal codification of the ‘parliamentary privileges’. How can this problem be addressed 2, 12%",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        94,
+        99
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "6a097135137b87680f72da6d7035454a28ec4f6d4f429d5af87285e86f7581de",
+      "best_db_match": {
+        "score": 0.3053,
+        "measure": "sequence",
+        "id": "b72ea7b6-05d6-40d0-9654-0a5031fd8b82",
+        "text": "The power of judicial activism can sometimes turn into judicial overreach. Discuss with reference to recent examples in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "What ‘do you understand by the. concept “freedom of speech and expression”? Does it cover. ~ hate speech also? Why do the films in India stand on a slightly different plane from other forms of expression? Discuss. i",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        103,
+        107
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 105,
+          "text": "~ hate speech also ? Why do the films in India stand on a slightly different plane from other",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "b848f37c4e3c5062ecead5fe704fbc4d20e1d8659c61e3a2fc2562549d7a05a3",
+      "best_db_match": {
+        "score": 0.4467,
+        "measure": "sequence",
+        "id": "4c12aa04-d40a-4488-a69e-75b0d017c86b",
+        "text": "How does the concept of 'Secularism' in India differ from the Western model of secularism?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Instances of President’s delay in commuting death sentences has.come under public debate as-denial of justice. Should there be a time limit specified for the President to accept/reject such petitions? Analyse. —-:;.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        118,
+        121
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "228133c5306884af82de51e9f26f52dd0add7e062c43d9d17834d232c4522458",
+      "best_db_match": {
+        "score": 0.3314,
+        "measure": "sequence",
+        "id": "30532efb-8384-4fa4-b677-04bf05dc4e9c",
+        "text": "To what extent has the urban planning and culture of the Indus Valley Civilization provided inputs to the present day urbanization? Discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "The size of the cabinet should be as big as governmental work justifies and as big as the’ Prime Minister can. ‘manage as a team. How far is the efficacy of a government then inversely’ related to the size of the cabinet? Discuss..",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        126,
+        129
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "5d6ac144e253ab6511a9b1dd171127ba31ae3aa08944940ec2815da6f8a8b4cf",
+      "best_db_match": {
+        "score": 0.3516,
+        "measure": "sequence",
+        "id": "d51d5731-220b-41d3-b653-00a1e01d72f3",
+        "text": "Examine the office of the Prime Minister as the pivot of the Cabinet system in the light of coalition governance experiences."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Though 100 percent EDI is already allowed in non-news media like a trade’publication and general entertainment channel, the Government is mulling over the proposal for increased FDI in news media for quite some time. What difference would an increase in FDI make? - Critically evaluate the pros and cons.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        137,
+        141
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "c5409ccabb3972000005dbfe010f090e2efa3e42f6fd8fe821c692e6bd84aad5",
+      "best_db_match": {
+        "score": 0.3163,
+        "measure": "sequence",
+        "id": "d0001f48-bdd4-4b4c-b90c-38de9f762930",
+        "text": "Explain the origin and features of the earthquake zones in India. Why are some regions more vulnerable than others?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "‘The setting up of a Rail Tariff Authority to regulate fares will subject the cash strapped Indian Railways to demand subsidy for obligation to operate non-profitable routes and services. Taking into account the experience in the power sector, discuss if. the proposed reform is expected to benefit the consumers, the Indian Railways or the private container operators..",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        147,
+        151
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "cd6580a3c7ec6c532ef4b4db340a909e91686484b0fae07170da2f5ea98aa910",
+      "best_db_match": {
+        "score": 0.3083,
+        "measure": "sequence",
+        "id": "94a50064-e6cf-4750-beff-044de9c94409",
+        "text": "What are Intellectual Property Rights (IPR)? Discuss the friction areas between India's IPR policy and international patent standards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "‘National Human Rights Commission (NHRC) in India can be most effective when its tasks are adequately supported by other mechanisms that ensure: the accountability of a” government. In light of the above observation assess the role of NHRC as an effective",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        163,
+        167
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "174c7b5bd56cdfaec559faf630f7875c4eaa6ba5291acef56cef94e8ff73c7b2",
+      "best_db_match": {
+        "score": 0.3298,
+        "measure": "sequence",
+        "id": "687c45b2-4858-420a-b8fe-8f33a83530f1",
+        "text": "The protection of consumers' rights is weak due to institutional lacunae in enforcement mechanism. Evaluate the role of Consumer Courts."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "complement to the judiciary and other institutions in promoting and protecting human rights standards.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        175,
+        176
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "8c3076ebf77a87b1b3dc606686c8589a8dfa0f6d1155b73b959c9c90637fab58",
+      "best_db_match": {
+        "score": 0.4744,
+        "measure": "sequence",
+        "id": "25a284c4-7865-4f8a-bee7-5eec65f5d09b",
+        "text": "Examine the role and power of the National Commission for Scheduled Castes (NCSC) in protecting the rights of Dalits."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "The penetration of Self Help Groups-(SHGs) in rural areas. in promoting participation in development programmes is facing socio-cultural. hurdles. Examine. ‘12%",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        181,
+        183
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "4956c920ddf86fb4880e87d95f2c7abd90d2d9c4575ce3fb2706cdcd73db8b83",
+      "best_db_match": {
+        "score": 0.3985,
+        "measure": "sequence",
+        "id": "4bafe46b-0ecb-41b7-a2de-e805f065317c",
+        "text": "Explain the structure and main operations of the World Health Organization (WHO) in addressing global pandemics."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Do government’ s schemes for up-lifting vulnerable and backward communities by protecting required social resources for them, lead to their exclusion in establishing businesses in urban economies?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        189,
+        192
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "ce3a97a05f7957508c60fca8b6be442863d2def77b841b544dc544741e93d492",
+      "best_db_match": {
+        "score": 0.4124,
+        "measure": "sequence",
+        "id": "c4ee59ed-ce9c-43b5-b584-48bd36c5abbc",
+        "text": "What were the major political, economic and social forces that led to the French Revolution? Analyze."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "An athlete participates in Olympics for personal triumph and nation’ s glory; victors are showered with cash incentives by various agencies, on their return. Discuss the merit of _ state sponsored talent hunt and its cultivation as against the rationale of a reward mechanism as encouragement. a \" “: - 2A",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        205,
+        210
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 205,
+          "text": "An athlete participates in Olympics for personal triumph and nation’ s glory; victors are",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "6219a1189baab85a87c8c05a09ab87fffc219428303e38dea0c4f8f0015764b6",
+      "best_db_match": {
+        "score": 0.3134,
+        "measure": "sequence",
+        "id": "c685bffd-a3ce-4023-9231-9df2ae4b2b3d",
+        "text": "\"An independent and strong judiciary is essential for safeguarding individual liberties, but judicial overreach threatens democratic balance.\" Discuss the ethical boundaries of judicial intervention."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "Should the premier institutes like IITs/IIMs. be allowed to retain premier status, allowed more academic independence in designing courses and also decide mode/criteria of selection of students. Discuss in light of the growing challenges.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        219,
+        223
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "a015d20dafe6a137ae40066912d90649b28d9894eba873f40dec5060a055565e",
+      "best_db_match": {
+        "score": 0.3342,
+        "measure": "sequence",
+        "id": "920e8b2b-3855-401a-b3a2-1e4f8f6527ed",
+        "text": "The coastal ecosystems of India are increasingly exposed to oceanic pollution and oil spills. Discuss the long-term ecological risks."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Has the Cadre based Civil Services Organization been the cause of slow change in India? Critically examine. 12% _ C€~DRN-N-ITUB | @",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        228,
+        232
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 232,
+          "text": "_ C€~DRN-N-ITUB | @",
+          "flags": [
+            "unknown_words",
+            "garble_chars",
+            "stray_caps",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "79d60dfe40a4653a748d5b71708a67a12dd403780ae84f07a50caf9aa6de8143",
+      "best_db_match": {
+        "score": 0.4669,
+        "measure": "sequence",
+        "id": "0465c986-cd4d-421d-92b1-73c1d873d6fb",
+        "text": "What are the structural drawbacks of the civil services accountability mechanisms in India? Suggest strategies for administrative reforms."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "the need for safeguarding maritime security to ensure freedom of navigation and over flight ~ throughout the region. In this context, discuss the bilateral issues between India and China.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        244,
+        246
+      ],
+      "page": 4,
+      "low_confidence_lines": [
+        {
+          "line": 244,
+          "text": "the need for safeguarding maritime security to ensure freedom of navigation and over flight ~",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "1c7b1adf0c8c2544b0030ffb98d887b80d93b5669129742f861d6533ac71b0d1",
+      "best_db_match": {
+        "score": 0.3922,
+        "measure": "sequence",
+        "id": "b72ea7b6-05d6-40d0-9654-0a5031fd8b82",
+        "text": "The power of judicial activism can sometimes turn into judicial overreach. Discuss with reference to recent examples in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Two parallel run schemes of the Government, viz. the Adhaar Card and NPR, one as voluntary and the other as. compulsory, have led to debates at national levels and also litigations. On metits, discuss whether or not both schemes need run concurrently. Analyse the potential of the schemes to achieve developmental benefits and equitable growth..",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        254,
+        260
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "b2892560e3675d32d8078f13934252e45c6ce0f0a4a67d68b009d5ecd87da174",
+      "best_db_match": {
+        "score": 0.3002,
+        "measure": "sequence",
+        "id": "b41cdbbc-56fa-4d14-b16e-ddc3031e4815",
+        "text": "The nexus between left-wing extremism and illegal mining inside forest tracts complicates internal security. Discuss the containment matrix."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "With respect to the South China sea, maritime territorial disputes and rising tension affirm",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        268,
+        268
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "a72eb1870aba2a7a1019234cd0d8cb558a87845f6045ad264187d72b266011fe",
+      "best_db_match": {
+        "score": 0.4747,
+        "measure": "sequence",
+        "id": "05478f3c-d834-44e5-8792-8fa1c1524690",
+        "text": "Evaluate the performance of the MGNREGA scheme in reducing rural distress and preventing distress migration."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 21,
+      "sub_part": null,
+      "section": null,
+      "text": "The aim of Information Technology Agreements (ITAs) is. to lower all taxes and tariffs on - information technology products by signatories to zero. What impact would such agreements ) have on India’s interests? “12%",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        277,
+        280
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "3637d3aacee90e270074d5a07c9962ce102aca5bbad0efb87d16222ba02c19ad",
+      "best_db_match": {
+        "score": 0.3576,
+        "measure": "sequence",
+        "id": "a6682ad9-607a-4843-bd0d-f508ecf6f2b9",
+        "text": "The policy of reservations in higher educational institutions needs a objective review to evaluate its actual outcomes. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 22,
+      "sub_part": null,
+      "section": null,
+      "text": "’ Some of the International funding agencies have special terms for economic participation",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        291,
+        291
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "079964fe33b6b97dd7e7c57805bb30d3487ef7833ca5f63a395e1c551f8e4c4e",
+      "best_db_match": {
+        "score": 0.4175,
+        "measure": "sequence",
+        "id": "33d048b4-2818-4352-96e0-9a66c4bf8178",
+        "text": "Examine the potential of renewable energy resources in India with special reference to solar and wind energy locations."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 23,
+      "sub_part": null,
+      "section": null,
+      "text": "stipulating a substantial component of the‘aid to be used for sourcing equipment from the leading countries. Discuss on merits of such terms and if, there exists a strong case not to accept such conditions in: the Indian context. 7..",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        295,
+        299
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "possible_truncation"
+      ],
+      "content_hash": "37f4d18fc1863d249998b8293079ba945f4bb319c85b4e3bb2d04ee2da2ef407",
+      "best_db_match": {
+        "score": 0.374,
+        "measure": "sequence",
+        "id": "597c98f1-9a92-4f63-9b2b-c4f9fd41b40f",
+        "text": "Explain the mechanism of the Public Distribution System (PDS) and analyze the reforms required to eliminate leakages in food distribution cycles."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 24,
+      "sub_part": null,
+      "section": null,
+      "text": "India has recently signed to become founding member-of New Development B Bank (NDB) — and also the Asian Infrastructure Investment Bank (AIIB). How will the role of the two Banks be different? Discuss the strategic significance of these two Banks for India. Q.20.: a exacts.) cee waeage set der & set fre me Protea at",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        310,
+        313
+      ],
+      "page": 5,
+      "low_confidence_lines": [
+        {
+          "line": 313,
+          "text": "Q.20.: a exacts.) cee waeage set der & set fre me Protea at",
+          "flags": [
+            "unknown_words",
+            "suspect_token",
+            "weak_english"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "8811890d448176f4d024b1619d94d8f351b2562c6e010c754541f08891893317",
+      "best_db_match": {
+        "score": 0.3294,
+        "measure": "sequence",
+        "id": "a8e41d09-6c8a-4dc0-bd15-f7f2b34daed8",
+        "text": "What are the major oceanic currents of the Atlantic Ocean? Discuss their influence on the regional climates of coastal areas."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 25,
+      "sub_part": null,
+      "section": null,
+      "text": "WTO i is an important international institution where decisions taken affect countries in.a profound manner. What is. the’ mandate of WTO and how binding are their decisions?_. Critically analyse India’s stand on the latest round of talks on Food security. ”",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS2.txt",
+      "line_span": [
+        316,
+        320
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "a5d4e8046d160453bdedb9475c820ebe9b33e020a71ba0d0aece263a7edf78aa",
+      "best_db_match": {
+        "score": 0.3351,
+        "measure": "sequence",
+        "id": "a4054330-6e19-48b3-abf6-12d9e8be5b3d",
+        "text": "Discuss the institutional mechanism for dispute resolution between States over inter-state river waters under the Indian Constitution."
+      },
+      "route": "insert"
+    }
+  ]
+}

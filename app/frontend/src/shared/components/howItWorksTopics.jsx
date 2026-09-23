@@ -208,8 +208,10 @@ HOW_IT_WORKS_TOPICS.study_plan = {
           diff before anything is saved.
         </li>
         <li>
-          <span className="font-medium">Apply selected changes</span> is the
-          only action that mutates the live plan.
+          <span className="font-medium">Apply this plan</span> is the
+          only action on this drawer that mutates the live plan.
+          <span className="font-medium"> Keep current plan</span> closes it
+          and changes nothing.
         </li>
       </ul>
     </div>

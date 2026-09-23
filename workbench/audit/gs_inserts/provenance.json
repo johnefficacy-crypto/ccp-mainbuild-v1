@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Provenance anchors for the 2026 papers scripts/load_gs_inserts.py creates.",
+    "The verify gate (POST /pyq-papers/{id}/review) needs source_type != 'unknown'",
+    "AND a source_document_id (document_assets row for the uploaded official PDF)",
+    "or a source_url. Fill one in per paper from a checked source; the loader",
+    "refuses to create a paper whose entry is still null. Nothing here is guessed:",
+    "source_file names the official PDF the OCR in workbench/audit/ocr_cache/phase3_raw came from."
+  ],
+  "papers": {
+    "UPSC-CSE-MAINS-GS-2026-GS1": {
+      "source_type": "official",
+      "source_document_id": null,
+      "source_url": null,
+      "source_file": "QP-CSM-26-010926-GENERAL STUDIES PAPER - I.pdf"
+    },
+    "UPSC-CSE-MAINS-GS-2026-GS2": {
+      "source_type": "official",
+      "source_document_id": null,
+      "source_url": null,
+      "source_file": "QP-CSM-26-010926-GENERAL-STUDIES-PAPER - II.pdf"
+    },
+    "UPSC-CSE-MAINS-GS-2026-GS3": {
+      "source_type": "official",
+      "source_document_id": null,
+      "source_url": null,
+      "source_file": "QP-CSM-26-010926-GENERAL-STUDIES-PAPER-III.pdf"
+    },
+    "UPSC-CSE-MAINS-GS-2026-GS4": {
+      "source_type": "official",
+      "source_document_id": null,
+      "source_url": null,
+      "source_file": "QP-CSM-26-010926-GENERAL-STUDIES-PAPER-IV.pdf"
+    },
+    "UPSC-CSE-MAINS-GS-2026-ESSAY": {
+      "source_type": "official",
+      "source_document_id": null,
+      "source_url": null,
+      "source_file": "QP-CSM-26-010926-ESSAY.pdf"
+    }
+  }
+}

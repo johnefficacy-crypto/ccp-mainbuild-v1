@@ -36,7 +36,11 @@ const EXAM_ID = "11111111-1111-4111-8111-111111111111";
 const APPROVED_LABELS = [
   "Regenerate plan",
   "Preview changes",
-  "Apply selected changes",
+  // PLAN-UX-01: "Apply this plan", not "Apply selected changes" — there is no
+  // per-change selection control, so the old label promised one that never
+  // existed. "Keep current plan" is its explicit opposite.
+  "Apply this plan",
+  "Keep current plan",
 ];
 
 const FORBIDDEN_STRINGS = [

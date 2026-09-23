@@ -1,0 +1,841 @@
+{
+  "_note": "Live topic ids exported 2026-09-23 from the demo backend. Resolves NOT_IN_REPO cells in RBI-GA-DURABLE-tags-v2.csv and RBI-P2-DESCRIPTIVE-TOPICAL-tags.csv. Match on exact topic name within the stated subject.",
+  "subjects": {
+    "general-knowledge": "cf18392b-3ee8-4046-b6bf-8a0b415bf209",
+    "finance": "eb273a33-ea0e-4ca7-ac8f-32afe2be5d48",
+    "economics": "ede9de7a-f24e-4b3b-bba2-fdd8d10f3fff",
+    "insurance": "33c1f18c-b6f8-4ce6-b790-acee75f5b750",
+    "pension-sector": "9c58a847-03be-4a7c-bd66-be7e353ec42f"
+  },
+  "general_knowledge": [
+    {
+      "id": "8f704fc7-27d2-45f4-aa1d-80c9e028efe3",
+      "name": "Agriculture and rural energy schemes",
+      "level": "microtopic"
+    },
+    {
+      "id": "93d15d96-99b2-489a-a9bf-56ebf8c76ae2",
+      "name": "Ancient Indian texts and statecraft",
+      "level": "microtopic"
+    },
+    {
+      "id": "4fb4c478-d456-4d9d-ad58-08af61c9025d",
+      "name": "Astronomy and celestial nomenclature",
+      "level": "microtopic"
+    },
+    {
+      "id": "b2983344-9a73-4205-bc92-76949ad7d588",
+      "name": "Awards and honours",
+      "level": "microtopic"
+    },
+    {
+      "id": "d1525b57-f332-4174-9f7d-b8edd11e0e8b",
+      "name": "Biodiversity and wildlife conservation",
+      "level": "microtopic"
+    },
+    {
+      "id": "490f959e-d694-4077-a153-8758afe6a0a6",
+      "name": "Biofuel and renewable energy projects",
+      "level": "microtopic"
+    },
+    {
+      "id": "4db77fe0-323e-4f1f-88c3-f35a6c823427",
+      "name": "Books and authors",
+      "level": "microtopic"
+    },
+    {
+      "id": "0adcb286-28d5-4094-bb12-80f2f9e99468",
+      "name": "Business and startup terminology",
+      "level": "microtopic"
+    },
+    {
+      "id": "0734c7f5-2098-4834-9730-47626b2d2704",
+      "name": "Civilian awards and the honours system",
+      "level": "microtopic"
+    },
+    {
+      "id": "93787b38-00f2-449d-945d-5770e4a0c553",
+      "name": "Climate and ocean-atmosphere phenomena",
+      "level": "microtopic"
+    },
+    {
+      "id": "f2efa180-0f24-4974-98a3-d33ab317b626",
+      "name": "Climate awareness initiatives",
+      "level": "microtopic"
+    },
+    {
+      "id": "013dda2f-724d-4c10-bd03-9bd2b4b8314c",
+      "name": "Commemorative coins and numismatics",
+      "level": "microtopic"
+    },
+    {
+      "id": "b7d5ee3a-d1b6-475b-a7fc-7e8c8441792b",
+      "name": "Comparative government and world legislatures",
+      "level": "microtopic"
+    },
+    {
+      "id": "9dd02f97-b76e-4e51-95fe-cd68265df28c",
+      "name": "Computing and artificial intelligence",
+      "level": "microtopic"
+    },
+    {
+      "id": "b23c3c90-d592-4f13-b63d-413f390aa7a6",
+      "name": "Countries, capitals and territorial extent",
+      "level": "microtopic"
+    },
+    {
+      "id": "a19f6fb1-032a-4a8d-acf7-ebfddc401394",
+      "name": "Crops, cropping seasons and leading producer states",
+      "level": "microtopic"
+    },
+    {
+      "id": "d7285f63-0e95-446a-ac3a-9b01fe376174",
+      "name": "Defence forces, exercises and expeditions",
+      "level": "microtopic"
+    },
+    {
+      "id": "32f83c7c-b513-4853-bb49-c6ffc6a19b40",
+      "name": "Digital public platforms and e-governance technology",
+      "level": "microtopic"
+    },
+    {
+      "id": "afc33796-d20d-4103-a4d0-f88f8e3e1087",
+      "name": "Environmental clearance and industrial approvals",
+      "level": "microtopic"
+    },
+    {
+      "id": "0ac1a472-16a9-46ae-85f8-fff7215ee3d9",
+      "name": "Freedom-movement leaders and their offices",
+      "level": "microtopic"
+    },
+    {
+      "id": "3fd989c1-f53a-42e5-b1f1-e18d34c21497",
+      "name": "Fundamental Rights",
+      "level": "microtopic"
+    },
+    {
+      "id": "59e0da65-f5f2-4f13-a76a-8ba7d06d3d15",
+      "name": "Geographical indication tags and crafts",
+      "level": "microtopic"
+    },
+    {
+      "id": "748e1177-b18b-4e5a-9698-9aa51b57a50b",
+      "name": "International agreements and declarations",
+      "level": "microtopic"
+    },
+    {
+      "id": "75f89786-112e-4d19-ace5-a941f8fe577b",
+      "name": "International organisations and groupings",
+      "level": "microtopic"
+    },
+    {
+      "id": "32f78939-6d1f-462f-947d-297acdf453f6",
+      "name": "International summits and forums",
+      "level": "microtopic"
+    },
+    {
+      "id": "ba7bcb95-6dbb-4db1-b65b-e503f838f456",
+      "name": "Judiciary and judicial administration",
+      "level": "microtopic"
+    },
+    {
+      "id": "8ac1aa30-49ea-459c-871b-685f98a31fc9",
+      "name": "Landmarks and monuments",
+      "level": "microtopic"
+    },
+    {
+      "id": "52353d37-6133-45af-89b6-767cbeded669",
+      "name": "Major dams and river valley projects",
+      "level": "microtopic"
+    },
+    {
+      "id": "a5161b93-a3a2-4368-b9a3-d7313146789c",
+      "name": "Medieval Indian empires",
+      "level": "microtopic"
+    },
+    {
+      "id": "09e4b8c2-3e2b-4633-8ec1-a58bc6867e0b",
+      "name": "Mineral resources and mining sites",
+      "level": "microtopic"
+    },
+    {
+      "id": "0e8e737b-8b78-48a0-b462-a09fc501039b",
+      "name": "Mountain ranges and peaks",
+      "level": "microtopic"
+    },
+    {
+      "id": "763871ee-abfc-483e-99ee-6e7d77de05d0",
+      "name": "Multilateral development finance in India",
+      "level": "microtopic"
+    },
+    {
+      "id": "6a8a23a0-eddb-4aa1-abbc-28c8b4d4ed66",
+      "name": "National memorials and samadhis",
+      "level": "microtopic"
+    },
+    {
+      "id": "ccbfabdf-b027-428d-9267-190ccaf56498",
+      "name": "Post-independence revolutions and their pioneers",
+      "level": "microtopic"
+    },
+    {
+      "id": "4c7ab956-c83b-4308-8218-bcf571e7367e",
+      "name": "President and Vice-President of India",
+      "level": "microtopic"
+    },
+    {
+      "id": "85494d30-76ae-44b5-a20d-e7689645f374",
+      "name": "Recent central legislation and statutory penalties",
+      "level": "microtopic"
+    },
+    {
+      "id": "c8712e3e-a1a8-4b02-9294-7aaafd1ed152",
+      "name": "Rivers of the world",
+      "level": "microtopic"
+    },
+    {
+      "id": "8e53cf4a-dc66-423f-93ff-03ac5b513e55",
+      "name": "Rural livelihood and skill development missions",
+      "level": "microtopic"
+    },
+    {
+      "id": "56f7c35d-3af0-4342-928b-b164ebbca889",
+      "name": "Rural road connectivity schemes",
+      "level": "microtopic"
+    },
+    {
+      "id": "c542e271-f9eb-4304-a2fb-6ca4471c6cc1",
+      "name": "Schedules of the Constitution",
+      "level": "microtopic"
+    },
+    {
+      "id": "68d9d70f-74fc-40ba-b339-591269ca81b4",
+      "name": "Scientific and research institutions",
+      "level": "microtopic"
+    },
+    {
+      "id": "5dcb9305-326f-4585-af0e-4ba1cb643b26",
+      "name": "Self-help groups and rural women",
+      "level": "microtopic"
+    },
+    {
+      "id": "47ccac5a-76d5-417d-9acf-7096df227bba",
+      "name": "Solar system and planetary science",
+      "level": "microtopic"
+    },
+    {
+      "id": "93940073-ade8-459c-91cf-c7384d4b5cd9",
+      "name": "Space missions and spacecraft",
+      "level": "microtopic"
+    },
+    {
+      "id": "8e5aa145-440d-4db7-a3f4-9ee6e4aed196",
+      "name": "Sports terminology and Indian sporting history",
+      "level": "microtopic"
+    },
+    {
+      "id": "1645100c-e158-44af-aebb-a4153dcbd931",
+      "name": "Statutory commissions and information oversight",
+      "level": "microtopic"
+    },
+    {
+      "id": "e4d298ea-2f5a-4589-b8b2-60c2f45b3dec",
+      "name": "Sustainable Development Goals",
+      "level": "microtopic"
+    },
+    {
+      "id": "ba519e51-98c4-4db7-b2da-a2e4b2835dba",
+      "name": "Transport corridors and ports",
+      "level": "microtopic"
+    },
+    {
+      "id": "6d0f52ab-fc19-4d0f-b039-cec519f82dea",
+      "name": "Union ministries and departments",
+      "level": "microtopic"
+    },
+    {
+      "id": "8fdb774d-5e18-4742-bbe3-c0ea16495df9",
+      "name": "Union-State relations and the legislative lists",
+      "level": "microtopic"
+    },
+    {
+      "id": "1086ea3f-d400-4ef1-a31a-67b153780627",
+      "name": "Units and scales of measurement",
+      "level": "microtopic"
+    },
+    {
+      "id": "6b0ea750-f099-45b4-a632-5876b21840a0",
+      "name": "Urban development and governance missions",
+      "level": "microtopic"
+    },
+    {
+      "id": "23c0eda6-6163-457d-92b3-1fb9b06f4745",
+      "name": "World affairs and geopolitical terms",
+      "level": "microtopic"
+    },
+    {
+      "id": "84b7579d-e136-4a6a-8b3f-d134e267ff39",
+      "name": "World currencies",
+      "level": "microtopic"
+    },
+    {
+      "id": "a966cebe-c5d9-4989-ad3f-1ebd16c23f89",
+      "name": "World Heritage and protected sites",
+      "level": "microtopic"
+    },
+    {
+      "id": "424cc8f1-b96f-4fef-b2db-76128e34c7d0",
+      "name": "General Science",
+      "level": "topic"
+    },
+    {
+      "id": "c7f0e071-3a29-4165-8ae9-2e43d2199a86",
+      "name": "Geography",
+      "level": "topic"
+    },
+    {
+      "id": "05d91fb6-221d-4e09-8477-c3d0f8a50138",
+      "name": "History",
+      "level": "topic"
+    },
+    {
+      "id": "40066b89-bcfd-4ffc-8a68-73158a678dc9",
+      "name": "Indian Economy",
+      "level": "topic"
+    },
+    {
+      "id": "e8948b78-aa3e-434b-9959-32c047b42be9",
+      "name": "Indian Polity and Constitution",
+      "level": "topic"
+    },
+    {
+      "id": "1577d5f6-5f70-4394-8d24-c1c44d680124",
+      "name": "International Relations",
+      "level": "topic"
+    },
+    {
+      "id": "343ffe9a-9415-4efe-bb5d-d23f38e739b9",
+      "name": "Miscellaneous",
+      "level": "topic"
+    }
+  ],
+  "finance_economics_macro": [
+    {
+      "id": "44e55f60-b81a-4666-ba02-6b39a8f2a96a",
+      "name": "External Sector",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "94e6b2d7-c1e4-413d-a045-224294ce7443",
+      "name": "Inflation & Business Cycles",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "bdd3a6b6-b866-495f-bd58-7e7f38246f1b",
+      "name": "International Financial Institutions",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "7506bfc7-c464-4ac4-83cb-28bb6ef20cc9",
+      "name": "IS–LM",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "267f706a-560e-42c5-96ad-5aa5f24ced76",
+      "name": "Market Structures",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "55472e64-6148-43f7-b37d-f9c88da22ebe",
+      "name": "Microeconomics — Demand, Supply & Elasticity",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "0160adef-dd03-4ccc-b435-1912a95604d3",
+      "name": "Monetary Policy",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "d1a300c4-6388-4204-b1b6-352a9a9dcf2e",
+      "name": "Money & Banking",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "15359774-ac2d-4f9f-9295-944957341b6c",
+      "name": "National Income",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "47b052b4-4f54-4f4d-bd39-063a058cab9c",
+      "name": "Output & Employment Determination",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "52b2c231-9f56-434d-b9c2-0230fbf0de5d",
+      "name": "Public Finance",
+      "subject_slug": "economics",
+      "level": "topic"
+    },
+    {
+      "id": "163b5155-15f7-4154-a510-73e5e11a0f9a",
+      "name": "Alternate Finance & PPP",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "60744a81-c455-493e-9ab8-182c50e646b7",
+      "name": "Banking Regulation & NBFCs",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "8cbbe54f-002c-4037-96c3-f935d11f41a8",
+      "name": "Capital Market — Primary Issuance",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "0aee0e4f-e8fd-48e1-beca-f21df2f20766",
+      "name": "Capital Market — Secondary & Infrastructure",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "5f1b95e4-f930-43a4-aafb-f39206249166",
+      "name": "Debt Market & Bond Analytics",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "65def375-15b3-4a02-93d1-c01ee2852237",
+      "name": "Derivatives",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "afca87c4-ec1f-4362-a63f-02939fea3b4d",
+      "name": "Financial Concepts & Analysis",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "e0f205f1-850e-4a41-9caf-63a70301e567",
+      "name": "Financial Inclusion & Technology",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "1c222942-b446-4201-84fd-12282ab68771",
+      "name": "Financial Risk Management",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "53650367-e7a9-401d-a21b-703ab705c65f",
+      "name": "Financial System & Regulatory Bodies",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "82448712-441f-4dec-b3bd-f15cb5f79dfb",
+      "name": "Foreign Exchange & External Sector",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "03ce211a-420c-4b39-9871-6aac091267f1",
+      "name": "Inflation — Measurement",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "8a8d14e3-e482-404a-86d7-7aea345f8270",
+      "name": "Money Market",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "9ad4bd0b-8718-46cb-9841-b5b31042f723",
+      "name": "Mutual Funds & Pooled Vehicles",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "b3ed1a9b-ca7e-4c8a-9558-c773e62e9fa4",
+      "name": "Payments, Fintech & Digital Finance",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "1ff7dd75-d8e9-4bd9-a72d-2be466bad571",
+      "name": "Public Finance & Taxation",
+      "subject_slug": "finance",
+      "level": "topic"
+    },
+    {
+      "id": "0a9b836d-96c3-4e0a-9bc1-46faa09ea536",
+      "name": "Securities Market Regulation",
+      "subject_slug": "finance",
+      "level": "topic"
+    }
+  ],
+  "insurance": [
+    {
+      "id": "a91ae85c-9a36-400b-84d5-2be30725ecfe",
+      "name": "Agricultural and export credit guarantee insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "6acb3dbb-e24e-484d-acac-be712f295bec",
+      "name": "Bancassurance in India",
+      "level": "microtopic"
+    },
+    {
+      "id": "471d51d4-ca3e-4705-8f46-000457b5d042",
+      "name": "Claims management",
+      "level": "microtopic"
+    },
+    {
+      "id": "842fd329-f1c1-4ed2-8e11-0538069d3ed0",
+      "name": "Distribution",
+      "level": "microtopic"
+    },
+    {
+      "id": "13219829-87b8-4102-86aa-634e55ab0e86",
+      "name": "FDI norms in the insurance sector",
+      "level": "microtopic"
+    },
+    {
+      "id": "6745261d-5bf9-49a2-9dcc-91000b284e1a",
+      "name": "GIC of India, obligatory cessions and retention",
+      "level": "microtopic"
+    },
+    {
+      "id": "19ed7d9d-144a-43cd-a1be-559713192165",
+      "name": "Group insurance and pensions",
+      "level": "microtopic"
+    },
+    {
+      "id": "509a2040-85a5-490a-b31b-001fcae4a090",
+      "name": "Health insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "dbf5ff73-47b3-490b-9a19-b0832fe4da7b",
+      "name": "History of Indian insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "be6e1583-c0db-46a9-88f9-08d28bd9375f",
+      "name": "IIO and IIIO framework",
+      "level": "microtopic"
+    },
+    {
+      "id": "7483577e-a7e1-4add-a8ff-a2c745233a09",
+      "name": "Indemnity and insurable interest",
+      "level": "microtopic"
+    },
+    {
+      "id": "1c1baab2-f591-4339-963a-926846182e92",
+      "name": "Investment of insurance funds",
+      "level": "microtopic"
+    },
+    {
+      "id": "7776dd30-9ec6-43ce-b9b1-dbe897604104",
+      "name": "Legal foundations of insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "e3ac9a58-2cb2-4dde-815c-54edb8cbf435",
+      "name": "Life insurance and annuities",
+      "level": "microtopic"
+    },
+    {
+      "id": "a6b3a2c9-d075-4f28-a42e-e206b08e7f2a",
+      "name": "Pooling and diversification of risk",
+      "level": "microtopic"
+    },
+    {
+      "id": "263d8b96-85bb-4653-906a-e802e11dc9b2",
+      "name": "Pricing",
+      "level": "microtopic"
+    },
+    {
+      "id": "5aad7b00-f39f-4f1e-8616-2737d2774da6",
+      "name": "Principles of insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "9d936e80-9f60-4342-9788-f57dca121812",
+      "name": "Product design",
+      "level": "microtopic"
+    },
+    {
+      "id": "7f29a8bb-6ef5-41af-b75d-93a2bc9cca65",
+      "name": "Property and liability insurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "d6a7e1f4-1163-4afc-87dd-3c18a13937fb",
+      "name": "Reinsurance",
+      "level": "microtopic"
+    },
+    {
+      "id": "ff2f711b-6bcc-4f4d-9a77-b0579b2d25c5",
+      "name": "Reinsurance in IFSC",
+      "level": "microtopic"
+    },
+    {
+      "id": "51293e15-7e64-41ce-834e-5ab889402a7d",
+      "name": "Risk and uncertainty",
+      "level": "microtopic"
+    },
+    {
+      "id": "864b6288-73c0-42cf-bd72-67e0e80b923f",
+      "name": "Role of intermediation in mobilising savings",
+      "level": "microtopic"
+    },
+    {
+      "id": "f9bbff3d-12ad-4c33-85f9-6c4b1e71b8a9",
+      "name": "Types and evolution of intermediaries",
+      "level": "microtopic"
+    },
+    {
+      "id": "ef9a86a1-195b-4be5-aa5c-b010e7db4fdc",
+      "name": "Underwriting",
+      "level": "microtopic"
+    },
+    {
+      "id": "b6274271-99d5-4993-9fed-e94769bf75b2",
+      "name": "Valuation and solvency requirements",
+      "level": "microtopic"
+    },
+    {
+      "id": "031d5ef4-a916-4526-acc9-2361a538d545",
+      "name": "Foundations of Insurance",
+      "level": "topic"
+    },
+    {
+      "id": "e0e5b038-b3a9-4a36-945c-db01d70a7015",
+      "name": "Functions Performed by Insurers",
+      "level": "topic"
+    },
+    {
+      "id": "926d28d3-5e1a-433b-b314-4a752754717a",
+      "name": "IFSC Insurance",
+      "level": "topic"
+    },
+    {
+      "id": "fcd3b391-bd43-407a-be25-95f7327ff0af",
+      "name": "Insurance Lines & Products",
+      "level": "topic"
+    },
+    {
+      "id": "aaf501e4-5057-46d5-988f-2c17fd27ce79",
+      "name": "Intermediation",
+      "level": "topic"
+    }
+  ],
+  "pension-sector": [
+    {
+      "id": "03199a50-4f65-4689-ae44-6cf8ad57a5b8",
+      "name": "Active Choice vs Auto Choice",
+      "level": "microtopic"
+    },
+    {
+      "id": "9da07a27-3e79-4b90-a203-a18816266499",
+      "name": "All-Citizen model",
+      "level": "microtopic"
+    },
+    {
+      "id": "24228ed5-05ae-484c-b26f-4c33e9041945",
+      "name": "Annuity Service Providers",
+      "level": "microtopic"
+    },
+    {
+      "id": "64d294e5-55a2-4874-bae2-8bdfe240518b",
+      "name": "Annuity variants and options",
+      "level": "microtopic"
+    },
+    {
+      "id": "93fc5e89-4d60-4670-bb0d-7237768ab820",
+      "name": "APY eligibility and contribution",
+      "level": "microtopic"
+    },
+    {
+      "id": "238a6af6-dff0-4c02-b9c8-0d8806f8554f",
+      "name": "APY exit and withdrawal",
+      "level": "microtopic"
+    },
+    {
+      "id": "2c0f28df-6ad1-4702-9008-5e671511e626",
+      "name": "Asset classes E, C, G and A",
+      "level": "microtopic"
+    },
+    {
+      "id": "21e793da-4dc7-4ac6-a5d9-0d435e731f34",
+      "name": "Central and State Government model",
+      "level": "microtopic"
+    },
+    {
+      "id": "e36fe7d1-24c8-44a7-833c-faf3a2e6feff",
+      "name": "Central Recordkeeping Agency",
+      "level": "microtopic"
+    },
+    {
+      "id": "16db14f0-8803-4c24-8754-e52267b91978",
+      "name": "Corporate model",
+      "level": "microtopic"
+    },
+    {
+      "id": "013c3239-7b82-4bce-9e03-48c5ee614cef",
+      "name": "Defined benefit vs defined contribution",
+      "level": "microtopic"
+    },
+    {
+      "id": "30e32a35-34d0-48f9-9284-23f9b1451d5d",
+      "name": "Exposure and single-industry limits",
+      "level": "microtopic"
+    },
+    {
+      "id": "fdc5bb1d-5db1-4ed2-af97-9ef85bf45a19",
+      "name": "Guaranteed pension slabs",
+      "level": "microtopic"
+    },
+    {
+      "id": "71529471-1594-4d0c-8daf-3d02111c981c",
+      "name": "NAV, returns and charges structure",
+      "level": "microtopic"
+    },
+    {
+      "id": "136aaa1c-a7a3-461c-94fd-2ff3e358ae57",
+      "name": "NPS Lite and Swavalamban",
+      "level": "microtopic"
+    },
+    {
+      "id": "97ecb58f-8832-411a-819a-fc97faac2928",
+      "name": "NPS tiers and account types",
+      "level": "microtopic"
+    },
+    {
+      "id": "dfa493be-d63f-40fe-b98b-da3c998a3aef",
+      "name": "NPS Trust",
+      "level": "microtopic"
+    },
+    {
+      "id": "f4879e9b-bc31-41f7-b698-4831c4afad08",
+      "name": "NPS Vatsalya",
+      "level": "microtopic"
+    },
+    {
+      "id": "e6b5c1de-5627-4b7e-9805-e96f9109756f",
+      "name": "Old Pension Scheme vs NPS",
+      "level": "microtopic"
+    },
+    {
+      "id": "db2d5615-3eb6-4db0-80d1-3ff897cf4513",
+      "name": "Pension coverage in the unorganised sector",
+      "level": "microtopic"
+    },
+    {
+      "id": "970269b7-0d99-4a0b-a239-fb4d5a6b26eb",
+      "name": "Pension Fund Managers",
+      "level": "microtopic"
+    },
+    {
+      "id": "70fa5683-5a58-4192-920a-b1ef0a27b8b4",
+      "name": "Pension reform timeline",
+      "level": "microtopic"
+    },
+    {
+      "id": "ae3d406e-d3f7-43df-95e5-78a621cfc421",
+      "name": "PFRDA Act 2013 — powers and functions",
+      "level": "microtopic"
+    },
+    {
+      "id": "67a65ae8-fb5b-497d-8bdc-851d9472ec60",
+      "name": "Point of Presence",
+      "level": "microtopic"
+    },
+    {
+      "id": "6db79991-4a19-40f5-b45b-7f7fe7626fd8",
+      "name": "Retirement Advisors",
+      "level": "microtopic"
+    },
+    {
+      "id": "fb118ab0-dd76-4198-b100-b690834c337a",
+      "name": "Status and coverage of the pension sector",
+      "level": "microtopic"
+    },
+    {
+      "id": "6735a994-56c5-4566-aab1-8befccbc1309",
+      "name": "Superannuation funds",
+      "level": "microtopic"
+    },
+    {
+      "id": "67a1336c-4f6c-4d01-a27a-c3936f3b7bee",
+      "name": "Trustee Bank and Custodian",
+      "level": "microtopic"
+    },
+    {
+      "id": "a3a46ed8-70dd-4651-800e-37e03f6d7b5e",
+      "name": "Types and features of retirement schemes in India",
+      "level": "microtopic"
+    },
+    {
+      "id": "1ef2f19a-fc69-4cb8-9018-1fe593a6d2b0",
+      "name": "Unified Pension Scheme",
+      "level": "microtopic"
+    },
+    {
+      "id": "023e18bf-9868-4996-a2c3-24a2382589b0",
+      "name": "Withdrawal, exit and deferment rules",
+      "level": "microtopic"
+    },
+    {
+      "id": "77f40383-ea4d-4610-ac4b-485dd1f50002",
+      "name": "Annuity Plans",
+      "level": "topic"
+    },
+    {
+      "id": "1c6d99e9-42a7-4281-84a3-de733ef0a2cc",
+      "name": "Atal Pension Yojana",
+      "level": "topic"
+    },
+    {
+      "id": "4a0dad1e-d85d-4c6b-8c38-c3cc9f8f4678",
+      "name": "Basics of Investment",
+      "level": "topic"
+    },
+    {
+      "id": "e31f6def-66c2-4b18-b01d-8e1e0595b41c",
+      "name": "National Pension System",
+      "level": "topic"
+    },
+    {
+      "id": "92617163-86c0-4601-b355-3659b3ac7f0d",
+      "name": "Pension Sector in India",
+      "level": "topic"
+    },
+    {
+      "id": "8bb91a36-36a2-4b41-b583-dcbe232eb527",
+      "name": "PFRDA & Regulatory Architecture",
+      "level": "topic"
+    },
+    {
+      "id": "eb15f9eb-536c-41ff-8f2f-2fa4b0caa21b",
+      "name": "Types of Retirement Schemes",
+      "level": "topic"
+    }
+  ]
+}

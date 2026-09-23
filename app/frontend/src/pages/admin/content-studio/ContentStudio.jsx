@@ -34,6 +34,7 @@ const ExamAssignments = lazy(() => import("./ExamAssignments"));
 const ContentCardLibrary = lazy(() => import("./ContentCardLibrary"));
 const ContentCardReviewQueue = lazy(() => import("./ContentCardReviewQueue"));
 const CaQuestionReviewQueue = lazy(() => import("./CaQuestionReviewQueue"));
+const AnswerStructureReviewQueue = lazy(() => import("./AnswerStructureReviewQueue"));
 
 const TABS = [
   { id: "library", label: "Library" },
@@ -48,6 +49,7 @@ const CONTENT_TYPES = [
   { id: "quant_heuristic", label: "Quant heuristics" },
   { id: "reasoning_strategy", label: "Reasoning strategies" },
   { id: "current_affairs_question", label: "Current affairs" },
+  { id: "answer_structure", label: "Answer structures" },
 ];
 
 export default function ContentStudio() {
@@ -90,6 +92,10 @@ export default function ContentStudio() {
     // CA candidates are shadow-generated (GQR-G3) — no author/library/bulk path;
     // the operator only reviews + promotes, so expose just the review queue.
     typedTabs = TABS.filter((t) => t.id === "review-queue");
+  } else if (type === "answer_structure") {
+    // AI-drafted by scripts/generate_answer_structures.py (migration 303); the
+    // operator reviews, edits, approves, rejects or regenerates — one queue.
+    typedTabs = TABS.filter((t) => t.id === "review-queue");
   } else {
     typedTabs = TABS.filter((t) => t.id !== "exam-assignments");
   }
@@ -103,7 +109,8 @@ export default function ContentStudio() {
     type === "writing_prompt" ||
     type === "quant_heuristic" ||
     type === "reasoning_strategy" ||
-    type === "current_affairs_question";
+    type === "current_affairs_question" ||
+    type === "answer_structure";
 
   let body = null;
   if (type === "objective_question") {
@@ -119,6 +126,8 @@ export default function ContentStudio() {
       : <ContentCardLibrary perms={perms} contentType={type} />;
   } else if (type === "current_affairs_question") {
     body = <CaQuestionReviewQueue perms={perms} />;
+  } else if (type === "answer_structure") {
+    body = <AnswerStructureReviewQueue perms={perms} />;
   } else if (activeTab === "library") {
     body = <PromptLibrary perms={perms} onAssign={assignPrompt} />;
   } else if (activeTab === "review-queue") {

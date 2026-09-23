@@ -1,0 +1,595 @@
+{
+  "year": 2015,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2015-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+  "mode": "unanchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "dropped_instruction:1"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the possible factors that inhibit India from enacting for its citizens a uniform civil code as provided for in the Directive Principles of State Policy.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        53,
+        54
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "43ce9be19c329602a7866e62e46f28a14e00a5f6515ba8c058d31400c1816161",
+      "best_db_match": {
+        "score": 0.4203,
+        "measure": "sequence",
+        "id": "1f387c78-48f4-4dc5-8951-cb577e703b70",
+        "text": "Discuss the strategic importance of the India-US civil nuclear deal and its impact on India's global energy diplomacy."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "The concept of cooperative federalism has been increasingly emphasized in recent years. Highlight the drawbacks in the existing structure and the extent to which cooperative federalism would answer the shortcomings.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        58,
+        60
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "f90f33d4dee5c98f9e938f9f6f9c1964736a412db0476ae09d4f244ec24956c2",
+      "best_db_match": {
+        "score": 0.3583,
+        "measure": "sequence",
+        "id": "eac8ed63-ba11-4718-8004-b86594ce6552",
+        "text": "The system of checks and balances is essential for a vibrant democracy. Discuss the relationship between the Judiciary and the Legislature in India in this regard."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "In absence of a well-educated and organized local level government system, ‘Panchayats’ and ‘SSamitis’ have remained mainly political institutions and not effective instruments of governance. Critically discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        64,
+        66
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "bbaf7a9a0b86a918cbfccf93f87d34bbaf44b4dde6a6dcb7636eaffc061d0fb9",
+      "best_db_match": {
+        "score": 0.3894,
+        "measure": "sequence",
+        "id": "6519717f-4566-4b8d-8bc2-db381184b07b",
+        "text": "\"The performance of welfare schemes for vulnerable sections is marred by administrative inefficiencies and corruption.\" Critically discuss."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "Khap Panchayats have been in the news for functioning as extra-constitutional authorities, often delivering pronouncements amounting to human rights violations. Discuss critically the actions taken by the legislative, executive and the judiciary to set the things right in this regard.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        71,
+        74
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "9a7f6fdbd7f097d74be903f6498718c3bda5fd094c5c7a4ff15d3b5275c28a2c",
+      "best_db_match": {
+        "score": 0.3891,
+        "measure": "sequence",
+        "id": "eac8ed63-ba11-4718-8004-b86594ce6552",
+        "text": "The system of checks and balances is essential for a vibrant democracy. Discuss the relationship between the Judiciary and the Legislature in India in this regard."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "Resorting to ordinances has always raised concern on violation of the spirit of separation of powers doctrine. While noting the rationales justifying the power to promulgate ordinances, analyze whether the decisions of the Supreme Court on the issue have further facilitated resorting to this power. Should the power to promulgate ordinances be repealed?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        80,
+        84
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 84,
+          "text": "be repealed? 12%",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "3fbb937420d2e57fad31faeb4810860639b05b0d4448942c84764b3a3df07707",
+      "best_db_match": {
+        "score": 0.3348,
+        "measure": "sequence",
+        "id": "0f722fd4-f900-4b22-9457-67534958d65f",
+        "text": "India's Traditional Knowledge Digital Library (TKDL), which has a database containing formatted information on more than 2 million medicinal formulations is proving a powerful weapon in the country's fight against erroneous patents. Discuss the pros and cons of making this database publicly available under open-source licensing."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the major changes brought in the Arbitration and Conciliation Act, 1996 through the recent Ordinance promulgated by the President? How far will it improve India’s dispute resolution mechanism? Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        88,
+        91
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "084b79c389e2215d5cc00b04b9e40dfa338efe7f498e8543f4aabf64263cf0af",
+      "best_db_match": {
+        "score": 0.3753,
+        "measure": "sequence",
+        "id": "fe502ede-1a50-4b6b-b073-72c813136fbd",
+        "text": "The frequency of earthquakes appears to have increased in the Indian subcontinent. However, India's preparedness for mitigating their impact has significant gaps. Discuss various aspects."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Does the right to clean environment entail legal regulations on burning crackers during Diwali? Discuss in the light of Article 21 of the Indian Constitution and Judgement(s) of the Apex Court in this regard.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        97,
+        100
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "56257cb1d626dfbc3c6c60d5083ed6dd1a0a7b64fbf280715ac9cc2d6aabc109",
+      "best_db_match": {
+        "score": 0.407,
+        "measure": "sequence",
+        "id": "04d8dd0a-6903-44da-86cf-78f078106386",
+        "text": "Why did the industrial revolution first occur in Great Britain? Discuss the quality of life of the people there during the industrialization."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "Examine critically the recent changes in the rules governing foreign funding of NGOs under the Foreign Contribution (Regulation) Act (FCRA), 1976.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        105,
+        106
+      ],
+      "page": 1,
+      "low_confidence_lines": [
+        {
+          "line": 106,
+          "text": "under the Foreign Contribution (Regulation) Act (FCRA), 1976. 12%",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "b4fdacb83fd1f16d697809377ac2b2812b6ce638fad6aeb035fecd6e939e3af8",
+      "best_db_match": {
+        "score": 0.4234,
+        "measure": "sequence",
+        "id": "aae3f110-d4cc-42a2-8e42-c24db4aa0163",
+        "text": "Examine the basic structure doctrine as enunciated by the Supreme Court. How has it acted as a safety valve for the Indian Constitution?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "The Self-Help Group (SHG) Bank Linkage Programme (SBLP), which is India’s own innovation, has proved to be one of the most effective poverty alleviation and women empowerment programmes. Elucidate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        111,
+        113
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "3a2f25b95a783ee96ed70c2656ce536d8c18b1f4eae54cd164363352e057a735",
+      "best_db_match": {
+        "score": 0.3786,
+        "measure": "sequence",
+        "id": "9f2b7e5e-dcb6-484b-9d0c-d7b9449407f0",
+        "text": "How has the caste system in India adapted to the forces of modernization and secularization?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "How can the role of NGOs be strengthened in India for development works relating to protection of the environment? Discuss throwing light on the major constraints.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        118,
+        119
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "cc5df8225b2b8814e3960f8993facdcc4cfd11d2684395f1fa7605aff303947f",
+      "best_db_match": {
+        "score": 0.4621,
+        "measure": "sequence",
+        "id": "a3a4d908-377e-4801-8c03-fe4cdfade217",
+        "text": "Evaluate the role of the press in the Indian national movement from the late nineteenth century onwards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "The quality of higher education in India requires major improvements to make it internationally competitive. Do you think that the entry of foreign educational institutions would help improve the quality of higher and technical education in the country? Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        124,
+        127
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "e99070dc8774990acb02697cb8f0e2295a54dcecb6dd10407ef689cbf8b9a067",
+      "best_db_match": {
+        "score": 0.3602,
+        "measure": "sequence",
+        "id": "e2cc70c0-3f54-479f-a2c0-766917c6a1f0",
+        "text": "Craze for gold in Indians has led to a surge in import of gold in recent years and put pressure on balance of payments and external value of rupee. In view of this, examine the merits of the Gold Monetization Scheme."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "Public health system has limitations in providing universal health coverage. Do you think that the private sector could help in bridging the gap? What other viable alternatives would you suggest?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        131,
+        134
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "b1338c145c3d6dcc0a5018e84016d9b3c61c5d18007a098a0b765b3d78801550",
+      "best_db_match": {
+        "score": 0.3712,
+        "measure": "sequence",
+        "id": "3ecb78f6-d748-4c6e-b41e-cd2ad7c4b6db",
+        "text": "What are the impediments in marketing and supply chain management in developing the food processing industry in India? Can e-commerce help in overcoming these bottlenecks?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "Though there have been several different estimates of poverty in India, all indicate reduction in poverty levels over time. Do you agree? Critically examine with reference to urban and rural poverty indicators.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        139,
+        141
+      ],
+      "page": 1,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "2618186255b723d4edd3cb10c68ed68f315c1a441439e3b25e415a58d7523d1e",
+      "best_db_match": {
+        "score": 0.381,
+        "measure": "sequence",
+        "id": "33e833a6-8c60-4a15-9219-6067f16a3a82",
+        "text": "Considering the threats cyberspace poses for the country, India needs a \"Digital Armed Force\" to prevent crimes. Critically evaluate the National Cyber Security Policy, 2013 outlining the challenges perceived in its effective implementation."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "In the light of the Satyam Scandal (2009), discuss the changes brought in corporate governance to ensure transparency, accountability.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        162,
+        163
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "916f185dde338b35148040b6dde1833c15525e8a5a725c419a3ae87a54ebc6b3",
+      "best_db_match": {
+        "score": 0.4033,
+        "measure": "sequence",
+        "id": "8a1a49d2-a8ef-4a69-8aed-22823fa1acfa",
+        "text": "What are statutory bodies? Explain the role of the National Green Tribunal (NGT) in environmental governance in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "“If amendment bill to the Whistleblowers Act, 2011 tabled in the Parliament is passed, there may be no one left to protect.” Critically evaluate.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        168,
+        169
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "88f9f736f4b7cad7ffac1842cd65d3fd7f69c01c46c990418176157a848ba7cf",
+      "best_db_match": {
+        "score": 0.3827,
+        "measure": "sequence",
+        "id": "07ac9886-411a-47c0-ac1e-1e44f2ed5773",
+        "text": "Public servants are the trustees of public power and financial resources. In this context, discuss the significance of 'probity in governance'."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“For achieving the desired objectives, it is necessary to ensure that the regulatory institutions remain independent and autonomous.” Discuss in the light of the experiences in recent past.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        174,
+        176
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "cf92f2f821c647df8d4646cfc0842e73649c2ccd60e315ac052fcd65dde39563",
+      "best_db_match": {
+        "score": 0.4156,
+        "measure": "sequence",
+        "id": "c261e56f-a4f4-4b48-b19d-c7fdd9fb4ebf",
+        "text": "What are the areas of prohibitive labour that can be sustainably managed by robots? Discuss the initiatives that can propel research in premier research institutes for substantive and gainful innovation."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Increasing interest of India in Africa has its pros and cons. Critically examine.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        181,
+        181
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "5f2d6c8b8368a8c3d2bb7f3d27dff0c8b8009ec19bd29d5d1ac6f1e8aca91664",
+      "best_db_match": {
+        "score": 0.5,
+        "measure": "containment",
+        "id": "25bd5ef1-e54c-454e-81a1-1ec67fd64f92",
+        "text": "In view of the declining average size of land holdings in India which has made agriculture non-viable for a majority of farmers, should contract farming and land leasing be promoted in agriculture? Critically evaluate the pros and cons."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "Discuss the impediments India is facing in its pursuit of a permanent seat in UN Security Council.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        184,
+        185
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "da06f3d84b61dd37c55b68934fa238a39c0a970801b96d092a18198537813684",
+      "best_db_match": {
+        "score": 0.4766,
+        "measure": "sequence",
+        "id": "1f387c78-48f4-4dc5-8951-cb577e703b70",
+        "text": "Discuss the strategic importance of the India-US civil nuclear deal and its impact on India's global energy diplomacy."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "Project ‘Mausam’ is considered a unique foreign policy initiative of the Indian Government to improve relationship with its neighbours. Does the project have a strategic dimension? Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        190,
+        192
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "46f59d7c61f71520cf6c7d37fd40a6d6f296757821ce5a97cf1825f0acc76423",
+      "best_db_match": {
+        "score": 0.371,
+        "measure": "sequence",
+        "id": "eac8ed63-ba11-4718-8004-b86594ce6552",
+        "text": "The system of checks and balances is essential for a vibrant democracy. Discuss the relationship between the Judiciary and the Legislature in India in this regard."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "Terrorist activities and mutual distrust have clouded India-Pakistan relations. To what extent the use of soft power like sports and cultural exchanges could help generate goodwill between the two countries? Discuss with suitable examples.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2015_GS2.txt",
+      "line_span": [
+        198,
+        201
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "182421b1388744f1fb364a4dc32ff258dd0908054858187190cb4852a73de5fc",
+      "best_db_match": {
+        "score": 0.3529,
+        "measure": "sequence",
+        "id": "2ee7b2fa-949e-4eb9-a9c6-0039747d590d",
+        "text": "Evaluate the impact of civil society organizations on policy formulation in India with suitable examples."
+      },
+      "route": "insert"
+    }
+  ]
+}

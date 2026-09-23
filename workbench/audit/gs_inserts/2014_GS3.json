@@ -1,0 +1,620 @@
+{
+  "year": 2014,
+  "paper": "GS3",
+  "paper_code": "UPSC-CSE-MAINS-GS-2014-GS3",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+  "mode": "unanchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "dropped_instruction:1"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "Normally countries shift from agriculture to industry and then later to services, but India shifted directly from agriculture to services. What are the reasons for the huge growth of services vis-a-vis industry in the country? Can India become a developed country without a strong industrial base?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        49,
+        52
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "285fe687c4d97e11af7e5454428a1216cb5cbe47681604049267c4840c658d50",
+      "best_db_match": {
+        "score": 0.3461,
+        "measure": "sequence",
+        "id": "d4bdb4ab-0fb4-473b-9237-11986a4a2ad3",
+        "text": "Account for the structural transformation of India's GDP from agriculture to services without a substantial manufacturing base. What are its implications?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "“While we flaunt India’s demographic dividend, we ignore the dropping rates of employability.” What are we missing while doing so? Where will the jobs that India desperately needs come from? Explain.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        57,
+        59
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "95994c2b2adcd2b694b0b8be4676e2267f73555109a66b45c4348ac3ca1201d4",
+      "best_db_match": {
+        "score": 0.3343,
+        "measure": "sequence",
+        "id": "a8446685-465d-4313-9658-d6a459f04113",
+        "text": "Give a detailed account of India's progress in renewable energy expansion. Highlight the grid-integration challenges of solar power plants."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "There is also a point of view that Agricultural Produce Market Committees (APMCs) set up under the State Acts have not only impeded the development of agriculture but also have been the cause of food inflation in India. Critically examine.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        63,
+        65
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "522af5cd1e310dfac277926f22f2bae0d8f6e76f51f42354b7ca00115c91dd8c",
+      "best_db_match": {
+        "score": 0.3429,
+        "measure": "sequence",
+        "id": "7b2a94b2-4727-4f00-92ad-f5bf515344b3",
+        "text": "In what ways did the naval mutiny of 1946 prove to be the last nail in the coffin of British colonial rule in India?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "“In the villages itself no form of credit organization will be suitable except the cooperative society.” —All India Rural Credit Survey. Discuss this statement in the background of agricultural finance in India. What constraints and challenges do financial institutions supplying agricultural finance face? How can technology be used to better reach and serve rural clients?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        71,
+        75
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "094056651cf1bc113c9563c7bc5955e2d860025e8b628f8215bd89c87560e511",
+      "best_db_match": {
+        "score": 0.3145,
+        "measure": "sequence",
+        "id": "94a50064-e6cf-4750-beff-044de9c94409",
+        "text": "What are Intellectual Property Rights (IPR)? Discuss the friction areas between India's IPR policy and international patent standards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 5,
+      "sub_part": null,
+      "section": null,
+      "text": "The Right to Fair Compensation and Transparency in Land Acquisition, Rehabilitation and Resettlement Act, 2013 has come into effect from 1st January, 2014. What are the key issues which would get addressed with the Act in place? What implications would it have on industrialization and agriculture in India?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        79,
+        82
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "e7f4c26e4b69d9039fb139d43fe7b526ee3955d6276a40cf90b252716a4982c3",
+      "best_db_match": {
+        "score": 0.3256,
+        "measure": "sequence",
+        "id": "0aca134f-13de-43e7-930a-fd68ed0257ff",
+        "text": "Discuss the reasons for the high concentration of shifting cultivation practices among the tribal populations of North-East India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 6,
+      "sub_part": null,
+      "section": null,
+      "text": "Capitalism has guided the world economy to unprecedented prosperity. However, it often encourages short-sightedness and contributes to wide disparities between the rich and the _ poor. In this light, would it be correct to believe and adopt capitalism for bringing inclusive growth in India? Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        100,
+        105
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "f6b11a1216a3d000cd663ded130d239266a4f4fdec69cfdfdadff1644e507d5c",
+      "best_db_match": {
+        "score": 0.3153,
+        "measure": "sequence",
+        "id": "333b0be5-63fb-4d53-be16-757828f6f352",
+        "text": "What is the global significance of the resource potential of the Arctic region? Highlight the geopolitical conflicts arising out of it."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 7,
+      "sub_part": null,
+      "section": null,
+      "text": "Explain how Private Public Partnership arrangements, in long gestation infrastructure projects, can transfer unsustainable liabilities to the future. What arrangements need to be put in place to ensure that successive generations’ capacities are not compromised?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        113,
+        115
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "aaa34c92042c4880a635fef5f511630255545238bd776d0d20090f5276702001",
+      "best_db_match": {
+        "score": 0.391,
+        "measure": "sequence",
+        "id": "597c98f1-9a92-4f63-9b2b-c4f9fd41b40f",
+        "text": "Explain the mechanism of the Public Distribution System (PDS) and analyze the reforms required to eliminate leakages in food distribution cycles."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 8,
+      "sub_part": null,
+      "section": null,
+      "text": "National Urban Transport Policy emphasises on ‘moving people’ instead of ‘moving vehicles’. Discuss critically the success of the various strategies of the Government ‘in this regard.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        119,
+        120
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "b103ecdadcb571610c4398396c0033e9085190156b893ecb741b86a37a0ebd3f",
+      "best_db_match": {
+        "score": 0.3605,
+        "measure": "sequence",
+        "id": "40c7abae-da4d-4d1b-957a-13d61127a0f2",
+        "text": "Sufis and Saint movements failed to modify either the religious ideas and practices or the outward structure of Hindu / Muslim societies to any appreciable extent. Comment."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "Foreign Direct Investment {FDI} in the defence sector is now set to be liberalized. What influence this is expected to have on Indian defence and economy in the short and long run?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        126,
+        127
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 126,
+          "text": "Foreign Direct Investment {FDI} in the defence sector is now set to be liberalized. What",
+          "flags": [
+            "garble_chars"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "106a30bc5e49513f4f7fb3fe537040bb9d8413f280a96abc39ea463b8f53af65",
+      "best_db_match": {
+        "score": 0.3495,
+        "measure": "sequence",
+        "id": "29abdea9-2e5a-4a45-b75a-783e7425705c",
+        "text": "Discuss the major challenges associated with land reforms in India since independence. Why has land records digitization lagged behind?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "Scientific rescarch in Indian universities is declining, because a carecr in science is not as attractive as are business professions, engineering or administration, and the universities are becoming consumer-oriented. Critically comment.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        133,
+        136
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "ddb41c2ecd064973037d10a76bdd5ece7620c9d00f23335955b0c3204e8bcb62",
+      "best_db_match": {
+        "score": 0.3497,
+        "measure": "sequence",
+        "id": "687c45b2-4858-420a-b8fe-8f33a83530f1",
+        "text": "The protection of consumers' rights is weak due to institutional lacunae in enforcement mechanism. Evaluate the role of Consumer Courts."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "Can overuse and free availability of antibiotics without Doctor’s prescription, be contributors to the emergence of drug-resistant diseases in India? What are the available mechanisms for monitoring and control? Critically discuss the various issues involved.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        143,
+        145
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "969ab208051af5f31f45cb0d506494ffcd9f2f84ce81adca1365165638572bae",
+      "best_db_match": {
+        "score": 0.3533,
+        "measure": "sequence",
+        "id": "d0001f48-bdd4-4b4c-b90c-38de9f762930",
+        "text": "Explain the origin and features of the earthquake zones in India. Why are some regions more vulnerable than others?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 12,
+      "sub_part": null,
+      "section": null,
+      "text": "In a globalized world, Intellectual Property Rights assume significance and are a source of litigation. Broadly distinguish between the terms—Copyrights, Patents and Trade Secrets.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        151,
+        152
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 152,
+          "text": "litigation. Broadly distinguish between the terms—Copyrights, Patents and Trade Secrets.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "2c027901905e4a5fc3cbfbda3ba41528b4bf9595d9dcdb763e96af03da3063e1",
+      "best_db_match": {
+        "score": 0.4967,
+        "measure": "sequence",
+        "id": "94a50064-e6cf-4750-beff-044de9c94409",
+        "text": "What are Intellectual Property Rights (IPR)? Discuss the friction areas between India's IPR policy and international patent standards."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 13,
+      "sub_part": null,
+      "section": null,
+      "text": "Should the pursuit of carbon-crédits and clean development mechanisms set up under UNFCCC be maintained even though there has been a massive slide in the value of a carbon credit? Discuss with respect to India’s energy needs for economic growth.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        158,
+        161
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 158,
+          "text": "Should the pursuit of carbon-crédits and clean development mechanisms set up under",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "e74f82135c7fb538fb8c6135e5ef0df3738efdec4c721f138bbf94f9079f0a84",
+      "best_db_match": {
+        "score": 0.3488,
+        "measure": "sequence",
+        "id": "b72ea7b6-05d6-40d0-9654-0a5031fd8b82",
+        "text": "The power of judicial activism can sometimes turn into judicial overreach. Discuss with reference to recent examples in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "Drought has been recognized as a disaster in view of its spatial expanse, temporal duration, slow onset and lasting effects on vulnerable sections. With a focus on the September 2010 guidelines from the National Disaster’ Management Authority (NDMA}, discuss the mechanisms for preparedness to deal with likely El Nifo and La Nina fallouts in India.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        174,
+        177
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 176,
+          "text": "guidelines from the National Disaster’ Management Authority (NDMA}, discuss the",
+          "flags": [
+            "garble_chars"
+          ]
+        },
+        {
+          "line": 177,
+          "text": "mechanisms for preparedness to deal with likely El Nifo and La Nina fallouts in India.",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "d54226f644fed80453f2c2d8a2e8dc6e917119072a40e92e372b4da8827508ef",
+      "best_db_match": {
+        "score": 0.3462,
+        "measure": "sequence",
+        "id": "e32f93e1-c9a1-4b7e-aaad-a02277cd7d75",
+        "text": "\"The true measure of a society is how it treats its most vulnerable members.\" - Mahatma Gandhi. Discuss the ethical rationale of affirmative action in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "Environmental Impact Assessment studies are increasingly undertaken before a project is cleared by the Government. Discuss the environmental impacts of coal-fired thermal plants located at coal pitheads.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        192,
+        194
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "1807ad8e18da45d94c84c22e5434e470771fad66b8a3b63d4e195adfbf5030a4",
+      "best_db_match": {
+        "score": 0.3889,
+        "measure": "sequence",
+        "id": "a8e41d09-6c8a-4dc0-bd15-f7f2b34daed8",
+        "text": "What are the major oceanic currents of the Atlantic Ocean? Discuss their influence on the regional climates of coastal areas."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "“The diverse nature of India as a multi-religious and multi-ethnic society is not immune to the impact of radicalism which is seen in her neighbourhood.” Discuss along with strategies to be adopted to counter this environment.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        199,
+        201
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "9bd817b9a786b9b8f878a21a8556ccd1c52b8077ef4f39e11f546677c17d2be5",
+      "best_db_match": {
+        "score": 0.3871,
+        "measure": "sequence",
+        "id": "e32f93e1-c9a1-4b7e-aaad-a02277cd7d75",
+        "text": "\"The true measure of a society is how it treats its most vulnerable members.\" - Mahatma Gandhi. Discuss the ethical rationale of affirmative action in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "International civil aviation laws provide all countries complete and exclusive sovereignty over the airspace above their territory. What do you understand by ‘airspace’? What are the implications of these laws on the space above this airspace? Discuss the challenges which this poses and suggest ways to contain the threat.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        207,
+        210
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "ba9e2af9ea23fd8e78fc4ef7ed1d7e1d6b11c93f85ba4397faef9300636e72cf",
+      "best_db_match": {
+        "score": 0.2857,
+        "measure": "sequence",
+        "id": "d4bdb4ab-0fb4-473b-9237-11986a4a2ad3",
+        "text": "Account for the structural transformation of India's GDP from agriculture to services without a substantial manufacturing base. What are its implications?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "How does illegal transborder migration pose a threat to India’s security? Discuss the Strategies to curb this, bringing out the factors which give impetus to such migration.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        215,
+        216
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "62b0f31bc59941199c03467847d9e04cf6f1866b1fdd7d7e8072379b54fbbd8f",
+      "best_db_match": {
+        "score": 0.4214,
+        "measure": "sequence",
+        "id": "257c3720-81d5-4547-9d2e-1f8ee8974dc5",
+        "text": "Analyze the links between illegal migration and security challenges along India's eastern international border."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 19,
+      "sub_part": null,
+      "section": null,
+      "text": "In 2012, the longitudinal marking for high-risk areas for piracy was moved from 65 degrees east to 78 degrees east in the Arabian Sea by the International Maritime Organization. What impact does this have on India’s maritime security concerns?",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        221,
+        223
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "08d0b01ed08d31c86ce5d2774102e7323af64dd030e9933176d6e8bb02086da2",
+      "best_db_match": {
+        "score": 0.3438,
+        "measure": "sequence",
+        "id": "30cddcdf-4097-4417-8e1a-98eb38b7fe10",
+        "text": "Discuss the ethical issues involved in the commercialization of healthcare services in India. Suggest remedies."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 20,
+      "sub_part": null,
+      "section": null,
+      "text": "China and Pakistan have entered into an agreement for development of an economic corridor. What threat does this pose for India’s security? Critically examine.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2014_GS3.txt",
+      "line_span": [
+        228,
+        229
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread"
+      ],
+      "content_hash": "7d417945d4637a4900c41c372bc167a3dba5eab686224f72a4195740f0d85822",
+      "best_db_match": {
+        "score": 0.3701,
+        "measure": "sequence",
+        "id": "c4ee59ed-ce9c-43b5-b584-48bd36c5abbc",
+        "text": "What were the major political, economic and social forces that led to the French Revolution? Analyze."
+      },
+      "route": "insert"
+    }
+  ]
+}

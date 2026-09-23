@@ -1,0 +1,44 @@
+{
+  "year": 2023,
+  "paper": "GS4",
+  "paper_code": "UPSC-CSE-MAINS-GS-2023-GS4",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2023_GS4.txt",
+  "mode": "anchored",
+  "printed_question_count": 12,
+  "paper_flags": [
+    "subpart_labels_unread:labels=8,parts=13"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": "A",
+      "text": "Differentiate ‘moral intuition’ from ‘moral reasoning’ with suitable examples.",
+      "marks": "10",
+      "marks_source": "printed_column",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2023_GS4.txt",
+      "line_span": [
+        180,
+        183
+      ],
+      "page": 5,
+      "low_confidence_lines": [],
+      "flags": [
+        "numbering_unverified"
+      ],
+      "content_hash": "a89e7e5d1f290cc9105a3e5d1b51b2d99f84ade8e944c358bb92d46e55102581",
+      "best_db_match": {
+        "score": 0.3663,
+        "measure": "sequence",
+        "id": "a3e2d499-9abc-4ce6-aa8e-5d390fd386fe",
+        "text": "What are the main features of Vedic society and religion? Do you think some of the features are still prevailing in Indian society?"
+      },
+      "route": "insert"
+    }
+  ]
+}

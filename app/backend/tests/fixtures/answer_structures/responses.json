@@ -1,0 +1,65 @@
+{
+  "f0000000-0000-4000-8000-000000000001": {
+    "directive": "Critically examine",
+    "demand": "Weigh how the Governor's constitutional role both enables and strains Centre–State cooperation, ending in a balanced verdict.",
+    "intro_angles": [
+      "Define the Governor's dual role as constitutional head of the State and link to the Union (Articles 153–162).",
+      "Open with the idea of cooperative federalism as a working relationship, not only a division of powers."
+    ],
+    "body_points": [
+      {"id": "p1", "point": "Constitutional position and discretionary powers", "why": "Examiner expects the textual basis before evaluation.", "evidence_type": "Relevant constitutional articles on appointment, discretion and assent", "example": null, "thinker": null, "sub_points": ["Appointment and tenure at pleasure of the President", "Discretion in summoning, assent and reservation of Bills"]},
+      {"id": "p2", "point": "Ways the office supports cooperative federalism", "why": "'Critically' needs the positive side, not only criticism.", "evidence_type": "Instances of the Governor acting as a bridge in Centre–State communication", "example": null, "thinker": null, "sub_points": ["Channel of communication", "Continuity during President's Rule"]},
+      {"id": "p3", "point": "Friction points: delays in assent, government formation, reports under Article 356", "why": "Core of the contemporary debate the question points at.", "evidence_type": "Recent Supreme Court judgments on the Governor's assent to State Bills", "example": null, "thinker": null, "sub_points": ["Pocket-veto-like delays", "Discretion in hung assemblies"]},
+      {"id": "p4", "point": "Commission and judicial recommendations on the office", "why": "Shows awareness of reform thinking.", "evidence_type": "Recommendations of the Sarkaria and Punchhi Commissions", "example": "S.R. Bommai v. Union of India on the limits of Article 356", "thinker": null, "sub_points": []},
+      {"id": "p5", "point": "Reforms to align the office with cooperative federalism", "why": "Way forward is expected in a 15-marker.", "evidence_type": "Proposals on time-bound assent and consultation with the Chief Minister in appointment", "example": null, "thinker": null, "sub_points": []}
+    ],
+    "dimensions": ["Constitutional", "Political", "Federal", "Judicial"],
+    "examples": ["A recent State–Governor standoff over pending Bills (describe, do not name dates you are unsure of)", "Inter-State Council as an alternative forum"],
+    "conclusion_angles": [
+      "The office is a constitutional necessity; its misuse, not its existence, strains federalism.",
+      "Codified conventions and time limits can restore the Governor as a bridge rather than a veto point."
+    ],
+    "pitfalls": [
+      "Writing only criticism — 'critically examine' needs both sides.",
+      "Listing articles without linking them to cooperative federalism.",
+      "Quoting figures on Article 356 use without being sure of them."
+    ],
+    "sources_note": "Constitutional provisions on the Governor, reports of the Sarkaria and Punchhi Commissions, and recent Supreme Court judgments on assent.",
+    "uncertainty": ["Whether the examiner expects the 2023 judgment on assent specifically is unclear; the point is phrased as an evidence type."]
+  },
+  "f0000000-0000-4000-8000-000000000002": {
+    "directive": "Discuss",
+    "demand": "Two parts: the challenges groundwater depletion poses, and practical measures for sustainable management.",
+    "intro_angles": ["State India's dependence on groundwater for irrigation and drinking water, as a fact without figures."],
+    "body_points": [
+      {"id": "p1", "point": "Causes of depletion: over-extraction for irrigation, free or subsidised power, water-intensive cropping", "why": "Challenges start from causes.", "evidence_type": "Central Ground Water Board assessments of over-exploited blocks", "example": null, "thinker": null, "sub_points": ["Paddy in semi-arid regions", "Flat-rate electricity"]},
+      {"id": "p2", "point": "Consequences: falling water tables, quality contamination, rural distress", "why": "The 'challenges' half of the question.", "evidence_type": "Recent data on arsenic and fluoride contamination in groundwater", "example": null, "thinker": null, "sub_points": []},
+      {"id": "p3", "point": "Governance gaps: groundwater as an easement right attached to land", "why": "Shows structural understanding beyond hydrology.", "evidence_type": "Legal status of groundwater and model groundwater bills", "example": null, "thinker": null, "sub_points": []},
+      {"id": "p4", "point": "Measures: demand-side (crop diversification, micro-irrigation, power pricing) and supply-side (recharge, watershed works)", "why": "The 'suggest measures' half.", "evidence_type": "Government schemes on participatory groundwater management", "example": "Atal Bhujal Yojana", "thinker": null, "sub_points": ["Community aquifer management", "Rainwater harvesting mandates"]}
+    ],
+    "dimensions": ["Environmental", "Economic", "Legal", "Social"],
+    "examples": ["A state-level success in community groundwater management"],
+    "conclusion_angles": ["Treat groundwater as a common-pool resource governed by users, backed by pricing and law."],
+    "pitfalls": ["Only listing schemes without linking them to causes.", "Ignoring the legal ownership issue.", "Inventing percentages of depletion."],
+    "sources_note": "Central Ground Water Board reports, NITI Aayog material on water management.",
+    "uncertainty": []
+  },
+  "f0000000-0000-4000-8000-000000000003": {
+    "directive": "Explain and illustrate",
+    "demand": "Define probity in governance, then show with illustrations how it can be strengthened in public service delivery.",
+    "intro_angles": ["Define probity as integrity and uprightness that goes beyond mere legality."],
+    "body_points": [
+      {"id": "p1", "point": "Meaning of probity and how it differs from legality and efficiency", "why": "First part asks 'what do you understand'.", "evidence_type": "Standard definitions from ethics texts", "example": null, "thinker": "Kautilya on the conduct of officials", "sub_points": []},
+      {"id": "p2", "point": "Why probity matters for service delivery: trust, equity, reduced leakages", "why": "Links the concept to the second part.", "evidence_type": "Instances where lack of probity distorted delivery", "example": null, "thinker": null, "sub_points": []},
+      {"id": "p3", "point": "Institutional measures: citizen charters, social audits, RTI, grievance redress", "why": "The 'strengthened' part expects concrete mechanisms.", "evidence_type": "Examples of social audits in rural employment schemes", "example": null, "thinker": null, "sub_points": ["Time-bound service guarantees"]},
+      {"id": "p4", "point": "Individual measures: codes of conduct, ethics training, leading by example", "why": "Ethics paper values attitudinal change, not only systems.", "evidence_type": "Recommendations of the Second Administrative Reforms Commission on ethics in governance", "example": null, "thinker": "Nolan principles of public life", "sub_points": []},
+      {"id": "p5", "point": "Technology: e-governance and direct benefit transfer reducing discretion", "why": "Modern illustration the examiner will expect.", "evidence_type": "E-governance examples reducing face-to-face discretion", "example": null, "thinker": null, "sub_points": []}
+    ],
+    "dimensions": ["Ethical", "Administrative", "Technological"],
+    "examples": ["A district-level social audit", "An online grievance portal"],
+    "conclusion_angles": ["Probity is sustained by systems and by conscience together; neither alone suffices."],
+    "pitfalls": ["Defining probity only as absence of corruption.", "No illustrations despite the directive 'illustrate'."],
+    "sources_note": "Second ARC report on ethics in governance; standard GS4 ethics texts.",
+    "uncertainty": ["Directive combines 'what do you understand' and 'illustrate'; recorded as 'Explain and illustrate'."]
+  }
+}

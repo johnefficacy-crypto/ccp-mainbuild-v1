@@ -1,0 +1,202 @@
+{
+  "year": 2016,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2016-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+  "mode": "unanchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "dropped_instruction:1",
+    "count_mismatch:printed=20,extracted=19"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "himself but was also a great patron of learning and literature. Discuss.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        59,
+        59
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "possible_truncation",
+        "numbering_unverified"
+      ],
+      "content_hash": "f12e1aaedfc5fce7fd82bf725efe80efa47d62542b5f518ff72855f564174d42",
+      "best_db_match": {
+        "score": 0.381,
+        "measure": "sequence",
+        "id": "3ae4bc47-8794-4c28-ba65-c649de0e6268",
+        "text": "Need brings ordinary networks together, greed creates a breed of power-mongers."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "With a brief background of quality of urban life in India, introduce the objectives and strategy of the ‘Smart City Programme’.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        125,
+        126
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "35a739313ded40a2fa642f5639e855549e6a4ccd6c39030855634c40dbc5ef58",
+      "best_db_match": {
+        "score": 0.4206,
+        "measure": "sequence",
+        "id": "eb4b95c5-debd-456b-a28f-4881673dbb15",
+        "text": "The office of the Governor has been a center of federal disputes in India. Analyze the reasons and suggest constitutional remedies."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 11,
+      "sub_part": null,
+      "section": null,
+      "text": "What is the basis of regionalism? Is it that unequal distribution of benefits of development on regional basis eventually promotes regionalism? Substantiate your answer. 3%t+9=12%",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        131,
+        133
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "6cc972ee9a1efecbdbc50d508f39d7ebfb8777defad4b31da38298467dc4bd8c",
+      "best_db_match": {
+        "score": 0.3934,
+        "measure": "sequence",
+        "id": "933ba7ad-3c3e-42a1-a02d-95bc9cc45cd7",
+        "text": "Why should impartiality and non-partisanship be considered as foundational values in public services, especially in the present day socio-political context? Illustrate your answer with examples."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 14,
+      "sub_part": null,
+      "section": null,
+      "text": "The effective management of land and water resources will drastically reduce the human miseries. Explain.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        146,
+        147
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 147,
+          "text": "miseries. Explain. 12%",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "39c340416f9a879536ad9a4fb34032a95c9e5bc1a56616cb0bb273939e299a20",
+      "best_db_match": {
+        "score": 0.4216,
+        "measure": "sequence",
+        "id": "60dc2ac4-c7d9-4465-a455-b67b531a9e70",
+        "text": "Discuss the role of women in the freedom struggle especially in the Gandhian phase."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 15,
+      "sub_part": null,
+      "section": null,
+      "text": "South China Sea has assumed great geopolitical significance in the present context. Comment.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        150,
+        151
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "c512d80a4677f87c7f7778d4e29dda5eb262decf085527287b4f126b183dc7de",
+      "best_db_match": {
+        "score": 0.4257,
+        "measure": "sequence",
+        "id": "13460024-8249-4fed-ba2e-49867f1b0f67",
+        "text": "Discuss the procedures and utility of the mechanism of Judicial Review in the context of the Indian Constitution."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "Present an account of the Indus Water Treaty and examine its ecological, economic and political implications in the context of changing bilateral relations.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS1.txt",
+      "line_span": [
+        163,
+        164
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "4fe1dca145aeead5580b6d8c0d0788891a82db49b96e60ff156a1c808699820b",
+      "best_db_match": {
+        "score": 0.4286,
+        "measure": "sequence",
+        "id": "13460024-8249-4fed-ba2e-49867f1b0f67",
+        "text": "Discuss the procedures and utility of the mechanism of Judicial Review in the context of the Indian Constitution."
+      },
+      "route": "insert"
+    }
+  ]
+}

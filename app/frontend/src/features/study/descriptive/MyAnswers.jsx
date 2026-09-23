@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "../../../lib/api";
 import { Card, Eyebrow, Pill, StudyEmptyState } from "../../../shared/ui/studyos";
+import AnswerStructurePanel from "./AnswerStructurePanel";
+import AttemptPages, { pageCountLabel } from "./AttemptPages";
 
 /**
  * My answers — every attempt this aspirant has written.
@@ -43,13 +45,22 @@ export function attemptMeta(row) {
   const when = formatDate(row.submitted_at || row.started_at);
   if (when) out.push(when);
   // A handwritten attempt has no word count — nothing has read the pages — so
-  // the line simply omits it rather than printing a zero that looks measured.
-  if (row.answer_mode !== "handwritten" && Number.isFinite(row.word_count)) {
+  // it reads its page count instead, where a typed attempt reads its words.
+  // "0 pages" is said out loud: a handwritten draft waiting for its photos is
+  // a different thing from a typed one, and the row should say which.
+  if (row.answer_mode === "handwritten") {
+    if (Number.isFinite(row.page_count)) out.push(pageCountLabel(row.page_count));
+  } else if (Number.isFinite(row.word_count)) {
     out.push(`${row.word_count} words`);
   }
   const spent = formatMinutes(row.time_spent_seconds);
   if (spent) out.push(spent);
   if (Number.isFinite(row.self_total)) out.push(`${row.self_total}/12 self-score`);
+  // Only once the aspirant has ticked the answer structure; an unticked
+  // attempt is not "0% covered".
+  if (Number.isFinite(row.points_covered_pct)) {
+    out.push(`${row.points_covered_pct}% points covered`);
+  }
   return out;
 }
 
@@ -308,10 +319,12 @@ MyAnswers.propTypes = { onRewrite: PropTypes.func };
 export function AttemptDetail({ attemptId, questionId, onRewrite, onCompare }) {
   const [detail, setDetail] = useState(null);
   const [state, setState] = useState("loading");
+  const [comparing, setComparing] = useState(false);
 
   useEffect(() => {
     let live = true;
     setState("loading");
+    setComparing(false);
     api
       .get(`/api/study/descriptive/attempts/${attemptId}`)
       .then((d) => {
@@ -337,14 +350,33 @@ export function AttemptDetail({ attemptId, questionId, onRewrite, onCompare }) {
   }
 
   const attempt = detail?.attempt || {};
+  const handwritten = attempt.answer_mode === "handwritten";
+  const submitted = attempt.status === "submitted";
   return (
     <div className="mt-3 rounded-lg border border-[#E7DECB] bg-[#FBF8F2] p-4">
-      <p
-        className="whitespace-pre-wrap text-[13px] leading-relaxed text-clay-900"
-        data-testid="my-answers-detail-text"
-      >
-        {attempt.answer_text || "This attempt has no text yet."}
-      </p>
+      <div className={comparing ? "grid gap-4 lg:grid-cols-2" : ""}>
+      <div>
+      {/* A HANDWRITTEN ATTEMPT IS ITS PAGES. It has no text and never will —
+          nothing reads these images — so "no text yet" was a sentence about a
+          typed attempt shown over a real answer sitting in storage. */}
+      {handwritten ? (
+        <AttemptPages
+          attemptId={attemptId}
+          pages={detail?.pages || []}
+          ttlSeconds={detail?.url_ttl_seconds}
+          emptyLabel={`${pageCountLabel(0)} — this answer is waiting for its photos.`}
+        />
+      ) : (
+        <p
+          className="whitespace-pre-wrap text-[13px] leading-relaxed text-clay-900"
+          data-testid="my-answers-detail-text"
+        >
+          {attempt.answer_text || "This attempt has no text yet."}
+        </p>
+      )}
+      </div>
+      {comparing && submitted && <AnswerStructurePanel attemptId={attemptId} />}
+      </div>
       <div className="mt-3 flex flex-wrap gap-3">
         {detail?.can_rewrite && (
           <button
@@ -354,6 +386,17 @@ export function AttemptDetail({ attemptId, questionId, onRewrite, onCompare }) {
             data-testid="my-answers-rewrite"
           >
             Write this question again
+          </button>
+        )}
+        {submitted && (
+          <button
+            type="button"
+            className="link-under text-[12px] text-clay-700"
+            aria-expanded={comparing}
+            onClick={() => setComparing((v) => !v)}
+            data-testid="my-answers-compare-structure"
+          >
+            {comparing ? "Hide answer structure" : "Compare with answer structure"}
           </button>
         )}
         <button
@@ -451,9 +494,23 @@ export function CompareAttempts({ questionId, onClose }) {
             <p className="num-mono text-[10.5px] text-clay-700">
               {[`Attempt ${i + 1}`, ...attemptMeta(a)].filter(Boolean).join(" · ")}
             </p>
-            <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed">
-              {a.answer_text || "No text in this attempt."}
-            </p>
+            {/* Side by side means side by side whatever was written: a
+                handwritten column shows its pages, not an empty paragraph
+                that reads as "nothing here". */}
+            {a.answer_mode === "handwritten" ? (
+              <div className="mt-2">
+                <AttemptPages
+                  attemptId={a.id}
+                  pages={a.pages || []}
+                  ttlSeconds={data?.url_ttl_seconds}
+                  emptyLabel={`${pageCountLabel(0)} in this attempt.`}
+                />
+              </div>
+            ) : (
+              <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed">
+                {a.answer_text || "No text in this attempt."}
+              </p>
+            )}
           </div>
         ))}
       </div>

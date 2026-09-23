@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { api } from "../../lib/api";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { Card, Eyebrow, PageHeader, Tabs } from "../../shared/ui/studyos";
 import CatalogPicker from "../../features/study/descriptive/CatalogPicker";
 import ContinueCard from "../../features/study/descriptive/ContinueCard";
@@ -60,14 +60,25 @@ export default function AnswerWriting() {
   const [userId, setUserId] = useState("");
   const [excludedMap, setExcludedMap] = useState(0);
   const [listState, setListState] = useState("idle");
+  // Same stale-response guard as the catalogue: a slow list must not overwrite
+  // a fast one the aspirant asked for afterwards.
+  const listSeq = useRef(0);
   const [activeIndex, setActiveIndex] = useState(null);
 
   const selection = useMemo(
     () => ({
       subject: params.get("subject"),
       paper_id: params.get("paper_id"),
-      // Which paper WITHIN the subject — Paper I, or GS3. Distinct from
-      // paper_id, which is one sitting.
+      // WHICH PAPER WITHIN THE SUBJECT — a slot code: P1, P2, GS1..GS4, ESSAY.
+      // Distinct from paper_id, which is one sitting.
+      //
+      // It used to be `paper_number`, an integer, with Essay encoded as 99 — a
+      // magic number only this side knew. The backend validated 1..10, so the
+      // Essay tab answered 422 and was unreachable. The slot code is the same
+      // token on both sides. `paper_number` is still READ from the URL so links
+      // already sent out still open, and is resolved against the catalogue's
+      // own slot list rather than a second copy of the mapping here.
+      paper: params.get("paper"),
       paper_number: params.get("paper_number"),
       theme: params.get("theme"),
       year: params.get("year"),
@@ -122,31 +133,67 @@ export default function AnswerWriting() {
     if (selection.subject) writeLastSubject(userId, selection.subject);
   }, [selection.subject, userId]);
 
+  // A LINK CARRYING THE OLD `paper_number` IS REWRITTEN TO ITS SLOT, once, as
+  // soon as the catalogue can say which slot that number is in this subject.
+  // The mapping is the server's list, not a second copy of it here — that
+  // second copy is how 99 came to mean Essay on one side and nothing on the
+  // other. After this the URL, the request and the tab all say `paper=ESSAY`.
+  useEffect(() => {
+    if (selection.paper || !selection.paper_number || !catalog) return;
+    const match = (catalog.paper_slots || []).find(
+      (s) => String(s.paper_number) === String(selection.paper_number),
+    );
+    if (match) setSelection({ paper: match.slot, paper_number: null });
+  }, [catalog, selection.paper, selection.paper_number, setSelection]);
+
   // The catalogue is re-read when the subject changes: papers, themes and years
   // are all scoped to it. Showing Anthropology's themes under Political Science
   // was not a display bug — the catalogue was genuinely returning every theme
   // in the corpus and the picker was faithfully rendering them.
   const subjectFilter = selection.subject || "";
-  const paperNumberFilter = selection.paper_number || "";
+  const paperFilter = selection.paper || "";
+  const legacyPaperNumber = selection.paper ? "" : selection.paper_number || "";
+
+  // STALE RESPONSES ARE IGNORED, NOT RENDERED. Switching tabs starts a second
+  // catalogue read while the first is still in flight; on demo the first took
+  // twelve seconds and landed after the second, so the screen settled on the
+  // tab the aspirant had already left. Each read claims a sequence number and
+  // only the newest one is allowed to write state.
+  const catalogSeq = useRef(0);
 
   useEffect(() => {
     if (!examId) return;
+    const seq = (catalogSeq.current += 1);
     setCatalogState("loading");
     const query = new URLSearchParams({ exam_id: examId });
     if (subjectFilter) query.set("subject", subjectFilter);
-    if (paperNumberFilter) query.set("paper_number", paperNumberFilter);
+    if (paperFilter) query.set("paper", paperFilter);
+    else if (legacyPaperNumber) query.set("paper_number", legacyPaperNumber);
     api
       .get(`/api/study/descriptive/catalog?${query.toString()}`)
       .then((d) => {
+        if (seq !== catalogSeq.current) return;
         setCatalog(d);
         setCatalogError("");
         setCatalogState("ready");
       })
-      .catch(() => {
-        setCatalogError("The question catalogue is unavailable right now. Reload the page.");
+      .catch((err) => {
+        if (seq !== catalogSeq.current) return;
+        // A 4xx is the server rejecting THIS REQUEST — a paper slot it does not
+        // know, an exam id it cannot read — and it says which. Rendering
+        // "unavailable, reload the page" for it sent the aspirant to reload a
+        // page that would fail again the same way; the Essay tab did exactly
+        // that for as long as it sent `paper_number=99`.
+        const status = Number(err?.status) || 0;
+        setCatalogError(
+          status >= 400 && status < 500
+            ? getApiErrorMessage(err) ||
+                "That paper isn't one this subject has."
+            : "The question catalogue is unavailable right now. Reload the page.",
+        );
         setCatalogState("error");
       });
-  }, [examId, subjectFilter, paperNumberFilter]);
+  }, [examId, subjectFilter, paperFilter, legacyPaperNumber]);
 
   // A question list needs a subject AND something within it. "Every question
   // in Political Science" is 1,351 rows and no decision; a paper, a theme or a
@@ -162,9 +209,12 @@ export default function AnswerWriting() {
       return;
     }
     const query = new URLSearchParams({ exam_id: examId, limit: "100" });
-    ["subject", "paper_id", "paper_number", "theme", "year"].forEach((k) => {
+    ["subject", "paper_id", "paper", "theme", "year"].forEach((k) => {
       if (selection[k]) query.set(k, selection[k]);
     });
+    if (!selection.paper && selection.paper_number) {
+      query.set("paper_number", selection.paper_number);
+    }
     if (filters.unattempted) query.set("exclude_attempted", "true");
     if (filters.hasMarks) query.set("has_marks", "true");
     if (lens === "year") {
@@ -173,15 +223,18 @@ export default function AnswerWriting() {
       if (filters.yearFrom) query.set("year_from", filters.yearFrom);
       if (filters.yearTo) query.set("year_to", filters.yearTo);
     }
+    const seq = (listSeq.current += 1);
     setListState("loading");
     api
       .get(`/api/study/descriptive/questions?${query.toString()}`)
       .then((d) => {
+        if (seq !== listSeq.current) return;
         setQuestions(Array.isArray(d?.items) ? d.items : []);
         setExcludedMap(d?.excluded_map_questions || 0);
         setListState("ready");
       })
       .catch(() => {
+        if (seq !== listSeq.current) return;
         setQuestions([]);
         setListState("error");
       });
@@ -245,10 +298,13 @@ export default function AnswerWriting() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* "from your optional" is subject-neutral now: General Studies and
+          Essay are on this surface too, and the old line told a GS aspirant
+          they were in the wrong place. */}
       <PageHeader
         eyebrow="Answer writing · descriptive PYQs"
         title="Write a real Mains answer."
-        sub="Past questions from your optional, one at a time. You review your own answer against a rubric — nothing here is machine-scored."
+        sub="Past questions from your papers, one at a time. You review your own answer against a rubric — nothing here is machine-scored."
       />
 
       <Tabs

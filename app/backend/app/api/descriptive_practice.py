@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user, get_current_user_required_permanent
 from app.db.supabase_client import get_supabase_admin
+from app.study_os import answer_structures as structures
 from app.study_os import descriptive as service
 
 logger = logging.getLogger("career_copilot.api.descriptive_practice")
@@ -52,19 +53,34 @@ class AttemptSubmit(BaseModel):
     pasted_chars: int | None = Field(default=None, ge=0)
 
 
+#: The paper slot vocabulary, verbatim from the service so the route, the
+#: OpenAPI schema and the filter can never name three different things.
+PAPER_SLOT_CODES = service.PAPER_SLOT_CODES
+
+_PAPER_SLOT_DESC = (
+    "Which paper within the subject: " + ", ".join(PAPER_SLOT_CODES) + ". "
+    "Case-insensitive. Prefer this over the legacy integer `paper_number`."
+)
+
+
 @router.get("/catalog")
 def get_catalog(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
-    paper_number: int | None = Query(default=None, ge=1, le=10),
+    paper: str | None = Query(default=None, description=_PAPER_SLOT_DESC),
+    # DEPRECATED, and widened to admit the Essay slot it used to reject. The
+    # frontend encoded Essay as 99 while this validated `1 <= n <= 10`, so every
+    # Essay tab click answered 422 — a magic number only one side knew. New
+    # callers send `paper`; this stays so links already in the wild still open.
+    paper_number: int | None = Query(default=None, ge=1, le=99),
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Subjects, papers, themes and years for one exam, with counts.
 
     ``subject`` scopes papers, themes and years. The subject list itself is
-    never scoped — it is how the aspirant changes their mind. ``paper_number``
-    scopes to one paper within the subject, and scopes the sittings and the
-    syllabus themes alike.
+    never scoped — it is how the aspirant changes their mind. ``paper`` scopes
+    to one paper within the subject, and scopes the sittings and the syllabus
+    themes alike. The paper TABS are never scoped by it.
     """
     try:
         return service.get_catalog(
@@ -74,6 +90,7 @@ def get_catalog(
             # the caller by the token, never by a parameter.
             user_id=user.get("id"),
             subject=subject,
+            paper=paper,
             paper_number=paper_number,
         )
     except service.DescriptiveError as exc:
@@ -88,7 +105,8 @@ def get_questions(
     exam_id: str = Query(...),
     subject: str | None = Query(default=None),
     paper_id: str | None = Query(default=None),
-    paper_number: int | None = Query(default=None, ge=1, le=10),
+    paper: str | None = Query(default=None, description=_PAPER_SLOT_DESC),
+    paper_number: int | None = Query(default=None, ge=1, le=99),  # deprecated
     theme: str | None = Query(default=None),
     year: int | None = Query(default=None),
     year_from: int | None = Query(default=None, description="inclusive"),
@@ -106,6 +124,7 @@ def get_questions(
             exam_id=exam_id,
             subject=subject,
             paper_id=paper_id,
+            paper=paper,
             paper_number=paper_number,
             theme=theme,
             year=year,
@@ -280,6 +299,57 @@ def get_attempt(
     except Exception:  # noqa: BLE001
         logger.exception("descriptive attempt read failed for %s", attempt_id)
         raise HTTPException(status_code=500, detail="That answer is temporarily unavailable.")
+
+
+@router.get("/attempts/{attempt_id}/structure")
+def get_attempt_structure(
+    attempt_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """The verified answer structure beside a SUBMITTED attempt, with the
+    points this attempt was ticked as covering.
+
+    409 `not_submitted` for a draft: the structure opens after the answer is
+    written, never while it is. `structure` is null when the question has no
+    verified structure yet.
+    """
+    try:
+        return structures.structure_for_attempt(
+            get_supabase_admin(), user.get("id"), attempt_id
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("answer structure read failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="The answer structure is temporarily unavailable.")
+
+
+class CoverageBody(BaseModel):
+    structure_version: int = Field(..., ge=1)
+    covered_point_ids: list[str] = Field(default_factory=list, max_length=50)
+
+
+@router.put("/attempts/{attempt_id}/coverage")
+def put_attempt_coverage(
+    attempt_id: str,
+    body: CoverageBody,
+    user: dict = Depends(get_current_user_required_permanent),
+) -> dict[str, Any]:
+    """Save which body points the aspirant ticked. Self-reported; nothing reads
+    the answer to check it."""
+    try:
+        return structures.save_coverage(
+            get_supabase_admin(),
+            user.get("id"),
+            attempt_id,
+            structure_version=body.structure_version,
+            covered_point_ids=body.covered_point_ids,
+        )
+    except service.DescriptiveError as exc:
+        raise _fail(exc) from None
+    except Exception:  # noqa: BLE001
+        logger.exception("answer structure coverage save failed for %s", attempt_id)
+        raise HTTPException(status_code=500, detail="Couldn't save your ticks.")
 
 
 class AnswerModeBody(BaseModel):

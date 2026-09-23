@@ -1,0 +1,142 @@
+{
+  "year": 2016,
+  "paper": "GS2",
+  "paper_code": "UPSC-CSE-MAINS-GS-2016-GS2",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2016_GS2.txt",
+  "mode": "unanchored",
+  "printed_question_count": 20,
+  "paper_flags": [
+    "count_mismatch:printed=20,extracted=4"
+  ],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 1,
+      "sub_part": null,
+      "section": null,
+      "text": "“The broader aims and objectives of WTO are to manage and promote international trade in the era of globalization. But the Doha round of negotiations seem doomed due to differences between the developed and the developing countries.” Discuss in the Indian perspective. De g",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS2.txt",
+      "line_span": [
+        207,
+        213
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "89e75abbad561f83d41e20ca69eba011fb5096222620115c3abed42e0067dbf7",
+      "best_db_match": {
+        "score": 0.3832,
+        "measure": "sequence",
+        "id": "5d3d121f-141d-48d1-ae79-caaac93fcc60",
+        "text": "The terms 'Hot Pursuit' and 'Surgical Strikes' are often used in connection with armed action against terrorist attacks. Discuss the strategic impact of such actions."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 2,
+      "sub_part": null,
+      "section": null,
+      "text": "Evaluate the economic and strategic dimensions of India’s Look East Policy in the context of the post Cold War international scenario. 12",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS2.txt",
+      "line_span": [
+        216,
+        217
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "b2fa0bbf183effb7ce64585f87469045fe7dd800d80199d79d7d9975660018a7",
+      "best_db_match": {
+        "score": 0.575,
+        "measure": "sequence",
+        "id": "52a4eaed-d1d2-4887-98e8-ab6daee654d0",
+        "text": "Discuss the significance and challenges of India's 'Act East Policy' in the changing geopolitical scenario."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 3,
+      "sub_part": null,
+      "section": null,
+      "text": "“Increasing cross-border terrorist attacks in India and growing interference in the internal affairs of several member-states by Pakistan are not conducive for the future of SAARC (South Asian Association for Regional Cooperation).” Explain with suitable examples. 1 2",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS2.txt",
+      "line_span": [
+        223,
+        227
+      ],
+      "page": 2,
+      "low_confidence_lines": [],
+      "flags": [
+        "unanchored",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "a9bdc62cda78b631583ef62a31bccc6a8f1d88125493023bf5acfc4e31b5b2fd",
+      "best_db_match": {
+        "score": 0.3529,
+        "measure": "sequence",
+        "id": "7e9099b9-7c04-468e-bb7b-12af351e1f7c",
+        "text": "Discuss India's achievements in the field of Space Science and Technology. How the application of this technology has helped India in its socio-economic development?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 4,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the aims and objectives of the McBride Commission of the UNESCO? What is India’s position on these? es 12",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": null,
+      "source_file": "workbench/audit/ocr_cache/2016_GS2.txt",
+      "line_span": [
+        232,
+        233
+      ],
+      "page": 2,
+      "low_confidence_lines": [
+        {
+          "line": 233,
+          "text": "UNESCO ? What is India’s position on these ? es 12-",
+          "flags": [
+            "suspect_token"
+          ]
+        }
+      ],
+      "flags": [
+        "unanchored",
+        "low_confidence_ocr",
+        "marks_unread",
+        "numbering_unverified"
+      ],
+      "content_hash": "3c3ed702881c07b9b43c37eec61d940baf60f02e3f0444e3606059d520e6b6d0",
+      "best_db_match": {
+        "score": 0.459,
+        "measure": "sequence",
+        "id": "98149088-ab0b-4817-9621-cb7bb3620437",
+        "text": "Assess the impact of smart cities mission on urban development in India."
+      },
+      "route": "insert"
+    }
+  ]
+}

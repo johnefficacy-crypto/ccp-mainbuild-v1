@@ -55,6 +55,14 @@ export default function PyqTagsSidebar({ themeId }) {
             <li key={t.id} className="text-xs text-slate-700" data-testid={`essay-pyq-tag-${t.id}`}>
               <span className="num-mono text-slate-400">{t.year ?? "—"}</span>{" "}
               {t.question_text || "(untitled question)"}
+              {t.quote_attribution ? (
+                <span
+                  className="block text-slate-500 italic"
+                  data-testid={`essay-pyq-tag-attribution-${t.id}`}
+                >
+                  — {t.quote_attribution}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

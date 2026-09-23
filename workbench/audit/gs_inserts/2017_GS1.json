@@ -1,0 +1,151 @@
+{
+  "year": 2017,
+  "paper": "GS1",
+  "paper_code": "UPSC-CSE-MAINS-GS-2017-GS1",
+  "paper_kind": "gs",
+  "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+  "mode": "anchored",
+  "printed_question_count": 20,
+  "paper_flags": [],
+  "exam_id": "5466e62f-7382-4a38-ba96-2fe5fbfeaba2",
+  "exam_phase_id": "626ec667-4bbf-4420-8715-48c5b83e0d11",
+  "extractor_version": "gs-missing-extract-v1",
+  "questions": [
+    {
+      "official_number": 9,
+      "sub_part": null,
+      "section": null,
+      "text": "In the context of the diversity of India, can it be said that the regions form cultural units rather than the States? Give reasons with examples for your viewpoint.",
+      "marks": null,
+      "marks_source": null,
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+      "line_span": [
+        149,
+        151
+      ],
+      "page": 3,
+      "low_confidence_lines": [
+        {
+          "line": 151,
+          "text": "viewpoint. (150 words) I",
+          "flags": [
+            "unknown_words"
+          ]
+        }
+      ],
+      "flags": [
+        "low_confidence_ocr",
+        "marks_unread"
+      ],
+      "content_hash": "3e3fb52ce791d1781e091c55da20839d7990614a65bf54fda1d2825b8012ade2",
+      "best_db_match": {
+        "score": 0.4189,
+        "measure": "sequence",
+        "id": "53037501-da2e-4e23-8f1f-19dbb76ffcde",
+        "text": "Account for the failure of manufacturing sector in achieving the goal of labour-intensive exports. Suggest measures for more labour-intensive rather than capital-intensive exports."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 10,
+      "sub_part": null,
+      "section": null,
+      "text": "What are the two major legal initiatives by the State since Independence, addressing discrimination against Scheduled Tribes (STs)?",
+      "marks": "1",
+      "marks_source": "printed_inline",
+      "word_limit": 150,
+      "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+      "line_span": [
+        156,
+        157
+      ],
+      "page": 3,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "44ce603969b9f7419d7caf22312182433eae928865c07237ed6727ed37956ee4",
+      "best_db_match": {
+        "score": 0.4656,
+        "measure": "sequence",
+        "id": "377db1ff-3fbe-4b93-947f-6c7fd631c7bd",
+        "text": "Discuss the various economic and socio-cultural forces that are driving increasing discrimination against the Scheduled Tribes in India."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 16,
+      "sub_part": null,
+      "section": null,
+      "text": "In what way can floods be converted into a sustainable source of irrigation and all-weather inland navigation in India?",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+      "line_span": [
+        211,
+        212
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "8a1630c2b8a2f19989341f74ed01b282e25114b0d1b6109921001ae741bfc98c",
+      "best_db_match": {
+        "score": 0.4186,
+        "measure": "sequence",
+        "id": "7123547e-c385-4a07-9045-46698b04e939",
+        "text": "Strength, peace and security are considered to be the pillars of international relations. Elucidate."
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 17,
+      "sub_part": null,
+      "section": null,
+      "text": "What characteristics can be assigned to monsoon climate that succeeds in feeding more than 50 percent of the world population residing in Monsoon Asia?",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+      "line_span": [
+        217,
+        220
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "85b6e528c8f7b11c1f37b85e221785e9c8bbedf24a99cd879800dc6d0ca8060c",
+      "best_db_match": {
+        "score": 0.4726,
+        "measure": "sequence",
+        "id": "90fadd6d-3885-40cb-99b7-cce326214bf9",
+        "text": "How does the monsoon climate manifest itself in the socio-economic life of Monsoon Asia?"
+      },
+      "route": "insert"
+    },
+    {
+      "official_number": 18,
+      "sub_part": null,
+      "section": null,
+      "text": "The women’s questions arose in modern India as a part of the 19th century social reform movement. What were the major issues and debates concerning women in that period?",
+      "marks": "15",
+      "marks_source": "printed_column",
+      "word_limit": 250,
+      "source_file": "workbench/audit/ocr_cache/2017_GS1.txt",
+      "line_span": [
+        224,
+        226
+      ],
+      "page": 4,
+      "low_confidence_lines": [],
+      "flags": [],
+      "content_hash": "6e1aa98d00f58dbb729edb46839b17a0590bc682122cb0bc6570ae180e26d494",
+      "best_db_match": {
+        "score": 0.4242,
+        "measure": "sequence",
+        "id": "43246421-1b52-4ce7-9141-c5d2325dec1b",
+        "text": "The North-East region of India has been infested with insurgency for a very long time. Analyze the major reasons for the survival of armed insurgency in this region."
+      },
+      "route": "insert"
+    }
+  ]
+}

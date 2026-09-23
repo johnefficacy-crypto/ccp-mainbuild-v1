@@ -338,6 +338,26 @@ export default function StudyPlan() {
     }
   }
 
+  // PLAN-UX-01. auto_regenerate decides whether the header may promise that
+  // nothing changes without an apply — with the nightly sweep on, that promise
+  // is false. Read from the existing preferences endpoint; null while in
+  // flight so the copy never flips mid-load.
+  const [autoRegenerate, setAutoRegenerate] = useState(null);
+  useEffect(() => {
+    let done = false;
+    api
+      .get("/api/study/plan/preferences")
+      .then((d) => {
+        if (!done) setAutoRegenerate(d?.auto_regenerate !== false);
+      })
+      // A failed preferences read must not change the promise the page makes.
+      // Leaving it null keeps the neutral copy rather than asserting either way.
+      .catch(() => {});
+    return () => {
+      done = true;
+    };
+  }, []);
+
   async function previewRegenerate() {
     if (!selectedExamId) return;
     // Defense-in-depth: never let plan generation proceed unless calibration
@@ -744,7 +764,7 @@ export default function StudyPlan() {
         title={planHeading(plan.plan)}
         sub={
           plan.plan
-            ? "Nothing changes until you preview and approve it."
+            ? planHeaderSub(autoRegenerate)
             : "Create or regenerate a study plan to start tracking progress."
         }
         right={
@@ -812,6 +832,24 @@ export default function StudyPlan() {
           </div>
         }
       />
+
+      {isAutoRefreshedToday(plan.plan?.last_refresh) ? (
+        <p
+          className="text-[12.5px] text-clay-700"
+          role="status"
+          data-testid="auto-refresh-notice"
+        >
+          Auto-refreshed today · arranged tasks kept ·{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-clay-900"
+            onClick={() => setTab("changes")}
+            data-testid="auto-refresh-notice-link"
+          >
+            See plan changes
+          </button>
+        </p>
+      ) : null}
 
       {/* 1. How long is left. One line; the dates expand in place. */}
       <CycleCountdown timeline={timeline} />
@@ -1035,6 +1073,7 @@ export default function StudyPlan() {
           <DraftDiff
             draft={draft}
             onApply={applyDraft}
+            onKeepCurrent={() => setDraftOpen(false)}
             applying={applying}
             applyError={applyError}
             applyDisabled={!selectedExamId || (selectedExam && !selectedExam.planner_ready)}
@@ -1045,7 +1084,44 @@ export default function StudyPlan() {
   );
 }
 
-function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = false }) {
+// PLAN-UX-01 — the header promise, and the auto-refresh notice.
+//
+// The old copy ("Nothing changes until you preview and approve it.") was
+// false whenever auto_regenerate was on: regen.py's nightly sweep calls
+// generate_plan directly, with no draft and no approval step. These two pure
+// helpers keep the page honest about which of the two worlds a user is in.
+
+export function planHeaderSub(autoRegenerate) {
+  // null = preferences not loaded (or the read failed). Say the part that is
+  // true either way rather than picking a side and being wrong half the time.
+  if (autoRegenerate === null || autoRegenerate === undefined) {
+    return "Preview a plan before you apply it.";
+  }
+  return autoRegenerate
+    ? "We refresh today's tasks each night. Tasks you've arranged stay put."
+    : "Nothing changes until you preview and apply it.";
+}
+
+export function isAutoRefreshedToday(lastRefresh, now = new Date()) {
+  // Both conditions are required and neither is inferred: the trigger must
+  // SAY it was the sweep, and the timestamp must be today in UTC. A missing
+  // or malformed field means no notice — never a guess from recency alone.
+  if (!lastRefresh || lastRefresh.trigger !== "scheduled" || !lastRefresh.at) {
+    return false;
+  }
+  const at = new Date(lastRefresh.at);
+  if (Number.isNaN(at.valueOf())) return false;
+  return at.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+}
+
+function DraftDiff({
+  draft,
+  onApply,
+  onKeepCurrent,
+  applying,
+  applyError = "",
+  applyDisabled = false,
+}) {
   const changes = draft.changes || { added: [], removed: [], unchanged_count: 0 };
   const risk = draft.risk_level || "low";
   const before = draft.before_tasks || [];
@@ -1132,6 +1208,19 @@ function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = 
       ) : null}
 
       <div className="flex justify-end gap-2 pt-2 border-t border-[#E7DECB]">
+        {/* PLAN-UX-01. "Keep current plan" is the honest opposite of Apply:
+            it closes the preview and does nothing else — no request, no state
+            change. Before this the only way out of the drawer was the close
+            control, which reads as dismissal rather than a decision. */}
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onKeepCurrent}
+          disabled={applying}
+          data-testid="keep-current-plan-btn"
+        >
+          Keep current plan
+        </button>
         <button
           type="button"
           className="btn btn-primary"
@@ -1139,7 +1228,10 @@ function DraftDiff({ draft, onApply, applying, applyError = "", applyDisabled = 
           disabled={applying || applyDisabled}
           data-testid="apply-draft-btn"
         >
-          {applying ? "Applying…" : "Apply selected changes"}
+          {/* "Apply this plan", not "Apply selected changes": there is no
+              per-change selection and never has been — apply replaces the
+              whole plan. */}
+          {applying ? "Applying…" : "Apply this plan"}
         </button>
       </div>
     </div>

@@ -62,9 +62,14 @@ every phase.
                 and a row listing several of them is emitted once. Read-only;
                 ``--apply`` writes the file.
 
-    export  ->  pull the pending in-scope questions + tags, plus the options and
-                shared stimuli they depend on, from the live API into four flat
-                JSON files (read-only).
+    export  ->  pull the pending in-scope questions + tags, plus the options,
+                shared stimuli and PAPER ROWS they depend on, from the live API
+                into five flat JSON files (read-only). ``papers_export.json``
+                carries the provenance fields ``review_pyq_paper``'s gate reads
+                (source_type, source_url, source_document_id) plus a per-paper
+                question count, which is what
+                ``scripts/ssc_cgl_readiness.py`` reports projection readiness
+                from.
 
     sweep   ->  pure offline. Run deterministic checks that only ever FLAG a
                 row — they never decide it. Clean rows are sorted from flagged
@@ -73,7 +78,30 @@ every phase.
                 and ``difficulty`` columns.
 
     apply   ->  read the worksheet back and issue one call per non-blank field
-                per row. Blank fields are skipped. Requires ``--apply --confirm``.
+                per row. Blank fields are skipped. Requires ``--apply --confirm``
+                (``--live`` is an accepted spelling of ``--apply``; neither
+                writes without ``--confirm``). Reports per PAPER, skips a tag
+                that already exists rather than firing its 409, and with
+                ``--applied-out`` writes the worksheet back with what happened
+                to each row.
+
+    ``--require-decision`` ON APPLY. A worksheet produced by
+    ``scripts/propose_pyq_topic_tags.py --out-worksheet-dir`` arrives with a
+    model's tag and difficulty ALREADY IN EVERY ROW and ``decision`` blank.
+    Applying it without this flag would write the proposer's output into the
+    corpus with nobody having reviewed a row. With it, a blank ``decision``
+    skips the row whatever else it carries. It is off by default so the
+    difficulty-only sheets the regulatory exams use keep working unchanged.
+
+    EXISTING PRIMARY TAGS ARE HANDLED OFFLINE.
+    ``uq_pyq_question_one_primary_tag`` permits one primary tag per question
+    and the CMS create route has no replace path, so a POST against an
+    already-tagged question can only come back 409 — and a failed write
+    suppresses the row's decision, leaving it pending. The worksheet's
+    ``current_primary_topic_id`` column lets apply decide before the call:
+    same topic -> reported ``tag_unchanged`` and skipped; different topic ->
+    reported ``tag_conflict`` and skipped, because replacing a primary tag is
+    a delete-then-create an operator authorises, not something a cell implies.
 
 WORKSHEET COLUMNS the operator fills (all blank on write, all independent — a
 row may carry any combination, and a blank one is skipped exactly as a blank
@@ -324,6 +352,26 @@ WORKSHEET_FIELDS = [
     # for every row when `sweep` is run without --stimuli, so a worksheet from
     # an older export still reads back cleanly.
     "stimulus_preview",
+    # APPENDED (multi-paper pass). Every one of these is READ-ONLY context the
+    # operator never fills; they exist because a single-year, thirteen-paper
+    # exam (SSC CGL 2024 Tier I) collapses into one indistinguishable batch
+    # under `paper_year` alone.
+    #
+    #   paper_id  the batch key `apply` groups and reports on when present,
+    #             falling back to paper_year exactly as before when it is not —
+    #             so a worksheet written before this column applies unchanged.
+    #   section   the exam-phase section label, carried so a per-paper
+    #             worksheet is reviewable without a second join.
+    #   current_primary_topic_id
+    #             the primary topic this question ALREADY carries, or blank.
+    #             `uq_pyq_question_one_primary_tag` permits exactly one, and the
+    #             CMS create route has no replace path, so a differing
+    #             assign_topic_id can only ever 409. `apply` reads this column
+    #             and skips those rows offline, by name, instead of firing the
+    #             conflict and reporting it as a failure.
+    "paper_id",
+    "section",
+    "current_primary_topic_id",
 ]
 
 # Expected option count for an MCQ in these papers. Four is the norm; five
@@ -341,12 +389,21 @@ _PRINTABLE = set(chr(c) for c in range(0x20, 0x7F)) | {"\t", "\n", "\r"}
 _REPEAT_CHAR = re.compile(r"(\S)\1{3,}")
 
 
+#   READ-ONLY COLUMNS the tool fills and the operator does not: ``paper_id``,
+#   ``section`` and ``current_primary_topic_id``. See WORKSHEET_FIELDS.
+#
 # ─── HTTP client (mirrors scripts/syllabus_mention_review.py) ─────────────────
 # Default HTTP timeout. The API is deployed on a free Render instance that
 # spins down when idle: the first request of a session pays a cold start that
 # routinely runs past a 60s budget, and the export/apply loops issue hundreds of
 # requests, so a spurious first-call timeout costs the whole run.
 DEFAULT_TIMEOUT = 180
+
+# Hard stop on ``all_items``. The walk terminates on content, so this can only
+# be reached by a route that keeps answering with rows the walk has not seen —
+# i.e. something upstream is wrong. At the 200-row default page this is two
+# million rows, far past any corpus in this repo.
+_MAX_PAGES = 2000
 
 
 class Client:
@@ -385,17 +442,57 @@ class Client:
 
     def all_items(self, path: str, params: dict[str, Any] | None = None,
                   page: int = 200) -> list[dict]:
-        """Loop offset until a short page. Works for both the items route
-        ({items, count}) and the CMS list routes ({items, total, ...})."""
+        """Walk every page of a list route. Works for both the items route
+        ({items, count}) and the CMS list routes ({items, total, ...}).
+
+        TERMINATION IS ON CONTENT, NOT ON A SHORT PAGE. This used to stop the
+        moment a page came back shorter than ``page``, which is the exact bug
+        ``app/backend/app/common/pagination.py`` exists to name: the rule is a
+        no-op whenever the server's own ceiling sits BELOW the requested limit,
+        and the walk reads the server's cap as the end of the data. It is not
+        hypothetical here — ``/pyq-options`` caps ``limit`` at 50 while every
+        other CMS route allows 200, so a caller that forgot ``page=50`` asked
+        for 200, got 50, and called a five-option question a complete read.
+
+        So: stop when a page adds no row this walk has not already seen. Rows
+        are deduplicated on ``id`` as a consequence, which also absorbs the
+        repeats a range page can produce when the server's order is not total.
+        A server-reported ``total``/``count`` is used only as an optimisation —
+        it saves the one extra request the content rule costs at the end of the
+        data, and is never a termination rule of its own.
+        """
         out: list[dict] = []
+        seen: set[Any] = set()
+        expected: int | None = None
         offset = 0
-        while True:
+        for _ in range(_MAX_PAGES):
             d = self.get(path, {**(params or {}), "limit": page, "offset": offset})
             items = d.get("items") or []
-            out.extend(items)
-            if len(items) < page:
+            total = d.get("total", d.get("count"))
+            if isinstance(total, (int, float)) and not isinstance(total, bool):
+                expected = int(total)
+
+            added = 0
+            for row in items:
+                ident = row.get("id") if isinstance(row, dict) else None
+                if ident is None:
+                    ident = repr(row)
+                if ident in seen:
+                    continue
+                seen.add(ident)
+                out.append(row)
+                added += 1
+
+            if added == 0:
                 return out
-            offset += page
+            if expected is not None and len(out) >= expected:
+                return out
+            offset += len(items) or page
+        raise RuntimeError(
+            f"GET {path} did not terminate within {_MAX_PAGES} pages "
+            f"({len(out)} row(s) collected) — the result would be a PREFIX, "
+            f"not the data. Refusing to return it."
+        )
 
 
 # ─── export ───────────────────────────────────────────────────────────────
@@ -622,7 +719,7 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     if not args.apply:
         print("\nDRY RUN — no files written. Re-run with --apply to write "
               "questions_export.json, tags_export.json, stimuli_export.json "
-              "and options_export.json.")
+              "options_export.json and papers_export.json.")
         return 0
 
     out_dir = Path(args.out)
@@ -631,6 +728,7 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     t_path = out_dir / "tags_export.json"
     s_path = out_dir / "stimuli_export.json"
     o_path = out_dir / "options_export.json"
+    p_path = out_dir / "papers_export.json"
     q_path.write_text(json.dumps(questions, ensure_ascii=False, indent=2), encoding="utf-8")
     t_path.write_text(json.dumps(tags, ensure_ascii=False, indent=2), encoding="utf-8")
     # Written unconditionally, empty list included: an absent file and an empty
@@ -638,10 +736,36 @@ def do_export(c: Client, args: argparse.Namespace) -> int:
     # looked and there were none".
     s_path.write_text(json.dumps(stimuli, ensure_ascii=False, indent=2), encoding="utf-8")
     o_path.write_text(json.dumps(options, ensure_ascii=False, indent=2), encoding="utf-8")
+    # The paper rows themselves, with the fields review_pyq_paper's provenance
+    # gate reads (migration 271, step 6): source_type, the source_url /
+    # source_document_id anchor, and whether the paper carries any question at
+    # all. Nothing downstream can report which papers are projectable without
+    # them, and re-fetching /pyq-papers later would be a second, differently
+    # timed read of the same rows.
+    papers_out = [{
+        "id": pr.get("id"),
+        "year": pr.get("year"),
+        "exam_id": pr.get("exam_id"),
+        "exam_phase_id": pr.get("exam_phase_id"),
+        "paper_code": pr.get("paper_code"),
+        "shift": pr.get("shift"),
+        "paper_date": pr.get("paper_date"),
+        "trust_status": pr.get("trust_status"),
+        "source_type": pr.get("source_type"),
+        "source_url": pr.get("source_url"),
+        "source_document_id": pr.get("source_document_id"),
+        "pyq_source_id": pr.get("pyq_source_id"),
+        # Counted from the CMS per-paper fetch above, which is the reliable
+        # route (see the route-(a) note) — not a second server-side count.
+        "question_count": sum(1 for row in cms_by_id.values()
+                              if row.get("pyq_paper_id") == pr.get("id")),
+    } for pr in sorted(scoped_papers, key=lambda r: str(r.get("id")))]
+    p_path.write_text(json.dumps(papers_out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nwrote {len(stimuli)} rows -> {s_path}")
     print(f"wrote {len(options)} rows -> {o_path}")
     print(f"wrote {len(questions)} rows -> {q_path}")
     print(f"wrote {len(tags)} rows -> {t_path}")
+    print(f"wrote {len(papers_out)} rows -> {p_path}")
     return 0   
 
 # ─── sweep (pure offline) ───────────────────────────────────────────────────
@@ -789,6 +913,26 @@ def has_primary_tag(question_id: Any, tags_by_question: dict[Any, list[dict]]) -
                for t in tags_by_question.get(question_id, ()))
 
 
+def primary_topic_id(question_id: Any, tags_by_question: dict[Any, list[dict]]) -> str:
+    """The topic id of this question's existing primary tag, or ``""``.
+
+    ``uq_pyq_question_one_primary_tag`` allows exactly one primary tag per
+    question, so at most one row can match; if a corpus somehow carries more,
+    the lowest topic id is returned deterministically rather than an arbitrary
+    one, because this value ends up in a committed worksheet.
+
+    SCOPE CAVEAT, the same one ``no_primary_tag`` carries: this is computed
+    from the exported tag set, which ``export`` filters by ``--status``. Run
+    ``export --status all`` when you want this column to describe the corpus
+    rather than the pending backlog — against a pending-only export a question
+    whose primary tag is already verified reads here as untagged.
+    """
+    ids = sorted(str(t.get("topic_id") or "")
+                 for t in tags_by_question.get(question_id, ())
+                 if (t.get("tag_role") or "") == "primary" and t.get("topic_id"))
+    return ids[0] if ids else ""
+
+
 def tag_flags(t: dict, valid_ids: set[str], orphan_ids: set[str]) -> list[str]:
     """Deterministic tag checks — named flags only, never a verdict."""
     topic_id = t.get("topic_id")
@@ -855,7 +999,8 @@ def load_topic_catalog(path: str) -> tuple[set[str], set[str], dict[str, str]]:
 
 
 # ─── catalog (build the --topic-catalog file) ─────────────────────────────
-def catalog_rows(topics: Iterable[dict], bodies: Iterable[str]) -> list[dict]:
+def catalog_rows(topics: Iterable[dict], bodies: Iterable[str],
+                 any_body: bool = False) -> list[dict]:
     """Narrow taxonomy rows to the catalogue this tool will accept.
 
     Conjunctive, and both halves matter:
@@ -877,7 +1022,7 @@ def catalog_rows(topics: Iterable[dict], bodies: Iterable[str]) -> list[dict]:
     (subject_id, name, id) so the file is byte-stable across runs.
     """
     wanted = {str(b).strip().casefold() for b in bodies if str(b).strip()}
-    if not wanted:
+    if not wanted and not any_body:
         raise ValueError("catalog_rows: at least one body key is required")
     out: list[dict] = []
     for t in topics:
@@ -887,12 +1032,22 @@ def catalog_rows(topics: Iterable[dict], bodies: Iterable[str]) -> list[dict]:
             continue
         meta = t.get("metadata")
         exams = (meta or {}).get("exams") if isinstance(meta, dict) else None
-        if not isinstance(exams, (list, tuple, set)):
-            continue
-        listed = {str(x).strip().casefold() for x in exams if str(x).strip()}
-        matched = sorted(listed & wanted)
-        if not matched:
-            continue
+        listed = ({str(x).strip().casefold() for x in exams if str(x).strip()}
+                  if isinstance(exams, (list, tuple, set)) else set())
+        if any_body:
+            # The SUBJECT is the whole of the narrowing. A row with no
+            # metadata.exams at all is kept, which is the point: the three SSC
+            # CGL subjects are shared with RBI Phase I, CSAT and the regulators
+            # and carry no exams key, so an exams predicate would reject every
+            # one of them and emit an empty catalogue that reads as "the
+            # taxonomy does not cover this exam".
+            matched = sorted(listed)
+        else:
+            if not listed:
+                continue
+            matched = sorted(listed & wanted)
+            if not matched:
+                continue
         out.append({
             "id": t.get("id"),
             "text": t.get("name") or t.get("slug") or t.get("id"),
@@ -916,15 +1071,24 @@ def do_catalog(c: Client, args: argparse.Namespace) -> int:
     and only leaves cross the wire.
     """
     bodies = [b for b in (args.body or []) if str(b).strip()]
-    if not bodies:
+    if not bodies and not args.any_body:
         print("error: at least one --body is required (the key to match against "
-              "topics.metadata.exams, e.g. --body rbi).", file=sys.stderr)
+              "topics.metadata.exams, e.g. --body rbi), or --any-body to drop "
+              "the filter for a body-agnostic subject set.", file=sys.stderr)
+        return 2
+    subject_ids_given = [s for s in (args.subject_id or []) if str(s).strip()]
+    if args.any_body and not subject_ids_given:
+        # Without either filter this would emit every microtopic in the
+        # taxonomy as a legal tag for every question — the opposite of what a
+        # catalogue is for.
+        print("error: --any-body drops the body filter, so at least one "
+              "--subject-id is required to narrow the catalogue.", file=sys.stderr)
         return 2
 
     params: dict[str, Any] = {"level": MICROTOPIC_LEVEL}
     if args.is_active:
         params["is_active"] = "true"
-    subject_ids = [s for s in (args.subject_id or []) if str(s).strip()]
+    subject_ids = subject_ids_given
     topics: list[dict] = []
     if subject_ids:
         for sid in subject_ids:
@@ -932,7 +1096,7 @@ def do_catalog(c: Client, args: argparse.Namespace) -> int:
     else:
         topics.extend(c.all_items(f"{CMS}/topics", params))
 
-    rows = catalog_rows(topics, bodies)
+    rows = catalog_rows(topics, bodies, any_body=args.any_body)
     by_body: dict[str, int] = {}
     for r in rows:
         for b in r["exams"]:
@@ -941,13 +1105,18 @@ def do_catalog(c: Client, args: argparse.Namespace) -> int:
 
     print(f"topics fetched: {len(topics)} (level={MICROTOPIC_LEVEL})")
     print(f"catalog rows:   {len(rows)} across {len(subjects)} subject(s)")
-    print(f"bodies:         {dict(sorted(by_body.items()))}")
+    print(f"bodies:         {dict(sorted(by_body.items()))}"
+          + ("  (--any-body: metadata.exams was NOT filtered on; the subject "
+             "ids are the whole of the narrowing)" if args.any_body else ""))
     shared = sum(1 for r in rows if len(r["exams"]) > 1)
     print(f"shared rows:    {shared} carry more than one of the requested bodies "
           f"(emitted ONCE each)")
     if not rows:
-        print("error: no microtopic carries any of the requested bodies in "
-              "metadata.exams — nothing to write.", file=sys.stderr)
+        reason = ("no active microtopic was returned for the requested "
+                  "subject id(s)" if args.any_body else
+                  "no microtopic carries any of the requested bodies in "
+                  "metadata.exams")
+        print(f"error: {reason} — nothing to write.", file=sys.stderr)
         return 1
 
     if not args.apply:
@@ -1033,6 +1202,8 @@ def build_worksheet(questions: list[dict], tags: list[dict],
             counts[norm] = counts.get(norm, 0) + 1
 
     id_to_year = {q.get("id"): q.get("year") for q in questions}
+    q_paper_by_id = {q.get("id"): (q.get("paper_id") or "") for q in questions}
+    q_section_by_id = {q.get("id"): (q.get("section") or "") for q in questions}
 
     tags_by_question = index_tags_by_question(tags)
     opts_by_question = index_options_by_question(options)
@@ -1102,6 +1273,9 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 "assign_topic_id": "",
                 "difficulty": "",
                 "stimulus_preview": stimulus_preview(stim_by_question.get(q["id"], [])),
+                "paper_id": q.get("paper_id") or "",
+                "section": q.get("section") or "",
+                "current_primary_topic_id": primary_topic_id(q["id"], tags_by_question),
             })
         for t in sorted(t_by_year.get(yr, []), key=lambda t: str(t.get("topic_id"))):
             flags = t_flags[t["id"]]
@@ -1122,8 +1296,44 @@ def build_worksheet(questions: list[dict], tags: list[dict],
                 "difficulty": "",
                 # A stimulus belongs to a question, never to a tag.
                 "stimulus_preview": "",
+                # A tag row's paper is its question's paper; resolved so a
+                # per-paper split keeps a tag beside the question it describes.
+                "paper_id": q_paper_by_id.get(t.get("question_id"), ""),
+                "section": q_section_by_id.get(t.get("question_id"), ""),
+                # Question-only, like assign_topic_id and difficulty.
+                "current_primary_topic_id": "",
             })
     return out
+
+
+def split_by_paper(rows: list[dict]) -> dict[str, list[dict]]:
+    """Worksheet rows grouped by ``paper_id``, order preserved within a group.
+
+    A thirteen-paper, single-year exam is the case this exists for: grouping a
+    review by ``paper_year`` puts SSC CGL 2024 Tier I's 850 questions in ONE
+    batch, which is neither reviewable nor reportable per paper. Rows with no
+    paper_id (a worksheet written before that column existed) land under
+    ``""`` and are written as a single file, so nothing is lost.
+    """
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(str(r.get("paper_id") or ""), []).append(r)
+    return groups
+
+
+def _slug(value: str) -> str:
+    """A filesystem-safe fragment of an id/label, for per-paper filenames."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "")).strip("-")
+    return cleaned[:64] or "unassigned"
+
+
+def write_worksheet(rows: list[dict], path: Path) -> None:
+    """Write one worksheet CSV. utf-8-sig so Excel opens it without mangling."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=WORKSHEET_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
 
 
 def do_sweep(args: argparse.Namespace) -> int:
@@ -1184,12 +1394,18 @@ def do_sweep(args: argparse.Namespace) -> int:
         print(f"\nDRY RUN — worksheet not written. Re-run with --apply to write {args.out}.")
         return 0
 
-    out = Path(args.out)
-    with out.open("w", newline="", encoding="utf-8-sig") as fh:
-        w = csv.DictWriter(fh, fieldnames=WORKSHEET_FIELDS)
-        w.writeheader()
-        w.writerows(rows)
-    print(f"\nwrote {len(rows)} rows -> {out}")
+    write_worksheet(rows, Path(args.out))
+    print(f"\nwrote {len(rows)} rows -> {args.out}")
+    if args.per_paper_dir:
+        # One file per paper IN ADDITION to the combined sheet, never instead
+        # of it: the combined sheet is what `apply` has always consumed, and a
+        # reviewer splitting the work across thirteen papers should not have
+        # to re-merge to run it.
+        base = Path(args.per_paper_dir)
+        for paper_id, group in sorted(split_by_paper(rows).items()):
+            target = base / f"worksheet-{_slug(paper_id)}.csv"
+            write_worksheet(group, target)
+            print(f"  {len(group):>4} rows -> {target}")
     print("Fill 'decision' (verified|rejected|needs_correction) for every row you "
           "promote; blanks stay pending. On QUESTION rows you may also fill "
           "'assign_topic_id' (a topic id from the catalog -> creates a pending "
@@ -1270,6 +1486,81 @@ def _validate_worksheet(rows: list[dict], valid_topic_ids: set[str]) -> list[str
     return errors
 
 
+def batch_key(row: dict) -> str:
+    """The unit `apply` groups, reports and (optionally) writes back by.
+
+    ``paper_id`` when the worksheet carries one, ``paper_year`` otherwise. The
+    fallback is what keeps every worksheet written before the paper_id column
+    existed reporting exactly as it did. It also matters on its own terms: SSC
+    CGL 2024 Tier I is thirteen papers in ONE year, so a year-keyed report
+    cannot say which paper a count belongs to, and a per-paper verdict is the
+    thing an operator is asked for.
+    """
+    return ((row.get("paper_id") or "").strip()
+            or (row.get("paper_year") or "").strip()
+            or "(unknown)")
+
+
+def tag_action(row: dict) -> tuple[str, str]:
+    """What to do with this row's ``assign_topic_id``: (action, detail).
+
+    ``uq_pyq_question_one_primary_tag`` permits exactly one primary tag per
+    question and the CMS create route has no replace path, so a POST against a
+    question that already carries a primary tag can only ever come back 409.
+    Firing it anyway turns an expected, knowable state into a reported failure
+    and — because a failed write suppresses the row's decision — silently
+    leaves the row pending.
+
+    Decided offline from ``current_primary_topic_id``:
+
+      ``create``     no existing primary tag; POST it.
+      ``unchanged``  the existing primary tag IS this topic. Nothing to do.
+                     Not an error: the worksheet convention is to blank
+                     assign_topic_id unless the tag changes, and a sheet that
+                     carries it anyway must be idempotent rather than noisy.
+      ``conflict``   a DIFFERENT primary tag exists. Skipped and named. The
+                     replacement is a delete-then-create an operator has to
+                     authorise, not something this tool infers from a cell.
+      ``none``       no assign_topic_id on this row.
+    """
+    wanted = _cell(row, "assign_topic_id")
+    if not wanted:
+        return ("none", "")
+    current = _cell(row, "current_primary_topic_id")
+    if not current:
+        return ("create", "")
+    if current == wanted:
+        return ("unchanged", current)
+    return ("conflict", current)
+
+
+_APPLIED_EXTRA_FIELDS = ["apply_result", "apply_detail"]
+
+
+def write_applied_worksheet(rows: list[dict], path: Path) -> None:
+    """Write the worksheet back with the per-row outcome appended.
+
+    reviewer_notes are dropped server-side for both kinds (see the module
+    docstring), so the DB row records no reason for its own promotion. The
+    filled worksheet is the audit trail, and a filled worksheet with no record
+    of what the run actually did to each row is only half of one. The two
+    appended columns are the other half; every original column is preserved so
+    the file re-reads as a worksheet.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fields = WORKSHEET_FIELDS + [f for f in _APPLIED_EXTRA_FIELDS
+                                 if f not in WORKSHEET_FIELDS]
+    # Any column the operator added by hand survives, appended after ours.
+    for r in rows:
+        for k in r:
+            if k not in fields:
+                fields.append(k)
+    with path.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+
+
 def do_apply(c: Client, args: argparse.Namespace) -> int:
     # The valid-topic-id list is never derived, on apply exactly as on sweep
     # (Preflight #2). Required even when no row carries an assign_topic_id —
@@ -1298,22 +1589,30 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
             print(f"  ... and {len(errors) - 20} more", file=sys.stderr)
         return 2
 
+    require_decision = bool(getattr(args, "require_decision", False))
+
     def actions(r: dict) -> tuple[str, str, str]:
-        """(decision, assign_topic_id, difficulty), each canonical or blank."""
-        return (_cell(r, "decision").lower(),
-                _cell(r, "assign_topic_id"),
-                _cell(r, "difficulty").lower())
+        """(decision, assign_topic_id, difficulty), each canonical or blank.
+
+        Under --require-decision a blank decision blanks the other two as well:
+        a PRE-FILLED worksheet (which the tag/difficulty proposer writes)
+        carries a machine's suggestion in every row, and applying those without
+        a typed verdict would promote the proposer's output straight into the
+        corpus — the one thing the review lifecycle exists to prevent.
+        """
+        decision = _cell(r, "decision").lower()
+        if require_decision and not decision:
+            return ("", "", "")
+        return (decision, _cell(r, "assign_topic_id"), _cell(r, "difficulty").lower())
 
     acting = [r for r in rows if any(actions(r))]
 
-    # Group by paper_year so a bad batch is visible mid-run, not only at the end.
-    def batch_key(r: dict) -> str:
-        return (r.get("paper_year") or "").strip() or "(unknown)"
-
     ordered = sorted(rows, key=batch_key)
     skipped_blank = len(rows) - len(acting)
+    gate = (" (--require-decision: a row with no decision is skipped whatever "
+            "else it carries)" if require_decision else "")
     print(f"{len(acting)} actionable of {len(rows)} rows "
-          f"({skipped_blank} blank -> skipped, stay pending).")
+          f"({skipped_blank} blank -> skipped, stay pending){gate}.")
 
     if not (args.apply and args.confirm):
         # Dry-run default: report exactly what WOULD happen, write nothing.
@@ -1324,49 +1623,44 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
             for key in ([decision] if decision else []):
                 bucket[key] = bucket.get(key, 0) + 1
             if topic_id:
-                bucket["assign_topic_id"] = bucket.get("assign_topic_id", 0) + 1
+                act, _detail = tag_action(r)
+                bucket[f"tag:{act}"] = bucket.get(f"tag:{act}", 0) + 1
             if difficulty:
                 bucket[f"difficulty:{difficulty}"] = bucket.get(f"difficulty:{difficulty}", 0) + 1
-        for yr in sorted(plan):
-            print(f"  year {yr}: {dict(sorted(plan[yr].items()))}")
-        print("\nDRY RUN — nothing written. Re-run with --apply --confirm to PATCH.")
+        for key in sorted(plan):
+            print(f"  paper {key}: {dict(sorted(plan[key].items()))}")
+        print("\nDRY RUN — nothing written. Re-run with --apply --confirm "
+              "(or --live --confirm) to PATCH.")
         return 0
 
     ok = failed = 0
-    cur_year = None
-    counts = {"verified": 0, "rejected": 0, "needs_correction": 0,
-              "tagged": 0, "difficulty": 0, "difficulty_cleared": 0, "skipped": 0}
+    per_batch: dict[str, dict[str, int]] = {}
 
-    def flush(year: Any) -> None:
-        print(f"  year {year}: verified={counts['verified']} "
-              f"rejected={counts['rejected']} "
-              f"needs_correction={counts['needs_correction']} "
-              f"tagged={counts['tagged']} "
-              f"difficulty={counts['difficulty']} "
-              f"difficulty_cleared={counts['difficulty_cleared']} "
-              f"skipped={counts['skipped']}")
+    def bump(key: str, field: str) -> None:
+        bucket = per_batch.setdefault(key, {})
+        bucket[field] = bucket.get(field, 0) + 1
 
     def pause() -> None:
         if args.sleep:
             time.sleep(args.sleep)
 
     for r in ordered:
-        yr = batch_key(r)
-        if cur_year is not None and yr != cur_year:
-            flush(cur_year)
-            for k in counts:
-                counts[k] = 0
-        cur_year = yr
-
+        key = batch_key(r)
+        per_batch.setdefault(key, {})
         decision, topic_id, difficulty = actions(r)
         if not (decision or topic_id or difficulty):
-            counts["skipped"] += 1
+            bump(key, "skipped")
+            r["apply_result"] = "skipped"
+            r["apply_detail"] = ("no decision" if require_decision
+                                 else "no decision, tag or difficulty")
             continue
 
         kind = _kind_for(_cell(r, "row_type").lower())
         row_id = _cell(r, "row_id")
         note = _cell(r, "notes")
         row_failed = False
+        outcome: list[str] = []
+        detail: list[str] = []
 
         # Content edits run BEFORE the verdict: a decision is the promotion, so
         # a question whose difficulty or tag write failed must not be verified
@@ -1378,28 +1672,53 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
                         {"reason": _write_reason(
                             _DIFFICULTY_CLEAR_REASON if clearing else _DIFFICULTY_REASON, note),
                          "payload": {"observed_difficulty": None if clearing else difficulty}})
-                counts["difficulty_cleared" if clearing else "difficulty"] += 1
+                bump(key, "difficulty_cleared" if clearing else "difficulty")
+                outcome.append("difficulty_cleared" if clearing else "difficulty")
                 ok += 1
             except RuntimeError as exc:
                 print(f"  {row_id}: difficulty — {exc}", file=sys.stderr)
+                bump(key, "failed")
+                outcome.append("difficulty_failed")
+                detail.append(str(exc)[:200])
                 failed += 1
                 row_failed = True
             pause()
 
         if topic_id and not row_failed:
-            try:
-                c.post(f"{CMS}/pyq-question-topic-tags",
-                       {"reason": _write_reason(_TAG_CREATE_REASON, note),
-                        "payload": {"question_id": row_id, "topic_id": topic_id,
-                                    "tag_role": ASSIGN_TAG_ROLE,
-                                    "tagging_source": ASSIGN_TAGGING_SOURCE}})
-                counts["tagged"] += 1
-                ok += 1
-            except RuntimeError as exc:
-                print(f"  {row_id}: assign_topic_id — {exc}", file=sys.stderr)
-                failed += 1
-                row_failed = True
-            pause()
+            act, current = tag_action(r)
+            if act == "unchanged":
+                bump(key, "tag_unchanged")
+                outcome.append("tag_unchanged")
+                detail.append(f"already primary-tagged {current}")
+            elif act == "conflict":
+                # NOT a failure and NOT a write: a 409 that was knowable
+                # offline is reported offline. The row keeps its decision.
+                bump(key, "tag_conflict")
+                outcome.append("tag_conflict")
+                detail.append(f"existing primary tag {current} != {topic_id}; "
+                              f"replacement needs an explicit un-tag")
+                print(f"  {row_id}: assign_topic_id {topic_id} SKIPPED — question "
+                      f"already carries primary tag {current}. "
+                      f"uq_pyq_question_one_primary_tag permits one; the create "
+                      f"route cannot replace.", file=sys.stderr)
+            else:
+                try:
+                    c.post(f"{CMS}/pyq-question-topic-tags",
+                           {"reason": _write_reason(_TAG_CREATE_REASON, note),
+                            "payload": {"question_id": row_id, "topic_id": topic_id,
+                                        "tag_role": ASSIGN_TAG_ROLE,
+                                        "tagging_source": ASSIGN_TAGGING_SOURCE}})
+                    bump(key, "tagged")
+                    outcome.append("tagged")
+                    ok += 1
+                except RuntimeError as exc:
+                    print(f"  {row_id}: assign_topic_id — {exc}", file=sys.stderr)
+                    bump(key, "failed")
+                    outcome.append("tag_failed")
+                    detail.append(str(exc)[:200])
+                    failed += 1
+                    row_failed = True
+                pause()
 
         if decision and not row_failed:
             body: dict[str, Any] = {"reviewer_status": decision}
@@ -1413,19 +1732,37 @@ def do_apply(c: Client, args: argparse.Namespace) -> int:
                 body["reviewer_notes"] = sent
             try:
                 c.patch(f"{INTEL}/items/{kind}/{row_id}/review", body)
-                counts[decision] += 1
+                bump(key, decision)
+                outcome.append(decision)
                 ok += 1
             except RuntimeError as exc:
                 print(f"  {row_id}: {exc}", file=sys.stderr)
+                bump(key, "failed")
+                outcome.append("decision_failed")
+                detail.append(str(exc)[:200])
                 failed += 1
             pause()
         elif decision:
             print(f"  {row_id}: decision {decision!r} SKIPPED — an earlier write on "
                   f"this row failed; the row stays pending.", file=sys.stderr)
-            counts["skipped"] += 1
+            bump(key, "skipped")
+            outcome.append("decision_skipped")
 
-    if cur_year is not None:
-        flush(cur_year)
+        r["apply_result"] = ";".join(outcome)
+        r["apply_detail"] = " | ".join(detail)
+
+    counter_order = ["verified", "needs_correction", "rejected", "skipped",
+                     "tagged", "tag_unchanged", "tag_conflict",
+                     "difficulty", "difficulty_cleared", "failed"]
+    for key in sorted(per_batch):
+        counts = per_batch[key]
+        shown = " ".join(f"{name}={counts.get(name, 0)}" for name in counter_order)
+        print(f"  paper {key}: {shown}")
+
+    applied_out = getattr(args, "applied_out", None)
+    if applied_out:
+        write_applied_worksheet(rows, Path(applied_out))
+        print(f"wrote the applied worksheet -> {applied_out}")
 
     print(f"\napplied={ok} failed={failed} "
           f"(reviewer_notes NOT persisted server-side — the worksheet is the "
@@ -1450,12 +1787,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     cat = sub.add_parser("catalog", help="build a microtopic-only --topic-catalog "
                                          "file for one or more exam bodies")
-    cat.add_argument("--body", action="append", default=None, required=True,
+    cat.add_argument("--body", action="append", default=None,
                      help="body key to match against topics.metadata.exams; "
                           "REPEATABLE and UNIONED, so one file can span the "
                           "bodies that share subjects (e.g. --body rbi --body "
                           "sebi --body pfrda --body ifsca). A microtopic listing "
                           "several of them is emitted once.")
+    cat.add_argument("--any-body", action="store_true",
+                     help="drop the metadata.exams filter entirely and narrow "
+                          "on --subject-id alone (which then becomes "
+                          "REQUIRED). This is the only way to build a "
+                          "catalogue for a BODY-AGNOSTIC subject set: the SSC "
+                          "CGL / RBI Phase I / CSAT shared subjects carry no "
+                          "metadata.exams key, so the body filter rejects "
+                          "every one of their microtopics.")
     cat.add_argument("--subject-id", action="append", default=None,
                      help="restrict to these subject id(s); repeatable. Omit to "
                           "read every microtopic in the taxonomy and let the "
@@ -1500,6 +1845,12 @@ def build_parser() -> argparse.ArgumentParser:
                         "duplicate text). Optional, and its ABSENCE means those "
                         "checks did not run — not that they passed.")
     s.add_argument("--out", default="worksheet.csv")
+    s.add_argument("--per-paper-dir", default=None,
+                   help="ALSO write one worksheet per paper into this "
+                        "directory (worksheet-<paper_id>.csv), in addition to "
+                        "--out. For an exam whose papers all share one year — "
+                        "SSC CGL 2024 Tier I has thirteen — paper_year is not "
+                        "a usable batch key.")
     s.add_argument("--hindi-year", action="append", default=None,
                    help="year(s) whose questions legitimately carry non-ASCII "
                         "(bilingual/Hindi) text; repeatable. Non-ASCII outside "
@@ -1517,9 +1868,26 @@ def build_parser() -> argparse.ArgumentParser:
                         "network call and an unknown id aborts the whole run")
     a.add_argument("--sleep", type=float, default=0.1,
                    help="delay in seconds between review calls (rate-limit friendly)")
-    a.add_argument("--apply", action="store_true")
+    a.add_argument("--apply", "--live", dest="apply", action="store_true",
+                   help="arm the run. --live is an accepted spelling of the "
+                        "same flag; NEITHER writes without --confirm.")
     a.add_argument("--confirm", action="store_true",
-                   help="required WITH --apply to actually PATCH")
+                   help="required WITH --apply/--live to actually PATCH")
+    a.add_argument("--require-decision", action="store_true",
+                   help="skip every row whose 'decision' cell is blank, even "
+                        "when it carries an assign_topic_id or a difficulty. "
+                        "USE THIS ON A PRE-FILLED PROPOSAL WORKSHEET: those "
+                        "arrive with a machine's tag and difficulty in every "
+                        "row, and without this flag applying the sheet would "
+                        "write them all with no human verdict. Off by default "
+                        "so the difficulty-only sheets the regulatory exams "
+                        "use keep working.")
+    a.add_argument("--applied-out", default=None,
+                   help="write the worksheet back to this path with "
+                        "apply_result/apply_detail columns appended. "
+                        "reviewer_notes are dropped server-side, so this file "
+                        "is the only record of what the run did per row — "
+                        "commit it.")
     return p
 
 
