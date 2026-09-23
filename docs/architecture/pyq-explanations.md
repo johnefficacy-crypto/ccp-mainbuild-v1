@@ -85,3 +85,50 @@ material out-of-band, as **operator reference only**, until it is cleared:
 Row-level extraction QA (each explanation belongs to its intended
 `question_number` and contains no next-question/passage boundary text) is a
 prerequisite of the import path, not of this schema migration.
+
+## CMS write path
+
+Migration 230 landed the table, the guard trigger and the review RPC, but no
+route could create a row. The write path lives in
+`app/backend/app/api/admin_exam_intel_cms.py` and follows the same conventions
+as every other exam-intelligence CMS resource (`WriteEnvelope`,
+`_reject_unknown` against a field allowlist, enum validation, FK existence
+checks, one `admin_audit_logs` row per write, rows born `pending`):
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /admin/exam-intelligence-cms/pyq-question-explanations` | List, filterable by `question_id`, `reviewer_status`, `explanation_source_type`. |
+| `POST /admin/exam-intelligence-cms/pyq-question-explanations` | Create one explanation. Forces `reviewer_status='pending'`. |
+| `PATCH /admin/exam-intelligence-cms/pyq-question-explanations/{id}` | Curate non-status fields. |
+| `POST /admin/exam-intelligence-cms/bulk-import` with `entity='pyq-question-explanations'` | Bulk create, max 2000 rows, per-row outcome. |
+
+Permission: `exam_intelligence.cms` (`super_admin` bypass), gated by
+`ADMIN_STUDY_OS_ENABLED` like the rest of the router.
+
+Contracts the routes add on top of the schema:
+
+- **Never born verified.** `reviewer_status` is forced to `'pending'` on
+  create and is not in the PATCH allowlist. Promotion stays with
+  `cms_review_pyq_question_explanation`.
+- **`question_id` is create-only.** Re-parenting an explanation would strand
+  `final_answer_option_id` / `alternate_answer_option_id`, which the guard
+  trigger proves against the original question. Same convention as
+  `pyq_options`.
+- **jsonb container shapes are checked.** Postgres accepts a bare scalar as
+  valid jsonb, so a string sent for `formula_used` would land as `"..."`
+  instead of `[...]`. `solution_steps`, `formula_used` and `common_traps` must
+  be arrays; `option_rationales` and `metadata` must be objects.
+- **Same-question option integrity is mirrored** so a mis-mapped option id is
+  a named 422 rather than a raw trigger exception surfaced as a 409.
+- **Uniqueness is the pair, not the question.**
+  `unique (question_id, explanation_source_type)` is deliberate: one
+  explanation per question PER SOURCE, so the operator import of coaching or
+  official reference material above stays possible alongside a
+  platform-authored row. Repeating the pair is a 422 naming both values; a
+  second row under a different `explanation_source_type` is allowed.
+
+**Consequence for the surfacing layer (not built yet):** a question can hold
+several explanations. A read that assumes a single row per question is wrong.
+Whatever surfaces explanations to learners must select one by an explicit
+precedence over `explanation_source_type` (alongside the existing
+`reviewer_status='verified'` trust gate), not by taking the first row.
