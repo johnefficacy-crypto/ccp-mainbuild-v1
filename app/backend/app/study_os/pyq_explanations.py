@@ -109,8 +109,11 @@ def _option_index_by_pyq_option_id(supabase: Any, pyq_question_ids: list[str]) -
     verification changed in between, the indices can drift and a rationale would
     line up with the wrong option. Guarded at the call site by dropping any
     rationale whose index is out of range for the frozen option list; a stronger
-    fix (carrying ``pyq_option_id`` into ``mock_question_options``) needs a
-    migration and is out of scope for EXPL-READ-01.
+    fix is migration 307 (EXPL-OPTID-01), which carries ``pyq_option_id`` onto
+    every projected option row. This derivation is now the FALLBACK, used only
+    for rows projected before 307 and for rows the 307 backfill left NULL because
+    the mapping could not be established unambiguously. It stays until the
+    backfill is complete enough to drop it; removing it is not part of 307.
     """
     rows = getattr(
         _safe(
@@ -146,13 +149,17 @@ def _option_index_by_pyq_option_id(supabase: Any, pyq_question_ids: list[str]) -
 def _project_option_rationales(raw: Any, index_by_option_id: dict[str, int]) -> list[dict]:
     """``{pyq_option_id: text}`` → an ordered list the frontend can join on.
 
-    Returns ``[{"option_index": int | None, "rationale": str}, …]`` sorted by
-    ``option_index``, with unresolvable keys carried through at
+    Returns ``[{"pyq_option_id": str, "option_index": int | None, "rationale": str}, …]``
+    sorted by ``option_index``, with unresolvable positions carried through at
     ``option_index=None`` and sorted last rather than discarded here — a consumer
-    with no frozen option list to fit them to may still have somewhere to put
-    them. The mock-review consumer does drop them
-    (``mock_engine._explanation_for_snapshot``), because a rationale with no
-    index has no option on the review screen to sit against.
+    that can resolve the option by ``pyq_option_id`` does not need the position at
+    all, and one with no frozen option list may still have somewhere to put them.
+
+    ``pyq_option_id`` is INTERNAL to this join. It is the identity key migration
+    307 put on ``mock_question_options``, and the consumer joins on it in
+    preference to ``option_index``; it is stripped before the payload reaches a
+    learner (``mock_engine._explanation_for_snapshot``), which also drops any
+    rationale left with no option on the review screen to sit against.
     """
     if not isinstance(raw, dict):
         return []
@@ -162,6 +169,7 @@ def _project_option_rationales(raw: Any, index_by_option_id: dict[str, int]) -> 
             continue
         out.append(
             {
+                "pyq_option_id": str(option_id),
                 "option_index": index_by_option_id.get(str(option_id)),
                 "rationale": rationale,
             }

@@ -328,6 +328,13 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
                 # migration 229. Null for authored options.
                 "source_label": o.get("source_label"),
                 "display_order": o.get("display_order"),
+                # Source-option lineage, projected by migration 307. Freezing it
+                # here is what lets the review path resolve an explanation's
+                # option_rationales by IDENTITY instead of by position — the
+                # position can drift after the attempt, the id cannot. Null for
+                # authored options and for anything projected before 307, which
+                # keeps using the positional fallback.
+                "pyq_option_id": o.get("pyq_option_id"),
             }
             for o in _ordered_options(q)
         ],
@@ -1474,28 +1481,51 @@ def get_analytics(supabase: Any, user_id: str, attempt_id: str) -> dict:
 def _explanation_for_snapshot(explanation: dict | None, snap: dict) -> dict | None:
     """Fit a verified explanation DTO to one frozen question snapshot.
 
-    ``option_rationales`` carries an ``option_index`` recomputed from the PYQ
-    options verified NOW, while the snapshot froze the option list that held at
-    projection time. If an option's verification changed in between the two can
-    disagree, so any rationale whose index is not present among the frozen
-    options is dropped here rather than rendered against the wrong option.
-    Rationales that never resolved (``option_index=None``) are dropped for the
-    same reason: with no index there is no option to attach them to.
+    ``option_rationales`` is keyed by ``pyq_options.id``, which is what this has
+    to resolve to one of the snapshot's options. There are two ways, and the
+    order between them is the point of EXPL-OPTID-01:
+
+    1. **By identity.** Migration 307 put ``pyq_option_id`` on
+       ``mock_question_options``, and the snapshot is a copy of those rows, so a
+       question projected after 307 carries the source option id on every option.
+       Matching on it is exact and survives the options being re-ordered,
+       re-labelled or re-projected.
+    2. **By position**, the pre-307 fallback: the ``option_index`` that
+       ``pyq_explanations`` recomputed from the options verified NOW, against the
+       ordering the projection used. Correct only while that ordering still holds.
+       Used only where the snapshot carries no ``pyq_option_id`` — a question
+       projected before 307, or one whose 307 backfill was left NULL because the
+       mapping was ambiguous.
+
+    Identity wins wherever it is available, per option rather than per question,
+    so a partially backfilled question uses the real id for the options that have
+    one. Either way the resolved index must be present among the frozen options;
+    anything else is dropped rather than rendered against the wrong option, and so
+    is a rationale that resolved to nothing at all. ``pyq_option_id`` is an
+    internal join key and is stripped here, so the learner payload is unchanged.
     """
     if not explanation:
         return None
+    frozen_options = [o for o in (snap.get("options") or []) if isinstance(o, dict)]
     frozen_indexes = {
-        o.get("option_index")
-        for o in (snap.get("options") or [])
-        if isinstance(o, dict) and o.get("option_index") is not None
+        o.get("option_index") for o in frozen_options if o.get("option_index") is not None
     }
-    return {
-        **explanation,
-        "option_rationales": [
-            r for r in explanation.get("option_rationales") or []
-            if r.get("option_index") in frozen_indexes
-        ],
+    index_by_pyq_option_id = {
+        str(o["pyq_option_id"]): o.get("option_index")
+        for o in frozen_options
+        if o.get("pyq_option_id") and o.get("option_index") is not None
     }
+
+    fitted: list[dict] = []
+    for rationale in explanation.get("option_rationales") or []:
+        index = index_by_pyq_option_id.get(str(rationale.get("pyq_option_id")))
+        if index is None:
+            index = rationale.get("option_index")
+        if index not in frozen_indexes:
+            continue
+        fitted.append({"option_index": index, "rationale": rationale.get("rationale")})
+    fitted.sort(key=lambda r: r["option_index"])
+    return {**explanation, "option_rationales": fitted}
 
 
 def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:

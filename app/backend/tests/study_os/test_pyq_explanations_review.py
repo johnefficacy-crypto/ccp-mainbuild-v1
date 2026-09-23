@@ -18,12 +18,26 @@ from tests.persona_questions._stub import SBStub
 PYQ_QID = "pyq-question-1"
 
 
-def _seeded(explanation_rows: list[dict] | None = None, pyq_option_rows: list[dict] | None = None):
+def _seeded(
+    explanation_rows: list[dict] | None = None,
+    pyq_option_rows: list[dict] | None = None,
+    *,
+    projected_option_ids: dict[int, str] | None = None,
+):
     """One template whose FIRST question carries PYQ lineage, so exactly one
     question in the attempt can attract an explanation and the rest act as the
-    control group."""
+    control group.
+
+    ``projected_option_ids`` maps ``option_index`` → ``pyq_options.id`` on the
+    lineage-bearing question, standing in for what migration 307 writes onto
+    ``mock_question_options.pyq_option_id``. Left unset, the option rows carry no
+    source id — a question projected BEFORE 307, which must keep working through
+    the positional fallback.
+    """
     template, questions = _make_template("expl-mock-1")
     questions[0]["pyq_question_id"] = PYQ_QID
+    for option in questions[0]["options"]:
+        option["pyq_option_id"] = (projected_option_ids or {}).get(option["option_index"])
     db = {
         "mock_templates": [template],
         "mock_question_bank": questions,
@@ -370,3 +384,186 @@ def test_option_read_is_skipped_when_no_rationales_are_present():
     sb.table = _table  # type: ignore[method-assign]
     pyq_explanations.explanations_for_pyq_questions(sb, [PYQ_QID])
     assert "pyq_options" not in seen
+
+
+# ─── EXPL-OPTID-01: joining by identity rather than by position ──────────────
+#
+# Migration 307 carries pyq_options.id onto mock_question_options, so the frozen
+# snapshot can resolve a rationale to its option by IDENTITY. The positional
+# derivation stays as the fallback for rows projected before 307 and for rows the
+# 307 backfill left NULL. These tests pin which one wins, and prove the identity
+# path is not merely equivalent — it is right where position is wrong.
+
+
+def test_joins_by_pyq_option_id_when_the_snapshot_carries_it():
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-b": "B is right.", "pyq-opt-c": "C confuses repo."})],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b", 2: "pyq-opt-c", 3: "pyq-opt-a", 4: "pyq-opt-d"},
+    )
+    review, _ = _review(sb)
+    rationales = _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    assert {r["option_index"]: r["rationale"] for r in rationales} == {
+        1: "B is right.",
+        2: "C confuses repo.",
+    }
+
+
+def test_still_joins_positionally_when_the_snapshot_carries_no_source_id():
+    """A question projected BEFORE 307, or one the backfill left NULL. The
+    fallback must keep working — it is what 394 existing explanations use."""
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-b": "B is right.", "pyq-opt-c": "C confuses repo."})],
+        _pyq_options(),
+        # projected_option_ids omitted → every option row has pyq_option_id None.
+    )
+    review, _ = _review(sb)
+    rationales = _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    assert {r["option_index"]: r["rationale"] for r in rationales} == {
+        1: "B is right.",
+        2: "C confuses repo.",
+    }
+
+
+def test_identity_wins_per_option_on_a_partially_backfilled_question():
+    """The backfill populates what it can prove and leaves the rest NULL, so one
+    question can carry both. Each option resolves by whichever key it has."""
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-b": "by id", "pyq-opt-c": "by position"})],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b"},  # only this one was backfilled
+    )
+    review, _ = _review(sb)
+    rationales = _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    assert {r["option_index"]: r["rationale"] for r in rationales} == {
+        1: "by id",
+        2: "by position",
+    }
+
+
+def test_reordered_options_join_correctly_by_id_and_would_join_wrongly_by_position():
+    """THE POINT OF THIS PR, constructed deliberately.
+
+    At projection time the question's verified options sorted B, C, A, D by
+    (option_label, id), so the snapshot froze option_index 1 → pyq-opt-b and
+    2 → pyq-opt-c.
+
+    Afterwards the source options are re-labelled: 'B' becomes 'W' and 'C'
+    becomes 'X'. Nothing about the frozen snapshot changes — the learner still
+    sees the same four options in the same order — but the LIVE sort is now
+    A, D, W, X, so the positional derivation maps pyq-opt-b → 2 and
+    pyq-opt-c → 3. Every rationale would land on the wrong option, with nothing
+    in the response to indicate it.
+
+    Joining by pyq_option_id is immune: the id did not move.
+    """
+    reordered = [
+        {"id": "pyq-opt-a", "question_id": PYQ_QID, "option_label": "A", "reviewer_status": "verified"},
+        {"id": "pyq-opt-d", "question_id": PYQ_QID, "option_label": "D", "reviewer_status": "verified"},
+        {"id": "pyq-opt-b", "question_id": PYQ_QID, "option_label": "W", "reviewer_status": "verified"},
+        {"id": "pyq-opt-c", "question_id": PYQ_QID, "option_label": "X", "reviewer_status": "verified"},
+    ]
+    rationales_in = {"pyq-opt-b": "B is right.", "pyq-opt-c": "C confuses repo."}
+
+    # The positional derivation, on its own, now points somewhere else entirely.
+    positional = pyq_explanations._option_index_by_pyq_option_id(
+        SBStub({"pyq_options": reordered}), [PYQ_QID]
+    )
+    assert positional["pyq-opt-b"] == 2 and positional["pyq-opt-c"] == 3, (
+        "fixture no longer reproduces the drift this test exists to catch"
+    )
+
+    # With the source ids on the snapshot, the join ignores that drift.
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales=rationales_in)],
+        reordered,
+        projected_option_ids={1: "pyq-opt-b", 2: "pyq-opt-c", 3: "pyq-opt-a", 4: "pyq-opt-d"},
+    )
+    review, _ = _review(sb)
+    by_index = {
+        r["option_index"]: r["rationale"]
+        for r in _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    }
+    assert by_index == {1: "B is right.", 2: "C confuses repo."}
+
+    # And the same corpus WITHOUT the source ids gets it wrong — which is the
+    # bug this PR closes, pinned here so the fallback's limit stays visible.
+    sb_old, _t2, questions_old = _seeded(
+        [_explanation(option_rationales=rationales_in)], reordered
+    )
+    review_old, _ = _review(sb_old)
+    by_index_old = {
+        r["option_index"]: r["rationale"]
+        for r in _pyq_question(review_old, questions_old)["pyq_explanation"]["option_rationales"]
+    }
+    assert by_index_old == {2: "B is right.", 3: "C confuses repo."}
+    assert by_index_old != by_index
+
+
+def test_a_source_id_that_is_not_in_the_snapshot_falls_back_rather_than_vanishing():
+    """A rationale for an option the snapshot does not carry must not be dropped
+    just because identity missed — position still gets its chance."""
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-c": "C confuses repo."})],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b"},  # pyq-opt-c is not on any option row
+    )
+    review, _ = _review(sb)
+    rationales = _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    assert [(r["option_index"], r["rationale"]) for r in rationales] == [(2, "C confuses repo.")]
+
+
+def test_the_internal_join_key_never_reaches_the_learner_payload():
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-b": "B is right."})],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b"},
+    )
+    review, _ = _review(sb)
+    payload = _pyq_question(review, questions)["pyq_explanation"]
+    assert set(payload) == set(pyq_explanations.ALLOWED_FIELDS)
+    for rationale in payload["option_rationales"]:
+        assert set(rationale) == {"option_index", "rationale"}
+
+
+def test_rationales_stay_ordered_by_option_after_an_identity_join():
+    """Identity resolution can produce indexes in any order; the panel prints
+    them top to bottom, so the response must still be sorted."""
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={
+            "pyq-opt-d": "fourth", "pyq-opt-a": "third", "pyq-opt-c": "second", "pyq-opt-b": "first",
+        })],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b", 2: "pyq-opt-c", 3: "pyq-opt-a", 4: "pyq-opt-d"},
+    )
+    review, _ = _review(sb)
+    rationales = _pyq_question(review, questions)["pyq_explanation"]["option_rationales"]
+    assert [r["option_index"] for r in rationales] == [1, 2, 3, 4]
+    assert [r["rationale"] for r in rationales] == ["first", "second", "third", "fourth"]
+
+
+def test_lineage_in_the_attempt_payload_reveals_nothing_about_the_answer():
+    """`pyq_option_id` has to live in the frozen snapshot for review to join on
+    it, and ``get_attempt`` serves the snapshot's option list verbatim
+    (``mock_engine.py:779``), so it is visible during the attempt too. That is
+    accepted, not overlooked: it is an opaque id for the SOURCE row and says
+    nothing about which option is correct. The property that matters is the one
+    pinned here — the attempt payload still carries no answer signal.
+    """
+    sb, _t, questions = _seeded(
+        [_explanation(option_rationales={"pyq-opt-b": "B is right."})],
+        _pyq_options(),
+        projected_option_ids={1: "pyq-opt-b", 2: "pyq-opt-c", 3: "pyq-opt-a", 4: "pyq-opt-d"},
+    )
+    start = svc.start_attempt(sb, "user-1", "expl-mock-1")
+    attempt = svc.get_attempt(sb, "user-1", start["attempt_id"])
+    served = [q for q in attempt["questions"] if q["question_id"] == questions[0]["id"]]
+    assert served, "lineage-bearing question was not served"
+
+    for option in served[0]["options"]:
+        # No answer signal, before or after 307.
+        assert "is_correct" not in option
+    assert "correct_option_id" not in served[0]
+    # And no explanation reaches an unsubmitted attempt.
+    assert "pyq_explanation" not in served[0]
+    assert "explanation" not in served[0]
