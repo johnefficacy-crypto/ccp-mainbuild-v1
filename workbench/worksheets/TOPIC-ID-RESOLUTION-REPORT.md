@@ -24,9 +24,9 @@ No POSTs, no live DB, no migrations, no re-classification.
 | ALREADY_PRESENT | 91 |
 | RESOLVED_EXACT | 100 |
 | RESOLVED_NORMALISED | 0 |
-| MACRO_ASSIGNED | 9 |
+| MACRO_ASSIGNED | 10 |
 | SUBJECT_MOVED | 2 |
-| UNRESOLVED | **1** |
+| UNRESOLVED | **0** |
 | **total** | **203** |
 
 Subjects: general-knowledge 107, finance 84, economics 10, insurance 1, pension-sector 1.
@@ -54,7 +54,7 @@ Every finance and economics row was re-read for pension or insurance content, ca
 
 No row involves reinsurance.
 
-### Macro assignments (10 rows at subject level; 9 assigned, 1 unresolved)
+### Macro assignments (10 rows at subject level; all 10 assigned)
 
 Of the 12 subject-level rows proposed earlier, 2 moved subject (above), leaving these 10.
 
@@ -69,7 +69,7 @@ Of the 12 subject-level rows proposed earlier, 2 moved subject (above), leaving 
 | 2025 Q75 | finance | Banking Regulation & NBFCs | RB-IOS 2021 ombudsman tenure. |
 | 2026 Q51 | finance | Capital Market — Secondary & Infrastructure | NIFTY 50 is the NSE secondary-market benchmark index. |
 | 2026 Q61 | finance | Banking Regulation & NBFCs | PRAVAAH handles regulatory applications to the RBI. |
-| 2025 Q13 | economics | **UNRESOLVED** | See below. |
+| 2025 Q13 | economics | **Money & Banking** | Owner decision; see below. |
 
 **2023 Q63.** Question text:
 
@@ -77,7 +77,7 @@ Of the 12 subject-level rows proposed earlier, 2 moved subject (above), leaving 
 
 The blank is the instrument itself (answer: transition). The stem identifies it by what it is and what it funds: a green-debt sub-category raising money for transition. The SEBI mandate is the frame of the sentence, not what is being tested. So the choice is **Debt Market & Bond Analytics**, not Securities Market Regulation.
 
-**2025 Q13 — UNRESOLVED.** Question text:
+**2025 Q13 — Money & Banking (owner decision).** Question text:
 
 > "The All-India Debt and Investment Survey (AIDIS), which collects detailed data on the assets, liabilities, and capital expenditures of Indian households in rural and urban areas, is conducted periodically by which of the following institutions?"
 
@@ -85,15 +85,15 @@ The question tests which institution runs a household survey (answer: National S
 - **Money & Banking** would fit a question about household credit or indebtedness. This one asks who administers the survey.
 - **Public Finance** covers budgets, fiscal policy and taxation. A statistical survey is not a public-finance instrument.
 
-None of the other 9 economics macros covers official statistics either. The row keeps `topic_id = NOT_IN_REPO`, `topic_level = macro` and `resolution_status = UNRESOLVED`. It needs a taxonomy decision (e.g. an official-statistics home) before it can be POSTed.
+None of the other 9 economics macros covers official statistics either. The first pass left this row UNRESOLVED. The owner then assigned **Money & Banking** because AIDIS measures household debt and indebtedness. The row now carries the Money & Banking macro id with `resolution_status = MACRO_ASSIGNED`.
 
 ### Normalised matches
 
-None. All 100 GK names and all 9 macro names matched exactly.
+None. All 100 GK names and all 10 macro names matched exactly.
 
-### UNRESOLVED rows: **1**
+### UNRESOLVED rows: **0**
 
-- 2025 Q13 (AIDIS), economics. Reason above.
+2025 Q13 (AIDIS) was assigned to Money & Banking by owner decision.
 
 ---
 
@@ -141,10 +141,10 @@ The live catalogue has **7** GK sections. The 7th, **International Relations** (
 ## 4. Validation
 
 - **Row counts:** GA v3 **203**; P2 v2 **48**.
-- **Status totals:** 91+100+0+9+2+1 = **203**; 48+0+0+0+0+0 = **48**.
+- **Status totals:** 91+100+0+10+2+0 = **203**; 48+0+0+0+0+0 = **48**.
 - **Subject mismatches:** **0** rows whose resolved topic's subject differs from the row's subject_slug, in either worksheet. Topics were checked against the live file, `topic_catalog_regulatory.json` and `topic_catalog_nabard_277.json`. Every subject_id matches its slug.
 - **Permitted subjects:** **0** rows on general-awareness in either worksheet. **0** GA rows are outside the five permitted subjects.
 - **Difficulty:** **0** rows with observed_difficulty `hard`.
 - **Blank cells:** **0** in either worksheet.
 - **Duplicates:** **0** duplicate question_ids in either worksheet.
-- **UNRESOLVED:** GA **1**, P2 **0**. `NOT_IN_REPO` remains on that single row only.
+- **UNRESOLVED:** GA **0**, P2 **0**. No `NOT_IN_REPO` cells remain in either worksheet.
