@@ -101,6 +101,46 @@ Schema: `app/supabase/migrations/265_essay_theme_taxonomy.sql` (`essay_themes` :
 
 Described only. No migration is proposed or written in this run.
 
+### 7.1 Resolution (added after this section was written)
+
+All four gaps are now closed. Two by a schema change, two by the child-row load —
+recorded here so the gap list above is read as history, not as open work.
+
+- **G1 — RESOLVED by migration `304_essay_pyq_tags_format.sql`, applied live.**
+  `essay_pyq_tags` now carries `format` as `NOT NULL` with **no default**, checked
+  over `essay | precis | comprehension`. The 100 pre-existing UPSC essay rows were
+  backfilled to `'essay'` in the same migration. `format` no longer needs to ride
+  in `metadata`. `prompt_index` and `parent_question_id` deliberately did **not**
+  become columns — see G2.
+
+- **G2 — RESOLVED by the child-row load (RBI-ENG-CHILD-01).** The 16 split prompts
+  are now real `pyq_questions` rows, one per prompt, `question_number` and
+  `display_order` 301-304 per paper, refs `ENG-Q1-P1`…`ENG-Q1-P4`. Each prompt
+  therefore has its own `question_id` and tags against itself, so nothing is lost
+  to the parent. The four essay parents are marked `metadata.is_container = true`
+  and are **not tagged**. The parent/child link lives in `pyq_questions.metadata`,
+  which is why no `parent_question_id` column was added to `essay_pyq_tags`.
+
+- **G3 — NO LONGER BINDS, for the same reason.** `unique(question_id, theme_id)`
+  (`265:52`) is unchanged and was not relaxed. It stopped mattering rather than
+  being fixed: with one `question_id` per prompt, two prompts of one container
+  sharing a theme are now two different `question_id` values, so the constraint
+  cannot collide on them. The 0-collision count recorded above was a property of
+  this corpus; the convention is now safe in general.
+
+- **G4 — RESOLVED by migration 304.** `essay_type` lost its
+  `DEFAULT 'quote_abstract'` and its `NOT NULL`, and gained
+  `essay_pyq_tags_essay_type_format_check`, which ties it to `format`:
+  `format='essay'` requires `essay_type IS NOT NULL`, and
+  `format IN ('precis','comprehension')` requires `essay_type IS NULL`. A precis
+  row can no longer be silently recorded as a quote-abstract essay — the insert
+  now fails instead.
+
+**Apply-ready output:** `workbench/worksheets/RBI-ENGLISH-TAGS-APPLY.csv`. 24 rows
+— the 16 essay rows retargeted onto their child `question_id`s, the 8
+precis/comprehension rows on their existing parent ids — with theme codes resolved
+to live UUIDs and the 304 CHECK satisfied row by row.
+
 ## 8. Validation
 
 - 12 source rows → 24 worksheet rows: 4 essay containers × 4 prompts = 16 (2022: 4, 2023: 4, 2024: 4, 2025: 4) + 4 precis + 4 comprehension. Matches the expected 24.
