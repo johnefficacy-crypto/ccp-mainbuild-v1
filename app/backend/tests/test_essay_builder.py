@@ -561,6 +561,12 @@ def tags_sb(monkeypatch):
                 "id": "tag-2", "question_id": "q-2", "theme_id": THEME_B,
                 "secondary_theme_id": None, "essay_type": "quote_abstract",
                 "quote_source_type": "indian_thinker", "reviewer_status": "verified",
+                "metadata": {
+                    "quote_attribution": " Mahatma Gandhi ",
+                    "quote_attribution_basis": "editorial",
+                    "parent_question_id": "q-parent",
+                    "source_row_id": "UPSC-ESSAY-2024-Q1",
+                },
                 "created_at": "2026-08-02T00:00:00+00:00",
             },
             {
@@ -631,6 +637,38 @@ def test_essay_pyq_tags_empty_when_nothing_verified(monkeypatch):
     monkeypatch.setattr(eb, "get_supabase_admin", lambda: fake)
     out = eb.list_essay_pyq_tags(theme_id=None, limit=200, user=_user("user-a"))
     assert out == {"items": [], "count": 0}
+
+
+def test_quote_attribution_surfaces_so_an_aspirant_can_see_who_said_it(tags_sb):
+    """The stem often prints a quote with no name. The attribution is recorded on
+    the tag instead, and this endpoint is the only path that carries it to a
+    learner, so it must survive the projection (and be trimmed)."""
+    out = eb.list_essay_pyq_tags(theme_id=THEME_B, limit=200, user=_user("user-a"))
+    assert out["items"][0]["quote_attribution"] == "Mahatma Gandhi"
+
+
+def test_quote_attribution_absent_leaves_the_field_null_not_missing(tags_sb):
+    out = eb.list_essay_pyq_tags(theme_id=THEME_A, limit=200, user=_user("user-a"))
+    item = out["items"][0]
+    assert "quote_attribution" in item
+    assert item["quote_attribution"] is None
+
+
+def test_tag_metadata_bookkeeping_never_reaches_a_learner_surface(tags_sb):
+    """metadata also holds parent ids and worksheet row refs. Only the single
+    attribution key is lifted out; the blob itself must not be returned."""
+    out = eb.list_essay_pyq_tags(theme_id=None, limit=200, user=_user("user-a"))
+    for item in out["items"]:
+        assert "metadata" not in item
+        assert "parent_question_id" not in item
+        assert "source_row_id" not in item
+
+
+@pytest.mark.parametrize("bad", [None, 42, {"name": "x"}, "", "   "])
+def test_quote_attribution_ignores_a_non_string_or_blank_value(tags_sb, bad):
+    tags_sb.tables["essay_pyq_tags"][1]["metadata"] = {"quote_attribution": bad}
+    out = eb.list_essay_pyq_tags(theme_id=THEME_B, limit=200, user=_user("user-a"))
+    assert out["items"][0]["quote_attribution"] is None
 
 
 def test_essay_pyq_tags_rejects_non_uuid_theme(tags_sb):

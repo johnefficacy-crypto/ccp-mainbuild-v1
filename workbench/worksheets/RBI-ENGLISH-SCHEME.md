@@ -39,6 +39,25 @@ Precis and comprehension rows are **not** split. Each is one row with `row_id` =
 - **Essay prompt** → tagged by the theme the candidate must *argue through*, the same as the UPSC essay corpus. `essay_type` is set (`quote_abstract` | `issue_concrete`).
 - **Precis / comprehension** → tagged by the theme of the **source passage**. The candidate summarises or extracts; they take no position of their own. The theme tells a learner "what the passage is about", not "what stance to take". Every one of these 8 rows says so in `notes`. `essay_type` and `quote_source_type` are blank on them (see gap G4).
 - `quote_source_type` is filled only when the prompt itself names who said the quote. The two quote prompts (2022 P1 "Peace cannot be kept by force…", 2024 P4 "Anyone who stops learning is old…") name no one, so both are blank. They are not filled from outside knowledge of who said them.
+- **Attribution is recorded separately from `quote_source_type`.** The two axes are
+  not the same question. `quote_source_type` describes *the stem* — what the paper
+  printed — so it stays blank when the paper printed no name, and is never inferred.
+  Who actually said the line is a different fact, and withholding it helps no
+  aspirant. It is therefore recorded in the tag's `metadata` as
+  `quote_attribution`, with `quote_attribution_basis: "editorial"` marking that it
+  came from the tagger and not from the paper, plus a `quote_attribution_note`
+  giving the provenance and its strength:
+  - 2022 Q1 P1 "Peace cannot be kept by force…" → **Albert Einstein**. Appears in
+    his 1930s writing and correspondence on pacifism.
+  - 2024 Q1 P4 "Anyone who stops learning is old…" → **Henry Ford**. Widely
+    attributed and circulated in his lifetime; no single primary source is
+    verified, and the note says so rather than implying one.
+
+  `/api/essay-pyq-tags` lifts `quote_attribution` out of `metadata` and returns it
+  as its own field, and `PyqTagsSidebar` renders it under the question as
+  "— Albert Einstein". Only that one key is lifted; the rest of `metadata` is
+  tagging bookkeeping (parent ids, prompt indexes, worksheet row refs) and stays
+  in the backend, per the no-internal-state-on-learner-surfaces rule.
 - Secondary theme: one primary tag plus an optional `secondary_theme_code`, used only where the prompt or passage really spans two themes, as in the UPSC corpus. A dual theme never splits a row.
 
 ## 4. Theme distribution
@@ -100,6 +119,46 @@ Schema: `app/supabase/migrations/265_essay_theme_taxonomy.sql` (`essay_themes` :
 - **G4 (additional, found in this run) — `essay_type text not null default 'quote_abstract'` (:36-37).** Precis and comprehension rows have no essay type, but the column cannot be null. An insert would silently record them as `quote_abstract`.
 
 Described only. No migration is proposed or written in this run.
+
+### 7.1 Resolution (added after this section was written)
+
+All four gaps are now closed. Two by a schema change, two by the child-row load —
+recorded here so the gap list above is read as history, not as open work.
+
+- **G1 — RESOLVED by migration `304_essay_pyq_tags_format.sql`, applied live.**
+  `essay_pyq_tags` now carries `format` as `NOT NULL` with **no default**, checked
+  over `essay | precis | comprehension`. The 100 pre-existing UPSC essay rows were
+  backfilled to `'essay'` in the same migration. `format` no longer needs to ride
+  in `metadata`. `prompt_index` and `parent_question_id` deliberately did **not**
+  become columns — see G2.
+
+- **G2 — RESOLVED by the child-row load (RBI-ENG-CHILD-01).** The 16 split prompts
+  are now real `pyq_questions` rows, one per prompt, `question_number` and
+  `display_order` 301-304 per paper, refs `ENG-Q1-P1`…`ENG-Q1-P4`. Each prompt
+  therefore has its own `question_id` and tags against itself, so nothing is lost
+  to the parent. The four essay parents are marked `metadata.is_container = true`
+  and are **not tagged**. The parent/child link lives in `pyq_questions.metadata`,
+  which is why no `parent_question_id` column was added to `essay_pyq_tags`.
+
+- **G3 — NO LONGER BINDS, for the same reason.** `unique(question_id, theme_id)`
+  (`265:52`) is unchanged and was not relaxed. It stopped mattering rather than
+  being fixed: with one `question_id` per prompt, two prompts of one container
+  sharing a theme are now two different `question_id` values, so the constraint
+  cannot collide on them. The 0-collision count recorded above was a property of
+  this corpus; the convention is now safe in general.
+
+- **G4 — RESOLVED by migration 304.** `essay_type` lost its
+  `DEFAULT 'quote_abstract'` and its `NOT NULL`, and gained
+  `essay_pyq_tags_essay_type_format_check`, which ties it to `format`:
+  `format='essay'` requires `essay_type IS NOT NULL`, and
+  `format IN ('precis','comprehension')` requires `essay_type IS NULL`. A precis
+  row can no longer be silently recorded as a quote-abstract essay — the insert
+  now fails instead.
+
+**Apply-ready output:** `workbench/worksheets/RBI-ENGLISH-TAGS-APPLY.csv`. 24 rows
+— the 16 essay rows retargeted onto their child `question_id`s, the 8
+precis/comprehension rows on their existing parent ids — with theme codes resolved
+to live UUIDs and the 304 CHECK satisfied row by row.
 
 ## 8. Validation
 

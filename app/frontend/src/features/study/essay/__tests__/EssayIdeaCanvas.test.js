@@ -159,6 +159,28 @@ test("essay-pyq-tags renders real tagged questions when present", async () => {
   expect(await screen.findByTestId("essay-pyq-tag-t1")).toHaveTextContent(/Forests are the best case/);
 });
 
+test("a quote's author is shown to the aspirant when the tag carries an attribution", async () => {
+  routeGet({
+    tags: [{
+      id: "t2",
+      question_text: "\u201cPeace cannot be kept by force, it can only be achieved by understanding\u201d",
+      year: 2022,
+      quote_attribution: "Albert Einstein",
+    }],
+  });
+  renderCanvas();
+  expect(await screen.findByTestId("essay-pyq-tag-attribution-t2")).toHaveTextContent(
+    /Albert Einstein/,
+  );
+});
+
+test("no attribution renders no dangling dash", async () => {
+  routeGet({ tags: [{ id: "t3", question_text: "Cash transfer vs product subsidy", year: 2019 }] });
+  renderCanvas();
+  await screen.findByTestId("essay-pyq-tag-t3");
+  expect(screen.queryByTestId("essay-pyq-tag-attribution-t3")).toBeNull();
+});
+
 // ─── Theme selector: active vs reserved ─────────────────────────────────────
 
 function renderSelector() {
