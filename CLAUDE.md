@@ -174,3 +174,7 @@ Read `docs/status/Exam-Management-IA-Design-Lock-2026-06-21.md` before editing a
   - `node scripts/operator-validation.js --check`
 - Do not mark live-deployment, token, Render, Supabase, browser, or other operator-only proof complete from code inspection alone.
 - After modifying code, run `graphify update .` to keep the knowledge graph current (AST-only, no API cost).
+
+## Corpus readiness
+
+Any PR that changes the shape of the corpus — importing or splitting papers, adding or re-parenting topics, projecting questions, changing what a feature requires — must regenerate `docs/status/corpus-readiness.md` and include it in the PR. If the PR has no DB access, say so in the PR body and mark the doc stale rather than editing numbers by hand.

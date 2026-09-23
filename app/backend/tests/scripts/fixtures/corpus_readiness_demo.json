@@ -1,0 +1,72 @@
+{
+  "source": "demo",
+  "generated_at": "2026-09-22",
+  "_note": "Fixture shaped after the operator-verified demo snapshot of 2026-09-22. Counts are reduced but the SHAPES are real: shared body-agnostic subjects with no metadata.exams, a thematic optional corpus with no paper order, a retired bucket, an unreviewed SSC corpus, and an empty catalogue.",
+  "subjects": [
+    {"id": "55555555-5555-5555-5555-555555555551", "name": "Quantitative Aptitude", "slug": "quantitative-aptitude"},
+    {"id": "55555555-5555-5555-5555-555555555552", "name": "English Language", "slug": "english-language"},
+    {"id": "55555555-5555-5555-5555-555555555553", "name": "General Intelligence and Reasoning", "slug": "general-intelligence-reasoning"},
+    {"id": "66666666-0000-0000-0000-000000000001", "name": "General Studies I", "slug": "upsc-gs-1"},
+    {"id": "66666666-0000-0000-0000-000000000002", "name": "Banking", "slug": "banking"},
+    {"id": "66666666-0000-0000-0000-000000000003", "name": "Capital Market", "slug": "capital-market"},
+    {"id": "66666666-0000-0000-0000-000000000004", "name": "Orphan Microtopics", "slug": "orphan-microtopics"}
+  ],
+  "exams": [
+    {"id": "e0000000-0000-0000-0000-00000000000a", "slug": "national-nabard-grade-a", "name": "NABARD Grade A", "is_active": true},
+    {"id": "e0000000-0000-0000-0000-00000000000b", "slug": "ssc-cgl", "name": "SSC CGL", "is_active": true},
+    {"id": "e0000000-0000-0000-0000-00000000000c", "slug": "upsc-cse", "name": "UPSC CSE", "is_active": true}
+  ],
+  "topics": [
+    {"id": "t-qa-macro-1", "subject_id": "55555555-5555-5555-5555-555555555551", "parent_topic_id": null, "level": "topic", "is_active": true},
+    {"id": "t-qa-micro-1", "subject_id": "55555555-5555-5555-5555-555555555551", "parent_topic_id": "t-qa-macro-1", "level": "microtopic", "is_active": true},
+    {"id": "t-qa-micro-2", "subject_id": "55555555-5555-5555-5555-555555555551", "parent_topic_id": "t-qa-macro-1", "level": "microtopic", "is_active": true},
+    {"id": "t-qa-micro-dead", "subject_id": "55555555-5555-5555-5555-555555555551", "parent_topic_id": "t-qa-macro-1", "level": "microtopic", "is_active": false},
+    {"id": "t-en-macro-1", "subject_id": "55555555-5555-5555-5555-555555555552", "parent_topic_id": null, "level": "topic", "is_active": true},
+    {"id": "t-en-micro-1", "subject_id": "55555555-5555-5555-5555-555555555552", "parent_topic_id": "t-en-macro-1", "level": "microtopic", "is_active": true},
+    {"id": "t-gi-macro-1", "subject_id": "55555555-5555-5555-5555-555555555553", "parent_topic_id": null, "level": "topic", "is_active": true},
+    {"id": "t-gi-micro-1", "subject_id": "55555555-5555-5555-5555-555555555553", "parent_topic_id": "t-gi-macro-1", "level": "microtopic", "is_active": true},
+    {"id": "t-gs-macro-1", "subject_id": "66666666-0000-0000-0000-000000000001", "parent_topic_id": null, "level": "topic", "is_active": true},
+    {"id": "t-gs-micro-1", "subject_id": "66666666-0000-0000-0000-000000000001", "parent_topic_id": "t-gs-macro-1", "level": "microtopic", "is_active": true},
+    {"id": "t-orphan-micro-1", "subject_id": "66666666-0000-0000-0000-000000000004", "parent_topic_id": null, "level": "microtopic", "is_active": true},
+    {"id": "t-orphan-micro-2", "subject_id": "66666666-0000-0000-0000-000000000004", "parent_topic_id": null, "level": "microtopic", "is_active": true}
+  ],
+  "papers": [
+    {"id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "trust_status": "verified", "source_type": "official", "source_url": "https://nabard.org/p1.pdf", "source_document_id": "doc-1", "metadata": {"paper_code": "NAB-2024-P1"}},
+    {"id": "p-nab-retired", "exam_id": "e0000000-0000-0000-0000-00000000000a", "trust_status": "verified", "source_type": "official", "source_url": "https://nabard.org/old.pdf", "source_document_id": "doc-x", "metadata": {"paper_code": "NAB-BUCKET", "retired": true}},
+    {"id": "p-ssc-1", "exam_id": "e0000000-0000-0000-0000-00000000000b", "trust_status": "pending", "source_type": "unknown", "source_url": "", "source_document_id": null, "metadata": {"paper_code": "SSC-2024-T1"}},
+    {"id": "p-ssc-2", "exam_id": "e0000000-0000-0000-0000-00000000000b", "trust_status": "pending", "source_type": "coaching", "source_url": "https://example.test/ssc", "source_document_id": null, "metadata": {"paper_code": "SSC-2024-T2"}},
+    {"id": "p-upsc-gs", "exam_id": "e0000000-0000-0000-0000-00000000000c", "trust_status": "verified", "source_type": "official", "source_url": "https://upsc.gov.in/gs1.pdf", "source_document_id": "doc-2", "metadata": {"paper_code": "UPSC-MAINS-GS1-2024"}},
+    {"id": "p-upsc-thematic", "exam_id": "e0000000-0000-0000-0000-00000000000c", "trust_status": "pending", "source_type": "official", "source_url": "https://upsc.gov.in/opt.pdf", "source_document_id": "doc-3", "metadata": {"paper_code": "UPSC-OPT-THEMATIC", "corpus_half": "thematic"}}
+  ],
+  "questions": [
+    {"id": "q-nab-1", "pyq_paper_id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "reviewer_status": "verified", "question_type": "mcq"},
+    {"id": "q-nab-2", "pyq_paper_id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "reviewer_status": "verified", "question_type": "mcq"},
+    {"id": "q-nab-3", "pyq_paper_id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "reviewer_status": "verified", "question_type": "mcq"},
+    {"id": "q-nab-retired-1", "pyq_paper_id": "p-nab-retired", "exam_id": "e0000000-0000-0000-0000-00000000000a", "reviewer_status": "verified", "question_type": "mcq"},
+    {"id": "q-ssc-1", "pyq_paper_id": "p-ssc-1", "exam_id": "e0000000-0000-0000-0000-00000000000b", "reviewer_status": "pending", "question_type": "mcq"},
+    {"id": "q-ssc-2", "pyq_paper_id": "p-ssc-2", "exam_id": "e0000000-0000-0000-0000-00000000000b", "reviewer_status": "pending", "question_type": "mcq"},
+    {"id": "q-upsc-desc-1", "pyq_paper_id": "p-upsc-gs", "exam_id": "e0000000-0000-0000-0000-00000000000c", "reviewer_status": "verified", "question_type": "descriptive"},
+    {"id": "q-upsc-desc-2", "pyq_paper_id": "p-upsc-gs", "exam_id": "e0000000-0000-0000-0000-00000000000c", "reviewer_status": "verified", "question_type": "descriptive"},
+    {"id": "q-upsc-thematic-1", "pyq_paper_id": "p-upsc-thematic", "exam_id": "e0000000-0000-0000-0000-00000000000c", "reviewer_status": "verified", "question_type": "descriptive"}
+  ],
+  "tags": [
+    {"question_id": "q-nab-1", "topic_id": "t-qa-micro-1", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-nab-2", "topic_id": "t-qa-micro-2", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-nab-3", "topic_id": "t-gi-micro-1", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-nab-retired-1", "topic_id": "t-qa-micro-1", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-upsc-desc-1", "topic_id": "t-gs-micro-1", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-upsc-desc-2", "topic_id": "t-gs-micro-1", "tag_role": "primary", "reviewer_status": "verified"},
+    {"question_id": "q-upsc-thematic-1", "topic_id": "t-gs-micro-1", "tag_role": "primary", "reviewer_status": "verified"}
+  ],
+  "projected": [
+    {"id": "mb-1", "pyq_question_id": "q-nab-1", "topic_id": "t-qa-macro-1", "microtopic_id": "t-qa-micro-1"},
+    {"id": "mb-2", "pyq_question_id": "q-nab-2", "topic_id": "t-qa-macro-1", "microtopic_id": "t-qa-micro-2"},
+    {"id": "mb-3", "pyq_question_id": "q-nab-3", "topic_id": "t-gi-macro-1", "microtopic_id": null}
+  ],
+  "coverage": [
+    {"exam_id": "e0000000-0000-0000-0000-00000000000a", "topic_id": "t-qa-micro-1", "reviewer_status": "locked", "exam_phase_id": null},
+    {"exam_id": "e0000000-0000-0000-0000-00000000000a", "topic_id": "t-qa-micro-2", "reviewer_status": "locked", "exam_phase_id": null},
+    {"exam_id": "e0000000-0000-0000-0000-00000000000a", "topic_id": "t-gi-micro-1", "reviewer_status": "draft", "exam_phase_id": null},
+    {"exam_id": "e0000000-0000-0000-0000-00000000000c", "topic_id": "t-gs-micro-1", "reviewer_status": "locked", "exam_phase_id": "ph-mains"}
+  ]
+}

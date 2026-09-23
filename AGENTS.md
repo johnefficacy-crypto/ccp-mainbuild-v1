@@ -679,3 +679,7 @@ VERIFIED against the live database before writing any migration file.
 
 ### PYQ Frontloading
 See docs/pyq-frontload-notes.md for UPSC PYQ bulk-import state, reusable IDs, and known API bugs.
+
+## Corpus readiness
+
+Any PR that changes the shape of the corpus — importing or splitting papers, adding or re-parenting topics, projecting questions, changing what a feature requires — must regenerate `docs/status/corpus-readiness.md` and include it in the PR. If the PR has no DB access, say so in the PR body and mark the doc stale rather than editing numbers by hand.
