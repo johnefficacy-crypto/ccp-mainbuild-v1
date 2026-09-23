@@ -4690,6 +4690,99 @@ def update_pyq_question_explanation(
     return {"ok": True, "audit_id": audit_id, "row": updated[0] if updated else existing | patch}
 
 
+class ExplanationReviewBody(BaseModel):
+    status: str = Field(..., description="Target reviewer_status; the RPC decides what is allowed")
+    reason: str = Field(..., min_length=8, max_length=500)
+
+
+# RPC exception tokens that are contract rejections, not server faults. The
+# message after the token is surfaced verbatim as the 422 detail.
+_EXPLANATION_REVIEW_REJECTIONS = (
+    "invalid_target_status",
+    "transition_not_allowed",
+    "verify_requires_",
+)
+
+
+@router.post("/pyq-question-explanations/{explanation_id}/review")
+def review_pyq_question_explanation(
+    explanation_id: str,
+    body: ExplanationReviewBody,
+    admin: dict = Depends(require_permission(PERM_REVIEW)),
+    __: None = Depends(_flag_enabled),
+) -> dict[str, Any]:
+    """Transition an explanation's ``reviewer_status``. Status only; content
+    edits stay on the PATCH above.
+
+    Everything is decided by ``cms_review_pyq_question_explanation``
+    (migration 230, service_role only; ``get_supabase_admin`` is the
+    service-role client). Python does not repeat its checks.
+
+    The RPC:
+
+    * locks the row and checks it is still at the expected status (409 here if
+      not);
+    * applies its transition matrix::
+
+        pending          → verified | rejected | needs_correction
+        needs_correction → verified | rejected | pending
+        verified         → needs_correction | rejected
+        rejected         → pending | needs_correction
+
+    * refuses ``verified`` unless the licence is cleared, ``ambiguity_status``
+      is ``'none'`` and ``final_answer_option_id`` is set;
+    * writes the ``admin_audit_logs`` row in the same transaction as the
+      status UPDATE.
+
+    Any rejection from the RPC comes back as a 422 carrying the RPC's own
+    message.
+    """
+    supabase = get_supabase_admin()
+    existing = _safe_select(supabase, "pyq_question_explanations", id=explanation_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="PYQ question explanation not found")
+
+    try:
+        result = supabase.rpc(
+            "cms_review_pyq_question_explanation",
+            {
+                "p_id":              explanation_id,
+                "p_expected_status": existing.get("reviewer_status"),
+                "p_target_status":   body.status,
+                "p_reviewer_notes":  body.reason,
+                "p_actor_user_id":   admin.get("id"),
+                "p_actor_email":     admin.get("email"),
+            },
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        msg = str(getattr(exc, "message", None) or exc)
+        low = msg.lower()
+        if "concurrent_modification" in low:
+            raise HTTPException(
+                status_code=409,
+                detail="Concurrent modification: reviewer_status changed since read. Re-fetch and retry.",
+            ) from exc
+        if any(tok in low for tok in _EXPLANATION_REVIEW_REJECTIONS):
+            raise HTTPException(status_code=422, detail=msg) from exc
+        if "not_found" in low:
+            raise HTTPException(status_code=404, detail=msg) from exc
+        logger.exception("cms_review_pyq_question_explanation RPC failed; no status change recorded")
+        raise HTTPException(
+            status_code=500,
+            detail="Review transaction failed; no status change recorded.",
+        ) from exc
+
+    data = result.data or {}
+    row = _safe_select(supabase, "pyq_question_explanations", id=explanation_id)
+    return {
+        "ok": True,
+        "audit_id": data.get("audit_id"),
+        "prev_status": data.get("prev_status"),
+        "new_status": data.get("new_status"),
+        "row": row,
+    }
+
+
 # ════════════════════════════════════════════════════════════════════════
 #  Bulk import — CSV/JSON paste-in for any CMS entity
 # ════════════════════════════════════════════════════════════════════════
