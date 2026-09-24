@@ -274,6 +274,17 @@ and `docs/status/J3-OD-Resolutions-Locked-2026-07-02.md` §5 for the full,
 resolved contract — this note is a pointer, not a re-specification of the
 scoring or bucketing logic.
 
+**Running it (2026-09-24).** The derivation is reachable only through two admin
+routes, which is why nothing in the repository could show an operator what a
+re-derivation would do before it did it.
+`scripts/regenerate_exam_coverage.py` wraps both stages with a dry run as the
+default and computes nothing of its own;
+[`evidence-derived-coverage-regeneration.md`](./evidence-derived-coverage-regeneration.md)
+documents where the generator lives, the exact depth-bucket and priority
+formulas with their constants, the two human review gates the chain still
+requires, and why `evidence_count` is verified primary tags rather than
+projected `mock_question_bank` rows.
+
 ### P2 — governed cognitive and distractor classification
 
 Add a reviewed classification record rather than hiding labels in generic JSON metadata. It should support:

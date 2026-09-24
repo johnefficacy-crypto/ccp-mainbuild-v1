@@ -588,6 +588,8 @@ def _cas_update_owned_row(
     model_version: str,
     expected_fingerprint: str | None,
     patch: dict[str, Any],
+    *,
+    dry_run: bool = False,
 ) -> int:
     """Attempt one CAS-guarded UPDATE of a derivation-owned coverage row.
 
@@ -605,7 +607,14 @@ def _cas_update_owned_row(
     conflict) response instead of a silent overwrite.
 
     Returns the number of rows the UPDATE actually affected (0 or 1).
+
+    ``dry_run=True`` returns 1 without touching the database. The CAS
+    predicate is about concurrent writers, and in a dry run there is no write
+    to lose a race — reporting "would update" is the honest answer, and a
+    dry run that reported a CAS conflict it never risked would be noise.
     """
+    if dry_run:
+        return 1
     q = (
         sb.table("exam_topic_coverage")
         .update(patch)
@@ -653,6 +662,8 @@ def _reconcile_stale_owned_rows(
     exam_id: str,
     exam_phase_id: str | None,
     current_topic_ids: set[str],
+    *,
+    dry_run: bool = False,
 ) -> tuple[int, list[dict[str, Any]]] | None:
     """P1-3 fix (checkpost): flag derivation-owned draft/rejected rows whose
     topic has fallen OUT of the current evidence+syllabus input set.
@@ -721,6 +732,10 @@ def _reconcile_stale_owned_rows(
         if meta.get("stale") is True:
             continue  # already flagged — idempotent, avoid redundant writes
         patch = {"metadata": {**meta, "stale": True}}
+        if dry_run:
+            reconciled += 1
+            flagged.append({"topic_id": tid, "row_id": r.get("id")})
+            continue
         try:
             sb.table("exam_topic_coverage").update(patch).eq("id", r["id"]).execute()
             reconciled += 1
@@ -738,6 +753,8 @@ def derive_topic_coverage(
     exam_id: str,
     *,
     exam_phase_id: str | None = None,
+    dry_run: bool = False,
+    snapshots_override: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Derive/update ``draft`` ``exam_topic_coverage`` rows for *exam_id*.
 
@@ -768,11 +785,34 @@ def derive_topic_coverage(
             "triage": list[dict],     # model_generated rows flagged (topic_id, row_id)
             "stale_reconciled": int,  # P1-3: derivation-owned rows flagged stale=true
             "stale_rows": list[dict],  # (topic_id, row_id) flagged this run
+            "dry_run": bool,
+            "proposed": list[dict],   # dry-run only: rows a live run would write
         }
 
     ``read_error=True`` means a critical DB read failed; the caller (admin
     endpoint) must treat this as a compute failure — never a partial write.
+
+    ``dry_run=True`` runs every read, every conflict rule and every bucket
+    decision unchanged and performs NO write: the insert is skipped, the CAS
+    update and the stale flag report "would write", and each proposed row is
+    returned in ``proposed``. The counters keep their meanings, read as
+    "would have".
+
+    ``snapshots_override`` replaces the locked-snapshot read. Its only intended use is
+    the forward-looking dry run in
+    ``scripts/regenerate_exam_coverage.py --assume-locked``, which answers
+    "what coverage appears once the drafts just computed are locked" — the
+    two-human-gate chain means a freshly computed draft is invisible to this
+    function until someone locks it. Passing it with ``dry_run=False`` would
+    let a caller derive coverage from UNLOCKED evidence and is refused
+    (PD-1 evidence-only inputs: locked snapshots).
     """
+    if snapshots_override is not None and not dry_run:
+        raise CoverageDerivationError(
+            "snapshots_override= may only be supplied with dry_run=True; "
+            "deriving from unlocked snapshots would violate PD-1 "
+            "(evidence-only inputs)"
+        )
     zero: dict[str, Any] = {
         "written": 0,
         "updated": 0,
@@ -787,6 +827,8 @@ def derive_topic_coverage(
         "triage": [],
         "stale_reconciled": 0,
         "stale_rows": [],
+        "dry_run": dry_run,
+        "proposed": [],
     }
     if not exam_id:
         return zero
@@ -819,9 +861,15 @@ def derive_topic_coverage(
 
     # ── 2. Latest locked snapshots (PD-1, PD-6 — the ONLY evidence-number
     #      authority; fail-closed on read error) ───────────────────────────
-    snapshots = locked_score_snapshots(sb, exam_id, exam_phase_id=exam_phase_id)
-    if snapshots is None:
-        return {**zero, "read_error": True}
+    if snapshots_override is None:
+        snapshots = locked_score_snapshots(sb, exam_id, exam_phase_id=exam_phase_id)
+        if snapshots is None:
+            return {**zero, "read_error": True}
+    else:
+        # Dry-run only, refused above otherwise: the caller supplies the
+        # snapshot rows in `locked_score_snapshots`' result shape so the
+        # projection can be previewed BEFORE the snapshot lock gate.
+        snapshots = snapshots_override
     snapshot_by_topic: dict[str, dict[str, Any]] = {
         s["topic_id"]: s for s in snapshots if s.get("topic_id")
     }
@@ -855,6 +903,7 @@ def derive_topic_coverage(
     written = updated = skipped = triaged = no_row = errors = 0
     deltas: list[dict[str, Any]] = []
     triage: list[dict[str, Any]] = []
+    proposed_rows: list[dict[str, Any]] = []
 
     for tid in topic_ids:
         snapshot = snapshot_by_topic.get(tid)
@@ -879,6 +928,7 @@ def derive_topic_coverage(
         if proposed is None:
             no_row += 1
             continue
+        proposed_rows.append(proposed)
 
         existing = existing_by_topic.get(tid)
 
@@ -901,6 +951,9 @@ def derive_topic_coverage(
             # derivation-owned, which should be impossible given the
             # ownership-scoped insert path but is treated fail-closed
             # anyway) is still counted as an error.
+            if dry_run:
+                written += 1
+                continue
             try:
                 sb.table("exam_topic_coverage").insert(proposed).execute()
                 written += 1
@@ -1000,11 +1053,13 @@ def derive_topic_coverage(
                 patch = {**proposed}
                 try:
                     affected = _cas_update_owned_row(
-                        sb, existing["id"], existing_model_version, existing_fp, patch
+                        sb, existing["id"], existing_model_version, existing_fp, patch,
+                        dry_run=dry_run,
                     )
                     if affected == 0:
                         affected = _cas_update_owned_row(
-                            sb, existing["id"], existing_model_version, existing_fp, patch
+                            sb, existing["id"], existing_model_version, existing_fp, patch,
+                            dry_run=dry_run,
                         )
                     if affected == 1:
                         updated += 1
@@ -1053,7 +1108,9 @@ def derive_topic_coverage(
     # Runs over the FULL current topic_ids set (which may be empty — see the
     # note at step 3 above) so a topic whose evidence/mentions disappeared
     # entirely this run is still caught.
-    reconcile_result = _reconcile_stale_owned_rows(sb, exam_id, exam_phase_id, set(topic_ids))
+    reconcile_result = _reconcile_stale_owned_rows(
+        sb, exam_id, exam_phase_id, set(topic_ids), dry_run=dry_run
+    )
     if reconcile_result is None:
         # The main derivation pass above already committed real writes —
         # reporting `read_error=True` here would misrepresent a successful
@@ -1084,4 +1141,6 @@ def derive_topic_coverage(
         "triage": triage,
         "stale_reconciled": stale_reconciled,
         "stale_rows": stale_rows,
+        "dry_run": dry_run,
+        "proposed": proposed_rows,
     }

@@ -143,6 +143,7 @@ def test_no_snapshot_no_mentions_writes_nothing():
         "written": 0, "updated": 0, "skipped": 0, "triaged": 0, "no_row": 0,
         "errors": 0, "total_topics": 0, "read_error": False, "invalid_scope": False,
         "deltas": [], "triage": [], "stale_reconciled": 0, "stale_rows": [],
+        "dry_run": False, "proposed": [],
     }
 
 
