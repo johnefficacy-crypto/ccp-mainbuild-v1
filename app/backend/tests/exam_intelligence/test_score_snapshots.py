@@ -191,7 +191,8 @@ def test_zero_evidence_returns_empty():
 
     result = compute_exam_topic_scores(sb, "exam-1")
 
-    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0, "read_error": False}
+    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0,
+                      "read_error": False, "dry_run": False, "proposed": []}
     assert sb.db.get("exam_topic_score_snapshots", []) == []
 
 
@@ -202,7 +203,8 @@ def test_empty_exam_id():
     """Empty exam_id → immediate zero return, no DB calls."""
     sb = SBStub({})
     result = compute_exam_topic_scores(sb, "")
-    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0, "read_error": False}
+    assert result == {"written": 0, "skipped": 0, "errors": 0, "total_topics": 0,
+                      "read_error": False, "dry_run": False, "proposed": []}
 
 
 # ── 7. Broken table → read_error ─────────────────────────────────────────────

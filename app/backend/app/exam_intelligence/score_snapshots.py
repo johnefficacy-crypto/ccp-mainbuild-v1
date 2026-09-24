@@ -256,8 +256,18 @@ def compute_exam_topic_scores(
     model_version: str = MODEL_VERSION,
     *,
     exam_phase_id: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Compute and write draft score snapshots for every topic in *exam_id*.
+
+    ``dry_run=True`` computes every score exactly as a live run does but
+    performs NO write: the single ``insert`` below is skipped, ``written``
+    instead counts the rows a live run would have inserted, and each proposed
+    row is returned in ``proposed`` so an operator can read the numbers and
+    their ``score_components`` before anything lands. It exists so
+    ``scripts/regenerate_exam_coverage.py`` can report a projection without
+    reimplementing this formula — a second copy of the scoring maths is the
+    one thing that must not exist (PD-6 / §Scoring contracts).
 
     Returns a summary dict::
 
@@ -268,6 +278,8 @@ def compute_exam_topic_scores(
             "total_topics": int,
             "read_error": bool,     # True when a critical DB read failed
             "invalid_scope": bool,  # True when exam_phase_id is not in exam
+            "dry_run": bool,
+            "proposed": list[dict], # dry-run only: the rows a live run writes
         }
 
     Idempotent: topics whose existing drafts already contain the same
@@ -287,6 +299,8 @@ def compute_exam_topic_scores(
         "errors": 0,
         "total_topics": 0,
         "read_error": False,
+        "dry_run": dry_run,
+        "proposed": [],
     }
     if not exam_id:
         return zero
@@ -621,6 +635,7 @@ def compute_exam_topic_scores(
     cohorts = _cohort_stats(primary_counts, primary_tag_tuples, q_to_paper, topic_subject)
 
     written = skipped = errors = 0
+    proposed_rows: list[dict[str, Any]] = []
 
     for tid in all_topic_ids:
         topic_count = primary_counts.get(tid, 0)
@@ -696,24 +711,31 @@ def compute_exam_topic_scores(
             skipped += 1
             continue
 
+        payload = {
+            "exam_id": exam_id,
+            "exam_phase_id": exam_phase_id,
+            "topic_id": tid,
+            "model_version": model_version,
+            "exam_priority_score": exam_priority_score,
+            "is_high_yield": is_high_yield,
+            "confidence_score": confidence_score,
+            "evidence_count": primary_counts.get(tid, 0),
+            "predictability": predictability,
+            "predictability_band": predictability_band,
+            "score_components": score_components,
+            "input_summary": input_summary,
+            "status": "draft",
+        }
+
+        # The payload is built identically either way — only the write is
+        # conditional, so a dry run cannot drift from what a live run computes.
+        if dry_run:
+            proposed_rows.append(payload)
+            written += 1
+            continue
+
         try:
-            sb.table("exam_topic_score_snapshots").insert(
-                {
-                    "exam_id": exam_id,
-                    "exam_phase_id": exam_phase_id,
-                    "topic_id": tid,
-                    "model_version": model_version,
-                    "exam_priority_score": exam_priority_score,
-                    "is_high_yield": is_high_yield,
-                    "confidence_score": confidence_score,
-                    "evidence_count": primary_counts.get(tid, 0),
-                    "predictability": predictability,
-                    "predictability_band": predictability_band,
-                    "score_components": score_components,
-                    "input_summary": input_summary,
-                    "status": "draft",
-                }
-            ).execute()
+            sb.table("exam_topic_score_snapshots").insert(payload).execute()
             written += 1
         except Exception as exc:  # noqa: BLE001
             code = getattr(exc, "code", None) or getattr(exc, "pgcode", None)
@@ -735,6 +757,8 @@ def compute_exam_topic_scores(
         "errors": errors,
         "total_topics": len(all_topic_ids),
         "read_error": False,
+        "dry_run": dry_run,
+        "proposed": proposed_rows,
     }
 
 
