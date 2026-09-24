@@ -125,14 +125,23 @@ def test_index_exists_for_the_fk_enforcement_scan():
     assert "where pyq_option_id is not null" in _NORM
 
 
-def test_migration_number_is_max_plus_one():
+def test_migration_number_is_not_reused():
+    """307 is this migration's number and nobody else claimed it.
+
+    This asserted `numbers[-1] == 307` — that 307 was the highest number in the
+    repository. That is a claim about the PR that shipped it, not about the
+    migration, so it was guaranteed to fail for whoever added 308. The same
+    assertion was removed from 306's test for the same reason (307 was what
+    broke it). What is still true and still worth guarding is that the number
+    is unique: two migrations sharing one number apply in an undefined order.
+    """
     numbers = sorted(
         int(p.name.split("_")[0])
         for p in _MIGRATIONS.glob("*.sql")
         if p.name.split("_")[0].isdigit()
     )
-    assert numbers[-1] == 307
-    assert numbers[-2] == 306
+    assert numbers.count(307) == 1
+    assert len(numbers) == len(set(numbers)), "two migrations share a number"
 
 
 def test_header_ships_the_dry_run_and_names_the_validation_script():
