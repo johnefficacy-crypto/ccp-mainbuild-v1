@@ -1,5 +1,74 @@
 # english-language: duplicate leaf pairs under two naming conventions
 
+> ## ⚠ CORRECTION, 2026-09-24 — THE CENTRAL FINDING BELOW IS WRONG
+>
+> **These are not duplicate pairs. Do not merge or retire anything named in
+> §2.1, §2.2, §2.3, §2.5 or §2.6.** The merge plan in §3 is superseded and must
+> not be executed.
+>
+> The live tag counts taken on demo 2026-09-23 came back as this report
+> predicted — every PYQ tag on the `eng-*` row, none on the bare-slug row:
+>
+> | pair | `eng-*` | bare slug |
+> | --- | --- | --- |
+> | subject-verb agreement | 5 | 0 |
+> | preposition / article errors | 1 | `prepositions` 0, `articles` 0 |
+> | word order and modifier placement | 3 | `modifiers` 0 |
+> | pronoun reference | 0 | 0 |
+> | redundancy | 0 | 0 |
+> | tense | 0 | 0 |
+>
+> **That zero does not mean the row is unused. It means the row was never a PYQ
+> row.** All seven bare-slug rows are the **English Writing Practice (EWP)**
+> taxonomy, seeded by `app/supabase/migrations/205_english_writing_practice_schema.sql`
+> under the EWP macros `grammar`, `sentence-construction`,
+> `vocabulary-in-context` and `paragraph-writing`, and each one is the live
+> target of an `issue_type` row in `public.writing_issue_type_microtopic_map`
+> (205 §17), which migration 209's evaluator and migration 213's Error Lab read
+> model resolve at request time:
+>
+> | `issue_type` | microtopic |
+> | --- | --- |
+> | `subject_verb_agreement` | `subject-verb-agreement` |
+> | `tense` | `tense` |
+> | `article` | `articles` |
+> | `preposition` | `prepositions` |
+> | `pronoun_reference` | `pronoun-reference` |
+> | `modifier` | `modifiers` |
+> | `redundancy` | `redundancy` |
+>
+> `writing_issue_type_microtopic_map.microtopic_id` is `NOT NULL REFERENCES
+> public.topics(id)` with no `ON DELETE` clause. Removing a mapped row raises a
+> foreign-key violation; on the seventeen FK columns that cascade
+> (`user_topic_mastery`, `user_topic_error_patterns`, `mock_mastery_shadow`,
+> `trap_drill_mastery_shadow`, `user_topic_self_assessment` and the rest) it
+> would instead take a learner's mastery and error history with it, silently.
+>
+> **`english-language` holds two trees in one subject**, not one tree with
+> duplicates: EWP's writing-assessment criteria (bare slugs — what a marker
+> judges in a candidate's own prose) and the MCQ item-type catalogue (`eng-*`
+> slugs — what a four-option question tests). Migration 306 already acted on
+> exactly this distinction for `Logical Order` and §2.8 below got it right for
+> ten other rows; this report generalised the wrong way for the grammar block.
+> The naming convention was read as two generations of one tree. It is two
+> subsystems.
+>
+> **Resolution: keep both rows in every pair. Nothing to merge, nothing to
+> retire, no worksheet needed for `articles`.**
+>
+> `app/supabase/migrations/308_gir_venn_diagram_and_english_duplicate_audit.sql`
+> carries the audit that establishes this on any database it is applied to: for
+> each of the seven it counts referencing rows across *every* foreign key that
+> points at `public.topics(id)` — discovered from `pg_constraint` at run time,
+> composite keys aligned properly — plus child topics, retires only a row with
+> zero of both, and reports each skip with the tables that held it. On demo and
+> production all seven are expected to be kept.
+>
+> Everything below this box is left exactly as written on 2026-09-23. It is the
+> record of what was believed before the live counts were read, and §2.4, §2.7,
+> §2.8 and §5 remain correct.
+
+
 **Status: report only. Nothing in migration 306 or anywhere else in this PR changes,
 renames, re-parents or retires any row named below.**
 
@@ -161,6 +230,10 @@ re-tagged onto by a reviewed worksheet. **Leave all of these alone.**
 
 ## 3. Proposed merge plan — ship nothing until the counts in §4 exist
 
+> **SUPERSEDED by the correction at the top of this file. Do not execute this
+> plan.** The counts in §4 were read and showed the bare-slug rows carry no PYQ
+> tags — because they are EWP rows, not legacy PYQ rows. There is no merge.
+
 Preconditions for any of it: the counts in §4 are read from the live database,
 and the chosen canonical row is confirmed to be the one the newer worksheets
 target.
@@ -221,6 +294,11 @@ operator-validation gate at `validation_pending` until the deployed path is
 re-read. Code completion is not operator validation.
 
 ## 4. The per-exam tag counts the brief asked for — NOT PRODUCED HERE, and why
+
+> **Read on demo 2026-09-23; see the correction at the top for the numbers and
+> what they turned out to mean.** Query (b) below — each member's parent macro —
+> is the one that would have caught this before the plan was written: the
+> bare-slug rows hang off `grammar`, not off an English MCQ macro.
 
 The brief asks for "each pair with its tag counts per exam". **Those counts are
 not in this report and could not be computed in this environment:**
