@@ -595,12 +595,18 @@ def test_the_report_keeps_the_writing_leaves_out_of_the_merge():
 
 
 def test_the_report_ships_no_schema_change():
-    """The brief says report, propose, ship nothing. No migration numbered above
-    306 exists in this PR, and 306 touches none of the reported rows."""
-    migrations = sorted(
-        p.name for p in (_ROOT / "app" / "supabase" / "migrations").glob("3*.sql")
-    )
-    assert migrations[-1] == MIGRATION_PATH.name, migrations[-3:]
+    """The brief says report, propose, ship nothing — 306 touches none of the
+    rows the report merely reports on.
+
+    This originally also asserted that 306 was the highest-numbered migration in
+    the whole repo. That was a claim about the PR that shipped it, written as a
+    repo-global invariant, so it was guaranteed to break on the next migration
+    anyone added — 307 (EXPL-OPTID-01) was the first to hit it. A PR's scope is
+    recorded in git history and cannot be re-derived from the tree afterwards,
+    so that half is gone and the half that is still true and still worth
+    guarding stays: 306 exists, and it writes no reported row.
+    """
+    assert MIGRATION_PATH.exists(), MIGRATION_PATH
 
     # 306 inserts no reported row, and the two reported rows it does name
     # (the modern members of pairs 2.5 and 2.6) appear only as anchors, which
