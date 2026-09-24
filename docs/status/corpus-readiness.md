@@ -27,6 +27,8 @@ coverage        select exam_id, topic_id, reviewer_status, exam_phase_id
                   from exam_topic_coverage
 Every read paginates via app/common/pagination.py — a short page is not the
 last page. No statement in this script writes, and none calls a review RPC.
+The gate verdict in section 3 is READ from pyq_papers.trust_status (--live) or
+supplied per paper by the fixture; it is never computed from the columns above.
 ```
 
 </details>
@@ -58,12 +60,17 @@ Derived from the counts in section 1, never asserted. The rule for each column, 
 
 ## 3. Blocked corpora
 
-**This section reports the gate's INPUTS, not its verdict.** `review_pyq_paper` is a review action rather than a predicate — calling it would promote papers — and it is PL/pgSQL (migration `271_review_pyq_paper_question_count_gate.sql`, previously 185/186), not importable into Python. So what follows is the observable provenance fields the gate reads. A gate that moves cannot silently desync this document, because this document never claims to know what it decides.
+**This section never computes the gate's verdict.** `review_pyq_paper` is the authority, and it is PL/pgSQL (migration `271_review_pyq_paper_question_count_gate.sql`, previously 185/186). It is a review action rather than a predicate — it locks rows, writes an audit row and updates `trust_status` — and it offers no dry-run path, so this report does not call it. Nor does it re-implement the Python re-statement at `admin_exam_intel_cms.py:1266-1298`.
+
+So what follows is the observable provenance fields the gate reads, plus a verdict that was **observed or operator-supplied, never derived here**. Each exam names its own source below. A paper carrying no verdict is reported as "gate verdict unavailable" — never as passing. A gate that moves cannot silently desync this document, because this document transcribes none of its logic.
+
+`scripts/ssc_cgl_readiness.py` is the older single-exam report over this same ground for SSC CGL; it does re-state the gate in Python, and this report deliberately does not.
 
 ### ssc-cgl
 
 - 2 questions exist; 2 are not verified, 2 carry no verified primary tag, 2 objective questions are not projected.
 - 2 papers in scope. Observed provenance fields: 2 are not `source_type='official'`; 1 has no `source_url`; 2 have no `source_document_id`; 2 are not `trust_status='verified'`; 0 carry no questions.
+- Gate verdict, migration `271_review_pyq_paper_question_count_gate.sql` in force: 0 passing, 1 failing, 1 unavailable. Source: `operator:2026-09-22 /rpc/review_pyq_paper error`. Observed or supplied — not computed by this report. Recorded reasons: blocking_fields=source_type,source_url.
 
 ## 4. Catalogues with zero questions
 

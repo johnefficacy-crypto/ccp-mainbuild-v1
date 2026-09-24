@@ -1,7 +1,7 @@
 {
   "source": "demo",
   "generated_at": "2026-09-22",
-  "_note": "Fixture shaped after the operator-verified demo snapshot of 2026-09-22. Counts are reduced but the SHAPES are real: shared body-agnostic subjects with no metadata.exams, a thematic optional corpus with no paper order, a retired bucket, an unreviewed SSC corpus, and an empty catalogue.",
+  "_note": "Fixture shaped after the operator-verified demo snapshot of 2026-09-22. Counts are reduced but the SHAPES are real: shared body-agnostic subjects with no metadata.exams, a thematic optional corpus with no paper order, a retired bucket, an unreviewed SSC corpus, and an empty catalogue. gate_verdict is operator-supplied and never computed by the report; p-ssc-2 deliberately carries none, so it must render as unavailable rather than passing.",
   "subjects": [
     {"id": "55555555-5555-5555-5555-555555555551", "name": "Quantitative Aptitude", "slug": "quantitative-aptitude"},
     {"id": "55555555-5555-5555-5555-555555555552", "name": "English Language", "slug": "english-language"},
@@ -31,11 +31,11 @@
     {"id": "t-orphan-micro-2", "subject_id": "66666666-0000-0000-0000-000000000004", "parent_topic_id": null, "level": "microtopic", "is_active": true}
   ],
   "papers": [
-    {"id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "trust_status": "verified", "source_type": "official", "source_url": "https://nabard.org/p1.pdf", "source_document_id": "doc-1", "metadata": {"paper_code": "NAB-2024-P1"}},
+    {"id": "p-nab-1", "exam_id": "e0000000-0000-0000-0000-00000000000a", "trust_status": "verified", "source_type": "official", "source_url": "https://nabard.org/p1.pdf", "source_document_id": "doc-1", "metadata": {"paper_code": "NAB-2024-P1"}, "gate_verdict": {"passes": true, "reason": "trust_status='verified'", "source": "observed:pyq_papers.trust_status"}},
     {"id": "p-nab-retired", "exam_id": "e0000000-0000-0000-0000-00000000000a", "trust_status": "verified", "source_type": "official", "source_url": "https://nabard.org/old.pdf", "source_document_id": "doc-x", "metadata": {"paper_code": "NAB-BUCKET", "retired": true}},
-    {"id": "p-ssc-1", "exam_id": "e0000000-0000-0000-0000-00000000000b", "trust_status": "pending", "source_type": "unknown", "source_url": "", "source_document_id": null, "metadata": {"paper_code": "SSC-2024-T1"}},
+    {"id": "p-ssc-1", "exam_id": "e0000000-0000-0000-0000-00000000000b", "trust_status": "pending", "source_type": "unknown", "source_url": "", "source_document_id": null, "metadata": {"paper_code": "SSC-2024-T1"}, "gate_verdict": {"passes": false, "reason": "blocking_fields=source_type,source_url", "source": "operator:2026-09-22 /rpc/review_pyq_paper error"}},
     {"id": "p-ssc-2", "exam_id": "e0000000-0000-0000-0000-00000000000b", "trust_status": "pending", "source_type": "coaching", "source_url": "https://example.test/ssc", "source_document_id": null, "metadata": {"paper_code": "SSC-2024-T2"}},
-    {"id": "p-upsc-gs", "exam_id": "e0000000-0000-0000-0000-00000000000c", "trust_status": "verified", "source_type": "official", "source_url": "https://upsc.gov.in/gs1.pdf", "source_document_id": "doc-2", "metadata": {"paper_code": "UPSC-MAINS-GS1-2024"}},
+    {"id": "p-upsc-gs", "exam_id": "e0000000-0000-0000-0000-00000000000c", "trust_status": "verified", "source_type": "official", "source_url": "https://upsc.gov.in/gs1.pdf", "source_document_id": "doc-2", "metadata": {"paper_code": "UPSC-MAINS-GS1-2024"}, "gate_verdict": {"passes": true, "reason": "trust_status='verified'", "source": "observed:pyq_papers.trust_status"}},
     {"id": "p-upsc-thematic", "exam_id": "e0000000-0000-0000-0000-00000000000c", "trust_status": "pending", "source_type": "official", "source_url": "https://upsc.gov.in/opt.pdf", "source_document_id": "doc-3", "metadata": {"paper_code": "UPSC-OPT-THEMATIC", "corpus_half": "thematic"}}
   ],
   "questions": [

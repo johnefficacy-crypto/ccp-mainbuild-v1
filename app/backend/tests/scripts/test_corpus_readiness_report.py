@@ -72,10 +72,99 @@ def test_markdown_states_the_gate_is_not_reproduced_and_cites_271():
     md = crr.render_markdown(_report(_fixture()), generated_at="2026-09-22",
                              mode="fixture", source="demo")
     assert "271_review_pyq_paper_question_count_gate.sql" in md
-    assert "INPUTS, not its verdict" in md
-    # Never phrase an observation as a gate outcome.
+    assert "never computes the gate's verdict" in md
+    assert "observed or operator-supplied, never derived here" in md
+    assert "admin_exam_intel_cms.py:1266-1298" in md
+    # Never phrase an observation as a gate outcome this report reached itself.
     for banned in ("fails the provenance gate", "passes the provenance gate"):
         assert banned not in md.lower()
+
+
+def test_markdown_names_ssc_cgl_readiness_as_the_older_single_exam_report():
+    md = crr.render_markdown(_report(_fixture()), generated_at="2026-09-22",
+                             mode="fixture", source="demo")
+    assert "scripts/ssc_cgl_readiness.py" in md
+    assert "re-state the gate in Python" in md
+
+
+# ── the gate verdict: observed or supplied, never computed ─────────────────
+
+def test_a_paper_with_no_gate_verdict_renders_unavailable_never_passing():
+    """The one rule this section cannot get wrong."""
+    data = _fixture()
+    for paper in data["papers"]:
+        paper.pop("gate_verdict", None)
+    report = _report(data)
+    ssc = next(b for b in report["section3"] if b["exam"] == "ssc-cgl")
+    assert ssc["gate"] == {"passing": 0, "failing": 0, "unavailable": 2,
+                           "sources": [], "reasons": []}
+    md = crr.render_markdown(report, generated_at="2026-09-22", mode="fixture",
+                             source="demo")
+    # Scope to ssc-cgl's own block: the section preamble legitimately uses the
+    # word "passing" to promise this very behaviour.
+    block = md.split("### ssc-cgl")[1].split("## 4.")[0]
+    assert crr.GATE_VERDICT_UNAVAILABLE in block
+    assert "passing" not in block and "failing" not in block
+
+
+def test_observed_gate_verdict_reads_trust_status_and_nothing_else():
+    verified = crr.observed_gate_verdict("verified")
+    assert verified["passes"] is True
+    assert verified["source"] == crr.GATE_SOURCE_OBSERVED
+
+    rejected = crr.observed_gate_verdict("rejected")
+    assert rejected["passes"] is False
+
+    # 'pending' is the ABSENCE of a ruling, not a failure. Collapsing the two
+    # would report papers nobody has reviewed as gate failures.
+    assert crr.observed_gate_verdict("pending") is None
+    assert crr.observed_gate_verdict(None) is None
+    assert crr.observed_gate_verdict("") is None
+
+
+def test_gate_verdict_of_never_infers_one_from_the_provenance_columns():
+    perfect = {"id": "p", "source_type": "official", "source_url": "https://x/p.pdf",
+               "source_document_id": "doc-1", "trust_status": "verified"}
+    # Every column the gate reads is present and clean; there is still no
+    # verdict, because this report does not run the gate.
+    assert crr.gate_verdict_of(perfect) is None
+
+    for malformed in ({"gate_verdict": None}, {"gate_verdict": "passes"},
+                      {"gate_verdict": {}}, {"gate_verdict": {"passes": "true"}}):
+        assert crr.gate_verdict_of(malformed) is None
+
+    supplied = crr.gate_verdict_of({"gate_verdict": {"passes": False}})
+    assert supplied == {"passes": False, "reason": "", "source": "unspecified"}
+
+
+def test_section_3_counts_the_verdicts_the_fixture_supplied():
+    ssc = next(b for b in _report(_fixture())["section3"] if b["exam"] == "ssc-cgl")
+    # p-ssc-1 carries an operator-recorded failure; p-ssc-2 carries nothing.
+    assert ssc["gate"]["passing"] == 0
+    assert ssc["gate"]["failing"] == 1
+    assert ssc["gate"]["unavailable"] == 1
+    assert ssc["gate"]["reasons"] == ["blocking_fields=source_type,source_url"]
+
+
+def test_a_fixture_may_pin_the_migration_revision_that_was_in_force():
+    data = _fixture()
+    data["gate_migration"] = "999_some_later_revision.sql"
+    md = crr.render_markdown(_report(data), generated_at="2026-09-22",
+                             mode="fixture", source="demo")
+    assert "999_some_later_revision.sql" in md
+    assert crr.build_report(_fixture())["gate_migration"] == crr.GATE_MIGRATION
+
+
+def test_the_module_does_not_transcribe_the_gate():
+    """A fifth copy of the gate's logic is exactly what this script refuses."""
+    src = (_ROOT / "scripts/corpus_readiness_report.py").read_text(encoding="utf-8")
+    for label in ("source_document_id_wrong_scope", "source_document_id_wrong_kind",
+                  "source_document_id_bad_status", "source_document_id_no_storage",
+                  "source_document_id_exam_mismatch", "source_document_id_not_found",
+                  "provenance_incomplete", "blocking_fields", "no_questions"):
+        assert label not in src, label
+    assert "admin_exam_intel_cms" not in src.replace(
+        "admin_exam_intel_cms.py:1266-1298", "")
 
 
 # ── section 4: zero-question catalogues ────────────────────────────────────

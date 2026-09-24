@@ -24,23 +24,37 @@ MODES
                            using ``DATABASE_URL``. Read-only queries; every one
                            paginates. Never called by CI.
 
-THE PROVENANCE GATE IS NOT RUN HERE
------------------------------------
-``review_pyq_paper`` is a review ACTION, not a predicate: calling it would
-promote papers. It is also PL/pgSQL (migration 271, previously 185/186) and is
-not importable into Python. So section 3 reports the observable FIELDS the gate
-reads — ``source_type``, ``trust_status``, whether a ``source_url`` or a
-``source_document_id`` is present, question counts — and never a pass/fail
-verdict. A gate that moves cannot silently desync this document, because this
-document does not claim to know what the gate decides.
+THE GATE'S VERDICT IS NEVER COMPUTED HERE
+-----------------------------------------
+``review_pyq_paper`` is the authority, and it is PL/pgSQL (migration 271,
+previously 185/186). It is a review ACTION, not a predicate: it takes row
+locks, writes an ``admin_audit_logs`` row and updates ``trust_status``, and it
+exposes no dry-run or check-only path. So this script never calls it — and
+never re-implements or imports the Python re-statement at
+``app/backend/app/api/admin_exam_intel_cms.py:1266-1298``.
+
+Section 3's verdict is therefore always supplied, never derived:
+
+``--live``          OBSERVED. Read back from each paper's recorded
+                    ``trust_status`` — the value the gate itself wrote —
+                    alongside the columns the gate reads. ``pending`` is not a
+                    failure, it is the absence of a ruling, and renders as
+                    "gate verdict unavailable".
+``--from-fixture``  OPERATOR-SUPPLIED. A paper may carry
+                    ``gate_verdict {passes, reason, source}``. A paper without
+                    one has no verdict; it never defaults to passing.
+
+Section 3 names, per exam, where its verdict came from and which migration was
+in force. A gate that moves cannot silently desync this document, because this
+document transcribes none of its logic.
 
 PRIOR ART
 ---------
-``scripts/ssc_cgl_readiness.py`` is the per-exam version of this question and
-goes far deeper on one corpus (duplicate stems, catalogue fit, per-paper
-blocking fields). It re-states the gate's logic in Python; this script
-deliberately does not. Read it when you need depth on a single exam; read this
-one when you need breadth across subjects.
+``scripts/ssc_cgl_readiness.py`` is the older per-exam version of this question
+and goes far deeper on one corpus (duplicate stems, catalogue fit, per-paper
+blocking fields). It re-states the gate's logic in Python — the transcription
+this script refuses to make a fifth of. Read it when you need depth on a single
+exam; read this one when you need breadth across subjects.
 
 The asyncpg/DATABASE_URL shape of ``--live`` follows
 ``scripts/syllabus_theme_coverage.py``, the closest read-only report.
@@ -90,6 +104,22 @@ META_RETIRED = "retired"
 #: Provenance fields section 3 reports. These are the fields the PL/pgSQL gate
 #: reads; reporting them is not the same as reporting its verdict.
 PROVENANCE_SOURCE_TYPE_OFFICIAL = "official"
+#: A paper the gate ruled against. Distinct from 'pending', which is no ruling.
+TRUST_REJECTED = "rejected"
+
+#: The migration that defines the provenance gate. This script does not
+#: implement that gate; it records which revision was in force, so a reader can
+#: tell whether a verdict predates a change to it. A fixture may override this
+#: with a top-level ``gate_migration``.
+GATE_MIGRATION = "271_review_pyq_paper_question_count_gate.sql"
+
+#: Where an observed verdict came from. Never "computed" — this script computes
+#: none, in either mode.
+GATE_SOURCE_OBSERVED = "observed:pyq_papers.trust_status"
+
+#: Rendered wherever a paper carries no verdict. This is not a failure; it is
+#: the absence of a ruling, and it must never render as passing.
+GATE_VERDICT_UNAVAILABLE = "gate verdict unavailable"
 
 #: Feature predicates, each a pure function of one subject's counts.
 #: Keep the keys stable: they are CSV column names.
@@ -113,6 +143,52 @@ def feature_flags(counts: dict[str, int]) -> dict[str, bool]:
         and counts["locked_coverage_rows"] > 0,
         "answer_writing": counts["verified_descriptive"] > 0 and counts["tagged"] > 0,
         "syllabus_navigation": counts["macro_topics"] > 0 and counts["microtopics"] > 0,
+    }
+
+
+# ── The gate's verdict: read, never computed ────────────────────────────────
+
+
+def observed_gate_verdict(trust_status: Any) -> dict[str, Any] | None:
+    """One paper's verdict, read back from the row the gate itself wrote.
+
+    This is an observation. ``review_pyq_paper`` sets ``trust_status``, and
+    that value is the only verdict this script will ever report for a live
+    read. Nothing here inspects the provenance columns to decide what the gate
+    *would* say — that is the transcription this script exists to avoid.
+
+    ``pending`` yields no verdict rather than ``passes=False``: a paper nobody
+    has reviewed has not failed the gate, and collapsing the two would be the
+    one lie this section cannot afford.
+    """
+    status = trust_status.strip().lower() if isinstance(trust_status, str) else ""
+    if status == VERIFIED:
+        return {"passes": True, "reason": "trust_status='verified'",
+                "source": GATE_SOURCE_OBSERVED}
+    if status == TRUST_REJECTED:
+        return {"passes": False, "reason": "trust_status='rejected'",
+                "source": GATE_SOURCE_OBSERVED}
+    return None
+
+
+def gate_verdict_of(paper: dict[str, Any]) -> dict[str, Any] | None:
+    """The verdict attached to one paper, or ``None`` when it carries none.
+
+    Absent, not a mapping, or missing a boolean ``passes`` all mean the same
+    thing: unavailable. There is deliberately no fallback that infers a verdict
+    from ``source_type`` / ``source_url`` / question counts, because that
+    fallback IS the gate, re-stated a fifth time.
+
+    ``--live`` attaches this from :func:`observed_gate_verdict`; a fixture
+    supplies it directly, operator-authored.
+    """
+    v = paper.get("gate_verdict")
+    if not isinstance(v, dict) or not isinstance(v.get("passes"), bool):
+        return None
+    return {
+        "passes": v["passes"],
+        "reason": str(v.get("reason") or "").strip(),
+        "source": str(v.get("source") or "").strip() or "unspecified",
     }
 
 
@@ -324,9 +400,20 @@ def build_report(data: dict[str, Any]) -> dict[str, Any]:
                 1 for p in ep if not any(q.get("pyq_paper_id") == p["id"] for q in questions)
             ),
         }
+        verdicts = [gate_verdict_of(p) for p in ep]
+        gate = {
+            "passing": sum(1 for v in verdicts if v and v["passes"]),
+            "failing": sum(1 for v in verdicts if v and not v["passes"]),
+            "unavailable": sum(1 for v in verdicts if v is None),
+            "sources": sorted({v["source"] for v in verdicts if v}),
+            "reasons": sorted(
+                {v["reason"] for v in verdicts if v and not v["passes"] and v["reason"]}
+            ),
+        }
         blocked.append(
             {"exam": exam["slug"], "questions": len(eq), "unverified": unverified,
-             "untagged": untagged, "unprojected": unprojected, "provenance": obs}
+             "untagged": untagged, "unprojected": unprojected, "provenance": obs,
+             "gate": gate}
         )
 
     # ── section 4: catalogues with zero questions ──────────────────────────
@@ -345,7 +432,10 @@ def build_report(data: dict[str, Any]) -> dict[str, Any]:
                       "micro_without_macro": micro > 0 and macro == 0})
 
     return {"section1": rows_s1, "section2": rows_s2, "section3": blocked,
-            "section4": empty_catalogues, "section5": trees}
+            "section4": empty_catalogues, "section5": trees,
+            # Recorded, not enforced: this script cannot check which revision a
+            # live database actually has, so it reports what it was told.
+            "gate_migration": str(data.get("gate_migration") or GATE_MIGRATION)}
 
 
 # ── Rendering ───────────────────────────────────────────────────────────────
@@ -367,7 +457,9 @@ projection      select id, pyq_question_id, topic_id, microtopic_id
 coverage        select exam_id, topic_id, reviewer_status, exam_phase_id
                   from exam_topic_coverage
 Every read paginates via app/common/pagination.py — a short page is not the
-last page. No statement in this script writes, and none calls a review RPC.\
+last page. No statement in this script writes, and none calls a review RPC.
+The gate verdict in section 3 is READ from pyq_papers.trust_status (--live) or
+supplied per paper by the fixture; it is never computed from the columns above.\
 """
 
 
@@ -453,13 +545,25 @@ def render_markdown(report: dict[str, Any], *, generated_at: str, mode: str,
 
     w("## 3. Blocked corpora")
     w("")
-    w("**This section reports the gate's INPUTS, not its verdict.**"
-      " `review_pyq_paper` is a review action rather than a predicate — calling it"
-      " would promote papers — and it is PL/pgSQL (migration"
-      " `271_review_pyq_paper_question_count_gate.sql`, previously 185/186), not"
-      " importable into Python. So what follows is the observable provenance"
-      " fields the gate reads. A gate that moves cannot silently desync this"
-      " document, because this document never claims to know what it decides.")
+    mig = report["gate_migration"]
+    w("**This section never computes the gate's verdict.** `review_pyq_paper` is"
+      " the authority, and it is PL/pgSQL (migration"
+      f" `{mig}`, previously 185/186). It is a review action rather than a"
+      " predicate — it locks rows, writes an audit row and updates"
+      " `trust_status` — and it offers no dry-run path, so this report does not"
+      " call it. Nor does it re-implement the Python re-statement at"
+      " `admin_exam_intel_cms.py:1266-1298`.")
+    w("")
+    w("So what follows is the observable provenance fields the gate reads, plus a"
+      " verdict that was **observed or operator-supplied, never derived here**."
+      " Each exam names its own source below. A paper carrying no verdict is"
+      f" reported as \"{GATE_VERDICT_UNAVAILABLE}\" — never as passing. A gate"
+      " that moves cannot silently desync this document, because this document"
+      " transcribes none of its logic.")
+    w("")
+    w("`scripts/ssc_cgl_readiness.py` is the older single-exam report over this"
+      " same ground for SSC CGL; it does re-state the gate in Python, and this"
+      " report deliberately does not.")
     w("")
     for b in report["section3"]:
         w(f"### {b['exam']}")
@@ -478,6 +582,20 @@ def render_markdown(report: dict[str, Any], *, generated_at: str, mode: str,
           f" {p['trust_pending']} {_is_are(p['trust_pending'])} not"
           f" `trust_status='verified'`;"
           f" {p['zero_questions']} {_carry(p['zero_questions'])} no questions.")
+        g = b["gate"]
+        if g["passing"] or g["failing"]:
+            line = (f"- Gate verdict, migration `{mig}` in force:"
+                    f" {g['passing']} passing, {g['failing']} failing,"
+                    f" {g['unavailable']} unavailable."
+                    f" Source: {', '.join(f'`{x}`' for x in g['sources'])}."
+                    " Observed or supplied — not computed by this report.")
+            if g["reasons"]:
+                line += " Recorded reasons: " + "; ".join(g["reasons"]) + "."
+            w(line)
+        else:
+            w(f"- Gate verdict, migration `{mig}` in force:"
+              f" {GATE_VERDICT_UNAVAILABLE} for all {p['papers']}"
+              f" {_plural(p['papers'], 'paper')} — none was observed or supplied.")
         w("")
     if not report["section3"]:
         w("_No exam has unverified, untagged or unprojected questions._")
@@ -574,6 +692,14 @@ async def _run_live(source: str) -> dict[str, Any]:  # pragma: no cover - operat
                 offset += PAGE
             return out
 
+        papers = await page_all(
+            "select id, exam_id, trust_status, source_type, source_url,"
+            " source_document_id, metadata from public.pyq_papers")
+        for row in papers:
+            # OBSERVED, not computed: the gate wrote trust_status; this reads it
+            # back. No provenance column is inspected to guess a verdict.
+            row["gate_verdict"] = observed_gate_verdict(row.get("trust_status"))
+
         return {
             "source": source,
             "subjects": await page_all("select id, name, slug from public.subjects"),
@@ -581,9 +707,7 @@ async def _run_live(source: str) -> dict[str, Any]:  # pragma: no cover - operat
             "topics": await page_all(
                 "select id, subject_id, parent_topic_id, level, is_active from public.topics"
                 " where is_active is not false"),
-            "papers": await page_all(
-                "select id, exam_id, trust_status, source_type, source_url,"
-                " source_document_id, metadata from public.pyq_papers"),
+            "papers": papers,
             "questions": await page_all(
                 "select id, pyq_paper_id, exam_id, reviewer_status, question_type,"
                 " metadata from public.pyq_questions"),
