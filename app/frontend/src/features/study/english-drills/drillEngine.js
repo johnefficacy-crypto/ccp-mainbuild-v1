@@ -1,140 +1,110 @@
 /**
- * Pure helpers for the English verbal drills: question lookup, scoring, streak
- * and local persistence. No React here, so every rule is unit-testable.
+ * Pure helpers for the English drills: exam scoping of the declared module
+ * map, account-sourced module stats, arrangement → option matching, and the
+ * device-local resume pointer. No React, no network.
  */
-import { BANK, MODS, TYPES } from "./drillData";
+import { MODULES } from "./drillModules";
 
-export const STORAGE_KEY = "ccp-english-v2";
-export const SEQ_LETTERS = "PQRSTU";
-
-export const XP_CORRECT = 10;
-export const XP_CORRECT_HINTED = 5;
-export const XP_WRONG = -3;
-export const XP_HINT = -2;
-
-/** Local-calendar day key, offset by `off` days (e.g. -1 = yesterday). */
-export function dayKey(off = 0, now = new Date()) {
-  const d = new Date(now);
-  d.setDate(d.getDate() + off);
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+/**
+ * Narrow every module to the topics locked for the learner's current exam.
+ *
+ * `items` is GET /api/study/topics?subject_id=… — the caller's SCOPED locked
+ * coverage, each row with `verified_pyq_count` (verified PYQs tagged to it for
+ * this exam) and `mastery_score` (account-level, written back on submit).
+ */
+export function scopeModules(items) {
+  const byId = new Map((items || []).map((it) => [String(it.topic_id), it]));
+  return MODULES.map((m) => {
+    const locked = [];
+    const notLocked = [];
+    m.topics.forEach((t) => {
+      const row = byId.get(t.id);
+      if (!row) notLocked.push(t);
+      else
+        locked.push({
+          ...t,
+          verified: Number(row.verified_pyq_count) || 0,
+          mastery: row.mastery_score == null ? null : Number(row.mastery_score),
+        });
+    });
+    const practiceable = locked.filter((t) => t.verified > 0);
+    const masteries = locked.map((t) => t.mastery).filter((x) => x != null);
+    return {
+      module: m,
+      locked,
+      notLocked,
+      practiceable,
+      verified: practiceable.reduce((n, t) => n + t.verified, 0),
+      mastery: masteries.length ? Math.round(masteries.reduce((a, b) => a + b, 0) / masteries.length) : null,
+    };
+  });
 }
 
-export function mmss(sec) {
-  const s = Math.max(0, Math.round(sec));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-}
-
-/** Question list for a module + tab. */
-export function listFor(v, tab) {
-  if (v === "voc") return BANK.voc[tab] || [];
-  if (v === "pos") return tab === "mis" ? BANK.posMis : BANK.posTag;
-  if (v === "sc") return BANK.sc[tab] || [];
-  return BANK[v] || [];
-}
-
-export function moduleTotal(id) {
-  if (id === "voc") return Object.values(BANK.voc).reduce((n, l) => n + l.length, 0);
-  if (id === "pos") return BANK.posTag.length + BANK.posMis.length;
-  if (id === "sc") return Object.values(BANK.sc).reduce((n, l) => n + l.length, 0);
-  return (BANK[id] || []).length;
-}
-
-export function typeLabel(v, tab) {
-  const t = TYPES.find(([tv, tt]) => tv === v && tt === (tab || ""));
-  return t ? t[2] : "";
-}
-
-/** Sequence code for a parajumble order, e.g. "Q S P R". */
-export function pjCode(q, order) {
-  return order.map((o) => SEQ_LETTERS[q.given.indexOf(o)]).join(" ");
-}
-
-export function norm(x) {
-  return x.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-/** Indices of the blank (non-string) parts of a cloze passage. */
-export function blanks(q) {
-  return q.parts.map((p, k) => (typeof p === "string" ? -1 : k)).filter((k) => k > -1);
-}
-
-/** Two random wrong-option indices to strike out for a hint. */
-export function twoWrong(options, answer, rand = Math.random) {
-  return options
-    .map((_, k) => k)
-    .filter((k) => k !== answer)
-    .sort(() => rand() - 0.5)
-    .slice(0, 2);
-}
-
-export function shuffle(arr, rand = Math.random) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-/** A rotating daily-mix queue: `size` distinct question types, one random item each. */
-export function buildMix(size, rand = Math.random) {
-  const n = Math.max(4, Math.min(TYPES.length, size));
-  return shuffle(TYPES, rand)
-    .slice(0, n)
-    .map(([v, tab]) => ({ v, tab, i: Math.floor(rand() * listFor(v, tab).length) }));
-}
-
-export function xpAfter(xp, { ok, hinted, penalty }) {
-  const delta = ok ? (hinted ? XP_CORRECT_HINTED : XP_CORRECT) : penalty ? XP_WRONG : 0;
-  return Math.max(0, xp + delta);
-}
-
-/** Streak after answering today: same day keeps it, yesterday extends it, else resets to 1. */
-export function streakAfter(streak, lastDay, now = new Date()) {
-  if (lastDay === dayKey(0, now)) return streak;
-  if (lastDay === dayKey(-1, now)) return streak + 1;
-  return 1;
-}
-
-/** Streak to display: lapses to 0 once a full day is missed. */
-export function liveStreak(streak, lastDay, now = new Date()) {
-  return lastDay === dayKey(0, now) || lastDay === dayKey(-1, now) ? streak : 0;
-}
-
-export function pct(st) {
-  return st && st.a ? Math.round((st.c / st.a) * 100) : null;
-}
-
-/** Weakest module: at least 2 attempts and under 80% accuracy, lowest first. */
-export function weakestModule(stats) {
+/** Lowest-mastery module that has a mastery reading below 60, or null. */
+export function weakestModule(scoped) {
   return (
-    MODS.map((m) => ({ m, p: pct(stats[m.id]), st: stats[m.id] }))
-      .filter((x) => x.st && x.st.a >= 2 && x.p < 80)
-      .sort((x, y) => x.p - y.p)[0] || null
+    scoped
+      .filter((s) => s.mastery != null && s.mastery < 60 && s.practiceable.length)
+      .sort((a, b) => a.mastery - b.mastery)[0] || null
   );
 }
 
-export function loadProgress(storage = safeStorage()) {
-  try {
-    const sv = JSON.parse(storage?.getItem(STORAGE_KEY) || "{}");
-    return { stats: sv.stats || {}, xp: sv.xp || 0, streak: sv.streak || 0, lastDay: sv.lastDay || "" };
-  } catch (e) {
-    return { stats: {}, xp: 0, streak: 0, lastDay: "" };
-  }
+/** Printed segment order — the arrangement a learner starts from. */
+export function initialArrangement(sequence) {
+  return (sequence?.segments || []).map((s) => s.label);
 }
 
-export function saveProgress({ stats, xp, streak, lastDay }, storage = safeStorage()) {
-  try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify({ stats, xp, streak, lastDay }));
-  } catch (e) {
-    /* storage full or blocked — progress stays in memory for this visit */
-  }
+/**
+ * The option whose reviewed order equals the learner's arrangement, or null.
+ * `optionOrders` comes from the attempt payload (bank option id → labels); no
+ * option text is parsed here.
+ */
+export function matchArrangement(optionOrders, arrangement) {
+  const key = (arrangement || []).join("\u0001");
+  const hit = Object.entries(optionOrders || {}).find(([, order]) => (order || []).join("\u0001") === key);
+  return hit ? hit[0] : null;
 }
 
-function safeStorage() {
+export function moveItem(arr, from, to) {
+  if (from == null || to == null || from === to) return arr;
+  const next = arr.slice();
+  const [x] = next.splice(from, 1);
+  next.splice(to, 0, x);
+  return next;
+}
+
+export function swapItems(arr, a, b) {
+  const next = arr.slice();
+  [next[a], next[b]] = [next[b], next[a]];
+  return next;
+}
+
+// ── device-local resume pointer ────────────────────────────────────────────
+// Only the attempt id lives on the device. Answers, grading and mastery are on
+// the account (mock_attempt_responses + submit write-back); after a reload or
+// on another device the server copy is what renders.
+const KEY = (topicId) => `ccp-english-drills:attempt:${topicId}`;
+
+export function loadAttemptPointer(topicId) {
   try {
-    return window.localStorage;
+    return window.localStorage.getItem(KEY(topicId));
   } catch (e) {
     return null;
+  }
+}
+
+export function saveAttemptPointer(topicId, attemptId) {
+  try {
+    window.localStorage.setItem(KEY(topicId), attemptId);
+  } catch (e) {
+    /* storage blocked — resume falls back to starting a new set */
+  }
+}
+
+export function clearAttemptPointer(topicId) {
+  try {
+    window.localStorage.removeItem(KEY(topicId));
+  } catch (e) {
+    /* ignore */
   }
 }

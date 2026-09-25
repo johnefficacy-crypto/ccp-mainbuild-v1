@@ -68,7 +68,7 @@ const LIVE_CARDS = [
   {
     key: "english-drills",
     title: "English drills",
-    description: "Parajumbles, error spotting, vocab and a timed daily mix.",
+    description: "Past-paper parajumbles, error spotting, cloze and vocab from your exam.",
     to: "/app/study/english-drills",
     icon: Languages,
   },

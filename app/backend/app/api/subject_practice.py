@@ -130,7 +130,13 @@ def _handle_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id) -> di
     attempt_id = _launch_topic_pyq(
         supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
     )
-    return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
+    # ``attempt_id`` is additive: the English drills page drives the attempt in
+    # place (answer / submit / review) instead of navigating to ``route``.
+    return {
+        "kind": "pyq_practice",
+        "route": f"/app/study/mocks/attempts/{attempt_id}",
+        "attempt_id": attempt_id,
+    }
 
 
 def _handle_timed_practice(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:

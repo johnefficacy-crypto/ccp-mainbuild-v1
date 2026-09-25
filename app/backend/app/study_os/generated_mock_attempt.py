@@ -31,6 +31,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
+from app.study_os.sequence_order import METADATA_KEY as SEQUENCE_METADATA_KEY
 from app.study_os.mock_blueprint_selection import build_blueprint_with_selection
 from app.study_os.mock_engine import _question_snapshot
 from app.utils.safe import safe_required
@@ -190,14 +191,49 @@ def _load_questions(sb, question_ids: list[str]) -> dict[str, dict]:
     stim_by_q: dict[str, list[dict]] = {}
     for s in (stim_data or []):
         stim_by_q.setdefault(s["mock_question_id"], []).append(s)
+    seq_by_pyq = _load_sequence_records(sb, [r.get("pyq_question_id") for r in q_rows])
     return {
         r["id"]: {
             **r,
             "options": opts_by_q.get(r["id"], []),
             "stimuli": stim_by_q.get(r["id"], []),
+            # Reviewed ordering answer (pyq_questions.metadata.correct_order), for
+            # _question_snapshot to validate and freeze. Absent → plain MCQ.
+            "pyq_sequence_record": seq_by_pyq.get(str(r.get("pyq_question_id"))),
         }
         for r in q_rows
     }
+
+
+def _load_sequence_records(sb, pyq_question_ids: list) -> dict[str, dict]:
+    """``pyq_question_id -> metadata.correct_order`` for projected rows that carry one.
+
+    FAIL-SOFT by design, unlike the reads above: the record only upgrades a
+    parajumble from MCQ to a drag-to-order layout, and grading never depends on
+    it (the learner's arrangement is submitted as the option naming that order,
+    scored by ``correct_option_id``). A read failure therefore degrades every
+    question to MCQ rather than aborting the freeze.
+    """
+    ids = sorted({str(i) for i in pyq_question_ids if i})
+    out: dict[str, dict] = {}
+    for chunk in _chunks(ids, _ID_BATCH):
+        rows = safe_required(
+            lambda c=chunk: sb.table("pyq_questions")
+            .select("id,metadata")
+            .in_("id", c)
+            .execute(),
+            op="generated_mock_attempt.load_sequence_records",
+            log=logger,
+            allow_empty=True,
+        )
+        if rows is None:
+            logger.warning("sequence records unavailable; ordering PYQs freeze as MCQ")
+            return {}
+        for row in rows:
+            rec = (row.get("metadata") or {}).get(SEQUENCE_METADATA_KEY) if isinstance(row.get("metadata"), dict) else None
+            if isinstance(rec, dict):
+                out[str(row["id"])] = rec
+    return out
 
 
 def _build_attempt_payload(

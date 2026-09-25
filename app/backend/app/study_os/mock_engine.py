@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
+from app.study_os.sequence_order import freeze_sequence, public_sequence
 from app.study_os.attempt_events import record_server_event
 from app.study_os.solution_strategies import strategies_for_questions, strategies_for_stimuli
 from app.study_os.pyq_explanations import (
@@ -343,6 +344,16 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
             }
             for o in _ordered_options(q)
         ],
+        # Signed sequence answer for ordering PYQs (parajumbles). Present only
+        # when pyq_questions.metadata.correct_order is a verified, digest-valid
+        # record that still agrees with THIS answer key; otherwise None and the
+        # question stays a plain MCQ. See app/study_os/sequence_order.py.
+        "sequence": freeze_sequence(
+            q.get("pyq_sequence_record"),
+            pyq_question_id=q.get("pyq_question_id"),
+            options=_ordered_options(q),
+            correct_option_id=q.get("correct_option_id"),
+        ) if q.get("pyq_sequence_record") else None,
     }
 
 
@@ -786,6 +797,9 @@ def get_attempt(supabase: Any, user_id: str, attempt_id: str) -> dict:
             # so a projected PYQ renders its passage while the learner attempts it.
             "stimuli": snap.get("stimuli") or [],
             "section_id": snap.get("section_id"),
+            # Ordering PYQs: segments + per-option orders only. The correct order
+            # stays inside the frozen snapshot until review, like correct_option_id.
+            "sequence": public_sequence(snap.get("sequence")),
             "selected_option_id": (r or {}).get("selected_option_id"),
             # Learner's saved numeric answer, so an integer question restores on
             # resume. The correct value/tolerance is NEVER surfaced here — it

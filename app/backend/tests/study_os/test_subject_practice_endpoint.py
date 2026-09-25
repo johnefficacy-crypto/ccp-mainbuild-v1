@@ -114,6 +114,8 @@ def test_topic_pyq_starts_for_in_subject_topic(monkeypatch):
     assert resp.json() == {
         "kind": "pyq_practice",
         "route": "/app/study/mocks/attempts/att-9",
+        # additive: the English drills page drives the attempt in place
+        "attempt_id": "att-9",
     }
 
 
