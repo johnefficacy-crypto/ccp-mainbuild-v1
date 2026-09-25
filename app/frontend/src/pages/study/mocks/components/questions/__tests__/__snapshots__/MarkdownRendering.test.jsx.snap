@@ -1,0 +1,36 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MarkdownSafe GFM rendering CST-020 table renders 4 body rows with right-aligned numeric columns 1`] = `
+"<div dir=\\"auto\\"><p class=\\"mb-2 last:mb-0\\">Monthly maintenance cost of a plant:</p>
+<div class=\\"overflow-x-auto max-w-full my-2\\"><table class=\\"min-w-full border-collapse text-sm\\">
+<thead>
+<tr>
+<th class=\\"border border-gray-300 bg-gray-50 px-2 py-1 font-semibold text-left\\">Month</th>
+<th class=\\"border border-gray-300 bg-gray-50 px-2 py-1 font-semibold text-right\\">Output (units)</th>
+<th class=\\"border border-gray-300 bg-gray-50 px-2 py-1 font-semibold text-right\\">Cost (₹)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td class=\\"border border-gray-300 px-2 py-1 text-left\\">Apr</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">6,000</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">2,00,000</td>
+</tr>
+<tr>
+<td class=\\"border border-gray-300 px-2 py-1 text-left\\">May</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">4,000</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">1,56,000</td>
+</tr>
+<tr>
+<td class=\\"border border-gray-300 px-2 py-1 text-left\\">Jun</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">8,000</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">2,70,000</td>
+</tr>
+<tr>
+<td class=\\"border border-gray-300 px-2 py-1 text-left\\">Jul</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">9,000</td>
+<td class=\\"border border-gray-300 px-2 py-1 text-right\\">2,66,000</td>
+</tr>
+</tbody></table></div>
+<p class=\\"mb-2 last:mb-0\\">Using the high–low method, the estimated cost at 7,500 units is:</p>
+</div>"
+`;

@@ -35,6 +35,8 @@ import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
+from app.exam_intelligence.authored_scope import apply_authored_filters, authored_rows_for_exam
+
 logger = logging.getLogger("career_copilot.exam_intelligence.diagnostics")
 
 # Mock question types that count as selectable answerable items for GENERATED
@@ -170,6 +172,38 @@ def find_stuck_text_extract_jobs(
 # find_orphan_questions' NOT-EXISTS) rather than SQL aggregates, so they work
 # against the PostgREST / SBStub query interface, which has no GROUP BY or OR.
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def authored_pool_rows(sb, *, exam_id: str, statuses) -> list[dict]:
+    """Multi-exam authored bank rows eligible for ``exam_id`` (REG-CORPUS-02).
+
+    The base pool reads ``.eq("exam_id", exam_id)``; authored rows keep
+    ``exam_id`` NULL and are scoped by their primary topic's
+    ``metadata.exams`` instead (``authored_scope``). Shared by this depth count
+    and ``mock_blueprint_selection._exam_base_pool`` so selection ≡ readiness.
+    Same status / type / fixture filters as the base read; ``[]`` for an exam
+    with no topic-exam key, and on any read failure.
+    """
+    statuses = list(statuses or [])
+    if not statuses:
+        return []
+    return authored_rows_for_exam(
+        sb,
+        exam_id,
+        lambda: _fetch_all(
+            lambda: apply_authored_filters(
+                sb.table("mock_question_bank")
+                .select(
+                    "id, exam_id, subject_id, topic_id, microtopic_id, difficulty, "
+                    "question_type, reviewer_status, is_current, is_current_based, "
+                    "valid_until, source_type, source_kind, pyq_question_id"
+                )
+                .in_("reviewer_status", statuses)
+                .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
+                .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
+            )
+        ),
+    )
 
 
 def _fetch_all(make_query, *, page_size: int = 1000) -> list[dict]:
@@ -427,6 +461,7 @@ def selectable_mcq_depth(
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
         .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
+    rows = rows + authored_pool_rows(sb, exam_id=exam_id, statuses=statuses)
 
     # Active-lineage guard (belt-and-suspenders): pyq-derived questions must
     # have an active projection even if reviewer_status was not downgraded.

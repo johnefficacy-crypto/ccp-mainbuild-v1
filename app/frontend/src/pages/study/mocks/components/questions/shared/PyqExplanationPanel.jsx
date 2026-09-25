@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import MarkdownSafe from "./MarkdownSafe";
+import MathRenderer from "./MathRenderer";
 import { formatOptionLabel } from "../../../optionLabels";
 
 /**
@@ -16,6 +16,11 @@ import { formatOptionLabel } from "../../../optionLabels";
  * The backend sends structure, not flattened prose: steps stay a list, per-option
  * rationales stay attached to their option, traps stay separate from the body.
  * This renders each as its own shape rather than concatenating them.
+ *
+ * REG-CORPUS-02: the same `pyq_explanation` field also carries structured
+ * explanations for authored (non-PYQ) questions, so nothing learner-visible here
+ * may assume PYQ provenance. Every text field renders through MathRenderer
+ * (sanitised GFM markdown + lazy KaTeX for real `$…$` math).
  */
 
 // Printed order mirrors OptionList / MCQSingle: display_order asc, NULLs last.
@@ -77,17 +82,17 @@ export default function PyqExplanationPanel({ mode, explanation, options }) {
       <h3 className="text-sm font-semibold text-slate-800">Explanation</h3>
 
       {hasText(explanation.short_explanation) ? (
-        <p
+        <div
           data-testid="pyq-explanation-short"
           className="mt-2 text-sm font-medium text-slate-800"
         >
-          <MarkdownSafe text={explanation.short_explanation} />
-        </p>
+          <MathRenderer text={explanation.short_explanation} />
+        </div>
       ) : null}
 
       {hasText(explanation.explanation_text) ? (
         <div data-testid="pyq-explanation-text" className="mt-2 text-sm text-slate-700">
-          <MarkdownSafe text={explanation.explanation_text} />
+          <MathRenderer text={explanation.explanation_text} />
         </div>
       ) : null}
 
@@ -102,7 +107,7 @@ export default function PyqExplanationPanel({ mode, explanation, options }) {
               // is the identity here and the list is never reordered in place.
               // eslint-disable-next-line react/no-array-index-key
               <li key={i} className="text-sm text-slate-700">
-                <MarkdownSafe text={step} />
+                <MathRenderer text={step} />
               </li>
             ))}
           </ol>
@@ -124,7 +129,7 @@ export default function PyqExplanationPanel({ mode, explanation, options }) {
                   className="text-sm text-slate-700"
                 >
                   {label ? <span className="font-semibold">{label} </span> : null}
-                  <MarkdownSafe text={r.rationale} />
+                  <MathRenderer text={r.rationale} />
                 </li>
               );
             })}
@@ -140,7 +145,7 @@ export default function PyqExplanationPanel({ mode, explanation, options }) {
           <ul data-testid="pyq-explanation-formulas" className="mt-1 list-disc pl-5 space-y-1">
             {formulas.map((f) => (
               <li key={f} className="text-sm text-slate-700">
-                <MarkdownSafe text={f} />
+                <MathRenderer text={f} />
               </li>
             ))}
           </ul>
@@ -155,7 +160,7 @@ export default function PyqExplanationPanel({ mode, explanation, options }) {
           <ul data-testid="pyq-explanation-traps" className="mt-1 list-disc pl-5 space-y-1">
             {traps.map((t) => (
               <li key={t} className="text-sm text-slate-700">
-                <MarkdownSafe text={t} />
+                <MathRenderer text={t} />
               </li>
             ))}
           </ul>

@@ -9,7 +9,7 @@ Mount: /api/admin/mocks  (registered in server.py)
 from __future__ import annotations
 
 import logging
-from typing import Any, Annotated
+from typing import Any, Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
@@ -74,10 +74,31 @@ class OptionIn(BaseModel):
     is_correct: bool = False
 
 
+# DB CHECK is easy|medium|hard (135:67); typed here so a bad value is a 422 at
+# the edge rather than a constraint error from the insert (REG-CORPUS-01 gap 12).
+Difficulty = Literal["easy", "medium", "hard"]
+
+
+class StimulusIn(BaseModel):
+    """One of this question's own stimulus snapshot copies (no cross-row sharing)."""
+    stimulus_type: Literal["passage", "table"] = "passage"
+    content_text: str = Field(..., min_length=1)
+    language: str | None = None
+
+
+class StructuredExplanationIn(BaseModel):
+    """Structured explanation for an authored row (pyq_question_explanations shape,
+    keyed by mock_question_id). ``option_rationales`` keys are 0-based option indexes."""
+    solution_steps: list[str] = Field(default_factory=list)
+    formula_used: list[str] = Field(default_factory=list)
+    common_traps: list[str] = Field(default_factory=list)
+    option_rationales: dict[int, str] = Field(default_factory=dict)
+
+
 class CreateQuestionIn(BaseModel):
     question_text: str
     question_type: str = "mcq"
-    difficulty: str = "medium"
+    difficulty: Difficulty = "medium"
     is_conceptual: bool = False
     is_factual: bool = False
     is_current: bool = False
@@ -99,12 +120,18 @@ class CreateQuestionIn(BaseModel):
     current_affairs_item_id: str | None = None
     pyq_paper_id: str | None = None
     evidence_text: str | None = None
+    # REG-CORPUS-02 authored content.
+    rubric_level: Literal["L1", "L2", "L3", "L4"] | None = None
+    stimulus_group: str | None = None
+    common_trap: str | None = None
+    stimuli: list[StimulusIn] | None = None
+    structured_explanation: StructuredExplanationIn | None = None
 
 
 class UpdateQuestionIn(BaseModel):
     question_text: str | None = None
     question_type: str | None = None
-    difficulty: str | None = None
+    difficulty: Difficulty | None = None
     is_conceptual: bool | None = None
     is_factual: bool | None = None
     is_current: bool | None = None
@@ -122,6 +149,12 @@ class UpdateQuestionIn(BaseModel):
     source_kind: str | None = None
     source_url: str | None = None
     current_affairs_item_id: str | None = None
+    rubric_level: Literal["L1", "L2", "L3", "L4"] | None = None
+    stimulus_group: str | None = None
+    common_trap: str | None = None
+    # Replaces this row's stimuli. Authored rows only (projected PYQ stimuli are
+    # owned by the projection RPC).
+    stimuli: list[StimulusIn] | None = None
 
 
 class TransitionIn(BaseModel):

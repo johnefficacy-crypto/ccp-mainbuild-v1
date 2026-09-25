@@ -217,6 +217,9 @@ export default function MockReview() {
               // question has no verified explanation, which is every question
               // until one is verified — the panel renders nothing for those.
               pyq_explanation: current.pyq_explanation ?? null,
+              // Flat review-only trap note (REG-CORPUS-02). Read from the review row
+              // when the backend sends it as a sibling, else from the frozen snapshot.
+              common_trap: current.common_trap ?? current.question_snapshot?.common_trap ?? null,
             }}
           />
         </div>

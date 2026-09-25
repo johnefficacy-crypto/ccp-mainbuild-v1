@@ -17,7 +17,10 @@ from typing import Any
 
 from app.study_os.attempt_events import record_server_event
 from app.study_os.solution_strategies import strategies_for_questions, strategies_for_stimuli
-from app.study_os.pyq_explanations import explanations_for_pyq_questions
+from app.study_os.pyq_explanations import (
+    explanations_for_mock_questions,
+    explanations_for_pyq_questions,
+)
 from app.study_os.attempt_analytics import service as attempt_analytics
 from app.study_os.attempt_event_types import (
     ATTEMPT_AUTO_SUBMITTED,
@@ -285,6 +288,8 @@ def _question_snapshot(q: dict, *, marks_per_correct: float = 1.0, marks_per_wro
         # so the scorer grades from the immutable snapshot, never the live bank.
         "numeric_answer": _numeric_answer_spec(q) if q.get("question_type") == "integer" else None,
         "explanation": q.get("explanation"),
+        # Reviewed with the row, frozen like `explanation`, shown in review only.
+        "common_trap": q.get("common_trap"),
         # Mastery write-back (PR5) derives deltas straight from the frozen
         # snapshot, so the topic/difficulty/source signals it weights on must be
         # captured here at attempt start — never read back from the live bank.
@@ -1516,10 +1521,21 @@ def _explanation_for_snapshot(explanation: dict | None, snap: dict) -> dict | No
         if o.get("pyq_option_id") and o.get("option_index") is not None
     }
 
+    # Authored explanations key rationales by the bank option id itself, which
+    # the snapshot freezes as `id` (REG-CORPUS-02).
+    index_by_mock_option_id = {
+        str(o["id"]): o.get("option_index")
+        for o in frozen_options
+        if o.get("id") and o.get("option_index") is not None
+    }
+
     fitted: list[dict] = []
     for rationale in explanation.get("option_rationales") or []:
-        index = index_by_pyq_option_id.get(str(rationale.get("pyq_option_id")))
-        if index is None:
+        if rationale.get("mock_option_id"):
+            index = index_by_mock_option_id.get(str(rationale["mock_option_id"]))
+        else:
+            index = index_by_pyq_option_id.get(str(rationale.get("pyq_option_id")))
+        if index is None and not rationale.get("mock_option_id"):
             index = rationale.get("option_index")
         if index not in frozen_indexes:
             continue
@@ -1572,6 +1588,12 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
     explanations_by_pyq_id = explanations_for_pyq_questions(
         supabase, [pid for pid in pyq_id_by_qid.values() if pid]
     )
+    # REG-CORPUS-02: authored rows (no PYQ lineage) carry their structured
+    # explanation keyed by the bank id itself — same table, same verified-only
+    # gate, same DTO. A PYQ row never takes this path.
+    explanations_by_mock_id = explanations_for_mock_questions(
+        supabase, [qid for qid, pid in pyq_id_by_qid.items() if not pid]
+    )
 
     # Set-aware strategies are keyed by canonical pyq_stimuli.id retained in each
     # frozen question snapshot. Keep one payload entry per shared stimulus instead
@@ -1621,13 +1643,16 @@ def get_review(supabase: Any, user_id: str, attempt_id: str) -> dict:
             "is_correct": r.get("is_correct"),
             "error_type": cls.get(qid),
             "explanation": snap.get("explanation"),
+            "common_trap": snap.get("common_trap"),
             # Sibling of question_snapshot (never merged into it — it's a live read).
             "solution_strategies": strategies.get(qid, []),
             # Same contract: a live, verified-only sibling. None when the question
             # is authored, has no PYQ lineage, or has no verified explanation —
             # in which case nothing about this row changes from before.
             "pyq_explanation": _explanation_for_snapshot(
-                explanations_by_pyq_id.get(pyq_id_by_qid.get(qid)), snap
+                explanations_by_pyq_id.get(pyq_id_by_qid.get(qid))
+                or explanations_by_mock_id.get(qid),
+                snap,
             ),
             "time_spent_sec": int(r.get("time_spent_sec") or 0),
         })

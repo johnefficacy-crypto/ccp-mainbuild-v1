@@ -26,7 +26,9 @@ Keying note. ``pyq_question_explanations.question_id`` references
 ``pyq_questions(id)``, NOT ``mock_question_bank(id)``. Callers hold bank ids, so
 they map through ``question_snapshot.pyq_question_id`` (frozen at attempt start by
 ``mock_engine._question_snapshot``). Authored, non-PYQ questions carry no
-``pyq_question_id`` and are simply absent from the result.
+``pyq_question_id``; since migration 310 (REG-CORPUS-02) their explanation row is
+keyed by ``mock_question_id`` instead and is read by
+:func:`explanations_for_mock_questions` — same verified-only gate, same DTO.
 """
 from __future__ import annotations
 
@@ -194,12 +196,17 @@ def _project(row: dict, index_by_option_id: dict[str, int]) -> dict:
     }
 
 
-def _verified_rows(supabase: Any, pyq_question_ids: list[str], *, strict: bool) -> list[dict]:
-    """THE gate. Every explanation that leaves this module passes through here."""
+def _verified_rows(
+    supabase: Any, ids: list[str], *, strict: bool, key: str = "question_id"
+) -> list[dict]:
+    """THE gate. Every explanation that leaves this module passes through here.
+
+    ``key`` is ``question_id`` (PYQ) or ``mock_question_id`` (authored)."""
+    select = _SELECT if key == "question_id" else _SELECT.replace("question_id", "mock_question_id", 1)
     call = (
         lambda: supabase.table("pyq_question_explanations")
-        .select(_SELECT)
-        .in_("question_id", pyq_question_ids)
+        .select(select)
+        .in_(key, ids)
         .eq("reviewer_status", "verified")
         .execute()
     )
@@ -255,3 +262,43 @@ def explanations_for_pyq_questions(
         qid: _project(_pick(question_rows), index_by_option_id)
         for qid, question_rows in by_question.items()
     }
+
+
+def _project_mock_option_rationales(raw: Any) -> list[dict]:
+    """``{mock_question_options.id: text}`` → ``[{"mock_option_id", "option_index": None,
+    "rationale"}]``. The position is resolved against the frozen snapshot by
+    ``mock_engine._explanation_for_snapshot``, which also strips the id."""
+    if not isinstance(raw, dict):
+        return []
+    return [
+        {"mock_option_id": str(option_id), "option_index": None, "rationale": rationale}
+        for option_id, rationale in raw.items()
+        if isinstance(rationale, str) and rationale.strip()
+    ]
+
+
+def explanations_for_mock_questions(
+    supabase: Any, mock_question_ids: list[str], *, strict: bool = False
+) -> dict[str, dict]:
+    """One verified explanation DTO per AUTHORED bank question that has one.
+
+    Keyed by ``mock_question_bank.id``. One query, verified-only, projected
+    through the same allowlist as the PYQ path so no governance column leaks.
+    Fail-soft like :func:`explanations_for_pyq_questions` unless ``strict``.
+    """
+    ids = [q for q in dict.fromkeys(mock_question_ids or []) if q]
+    if not ids:
+        return {}
+    rows = _verified_rows(supabase, ids, strict=strict, key="mock_question_id")
+    by_question: dict[str, list[dict]] = {}
+    for row in rows:
+        qid = row.get("mock_question_id")
+        if qid:
+            by_question.setdefault(str(qid), []).append(row)
+    out: dict[str, dict] = {}
+    for qid, question_rows in by_question.items():
+        row = _pick(question_rows)
+        dto = _project(row, {})
+        dto["option_rationales"] = _project_mock_option_rationales(row.get("option_rationales"))
+        out[qid] = dto
+    return out
