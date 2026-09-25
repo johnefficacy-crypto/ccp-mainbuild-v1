@@ -112,15 +112,15 @@ def add_all(B):
       "shareholders' approval is by ordinary resolution and all other conditions are met, is:",
       L(lim),
       [(L(120), "revaluation reserve added, or investments not deducted, pushing effective capital into the ₹100–250 crore band"),
-       (L(2 * lim), "doubling applied, though doubling is available only with a special resolution"),
+       (L(2 * lim), "table limit doubled — no doubling rule exists; excess over the table needs a special resolution, and the resolution here is ordinary"),
        (L(60), "effective-capital band below ₹5 crore applied")],
       [f"Effective capital = paid-up {pu} + premium {sp_} + reserves {gr} + long-term loan {ltl} − investments {inv} − preliminary expenses {pre} = ₹{ec} crore.",
        f"Excluded: share application money ({sam}), revaluation reserve ({rr}), working-capital loan ({cc}).",
        f"₹{ec} crore falls in the '₹5 crore to less than ₹100 crore' band → ₹84 lakh a year.",
-       "The limit doubles only if the approving resolution is a special resolution."],
+       "Proviso (as substituted 2018): remuneration in excess of the table limit may be paid only if the resolution is a special resolution; with an ordinary resolution the ₹84 lakh limit binds."],
       "Schedule V, Part II, Sec. II(A): <₹5 cr → ₹60 L; ₹5–<100 cr → ₹84 L; ₹100–<250 cr → ₹120 L; ≥₹250 cr → ₹120 L + 0.01% of excess",
       "Revaluation reserve and working-capital borrowings never enter effective capital.",
-      kind="case", group=g, ref="Companies Act 2013 Schedule V Part II Section II and Explanation I (effective capital), as revised 2016")
+      kind="case", group=g, ref="Companies Act 2013 Schedule V Part II Section II and Explanation I (effective capital), as amended 2018 and 2021")
 
     # ================= CASE B — Sarang Polymers Ltd (s.68-70, s.63) =================
     g = "CAA-CASE-B"

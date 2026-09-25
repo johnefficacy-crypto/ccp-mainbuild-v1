@@ -70,11 +70,11 @@ def add_all(B):
           [("1 and 3 only", "overlooks cancellation of a requisitioned meeting"),
            ("1, 2, 3 and 4", "overlooks that members present form the quorum at the adjourned meeting"),
            ("2, 3 and 4 only", "overlooks the Board's power to fix another date")],
-          ["s.103(2)(a): adjourned to same day next week or as Board determines; requisitioned meeting cancelled.",
+          ["s.103(2)(a): adjourned to same day next week or as Board determines; s.103(2)(b): requisitioned meeting cancelled.",
            "Proviso: changed date → ≥ 3 days' notice individually or by newspaper (English + vernacular).",
-           "s.103(2)(b): at the adjourned meeting, members present shall be the quorum."],
-          "s.103(2)", "Adjourned GM: members present = quorum (unlike a Board meeting).",
-          kind="statement", verify_fact=True, ref="Companies Act 2013 s.103(2)")
+           "s.103(3): at the adjourned meeting, members present shall be the quorum."],
+          "s.103(2), (3)", "Adjourned GM: members present = quorum (unlike a Board meeting).",
+          kind="statement", verify_fact=True, ref="Companies Act 2013 s.103(2), (3)")
 
     # ------------------------------------------------------------------ circulation
     B.add(M["circ"], "L1",
@@ -271,7 +271,7 @@ def add_all(B):
     last = max(nxt, three_m)
     assert last == nxt
     B.add(M["wd"], "L3",
-          f"The only woman director of Aditi Pharma Ltd (listed) resigned with effect from {ds(vac_d)}. The next Board meeting is scheduled for {ds(nxt)}. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:",
+          f"The only woman director of Aditi Pharma Ltd (unlisted public company; paid-up capital ₹150 crore) resigned with effect from {ds(vac_d)}. The next Board meeting is scheduled for {ds(nxt)}. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:",
           ds(last),
           [(ds(three_m), "'whichever is earlier' applied instead of 'whichever is later'"),
            (ds(plus(vac_d, 180)), "six-month period used"),
@@ -347,12 +347,12 @@ def add_all(B):
           [("1 and 2 only", "overlooks NCLT's role under the IBC"),
            ("1, 2, 3 and 4", "believes NCLT is bound by the CPC"),
            ("2, 3 and 4 only", "overlooks the Principal Bench")],
-          ["s.419(1), (3): Benches; Principal Bench at New Delhi presided by the President.",
-           "s.419(2): Bench of one Judicial and one Technical member.",
+          ["s.419(2): Principal Bench at New Delhi, presided over by the President.",
+           "s.419(3): a Bench consists of one Judicial and one Technical member.",
            "s.424(1): not bound by CPC; guided by principles of natural justice.",
            "IBC s.5(1) / s.60: NCLT is the Adjudicating Authority for corporate persons."],
           "s.419, s.424; IBC s.60", "Tribunals follow natural justice, not the CPC.",
-          kind="statement", verify_fact=True, ref="Companies Act 2013 s.419, s.424; IBC 2016 s.60")
+          kind="statement", verify_fact=True, ref="Companies Act 2013 s.419(2), (3), s.424(1); IBC 2016 s.60")
 
     B.add(M["s409"], "L1",
           "Under s.409(1), the President of the NCLT shall be a person who:",

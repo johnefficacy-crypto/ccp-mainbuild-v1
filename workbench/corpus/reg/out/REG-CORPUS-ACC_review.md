@@ -787,10 +787,10 @@ Which of the statements given above is/are correct?
 
 ## ACC-029 · L3 · hard · Accounting software and XBRL ⚠
 
-Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking, insurance or power company unless stated):
+Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking company, insurance company or housing finance company, and none is required to follow Ind AS, unless stated):
 
 1. P Ltd, unlisted, paid-up capital ₹3 crore, turnover ₹120 crore, must file financial statements in XBRL.
-2. Q Ltd, unlisted, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.
+2. Q Ltd, unlisted and not required to follow Ind AS, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.
 3. R Ltd, a non-banking financial company with paid-up capital ₹20 crore, is excluded from XBRL filing.
 
 Which of the statements given above is/are correct?
@@ -802,9 +802,9 @@ Which of the statements given above is/are correct?
 
 **Working**
 
-1. Thresholds (any one): listed (and Indian subsidiaries), paid-up ≥ ₹5 crore, or turnover ≥ ₹100 crore.
-2. P: turnover ≥ ₹100 crore → covered. Q: below both → not covered.
-3. Banking, insurance, power companies and NBFCs are excluded.
+1. Rule 3 classes (any one): listed companies and their Indian subsidiaries; paid-up capital ≥ ₹5 crore; turnover ≥ ₹100 crore; companies required to prepare financial statements under Ind AS.
+2. P: turnover ≥ ₹100 crore → covered. Q: below both thresholds, unlisted and not an Ind AS company → not covered.
+3. Excluded: banking companies, insurance companies, NBFCs and housing finance companies (power companies are not excluded).
 
 **Formula:** Statement analysis  
 **Trap:** The thresholds are alternatives, not cumulative.
@@ -816,7 +816,7 @@ Which of the statements given above is/are correct?
 
 ## ACC-030 · L2 · medium · Applicability framework and enterprise levels ⚠
 
-Under the Companies (Accounting Standards) Rules, 2021, which of the following unlisted companies (none a bank, insurer or FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year?
+Under the Companies (Accounting Standards) Rules, 2021, which of the following unlisted companies (none a bank, insurer or FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year? Turnover (excluding other income) is for the immediately preceding accounting year; borrowings are the maximum outstanding at any time in that year.
 
 - **A.** Turnover ₹240 crore; borrowings ₹48 crore ✅
 - **B.** Turnover ₹240 crore; borrowings ₹55 crore  _(error: borrowing limit of ₹50 crore exceeded)_
@@ -825,7 +825,7 @@ Under the Companies (Accounting Standards) Rules, 2021, which of the following u
 
 **Working**
 
-1. SMC: not listed or in process of listing; not a bank/FI/insurer; turnover ≤ ₹250 crore; borrowings ≤ ₹50 crore; not a holding/subsidiary of a non-SMC.
+1. SMC: not listed or in process of listing; not a bank/FI/insurer; turnover (excluding other income) ≤ ₹250 crore in the immediately preceding accounting year; borrowings ≤ ₹50 crore at any time in that year; not a holding/subsidiary of a non-SMC.
 2. Only the first option satisfies all conditions.
 
 **Formula:** SMC criteria (Rule 2(1)(e), 2021 Rules)  
@@ -1828,9 +1828,9 @@ Under a finance lease (AS 19), a lessee pays ₹2,80,000 at the end of each of 5
 
 ## ACC-068 · L1 · easy · Provisions vs contingent liabilities ⚠
 
-Under AS 29 (revised), a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:
+Under AS 29, a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:
 
-- **A.** Not recognised; disclosed in the notes to the financial statements  _(error: AS 29 moves this disclosure to the approving authority's report)_
+- **A.** Not recognised; disclosed in the notes to the financial statements  _(error: AS 29 para 33 bars disclosure in the financial statements (it goes in the approving authority's report))_
 - **B.** Recognised as income but credited to a reserve until realised  _(error: no such treatment)_
 - **C.** Not recognised; disclosed in the report of the approving authority ✅
 - **D.** Recognised as an asset with a matching credit to profit or loss  _(error: recognition requires virtual certainty)_
@@ -1838,9 +1838,9 @@ Under AS 29 (revised), a contingent asset whose inflow of economic benefits is p
 **Working**
 
 1. When realisation is virtually certain the asset is not contingent and is recognised.
-2. Probable inflow: no recognition; AS 29 requires disclosure in the report of the approving authority (Ind AS 37 uses the notes).
+2. Probable inflow: not recognised (para 30), not disclosed in the financial statements, usually disclosed in the report of the approving authority (para 33); Ind AS 37 uses the notes.
 
-**Formula:** AS 29 paras 31–35  
+**Formula:** AS 29 paras 30–34  
 **Trap:** Ind AS 37 discloses probable contingent assets in the notes; AS 29 does not.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -3665,7 +3665,7 @@ Match each item with its head under Schedule III (Division I, as amended in 2021
 | | List I | | List II |
 |---|---|---|---|
 | A | Current maturities of long-term borrowings | 1 | Inventories |
-| B | Unpaid dividends | 2 | Other non-current assets |
+| B | Unpaid dividends | 2 | Long-term loans and advances |
 | C | Capital advances | 3 | Other current liabilities |
 | D | Loose tools | 4 | Short-term borrowings |
 
@@ -3680,7 +3680,7 @@ Select the correct match:
 
 1. Current maturities of long-term debt → short-term borrowings (2021 amendment).
 2. Unpaid dividends → other current liabilities.
-3. Capital advances → other non-current assets.
+3. Capital advances → long-term loans and advances (Division I).
 4. Loose tools → inventories.
 
 **Formula:** Matching  

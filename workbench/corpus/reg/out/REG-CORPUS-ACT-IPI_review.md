@@ -250,9 +250,9 @@ Notice of an assignment of a life policy is received by the insurer on 4 January
 
 **Working**
 
-1. s.38(3)-(4): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.
+1. s.38(2)-(3): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.
 2. 4 January 2026 + 30 days = 3 February 2026.
-3. s.38(5): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: 29 January 2026 + 30 = 28 February 2026.
+3. s.38(4): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: 29 January 2026 + 30 = 28 February 2026.
 
 **Formula:** Insurer: notice + 30 days; grievance to IRDAI: communication + 30 days  
 **Trap:** The first-level remedy against refusal to register an assignment is IRDAI, not SAT.
@@ -563,7 +563,7 @@ Suppose instead there was no assignment to Kaveri Finance, but Meera had assigne
 
 Under s.4 of the Insurance Regulatory and Development Authority Act, 1999, IRDAI consists of:
 
-- **A.** A Chairperson and not more than six members, of whom at least three are whole-time  _(error: PFRDA Act composition)_
+- **A.** A Chairperson, three whole-time members and three part-time members  _(error: PFRDA Act composition)_
 - **B.** A Chairperson, not more than five whole-time members and not more than four part-time members ✅
 - **C.** A Chairperson, four regulator nominees, two Finance Ministry officials and two other members  _(error: IFSCA Act composition)_
 - **D.** A Chairperson, not more than four whole-time members and not more than five part-time members  _(error: whole-time and part-time ceilings swapped)_
@@ -573,7 +573,7 @@ Under s.4 of the Insurance Regulatory and Development Authority Act, 1999, IRDAI
 1. s.4: Chairperson; not more than five whole-time members; not more than four part-time members — appointed by the Central Government.
 
 **Formula:** IRDA Act s.4: 1 + ≤5 WTM + ≤4 PTM  
-**Trap:** Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+6(≥3 WTM), IFSCA 1+4+2+2.
+**Trap:** Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+3+3, IFSCA 1+4+2+2.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1054,17 +1054,17 @@ The annual report of IRDAI's activities for FY 2026-27 and the audit of its acco
 Under s.4 of the PFRDA Act, 2013, the Authority consists of:
 
 - **A.** A Chairperson, not more than five whole-time and not more than four part-time members  _(error: IRDA Act composition)_
-- **B.** A Chairperson and not more than six members, of whom at least three are whole-time members ✅
-- **C.** A Chairperson and not more than six members, of whom at least three are part-time members  _(error: whole-time/part-time reversed)_
+- **B.** A Chairperson, three whole-time members and three part-time members ✅
+- **C.** A Chairperson, three whole-time members and no part-time members  _(error: part-time members dropped)_
 - **D.** A Chairperson, one nominee each of RBI, SEBI, IRDAI and PFRDA and four others  _(error: IFSCA-style composition)_
 
 **Working**
 
-1. s.4: Chairperson and not more than six members, of whom at least three shall be whole-time, appointed by the Central Government;
+1. s.4 (as enacted): a Chairperson, three whole-time members and three part-time members, appointed by the Central Government;
 2. with at least one person from each of economics, finance and law.
 
-**Formula:** PFRDA Act s.4  
-**Trap:** ‘At least three whole-time’ — not ‘at least three part-time’.
+**Formula:** PFRDA Act s.4: 1 + 3 WTM + 3 PTM  
+**Trap:** PFRDA 1+3+3 vs IRDAI 1+5+4 — do not mix up the ceilings.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1204,7 +1204,7 @@ An NPS subscriber's account shows own contributions ₹7,84,000, employer contri
 
 ## ACTI-050 · L2 · medium · PFRDA Act — National Pension System and intermediaries ⚠
 
-A pension fund has paid-up capital of ₹300 crore. Foreign holdings: a foreign company 42%, that company's subsidiary 15%, and an individual resident abroad 6%. For this question take the limit permitted for Indian insurance companies as 74%. Under s.24 of the PFRDA Act, 2013, the further equity that can be held by foreign investors in aggregate is:
+A pension fund has paid-up capital of ₹300 crore. Foreign holdings: a foreign company 42%, that company's subsidiary 15%, and an individual resident abroad 6%. For this question take, hypothetically, the limit permitted for Indian insurance companies as 74% (notwithstanding the 100% limit after the 2025 amendment). Under s.24 of the PFRDA Act, 2013, the further equity that can be held by foreign investors in aggregate is:
 
 - **A.** ₹33 crore ✅
 - **B.** Nil — the 26% cap is already breached  _(error: ignores the 'insurance limit, whichever is higher' limb)_
@@ -1214,7 +1214,7 @@ A pension fund has paid-up capital of ₹300 crore. Foreign holdings: a foreign 
 **Working**
 
 1. s.24: aggregate foreign holding (foreign company, its subsidiaries/nominees, foreign individuals/AOPs) ≤ 26% or the insurance-sector limit, whichever is higher.
-2. Limit = max(26%, 74%) = 74%; aggregate = 42 + 15 + 6 = 63%.
+2. Limit = max(26%, 74% as given) = 74%; aggregate = 42 + 15 + 6 = 63%. (After Act 40 of 2025 the insurance limit is 100%; 74% is a stated assumption.)
 3. Headroom = 11% × ₹300 crore = ₹33 crore.
 
 **Formula:** Foreign cap = max(26%, insurance-sector limit); headroom = cap − aggregate foreign holding  
@@ -1423,7 +1423,7 @@ Which of the statements is/are correct?
 
 PFRDA is at its maximum statutory strength and constitutes the Pension Advisory Committee under s.45 of the PFRDA Act, 2013 with the maximum number of other members. The total membership, counting ex officio members, is:
 
-- **A.** 29  _(error: only the Chairperson and the minimum three whole-time members counted)_
+- **A.** 29  _(error: part-time members omitted from the ex officio count)_
 - **B.** 32 ✅
 - **C.** 35  _(error: IRDAI's 1 + 5 + 4 strength used)_
 - **D.** 25  _(error: ex officio members counted within the 25)_
@@ -1431,11 +1431,11 @@ PFRDA is at its maximum statutory strength and constitutes the Pension Advisory 
 **Working**
 
 1. s.45: not more than 25 members excluding ex officio members.
-2. Chairperson and members of the Authority are ex officio: 1 + 6 = 7.
+2. s.4 (as enacted): Chairperson + 3 whole-time + 3 part-time members, all ex officio on the Committee: 1 + 3 + 3 = 7.
 3. Maximum = 25 + 7 = 32.
 
-**Formula:** Max PAC = 25 + (1 + ≤6 members)  
-**Trap:** Use PFRDA's own strength (1 + 6), not IRDAI's.
+**Formula:** Max PAC = 25 + (1 + 3 WTM + 3 PTM)  
+**Trap:** Use PFRDA's own strength (1 + 3 + 3), not IRDAI's 1 + 5 + 4.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1595,7 +1595,7 @@ SAT dismisses Suvidha's appeal; the decision is communicated on 14 December 2026
 
 Regarding Suvidha's 30% foreign shareholding and its proposed registration as a pension fund:
 
-- **A.** Permissible, since the cap is the higher of 26% and the insurance-sector limit, i.e. 74% ✅
+- **A.** Permissible: the cap is the higher of 26% and the insurance limit (74% as given) ✅
 - **B.** Not permissible, since foreign holding in a pension fund is capped at 26%  _(error: ignores the 'whichever is higher' limb)_
 - **C.** Irrelevant, since the s.24 cap applies only to CRAs and PoPs  _(error: misapplies s.24 — it governs pension funds)_
 - **D.** Permissible only after the foreign parent sells down to 26% within six months  _(error: invents a divestment timeline)_
@@ -1603,7 +1603,8 @@ Regarding Suvidha's 30% foreign shareholding and its proposed registration as a 
 **Working**
 
 1. s.24: aggregate foreign holding in a pension fund ≤ 26% or the percentage approved for insurance companies, whichever is higher.
-2. max(26%, 74%) = 74% > 30% ⇒ permissible (subject to other eligibility norms under s.26).
+2. max(26%, 74% as given) = 74% > 30% ⇒ permissible (subject to other eligibility norms under s.26).
+3. Under current law (Act 40 of 2025) the insurance limit is 100%, so the answer holds either way.
 
 **Formula:** Cap = max(26%, insurance-sector limit)  
 **Trap:** 26% is only the floor of the formula.

@@ -260,41 +260,45 @@ pen_all5 = sum(s * (br + .05) / 365 for s in short)
 pen_noreset = sum(s * (br + (.03 if i == 1 else .05)) / 365 for i, s in enumerate(short) if s)
 assert round(pen) == 232877, pen
 B.add(M["rbi-crr"], "L3",
-      "Kaveri Bank Ltd, a scheduled bank, must hold a stipulated minimum CRR balance of ₹900 crore with RBI at the close of each day. "
-      f"The Bank Rate is {pct(br)}. Its closing balances for seven consecutive days were:\n\n"
+      "Kaveri Bank Ltd, a scheduled bank, must hold a daily minimum CRR balance of ₹900 crore (90% of its fortnightly requirement) with RBI at the close of each day. "
+      f"Assume a (hypothetical) Bank Rate of {pct(br)}. Its closing balances for seven consecutive days were:\n\n"
       + table(["Day", "1", "2", "3", "4", "5", "6", "7"], [["Balance (₹ crore)"] + bal]) +
-      "\n\nApplying the penal-interest scheme of s.42(3) on a daily basis (365-day year), total penal interest for the week is closest to:",
+      "\n\nApplying the daily penal-interest scheme under RBI's CRR Directions (issued under s.42) (365-day year), total penal interest for the week is closest to:",
       R(pen),
       [(R(pen_all3), "charges Bank Rate + 3% on every default day, ignoring the step-up for continuing default"),
        (R(pen_noreset), "treats Day 5 as a continuation although Day 4 was compliant"),
        (R(pen_all5), "charges Bank Rate + 5% from the first day of default")],
-      [f"Shortfalls (₹ crore): Day 2 = 20, Day 3 = 35, Day 5 = 15, Day 6 = 10; Days 1, 4, 7 compliant.",
+      ["The daily scheme comes from RBI's CRR Directions under s.42; s.42(3) itself applies 3%/5% to fortnightly-average shortfalls.",
+       f"Shortfalls (₹ crore): Day 2 = 20, Day 3 = 35, Day 5 = 15, Day 6 = 10; Days 1, 4, 7 compliant.",
        f"First day of a default run: Bank Rate + 3% = {pct(br+.03)}; next succeeding day(s): Bank Rate + 5% = {pct(br+.05)}.",
        "Day 4 is compliant, so Day 5 starts a fresh run at +3%.",
        f"Penal = (20×9.5% + 35×11.5% + 15×9.5% + 10×11.5%) crore ÷ 365 = {R(pen)}"],
       "Penal = Shortfall × (Bank Rate + 3%/5%) × 1/365", "A compliant day breaks the chain; the next default starts at +3%.",
-      kind="numerical", verify_fact=True, ref=ref(RBI, "s.42(3); RBI CRR directions (daily minimum)"))
+      kind="numerical", verify_fact=True, ref=ref(RBI, "s.42 read with RBI CRR/SLR Directions (daily minimum = 90% of requirement; s.42(3) itself is fortnight-average)"))
 
 f1r, f1a, f2r, f2a = 2400 * CR, 2352 * CR, 2420 * CR, 2390 * CR
 s1_, s2_ = f1r - f1a, f2r - f2a
-pf = s1_ * (br + .03) * 14 / 365 + s2_ * (br + .05) * 14 / 365
-pf_3 = (s1_ + s2_) * (br + .03) * 14 / 365
-pf_5 = (s1_ + s2_) * (br + .05) * 14 / 365
-pf_nobr = s1_ * .03 * 14 / 365 + s2_ * .05 * 14 / 365
+n1, n2 = 15, 16  # 1-15 Jan and 16-31 Jan (fortnight as redefined by Banking Laws (Amendment) Act 2025)
+pf = s1_ * (br + .03) * n1 / 365 + s2_ * (br + .05) * n2 / 365
+pf_3 = s1_ * (br + .03) * n1 / 365 + s2_ * (br + .03) * n2 / 365
+pf_5 = (s1_ * n1 + s2_ * n2) * (br + .05) / 365
+pf_14 = s1_ * (br + .03) * 14 / 365 + s2_ * (br + .05) * 14 / 365
+assert round(pf) == 3386301, pf
 B.add(M["rbi-crr"], "L3",
-      f"Godavari Bank Ltd's average daily CRR balances for two successive fortnights were (Bank Rate {pct(br)}):\n\n"
+      f"Godavari Bank Ltd's average daily CRR balances for the two fortnights of January 2026 were (assume a hypothetical Bank Rate of {pct(br)}):\n\n"
       + table(["Fortnight", "Required average (₹ crore)", "Actual average (₹ crore)"],
-              [["I", inr(f1r / CR), inr(f1a / CR)], ["II", inr(f2r / CR), inr(f2a / CR)]]) +
-      "\n\nUsing the average-basis penal interest of s.42(3) (14-day fortnight, 365-day year), total penal interest for the two fortnights is:",
+              [["1–15 January", inr(f1r / CR), inr(f1a / CR)], ["16–31 January", inr(f2r / CR), inr(f2a / CR)]]) +
+      "\n\nUsing the average-basis penal interest of s.42(3) (actual days in each fortnight, 365-day year), total penal interest for the two fortnights is:",
       lakh(pf),
-      [(lakh(pf_3), "applies Bank Rate + 3% to Fortnight II as well, missing the step-up for continuing default"),
+      [(lakh(pf_3), "applies Bank Rate + 3% to the second fortnight as well, missing the step-up for continuing default"),
        (lakh(pf_5), "applies Bank Rate + 5% from the first fortnight of default"),
-       (lakh(pf_nobr), "uses 3%/5% flat without adding the Bank Rate")],
-      [f"Shortfall I = {inr(s1_/CR)} crore; shortfall II = {inr(s2_/CR)} crore (default continues).",
+       (lakh(pf_14), "uses 14-day fortnights (pre-2025 alternate-Friday reporting cycle)")],
+      ["Since the Banking Laws (Amendment) Act, 2025 (w.e.f. 15 Dec 2025), a fortnight is the 1st–15th or 16th–last day of a month: here 15 and 16 days.",
+       f"Shortfall I = {inr(s1_/CR)} crore; shortfall II = {inr(s2_/CR)} crore (default continues).",
        f"Fortnight I at Bank Rate + 3% = {pct(br+.03)}; Fortnight II at Bank Rate + 5% = {pct(br+.05)}.",
-       f"Penal = 48 cr × 9.5% × 14/365 + 30 cr × 11.5% × 14/365 = {lakh(pf)}"],
-      "Penal = Avg shortfall × (Bank Rate + 3% / 5%) × 14/365", "Rates are over the Bank Rate, not flat.",
-      kind="numerical", verify_fact=True, ref=ref(RBI, "s.42(3)"))
+       f"Penal = 48 cr × 9.5% × 15/365 + 30 cr × 11.5% × 16/365 = {lakh(pf)}"],
+      "Penal = Avg shortfall × (Bank Rate + 3% / 5%) × days in fortnight/365", "Fortnights are now 1st–15th and 16th–month-end, not 14 days.",
+      kind="numerical", verify_fact=True, ref=ref(RBI, "s.42(3); 'fortnight' as redefined by Banking Laws (Amendment) Act 2025"))
 
 # --- MPC ---
 B.add(M["rbi-mpc"], "L1",
@@ -696,16 +700,17 @@ psl_3rd = (sl[0] + sl[1]) * (br2 + .03) / 365 + sl[2] * (br2 + .05) / 365
 psl_nobr = sl[0] * .03 / 365 + (sl[1] + sl[2]) * .05 / 365
 B.add(M["br-lic"], "L3",
       f"Krishna Bank Ltd fell short of its SLR requirement on three consecutive days by ₹50 crore, ₹80 crore and ₹30 crore; it was compliant on the days before and after. Bank Rate is {pct(br2)}. "
-      "Penal interest payable under s.24 (365-day year) is closest to:",
+      "Penal interest payable under s.24 read with RBI's CRR/SLR Directions (daily scheme, 365-day year) is closest to:",
       R(psl),
       [(R(psl3), "charges Bank Rate + 3% on all three days"),
        (R(psl_3rd), "starts the Bank Rate + 5% rate only from the third day"),
        (R(psl_nobr), "applies 3%/5% flat without adding the Bank Rate")],
       [f"Day 1 (first day of default): Bank Rate + 3% = {pct(br2+.03)} on ₹50 crore.",
        f"Days 2–3 (continuing default): Bank Rate + 5% = {pct(br2+.05)} on ₹80 crore and ₹30 crore.",
-       f"Penal = [50×9.75% + (80+30)×11.75%] crore ÷ 365 = {R(psl)}"],
+       f"Penal = [50×9.75% + (80+30)×11.75%] crore ÷ 365 = {R(psl)}",
+       "s.24(4) keys the 3%/5% scheme to the reporting day (last day of the fortnight); s.24(5) and RBI's CRR/SLR Directions extend it to daily shortfalls."],
       "Penal = Shortfall × (Bank Rate + 3% first day / 5% succeeding days) ÷ 365", "The 5% rate applies from the next succeeding day.",
-      kind="numerical", verify_fact=True, ref=ref(BRA, "s.24(4)"))
+      kind="numerical", verify_fact=True, ref=ref(BRA, "s.24(4)-(5) read with RBI CRR/SLR Directions (daily scheme)"))
 
 B.add(M["br-lic"], "L2",
       "Which statement correctly describes RBI's power over the statutory liquidity ratio under s.24 of the BR Act as it now stands?",
@@ -730,18 +735,19 @@ B.add(M["br-dir"], "L1",
       kind="conceptual", verify_fact=True, ref=ref(BRA, "s.35A"))
 
 mx, curb = 12, 9
-nad = min(5, mx // 3)
-assert nad == 4
+assert mx // 3 == 4 and curb // 3 == 3
 B.add(M["br-dir"], "L2",
-      f"The articles of Pennar Bank Ltd fix the maximum board strength at {mx}; the board presently has {curb} directors. The maximum number of additional directors RBI may appoint under s.36AB is:",
-      str(nad),
-      [("5", "applies the absolute cap of five, ignoring 'whichever is less'"),
-       ("3", "computes one-third of present strength instead of maximum strength"),
-       ("6", "takes one-half of maximum strength")],
-      ["s.36AB: RBI may appoint additional directors not exceeding five or one-third of the maximum strength fixed by the articles, whichever is less.",
-       f"min(5, {mx}/3 = {mx//3}) = {nad}."],
-      "Additional directors ≤ min(5, ⅓ × maximum strength)", "Maximum strength under the articles, not current strength.",
-      kind="numerical", verify_fact=True, ref=ref(BRA, "s.36AB"))
+      f"The articles of Pennar Bank Ltd fix the maximum board strength at {mx}; the board presently has {curb} directors. RBI wants to place its own nominees on the board under s.36AB. "
+      "Which statement correctly describes RBI's power?",
+      "No numerical cap; each holds office up to 3 years at a time",
+      [(f"At most {mx//3}, the lower of five and one-third of maximum strength", "applies the proviso omitted in 1984"),
+       ("At most 5, an absolute statutory cap on additional directors", "invents a fixed cap of five"),
+       (f"At most {curb//3}, one-third of the directors currently on the board", "invents a cap based on present strength")],
+      ["s.36AB(1): RBI may, in the interest of banking policy, public interest or depositors, appoint one or more persons as additional directors.",
+       "The proviso that capped them at five or one-third of maximum strength was omitted in 1984 (Act 1 of 1984); there is no numerical ceiling.",
+       "s.36AB(2)-(3): each holds office up to 3 years at a time and is not counted for any proportion of directors or for retirement by rotation."],
+      "BR Act s.36AB", "The 'five or one-third' cap is a pre-1984 rule.",
+      kind="conceptual", verify_fact=True, ref=ref(BRA, "s.36AB (proviso omitted by Act 1 of 1984)"))
 
 amt, days = 72 * LK, 18
 pmax = max(1 * CR, 2 * amt) + 1 * LK * (days - 1)
@@ -751,17 +757,17 @@ p_nocont = max(1 * CR, 2 * amt)
 assert pmax == 161 * LK
 B.add(M["br-dir"], "L3",
       f"A banking company commits a contravention under s.46(4) of the BR Act involving a quantifiable amount of {lakh(amt,0)}. The contravention continues for {days} days in all. "
-      "The maximum penalty RBI may impose under s.47A is:",
+      "The maximum penalty RBI may impose under s.47A(1)(c) is:",
       cr(pmax),
       [(cr(p_less), "takes the lower of ₹1 crore and twice the amount"),
        (cr(p_all), "charges the daily penalty for the first day as well"),
        (cr(p_nocont), "omits the continuing-default penalty")],
-      ["s.47A(1)(b): up to ₹1 crore or twice the amount involved (if quantifiable), whichever is more.",
+      ["s.47A(1)(c) (contraventions under s.46(4)): up to ₹1 crore or twice the amount involved (if quantifiable), whichever is more.",
        f"max(₹1 crore, 2 × {lakh(amt,0)} = {cr(2*amt)}) = {cr(max(CR,2*amt))}.",
        f"Continuing default: up to ₹1 lakh per day after the first → {days-1} × ₹1 lakh = {lakh(LK*(days-1),0)}.",
        f"Maximum = {cr(pmax)}."],
       "Penalty = max(₹1 cr, 2 × amount) + ₹1 lakh × (days − 1)", "'Whichever is more', and the daily add-on runs after the first day.",
-      kind="numerical", verify_fact=True, ref=ref(BRA, "s.47A(1)(b)"))
+      kind="numerical", verify_fact=True, ref=ref(BRA, "s.47A(1)(c) read with s.46(4)"))
 
 # --- amalgamation / co-op ---
 pres_m, pres_v, fav_m, fav_v = 120, 90 * LK, 70, 58 * LK
@@ -774,27 +780,27 @@ B.add(M["br-amal"], "L3",
       [("Passes, as a majority in number of those present is in favour", "applies only the majority-in-number limb"),
        ("Passes, as more than half of the shares present are in favour", "applies simple majority by value"),
        ("Fails, as a majority in number of all shareholders is not present", "invents a majority-of-all-members quorum")],
-      [f"s.44A(2): approval needs a majority in number representing two-thirds in value of shareholders present and voting.",
+      [f"s.44A(1): approval needs a resolution passed by a majority in number representing two-thirds in value of shareholders present in person or by proxy; RBI then sanctions under s.44A(4).",
        f"Number: {fav_m} of {pres_m} → majority ✓.",
        f"Value: {inr(fav_v)} ÷ {inr(pres_v)} = {pct(fav_v/pres_v,1)} < 66.67% ✗ → resolution fails."],
       "Majority in number AND ⅔ in value of those present", "Both limbs; the value limb is ⅔, not ½.",
-      kind="numerical", verify_fact=True, ref=ref(BRA, "s.44A(2)"))
+      kind="numerical", verify_fact=True, ref=ref(BRA, "s.44A(1), (4)"))
 
 c, wr = stmt_opts([True, True, True],
                   ["s.3 excludes primary agricultural credit societies",
-                   "RBI may supersede a co-operative bank's board in consultation with the State Government (2020 amendment)",
+                   "s.36AAA as applied by s.56 (2020) lets RBI supersede a State-registered co-operative bank's board after consulting the State Government",
                    "s.22 as applied by s.56 requires co-operative banks to hold an RBI licence"], flips=[0, 1, 2])
 B.add(M["br-amal"], "L3",
       "Consider the following statements on co-operative banks and the BR Act, 1949 (as amended in 2020):\n\n" + stl([
           "The Act does not apply to a primary agricultural credit society.",
-          "RBI may supersede the board of a co-operative bank, after consultation with the concerned State Government.",
+          "RBI may supersede the board of a co-operative bank registered under a State co-operative law, after consultation with the State Government.",
           "A co-operative bank requires a licence from RBI under s.22, as applied to co-operative societies by s.56."]) +
       "\n\nWhich of the statements is/are correct?",
       c, wr,
-      ["1: Correct — s.3.", "2: Correct — s.36ACA as applied through s.56 after the BR (Amendment) Act, 2020.",
+      ["1: Correct — s.3.", "2: Correct — s.36AAA as applied through s.56 after the BR (Amendment) Act, 2020 (s.36ACA itself does not apply to co-operative banks).",
        "3: Correct — s.22 applies to co-operative banks through Part V (s.56)."],
-      "BR Act ss.3, 22, 36ACA, 56", "Co-operative banks are within RBI's banking regulation (Part V), barring PACS.",
-      kind="statement", verify_fact=True, ref=ref(BRA, "ss.3, 22, 36ACA, 56; BR (Amendment) Act 2020"))
+      "BR Act ss.3, 22, 36AAA, 56", "Co-operative banks are within RBI's banking regulation (Part V), barring PACS.",
+      kind="statement", verify_fact=True, ref=ref(BRA, "ss.3, 22, 36AAA (as applied by s.56), 56; BR (Amendment) Act 2020"))
 
 G2 = "BR-KONARK"
 bcase = ("**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. "
@@ -817,10 +823,10 @@ B.add(M["br-dir"], "L4", bcase + "\n\n**Q2.** The maximum further period for whi
       [(f"{24 - sup_used} months", "assumes a 24-month aggregate limit"),
        ("6 months", "assumes each extension may itself run six months, with no aggregate cap"),
        ("Nil — the first period can never be extended", "denies the power to extend within the aggregate")],
-      ["s.36ACA: RBI, in consultation with the Central Government, may supersede the board for up to 12 months; extensions are allowed but the aggregate cannot exceed 12 months.",
+      ["s.36ACA(1): RBI, in consultation with the Central Government, may supersede the board for a period not exceeding six months; the proviso allows extensions, but the total cannot exceed 12 months.",
        f"Used = 6 + 4 = {sup_used} months → further extension ≤ {12-sup_used} months."],
-      "Aggregate supersession ≤ 12 months", "The 12-month cap is cumulative.",
-      kind="case", group=G2, verify_fact=True, ref=ref(BRA, "s.36ACA"))
+      "Initial ≤ 6 months; aggregate with extensions ≤ 12 months", "The 12-month cap is cumulative.",
+      kind="case", group=G2, verify_fact=True, ref=ref(BRA, "s.36ACA(1) and proviso"))
 
 B.add(M["br-amal"], "L4", bcase + "\n\n**Q3.** The moratorium may be extended by the Central Government by at most:",
       "3 more months, as the total cannot exceed six months",

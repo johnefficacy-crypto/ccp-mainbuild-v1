@@ -58,12 +58,15 @@ def add_all(B):
     stab = table(["Total income (₹)", "Rate"], [["Up to 4,00,000", "Nil"], ["4,00,001 – 8,00,000", "5%"], ["8,00,001 – 12,00,000", "10%"],
                                               ["12,00,001 – 16,00,000", "15%"], ["16,00,001 – 20,00,000", "20%"], ["20,00,001 – 24,00,000", "25%"], ["Above 24,00,000", "30%"]])
     data = (f"Assume the following new-regime slabs apply for tax year 2026-27:\n\n{stab}\n\n"
-            f"Assume also: standard deduction from salary ₹{inr(sd)}; rebate equal to the tax (maximum ₹{inr(reb_max)}) where total income does not exceed ₹{inr(reb_lim)}, with no marginal relief; health and education cess 4% on tax.")
-    def tax(sal, use_sd=True, rebate=True, cess_on=True, force_rebate=False):
+            f"Assume also: standard deduction from salary ₹{inr(sd)}; rebate equal to the tax (maximum ₹{inr(reb_max)}) where total income does not exceed ₹{inr(reb_lim)}; health and education cess 4% on tax.")
+    data_mr = data + (f" Where total income exceeds ₹{inr(reb_lim)}, marginal relief limits the tax (before cess) to the amount by which total income exceeds ₹{inr(reb_lim)}.")
+    def tax(sal, use_sd=True, rebate=True, cess_on=True, force_rebate=False, mr=True):
         ti = sal - (sd if use_sd else 0)
         tx = slab_tax(ti, slabs)
         if (rebate and ti <= reb_lim) or force_rebate:
             tx = max(0, tx - min(tx, reb_max))
+        elif mr and ti > reb_lim:
+            tx = min(tx, ti - reb_lim)
         return round(tx * (1 + cess) if cess_on else tx)
     sal = 1850000
     t_ok = tax(sal)
@@ -81,16 +84,18 @@ def add_all(B):
 
     sa, sb = 1260000, 1290000
     ta, tb_ = tax(sa), tax(sb)
-    assert ta == 0 and tb_ == 64740
+    assert ta == 0 and tb_ == 15600 and tax(sb, mr=False) == 64740 and tax(1850000, mr=False) == tax(1850000)
     pair = lambda a, b: f"{'Nil' if a == 0 else R(a)} and {'Nil' if b == 0 else R(b)}"
-    opts = [pair(ta, tb_), pair(tax(sa), tax(sb, force_rebate=True)), pair(tax(sa, use_sd=False), tax(sb, use_sd=False)), pair(tax(sa), tax(sb, cess_on=False))]
+    opts = [pair(ta, tb_), pair(tax(sa), tax(sb, mr=False)), pair(tax(sa), tax(sb, force_rebate=True)), pair(tax(sa), tax(sb, cess_on=False))]
     assert len(set(opts)) == 4
-    B.add(ma, "L3", PFX + f"two resident salaried individuals opt for the new regime for tax year 2026-27: Ms Esha (salary ₹{inr(sa)}) and Mr Farhan (salary ₹{inr(sb)}), with no other income. {data}\n\nTheir tax liabilities respectively are:",
+    B.add(ma, "L3", PFX + f"two resident salaried individuals opt for the new regime for tax year 2026-27: Ms Esha (salary ₹{inr(sa)}) and Mr Farhan (salary ₹{inr(sb)}), with no other income. {data_mr}\n\nTheir tax liabilities respectively are:",
           opts[0],
-          [(opts[1], "rebate also given to Farhan although his total income exceeds ₹12,00,000"),
-           (opts[2], "standard deduction ignored for both"),
+          [(opts[1], "marginal relief ignored — full slab tax charged on income just above ₹12,00,000"),
+           (opts[2], "rebate also given to Farhan although his total income exceeds ₹12,00,000"),
            (opts[3], "cess omitted on Farhan's tax")],
           [f"Esha: total income = {inr(sa-sd)} ≤ 12,00,000 → tax 58,500 fully rebated → Nil",
-           f"Farhan: total income = {inr(sb-sd)} > 12,00,000 → tax = 60,000 + 15% × 15,000 = 62,250; no rebate; + 4% cess = ₹{inr(tb_)}"],
-          "Rebate only if total income ≤ threshold (as given)", "A ₹30,000 salary difference creates a ₹64,740 tax difference when marginal relief is ignored.",
-          verify_fact=True, ref=TAXREF)
+           f"Farhan: total income = {inr(sb-sd)} > 12,00,000 → no rebate; slab tax = 60,000 + 15% × 15,000 = 62,250",
+           f"Marginal relief: tax limited to excess over 12,00,000 = 15,000 (< 62,250); + 4% cess = ₹{inr(tb_)}"],
+          "Rebate if total income ≤ ₹12 lakh; above it, tax ≤ (Total income − ₹12 lakh) (marginal relief)",
+          "Marginal relief removes the cliff: without it Farhan would pay ₹64,740 on income just ₹15,000 over the limit.",
+          verify_fact=True, ref=TAXREF + " (rebate with marginal relief, s.156)")

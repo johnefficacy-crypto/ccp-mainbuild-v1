@@ -143,7 +143,7 @@ def add_all(B):
       [("Six members, all appointed by the Central Government, with decisions requiring unanimity", "three are RBI members; decisions by majority"),
        ("Five members — three from RBI and two external — with the Finance Secretary holding a veto", "wrong size; no government veto"),
        ("Seven members including the Finance Secretary as a voting member", "government officials are not members")],
-      ["s.45ZB: six members; quorum four including the Governor (or DG in his absence).", "Majority vote; Governor has a second/casting vote in a tie."],
+      ["s.45ZB: six members (Governor, DG in charge of monetary policy, one RBI officer nominated by the Central Board, three Central Government appointees).", "s.45ZI: quorum four including the Governor (or DG in his absence), majority decision, Governor's casting vote on a tie."],
       "—", "No government nominee votes; external members are appointed by the Centre.", kind="conceptual", verify_fact=True, ref=RBIACT)
 
     i0, i1 = 150, 160.5

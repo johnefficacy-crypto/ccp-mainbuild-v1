@@ -1753,12 +1753,12 @@
       "difficulty": "hard",
       "question_kind": "statement",
       "stimulus_group": null,
-      "stem": "Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking, insurance or power company unless stated):\n\n1. P Ltd, unlisted, paid-up capital ₹3 crore, turnover ₹120 crore, must file financial statements in XBRL.\n2. Q Ltd, unlisted, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.\n3. R Ltd, a non-banking financial company with paid-up capital ₹20 crore, is excluded from XBRL filing.\n\nWhich of the statements given above is/are correct?",
+      "stem": "Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking company, insurance company or housing finance company, and none is required to follow Ind AS, unless stated):\n\n1. P Ltd, unlisted, paid-up capital ₹3 crore, turnover ₹120 crore, must file financial statements in XBRL.\n2. Q Ltd, unlisted and not required to follow Ind AS, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.\n3. R Ltd, a non-banking financial company with paid-up capital ₹20 crore, is excluded from XBRL filing.\n\nWhich of the statements given above is/are correct?",
       "explanation": {
         "steps": [
-          "Thresholds (any one): listed (and Indian subsidiaries), paid-up ≥ ₹5 crore, or turnover ≥ ₹100 crore.",
-          "P: turnover ≥ ₹100 crore → covered. Q: below both → not covered.",
-          "Banking, insurance, power companies and NBFCs are excluded."
+          "Rule 3 classes (any one): listed companies and their Indian subsidiaries; paid-up capital ≥ ₹5 crore; turnover ≥ ₹100 crore; companies required to prepare financial statements under Ind AS.",
+          "P: turnover ≥ ₹100 crore → covered. Q: below both thresholds, unlisted and not an Ind AS company → not covered.",
+          "Excluded: banking companies, insurance companies, NBFCs and housing finance companies (power companies are not excluded)."
         ],
         "formula_used": "Statement analysis",
         "trap": "The thresholds are alternatives, not cumulative."
@@ -1770,7 +1770,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies (Filing of Documents and Forms in XBRL) Rules, 2015, Rule 3"
+          "note": "Companies (Filing of Documents and Forms in XBRL) Rules, 2015, Rule 3 (classes (i)–(iv) and exempted companies)"
         }
       ],
       "options": [
@@ -1815,10 +1815,10 @@
       "difficulty": "medium",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "Under the Companies (Accounting Standards) Rules, 2021, which of the following unlisted companies (none a bank, insurer or FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year?",
+      "stem": "Under the Companies (Accounting Standards) Rules, 2021, which of the following unlisted companies (none a bank, insurer or FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year? Turnover (excluding other income) is for the immediately preceding accounting year; borrowings are the maximum outstanding at any time in that year.",
       "explanation": {
         "steps": [
-          "SMC: not listed or in process of listing; not a bank/FI/insurer; turnover ≤ ₹250 crore; borrowings ≤ ₹50 crore; not a holding/subsidiary of a non-SMC.",
+          "SMC: not listed or in process of listing; not a bank/FI/insurer; turnover (excluding other income) ≤ ₹250 crore in the immediately preceding accounting year; borrowings ≤ ₹50 crore at any time in that year; not a holding/subsidiary of a non-SMC.",
           "Only the first option satisfies all conditions."
         ],
         "formula_used": "SMC criteria (Rule 2(1)(e), 2021 Rules)",
@@ -4148,13 +4148,13 @@
       "difficulty": "easy",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "Under AS 29 (revised), a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:",
+      "stem": "Under AS 29, a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:",
       "explanation": {
         "steps": [
           "When realisation is virtually certain the asset is not contingent and is recognised.",
-          "Probable inflow: no recognition; AS 29 requires disclosure in the report of the approving authority (Ind AS 37 uses the notes)."
+          "Probable inflow: not recognised (para 30), not disclosed in the financial statements, usually disclosed in the report of the approving authority (para 33); Ind AS 37 uses the notes."
         ],
-        "formula_used": "AS 29 paras 31–35",
+        "formula_used": "AS 29 paras 30–34",
         "trap": "Ind AS 37 discloses probable contingent assets in the notes; AS 29 does not."
       },
       "source_kind": "authored",
@@ -4164,14 +4164,14 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "AS 29 (revised 2016) paras 31–35"
+          "note": "AS 29 paras 30 (no recognition), 33 (disclosure in approving authority's report), 34 (virtually certain → recognised)"
         }
       ],
       "options": [
         {
           "text": "Not recognised; disclosed in the notes to the financial statements",
           "is_correct": false,
-          "error": "AS 29 moves this disclosure to the approving authority's report",
+          "error": "AS 29 para 33 bars disclosure in the financial statements (it goes in the approving authority's report)",
           "label": "A"
         },
         {
@@ -8675,12 +8675,12 @@
       "difficulty": "medium",
       "question_kind": "match",
       "stimulus_group": null,
-      "stem": "Match each item with its head under Schedule III (Division I, as amended in 2021):\n\n| | List I | | List II |\n|---|---|---|---|\n| A | Current maturities of long-term borrowings | 1 | Inventories |\n| B | Unpaid dividends | 2 | Other non-current assets |\n| C | Capital advances | 3 | Other current liabilities |\n| D | Loose tools | 4 | Short-term borrowings |\n\nSelect the correct match:",
+      "stem": "Match each item with its head under Schedule III (Division I, as amended in 2021):\n\n| | List I | | List II |\n|---|---|---|---|\n| A | Current maturities of long-term borrowings | 1 | Inventories |\n| B | Unpaid dividends | 2 | Long-term loans and advances |\n| C | Capital advances | 3 | Other current liabilities |\n| D | Loose tools | 4 | Short-term borrowings |\n\nSelect the correct match:",
       "explanation": {
         "steps": [
           "Current maturities of long-term debt → short-term borrowings (2021 amendment).",
           "Unpaid dividends → other current liabilities.",
-          "Capital advances → other non-current assets.",
+          "Capital advances → long-term loans and advances (Division I).",
           "Loose tools → inventories."
         ],
         "formula_used": "Matching",
@@ -8693,7 +8693,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Schedule III Division I (amended 24-03-2021)"
+          "note": "Schedule III Division I (amended 24-03-2021) — Part I; capital advances under long-term loans and advances"
         }
       ],
       "options": [

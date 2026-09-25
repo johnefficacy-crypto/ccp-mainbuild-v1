@@ -393,17 +393,20 @@ def add_all(B):
           verify_fact=True, ref="FEMA (Deposit) Regulations, 2016; RBI Master Direction on deposits by non-residents")
 
     shs, own_, agg_ = 48e7, 0.1e7, 4.3e7
-    head = min(0.05 * shs - own_, 0.10 * shs - agg_)
-    assert abs(head - 0.5e7) < 1
-    B.add(mnr, "L3", f"A listed company has {shs/1e7:g} crore equity shares. Its shareholders have NOT raised the NRI/OCI aggregate limit. NRIs/OCIs together already hold {agg_/1e7:g} crore shares on a repatriation basis, including {own_/1e7:g} crore held by Mr Kapoor, an NRI. How many more shares can Mr Kapoor buy on the stock exchange on a repatriation basis?",
-          f"{head/1e7:g} crore shares",
-          [(f"{(0.05*shs-own_)/1e7:g} crore shares", "aggregate 10% NRI/OCI limit ignored"),
-           (f"{0.05*shs/1e7:g} crore shares", "own holding and aggregate limit both ignored"),
-           (f"{(head-own_)/1e7:g} crore shares", "own holding deducted twice")],
-          [f"Individual limit = 5% × {shs/1e7:g} crore = {0.05*shs/1e7:g} crore → headroom {(0.05*shs-own_)/1e7:g} crore.",
-           f"Aggregate limit = 10% = {0.10*shs/1e7:g} crore → headroom {(0.10*shs-agg_)/1e7:g} crore.", f"Binding = {head/1e7:g} crore shares."],
-          "Min(5% − own, 10% − NRI/OCI aggregate)", "Aggregate can go to 24% only by special resolution.",
-          verify_fact=True, ref="FEMA (Non-debt Instruments) Rules, 2019 — Schedule III")
+    ind_max = 0.10 * shs - 1                      # individual holding must stay BELOW 10%
+    head = min(ind_max - own_, 0.24 * shs - agg_)
+    old = min(0.05 * shs - own_, 0.10 * shs - agg_)  # pre-June-2026 5%/10% regime
+    assert head == 46999999 and abs(old - 0.5e7) < 1
+    B.add(mnr, "L3", f"Under Schedule III of the FEMA (Non-debt Instruments) Rules as amended in June 2026, a listed company has {shs/1e7:g} crore equity shares. Individual persons resident outside India (NRIs/OCIs) together already hold {agg_/1e7:g} crore shares on a repatriation basis, including {own_/1e7:g} crore held by Mr Kapoor, an NRI. What is the maximum number of further shares Mr Kapoor can buy on the stock exchange on a repatriation basis?",
+          f"{inr(head)} shares",
+          [(f"{inr(old)} shares", "pre-June-2026 limits (5% individual, 10% aggregate) applied"),
+           (f"{inr(0.24*shs-agg_)} shares", "only the 24% aggregate headroom checked; individual cap ignored"),
+           (f"{inr(0.10*shs-own_)} shares", "limit treated as up to 10% inclusive; holding must stay below 10%")],
+          [f"Individual cap: holding must be below 10% of {shs/1e7:g} crore = {inr(0.10*shs)} → max {inr(ind_max)}; headroom {inr(ind_max-own_)}.",
+           f"Aggregate cap for all individual PROIs = 24% = {inr(0.24*shs)} → headroom {inr(0.24*shs-agg_)}.",
+           f"Binding = individual cap → {inr(head)} shares."],
+          "Min(<10% − own holding, 24% − aggregate individual PROI holding)", "The old 5%/10% limits and the special-resolution route were removed in June 2026.",
+          verify_fact=True, ref="FEMA (Non-debt Instruments) (Third Amendment) Rules, 2026 (S.O. 3030(E), 12 June 2026) — Schedule III")
 
     # =============================== Mandate boundaries ===============================
     mmb = M("mandate-boundaries")

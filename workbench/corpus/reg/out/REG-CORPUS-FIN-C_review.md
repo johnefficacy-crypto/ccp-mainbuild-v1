@@ -2006,7 +2006,7 @@ Under the Income-tax Act, 2025, compute the tax payable for tax year 2026-27 by 
 | 20,00,001 – 24,00,000 | 25% |
 | Above 24,00,000 | 30% |
 
-Assume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.
+Assume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000; health and education cess 4% on tax.
 
 - **A.** ₹98,800  _(error: rebate allowed although total income exceeds ₹12,00,000)_
 - **B.** ₹1,76,800  _(error: standard deduction not allowed)_
@@ -2041,21 +2041,22 @@ Under the Income-tax Act, 2025, two resident salaried individuals opt for the ne
 | 20,00,001 – 24,00,000 | 25% |
 | Above 24,00,000 | 30% |
 
-Assume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.
+Assume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000; health and education cess 4% on tax. Where total income exceeds ₹12,00,000, marginal relief limits the tax (before cess) to the amount by which total income exceeds ₹12,00,000.
 
 Their tax liabilities respectively are:
 
-- **A.** ₹71,760 and ₹76,440  _(error: standard deduction ignored for both)_
-- **B.** Nil and ₹2,340  _(error: rebate also given to Farhan although his total income exceeds ₹12,00,000)_
-- **C.** Nil and ₹64,740 ✅
-- **D.** Nil and ₹62,250  _(error: cess omitted on Farhan's tax)_
+- **A.** Nil and ₹2,340  _(error: rebate also given to Farhan although his total income exceeds ₹12,00,000)_
+- **B.** Nil and ₹64,740  _(error: marginal relief ignored — full slab tax charged on income just above ₹12,00,000)_
+- **C.** Nil and ₹15,600 ✅
+- **D.** Nil and ₹15,000  _(error: cess omitted on Farhan's tax)_
 
 **Working**
 
 1. Esha: total income = 11,85,000 ≤ 12,00,000 → tax 58,500 fully rebated → Nil
-2. Farhan: total income = 12,15,000 > 12,00,000 → tax = 60,000 + 15% × 15,000 = 62,250; no rebate; + 4% cess = ₹64,740
+2. Farhan: total income = 12,15,000 > 12,00,000 → no rebate; slab tax = 60,000 + 15% × 15,000 = 62,250
+3. Marginal relief: tax limited to excess over 12,00,000 = 15,000 (< 62,250); + 4% cess = ₹15,600
 
-**Formula:** Rebate only if total income ≤ threshold (as given)  
-**Trap:** A ₹30,000 salary difference creates a ₹64,740 tax difference when marginal relief is ignored.
+**Formula:** Rebate if total income ≤ ₹12 lakh; above it, tax ≤ (Total income − ₹12 lakh) (marginal relief)  
+**Trap:** Marginal relief removes the cliff: without it Farhan would pay ₹64,740 on income just ₹15,000 over the limit.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:

@@ -212,9 +212,9 @@ def add_all(B):
           "A-3, B-1, C-4, D-2",
           [("A-1, B-3, C-4, D-2", "large-cap and mid-cap thresholds swapped"), ("A-3, B-1, C-2, D-4", "multi cap and focused conditions swapped"),
            ("A-3, B-4, C-1, D-2", "mid cap and multi cap swapped")],
-          ["Large cap ≥ 80% large caps (top 100).", "Mid cap ≥ 65% mid caps (101–250).", "Multi cap ≥ 75% equity, ≥ 25% each in large/mid/small.", "Focused: ≤ 30 stocks."],
-          "SEBI scheme categorisation (2017, multi cap revised 2020)", "Flexi cap has no market-cap minimums; multi cap does.", kind="conceptual",
-          verify_fact=True, ref="SEBI circulars on categorisation of MF schemes (Oct 2017; Sep 2020)")
+          ["Large cap ≥ 80% large caps (top 100).", "Mid cap ≥ 65% mid caps (101–250).", "Multi cap ≥ 25% each in large/mid/small (so ≥ 75% equity).", "Focused: ≤ 30 stocks (minimum equity now 80% under the Feb 2026 circular)."],
+          "SEBI scheme categorisation (Feb 2026 circular)", "Flexi cap has no market-cap minimums; multi cap does.", kind="conceptual",
+          verify_fact=True, ref="SEBI circular on Categorization and Rationalization of Mutual Fund Schemes, 26 Feb 2026 (supersedes Oct 2017/Sep 2020)")
 
     # =============================== TER & ETFs ===============================
     mte = M("total-expense-ratio")
@@ -305,21 +305,23 @@ def add_all(B):
 
     # =============================== CASE C9: NRI MF investor ===============================
     fof_own, und = 0.009, 0.016
-    cap_fof = 0.0225
+    cap_fof = 0.021   # BER cap, Reg 66(7) SEBI (MF) Regulations 2026
+    old_cap = 0.0225  # TER cap under 1996 Regs (pre-April 2026)
+    assert round(cap_fof - und, 4) == 0.005
     nav, inav, mkt = 58.40, 58.62, 59.10
     prem = mkt / inav - 1
     case9 = ("**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. "
-             f"(i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose TER cap (including the weighted TER of underlying schemes) is {pct(cap_fof)}; "
-             f"the underlying schemes' weighted average TER is {pct(und,1)} and the FoF charges {pct(fof_own,1)} itself. "
+             f"(i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose Base Expense Ratio cap (including the weighted average expense ratio of underlying schemes; statutory levies excluded) is {pct(cap_fof)}; "
+             f"the underlying schemes' weighted average expense ratio is {pct(und,1)} and the FoF charges {pct(fof_own,1)} itself. "
              f"(ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹{nav}, current iNAV ₹{inav}, market price ₹{mkt}. (iii) He may later sell both and move the money abroad.")
-    B.add(msf, "L4", case9 + "\n\nIs the FoF's expense structure compliant, and what is the maximum TER it may charge at its own level?",
-          f"Not compliant; own-level TER must not exceed {pct(cap_fof-und,2)}",
-          [(f"Compliant; the {pct(fof_own,1)} own TER is below the {pct(cap_fof)} cap", "underlying schemes' TER not added"),
-           (f"Not compliant; own-level TER must not exceed {pct(0.01-0,2)}", "1% cap for FoFs investing in liquid/index/ETFs applied"),
-           (f"Compliant; own TER can go up to {pct(cap_fof,2)} over and above underlying TER", "cap treated as additional to underlying TER")],
-          [f"Total = {pct(fof_own,1)} + {pct(und,1)} = {pct(fof_own+und,1)} > {pct(cap_fof)} → breach.", f"Max own TER = {pct(cap_fof)} − {pct(und,1)} = {pct(cap_fof-und,2)}."],
-          "FoF total TER (own + underlying) ≤ cap", "The FoF cap is inclusive of underlying scheme TER.",
-          kind="case", group="C9-ROHAN-NRI", verify_fact=True, ref="SEBI (Mutual Funds) Regulations, 1996 — Reg 52(6)(a) (FoF TER)")
+    B.add(msf, "L4", case9 + "\n\nIs the FoF's expense structure compliant, and what is the maximum expense ratio it may charge at its own level?",
+          f"Not compliant; own-level expense must not exceed {pct(cap_fof-und,2)}",
+          [(f"Compliant; the {pct(fof_own,1)} own expense is below the {pct(cap_fof)} cap", "underlying schemes' expense ratio not added"),
+           (f"Not compliant; own-level expense must not exceed {pct(old_cap-und,2)}", "superseded 2.25% TER cap of the 1996 Regulations used"),
+           (f"Compliant; own expense can go up to {pct(cap_fof,2)} above the underlying", "cap treated as additional to underlying expense ratio")],
+          [f"Total = {pct(fof_own,1)} + {pct(und,1)} = {pct(fof_own+und,1)} > {pct(cap_fof)} → breach.", f"Max own expense = {pct(cap_fof)} − {pct(und,1)} = {pct(cap_fof-und,2)}."],
+          "FoF BER (own + weighted underlying) ≤ 2.10% (equity-oriented FoF)", "The FoF cap is inclusive of underlying scheme expenses; statutory levies sit outside BER.",
+          kind="case", group="C9-ROHAN-NRI", verify_fact=True, ref="SEBI (Mutual Funds) Regulations, 2026 — Reg 66(7) (Base Expense Ratio for FoFs), in force 1 Apr 2026")
     B.add(mte, "L4", case9 + "\n\nWhat premium is Rohan paying, and how must he buy the ETF units?",
           f"{pct(prem,2)} over iNAV; buy on the exchange — direct AMC deals need over ₹25 crore",
           [(f"{pct(mkt/nav-1,2)} over iNAV; buy on the exchange — direct AMC deals need over ₹25 crore", "premium measured against last NAV, not iNAV"),

@@ -26,9 +26,9 @@ def add_all(B):
        ("P-2, Q-4, R-1, S-3", "GST Council confused with ITAT"),
        ("P-2, Q-1, R-3, S-4", "ITAT and CBIC swapped")],
       ["CBDT and CBIC: Central Boards of Revenue Act 1963.", "GST Council: Art. 279A (101st Amendment, 2016).",
-       "ITAT: final fact-finding authority in income-tax appeals."], "—",
+       "ITAT: second appellate and final fact-finding authority in income-tax appeals (Income-tax Act 2025)."], "—",
       "Two revenue boards under one 1963 Act.", kind="match", verify_fact=True,
-      ref="Central Boards of Revenue Act 1963; Constitution Art. 279A; Income-tax Act 1961 s.252")
+      ref="Central Boards of Revenue Act 1963; Constitution Art. 279A; Income-tax Act 2025 — Appellate Tribunal provisions (appeal to Tribunal s.362; formerly ss.252–253 of the 1961 Act)")
 
     fi, ft, tot, itax = 6e5, 1.5e5, 24e5, 514800
     avg = itax / tot

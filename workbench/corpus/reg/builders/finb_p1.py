@@ -255,15 +255,15 @@ def add_all(B):
 
     st = ["NCRPS must have a minimum tenure of three years.",
           "NCRPS issued to the public must carry a credit rating of not less than 'AA-' or equivalent.",
-          "An issuer may issue perpetual NCRPS under the SEBI (NCS) Regulations, 2021."]
+          "NCRPS may be issued with no redemption date."]
     c, w = stmt_opts([True, True, False], ["NCRPS minimum tenure is 3 years", "public-issue NCRPS need at least AA- rating",
-                                          "NCRPS are by definition redeemable; perpetual instruments are not NCRPS"])
+                                          "NCRPS must be redeemable; perpetual instruments (PNCPS/PDIs) are a separate class under Chapter V"])
     B.add(mn, "L2", "Consider the following statements on non-convertible redeemable preference shares (NCRPS) under the SEBI (NCS) Regulations, 2021:\n\n" + statements(st) + "\n\nWhich of the statements is/are correct?",
           c, w,
           ["Minimum tenure of NCRPS is 3 years.", "Public issue of NCRPS requires a rating of at least AA- (or equivalent).",
-           "NCRPS are redeemable by definition; perpetual preference shares fall outside the NCS framework."],
-          "NCRPS: ≥3 yrs tenure, ≥AA- for public issue", "‘Redeemable’ is in the name — perpetual is ruled out.",
-          kind="statement", verify_fact=True, ref="SEBI (NCS) Regulations, 2021 — Chapter on NCRPS")
+           "NCRPS must be redeemable. Perpetual instruments (perpetual non-cumulative preference shares, perpetual debt instruments) are a separate class permitted only for banks/NBFCs etc. under Chapter V of the NCS Regulations."],
+          "NCRPS: ≥3 yrs tenure, ≥AA- for public issue", "‘Redeemable’ is in the name; PNCPS of banks/NBFCs are a different instrument.",
+          kind="statement", verify_fact=True, ref="SEBI (NCS) Regulations, 2021 — NCRPS provisions and Chapter V (PDIs/PNCPS); SEBI circular Feb 2023")
 
     B.add(mn, "L3", "Match the regime (List I) with the minimum face value for privately placed non-convertible debt securities (List II):\n\n"
           + table(["List I — Regime", "List II — Minimum face value"],
@@ -334,15 +334,15 @@ def add_all(B):
           kind="conceptual", verify_fact=True, ref="SEBI (ICDR) Regulations, 2018 — Chapter X-A (Social Stock Exchange)")
 
     st = ["The minimum issue size for a public issue of ZCZP instruments is ₹50 lakh.",
-          "The minimum application size for a ZCZP public issue is ₹10,000.",
+          "The minimum application size for a ZCZP public issue is ₹1,000.",
           "A for-profit social enterprise may issue ZCZP instruments once it is registered on the SSE."]
-    c, w = stmt_opts([True, True, False], ["2023 relaxation reduced minimum issue size to ₹50 lakh", "minimum application reduced to ₹10,000",
+    c, w = stmt_opts([True, True, False], ["2023 relaxation reduced minimum issue size to ₹50 lakh", "minimum application reduced to ₹1,000 (2025)",
                                           "only not-for-profit organisations can issue ZCZP"])
     B.add(ms, "L2", "Consider the following statements about fund-raising on the Social Stock Exchange:\n\n" + statements(st) + "\n\nWhich of the statements is/are correct?",
-          c, w, ["Minimum issue size for ZCZP: ₹50 lakh (reduced from ₹1 crore).", "Minimum application: ₹10,000 (reduced from ₹2 lakh).",
+          c, w, ["Minimum issue size for ZCZP: ₹50 lakh (reduced from ₹1 crore).", "Minimum application: ₹1,000 (₹2 lakh → ₹10,000 in 2023 → ₹1,000 in 2025).",
                  "ZCZP is available only to NPOs; FPSEs use equity/debt routes."],
-          "ZCZP: ₹50 lakh issue / ₹10,000 application", "Old values (₹1 crore and ₹2 lakh) are common traps.",
-          kind="statement", verify_fact=True, ref="SEBI (ICDR) Regulations Chapter X-A, as amended 2023")
+          "ZCZP: ₹50 lakh issue / ₹1,000 application", "Old values (₹1 crore issue; ₹2 lakh and ₹10,000 application) are common traps.",
+          kind="statement", verify_fact=True, ref="SEBI (ICDR) Regulations Chapter X-A, as amended 2023; SEBI Board decision 19 Mar 2025 and circular (ZCZP min application ₹1,000)")
 
     rev = [(70, 100), (62, 100), (60, 100)]; exp_ = [(66, 90), (63, 92), (72, 96)]; ben = [(68, 100), (65, 100), (66, 100)]
     r_avg = sum(a for a, b in rev) / sum(b for a, b in rev); e_avg = sum(a for a, b in exp_) / sum(b for a, b in exp_)
@@ -411,12 +411,12 @@ def add_all(B):
     B.add(msc, "L2", f"A company's post-issue market capitalisation at the issue price will be ₹{inr(mc)} crore. Under Rule 19(2)(b) of the Securities Contracts (Regulation) Rules, 1957, the minimum value of shares it must offer to the public in its IPO is:",
           f"₹{mpo} crore",
           [(f"₹{inr(0.25*mc)} crore", "25% slab (for market cap up to ₹1,600 crore) applied"),
-           (f"₹{inr(0.10*mc)} crore", "10% slab (for market cap above ₹4,000 crore) applied"),
+           (f"₹{inr(0.10*mc)} crore", "10% slab (for market cap above ₹4,000 crore up to ₹50,000 crore) applied"),
            (f"₹{inr(0.25*1600)} crore plus 10% of the excess over ₹1,600 crore", "invents a marginal-rate formula for the middle slab")],
-          ["Slabs (post-issue market cap): ≤ ₹1,600 cr → 25%; > ₹1,600 cr to ₹4,000 cr → shares worth ₹400 cr; > ₹4,000 cr to ₹1 lakh cr → 10%.",
+          ["Slabs (post-issue market cap, as amended March 2026): ≤ ₹1,600 cr → 25%; > ₹1,600–4,000 cr → ₹400 cr; > ₹4,000–50,000 cr → 10%; > ₹50,000 cr–1 lakh cr → ₹1,000 cr and ≥ 8%; > ₹1–5 lakh cr → ₹6,250 cr and ≥ 2.75%; > ₹5 lakh cr → ₹15,000 cr and ≥ 1% (minimum 2.5%).",
            f"₹{inr(mc)} crore falls in the second slab → ₹400 crore (= {400/mc*100:.1f}% here)."],
           "SCRR Rule 19(2)(b) slabs", "The middle slab is a fixed amount, not a percentage.",
-          verify_fact=True, ref="SCRR, 1957 — Rule 19(2)(b)")
+          verify_fact=True, ref="SCRR, 1957 — Rule 19(2)(b), as amended by SCR (Amendment) Rules, March 2026")
 
     B.add(msc, "L3", "Match the provisions of the SCRA, 1956 (List I) with their subject (List II):\n\n"
           + table(["List I", "List II"], [["A. Section 2(h)", "1. Appeal to SAT against refusal of listing"], ["B. Section 3/4", "2. Definition of 'securities'"],

@@ -441,15 +441,15 @@ def add_all(B):
     # ================= Schedule III standalone =================
     match(B, S("schedule-iii"), "L2", "Match each item with its head under Schedule III (Division I, as amended in 2021):",
           ["Current maturities of long-term borrowings", "Unpaid dividends", "Capital advances", "Loose tools"],
-          ["Inventories", "Other non-current assets", "Other current liabilities", "Short-term borrowings"],
+          ["Inventories", "Long-term loans and advances", "Other current liabilities", "Short-term borrowings"],
           [4, 3, 2, 1],
           [([3, 4, 2, 1], "pre-2021 placement of current maturities under other current liabilities"),
            ([4, 3, 1, 2], "loose tools treated as non-current and advances as inventory"),
            ([4, 2, 3, 1], "unpaid dividend and capital advances interchanged")],
           ["Current maturities of long-term debt → short-term borrowings (2021 amendment).", "Unpaid dividends → other current liabilities.",
-           "Capital advances → other non-current assets.", "Loose tools → inventories."],
+           "Capital advances → long-term loans and advances (Division I).", "Loose tools → inventories."],
           "The 2021 amendment moved current maturities to short-term borrowings.", verify_fact=True,
-          ref="Schedule III Division I (amended 24-03-2021)")
+          ref="Schedule III Division I (amended 24-03-2021) — Part I; capital advances under long-term loans and advances")
 
     tl, inst_n, inst, acc_int = 6000000, 12, 500000, 120000
     ltb = tl - 2 * inst

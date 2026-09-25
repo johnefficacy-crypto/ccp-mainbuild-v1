@@ -430,15 +430,18 @@ def add_all(B):
       "I = P × r × d/365", "Money-market interest in India is on Actual/365.")
 
     cf = 4000e7
+    assert 0.50 * cf == 2000e7
     A(CM, "L3",
-      f"A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were {crore(cf,0)}. Under RBI's prudential limits for the call/notice money market (borrowing: 100% of capital funds on a fortnightly average, 125% on any day; lending: 25% on a fortnightly average, 50% on any day), the maximum the bank may LEND on any single day is:",
+      f"A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were {crore(cf,0)}. Under RBI's current directions, each bank sets its own Board-approved limits for call/notice money operations (borrowing within RBI's prudential inter-bank liability limits). This bank's Board-approved limits are: borrowing 100% of capital funds on a fortnightly average and 125% on any day; lending 25% on a fortnightly average and 50% on any day. The maximum the bank may LEND on any single day is:",
       crore(0.50 * cf, 0),
       [(crore(0.25 * cf, 0), "fortnightly-average lending limit applied to a single day"),
        (crore(1.25 * cf, 0), "daily borrowing limit applied to lending"),
        (crore(1.00 * cf, 0), "average borrowing limit applied to lending")],
-      ["Lending: average 25%, peak day 50% of capital funds.", f"50% × {crore(cf,0)} = {crore(0.5*cf,0)}"],
-      "Max daily lending = 50% × capital funds", "Distinguish average and single-day limits.",
-      verify_fact=True, ref="RBI Master Direction — Money Market Instruments: Call/Notice Money Market Operations (prudential limits)")
+      ["Since the 2021 Directions (as amended 8 June 2023), RBI no longer prescribes percentage caps; banks fix Board-approved limits (borrowing within inter-bank liability limits).",
+       "Board-approved lending limits here: average 25%, any single day 50% of capital funds.", f"50% × {crore(cf,0)} = {crore(0.5*cf,0)}"],
+      "Max single-day lending = Board-approved peak lending % × capital funds",
+      "Distinguish average and single-day limits; the percentages are now the bank's own Board-approved limits, not RBI caps.",
+      verify_fact=True, ref="RBI Call, Notice and Term Money Markets (Reserve Bank) Directions, 2021 (as amended 8 June 2023) — Board-approved limits within inter-bank liability (IBL) limits; earlier 2016 Master Direction percentage caps withdrawn")
 
     # ================= CTS =================
     A(CTS, "L1",

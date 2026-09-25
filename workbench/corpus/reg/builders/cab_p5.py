@@ -94,7 +94,7 @@ def add_all(B):
         "Separately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n"
         + table(["Contract (during the year)", "Value"], [
             ["Purchase of packing material", "₹58 crore"], ["Lease of a warehouse (annual rent)", "₹7 crore"],
-            ["Sale of surplus land", "₹27 crore"], ["Appointment of MD's nephew as General Manager", "₹3 lakh per month"]], ["---", "---:"])
+            ["Sale of surplus land", "₹27 crore"], ["Appointment of MD's son as General Manager", "₹3 lakh per month"]], ["---", "---:"])
         + "\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\n")
     B.add(M["s186"], "L4", stem + "The s.186(2) limit for Kaveri and the headroom available before a special resolution is needed are, respectively:",
           f"{cr(lim,0)} and {cr(lim-exist,0)}",
@@ -136,17 +136,17 @@ def add_all(B):
     op = 3e5 > 2.5e5
     assert need == ["land"] and op
     B.add(M["rpt"], "L4", stem + "Which of the contracts with Sharma Traders / related parties require prior approval of members by ordinary resolution under s.188 read with Rule 15?",
-          "Sale of surplus land and appointment of the MD's nephew only",
+          "Sale of surplus land and appointment of the MD's son only",
           [("Purchase of packing material and sale of surplus land only", "goods purchase tested against net worth (₹58 cr ≥ 10% of ₹250 cr)"),
            ("Sale of surplus land only", "office-of-profit threshold overlooked"),
            ("All four contracts", "treats every related-party contract as needing members' approval")],
           [f"Goods purchase: ₹58 cr < 10% of turnover ({cr(0.1*to,0)}) → Board only.",
            f"Lease: ₹7 cr < 10% of turnover → Board only.",
            f"Sale of property: ₹27 cr ≥ 10% of net worth ({cr(0.1*nw,0)}) → OR.",
-           "Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and nephew are relatives under s.2(77); a firm with a relative as partner is a related party.)"],
+           "Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and son are relatives under s.2(77) and Rule 4 of the Specification of Definitions Rules; a firm with a relative as partner is a related party; the son holds an office of profit under s.188(1)(f).)"],
           "Goods/lease/services: 10% of turnover; property: 10% of net worth; office of profit: > ₹2.5 lakh p.m.",
           "Each category has its own base; property sale uses net worth.",
-          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.188; Meetings of Board Rules 2014, Rule 15(3)")
+          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.188(1)(f), s.2(76), s.2(77); Specification of Definitions Rules 2014, Rule 4; Meetings of Board Rules 2014, Rule 15(3)")
 
     # ================================================================== CASE 3 — auditor
     g = "CAB-CASE-3"
@@ -203,11 +203,11 @@ def add_all(B):
           [(f"(i) {ds(plus(brd,60))}; (ii) {ds(gm_by)}", "60 days used for the CG application"),
            (f"(i) {ds(app_by)}; (ii) {ds(plus(cg_app,30))}", "30 days used for the general meeting"),
            (f"(i) {ds(app_by)}; (ii) the next AGM", "treats the resolution as AGM business")],
-          ["Rule 7(1) Audit Rules: application to CG (Form ADT-2) within 30 days of the Board resolution.",
-           "Rule 7(2): general meeting for the special resolution within 60 days of receipt of CG approval.",
+          ["Rule 7(2) Audit Rules: application to CG (Form ADT-2, prescribed by Rule 7(1)) within 30 days of the Board resolution.",
+           "Rule 7(3): general meeting for the special resolution within 60 days of receipt of CG approval.",
            "The auditor must be given a reasonable opportunity of being heard (s.140(1) proviso)."],
           "Board resolution + 30 days (ADT-2); CG approval + 60 days (SR)", "30 then 60 — do not swap.",
-          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.140(1); Audit Rules 2014, Rule 7")
+          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.140(1); Audit Rules 2014, Rule 7(2), (3)")
 
     B.add(M["tribrem"], "L4", stem + "If, instead, the Tribunal on an application under s.140(5) passes a final order that Kulkarni & Co colluded in the vendor fraud, the consequence is:",
           "Auditor must be changed; the firm is barred from any company's audit for five years",
@@ -275,10 +275,10 @@ def add_all(B):
            ("2 only", "30-day general PAS-3 period applied"),
            ("1 and 3 only", "allows use of money before allotment/filing")],
           ["s.42(8) + Rule 14: PAS-3 within 15 days of allotment.",
-           "s.42(6): separate bank account; no utilisation until allotment and return of allotment filed.",
+           "s.42(6): separate bank account; proviso to s.42(4): no utilisation until allotment is made and the return of allotment is filed.",
            "s.29 + Rule 9A: unlisted public companies issue securities only in demat."],
-          "s.42(6), (8); s.29 / Rule 9A", "Unlisted public companies are within the demat mandate.",
-          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.42(6), (8), s.29; PAS Rules 2014, Rules 9A, 14")
+          "s.42(4), (6), (8); s.29 / Rule 9A", "Unlisted public companies are within the demat mandate.",
+          kind="case", group=g, verify_fact=True, ref="Companies Act 2013 s.42(4) proviso, s.42(6), (8), s.29; PAS Rules 2014, Rules 9A, 14")
 
     # ================================================================== CASE 5 — preference redemption
     g = "CAB-CASE-5"

@@ -4876,8 +4876,8 @@ Under the RBI Act, the Monetary Policy Committee consists of:
 
 **Working**
 
-1. s.45ZB: six members; quorum four including the Governor (or DG in his absence).
-2. Majority vote; Governor has a second/casting vote in a tie.
+1. s.45ZB: six members (Governor, DG in charge of monetary policy, one RBI officer nominated by the Central Board, three Central Government appointees).
+2. s.45ZI: quorum four including the Governor (or DG in his absence), majority decision, Governor's casting vote on a tie.
 
 **Formula:** —  
 **Trap:** No government nominee votes; external members are appointed by the Centre.

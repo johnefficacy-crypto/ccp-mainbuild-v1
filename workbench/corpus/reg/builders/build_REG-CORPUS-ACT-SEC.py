@@ -221,11 +221,11 @@ add("S2", "L2",
     [("Is a CIS only if its corpus exceeds ₹500 crore", "wrong deemed-CIS threshold"),
      ("Is a deposit scheme regulated only by the RBI", "other regulator's jurisdiction wrongly invoked"),
      ("Is outside s.11AA because it is not a mutual fund", "confuses CIS with mutual fund schemes")],
-    ["s.11AA(2A) (2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.",
+    ["Proviso to s.11AA(1) (inserted 2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.",
      f"Corpus {amt(corpus)} ≥ ₹100 crore; plantation schemes are not in the s.11AA(3) exclusions.",
      "So it is a deemed CIS and requires registration under s.12(1B)."],
     "Deemed CIS: unregistered pooling with corpus ≥ ₹100 crore", "The deeming test is independent of the s.11AA(2) conditions.",
-    "conceptual", f"{SEBI}, s.11AA(2A) (2014)")
+    "conceptual", f"{SEBI}, s.11AA(1) proviso (inserted 2014)")
 
 add("S2", "L2",
     "Consider the following statements about registration under section 12 of the SEBI Act:\n\n"
@@ -361,12 +361,12 @@ ao, disp = date(2026, 1, 12), date(2026, 3, 20)
 lim = min(add_months(ao, 3), disp)
 assert lim == disp
 add("S3", "L3",
-    f"An AO order dated {d(ao)} imposed a penalty that SEBI considers erroneous and not in the interest of the securities market. The noticee's appeal was disposed of by SAT on {d(disp)}. Under the proviso to section 15-I(3), SEBI's revisional power could be exercised only up to:",
+    f"An AO order dated {d(ao)} imposed a penalty that SEBI considers erroneous and inadequate; SEBI wishes to enhance it under section 15-I(3). The noticee's appeal was disposed of by SAT on {d(disp)}. Reading the proviso as: the power lapses three months after the AO order or on disposal of the s.15T appeal, whichever is earlier, SEBI's power could be exercised only up to:",
     d(lim),
     [(d(add_months(ao, 3)), "three months from the AO order, ignoring 'whichever is earlier'"),
      (d(add_months(disp, 3)), "three months counted from SAT's disposal"),
      (d(add_months(ao, 6)), "six-month window assumed")],
-    ["s.15-I(3): the Board may call for records and revise an AO order that is erroneous and not in the interest of the market (after hearing).",
+    ["s.15-I(3): the Board may call for records and, if the AO order is erroneous and not in the interest of the market, enhance the penalty (after hearing).",
      "The power cannot be exercised after three months from the AO order or the disposal of appeal under s.15T, whichever is earlier.",
      f"Earlier of {d(add_months(ao, 3))} and {d(disp)} = {d(lim)}."],
     "Window ends at min(AO order + 3 months, appeal disposal)", "'Whichever is earlier' shortens the window.", "numerical",
@@ -384,32 +384,33 @@ case = ("**Case — Kestrel Stock Broking Ltd (fictional)**\n\n"
         f"An adjudicating officer passed a penalty order; Kestrel received a copy on {d(rec_ao)}. "
         f"Kestrel's appeal reached SAT on {d(sat_rec)}. SAT's final decision was communicated to Kestrel on {d(sat_comm)}.")
 G1 = "ACTS-CASE-KESTREL"
-a_hi = 5 * cn
-assert a_hi == 1.8 * CRORE
+a_hi = CRORE          # s.15F(a) as substituted 2014: ₹1 lakh – ₹1 crore
+assert a_hi == 1e7
 add("S3", "L4", case + "\n\nFor finding (a) alone, the **maximum** penalty under section 15F(a) is:",
     amt(a_hi),
-    [(amt(CRORE), "₹1 crore daily-default cap applied to contract notes"),
+    [(amt(5 * cn), "pre-2014 text: five times the value of securities"),
      (amt(3 * cn), "3× multiple of ss.15G/15HA applied"),
      (amt(cn), "value of securities itself taken as ceiling")],
-    ["s.15F(a): failure to issue contract notes — penalty not less than ₹1 lakh, extending to five times the value of securities for which contract notes were required.",
-     f"5 × {amt(cn)} = {amt(a_hi)}."],
-    "Max = 5 × value of securities", "Contract-note penalty is value-linked, not day-linked.", "numerical",
-    f"{SEBI}, s.15F(a)", group=G1)
+    ["s.15F(a) (as substituted by the Securities Laws (Amendment) Act, 2014): failure to issue contract notes — penalty not less than ₹1 lakh, which may extend to ₹1 crore.",
+     f"The value of securities ({amt(cn)}) no longer sets the ceiling; maximum = {amt(a_hi)}.",
+     f"The pre-2014 limb (five times the value) would have given {amt(5*cn)}."],
+    "s.15F(a): ₹1 lakh ≤ penalty ≤ ₹1 crore", "The '5 × value' limb was removed in 2014.", "numerical",
+    f"{SEBI}, s.15F(a) (as substituted 2014)", group=G1)
 
 b_hi, c_hi = 5 * xb, daily(fd)[1]
 tot = a_hi + b_hi + c_hi
-assert round(tot) == round(2.46 * CRORE)
+assert round(tot) == round(1.66 * CRORE)
 add("S3", "L4", case + "\n\nThe **maximum aggregate** penalty across findings (a), (b) and (c) is:",
     amt(tot),
-    [(amt(min(a_hi, CRORE) + b_hi + c_hi), "finding (a) wrongly capped at ₹1 crore"),
+    [(amt(5 * cn + b_hi + c_hi), "pre-2014 '5 × value of securities' limb used for (a)"),
      (amt(3 * cn + 3 * xb + c_hi), "3× multiple used for (a) and (b)"),
      (amt(a_hi + xb + c_hi), "excess brokerage itself taken as ceiling for (b)")],
-    [f"(a) s.15F(a): 5 × {amt(cn)} = {amt(a_hi)}.",
+    [f"(a) s.15F(a) (2014): up to {amt(a_hi)}.",
      f"(b) s.15F(c): up to five times the excess brokerage = 5 × {amt(xb)} = {amt(b_hi)}.",
      f"(c) s.15A: min(₹1 lakh × {fd}, ₹1 crore) = {amt(c_hi)}.",
      f"Total = {amt(tot)}."],
-    "Σ [5 × value] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]", "Each head has its own base.",
-    "numerical", f"{SEBI}, ss.15A, 15F(a), 15F(c)", group=G1)
+    "Σ [₹1 crore] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]", "Each head has its own base; 15F(a) is no longer value-linked.",
+    "numerical", f"{SEBI}, ss.15A, 15F(a), 15F(c) (as substituted 2014)", group=G1)
 
 endeav = add_months(sat_rec, 6)
 add("S4", "L4", case + "\n\nUnder section 15T, SAT shall endeavour to dispose of Kestrel's appeal finally by:",
@@ -481,13 +482,14 @@ add("C2", "L1",
     "s.11", "s.11 (supersede, ≤ 6 months) vs s.12 (suspend, ≤ 7 days).", "conceptual", f"{SCRA}, s.11")
 
 add("C3", "L1",
-    "Section 18A of the SCRA makes contracts in derivatives legal and valid, notwithstanding any other law, if they are:",
+    "Under section 18A of the SCRA, one of the conditions under which contracts in derivatives are legal and valid, notwithstanding any other law, is that they are:",
     "Traded on a recognised stock exchange and settled on its clearing house",
-    [("Entered into between any two SEBI-registered brokers off the exchange", "bilateral OTC trades not covered by s.18A"),
+    [("Entered into between any two SEBI-registered brokers off the exchange", "off-exchange trades covered only if parties/terms are notified under s.18A(c)"),
      ("Approved in advance by the RBI under the RBI Act", "other regulator's (s.45V RBI Act) route confused"),
      ("Settled within the spot delivery period of s.2(i)", "spot delivery test confused with derivative legality")],
-    ["s.18A (1999): derivatives are legal and valid if (a) traded on a recognised stock exchange and (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws."],
-    "s.18A", "Both limbs — exchange trading and exchange clearing.", "conceptual", f"{SCRA}, s.18A")
+    ["s.18A: derivatives are legal and valid if (a) traded on a recognised stock exchange; (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws; or (c) between such parties and on such terms as the Central Government notifies (clause (c) inserted by Finance Act, 2015).",
+     "Exchange trading with exchange clearing is the standard route; an unnotified broker-to-broker OTC deal, RBI approval or a spot-delivery period does not qualify."],
+    "s.18A", "The notified-parties route (c) is Government notification, not ad hoc approval.", "conceptual", f"{SCRA}, s.18A (as amended by Finance Act, 2015)")
 
 add("C4", "L1",
     "Under rule 19A of the SCRR, 1957, every listed company other than a public sector company shall maintain public shareholding of at least:",
@@ -557,13 +559,13 @@ add("C4", "L2",
 
 add("C3", "L2",
     "The Central Government has notified section 13 of the SCRA for Region Z. Two investors in Region Z, neither a member of a recognised stock exchange, agree directly (not through any member) to sell listed shares with delivery and payment 20 days later. The contract is:",
-    "Void under section 13",
+    "Illegal under section 13",
     [("Valid, because s.18 excludes all contracts between non-members", "s.18 excludes spot delivery contracts, not all contracts"),
      ("Valid, as s.13 applies only to derivatives", "confuses s.13 with s.18A"),
-     ("Voidable at the option of the buyer", "void-ab-initio consequence misstated")],
-    ["s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is void.",
+     ("Voidable at the option of the buyer", "consequence misstated; s.13 makes it illegal")],
+    ["s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is illegal.",
      "s.18 exempts spot delivery contracts; delivery after 20 days is not spot delivery (s.2(i)).",
-     "Hence the contract is void."],
+     "Hence the contract is illegal (and hence unenforceable)."],
     "s.13 read with s.18 and s.2(i)", "Check the delivery period before applying the s.18 exclusion.", "conceptual",
     f"{SCRA}, ss.13, 18")
 
@@ -780,9 +782,10 @@ add("D2", "L1",
     "30 days", [("15 days", "confused with the delisting-appeal window"),
                 ("Two months", "Companies Act allotment-certificate timeline"),
                 ("45 days", "confused with the SAT appeal period")],
-    ["s.14(1): BO informs the depository; depository makes entries and informs the issuer.",
-     "s.14(2): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee."],
-    "s.14(2)", "Opting out is a right; the issuer's timeline is 30 days.", "conceptual", f"{DA}, s.14")
+    ["s.14(1): BO informs the depository through the participant.",
+     "s.14(2): depository makes appropriate entries and informs the issuer.",
+     "s.14(3): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee."],
+    "s.14(3)", "Opting out is a right; the issuer's timeline is 30 days.", "conceptual", f"{DA}, s.14(3)")
 
 add("D1", "L1", "Under section 2(1)(e) of the Depositories Act, a 'depository' is:",
     "A company registered under s.12(1A) SEBI Act",
@@ -937,12 +940,13 @@ add("D4", "L3",
     "1. SEBI may call upon an issuer, depository, participant or beneficial owner to furnish information relating to securities held in a depository.\n"
     "2. SEBI may issue directions to a depository or participant in the interest of investors or orderly development of the securities market.\n"
     "3. A court may take cognizance of an offence under the Act on a complaint by any investor who suffered loss." + ST,
-    "1 and 2 only",
-    [("1, 2 and 3", "s.22 bar (complaint by the Board) missed"),
+    "1, 2 and 3",
+    [("1 and 2 only", "SEBI Act s.26 'complaint by the Board only' rule imported into DA s.22"),
      ("2 and 3 only", "s.18 information power missed"),
-     ("1 only", "s.19 direction power missed")],
-    ["s.18 — true.", "s.19 — true.", "s.22: no court takes cognizance save on a complaint by the Board — statement 3 false."],
-    "ss.18, 19, 22", "Prosecution is SEBI-initiated.", "statement", f"{DA}, ss.18, 19, 22")
+     ("1 and 3 only", "s.19 direction power missed")],
+    ["s.18 — true.", "s.19 — true.",
+     "s.22(1) (as amended 2004): cognizance on a complaint by the Central Government, a State Government, SEBI or by any person — statement 3 true."],
+    "ss.18, 19, 22", "Unlike SEBI Act s.26 (Board only), DA s.22 allows a complaint by any person.", "statement", f"{DA}, ss.18, 19, 22 (as amended 2004)")
 
 rc = date(2026, 6, 15)
 sat_last = rc + timedelta(45)
@@ -1012,10 +1016,10 @@ add("D2", "L4", case + "\n\nFor the opt-out, the latest date by which Zenith mus
     [(d(opt_rec + timedelta(15)), "15-day period assumed"),
      (d(add_months(opt_rec, 2)), "two-month allotment timeline of the Companies Act used"),
      (d(opt_rec + timedelta(45)), "45-day SAT appeal period applied")],
-    ["s.14(2): issuer issues the certificate within 30 days of receipt of information from the depository.",
+    ["s.14(3): issuer issues the certificate within 30 days of receipt of information from the depository.",
      f"{d(opt_rec)} + 30 days = {d(od)}."],
     "Deadline = Receipt of intimation + 30 days", "Clock runs from issuer's receipt, not BO's request.", "numerical",
-    f"{DA}, s.14", group=G3)
+    f"{DA}, s.14(3)", group=G3)
 
 # =====================================================================================
 # checks + output

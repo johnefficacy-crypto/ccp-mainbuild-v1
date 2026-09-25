@@ -5376,14 +5376,15 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were ₹4,000 crore. Under RBI's prudential limits for the call/notice money market (borrowing: 100% of capital funds on a fortnightly average, 125% on any day; lending: 25% on a fortnightly average, 50% on any day), the maximum the bank may LEND on any single day is:",
+      "stem": "A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were ₹4,000 crore. Under RBI's current directions, each bank sets its own Board-approved limits for call/notice money operations (borrowing within RBI's prudential inter-bank liability limits). This bank's Board-approved limits are: borrowing 100% of capital funds on a fortnightly average and 125% on any day; lending 25% on a fortnightly average and 50% on any day. The maximum the bank may LEND on any single day is:",
       "explanation": {
         "steps": [
-          "Lending: average 25%, peak day 50% of capital funds.",
+          "Since the 2021 Directions (as amended 8 June 2023), RBI no longer prescribes percentage caps; banks fix Board-approved limits (borrowing within inter-bank liability limits).",
+          "Board-approved lending limits here: average 25%, any single day 50% of capital funds.",
           "50% × ₹4,000 crore = ₹2,000 crore"
         ],
-        "formula_used": "Max daily lending = 50% × capital funds",
-        "trap": "Distinguish average and single-day limits."
+        "formula_used": "Max single-day lending = Board-approved peak lending % × capital funds",
+        "trap": "Distinguish average and single-day limits; the percentages are now the bank's own Board-approved limits, not RBI caps."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -5392,7 +5393,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "RBI Master Direction — Money Market Instruments: Call/Notice Money Market Operations (prudential limits)"
+          "note": "RBI Call, Notice and Term Money Markets (Reserve Bank) Directions, 2021 (as amended 8 June 2023) — Board-approved limits within inter-bank liability (IBL) limits; earlier 2016 Master Direction percentage caps withdrawn"
         }
       ],
       "options": [
@@ -8091,11 +8092,12 @@
       "difficulty": "medium",
       "question_kind": "assertion-reason",
       "stimulus_group": null,
-      "stem": "**Assertion (A):** Shareholders of a listed company holding physical share certificates cannot transfer them to a buyer in physical form, though they can still dematerialise them.\n\n**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies (other than transmission or transposition) are processed only in dematerialised form.\n\nChoose the correct option:",
+      "stem": "**Assertion (A):** Shareholders of a listed company holding physical share certificates cannot transfer them to a buyer in physical form, though they can still dematerialise them.\n\n**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies are processed only in dematerialised form (extended to transmission and transposition from January 2022).\n\nChoose the correct option:",
       "explanation": {
         "steps": [
-          "Reg 40 of LODR (amended 2018, effective 1 April 2019): transfers only in demat.",
-          "Transmission/transposition exempted; holders may dematerialise."
+          "Reg 40(1) of LODR (amended 2018, effective 1 April 2019): transfers only in demat.",
+          "Proviso substituted by LODR (Amendment) Regulations, 24 January 2022: transmission and transposition also only in demat.",
+          "Holders of physical certificates may still dematerialise them."
         ],
         "formula_used": "—",
         "trap": "Holding in physical form is not banned — transfer is."
@@ -8107,7 +8109,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "SEBI (LODR) Regulations 2015, Reg 40 (as amended June 2018)"
+          "note": "SEBI (LODR) Regulations 2015, Reg 40(1) (as amended June 2018; proviso substituted by LODR (Amendment) Regulations, 24 January 2022)"
         }
       ],
       "options": [
@@ -9198,14 +9200,15 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": "FINA-CASE-IPO",
-      "stem": "**Case — Narmada Green Energy Ltd (fictional)** — main-board book-built IPO; the issuer satisfies the profitability track-record route (Reg 6(1), ICDR).\n\n| Item | Data |\n|---|---|\n| Pre-issue equity shares | 18 crore (promoters 15 crore) |\n| Fresh issue | 4 crore shares |\n| Offer for sale by promoters | 2 crore shares |\n| Price band / final issue price | ₹310–326 / ₹326 |\n| Anchor allocation price | ₹320 |\n| Profit after tax (latest year) | ₹540 crore |\n| Employee / shareholder reservation | Nil |\n\nAssume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, one-third of the anchor portion reserved for domestic mutual funds.\n\nThe maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:",
+      "stem": "**Case — Narmada Green Energy Ltd (fictional)** — main-board book-built IPO; the issuer satisfies the profitability track-record route (Reg 6(1), ICDR).\n\n| Item | Data |\n|---|---|\n| Pre-issue equity shares | 18 crore (promoters 15 crore) |\n| Fresh issue | 4 crore shares |\n| Offer for sale by promoters | 2 crore shares |\n| Price band / final issue price | ₹310–326 / ₹326 |\n| Anchor allocation price | ₹320 |\n| Profit after tax (latest year) | ₹540 crore |\n| Employee / shareholder reservation | Nil |\n\nAssume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, 40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).\n\nThe maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:",
       "explanation": {
         "steps": [
           "Offer = 4 + 2 = 6 crore shares",
           "QIB portion ≤ 50% = 3.0 crore",
-          "Anchor ≤ 60% × 3.0 = 1.80 crore; MF ≥ one-third = 0.60 crore"
+          "Anchor ≤ 60% × 3.0 = 1.80 crore; MF ≥ one-third = 0.60 crore",
+          "Total reservation 40% of anchor = 0.72 crore, of which life insurers/pension funds 0.12 crore"
         ],
-        "formula_used": "Anchor ≤ 0.6 × QIB portion; MF reservation = ⅓ of anchor",
+        "formula_used": "Anchor ≤ 0.6 × QIB portion; reservation = 40% of anchor (⅓ MFs + balance LI/PF)",
         "trap": "The offer includes both fresh issue and OFS."
       },
       "source_kind": "authored",
@@ -9215,7 +9218,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "SEBI (Issue of Capital and Disclosure Requirements) Regulations, 2018 — anchor investor provisions (Schedule XIII) and lock-in (Regs 16–17); Reg 32(1)"
+          "note": "SEBI (Issue of Capital and Disclosure Requirements) Regulations, 2018 — anchor investor provisions (Schedule XIII) and lock-in (Regs 16–17); Reg 32(1); ICDR (Third Amendment) Regulations 2025 — 40% anchor reservation (⅓ MFs, balance life insurers & pension funds)"
         }
       ],
       "options": [
@@ -9697,7 +9700,7 @@
         "steps": [
           "CBDT and CBIC: Central Boards of Revenue Act 1963.",
           "GST Council: Art. 279A (101st Amendment, 2016).",
-          "ITAT: final fact-finding authority in income-tax appeals."
+          "ITAT: second appellate and final fact-finding authority in income-tax appeals (Income-tax Act 2025)."
         ],
         "formula_used": "—",
         "trap": "Two revenue boards under one 1963 Act."
@@ -9709,7 +9712,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Central Boards of Revenue Act 1963; Constitution Art. 279A; Income-tax Act 1961 s.252"
+          "note": "Central Boards of Revenue Act 1963; Constitution Art. 279A; Income-tax Act 2025 — Appellate Tribunal provisions (appeal to Tribunal s.362; formerly ss.252–253 of the 1961 Act)"
         }
       ],
       "options": [

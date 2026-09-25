@@ -397,28 +397,28 @@ def add_all(B):
          ref="Companies (Accounts) Rules, 2014 — Rule 3(1) and 3(5) as amended in 2021/2022")
 
     stmt(B, S("accounting-software"), "L3",
-         "Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking, insurance or power company unless stated):",
+         "Under the Companies (Filing of Documents and Forms in XBRL) Rules, 2015, consider these companies (none is a banking company, insurance company or housing finance company, and none is required to follow Ind AS, unless stated):",
          ["P Ltd, unlisted, paid-up capital ₹3 crore, turnover ₹120 crore, must file financial statements in XBRL.",
-          "Q Ltd, unlisted, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.",
+          "Q Ltd, unlisted and not required to follow Ind AS, paid-up capital ₹4 crore, turnover ₹80 crore, must file in XBRL.",
           "R Ltd, a non-banking financial company with paid-up capital ₹20 crore, is excluded from XBRL filing."],
          [1, 3], [([1, 2], "applies XBRL to a company below both thresholds"),
                   ([2, 3], "reads the paid-up and turnover thresholds as cumulative"),
                   ([1], "misses the NBFC exclusion")],
-         ["Thresholds (any one): listed (and Indian subsidiaries), paid-up ≥ ₹5 crore, or turnover ≥ ₹100 crore.",
-          "P: turnover ≥ ₹100 crore → covered. Q: below both → not covered.",
-          "Banking, insurance, power companies and NBFCs are excluded."],
+         ["Rule 3 classes (any one): listed companies and their Indian subsidiaries; paid-up capital ≥ ₹5 crore; turnover ≥ ₹100 crore; companies required to prepare financial statements under Ind AS.",
+          "P: turnover ≥ ₹100 crore → covered. Q: below both thresholds, unlisted and not an Ind AS company → not covered.",
+          "Excluded: banking companies, insurance companies, NBFCs and housing finance companies (power companies are not excluded)."],
          "The thresholds are alternatives, not cumulative.", verify_fact=True,
-         ref="Companies (Filing of Documents and Forms in XBRL) Rules, 2015, Rule 3")
+         ref="Companies (Filing of Documents and Forms in XBRL) Rules, 2015, Rule 3 (classes (i)–(iv) and exempted companies)")
 
     # ---------------- Applicability framework ----------------
     B.add(micro=S("applicability-framework"), level="L2",
           stem=("Under the Companies (Accounting Standards) Rules, 2021, which of the following unlisted companies (none a bank, insurer or "
-                "FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year?"),
+                "FI, and none part of a larger group) qualifies as a Small and Medium-sized Company (SMC) for the current year? Turnover (excluding other income) is for the immediately preceding accounting year; borrowings are the maximum outstanding at any time in that year."),
           correct="Turnover ₹240 crore; borrowings ₹48 crore",
           wrongs=[("Turnover ₹240 crore; borrowings ₹55 crore", "borrowing limit of ₹50 crore exceeded"),
                   ("Turnover ₹260 crore; borrowings ₹20 crore", "turnover limit of ₹250 crore exceeded"),
                   ("Turnover ₹60 crore; borrowings ₹5 crore, but the company has filed a draft offer document for listing", "a company in the process of listing is not an SMC")],
-          steps=["SMC: not listed or in process of listing; not a bank/FI/insurer; turnover ≤ ₹250 crore; borrowings ≤ ₹50 crore; not a holding/subsidiary of a non-SMC.",
+          steps=["SMC: not listed or in process of listing; not a bank/FI/insurer; turnover (excluding other income) ≤ ₹250 crore in the immediately preceding accounting year; borrowings ≤ ₹50 crore at any time in that year; not a holding/subsidiary of a non-SMC.",
                  "Only the first option satisfies all conditions."],
           formula="SMC criteria (Rule 2(1)(e), 2021 Rules)", trap="Both limits must be met, and 'in process of listing' disqualifies.",
           kind="conceptual", verify_fact=True, ref="Companies (Accounting Standards) Rules, 2021, Rule 2(1)(e)")

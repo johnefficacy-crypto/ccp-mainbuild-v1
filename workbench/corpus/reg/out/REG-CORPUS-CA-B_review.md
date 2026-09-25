@@ -50,8 +50,8 @@ The maximum amount out of FY 2025-26 profits that can be distributed as dividend
 **Working**
 
 1. Start: profit before depreciation ₹9.60 crore; deduct Schedule II depreciation ₹2.10 crore.
-2. Exclude unrealised/notional fair-value gain ₹0.45 crore (first proviso to s.123(1)).
-3. Set off carried-over loss ₹1.25 crore and depreciation not provided earlier ₹0.30 crore (third proviso).
+2. Exclude unrealised/notional fair-value gain ₹0.45 crore (proviso to s.123(1)(a)).
+3. Set off carried-over loss ₹1.25 crore and depreciation not provided earlier ₹0.30 crore (fourth, i.e. last, proviso to s.123(1)).
 4. Distributable = ₹5.50 crore.
 
 **Formula:** Distributable = Profit − Sch II depreciation − unrealised gains − b/f losses − arrear depreciation  
@@ -975,8 +975,8 @@ Which of the statements given above is/are correct?
 **Working**
 
 1. s.188(3): ratification within three months; else voidable at the Board's option.
-2. s.188(1) fourth proviso: related-party members cannot vote on that resolution (exemption for companies where 90% or more members are relatives of promoters or related parties).
-3. Explanation (b)/fifth proviso: ordinary course + arm's length transactions are outside s.188(1).
+2. s.188(1) second proviso: related-party members cannot vote on that resolution; third proviso exempts companies where 90% or more members are relatives of promoters or related parties.
+3. s.188(1) fourth proviso: ordinary course + arm's length transactions are outside s.188(1) (Explanation (b) defines arm's length).
 
 **Formula:** s.188(1) provisos; s.188(3)  
 **Trap:** All three conditions of s.188 are standard traps.
@@ -1164,7 +1164,7 @@ Which of the statements given above is/are correct?
 **Working**
 
 1. Rule 14: offer letter in PAS-4, serially numbered and addressed to the identified person.
-2. s.42(7)/Rule 14: not renounceable; a person other than the addressee cannot apply.
+2. s.42(3)/Rule 14: offer only to identified persons, with no right of renunciation; a person other than the addressee cannot apply.
 3. s.42(4): payment through cheque/demand draft/other banking channels, not cash.
 
 **Formula:** s.42; Rule 14  
@@ -1392,7 +1392,7 @@ Which of the statements given above is/are correct?
 
 ## CAB-055 · L3 · hard · Shelf prospectus and abridged prospectus ⚠
 
-A public sector bank files a shelf prospectus under s.31. Consider:
+A company eligible under SEBI regulations files a shelf prospectus under s.31. Consider:
 
 1. The shelf prospectus is valid for a period not exceeding one year from the date of opening of the first offer of securities under it.
 2. No further prospectus is required for second and subsequent offers during the validity period.
@@ -1548,7 +1548,7 @@ Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. App
 
 **Working**
 
-1. Rule 11(2) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.
+1. Rule 11(1) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.
 2. Interest = 3,60,00,000 × 15% × 40/365 = ₹5,91,781.
 
 **Formula:** Interest = Amount × 15% × days of delay/365  
@@ -1618,14 +1618,14 @@ Arjun Forgings Ltd created a charge on its plant in favour of a bank on 10 Janua
 
 - **A.** Possible with ad valorem fees, within the further 60-day window ✅
 - **B.** Possible only with additional fees, as it is within 120 days of creation  _(error: additional-fee window (31–60 days) confused with ad valorem window)_
-- **C.** Not possible; only the Tribunal can condone the delay  _(error: Registrar's power under the third proviso overlooked)_
+- **C.** Not possible; only the Tribunal can condone the delay  _(error: Registrar's power under the second proviso overlooked)_
 - **D.** Possible with normal fees, as it is within 90 days of creation  _(error: invented 90-day normal window)_
 
 **Working**
 
 1. s.77(1): register within 30 days of creation.
 2. First proviso (b): Registrar may allow within 60 days of creation on payment of additional fees.
-3. Third proviso: if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.
+3. Second proviso, clause (b): if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.
 4. 74 days falls in the 61–120 day band → ad valorem fees.
 
 **Formula:** 30 days (normal) → up to 60 days (additional fees) → up to 120 days (ad valorem fees)  
@@ -1678,7 +1678,7 @@ Gaurav Cables Pvt Ltd (unlisted; not an NBFC or HFC) has privately placed secure
 
 1. Rule 18(7)(b)(iv)(B): unlisted companies (other than NBFC/HFC) — DRR of 10% of outstanding debentures.
 2. DRR = 10% × ₹50.00 crore = ₹5.00 crore.
-3. Rule 18(7)(vii): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × ₹20.00 crore = ₹3.00 crore.
+3. Rule 18(7)(b)(v): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × ₹20.00 crore = ₹3.00 crore.
 
 **Formula:** DRR = 10% of outstanding; deposit = 15% of amount maturing next year  
 **Trap:** Listed companies are exempt from DRR but not from the 15% deposit.
@@ -1761,19 +1761,20 @@ Under s.44 of the Companies Act, 2013, the shares, debentures or other interest 
 
 ## CAB-070 · L2 · medium · s.46 duplicate share certificate and penalty ⚠
 
-A shareholder of Chandan Paints Ltd (an unlisted public company holding physical certificates) applies for a duplicate share certificate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:
+A shareholder of Chandan Paints Ltd (an unlisted public company; physical certificates) has lost his share certificate and applies for a duplicate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:
 
-- **A.** 15 days if lost or destroyed; 7 days if defaced or mutilated  _(error: invented periods)_
-- **B.** 30 days from application in every case, lost or mutilated  _(error: uniform period assumed)_
-- **C.** 3 months (lost/destroyed); 30 days (defaced/mutilated, surrendered) ✅
-- **D.** Three months from application in every case, lost or mutilated  _(error: uniform period assumed)_
+- **A.** Six months from the date of the loss being reported  _(error: invented period and wrong starting point)_
+- **B.** 45 days from submission of complete documents  _(error: listed-company period applied to an unlisted company)_
+- **C.** Three months from submission of complete documents ✅
+- **D.** One month from the date of the application  _(error: s.56(4) one-month certificate-delivery period applied)_
 
 **Working**
 
-1. Rule 6(3)(a): duplicate within 3 months of submission of complete documents (lost/destroyed) or within 30 days of application (defaced, mutilated, torn, decrepit, worn out, or transfer pages fully used).
+1. Rule 6(2)(c): a duplicate certificate for a lost/destroyed certificate is issued within 3 months (unlisted company) or 45 days (listed company) from submission of complete documents.
+2. Chandan Paints is unlisted → three months.
 
-**Formula:** SCD Rule 6(3)(a)  
-**Trap:** Loss cases need more time for verification; mutilated certificates are surrendered.
+**Formula:** SCD Rule 6(2)(c)  
+**Trap:** Listed and unlisted companies have different periods; the clock starts on complete documents.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -2027,11 +2028,11 @@ Which of the statements given above is/are correct?
 
 **Working**
 
-1. s.103(2)(a): adjourned to same day next week or as Board determines; requisitioned meeting cancelled.
+1. s.103(2)(a): adjourned to same day next week or as Board determines; s.103(2)(b): requisitioned meeting cancelled.
 2. Proviso: changed date → ≥ 3 days' notice individually or by newspaper (English + vernacular).
-3. s.103(2)(b): at the adjourned meeting, members present shall be the quorum.
+3. s.103(3): at the adjourned meeting, members present shall be the quorum.
 
-**Formula:** s.103(2)  
+**Formula:** s.103(2), (3)  
 **Trap:** Adjourned GM: members present = quorum (unlike a Board meeting).
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -2369,7 +2370,7 @@ Which companies must have at least one woman director under the second proviso t
 
 ## CAB-095 · L3 · hard · Woman director and resident director ⚠
 
-The only woman director of Aditi Pharma Ltd (listed) resigned with effect from 1 May 2026. The next Board meeting is scheduled for 20 August 2026. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:
+The only woman director of Aditi Pharma Ltd (unlisted public company; paid-up capital ₹150 crore) resigned with effect from 1 May 2026. The next Board meeting is scheduled for 20 August 2026. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:
 
 - **A.** 1 August 2026  _(error: 'whichever is earlier' applied instead of 'whichever is later')_
 - **B.** 28 October 2026  _(error: six-month period used)_
@@ -2510,8 +2511,8 @@ Which of the statements given above is/are correct?
 
 **Working**
 
-1. s.419(1), (3): Benches; Principal Bench at New Delhi presided by the President.
-2. s.419(2): Bench of one Judicial and one Technical member.
+1. s.419(2): Principal Bench at New Delhi, presided over by the President.
+2. s.419(3): a Bench consists of one Judicial and one Technical member.
 3. s.424(1): not bound by CPC; guided by principles of natural justice.
 4. IBC s.5(1) / s.60: NCLT is the Adjudicating Authority for corporate persons.
 
@@ -2790,7 +2791,7 @@ Separately, the following contracts are proposed with Sharma Traders, a firm in 
 | Purchase of packing material | ₹58 crore |
 | Lease of a warehouse (annual rent) | ₹7 crore |
 | Sale of surplus land | ₹27 crore |
-| Appointment of MD's nephew as General Manager | ₹3 lakh per month |
+| Appointment of MD's son as General Manager | ₹3 lakh per month |
 
 Indicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.
 
@@ -2829,7 +2830,7 @@ Separately, the following contracts are proposed with Sharma Traders, a firm in 
 | Purchase of packing material | ₹58 crore |
 | Lease of a warehouse (annual rent) | ₹7 crore |
 | Sale of surplus land | ₹27 crore |
-| Appointment of MD's nephew as General Manager | ₹3 lakh per month |
+| Appointment of MD's son as General Manager | ₹3 lakh per month |
 
 Indicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.
 
@@ -2868,7 +2869,7 @@ Separately, the following contracts are proposed with Sharma Traders, a firm in 
 | Purchase of packing material | ₹58 crore |
 | Lease of a warehouse (annual rent) | ₹7 crore |
 | Sale of surplus land | ₹27 crore |
-| Appointment of MD's nephew as General Manager | ₹3 lakh per month |
+| Appointment of MD's son as General Manager | ₹3 lakh per month |
 
 Indicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.
 
@@ -2907,7 +2908,7 @@ Separately, the following contracts are proposed with Sharma Traders, a firm in 
 | Purchase of packing material | ₹58 crore |
 | Lease of a warehouse (annual rent) | ₹7 crore |
 | Sale of surplus land | ₹27 crore |
-| Appointment of MD's nephew as General Manager | ₹3 lakh per month |
+| Appointment of MD's son as General Manager | ₹3 lakh per month |
 
 Indicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.
 
@@ -2916,14 +2917,14 @@ Which of the contracts with Sharma Traders / related parties require prior appro
 - **A.** Sale of surplus land only  _(error: office-of-profit threshold overlooked)_
 - **B.** Purchase of packing material and sale of surplus land only  _(error: goods purchase tested against net worth (₹58 cr ≥ 10% of ₹250 cr))_
 - **C.** All four contracts  _(error: treats every related-party contract as needing members' approval)_
-- **D.** Sale of surplus land and appointment of the MD's nephew only ✅
+- **D.** Sale of surplus land and appointment of the MD's son only ✅
 
 **Working**
 
 1. Goods purchase: ₹58 cr < 10% of turnover (₹62 crore) → Board only.
 2. Lease: ₹7 cr < 10% of turnover → Board only.
 3. Sale of property: ₹27 cr ≥ 10% of net worth (₹25 crore) → OR.
-4. Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and nephew are relatives under s.2(77); a firm with a relative as partner is a related party.)
+4. Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and son are relatives under s.2(77) and Rule 4 of the Specification of Definitions Rules; a firm with a relative as partner is a related party; the son holds an office of profit under s.188(1)(f).)
 
 **Formula:** Goods/lease/services: 10% of turnover; property: 10% of net worth; office of profit: > ₹2.5 lakh p.m.  
 **Trap:** Each category has its own base; property sale uses net worth.
@@ -3053,8 +3054,8 @@ For the removal of Kulkarni & Co, the latest dates for (i) filing the applicatio
 
 **Working**
 
-1. Rule 7(1) Audit Rules: application to CG (Form ADT-2) within 30 days of the Board resolution.
-2. Rule 7(2): general meeting for the special resolution within 60 days of receipt of CG approval.
+1. Rule 7(2) Audit Rules: application to CG (Form ADT-2, prescribed by Rule 7(1)) within 30 days of the Board resolution.
+2. Rule 7(3): general meeting for the special resolution within 60 days of receipt of CG approval.
 3. The auditor must be given a reasonable opportunity of being heard (s.140(1) proviso).
 
 **Formula:** Board resolution + 30 days (ADT-2); CG approval + 60 days (SR)  
@@ -3205,10 +3206,10 @@ Which of the statements given above is/are correct?
 **Working**
 
 1. s.42(8) + Rule 14: PAS-3 within 15 days of allotment.
-2. s.42(6): separate bank account; no utilisation until allotment and return of allotment filed.
+2. s.42(6): separate bank account; proviso to s.42(4): no utilisation until allotment is made and the return of allotment is filed.
 3. s.29 + Rule 9A: unlisted public companies issue securities only in demat.
 
-**Formula:** s.42(6), (8); s.29 / Rule 9A  
+**Formula:** s.42(4), (6), (8); s.29 / Rule 9A  
 **Trap:** Unlisted public companies are within the demat mandate.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
