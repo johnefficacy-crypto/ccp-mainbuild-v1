@@ -1,0 +1,101 @@
+﻿question_id,paper_id,section,question_number,fit,best_topic_id,best_topic_label,coverage
+c127ac10-6034-4aa3-9b68-c13e326584ac,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,English Comprehension,76,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+560d0623-71f2-4476-abda-0a9f9996bddd,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,English Comprehension,85,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+2a60c531-7794-4e94-b6f3-9d8076c37b19,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,English Comprehension,93,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+5d3781f5-ba3d-47f5-b148-0a2903f406d2,253f2938-bb65-440f-9487-6dd428902a44,English Comprehension,77,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+8a928267-bf70-44e5-b4f6-a078df40e228,253f2938-bb65-440f-9487-6dd428902a44,English Comprehension,85,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+7124526e-bb3b-4fcf-8159-0c0175113cb3,253f2938-bb65-440f-9487-6dd428902a44,English Comprehension,94,unmatched,75d64ae7-691e-4226-9c46-05d217805e7d,Statement and inference,0.333
+7b04d693-04fc-41af-be6c-613d07df0947,3d903cdf-c4b6-41e0-855c-0c86f01ea971,English Comprehension,77,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+086c45a2-6ab4-4b82-a0bc-40befab9bed5,3d903cdf-c4b6-41e0-855c-0c86f01ea971,English Comprehension,86,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+6107cb6d-84a8-4769-bbc4-7752565fb7fc,3d903cdf-c4b6-41e0-855c-0c86f01ea971,English Comprehension,94,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+32b5191c-7655-41c8-b6c1-56a2e5d8507e,55571471-ae6b-458e-b866-47680b25cd4a,English Comprehension,78,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+f7d966bc-484b-4fda-848a-2a7844f13399,55571471-ae6b-458e-b866-47680b25cd4a,English Comprehension,87,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+1ee3019c-55b6-4478-819f-41b6b29bd83a,55571471-ae6b-458e-b866-47680b25cd4a,English Comprehension,95,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+4335f564-390e-4b47-9cd2-2b22799548f8,5fba8083-8f54-437d-b01f-c8fcb99ca226,English Comprehension,79,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+00dde4ac-b4b5-4931-a922-f29a81ce4dec,5fba8083-8f54-437d-b01f-c8fcb99ca226,English Comprehension,87,matched,c18d927f-2eab-49db-b302-a017cf1f2193,Word interchange within a sentence,0.667
+416614c2-e7e6-429a-97c5-fcb5e652816b,5fba8083-8f54-437d-b01f-c8fcb99ca226,English Comprehension,96,unmatched,70b4fc2f-cf07-d8ef-fb7e-3025342ba94d,Comprehension and Summary,0.333
+598fc966-63e2-49c2-96c5-b2de8fcb6734,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,English Comprehension,79,matched,f4ab61e2-cadf-4686-a1c5-50554463f230,Meaning of an idiom in context,0.5
+bd75b748-5f58-40b1-ab57-e4f593054115,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,English Comprehension,88,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+fb2cf246-5b8e-488e-891e-91332df799cc,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,English Comprehension,96,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+abc2bb65-7ec1-40f6-964d-27ca646b17a6,7645f4ae-473f-4929-a904-539e37c55f17,English Comprehension,80,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+d6526e1a-9f04-4472-bbdb-ec38b09d9cdc,7645f4ae-473f-4929-a904-539e37c55f17,English Comprehension,88,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+98123d53-a40d-4157-a1fc-27742072cbd0,7645f4ae-473f-4929-a904-539e37c55f17,English Comprehension,97,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+892aae11-ef4a-4d54-8fab-42e96d5e94c7,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,English Comprehension,81,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+c422e572-f74e-47a4-aa4c-945b99a16932,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,English Comprehension,89,matched,c18d927f-2eab-49db-b302-a017cf1f2193,Word interchange within a sentence,0.667
+6fbf5996-26de-4fd0-9cbc-b3c919ba13ca,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,English Comprehension,98,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+06de9a84-c5ac-452d-b9b8-bcfc642cca3b,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,English Comprehension,81,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+36350bb0-920e-4199-b8e0-bc2a25ff6dee,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,English Comprehension,90,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+32bfdb1b-48b8-41b4-bd4b-8413068713a4,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,English Comprehension,98,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+89c05574-d6ee-4565-ae95-eb9b9b12e7e1,a07a5e62-72a0-474d-9b7f-20bc8bde5595,English Comprehension,82,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+aa019ce8-bd82-45d7-850a-c3035d84f318,a07a5e62-72a0-474d-9b7f-20bc8bde5595,English Comprehension,90,matched,f4ab61e2-cadf-4686-a1c5-50554463f230,Meaning of an idiom in context,0.5
+b3619acc-157d-4178-92a9-412d505a4853,a07a5e62-72a0-474d-9b7f-20bc8bde5595,English Comprehension,99,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+cb36502d-1552-43c7-9190-ce3543fb45e4,b02de7ed-8f67-4355-9687-f886796373e6,English Comprehension,83,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+d7bc5257-b0af-48b5-9474-c96c155d71ce,b02de7ed-8f67-4355-9687-f886796373e6,English Comprehension,91,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+f9e08ea4-db01-485d-b8ae-8f316e89bfef,b02de7ed-8f67-4355-9687-f886796373e6,English Comprehension,100,unmatched,b0e8a0b7-df35-4f9e-9bdb-dfa6558e2b7a,Number series — arithmetic and difference patterns,0.4
+d3c8c1f9-8447-4ea7-88a5-d9347a3fbb86,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,English Comprehension,83,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+6697bdea-f5b2-4373-bae2-6764a3dbcdaa,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,English Comprehension,92,matched,1ecdc0ab-2bc0-7ea9-2d55-064bd36f0cdc,Sentence Structure,0.5
+4ccb3f5e-150d-4e38-b082-0f3d3fa654bd,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,English Comprehension,100,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+c9c6f90d-4200-49c0-af08-68a94519a2e8,d52fd1f6-a2a1-4840-a6c4-9d23d2097f9f,English Comprehension,84,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+ad24dd30-6a51-40d8-b977-8a4ea8c27d28,d52fd1f6-a2a1-4840-a6c4-9d23d2097f9f,English Comprehension,92,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+dfc4d57e-6ba7-4ead-b739-395b46c83bcc,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,General Intelligence and Reasoning,1,unmatched,7571611f-335f-419f-bb07-46408833d294,Wrong-term series,0.333
+265a4911-60ca-4fe3-be6a-8b42281904bd,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,General Intelligence and Reasoning,14,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+a51b9a95-4e31-4916-803a-fda6bf18dcf2,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,General Intelligence and Reasoning,25,unmatched,5d6007fc-1b29-498d-bd19-6a50b296f041,BODMAS and order of operations,0.333
+e1d802dd-928d-478e-8323-9c68c36b844a,253f2938-bb65-440f-9487-6dd428902a44,General Intelligence and Reasoning,10,unmatched,89b27d9f-7081-4930-9186-c41b93349e1a,Number series — multiplicative and mixed patterns,0.4
+98f4b975-588a-4769-b766-86efcb6f932f,253f2938-bb65-440f-9487-6dd428902a44,General Intelligence and Reasoning,22,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+5639181b-7551-4f3f-8e08-db608f4d33ff,3d903cdf-c4b6-41e0-855c-0c86f01ea971,General Intelligence and Reasoning,13,unmatched,7571611f-335f-419f-bb07-46408833d294,Wrong-term series,0.333
+79bd14ff-a0eb-4157-abb4-898532584b87,3d903cdf-c4b6-41e0-855c-0c86f01ea971,General Intelligence and Reasoning,23,matched,16630438-beb1-473f-b251-baccce8cd86a,Sets of consecutive and patterned numbers,0.5
+857b30d7-04f2-4cac-9645-e9b3385f3fce,55571471-ae6b-458e-b866-47680b25cd4a,General Intelligence and Reasoning,9,unmatched,8f2e1cb0-8b2b-4ffc-a0fb-9cfec07c69c9,Row with unknown number of persons,0.25
+4e1263fd-0b12-445a-84b6-9fb9a749cb51,55571471-ae6b-458e-b866-47680b25cd4a,General Intelligence and Reasoning,21,unmatched,5d6007fc-1b29-498d-bd19-6a50b296f041,BODMAS and order of operations,0.333
+b1fbb316-2601-4629-badd-3dbfab075f02,5fba8083-8f54-437d-b01f-c8fcb99ca226,General Intelligence and Reasoning,7,unmatched,5d6007fc-1b29-498d-bd19-6a50b296f041,BODMAS and order of operations,0.333
+f10a5241-6312-4be7-af97-0019a4267d6d,5fba8083-8f54-437d-b01f-c8fcb99ca226,General Intelligence and Reasoning,21,matched,b46402a0-947a-4fed-a122-1e655785e683,Only and only-a-few statements,0.5
+1a4f3a17-c4dc-4425-a1d3-46ac7ca1efd2,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,General Intelligence and Reasoning,7,matched,16630438-beb1-473f-b251-baccce8cd86a,Sets of consecutive and patterned numbers,0.5
+3d5769c4-3270-46b2-99fd-b2577750ac7d,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,General Intelligence and Reasoning,18,matched,16630438-beb1-473f-b251-baccce8cd86a,Sets of consecutive and patterned numbers,0.5
+b79b9a5e-20d8-495d-9943-2b48559bdb25,7645f4ae-473f-4929-a904-539e37c55f17,General Intelligence and Reasoning,6,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,0.5
+50a93a57-b9f2-4007-83a1-583d0bee6062,7645f4ae-473f-4929-a904-539e37c55f17,General Intelligence and Reasoning,18,matched,3f2a57b9-ea87-4d0e-9296-6651b115c149,Written answers to a passage,0.5
+d39d6c24-d094-43d8-8c5b-c0a906ceb726,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,General Intelligence and Reasoning,5,matched,b46402a0-947a-4fed-a122-1e655785e683,Only and only-a-few statements,0.5
+9c025ce6-1f16-4ec6-bec8-d252057a6b85,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,General Intelligence and Reasoning,19,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,1.0
+df77358b-27e9-4ce0-87d6-2e1675b8a205,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,General Intelligence and Reasoning,4,matched,b46402a0-947a-4fed-a122-1e655785e683,Only and only-a-few statements,0.5
+42bc93d9-b612-4242-bfa0-eab58cdf4ea1,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,General Intelligence and Reasoning,14,unmatched,7571611f-335f-419f-bb07-46408833d294,Wrong-term series,0.333
+f68dece5-4aa6-451b-b06d-038c03f102b5,a07a5e62-72a0-474d-9b7f-20bc8bde5595,General Intelligence and Reasoning,3,matched,16630438-beb1-473f-b251-baccce8cd86a,Sets of consecutive and patterned numbers,0.5
+54876762-4b12-49bf-a369-7359a41fa6b3,a07a5e62-72a0-474d-9b7f-20bc8bde5595,General Intelligence and Reasoning,14,matched,b46402a0-947a-4fed-a122-1e655785e683,Only and only-a-few statements,0.5
+28585e30-8de2-4c7d-806f-d88398a5b397,b02de7ed-8f67-4355-9687-f886796373e6,General Intelligence and Reasoning,2,unmatched,08bdcee9-fc28-4eb1-a2de-75a99969f042,Direct coded inequality,0.25
+3be3cb86-f938-4f41-82f2-ba2f7f87ccf7,b02de7ed-8f67-4355-9687-f886796373e6,General Intelligence and Reasoning,12,unmatched,7571611f-335f-419f-bb07-46408833d294,Wrong-term series,0.333
+8b0faa49-c504-4602-a756-14f8dcbe0ce9,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,General Intelligence and Reasoning,1,unmatched,,,0.0
+56c0867d-2cfd-4ffc-8701-cffb009754b6,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,General Intelligence and Reasoning,9,unmatched,9da6f0b1-57ff-4a8b-a0e7-40f85cee7b22,Individual and combined work rates,0.25
+7c88abc7-3329-49bc-aadd-5618f6b1806a,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,General Intelligence and Reasoning,25,unmatched,7571611f-335f-419f-bb07-46408833d294,Wrong-term series,0.333
+c0fd3551-ac28-4bc5-9f54-bb3499c8489f,d52fd1f6-a2a1-4840-a6c4-9d23d2097f9f,General Intelligence and Reasoning,11,matched,0b53297b-0109-4334-b1ee-e56a18137969,Word-pair fit,1.0
+5df0362e-c541-498c-81a1-76873b55b45f,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,Quantitative Aptitude,51,unmatched,74799854-a84e-4607-844e-afb8c50b7bc0,Simple and compound ratio,0.333
+7d450107-a468-4c70-b103-95d56b1844cc,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,Quantitative Aptitude,60,unmatched,,,0.0
+3f97431c-0307-4cb9-86bd-8cd2a1b65025,1ac764cc-eb05-4bb4-9d4c-0dece694d27c,Quantitative Aptitude,69,unmatched,c2079ba4-41e3-4db0-908b-a6fd4a550cab,Proportional division of quantities,0.333
+8caa0f05-f20f-4eae-95cd-10ab112b86ed,253f2938-bb65-440f-9487-6dd428902a44,Quantitative Aptitude,53,unmatched,e452f72a-bd16-4faa-87c0-ca8608723b7c,Clock-time scheduling puzzle,0.2
+16ad3b72-cfa6-4e37-acd0-94b2306253c3,253f2938-bb65-440f-9487-6dd428902a44,Quantitative Aptitude,63,unmatched,74799854-a84e-4607-844e-afb8c50b7bc0,Simple and compound ratio,0.333
+70eb780e-c9c0-4f8b-8533-aaef00f521eb,253f2938-bb65-440f-9487-6dd428902a44,Quantitative Aptitude,71,unmatched,424d99d5-720f-409e-ba66-8660ac95a486,"Area and perimeter — rectangle, square, triangle",0.2
+0cfba1a1-6e91-4f3f-ad96-6f8b51f00dc0,3d903cdf-c4b6-41e0-855c-0c86f01ea971,Quantitative Aptitude,55,unmatched,a4dddc0f-e194-4eb6-bfc6-078240c8d4f0,Number and digit coding,0.4
+f9e943a4-dd84-4816-ad61-cedfcc8941ad,3d903cdf-c4b6-41e0-855c-0c86f01ea971,Quantitative Aptitude,64,unmatched,,,0.0
+1144888f-d86e-462b-af95-863630a26cf3,3d903cdf-c4b6-41e0-855c-0c86f01ea971,Quantitative Aptitude,73,matched,f6a36919-07e6-46a8-ae43-e3c13d549c98,Discount and marked price,0.75
+9bae6123-e3f6-4b51-b530-f1502e8964a9,55571471-ae6b-458e-b866-47680b25cd4a,Quantitative Aptitude,58,unmatched,74799854-a84e-4607-844e-afb8c50b7bc0,Simple and compound ratio,0.333
+af0c973e-28a1-487e-941e-394c468573ea,55571471-ae6b-458e-b866-47680b25cd4a,Quantitative Aptitude,68,unmatched,c2079ba4-41e3-4db0-908b-a6fd4a550cab,Proportional division of quantities,0.333
+3e6268a5-9704-48fa-9e9c-5165f0ff68b0,5fba8083-8f54-437d-b01f-c8fcb99ca226,Quantitative Aptitude,51,matched,9ea559c5-2c7b-49b4-8ab0-98938fd471df,Simple and compound interest,0.667
+8f3633b1-0d96-4055-beb6-e2685b05b148,5fba8083-8f54-437d-b01f-c8fcb99ca226,Quantitative Aptitude,61,unmatched,,,0.0
+47c7631d-2158-47c0-b4a5-bc08bfcd305d,5fba8083-8f54-437d-b01f-c8fcb99ca226,Quantitative Aptitude,71,unmatched,55cde475-d4af-4ff7-b347-b51066736cab,Direction of one point relative to another,0.25
+ccca952a-677b-441e-9a2d-7bd2f4dec853,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,Quantitative Aptitude,55,unmatched,e452f72a-bd16-4faa-87c0-ca8608723b7c,Clock-time scheduling puzzle,0.2
+97048fa2-e38d-4af9-b1f1-e6049a270cb4,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,Quantitative Aptitude,63,matched,9ea559c5-2c7b-49b4-8ab0-98938fd471df,Simple and compound interest,0.667
+2a23e972-f88c-4701-81c9-cc7c5756aea2,64b4c673-9872-4a5d-b47b-0d3d3ea861ed,Quantitative Aptitude,72,matched,61f760f9-681d-4ec9-9c5c-bfe750fcf5fe,Percentage increase and decrease,0.667
+cd067ec5-e561-479e-b960-f2e43b01a088,7645f4ae-473f-4929-a904-539e37c55f17,Quantitative Aptitude,56,unmatched,c2384cfd-529f-4f48-8d67-33fb2e5ce9fb,Reshaping and equal-perimeter problems,0.25
+660fed64-f623-48f2-8bcc-e31b301ccbc9,7645f4ae-473f-4929-a904-539e37c55f17,Quantitative Aptitude,65,matched,c5d44e15-072a-4557-ad7d-f61221fe61c7,Volume and surface area of solids,0.75
+ed2763f0-93dc-445c-8e13-900bae5228dd,7645f4ae-473f-4929-a904-539e37c55f17,Quantitative Aptitude,74,matched,21fb2f26-ef41-477c-a8eb-2717f20b6083,Pipes and cisterns,0.5
+c1dbd72a-1436-473e-aef6-42b03f170229,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,Quantitative Aptitude,57,unmatched,,,0.0
+8648e1a9-8feb-4cea-b037-01b8560fa787,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,Quantitative Aptitude,65,unmatched,,,0.0
+aa114a2b-2157-40d6-a71c-ffa4248f8902,907ebc61-36e3-40a8-a18a-f8a3db4e8ac9,Quantitative Aptitude,74,unmatched,c2384cfd-529f-4f48-8d67-33fb2e5ce9fb,Reshaping and equal-perimeter problems,0.25
+2ea24509-1d4a-4ee0-be90-19d2b20798f6,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,Quantitative Aptitude,57,unmatched,2677eb4d-bfd9-4bb5-a369-169601b4014c,Coordinate and line geometry,0.333
+495977ec-df07-47e3-8875-e7bcc3a3e446,91bbd4eb-f11a-4c8e-8f58-bfe0401a45fb,Quantitative Aptitude,68,unmatched,2ab2e850-22d2-4286-8b8e-5e40767657e3,Successive percentage change,0.333
+1c3ddfc6-6792-477b-8d17-c90091c168b4,a07a5e62-72a0-474d-9b7f-20bc8bde5595,Quantitative Aptitude,52,unmatched,,,0.0
+4fbb9cfd-e51f-4247-9bc0-4782f4174f36,a07a5e62-72a0-474d-9b7f-20bc8bde5595,Quantitative Aptitude,60,matched,424d99d5-720f-409e-ba66-8660ac95a486,"Area and perimeter — rectangle, square, triangle",0.8
+d91197e9-add3-49a9-ad3f-fb1311ae30a0,a07a5e62-72a0-474d-9b7f-20bc8bde5595,Quantitative Aptitude,71,unmatched,,,0.0
+7812d0f8-cc13-4efb-8cab-9c16bff75c22,b02de7ed-8f67-4355-9687-f886796373e6,Quantitative Aptitude,54,unmatched,74799854-a84e-4607-844e-afb8c50b7bc0,Simple and compound ratio,0.333
+fe7ed9c9-9325-4d26-9e73-91b2830a0f38,b02de7ed-8f67-4355-9687-f886796373e6,Quantitative Aptitude,63,unmatched,,,0.0
+ce8c43d2-de1f-4a82-a4c2-3540d977e534,b02de7ed-8f67-4355-9687-f886796373e6,Quantitative Aptitude,73,unmatched,,,0.0
+b7907f6d-f621-440b-bbd8-a9f6762563bd,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,Quantitative Aptitude,56,unmatched,,,0.0
+5c7ec8c2-7311-4fe7-beb9-c1678ffd439d,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,Quantitative Aptitude,66,unmatched,74799854-a84e-4607-844e-afb8c50b7bc0,Simple and compound ratio,0.333
+45847ae3-e976-4738-a27a-29724dcd9636,c45d88c2-6c39-45ac-80f3-6028a54b1bf7,Quantitative Aptitude,75,unmatched,,,0.0
+feb808ac-d612-4c4d-9e25-a858c5bd6789,d52fd1f6-a2a1-4840-a6c4-9d23d2097f9f,Quantitative Aptitude,60,unmatched,,,0.0
