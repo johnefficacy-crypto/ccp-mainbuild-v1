@@ -182,7 +182,12 @@ def authored_pool_rows(sb, *, exam_id: str, statuses) -> list[dict]:
     ``metadata.exams`` instead (``authored_scope``). Shared by this depth count
     and ``mock_blueprint_selection._exam_base_pool`` so selection ≡ readiness.
     Same status / type / fixture filters as the base read; ``[]`` for an exam
-    with no topic-exam key, and on any read failure.
+    with no topic-exam key and no body-agnostic section, and on any read failure.
+
+    Tier-strict (REG-CORPUS-04): a generated mock serves only authored rows of
+    the exam's own tier (``authored_scope.EXAM_TIERS``) plus untiered rows, so an
+    SSC CGL mock never draws an officer-tier row. There is no include-other
+    option here; readiness counts the same tier-filtered pool.
     """
     statuses = list(statuses or [])
     if not statuses:
@@ -196,13 +201,14 @@ def authored_pool_rows(sb, *, exam_id: str, statuses) -> list[dict]:
                 .select(
                     "id, exam_id, subject_id, topic_id, microtopic_id, difficulty, "
                     "question_type, reviewer_status, is_current, is_current_based, "
-                    "valid_until, source_type, source_kind, pyq_question_id"
+                    "valid_until, source_type, source_kind, pyq_question_id, metadata"
                 )
                 .in_("reviewer_status", statuses)
                 .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
                 .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
             )
         ),
+        same_tier_only=True,
     )
 
 

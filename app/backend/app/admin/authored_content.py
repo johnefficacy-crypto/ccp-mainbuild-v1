@@ -7,7 +7,8 @@ shapes. Nothing here publishes: bank rows are born ``draft``, explanation rows
 
 Shapes
 ------
-``metadata``        ``{"rubric_level": "L1".."L4", "stimulus_group": str}`` —
+``metadata``        ``{"rubric_level": "L1".."L4", "stimulus_group": str,
+                    "exam_tier"?: "foundation"|"officer"}`` —
                     stored on ``mock_question_bank.metadata`` (migration 309).
 ``stimuli``         ``[{"stimulus_type": "passage"|"table", "content_text": str,
                     "language"?: str}]`` — written to ``mock_question_stimuli``
@@ -28,10 +29,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.exam_intelligence.authored_scope import EXAM_TIER_VALUES
+
 logger = logging.getLogger("career_copilot.admin.authored_content")
 
 RUBRIC_LEVELS = ("L1", "L2", "L3", "L4")
 STIMULUS_TYPES = ("passage", "table")
+EXAM_TIERS = EXAM_TIER_VALUES  # metadata.exam_tier (REG-CORPUS-04)
 _MAX_STIMULI = 5
 
 
@@ -48,7 +52,23 @@ def normalise_metadata(rubric_level: Any = None, stimulus_group: Any = None, bas
         if not group:
             raise ValueError("stimulus_group must be a non-empty string")
         meta["stimulus_group"] = group
+    if "exam_tier" in meta and meta["exam_tier"] not in EXAM_TIERS:
+        raise ValueError(f"exam_tier must be one of {'|'.join(EXAM_TIERS)}; got {meta['exam_tier']!r}")
     return meta
+
+
+def stimulus_fingerprint_suffix(stimuli: Any) -> str:
+    """The fingerprint part a row's own stimuli contribute (REG-CORPUS-04).
+
+    A case-set row's identity includes its case data: two case sets may ask the
+    same question over different stimuli. ``""`` for a row with no stimuli, so
+    every such row keeps the fingerprint it had before. Shared by the bulk
+    import and CRUD create/update so the two never disagree."""
+    return "".join(
+        "|stimulus:" + " ".join(str(s.get("content_text") or "").lower().split())
+        for s in (stimuli or [])
+        if isinstance(s, dict)
+    )
 
 
 def normalise_stimuli(stimuli: Any) -> list[dict]:

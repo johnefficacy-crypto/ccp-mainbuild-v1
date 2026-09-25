@@ -78,6 +78,9 @@ class StartPracticeBody(BaseModel):
     target_id: str = Field(min_length=1)
     exam_id: str | None = None
     limit: int = Field(default=100, ge=1, le=200)
+    # Topic mode serves authored rows of the learner's exam tier only; True
+    # adds the other tier's rows (REG-CORPUS-04).
+    include_other_tier: bool = False
 
 
 # ── routes ─────────────────────────────────────────────────────────────────────
@@ -101,6 +104,7 @@ async def start_practice(
             target_id=body.target_id,
             exam_id=body.exam_id,
             limit=body.limit,
+            include_other_tier=body.include_other_tier,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

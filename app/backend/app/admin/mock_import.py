@@ -177,6 +177,9 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
         + "|" + "|".join(sorted_opts)
         + "|" + str(sorted_correct_idx)
     )
+    # A case-set row's identity includes its stimulus (REG-CORPUS-04); rows
+    # without stimuli keep their existing fingerprint.
+    fp_raw += authored.stimulus_fingerprint_suffix(authored_fields.get("stimuli"))
     fingerprint = hashlib.sha256(fp_raw.encode("utf-8")).hexdigest()
 
     return {
