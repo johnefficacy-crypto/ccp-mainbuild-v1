@@ -21,6 +21,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from app.admin import authored_content as authored
+
 logger = logging.getLogger("career_copilot.admin.mock_questions")
 
 # ── State machine ──────────────────────────────────────────────────────────────
@@ -214,6 +216,12 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
         raise ValueError("MCQ requires exactly one correct option")
     if not correct_options:
         raise ValueError("exactly one correct option required")
+    # REG-CORPUS-02 authored content — validated before anything is written.
+    metadata = authored.normalise_metadata(data.get("rubric_level"), data.get("stimulus_group"))
+    stimuli = authored.normalise_stimuli(data.get("stimuli"))
+    structured = authored.normalise_structured_explanation(
+        data.get("structured_explanation"), len(options_raw)
+    )
 
     # Insert question (fingerprint resolved via trigger; we'll update after options)
     q_row: dict[str, Any] = {
@@ -239,10 +247,17 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
         "updated_at": _now_iso(),
     }
     # Provenance fields (PR4) — included only when provided.
-    for pfield in ("source_kind", "source_url", "current_affairs_item_id"):
+    for pfield in ("source_kind", "source_url", "current_affairs_item_id", "common_trap"):
         val = data.get(pfield)
         if val is not None:
             q_row[pfield] = val
+    # REG-CORPUS-01 gap 1: a row created here with no source_kind and no PYQ
+    # lineage is authored. Stamp it on the row so it can be told apart from a
+    # projected PYQ without reading mock_question_sources.
+    if q_row.get("source_kind") is None and not data.get("pyq_question_id"):
+        q_row["source_kind"] = "authored"
+    if metadata:
+        q_row["metadata"] = metadata
 
     result = supabase.table("mock_question_bank").insert(q_row).execute()
     rows = (result.data or [])
@@ -289,6 +304,10 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
                action="create", to_status="draft",
                diff={"question_text": {"to": q_text}, "options_count": {"to": len(opt_rows)}})
 
+    # REG-CORPUS-02: this row's own stimulus copies + structured explanation.
+    authored.write_stimuli(supabase, question_id, stimuli, language=q_row.get("language"))
+    explanation_id = authored.write_structured_explanation(supabase, question_id, structured, opts)
+
     # Auto-create a source row when pyq_paper_id or source_kind is provided so
     # the question is traceable back to its origin without a second API call.
     pyq_paper_id = data.get("pyq_paper_id")
@@ -306,7 +325,12 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
         except Exception as exc:  # noqa: BLE001
             logger.warning("auto source row failed question=%s: %s", question_id, exc)
 
-    return {**question, "options": opts}
+    return {
+        **question,
+        "options": opts,
+        "stimuli_count": len(stimuli),
+        "structured_explanation_id": explanation_id,
+    }
 
 
 def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
@@ -336,9 +360,19 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
                   "language", "exam_id", "exam_family", "subject_id", "topic_id",
                   "is_conceptual", "is_factual", "is_current", "is_current_based",
                   "valid_from", "valid_until", "event_anchor_date",
-                  "source_kind", "source_url", "current_affairs_item_id"):
+                  "source_kind", "source_url", "current_affairs_item_id",
+                  "common_trap"):
         if field in data:
             updates[field] = data[field]
+    if "rubric_level" in data or "stimulus_group" in data:
+        updates["metadata"] = authored.normalise_metadata(
+            data.get("rubric_level"), data.get("stimulus_group"), base=q.get("metadata")
+        )
+    new_stimuli = None
+    if "stimuli" in data:
+        if q.get("pyq_question_id"):
+            raise ValueError("stimuli of a projected PYQ are owned by the projection; edit the PYQ")
+        new_stimuli = authored.normalise_stimuli(data.get("stimuli"))
 
     options_raw: list[dict] | None = data.get("options")
     opts = _fetch_options(supabase, question_id)
@@ -395,6 +429,11 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
 
     old_q = dict(q)
     supabase.table("mock_question_bank").update(updates).eq("id", question_id).execute()
+    if new_stimuli is not None:
+        # Replace this row's own copies; other rows of a case set are untouched.
+        supabase.table("mock_question_stimuli").delete().eq("mock_question_id", question_id).execute()
+        authored.write_stimuli(supabase, question_id, new_stimuli,
+                               language=updates.get("language") or q.get("language"))
 
     _write_log(supabase, question_id=question_id, actor_id=actor_id,
                action="edit", from_status=q["reviewer_status"],

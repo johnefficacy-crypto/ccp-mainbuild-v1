@@ -1,0 +1,380 @@
+{
+  "source": "workbench/corpus/reg/out/REG-CORPUS-CST.json @ origin/main 7d6fa410 (verbatim rows)",
+  "questions": [
+    {
+      "id": "CST-020",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-classification-by-behaviour-fixed-variable-semi-variabl-e25ab568",
+      "microtopic_name": "Cost classification by behaviour — fixed, variable, semi-variable",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Monthly maintenance cost of a plant:\n\n| Month | Output (units) | Cost (₹) |\n|---|---:|---:|\n| Apr | 6,000 | 2,00,000 |\n| May | 4,000 | 1,56,000 |\n| Jun | 8,000 | 2,70,000 |\n| Jul | 9,000 | 2,66,000 |\n\nUsing the high–low method, the estimated cost at 7,500 units is:",
+      "explanation": {
+        "steps": [
+          "High and low ACTIVITY: 9,000 and 4,000 units",
+          "Variable cost = (2,66,000 − 1,56,000) ÷ (9,000 − 4,000) = ₹22 per unit",
+          "Fixed = 1,56,000 − 4,000 × 22 = 68,000",
+          "At 7,500: 68,000 + 7,500 × 22 = 2,33,000"
+        ],
+        "formula_used": "b = ΔCost ÷ ΔActivity (high/low activity); a = Cost − b × Activity",
+        "trap": "Pick the high and low ACTIVITY months, not the high and low cost months (June is a trap)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹2,33,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹2,55,750",
+          "is_correct": false,
+          "error": "highest and lowest COST months used instead of activity",
+          "label": "B"
+        },
+        {
+          "text": "₹1,65,000",
+          "is_correct": false,
+          "error": "fixed element omitted",
+          "label": "C"
+        },
+        {
+          "text": "₹2,21,667",
+          "is_correct": false,
+          "error": "all cost treated as variable at the high-point average",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-003",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-accounting-vs-financial-accounting-2f4381c6",
+      "microtopic_name": "Cost accounting vs financial accounting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. Maintenance of cost records is mandatory for every company registered under the Companies Act, 2013.\n2. Financial accounts report on the business as a whole mainly for external users, whereas cost accounts analyse costs by product, process or department for internal use.\n3. Notional charges such as interest on owners' capital may be included in cost accounts but are not recorded in financial accounts.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Statement 1 is wrong: under section 148 the Central Government prescribes cost records only for specified classes of companies (Companies (Cost Records and Audit) Rules, 2014), subject to turnover thresholds.",
+          "Statement 2 is the standard scope distinction.",
+          "Statement 3 is correct: notional costs (interest on own capital, rent of owned premises) are costing adjustments and cause reconciliation items."
+        ],
+        "formula_used": "Cost records: s.148 — only notified classes of companies",
+        "trap": "'Every company' is the give-away — cost records apply only to notified industries above thresholds."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Companies Act, 2013 s.148; Companies (Cost Records and Audit) Rules, 2014 (applicability by industry/turnover)."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": false,
+          "error": "treats cost records as universal and misses notional costs",
+          "label": "A"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "treats cost records as mandatory for all companies",
+          "label": "C"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "overlooks that notional costs belong only in cost accounts",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-065",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** Equivalent units for conversion cost are:",
+      "explanation": {
+        "steps": [
+          "Units to account for = 1,000 + 9,000 = 10,000",
+          "Normal loss = 10% × 9,000 = 900; abnormal loss = 10,000 − 7,400 − 1,500 − 900 = 200.0",
+          "WA conversion EU = 7,400 + 200.0 (abnormal loss, 100% complete) + 1,500 × 60% = 8,500"
+        ],
+        "formula_used": "WA EU = Completed + Abnormal loss (at stage) + Closing WIP × % ; normal loss = 0",
+        "trap": "Normal loss carries no equivalent units; abnormal loss does."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "8,100",
+          "is_correct": false,
+          "error": "FIFO equivalent units",
+          "label": "A"
+        },
+        {
+          "text": "9,400",
+          "is_correct": false,
+          "error": "normal loss given equivalent units",
+          "label": "B"
+        },
+        {
+          "text": "8,300",
+          "is_correct": false,
+          "error": "abnormal loss excluded",
+          "label": "C"
+        },
+        {
+          "text": "8,500",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-066",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The total cost per equivalent unit (transferred-in plus conversion) is:",
+      "explanation": {
+        "steps": [
+          "Transferred-in EU = 7,400 + 200.0 + 1,500 = 9,100",
+          "Transferred-in rate = (42,000 + 3,76,500 − 9,000) ÷ 9,100 = ₹45",
+          "Conversion rate = (9,200 + 2,45,800) ÷ 8,500 = ₹30",
+          "Total = ₹75"
+        ],
+        "formula_used": "WA rate = (Opening WIP cost + Current cost − Normal loss scrap) ÷ WA EU",
+        "trap": "Under WA, opening WIP cost is pooled with current cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹75.72",
+          "is_correct": false,
+          "error": "FIFO rates computed",
+          "label": "A"
+        },
+        {
+          "text": "₹75.00",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹68.08",
+          "is_correct": false,
+          "error": "normal loss given equivalent units",
+          "label": "C"
+        },
+        {
+          "text": "₹75.99",
+          "is_correct": false,
+          "error": "scrap value of normal loss not deducted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-067",
+      "subject": "costing",
+      "microtopic_slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
+      "microtopic_name": "Process costing — normal loss, abnormal loss, abnormal gain",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The net amount debited to the Costing Profit and Loss Account in respect of abnormal loss is:",
+      "explanation": {
+        "steps": [
+          "Abnormal loss = 200.0 units × ₹75 = 15,000 (credited to Process II)",
+          "Sale of 200.0 lost units × ₹10 = 2,000 credited to Abnormal Loss a/c",
+          "Net to Costing P&L = ₹13,000"
+        ],
+        "formula_used": "Costing P&L charge = Abnormal loss value − Its realisable value",
+        "trap": "Process credit is at full cost; only the net hits Costing P&L."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹17,000",
+          "is_correct": false,
+          "error": "realisable value added instead of deducted",
+          "label": "A"
+        },
+        {
+          "text": "₹13,143",
+          "is_correct": false,
+          "error": "abnormal loss valued at FIFO rates",
+          "label": "B"
+        },
+        {
+          "text": "₹15,000",
+          "is_correct": false,
+          "error": "realisable value of abnormal-loss units not credited",
+          "label": "C"
+        },
+        {
+          "text": "₹13,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-068",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The value of closing WIP is:",
+      "explanation": {
+        "steps": [
+          "Transferred-in: 1,500 × 45 = 67,500",
+          "Conversion: 900 × 30 = 27,000",
+          "Closing WIP = ₹94,500",
+          "Proof: finished 5,55,000 + abnormal 15,000 + WIP 94,500 = total costs net of scrap 6,64,500"
+        ],
+        "formula_used": "Closing WIP = Σ (EU in WIP × rate per element)",
+        "trap": "Transferred-in material is always 100% complete in Process II WIP."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹94,500",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹1,12,500",
+          "is_correct": false,
+          "error": "closing WIP treated as 100% converted",
+          "label": "B"
+        },
+        {
+          "text": "₹95,367",
+          "is_correct": false,
+          "error": "FIFO rates applied",
+          "label": "C"
+        },
+        {
+          "text": "₹85,500",
+          "is_correct": false,
+          "error": "opening WIP's 40% stage applied to closing WIP",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    }
+  ]
+}

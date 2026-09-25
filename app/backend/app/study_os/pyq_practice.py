@@ -27,6 +27,10 @@ import uuid as _uuid
 from typing import Any
 from datetime import datetime, timedelta, timezone
 
+from app.exam_intelligence.authored_scope import (
+    apply_authored_filters,
+    authored_rows_for_exam,
+)
 from app.study_os.generated_mock_attempt import _load_questions
 from app.study_os.mock_engine import _question_snapshot
 from app.utils.safe import safe_required
@@ -231,6 +235,74 @@ def _row_level_id(row: dict) -> str | None:
     return str(topic_id) if topic_id else None
 
 
+# Authored rows (REG-CORPUS-02) join TOPIC mode only: they carry no paper or
+# section, so paper/section practice and the per-paper ready counts stay PYQ-only.
+# MCQ only — the practice freeze aborts on any row without options/correct option.
+_AUTHORED_SELECT = (
+    "id,pyq_question_id,pyq_paper_id,section_id,topic_id,microtopic_id,"
+    "exam_id,reviewer_status,valid_until,pyq_year,source_kind,metadata"
+)
+
+
+def _authored_bank_query(sb, now_iso: str):
+    q = (
+        sb.table("mock_question_bank")
+        .select(_AUTHORED_SELECT)
+        .in_("reviewer_status", list(_SELECTABLE))
+        .eq("question_type", "mcq")
+    )
+    return apply_authored_filters(q).or_(f"valid_until.is.null,valid_until.gt.{now_iso}")
+
+
+def _authored_unexpired(rows: list[dict], now_iso: str) -> list[dict]:
+    return [r for r in rows if not r.get("valid_until") or str(r["valid_until"]) > now_iso]
+
+
+def _authored_rows_for_targets(
+    sb, *, exam_id: str | None, target_ids: list[str], now_iso: str
+) -> list[dict]:
+    """Authored rows eligible for ``exam_id`` whose practised level is one of
+    ``target_ids``. Empty (and no bank read) for an exam with no topic-exam key."""
+    ids = [str(t) for t in dict.fromkeys(target_ids) if t]
+    if not ids:
+        return []
+
+    def _fetch() -> list[dict]:
+        found: dict[str, dict] = {}
+        # A target sits in `topic_id` or `microtopic_id` (see
+        # _topic_target_or_filter); read each column per chunk and union by id.
+        for chunk in _chunks(ids, _ID_BATCH):
+            for col in ("topic_id", "microtopic_id"):
+                rows = safe_required(
+                    lambda c=chunk, k=col: _authored_bank_query(sb, now_iso).in_(k, c).execute(),
+                    op="pyq_practice.authored_rows",
+                    log=logger,
+                    allow_empty=True,
+                )
+                if rows is None:
+                    raise RuntimeError("pyq_practice: could not read authored rows")
+                found.update({r["id"]: r for r in rows if r.get("id")})
+        return list(found.values())
+
+    wanted = set(ids)
+    return [
+        r
+        for r in _authored_unexpired(authored_rows_for_exam(sb, exam_id, _fetch), now_iso)
+        if (_row_level_id(r) or "") in wanted
+    ]
+
+
+def _topic_order_key(r: dict) -> tuple:
+    """Topic-mode order: PYQ rows first, newest year then id (the pre-authored
+    order, unchanged); then authored rows with each case set kept contiguous
+    (``metadata.stimulus_group``), then id."""
+    if r.get("pyq_question_id"):
+        return (0, -(r.get("pyq_year") or 0), "", str(r.get("id")))
+    meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else {}
+    group = meta.get("stimulus_group")
+    return (1, 0, str(group) if group else str(r.get("id")), str(r.get("id")))
+
+
 def select_practice_rows(
     sb, *, mode: str, exam_id: str | None, target_id: str, limit: int
 ) -> list[dict]:
@@ -281,11 +353,18 @@ def select_practice_rows(
         and (not r.get("valid_until") or str(r["valid_until"]) > now_iso)
         and (mode != "topic" or _row_matches_topic_target(r, target_id))
     ]
-    if not candidates:
-        return []
+    pool: list[dict] = []
+    if candidates:
+        active = _active_projection_ids(sb, [r["id"] for r in candidates])
+        pool = [r for r in candidates if r["id"] in active]
 
-    active = _active_projection_ids(sb, [r["id"] for r in candidates])
-    pool = [r for r in candidates if r["id"] in active]
+    if mode == "topic":
+        # REG-CORPUS-02: multi-exam authored rows join the topic pool when the
+        # exam has a topic-exam key and the target topic carries it. An unkeyed
+        # exam (every non-regulatory exam) adds nothing and reads no bank rows.
+        pool = pool + _authored_rows_for_targets(
+            sb, exam_id=exam_id, target_ids=[target_id], now_iso=now_iso
+        )
     if not pool:
         return []
 
@@ -304,8 +383,8 @@ def select_practice_rows(
                 str(r.get("id")),
             )
         pool.sort(key=_key)
-    else:  # topic: newest PYQ year first, then id
-        pool.sort(key=lambda r: (-(r.get("pyq_year") or 0), str(r.get("id"))))
+    else:  # topic: newest PYQ year first, then id; authored rows after PYQ
+        pool.sort(key=_topic_order_key)
     return pool[:limit]
 
 
@@ -434,16 +513,16 @@ def practiceable_topic_ids(
         .range(f, t),
         op="pyq_practice.practiceable_topics",
     )
-    if not res:
+    if res is None:
         return set()
     candidates = [r for r in res if (not r.get("valid_until") or str(r["valid_until"]) > now_iso)]
-    if not candidates:
-        return set()
-    try:
-        active = _active_projection_ids(sb, [r["id"] for r in candidates])
-    except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
-        logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
-        return set()
+    active: frozenset[str] = frozenset()
+    if candidates:
+        try:
+            active = _active_projection_ids(sb, [r["id"] for r in candidates])
+        except Exception:  # noqa: BLE001 — fail-closed: unresolved projection guard => no availability
+            logger.warning("practiceable_topic_ids: active-projection probe failed", exc_info=True)
+            return set()
     wanted = set(ids)
     # Narrow to the requested locks HERE rather than in the query. A locked target
     # can sit in `topic_id` or in `microtopic_id` depending on whether its row has
@@ -462,6 +541,12 @@ def practiceable_topic_ids(
         for r in candidates
         if r["id"] in active and (_row_level_id(r) or "") in wanted
     ]
+    # REG-CORPUS-02: the same authored rows topic-mode launch would add
+    # (select_practice_rows), so readiness never advertises what launch lacks.
+    try:
+        pool += _authored_rows_for_targets(sb, exam_id=exam_id, target_ids=ids, now_iso=now_iso)
+    except Exception:  # noqa: BLE001 — fail-closed: an unreadable authored pool adds nothing
+        logger.warning("practiceable_topic_ids: authored pool read failed", exc_info=True)
     if not pool:
         return set()
 
@@ -475,7 +560,7 @@ def practiceable_topic_ids(
     selected_by_topic: dict[str, list[str]] = {}
     selected_ids: list[str] = []
     for tid, rows in by_topic.items():
-        rows.sort(key=lambda r: (-(r.get("pyq_year") or 0), str(r.get("id"))))
+        rows.sort(key=_topic_order_key)
         chosen = [str(r["id"]) for r in rows[:limit]]
         selected_by_topic[tid] = chosen
         selected_ids.extend(chosen)

@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import MarkdownSafe from "./MarkdownSafe";
+import MathRenderer from "./MathRenderer";
 
 const TYPE_LABEL = {
   passage: "Passage",
@@ -63,7 +63,7 @@ export default function QuestionStimuli({ stimuli = [] }) {
               </div>
             ) : (
               <div className="mt-1 text-sm text-gray-800">
-                <MarkdownSafe text={s.content_text || ""} />
+                <MathRenderer text={s.content_text || ""} />
               </div>
             )}
           </figure>

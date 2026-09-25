@@ -27,7 +27,25 @@ CSV schema (header row required):
     source_url,
     external_id   <- used for idempotency key; dedup on (exam_id, source_kind, external_id)
 
-JSON schema: list of objects with same field names.
+  Optional authored-content columns (REG-CORPUS-02):
+    rubric_level (L1|L2|L3|L4)          -> mock_question_bank.metadata.rubric_level
+    stimulus_group                      -> metadata.stimulus_group (case-set key)
+    common_trap                         -> mock_question_bank.common_trap
+    stimulus_type (passage|table), stimulus_text
+                                        -> one mock_question_stimuli row owned by this row
+    solution_steps (JSON array, or one step per line), formula_used, common_traps
+    (JSON array or single string), option_1_rationale .. option_6_rationale
+                                        -> a pending pyq_question_explanations row
+                                           keyed by mock_question_id
+
+JSON schema: list of objects with same field names. A JSON row may instead give
+``stimuli`` as a list of {stimulus_type, content_text} and
+``structured_explanation`` as {solution_steps, formula_used, common_traps,
+option_rationales: {option_index: text}}.
+
+source_kind is written onto the bank row itself (default 'authored') as well as
+the mock_question_sources row, so an imported row is identifiable as authored
+without a join (REG-CORPUS-01 gap 1).
 
 Mapping validation:
     If the uploaded file contains subject_id or topic_id columns/keys, dry-run treats
@@ -45,6 +63,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from app.admin import authored_content as authored
 from app.admin.mock_questions import _write_log
 
 logger = logging.getLogger("career_copilot.admin.mock_import")
@@ -134,6 +153,8 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
 
     valid_until = _parse_valid_until(row, errors)
 
+    authored_fields = _parse_authored_fields(row, len(options_raw), errors)
+
     if errors:
         return None, errors
 
@@ -175,7 +196,60 @@ def _parse_row(row: dict, row_num: int) -> tuple[dict | None, list[str]]:
         "correct_option_text": correct_opt_text,
         "fingerprint": fingerprint,
         "_row_num": row_num,
+        **authored_fields,
     }, []
+
+
+def _json_list(value: Any) -> Any:
+    """A CSV cell may carry a JSON array; a multi-line cell is one item per line."""
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            try:
+                return json.loads(text)
+            except ValueError:
+                return [text]
+        if "\n" in text:
+            return [line for line in text.splitlines() if line.strip()]
+    return value
+
+
+def _parse_authored_fields(row: dict, option_count: int, errors: list[str]) -> dict:
+    """REG-CORPUS-02 optional columns → metadata / common_trap / stimuli /
+    structured_explanation. Appends to ``errors``; returns {} on any error."""
+    try:
+        metadata = authored.normalise_metadata(row.get("rubric_level"), row.get("stimulus_group"))
+
+        stimuli_in = row.get("stimuli")
+        if stimuli_in in (None, "") and _clean(row.get("stimulus_text")):
+            stimuli_in = [{
+                "stimulus_type": _clean(row.get("stimulus_type")) or "passage",
+                "content_text": row.get("stimulus_text"),
+            }]
+        stimuli = authored.normalise_stimuli(stimuli_in)
+
+        structured_in = row.get("structured_explanation")
+        if structured_in in (None, ""):
+            structured_in = {
+                "solution_steps": _json_list(row.get("solution_steps")),
+                "formula_used": _json_list(row.get("formula_used")),
+                "common_traps": _json_list(row.get("common_traps")),
+                "option_rationales": {
+                    str(i): row.get(f"option_{i + 1}_rationale")
+                    for i in range(option_count)
+                    if _clean(row.get(f"option_{i + 1}_rationale"))
+                },
+            }
+        structured = authored.normalise_structured_explanation(structured_in, option_count)
+    except ValueError as exc:
+        errors.append(str(exc))
+        return {}
+    return {
+        "metadata": metadata,
+        "common_trap": _clean(row.get("common_trap")),
+        "stimuli": stimuli,
+        "structured_explanation": structured,
+    }
 
 
 def parse_file(content: bytes, content_type: str) -> list[dict]:
@@ -271,6 +345,11 @@ def dry_run(
                     "topic_id": parsed.get("topic_id"),
                     "is_current_based": parsed.get("is_current_based"),
                     "valid_until": parsed.get("valid_until"),
+                    "source_kind": parsed.get("source_kind"),
+                    "rubric_level": (parsed.get("metadata") or {}).get("rubric_level"),
+                    "stimulus_group": (parsed.get("metadata") or {}).get("stimulus_group"),
+                    "stimuli_count": len(parsed.get("stimuli") or []),
+                    "has_structured_explanation": bool(parsed.get("structured_explanation")),
                 },
                 "issues": [],
             })
@@ -459,12 +538,19 @@ def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
                 "exam_id": exam_id,
                 "subject_id": p.get("subject_id"),
                 "topic_id": p.get("topic_id"),
+                # REG-CORPUS-01 gap 1: provenance on the bank row itself, not only
+                # on mock_question_sources.
+                "source_kind": p.get("source_kind") or "authored",
                 "reviewer_status": "draft",
                 "created_by": actor_id,
                 "question_fingerprint": fp,
                 "created_at": _now_iso(),
                 "updated_at": _now_iso(),
             }
+            if p.get("metadata"):
+                q_row["metadata"] = p["metadata"]
+            if p.get("common_trap"):
+                q_row["common_trap"] = p["common_trap"]
             result = supabase.table("mock_question_bank").insert(q_row).execute()
             rows = result.data or []
             if not rows:
@@ -487,7 +573,7 @@ def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
             # Set correct_option_id
             opts = (
                 supabase.table("mock_question_options")
-                .select("id, is_correct")
+                .select("id, option_index, is_correct")
                 .eq("question_id", question_id)
                 .execute()
                 .data
@@ -507,6 +593,15 @@ def commit_import(supabase: Any, actor: dict, import_token: str) -> dict:
                 "evidence_text": f"ext_id:{ext_id}" if ext_id else None,
             }
             supabase.table("mock_question_sources").insert(source_row).execute()
+
+            # REG-CORPUS-02: this row's own stimulus copies (a case set = N rows
+            # sharing metadata.stimulus_group, each with its own copy) and its
+            # pending structured explanation.
+            authored.write_stimuli(supabase, question_id, p.get("stimuli") or [],
+                                   language=p.get("language"))
+            authored.write_structured_explanation(
+                supabase, question_id, p.get("structured_explanation"), opts
+            )
 
             _write_log(supabase, question_id=question_id, actor_id=actor_id,
                        action="import", to_status="draft",

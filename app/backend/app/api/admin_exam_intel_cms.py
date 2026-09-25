@@ -4504,6 +4504,9 @@ _EXPLANATION_FIELDS = {
     "short_explanation", "explanation_text", "solution_steps",
     "option_rationales", "formula_used", "common_traps",
     "final_answer_option_id", "alternate_answer_option_id",
+    # Authored rows (keyed by mock_question_id, migration 310) point their
+    # structured answer at mock_question_options instead.
+    "final_answer_mock_option_id", "alternate_answer_mock_option_id",
     "ambiguity_status", "explanation_source_type", "source_url",
     "source_document_id", "source_hash", "license_status", "metadata",
 }
@@ -4555,9 +4558,26 @@ def _explanation_option_scope_error(supabase, *, question_id: Any, row: dict[str
     return None
 
 
+def _explanation_mock_option_scope_error(supabase, *, mock_question_id: Any, row: dict[str, Any]) -> str | None:
+    """Authored-row twin of ``_explanation_option_scope_error`` (migration 310 guard)."""
+    for col in ("final_answer_mock_option_id", "alternate_answer_mock_option_id"):
+        oid = row.get(col)
+        if not oid:
+            continue
+        if not mock_question_id:
+            return f"{col} is only valid on an explanation keyed to a mock question"
+        option = _safe_select(supabase, "mock_question_options", id=oid)
+        if not option:
+            return f"{col}={oid!r} does not resolve in mock_question_options"
+        if option.get("question_id") != mock_question_id:
+            return f"{col}={oid!r} belongs to a different question"
+    return None
+
+
 @router.get("/pyq-question-explanations")
 def list_pyq_question_explanations(
     question_id: str | None = Query(default=None),
+    mock_question_id: str | None = Query(default=None),
     reviewer_status: str | None = Query(default=None),
     explanation_source_type: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -4567,15 +4587,18 @@ def list_pyq_question_explanations(
 ) -> dict[str, Any]:
     supabase = get_supabase_admin()
     query = supabase.table("pyq_question_explanations").select(
-        "id, question_id, short_explanation, explanation_text, solution_steps, "
+        "id, question_id, mock_question_id, short_explanation, explanation_text, solution_steps, "
         "option_rationales, formula_used, common_traps, final_answer_option_id, "
-        "alternate_answer_option_id, ambiguity_status, explanation_source_type, "
+        "alternate_answer_option_id, final_answer_mock_option_id, "
+        "alternate_answer_mock_option_id, ambiguity_status, explanation_source_type, "
         "source_url, source_document_id, source_hash, license_status, "
         "reviewer_status, metadata, created_at, updated_at",
         count="exact",
     ).order("created_at", desc=True)
     if question_id:
         query = query.eq("question_id", question_id)
+    if mock_question_id:
+        query = query.eq("mock_question_id", mock_question_id)
     if reviewer_status:
         query = query.eq("reviewer_status", reviewer_status)
     if explanation_source_type:
@@ -4603,7 +4626,9 @@ def create_pyq_question_explanation(
         raise HTTPException(status_code=422, detail="question_id does not resolve")
     if row.get("source_document_id") and not _safe_select(supabase, "document_assets", id=row["source_document_id"]):
         raise HTTPException(status_code=422, detail="source_document_id does not resolve")
-    scope_error = _explanation_option_scope_error(supabase, question_id=question_id, row=row)
+    scope_error = _explanation_option_scope_error(
+        supabase, question_id=question_id, row=row,
+    ) or _explanation_mock_option_scope_error(supabase, mock_question_id=None, row=row)
     if scope_error:
         raise HTTPException(status_code=422, detail=scope_error)
     # unique (question_id, explanation_source_type): write the effective source
@@ -4660,6 +4685,8 @@ def update_pyq_question_explanation(
         raise HTTPException(status_code=422, detail="source_document_id does not resolve")
     scope_error = _explanation_option_scope_error(
         supabase, question_id=existing.get("question_id"), row=patch,
+    ) or _explanation_mock_option_scope_error(
+        supabase, mock_question_id=existing.get("mock_question_id"), row=patch,
     )
     if scope_error:
         raise HTTPException(status_code=422, detail=scope_error)
@@ -4667,9 +4694,14 @@ def update_pyq_question_explanation(
     # (question_id, explanation_source_type) slot, so it needs the same probe.
     new_source_type = patch.get("explanation_source_type")
     if new_source_type and new_source_type != existing.get("explanation_source_type"):
+        slot_key = (
+            {"mock_question_id": existing["mock_question_id"]}
+            if existing.get("mock_question_id")
+            else {"question_id": existing.get("question_id")}
+        )
         if _safe_select(
             supabase, "pyq_question_explanations",
-            question_id=existing.get("question_id"), explanation_source_type=new_source_type,
+            explanation_source_type=new_source_type, **slot_key,
         ):
             raise HTTPException(
                 status_code=422,

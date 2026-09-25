@@ -50,6 +50,7 @@ from __future__ import annotations
 import logging
 
 from app.exam_intelligence.diagnostics import (
+    authored_pool_rows,
     _E2E_FIXTURE_SOURCE_TYPE,
     _SELECTABLE_QUESTION_TYPES,
     _fetch_all,
@@ -232,6 +233,9 @@ def _exam_base_pool(sb, *, exam_id: str, selectable_statuses, now_iso: str) -> l
         .in_("question_type", list(_SELECTABLE_QUESTION_TYPES))
         .or_(f"source_type.is.null,source_type.neq.{_E2E_FIXTURE_SOURCE_TYPE}")
     )
+    # REG-CORPUS-02: multi-exam authored rows (exam_id NULL) whose primary topic
+    # carries this exam's topic-exam key. Same predicate as selectable_mcq_depth.
+    rows = rows + authored_pool_rows(sb, exam_id=exam_id, statuses=statuses)
 
     # Active-lineage guard: pyq-derived questions are only selectable when a
     # corresponding active projection exists. The invalidation trigger already

@@ -1,6 +1,6 @@
 import React from "react";
 import QuestionStem from "../shared/QuestionStem";
-import MarkdownSafe from "../shared/MarkdownSafe";
+import MathRenderer from "../shared/MathRenderer";
 
 /**
  * Integer / numerical question renderer.
@@ -40,7 +40,7 @@ export default function NumericalAnswer({
             </div>
           ) : null}
         </div>
-        {showExplanation && question.explanation ? <MarkdownSafe text={question.explanation} /> : null}
+        {showExplanation && question.explanation ? <MathRenderer text={question.explanation} /> : null}
       </div>
     );
   }
@@ -56,7 +56,7 @@ export default function NumericalAnswer({
         onChange={(e) => onChange?.({ ...value, numeric_answer: e.target.value })}
         disabled={disabled}
       />
-      {showExplanation && question.explanation ? <MarkdownSafe text={question.explanation} /> : null}
+      {showExplanation && question.explanation ? <MathRenderer text={question.explanation} /> : null}
     </div>
   );
 }

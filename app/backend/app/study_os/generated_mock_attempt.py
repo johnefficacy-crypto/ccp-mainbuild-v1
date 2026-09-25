@@ -175,10 +175,17 @@ def _load_questions(sb, question_ids: list[str]) -> dict[str, dict]:
         stim_data.extend(page)
     # Fail closed: safe_required returns None only on read failure (empty success
     # is []). A projected comprehension PYQ must not freeze without its passage.
-    if stim_data is None and any(r.get("pyq_question_id") for r in q_rows):
+    # An authored case-set row (metadata.stimulus_group, REG-CORPUS-02) is held
+    # to the same rule: its stem is only the question part of the case.
+    if stim_data is None and any(
+        r.get("pyq_question_id")
+        or (isinstance(r.get("metadata"), dict) and r["metadata"].get("stimulus_group"))
+        for r in q_rows
+    ):
         raise RuntimeError(
             "generated attempt: mock_question_stimuli read failed for a projected "
-            "PYQ; refusing to freeze an attempt without its passage snapshot"
+            "PYQ or an authored case-set row; refusing to freeze an attempt "
+            "without its passage snapshot"
         )
     stim_by_q: dict[str, list[dict]] = {}
     for s in (stim_data or []):

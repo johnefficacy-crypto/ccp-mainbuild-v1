@@ -1,8 +1,8 @@
 import React from "react";
 import QuestionStem from "../shared/QuestionStem";
 import OptionList from "../shared/OptionList";
-import MarkdownSafe from "../shared/MarkdownSafe";
 import MathRenderer from "../shared/MathRenderer";
+import CommonTrap from "../shared/CommonTrap";
 import { formatOptionLabel } from "../../../optionLabels";
 
 // Printed order mirrors OptionList: display_order asc (NULLs last), stable.
@@ -52,10 +52,11 @@ export default function MCQSingle({
       {correct ? (
         <div className="mt-2 text-sm text-sage-800" data-testid="review-correct-answer">
           <span className="font-semibold">Correct answer: </span>
-          {correct.label} <MathRenderer text={correct.text} />
+          {correct.label} <MathRenderer text={correct.text} inline />
         </div>
       ) : null}
-      {showExplanation && question.explanation ? <MarkdownSafe text={question.explanation} /> : null}
+      {showExplanation && question.explanation ? <MathRenderer text={question.explanation} /> : null}
+      <CommonTrap mode={mode} text={question.common_trap} />
     </div>
   );
 }

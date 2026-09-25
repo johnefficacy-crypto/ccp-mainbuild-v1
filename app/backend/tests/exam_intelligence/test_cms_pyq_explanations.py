@@ -380,3 +380,52 @@ def test_bulk_import_rejects_duplicate_pair_within_the_same_batch():
     assert body["error_count"] == 1
     assert "already exists" in str(body["results"][1]["error"])
     assert len(sb.db["pyq_question_explanations"]) == 1
+
+
+# ── REG-CORPUS-02: authored rows keyed by mock_question_id (migration 310) ──
+
+
+def _authored_seed() -> dict:
+    seed = _seed()
+    seed["mock_question_options"] = [
+        {"id": "m1a", "question_id": "mq1", "option_index": 0, "is_correct": True},
+        {"id": "m1b", "question_id": "mq1", "option_index": 1, "is_correct": False},
+        {"id": "m2a", "question_id": "mq2", "option_index": 0, "is_correct": True},
+    ]
+    seed["pyq_question_explanations"] = [
+        {"id": "x-pyq", "question_id": "q1", "reviewer_status": "pending",
+         "explanation_source_type": "platform_original"},
+        {"id": "x-auth", "mock_question_id": "mq1", "reviewer_status": "pending",
+         "explanation_source_type": "platform_original", "final_answer_mock_option_id": "m1a"},
+    ]
+    return seed
+
+
+def test_list_filters_authored_explanations_by_mock_question_id():
+    sb = TaxSBStub(_authored_seed())
+    r = _cms_client(sb).get(_EXPL, params={"mock_question_id": "mq1"})
+    assert r.status_code == 200, r.text
+    assert [row["id"] for row in r.json()["items"]] == ["x-auth"]
+
+
+def test_patch_authored_answer_must_be_an_option_of_the_same_mock_question():
+    sb = TaxSBStub(_authored_seed())
+    client = _cms_client(sb)
+    bad = client.patch(f"{_EXPL}/x-auth", json={
+        "reason": "repointing the key option", "payload": {"final_answer_mock_option_id": "m2a"},
+    })
+    assert bad.status_code == 422
+    assert "different question" in bad.json()["detail"]
+    ok = client.patch(f"{_EXPL}/x-auth", json={
+        "reason": "repointing the key option", "payload": {"final_answer_mock_option_id": "m1b"},
+    })
+    assert ok.status_code == 200, ok.text
+
+
+def test_pyq_explanation_cannot_take_a_mock_option_answer():
+    sb = TaxSBStub(_authored_seed())
+    r = _cms_client(sb).patch(f"{_EXPL}/x-pyq", json={
+        "reason": "wrong family of option", "payload": {"final_answer_mock_option_id": "m1a"},
+    })
+    assert r.status_code == 422
+    assert "only valid on an explanation keyed to a mock question" in r.json()["detail"]

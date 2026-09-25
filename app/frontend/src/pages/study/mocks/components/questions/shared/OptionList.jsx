@@ -40,7 +40,7 @@ export default function OptionList({ options = [], selected = [], onSelect, mult
         const label = formatOptionLabel(o, i);
         return (
           <button key={o.id} type="button" onClick={() => onSelect(o.id)} onKeyDown={(e) => onKey(e, i, o.id)} disabled={disabled} dir="auto">
-            <strong>{label}</strong> <MathRenderer text={o.option_text || ""} />
+            <strong>{label}</strong> <MathRenderer text={o.option_text || ""} inline />
             {multiple && active ? " ✓" : ""}
           </button>
         );
