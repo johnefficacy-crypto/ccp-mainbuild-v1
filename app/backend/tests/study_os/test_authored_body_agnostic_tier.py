@@ -3,7 +3,8 @@
 P1: a topic with NO ``metadata.exams`` key, in a body-agnostic subject, serves
 every exam whose phase sections examine that subject. Keyed topics are
 unchanged. P2: topic practice serves the learner's exam tier
-(``metadata.exam_tier``) by default and can include the other tier.
+(``metadata.exam_tier``) by default and can include the other tier; generated
+mocks are tier-strict.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from app.core.auth import get_current_user
 from app.exam_intelligence import authored_scope as scope
 from app.exam_intelligence.diagnostics import authored_pool_rows
 from app.study_os import pyq_practice as svc
+from app.study_os.mock_blueprint_selection import build_blueprint_with_selection
 from tests.persona_questions._stub import SBStub
 
 SSC = "55c00000-0000-0000-0000-000000000001"
@@ -170,11 +172,67 @@ def test_failed_section_read_fails_closed_without_breaking_keyed_rows():
     assert [r["id"] for r in rows] == ["qa-sebi"]
 
 
-def test_blueprint_pool_includes_body_agnostic_rows_of_every_tier():
+def test_mock_pool_is_tier_strict_and_keeps_untiered_rows():
     pool = {r["id"] for r in authored_pool_rows(_db(), exam_id=SSC, statuses=["verified"])}
-    assert pool == {"qa-f", "qa-o", "qa-untiered", "qa-officer-only"}
+    assert pool == {"qa-f", "qa-untiered"}
     sebi = {r["id"] for r in authored_pool_rows(_db(), exam_id=SEBI, statuses=["verified"])}
-    assert sebi == {"qa-f", "qa-o", "qa-untiered", "qa-sebi", "qa-officer-only"}
+    assert sebi == {"qa-o", "qa-untiered", "qa-sebi", "qa-officer-only"}
+    # an exam with no tier is not filtered
+    csat = {r["id"] for r in authored_pool_rows(_db(), exam_id=CSAT, statuses=["verified"])}
+    assert csat == {"qa-f", "qa-o", "qa-untiered", "qa-officer-only"}
+
+
+def _mock_sb(exam: str, slug: str, bank: list[dict]) -> SBStub:
+    phase = f"ph-{slug}"
+    return SBStub({
+        "exams": [{"id": exam, "slug": slug}],
+        "exam_phases": [{"id": phase, "exam_id": exam, "phase_name": "Tier 1", "phase_slug": "tier-1",
+                         "phase_order": 1, "duration_mins": 60}],
+        "exam_phase_sections": [{
+            "id": "sec-qa", "exam_phase_id": phase, "subject_id": S_QA,
+            "section_label": "Quantitative Aptitude", "question_count": 10, "marks": 20,
+            "duration_mins": None, "negative_marking": "-0.50", "difficulty_level": "medium",
+            "weightage_percent": 100.0, "sort_order": 0,
+        }],
+        "subjects": [{"id": S_QA, "slug": "quantitative-aptitude"}],
+        "topics": [{"id": T_QA, "subject_id": S_QA, "metadata": {}}],
+        "exam_topic_coverage": [{"id": "cov-qa", "exam_id": exam, "exam_phase_id": phase,
+                                 "section_id": "sec-qa", "reviewer_status": "locked"}],
+        "mock_question_bank": bank,
+    })
+
+
+def _tiered_bank() -> list[dict]:
+    rows = []
+    for tier in ("foundation", "officer"):
+        for i in range(10):
+            r = _authored(f"{tier[0]}-{i:02d}", T_QA, S_QA, tier)
+            r["reviewer_status"] = "published"
+            rows.append(r)
+    return rows
+
+
+def _build_mock(exam: str, slug: str) -> dict:
+    return build_blueprint_with_selection(
+        _mock_sb(exam, slug, _tiered_bank()), exam_id=exam, exam_phase_id=f"ph-{slug}", user_id="u",
+        selectable_statuses=["published"], verified_status="verified",
+        min_per_section=1, min_locked_coverage=1,
+    )
+
+
+def test_ssc_cgl_generated_mock_never_draws_an_officer_authored_row():
+    payload = _build_mock(SSC, "ssc-cgl")
+    ids = set(payload["question_ids"])
+    assert ids == {f"f-{i:02d}" for i in range(10)}
+    assert not any(i.startswith("o-") for i in ids)
+    # the officer rows are not even in the section's eligible pool
+    [sec] = payload["selector_snapshot"]["sections"]
+    assert sec["eligible_pool_count"] == 10
+
+
+def test_officer_exam_generated_mock_never_draws_a_foundation_authored_row():
+    payload = _build_mock(SEBI, "sebi-grade-a")
+    assert set(payload["question_ids"]) == {f"o-{i:02d}" for i in range(10)}
 
 
 def test_resolved_scope_names_key_sections_and_tier():

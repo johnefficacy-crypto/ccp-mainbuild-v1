@@ -90,8 +90,9 @@ def test_whole_corpus_converts_with_no_errors(corpus, catalogue, factcheck):
     # every factcheck row (REG-FACTCHECK-1 + QRE-FACTCHECK-GK) reaches its row's metadata
     verdicts = [r["metadata"]["factcheck_verdict"] for rs in rows.values() for r in rs]
     assert verdicts.count("confirmed") == 931 + 820
-    assert verdicts.count("fix_needed") == 66 + 4
-    assert verdicts.count("wrong_key") == 14 + 1
+    # wrong_key / fix_needed corrections are applied in the JSON: imported as "fixed"
+    assert verdicts.count("fixed") == (66 + 14) + (4 + 1)
+    assert "fix_needed" not in verdicts and "wrong_key" not in verdicts
 
 
 def test_row_shape_is_authored_draft_with_no_exam(corpus, catalogue, factcheck):
@@ -106,7 +107,7 @@ def test_row_shape_is_authored_draft_with_no_exam(corpus, catalogue, factcheck):
     assert row["topic_id"] == _id(q["microtopic_slug"])
     assert row["metadata"] == {
         "corpus_id": "ACTB-042", "batch": "REG-CORPUS-ACT-BANK", "corpus_version": "v1.1",
-        "verify_fact": True, "factcheck_verdict": "wrong_key",
+        "verify_fact": True, "factcheck_verdict": "fixed",
     }
     se = row["structured_explanation"]
     assert se["solution_steps"] == q["explanation"]["steps"]
@@ -353,12 +354,24 @@ def test_reg_rows_stay_untiered(corpus, catalogue, factcheck):
     assert {r["metadata"]["corpus_version"] for r in rows["REG-CORPUS-CST"]} == {"v1.1"}
 
 
-def test_gk_factcheck_verdicts_come_from_the_qre_csv(corpus, catalogue, factcheck):
+def test_gk_factcheck_verdicts_come_from_the_qre_csv_and_applied_fixes_read_fixed(corpus, catalogue, factcheck):
     rows, _ = conv.build({"QRE-GK-A": corpus["QRE-GK-A"]}, topics=_topics(catalogue),
                          catalogue=catalogue, factcheck=factcheck)
     by_id = {r["external_id"]: r for r in rows["QRE-GK-A"]}
-    assert by_id["GKA-339"]["metadata"]["factcheck_verdict"] == "wrong_key"
+    assert factcheck["GKA-339"] == "wrong_key"  # the CSV keeps the audit trail
+    assert by_id["GKA-339"]["metadata"]["factcheck_verdict"] == "fixed"
     assert by_id["GKA-001"]["metadata"]["factcheck_verdict"] == "confirmed"
+    rows_b, _ = conv.build({"QRE-GK-B": corpus["QRE-GK-B"]}, topics=_topics(catalogue),
+                           catalogue=catalogue, factcheck=factcheck)
+    fixed_b = {r["external_id"] for r in rows_b["QRE-GK-B"] if r["metadata"]["factcheck_verdict"] == "fixed"}
+    assert fixed_b == {"GKB-151", "GKB-347", "GKB-351", "GKB-356"}
+
+
+def test_imported_verdict_mapping():
+    assert conv.imported_verdict("wrong_key") == conv.imported_verdict("fix_needed") == "fixed"
+    assert conv.imported_verdict("confirmed") == "confirmed"
+    assert conv.imported_verdict("unverifiable") == "unverifiable"
+    assert conv.imported_verdict(None) == "not_flagged"
 
 
 def test_invalid_exam_tier_fails_loudly(corpus, catalogue, factcheck):

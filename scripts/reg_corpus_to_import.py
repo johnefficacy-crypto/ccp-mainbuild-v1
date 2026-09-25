@@ -55,6 +55,11 @@ CORPUS_VERSIONS = {"REG-CORPUS-": "v1.1", "QRE-": "v1"}
 CORPUS_VERSION = CORPUS_VERSIONS["REG-CORPUS-"]
 FACTCHECK_VERDICTS = ("confirmed", "fix_needed", "wrong_key", "unverifiable")
 NOT_FLAGGED = "not_flagged"
+#: CSV verdicts whose correction is already applied in the corpus JSON
+#: (REG-FIX-1 for REG; the QRE GK fixes in qre/out). The CSV keeps the original
+#: verdict as the audit trail; the imported row records that it was fixed.
+FIXED_VERDICTS = ("wrong_key", "fix_needed")
+FIXED = "fixed"
 EXAM_TIERS = ("foundation", "officer")
 
 sys.path.insert(0, str(ROOT / "app" / "backend"))
@@ -248,6 +253,14 @@ def to_import_row(
 
 # ── build ──────────────────────────────────────────────────────────────────────
 
+def imported_verdict(csv_verdict: str | None) -> str:
+    """``metadata.factcheck_verdict`` for a row: ``fixed`` when the CSV flagged
+    it and the fix is applied, else the CSV verdict, else ``not_flagged``."""
+    if not csv_verdict:
+        return NOT_FLAGGED
+    return FIXED if csv_verdict in FIXED_VERDICTS else csv_verdict
+
+
 def _exported_ids(topics: dict[str, dict]) -> set[str]:
     ids: set[str] = set()
     for t in topics.values():
@@ -307,7 +320,7 @@ def build(
             row = to_import_row(
                 q, subject_id=topic["subject_id"], topic_id=topic["id"],
                 split=splits.get(q["id"]), batch=batch,
-                factcheck_verdict=factcheck.get(q["id"], NOT_FLAGGED),
+                factcheck_verdict=imported_verdict(factcheck.get(q["id"])),
             )
             parsed, parse_errors = _parse_row(row, len(rows) + 2)
             if parse_errors:
