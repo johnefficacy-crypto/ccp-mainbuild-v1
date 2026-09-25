@@ -1,9 +1,10 @@
 """Shared helpers for REG-CORPUS-FIN-B part modules."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, csv, os
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 from reglib import inr, R, pct, lakh, crore  # noqa: F401
 
-_LIST = '/home/claude/corpus/lists/finance.B.tsv'
+_LIST = _os.path.join(_REG, 'lists', 'finance.B.tsv')
 SLUGS = [r['slug'] for r in csv.DictReader(open(_LIST, encoding='utf-8'), delimiter='\t')]
 
 

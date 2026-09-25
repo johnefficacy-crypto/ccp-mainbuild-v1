@@ -1,6 +1,7 @@
 """Shared helpers for REG-CORPUS-MGT part modules."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, math, itertools, random
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 from reglib import load_catalogue, inr, R, pct, lakh, crore  # noqa: F401
 
 _CAT = list(load_catalogue("management").keys())

@@ -3,9 +3,10 @@ Parts: finb_p1 (primary markets & securities law), finb_p2 (derivatives, risk, v
 finb_p3 (money markets, banking, payments, NBFC, regulators), finb_p4 (macro, public finance, tax, MF).
 Run: python3 build_REG-CORPUS-FIN-B.py
 """
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, os, importlib
 from collections import Counter
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
 from finb_common import SLUGS

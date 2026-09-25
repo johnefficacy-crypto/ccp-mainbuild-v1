@@ -1,6 +1,7 @@
 """Shared helpers for the REG-CORPUS-ECO part modules."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 from reglib import inr, R, pct  # noqa: F401
 
 

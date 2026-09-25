@@ -1,6 +1,7 @@
 """Shared helpers for REG-CORPUS-CA-B part modules (companies-act, list B)."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 from datetime import date, timedelta
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
 

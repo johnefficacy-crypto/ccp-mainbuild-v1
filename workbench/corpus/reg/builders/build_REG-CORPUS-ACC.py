@@ -1,9 +1,10 @@
 """REG-CORPUS-ACC builder: commerce-accountancy, 180 questions, split into part modules acc_p1..acc_p5.
 Every numeric key and distractor is computed in the part modules; asserts guard hand-checked values."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys
 import importlib
-sys.path.insert(0, '/home/claude/corpus')
-sys.path.insert(0, '/home/claude/corpus/builders')
+sys.path.insert(0, _REG)
+sys.path.insert(0, _os.path.join(_REG, 'builders'))
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
 
 PARTS = ["acc_p1", "acc_p2", "acc_p3", "acc_p4", "acc_p5"]

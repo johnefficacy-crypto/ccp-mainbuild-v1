@@ -1,6 +1,7 @@
 """REG-CORPUS-MGT builder: management (200 Q). Parts live in mgt_p1..mgt_p4 (each defines add_all(B))."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, os
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
 from collections import Counter

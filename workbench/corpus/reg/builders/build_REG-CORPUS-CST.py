@@ -2,7 +2,8 @@
 Every numeric key and distractor is computed here; asserts guard hand-checked keys.
 Run: python builders/build_REG-CORPUS-CST.py
 """
-import sys; sys.path.insert(0, '/home/claude/corpus')
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+import sys; sys.path.insert(0, _REG)
 from reglib import Batch, inr, R, pct, lakh, crore
 from math import sqrt, isclose
 

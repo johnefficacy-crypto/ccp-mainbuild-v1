@@ -4,8 +4,9 @@ fina_p3 (market institutions, regulation, macro-fiscal), fina_p4 (taxes & GST).
 Every numeric key and distractor is computed in the part modules.
 Run: python3 builders/build_REG-CORPUS-FIN-A.py
 """
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, os, csv
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from collections import Counter
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
@@ -17,7 +18,7 @@ for part in (fina_p1, fina_p2, fina_p3, fina_p4):
     part.add_all(B)
 
 # ---- batch-level checks ----
-with open('/home/claude/corpus/lists/finance.A.tsv', encoding='utf-8') as f:
+with open(_os.path.join(_REG, 'lists', 'finance.A.tsv'), encoding='utf-8') as f:
     scope = {r['slug'] for r in csv.DictReader(f, delimiter='\t')}
 used = Counter(q['microtopic_slug'] for q in B.Q)
 assert set(used) <= scope, f"out-of-scope slugs: {set(used) - scope}"

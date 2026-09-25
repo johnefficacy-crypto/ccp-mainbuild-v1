@@ -1,6 +1,7 @@
 """Shared helpers for the REG-CORPUS-ACC part modules."""
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 from reglib import inr, R, pct, lakh, crore  # noqa: F401
 
 AR_OPTS = {
@@ -83,7 +84,7 @@ def close(a, b, tol=0.51):
 
 
 import csv as _csv
-_SLUGS = [r["slug"] for r in _csv.DictReader(open('/home/claude/corpus/lists/commerce-accountancy.tsv', encoding='utf-8'), delimiter='\t')]
+_SLUGS = [r["slug"] for r in _csv.DictReader(open(_os.path.join(_REG, 'lists', 'commerce-accountancy.tsv'), encoding='utf-8'), delimiter='\t')]
 
 
 def S(prefix):

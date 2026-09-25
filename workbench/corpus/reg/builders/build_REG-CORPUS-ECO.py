@@ -7,8 +7,9 @@ Parts (each defines add_all(B)):
   eco_p5  monetary policy, inflation, Phillips curve, external sector, institutions, cycles
 Run: python3 build_REG-CORPUS-ECO.py
 """
+import os as _os; _REG = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 import sys, os
-sys.path.insert(0, '/home/claude/corpus')
+sys.path.insert(0, _REG)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from reglib import Batch, inr, R, pct, lakh, crore  # noqa: F401
 import eco_p1, eco_p2, eco_p3, eco_p4, eco_p5
