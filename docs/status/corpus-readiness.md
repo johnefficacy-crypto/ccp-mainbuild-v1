@@ -2,8 +2,6 @@
 
 > **Example output — fixture data, not live counts.** Every number below comes from a committed test fixture. An operator regenerates this file against a real database with `python scripts/corpus_readiness_report.py --live --source demo`.
 
-> **STALE — REG-CORPUS-02 (2026-09-25).** Topic practice, the blueprint base pool and mock-readiness depth now also admit authored `mock_question_bank` rows (`source_kind='authored'`, `exam_id` NULL) for exams with a topic-exam key (SEBI, PFRDA, IFSCA), scoped by `topics.metadata.exams` (`app/backend/app/exam_intelligence/authored_scope.py`). The `projection` read above counts PYQ-projected rows only, so it under-counts practisable topics for those three exams. That PR had no DB access; nothing below was regenerated or hand-edited.
-
 - generated-at: 2026-09-22
 - mode: fixture
 - source: demo
