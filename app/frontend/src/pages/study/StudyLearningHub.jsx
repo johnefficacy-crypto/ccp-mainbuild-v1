@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   BellRing,
   BookOpen,
+  Languages,
   Layers,
   LineChart,
   NotebookPen,
@@ -63,6 +64,13 @@ const LIVE_CARDS = [
     description: "Write past Mains questions and review your own answer.",
     to: "/app/study/answer-writing",
     icon: PenLine,
+  },
+  {
+    key: "english-drills",
+    title: "English drills",
+    description: "Past-paper parajumbles, error spotting, cloze and vocab from your exam.",
+    to: "/app/study/english-drills",
+    icon: Languages,
   },
   {
     key: "mistakes",

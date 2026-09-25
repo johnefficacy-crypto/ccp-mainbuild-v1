@@ -20,6 +20,7 @@ const StudyPlan = lazy(() => import("../pages/StudyPlan"));
 const Focus = lazy(() => import("../pages/study/Focus"));
 const Mocks = lazy(() => import("../pages/study/Mocks"));
 const EnglishPracticeShell = lazy(() => import("../pages/study/EnglishPracticeShell"));
+const EnglishDrills = lazy(() => import("../pages/study/EnglishDrills"));
 const CurrentAffairsAttemptShell = lazy(() => import("../pages/study/CurrentAffairsAttemptShell"));
 const CalculationGymShell = lazy(() => import("../pages/study/CalculationGymShell"));
 const ImprovementLab = lazy(() => import("../pages/study/ImprovementLab"));
@@ -132,6 +133,11 @@ export const appRouteElements = (
             no-new-surface rule. Entered from the Learning hub, beside Mocks,
             the same pattern as Improvement Lab / Essay canvas. */}
         <Route path="answer-writing" element={<AnswerWriting />} />
+        {/* English verbal drills (parajumbles, error spotting, cloze, vocab,
+            parts of speech, sentence construction + a timed daily mix):
+            mounted UNDER StudyShell and inside RouteErrorBoundary, ABSENT from
+            the sidebar (no-new-surface rule). Entered from the Learning hub. */}
+        <Route path="english-drills" element={<EnglishDrills />} />
         {/* Backward-compatible alias: the former Error Lab route redirects to
             the canonical Improvement Lab route so existing links keep working. */}
         <Route path="error-lab" element={<Navigate to="/app/study/improvement-lab" replace />} />
