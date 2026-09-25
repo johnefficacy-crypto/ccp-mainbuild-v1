@@ -106,12 +106,17 @@ option id, then update `pyq_questions.correct_option_id`,
 `pyq_options.is_correct` and `mock_question_options.is_correct` in one
 transaction.
 
-### 3. A misfiled paper in 2026
-`b06305ad-cc93-4c27-b309-1b590f0a3247` holds 80 CSAT questions — quantitative
-aptitude, reasoning, comprehension passages — but sits on the Prelims **GS**
-phase `6566d50e`, not the CSAT phase `1d6611c7`. They surface in GS practice,
-count toward GS coverage, and duplicate questions already correctly filed on
-2026's CSAT paper. Confirm the overlap before moving or retiring it.
+### 3. A stray unprocessed 2026 paper
+`7b18bf8d-2919-4328-9779-8b0fe9a8b22a` holds 70 CSAT questions, none verified,
+none projected, no explanations. It duplicates 56 of the 80 questions in
+`b06305ad-...`, which is the live 2026 CSAT paper and is correctly filed on the
+2026 Prelims phase (that phase deliberately holds both GS-I and CSAT). 14
+questions exist only in the stray paper and are the only content at risk if it
+is retired. Its Q55 has its directions block split across the option slots, but
+nothing from this paper reaches an aspirant.
+
+An earlier note in this file called `b06305ad` misfiled. That was wrong — the
+phase was read from its id rather than its row.
 
 ### 4. Stripped superscripts in maths questions
 Five questions lost their exponents on import and are unanswerable as stored:
@@ -146,6 +151,34 @@ never on NABARD, SEBI, IFSCA or PFRDA.
 - Tag defects flagged but not fixed: 90 UPSC, 18 IFSCA, 5 PFRDA, 2 RBI.
 - 154 coverage locks and 23 wrong primary tags, from the parallel RBI session.
 - SSC CGL's 850 questions need their review pass before explanations can start.
+
+---
+---
+
+## 2026 spot-check — no defects found
+
+Sixteen 2026 keys were worked by hand after the 2020, 2024 and 2025 repairs, to
+see whether the key defect reached the newest papers. All sixteen were correct.
+
+GS paper `22ea7f1b-...`, eleven checked: Bilawal/Dheerashankarabharanam, the
+Hilton-Young rupee-sterling rate, the Awadh Summary Settlement, the Sutlej
+identification, EU membership, the Colombo Process, UNMIL/MINURCAT dates,
+the 2025 Nobel laureate, the Hallisa Lasya painting, RAD's objectives, and the
+National Quantum Mission's qubit target.
+
+CSAT paper `b06305ad-...`, five checked, all arithmetic or logic and all
+verified by working them: the count of 5s in two-digit numbers, three-digit
+powers of 2, the worker-ratio problem, the divisibility-by-11 remainder, and
+the transitive colour syllogism.
+
+This is a sample, not a full check — 2020 ran at roughly one wrong key in six,
+and a sample of sixteen would probably have caught two at that rate. It is
+evidence that 2026 is clean, not proof. The 2026 papers have no published UPSC
+answer key yet, so a letter-by-letter check is not possible.
+
+**Key status by paper:** 2020, 2024 and 2025 corrected (40 keys). 2018, 2019,
+2021, 2022 and 2023 verified clean against UPSC's published finals. 2026
+spot-checked only. No CSAT paper of any year has been key-checked.
 
 ---
 
