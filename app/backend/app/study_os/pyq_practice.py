@@ -303,6 +303,36 @@ def _topic_order_key(r: dict) -> tuple:
     return (1, 0, str(group) if group else str(r.get("id")), str(r.get("id")))
 
 
+def _authored_group(r: dict) -> str | None:
+    """``metadata.stimulus_group`` of an authored row; PYQ rows never group here."""
+    if r.get("pyq_question_id"):
+        return None
+    meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else {}
+    group = meta.get("stimulus_group")
+    return str(group) if group else None
+
+
+def _cap_topic_rows(rows: list[dict], limit: int) -> list[dict]:
+    """Cap topic-ordered rows at ``limit`` without splitting a case set.
+
+    A case set (authored rows sharing ``metadata.stimulus_group``, contiguous
+    after :func:`_topic_order_key`) is taken whole or not at all: one that
+    would cross the cap is skipped and later rows keep filling the slots. Rows
+    with no group, including every PYQ row, are capped exactly as before."""
+    out: list[dict] = []
+    i = 0
+    while i < len(rows) and len(out) < limit:
+        group = _authored_group(rows[i])
+        j = i + 1
+        if group:
+            while j < len(rows) and _authored_group(rows[j]) == group:
+                j += 1
+        if len(out) + (j - i) <= limit:
+            out.extend(rows[i:j])
+        i = j
+    return out
+
+
 def select_practice_rows(
     sb, *, mode: str, exam_id: str | None, target_id: str, limit: int
 ) -> list[dict]:
@@ -385,6 +415,7 @@ def select_practice_rows(
         pool.sort(key=_key)
     else:  # topic: newest PYQ year first, then id; authored rows after PYQ
         pool.sort(key=_topic_order_key)
+        return _cap_topic_rows(pool, limit)
     return pool[:limit]
 
 
@@ -561,7 +592,7 @@ def practiceable_topic_ids(
     selected_ids: list[str] = []
     for tid, rows in by_topic.items():
         rows.sort(key=_topic_order_key)
-        chosen = [str(r["id"]) for r in rows[:limit]]
+        chosen = [str(r["id"]) for r in _cap_topic_rows(rows, limit)]
         selected_by_topic[tid] = chosen
         selected_ids.extend(chosen)
 

@@ -38,6 +38,11 @@ CSV schema (header row required):
                                         -> a pending pyq_question_explanations row
                                            keyed by mock_question_id
 
+  JSON rows only (REG-CORPUS-03):
+    metadata (object)                   -> merged into mock_question_bank.metadata;
+                                           rubric_level / stimulus_group above
+                                           still win and are still validated
+
 JSON schema: list of objects with same field names. A JSON row may instead give
 ``stimuli`` as a list of {stimulus_type, content_text} and
 ``structured_explanation`` as {solution_steps, formula_used, common_traps,
@@ -218,7 +223,16 @@ def _parse_authored_fields(row: dict, option_count: int, errors: list[str]) -> d
     """REG-CORPUS-02 optional columns → metadata / common_trap / stimuli /
     structured_explanation. Appends to ``errors``; returns {} on any error."""
     try:
-        metadata = authored.normalise_metadata(row.get("rubric_level"), row.get("stimulus_group"))
+        base = row.get("metadata")
+        if base not in (None, "") and not isinstance(base, dict):
+            raise ValueError("metadata must be an object")
+        base = base or {}
+        # The typed keys are validated whichever way they arrive.
+        metadata = authored.normalise_metadata(
+            row.get("rubric_level") or base.get("rubric_level"),
+            row.get("stimulus_group") or base.get("stimulus_group"),
+            base=base,
+        )
 
         stimuli_in = row.get("stimuli")
         if stimuli_in in (None, "") and _clean(row.get("stimulus_text")):

@@ -63,3 +63,6 @@ test-results/
 .claude/worktrees/
 
 workbench/exports/
+
+# REG-CORPUS-03 operator-local: topics export and generated import payloads (live topic ids)
+workbench/corpus/reg/import/

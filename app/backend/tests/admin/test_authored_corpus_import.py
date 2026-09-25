@@ -3,13 +3,15 @@
 Fixtures are verbatim corpus rows (``tests/fixtures/reg_corpus_cst_sample.json``,
 copied from ``workbench/corpus/reg/out/REG-CORPUS-CST.json``): one table
 numerical (CST-020), one statement question (CST-003) and one 4-question case
-set (CST-065..068, ``stimulus_group`` CST-CASE-PROC). ``_to_import_row`` is the
-corpus → bulk-import mapping an operator would apply (the microtopic slug →
-topic id lookup is the only DB-dependent step and is faked here).
+set (CST-065..068, ``stimulus_group`` CST-CASE-PROC). ``_to_import_row`` goes
+through ``scripts/reg_corpus_to_import.py``, the operator converter (the
+microtopic slug → topic id lookup comes from a topics export; faked here).
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -32,7 +34,12 @@ TOPIC_BY_SLUG = {
     "cost-equivalent-production-fifo-and-weighted-average-bcff4541": "c0510000-0000-0000-0000-000000000013",
     "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41": "c0510000-0000-0000-0000-000000000014",
 }
-_CASE_SPLIT = "\n\n**Q.**"
+_SPEC = importlib.util.spec_from_file_location(
+    "reg_corpus_to_import", Path(__file__).resolve().parents[4] / "scripts" / "reg_corpus_to_import.py"
+)
+conv = importlib.util.module_from_spec(_SPEC)
+sys.modules["reg_corpus_to_import"] = conv
+_SPEC.loader.exec_module(conv)
 
 
 def _corpus() -> dict[str, dict]:
@@ -41,39 +48,14 @@ def _corpus() -> dict[str, dict]:
 
 
 def _to_import_row(q: dict) -> dict:
-    """Corpus row → bulk-import JSON row. A case row's shared case text becomes
-    its own stimulus copy; the stem keeps only the question part."""
-    stem, stimuli = q["stem"], []
-    if q.get("stimulus_group") and _CASE_SPLIT in stem:
-        case_text, question = stem.split(_CASE_SPLIT, 1)
-        stimuli = [{
-            "stimulus_type": "table" if "|---" in case_text else "passage",
-            "content_text": case_text,
-        }]
-        stem = "**Q.**" + question
-    row = {
-        "question_text": stem,
-        "correct_option": str(next(i for i, o in enumerate(q["options"]) if o["is_correct"]) + 1),
-        "difficulty": q["difficulty"],
-        "rubric_level": q["rubric_level"],
-        "stimulus_group": q.get("stimulus_group"),
-        "common_trap": q["explanation"]["trap"],
-        "stimuli": stimuli,
-        "structured_explanation": {
-            "solution_steps": q["explanation"]["steps"],
-            "formula_used": [q["explanation"]["formula_used"]],
-            "common_traps": [q["explanation"]["trap"]],
-            "option_rationales": {
-                str(i): o["error"] for i, o in enumerate(q["options"]) if o.get("error")
-            },
-        },
-        "subject_id": SUBJECT,
-        "topic_id": TOPIC_BY_SLUG[q["microtopic_slug"]],
-        "external_id": q["id"],
-    }
-    for i, o in enumerate(q["options"]):
-        row[f"option_{i + 1}"] = o["text"]
-    return row
+    """Corpus row → bulk-import JSON row, through the operator converter
+    (``scripts/reg_corpus_to_import.py`` — the one mapping)."""
+    splits, errors = conv.case_splits(list(_corpus().values()))
+    assert not errors, errors
+    return conv.to_import_row(
+        q, subject_id=SUBJECT, topic_id=TOPIC_BY_SLUG[q["microtopic_slug"]],
+        split=splits.get(q["id"]), batch="REG-CORPUS-CST",
+    )
 
 
 def _actor() -> dict:
@@ -176,7 +158,10 @@ def test_import_writes_rubric_level_and_common_trap():
     sb = _sb()
     _import(sb, ["CST-020"])
     row = sb.db["mock_question_bank"][0]
-    assert row["metadata"] == {"rubric_level": "L2"}
+    assert row["metadata"] == {
+        "rubric_level": "L2", "corpus_id": "CST-020", "batch": "REG-CORPUS-CST",
+        "corpus_version": "v1.1", "verify_fact": False, "factcheck_verdict": "not_flagged",
+    }
     assert row["difficulty"] == "medium"
     assert row["common_trap"] == _corpus()["CST-020"]["explanation"]["trap"]
     # the GFM table stays in the stem verbatim for the renderer

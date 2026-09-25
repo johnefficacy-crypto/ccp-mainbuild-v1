@@ -200,6 +200,44 @@ def test_topic_pool_orders_pyq_first_and_keeps_case_sets_contiguous():
     assert ids.index("a-case-2") == ids.index("a-case-1") + 1
 
 
+def _case_boundary_bank() -> list[dict]:
+    # Topic order: p1 (PYQ), the 4-row case set CST-CASE-PROC, then a-z.
+    return [
+        _pyq("p1", SEBI, T_COST, 2022),
+        _authored("a-z", T_COST, SUBJ_COST),
+        *[_authored(f"a-case-{i}", T_COST, SUBJ_COST, group="CST-CASE-PROC") for i in range(1, 5)],
+    ]
+
+
+def test_topic_cap_excludes_a_case_set_that_would_cross_it():
+    rows = svc.select_practice_rows(_db(_case_boundary_bank()), mode="topic", exam_id=SEBI,
+                                    target_id=T_COST, limit=4)
+    # 1 PYQ + 4 case rows = 5 > 4: the whole case set is left out, a-z fills in.
+    assert [r["id"] for r in rows] == ["p1", "a-z"]
+
+
+def test_topic_cap_includes_a_case_set_that_fits_exactly():
+    rows = svc.select_practice_rows(_db(_case_boundary_bank()), mode="topic", exam_id=SEBI,
+                                    target_id=T_COST, limit=5)
+    assert [r["id"] for r in rows] == ["p1", "a-case-1", "a-case-2", "a-case-3", "a-case-4"]
+
+
+def test_practiceable_topic_ids_uses_the_same_case_set_cap_as_launch():
+    sb = _db(_case_boundary_bank())
+    assert svc.practiceable_topic_ids(sb, exam_id=SEBI, topic_ids=[T_COST], limit=4) == {T_COST}
+    # Only a case set that cannot fit: launch selects nothing, readiness agrees.
+    only_case = [r for r in _case_boundary_bank() if r["id"].startswith("a-case-")]
+    assert svc.select_practice_rows(_db(only_case), mode="topic", exam_id=SEBI,
+                                    target_id=T_COST, limit=3) == []
+    assert svc.practiceable_topic_ids(_db(only_case), exam_id=SEBI, topic_ids=[T_COST], limit=3) == set()
+
+
+def test_topic_cap_leaves_pyq_selection_unchanged():
+    bank = [_pyq(f"p{i}", SEBI, T_COST, 2018 + i) for i in range(6)]
+    rows = svc.select_practice_rows(_db(bank), mode="topic", exam_id=SEBI, target_id=T_COST, limit=4)
+    assert [r["id"] for r in rows] == ["p5", "p4", "p3", "p2"]
+
+
 def test_practiceable_topic_ids_advertises_authored_topic_per_exam():
     sb = _db(_corpus())
     assert svc.practiceable_topic_ids(sb, exam_id=SEBI, topic_ids=[T_COST, T_CA]) == {T_COST, T_CA}
