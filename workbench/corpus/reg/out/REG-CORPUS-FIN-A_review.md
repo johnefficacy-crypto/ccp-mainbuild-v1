@@ -2312,7 +2312,7 @@ Bank A lends ₹75 crore to Bank B in the notice money market for 14 days at 6.4
 
 ## FINA-088 · L3 · hard · Call, notice and term money ⚠
 
-A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were ₹4,000 crore. Under RBI's prudential limits for the call/notice money market (borrowing: 100% of capital funds on a fortnightly average, 125% on any day; lending: 25% on a fortnightly average, 50% on any day), the maximum the bank may LEND on any single day is:
+A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the previous financial year were ₹4,000 crore. Under RBI's current directions, each bank sets its own Board-approved limits for call/notice money operations (borrowing within RBI's prudential inter-bank liability limits). This bank's Board-approved limits are: borrowing 100% of capital funds on a fortnightly average and 125% on any day; lending 25% on a fortnightly average and 50% on any day. The maximum the bank may LEND on any single day is:
 
 - **A.** ₹2,000 crore ✅
 - **B.** ₹4,000 crore  _(error: average borrowing limit applied to lending)_
@@ -2321,11 +2321,12 @@ A scheduled commercial bank's capital funds (Tier 1 + Tier 2) at the end of the 
 
 **Working**
 
-1. Lending: average 25%, peak day 50% of capital funds.
-2. 50% × ₹4,000 crore = ₹2,000 crore
+1. Since the 2021 Directions (as amended 8 June 2023), RBI no longer prescribes percentage caps; banks fix Board-approved limits (borrowing within inter-bank liability limits).
+2. Board-approved lending limits here: average 25%, any single day 50% of capital funds.
+3. 50% × ₹4,000 crore = ₹2,000 crore
 
-**Formula:** Max daily lending = 50% × capital funds  
-**Trap:** Distinguish average and single-day limits.
+**Formula:** Max single-day lending = Board-approved peak lending % × capital funds  
+**Trap:** Distinguish average and single-day limits; the percentages are now the bank's own Board-approved limits, not RBI caps.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -3596,7 +3597,7 @@ Which of the statements given above are correct?
 
 **Assertion (A):** Shareholders of a listed company holding physical share certificates cannot transfer them to a buyer in physical form, though they can still dematerialise them.
 
-**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies (other than transmission or transposition) are processed only in dematerialised form.
+**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies are processed only in dematerialised form (extended to transmission and transposition from January 2022).
 
 Choose the correct option:
 
@@ -3607,8 +3608,9 @@ Choose the correct option:
 
 **Working**
 
-1. Reg 40 of LODR (amended 2018, effective 1 April 2019): transfers only in demat.
-2. Transmission/transposition exempted; holders may dematerialise.
+1. Reg 40(1) of LODR (amended 2018, effective 1 April 2019): transfers only in demat.
+2. Proviso substituted by LODR (Amendment) Regulations, 24 January 2022: transmission and transposition also only in demat.
+3. Holders of physical certificates may still dematerialise them.
 
 **Formula:** —  
 **Trap:** Holding in physical form is not banned — transfer is.
@@ -4075,7 +4077,7 @@ Which of the statements given above is/are correct?
 | Profit after tax (latest year) | ₹540 crore |
 | Employee / shareholder reservation | Nil |
 
-Assume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, one-third of the anchor portion reserved for domestic mutual funds.
+Assume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, 40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).
 
 The maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:
 
@@ -4089,8 +4091,9 @@ The maximum number of shares that can be allocated to anchor investors, and the 
 1. Offer = 4 + 2 = 6 crore shares
 2. QIB portion ≤ 50% = 3.0 crore
 3. Anchor ≤ 60% × 3.0 = 1.80 crore; MF ≥ one-third = 0.60 crore
+4. Total reservation 40% of anchor = 0.72 crore, of which life insurers/pension funds 0.12 crore
 
-**Formula:** Anchor ≤ 0.6 × QIB portion; MF reservation = ⅓ of anchor  
+**Formula:** Anchor ≤ 0.6 × QIB portion; reservation = 40% of anchor (⅓ MFs + balance LI/PF)  
 **Trap:** The offer includes both fresh issue and OFS.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -4397,7 +4400,7 @@ Codes:
 
 1. CBDT and CBIC: Central Boards of Revenue Act 1963.
 2. GST Council: Art. 279A (101st Amendment, 2016).
-3. ITAT: final fact-finding authority in income-tax appeals.
+3. ITAT: second appellate and final fact-finding authority in income-tax appeals (Income-tax Act 2025).
 
 **Formula:** —  
 **Trap:** Two revenue boards under one 1963 Act.

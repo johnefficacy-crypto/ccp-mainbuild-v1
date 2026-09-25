@@ -312,7 +312,7 @@ Kavra Weaves Pvt Ltd, a micro enterprise registered under the MSMED Act, 2006, i
 
 ## ACTR-013 · L1 · easy · IBC — CIRP timelines, resolution plan and s.29A ineligibility ⚠
 
-After admission of an application under section 7, the applicant may withdraw it under section 12A only with the approval of the committee of creditors by:
+After admission of an application under section 7, the application may be withdrawn under section 12A (as substituted in 2026), on the resolution professional's application, only with the approval of the committee of creditors by:
 
 - **A.** 66% of the voting share  _(error: plan-approval threshold of s.30(4))_
 - **B.** 51% of the voting share  _(error: ordinary-decision threshold of s.21(8))_
@@ -321,9 +321,10 @@ After admission of an application under section 7, the applicant may withdraw it
 
 **Working**
 
-1. s.12A: withdrawal of an admitted application with approval of 90% voting share of the CoC.
+1. s.12A (substituted by the IBC (Amendment) Act, 2026, w.e.f. 26.05.2026): the resolution professional applies for withdrawal of an admitted application with approval of 90% of the voting share of the CoC.
+2. Withdrawal is not permitted before the CoC is constituted or after the first invitation for resolution plans.
 
-**Formula:** IBC s.12A: 90%  
+**Formula:** IBC s.12A (2026): 90%, via the RP, within the permitted window  
 **Trap:** The highest threshold in the Code applies to withdrawal.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -374,7 +375,7 @@ Liquidation of Corvel Metals Ltd — the liquidator has realised ₹212.00 crore
 | Central and State Government dues (2 years) | 18.00 |
 | Other operational creditors | 26.00 |
 
-The amount distributed to unsecured financial creditors is:
+The value of the security relinquished by the secured creditors is not less than their ₹150 crore claim. The amount distributed to unsecured financial creditors is:
 
 - **A.** ₹26.18 crore  _(error: government dues ranked pari passu with unsecured financial creditors)_
 - **B.** ₹36.00 crore ✅
@@ -384,7 +385,7 @@ The amount distributed to unsecured financial creditors is:
 **Working**
 
 1. Available after costs = 212 − 5.5 − 4.5 = 202.00.
-2. (b) workmen + relinquishing secured = 159.00 paid in full → 43.00 left.
+2. (b) workmen + relinquishing secured = 159.00 paid in full → 43.00 left (security value covers the whole secured claim, so all of it ranks in (b) under the 2026 Explanation to s.53(1)(b)(ii)).
 3. (c) other employees 7.00 → 36.00 left.
 4. (d) unsecured financial creditors claim 48.00; receive 36.00. Government dues (e) receive nil.
 
@@ -398,21 +399,22 @@ The amount distributed to unsecured financial creditors is:
 
 ## ACTR-016 · L3 · hard · IBC — liquidation waterfall under s.53 ⚠
 
-The liquidator of Ostrava Castings Ltd has ₹90.00 crore. Insolvency resolution and liquidation costs are ₹6.00 crore. Workmen's dues are ₹15.00 crore, of which ₹3.00 crore relates to the period before the 24 months preceding liquidation. Secured creditors who relinquished their security claim ₹108.00 crore. The amount received by workmen under section 53(1)(b) is:
+The liquidator of Ostrava Castings Ltd has ₹90.00 crore. Insolvency resolution and liquidation costs are ₹6.00 crore. Workmen's dues are ₹15.00 crore, of which ₹3.00 crore relates to the period before the 24 months preceding liquidation. Secured creditors who relinquished their security claim ₹108.00 crore; the security relinquished is valued at ₹78.00 crore. The amount received by workmen under section 53(1)(b) is:
 
-- **A.** ₹12.00 crore  _(error: workmen paid in full ahead of secured creditors)_
-- **B.** ₹10.24 crore  _(error: workmen's dues beyond 24 months included in class (b))_
-- **C.** ₹9.00 crore  _(error: costs not deducted before class (b))_
-- **D.** ₹8.40 crore ✅
+- **A.** ₹8.40 crore  _(error: whole secured claim ranked in (b) — pre-2026 Explanation ignored)_
+- **B.** ₹12.00 crore  _(error: workmen paid in full ahead of secured creditors)_
+- **C.** ₹13.55 crore  _(error: workmen's dues beyond 24 months included in class (b))_
+- **D.** ₹11.20 crore ✅
 
 **Working**
 
 1. Available for (b) = 90.0 − 6.0 = 84.00.
-2. Class (b) claims = workmen 24-month dues 12.0 + secured 108.0 = 120.00 (pari passu).
-3. Workmen receive 12.0 × 84.0/120 = 8.40; older dues of 3.0 fall to (f).
+2. Explanation to s.53(1)(b)(ii) (2026): relinquishing secured creditor is secured only to the value of the security, 78; the balance 30 ranks as unsecured in (d).
+3. Class (b) = workmen 24-month dues 12.0 + 78.0 = 90.00 (pari passu).
+4. Workmen receive 12.0 × 84.0/90 = 11.20; older dues of 3.0 fall to (f).
 
-**Formula:** s.53(1)(b): pari passu sharing = claim × available ÷ class total  
-**Trap:** Only 24 months of workmen's dues enjoy (b) priority.
+**Formula:** s.53(1)(b): pari passu sharing = claim × available ÷ class total (secured part capped at security value)  
+**Trap:** Only 24 months of workmen's dues, and only the secured portion of a relinquishing creditor's claim, enjoy (b) priority.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -468,12 +470,12 @@ The minimum amount of default notified for initiating the pre-packaged insolvenc
 Consider the following statements about the pre-packaged insolvency resolution process (PPIRP):
 
 1. It is available only to a corporate debtor classified as a micro, small or medium enterprise.
-2. The name of the proposed resolution professional must be approved by financial creditors, not being related parties, representing at least 66% in value of the financial debt.
+2. The name of the proposed resolution professional must be approved by financial creditors, not being related parties, representing at least 51% in value of the financial debt.
 3. The process must be completed within 180 days of the pre-packaged insolvency commencement date.
 
 Which of the statements given above is/are correct?
 
-- **A.** 1 only  _(error: unrelated-FC 66% approval of s.54A(2)(e) missed)_
+- **A.** 1 only  _(error: current 51% approval of s.54A(2)(e) rejected (pre-2026 value was 66%))_
 - **B.** 1, 2 and 3  _(error: CIRP's 180-day period applied to PPIRP)_
 - **C.** 2 and 3 only  _(error: MSME-only eligibility of s.54A(1) missed)_
 - **D.** 1 and 2 only ✅
@@ -481,7 +483,7 @@ Which of the statements given above is/are correct?
 **Working**
 
 1. s.54A(1): PPIRP for corporate debtors classified as MSMEs.
-2. s.54A(2)(e): proposed RP approved by ≥66% in value of unrelated financial creditors.
+2. s.54A(2)(e) and (3), as amended w.e.f. 26.05.2026: proposed RP approved by ≥51% in value of unrelated financial creditors (66% before the 2026 amendment).
 3. s.54D(1): PPIRP to be completed within 120 days of the pre-packaged insolvency commencement date.
 
 **Formula:** IBC ss.54A, 54D  
@@ -603,21 +605,22 @@ Orvian was admitted into CIRP on a financial creditor's application. Admitted fi
 
 Delta Finance is a related party of Orvian (not a regulated lender that converted debt). Operational creditor Gamma Logistics has an admitted claim of ₹3.20 crore. The liquidation value estimated by the registered valuers is ₹480 crore; liquidation costs would be ₹10 crore and workmen's dues for 24 months are ₹20 crore. Fortune Bank also holds a personal guarantee from Orvian's promoter.
 
-Eastern ARC dissents. Assume all financial creditors would relinquish security and share under section 53(1)(b) with workmen. Under section 30(2)(b)(ii), the minimum amount the plan must provide to Eastern ARC is closest to:
+Eastern ARC dissents. Assume all financial creditors would relinquish security and share under section 53(1)(b) with workmen; their pari passu charge covers all of Orvian's assets, and the security relinquished is worth the ₹480 crore liquidation value. The plan's total value is ₹620 crore (no CIRP costs outstanding). Under section 30(2)(ba), the minimum amount the plan must provide to Eastern ARC is closest to:
 
-- **A.** ₹61.30 crore  _(error: workmen's dues omitted from class (b))_
-- **B.** ₹60.43 crore ✅
-- **C.** ₹61.71 crore  _(error: liquidation costs not deducted first)_
-- **D.** ₹71.09 crore  _(error: related party's claim excluded from the liquidation waterfall)_
+- **A.** ₹78.26 crore  _(error: higher (not lower) of the two entitlements taken)_
+- **B.** ₹58.85 crore ✅
+- **C.** ₹61.30 crore  _(error: workmen's dues omitted from class (b))_
+- **D.** ₹60.43 crore  _(error: whole claims ranked in (b) — pre-2026 Explanation ignored)_
 
 **Working**
 
-1. Liquidation value available after costs = 480.0 − 10.0 = 470.0.
-2. Class (b) = all secured FCs 1380 (related party's claim ranks in liquidation) + workmen 20.0 = 1400.0.
-3. Eastern ARC = 180 × 470.0/1400 = 60.43.
+1. Explanation to s.53(1)(b)(ii) (2026): each FC is secured only to the value of security — Eastern's secured part = 180 × 480/1380 = 62.61; balance 117.39 is unsecured ((d)).
+2. Liquidation: 480.0 − 10.0 = 470.0 over class (b) = 480 + 20.0 = 500 → Eastern gets 62.61 × 470.0/500 = 58.85; nothing reaches (d).
+3. Plan value on s.53 priority: (b) 500 paid in full, 120 to unsecured FC balances (900) → Eastern 78.26.
+4. s.30(2)(ba): not less than the LOWER of the two = 58.85.
 
-**Formula:** Dissenting FC ≥ its s.53(1) liquidation entitlement  
-**Trap:** Related parties lose CoC votes, not their rank in the liquidation waterfall.
+**Formula:** s.30(2)(ba): dissenting FC ≥ min(liquidation entitlement, plan-value entitlement under s.53(1))  
+**Trap:** Related parties lose CoC votes, not their rank in the waterfall; the 2026 floor is the lower of two amounts.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1492,14 +1495,15 @@ Which of the above is/are available?
 
 A defendant aggrieved by an order of the Recovery Officer made in execution of a recovery certificate may appeal:
 
-- **A.** To the High Court within 60 days of the order  _(error: PMLA s.42 route confused)_
-- **B.** To the DRAT within 45 days of the order  _(error: s.20 route against DRT orders confused)_
-- **C.** To the DRT within 30 days of the order ✅
-- **D.** To the DRT within 45 days of the order  _(error: s.20 period applied to s.30 appeal)_
+- **A.** To the High Court within 60 days of a copy of the order being issued  _(error: PMLA s.42 route confused)_
+- **B.** To the DRAT within 45 days of a copy of the order being issued to him  _(error: s.20 route against DRT orders confused)_
+- **C.** To the DRT within 30 days of a copy of the order being issued to him ✅
+- **D.** To the DRT within 45 days of a copy of the order being issued to him  _(error: s.20 period applied to s.30 appeal)_
 
 **Working**
 
-1. s.30(1): appeal against a Recovery Officer's order to the Tribunal (DRT) within 30 days of the order.
+1. s.30(1): appeal against a Recovery Officer's order lies to the Tribunal (DRT) within 30 days from the date on which a copy of the order is issued to the appellant.
+2. s.30A: the appeal is not entertained unless 50% of the amount of debt determined is deposited.
 
 **Formula:** RDB s.30  
 **Trap:** Recovery Officer → DRT; DRT → DRAT.
@@ -1750,10 +1754,11 @@ While the original application is pending, Prayag Bank proposes to take possessi
 **Working**
 
 1. SARFAESI s.37: its provisions are in addition to, and not in derogation of, the RDB Act.
-2. Parallel recourse was upheld by the Supreme Court (Mardia Chemicals, 2004; later decisions).
+2. Transcore v. Union of India, (2008) 1 SCC 125: a bank need not withdraw a pending OA before taking SARFAESI measures; the doctrine of election does not apply.
+3. The proviso to RDB s.19(1) merely ENABLES the bank to withdraw its OA with the DRT's permission to proceed under SARFAESI.
 
-**Formula:** SARFAESI s.37  
-**Trap:** The remedies are cumulative.
+**Formula:** SARFAESI s.37; RDB s.19(1) proviso  
+**Trap:** The remedies are cumulative; withdrawal is optional.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -2189,7 +2194,7 @@ During a PMLA investigation, the ED finds material indicating evasion of GST by 
 
 **Case — Sarvik Infra Pvt Ltd (fictional)**
 
-The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to her on 12 October 2026.
+The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to him on 12 October 2026.
 
 The last date for the ED's complaint before the Adjudicating Authority, and the date on which the attachment would lapse without confirmation, are respectively:
 
@@ -2215,7 +2220,7 @@ The last date for the ED's complaint before the Adjudicating Authority, and the 
 
 **Case — Sarvik Infra Pvt Ltd (fictional)**
 
-The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to her on 12 October 2026.
+The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to him on 12 October 2026.
 
 Mr. B (aged 52, in good health) seeks bail relying on the ₹1 crore proviso to section 45(1). His claim:
 
@@ -2241,7 +2246,7 @@ Mr. B (aged 52, in good health) seeks bail relying on the ₹1 crore proviso to 
 
 **Case — Sarvik Infra Pvt Ltd (fictional)**
 
-The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to her on 12 October 2026.
+The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to him on 12 October 2026.
 
 If Mr. B is convicted under section 4, the permissible punishment is:
 
@@ -2266,7 +2271,7 @@ If Mr. B is convicted under section 4, the permissible punishment is:
 
 **Case — Sarvik Infra Pvt Ltd (fictional)**
 
-The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to her on 12 October 2026.
+The police registered an FIR for cheating (a Part A scheduled offence) against Sarvik's managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh passed through Mr. B's accounts. On 9 March 2026 the Deputy Director provisionally attached Mr. B's flat under section 5. The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was communicated to him on 12 October 2026.
 
 Mr. B wishes to challenge the Appellate Tribunal's order. The forum and last date (without condonation) are:
 

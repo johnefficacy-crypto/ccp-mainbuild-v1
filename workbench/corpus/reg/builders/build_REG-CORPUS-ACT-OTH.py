@@ -357,21 +357,22 @@ add("F_PEN", "L3",
     "Liability is triggered by the 90-day default, not by the order itself.", "statement", f"{FEMA}, s.14")
 
 add("F_ADJ", "L3",
-    "Match the order under FEMA (Column A) with the forum to which the first appeal lies (Column B):\n\n"
-    "| Column A — order passed by | Column B — appeal forum |\n|---|---|\n"
-    "| P. Deputy Director of Enforcement as adjudicating authority | 1. High Court |\n"
-    "| Q. Joint Director of Enforcement as adjudicating authority | 2. Special Director (Appeals) |\n"
-    "| R. Special Director (Appeals) | 3. Appellate Tribunal |\n"
-    "| S. Appellate Tribunal (question of law) | 4. Appellate Tribunal |",
-    "P-2, Q-3, R-4, S-1",
-    [("P-3, Q-2, R-4, S-1", "Special Director forum assigned to the wrong rank"),
-     ("P-2, Q-2, R-3, S-1", "all Enforcement orders sent to Special Director (Appeals)"),
-     ("P-2, Q-3, R-1, S-4", "Special Director's orders sent straight to High Court")],
-    ["s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).",
-     "s.19: orders of other adjudicating authorities and of the Special Director (Appeals) → Appellate Tribunal.",
+    "Match the matter under FEMA (Column A) with the authority that hears it (Column B):\n\n"
+    "| Column A — matter | Column B — authority |\n|---|---|\n"
+    "| P. Appeal against an order of a Deputy Director of Enforcement as adjudicating authority | 1. High Court |\n"
+    "| Q. Appeal against an order of the Special Director (Appeals) | 2. Special Director (Appeals) |\n"
+    "| R. Appeal against an order of the Appellate Tribunal on a question of law | 3. Appellate Tribunal |\n"
+    "| S. Complaint in writing by an authorised officer alleging a contravention | 4. Adjudicating authority |",
+    "P-2, Q-3, R-1, S-4",
+    [("P-3, Q-2, R-1, S-4", "Deputy Director's order sent straight to the Tribunal"),
+     ("P-2, Q-1, R-3, S-4", "Special Director's order sent straight to the High Court"),
+     ("P-4, Q-3, R-1, S-2", "appeal treated as adjudication; complaint sent to Special Director")],
+    ["s.16(3): the adjudicating authority holds an inquiry only on a written complaint by an authorised officer.",
+     "s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).",
+     "s.19: orders of the Special Director (Appeals) (and of other adjudicating authorities) → Appellate Tribunal.",
      "s.35: Appellate Tribunal orders → High Court on questions of law."],
-    "AD/DD → SD(A) → AT → HC; higher AA → AT → HC", "Rank of the adjudicating officer decides the first forum.",
-    "match", f"{FEMA}, s.17, s.19, s.35")
+    "Complaint → AA → SD(A) (for AD/DD) → AT → HC", "Each stage has its own forum; none can be skipped.",
+    "match", f"{FEMA}, s.16(3), s.17, s.19, s.35")
 
 add("F_CIV", "L3",
     "Consider the following statements contrasting FEMA, 1999 with FERA, 1973:\n\n"
@@ -576,18 +577,20 @@ add("C_CMB", "L2",
 nd = date(2026, 2, 2)
 bd = date(2026, 1, 18)
 add("C_CMB", "L2",
-    f"Notice of a combination is filed with the CCI on {D(nd)} (board approval was on {D(bd)}). The CCI neither "
-    "passes an order nor stops the clock. The standstill period and the date it runs to (notice date + period) are:",
+    f"Notice of a combination is filed with the CCI on {D(nd)} (board approval was on {D(bd)}). The CCI forms its "
+    "prima facie opinion under s.29(1B) within 30 days, then passes no further order and does not stop the clock. "
+    "The statutory standstill period under s.6(2A) and the date it runs to (notice date + period) are:",
     f"150 days — up to {D(nd + timedelta(days=150))}",
     [(f"210 days — up to {D(nd + timedelta(days=210))}", "pre-2023 outer limit of 210 days"),
-     (f"30 days — up to {D(nd + timedelta(days=30))}", "prima facie opinion window treated as standstill"),
+     (f"30 days — up to {D(nd + timedelta(days=30))}", "30-day prima facie window treated as standstill, though opinion was formed"),
      (f"150 days — up to {D(bd + timedelta(days=150))}", "period counted from board approval")],
     ["s.6(2A) as amended in 2023: no combination shall come into effect until 150 days have passed from the date of "
      "notice or the CCI passes an order, whichever is earlier (earlier 210 days).",
-     "s.31(11): if no order is passed within that period, the combination is deemed approved.",
+     "s.29(1B) + proviso to s.31(1): deemed approval after 30 days applies only if NO prima facie opinion is formed; here one was formed.",
+     "Substituted s.31(6) (2023; old s.31(7)-(12) omitted): if no order is passed within 150 days, the combination is deemed approved.",
      f"{D(nd)} + 150 days = {D(nd + timedelta(days=150))}."],
     "Standstill = 150 days from notice (2023)", "Trigger is the notice date, not board approval.", "numerical",
-    f"{COMP}, s.6(2A), s.31(11) (2023 amendment)")
+    f"{COMP}, s.6(2A), s.29(1B), s.31(1) proviso, s.31(6) (Competition (Amendment) Act 2023)")
 
 add("C_DOM", "L2",
     "A dominant cement producer engages in each practice below. Which one is NOT an abuse under s.4(2)?",
@@ -859,9 +862,9 @@ add("L_WND", "L1",
     [("The National Company Law Appellate Tribunal", "appellate forum confused with original forum"),
      ("The Registrar of Companies", "Registrar's strike-off power confused with winding up"),
      ("The High Court having jurisdiction", "pre-NCLT forum")],
-    ["s.63: winding up may be voluntary or by the Tribunal.", "Tribunal = NCLT (s.2(1)(x) read with Companies Act, 2013)."],
+    ["s.63: winding up may be voluntary or by the Tribunal.", "Tribunal = NCLT constituted under s.408 of the Companies Act, 2013 (LLP Act s.2(1)(u))."],
     "Compulsory winding up → NCLT", "NCLAT hears appeals; High Courts no longer wind up LLPs.", "conceptual",
-    f"{LLPA}, s.63, s.64")
+    f"{LLPA}, s.2(1)(u), s.63, s.64")
 
 add("L_CNV", "L1",
     "Conversion of an unlisted public company into an LLP is governed by:",

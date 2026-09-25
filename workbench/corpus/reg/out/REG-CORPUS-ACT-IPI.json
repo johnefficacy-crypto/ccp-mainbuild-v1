@@ -641,9 +641,9 @@
       "stem": "Notice of an assignment of a life policy is received by the insurer on 4 January 2026. The insurer believes the assignment is for trading in policies, records its reasons and communicates its refusal on 29 January 2026. Under s.38 of the Insurance Act, 1938:",
       "explanation": {
         "steps": [
-          "s.38(3)-(4): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.",
+          "s.38(2)-(3): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.",
           "4 January 2026 + 30 days = 3 February 2026.",
-          "s.38(5): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: 29 January 2026 + 30 = 28 February 2026."
+          "s.38(4): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: 29 January 2026 + 30 = 28 February 2026."
         ],
         "formula_used": "Insurer: notice + 30 days; grievance to IRDAI: communication + 30 days",
         "trap": "The first-level remedy against refusal to register an assignment is IRDAI, not SAT."
@@ -655,7 +655,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Insurance Act, 1938, s.38(3)-(5)"
+          "note": "Insurance Act, 1938, s.38(2)-(4)"
         }
       ],
       "options": [
@@ -1388,7 +1388,7 @@
           "s.4: Chairperson; not more than five whole-time members; not more than four part-time members — appointed by the Central Government."
         ],
         "formula_used": "IRDA Act s.4: 1 + ≤5 WTM + ≤4 PTM",
-        "trap": "Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+6(≥3 WTM), IFSCA 1+4+2+2."
+        "trap": "Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+3+3, IFSCA 1+4+2+2."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -1402,7 +1402,7 @@
       ],
       "options": [
         {
-          "text": "A Chairperson and not more than six members, of whom at least three are whole-time",
+          "text": "A Chairperson, three whole-time members and three part-time members",
           "is_correct": false,
           "error": "PFRDA Act composition",
           "label": "A"
@@ -2611,11 +2611,11 @@
       "stem": "Under s.4 of the PFRDA Act, 2013, the Authority consists of:",
       "explanation": {
         "steps": [
-          "s.4: Chairperson and not more than six members, of whom at least three shall be whole-time, appointed by the Central Government;",
+          "s.4 (as enacted): a Chairperson, three whole-time members and three part-time members, appointed by the Central Government;",
           "with at least one person from each of economics, finance and law."
         ],
-        "formula_used": "PFRDA Act s.4",
-        "trap": "‘At least three whole-time’ — not ‘at least three part-time’."
+        "formula_used": "PFRDA Act s.4: 1 + 3 WTM + 3 PTM",
+        "trap": "PFRDA 1+3+3 vs IRDAI 1+5+4 — do not mix up the ceilings."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -2635,15 +2635,15 @@
           "label": "A"
         },
         {
-          "text": "A Chairperson and not more than six members, of whom at least three are whole-time members",
+          "text": "A Chairperson, three whole-time members and three part-time members",
           "is_correct": true,
           "error": null,
           "label": "B"
         },
         {
-          "text": "A Chairperson and not more than six members, of whom at least three are part-time members",
+          "text": "A Chairperson, three whole-time members and no part-time members",
           "is_correct": false,
-          "error": "whole-time/part-time reversed",
+          "error": "part-time members dropped",
           "label": "C"
         },
         {
@@ -3034,11 +3034,11 @@
       "difficulty": "medium",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "A pension fund has paid-up capital of ₹300 crore. Foreign holdings: a foreign company 42%, that company's subsidiary 15%, and an individual resident abroad 6%. For this question take the limit permitted for Indian insurance companies as 74%. Under s.24 of the PFRDA Act, 2013, the further equity that can be held by foreign investors in aggregate is:",
+      "stem": "A pension fund has paid-up capital of ₹300 crore. Foreign holdings: a foreign company 42%, that company's subsidiary 15%, and an individual resident abroad 6%. For this question take, hypothetically, the limit permitted for Indian insurance companies as 74% (notwithstanding the 100% limit after the 2025 amendment). Under s.24 of the PFRDA Act, 2013, the further equity that can be held by foreign investors in aggregate is:",
       "explanation": {
         "steps": [
           "s.24: aggregate foreign holding (foreign company, its subsidiaries/nominees, foreign individuals/AOPs) ≤ 26% or the insurance-sector limit, whichever is higher.",
-          "Limit = max(26%, 74%) = 74%; aggregate = 42 + 15 + 6 = 63%.",
+          "Limit = max(26%, 74% as given) = 74%; aggregate = 42 + 15 + 6 = 63%. (After Act 40 of 2025 the insurance limit is 100%; 74% is a stated assumption.)",
           "Headroom = 11% × ₹300 crore = ₹33 crore."
         ],
         "formula_used": "Foreign cap = max(26%, insurance-sector limit); headroom = cap − aggregate foreign holding",
@@ -3051,7 +3051,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Pension Fund Regulatory and Development Authority Act, 2013, s.24 (insurance limit given as data)"
+          "note": "Pension Fund Regulatory and Development Authority Act, 2013, s.24; Insurance Act, 1938, s.2(7A) as amended by Act 40 of 2025 (74% given as hypothetical data)"
         }
       ],
       "options": [
@@ -3587,11 +3587,11 @@
       "explanation": {
         "steps": [
           "s.45: not more than 25 members excluding ex officio members.",
-          "Chairperson and members of the Authority are ex officio: 1 + 6 = 7.",
+          "s.4 (as enacted): Chairperson + 3 whole-time + 3 part-time members, all ex officio on the Committee: 1 + 3 + 3 = 7.",
           "Maximum = 25 + 7 = 32."
         ],
-        "formula_used": "Max PAC = 25 + (1 + ≤6 members)",
-        "trap": "Use PFRDA's own strength (1 + 6), not IRDAI's."
+        "formula_used": "Max PAC = 25 + (1 + 3 WTM + 3 PTM)",
+        "trap": "Use PFRDA's own strength (1 + 3 + 3), not IRDAI's 1 + 5 + 4."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -3607,7 +3607,7 @@
         {
           "text": "29",
           "is_correct": false,
-          "error": "only the Chairperson and the minimum three whole-time members counted",
+          "error": "part-time members omitted from the ex officio count",
           "label": "A"
         },
         {
@@ -4014,7 +4014,8 @@
       "explanation": {
         "steps": [
           "s.24: aggregate foreign holding in a pension fund ≤ 26% or the percentage approved for insurance companies, whichever is higher.",
-          "max(26%, 74%) = 74% > 30% ⇒ permissible (subject to other eligibility norms under s.26)."
+          "max(26%, 74% as given) = 74% > 30% ⇒ permissible (subject to other eligibility norms under s.26).",
+          "Under current law (Act 40 of 2025) the insurance limit is 100%, so the answer holds either way."
         ],
         "formula_used": "Cap = max(26%, insurance-sector limit)",
         "trap": "26% is only the floor of the formula."
@@ -4026,12 +4027,12 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Pension Fund Regulatory and Development Authority Act, 2013, s.24 (insurance limit given as data)"
+          "note": "Pension Fund Regulatory and Development Authority Act, 2013, s.24; Insurance Act, 1938, s.2(7A) as amended by Act 40 of 2025 (74% given as data; current limit 100%)"
         }
       ],
       "options": [
         {
-          "text": "Permissible, since the cap is the higher of 26% and the insurance-sector limit, i.e. 74%",
+          "text": "Permissible: the cap is the higher of 26% and the insurance limit (74% as given)",
           "is_correct": true,
           "error": null,
           "label": "A"

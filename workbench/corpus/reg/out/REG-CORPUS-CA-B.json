@@ -86,8 +86,8 @@
       "explanation": {
         "steps": [
           "Start: profit before depreciation ₹9.60 crore; deduct Schedule II depreciation ₹2.10 crore.",
-          "Exclude unrealised/notional fair-value gain ₹0.45 crore (first proviso to s.123(1)).",
-          "Set off carried-over loss ₹1.25 crore and depreciation not provided earlier ₹0.30 crore (third proviso).",
+          "Exclude unrealised/notional fair-value gain ₹0.45 crore (proviso to s.123(1)(a)).",
+          "Set off carried-over loss ₹1.25 crore and depreciation not provided earlier ₹0.30 crore (fourth, i.e. last, proviso to s.123(1)).",
           "Distributable = ₹5.50 crore."
         ],
         "formula_used": "Distributable = Profit − Sch II depreciation − unrealised gains − b/f losses − arrear depreciation",
@@ -100,7 +100,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.123(1) and its provisos"
+          "note": "Companies Act 2013 s.123(1)(a) proviso; s.123(1) fourth (last) proviso"
         }
       ],
       "options": [
@@ -2317,8 +2317,8 @@
       "explanation": {
         "steps": [
           "s.188(3): ratification within three months; else voidable at the Board's option.",
-          "s.188(1) fourth proviso: related-party members cannot vote on that resolution (exemption for companies where 90% or more members are relatives of promoters or related parties).",
-          "Explanation (b)/fifth proviso: ordinary course + arm's length transactions are outside s.188(1)."
+          "s.188(1) second proviso: related-party members cannot vote on that resolution; third proviso exempts companies where 90% or more members are relatives of promoters or related parties.",
+          "s.188(1) fourth proviso: ordinary course + arm's length transactions are outside s.188(1) (Explanation (b) defines arm's length)."
         ],
         "formula_used": "s.188(1) provisos; s.188(3)",
         "trap": "All three conditions of s.188 are standard traps."
@@ -2330,7 +2330,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.188(1), (3)"
+          "note": "Companies Act 2013 s.188(1) second, third and fourth provisos; s.188(3)"
         }
       ],
       "options": [
@@ -2741,7 +2741,7 @@
       "explanation": {
         "steps": [
           "Rule 14: offer letter in PAS-4, serially numbered and addressed to the identified person.",
-          "s.42(7)/Rule 14: not renounceable; a person other than the addressee cannot apply.",
+          "s.42(3)/Rule 14: offer only to identified persons, with no right of renunciation; a person other than the addressee cannot apply.",
           "s.42(4): payment through cheque/demand draft/other banking channels, not cash."
         ],
         "formula_used": "s.42; Rule 14",
@@ -2754,7 +2754,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.42(4), (7); PAS Rules 2014, Rule 14"
+          "note": "Companies Act 2013 s.42(3), (4); PAS Rules 2014, Rule 14"
         }
       ],
       "options": [
@@ -3281,7 +3281,7 @@
       "difficulty": "hard",
       "question_kind": "statement",
       "stimulus_group": null,
-      "stem": "A public sector bank files a shelf prospectus under s.31. Consider:\n\n1. The shelf prospectus is valid for a period not exceeding one year from the date of opening of the first offer of securities under it.\n2. No further prospectus is required for second and subsequent offers during the validity period.\n3. Before each subsequent offer, an information memorandum containing material facts such as new charges created and changes in financial position must be filed.\n4. Only public financial institutions can file a shelf prospectus.\n\nWhich of the statements given above is/are correct?",
+      "stem": "A company eligible under SEBI regulations files a shelf prospectus under s.31. Consider:\n\n1. The shelf prospectus is valid for a period not exceeding one year from the date of opening of the first offer of securities under it.\n2. No further prospectus is required for second and subsequent offers during the validity period.\n3. Before each subsequent offer, an information memorandum containing material facts such as new charges created and changes in financial position must be filed.\n4. Only public financial institutions can file a shelf prospectus.\n\nWhich of the statements given above is/are correct?",
       "explanation": {
         "steps": [
           "s.31(1): class of companies as SEBI may provide by regulations may file a shelf prospectus; validity ≤ one year from opening of first offer; no further prospectus for subsequent offers.",
@@ -3646,7 +3646,7 @@
       "stem": "Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of ₹3.60 crore that should have been refunded within 15 days of closure of the issue was repaid 40 days after the expiry of that 15-day period. The interest for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11 is (365-day year):",
       "explanation": {
         "steps": [
-          "Rule 11(2) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.",
+          "Rule 11(1) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.",
           "Interest = 3,60,00,000 × 15% × 40/365 = ₹5,91,781."
         ],
         "formula_used": "Interest = Amount × 15% × days of delay/365",
@@ -3659,7 +3659,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.39(3); PAS Rules 2014, Rule 11"
+          "note": "Companies Act 2013 s.39(3); PAS Rules 2014, Rule 11(1)"
         }
       ],
       "options": [
@@ -3830,7 +3830,7 @@
         "steps": [
           "s.77(1): register within 30 days of creation.",
           "First proviso (b): Registrar may allow within 60 days of creation on payment of additional fees.",
-          "Third proviso: if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.",
+          "Second proviso, clause (b): if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.",
           "74 days falls in the 61–120 day band → ad valorem fees."
         ],
         "formula_used": "30 days (normal) → up to 60 days (additional fees) → up to 120 days (ad valorem fees)",
@@ -3843,7 +3843,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.77(1) and provisos (Companies (Amendment) Act 2019)"
+          "note": "Companies Act 2013 s.77(1), first proviso cl.(b) and second proviso cl.(b) (Companies (Amendment) Act 2019)"
         }
       ],
       "options": [
@@ -3862,7 +3862,7 @@
         {
           "text": "Not possible; only the Tribunal can condone the delay",
           "is_correct": false,
-          "error": "Registrar's power under the third proviso overlooked",
+          "error": "Registrar's power under the second proviso overlooked",
           "label": "C"
         },
         {
@@ -3953,7 +3953,7 @@
         "steps": [
           "Rule 18(7)(b)(iv)(B): unlisted companies (other than NBFC/HFC) — DRR of 10% of outstanding debentures.",
           "DRR = 10% × ₹50.00 crore = ₹5.00 crore.",
-          "Rule 18(7)(vii): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × ₹20.00 crore = ₹3.00 crore."
+          "Rule 18(7)(b)(v): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × ₹20.00 crore = ₹3.00 crore."
         ],
         "formula_used": "DRR = 10% of outstanding; deposit = 15% of amount maturing next year",
         "trap": "Listed companies are exempt from DRR but not from the 15% deposit."
@@ -3965,7 +3965,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies (Share Capital and Debentures) Rules 2014, Rule 18(7) (as amended 2019)"
+          "note": "Companies (Share Capital and Debentures) Rules 2014, Rule 18(7)(b)(iv)(B) and 18(7)(b)(v) (as amended 16-08-2019)"
         }
       ],
       "options": [
@@ -4188,13 +4188,14 @@
       "difficulty": "medium",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "A shareholder of Chandan Paints Ltd (an unlisted public company holding physical certificates) applies for a duplicate share certificate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:",
+      "stem": "A shareholder of Chandan Paints Ltd (an unlisted public company; physical certificates) has lost his share certificate and applies for a duplicate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:",
       "explanation": {
         "steps": [
-          "Rule 6(3)(a): duplicate within 3 months of submission of complete documents (lost/destroyed) or within 30 days of application (defaced, mutilated, torn, decrepit, worn out, or transfer pages fully used)."
+          "Rule 6(2)(c): a duplicate certificate for a lost/destroyed certificate is issued within 3 months (unlisted company) or 45 days (listed company) from submission of complete documents.",
+          "Chandan Paints is unlisted → three months."
         ],
-        "formula_used": "SCD Rule 6(3)(a)",
-        "trap": "Loss cases need more time for verification; mutilated certificates are surrendered."
+        "formula_used": "SCD Rule 6(2)(c)",
+        "trap": "Listed and unlisted companies have different periods; the clock starts on complete documents."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -4203,32 +4204,32 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.46(2); SCD Rules 2014, Rule 6(3)"
+          "note": "Companies Act 2013 s.46(2); SCD Rules 2014, Rule 6(2)(c)"
         }
       ],
       "options": [
         {
-          "text": "15 days if lost or destroyed; 7 days if defaced or mutilated",
+          "text": "Six months from the date of the loss being reported",
           "is_correct": false,
-          "error": "invented periods",
+          "error": "invented period and wrong starting point",
           "label": "A"
         },
         {
-          "text": "30 days from application in every case, lost or mutilated",
+          "text": "45 days from submission of complete documents",
           "is_correct": false,
-          "error": "uniform period assumed",
+          "error": "listed-company period applied to an unlisted company",
           "label": "B"
         },
         {
-          "text": "3 months (lost/destroyed); 30 days (defaced/mutilated, surrendered)",
+          "text": "Three months from submission of complete documents",
           "is_correct": true,
           "error": null,
           "label": "C"
         },
         {
-          "text": "Three months from application in every case, lost or mutilated",
+          "text": "One month from the date of the application",
           "is_correct": false,
-          "error": "uniform period assumed",
+          "error": "s.56(4) one-month certificate-delivery period applied",
           "label": "D"
         }
       ],
@@ -4850,11 +4851,11 @@
       "stem": "At the AGM of Prithvi Metals Ltd (a public company) the quorum was not present within half an hour. Consider:\n\n1. The meeting stands adjourned to the same day in the next week at the same time and place, or to such other date, time and place as the Board may determine.\n2. If the meeting had been called by requisitionists under s.100, it would stand cancelled.\n3. If the adjourned meeting is held on a changed date, the company shall give not less than three days' notice to members individually or by newspaper publication (one English and one vernacular).\n4. At the adjourned meeting, if quorum is not present within half an hour, the meeting stands dissolved.\n\nWhich of the statements given above is/are correct?",
       "explanation": {
         "steps": [
-          "s.103(2)(a): adjourned to same day next week or as Board determines; requisitioned meeting cancelled.",
+          "s.103(2)(a): adjourned to same day next week or as Board determines; s.103(2)(b): requisitioned meeting cancelled.",
           "Proviso: changed date → ≥ 3 days' notice individually or by newspaper (English + vernacular).",
-          "s.103(2)(b): at the adjourned meeting, members present shall be the quorum."
+          "s.103(3): at the adjourned meeting, members present shall be the quorum."
         ],
-        "formula_used": "s.103(2)",
+        "formula_used": "s.103(2), (3)",
         "trap": "Adjourned GM: members present = quorum (unlike a Board meeting)."
       },
       "source_kind": "authored",
@@ -4864,7 +4865,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.103(2)"
+          "note": "Companies Act 2013 s.103(2), (3)"
         }
       ],
       "options": [
@@ -5694,7 +5695,7 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "The only woman director of Aditi Pharma Ltd (listed) resigned with effect from 1 May 2026. The next Board meeting is scheduled for 20 August 2026. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:",
+      "stem": "The only woman director of Aditi Pharma Ltd (unlisted public company; paid-up capital ₹150 crore) resigned with effect from 1 May 2026. The next Board meeting is scheduled for 20 August 2026. Under the proviso to Rule 3, the vacancy must be filled by the Board not later than:",
       "explanation": {
         "steps": [
           "Rule 3 proviso: intermittent vacancy of woman director filled by the Board at the earliest but not later than the immediate next Board meeting or three months from the date of vacancy, whichever is later.",
@@ -5999,8 +6000,8 @@
       "stem": "Consider the following regarding the NCLT:\n\n1. Its Principal Bench is at New Delhi, presided over by the President.\n2. A Bench ordinarily consists of one Judicial member and one Technical member.\n3. It is bound by the procedure laid down in the Code of Civil Procedure, 1908.\n4. It is the Adjudicating Authority for insolvency resolution of companies under the Insolvency and Bankruptcy Code, 2016.\n\nWhich of the statements given above is/are correct?",
       "explanation": {
         "steps": [
-          "s.419(1), (3): Benches; Principal Bench at New Delhi presided by the President.",
-          "s.419(2): Bench of one Judicial and one Technical member.",
+          "s.419(2): Principal Bench at New Delhi, presided over by the President.",
+          "s.419(3): a Bench consists of one Judicial and one Technical member.",
           "s.424(1): not bound by CPC; guided by principles of natural justice.",
           "IBC s.5(1) / s.60: NCLT is the Adjudicating Authority for corporate persons."
         ],
@@ -6014,7 +6015,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.419, s.424; IBC 2016 s.60"
+          "note": "Companies Act 2013 s.419(2), (3), s.424(1); IBC 2016 s.60"
         }
       ],
       "options": [
@@ -6595,7 +6596,7 @@
       "difficulty": "hard",
       "question_kind": "case",
       "stimulus_group": "CAB-CASE-2",
-      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's nephew as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nThe s.186(2) limit for Kaveri and the headroom available before a special resolution is needed are, respectively:",
+      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's son as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nThe s.186(2) limit for Kaveri and the headroom available before a special resolution is needed are, respectively:",
       "explanation": {
         "steps": [
           "60% × (80 + 150 + 20) = ₹150 crore; 100% × (150 + 20) = ₹170 crore; limit = higher = ₹170 crore.",
@@ -6655,7 +6656,7 @@
       "difficulty": "hard",
       "question_kind": "case",
       "stimulus_group": "CAB-CASE-2",
-      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's nephew as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nWith respect to proposals (a) and (b), which of the following is correct?",
+      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's son as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nWith respect to proposals (a) and (b), which of the following is correct?",
       "explanation": {
         "steps": [
           "Aggregate = 132 + 25 + 18 = ₹175 crore > ₹170 crore → prior SR (s.186(3)).",
@@ -6715,7 +6716,7 @@
       "difficulty": "hard",
       "question_kind": "case",
       "stimulus_group": "CAB-CASE-2",
-      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's nephew as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nThe minimum rate of interest at which the 7-year loan in proposal (a) may be given is:",
+      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's son as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nThe minimum rate of interest at which the 7-year loan in proposal (a) may be given is:",
       "explanation": {
         "steps": [
           "s.186(7): no loan at a rate lower than the prevailing yield of 1, 3, 5 or 10-year G-sec closest to the tenor of the loan.",
@@ -6775,13 +6776,13 @@
       "difficulty": "hard",
       "question_kind": "case",
       "stimulus_group": "CAB-CASE-2",
-      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's nephew as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nWhich of the contracts with Sharma Traders / related parties require prior approval of members by ordinary resolution under s.188 read with Rule 15?",
+      "stem": "**Case — Kaveri Cements Ltd** (listed; not an infrastructure, banking, insurance, housing-finance or NBFC company)\n\nLatest audited balance sheet (₹ crore): paid-up share capital 80; free reserves 150; securities premium 20; revaluation reserve 30. Turnover 620; net worth 250.\n\nExisting aggregate of loans, guarantees, securities and investments covered by s.186(2): ₹132 crore. The Board now proposes (a) an inter-corporate loan of ₹25 crore for 7 years to an unrelated company and (b) a guarantee of ₹18 crore for a bank loan of another unrelated company.\n\nSeparately, the following contracts are proposed with Sharma Traders, a firm in which the managing director's brother is a partner; none of them is both in the ordinary course of business and at arm's length:\n\n| Contract (during the year) | Value |\n|---|---:|\n| Purchase of packing material | ₹58 crore |\n| Lease of a warehouse (annual rent) | ₹7 crore |\n| Sale of surplus land | ₹27 crore |\n| Appointment of MD's son as General Manager | ₹3 lakh per month |\n\nIndicative G-sec yields: 1-year 6.60%, 3-year 6.90%, 5-year 7.05%, 10-year 7.20%.\n\nWhich of the contracts with Sharma Traders / related parties require prior approval of members by ordinary resolution under s.188 read with Rule 15?",
       "explanation": {
         "steps": [
           "Goods purchase: ₹58 cr < 10% of turnover (₹62 crore) → Board only.",
           "Lease: ₹7 cr < 10% of turnover → Board only.",
           "Sale of property: ₹27 cr ≥ 10% of net worth (₹25 crore) → OR.",
-          "Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and nephew are relatives under s.2(77); a firm with a relative as partner is a related party.)"
+          "Office of profit: monthly remuneration ₹3 lakh > ₹2.5 lakh → OR. (MD's brother and son are relatives under s.2(77) and Rule 4 of the Specification of Definitions Rules; a firm with a relative as partner is a related party; the son holds an office of profit under s.188(1)(f).)"
         ],
         "formula_used": "Goods/lease/services: 10% of turnover; property: 10% of net worth; office of profit: > ₹2.5 lakh p.m.",
         "trap": "Each category has its own base; property sale uses net worth."
@@ -6793,7 +6794,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.188; Meetings of Board Rules 2014, Rule 15(3)"
+          "note": "Companies Act 2013 s.188(1)(f), s.2(76), s.2(77); Specification of Definitions Rules 2014, Rule 4; Meetings of Board Rules 2014, Rule 15(3)"
         }
       ],
       "options": [
@@ -6816,7 +6817,7 @@
           "label": "C"
         },
         {
-          "text": "Sale of surplus land and appointment of the MD's nephew only",
+          "text": "Sale of surplus land and appointment of the MD's son only",
           "is_correct": true,
           "error": null,
           "label": "D"
@@ -7023,8 +7024,8 @@
       "stem": "**Case — Meridian Textiles Ltd** (unlisted public company)\n\nAt the AGM, Meridian proposes to appoint CA Rohan Mehta (a sole practitioner) as statutory auditor. Facts about him: his wife holds Meridian shares of face value ₹90,000; he owes Meridian ₹4.20 lakh for goods bought on credit; his father has given a guarantee of ₹1.80 lakh to Meridian for dues of one of Meridian's dealers.\n\nThe incumbent auditors, Kulkarni & Co, are asked by management to also take up internal audit, tax audit, design of a new ERP-based accounting system and certification of export-incentive claims.\n\nDuring the current audit, Kulkarni & Co came to know on 12 August 2026 of a vendor fraud of ₹1.40 crore committed by the purchase head. The Audit Committee's reply was received on 20 September 2026.\n\nSeparately, the Board, on 3 March 2027, resolved to seek removal of Kulkarni & Co before expiry of its term; Central Government approval was received on 10 May 2027.\n\nFor the removal of Kulkarni & Co, the latest dates for (i) filing the application with the Central Government and (ii) holding the general meeting to pass the special resolution are:",
       "explanation": {
         "steps": [
-          "Rule 7(1) Audit Rules: application to CG (Form ADT-2) within 30 days of the Board resolution.",
-          "Rule 7(2): general meeting for the special resolution within 60 days of receipt of CG approval.",
+          "Rule 7(2) Audit Rules: application to CG (Form ADT-2, prescribed by Rule 7(1)) within 30 days of the Board resolution.",
+          "Rule 7(3): general meeting for the special resolution within 60 days of receipt of CG approval.",
           "The auditor must be given a reasonable opportunity of being heard (s.140(1) proviso)."
         ],
         "formula_used": "Board resolution + 30 days (ADT-2); CG approval + 60 days (SR)",
@@ -7037,7 +7038,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.140(1); Audit Rules 2014, Rule 7"
+          "note": "Companies Act 2013 s.140(1); Audit Rules 2014, Rule 7(2), (3)"
         }
       ],
       "options": [
@@ -7325,10 +7326,10 @@
       "explanation": {
         "steps": [
           "s.42(8) + Rule 14: PAS-3 within 15 days of allotment.",
-          "s.42(6): separate bank account; no utilisation until allotment and return of allotment filed.",
+          "s.42(6): separate bank account; proviso to s.42(4): no utilisation until allotment is made and the return of allotment is filed.",
           "s.29 + Rule 9A: unlisted public companies issue securities only in demat."
         ],
-        "formula_used": "s.42(6), (8); s.29 / Rule 9A",
+        "formula_used": "s.42(4), (6), (8); s.29 / Rule 9A",
         "trap": "Unlisted public companies are within the demat mandate."
       },
       "source_kind": "authored",
@@ -7338,7 +7339,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.42(6), (8), s.29; PAS Rules 2014, Rules 9A, 14"
+          "note": "Companies Act 2013 s.42(4) proviso, s.42(6), (8), s.29; PAS Rules 2014, Rules 9A, 14"
         }
       ],
       "options": [

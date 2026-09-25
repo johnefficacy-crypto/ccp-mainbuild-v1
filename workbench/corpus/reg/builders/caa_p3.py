@@ -599,16 +599,16 @@ def add_all(B):
 
     # ---------- Cost audit ----------
     q(B, "cost", "L2", "Sanjeevani Pharma Ltd operates in a regulated sector (Table A). In the preceding financial year its overall turnover was "
-      "₹60 crore; its largest individual product turnover was ₹22 crore. For the current year:",
+      "₹60 crore; the aggregate turnover of its products covered by Table A (for which cost records are required) was ₹22 crore. For the current year:",
       "It must maintain cost records, but cost audit is not required",
-      [("It must maintain cost records and get them audited", "individual-product test (₹25 crore) overlooked"),
+      [("It must maintain cost records and get them audited", "aggregate covered-product test (₹25 crore) overlooked"),
        ("Neither cost records nor cost audit applies", "₹35 crore record-maintenance threshold missed"),
        ("Cost audit applies, but cost records need not be maintained", "audit wrongly separated from records")],
       ["Rule 3: cost records if overall turnover ≥ ₹35 crore → ₹60 crore → yes.",
-       "Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND individual product ≥ ₹25 crore → ₹22 crore fails → no audit."],
-      "Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr & product ≥ ₹25 cr",
+       "Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND aggregate turnover of the covered product(s)/service(s) ≥ ₹25 crore → ₹22 crore fails → no audit."],
+      "Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr overall & ≥ ₹25 cr aggregate covered products",
       "Both limbs of the audit test must be met.",
-      kind="numerical", ref="Companies (Cost Records and Audit) Rules 2014, Rules 3 and 4")
+      kind="numerical", ref="Companies (Cost Records and Audit) Rules 2014, Rule 3 and Rule 4(1) (aggregate turnover of covered products)")
 
     q(B, "cost", "L3", "Consider the cost-audit timelines:\n\n"
       "1. The cost auditor submits the report to the Board within 180 days from the closure of the financial year.\n"
@@ -640,7 +640,7 @@ def add_all(B):
       ref="Companies Act 2013 s.56(4)(b)")
 
     lodged = date(2026, 1, 5)
-    q(B, "delivery", "L2", f"A duly stamped and executed instrument of transfer of physical shares of Rupal Ltd (unlisted) is lodged with the "
+    q(B, "delivery", "L2", f"A duly stamped and executed instrument of transfer of physical shares of Rupal Traders Pvt Ltd, a small company (not required to dematerialise), is lodged with the "
       f"company on {D(lodged)}. The certificates must be delivered by:",
       D(add_months(lodged, 1)),
       [(D(add_months(lodged, 2)), "allotment window (two months) applied"),
@@ -650,7 +650,7 @@ def add_all(B):
        f"{D(lodged)} + 1 month = {D(add_months(lodged, 1))}."],
       "Transfer/transmission: one month from receipt",
       "Transfers get the shortest window.",
-      kind="numerical", ref="Companies Act 2013 s.56(4)(c)")
+      kind="numerical", ref="Companies Act 2013 s.56(4)(c); Share Capital Rules r.9A/r.9B (demat mandate — small private company outside r.9B)")
 
     inc2 = date(2026, 4, 1)
     ev = [("Subscribers to the memorandum (incorporated " + D(inc2) + ")", 2),

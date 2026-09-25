@@ -1071,15 +1071,16 @@
       "difficulty": "hard",
       "question_kind": "match",
       "stimulus_group": null,
-      "stem": "Match the order under FEMA (Column A) with the forum to which the first appeal lies (Column B):\n\n| Column A — order passed by | Column B — appeal forum |\n|---|---|\n| P. Deputy Director of Enforcement as adjudicating authority | 1. High Court |\n| Q. Joint Director of Enforcement as adjudicating authority | 2. Special Director (Appeals) |\n| R. Special Director (Appeals) | 3. Appellate Tribunal |\n| S. Appellate Tribunal (question of law) | 4. Appellate Tribunal |",
+      "stem": "Match the matter under FEMA (Column A) with the authority that hears it (Column B):\n\n| Column A — matter | Column B — authority |\n|---|---|\n| P. Appeal against an order of a Deputy Director of Enforcement as adjudicating authority | 1. High Court |\n| Q. Appeal against an order of the Special Director (Appeals) | 2. Special Director (Appeals) |\n| R. Appeal against an order of the Appellate Tribunal on a question of law | 3. Appellate Tribunal |\n| S. Complaint in writing by an authorised officer alleging a contravention | 4. Adjudicating authority |",
       "explanation": {
         "steps": [
+          "s.16(3): the adjudicating authority holds an inquiry only on a written complaint by an authorised officer.",
           "s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).",
-          "s.19: orders of other adjudicating authorities and of the Special Director (Appeals) → Appellate Tribunal.",
+          "s.19: orders of the Special Director (Appeals) (and of other adjudicating authorities) → Appellate Tribunal.",
           "s.35: Appellate Tribunal orders → High Court on questions of law."
         ],
-        "formula_used": "AD/DD → SD(A) → AT → HC; higher AA → AT → HC",
-        "trap": "Rank of the adjudicating officer decides the first forum."
+        "formula_used": "Complaint → AA → SD(A) (for AD/DD) → AT → HC",
+        "trap": "Each stage has its own forum; none can be skipped."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -1088,32 +1089,32 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Foreign Exchange Management Act, 1999, s.17, s.19, s.35"
+          "note": "Foreign Exchange Management Act, 1999, s.16(3), s.17, s.19, s.35"
         }
       ],
       "options": [
         {
-          "text": "P-2, Q-2, R-3, S-1",
+          "text": "P-2, Q-1, R-3, S-4",
           "is_correct": false,
-          "error": "all Enforcement orders sent to Special Director (Appeals)",
+          "error": "Special Director's order sent straight to the High Court",
           "label": "A"
         },
         {
-          "text": "P-2, Q-3, R-4, S-1",
+          "text": "P-2, Q-3, R-1, S-4",
           "is_correct": true,
           "error": null,
           "label": "B"
         },
         {
-          "text": "P-2, Q-3, R-1, S-4",
+          "text": "P-4, Q-3, R-1, S-2",
           "is_correct": false,
-          "error": "Special Director's orders sent straight to High Court",
+          "error": "appeal treated as adjudication; complaint sent to Special Director",
           "label": "C"
         },
         {
-          "text": "P-3, Q-2, R-4, S-1",
+          "text": "P-3, Q-2, R-1, S-4",
           "is_correct": false,
-          "error": "Special Director forum assigned to the wrong rank",
+          "error": "Deputy Director's order sent straight to the Tribunal",
           "label": "D"
         }
       ],
@@ -1991,11 +1992,12 @@
       "difficulty": "medium",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Notice of a combination is filed with the CCI on 2 Feb 2026 (board approval was on 18 Jan 2026). The CCI neither passes an order nor stops the clock. The standstill period and the date it runs to (notice date + period) are:",
+      "stem": "Notice of a combination is filed with the CCI on 2 Feb 2026 (board approval was on 18 Jan 2026). The CCI forms its prima facie opinion under s.29(1B) within 30 days, then passes no further order and does not stop the clock. The statutory standstill period under s.6(2A) and the date it runs to (notice date + period) are:",
       "explanation": {
         "steps": [
           "s.6(2A) as amended in 2023: no combination shall come into effect until 150 days have passed from the date of notice or the CCI passes an order, whichever is earlier (earlier 210 days).",
-          "s.31(11): if no order is passed within that period, the combination is deemed approved.",
+          "s.29(1B) + proviso to s.31(1): deemed approval after 30 days applies only if NO prima facie opinion is formed; here one was formed.",
+          "Substituted s.31(6) (2023; old s.31(7)-(12) omitted): if no order is passed within 150 days, the combination is deemed approved.",
           "2 Feb 2026 + 150 days = 2 Jul 2026."
         ],
         "formula_used": "Standstill = 150 days from notice (2023)",
@@ -2008,7 +2010,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Competition Act, 2002, s.6(2A), s.31(11) (2023 amendment)"
+          "note": "Competition Act, 2002, s.6(2A), s.29(1B), s.31(1) proviso, s.31(6) (Competition (Amendment) Act 2023)"
         }
       ],
       "options": [
@@ -2027,7 +2029,7 @@
         {
           "text": "30 days — up to 4 Mar 2026",
           "is_correct": false,
-          "error": "prima facie opinion window treated as standstill",
+          "error": "30-day prima facie window treated as standstill, though opinion was formed",
           "label": "C"
         },
         {
@@ -3046,7 +3048,7 @@
       "explanation": {
         "steps": [
           "s.63: winding up may be voluntary or by the Tribunal.",
-          "Tribunal = NCLT (s.2(1)(x) read with Companies Act, 2013)."
+          "Tribunal = NCLT constituted under s.408 of the Companies Act, 2013 (LLP Act s.2(1)(u))."
         ],
         "formula_used": "Compulsory winding up → NCLT",
         "trap": "NCLAT hears appeals; High Courts no longer wind up LLPs."
@@ -3058,7 +3060,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Limited Liability Partnership Act, 2008, s.63, s.64"
+          "note": "Limited Liability Partnership Act, 2008, s.2(1)(u), s.63, s.64"
         }
       ],
       "options": [

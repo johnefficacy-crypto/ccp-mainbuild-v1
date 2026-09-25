@@ -578,9 +578,10 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Kaveri Bank Ltd, a scheduled bank, must hold a stipulated minimum CRR balance of ₹900 crore with RBI at the close of each day. The Bank Rate is 6.50%. Its closing balances for seven consecutive days were:\n\n| Day | 1 | 2 | 3 | 4 | 5 | 6 | 7 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| Balance (₹ crore) | 912 | 880 | 865 | 905 | 885 | 890 | 901 |\n\nApplying the penal-interest scheme of s.42(3) on a daily basis (365-day year), total penal interest for the week is closest to:",
+      "stem": "Kaveri Bank Ltd, a scheduled bank, must hold a daily minimum CRR balance of ₹900 crore (90% of its fortnightly requirement) with RBI at the close of each day. Assume a (hypothetical) Bank Rate of 6.50%. Its closing balances for seven consecutive days were:\n\n| Day | 1 | 2 | 3 | 4 | 5 | 6 | 7 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| Balance (₹ crore) | 912 | 880 | 865 | 905 | 885 | 890 | 901 |\n\nApplying the daily penal-interest scheme under RBI's CRR Directions (issued under s.42) (365-day year), total penal interest for the week is closest to:",
       "explanation": {
         "steps": [
+          "The daily scheme comes from RBI's CRR Directions under s.42; s.42(3) itself applies 3%/5% to fortnightly-average shortfalls.",
           "Shortfalls (₹ crore): Day 2 = 20, Day 3 = 35, Day 5 = 15, Day 6 = 10; Days 1, 4, 7 compliant.",
           "First day of a default run: Bank Rate + 3% = 9.50%; next succeeding day(s): Bank Rate + 5% = 11.50%.",
           "Day 4 is compliant, so Day 5 starts a fresh run at +3%.",
@@ -596,7 +597,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Reserve Bank of India Act, 1934, s.42(3); RBI CRR directions (daily minimum) — verify against current official text"
+          "note": "Reserve Bank of India Act, 1934, s.42 read with RBI CRR/SLR Directions (daily minimum = 90% of requirement; s.42(3) itself is fortnight-average) — verify against current official text"
         }
       ],
       "options": [
@@ -641,15 +642,16 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Godavari Bank Ltd's average daily CRR balances for two successive fortnights were (Bank Rate 6.50%):\n\n| Fortnight | Required average (₹ crore) | Actual average (₹ crore) |\n|---|---:|---:|\n| I | 2,400 | 2,352 |\n| II | 2,420 | 2,390 |\n\nUsing the average-basis penal interest of s.42(3) (14-day fortnight, 365-day year), total penal interest for the two fortnights is:",
+      "stem": "Godavari Bank Ltd's average daily CRR balances for the two fortnights of January 2026 were (assume a hypothetical Bank Rate of 6.50%):\n\n| Fortnight | Required average (₹ crore) | Actual average (₹ crore) |\n|---|---:|---:|\n| 1–15 January | 2,400 | 2,352 |\n| 16–31 January | 2,420 | 2,390 |\n\nUsing the average-basis penal interest of s.42(3) (actual days in each fortnight, 365-day year), total penal interest for the two fortnights is:",
       "explanation": {
         "steps": [
+          "Since the Banking Laws (Amendment) Act, 2025 (w.e.f. 15 Dec 2025), a fortnight is the 1st–15th or 16th–last day of a month: here 15 and 16 days.",
           "Shortfall I = 48 crore; shortfall II = 30 crore (default continues).",
           "Fortnight I at Bank Rate + 3% = 9.50%; Fortnight II at Bank Rate + 5% = 11.50%.",
-          "Penal = 48 cr × 9.5% × 14/365 + 30 cr × 11.5% × 14/365 = ₹30.72 lakh"
+          "Penal = 48 cr × 9.5% × 15/365 + 30 cr × 11.5% × 16/365 = ₹33.86 lakh"
         ],
-        "formula_used": "Penal = Avg shortfall × (Bank Rate + 3% / 5%) × 14/365",
-        "trap": "Rates are over the Bank Rate, not flat."
+        "formula_used": "Penal = Avg shortfall × (Bank Rate + 3% / 5%) × days in fortnight/365",
+        "trap": "Fortnights are now 1st–15th and 16th–month-end, not 14 days."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -658,32 +660,32 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Reserve Bank of India Act, 1934, s.42(3) — verify against current official text"
+          "note": "Reserve Bank of India Act, 1934, s.42(3); 'fortnight' as redefined by Banking Laws (Amendment) Act 2025 — verify against current official text"
         }
       ],
       "options": [
         {
-          "text": "₹11.28 lakh",
+          "text": "₹30.72 lakh",
           "is_correct": false,
-          "error": "uses 3%/5% flat without adding the Bank Rate",
+          "error": "uses 14-day fortnights (pre-2025 alternate-Friday reporting cycle)",
           "label": "A"
         },
         {
-          "text": "₹34.41 lakh",
+          "text": "₹37.81 lakh",
           "is_correct": false,
           "error": "applies Bank Rate + 5% from the first fortnight of default",
           "label": "B"
         },
         {
-          "text": "₹30.72 lakh",
+          "text": "₹33.86 lakh",
           "is_correct": true,
           "error": null,
           "label": "C"
         },
         {
-          "text": "₹28.42 lakh",
+          "text": "₹31.23 lakh",
           "is_correct": false,
-          "error": "applies Bank Rate + 3% to Fortnight II as well, missing the step-up for continuing default",
+          "error": "applies Bank Rate + 3% to the second fortnight as well, missing the step-up for continuing default",
           "label": "D"
         }
       ],
@@ -2358,12 +2360,13 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Krishna Bank Ltd fell short of its SLR requirement on three consecutive days by ₹50 crore, ₹80 crore and ₹30 crore; it was compliant on the days before and after. Bank Rate is 6.75%. Penal interest payable under s.24 (365-day year) is closest to:",
+      "stem": "Krishna Bank Ltd fell short of its SLR requirement on three consecutive days by ₹50 crore, ₹80 crore and ₹30 crore; it was compliant on the days before and after. Bank Rate is 6.75%. Penal interest payable under s.24 read with RBI's CRR/SLR Directions (daily scheme, 365-day year) is closest to:",
       "explanation": {
         "steps": [
           "Day 1 (first day of default): Bank Rate + 3% = 9.75% on ₹50 crore.",
           "Days 2–3 (continuing default): Bank Rate + 5% = 11.75% on ₹80 crore and ₹30 crore.",
-          "Penal = [50×9.75% + (80+30)×11.75%] crore ÷ 365 = ₹4,87,671"
+          "Penal = [50×9.75% + (80+30)×11.75%] crore ÷ 365 = ₹4,87,671",
+          "s.24(4) keys the 3%/5% scheme to the reporting day (last day of the fortnight); s.24(5) and RBI's CRR/SLR Directions extend it to daily shortfalls."
         ],
         "formula_used": "Penal = Shortfall × (Bank Rate + 3% first day / 5% succeeding days) ÷ 365",
         "trap": "The 5% rate applies from the next succeeding day."
@@ -2375,7 +2378,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, s.24(4) — verify against current official text"
+          "note": "Banking Regulation Act, 1949, s.24(4)-(5) read with RBI CRR/SLR Directions (daily scheme) — verify against current official text"
         }
       ],
       "options": [
@@ -2539,16 +2542,17 @@
       ],
       "rubric_level": "L2",
       "difficulty": "medium",
-      "question_kind": "numerical",
+      "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "The articles of Pennar Bank Ltd fix the maximum board strength at 12; the board presently has 9 directors. The maximum number of additional directors RBI may appoint under s.36AB is:",
+      "stem": "The articles of Pennar Bank Ltd fix the maximum board strength at 12; the board presently has 9 directors. RBI wants to place its own nominees on the board under s.36AB. Which statement correctly describes RBI's power?",
       "explanation": {
         "steps": [
-          "s.36AB: RBI may appoint additional directors not exceeding five or one-third of the maximum strength fixed by the articles, whichever is less.",
-          "min(5, 12/3 = 4) = 4."
+          "s.36AB(1): RBI may, in the interest of banking policy, public interest or depositors, appoint one or more persons as additional directors.",
+          "The proviso that capped them at five or one-third of maximum strength was omitted in 1984 (Act 1 of 1984); there is no numerical ceiling.",
+          "s.36AB(2)-(3): each holds office up to 3 years at a time and is not counted for any proportion of directors or for retirement by rotation."
         ],
-        "formula_used": "Additional directors ≤ min(5, ⅓ × maximum strength)",
-        "trap": "Maximum strength under the articles, not current strength."
+        "formula_used": "BR Act s.36AB",
+        "trap": "The 'five or one-third' cap is a pre-1984 rule."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -2557,32 +2561,32 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, s.36AB — verify against current official text"
+          "note": "Banking Regulation Act, 1949, s.36AB (proviso omitted by Act 1 of 1984) — verify against current official text"
         }
       ],
       "options": [
         {
-          "text": "3",
+          "text": "At most 5, an absolute statutory cap on additional directors",
           "is_correct": false,
-          "error": "computes one-third of present strength instead of maximum strength",
+          "error": "invents a fixed cap of five",
           "label": "A"
         },
         {
-          "text": "5",
+          "text": "At most 4, the lower of five and one-third of maximum strength",
           "is_correct": false,
-          "error": "applies the absolute cap of five, ignoring 'whichever is less'",
+          "error": "applies the proviso omitted in 1984",
           "label": "B"
         },
         {
-          "text": "4",
+          "text": "No numerical cap; each holds office up to 3 years at a time",
           "is_correct": true,
           "error": null,
           "label": "C"
         },
         {
-          "text": "6",
+          "text": "At most 3, one-third of the directors currently on the board",
           "is_correct": false,
-          "error": "takes one-half of maximum strength",
+          "error": "invents a cap based on present strength",
           "label": "D"
         }
       ],
@@ -2602,10 +2606,10 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "A banking company commits a contravention under s.46(4) of the BR Act involving a quantifiable amount of ₹72 lakh. The contravention continues for 18 days in all. The maximum penalty RBI may impose under s.47A is:",
+      "stem": "A banking company commits a contravention under s.46(4) of the BR Act involving a quantifiable amount of ₹72 lakh. The contravention continues for 18 days in all. The maximum penalty RBI may impose under s.47A(1)(c) is:",
       "explanation": {
         "steps": [
-          "s.47A(1)(b): up to ₹1 crore or twice the amount involved (if quantifiable), whichever is more.",
+          "s.47A(1)(c) (contraventions under s.46(4)): up to ₹1 crore or twice the amount involved (if quantifiable), whichever is more.",
           "max(₹1 crore, 2 × ₹72 lakh = ₹1.44 crore) = ₹1.44 crore.",
           "Continuing default: up to ₹1 lakh per day after the first → 17 × ₹1 lakh = ₹17 lakh.",
           "Maximum = ₹1.61 crore."
@@ -2620,7 +2624,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, s.47A(1)(b) — verify against current official text"
+          "note": "Banking Regulation Act, 1949, s.47A(1)(c) read with s.46(4) — verify against current official text"
         }
       ],
       "options": [
@@ -2668,7 +2672,7 @@
       "stem": "At the meeting of shareholders of Tapti Bank Ltd on a voluntary amalgamation scheme under s.44A, 120 shareholders holding 90,00,000 shares are present in person or by proxy. 70 shareholders holding 58,00,000 shares vote in favour. The scheme:",
       "explanation": {
         "steps": [
-          "s.44A(2): approval needs a majority in number representing two-thirds in value of shareholders present and voting.",
+          "s.44A(1): approval needs a resolution passed by a majority in number representing two-thirds in value of shareholders present in person or by proxy; RBI then sanctions under s.44A(4).",
           "Number: 70 of 120 → majority ✓.",
           "Value: 58,00,000 ÷ 90,00,000 = 64.4% < 66.67% ✗ → resolution fails."
         ],
@@ -2682,7 +2686,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, s.44A(2) — verify against current official text"
+          "note": "Banking Regulation Act, 1949, s.44A(1), (4) — verify against current official text"
         }
       ],
       "options": [
@@ -2727,14 +2731,14 @@
       "difficulty": "hard",
       "question_kind": "statement",
       "stimulus_group": null,
-      "stem": "Consider the following statements on co-operative banks and the BR Act, 1949 (as amended in 2020):\n\n1. The Act does not apply to a primary agricultural credit society.\n2. RBI may supersede the board of a co-operative bank, after consultation with the concerned State Government.\n3. A co-operative bank requires a licence from RBI under s.22, as applied to co-operative societies by s.56.\n\nWhich of the statements is/are correct?",
+      "stem": "Consider the following statements on co-operative banks and the BR Act, 1949 (as amended in 2020):\n\n1. The Act does not apply to a primary agricultural credit society.\n2. RBI may supersede the board of a co-operative bank registered under a State co-operative law, after consultation with the State Government.\n3. A co-operative bank requires a licence from RBI under s.22, as applied to co-operative societies by s.56.\n\nWhich of the statements is/are correct?",
       "explanation": {
         "steps": [
           "1: Correct — s.3.",
-          "2: Correct — s.36ACA as applied through s.56 after the BR (Amendment) Act, 2020.",
+          "2: Correct — s.36AAA as applied through s.56 after the BR (Amendment) Act, 2020 (s.36ACA itself does not apply to co-operative banks).",
           "3: Correct — s.22 applies to co-operative banks through Part V (s.56)."
         ],
-        "formula_used": "BR Act ss.3, 22, 36ACA, 56",
+        "formula_used": "BR Act ss.3, 22, 36AAA, 56",
         "trap": "Co-operative banks are within RBI's banking regulation (Part V), barring PACS."
       },
       "source_kind": "authored",
@@ -2744,14 +2748,14 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, ss.3, 22, 36ACA, 56; BR (Amendment) Act 2020 — verify against current official text"
+          "note": "Banking Regulation Act, 1949, ss.3, 22, 36AAA (as applied by s.56), 56; BR (Amendment) Act 2020 — verify against current official text"
         }
       ],
       "options": [
         {
           "text": "1 and 3 only",
           "is_correct": false,
-          "error": "wrongly rejects statement 2: RBI may supersede a co-operative bank's board in consultation with the State Government (2020 amendment)",
+          "error": "wrongly rejects statement 2: s.36AAA as applied by s.56 (2020) lets RBI supersede a State-registered co-operative bank's board after consulting the State Government",
           "label": "A"
         },
         {
@@ -2853,10 +2857,10 @@
       "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q2.** The maximum further period for which the supersession may be extended is:",
       "explanation": {
         "steps": [
-          "s.36ACA: RBI, in consultation with the Central Government, may supersede the board for up to 12 months; extensions are allowed but the aggregate cannot exceed 12 months.",
+          "s.36ACA(1): RBI, in consultation with the Central Government, may supersede the board for a period not exceeding six months; the proviso allows extensions, but the total cannot exceed 12 months.",
           "Used = 6 + 4 = 10 months → further extension ≤ 2 months."
         ],
-        "formula_used": "Aggregate supersession ≤ 12 months",
+        "formula_used": "Initial ≤ 6 months; aggregate with extensions ≤ 12 months",
         "trap": "The 12-month cap is cumulative."
       },
       "source_kind": "authored",
@@ -2866,7 +2870,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Banking Regulation Act, 1949, s.36ACA — verify against current official text"
+          "note": "Banking Regulation Act, 1949, s.36ACA(1) and proviso — verify against current official text"
         }
       ],
       "options": [

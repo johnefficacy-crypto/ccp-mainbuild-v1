@@ -38,12 +38,12 @@ def add_all(B):
        (Cr(cur - cdep - unr), "previous losses and unprovided depreciation not set off"),
        (Cr(avail - 0.10 * cur), "compulsory 10% transfer to reserves assumed (repealed 1956-era rule)")],
       ["s.123(1)(a): profits after providing depreciation under Schedule II.",
-       "Explanation: unrealised gains, notional gains, revaluation and fair-value changes excluded.",
-       "First proviso-type condition: carried-forward losses and depreciation not provided in earlier years must be set off against current profit.",
+       "Proviso to s.123(1)(a): unrealised gains, notional gains, revaluation and fair-value changes excluded.",
+       "Fourth proviso to s.123(1): carried-forward losses and depreciation not provided in earlier years must be set off against current profit.",
        f"{cur} − {cdep} − {unr} − {ploss} − {pdep} = ₹{avail:g} crore; transfer to reserves is optional."],
       "Distributable = current profit − depreciation − unrealised gains − b/f losses − unprovided depreciation",
       "Transfer to reserves is discretionary under the 2013 Act.",
-      kind="numerical", ref="Companies Act 2013 s.123(1) and Explanation, provisos")
+      kind="numerical", ref="Companies Act 2013 s.123(1)(a) proviso and fourth proviso to s.123(1)")
 
     # ---------- Duties of directors ----------
     q(B, "duties", "L1", "Which of the following is NOT a duty of a director under s.166?",
@@ -189,15 +189,16 @@ def add_all(B):
     # ---------- Further issue & rights ----------
     q(B, "rights", "L2", "In a rights issue by a public company under s.62(1)(a), the offer must remain open for ____ and the notice must be "
       "dispatched at least ____ before the opening of the issue.",
-      "not less than 15 days and not more than 30 days; 3 days",
-      [("not less than 7 days and not more than 30 days; 3 days", "minimum period understated"),
-       ("not less than 15 days and not more than 30 days; 7 days", "dispatch lead time overstated"),
+      "not less than 7 days and not more than 30 days; 3 days",
+      [("not less than 15 days and not more than 30 days; 3 days", "pre-2021 value: 15-day minimum as originally enacted, before Rule 12A"),
+       ("not less than 7 days and not more than 30 days; 7 days", "dispatch lead time overstated"),
        ("not less than 21 days and not more than 45 days; 3 days", "general-meeting notice period mixed in")],
-      ["s.62(1)(a)(i): offer by letter of offer, open for not less than 15 days and not exceeding 30 days.",
+      ["s.62(1)(a)(i) (amended by Companies (Amendment) Act 2020): not less than 15 days or such lesser number of days as prescribed, not exceeding 30 days.",
+       "Rule 12A, Share Capital and Debentures Rules (w.e.f. 1 April 2021): prescribed minimum is 7 days → open 7–30 days.",
        "s.62(2): notice dispatched through registered/speed post, electronic mode or courier at least three days before the issue opens."],
-      "Rights: open 15–30 days; notice ≥ 3 days before opening",
+      "Rights: open 7–30 days (r.12A); notice ≥ 3 days before opening",
       "The renunciation right exists unless the articles provide otherwise.",
-      ref="Companies Act 2013 s.62(1)(a), s.62(2)")
+      ref="Companies Act 2013 s.62(1)(a)(i) (amended 2020), s.62(2); Rule 12A, Share Capital and Debentures Rules 2014 (GSR 113(E), 11 Feb 2021)")
 
     held, rn, rd, price, fvv = 3850, 2, 7, 60, 10
     ent = held * rn // rd
@@ -402,10 +403,10 @@ def add_all(B):
        (f"The issue is void; the company must refund {R(raised)} without interest", "12% interest on refund overlooked"),
        ("The issue is voidable at the option of the allottees; interest at 18% p.a. applies", "void treated as voidable; dividend-default rate used")],
       ["s.53(2): shares issued at a discount are void.",
-       f"s.53(3) (as amended 2020): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of {R(raised)} and ₹5,00,000 = {R(pen)}; refund with 12% p.a. interest from date of issue."],
+       f"s.53(3) (substituted by Companies (Amendment) Act 2019): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of {R(raised)} and ₹5,00,000 = {R(pen)}; refund with 12% p.a. interest from date of issue."],
       "s.53: void; refund + 12% p.a.; penalty ≤ min(amount raised, ₹5 lakh)",
       "18% is the s.127 dividend-default rate, not the s.53 refund rate.",
-      ref="Companies Act 2013 s.53(2),(3) (amended by Companies (Amendment) Act 2020)")
+      ref="Companies Act 2013 s.53(2),(3) (substituted by Companies (Amendment) Act 2019, w.e.f. 2 Nov 2018)")
 
     # ---------- Kinds of share capital ----------
     q(B, "kinds", "L1", "Under s.43, the share capital of a company limited by shares is of:",
@@ -572,11 +573,11 @@ def add_all(B):
       [("67 years", "age limit for NCLAT Members applied"),
        ("65 years", "retirement age of Supreme Court judges applied"),
        ("62 years", "retirement age of High Court judges applied")],
-      ["Chairperson of the Appellate Tribunal: until 70 years (s.413 as originally enacted; retained under the Tribunal Reforms Act 2021).",
+      ["Chairperson of the Appellate Tribunal: until 70 years (s.413 as enacted; TRA 2021 tenure provisions struck down in Madras Bar Association v. UoI, 2025 INSC 1330 — Chairperson 70 / Members 67 per MBA directions).",
        "Members of the Appellate Tribunal: 67 years."],
       "NCLAT: Chairperson 70; Members 67",
       "The Chairperson is often a retired SC judge, so the limit exceeds 65.",
-      ref="Companies Act 2013 s.413; Tribunal Reforms Act 2021 s.5")
+      ref="Companies Act 2013 s.413 (as enacted); Madras Bar Association v. UoI (MBA-IV/V directions; 2025 INSC 1330)")
 
     q(B, "nclatage", "L2", "Consider the following about the NCLAT:\n\n"
       "1. The Chairperson must be, or must have been, a Judge of the Supreme Court or the Chief Justice of a High Court.\n"
@@ -592,7 +593,7 @@ def add_all(B):
        "Age limits: Chairperson 70; Members (judicial and technical) 67."],
       "NCLAT Chairperson: SC Judge / HC CJ; age 70. Members: 67",
       "All Members share the 67-year limit.",
-      kind="statement", ref="Companies Act 2013 s.411(1), s.413; Tribunal Reforms Act 2021 s.5")
+      kind="statement", ref="Companies Act 2013 s.411(1), s.413 (as enacted); Madras Bar Association v. UoI (MBA-IV/V directions; 2025 INSC 1330)")
 
     # ---------- NRC (standalone) ----------
     q(B, "nrc", "L2", "Which of the following is NOT a function of the Nomination and Remuneration Committee under s.178?",
@@ -754,20 +755,22 @@ def add_all(B):
       kind="statement", ref="Companies Act 2013 s.143(1)")
 
     to_, br = 42, 28
+    assert to_ < 50 and br >= 25  # exemption needs both → fails
     q(B, "auditrep", "L3", f"Hira Pvt Ltd (not an OPC or small company) had turnover of ₹{to_} crore per its latest audited financial "
       f"statements; its bank borrowings peaked at ₹{br} crore during the year. It has filed all financial statements and annual returns on time. "
       "Is the auditor required to report on the adequacy and operating effectiveness of internal financial controls under s.143(3)(i)?",
-      "No — a private company with turnover below ₹50 crore is exempt even though its borrowings exceed ₹25 crore",
-      [("Yes — both the turnover and borrowing conditions must be satisfied for the exemption", "alternative conditions read as cumulative"),
-       ("Yes — IFC reporting applies to every company without exception", "private-company exemption overlooked"),
-       ("No — but only because it is not a small company", "exemption basis misidentified")],
-      ["Private-company exemption (13 June 2017, amended 2018): s.143(3)(i) does not apply to an OPC or small company, or to a private company "
-       "with turnover < ₹50 crore per latest audited FS OR aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, "
+      f"Yes — exemption needs turnover < ₹50 crore and borrowings < ₹25 crore; borrowings hit ₹{br} crore",
+      [(f"No — turnover of ₹{to_} crore below ₹50 crore alone exempts it, despite the ₹{br} crore borrowings",
+        "pre-corrigendum 'or' reading: tests treated as alternatives"),
+       ("No — any private company is exempt from IFC reporting if all its filings are made on time", "filing condition treated as the whole test"),
+       (f"No — the exemption is lost only if bank borrowings exceed ₹50 crore; here they are ₹{br} crore", "borrowing threshold overstated")],
+      ["Private-company exemption (GSR 583(E), 13 June 2017, as corrected by corrigendum dated 13 July 2017): s.143(3)(i) does not apply to an OPC or small company, or to a private company "
+       "with turnover < ₹50 crore per latest audited FS AND aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, "
        "provided it has not defaulted in filing under s.137 or s.92.",
-       f"Turnover ₹{to_} crore < ₹50 crore → exempt."],
-      "IFC reporting exemption: private co with turnover < ₹50 cr OR borrowings < ₹25 cr (and no filing default)",
-      "The two tests are alternatives.",
-      ref="Companies Act 2013 s.143(3)(i); MCA notification GSR 583(E) dated 13 June 2017 as amended")
+       f"Turnover ₹{to_} crore < ₹50 crore, but borrowings ₹{br} crore ≥ ₹25 crore → exemption fails → IFC reporting applies."],
+      "IFC reporting exemption: private co with turnover < ₹50 cr AND borrowings < ₹25 cr (and no filing default)",
+      "The corrigendum replaced 'or' with 'and' — both tests must be met.",
+      ref="Companies Act 2013 s.143(3)(i); MCA notification GSR 583(E) dated 13 June 2017 as corrected by corrigendum dated 13 July 2017")
 
     q(B, "auditrep", "L3", "Neha Pvt Ltd is not a holding or subsidiary of a public company. Its paid-up capital plus reserves and surplus is "
       "₹80 lakh, total revenue ₹9 crore, and its borrowings from banks peaked at ₹1.3 crore during the year. CARO 2020:",

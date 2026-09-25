@@ -1016,19 +1016,19 @@ Select the correct answer:
 
 ## CAA-042 · L2 · medium · Cost audit ⚠
 
-Sanjeevani Pharma Ltd operates in a regulated sector (Table A). In the preceding financial year its overall turnover was ₹60 crore; its largest individual product turnover was ₹22 crore. For the current year:
+Sanjeevani Pharma Ltd operates in a regulated sector (Table A). In the preceding financial year its overall turnover was ₹60 crore; the aggregate turnover of its products covered by Table A (for which cost records are required) was ₹22 crore. For the current year:
 
 - **A.** Cost audit applies, but cost records need not be maintained  _(error: audit wrongly separated from records)_
 - **B.** Neither cost records nor cost audit applies  _(error: ₹35 crore record-maintenance threshold missed)_
 - **C.** It must maintain cost records, but cost audit is not required ✅
-- **D.** It must maintain cost records and get them audited  _(error: individual-product test (₹25 crore) overlooked)_
+- **D.** It must maintain cost records and get them audited  _(error: aggregate covered-product test (₹25 crore) overlooked)_
 
 **Working**
 
 1. Rule 3: cost records if overall turnover ≥ ₹35 crore → ₹60 crore → yes.
-2. Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND individual product ≥ ₹25 crore → ₹22 crore fails → no audit.
+2. Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND aggregate turnover of the covered product(s)/service(s) ≥ ₹25 crore → ₹22 crore fails → no audit.
 
-**Formula:** Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr & product ≥ ₹25 cr  
+**Formula:** Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr overall & ≥ ₹25 cr aggregate covered products  
 **Trap:** Both limbs of the audit test must be met.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -1090,7 +1090,7 @@ On allotment of shares, a company must deliver the share certificates (unless th
 
 ## CAA-045 · L2 · medium · Delivery timeline for transfer of securities ⚠
 
-A duly stamped and executed instrument of transfer of physical shares of Rupal Ltd (unlisted) is lodged with the company on 5 January 2026. The certificates must be delivered by:
+A duly stamped and executed instrument of transfer of physical shares of Rupal Traders Pvt Ltd, a small company (not required to dematerialise), is lodged with the company on 5 January 2026. The certificates must be delivered by:
 
 - **A.** 5 March 2026  _(error: allotment window (two months) applied)_
 - **B.** 20 January 2026  _(error: invented 15-day window)_
@@ -1411,7 +1411,7 @@ Vellora re-appoints its MD in FY 2026-27, a year in which its profits turn out t
 Under Item (A) of Section II, Part II of Schedule V, the maximum yearly remuneration payable to the MD, where the shareholders' approval is by ordinary resolution and all other conditions are met, is:
 
 - **A.** ₹120 lakh  _(error: revaluation reserve added, or investments not deducted, pushing effective capital into the ₹100–250 crore band)_
-- **B.** ₹168 lakh  _(error: doubling applied, though doubling is available only with a special resolution)_
+- **B.** ₹168 lakh  _(error: table limit doubled — no doubling rule exists; excess over the table needs a special resolution, and the resolution here is ordinary)_
 - **C.** ₹60 lakh  _(error: effective-capital band below ₹5 crore applied)_
 - **D.** ₹84 lakh ✅
 
@@ -1420,7 +1420,7 @@ Under Item (A) of Section II, Part II of Schedule V, the maximum yearly remunera
 1. Effective capital = paid-up 30 + premium 20 + reserves 25 + long-term loan 40 − investments 22 − preliminary expenses 1 = ₹92 crore.
 2. Excluded: share application money (5), revaluation reserve (25), working-capital loan (15).
 3. ₹92 crore falls in the '₹5 crore to less than ₹100 crore' band → ₹84 lakh a year.
-4. The limit doubles only if the approving resolution is a special resolution.
+4. Proviso (as substituted 2018): remuneration in excess of the table limit may be paid only if the resolution is a special resolution; with an ordinary resolution the ₹84 lakh limit binds.
 
 **Formula:** Schedule V, Part II, Sec. II(A): <₹5 cr → ₹60 L; ₹5–<100 cr → ₹84 L; ₹100–<250 cr → ₹120 L; ≥₹250 cr → ₹120 L + 0.01% of excess  
 **Trap:** Revaluation reserve and working-capital borrowings never enter effective capital.
@@ -1796,8 +1796,8 @@ Before depreciation, Rohini Ltd earned ₹18 crore in FY 2025-26, including an u
 **Working**
 
 1. s.123(1)(a): profits after providing depreciation under Schedule II.
-2. Explanation: unrealised gains, notional gains, revaluation and fair-value changes excluded.
-3. First proviso-type condition: carried-forward losses and depreciation not provided in earlier years must be set off against current profit.
+2. Proviso to s.123(1)(a): unrealised gains, notional gains, revaluation and fair-value changes excluded.
+3. Fourth proviso to s.123(1): carried-forward losses and depreciation not provided in earlier years must be set off against current profit.
 4. 18 − 3 − 1.5 − 5 − 2 = ₹6.5 crore; transfer to reserves is optional.
 
 **Formula:** Distributable = current profit − depreciation − unrealised gains − b/f losses − unprovided depreciation  
@@ -2049,17 +2049,18 @@ Under the Schedule III (2021) disclosure requirement, for which ratios must Kosi
 
 In a rights issue by a public company under s.62(1)(a), the offer must remain open for ____ and the notice must be dispatched at least ____ before the opening of the issue.
 
-- **A.** not less than 7 days and not more than 30 days; 3 days  _(error: minimum period understated)_
+- **A.** not less than 15 days and not more than 30 days; 3 days  _(error: pre-2021 value: 15-day minimum as originally enacted, before Rule 12A)_
 - **B.** not less than 21 days and not more than 45 days; 3 days  _(error: general-meeting notice period mixed in)_
-- **C.** not less than 15 days and not more than 30 days; 7 days  _(error: dispatch lead time overstated)_
-- **D.** not less than 15 days and not more than 30 days; 3 days ✅
+- **C.** not less than 7 days and not more than 30 days; 7 days  _(error: dispatch lead time overstated)_
+- **D.** not less than 7 days and not more than 30 days; 3 days ✅
 
 **Working**
 
-1. s.62(1)(a)(i): offer by letter of offer, open for not less than 15 days and not exceeding 30 days.
-2. s.62(2): notice dispatched through registered/speed post, electronic mode or courier at least three days before the issue opens.
+1. s.62(1)(a)(i) (amended by Companies (Amendment) Act 2020): not less than 15 days or such lesser number of days as prescribed, not exceeding 30 days.
+2. Rule 12A, Share Capital and Debentures Rules (w.e.f. 1 April 2021): prescribed minimum is 7 days → open 7–30 days.
+3. s.62(2): notice dispatched through registered/speed post, electronic mode or courier at least three days before the issue opens.
 
-**Formula:** Rights: open 15–30 days; notice ≥ 3 days before opening  
+**Formula:** Rights: open 7–30 days (r.12A); notice ≥ 3 days before opening  
 **Trap:** The renunciation right exists unless the articles provide otherwise.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -2403,7 +2404,7 @@ Laxmi Ltd issues 1,00,000 equity shares of ₹10 each at ₹8 each to investors 
 **Working**
 
 1. s.53(2): shares issued at a discount are void.
-2. s.53(3) (as amended 2020): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of ₹8,00,000 and ₹5,00,000 = ₹5,00,000; refund with 12% p.a. interest from date of issue.
+2. s.53(3) (substituted by Companies (Amendment) Act 2019): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of ₹8,00,000 and ₹5,00,000 = ₹5,00,000; refund with 12% p.a. interest from date of issue.
 
 **Formula:** s.53: void; refund + 12% p.a.; penalty ≤ min(amount raised, ₹5 lakh)  
 **Trap:** 18% is the s.127 dividend-default rate, not the s.53 refund rate.
@@ -2694,7 +2695,7 @@ The Chairperson of the NCLAT holds office until attaining the age of:
 
 **Working**
 
-1. Chairperson of the Appellate Tribunal: until 70 years (s.413 as originally enacted; retained under the Tribunal Reforms Act 2021).
+1. Chairperson of the Appellate Tribunal: until 70 years (s.413 as enacted; TRA 2021 tenure provisions struck down in Madras Bar Association v. UoI, 2025 INSC 1330 — Chairperson 70 / Members 67 per MBA directions).
 2. Members of the Appellate Tribunal: 67 years.
 
 **Formula:** NCLAT: Chairperson 70; Members 67  
@@ -3000,18 +3001,18 @@ Select the correct answer:
 
 Hira Pvt Ltd (not an OPC or small company) had turnover of ₹42 crore per its latest audited financial statements; its bank borrowings peaked at ₹28 crore during the year. It has filed all financial statements and annual returns on time. Is the auditor required to report on the adequacy and operating effectiveness of internal financial controls under s.143(3)(i)?
 
-- **A.** Yes — both the turnover and borrowing conditions must be satisfied for exemption  _(error: alternative conditions read as cumulative)_
-- **B.** No — turnover below ₹50 crore alone exempts it, despite borrowings over ₹25 crore ✅
-- **C.** Yes — IFC reporting under s.143(3)(i) applies to every company without exception  _(error: private-company exemption overlooked)_
-- **D.** No — but only because it is not a small company or a one person company  _(error: exemption basis misidentified)_
+- **A.** No — turnover of ₹42 crore below ₹50 crore alone exempts it, despite the ₹28 crore borrowings  _(error: pre-corrigendum 'or' reading: tests treated as alternatives)_
+- **B.** Yes — exemption needs turnover < ₹50 crore and borrowings < ₹25 crore; borrowings hit ₹28 crore ✅
+- **C.** No — any private company is exempt from IFC reporting if all its filings are made on time  _(error: filing condition treated as the whole test)_
+- **D.** No — the exemption is lost only if bank borrowings exceed ₹50 crore; here they are ₹28 crore  _(error: borrowing threshold overstated)_
 
 **Working**
 
-1. Private-company exemption (13 June 2017, amended 2018): s.143(3)(i) does not apply to an OPC or small company, or to a private company with turnover < ₹50 crore per latest audited FS OR aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, provided it has not defaulted in filing under s.137 or s.92.
-2. Turnover ₹42 crore < ₹50 crore → exempt.
+1. Private-company exemption (GSR 583(E), 13 June 2017, as corrected by corrigendum dated 13 July 2017): s.143(3)(i) does not apply to an OPC or small company, or to a private company with turnover < ₹50 crore per latest audited FS AND aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, provided it has not defaulted in filing under s.137 or s.92.
+2. Turnover ₹42 crore < ₹50 crore, but borrowings ₹28 crore ≥ ₹25 crore → exemption fails → IFC reporting applies.
 
-**Formula:** IFC reporting exemption: private co with turnover < ₹50 cr OR borrowings < ₹25 cr (and no filing default)  
-**Trap:** The two tests are alternatives.
+**Formula:** IFC reporting exemption: private co with turnover < ₹50 cr AND borrowings < ₹25 cr (and no filing default)  
+**Trap:** The corrigendum replaced 'or' with 'and' — both tests must be met.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 

@@ -223,7 +223,7 @@ Greenleaf Agro, not registered with SEBI, pools ₹120 crore from the public for
 
 **Working**
 
-1. s.11AA(2A) (2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.
+1. Proviso to s.11AA(1) (inserted 2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.
 2. Corpus ₹120 crore ≥ ₹100 crore; plantation schemes are not in the s.11AA(3) exclusions.
 3. So it is a deemed CIS and requires registration under s.12(1B).
 
@@ -474,7 +474,7 @@ In a takeover matter, (i) Mr X failed to make disclosures required under the tak
 
 ## ACTS-020 · L3 · hard · SEBI Act — Chapter VIA penalties and adjudication ⚠
 
-An AO order dated 12 January 2026 imposed a penalty that SEBI considers erroneous and not in the interest of the securities market. The noticee's appeal was disposed of by SAT on 20 March 2026. Under the proviso to section 15-I(3), SEBI's revisional power could be exercised only up to:
+An AO order dated 12 January 2026 imposed a penalty that SEBI considers erroneous and inadequate; SEBI wishes to enhance it under section 15-I(3). The noticee's appeal was disposed of by SAT on 20 March 2026. Reading the proviso as: the power lapses three months after the AO order or on disposal of the s.15T appeal, whichever is earlier, SEBI's power could be exercised only up to:
 
 - **A.** 12 April 2026  _(error: three months from the AO order, ignoring 'whichever is earlier')_
 - **B.** 12 July 2026  _(error: six-month window assumed)_
@@ -483,7 +483,7 @@ An AO order dated 12 January 2026 imposed a penalty that SEBI considers erroneou
 
 **Working**
 
-1. s.15-I(3): the Board may call for records and revise an AO order that is erroneous and not in the interest of the market (after hearing).
+1. s.15-I(3): the Board may call for records and, if the AO order is erroneous and not in the interest of the market, enhance the penalty (after hearing).
 2. The power cannot be exercised after three months from the AO order or the disposal of appeal under s.15T, whichever is earlier.
 3. Earlier of 12 April 2026 and 20 March 2026 = 20 March 2026.
 
@@ -511,18 +511,19 @@ An adjudicating officer passed a penalty order; Kestrel received a copy on 23 Fe
 
 For finding (a) alone, the **maximum** penalty under section 15F(a) is:
 
-- **A.** ₹1 crore  _(error: ₹1 crore daily-default cap applied to contract notes)_
+- **A.** ₹1.8 crore  _(error: pre-2014 text: five times the value of securities)_
 - **B.** ₹1.08 crore  _(error: 3× multiple of ss.15G/15HA applied)_
 - **C.** ₹36 lakh  _(error: value of securities itself taken as ceiling)_
-- **D.** ₹1.8 crore ✅
+- **D.** ₹1 crore ✅
 
 **Working**
 
-1. s.15F(a): failure to issue contract notes — penalty not less than ₹1 lakh, extending to five times the value of securities for which contract notes were required.
-2. 5 × ₹36 lakh = ₹1.8 crore.
+1. s.15F(a) (as substituted by the Securities Laws (Amendment) Act, 2014): failure to issue contract notes — penalty not less than ₹1 lakh, which may extend to ₹1 crore.
+2. The value of securities (₹36 lakh) no longer sets the ceiling; maximum = ₹1 crore.
+3. The pre-2014 limb (five times the value) would have given ₹1.8 crore.
 
-**Formula:** Max = 5 × value of securities  
-**Trap:** Contract-note penalty is value-linked, not day-linked.
+**Formula:** s.15F(a): ₹1 lakh ≤ penalty ≤ ₹1 crore  
+**Trap:** The '5 × value' limb was removed in 2014.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -546,19 +547,19 @@ An adjudicating officer passed a penalty order; Kestrel received a copy on 23 Fe
 The **maximum aggregate** penalty across findings (a), (b) and (c) is:
 
 - **A.** ₹1.68 crore  _(error: 3× multiple used for (a) and (b))_
-- **B.** ₹2.46 crore ✅
-- **C.** ₹2.35 crore  _(error: excess brokerage itself taken as ceiling for (b))_
-- **D.** ₹1.66 crore  _(error: finding (a) wrongly capped at ₹1 crore)_
+- **B.** ₹1.66 crore ✅
+- **C.** ₹1.55 crore  _(error: excess brokerage itself taken as ceiling for (b))_
+- **D.** ₹2.46 crore  _(error: pre-2014 '5 × value of securities' limb used for (a))_
 
 **Working**
 
-1. (a) s.15F(a): 5 × ₹36 lakh = ₹1.8 crore.
+1. (a) s.15F(a) (2014): up to ₹1 crore.
 2. (b) s.15F(c): up to five times the excess brokerage = 5 × ₹2.8 lakh = ₹14 lakh.
 3. (c) s.15A: min(₹1 lakh × 52, ₹1 crore) = ₹52 lakh.
-4. Total = ₹2.46 crore.
+4. Total = ₹1.66 crore.
 
-**Formula:** Σ [5 × value] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]  
-**Trap:** Each head has its own base.
+**Formula:** Σ [₹1 crore] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]  
+**Trap:** Each head has its own base; 15F(a) is no longer value-linked.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -743,19 +744,20 @@ Under section 11 of the SCRA, when the governing body of a recognised stock exch
 
 ## ACTS-029 · L1 · easy · SCRA — contracts in notified areas and legality of derivatives ⚠
 
-Section 18A of the SCRA makes contracts in derivatives legal and valid, notwithstanding any other law, if they are:
+Under section 18A of the SCRA, one of the conditions under which contracts in derivatives are legal and valid, notwithstanding any other law, is that they are:
 
 - **A.** Traded on a recognised stock exchange and settled on its clearing house ✅
 - **B.** Settled within the spot delivery period of s.2(i)  _(error: spot delivery test confused with derivative legality)_
-- **C.** Entered into between any two SEBI-registered brokers off the exchange  _(error: bilateral OTC trades not covered by s.18A)_
+- **C.** Entered into between any two SEBI-registered brokers off the exchange  _(error: off-exchange trades covered only if parties/terms are notified under s.18A(c))_
 - **D.** Approved in advance by the RBI under the RBI Act  _(error: other regulator's (s.45V RBI Act) route confused)_
 
 **Working**
 
-1. s.18A (1999): derivatives are legal and valid if (a) traded on a recognised stock exchange and (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws.
+1. s.18A: derivatives are legal and valid if (a) traded on a recognised stock exchange; (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws; or (c) between such parties and on such terms as the Central Government notifies (clause (c) inserted by Finance Act, 2015).
+2. Exchange trading with exchange clearing is the standard route; an unnotified broker-to-broker OTC deal, RBI approval or a spot-delivery period does not qualify.
 
 **Formula:** s.18A  
-**Trap:** Both limbs — exchange trading and exchange clearing.
+**Trap:** The notified-parties route (c) is Government notification, not ad hoc approval.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -899,15 +901,15 @@ A recognised stock exchange decides on 4 May 2026 to delist the shares of Kiran 
 The Central Government has notified section 13 of the SCRA for Region Z. Two investors in Region Z, neither a member of a recognised stock exchange, agree directly (not through any member) to sell listed shares with delivery and payment 20 days later. The contract is:
 
 - **A.** Valid, as s.13 applies only to derivatives  _(error: confuses s.13 with s.18A)_
-- **B.** Void under section 13 ✅
+- **B.** Illegal under section 13 ✅
 - **C.** Valid, because s.18 excludes all contracts between non-members  _(error: s.18 excludes spot delivery contracts, not all contracts)_
-- **D.** Voidable at the option of the buyer  _(error: void-ab-initio consequence misstated)_
+- **D.** Voidable at the option of the buyer  _(error: consequence misstated; s.13 makes it illegal)_
 
 **Working**
 
-1. s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is void.
+1. s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is illegal.
 2. s.18 exempts spot delivery contracts; delivery after 20 days is not spot delivery (s.2(i)).
-3. Hence the contract is void.
+3. Hence the contract is illegal (and hence unenforceable).
 
 **Formula:** s.13 read with s.18 and s.2(i)  
 **Trap:** Check the delivery period before applying the s.18 exclusion.
@@ -1379,10 +1381,11 @@ A beneficial owner opts out of a depository for certain shares. After receiving 
 
 **Working**
 
-1. s.14(1): BO informs the depository; depository makes entries and informs the issuer.
-2. s.14(2): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee.
+1. s.14(1): BO informs the depository through the participant.
+2. s.14(2): depository makes appropriate entries and informs the issuer.
+3. s.14(3): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee.
 
-**Formula:** s.14(2)  
+**Formula:** s.14(3)  
 **Trap:** Opting out is a right; the issuer's timeline is 30 days.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -1713,19 +1716,19 @@ Consider the following statements:
 
 Which of the statements given above is/are correct?
 
-- **A.** 1 and 2 only ✅
-- **B.** 1, 2 and 3  _(error: s.22 bar (complaint by the Board) missed)_
-- **C.** 1 only  _(error: s.19 direction power missed)_
+- **A.** 1, 2 and 3 ✅
+- **B.** 1 and 2 only  _(error: SEBI Act s.26 'complaint by the Board only' rule imported into DA s.22)_
+- **C.** 1 and 3 only  _(error: s.19 direction power missed)_
 - **D.** 2 and 3 only  _(error: s.18 information power missed)_
 
 **Working**
 
 1. s.18 — true.
 2. s.19 — true.
-3. s.22: no court takes cognizance save on a complaint by the Board — statement 3 false.
+3. s.22(1) (as amended 2004): cognizance on a complaint by the Central Government, a State Government, SEBI or by any person — statement 3 true.
 
 **Formula:** ss.18, 19, 22  
-**Trap:** Prosecution is SEBI-initiated.
+**Trap:** Unlike SEBI Act s.26 (Board only), DA s.22 allows a complaint by any person.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1857,7 +1860,7 @@ For the opt-out, the latest date by which Zenith must issue the certificate of s
 
 **Working**
 
-1. s.14(2): issuer issues the certificate within 30 days of receipt of information from the depository.
+1. s.14(3): issuer issues the certificate within 30 days of receipt of information from the depository.
 2. 6 July 2026 + 30 days = 5 August 2026.
 
 **Formula:** Deadline = Receipt of intimation + 30 days  

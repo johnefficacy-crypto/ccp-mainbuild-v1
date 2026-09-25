@@ -271,15 +271,17 @@ Q("I3", "L3",
   "case", f"{IBC}, ss.29A, 240A")
 
 Q("I3", "L1",
-  "After admission of an application under section 7, the applicant may withdraw it under section 12A only with the approval of the "
-  "committee of creditors by:",
+  "After admission of an application under section 7, the application may be withdrawn under section 12A (as substituted in 2026), "
+  "on the resolution professional's application, only with the approval of the committee of creditors by:",
   "90% of the voting share",
   [("66% of the voting share", "plan-approval threshold of s.30(4)"),
    ("75% of the voting share", "pre-2018 threshold for major CoC decisions"),
    ("51% of the voting share", "ordinary-decision threshold of s.21(8)")],
-  ["s.12A: withdrawal of an admitted application with approval of 90% voting share of the CoC."],
-  "IBC s.12A: 90%", "The highest threshold in the Code applies to withdrawal.",
-  "conceptual", f"{IBC}, s.12A")
+  ["s.12A (substituted by the IBC (Amendment) Act, 2026, w.e.f. 26.05.2026): the resolution professional applies for withdrawal "
+   "of an admitted application with approval of 90% of the voting share of the CoC.",
+   "Withdrawal is not permitted before the CoC is constituted or after the first invitation for resolution plans."],
+  "IBC s.12A (2026): 90%, via the RP, within the permitted window", "The highest threshold in the Code applies to withdrawal.",
+  "conceptual", f"{IBC}, s.12A (as substituted by s.8, IBC (Amendment) Act, 2026, in force 26.05.2026)")
 
 Q("I4", "L2",
   "In a liquidation under section 53, arrange the following claims in order of priority (highest first):\n\n"
@@ -313,40 +315,46 @@ Q("I4", "L3",
   f"| CIRP costs | {cirp_c:.2f} |\n| Liquidation costs | {liq_c:.2f} |\n| Workmen's dues (24 months) | {wk:.2f} |\n"
   f"| Secured creditors who relinquished security | {sec:.2f} |\n| Other employees' dues (12 months) | {emp:.2f} |\n"
   f"| Unsecured financial creditors | {ufc:.2f} |\n| Central and State Government dues (2 years) | {gov:.2f} |\n"
-  f"| Other operational creditors | {occ:.2f} |\n\nThe amount distributed to unsecured financial creditors is:",
+  f"| Other operational creditors | {occ:.2f} |\n\nThe value of the security relinquished by the secured creditors is not less than their "
+  f"₹{sec:.0f} crore claim. The amount distributed to unsecured financial creditors is:",
   cr(ufc_get),
   [(cr(d_e_pool), "government dues ranked pari passu with unsecured financial creditors"),
    (cr(c_d_pool), "other employees ranked pari passu with unsecured financial creditors"),
    (cr(no_cost), "CIRP and liquidation costs not deducted first")],
   [f"Available after costs = 212 − 5.5 − 4.5 = {avail:.2f}.",
-   f"(b) workmen + relinquishing secured = {wk + sec:.2f} paid in full → {after_b:.2f} left.",
+   f"(b) workmen + relinquishing secured = {wk + sec:.2f} paid in full → {after_b:.2f} left (security value covers the whole "
+   "secured claim, so all of it ranks in (b) under the 2026 Explanation to s.53(1)(b)(ii)).",
    f"(c) other employees {emp:.2f} → {after_c:.2f} left.",
    f"(d) unsecured financial creditors claim {ufc:.2f}; receive {ufc_get:.2f}. Government dues (e) receive nil."],
   "s.53(1): each class paid in full before the next; pari passu within a class",
   "Government dues sit in (e), below unsecured financial creditors.",
-  "numerical", f"{IBC}, s.53(1)")
+  "numerical", f"{IBC}, s.53(1) and Explanation to s.53(1)(b)(ii) (IBC (Amendment) Act, 2026, in force 26.05.2026)")
 
 # I-17 shortfall in class (b)
-real17, cost17, wk17, wk_old, sec17 = 90.0, 6.0, 12.0, 3.0, 108.0
+real17, cost17, wk17, wk_old, sec17, secval17 = 90.0, 6.0, 12.0, 3.0, 108.0, 78.0
 av17 = real17 - cost17
-wk_get = wk17 * av17 / (wk17 + sec17)
-assert abs(wk_get - 8.4) < 1e-9
-wk_old_in = (wk17 + wk_old) * av17 / (wk17 + wk_old + sec17)
+wk_get = wk17 * av17 / (wk17 + secval17)
+assert abs(wk_get - 11.2) < 1e-9
+old_full = wk17 * av17 / (wk17 + sec17)
+assert abs(old_full - 8.4) < 1e-9
+wk_old_in = (wk17 + wk_old) * av17 / (wk17 + wk_old + secval17)
 Q("I4", "L3",
   f"The liquidator of Ostrava Castings Ltd has ₹{real17:.2f} crore. Insolvency resolution and liquidation costs are ₹{cost17:.2f} crore. "
   f"Workmen's dues are ₹{wk17 + wk_old:.2f} crore, of which ₹{wk_old:.2f} crore relates to the period before the 24 months preceding "
-  f"liquidation. Secured creditors who relinquished their security claim ₹{sec17:.2f} crore. The amount received by workmen "
-  "under section 53(1)(b) is:",
+  f"liquidation. Secured creditors who relinquished their security claim ₹{sec17:.2f} crore; the security relinquished is valued at "
+  f"₹{secval17:.2f} crore. The amount received by workmen under section 53(1)(b) is:",
   cr(wk_get),
-  [(cr(wk17), "workmen paid in full ahead of secured creditors"),
-   (cr(wk_old_in), "workmen's dues beyond 24 months included in class (b)"),
-   (cr(wk17 * real17 / (wk17 + sec17)), "costs not deducted before class (b)")],
+  [(cr(old_full), "whole secured claim ranked in (b) — pre-2026 Explanation ignored"),
+   (cr(wk17), "workmen paid in full ahead of secured creditors"),
+   (cr(wk_old_in), "workmen's dues beyond 24 months included in class (b)")],
   [f"Available for (b) = {real17} − {cost17} = {av17:.2f}.",
-   f"Class (b) claims = workmen 24-month dues {wk17} + secured {sec17} = {wk17 + sec17:.2f} (pari passu).",
-   f"Workmen receive {wk17} × {av17}/{wk17 + sec17:.0f} = {wk_get:.2f}; older dues of {wk_old} fall to (f)."],
-  "s.53(1)(b): pari passu sharing = claim × available ÷ class total",
-  "Only 24 months of workmen's dues enjoy (b) priority.",
-  "numerical", f"{IBC}, s.53(1)(b), (f)")
+   f"Explanation to s.53(1)(b)(ii) (2026): relinquishing secured creditor is secured only to the value of the security, {secval17:.0f}; "
+   f"the balance {sec17 - secval17:.0f} ranks as unsecured in (d).",
+   f"Class (b) = workmen 24-month dues {wk17} + {secval17} = {wk17 + secval17:.2f} (pari passu).",
+   f"Workmen receive {wk17} × {av17}/{wk17 + secval17:.0f} = {wk_get:.2f}; older dues of {wk_old} fall to (f)."],
+  "s.53(1)(b): pari passu sharing = claim × available ÷ class total (secured part capped at security value)",
+  "Only 24 months of workmen's dues, and only the secured portion of a relinquishing creditor's claim, enjoy (b) priority.",
+  "numerical", f"{IBC}, s.53(1)(b), (d), (f) and Explanation to s.53(1)(b)(ii) (IBC (Amendment) Act, 2026, in force 26.05.2026)")
 
 sc_claim, sc_real = 80.0, 55.0
 Q("I4", "L2",
@@ -378,18 +386,19 @@ Q("I5", "L3",
   "Consider the following statements about the pre-packaged insolvency resolution process (PPIRP):\n\n"
   "1. It is available only to a corporate debtor classified as a micro, small or medium enterprise.\n"
   "2. The name of the proposed resolution professional must be approved by financial creditors, not being related parties, "
-  "representing at least 66% in value of the financial debt.\n"
+  "representing at least 51% in value of the financial debt.\n"
   "3. The process must be completed within 180 days of the pre-packaged insolvency commencement date.\n\n"
   "Which of the statements given above is/are correct?",
   "1 and 2 only",
   [("1, 2 and 3", "CIRP's 180-day period applied to PPIRP"),
    ("2 and 3 only", "MSME-only eligibility of s.54A(1) missed"),
-   ("1 only", "unrelated-FC 66% approval of s.54A(2)(e) missed")],
+   ("1 only", "current 51% approval of s.54A(2)(e) rejected (pre-2026 value was 66%)")],
   ["s.54A(1): PPIRP for corporate debtors classified as MSMEs.",
-   "s.54A(2)(e): proposed RP approved by ≥66% in value of unrelated financial creditors.",
+   "s.54A(2)(e) and (3), as amended w.e.f. 26.05.2026: proposed RP approved by ≥51% in value of unrelated financial creditors "
+   "(66% before the 2026 amendment).",
    "s.54D(1): PPIRP to be completed within 120 days of the pre-packaged insolvency commencement date."],
   "IBC ss.54A, 54D", "PPIRP runs 120 days; the resolution plan must reach the AA within 90 days.",
-  "statement", f"{IBC}, ss.54A, 54D (IBC (Amendment) Act, 2021)")
+  "statement", f"{IBC}, ss.54A(1), 54A(2)(e), 54A(3), 54D (IBC (Amendment) Act, 2021; s.34, IBC (Amendment) Act, 2026, in force 26.05.2026, S.O. 2625(E))")
 
 Q("I5", "L1",
   "Which of the following is NOT a function of the Insolvency and Bankruptcy Board of India under the Code?",
@@ -448,23 +457,35 @@ Q("I3", "L4", case_ibc + "\n\nOn the resolution plan, Bharat Bank and Coastal Ba
 
 lv, lc, wkd = 480.0, 10.0, 20.0
 dist = lv - lc
-eastern_min = voters["Eastern ARC"] * dist / (ta + wkd)
-excl_rel = voters["Eastern ARC"] * dist / (tv + wkd)
-no_wk = voters["Eastern ARC"] * dist / ta
-no_cost = voters["Eastern ARC"] * lv / (ta + wkd)
-assert abs(eastern_min - 180 * 470 / 1400) < 1e-9
+e_cl = voters["Eastern ARC"]
+e_sec = e_cl * lv / ta                      # secured only to value of security (pari passu charge over ₹480 cr)
+cls_b = lv + wkd                            # secured portions (480) + workmen (20)
+liq_ent = e_sec * dist / cls_b
+plan_v = 620.0
+plan_b_left = plan_v - cls_b                # (b) paid in full from plan value; balance to unsecured FCs (d)
+plan_ent = e_sec + (e_cl - e_sec) * plan_b_left / (ta - lv)
+eastern_min = min(liq_ent, plan_ent)
+pre26 = e_cl * dist / (ta + wkd)            # whole claims ranked in (b)
+no_wk = e_sec * dist / lv
+assert abs(liq_ent - 58.85) < 0.01 and plan_ent > liq_ent and abs(pre26 - 60.43) < 0.01
 Q("I3", "L4", case_ibc + "\n\nEastern ARC dissents. Assume all financial creditors would relinquish security and share under section 53(1)(b) "
-  "with workmen. Under section 30(2)(b)(ii), the minimum amount the plan must provide to Eastern ARC is closest to:",
+  "with workmen; their pari passu charge covers all of Orvian's assets, and the security relinquished is worth the ₹480 crore "
+  "liquidation value. The plan's total value is ₹620 crore (no CIRP costs outstanding). Under section 30(2)(ba), the minimum "
+  "amount the plan must provide to Eastern ARC is closest to:",
   cr(eastern_min),
-  [(cr(excl_rel), "related party's claim excluded from the liquidation waterfall"),
-   (cr(no_wk), "workmen's dues omitted from class (b)"),
-   (cr(no_cost), "liquidation costs not deducted first")],
-  [f"Liquidation value available after costs = {lv} − {lc} = {dist}.",
-   f"Class (b) = all secured FCs {ta} (related party's claim ranks in liquidation) + workmen {wkd} = {ta + wkd}.",
-   f"Eastern ARC = 180 × {dist}/{ta + wkd:.0f} = {eastern_min:.2f}."],
-  "Dissenting FC ≥ its s.53(1) liquidation entitlement",
-  "Related parties lose CoC votes, not their rank in the liquidation waterfall.",
-  "case", f"{IBC}, ss.30(2)(b), 53(1)", group=G1)
+  [(cr(pre26), "whole claims ranked in (b) — pre-2026 Explanation ignored"),
+   (cr(plan_ent), "higher (not lower) of the two entitlements taken"),
+   (cr(no_wk), "workmen's dues omitted from class (b)")],
+  [f"Explanation to s.53(1)(b)(ii) (2026): each FC is secured only to the value of security — Eastern's secured part = "
+   f"180 × 480/{ta} = {e_sec:.2f}; balance {e_cl - e_sec:.2f} is unsecured ((d)).",
+   f"Liquidation: {lv} − {lc} = {dist} over class (b) = 480 + {wkd} = {cls_b:.0f} → Eastern gets {e_sec:.2f} × {dist}/{cls_b:.0f} "
+   f"= {liq_ent:.2f}; nothing reaches (d).",
+   f"Plan value on s.53 priority: (b) {cls_b:.0f} paid in full, {plan_b_left:.0f} to unsecured FC balances ({ta - lv:.0f}) → "
+   f"Eastern {plan_ent:.2f}.",
+   f"s.30(2)(ba): not less than the LOWER of the two = {eastern_min:.2f}."],
+  "s.30(2)(ba): dissenting FC ≥ min(liquidation entitlement, plan-value entitlement under s.53(1))",
+  "Related parties lose CoC votes, not their rank in the waterfall; the 2026 floor is the lower of two amounts.",
+  "case", f"{IBC}, s.30(2)(ba), s.53(1) and Explanation to s.53(1)(b)(ii) (IBC (Amendment) Act, 2026, in force 26.05.2026)", group=G1)
 
 occ_c = 3.20
 fc_ratio = dist / (ta + wkd)
@@ -918,11 +939,13 @@ Q("D4", "L3",
 
 Q("D4", "L2",
   "A defendant aggrieved by an order of the Recovery Officer made in execution of a recovery certificate may appeal:",
-  "To the DRT within 30 days of the order",
-  [("To the DRAT within 45 days of the order", "s.20 route against DRT orders confused"),
-   ("To the High Court within 60 days of the order", "PMLA s.42 route confused"),
-   ("To the DRT within 45 days of the order", "s.20 period applied to s.30 appeal")],
-  ["s.30(1): appeal against a Recovery Officer's order to the Tribunal (DRT) within 30 days of the order."],
+  "To the DRT within 30 days of a copy of the order being issued to him",
+  [("To the DRAT within 45 days of a copy of the order being issued to him", "s.20 route against DRT orders confused"),
+   ("To the High Court within 60 days of a copy of the order being issued", "PMLA s.42 route confused"),
+   ("To the DRT within 45 days of a copy of the order being issued to him", "s.20 period applied to s.30 appeal")],
+  ["s.30(1): appeal against a Recovery Officer's order lies to the Tribunal (DRT) within 30 days from the date on which a copy "
+   "of the order is issued to the appellant.",
+   "s.30A: the appeal is not entertained unless 50% of the amount of debt determined is deposited."],
   "RDB s.30", "Recovery Officer → DRT; DRT → DRAT.", "conceptual", f"{RDB}, s.30")
 
 Q("D3", "L3",
@@ -1053,8 +1076,11 @@ Q("D2", "L4", case_rdb + "\n\nWhile the original application is pending, Prayag 
    ("It may do so only with the DRT's prior leave in the pending case", "leave requirement invented"),
    ("It cannot, as a pending application bars all parallel measures", "s.37 SARFAESI missed")],
   ["SARFAESI s.37: its provisions are in addition to, and not in derogation of, the RDB Act.",
-   "Parallel recourse was upheld by the Supreme Court (Mardia Chemicals, 2004; later decisions)."],
-  "SARFAESI s.37", "The remedies are cumulative.", "case", f"{SAR}, ss.35, 37; {RDB}, s.19", group=G3)
+   "Transcore v. Union of India, (2008) 1 SCC 125: a bank need not withdraw a pending OA before taking SARFAESI measures; "
+   "the doctrine of election does not apply.",
+   "The proviso to RDB s.19(1) merely ENABLES the bank to withdraw its OA with the DRT's permission to proceed under SARFAESI."],
+  "SARFAESI s.37; RDB s.19(1) proviso", "The remedies are cumulative; withdrawal is optional.", "case",
+  f"{SAR}, ss.35, 37; {RDB}, s.19(1) proviso; Transcore v. Union of India, (2008) 1 SCC 125", group=G3)
 
 # =====================================================================================
 # PMLA (22): L1 4 · L2 7 · L3 7 · L4 4
@@ -1288,7 +1314,7 @@ case_pml = ("**Case — Sarvik Infra Pvt Ltd (fictional)**\n\nThe police registe
             "managing director Mr. A and CFO Mr. B. The ED alleges that ₹1.40 crore of proceeds was jointly laundered by them, of which ₹72 lakh "
             f"passed through Mr. B's accounts. On {D(pa4)} the Deputy Director provisionally attached Mr. B's flat under section 5. "
             f"The Adjudicating Authority later confirmed the attachment; the Appellate Tribunal dismissed Mr. B's appeal and its order was "
-            f"communicated to her on {D(at4)}.")
+            f"communicated to him on {D(at4)}.")
 Q("P4", "L4", case_pml + "\n\nThe last date for the ED's complaint before the Adjudicating Authority, and the date on which the attachment would lapse "
   "without confirmation, are respectively:",
   f"{D(pa4 + timedelta(30))} and {D(pa4 + timedelta(180))}",

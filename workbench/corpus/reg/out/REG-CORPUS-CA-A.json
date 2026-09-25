@@ -2485,13 +2485,13 @@
       "difficulty": "medium",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Sanjeevani Pharma Ltd operates in a regulated sector (Table A). In the preceding financial year its overall turnover was ₹60 crore; its largest individual product turnover was ₹22 crore. For the current year:",
+      "stem": "Sanjeevani Pharma Ltd operates in a regulated sector (Table A). In the preceding financial year its overall turnover was ₹60 crore; the aggregate turnover of its products covered by Table A (for which cost records are required) was ₹22 crore. For the current year:",
       "explanation": {
         "steps": [
           "Rule 3: cost records if overall turnover ≥ ₹35 crore → ₹60 crore → yes.",
-          "Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND individual product ≥ ₹25 crore → ₹22 crore fails → no audit."
+          "Rule 4 (Table A): audit if overall turnover ≥ ₹50 crore AND aggregate turnover of the covered product(s)/service(s) ≥ ₹25 crore → ₹22 crore fails → no audit."
         ],
-        "formula_used": "Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr & product ≥ ₹25 cr",
+        "formula_used": "Records ≥ ₹35 cr; audit Table A ≥ ₹50 cr overall & ≥ ₹25 cr aggregate covered products",
         "trap": "Both limbs of the audit test must be met."
       },
       "source_kind": "authored",
@@ -2501,7 +2501,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies (Cost Records and Audit) Rules 2014, Rules 3 and 4"
+          "note": "Companies (Cost Records and Audit) Rules 2014, Rule 3 and Rule 4(1) (aggregate turnover of covered products)"
         }
       ],
       "options": [
@@ -2526,7 +2526,7 @@
         {
           "text": "It must maintain cost records and get them audited",
           "is_correct": false,
-          "error": "individual-product test (₹25 crore) overlooked",
+          "error": "aggregate covered-product test (₹25 crore) overlooked",
           "label": "D"
         }
       ],
@@ -2666,7 +2666,7 @@
       "difficulty": "medium",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "A duly stamped and executed instrument of transfer of physical shares of Rupal Ltd (unlisted) is lodged with the company on 5 January 2026. The certificates must be delivered by:",
+      "stem": "A duly stamped and executed instrument of transfer of physical shares of Rupal Traders Pvt Ltd, a small company (not required to dematerialise), is lodged with the company on 5 January 2026. The certificates must be delivered by:",
       "explanation": {
         "steps": [
           "s.56(4)(c): within one month from receipt of the instrument of transfer or intimation of transmission.",
@@ -2682,7 +2682,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.56(4)(c)"
+          "note": "Companies Act 2013 s.56(4)(c); Share Capital Rules r.9A/r.9B (demat mandate — small private company outside r.9B)"
         }
       ],
       "options": [
@@ -3218,7 +3218,7 @@
           "Effective capital = paid-up 30 + premium 20 + reserves 25 + long-term loan 40 − investments 22 − preliminary expenses 1 = ₹92 crore.",
           "Excluded: share application money (5), revaluation reserve (25), working-capital loan (15).",
           "₹92 crore falls in the '₹5 crore to less than ₹100 crore' band → ₹84 lakh a year.",
-          "The limit doubles only if the approving resolution is a special resolution."
+          "Proviso (as substituted 2018): remuneration in excess of the table limit may be paid only if the resolution is a special resolution; with an ordinary resolution the ₹84 lakh limit binds."
         ],
         "formula_used": "Schedule V, Part II, Sec. II(A): <₹5 cr → ₹60 L; ₹5–<100 cr → ₹84 L; ₹100–<250 cr → ₹120 L; ≥₹250 cr → ₹120 L + 0.01% of excess",
         "trap": "Revaluation reserve and working-capital borrowings never enter effective capital."
@@ -3230,7 +3230,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 Schedule V Part II Section II and Explanation I (effective capital), as revised 2016"
+          "note": "Companies Act 2013 Schedule V Part II Section II and Explanation I (effective capital), as amended 2018 and 2021"
         }
       ],
       "options": [
@@ -3243,7 +3243,7 @@
         {
           "text": "₹168 lakh",
           "is_correct": false,
-          "error": "doubling applied, though doubling is available only with a special resolution",
+          "error": "table limit doubled — no doubling rule exists; excess over the table needs a special resolution, and the resolution here is ordinary",
           "label": "B"
         },
         {
@@ -3951,8 +3951,8 @@
       "explanation": {
         "steps": [
           "s.123(1)(a): profits after providing depreciation under Schedule II.",
-          "Explanation: unrealised gains, notional gains, revaluation and fair-value changes excluded.",
-          "First proviso-type condition: carried-forward losses and depreciation not provided in earlier years must be set off against current profit.",
+          "Proviso to s.123(1)(a): unrealised gains, notional gains, revaluation and fair-value changes excluded.",
+          "Fourth proviso to s.123(1): carried-forward losses and depreciation not provided in earlier years must be set off against current profit.",
           "18 − 3 − 1.5 − 5 − 2 = ₹6.5 crore; transfer to reserves is optional."
         ],
         "formula_used": "Distributable = current profit − depreciation − unrealised gains − b/f losses − unprovided depreciation",
@@ -3965,7 +3965,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.123(1) and Explanation, provisos"
+          "note": "Companies Act 2013 s.123(1)(a) proviso and fourth proviso to s.123(1)"
         }
       ],
       "options": [
@@ -4611,10 +4611,11 @@
       "stem": "In a rights issue by a public company under s.62(1)(a), the offer must remain open for ____ and the notice must be dispatched at least ____ before the opening of the issue.",
       "explanation": {
         "steps": [
-          "s.62(1)(a)(i): offer by letter of offer, open for not less than 15 days and not exceeding 30 days.",
+          "s.62(1)(a)(i) (amended by Companies (Amendment) Act 2020): not less than 15 days or such lesser number of days as prescribed, not exceeding 30 days.",
+          "Rule 12A, Share Capital and Debentures Rules (w.e.f. 1 April 2021): prescribed minimum is 7 days → open 7–30 days.",
           "s.62(2): notice dispatched through registered/speed post, electronic mode or courier at least three days before the issue opens."
         ],
-        "formula_used": "Rights: open 15–30 days; notice ≥ 3 days before opening",
+        "formula_used": "Rights: open 7–30 days (r.12A); notice ≥ 3 days before opening",
         "trap": "The renunciation right exists unless the articles provide otherwise."
       },
       "source_kind": "authored",
@@ -4624,14 +4625,14 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.62(1)(a), s.62(2)"
+          "note": "Companies Act 2013 s.62(1)(a)(i) (amended 2020), s.62(2); Rule 12A, Share Capital and Debentures Rules 2014 (GSR 113(E), 11 Feb 2021)"
         }
       ],
       "options": [
         {
-          "text": "not less than 7 days and not more than 30 days; 3 days",
+          "text": "not less than 15 days and not more than 30 days; 3 days",
           "is_correct": false,
-          "error": "minimum period understated",
+          "error": "pre-2021 value: 15-day minimum as originally enacted, before Rule 12A",
           "label": "A"
         },
         {
@@ -4641,13 +4642,13 @@
           "label": "B"
         },
         {
-          "text": "not less than 15 days and not more than 30 days; 7 days",
+          "text": "not less than 7 days and not more than 30 days; 7 days",
           "is_correct": false,
           "error": "dispatch lead time overstated",
           "label": "C"
         },
         {
-          "text": "not less than 15 days and not more than 30 days; 3 days",
+          "text": "not less than 7 days and not more than 30 days; 3 days",
           "is_correct": true,
           "error": null,
           "label": "D"
@@ -5455,7 +5456,7 @@
       "explanation": {
         "steps": [
           "s.53(2): shares issued at a discount are void.",
-          "s.53(3) (as amended 2020): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of ₹8,00,000 and ₹5,00,000 = ₹5,00,000; refund with 12% p.a. interest from date of issue."
+          "s.53(3) (substituted by Companies (Amendment) Act 2019): penalty up to the amount raised or ₹5 lakh, whichever is less → lower of ₹8,00,000 and ₹5,00,000 = ₹5,00,000; refund with 12% p.a. interest from date of issue."
         ],
         "formula_used": "s.53: void; refund + 12% p.a.; penalty ≤ min(amount raised, ₹5 lakh)",
         "trap": "18% is the s.127 dividend-default rate, not the s.53 refund rate."
@@ -5467,7 +5468,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.53(2),(3) (amended by Companies (Amendment) Act 2020)"
+          "note": "Companies Act 2013 s.53(2),(3) (substituted by Companies (Amendment) Act 2019, w.e.f. 2 Nov 2018)"
         }
       ],
       "options": [
@@ -6234,7 +6235,7 @@
       "stem": "The Chairperson of the NCLAT holds office until attaining the age of:",
       "explanation": {
         "steps": [
-          "Chairperson of the Appellate Tribunal: until 70 years (s.413 as originally enacted; retained under the Tribunal Reforms Act 2021).",
+          "Chairperson of the Appellate Tribunal: until 70 years (s.413 as enacted; TRA 2021 tenure provisions struck down in Madras Bar Association v. UoI, 2025 INSC 1330 — Chairperson 70 / Members 67 per MBA directions).",
           "Members of the Appellate Tribunal: 67 years."
         ],
         "formula_used": "NCLAT: Chairperson 70; Members 67",
@@ -6247,7 +6248,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.413; Tribunal Reforms Act 2021 s.5"
+          "note": "Companies Act 2013 s.413 (as enacted); Madras Bar Association v. UoI (MBA-IV/V directions; 2025 INSC 1330)"
         }
       ],
       "options": [
@@ -6307,7 +6308,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.411(1), s.413; Tribunal Reforms Act 2021 s.5"
+          "note": "Companies Act 2013 s.411(1), s.413 (as enacted); Madras Bar Association v. UoI (MBA-IV/V directions; 2025 INSC 1330)"
         }
       ],
       "options": [
@@ -7013,11 +7014,11 @@
       "stem": "Hira Pvt Ltd (not an OPC or small company) had turnover of ₹42 crore per its latest audited financial statements; its bank borrowings peaked at ₹28 crore during the year. It has filed all financial statements and annual returns on time. Is the auditor required to report on the adequacy and operating effectiveness of internal financial controls under s.143(3)(i)?",
       "explanation": {
         "steps": [
-          "Private-company exemption (13 June 2017, amended 2018): s.143(3)(i) does not apply to an OPC or small company, or to a private company with turnover < ₹50 crore per latest audited FS OR aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, provided it has not defaulted in filing under s.137 or s.92.",
-          "Turnover ₹42 crore < ₹50 crore → exempt."
+          "Private-company exemption (GSR 583(E), 13 June 2017, as corrected by corrigendum dated 13 July 2017): s.143(3)(i) does not apply to an OPC or small company, or to a private company with turnover < ₹50 crore per latest audited FS AND aggregate borrowings from banks/FIs/bodies corporate < ₹25 crore at any time in the year, provided it has not defaulted in filing under s.137 or s.92.",
+          "Turnover ₹42 crore < ₹50 crore, but borrowings ₹28 crore ≥ ₹25 crore → exemption fails → IFC reporting applies."
         ],
-        "formula_used": "IFC reporting exemption: private co with turnover < ₹50 cr OR borrowings < ₹25 cr (and no filing default)",
-        "trap": "The two tests are alternatives."
+        "formula_used": "IFC reporting exemption: private co with turnover < ₹50 cr AND borrowings < ₹25 cr (and no filing default)",
+        "trap": "The corrigendum replaced 'or' with 'and' — both tests must be met."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -7026,32 +7027,32 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Companies Act 2013 s.143(3)(i); MCA notification GSR 583(E) dated 13 June 2017 as amended"
+          "note": "Companies Act 2013 s.143(3)(i); MCA notification GSR 583(E) dated 13 June 2017 as corrected by corrigendum dated 13 July 2017"
         }
       ],
       "options": [
         {
-          "text": "Yes — both the turnover and borrowing conditions must be satisfied for exemption",
+          "text": "No — turnover of ₹42 crore below ₹50 crore alone exempts it, despite the ₹28 crore borrowings",
           "is_correct": false,
-          "error": "alternative conditions read as cumulative",
+          "error": "pre-corrigendum 'or' reading: tests treated as alternatives",
           "label": "A"
         },
         {
-          "text": "No — turnover below ₹50 crore alone exempts it, despite borrowings over ₹25 crore",
+          "text": "Yes — exemption needs turnover < ₹50 crore and borrowings < ₹25 crore; borrowings hit ₹28 crore",
           "is_correct": true,
           "error": null,
           "label": "B"
         },
         {
-          "text": "Yes — IFC reporting under s.143(3)(i) applies to every company without exception",
+          "text": "No — any private company is exempt from IFC reporting if all its filings are made on time",
           "is_correct": false,
-          "error": "private-company exemption overlooked",
+          "error": "filing condition treated as the whole test",
           "label": "C"
         },
         {
-          "text": "No — but only because it is not a small company or a one person company",
+          "text": "No — the exemption is lost only if bank borrowings exceed ₹50 crore; here they are ₹28 crore",
           "is_correct": false,
-          "error": "exemption basis misidentified",
+          "error": "borrowing threshold overstated",
           "label": "D"
         }
       ],

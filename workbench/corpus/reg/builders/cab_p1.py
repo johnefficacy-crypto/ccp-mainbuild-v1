@@ -33,12 +33,12 @@ def add_all(B):
            (cr(pbd - dep - fv), "brought-forward loss and arrear depreciation not set off"),
            (cr(pbd - fv - bfl - arr), "current-year Schedule II depreciation not deducted")],
           [f"Start: profit before depreciation {cr(pbd)}; deduct Schedule II depreciation {cr(dep)}.",
-           f"Exclude unrealised/notional fair-value gain {cr(fv)} (first proviso to s.123(1)).",
-           f"Set off carried-over loss {cr(bfl)} and depreciation not provided earlier {cr(arr)} (third proviso).",
+           f"Exclude unrealised/notional fair-value gain {cr(fv)} (proviso to s.123(1)(a)).",
+           f"Set off carried-over loss {cr(bfl)} and depreciation not provided earlier {cr(arr)} (fourth, i.e. last, proviso to s.123(1)).",
            f"Distributable = {cr(ans)}."],
           "Distributable = Profit − Sch II depreciation − unrealised gains − b/f losses − arrear depreciation",
           "All three adjustments are mandatory; transfer to reserves is optional and does not reduce the ceiling.",
-          verify_fact=True, ref="Companies Act 2013 s.123(1) and its provisos")
+          verify_fact=True, ref="Companies Act 2013 s.123(1)(a) proviso; s.123(1) fourth (last) proviso")
 
     pu, fr, loss = 40e7, 25e7, 1.5e7
     rates = [0.12, 0.15, 0.09]

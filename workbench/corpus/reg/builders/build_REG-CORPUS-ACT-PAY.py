@@ -870,18 +870,20 @@ add("fra_cersai", "L3",
     "statement", f"{FRA}, s.2(sa), s.19(1A)")
 
 extra = 32
-p21 = 5 * LAKH + 10000 * extra
+f21 = 5000 * extra
+assert f21 == 1.6 * LAKH
 add("fra_pen", "L3",
-    f"A factor defaults in filing assignment particulars under s.19; the default continues for {extra} days. Which option correctly states the maximum penalty on the factor and the payment window?",
-    f"{L(p21)}, imposed by the RBI; payable within 14 days of notice",
-    [(f"{L(5*LAKH + 5000*extra)}, imposed by the RBI; payable within 14 days of notice", "used ₹5,000/day"),
-     (f"{L(p21)}, imposed by CERSAI; payable within 30 days of notice", "wrong authority and PSS 30-day period"),
-     (f"{L(p21)}, imposed by the RBI; payable within 30 days of notice", "PSS Act 30-day period borrowed")],
-    ["s.21: default in filing under s.19 — company and every officer in default liable to penalty up to ₹5 lakh, plus up to ₹10,000 per day of continuing default.",
-     "Imposed by the RBI per s.22(2)–(4); payable within 14 days of the demand notice.",
-     f"₹5 lakh + ₹10,000 × {extra} = {L(p21)}."],
-    "₹5 lakh + ₹10,000 × days", "CERSAI keeps the register; the RBI penalises.",
-    "numerical", f"{FRA}, s.21, s.22")
+    f"A factor defaults in filing assignment particulars under s.19; the default continues for {extra} days. Which option correctly states the maximum sanction and who imposes it?",
+    f"Fine up to {L(f21)}, imposed by a court on the company and its officers in default",
+    [(f"Penalty up to {L(5*LAKH + 10000*extra)}, imposed by the RBI and payable within 14 days", "applies the s.22 RBI penalty, which covers only s.6 directions"),
+     (f"Fine up to {L(10000*extra)}, imposed by a court on the company and its officers in default", "used the ₹10,000/day rate of s.22"),
+     (f"Fine up to {L(f21)}, imposed by CERSAI on the company alone", "CERSAI keeps the register; officers in default are also liable")],
+    ["s.21: default in filing under s.19 the particulars of assignment/realisation — the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues.",
+     "It is a court-imposed fine; there is no lump-sum base.",
+     "The s.22 RBI penalty (₹5 lakh + ₹10,000/day, payable in 14 days) applies only to non-compliance with s.6 directions.",
+     f"₹5,000 × {extra} = {L(f21)}."],
+    "Max fine = ₹5,000 × days of default", "Do not mix the s.22 RBI penalty (s.6 directions) with the s.21 filing-default fine.",
+    "numerical", f"{FRA}, s.21 (contrast s.22)")
 
 add("fra_reg", "L3",
     "Consider the following under the Factoring Regulation Act:\n\n1. A Government company doing factoring must obtain a certificate of registration under s.3.\n2. If a factor fails to comply with an RBI direction under s.6(2), the RBI may, after hearing it, prohibit it from undertaking factoring business.\n3. Provisions of Chapter IIIB of the RBI Act applicable to registered NBFCs apply mutatis mutandis to a factor registered under s.3.\n\nWhich of the statements is/are correct?",
@@ -930,27 +932,33 @@ intr = bal * ((1 + rate / 12) ** mo - 1)
 simple = bal * rate * mo / 12
 atbank = bal * ((1 + br / 12) ** mo - 1)
 assert abs(rate - 0.2025) < 1e-12
-add("fra_asg", "L4", CASE_F + f"\n\nNarmada pays the {L(bal)} due exactly {mo} months after the appointed day under the MSMED Act. Taking the RBI bank rate as {br*100:.2f}% (given), the interest for delay is receivable by, and amounts to (nearest rupee):",
-    f"Sutlej, {R(intr)}",
-    [(f"Kaveri, {R(intr)}", "interest belongs to the assignee under s.14(2)"),
-     (f"Sutlej, {R(simple)}", "simple interest; MSMED Act requires monthly compounding"),
-     (f"Sutlej, {R(atbank)}", "bank rate used instead of three times the bank rate")],
-    ["s.14: where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act; the assignee is entitled to interest for delay.",
+intr_full = inv * ((1 + rate / 12) ** mo - 1)
+assert round(intr) == 180194
+add("fra_asg", "L4", CASE_F + f"\n\nNarmada pays the {L(bal)} due exactly {mo} months after the appointed day under the MSMED Act. Taking the RBI bank rate as {br*100:.2f}% (given), which statement about the interest for delay (nearest rupee) is correct?",
+    f"Sutlej recovers {R(intr)} and must pay it over to Kaveri",
+    [(f"Kaveri recovers {R(intr_full)} directly from Narmada", "wrong recovery route and interest on the full invoice incl. advance"),
+     (f"Sutlej recovers {R(simple)} and must pay it over to Kaveri", "simple interest; MSMED Act requires monthly compounding"),
+     (f"Sutlej recovers {R(atbank)} and must pay it over to Kaveri", "bank rate used instead of three times the bank rate")],
+    ["s.14(1): where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act.",
+     "s.14(2): the assignee is entitled to receive the delay interest, shall recover it under the MSMED Act, and shall pay such interest to the micro or small enterprise.",
      f"MSMED s.16: compound interest with monthly rests at 3 × bank rate = {rate*100:.2f}% p.a.",
      f"Interest = {inr(bal)} × [(1 + {rate:.4f}/12)^{mo} − 1] = {R(intr)}."],
-    "I = P[(1 + 3·BR/12)^n − 1]", "Monthly rests + three times bank rate; payee is the factor.",
-    "case", f"{FRA}, s.14; MSMED Act 2006, s.16", group="ACTP-CASE-KAVERI")
+    "I = P[(1 + 3·BR/12)^n − 1]", "The factor recovers the interest, but it passes through to the MSE assignor under s.14(2).",
+    "case", f"{FRA}, s.14(2); MSMED Act 2006, s.16", group="ACTP-CASE-KAVERI")
 
 extra = 15
+f21c = 5000 * extra
+assert f21c == 75000
 add("fra_cersai", "L4", CASE_F + f"\n\nSutlej fails to register the particulars of the assignment with the Central Registry within the prescribed time, and the default continues for {extra} days. Which statement is correct?",
-    f"Sutlej and its defaulting officers face up to {L(5*LAKH+10000*extra)} from RBI",
+    f"Sutlej and its defaulting officers face a court fine up to {R(f21c)}",
     [("Narmada's TReDS platform should have filed it, so Sutlej is not liable", "not a TReDS deal; s.19(1A) inapplicable"),
-     (f"Only Sutlej's officers face up to {L(5*LAKH+10000*extra)} from CERSAI", "company also liable; RBI, not CERSAI, imposes"),
-     (f"Sutlej and its defaulting officers face up to {L(5*LAKH+5000*extra)} from RBI", "used ₹5,000/day")],
+     (f"Sutlej and its officers face an RBI penalty up to {L(5*LAKH+10000*extra)}", "s.22 RBI penalty covers only s.6 directions"),
+     (f"Only Sutlej's officers face a court fine up to {R(10000*extra)}", "company also liable; used ₹10,000/day")],
     ["Bilateral (non-TReDS) deal → Sutlej must file under s.19(1).",
-     "s.21: company and every officer in default — up to ₹5 lakh plus up to ₹10,000 per day of continuing default, imposed by the RBI.",
-     f"₹5 lakh + ₹10,000 × {extra} = {L(5*LAKH+10000*extra)}."],
-    "₹5 lakh + ₹10,000 × days", "The TReDS filing mechanism applies only to TReDS-financed receivables.",
+     "s.21: the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues (court-imposed).",
+     f"₹5,000 × {extra} = {R(f21c)}.",
+     "The s.22 RBI penalty (₹5 lakh + ₹10,000/day) applies only to non-compliance with s.6 directions."],
+    "Max fine = ₹5,000 × days of default", "TReDS filing applies only to TReDS-financed receivables; s.22 is not the filing-default provision.",
     "case", f"{FRA}, s.19, s.21", group="ACTP-CASE-KAVERI")
 
 # =====================================================================================

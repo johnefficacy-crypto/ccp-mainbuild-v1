@@ -436,28 +436,29 @@ Which of the following are correct under s.14?
 
 ## ACTO-018 · L3 · hard · FEMA — adjudication and appeals ⚠
 
-Match the order under FEMA (Column A) with the forum to which the first appeal lies (Column B):
+Match the matter under FEMA (Column A) with the authority that hears it (Column B):
 
-| Column A — order passed by | Column B — appeal forum |
+| Column A — matter | Column B — authority |
 |---|---|
-| P. Deputy Director of Enforcement as adjudicating authority | 1. High Court |
-| Q. Joint Director of Enforcement as adjudicating authority | 2. Special Director (Appeals) |
-| R. Special Director (Appeals) | 3. Appellate Tribunal |
-| S. Appellate Tribunal (question of law) | 4. Appellate Tribunal |
+| P. Appeal against an order of a Deputy Director of Enforcement as adjudicating authority | 1. High Court |
+| Q. Appeal against an order of the Special Director (Appeals) | 2. Special Director (Appeals) |
+| R. Appeal against an order of the Appellate Tribunal on a question of law | 3. Appellate Tribunal |
+| S. Complaint in writing by an authorised officer alleging a contravention | 4. Adjudicating authority |
 
-- **A.** P-2, Q-2, R-3, S-1  _(error: all Enforcement orders sent to Special Director (Appeals))_
-- **B.** P-2, Q-3, R-4, S-1 ✅
-- **C.** P-2, Q-3, R-1, S-4  _(error: Special Director's orders sent straight to High Court)_
-- **D.** P-3, Q-2, R-4, S-1  _(error: Special Director forum assigned to the wrong rank)_
+- **A.** P-2, Q-1, R-3, S-4  _(error: Special Director's order sent straight to the High Court)_
+- **B.** P-2, Q-3, R-1, S-4 ✅
+- **C.** P-4, Q-3, R-1, S-2  _(error: appeal treated as adjudication; complaint sent to Special Director)_
+- **D.** P-3, Q-2, R-1, S-4  _(error: Deputy Director's order sent straight to the Tribunal)_
 
 **Working**
 
-1. s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).
-2. s.19: orders of other adjudicating authorities and of the Special Director (Appeals) → Appellate Tribunal.
-3. s.35: Appellate Tribunal orders → High Court on questions of law.
+1. s.16(3): the adjudicating authority holds an inquiry only on a written complaint by an authorised officer.
+2. s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).
+3. s.19: orders of the Special Director (Appeals) (and of other adjudicating authorities) → Appellate Tribunal.
+4. s.35: Appellate Tribunal orders → High Court on questions of law.
 
-**Formula:** AD/DD → SD(A) → AT → HC; higher AA → AT → HC  
-**Trap:** Rank of the adjudicating officer decides the first forum.
+**Formula:** Complaint → AA → SD(A) (for AD/DD) → AT → HC  
+**Trap:** Each stage has its own forum; none can be skipped.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -830,18 +831,19 @@ GlobalSoft Inc. agrees to acquire StartX Technologies Pvt Ltd for ₹2,400 crore
 
 ## ACTO-033 · L2 · medium · Competition Act — combinations and merger control (s.5, s.6) ⚠
 
-Notice of a combination is filed with the CCI on 2 Feb 2026 (board approval was on 18 Jan 2026). The CCI neither passes an order nor stops the clock. The standstill period and the date it runs to (notice date + period) are:
+Notice of a combination is filed with the CCI on 2 Feb 2026 (board approval was on 18 Jan 2026). The CCI forms its prima facie opinion under s.29(1B) within 30 days, then passes no further order and does not stop the clock. The statutory standstill period under s.6(2A) and the date it runs to (notice date + period) are:
 
 - **A.** 210 days — up to 31 Aug 2026  _(error: pre-2023 outer limit of 210 days)_
 - **B.** 150 days — up to 2 Jul 2026 ✅
-- **C.** 30 days — up to 4 Mar 2026  _(error: prima facie opinion window treated as standstill)_
+- **C.** 30 days — up to 4 Mar 2026  _(error: 30-day prima facie window treated as standstill, though opinion was formed)_
 - **D.** 150 days — up to 17 Jun 2026  _(error: period counted from board approval)_
 
 **Working**
 
 1. s.6(2A) as amended in 2023: no combination shall come into effect until 150 days have passed from the date of notice or the CCI passes an order, whichever is earlier (earlier 210 days).
-2. s.31(11): if no order is passed within that period, the combination is deemed approved.
-3. 2 Feb 2026 + 150 days = 2 Jul 2026.
+2. s.29(1B) + proviso to s.31(1): deemed approval after 30 days applies only if NO prima facie opinion is formed; here one was formed.
+3. Substituted s.31(6) (2023; old s.31(7)-(12) omitted): if no order is passed within 150 days, the combination is deemed approved.
+4. 2 Feb 2026 + 150 days = 2 Jul 2026.
 
 **Formula:** Standstill = 150 days from notice (2023)  
 **Trap:** Trigger is the notice date, not board approval.
@@ -1320,7 +1322,7 @@ Under the LLP Act, an LLP may be wound up compulsorily by:
 **Working**
 
 1. s.63: winding up may be voluntary or by the Tribunal.
-2. Tribunal = NCLT (s.2(1)(x) read with Companies Act, 2013).
+2. Tribunal = NCLT constituted under s.408 of the Companies Act, 2013 (LLP Act s.2(1)(u)).
 
 **Formula:** Compulsory winding up → NCLT  
 **Trap:** NCLAT hears appeals; High Courts no longer wind up LLPs.

@@ -3723,15 +3723,16 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "A factor defaults in filing assignment particulars under s.19; the default continues for 32 days. Which option correctly states the maximum penalty on the factor and the payment window?",
+      "stem": "A factor defaults in filing assignment particulars under s.19; the default continues for 32 days. Which option correctly states the maximum sanction and who imposes it?",
       "explanation": {
         "steps": [
-          "s.21: default in filing under s.19 — company and every officer in default liable to penalty up to ₹5 lakh, plus up to ₹10,000 per day of continuing default.",
-          "Imposed by the RBI per s.22(2)–(4); payable within 14 days of the demand notice.",
-          "₹5 lakh + ₹10,000 × 32 = ₹8.20 lakh."
+          "s.21: default in filing under s.19 the particulars of assignment/realisation — the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues.",
+          "It is a court-imposed fine; there is no lump-sum base.",
+          "The s.22 RBI penalty (₹5 lakh + ₹10,000/day, payable in 14 days) applies only to non-compliance with s.6 directions.",
+          "₹5,000 × 32 = ₹1.60 lakh."
         ],
-        "formula_used": "₹5 lakh + ₹10,000 × days",
-        "trap": "CERSAI keeps the register; the RBI penalises."
+        "formula_used": "Max fine = ₹5,000 × days of default",
+        "trap": "Do not mix the s.22 RBI penalty (s.6 directions) with the s.21 filing-default fine."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -3740,30 +3741,30 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Factoring Regulation Act, 2011, s.21, s.22"
+          "note": "Factoring Regulation Act, 2011, s.21 (contrast s.22)"
         }
       ],
       "options": [
         {
-          "text": "₹8.20 lakh, imposed by the RBI; payable within 30 days of notice",
+          "text": "Fine up to ₹1.60 lakh, imposed by CERSAI on the company alone",
           "is_correct": false,
-          "error": "PSS Act 30-day period borrowed",
+          "error": "CERSAI keeps the register; officers in default are also liable",
           "label": "A"
         },
         {
-          "text": "₹6.60 lakh, imposed by the RBI; payable within 14 days of notice",
+          "text": "Penalty up to ₹8.20 lakh, imposed by the RBI and payable within 14 days",
           "is_correct": false,
-          "error": "used ₹5,000/day",
+          "error": "applies the s.22 RBI penalty, which covers only s.6 directions",
           "label": "B"
         },
         {
-          "text": "₹8.20 lakh, imposed by CERSAI; payable within 30 days of notice",
+          "text": "Fine up to ₹3.20 lakh, imposed by a court on the company and its officers in default",
           "is_correct": false,
-          "error": "wrong authority and PSS 30-day period",
+          "error": "used the ₹10,000/day rate of s.22",
           "label": "C"
         },
         {
-          "text": "₹8.20 lakh, imposed by the RBI; payable within 14 days of notice",
+          "text": "Fine up to ₹1.60 lakh, imposed by a court on the company and its officers in default",
           "is_correct": true,
           "error": null,
           "label": "D"
@@ -3970,15 +3971,16 @@
       "difficulty": "hard",
       "question_kind": "case",
       "stimulus_group": "ACTP-CASE-KAVERI",
-      "stem": "**Case — Kaveri Castings (a micro enterprise) and Sutlej Factors Ltd (an NBFC).** Kaveri supplied goods worth ₹40 lakh to Narmada Motors Ltd and on 1 March 2027 assigned the invoice by written agreement to Sutlej, which paid 80% up-front. Narmada had paid Kaveri an advance of ₹5 lakh against this supply on 1 February 2027. Sutlej's notice of assignment, carrying Kaveri's express authority, reached Narmada on 10 March 2027. On 20 March 2027 Narmada nevertheless paid ₹8 lakh to Kaveri. The financing was arranged bilaterally, not through a TReDS.\n\nNarmada pays the ₹35.00 lakh due exactly 3 months after the appointed day under the MSMED Act. Taking the RBI bank rate as 6.75% (given), the interest for delay is receivable by, and amounts to (nearest rupee):",
+      "stem": "**Case — Kaveri Castings (a micro enterprise) and Sutlej Factors Ltd (an NBFC).** Kaveri supplied goods worth ₹40 lakh to Narmada Motors Ltd and on 1 March 2027 assigned the invoice by written agreement to Sutlej, which paid 80% up-front. Narmada had paid Kaveri an advance of ₹5 lakh against this supply on 1 February 2027. Sutlej's notice of assignment, carrying Kaveri's express authority, reached Narmada on 10 March 2027. On 20 March 2027 Narmada nevertheless paid ₹8 lakh to Kaveri. The financing was arranged bilaterally, not through a TReDS.\n\nNarmada pays the ₹35.00 lakh due exactly 3 months after the appointed day under the MSMED Act. Taking the RBI bank rate as 6.75% (given), which statement about the interest for delay (nearest rupee) is correct?",
       "explanation": {
         "steps": [
-          "s.14: where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act; the assignee is entitled to interest for delay.",
+          "s.14(1): where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act.",
+          "s.14(2): the assignee is entitled to receive the delay interest, shall recover it under the MSMED Act, and shall pay such interest to the micro or small enterprise.",
           "MSMED s.16: compound interest with monthly rests at 3 × bank rate = 20.25% p.a.",
           "Interest = 35,00,000 × [(1 + 0.2025/12)^3 − 1] = ₹1,80,194."
         ],
         "formula_used": "I = P[(1 + 3·BR/12)^n − 1]",
-        "trap": "Monthly rests + three times bank rate; payee is the factor."
+        "trap": "The factor recovers the interest, but it passes through to the MSE assignor under s.14(2)."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -3987,30 +3989,30 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Factoring Regulation Act, 2011, s.14; MSMED Act 2006, s.16"
+          "note": "Factoring Regulation Act, 2011, s.14(2); MSMED Act 2006, s.16"
         }
       ],
       "options": [
         {
-          "text": "Sutlej, ₹59,395",
+          "text": "Sutlej recovers ₹59,395 and must pay it over to Kaveri",
           "is_correct": false,
           "error": "bank rate used instead of three times the bank rate",
           "label": "A"
         },
         {
-          "text": "Kaveri, ₹1,80,194",
+          "text": "Kaveri recovers ₹2,05,936 directly from Narmada",
           "is_correct": false,
-          "error": "interest belongs to the assignee under s.14(2)",
+          "error": "wrong recovery route and interest on the full invoice incl. advance",
           "label": "B"
         },
         {
-          "text": "Sutlej, ₹1,80,194",
+          "text": "Sutlej recovers ₹1,80,194 and must pay it over to Kaveri",
           "is_correct": true,
           "error": null,
           "label": "C"
         },
         {
-          "text": "Sutlej, ₹1,77,188",
+          "text": "Sutlej recovers ₹1,77,188 and must pay it over to Kaveri",
           "is_correct": false,
           "error": "simple interest; MSMED Act requires monthly compounding",
           "label": "D"
@@ -4036,11 +4038,12 @@
       "explanation": {
         "steps": [
           "Bilateral (non-TReDS) deal → Sutlej must file under s.19(1).",
-          "s.21: company and every officer in default — up to ₹5 lakh plus up to ₹10,000 per day of continuing default, imposed by the RBI.",
-          "₹5 lakh + ₹10,000 × 15 = ₹6.50 lakh."
+          "s.21: the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues (court-imposed).",
+          "₹5,000 × 15 = ₹75,000.",
+          "The s.22 RBI penalty (₹5 lakh + ₹10,000/day) applies only to non-compliance with s.6 directions."
         ],
-        "formula_used": "₹5 lakh + ₹10,000 × days",
-        "trap": "The TReDS filing mechanism applies only to TReDS-financed receivables."
+        "formula_used": "Max fine = ₹5,000 × days of default",
+        "trap": "TReDS filing applies only to TReDS-financed receivables; s.22 is not the filing-default provision."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -4054,13 +4057,13 @@
       ],
       "options": [
         {
-          "text": "Only Sutlej's officers face up to ₹6.50 lakh from CERSAI",
+          "text": "Sutlej and its officers face an RBI penalty up to ₹6.50 lakh",
           "is_correct": false,
-          "error": "company also liable; RBI, not CERSAI, imposes",
+          "error": "s.22 RBI penalty covers only s.6 directions",
           "label": "A"
         },
         {
-          "text": "Sutlej and its defaulting officers face up to ₹6.50 lakh from RBI",
+          "text": "Sutlej and its defaulting officers face a court fine up to ₹75,000",
           "is_correct": true,
           "error": null,
           "label": "B"
@@ -4072,9 +4075,9 @@
           "label": "C"
         },
         {
-          "text": "Sutlej and its defaulting officers face up to ₹5.75 lakh from RBI",
+          "text": "Only Sutlej's officers face a court fine up to ₹1,50,000",
           "is_correct": false,
-          "error": "used ₹5,000/day",
+          "error": "company also liable; used ₹10,000/day",
           "label": "D"
         }
       ],

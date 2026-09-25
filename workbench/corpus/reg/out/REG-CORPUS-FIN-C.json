@@ -4526,7 +4526,7 @@
       "difficulty": "medium",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Under the Income-tax Act, 2025, compute the tax payable for tax year 2026-27 by Mr Devansh, a resident individual under the new regime whose only income is a salary of ₹18,50,000. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.",
+      "stem": "Under the Income-tax Act, 2025, compute the tax payable for tax year 2026-27 by Mr Devansh, a resident individual under the new regime whose only income is a salary of ₹18,50,000. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000; health and education cess 4% on tax.",
       "explanation": {
         "steps": [
           "Total income = 18,50,000 − 75,000 = 17,75,000",
@@ -4588,14 +4588,15 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Under the Income-tax Act, 2025, two resident salaried individuals opt for the new regime for tax year 2026-27: Ms Esha (salary ₹12,60,000) and Mr Farhan (salary ₹12,90,000), with no other income. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.\n\nTheir tax liabilities respectively are:",
+      "stem": "Under the Income-tax Act, 2025, two resident salaried individuals opt for the new regime for tax year 2026-27: Ms Esha (salary ₹12,60,000) and Mr Farhan (salary ₹12,90,000), with no other income. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000; health and education cess 4% on tax. Where total income exceeds ₹12,00,000, marginal relief limits the tax (before cess) to the amount by which total income exceeds ₹12,00,000.\n\nTheir tax liabilities respectively are:",
       "explanation": {
         "steps": [
           "Esha: total income = 11,85,000 ≤ 12,00,000 → tax 58,500 fully rebated → Nil",
-          "Farhan: total income = 12,15,000 > 12,00,000 → tax = 60,000 + 15% × 15,000 = 62,250; no rebate; + 4% cess = ₹64,740"
+          "Farhan: total income = 12,15,000 > 12,00,000 → no rebate; slab tax = 60,000 + 15% × 15,000 = 62,250",
+          "Marginal relief: tax limited to excess over 12,00,000 = 15,000 (< 62,250); + 4% cess = ₹15,600"
         ],
-        "formula_used": "Rebate only if total income ≤ threshold (as given)",
-        "trap": "A ₹30,000 salary difference creates a ₹64,740 tax difference when marginal relief is ignored."
+        "formula_used": "Rebate if total income ≤ ₹12 lakh; above it, tax ≤ (Total income − ₹12 lakh) (marginal relief)",
+        "trap": "Marginal relief removes the cliff: without it Farhan would pay ₹64,740 on income just ₹15,000 over the limit."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -4604,30 +4605,30 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text (rebate with marginal relief, s.156)"
         }
       ],
       "options": [
         {
-          "text": "₹71,760 and ₹76,440",
-          "is_correct": false,
-          "error": "standard deduction ignored for both",
-          "label": "A"
-        },
-        {
           "text": "Nil and ₹2,340",
           "is_correct": false,
           "error": "rebate also given to Farhan although his total income exceeds ₹12,00,000",
-          "label": "B"
+          "label": "A"
         },
         {
           "text": "Nil and ₹64,740",
+          "is_correct": false,
+          "error": "marginal relief ignored — full slab tax charged on income just above ₹12,00,000",
+          "label": "B"
+        },
+        {
+          "text": "Nil and ₹15,600",
           "is_correct": true,
           "error": null,
           "label": "C"
         },
         {
-          "text": "Nil and ₹62,250",
+          "text": "Nil and ₹15,000",
           "is_correct": false,
           "error": "cess omitted on Farhan's tax",
           "label": "D"

@@ -239,10 +239,10 @@ def add_all(B):
            ("2 and 3 only", "overlooks the three-month ratification window"),
            ("1 and 3 only", "overlooks the voting bar on interested members")],
           ["s.188(3): ratification within three months; else voidable at the Board's option.",
-           "s.188(1) fourth proviso: related-party members cannot vote on that resolution (exemption for companies where 90% or more members are relatives of promoters or related parties).",
-           "Explanation (b)/fifth proviso: ordinary course + arm's length transactions are outside s.188(1)."],
+           "s.188(1) second proviso: related-party members cannot vote on that resolution; third proviso exempts companies where 90% or more members are relatives of promoters or related parties.",
+           "s.188(1) fourth proviso: ordinary course + arm's length transactions are outside s.188(1) (Explanation (b) defines arm's length)."],
           "s.188(1) provisos; s.188(3)", "All three conditions of s.188 are standard traps.",
-          kind="statement", verify_fact=True, ref="Companies Act 2013 s.188(1), (3)")
+          kind="statement", verify_fact=True, ref="Companies Act 2013 s.188(1) second, third and fourth provisos; s.188(3)")
 
     B.add(M["rpt"], "L1",
           "Which of the following is NOT one of the categories of contracts/arrangements listed in s.188(1)?",

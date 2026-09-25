@@ -1,7 +1,7 @@
 """ECO part 1 — National income accounting (48 Q: L1 9, L2 14, L3 13, L4 12)."""
 from eco_common import mk, cr, n, tbl, items, stmts, inr, R, pct
 
-SNA = "SNA 2008 / MoSPI national-accounts concepts (2011-12 series methodology)."
+SNA = "SNA 2008 / MoSPI national accounts (base 2022-23 series, released Feb 2026)."
 
 
 def add_all(B):

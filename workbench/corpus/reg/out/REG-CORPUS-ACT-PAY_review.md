@@ -1472,21 +1472,22 @@ Which of the statements is/are correct?
 
 ## ACTP-061 · L3 · hard · Factoring Act — penalties ⚠
 
-A factor defaults in filing assignment particulars under s.19; the default continues for 32 days. Which option correctly states the maximum penalty on the factor and the payment window?
+A factor defaults in filing assignment particulars under s.19; the default continues for 32 days. Which option correctly states the maximum sanction and who imposes it?
 
-- **A.** ₹8.20 lakh, imposed by the RBI; payable within 30 days of notice  _(error: PSS Act 30-day period borrowed)_
-- **B.** ₹6.60 lakh, imposed by the RBI; payable within 14 days of notice  _(error: used ₹5,000/day)_
-- **C.** ₹8.20 lakh, imposed by CERSAI; payable within 30 days of notice  _(error: wrong authority and PSS 30-day period)_
-- **D.** ₹8.20 lakh, imposed by the RBI; payable within 14 days of notice ✅
+- **A.** Fine up to ₹1.60 lakh, imposed by CERSAI on the company alone  _(error: CERSAI keeps the register; officers in default are also liable)_
+- **B.** Penalty up to ₹8.20 lakh, imposed by the RBI and payable within 14 days  _(error: applies the s.22 RBI penalty, which covers only s.6 directions)_
+- **C.** Fine up to ₹3.20 lakh, imposed by a court on the company and its officers in default  _(error: used the ₹10,000/day rate of s.22)_
+- **D.** Fine up to ₹1.60 lakh, imposed by a court on the company and its officers in default ✅
 
 **Working**
 
-1. s.21: default in filing under s.19 — company and every officer in default liable to penalty up to ₹5 lakh, plus up to ₹10,000 per day of continuing default.
-2. Imposed by the RBI per s.22(2)–(4); payable within 14 days of the demand notice.
-3. ₹5 lakh + ₹10,000 × 32 = ₹8.20 lakh.
+1. s.21: default in filing under s.19 the particulars of assignment/realisation — the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues.
+2. It is a court-imposed fine; there is no lump-sum base.
+3. The s.22 RBI penalty (₹5 lakh + ₹10,000/day, payable in 14 days) applies only to non-compliance with s.6 directions.
+4. ₹5,000 × 32 = ₹1.60 lakh.
 
-**Formula:** ₹5 lakh + ₹10,000 × days  
-**Trap:** CERSAI keeps the register; the RBI penalises.
+**Formula:** Max fine = ₹5,000 × days of default  
+**Trap:** Do not mix the s.22 RBI penalty (s.6 directions) with the s.21 filing-default fine.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1575,21 +1576,22 @@ What is the legal position of the ₹8 lakh that Kaveri received on 20 March 202
 
 **Case — Kaveri Castings (a micro enterprise) and Sutlej Factors Ltd (an NBFC).** Kaveri supplied goods worth ₹40 lakh to Narmada Motors Ltd and on 1 March 2027 assigned the invoice by written agreement to Sutlej, which paid 80% up-front. Narmada had paid Kaveri an advance of ₹5 lakh against this supply on 1 February 2027. Sutlej's notice of assignment, carrying Kaveri's express authority, reached Narmada on 10 March 2027. On 20 March 2027 Narmada nevertheless paid ₹8 lakh to Kaveri. The financing was arranged bilaterally, not through a TReDS.
 
-Narmada pays the ₹35.00 lakh due exactly 3 months after the appointed day under the MSMED Act. Taking the RBI bank rate as 6.75% (given), the interest for delay is receivable by, and amounts to (nearest rupee):
+Narmada pays the ₹35.00 lakh due exactly 3 months after the appointed day under the MSMED Act. Taking the RBI bank rate as 6.75% (given), which statement about the interest for delay (nearest rupee) is correct?
 
-- **A.** Sutlej, ₹59,395  _(error: bank rate used instead of three times the bank rate)_
-- **B.** Kaveri, ₹1,80,194  _(error: interest belongs to the assignee under s.14(2))_
-- **C.** Sutlej, ₹1,80,194 ✅
-- **D.** Sutlej, ₹1,77,188  _(error: simple interest; MSMED Act requires monthly compounding)_
+- **A.** Sutlej recovers ₹59,395 and must pay it over to Kaveri  _(error: bank rate used instead of three times the bank rate)_
+- **B.** Kaveri recovers ₹2,05,936 directly from Narmada  _(error: wrong recovery route and interest on the full invoice incl. advance)_
+- **C.** Sutlej recovers ₹1,80,194 and must pay it over to Kaveri ✅
+- **D.** Sutlej recovers ₹1,77,188 and must pay it over to Kaveri  _(error: simple interest; MSMED Act requires monthly compounding)_
 
 **Working**
 
-1. s.14: where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act; the assignee is entitled to interest for delay.
-2. MSMED s.16: compound interest with monthly rests at 3 × bank rate = 20.25% p.a.
-3. Interest = 35,00,000 × [(1 + 0.2025/12)^3 − 1] = ₹1,80,194.
+1. s.14(1): where the assignor is a micro/small enterprise, the debtor's liability is subject to ss.15–17 MSMED Act.
+2. s.14(2): the assignee is entitled to receive the delay interest, shall recover it under the MSMED Act, and shall pay such interest to the micro or small enterprise.
+3. MSMED s.16: compound interest with monthly rests at 3 × bank rate = 20.25% p.a.
+4. Interest = 35,00,000 × [(1 + 0.2025/12)^3 − 1] = ₹1,80,194.
 
 **Formula:** I = P[(1 + 3·BR/12)^n − 1]  
-**Trap:** Monthly rests + three times bank rate; payee is the factor.
+**Trap:** The factor recovers the interest, but it passes through to the MSE assignor under s.14(2).
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1602,19 +1604,20 @@ Narmada pays the ₹35.00 lakh due exactly 3 months after the appointed day unde
 
 Sutlej fails to register the particulars of the assignment with the Central Registry within the prescribed time, and the default continues for 15 days. Which statement is correct?
 
-- **A.** Only Sutlej's officers face up to ₹6.50 lakh from CERSAI  _(error: company also liable; RBI, not CERSAI, imposes)_
-- **B.** Sutlej and its defaulting officers face up to ₹6.50 lakh from RBI ✅
+- **A.** Sutlej and its officers face an RBI penalty up to ₹6.50 lakh  _(error: s.22 RBI penalty covers only s.6 directions)_
+- **B.** Sutlej and its defaulting officers face a court fine up to ₹75,000 ✅
 - **C.** Narmada's TReDS platform should have filed it, so Sutlej is not liable  _(error: not a TReDS deal; s.19(1A) inapplicable)_
-- **D.** Sutlej and its defaulting officers face up to ₹5.75 lakh from RBI  _(error: used ₹5,000/day)_
+- **D.** Only Sutlej's officers face a court fine up to ₹1,50,000  _(error: company also liable; used ₹10,000/day)_
 
 **Working**
 
 1. Bilateral (non-TReDS) deal → Sutlej must file under s.19(1).
-2. s.21: company and every officer in default — up to ₹5 lakh plus up to ₹10,000 per day of continuing default, imposed by the RBI.
-3. ₹5 lakh + ₹10,000 × 15 = ₹6.50 lakh.
+2. s.21: the company and every officer in default are punishable with fine up to ₹5,000 for every day the default continues (court-imposed).
+3. ₹5,000 × 15 = ₹75,000.
+4. The s.22 RBI penalty (₹5 lakh + ₹10,000/day) applies only to non-compliance with s.6 directions.
 
-**Formula:** ₹5 lakh + ₹10,000 × days  
-**Trap:** The TReDS filing mechanism applies only to TReDS-financed receivables.
+**Formula:** Max fine = ₹5,000 × days of default  
+**Trap:** TReDS filing applies only to TReDS-financed receivables; s.22 is not the filing-default provision.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 

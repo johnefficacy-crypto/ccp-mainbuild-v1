@@ -583,7 +583,7 @@
       "stem": "Greenleaf Agro, not registered with SEBI, pools ₹120 crore from the public for a teak-plantation scheme that promises returns from sale of timber. Under section 11AA, the scheme:",
       "explanation": {
         "steps": [
-          "s.11AA(2A) (2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.",
+          "Proviso to s.11AA(1) (inserted 2014): any pooling of funds under a scheme not registered with the Board, involving a corpus of ₹100 crore or more, is deemed to be a collective investment scheme.",
           "Corpus ₹120 crore ≥ ₹100 crore; plantation schemes are not in the s.11AA(3) exclusions.",
           "So it is a deemed CIS and requires registration under s.12(1B)."
         ],
@@ -597,7 +597,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Securities and Exchange Board of India Act, 1992, s.11AA(2A) (2014)"
+          "note": "Securities and Exchange Board of India Act, 1992, s.11AA(1) proviso (inserted 2014)"
         }
       ],
       "options": [
@@ -1201,10 +1201,10 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "An AO order dated 12 January 2026 imposed a penalty that SEBI considers erroneous and not in the interest of the securities market. The noticee's appeal was disposed of by SAT on 20 March 2026. Under the proviso to section 15-I(3), SEBI's revisional power could be exercised only up to:",
+      "stem": "An AO order dated 12 January 2026 imposed a penalty that SEBI considers erroneous and inadequate; SEBI wishes to enhance it under section 15-I(3). The noticee's appeal was disposed of by SAT on 20 March 2026. Reading the proviso as: the power lapses three months after the AO order or on disposal of the s.15T appeal, whichever is earlier, SEBI's power could be exercised only up to:",
       "explanation": {
         "steps": [
-          "s.15-I(3): the Board may call for records and revise an AO order that is erroneous and not in the interest of the market (after hearing).",
+          "s.15-I(3): the Board may call for records and, if the AO order is erroneous and not in the interest of the market, enhance the penalty (after hearing).",
           "The power cannot be exercised after three months from the AO order or the disposal of appeal under s.15T, whichever is earlier.",
           "Earlier of 12 April 2026 and 20 March 2026 = 20 March 2026."
         ],
@@ -1266,11 +1266,12 @@
       "stem": "**Case — Kestrel Stock Broking Ltd (fictional)**\n\nSEBI's inspection of Kestrel, a registered stock broker, found:\n\n| Finding | Detail |\n|---|---|\n| (a) Contract notes not issued | Trades in securities of aggregate value ₹36 lakh |\n| (b) Brokerage charged above the permitted limit | Excess brokerage ₹2.8 lakh |\n| (c) Information called for by SEBI not furnished | Failure continued 52 days |\n\nAn adjudicating officer passed a penalty order; Kestrel received a copy on 23 February 2026. Kestrel's appeal reached SAT on 30 March 2026. SAT's final decision was communicated to Kestrel on 2 November 2026.\n\nFor finding (a) alone, the **maximum** penalty under section 15F(a) is:",
       "explanation": {
         "steps": [
-          "s.15F(a): failure to issue contract notes — penalty not less than ₹1 lakh, extending to five times the value of securities for which contract notes were required.",
-          "5 × ₹36 lakh = ₹1.8 crore."
+          "s.15F(a) (as substituted by the Securities Laws (Amendment) Act, 2014): failure to issue contract notes — penalty not less than ₹1 lakh, which may extend to ₹1 crore.",
+          "The value of securities (₹36 lakh) no longer sets the ceiling; maximum = ₹1 crore.",
+          "The pre-2014 limb (five times the value) would have given ₹1.8 crore."
         ],
-        "formula_used": "Max = 5 × value of securities",
-        "trap": "Contract-note penalty is value-linked, not day-linked."
+        "formula_used": "s.15F(a): ₹1 lakh ≤ penalty ≤ ₹1 crore",
+        "trap": "The '5 × value' limb was removed in 2014."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -1279,14 +1280,14 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Securities and Exchange Board of India Act, 1992, s.15F(a)"
+          "note": "Securities and Exchange Board of India Act, 1992, s.15F(a) (as substituted 2014)"
         }
       ],
       "options": [
         {
-          "text": "₹1 crore",
+          "text": "₹1.8 crore",
           "is_correct": false,
-          "error": "₹1 crore daily-default cap applied to contract notes",
+          "error": "pre-2014 text: five times the value of securities",
           "label": "A"
         },
         {
@@ -1302,7 +1303,7 @@
           "label": "C"
         },
         {
-          "text": "₹1.8 crore",
+          "text": "₹1 crore",
           "is_correct": true,
           "error": null,
           "label": "D"
@@ -1327,13 +1328,13 @@
       "stem": "**Case — Kestrel Stock Broking Ltd (fictional)**\n\nSEBI's inspection of Kestrel, a registered stock broker, found:\n\n| Finding | Detail |\n|---|---|\n| (a) Contract notes not issued | Trades in securities of aggregate value ₹36 lakh |\n| (b) Brokerage charged above the permitted limit | Excess brokerage ₹2.8 lakh |\n| (c) Information called for by SEBI not furnished | Failure continued 52 days |\n\nAn adjudicating officer passed a penalty order; Kestrel received a copy on 23 February 2026. Kestrel's appeal reached SAT on 30 March 2026. SAT's final decision was communicated to Kestrel on 2 November 2026.\n\nThe **maximum aggregate** penalty across findings (a), (b) and (c) is:",
       "explanation": {
         "steps": [
-          "(a) s.15F(a): 5 × ₹36 lakh = ₹1.8 crore.",
+          "(a) s.15F(a) (2014): up to ₹1 crore.",
           "(b) s.15F(c): up to five times the excess brokerage = 5 × ₹2.8 lakh = ₹14 lakh.",
           "(c) s.15A: min(₹1 lakh × 52, ₹1 crore) = ₹52 lakh.",
-          "Total = ₹2.46 crore."
+          "Total = ₹1.66 crore."
         ],
-        "formula_used": "Σ [5 × value] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]",
-        "trap": "Each head has its own base."
+        "formula_used": "Σ [₹1 crore] + [5 × excess brokerage] + [₹1 lakh × days, ≤ ₹1 crore]",
+        "trap": "Each head has its own base; 15F(a) is no longer value-linked."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -1342,7 +1343,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Securities and Exchange Board of India Act, 1992, ss.15A, 15F(a), 15F(c)"
+          "note": "Securities and Exchange Board of India Act, 1992, ss.15A, 15F(a), 15F(c) (as substituted 2014)"
         }
       ],
       "options": [
@@ -1353,21 +1354,21 @@
           "label": "A"
         },
         {
-          "text": "₹2.46 crore",
+          "text": "₹1.66 crore",
           "is_correct": true,
           "error": null,
           "label": "B"
         },
         {
-          "text": "₹2.35 crore",
+          "text": "₹1.55 crore",
           "is_correct": false,
           "error": "excess brokerage itself taken as ceiling for (b)",
           "label": "C"
         },
         {
-          "text": "₹1.66 crore",
+          "text": "₹2.46 crore",
           "is_correct": false,
-          "error": "finding (a) wrongly capped at ₹1 crore",
+          "error": "pre-2014 '5 × value of securities' limb used for (a)",
           "label": "D"
         }
       ],
@@ -1755,13 +1756,14 @@
       "difficulty": "easy",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "Section 18A of the SCRA makes contracts in derivatives legal and valid, notwithstanding any other law, if they are:",
+      "stem": "Under section 18A of the SCRA, one of the conditions under which contracts in derivatives are legal and valid, notwithstanding any other law, is that they are:",
       "explanation": {
         "steps": [
-          "s.18A (1999): derivatives are legal and valid if (a) traded on a recognised stock exchange and (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws."
+          "s.18A: derivatives are legal and valid if (a) traded on a recognised stock exchange; (b) settled on the clearing house of the recognised stock exchange, per its rules and bye-laws; or (c) between such parties and on such terms as the Central Government notifies (clause (c) inserted by Finance Act, 2015).",
+          "Exchange trading with exchange clearing is the standard route; an unnotified broker-to-broker OTC deal, RBI approval or a spot-delivery period does not qualify."
         ],
         "formula_used": "s.18A",
-        "trap": "Both limbs — exchange trading and exchange clearing."
+        "trap": "The notified-parties route (c) is Government notification, not ad hoc approval."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -1770,7 +1772,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Securities Contracts (Regulation) Act, 1956, s.18A"
+          "note": "Securities Contracts (Regulation) Act, 1956, s.18A (as amended by Finance Act, 2015)"
         }
       ],
       "options": [
@@ -1789,7 +1791,7 @@
         {
           "text": "Entered into between any two SEBI-registered brokers off the exchange",
           "is_correct": false,
-          "error": "bilateral OTC trades not covered by s.18A",
+          "error": "off-exchange trades covered only if parties/terms are notified under s.18A(c)",
           "label": "C"
         },
         {
@@ -2184,9 +2186,9 @@
       "stem": "The Central Government has notified section 13 of the SCRA for Region Z. Two investors in Region Z, neither a member of a recognised stock exchange, agree directly (not through any member) to sell listed shares with delivery and payment 20 days later. The contract is:",
       "explanation": {
         "steps": [
-          "s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is void.",
+          "s.13: in a notified area, every contract otherwise than between members of a recognised stock exchange, or through or with such a member, is illegal.",
           "s.18 exempts spot delivery contracts; delivery after 20 days is not spot delivery (s.2(i)).",
-          "Hence the contract is void."
+          "Hence the contract is illegal (and hence unenforceable)."
         ],
         "formula_used": "s.13 read with s.18 and s.2(i)",
         "trap": "Check the delivery period before applying the s.18 exclusion."
@@ -2209,7 +2211,7 @@
           "label": "A"
         },
         {
-          "text": "Void under section 13",
+          "text": "Illegal under section 13",
           "is_correct": true,
           "error": null,
           "label": "B"
@@ -2223,7 +2225,7 @@
         {
           "text": "Voidable at the option of the buyer",
           "is_correct": false,
-          "error": "void-ab-initio consequence misstated",
+          "error": "consequence misstated; s.13 makes it illegal",
           "label": "D"
         }
       ],
@@ -3171,10 +3173,11 @@
       "stem": "A beneficial owner opts out of a depository for certain shares. After receiving intimation from the depository, the issuer must issue the certificate of securities within:",
       "explanation": {
         "steps": [
-          "s.14(1): BO informs the depository; depository makes entries and informs the issuer.",
-          "s.14(2): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee."
+          "s.14(1): BO informs the depository through the participant.",
+          "s.14(2): depository makes appropriate entries and informs the issuer.",
+          "s.14(3): issuer, within thirty days of receipt of the information and on fulfilment of conditions/fees, issues the certificate to the BO or transferee."
         ],
-        "formula_used": "s.14(2)",
+        "formula_used": "s.14(3)",
         "trap": "Opting out is a right; the issuer's timeline is 30 days."
       },
       "source_kind": "authored",
@@ -3184,7 +3187,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Depositories Act, 1996, s.14"
+          "note": "Depositories Act, 1996, s.14(3)"
         }
       ],
       "options": [
@@ -4031,10 +4034,10 @@
         "steps": [
           "s.18 — true.",
           "s.19 — true.",
-          "s.22: no court takes cognizance save on a complaint by the Board — statement 3 false."
+          "s.22(1) (as amended 2004): cognizance on a complaint by the Central Government, a State Government, SEBI or by any person — statement 3 true."
         ],
         "formula_used": "ss.18, 19, 22",
-        "trap": "Prosecution is SEBI-initiated."
+        "trap": "Unlike SEBI Act s.26 (Board only), DA s.22 allows a complaint by any person."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -4043,24 +4046,24 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Depositories Act, 1996, ss.18, 19, 22"
+          "note": "Depositories Act, 1996, ss.18, 19, 22 (as amended 2004)"
         }
       ],
       "options": [
         {
-          "text": "1 and 2 only",
+          "text": "1, 2 and 3",
           "is_correct": true,
           "error": null,
           "label": "A"
         },
         {
-          "text": "1, 2 and 3",
+          "text": "1 and 2 only",
           "is_correct": false,
-          "error": "s.22 bar (complaint by the Board) missed",
+          "error": "SEBI Act s.26 'complaint by the Board only' rule imported into DA s.22",
           "label": "B"
         },
         {
-          "text": "1 only",
+          "text": "1 and 3 only",
           "is_correct": false,
           "error": "s.19 direction power missed",
           "label": "C"
@@ -4339,7 +4342,7 @@
       "stem": "**Case — Meera and Arcadia Securities (fictional)**\n\nMeera holds 12,000 shares of Zenith Ltd through Arcadia Securities, a participant of Depository D. Arcadia's staff negligently executed an unsigned delivery instruction and moved 3,000 of her shares out; the loss is assessed at ₹640 per share. Meera now wishes to (i) pledge 5,000 shares to Crest Bank and (ii) opt out of the depository for 2,000 shares — Zenith received intimation from Depository D on 6 July 2026. SEBI's inspection also found that Arcadia failed to reconcile its records with Depository D for 75 days.\n\nFor the opt-out, the latest date by which Zenith must issue the certificate of securities is:",
       "explanation": {
         "steps": [
-          "s.14(2): issuer issues the certificate within 30 days of receipt of information from the depository.",
+          "s.14(3): issuer issues the certificate within 30 days of receipt of information from the depository.",
           "6 July 2026 + 30 days = 5 August 2026."
         ],
         "formula_used": "Deadline = Receipt of intimation + 30 days",
@@ -4352,7 +4355,7 @@
       "source_refs": [
         {
           "type": "statutory_or_standard",
-          "note": "Depositories Act, 1996, s.14"
+          "note": "Depositories Act, 1996, s.14(3)"
         }
       ],
       "options": [

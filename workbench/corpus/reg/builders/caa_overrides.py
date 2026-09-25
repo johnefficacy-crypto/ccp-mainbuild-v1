@@ -159,11 +159,6 @@ OVR = {
 # CAA-114
 "Borrowing money, investing the company's funds, and granting loans or giving guarantees/security": "Borrowing money, investing funds, and granting loans/guarantees/security",
 "All s.179(3) powers, if the articles so provide": "All s.179(3) powers without exception, if the articles so provide",
-# CAA-117
-"No — a private company with turnover below ₹50 crore is exempt even though its borrowings exceed ₹25 crore": "No — turnover below ₹50 crore alone exempts it, despite borrowings over ₹25 crore",
-"Yes — both the turnover and borrowing conditions must be satisfied for the exemption": "Yes — both the turnover and borrowing conditions must be satisfied for exemption",
-"Yes — IFC reporting applies to every company without exception": "Yes — IFC reporting under s.143(3)(i) applies to every company without exception",
-"No — but only because it is not a small company": "No — but only because it is not a small company or a one person company",
 # CAA-119
 "K&M cannot be re-appointed; it is eligible again only after a five-year cooling-off (i.e., from the 2031 AGM), and a firm having a common partner with K&M at the end of its term is also barred during that period":
  "No; eligible again from the 2031 AGM (5-year cooling-off); common-partner firms barred too",

@@ -374,15 +374,16 @@ def add_all(B):
     # ================= DEMAT =================
     A(DMAT, "L2",
       "**Assertion (A):** Shareholders of a listed company holding physical share certificates cannot transfer them to a buyer in physical form, though they can still dematerialise them.\n\n"
-      "**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies (other than transmission or transposition) are processed only in dematerialised form.\n\nChoose the correct option:",
+      "**Reason (R):** SEBI amended the Listing Regulations so that, from 1 April 2019, requests for transfer of securities of listed companies are processed only in dematerialised form (extended to transmission and transposition from January 2022).\n\nChoose the correct option:",
       "Both A and R are true, and R correctly explains A",
       [("Both A and R are true, but R does not explain A", "R is the rule that produces A"),
        ("Only A is true; R is a false statement of fact", "R correctly states the SEBI amendment"),
        ("Only R is true; A is a false statement of fact", "A follows from R; demat of physical shares remains allowed")],
-      ["Reg 40 of LODR (amended 2018, effective 1 April 2019): transfers only in demat.",
-       "Transmission/transposition exempted; holders may dematerialise."], "—",
+      ["Reg 40(1) of LODR (amended 2018, effective 1 April 2019): transfers only in demat.",
+       "Proviso substituted by LODR (Amendment) Regulations, 24 January 2022: transmission and transposition also only in demat.",
+       "Holders of physical certificates may still dematerialise them."], "—",
       "Holding in physical form is not banned — transfer is.", kind="assertion-reason", verify_fact=True,
-      ref="SEBI (LODR) Regulations 2015, Reg 40 (as amended June 2018)")
+      ref="SEBI (LODR) Regulations 2015, Reg 40(1) (as amended June 2018; proviso substituted by LODR (Amendment) Regulations, 24 January 2022)")
 
     # ================= DPI =================
     A(DPI, "L2",
@@ -625,14 +626,20 @@ def add_all(B):
             "\n\nAssume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, one-third of the anchor portion reserved for domestic mutual funds.")
     qib = 0.5 * offer
     anc = 0.6 * qib
-    A(ANC, "L4", stim + "\n\nThe maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:",
+    lipf = anc * (0.40 - 1 / 3)
+    assert round(anc / 3 / 1e7, 2) == 0.60 and round(lipf / 1e7, 2) == 0.12
+    stim150 = stim.replace("one-third of the anchor portion reserved for domestic mutual funds.",
+                           "40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).")
+    assert stim150 != stim
+    A(ANC, "L4", stim150 + "\n\nThe maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:",
       f"{anc/1e7:.2f} crore shares; {anc/3/1e7:.2f} crore shares",
       [(f"{0.6*offer/1e7:.2f} crore shares; {0.6*offer/3/1e7:.2f} crore shares", "60% applied to the whole offer instead of the QIB portion"),
        (f"{0.6*0.5*fresh/1e7:.2f} crore shares; {0.6*0.5*fresh/3/1e7:.2f} crore shares", "offer for sale excluded from the offer size"),
        (f"{anc/1e7:.2f} crore shares; {anc/2/1e7:.2f} crore shares", "half (not one-third) reserved for mutual funds")],
-      [f"Offer = 4 + 2 = {offer/1e7:.0f} crore shares", f"QIB portion ≤ 50% = {qib/1e7:.1f} crore", f"Anchor ≤ 60% × {qib/1e7:.1f} = {anc/1e7:.2f} crore; MF ≥ one-third = {anc/3/1e7:.2f} crore"],
-      "Anchor ≤ 0.6 × QIB portion; MF reservation = ⅓ of anchor", "The offer includes both fresh issue and OFS.", group=G,
-      verify_fact=True, ref=ICDR + "; Reg 32(1)")
+      [f"Offer = 4 + 2 = {offer/1e7:.0f} crore shares", f"QIB portion ≤ 50% = {qib/1e7:.1f} crore", f"Anchor ≤ 60% × {qib/1e7:.1f} = {anc/1e7:.2f} crore; MF ≥ one-third = {anc/3/1e7:.2f} crore",
+       f"Total reservation 40% of anchor = {0.4*anc/1e7:.2f} crore, of which life insurers/pension funds {lipf/1e7:.2f} crore"],
+      "Anchor ≤ 0.6 × QIB portion; reservation = 40% of anchor (⅓ MFs + balance LI/PF)", "The offer includes both fresh issue and OFS.", group=G,
+      verify_fact=True, ref=ICDR + "; Reg 32(1); ICDR (Third Amendment) Regulations 2025 — 40% anchor reservation (⅓ MFs, balance life insurers & pension funds)")
 
     extra = anc * (ip - ap_)
     A(ANC, "L4", stim + "\n\nAnchors are allotted the maximum permissible shares. Which statement about their payment and lock-in is correct?",

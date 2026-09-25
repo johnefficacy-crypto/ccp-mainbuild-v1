@@ -239,12 +239,12 @@ add("INS_AN", "L2",
     [(f"The insurer had to communicate by {fd(notice+timedelta(45))}; the assignee may approach IRDAI by {fd(dl_app)}", "45-day appeal window used for the insurer's decision"),
      (f"The insurer had to communicate by {fd(dl_ins)}; the assignee may appeal to SAT by {fd(comm+timedelta(45))}", "wrong forum — s.110 SAT route used for an s.38 grievance"),
      (f"The insurer had to communicate by {fd(dl_ins)}; the assignee may approach IRDAI by {fd(dl_ins+timedelta(30))}", "appeal period counted from the insurer's deadline, not receipt of communication")],
-    ["s.38(3)-(4): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.",
+    ["s.38(2)-(3): the insurer may decline to act on an assignment (e.g. not bona fide / trading in policies), recording reasons and communicating within 30 days of the notice.",
      f"{fd(notice)} + 30 days = {fd(dl_ins)}.",
-     f"s.38(5): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: {fd(comm)} + 30 = {fd(dl_app)}."],
+     f"s.38(4): aggrieved person may prefer a claim to the Authority within 30 days of receipt of the communication: {fd(comm)} + 30 = {fd(dl_app)}."],
     "Insurer: notice + 30 days; grievance to IRDAI: communication + 30 days",
     "The first-level remedy against refusal to register an assignment is IRDAI, not SAT.",
-    kind="numerical", ref=f"{INS}, s.38(3)-(5)")
+    kind="numerical", ref=f"{INS}, s.38(2)-(4)")
 
 # ---- L3 ----
 add("INS_AN", "L3",
@@ -434,11 +434,11 @@ add("INS_AN", "L4", case_ins + f"Suppose instead there was no assignment to Kave
 add("IR_EST", "L1",
     "Under s.4 of the Insurance Regulatory and Development Authority Act, 1999, IRDAI consists of:",
     "A Chairperson, not more than five whole-time members and not more than four part-time members",
-    [("A Chairperson and not more than six members, of whom at least three are whole-time", "PFRDA Act composition"),
+    [("A Chairperson, three whole-time members and three part-time members", "PFRDA Act composition"),
      ("A Chairperson, four regulator nominees, two Finance Ministry officials and two other members", "IFSCA Act composition"),
      ("A Chairperson, not more than four whole-time members and not more than five part-time members", "whole-time and part-time ceilings swapped")],
     ["s.4: Chairperson; not more than five whole-time members; not more than four part-time members — appointed by the Central Government."],
-    "IRDA Act s.4: 1 + ≤5 WTM + ≤4 PTM", "Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+6(≥3 WTM), IFSCA 1+4+2+2.",
+    "IRDA Act s.4: 1 + ≤5 WTM + ≤4 PTM", "Keep the three regulators' compositions apart: IRDAI 1+5+4, PFRDA 1+3+3, IFSCA 1+4+2+2.",
     ref=f"{IRA}, s.4")
 
 add("IR_FN", "L1",
@@ -719,13 +719,13 @@ add("IR_FUND", "L4", case_ir + "The annual report of IRDAI's activities for FY 2
 # =====================================================================================
 add("PF_CON", "L1",
     "Under s.4 of the PFRDA Act, 2013, the Authority consists of:",
-    "A Chairperson and not more than six members, of whom at least three are whole-time members",
+    "A Chairperson, three whole-time members and three part-time members",
     [("A Chairperson, not more than five whole-time and not more than four part-time members", "IRDA Act composition"),
      ("A Chairperson, one nominee each of RBI, SEBI, IRDAI and PFRDA and four others", "IFSCA-style composition"),
-     ("A Chairperson and not more than six members, of whom at least three are part-time members", "whole-time/part-time reversed")],
-    ["s.4: Chairperson and not more than six members, of whom at least three shall be whole-time, appointed by the Central Government;",
+     ("A Chairperson, three whole-time members and no part-time members", "part-time members dropped")],
+    ["s.4 (as enacted): a Chairperson, three whole-time members and three part-time members, appointed by the Central Government;",
      "with at least one person from each of economics, finance and law."],
-    "PFRDA Act s.4", "‘At least three whole-time’ — not ‘at least three part-time’.",
+    "PFRDA Act s.4: 1 + 3 WTM + 3 PTM", "PFRDA 1+3+3 vs IRDAI 1+5+4 — do not mix up the ceilings.",
     ref=f"{PFA}, s.4")
 
 add("PF_NPS", "L1",
@@ -809,18 +809,18 @@ head = (ins_lim - agg) * pc
 assert round(agg, 2) == 0.63 and round(head / 1e7, 2) == 33
 add("PF_NPS", "L2",
     f"A pension fund has paid-up capital of {crore(pc,0)}. Foreign holdings: a foreign company 42%, that company's subsidiary 15%, and an individual resident "
-    "abroad 6%. For this question take the limit permitted for Indian insurance companies as 74%. Under s.24 of the PFRDA Act, 2013, the further equity "
+    "abroad 6%. For this question take, hypothetically, the limit permitted for Indian insurance companies as 74% (notwithstanding the 100% limit after the 2025 amendment). Under s.24 of the PFRDA Act, 2013, the further equity "
     "that can be held by foreign investors in aggregate is:",
     crore(head, 0),
     [("Nil — the 26% cap is already breached", "ignores the 'insurance limit, whichever is higher' limb"),
      (crore((ins_lim - fco - find_) * pc, 0), "subsidiary's holding excluded from the aggregate"),
      (crore((ins_lim - fco - fsub) * pc, 0), "non-resident individual's holding excluded")],
     ["s.24: aggregate foreign holding (foreign company, its subsidiaries/nominees, foreign individuals/AOPs) ≤ 26% or the insurance-sector limit, whichever is higher.",
-     f"Limit = max(26%, 74%) = 74%; aggregate = 42 + 15 + 6 = 63%.",
+     f"Limit = max(26%, 74% as given) = 74%; aggregate = 42 + 15 + 6 = 63%. (After Act 40 of 2025 the insurance limit is 100%; 74% is a stated assumption.)",
      f"Headroom = 11% × {crore(pc,0)} = {crore(head,0)}."],
     "Foreign cap = max(26%, insurance-sector limit); headroom = cap − aggregate foreign holding",
     "Aggregate includes subsidiaries and non-resident individuals.",
-    kind="numerical", ref=f"{PFA}, s.24 (insurance limit given as data)")
+    kind="numerical", ref=f"{PFA}, s.24; {INS}, s.2(7A) as amended by Act 40 of 2025 (74% given as hypothetical data)")
 
 days, prof = 140, 32e5
 pen = min(days * 1e5, 1e7)
@@ -935,19 +935,19 @@ add("PF_PEN", "L3",
     "PFRDA Act ss.32, 35", "Non-payment of penalty carries a one-month minimum and a ten-year maximum.",
     kind="statement", ref=f"{PFA}, ss.32, 35")
 
-ex_pf = 1 + 6
-assert 25 + ex_pf == 32
+ex_pf = 1 + 3 + 3
+assert ex_pf == 7 and 25 + ex_pf == 32
 add("PF_APP", "L3",
     "PFRDA is at its maximum statutory strength and constitutes the Pension Advisory Committee under s.45 of the PFRDA Act, 2013 with the maximum number of other members. "
     "The total membership, counting ex officio members, is:",
     str(25 + ex_pf),
     [("25", "ex officio members counted within the 25"),
      (str(25 + 10), "IRDAI's 1 + 5 + 4 strength used"),
-     (str(25 + 1 + 3), "only the Chairperson and the minimum three whole-time members counted")],
+     (str(25 + 1 + 3), "part-time members omitted from the ex officio count")],
     ["s.45: not more than 25 members excluding ex officio members.",
-     f"Chairperson and members of the Authority are ex officio: 1 + 6 = {ex_pf}.",
+     f"s.4 (as enacted): Chairperson + 3 whole-time + 3 part-time members, all ex officio on the Committee: 1 + 3 + 3 = {ex_pf}.",
      f"Maximum = 25 + {ex_pf} = {25+ex_pf}."],
-    "Max PAC = 25 + (1 + ≤6 members)", "Use PFRDA's own strength (1 + 6), not IRDAI's.",
+    "Max PAC = 25 + (1 + 3 WTM + 3 PTM)", "Use PFRDA's own strength (1 + 3 + 3), not IRDAI's 1 + 5 + 4.",
     kind="numerical", ref=f"{PFA}, ss.4, 45")
 
 add("PF_CON", "L3",
@@ -1034,14 +1034,15 @@ add("PF_APP", "L4", case_pf + f"SAT dismisses Suvidha's appeal; the decision is 
 
 lim = max(0.26, 0.74)
 add("PF_NPS", "L4", case_pf + "Regarding Suvidha's 30% foreign shareholding and its proposed registration as a pension fund:",
-    f"Permissible, since the cap is the higher of 26% and the insurance-sector limit, i.e. {pct(lim,0)}",
+    f"Permissible: the cap is the higher of 26% and the insurance limit ({pct(lim,0)} as given)",
     [("Not permissible, since foreign holding in a pension fund is capped at 26%", "ignores the 'whichever is higher' limb"),
      ("Permissible only after the foreign parent sells down to 26% within six months", "invents a divestment timeline"),
      ("Irrelevant, since the s.24 cap applies only to CRAs and PoPs", "misapplies s.24 — it governs pension funds")],
     ["s.24: aggregate foreign holding in a pension fund ≤ 26% or the percentage approved for insurance companies, whichever is higher.",
-     f"max(26%, 74%) = {pct(lim,0)} > 30% ⇒ permissible (subject to other eligibility norms under s.26)."],
+     f"max(26%, 74% as given) = {pct(lim,0)} > 30% ⇒ permissible (subject to other eligibility norms under s.26).",
+     "Under current law (Act 40 of 2025) the insurance limit is 100%, so the answer holds either way."],
     "Cap = max(26%, insurance-sector limit)", "26% is only the floor of the formula.",
-    kind="case", group=G3, ref=f"{PFA}, s.24 (insurance limit given as data)")
+    kind="case", group=G3, ref=f"{PFA}, s.24; {INS}, s.2(7A) as amended by Act 40 of 2025 (74% given as data; current limit 100%)")
 
 # =====================================================================================
 # IFSCA ACT, 2019  (24)  L1 5 · L2 7 · L3 7 · L4 5

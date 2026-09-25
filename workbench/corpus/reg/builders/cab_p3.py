@@ -55,10 +55,10 @@ def add_all(B):
            ("1 only", "overlooks the bar on cash payment"),
            ("2 and 3 only", "overlooks PAS-4 and identified persons")],
           ["Rule 14: offer letter in PAS-4, serially numbered and addressed to the identified person.",
-           "s.42(7)/Rule 14: not renounceable; a person other than the addressee cannot apply.",
+           "s.42(3)/Rule 14: offer only to identified persons, with no right of renunciation; a person other than the addressee cannot apply.",
            "s.42(4): payment through cheque/demand draft/other banking channels, not cash."],
           "s.42; Rule 14", "Renounceability is a feature of rights issues under s.62, not private placement.",
-          kind="statement", verify_fact=True, ref="Companies Act 2013 s.42(4), (7); PAS Rules 2014, Rule 14")
+          kind="statement", verify_fact=True, ref="Companies Act 2013 s.42(3), (4); PAS Rules 2014, Rule 14")
 
     # ------------------------------------------------------------------ prospectus matters
     filed = d(2026, 2, 10)
@@ -180,7 +180,7 @@ def add_all(B):
 
     # ------------------------------------------------------------------ shelf / abridged
     B.add(M["shelf"], "L3",
-          stmts("A public sector bank files a shelf prospectus under s.31. Consider:",
+          stmts("A company eligible under SEBI regulations files a shelf prospectus under s.31. Consider:",
                 ["The shelf prospectus is valid for a period not exceeding one year from the date of opening of the first offer of securities under it.",
                  "No further prospectus is required for second and subsequent offers during the validity period.",
                  "Before each subsequent offer, an information memorandum containing material facts such as new charges created and changes in financial position must be filed.",
@@ -266,11 +266,11 @@ def add_all(B):
           [(R(interest(amt, 0.12, late)), "12% private-placement rate applied"),
            (R(interest(amt, 0.18, late)), "18% dividend-default rate applied"),
            (R(interest(amt, 0.15, late + 15)), "interest counted from closure of the issue")],
-          ["Rule 11(2) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.",
+          ["Rule 11(1) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.",
            f"Interest = {inr(amt)} × 15% × {late}/365 = {R(interest(amt,0.15,late))}."],
           "Interest = Amount × 15% × days of delay/365",
           "15% (s.39 refund), 12% (s.42 refund), 18% (s.127 dividend) — keep the three rates apart.",
-          verify_fact=True, ref="Companies Act 2013 s.39(3); PAS Rules 2014, Rule 11")
+          verify_fact=True, ref="Companies Act 2013 s.39(3); PAS Rules 2014, Rule 11(1)")
 
     # ------------------------------------------------------------------ reduction of capital
     sh, fv0 = 20_00_000, 10
@@ -316,14 +316,14 @@ def add_all(B):
           "Possible with ad valorem fees, within the further 60-day window",
           [("Possible with normal fees, as it is within 90 days of creation", "invented 90-day normal window"),
            ("Possible only with additional fees, as it is within 120 days of creation", "additional-fee window (31–60 days) confused with ad valorem window"),
-           ("Not possible; only the Tribunal can condone the delay", "Registrar's power under the third proviso overlooked")],
+           ("Not possible; only the Tribunal can condone the delay", "Registrar's power under the second proviso overlooked")],
           ["s.77(1): register within 30 days of creation.",
            "First proviso (b): Registrar may allow within 60 days of creation on payment of additional fees.",
-           "Third proviso: if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.",
+           "Second proviso, clause (b): if not registered within 60 days, Registrar may allow within a further 60 days on payment of ad valorem fees.",
            f"{gap} days falls in the 61–120 day band → ad valorem fees."],
           "30 days (normal) → up to 60 days (additional fees) → up to 120 days (ad valorem fees)",
           "The 2019 amendment replaced the old 300-day window.",
-          verify_fact=True, ref="Companies Act 2013 s.77(1) and provisos (Companies (Amendment) Act 2019)")
+          verify_fact=True, ref="Companies Act 2013 s.77(1), first proviso cl.(b) and second proviso cl.(b) (Companies (Amendment) Act 2019)")
 
     B.add(M["chg"], "L2",
           stmts("Consider the following in respect of registration of charges:",
@@ -351,10 +351,10 @@ def add_all(B):
            (f"Nil and {cr(dep15)}", "listed-company DRR exemption applied to an unlisted company")],
           ["Rule 18(7)(b)(iv)(B): unlisted companies (other than NBFC/HFC) — DRR of 10% of outstanding debentures.",
            f"DRR = 10% × {cr(out_d)} = {cr(drr)}.",
-           f"Rule 18(7)(vii): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × {cr(mat)} = {cr(dep15)}."],
+           f"Rule 18(7)(b)(v): invest/deposit ≥ 15% of debentures maturing during the year ending 31 March of the next year, on or before 30 April → 15% × {cr(mat)} = {cr(dep15)}."],
           "DRR = 10% of outstanding; deposit = 15% of amount maturing next year",
           "Listed companies are exempt from DRR but not from the 15% deposit.",
-          verify_fact=True, ref="Companies (Share Capital and Debentures) Rules 2014, Rule 18(7) (as amended 2019)")
+          verify_fact=True, ref="Companies (Share Capital and Debentures) Rules 2014, Rule 18(7)(b)(iv)(B) and 18(7)(b)(v) (as amended 16-08-2019)")
 
     B.add(M["s71"], "L1",
           "Under s.71(5), a company must appoint one or more debenture trustees before issuing a prospectus or making an offer or invitation for subscription of its debentures:",
@@ -394,14 +394,15 @@ def add_all(B):
 
     # ------------------------------------------------------------------ s.46
     B.add(M["s46"], "L2",
-          "A shareholder of Chandan Paints Ltd (an unlisted public company holding physical certificates) applies for a duplicate share certificate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:",
-          "3 months (lost/destroyed); 30 days (defaced/mutilated, surrendered)",
-          [("30 days from application in every case, lost or mutilated", "uniform period assumed"),
-           ("Three months from application in every case, lost or mutilated", "uniform period assumed"),
-           ("15 days if lost or destroyed; 7 days if defaced or mutilated", "invented periods")],
-          ["Rule 6(3)(a): duplicate within 3 months of submission of complete documents (lost/destroyed) or within 30 days of application (defaced, mutilated, torn, decrepit, worn out, or transfer pages fully used)."],
-          "SCD Rule 6(3)(a)", "Loss cases need more time for verification; mutilated certificates are surrendered.",
-          kind="conceptual", verify_fact=True, ref="Companies Act 2013 s.46(2); SCD Rules 2014, Rule 6(3)")
+          "A shareholder of Chandan Paints Ltd (an unlisted public company; physical certificates) has lost his share certificate and applies for a duplicate. Under Rule 6 of the Companies (Share Capital and Debentures) Rules, 2014, the company must issue it within:",
+          "Three months from submission of complete documents",
+          [("45 days from submission of complete documents", "listed-company period applied to an unlisted company"),
+           ("One month from the date of the application", "s.56(4) one-month certificate-delivery period applied"),
+           ("Six months from the date of the loss being reported", "invented period and wrong starting point")],
+          ["Rule 6(2)(c): a duplicate certificate for a lost/destroyed certificate is issued within 3 months (unlisted company) or 45 days (listed company) from submission of complete documents.",
+           "Chandan Paints is unlisted → three months."],
+          "SCD Rule 6(2)(c)", "Listed and unlisted companies have different periods; the clock starts on complete documents.",
+          kind="conceptual", verify_fact=True, ref="Companies Act 2013 s.46(2); SCD Rules 2014, Rule 6(2)(c)")
 
     n, fvv = 80_000, 10
     face = n * fvv

@@ -448,15 +448,15 @@ def add_all(B):
 
     # ================= Provisions =================
     B.add(micro=S("provisions-vs"), level="L1",
-          stem="Under AS 29 (revised), a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:",
+          stem="Under AS 29, a contingent asset whose inflow of economic benefits is probable (but not virtually certain) is:",
           correct="Not recognised; disclosed in the report of the approving authority",
           wrongs=[("Recognised as an asset with a matching credit to profit or loss", "recognition requires virtual certainty"),
-                  ("Not recognised; disclosed in the notes to the financial statements", "AS 29 moves this disclosure to the approving authority's report"),
+                  ("Not recognised; disclosed in the notes to the financial statements", "AS 29 para 33 bars disclosure in the financial statements (it goes in the approving authority's report)"),
                   ("Recognised as income but credited to a reserve until realised", "no such treatment")],
           steps=["When realisation is virtually certain the asset is not contingent and is recognised.",
-                 "Probable inflow: no recognition; AS 29 requires disclosure in the report of the approving authority (Ind AS 37 uses the notes)."],
-          formula="AS 29 paras 31–35", trap="Ind AS 37 discloses probable contingent assets in the notes; AS 29 does not.",
-          kind="conceptual", verify_fact=True, ref="AS 29 (revised 2016) paras 31–35")
+                 "Probable inflow: not recognised (para 30), not disclosed in the financial statements, usually disclosed in the report of the approving authority (para 33); Ind AS 37 uses the notes."],
+          formula="AS 29 paras 30–34", trap="Ind AS 37 discloses probable contingent assets in the notes; AS 29 does not.",
+          kind="conceptual", verify_fact=True, ref="AS 29 paras 30 (no recognition), 33 (disclosure in approving authority's report), 34 (virtually certain → recognised)")
 
     match(B, S("provisions-vs"), "L2", "Match each situation (present obligation or possible obligation from a past event) with its treatment under AS 29 / Ind AS 37:",
           ["Outflow probable, reliable estimate possible", "Outflow possible but not probable",

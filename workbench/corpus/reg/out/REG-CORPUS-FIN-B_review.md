@@ -460,23 +460,23 @@ Consider the following statements on non-convertible redeemable preference share
 
 1. NCRPS must have a minimum tenure of three years.
 2. NCRPS issued to the public must carry a credit rating of not less than 'AA-' or equivalent.
-3. An issuer may issue perpetual NCRPS under the SEBI (NCS) Regulations, 2021.
+3. NCRPS may be issued with no redemption date.
 
 Which of the statements is/are correct?
 
 - **A.** 1 and 2 only ✅
 - **B.** 2 only  _(error: wrongly rejects statement 1: NCRPS minimum tenure is 3 years)_
-- **C.** All of 1, 2 and 3  _(error: wrongly accepts statement 3: NCRPS are by definition redeemable; perpetual instruments are not NCRPS)_
+- **C.** All of 1, 2 and 3  _(error: wrongly accepts statement 3: NCRPS must be redeemable; perpetual instruments (PNCPS/PDIs) are a separate class under Chapter V)_
 - **D.** 1 only  _(error: wrongly rejects statement 2: public-issue NCRPS need at least AA- rating)_
 
 **Working**
 
 1. Minimum tenure of NCRPS is 3 years.
 2. Public issue of NCRPS requires a rating of at least AA- (or equivalent).
-3. NCRPS are redeemable by definition; perpetual preference shares fall outside the NCS framework.
+3. NCRPS must be redeemable. Perpetual instruments (perpetual non-cumulative preference shares, perpetual debt instruments) are a separate class permitted only for banks/NBFCs etc. under Chapter V of the NCS Regulations.
 
 **Formula:** NCRPS: ≥3 yrs tenure, ≥AA- for public issue  
-**Trap:** ‘Redeemable’ is in the name — perpetual is ruled out.
+**Trap:** ‘Redeemable’ is in the name; PNCPS of banks/NBFCs are a different instrument.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -637,12 +637,12 @@ A Zero Coupon Zero Principal (ZCZP) instrument on a Social Stock Exchange is:
 Consider the following statements about fund-raising on the Social Stock Exchange:
 
 1. The minimum issue size for a public issue of ZCZP instruments is ₹50 lakh.
-2. The minimum application size for a ZCZP public issue is ₹10,000.
+2. The minimum application size for a ZCZP public issue is ₹1,000.
 3. A for-profit social enterprise may issue ZCZP instruments once it is registered on the SSE.
 
 Which of the statements is/are correct?
 
-- **A.** 1 only  _(error: wrongly rejects statement 2: minimum application reduced to ₹10,000)_
+- **A.** 1 only  _(error: wrongly rejects statement 2: minimum application reduced to ₹1,000 (2025))_
 - **B.** 1 and 2 only ✅
 - **C.** 2 only  _(error: wrongly rejects statement 1: 2023 relaxation reduced minimum issue size to ₹50 lakh)_
 - **D.** All of 1, 2 and 3  _(error: wrongly accepts statement 3: only not-for-profit organisations can issue ZCZP)_
@@ -650,11 +650,11 @@ Which of the statements is/are correct?
 **Working**
 
 1. Minimum issue size for ZCZP: ₹50 lakh (reduced from ₹1 crore).
-2. Minimum application: ₹10,000 (reduced from ₹2 lakh).
+2. Minimum application: ₹1,000 (₹2 lakh → ₹10,000 in 2023 → ₹1,000 in 2025).
 3. ZCZP is available only to NPOs; FPSEs use equity/debt routes.
 
-**Formula:** ZCZP: ₹50 lakh issue / ₹10,000 application  
-**Trap:** Old values (₹1 crore and ₹2 lakh) are common traps.
+**Formula:** ZCZP: ₹50 lakh issue / ₹1,000 application  
+**Trap:** Old values (₹1 crore issue; ₹2 lakh and ₹10,000 application) are common traps.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -793,13 +793,13 @@ Under Section 18A of the Securities Contracts (Regulation) Act, 1956, contracts 
 A company's post-issue market capitalisation at the issue price will be ₹3,200 crore. Under Rule 19(2)(b) of the Securities Contracts (Regulation) Rules, 1957, the minimum value of shares it must offer to the public in its IPO is:
 
 - **A.** ₹400 crore ✅
-- **B.** ₹320 crore  _(error: 10% slab (for market cap above ₹4,000 crore) applied)_
+- **B.** ₹320 crore  _(error: 10% slab (for market cap above ₹4,000 crore up to ₹50,000 crore) applied)_
 - **C.** ₹400 crore plus 10% of the excess over ₹1,600 crore  _(error: invents a marginal-rate formula for the middle slab)_
 - **D.** ₹800 crore  _(error: 25% slab (for market cap up to ₹1,600 crore) applied)_
 
 **Working**
 
-1. Slabs (post-issue market cap): ≤ ₹1,600 cr → 25%; > ₹1,600 cr to ₹4,000 cr → shares worth ₹400 cr; > ₹4,000 cr to ₹1 lakh cr → 10%.
+1. Slabs (post-issue market cap, as amended March 2026): ≤ ₹1,600 cr → 25%; > ₹1,600–4,000 cr → ₹400 cr; > ₹4,000–50,000 cr → 10%; > ₹50,000 cr–1 lakh cr → ₹1,000 cr and ≥ 8%; > ₹1–5 lakh cr → ₹6,250 cr and ≥ 2.75%; > ₹5 lakh cr → ₹15,000 cr and ≥ 1% (minimum 2.5%).
 2. ₹3,200 crore falls in the second slab → ₹400 crore (= 12.5% here).
 
 **Formula:** SCRR Rule 19(2)(b) slabs  
@@ -3239,21 +3239,21 @@ Which of the statements is/are correct?
 
 ## FINB-128 · L3 · hard · NRI and OCI investment — repatriation basis ⚠
 
-A listed company has 48 crore equity shares. Its shareholders have NOT raised the NRI/OCI aggregate limit. NRIs/OCIs together already hold 4.3 crore shares on a repatriation basis, including 0.1 crore held by Mr Kapoor, an NRI. How many more shares can Mr Kapoor buy on the stock exchange on a repatriation basis?
+Under Schedule III of the FEMA (Non-debt Instruments) Rules as amended in June 2026, a listed company has 48 crore equity shares. Individual persons resident outside India (NRIs/OCIs) together already hold 4.3 crore shares on a repatriation basis, including 0.1 crore held by Mr Kapoor, an NRI. What is the maximum number of further shares Mr Kapoor can buy on the stock exchange on a repatriation basis?
 
-- **A.** 2.3 crore shares  _(error: aggregate 10% NRI/OCI limit ignored)_
-- **B.** 0.5 crore shares ✅
-- **C.** 2.4 crore shares  _(error: own holding and aggregate limit both ignored)_
-- **D.** 0.4 crore shares  _(error: own holding deducted twice)_
+- **A.** 50,00,000 shares  _(error: pre-June-2026 limits (5% individual, 10% aggregate) applied)_
+- **B.** 4,69,99,999 shares ✅
+- **C.** 7,22,00,000 shares  _(error: only the 24% aggregate headroom checked; individual cap ignored)_
+- **D.** 4,70,00,000 shares  _(error: limit treated as up to 10% inclusive; holding must stay below 10%)_
 
 **Working**
 
-1. Individual limit = 5% × 48 crore = 2.4 crore → headroom 2.3 crore.
-2. Aggregate limit = 10% = 4.8 crore → headroom 0.5 crore.
-3. Binding = 0.5 crore shares.
+1. Individual cap: holding must be below 10% of 48 crore = 4,80,00,000 → max 4,79,99,999; headroom 4,69,99,999.
+2. Aggregate cap for all individual PROIs = 24% = 11,52,00,000 → headroom 7,22,00,000.
+3. Binding = individual cap → 4,69,99,999 shares.
 
-**Formula:** Min(5% − own, 10% − NRI/OCI aggregate)  
-**Trap:** Aggregate can go to 24% only by special resolution.
+**Formula:** Min(<10% − own holding, 24% − aggregate individual PROI holding)  
+**Trap:** The old 5%/10% limits and the special-resolution route were removed in June 2026.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -4032,10 +4032,10 @@ Match the SEBI equity scheme category (List I) with its mandatory portfolio cond
 
 1. Large cap ≥ 80% large caps (top 100).
 2. Mid cap ≥ 65% mid caps (101–250).
-3. Multi cap ≥ 75% equity, ≥ 25% each in large/mid/small.
-4. Focused: ≤ 30 stocks.
+3. Multi cap ≥ 25% each in large/mid/small (so ≥ 75% equity).
+4. Focused: ≤ 30 stocks (minimum equity now 80% under the Feb 2026 circular).
 
-**Formula:** SEBI scheme categorisation (2017, multi cap revised 2020)  
+**Formula:** SEBI scheme categorisation (Feb 2026 circular)  
 **Trap:** Flexi cap has no market-cap minimums; multi cap does.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
@@ -4242,22 +4242,22 @@ Which best explains the gap between CPI and WPI inflation in Q4?
 
 ## FINB-168 · L4 · hard · Scheme types and fund of funds ⚠
 
-**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose TER cap (including the weighted TER of underlying schemes) is 2.25%; the underlying schemes' weighted average TER is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
+**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose Base Expense Ratio cap (including the weighted average expense ratio of underlying schemes; statutory levies excluded) is 2.10%; the underlying schemes' weighted average expense ratio is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
 
-Is the FoF's expense structure compliant, and what is the maximum TER it may charge at its own level?
+Is the FoF's expense structure compliant, and what is the maximum expense ratio it may charge at its own level?
 
-- **A.** Not compliant; own-level TER must not exceed 0.65% ✅
-- **B.** Compliant; the 0.9% own TER is below the 2.25% cap  _(error: underlying schemes' TER not added)_
-- **C.** Compliant; own TER can go up to 2.25% over and above underlying TER  _(error: cap treated as additional to underlying TER)_
-- **D.** Not compliant; own-level TER must not exceed 1%  _(error: 1% cap for FoFs investing in liquid/index/ETFs applied)_
+- **A.** Not compliant; own-level expense must not exceed 0.50% ✅
+- **B.** Compliant; the 0.9% own expense is below the 2.10% cap  _(error: underlying schemes' expense ratio not added)_
+- **C.** Compliant; own expense can go up to 2.10% above the underlying  _(error: cap treated as additional to underlying expense ratio)_
+- **D.** Not compliant; own-level expense must not exceed 0.65%  _(error: superseded 2.25% TER cap of the 1996 Regulations used)_
 
 **Working**
 
-1. Total = 0.9% + 1.6% = 2.5% > 2.25% → breach.
-2. Max own TER = 2.25% − 1.6% = 0.65%.
+1. Total = 0.9% + 1.6% = 2.5% > 2.10% → breach.
+2. Max own expense = 2.10% − 1.6% = 0.50%.
 
-**Formula:** FoF total TER (own + underlying) ≤ cap  
-**Trap:** The FoF cap is inclusive of underlying scheme TER.
+**Formula:** FoF BER (own + weighted underlying) ≤ 2.10% (equity-oriented FoF)  
+**Trap:** The FoF cap is inclusive of underlying scheme expenses; statutory levies sit outside BER.
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -4266,7 +4266,7 @@ Is the FoF's expense structure compliant, and what is the maximum TER it may cha
 
 ## FINB-169 · L4 · hard · Total expense ratio limits and ETFs ⚠
 
-**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose TER cap (including the weighted TER of underlying schemes) is 2.25%; the underlying schemes' weighted average TER is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
+**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose Base Expense Ratio cap (including the weighted average expense ratio of underlying schemes; statutory levies excluded) is 2.10%; the underlying schemes' weighted average expense ratio is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
 
 What premium is Rohan paying, and how must he buy the ETF units?
 
@@ -4290,7 +4290,7 @@ What premium is Rohan paying, and how must he buy the ETF units?
 
 ## FINB-170 · L4 · hard · NRI and OCI investment — repatriation basis ⚠
 
-**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose TER cap (including the weighted TER of underlying schemes) is 2.25%; the underlying schemes' weighted average TER is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
+**Case — Rohan, an NRI investor.** Rohan invests from his NRE account on a repatriation basis. (i) He considers a domestic fund of funds investing mainly in active equity-oriented schemes, whose Base Expense Ratio cap (including the weighted average expense ratio of underlying schemes; statutory levies excluded) is 2.10%; the underlying schemes' weighted average expense ratio is 1.6% and the FoF charges 0.9% itself. (ii) He wants to buy a gold ETF for about ₹20 lakh; last NAV ₹58.4, current iNAV ₹58.62, market price ₹59.1. (iii) He may later sell both and move the money abroad.
 
 When Rohan redeems/sells both investments, how can the proceeds be taken abroad?
 
