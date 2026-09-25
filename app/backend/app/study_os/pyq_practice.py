@@ -291,7 +291,13 @@ def _authored_rows_for_targets(
     return [
         r
         for r in _authored_unexpired(
-            authored_rows_for_exam(sb, exam_id, _fetch, same_tier_only=same_tier_only), now_iso
+            authored_rows_for_exam(
+                sb, exam_id, _fetch, same_tier_only=same_tier_only,
+                # REG-CORPUS-05: topic practice also serves the exam's configured
+                # shared subjects (authored_scope.EXAM_AGNOSTIC_SUBJECTS).
+                include_configured_subjects=True,
+            ),
+            now_iso
         )
         if (_row_level_id(r) or "") in wanted
     ]

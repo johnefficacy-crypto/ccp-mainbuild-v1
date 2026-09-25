@@ -21,6 +21,7 @@ from app.study_os.mock_blueprint_selection import build_blueprint_with_selection
 from tests.persona_questions._stub import SBStub
 
 SSC = "55c00000-0000-0000-0000-000000000001"
+SSC_SLUG = "national-ssc-combined-graduate-level-cgl"  # live slug (REG-CORPUS-05)
 SEBI = "5eb10000-0000-0000-0000-000000000001"
 IFSCA = "1f5ca000-0000-0000-0000-000000000001"
 UPSC = "09500000-0000-0000-0000-000000000001"
@@ -81,7 +82,7 @@ def _seed(bank: list[dict] | None = None) -> dict:
     ]
     return {
         "exams": [
-            {"id": SSC, "slug": "ssc-cgl"}, {"id": SEBI, "slug": "sebi-grade-a"},
+            {"id": SSC, "slug": SSC_SLUG}, {"id": SEBI, "slug": "sebi-grade-a"},
             {"id": IFSCA, "slug": "ifsca-grade-a"}, {"id": UPSC, "slug": "upsc-cse"},
             {"id": CSAT, "slug": "upsc-csat"},
         ],
@@ -167,7 +168,11 @@ def test_failed_section_read_fails_closed_without_breaking_keyed_rows():
 
     sb.table = table  # type: ignore[method-assign]
     assert scope.agnostic_subject_ids_for_exam(sb, SSC) == frozenset()
-    assert svc.select_practice_rows(sb, mode="topic", exam_id=SSC, target_id=T_QA, limit=50) == []
+    # the section-driven (mock) pool fails closed ...
+    assert authored_pool_rows(sb, exam_id=SSC, statuses=["verified"]) == []
+    # ... while topic practice still has SSC's configured shared subjects (REG-CORPUS-05)
+    rows = svc.select_practice_rows(sb, mode="topic", exam_id=SSC, target_id=T_QA, limit=50)
+    assert {r["id"] for r in rows} == {"qa-f", "qa-untiered"}
     rows = svc.select_practice_rows(sb, mode="topic", exam_id=SEBI, target_id=T_QA_SEBI, limit=50)
     assert [r["id"] for r in rows] == ["qa-sebi"]
 
@@ -221,7 +226,7 @@ def _build_mock(exam: str, slug: str) -> dict:
 
 
 def test_ssc_cgl_generated_mock_never_draws_an_officer_authored_row():
-    payload = _build_mock(SSC, "ssc-cgl")
+    payload = _build_mock(SSC, SSC_SLUG)
     ids = set(payload["question_ids"])
     assert ids == {f"f-{i:02d}" for i in range(10)}
     assert not any(i.startswith("o-") for i in ids)
@@ -260,12 +265,8 @@ def test_readiness_uses_the_default_tier_like_launch():
     assert svc.practiceable_topic_ids(sb, exam_id=SEBI, topic_ids=[T_QA, T_QA_OFFICER]) == {T_QA, T_QA_OFFICER}
 
 
-def test_exam_tier_config_is_the_specified_mapping():
-    foundation = {"ssc-cgl", "ssc-chsl", "ibps-clerk", "sbi-clerk", "rrb-ntpc", "ibps-rrb-clerk"}
-    officer = {"ibps-po", "sbi-po", "rbi-grade-b", "sebi-grade-a", "nabard-grade-a",
-               "ifsca-grade-a", "pfrda-grade-a"}
-    assert all(scope.exam_tier_for_slug(s) == "foundation" for s in foundation)
-    assert all(scope.exam_tier_for_slug(s) == "officer" for s in officer)
+def test_exam_tier_values_are_valid_and_upsc_is_untiered():
+    # the live-slug mapping itself is pinned in test_authored_scope_config.py
     assert set(scope.EXAM_TIERS.values()) <= set(scope.EXAM_TIER_VALUES)
     assert scope.exam_tier_for_slug("upsc-cse") is None
 
