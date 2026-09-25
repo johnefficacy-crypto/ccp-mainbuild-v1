@@ -247,3 +247,26 @@ are live.
 Also open: 11 stems lost superscripts or symbols on import; 2024 Q54 is
 unrecoverable. The 2024 CSAT paper is missing Q49 and Q55–58 entirely — not
 dropped by UPSC, simply absent.
+---
+### 2025 CSAT Q3, Q4, Q11, Q12 — fixed
+
+Two passages had never been imported: one on calorie efficiency in animal
+versus plant-based food (Q3-4), one on the divergence between India's
+agricultural and non-agricultural economy (Q11-12). Both were recovered from
+the original paper, inserted as `pyq_stimuli` rows, linked to the four
+questions, and projected into `mock_question_stimuli`. The questions were
+archived while the passage was missing and are now restored to published.
+
+The passage text was transcribed from photographs of the paper, not machine
+extracted. The agricultural passage's opening sentence matches the quotation in
+`csat-2025_explanations.docx` word for word. Worth one proofread against the
+source before treating it as canonical.
+
+The earlier figure of 106 orphaned CSAT questions was an export artefact — the
+export never joined `pyq_question_stimuli`. 2023, 2024 and 2026 were fully
+linked all along; only these four were genuinely missing.
+
+**Open: 8 explanations held at `needs_correction`.** Four were drafted before
+their answer key was corrected (2025 GS Q71 and Q81; 2023 CSAT Q52 and Q79) and
+four were drafted without the passage (2025 CSAT Q3, Q4, Q11, Q12). All eight
+need redrafting against the corrected key and the recovered passage.
