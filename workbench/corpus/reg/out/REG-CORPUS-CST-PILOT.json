@@ -1,0 +1,1246 @@
+{
+  "batch": "REG-CORPUS-CST-PILOT",
+  "subject": "costing",
+  "count": 20,
+  "questions": [
+    {
+      "id": "CST-MC-001",
+      "subject": "costing",
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under marginal costing, fixed production overhead incurred during a period is:",
+      "options": [
+        {
+          "text": "Included in the cost of closing inventory on normal capacity",
+          "is_correct": false,
+          "error": "absorption-costing treatment",
+          "label": "A"
+        },
+        {
+          "text": "Charged in full to the profit and loss account of that period",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Apportioned to units produced on actual capacity",
+          "is_correct": false,
+          "error": "absorption on actual basis",
+          "label": "C"
+        },
+        {
+          "text": "Carried forward and charged when the goods are sold",
+          "is_correct": false,
+          "error": "confuses deferral with product cost",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B",
+      "explanation": {
+        "steps": [
+          "Marginal costing treats only variable costs as product costs.",
+          "Fixed production overhead is a period cost: written off in full against contribution of the period.",
+          "Inventory is therefore valued at variable (marginal) cost only."
+        ],
+        "formula_used": "Profit = Contribution − Fixed cost",
+        "trap": "Absorption costing is the one that carries fixed overhead into inventory."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-absorption-vs-marginal-costing-profit-reconciliation-3c2b2d47",
+      "microtopic_name": "Absorption vs marginal costing — profit reconciliation",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-002",
+      "subject": "costing",
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A product sells at ₹80 per unit with a variable cost of ₹52 per unit. Its P/V ratio is:",
+      "options": [
+        {
+          "text": "28%",
+          "is_correct": false,
+          "error": "absolute contribution ₹28 read as a percentage",
+          "label": "A"
+        },
+        {
+          "text": "35%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "53.85%",
+          "is_correct": false,
+          "error": "contribution divided by variable cost",
+          "label": "C"
+        },
+        {
+          "text": "65%",
+          "is_correct": false,
+          "error": "variable cost ratio taken as P/V",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B",
+      "explanation": {
+        "steps": [
+          "Contribution per unit = 80 − 52 = ₹28",
+          "P/V ratio = 28 ÷ 80 = 35%"
+        ],
+        "formula_used": "P/V ratio = Contribution ÷ Sales",
+        "trap": "Divide by selling price, never by variable cost."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-marginal-costing-contribution-and-p-v-ratio-5dbaee83",
+      "microtopic_name": "Marginal costing — contribution and P/V ratio",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-003",
+      "subject": "costing",
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Fixed costs are ₹4,20,000, selling price ₹150 and variable cost ₹90 per unit. Break-even point in units is:",
+      "options": [
+        {
+          "text": "1,750 units",
+          "is_correct": false,
+          "error": "divided by (SP + VC) instead of (SP − VC)",
+          "label": "A"
+        },
+        {
+          "text": "4,667 units",
+          "is_correct": false,
+          "error": "fixed cost divided by variable cost",
+          "label": "B"
+        },
+        {
+          "text": "2,800 units",
+          "is_correct": false,
+          "error": "fixed cost divided by selling price",
+          "label": "C"
+        },
+        {
+          "text": "7,000 units",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D",
+      "explanation": {
+        "steps": [
+          "Contribution per unit = 150 − 90 = ₹60",
+          "BEP = 4,20,000 ÷ 60 = 7,000 units"
+        ],
+        "formula_used": "BEP (units) = Fixed cost ÷ Contribution per unit",
+        "trap": "Denominator is contribution, not price."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-break-even-point-in-units-and-value-69b99c6d",
+      "microtopic_name": "Break-even point in units and value",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-004",
+      "subject": "costing",
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Actual sales are 50,000 units and break-even sales are 35,000 units. The margin of safety ratio is:",
+      "options": [
+        {
+          "text": "17.65%",
+          "is_correct": false,
+          "error": "divided by (actual + BEP)",
+          "label": "A"
+        },
+        {
+          "text": "42.86%",
+          "is_correct": false,
+          "error": "margin of safety divided by BEP instead of actual sales",
+          "label": "B"
+        },
+        {
+          "text": "70%",
+          "is_correct": false,
+          "error": "BEP as a share of sales, not the excess",
+          "label": "C"
+        },
+        {
+          "text": "30%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D",
+      "explanation": {
+        "steps": [
+          "Margin of safety = 50,000 − 35,000 = 15,000 units",
+          "MOS ratio = 15,000 ÷ 50,000 = 30%"
+        ],
+        "formula_used": "MOS ratio = (Actual sales − BEP sales) ÷ Actual sales",
+        "trap": "The base is actual sales."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-margin-of-safety-and-angle-of-incidence-611056b6",
+      "microtopic_name": "Margin of safety and angle of incidence",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-005",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A firm reports:\n\n| Period | Sales (₹) | Profit (₹) |\n|---|---:|---:|\n| I | 2,00,000 | 20,000 |\n| II | 2,60,000 | 38,000 |\n\nAssuming no change in selling price, variable cost ratio or fixed cost, the fixed cost is:",
+      "options": [
+        {
+          "text": "₹60,000",
+          "is_correct": false,
+          "error": "Period I contribution reported as fixed cost",
+          "label": "A"
+        },
+        {
+          "text": "₹18,000",
+          "is_correct": false,
+          "error": "change in profit reported as fixed cost",
+          "label": "B"
+        },
+        {
+          "text": "₹80,000",
+          "is_correct": false,
+          "error": "profit added to contribution instead of subtracted",
+          "label": "C"
+        },
+        {
+          "text": "₹40,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D",
+      "explanation": {
+        "steps": [
+          "P/V = change in profit ÷ change in sales = 18,000 ÷ 60,000 = 30%",
+          "Contribution (Period I) = 2,00,000 × 30% = 60,000",
+          "Fixed cost = Contribution − Profit = 60,000 − 20,000 = 40,000"
+        ],
+        "formula_used": "P/V = ΔProfit ÷ ΔSales; FC = Contribution − Profit",
+        "trap": "Profit is subtracted from contribution to get fixed cost."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-marginal-costing-contribution-and-p-v-ratio-5dbaee83",
+      "microtopic_name": "Marginal costing — contribution and P/V ratio",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-006",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Fixed costs are ₹3,60,000 and the P/V ratio is 40%. Sales required to earn a profit of ₹1,20,000 are:",
+      "options": [
+        {
+          "text": "₹9,00,000",
+          "is_correct": false,
+          "error": "break-even sales; target profit ignored",
+          "label": "A"
+        },
+        {
+          "text": "₹8,00,000",
+          "is_correct": false,
+          "error": "divided by variable cost ratio",
+          "label": "B"
+        },
+        {
+          "text": "₹10,20,000",
+          "is_correct": false,
+          "error": "profit added to BEP sales without grossing up",
+          "label": "C"
+        },
+        {
+          "text": "₹12,00,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D",
+      "explanation": {
+        "steps": [
+          "Required contribution = 3,60,000 + 1,20,000 = 4,80,000",
+          "Sales = 4,80,000 ÷ 40% = 12,00,000"
+        ],
+        "formula_used": "Required sales = (FC + Target profit) ÷ P/V",
+        "trap": "Target profit must be grossed up by the P/V ratio too."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-target-profit-sales-ac606b44",
+      "microtopic_name": "Target-profit sales",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-007",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "No opening stock. Production 12,000 units, sales 10,000 units. Fixed production overhead ₹2,40,000, absorbed on actual production. Compared with marginal costing, profit under absorption costing is:",
+      "options": [
+        {
+          "text": "Higher by ₹48,000",
+          "is_correct": false,
+          "error": "overhead rate computed on units sold",
+          "label": "A"
+        },
+        {
+          "text": "Lower by ₹40,000",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "B"
+        },
+        {
+          "text": "The same under both methods",
+          "is_correct": false,
+          "error": "ignores fixed overhead carried in closing stock",
+          "label": "C"
+        },
+        {
+          "text": "Higher by ₹40,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D",
+      "explanation": {
+        "steps": [
+          "Absorption rate = 2,40,000 ÷ 12,000 = ₹20 per unit",
+          "Closing stock = 2,000 units carries 2,000 × 20 = 40,000 of fixed overhead",
+          "That amount is deferred under absorption costing, so absorption profit is higher by it."
+        ],
+        "formula_used": "Profit difference = Fixed OH in closing stock − Fixed OH in opening stock",
+        "trap": "When production exceeds sales, absorption profit is higher."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-absorption-vs-marginal-costing-profit-reconciliation-3c2b2d47",
+      "microtopic_name": "Absorption vs marginal costing — profit reconciliation",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-008",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Sales are ₹10,00,000, profit ₹90,000 and the P/V ratio 30%. The margin of safety ratio is:",
+      "options": [
+        {
+          "text": "2.70%",
+          "is_correct": false,
+          "error": "profit multiplied by P/V instead of divided",
+          "label": "A"
+        },
+        {
+          "text": "70%",
+          "is_correct": false,
+          "error": "BEP ratio reported instead of MOS",
+          "label": "B"
+        },
+        {
+          "text": "30%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "9%",
+          "is_correct": false,
+          "error": "profit-to-sales ratio taken as MOS",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C",
+      "explanation": {
+        "steps": [
+          "MOS (₹) = Profit ÷ P/V = 90,000 ÷ 30% = 3,00,000",
+          "MOS ratio = 3,00,000 ÷ 10,00,000 = 30%"
+        ],
+        "formula_used": "Profit = MOS × P/V",
+        "trap": "MOS ratio × P/V ratio = Profit ÷ Sales."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-margin-of-safety-and-angle-of-incidence-611056b6",
+      "microtopic_name": "Margin of safety and angle of incidence",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-009",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Selling price ₹100, variable cost ₹60 per unit, fixed cost ₹4,00,000, current sales 15,000 units. If price is cut by 10%, units needed to keep the present profit are:",
+      "options": [
+        {
+          "text": "13,333 units",
+          "is_correct": false,
+          "error": "new break-even point; present profit ignored",
+          "label": "A"
+        },
+        {
+          "text": "20,000 units",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "16,667 units",
+          "is_correct": false,
+          "error": "variable cost also cut by 10%",
+          "label": "C"
+        },
+        {
+          "text": "16,500 units",
+          "is_correct": false,
+          "error": "volume raised by the same 10% as the price cut",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B",
+      "explanation": {
+        "steps": [
+          "Present profit = 15,000 × 40 − 4,00,000 = 2,00,000",
+          "New contribution per unit = 90 − 60 = ₹30",
+          "Units = (4,00,000 + 2,00,000) ÷ 30 = 20,000"
+        ],
+        "formula_used": "Units = (FC + Target profit) ÷ New contribution per unit",
+        "trap": "A 10% price cut lowered unit contribution by 25% here, so volume must rise by a third."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-target-profit-sales-ac606b44",
+      "microtopic_name": "Target-profit sales",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-010",
+      "subject": "costing",
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Machine hours are the limiting factor.\n\n| Product | Contribution per unit (₹) | Machine hours per unit |\n|---|---:|---:|\n| A | 60 | 4 |\n| B | 45 | 2 |\n| C | 80 | 5 |\n\nThe order of priority for production is:",
+      "options": [
+        {
+          "text": "B, C, A",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "C, A, B",
+          "is_correct": false,
+          "error": "ranked by contribution per unit",
+          "label": "B"
+        },
+        {
+          "text": "B, A, C",
+          "is_correct": false,
+          "error": "ranked by fewest hours per unit",
+          "label": "C"
+        },
+        {
+          "text": "A, C, B",
+          "is_correct": false,
+          "error": "ranking reversed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A",
+      "explanation": {
+        "steps": [
+          "Contribution per hour: A = 60/4 = ₹15; B = 45/2 = ₹22.5; C = 80/5 = ₹16",
+          "Rank highest first: B, C, A"
+        ],
+        "formula_used": "Rank by contribution per unit of the key factor",
+        "trap": "Contribution per unit is irrelevant once a resource binds."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-key-factor-and-product-mix-decisions-c1f23dd7",
+      "microtopic_name": "Key factor and product mix decisions",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-011",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Available machine hours are 20,000; fixed cost ₹1,50,000.\n\n| Product | Contribution/unit (₹) | Hours/unit | Max demand (units) |\n|---|---:|---:|---:|\n| A | 60 | 4 | 5,000 |\n| B | 45 | 2 | 3,000 |\n| C | 80 | 5 | 2,000 |\n\nMaximum profit is:",
+      "options": [
+        {
+          "text": "₹3,55,000",
+          "is_correct": false,
+          "error": "total contribution reported; fixed cost not deducted",
+          "label": "A"
+        },
+        {
+          "text": "₹1,60,000",
+          "is_correct": false,
+          "error": "mix ranked by contribution per unit",
+          "label": "B"
+        },
+        {
+          "text": "₹2,05,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹3,00,000",
+          "is_correct": false,
+          "error": "demand ceiling ignored for the top-ranked product",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C",
+      "explanation": {
+        "steps": [
+          "Rank by contribution per hour: B, C, A",
+          "B: 3,000 units × 2 h = 6,000 h → ₹1,35,000",
+          "C: 2,000 units × 5 h = 10,000 h → ₹1,60,000",
+          "A: remaining 4,000 h ÷ 4 = 1,000 units → ₹60,000",
+          "Contribution 3,55,000 − fixed cost 1,50,000 = 2,05,000"
+        ],
+        "formula_used": "Allocate the key factor in rank order, capped by demand",
+        "trap": "Respect demand limits before moving down the ranking."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-key-factor-and-product-mix-decisions-c1f23dd7",
+      "microtopic_name": "Key factor and product mix decisions",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-012",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Capacity 50,000 units; current sales 40,000 units at ₹50; variable cost ₹30 per unit. A one-time order for 12,000 units at ₹38 would require an extra ₹20,000 of fixed cost and, due to capacity, the loss of some regular sales. Net effect on profit of accepting is:",
+      "options": [
+        {
+          "text": "Increase of ₹96,000",
+          "is_correct": false,
+          "error": "displaced sales and extra fixed cost ignored",
+          "label": "A"
+        },
+        {
+          "text": "Increase of ₹76,000",
+          "is_correct": false,
+          "error": "displaced regular sales ignored",
+          "label": "B"
+        },
+        {
+          "text": "Increase of ₹36,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Increase of ₹56,000",
+          "is_correct": false,
+          "error": "extra fixed cost ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C",
+      "explanation": {
+        "steps": [
+          "Contribution from order = 12,000 × (38 − 30) = 96,000",
+          "Regular units displaced = 40,000 + 12,000 − 50,000 = 2,000; contribution lost = 40,000",
+          "Net = 96,000 − 40,000 − 20,000 = 36,000"
+        ],
+        "formula_used": "Net gain = Order contribution − Displaced contribution − Incremental fixed cost",
+        "trap": "Spare capacity is only 10,000 units; the last 2,000 units displace full-price sales."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-sunk-differential-opportunity-and-relevant-costs-52aa27f3",
+      "microtopic_name": "Sunk, differential, opportunity and relevant costs",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-013",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two products are sold in the ratio 3 : 2 by units.\n\n| | X | Y |\n|---|---:|---:|\n| Selling price (₹) | 40 | 75 |\n| Variable cost (₹) | 24 | 57 |\n\nFixed cost is ₹3,78,000. Break-even sales value is:",
+      "options": [
+        {
+          "text": "₹12,15,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹11,25,000",
+          "is_correct": false,
+          "error": "3 : 2 applied as a value mix, not a unit mix",
+          "label": "B"
+        },
+        {
+          "text": "₹11,81,250",
+          "is_correct": false,
+          "error": "simple average of the two P/V ratios",
+          "label": "C"
+        },
+        {
+          "text": "₹15,75,000",
+          "is_correct": false,
+          "error": "P/V of product Y alone",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A",
+      "explanation": {
+        "steps": [
+          "Contribution per mix (3X + 2Y) = 3×16 + 2×18 = ₹84",
+          "Mixes to break even = 3,78,000 ÷ 84 = 4,500",
+          "Sales per mix = 3×40 + 2×75 = ₹270",
+          "BEP sales = 4,500 × 270 = 12,15,000"
+        ],
+        "formula_used": "Composite BEP = FC ÷ Weighted contribution per mix",
+        "trap": "Weights must follow the stated mix basis (units here)."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-break-even-point-in-units-and-value-69b99c6d",
+      "microtopic_name": "Break-even point in units and value",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-014",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Plan A: fixed cost ₹2,00,000, variable cost 60% of sales. Plan B: fixed cost ₹3,20,000, variable cost 45% of sales. Plan B gives the higher profit above sales of:",
+      "options": [
+        {
+          "text": "₹5,81,818",
+          "is_correct": false,
+          "error": "break-even of Plan B",
+          "label": "A"
+        },
+        {
+          "text": "₹8,00,000",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹5,00,000",
+          "is_correct": false,
+          "error": "break-even of Plan A",
+          "label": "C"
+        },
+        {
+          "text": "₹2,66,667",
+          "is_correct": false,
+          "error": "divided by Plan B's variable ratio instead of the difference",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B",
+      "explanation": {
+        "steps": [
+          "Difference in fixed cost = 1,20,000",
+          "Difference in variable ratio = 60% − 45% = 15%",
+          "Indifference sales = 1,20,000 ÷ 15% = 8,00,000",
+          "Above this point the lower variable-cost plan (B) earns more."
+        ],
+        "formula_used": "Indifference point = ΔFixed cost ÷ ΔVariable cost ratio",
+        "trap": "Not a break-even point; it compares two structures."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-break-even-point-in-units-and-value-69b99c6d",
+      "microtopic_name": "Break-even point in units and value",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-015",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Fixed cost is ₹6,00,000. If operations are suspended, ₹2,40,000 of it is avoidable, but closing and reopening costs ₹60,000. Contribution is ₹20 per unit. The shut-down point is:",
+      "options": [
+        {
+          "text": "9,000 units",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "30,000 units",
+          "is_correct": false,
+          "error": "break-even point",
+          "label": "B"
+        },
+        {
+          "text": "21,000 units",
+          "is_correct": false,
+          "error": "cost if shut ÷ contribution",
+          "label": "C"
+        },
+        {
+          "text": "12,000 units",
+          "is_correct": false,
+          "error": "shut-down cost ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A",
+      "explanation": {
+        "steps": [
+          "Cost if shut = unavoidable 3,60,000 + shut-down 60,000 = 4,20,000",
+          "Operating is worthwhile while fixed cost − contribution < 4,20,000",
+          "Shut-down point = (6,00,000 − 4,20,000) ÷ 20 = 9,000 units"
+        ],
+        "formula_used": "Shut-down point = (Total FC − Cost if shut) ÷ Contribution per unit",
+        "trap": "Below this volume, closing loses less than operating."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-make-or-buy-and-shutdown-decisions-91b4aa14",
+      "microtopic_name": "Make-or-buy and shutdown decisions",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-016",
+      "subject": "costing",
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Opening stock 2,000 units carried fixed overhead at ₹18 per unit. This period: production 10,000 units, fixed production overhead ₹2,00,000 absorbed on actual output, sales 11,000 units (FIFO). Compared with absorption costing, marginal costing profit is:",
+      "options": [
+        {
+          "text": "Higher by ₹16,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Higher by ₹36,000",
+          "is_correct": false,
+          "error": "closing stock overhead ignored",
+          "label": "B"
+        },
+        {
+          "text": "Higher by ₹20,000",
+          "is_correct": false,
+          "error": "opening stock revalued at the current rate",
+          "label": "C"
+        },
+        {
+          "text": "Lower by ₹16,000",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A",
+      "explanation": {
+        "steps": [
+          "Current rate = 2,00,000 ÷ 10,000 = ₹20",
+          "Closing stock = 2,000 + 10,000 − 11,000 = 1,000 units → 20,000 fixed OH",
+          "Opening stock fixed OH = 2,000 × 18 = 36,000",
+          "Absorption − Marginal = 20,000 − 36,000 = −16,000, so marginal is higher"
+        ],
+        "formula_used": "Difference = Fixed OH in closing stock − Fixed OH in opening stock",
+        "trap": "Opening stock keeps its own (prior) rate."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-absorption-vs-marginal-costing-profit-reconciliation-3c2b2d47",
+      "microtopic_name": "Absorption vs marginal costing — profit reconciliation",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-017",
+      "subject": "costing",
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": "CST-MC-CASE-1",
+      "stem": "**Case — Vardhan Home Appliances Ltd (fictional)**\n\nAnnual data:\n\n| | Mixer | Iron | Kettle |\n|---|---:|---:|---:|\n| Units sold | 20,000 | 30,000 | 25,000 |\n| Selling price per unit (₹) | 1,200 | 800 | 600 |\n| Variable cost per unit (₹) | 780 | 600 | 540 |\n\nTotal fixed cost of ₹1,26,00,000 is apportioned to products in proportion to sales value. On this basis the Kettle shows a loss.\n\nIf the Kettle is discontinued, only ₹9,00,000 of its apportioned fixed cost is saved (specific supervision). Company profit after discontinuing will be:",
+      "options": [
+        {
+          "text": "₹18.00 lakh",
+          "is_correct": false,
+          "error": "specific fixed cost saving ignored",
+          "label": "A"
+        },
+        {
+          "text": "₹27.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹42.00 lakh",
+          "is_correct": false,
+          "error": "saving added but Kettle contribution not given up",
+          "label": "C"
+        },
+        {
+          "text": "₹48.00 lakh",
+          "is_correct": false,
+          "error": "apportioned 'loss' of Kettle simply removed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B",
+      "explanation": {
+        "steps": [
+          "Present profit = total contribution 1,59,00,000 − fixed cost 1,26,00,000 = 33,00,000",
+          "Kettle contribution lost = 15,00,000; specific cost saved = 9,00,000",
+          "New profit = 33,00,000 − 15,00,000 + 9,00,000 = 27,00,000"
+        ],
+        "formula_used": "Decision = Contribution forgone vs avoidable fixed cost",
+        "trap": "Apportioned fixed cost is not saved by dropping a product."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-make-or-buy-and-shutdown-decisions-91b4aa14",
+      "microtopic_name": "Make-or-buy and shutdown decisions",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-018",
+      "subject": "costing",
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": "CST-MC-CASE-1",
+      "stem": "**Case — Vardhan Home Appliances Ltd (fictional)**\n\nAnnual data:\n\n| | Mixer | Iron | Kettle |\n|---|---:|---:|---:|\n| Units sold | 20,000 | 30,000 | 25,000 |\n| Selling price per unit (₹) | 1,200 | 800 | 600 |\n| Variable cost per unit (₹) | 780 | 600 | 540 |\n\nTotal fixed cost of ₹1,26,00,000 is apportioned to products in proportion to sales value. On this basis the Kettle shows a loss.\n\nAt the present sales mix, the company's break-even sales value is:",
+      "options": [
+        {
+          "text": "₹420.00 lakh",
+          "is_correct": false,
+          "error": "Kettle excluded from the mix",
+          "label": "A"
+        },
+        {
+          "text": "₹540.00 lakh",
+          "is_correct": false,
+          "error": "simple average of product P/V ratios",
+          "label": "B"
+        },
+        {
+          "text": "₹499.25 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹504.00 lakh",
+          "is_correct": false,
+          "error": "P/V of one product (Iron) used for the whole firm",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C",
+      "explanation": {
+        "steps": [
+          "Total sales = 6,30,00,000; total contribution = 1,59,00,000",
+          "Weighted P/V = 1,59,00,000 ÷ 6,30,00,000 = 25.2381%",
+          "BEP = 1,26,00,000 ÷ 0.252381 = ₹499.25 lakh"
+        ],
+        "formula_used": "BEP sales = FC ÷ Weighted P/V ratio",
+        "trap": "Weight P/V by sales value, not equally."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-break-even-point-in-units-and-value-69b99c6d",
+      "microtopic_name": "Break-even point in units and value",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-019",
+      "subject": "costing",
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": "CST-MC-CASE-1",
+      "stem": "**Case — Vardhan Home Appliances Ltd (fictional)**\n\nAnnual data:\n\n| | Mixer | Iron | Kettle |\n|---|---:|---:|---:|\n| Units sold | 20,000 | 30,000 | 25,000 |\n| Selling price per unit (₹) | 1,200 | 800 | 600 |\n| Variable cost per unit (₹) | 780 | 600 | 540 |\n\nTotal fixed cost of ₹1,26,00,000 is apportioned to products in proportion to sales value. On this basis the Kettle shows a loss.\n\nThe margin of safety ratio at the present sales mix is:",
+      "options": [
+        {
+          "text": "20.75%",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "79.25%",
+          "is_correct": false,
+          "error": "BEP ratio reported instead of MOS",
+          "label": "B"
+        },
+        {
+          "text": "5.24%",
+          "is_correct": false,
+          "error": "profit-to-sales ratio",
+          "label": "C"
+        },
+        {
+          "text": "20%",
+          "is_correct": false,
+          "error": "BEP taken from Iron's P/V",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A",
+      "explanation": {
+        "steps": [
+          "BEP = ₹499.25 lakh (weighted P/V)",
+          "MOS ratio = (6,30,00,000 − 4,99,24,528) ÷ 6,30,00,000 = 20.75%",
+          "Check: MOS ratio × P/V = 20.75% × 25.24% ≈ profit/sales 5.24%"
+        ],
+        "formula_used": "MOS ratio = (Sales − BEP) ÷ Sales",
+        "trap": "Close options: the Iron-P/V error shifts MOS by under one point."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-margin-of-safety-and-angle-of-incidence-611056b6",
+      "microtopic_name": "Margin of safety and angle of incidence",
+      "verify_fact": false
+    },
+    {
+      "id": "CST-MC-020",
+      "subject": "costing",
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": "CST-MC-CASE-1",
+      "stem": "**Case — Vardhan Home Appliances Ltd (fictional)**\n\nAnnual data:\n\n| | Mixer | Iron | Kettle |\n|---|---:|---:|---:|\n| Units sold | 20,000 | 30,000 | 25,000 |\n| Selling price per unit (₹) | 1,200 | 800 | 600 |\n| Variable cost per unit (₹) | 780 | 600 | 540 |\n\nTotal fixed cost of ₹1,26,00,000 is apportioned to products in proportion to sales value. On this basis the Kettle shows a loss.\n\nManagement proposes replacing the Kettle with a Toaster on the same capacity: 20,000 units at ₹700, variable cost ₹520, and new specific fixed cost of ₹12,00,000. The Kettle's specific cost of ₹9,00,000 would be saved. The change in company profit is:",
+      "options": [
+        {
+          "text": "Increase of ₹9.00 lakh",
+          "is_correct": false,
+          "error": "Kettle's specific cost saving ignored",
+          "label": "A"
+        },
+        {
+          "text": "Increase of ₹21.00 lakh",
+          "is_correct": false,
+          "error": "both specific fixed costs ignored",
+          "label": "B"
+        },
+        {
+          "text": "Increase of ₹18.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Increase of ₹33.00 lakh",
+          "is_correct": false,
+          "error": "Kettle contribution forgone ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C",
+      "explanation": {
+        "steps": [
+          "Toaster: 20,000 × 180 − 12,00,000 = 24,00,000",
+          "Kettle given up: contribution 15,00,000 − specific cost 9,00,000 = 6,00,000",
+          "Change = 24,00,000 − 6,00,000 = +18,00,000"
+        ],
+        "formula_used": "Incremental profit = New net contribution − Net contribution given up",
+        "trap": "Compare specific (avoidable) figures on both sides; ignore apportioned cost."
+      },
+      "exams": [
+        "sebi",
+        "pfrda",
+        "ifsca"
+      ],
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard marginal costing/CVP pattern (ICAI/ICMAI cost accounting syllabus). Original figures and entities; no text reproduced."
+        }
+      ],
+      "review_status": "draft",
+      "microtopic_slug": "cost-make-or-buy-and-shutdown-decisions-91b4aa14",
+      "microtopic_name": "Make-or-buy and shutdown decisions",
+      "verify_fact": false
+    }
+  ]
+}

@@ -1,0 +1,4981 @@
+{
+  "batch": "REG-CORPUS-CST",
+  "subject": "costing",
+  "count": 80,
+  "levels": {
+    "L1": 16,
+    "L2": 24,
+    "L3": 24,
+    "L4": 16
+  },
+  "questions": [
+    {
+      "id": "CST-001",
+      "subject": "costing",
+      "microtopic_slug": "cost-5s-and-the-sixth-s-12ee6222",
+      "microtopic_name": "5S and the sixth S",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "In the 5S workplace-organisation system, the step called **Seiketsu** refers to:",
+      "explanation": {
+        "steps": [
+          "5S = Seiri (Sort), Seiton (Set in order), Seiso (Shine), Seiketsu (Standardise), Shitsuke (Sustain).",
+          "Seiketsu converts the first three S's into written standards and visual controls.",
+          "Many firms add a sixth S — Safety — giving '5S + 1' or 6S."
+        ],
+        "formula_used": "5S sequence: Sort → Set in order → Shine → Standardise → Sustain (+ Safety)",
+        "trap": "Standardise (4th S) and Sustain (5th S) are the pair most often swapped."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Sort — removing items that are not needed at the workstation",
+          "is_correct": false,
+          "error": "confuses Seiketsu with Seiri",
+          "label": "A"
+        },
+        {
+          "text": "Shine — cleaning the workplace, machines and equipment daily",
+          "is_correct": false,
+          "error": "confuses Seiketsu with Seiso",
+          "label": "B"
+        },
+        {
+          "text": "Sustain — building self-discipline to keep the system alive",
+          "is_correct": false,
+          "error": "confuses Seiketsu with Shitsuke",
+          "label": "C"
+        },
+        {
+          "text": "Standardise — fixing norms so that the first three S's become routine",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-002",
+      "subject": "costing",
+      "microtopic_slug": "cost-cellular-manufacturing-one-piece-flow-cf3a35ef",
+      "microtopic_name": "Cellular manufacturing / one-piece flow",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following best describes **cellular manufacturing**?",
+      "explanation": {
+        "steps": [
+          "A cell groups dissimilar machines by product family (group technology).",
+          "Work moves one piece (or small lot) at a time between adjacent stations — one-piece flow.",
+          "This cuts transport, waiting and WIP compared with a functional layout."
+        ],
+        "formula_used": "Cell = product-family layout + one-piece flow",
+        "trap": "A functional layout groups SIMILAR machines; a cell groups DIFFERENT machines."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Grouping similar machines into separate departments such as a lathe shop and a drilling shop",
+          "is_correct": false,
+          "error": "describes functional (process) layout",
+          "label": "A"
+        },
+        {
+          "text": "Grouping the different machines for a product family so units flow one piece at a time",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "A dedicated automated line built for one product that cannot be switched to other items",
+          "is_correct": false,
+          "error": "confuses a flexible cell with fixed automation",
+          "label": "C"
+        },
+        {
+          "text": "Producing in large batches so that set-up costs are spread over more units",
+          "is_correct": false,
+          "error": "batch-and-queue logic that cells are meant to replace",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-003",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-accounting-vs-financial-accounting-2f4381c6",
+      "microtopic_name": "Cost accounting vs financial accounting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. Maintenance of cost records is mandatory for every company registered under the Companies Act, 2013.\n2. Financial accounts report on the business as a whole mainly for external users, whereas cost accounts analyse costs by product, process or department for internal use.\n3. Notional charges such as interest on owners' capital may be included in cost accounts but are not recorded in financial accounts.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Statement 1 is wrong: under section 148 the Central Government prescribes cost records only for specified classes of companies (Companies (Cost Records and Audit) Rules, 2014), subject to turnover thresholds.",
+          "Statement 2 is the standard scope distinction.",
+          "Statement 3 is correct: notional costs (interest on own capital, rent of owned premises) are costing adjustments and cause reconciliation items."
+        ],
+        "formula_used": "Cost records: s.148 — only notified classes of companies",
+        "trap": "'Every company' is the give-away — cost records apply only to notified industries above thresholds."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Companies Act, 2013 s.148; Companies (Cost Records and Audit) Rules, 2014 (applicability by industry/turnover)."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": false,
+          "error": "treats cost records as universal and misses notional costs",
+          "label": "A"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "treats cost records as mandatory for all companies",
+          "label": "C"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "overlooks that notional costs belong only in cost accounts",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-004",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-control-vs-cost-reduction-539c755e",
+      "microtopic_name": "Cost control vs cost reduction",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which statement correctly distinguishes **cost reduction** from **cost control**?",
+      "explanation": {
+        "steps": [
+          "Cost control: set standards → compare actual → correct deviations (standards accepted).",
+          "Cost reduction: questions the standards and seeks lasting savings (value analysis, redesign) without lowering quality or utility."
+        ],
+        "formula_used": "Control = achieve the standard; Reduction = improve the standard",
+        "trap": "Cost control is corrective; cost reduction is a challenge to the standard itself."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Both accept the existing standards as given; they differ only in the period covered",
+          "is_correct": false,
+          "error": "misses that cost reduction challenges the standards themselves",
+          "label": "A"
+        },
+        {
+          "text": "Cost control aims at a permanent lowering of unit cost; cost reduction aims at keeping costs within standards",
+          "is_correct": false,
+          "error": "the two definitions reversed",
+          "label": "B"
+        },
+        {
+          "text": "Reduction lowers unit cost permanently without impairing utility; control keeps costs within standards",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Cost reduction works mainly by comparing actual cost with budget and correcting deviations",
+          "is_correct": false,
+          "error": "describes cost control, not reduction",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-005",
+      "subject": "costing",
+      "microtopic_slug": "cost-direct-vs-indirect-costs-6ceb3aa3",
+      "microtopic_name": "Direct vs indirect costs",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A factory makes several products. Which of the following is normally treated as a **direct** cost of a product?",
+      "explanation": {
+        "steps": [
+          "A direct cost can be traced to the cost object in an economically feasible way.",
+          "Royalty per unit produced is a direct expense of that product.",
+          "Rent, common supervision and lubricants are shared overheads."
+        ],
+        "formula_used": "Direct cost = economically traceable to the cost object",
+        "trap": "Lubricants are material but are indirect because they cannot be traced to a unit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Lubricants used on machines that make all products",
+          "is_correct": false,
+          "error": "indirect material, not direct",
+          "label": "A"
+        },
+        {
+          "text": "Salary of the supervisor overseeing all production lines",
+          "is_correct": false,
+          "error": "indirect: cannot be traced to one product economically",
+          "label": "B"
+        },
+        {
+          "text": "Royalty paid to a patent holder per unit of that product made",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Rent of the factory building shared by all products",
+          "is_correct": false,
+          "error": "indirect: shared facility cost",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-006",
+      "subject": "costing",
+      "microtopic_slug": "cost-imputed-and-notional-costs-dc36d546",
+      "microtopic_name": "Imputed and notional costs",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Interest on the proprietor's own capital, charged in the cost accounts to compare two projects on equal terms although no cash is paid, is an example of:",
+      "explanation": {
+        "steps": [
+          "Imputed costs are hypothetical costs not involving cash outlay and not recorded in financial books.",
+          "Interest on own capital and rent of owned premises are classic examples.",
+          "They are relevant for comparing alternatives."
+        ],
+        "formula_used": "Imputed cost = notional charge, no cash outlay",
+        "trap": "It is excluded from financial accounts, which causes a reconciliation item."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Imputed (notional) cost",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Differential cost",
+          "is_correct": false,
+          "error": "differential cost is the change in total cost between alternatives",
+          "label": "B"
+        },
+        {
+          "text": "Sunk cost",
+          "is_correct": false,
+          "error": "confuses a notional charge with a past irrecoverable outlay",
+          "label": "C"
+        },
+        {
+          "text": "Out-of-pocket cost",
+          "is_correct": false,
+          "error": "out-of-pocket costs involve a current cash payment",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-007",
+      "subject": "costing",
+      "microtopic_slug": "cost-introduction-to-cost-and-management-accounting-a93049ae",
+      "microtopic_name": "Introduction to cost and management accounting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following is a **cost unit** rather than a cost centre?",
+      "explanation": {
+        "steps": [
+          "A cost centre is a location, person or item of equipment for which costs are collected.",
+          "A cost unit is the unit of product or service in which costs are expressed.",
+          "Tonne-km is the cost unit of goods transport."
+        ],
+        "formula_used": "Cost unit = measure of output; cost centre = where costs are collected",
+        "trap": "Departments and sections are always centres, never units."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "The factory canteen",
+          "is_correct": false,
+          "error": "a service cost centre",
+          "label": "A"
+        },
+        {
+          "text": "Tonne-kilometre in a road transport undertaking",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "The delivery-van section of a distribution company",
+          "is_correct": false,
+          "error": "a department — cost centre",
+          "label": "C"
+        },
+        {
+          "text": "The machine shop of a factory",
+          "is_correct": false,
+          "error": "a location — cost centre",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-008",
+      "subject": "costing",
+      "microtopic_slug": "cost-introduction-to-lean-system-and-the-wastes-688e6065",
+      "microtopic_name": "Introduction to lean system and the wastes",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "match",
+      "stimulus_group": null,
+      "stem": "Match the lean waste with the example:\n\n| Waste | Example |\n|---|---|\n| P. Over-processing | 1. Polishing an internal surface that the customer never sees |\n| Q. Motion | 2. An operator walks to a distant rack for tools every cycle |\n| R. Transportation | 3. Moving WIP between two buildings for the next operation |\n| S. Over-production | 4. Making goods ahead of orders to keep machines busy |\n\nThe correct matching is:",
+      "explanation": {
+        "steps": [
+          "Over-processing: doing more than the customer values.",
+          "Motion: unnecessary movement of people; Transportation: unnecessary movement of materials.",
+          "Over-production: making more or earlier than required — often called the worst waste."
+        ],
+        "formula_used": "TIMWOOD: Transport, Inventory, Motion, Waiting, Over-production, Over-processing, Defects",
+        "trap": "Motion = people; Transport = materials."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "P-1, Q-2, R-3, S-4",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "P-2, Q-1, R-3, S-4",
+          "is_correct": false,
+          "error": "over-processing confused with motion",
+          "label": "B"
+        },
+        {
+          "text": "P-1, Q-3, R-2, S-4",
+          "is_correct": false,
+          "error": "motion (people) confused with transportation (material)",
+          "label": "C"
+        },
+        {
+          "text": "P-4, Q-2, R-3, S-1",
+          "is_correct": false,
+          "error": "over-processing confused with over-production",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-009",
+      "subject": "costing",
+      "microtopic_slug": "cost-just-in-time-and-pull-systems-f89f17ff",
+      "microtopic_name": "Just-in-Time and pull systems",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** Under a Just-in-Time system, a manufacturer aims to hold near-zero stocks of raw materials and work-in-progress.\n\n**Reason (R):** JIT is a push system in which production is scheduled in advance on the basis of sales forecasts.",
+      "explanation": {
+        "steps": [
+          "A is true: JIT minimises inventory by receiving/producing only when needed.",
+          "R is false: JIT is a PULL system — production is triggered by actual downstream demand (e.g. Kanban).",
+          "Forecast-driven scheduling (e.g. MRP) is a push system."
+        ],
+        "formula_used": "JIT = pull; MRP = push",
+        "trap": "The reason describes MRP, not JIT."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": false,
+          "error": "accepts JIT as a push system",
+          "label": "A"
+        },
+        {
+          "text": "A is true, but R is false",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "accepts R as true",
+          "label": "C"
+        },
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "reverses the truth values",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-010",
+      "subject": "costing",
+      "microtopic_slug": "cost-mrp-ii-f6fb71bc",
+      "microtopic_name": "MRP II",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "MRP II extends MRP I principally by:",
+      "explanation": {
+        "steps": [
+          "MRP I (material requirements planning) explodes the master schedule into material needs.",
+          "MRP II (manufacturing resource planning) links this to capacity planning, shop-floor control, purchasing, finance and marketing, with feedback (closed loop).",
+          "ERP later extended the idea to the whole enterprise."
+        ],
+        "formula_used": "MRP I = materials; MRP II = all manufacturing resources; ERP = enterprise",
+        "trap": "MRP II is still a push system."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Replacing sales forecasts with Kanban pull signals from downstream stations",
+          "is_correct": false,
+          "error": "describes JIT, not MRP II",
+          "label": "A"
+        },
+        {
+          "text": "Computing the economic order quantity for independent-demand items",
+          "is_correct": false,
+          "error": "EOQ is a stock model, not MRP II",
+          "label": "B"
+        },
+        {
+          "text": "Restricting planning to dependent-demand raw materials only",
+          "is_correct": false,
+          "error": "describes the narrower scope of MRP I",
+          "label": "C"
+        },
+        {
+          "text": "Linking material plans with capacity, finance and marketing in a closed loop",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-011",
+      "subject": "costing",
+      "microtopic_slug": "cost-objectives-and-scope-of-cost-and-management-accounting-2711c3c3",
+      "microtopic_name": "Objectives and scope of cost and management accounting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following is **not** an objective of cost accounting?",
+      "explanation": {
+        "steps": [
+          "Cost accounting aims at ascertainment, control and reduction of cost and at supporting decisions.",
+          "The statutory balance sheet is a financial-accounting output."
+        ],
+        "formula_used": "Objectives: ascertain, control, reduce, decide",
+        "trap": "Statutory reporting belongs to financial accounting."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Control of costs through standards and budgets",
+          "is_correct": false,
+          "error": "a core objective",
+          "label": "A"
+        },
+        {
+          "text": "Supplying cost data for pricing and make-or-buy decisions",
+          "is_correct": false,
+          "error": "a core objective",
+          "label": "B"
+        },
+        {
+          "text": "Preparation of the statutory balance sheet for shareholders",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Ascertainment of cost per unit of product or service",
+          "is_correct": false,
+          "error": "a core objective",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-012",
+      "subject": "costing",
+      "microtopic_slug": "cost-process-innovation-and-business-process-re-engineering-b894f4ac",
+      "microtopic_name": "Process innovation and Business Process Re-engineering",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Business Process Re-engineering (BPR), as distinguished from Kaizen, involves:",
+      "explanation": {
+        "steps": [
+          "BPR (Hammer and Champy) starts from a clean sheet and redesigns around outcomes.",
+          "Kaizen is gradual and continuous; BPR is radical and discontinuous."
+        ],
+        "formula_used": "BPR = radical redesign; Kaizen = incremental improvement",
+        "trap": "Automation of an unchanged process is the classic BPR anti-pattern."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Radical redesign of processes to achieve dramatic gains in cost, quality and speed",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Continuous, small, incremental improvements suggested by shop-floor teams",
+          "is_correct": false,
+          "error": "describes Kaizen",
+          "label": "B"
+        },
+        {
+          "text": "Cutting headcount by a uniform percentage in every department",
+          "is_correct": false,
+          "error": "across-the-board cuts are not process redesign",
+          "label": "C"
+        },
+        {
+          "text": "Automating existing processes without changing their design",
+          "is_correct": false,
+          "error": "automating a bad process is not re-engineering",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-013",
+      "subject": "costing",
+      "microtopic_slug": "cost-role-of-the-management-accountant-bb3480a3",
+      "microtopic_name": "Role of the management accountant",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements about the role of a management accountant:\n\n1. Provides information for planning, control and decision making.\n2. Acts as a business partner in formulating and implementing strategy.\n3. Is primarily responsible for the statutory audit of the company's financial statements.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Management accountants inform planning, control and decisions (statement 1).",
+          "Modern practice sees them as business partners in strategy (statement 2).",
+          "Statutory audit is performed by an independent external auditor, not the management accountant."
+        ],
+        "formula_used": "Role: inform + partner; not audit",
+        "trap": "Independence rules out the management accountant as statutory auditor."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "treats statutory audit as a management-accounting function",
+          "label": "B"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "ignores the strategic business-partner role",
+          "label": "C"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "drops the core information role and adds audit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-014",
+      "subject": "costing",
+      "microtopic_slug": "cost-standard-costing-types-of-standards-and-ideal-standard-4097314a",
+      "microtopic_name": "Standard costing — types of standards and ideal standard",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A standard that assumes no machine breakdowns, no idle time and maximum possible efficiency is known as:",
+      "explanation": {
+        "steps": [
+          "Ideal standard = perfect conditions; usually produces adverse variances and may demotivate.",
+          "Attainable standard is generally recommended for control and motivation."
+        ],
+        "formula_used": "Ideal = perfection; Attainable = efficient but achievable",
+        "trap": "Ideal standards are useful as goals but poor for performance evaluation."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Current standard",
+          "is_correct": false,
+          "error": "current standard reflects conditions expected in the current period",
+          "label": "A"
+        },
+        {
+          "text": "Basic standard",
+          "is_correct": false,
+          "error": "basic standard is a long-term base left unchanged for trend comparison",
+          "label": "B"
+        },
+        {
+          "text": "Ideal standard",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Attainable (expected) standard",
+          "is_correct": false,
+          "error": "attainable standard allows for normal losses and idle time",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-015",
+      "subject": "costing",
+      "microtopic_slug": "cost-method-selection-by-industry-c24f9d77",
+      "microtopic_name": "Which costing method suits which industry",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "match",
+      "stimulus_group": null,
+      "stem": "Match the industry with the most suitable costing method:\n\n| Industry | Method |\n|---|---|\n| P. Oil refinery | 1. Process costing |\n| Q. Shipbuilding | 2. Contract costing |\n| R. Printing press | 3. Job costing |\n| S. City bus service | 4. Operating costing |\n\nThe correct matching is:",
+      "explanation": {
+        "steps": [
+          "Refinery: continuous, homogeneous output through sequential processes.",
+          "Shipbuilding: long-duration, site-based contract.",
+          "Printing: each order is a separate job to customer specification.",
+          "Bus service: operating (service) costing per passenger-km."
+        ],
+        "formula_used": "Match method to the nature of output",
+        "trap": "Contract costing = large, long-duration jobs; job costing = short, specific orders."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "P-4, Q-2, R-3, S-1",
+          "is_correct": false,
+          "error": "refinery and transport methods swapped",
+          "label": "A"
+        },
+        {
+          "text": "P-1, Q-2, R-3, S-4",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "P-3, Q-2, R-1, S-4",
+          "is_correct": false,
+          "error": "printing (customer jobs) treated as continuous process",
+          "label": "C"
+        },
+        {
+          "text": "P-1, Q-3, R-2, S-4",
+          "is_correct": false,
+          "error": "job and contract costing swapped",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-016",
+      "subject": "costing",
+      "microtopic_slug": "cost-zero-base-and-performance-budgeting-dfb7b882",
+      "microtopic_name": "Zero-base and performance budgeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under **zero-base budgeting**, a manager is required to:",
+      "explanation": {
+        "steps": [
+          "ZBB requires every activity to be justified from scratch each period.",
+          "Activities are packaged into decision units and ranked for funding."
+        ],
+        "formula_used": "ZBB = no carried-forward base; decision packages ranked",
+        "trap": "Performance budgeting focuses on outputs; ZBB on justification from zero."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Justify every activity and its cost afresh as if starting from zero, ranking decision packages",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Prepare budgets for several activity levels",
+          "is_correct": false,
+          "error": "describes flexible budgeting",
+          "label": "B"
+        },
+        {
+          "text": "Take last year's budget as the base and adjust it for inflation and expected changes",
+          "is_correct": false,
+          "error": "describes incremental budgeting",
+          "label": "C"
+        },
+        {
+          "text": "Link budget allocations to outputs and performance measures of programmes",
+          "is_correct": false,
+          "error": "describes performance budgeting",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-017",
+      "subject": "costing",
+      "microtopic_slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+      "microtopic_name": "Activity-based costing — cost pools and drivers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A plant's set-up cost pool is ₹4,80,000 for 160 set-ups a year. Product X is made in 12 batches of 600 units, each batch needing one set-up. Total production of all products is 80,000 units using 40,000 machine hours; X uses 0.8 machine hour per unit. Under activity-based costing, set-up cost per unit of X is:",
+      "explanation": {
+        "steps": [
+          "Rate per set-up = 4,80,000 ÷ 160 = ₹3,000",
+          "X's set-up cost = 12 × 3,000 = ₹36,000",
+          "Per unit = 36,000 ÷ 7,200 = ₹5.00"
+        ],
+        "formula_used": "Batch-level cost per unit = (Cost per set-up × Set-ups) ÷ Units",
+        "trap": "Set-ups are batch-level: use number of set-ups, not units or hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹6.00",
+          "is_correct": false,
+          "error": "pool spread on units produced (volume driver)",
+          "label": "A"
+        },
+        {
+          "text": "₹9.60",
+          "is_correct": false,
+          "error": "pool spread on machine hours",
+          "label": "B"
+        },
+        {
+          "text": "₹5.00",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹66.67",
+          "is_correct": false,
+          "error": "entire pool charged to X",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-018",
+      "subject": "costing",
+      "microtopic_slug": "cost-batch-costing-and-economic-batch-quantity-3984e50e",
+      "microtopic_name": "Batch costing and economic batch quantity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Annual demand for a component is 36,000 units. Set-up cost is ₹1,500 per batch; the component costs ₹25 to make and carrying cost is 12% per annum of cost. The economic batch quantity is:",
+      "explanation": {
+        "steps": [
+          "Carrying cost per unit p.a. = 12% × ₹25 = ₹3",
+          "EBQ = √(2 × 36,000 × 1,500 ÷ 3) = 6,000 units"
+        ],
+        "formula_used": "EBQ = √(2DS ÷ C)",
+        "trap": "Demand and carrying cost must be for the same period."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "6,000 units",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "1,732 units",
+          "is_correct": false,
+          "error": "monthly demand used with annual carrying cost",
+          "label": "B"
+        },
+        {
+          "text": "2,078 units",
+          "is_correct": false,
+          "error": "unit cost used as carrying cost",
+          "label": "C"
+        },
+        {
+          "text": "4,243 units",
+          "is_correct": false,
+          "error": "factor 2 omitted from the formula",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-019",
+      "subject": "costing",
+      "microtopic_slug": "cost-budget-concept-and-budgetary-control-617c62f3",
+      "microtopic_name": "Budget concept and budgetary control",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. A budget is a quantitative statement, prepared before the period, of the policy to be pursued during that period.\n2. Budgetary control requires continuous comparison of actual results with budget and corrective action on variances.\n3. The principal budget factor is always sales demand.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Statements 1 and 2 are standard definitions of budget and budgetary control.",
+          "Statement 3 is false: the principal (key/limiting) budget factor may be sales, materials, labour, plant capacity or finance, whichever limits activity."
+        ],
+        "formula_used": "Principal budget factor = the factor that limits activity",
+        "trap": "'Always' is wrong — the key factor is whatever binds in that period."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "treats sales as the only possible key factor",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "rejects the standard definition of a budget",
+          "label": "C"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "misses that budgetary control is comparison plus action",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-020",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-classification-by-behaviour-fixed-variable-semi-variabl-e25ab568",
+      "microtopic_name": "Cost classification by behaviour — fixed, variable, semi-variable",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Monthly maintenance cost of a plant:\n\n| Month | Output (units) | Cost (₹) |\n|---|---:|---:|\n| Apr | 6,000 | 2,00,000 |\n| May | 4,000 | 1,56,000 |\n| Jun | 8,000 | 2,70,000 |\n| Jul | 9,000 | 2,66,000 |\n\nUsing the high–low method, the estimated cost at 7,500 units is:",
+      "explanation": {
+        "steps": [
+          "High and low ACTIVITY: 9,000 and 4,000 units",
+          "Variable cost = (2,66,000 − 1,56,000) ÷ (9,000 − 4,000) = ₹22 per unit",
+          "Fixed = 1,56,000 − 4,000 × 22 = 68,000",
+          "At 7,500: 68,000 + 7,500 × 22 = 2,33,000"
+        ],
+        "formula_used": "b = ΔCost ÷ ΔActivity (high/low activity); a = Cost − b × Activity",
+        "trap": "Pick the high and low ACTIVITY months, not the high and low cost months (June is a trap)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹2,33,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹2,55,750",
+          "is_correct": false,
+          "error": "highest and lowest COST months used instead of activity",
+          "label": "B"
+        },
+        {
+          "text": "₹1,65,000",
+          "is_correct": false,
+          "error": "fixed element omitted",
+          "label": "C"
+        },
+        {
+          "text": "₹2,21,667",
+          "is_correct": false,
+          "error": "all cost treated as variable at the high-point average",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-021",
+      "subject": "costing",
+      "microtopic_slug": "cost-cost-concepts-prime-production-conversion-cost-adcadb60",
+      "microtopic_name": "Cost concepts — prime, production, conversion cost",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "From the following data, the **works (factory) cost** is:\n\n| Item | ₹ |\n|---|---:|\n| Direct materials | 2,40,000 |\n| Direct wages | 1,60,000 |\n| Direct expenses | 20,000 |\n| Factory overheads | 1,30,000 |\n| Administration overheads | 70,000 |\n| Selling overheads | 50,000 |\n| Opening WIP | 30,000 |\n| Closing WIP | 45,000 |",
+      "explanation": {
+        "steps": [
+          "Prime cost = 2,40,000 + 1,60,000 + 20,000 = 4,20,000",
+          "Add factory OH 1,30,000 → gross works cost 5,50,000",
+          "Add opening WIP 30,000, less closing WIP 45,000 → works cost 5,35,000"
+        ],
+        "formula_used": "Works cost = Prime cost + Factory OH + Opening WIP − Closing WIP",
+        "trap": "Administration and selling overheads come after works cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹5,65,000",
+          "is_correct": false,
+          "error": "WIP adjustment reversed",
+          "label": "A"
+        },
+        {
+          "text": "₹5,50,000",
+          "is_correct": false,
+          "error": "WIP adjustment omitted",
+          "label": "B"
+        },
+        {
+          "text": "₹5,35,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹6,05,000",
+          "is_correct": false,
+          "error": "administration overhead included in works cost",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-022",
+      "subject": "costing",
+      "microtopic_slug": "cost-economic-order-quantity-and-ordering-carrying-trade-off-e36a354f",
+      "microtopic_name": "Economic order quantity and ordering/carrying trade-off",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Annual requirement 50,000 kg; ordering cost ₹400 per order; purchase price ₹50 per kg; carrying cost 20% p.a. of average inventory value. The EOQ and the total annual ordering-plus-carrying cost at EOQ are:",
+      "explanation": {
+        "steps": [
+          "C = 20% × 50 = ₹10",
+          "EOQ = √(2 × 50,000 × 400 ÷ 10) = 2,000 kg",
+          "Ordering = 25 orders × 400 = 10,000; carrying = 1,000 × 10 = 10,000",
+          "Total = 20,000 (at EOQ, ordering = carrying)"
+        ],
+        "formula_used": "EOQ = √(2AO ÷ C); carrying on average stock (Q/2)",
+        "trap": "At EOQ the two costs are equal — a quick check."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "2,000 kg; ₹20,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "2,000 kg; ₹30,000",
+          "is_correct": false,
+          "error": "carrying cost charged on the full order instead of average stock",
+          "label": "B"
+        },
+        {
+          "text": "2,000 kg; ₹25,20,000",
+          "is_correct": false,
+          "error": "purchase cost added to the ordering/carrying total",
+          "label": "C"
+        },
+        {
+          "text": "1,414 kg; ₹21,213",
+          "is_correct": false,
+          "error": "factor 2 omitted in the EOQ formula",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-023",
+      "subject": "costing",
+      "microtopic_slug": "cost-idle-time-and-overtime-normal-vs-abnormal-treatment-08bfcf6d",
+      "microtopic_name": "Idle time and overtime — normal vs abnormal treatment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A department has 40 workers each paid for a 48-hour week at ₹150 per hour. Time booked to jobs in the week was 1,720 hours. Normal idle time is 5% of hours paid; the rest arose from a power failure. The amount charged to the Costing Profit and Loss Account is:",
+      "explanation": {
+        "steps": [
+          "Hours paid = 40 × 48 = 1,920; idle = 1,920 − 1,720 = 200",
+          "Normal idle = 5% × 1,920 = 96 h (absorbed via overhead / inflated wage rate)",
+          "Abnormal idle = 200 − 96 = 104 h × ₹150 = ₹15,600 → Costing P&L"
+        ],
+        "formula_used": "Abnormal idle time cost → Costing P&L; normal idle → product cost",
+        "trap": "Only the abnormal portion bypasses product cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹14,400",
+          "is_correct": false,
+          "error": "normal idle time charged to Costing P&L",
+          "label": "A"
+        },
+        {
+          "text": "₹17,100",
+          "is_correct": false,
+          "error": "normal idle time computed on hours booked, not hours paid",
+          "label": "B"
+        },
+        {
+          "text": "₹30,000",
+          "is_correct": false,
+          "error": "entire idle time charged to Costing P&L",
+          "label": "C"
+        },
+        {
+          "text": "₹15,600",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-024",
+      "subject": "costing",
+      "microtopic_slug": "cost-job-costing-ae284897",
+      "microtopic_name": "Job costing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Job No. 47: direct materials ₹38,000; direct labour 240 hours at ₹120; factory overhead absorbed at ₹150 per direct labour hour; administration overhead 20% of works cost. The firm prices jobs to earn a profit of 20% on selling price. Price quoted for the job is:",
+      "explanation": {
+        "steps": [
+          "Prime cost = 38,000 + 240 × 120 = 66,800",
+          "Works cost = 66,800 + 240 × 150 = 1,02,800",
+          "Cost of production = 1,02,800 × 1.20 = 1,23,360",
+          "Price = 1,23,360 ÷ 0.80 = 1,54,200"
+        ],
+        "formula_used": "Price = Total cost ÷ (1 − margin on sales)",
+        "trap": "20% on sales = 25% on cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,54,200",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹1,48,032",
+          "is_correct": false,
+          "error": "20% added on cost instead of on selling price",
+          "label": "B"
+        },
+        {
+          "text": "₹1,45,200",
+          "is_correct": false,
+          "error": "administration overhead taken on prime cost",
+          "label": "C"
+        },
+        {
+          "text": "₹1,28,500",
+          "is_correct": false,
+          "error": "administration overhead omitted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-025",
+      "subject": "costing",
+      "microtopic_slug": "cost-joint-products-and-by-products-apportionment-bases-a6a74b59",
+      "microtopic_name": "Joint products and by-products — apportionment bases",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A joint process costing ₹6,00,000 yields 20,000 units of main product M and 2,000 kg of by-product Y. Y sells at ₹40 per kg after further processing of ₹8 per kg; selling expenses are 10% of Y's sales value. Using the net realisable value (reverse cost) method for the by-product, cost per unit of M is:",
+      "explanation": {
+        "steps": [
+          "Y sales = 80,000; less processing 16,000 and selling 8,000 → NRV 56,000",
+          "Net joint cost to M = 6,00,000 − 56,000 = 5,44,000",
+          "Per unit = 5,44,000 ÷ 20,000 = ₹27.20"
+        ],
+        "formula_used": "Main product cost = Joint cost − NRV of by-product",
+        "trap": "Both post-separation costs reduce the credit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹30.00",
+          "is_correct": false,
+          "error": "no credit for the by-product",
+          "label": "A"
+        },
+        {
+          "text": "₹26.00",
+          "is_correct": false,
+          "error": "gross sales value of Y deducted",
+          "label": "B"
+        },
+        {
+          "text": "₹26.40",
+          "is_correct": false,
+          "error": "Y's further processing cost ignored",
+          "label": "C"
+        },
+        {
+          "text": "₹27.20",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-026",
+      "subject": "costing",
+      "microtopic_slug": "cost-kanban-3f102146",
+      "microtopic_name": "KANBAN",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A work cell uses 2,400 parts a day. Replenishment lead time is 0.5 day, the safety factor is 25% and each container holds 150 parts. The number of Kanban cards required is:",
+      "explanation": {
+        "steps": [
+          "Demand during lead time = 2,400 × 0.5 = 1,200",
+          "With safety: 1,200 × 1.25 = 1,500",
+          "Kanbans = 1,500 ÷ 150 = 10"
+        ],
+        "formula_used": "N = D × L × (1 + S) ÷ C",
+        "trap": "Safety stock increases the number of cards."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "10",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "8",
+          "is_correct": false,
+          "error": "safety factor ignored",
+          "label": "B"
+        },
+        {
+          "text": "6",
+          "is_correct": false,
+          "error": "safety factor deducted instead of added",
+          "label": "C"
+        },
+        {
+          "text": "20",
+          "is_correct": false,
+          "error": "lead time not applied (daily demand used)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-027",
+      "subject": "costing",
+      "microtopic_slug": "cost-kaizen-and-kaizen-costing-af2ced2a",
+      "microtopic_name": "Kaizen and Kaizen costing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which statement best distinguishes **Kaizen costing** from **target costing**?",
+      "explanation": {
+        "steps": [
+          "Target costing: allowable cost = target price − target profit, achieved through design.",
+          "Kaizen costing: after launch, sets period-by-period reduction targets achieved by small improvements.",
+          "Together they cover the life cycle: design (target) → production (Kaizen)."
+        ],
+        "formula_used": "Target cost = Price − Margin (design); Kaizen = continuous reduction (production)",
+        "trap": "Kaizen is incremental; radical redesign is BPR."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Kaizen costing derives the allowable cost as target price less required profit margin",
+          "is_correct": false,
+          "error": "describes target costing",
+          "label": "A"
+        },
+        {
+          "text": "Kaizen costing relies on a one-time radical redesign of the production process",
+          "is_correct": false,
+          "error": "describes BPR, not Kaizen",
+          "label": "B"
+        },
+        {
+          "text": "Kaizen costing cuts costs continuously during manufacture; target costing acts at the design stage",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Kaizen costing works at the design stage, whereas target costing applies during manufacturing",
+          "is_correct": false,
+          "error": "stages reversed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-028",
+      "subject": "costing",
+      "microtopic_slug": "cost-labour-turnover-causes-and-measurement-d4cb4ea3",
+      "microtopic_name": "Labour turnover — causes and measurement",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Workforce data for the year: employees at start 380, at end 420; separations 24; replacements 18; additional workers recruited for an expansion scheme 46. Labour turnover by the **replacement method** is:",
+      "explanation": {
+        "steps": [
+          "Average workforce = (380 + 420) ÷ 2 = 400",
+          "Replacement rate = 18 ÷ 400 = 4.50%",
+          "Recruitment for expansion is excluded from replacements."
+        ],
+        "formula_used": "Replacement method = Replacements ÷ Average number of workers",
+        "trap": "New posts created by expansion are not turnover."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "4.74%",
+          "is_correct": false,
+          "error": "divided by opening instead of average workforce",
+          "label": "A"
+        },
+        {
+          "text": "16%",
+          "is_correct": false,
+          "error": "expansion recruits counted as replacements",
+          "label": "B"
+        },
+        {
+          "text": "6%",
+          "is_correct": false,
+          "error": "separation method used",
+          "label": "C"
+        },
+        {
+          "text": "4.50%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-029",
+      "subject": "costing",
+      "microtopic_slug": "cost-labour-variances-rate-and-efficiency-71d9cffe",
+      "microtopic_name": "Labour variances — rate and efficiency",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Standard labour: 2.5 hours per unit at ₹160 per hour. Actual output 1,800 units; actual hours worked 4,700 paid at ₹170 per hour. The labour efficiency variance is:",
+      "explanation": {
+        "steps": [
+          "Standard hours for actual output = 2.5 × 1,800 = 4,500",
+          "Efficiency = (4,500 − 4,700) × 160 = ₹32,000 (A)"
+        ],
+        "formula_used": "LEV = (SH − AH) × SR",
+        "trap": "Efficiency variances are always valued at the standard rate."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹32,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹34,000 (A)",
+          "is_correct": false,
+          "error": "valued at the actual rate",
+          "label": "B"
+        },
+        {
+          "text": "₹32,000 (F)",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "C"
+        },
+        {
+          "text": "₹47,000 (A)",
+          "is_correct": false,
+          "error": "labour rate variance reported",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-030",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Standard: 4 kg of material per unit at ₹60 per kg. Actual output 2,500 units; material used 10,600 kg costing ₹58 per kg. The material usage variance is:",
+      "explanation": {
+        "steps": [
+          "Standard quantity for actual output = 4 × 2,500 = 10,000 kg",
+          "Usage = (10,000 − 10,600) × 60 = ₹36,000 (A)",
+          "(Price variance = ₹21,200 (F); cost variance = ₹14,800 (A))"
+        ],
+        "formula_used": "MUV = (SQ − AQ) × SP",
+        "trap": "Usage is priced at standard; the price effect sits in the price variance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹36,000 (F)",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "A"
+        },
+        {
+          "text": "₹34,800 (A)",
+          "is_correct": false,
+          "error": "valued at actual price",
+          "label": "B"
+        },
+        {
+          "text": "₹14,800 (A)",
+          "is_correct": false,
+          "error": "total material cost variance reported",
+          "label": "C"
+        },
+        {
+          "text": "₹36,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-031",
+      "subject": "costing",
+      "microtopic_slug": "cost-operating-service-sector-costing-transport-hotel-healthcare-ad2bb07c",
+      "microtopic_name": "Operating / service sector costing — transport, hotel, healthcare",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A bus with 50 seats runs a 40 km route, making 4 round trips a day for 25 days a month. Average occupancy is 80%. Monthly operating cost is ₹4,80,000. Cost per passenger-km is:",
+      "explanation": {
+        "steps": [
+          "Distance per day = 40 × 2 × 4 = 320 km; per month = 8,000 km",
+          "Passenger-km = 8,000 × 50 × 80% = 3,20,000",
+          "Cost per passenger-km = 4,80,000 ÷ 3,20,000 = ₹1.50"
+        ],
+        "formula_used": "Passenger-km = Distance × Seats × Occupancy",
+        "trap": "A round trip covers the route twice."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹0.96",
+          "is_correct": false,
+          "error": "occupancy applied as a divisor instead of a multiplier",
+          "label": "A"
+        },
+        {
+          "text": "₹1.20",
+          "is_correct": false,
+          "error": "occupancy ignored (full capacity assumed)",
+          "label": "B"
+        },
+        {
+          "text": "₹3.00",
+          "is_correct": false,
+          "error": "round trips counted as one-way trips",
+          "label": "C"
+        },
+        {
+          "text": "₹1.50",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-032",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-absorption-bases-and-rates-65feb5ec",
+      "microtopic_name": "Overhead absorption — bases and rates",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A machine costs ₹12,00,000, has a scrap value of ₹1,20,000 and a life of 10 years (straight line). Repairs are ₹54,000 p.a. and its share of standing charges ₹90,000 p.a. It is available 2,000 hours a year, of which 200 hours are for maintenance. It consumes 20 units of power per running hour at ₹8 per unit. The machine hour rate is:",
+      "explanation": {
+        "steps": [
+          "Depreciation = (12,00,000 − 1,20,000) ÷ 10 = 1,08,000",
+          "Fixed charges = 1,08,000 + 54,000 + 90,000 = 2,52,000 ÷ 1800 running h = ₹140",
+          "Power = 20 × 8 = ₹160; MHR = ₹300.00"
+        ],
+        "formula_used": "MHR = Standing charges ÷ Running hours + Running cost per hour",
+        "trap": "Maintenance hours are not productive hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹306.67",
+          "is_correct": false,
+          "error": "scrap value not deducted in depreciation",
+          "label": "A"
+        },
+        {
+          "text": "₹286.00",
+          "is_correct": false,
+          "error": "fixed charges spread over total instead of running hours",
+          "label": "B"
+        },
+        {
+          "text": "₹300.00",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹140.00",
+          "is_correct": false,
+          "error": "power cost omitted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-033",
+      "subject": "costing",
+      "microtopic_slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
+      "microtopic_name": "Process costing — normal loss, abnormal loss, abnormal gain",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Process A: input 5,000 kg at ₹30 per kg; labour and overheads ₹82,000. Normal loss is 8% of input, saleable as scrap at ₹5 per kg. Actual output 4,500 kg. The value of abnormal loss credited to the process account is:",
+      "explanation": {
+        "steps": [
+          "Normal loss = 8% × 5,000 = 400 kg → scrap 2,000",
+          "Cost per unit of normal output = (2,32,000 − 2,000) ÷ 4,600 = ₹50",
+          "Abnormal loss = 4,600 − 4,500 = 100.0 kg × 50 = ₹5,000"
+        ],
+        "formula_used": "Cost per unit = (Total cost − Scrap value of normal loss) ÷ Normal output",
+        "trap": "Abnormal loss is valued like good output."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹5,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹4,500",
+          "is_correct": false,
+          "error": "net of scrap value — that is the Costing P&L charge, not the process credit",
+          "label": "B"
+        },
+        {
+          "text": "₹4,640",
+          "is_correct": false,
+          "error": "cost spread over input rather than normal output",
+          "label": "C"
+        },
+        {
+          "text": "₹5,043",
+          "is_correct": false,
+          "error": "scrap value of normal loss not deducted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-034",
+      "subject": "costing",
+      "microtopic_slug": "cost-single-output-unit-costing-2222baee",
+      "microtopic_name": "Single output / unit costing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A single-product factory produced 4,00,000 units: raw materials ₹3,20,000; direct wages ₹2,40,000; direct expenses ₹40,000. Works overhead is 60% of direct wages and office overhead 10% of works cost. Cost of production per 1,000 units is:",
+      "explanation": {
+        "steps": [
+          "Prime cost = 6,00,000; works OH = 60% × 2,40,000 = 1,44,000",
+          "Works cost = 7,44,000; office OH = 74,400; cost of production = 8,18,400",
+          "Per 1,000 units = 8,18,400 ÷ 4,00,000 × 1,000 = ₹2,046"
+        ],
+        "formula_used": "Unit cost = Cost of production ÷ Output",
+        "trap": "Check the base given for each overhead."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,860",
+          "is_correct": false,
+          "error": "office overhead omitted",
+          "label": "A"
+        },
+        {
+          "text": "₹2,010",
+          "is_correct": false,
+          "error": "office overhead taken on prime cost",
+          "label": "B"
+        },
+        {
+          "text": "₹2,046",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹2,640",
+          "is_correct": false,
+          "error": "works overhead taken on prime cost",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-035",
+      "subject": "costing",
+      "microtopic_slug": "cost-six-sigma-dmaic-belts-defect-level-af9d959b",
+      "microtopic_name": "Six Sigma — DMAIC, belts, defect level",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A back-office processes 1,20,000 application forms a month. Each form has 5 fields where an error can occur. 450 errors were found. The defects per million opportunities (DPMO) is:",
+      "explanation": {
+        "steps": [
+          "Opportunities = 1,20,000 × 5 = 6,00,000",
+          "DPMO = 450 ÷ 6,00,000 × 10,00,000 = 750",
+          "Six Sigma performance (with the conventional 1.5σ shift) = 3.4 DPMO."
+        ],
+        "formula_used": "DPMO = Defects ÷ (Units × Opportunities) × 10⁶",
+        "trap": "Divide by opportunities per unit, not multiply."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "3,750",
+          "is_correct": false,
+          "error": "defects per million units — opportunities ignored",
+          "label": "A"
+        },
+        {
+          "text": "750",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "3.4",
+          "is_correct": false,
+          "error": "Six Sigma benchmark quoted instead of the actual DPMO",
+          "label": "C"
+        },
+        {
+          "text": "18,750",
+          "is_correct": false,
+          "error": "multiplied by opportunities instead of dividing",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-036",
+      "subject": "costing",
+      "microtopic_slug": "cost-sunk-differential-opportunity-and-relevant-costs-52aa27f3",
+      "microtopic_name": "Sunk, differential, opportunity and relevant costs",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A machine bought three years ago for ₹8,00,000 has a written-down value of ₹5,00,000. It is idle and can be sold now for ₹3,20,000. If used for a special order it could be sold after the order for ₹2,70,000. The relevant cost of using the machine for the order is:",
+      "explanation": {
+        "steps": [
+          "If the order is taken, the firm gives up ₹3,20,000 now and receives ₹2,70,000 later.",
+          "Relevant cost = 3,20,000 − 2,70,000 = ₹50,000",
+          "Original cost and WDV are sunk."
+        ],
+        "formula_used": "Relevant cost = Fall in realisable value (opportunity cost)",
+        "trap": "Book values are sunk."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹50,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹5,30,000",
+          "is_correct": false,
+          "error": "historical cost used",
+          "label": "B"
+        },
+        {
+          "text": "₹2,30,000",
+          "is_correct": false,
+          "error": "written-down value (sunk) used instead of current disposal value",
+          "label": "C"
+        },
+        {
+          "text": "₹3,20,000",
+          "is_correct": false,
+          "error": "full current disposal value charged",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-037",
+      "subject": "costing",
+      "microtopic_slug": "cost-takt-time-980eeda3",
+      "microtopic_name": "Takt time",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A plant works 2 shifts of 8 hours a day. Each shift has two 15-minute tea breaks and a 30-minute lunch break. Daily customer demand is 1,680 units. Takt time is:",
+      "explanation": {
+        "steps": [
+          "Available time = (480 − 30 − 30) × 2 = 840 minutes = 50,400 s",
+          "Takt = 50,400 ÷ 1,680 = 30 s per unit"
+        ],
+        "formula_used": "Takt time = Net available time ÷ Customer demand",
+        "trap": "Takt is driven by demand, not by machine speed."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "30 seconds",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "32.14 seconds",
+          "is_correct": false,
+          "error": "only the lunch break deducted",
+          "label": "B"
+        },
+        {
+          "text": "34.29 seconds",
+          "is_correct": false,
+          "error": "breaks not deducted from available time",
+          "label": "C"
+        },
+        {
+          "text": "15 seconds",
+          "is_correct": false,
+          "error": "only one shift counted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-038",
+      "subject": "costing",
+      "microtopic_slug": "cost-target-costing-and-life-cycle-costing-4c0e5dfb",
+      "microtopic_name": "Target costing and life-cycle costing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Market research shows a new appliance can sell at ₹2,500. The company requires a profit of 20% on selling price. The current estimated cost is ₹2,150. The cost reduction needed per unit is:",
+      "explanation": {
+        "steps": [
+          "Target cost = 2,500 × (1 − 0.2) = ₹2,000",
+          "Cost gap = 2,150 − 2,000 = ₹150"
+        ],
+        "formula_used": "Target cost = Target price − Target profit",
+        "trap": "Start from price; profit is on sales here."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹80.00",
+          "is_correct": false,
+          "error": "cost-plus price compared with market price",
+          "label": "A"
+        },
+        {
+          "text": "₹350.00",
+          "is_correct": false,
+          "error": "price minus current cost taken as the gap",
+          "label": "B"
+        },
+        {
+          "text": "₹66.67",
+          "is_correct": false,
+          "error": "20% treated as mark-up on cost",
+          "label": "C"
+        },
+        {
+          "text": "₹150.00",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-039",
+      "subject": "costing",
+      "microtopic_slug": "cost-under-and-over-absorption-normal-vs-abnormal-factors-c4746f5e",
+      "microtopic_name": "Under- and over-absorption — normal vs abnormal factors",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Budgeted factory overhead ₹9,00,000 for 60,000 direct labour hours. Actual overhead ₹9,48,000; actual hours 64,000. Overhead for the period was:",
+      "explanation": {
+        "steps": [
+          "Rate = 9,00,000 ÷ 60,000 = ₹15 per hour",
+          "Absorbed = 64,000 × 15 = 9,60,000",
+          "Absorbed − Actual = 9,60,000 − 9,48,000 = 12,000 → over-absorbed"
+        ],
+        "formula_used": "Under/over-absorption = Absorbed − Actual overhead",
+        "trap": "Compare absorbed with ACTUAL, not with budget."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Under-absorbed by ₹12,000",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "A"
+        },
+        {
+          "text": "Over-absorbed by ₹60,000",
+          "is_correct": false,
+          "error": "absorbed compared with budgeted overhead",
+          "label": "B"
+        },
+        {
+          "text": "Over-absorbed by ₹12,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Under-absorbed by ₹48,000",
+          "is_correct": false,
+          "error": "actual compared with budgeted overhead",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-040",
+      "subject": "costing",
+      "microtopic_slug": "cost-waste-scrap-spoilage-and-defectives-treatment-8068f1c3",
+      "microtopic_name": "Waste, scrap, spoilage and defectives — treatment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. The realisable value of normal scrap is credited to the job or process account.\n2. The cost of abnormal spoilage is transferred to the Costing Profit and Loss Account.\n3. The cost of rectifying normal defectives that cannot be identified with particular jobs is charged to the Costing Profit and Loss Account.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Normal scrap: realisable value reduces the cost of the job/process (statement 1).",
+          "Abnormal spoilage: charged to Costing P&L so that good units are not burdened (statement 2).",
+          "Normal defectives' rectification cost not traceable to jobs is added to production overheads (spread over good output), not Costing P&L."
+        ],
+        "formula_used": "Normal → product cost; Abnormal → Costing P&L",
+        "trap": "The normal/abnormal split drives every waste treatment."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "misses normal scrap credit to the process",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "normal rectification cost treated as abnormal",
+          "label": "C"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "rejects the standard normal-scrap treatment",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-041",
+      "subject": "costing",
+      "microtopic_slug": "cost-abc-and-pareto-analysis-for-inventory-control-e0bc1f51",
+      "microtopic_name": "ABC and Pareto analysis for inventory control",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A store holds eight items:\n\n| Item | Annual usage (units) | Unit cost (₹) |\n|---|---:|---:|\n| P | 4,000 | 150 |\n| Q | 500 | 1,600 |\n| R | 20,000 | 5 |\n| S | 1,500 | 100 |\n| T | 10,000 | 12 |\n| U | 300 | 200 |\n| V | 25,000 | 2 |\n| W | 800 | 150 |\n\nUnder ABC analysis, Category A is to cover the items that together account for about 70% of annual usage value. Category A consists of:",
+      "explanation": {
+        "steps": [
+          "Annual usage value = units × unit cost: Q 8,00,000; P 6,00,000; S 1,50,000; T 1,20,000; W 1,20,000; R 1,00,000; U 60,000; V 50,000",
+          "Total = 20,00,000; Q + P = 14,00,000 = 70%",
+          "Category A = Q and P (2 of 8 items ≈ 25% of items, 70% of value)."
+        ],
+        "formula_used": "Rank by usage value (quantity × price)",
+        "trap": "Neither quantity nor price alone decides the class."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "P and Q",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Q and U",
+          "is_correct": false,
+          "error": "ranked by unit price",
+          "label": "B"
+        },
+        {
+          "text": "P, Q and S",
+          "is_correct": false,
+          "error": "next item added beyond the 70% cut-off",
+          "label": "C"
+        },
+        {
+          "text": "R and V",
+          "is_correct": false,
+          "error": "ranked by quantity consumed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-042",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-valuation-fifo-and-moving-average-b84d56ab",
+      "microtopic_name": "Material valuation — FIFO and moving average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Stores ledger of a component for March:\n\n| Date | Transaction |\n|---|---|\n| 1 | Opening stock 500 units @ ₹40 |\n| 5 | Purchased 1,000 units @ ₹46 |\n| 10 | Issued 900 units |\n| 15 | Purchased 600 units @ ₹50 |\n| 20 | Issued 800 units |\n\nThe value of closing stock under the **moving (perpetual) weighted average** method is:",
+      "explanation": {
+        "steps": [
+          "After 5th: 1500 units, 66,000 → ₹44",
+          "Issue 900 @ 44 = 39,600; balance 600 units 26,400",
+          "After 15th: 1200 units, 56,400 → ₹47",
+          "Issue 800 @ 47; closing 400 units × 47 = ₹18,800"
+        ],
+        "formula_used": "New average after every receipt = Balance value ÷ Balance units",
+        "trap": "Moving average recomputes after each purchase; periodic average does it once."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹20,000",
+          "is_correct": false,
+          "error": "FIFO — closing stock from the latest purchase",
+          "label": "A"
+        },
+        {
+          "text": "₹18,286",
+          "is_correct": false,
+          "error": "periodic (monthly) weighted average used",
+          "label": "B"
+        },
+        {
+          "text": "₹18,133",
+          "is_correct": false,
+          "error": "simple average of prices",
+          "label": "C"
+        },
+        {
+          "text": "₹18,800",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-043",
+      "subject": "costing",
+      "microtopic_slug": "cost-total-productive-maintenance-and-oee-a1de98b7",
+      "microtopic_name": "Total Productive Maintenance and OEE",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Shift data for a packing machine: planned production time 480 minutes; unplanned stoppages 60 minutes; ideal cycle time 0.8 minute per unit; total units produced 450; good units 423. The Overall Equipment Effectiveness (OEE) is:",
+      "explanation": {
+        "steps": [
+          "Availability = (480 − 60) ÷ 480 = 87.50%",
+          "Performance = (450 × 0.8) ÷ 420 = 85.71%",
+          "Quality = 423 ÷ 450 = 94%",
+          "OEE = 87.50% × 85.71% × 94% = 70.50% (check: 423 × 0.8 ÷ 480)"
+        ],
+        "formula_used": "OEE = Availability × Performance × Quality",
+        "trap": "Performance uses run time, not planned time — else stoppages are counted twice."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "80.57%",
+          "is_correct": false,
+          "error": "availability ignored",
+          "label": "A"
+        },
+        {
+          "text": "75%",
+          "is_correct": false,
+          "error": "quality rate ignored",
+          "label": "B"
+        },
+        {
+          "text": "70.50%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "61.69%",
+          "is_correct": false,
+          "error": "performance measured against planned time, not run time",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-044",
+      "subject": "costing",
+      "microtopic_slug": "cost-economic-order-quantity-and-ordering-carrying-trade-off-e36a354f",
+      "microtopic_name": "Economic order quantity and ordering/carrying trade-off",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Annual demand 20,000 units; ordering cost ₹400 per order; price ₹80 per unit; carrying cost 20% of average inventory value. The supplier offers a 2% discount on orders of 4,000 units or more. Compared with ordering at EOQ, accepting the discount results in a net annual:",
+      "explanation": {
+        "steps": [
+          "EOQ = √(2 × 20,000 × 400 ÷ 16) = 1,000",
+          "At EOQ: purchase 16,00,000 + ordering 8,000 + carrying 8,000 = 16,16,000",
+          "At 4,000: price ₹78.4, C = ₹15.68; purchase 15,68,000 + ordering 2,000 + carrying 31,360 = 16,01,360",
+          "Net saving = 16,16,000 − 16,01,360 = 14,640"
+        ],
+        "formula_used": "Compare total cost (purchase + ordering + carrying) at each option",
+        "trap": "When carrying is a % of price, the discount also lowers carrying cost per unit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Saving of ₹14,000",
+          "is_correct": false,
+          "error": "carrying cost per unit not reduced for the discounted price",
+          "label": "A"
+        },
+        {
+          "text": "Saving of ₹14,640",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Loss of ₹8,720",
+          "is_correct": false,
+          "error": "carrying cost charged on the full order instead of average stock",
+          "label": "C"
+        },
+        {
+          "text": "Saving of ₹32,000",
+          "is_correct": false,
+          "error": "only the price saving considered",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-045",
+      "subject": "costing",
+      "microtopic_slug": "cost-contract-costing-wip-retention-profit-on-incomplete-contract-102b6dcd",
+      "microtopic_name": "Contract costing — WIP, retention, profit on incomplete contracts",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Contract price ₹1.20 crore. At the year end: work certified ₹72.00 lakh; work done but not certified (at cost) ₹4.00 lakh; total cost incurred to date ₹66.00 lakh (including the uncertified work). The contractee has paid 90% of work certified, the balance being retention money. Using the conventional cost-accounting rule for incomplete contracts, the profit to be credited to the Profit and Loss Account is:",
+      "explanation": {
+        "steps": [
+          "Notional profit = (72,00,000 + 4,00,000) − 66,00,000 = ₹10.00 lakh",
+          "Stage of completion = 72,00,000 ÷ 1,20,00,000 = 60% (≥ 50%)",
+          "Profit = 2/3 × ₹10.00 lakh × (90% cash ÷ certified) = ₹6.00 lakh"
+        ],
+        "formula_used": "≥ 50% complete: ⅔ × Notional profit × Cash received ÷ Work certified",
+        "trap": "The balance of notional profit is kept as a reserve against the retention risk."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Conventional cost-accounting treatment (ICAI/ICMAI contract costing); not the Ind AS 115 revenue method."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹3.00 lakh",
+          "is_correct": false,
+          "error": "one-third rule used though the contract is 60% complete",
+          "label": "A"
+        },
+        {
+          "text": "₹6.67 lakh",
+          "is_correct": false,
+          "error": "cash-received ratio ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹9.00 lakh",
+          "is_correct": false,
+          "error": "whole notional profit taken, scaled only by cash ratio",
+          "label": "C"
+        },
+        {
+          "text": "₹6.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-046",
+      "subject": "costing",
+      "microtopic_slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
+      "microtopic_name": "Process costing — normal loss, abnormal loss, abnormal gain",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Process B: input 10,000 units at ₹24; conversion cost ₹1,26,000. Normal loss 10% of input, saleable at ₹6 per unit. Actual output 9,300 units. The net amount credited to the Costing Profit and Loss Account from the abnormal gain (after adjusting for scrap sales forgone) is:",
+      "explanation": {
+        "steps": [
+          "Normal loss = 1,000; expected output 9,000; cost per unit = (3,66,000 − 6,000) ÷ 9,000 = ₹40",
+          "Abnormal gain = 9,300 − 9,000 = 300.0 units × 40 = 12,000 (debited to process)",
+          "Scrap not realised on 300.0 units = 1,800 (debited to Abnormal Gain a/c)",
+          "Net to Costing P&L = 12,000 − 1,800 = ₹10,200"
+        ],
+        "formula_used": "Net gain = Gain units × (Normal cost per unit − Scrap value)",
+        "trap": "The gain means fewer loss units to sell as scrap."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹13,800",
+          "is_correct": false,
+          "error": "scrap value added instead of deducted",
+          "label": "A"
+        },
+        {
+          "text": "₹9,180",
+          "is_correct": false,
+          "error": "gain valued at cost per unit of input",
+          "label": "B"
+        },
+        {
+          "text": "₹10,200",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹12,000",
+          "is_correct": false,
+          "error": "scrap value forgone on the gain units ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-047",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Process C data for the month (materials added at the start; conversion uniform):\n\n| | Units | Conversion complete | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 2,000 | 60% | Materials 62,000; conversion 29,750 |\n| Introduced | 18,000 | | Materials 5,40,000 |\n| Conversion cost for the month | | | 3,57,000 |\n| Completed and transferred | 17,000 | | |\n| Closing WIP | 3,000 | 40% | |\n\nThere are no losses. Under the **FIFO** method, the value of closing WIP is:",
+      "explanation": {
+        "steps": [
+          "FIFO EU — materials: 0 + 15,000 + 3,000 = 18,000; conversion: 800 + 15,000 + 1,200 = 17,000",
+          "Rates (current costs only): materials 5,40,000 ÷ 18,000 = ₹30; conversion 3,57,000 ÷ 17,000 = ₹21",
+          "Closing WIP = 3,000 × 30 + 1,200 × 21 = ₹1,15,200"
+        ],
+        "formula_used": "FIFO EU = Work to finish opening WIP + Started & finished + Closing WIP EU",
+        "trap": "Under FIFO opening WIP cost is kept out of the rate; only the work done this month counts."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,46,968",
+          "is_correct": false,
+          "error": "closing WIP treated as fully converted",
+          "label": "A"
+        },
+        {
+          "text": "₹1,14,621",
+          "is_correct": false,
+          "error": "opening WIP given its past 60% instead of the 40% completed this month",
+          "label": "B"
+        },
+        {
+          "text": "₹1,15,200",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹1,15,800",
+          "is_correct": false,
+          "error": "weighted-average method used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-048",
+      "subject": "costing",
+      "microtopic_slug": "cost-inter-process-profit-1b0952cf",
+      "microtopic_name": "Inter-process profit",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Output of Process I is transferred to Process II at cost plus 20% on cost. At the year end, the closing stock of Process II is valued at ₹90,000, of which 80% represents the transfer price of Process I output and the rest Process II's own costs. The provision for unrealised profit on this stock is:",
+      "explanation": {
+        "steps": [
+          "Process I element = 80% × 90,000 = 72,000 (at transfer price)",
+          "Profit in transfer price = 20/120 of transfer price",
+          "Unrealised profit = 72,000 × 20/120 = ₹12,000"
+        ],
+        "formula_used": "Unrealised profit = Transfer-price element × Mark-up ÷ (100 + Mark-up)",
+        "trap": "A mark-up on cost becomes 1/6 of the transfer price."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹14,400",
+          "is_correct": false,
+          "error": "20% applied to transfer price instead of 20/120",
+          "label": "A"
+        },
+        {
+          "text": "₹18,000",
+          "is_correct": false,
+          "error": "20% applied to the whole stock value",
+          "label": "B"
+        },
+        {
+          "text": "₹12,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹15,000",
+          "is_correct": false,
+          "error": "applied to the whole stock including Process II's own costs",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-049",
+      "subject": "costing",
+      "microtopic_slug": "cost-joint-products-and-by-products-apportionment-bases-a6a74b59",
+      "microtopic_name": "Joint products and by-products — apportionment bases",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A joint process costs ₹4,80,000.\n\n| Product | Output (kg) | Final price (₹/kg) | Further processing cost (₹) |\n|---|---:|---:|---:|\n| A | 6,000 | 50 | 60,000 |\n| B | 4,000 | 70 | 40,000 |\n| C | 10,000 | 12 | 0 |\n\nC is sold at split-off. Apportioning joint cost by net realisable value at split-off, the total cost per kg of A is:",
+      "explanation": {
+        "steps": [
+          "NRV: A 2,40,000; B 2,40,000; C 1,20,000 → total 6,00,000",
+          "A's joint cost = 4,80,000 × 2,40,000 ÷ 6,00,000 = 1,92,000",
+          "A's total = 1,92,000 + 60,000 = 2,52,000 ÷ 6,000 = ₹42.00"
+        ],
+        "formula_used": "NRV = Final sales value − Further processing cost",
+        "trap": "Add A's own further cost after apportioning joint cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹32.00",
+          "is_correct": false,
+          "error": "further processing cost not added",
+          "label": "A"
+        },
+        {
+          "text": "₹42.00",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹34.00",
+          "is_correct": false,
+          "error": "physical-units basis",
+          "label": "C"
+        },
+        {
+          "text": "₹44.29",
+          "is_correct": false,
+          "error": "final sales value used without deducting further cost",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-050",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Standard price of a material is ₹40 per kg. During the month 12,000 kg were purchased at ₹42 per kg and 10,500 kg were issued to production; standard quantity for the actual output was 10,000 kg. If the price variance is recognised **at the time of purchase**, the price and usage variances are:",
+      "explanation": {
+        "steps": [
+          "Price variance on purchases = (40 − 42) × 12,000 = ₹24,000 (A)",
+          "Usage = (10,000 − 10,500) × 40 = ₹20,000 (A)",
+          "Closing stock is then carried at standard price."
+        ],
+        "formula_used": "MPV (at purchase) = (SP − AP) × Quantity purchased",
+        "trap": "The recognition point decides the quantity base of the price variance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Price ₹21,000 (A); usage ₹20,000 (A)",
+          "is_correct": false,
+          "error": "price variance computed on quantity used",
+          "label": "A"
+        },
+        {
+          "text": "Price ₹24,000 (A); usage ₹21,000 (A)",
+          "is_correct": false,
+          "error": "usage valued at actual price",
+          "label": "B"
+        },
+        {
+          "text": "Price ₹24,000 (F); usage ₹20,000 (A)",
+          "is_correct": false,
+          "error": "price variance direction reversed",
+          "label": "C"
+        },
+        {
+          "text": "Price ₹24,000 (A); usage ₹20,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-051",
+      "subject": "costing",
+      "microtopic_slug": "cost-labour-variances-rate-and-efficiency-71d9cffe",
+      "microtopic_name": "Labour variances — rate and efficiency",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Standard: 3 labour hours per unit at ₹120. Output 2,000 units. Workers were paid for 6,600 hours at ₹125, but 250 hours were lost due to a power breakdown (abnormal idle time). The labour efficiency variance is:",
+      "explanation": {
+        "steps": [
+          "Standard hours = 3 × 2,000 = 6,000; hours worked = 6,600 − 250 = 6,350",
+          "Efficiency = (6,000 − 6,350) × 120 = ₹42,000 (A)",
+          "Check: rate ₹33,000 (A) + idle ₹30,000 (A) + efficiency ₹42,000 (A) = total ₹1,05,000 (A)"
+        ],
+        "formula_used": "LEV = (SH − Hours worked) × SR; Idle time variance = Idle hours × SR",
+        "trap": "Idle hours are paid but not worked — keep them out of efficiency."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹30,000 (A)",
+          "is_correct": false,
+          "error": "idle time variance reported",
+          "label": "A"
+        },
+        {
+          "text": "₹43,750 (A)",
+          "is_correct": false,
+          "error": "valued at actual rate",
+          "label": "B"
+        },
+        {
+          "text": "₹72,000 (A)",
+          "is_correct": false,
+          "error": "idle hours not separated (paid hours used)",
+          "label": "C"
+        },
+        {
+          "text": "₹42,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-052",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
+      "microtopic_name": "Overhead variances — variable and fixed",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Budgeted fixed overhead ₹6,00,000 for 20,000 units; standard time 2 hours per unit. Actual fixed overhead ₹6,24,000; actual output 18,500 units in 38,000 hours. The fixed overhead **capacity** variance is:",
+      "explanation": {
+        "steps": [
+          "Budgeted hours = 40,000; rate = ₹15 per hour (₹30 per unit)",
+          "Capacity = (Actual hours − Budgeted hours) × rate = (38,000 − 40,000) × 15 = ₹30,000 (A)",
+          "Efficiency = (37,000 − 38,000) × 15 = ₹15,000 (A); volume = ₹45,000 (A); expenditure = ₹24,000 (A)"
+        ],
+        "formula_used": "Volume = Capacity + Efficiency",
+        "trap": "Capacity compares actual hours with budgeted hours, not standard hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹30,000 (F)",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "A"
+        },
+        {
+          "text": "₹45,000 (A)",
+          "is_correct": false,
+          "error": "total volume variance reported",
+          "label": "B"
+        },
+        {
+          "text": "₹15,000 (A)",
+          "is_correct": false,
+          "error": "efficiency variance reported",
+          "label": "C"
+        },
+        {
+          "text": "₹30,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-053",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
+      "microtopic_name": "Overhead variances — variable and fixed",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Variable overhead is absorbed at ₹8 per labour hour; standard time is 2 hours per unit. Actual output 18,500 units; actual hours 38,000; actual variable overhead ₹2,96,400. The variable overhead expenditure and efficiency variances are:",
+      "explanation": {
+        "steps": [
+          "Expenditure = AH × SR − Actual = 38,000 × 8 − 2,96,400 = ₹7,600 (F)",
+          "Efficiency = (SH − AH) × SR = (37,000 − 38,000) × 8 = ₹8,000 (A)",
+          "Total = 2,96,000 − 2,96,400 = ₹400 (A)"
+        ],
+        "formula_used": "VOH exp = AH × SR − AVOH; VOH eff = (SH − AH) × SR",
+        "trap": "The expenditure allowance is based on actual hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Expenditure ₹7,600 (A); efficiency ₹8,000 (F)",
+          "is_correct": false,
+          "error": "both directions reversed",
+          "label": "A"
+        },
+        {
+          "text": "Expenditure ₹400 (A); efficiency ₹8,000 (A)",
+          "is_correct": false,
+          "error": "expenditure measured against standard-hours allowance",
+          "label": "B"
+        },
+        {
+          "text": "Expenditure ₹7,600 (F); efficiency ₹7,800 (A)",
+          "is_correct": false,
+          "error": "efficiency valued at actual rate per hour",
+          "label": "C"
+        },
+        {
+          "text": "Expenditure ₹7,600 (F); efficiency ₹8,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-054",
+      "subject": "costing",
+      "microtopic_slug": "cost-sales-variances-price-volume-mix-cc222e43",
+      "microtopic_name": "Sales variances — price, volume, mix",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Sales data (value basis):\n\n| Product | Budget units | Budget price (₹) | Actual units | Actual price (₹) |\n|---|---:|---:|---:|---:|\n| P | 4,000 | 50 | 5,000 | 48 |\n| Q | 6,000 | 30 | 5,500 | 32 |\n\nThe sales **mix** variance (in terms of sales value) is:",
+      "explanation": {
+        "steps": [
+          "Actual total 10,500 units in budget ratio 4 : 6 → P 4,200, Q 6,300",
+          "Mix = (5,000 − 4,200) × 50 + (5,500 − 6,300) × 30 = ₹16,000 (F)",
+          "Quantity = ₹19,000 (F); volume = ₹35,000 (F) = mix + quantity"
+        ],
+        "formula_used": "Mix = (Actual qty − Revised std mix qty) × Budget price",
+        "trap": "Mix and quantity together make up the volume variance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹19,000 (F)",
+          "is_correct": false,
+          "error": "sales quantity variance reported",
+          "label": "A"
+        },
+        {
+          "text": "₹35,000 (F)",
+          "is_correct": false,
+          "error": "total sales volume variance reported",
+          "label": "B"
+        },
+        {
+          "text": "₹16,000 (F)",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹12,800 (F)",
+          "is_correct": false,
+          "error": "mix valued at actual prices",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-055",
+      "subject": "costing",
+      "microtopic_slug": "cost-disposal-of-variances-05e3c04b",
+      "microtopic_name": "Disposal of variances",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "An adverse material price variance of ₹48,000 arose because the standard price was set unrealistically low; it is to be prorated rather than written off. Standard material content: closing raw material stock ₹1,00,000; WIP ₹60,000; finished goods ₹1,40,000; cost of goods sold ₹7,00,000. The variance is to be prorated over closing raw material stock, WIP, finished goods and cost of goods sold in proportion to their standard material content. The amount charged to cost of goods sold is:",
+      "explanation": {
+        "steps": [
+          "Proration base = 1,00,000 + 60,000 + 1,40,000 + 7,00,000 = 10,00,000",
+          "To COGS = 48,000 × 7,00,000 ÷ 10,00,000 = ₹33,600",
+          "A price variance arises at purchase, so raw material still in stock carries its share."
+        ],
+        "formula_used": "Prorated share = Variance × Standard content in account ÷ Total standard content",
+        "trap": "Abnormal/controllable variances go to P&L; standard-setting errors are prorated."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹37,333",
+          "is_correct": false,
+          "error": "raw material stock excluded from proration",
+          "label": "A"
+        },
+        {
+          "text": "₹33,600",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹48,000",
+          "is_correct": false,
+          "error": "entire variance written off to P&L",
+          "label": "C"
+        },
+        {
+          "text": "₹40,000",
+          "is_correct": false,
+          "error": "prorated only between finished goods and cost of sales",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-056",
+      "subject": "costing",
+      "microtopic_slug": "cost-fixed-vs-flexible-budgets-abb5d990",
+      "microtopic_name": "Fixed vs flexible budgets",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Budget at 60% capacity (12,000 units): direct materials ₹40, direct labour ₹25 and variable overhead ₹10 per unit; semi-variable overhead ₹2,40,000 (50% fixed); fixed overhead ₹3,60,000. The budgeted cost per unit at 80% capacity is:",
+      "explanation": {
+        "steps": [
+          "Variable: 16,000 × ₹75 = 12,00,000",
+          "Semi-variable: fixed 1,20,000 + variable ₹10 × 16,000 = 2,80,000",
+          "Fixed 3,60,000; total 18,40,000 ÷ 16,000 = ₹115.00"
+        ],
+        "formula_used": "Flexed cost = Fixed + Variable rate × Activity",
+        "trap": "Split semi-variable costs before flexing."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹115.00",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹112.50",
+          "is_correct": false,
+          "error": "semi-variable overhead treated as fully fixed",
+          "label": "B"
+        },
+        {
+          "text": "₹125.00",
+          "is_correct": false,
+          "error": "all overheads scaled up with volume",
+          "label": "C"
+        },
+        {
+          "text": "₹117.50",
+          "is_correct": false,
+          "error": "semi-variable overhead treated as fully variable",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-057",
+      "subject": "costing",
+      "microtopic_slug": "cost-cash-budget-preparation-879c8489",
+      "microtopic_name": "Cash budget preparation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Sales: January ₹4,00,000, February ₹5,00,000, March ₹6,00,000. 20% of sales are for cash. Of credit sales, 60% are collected in the month after sale (these customers take a 2% cash discount), 38% in the second month after sale and the rest are bad debts. Cash collected from debtors and cash sales in March is:",
+      "explanation": {
+        "steps": [
+          "Cash sales (Mar) = 20% × 6,00,000 = 1,20,000",
+          "February credit 4,00,000 × 60% × 98% = 2,35,200",
+          "January credit 3,20,000 × 38% = 1,21,600",
+          "Total = ₹4,76,800"
+        ],
+        "formula_used": "Receipts = Cash sales + Σ(Credit sales of month t−k × collection % × (1 − discount))",
+        "trap": "Cash sales are excluded before applying collection patterns."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹4,76,800",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹4,60,160",
+          "is_correct": false,
+          "error": "collection lags applied to the wrong months",
+          "label": "B"
+        },
+        {
+          "text": "₹5,66,000",
+          "is_correct": false,
+          "error": "collection percentages applied to total sales, not credit sales",
+          "label": "C"
+        },
+        {
+          "text": "₹4,81,600",
+          "is_correct": false,
+          "error": "cash discount ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-058",
+      "subject": "costing",
+      "microtopic_slug": "cost-sunk-differential-opportunity-and-relevant-costs-52aa27f3",
+      "microtopic_name": "Sunk, differential, opportunity and relevant costs",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A special order needs 2,000 kg of material K. 1,200 kg are in stock, bought earlier at ₹30 per kg; K is no longer used in regular production and could be sold for ₹22 per kg. Current replacement price is ₹38 per kg. The relevant cost of material K for the order is:",
+      "explanation": {
+        "steps": [
+          "Stock in hand: not needed elsewhere → opportunity cost = resale value 1,200 × 22 = 26,400",
+          "Balance 800 kg must be bought at 38 = 30,400",
+          "Relevant cost = ₹56,800"
+        ],
+        "formula_used": "Relevant cost of stock = Replacement cost if regularly used; otherwise higher of resale / alternative-use value",
+        "trap": "Historical cost is sunk."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹30,400",
+          "is_correct": false,
+          "error": "stock treated as costless (resale value ignored)",
+          "label": "A"
+        },
+        {
+          "text": "₹56,800",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹76,000",
+          "is_correct": false,
+          "error": "stock valued at replacement cost though it will not be replaced",
+          "label": "C"
+        },
+        {
+          "text": "₹66,400",
+          "is_correct": false,
+          "error": "historical (sunk) cost used for stock",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-059",
+      "subject": "costing",
+      "microtopic_slug": "cost-target-costing-and-life-cycle-costing-4c0e5dfb",
+      "microtopic_name": "Target costing and life-cycle costing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two machines are compared over a 5-year life at a 10% discount rate:\n\n| | Machine A | Machine B |\n|---|---:|---:|\n| Purchase cost (₹) | 10,00,000 | 7,00,000 |\n| Annual operating cost (₹) | 2,00,000 | 2,80,000 |\n| Salvage value at end (₹) | 1,00,000 | 0 |\n\nOn a discounted life-cycle cost basis:",
+      "explanation": {
+        "steps": [
+          "Annuity factor (10%, 5 yrs) = 3.7908; PV factor yr 5 = 0.6209",
+          "A = 10,00,000 + 2,00,000 × 3.7908 − 1,00,000 × 0.6209 = 16,96,065",
+          "B = 7,00,000 + 2,80,000 × 3.7908 = 17,61,420",
+          "A cheaper by ₹65,355"
+        ],
+        "formula_used": "Life-cycle cost = Acquisition + PV of operating costs − PV of salvage",
+        "trap": "Lower purchase price does not mean lower life-cycle cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Machine A is cheaper by ₹2,00,000",
+          "is_correct": false,
+          "error": "undiscounted life-cycle cost",
+          "label": "A"
+        },
+        {
+          "text": "Machine B is cheaper by ₹58,829",
+          "is_correct": false,
+          "error": "salvage value added instead of deducted",
+          "label": "B"
+        },
+        {
+          "text": "Machine A is cheaper by ₹65,355",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Machine A is cheaper by ₹1,03,263",
+          "is_correct": false,
+          "error": "salvage value not discounted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-060",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-absorption-bases-and-rates-65feb5ec",
+      "microtopic_name": "Overhead absorption — bases and rates",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Primary overheads: production department P1 ₹1,20,000; service departments X ₹36,000 and Y ₹54,000. Services are used as follows:\n\n| From \\ To | X | Y | P1 | P2 |\n|---|---:|---:|---:|---:|\n| X | — | 25% | 45% | 30% |\n| Y | 40% | — | 30% | 30% |\n\nUsing the simultaneous-equation (reciprocal) method, total overhead of P1 after secondary distribution is:",
+      "explanation": {
+        "steps": [
+          "X = 36,000 + 0.40Y; Y = 54,000 + 0.25X",
+          "X = (36,000 + 0.40 × 54,000) ÷ (1 − 0.25 × 0.40) = 64,000; Y = 70,000",
+          "P1 = 1,20,000 + 45% × 64,000 + 30% × 70,000 = ₹1,69,800"
+        ],
+        "formula_used": "Reciprocal: solve X and Y totals, then apply production percentages",
+        "trap": "Percentages apply to the grossed-up service totals."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,67,700",
+          "is_correct": false,
+          "error": "step method, X closed first",
+          "label": "A"
+        },
+        {
+          "text": "₹1,69,800",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹1,68,600",
+          "is_correct": false,
+          "error": "direct method (inter-service usage ignored)",
+          "label": "C"
+        },
+        {
+          "text": "₹1,52,400",
+          "is_correct": false,
+          "error": "primary figures of X and Y used without reciprocal gross-up",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-061",
+      "subject": "costing",
+      "microtopic_slug": "cost-under-and-over-absorption-normal-vs-abnormal-factors-c4746f5e",
+      "microtopic_name": "Under- and over-absorption — normal vs abnormal factors",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Actual factory overhead for the year was ₹12,40,000, including ₹40,000 of wage arrears relating to the previous year. Overhead absorbed was ₹11,50,000, lying in: WIP ₹1,15,000; Finished goods ₹2,30,000; Cost of sales ₹8,05,000. Normal under-absorption is adjusted through a supplementary rate. The amount added to cost of sales is:",
+      "explanation": {
+        "steps": [
+          "Total under-absorption = 12,40,000 − 11,50,000 = 90,000",
+          "Arrears of previous year (40,000) → Costing P&L (abnormal)",
+          "Normal under-absorption = 50,000; supplementary rate = 4.3478% of absorbed overhead",
+          "Cost of sales = 50,000 × 8,05,000 ÷ 11,50,000 = ₹35,000"
+        ],
+        "formula_used": "Supplementary rate = Normal under-absorption ÷ Overhead absorbed",
+        "trap": "Abnormal items and prior-period items are excluded from the supplementary rate."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹63,000",
+          "is_correct": false,
+          "error": "prior-year arrears included in the supplementary rate",
+          "label": "A"
+        },
+        {
+          "text": "₹50,000",
+          "is_correct": false,
+          "error": "whole normal under-absorption charged to cost of sales",
+          "label": "B"
+        },
+        {
+          "text": "₹90,000",
+          "is_correct": false,
+          "error": "entire under-absorption charged to cost of sales",
+          "label": "C"
+        },
+        {
+          "text": "₹35,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-062",
+      "subject": "costing",
+      "microtopic_slug": "cost-operating-service-sector-costing-transport-hotel-healthcare-ad2bb07c",
+      "microtopic_name": "Operating / service sector costing — transport, hotel, healthcare",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A hotel has 60 single and 40 double rooms. Occupancy: single rooms 80%, double rooms 60%, over 360 days. Rent of a double room is to be 125% of a single room. Annual costs are ₹84,24,000 and the hotel wants a profit of 25% on total rent. The rent per day for a single room is:",
+      "explanation": {
+        "steps": [
+          "Single room-days = 60 × 80% × 360 = 17,280",
+          "Double room-days = 40 × 60% × 360 = 8,640 × 1.25 = 10,800 equivalent",
+          "Required rent = 84,24,000 ÷ 0.75 = 1,12,32,000",
+          "Single rent = 1,12,32,000 ÷ 28,080 = ₹400.00 (double ₹500.00)"
+        ],
+        "formula_used": "Rent per equivalent room-day = (Cost ÷ (1 − margin)) ÷ Equivalent room-days",
+        "trap": "Convert double rooms to single-room equivalents first."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹375.00",
+          "is_correct": false,
+          "error": "25% treated as mark-up on cost",
+          "label": "A"
+        },
+        {
+          "text": "₹400.00",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹283.64",
+          "is_correct": false,
+          "error": "occupancy ignored",
+          "label": "C"
+        },
+        {
+          "text": "₹433.33",
+          "is_correct": false,
+          "error": "double rooms not weighted at 125%",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-063",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Standard price of a material is ₹25 per kg and the standard quantity for actual output is 8,000 kg. The material price variance is ₹16,400 (F) and the usage variance ₹5,000 (A). The actual cost of material used is:",
+      "explanation": {
+        "steps": [
+          "AQ = SQ − MUV ÷ SP = 8,000 + 5,000 ÷ 25 = 8,200 kg",
+          "AP = SP − MPV ÷ AQ = 25 − 16,400 ÷ 8,200 = ₹23",
+          "Actual cost = 8,200 × 23 = ₹1,88,600 (= std cost 2,00,000 − net favourable 11,400)"
+        ],
+        "formula_used": "Actual cost = Standard cost of actual output − Net favourable variance",
+        "trap": "A favourable variance means actual cost is BELOW standard."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹2,11,400",
+          "is_correct": false,
+          "error": "net favourable variance added to standard cost",
+          "label": "A"
+        },
+        {
+          "text": "₹2,05,000",
+          "is_correct": false,
+          "error": "actual quantity at standard price (price variance ignored)",
+          "label": "B"
+        },
+        {
+          "text": "₹1,88,600",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹1,78,600",
+          "is_correct": false,
+          "error": "usage variance treated as favourable",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-064",
+      "subject": "costing",
+      "microtopic_slug": "cost-budget-concept-and-budgetary-control-617c62f3",
+      "microtopic_name": "Budget concept and budgetary control",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Budgeted hours for the month were 10,000. Actual hours worked were 9,500. Output: product A 1,200 units (standard 4 hours each) and product B 900 units (standard 5 hours each). The **activity ratio** is:",
+      "explanation": {
+        "steps": [
+          "Standard hours produced = 1,200 × 4 + 900 × 5 = 9,300",
+          "Activity ratio = 9,300 ÷ 10,000 = 93%",
+          "Check: efficiency 97.89% × capacity 95% = activity"
+        ],
+        "formula_used": "Activity = Std hours produced ÷ Budgeted hours = Efficiency × Capacity",
+        "trap": "Three ratios, three different pairs of hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "95%",
+          "is_correct": false,
+          "error": "capacity ratio (actual ÷ budgeted hours)",
+          "label": "A"
+        },
+        {
+          "text": "93%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "102.15%",
+          "is_correct": false,
+          "error": "actual hours ÷ standard hours (inverse efficiency)",
+          "label": "C"
+        },
+        {
+          "text": "97.89%",
+          "is_correct": false,
+          "error": "efficiency ratio (standard ÷ actual hours)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-065",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** Equivalent units for conversion cost are:",
+      "explanation": {
+        "steps": [
+          "Units to account for = 1,000 + 9,000 = 10,000",
+          "Normal loss = 10% × 9,000 = 900; abnormal loss = 10,000 − 7,400 − 1,500 − 900 = 200.0",
+          "WA conversion EU = 7,400 + 200.0 (abnormal loss, 100% complete) + 1,500 × 60% = 8,500"
+        ],
+        "formula_used": "WA EU = Completed + Abnormal loss (at stage) + Closing WIP × % ; normal loss = 0",
+        "trap": "Normal loss carries no equivalent units; abnormal loss does."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "8,100",
+          "is_correct": false,
+          "error": "FIFO equivalent units",
+          "label": "A"
+        },
+        {
+          "text": "9,400",
+          "is_correct": false,
+          "error": "normal loss given equivalent units",
+          "label": "B"
+        },
+        {
+          "text": "8,300",
+          "is_correct": false,
+          "error": "abnormal loss excluded",
+          "label": "C"
+        },
+        {
+          "text": "8,500",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-066",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The total cost per equivalent unit (transferred-in plus conversion) is:",
+      "explanation": {
+        "steps": [
+          "Transferred-in EU = 7,400 + 200.0 + 1,500 = 9,100",
+          "Transferred-in rate = (42,000 + 3,76,500 − 9,000) ÷ 9,100 = ₹45",
+          "Conversion rate = (9,200 + 2,45,800) ÷ 8,500 = ₹30",
+          "Total = ₹75"
+        ],
+        "formula_used": "WA rate = (Opening WIP cost + Current cost − Normal loss scrap) ÷ WA EU",
+        "trap": "Under WA, opening WIP cost is pooled with current cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹75.72",
+          "is_correct": false,
+          "error": "FIFO rates computed",
+          "label": "A"
+        },
+        {
+          "text": "₹75.00",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹68.08",
+          "is_correct": false,
+          "error": "normal loss given equivalent units",
+          "label": "C"
+        },
+        {
+          "text": "₹75.99",
+          "is_correct": false,
+          "error": "scrap value of normal loss not deducted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-067",
+      "subject": "costing",
+      "microtopic_slug": "cost-process-costing-normal-loss-abnormal-loss-abnormal-gain-18c2fe41",
+      "microtopic_name": "Process costing — normal loss, abnormal loss, abnormal gain",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The net amount debited to the Costing Profit and Loss Account in respect of abnormal loss is:",
+      "explanation": {
+        "steps": [
+          "Abnormal loss = 200.0 units × ₹75 = 15,000 (credited to Process II)",
+          "Sale of 200.0 lost units × ₹10 = 2,000 credited to Abnormal Loss a/c",
+          "Net to Costing P&L = ₹13,000"
+        ],
+        "formula_used": "Costing P&L charge = Abnormal loss value − Its realisable value",
+        "trap": "Process credit is at full cost; only the net hits Costing P&L."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹17,000",
+          "is_correct": false,
+          "error": "realisable value added instead of deducted",
+          "label": "A"
+        },
+        {
+          "text": "₹13,143",
+          "is_correct": false,
+          "error": "abnormal loss valued at FIFO rates",
+          "label": "B"
+        },
+        {
+          "text": "₹15,000",
+          "is_correct": false,
+          "error": "realisable value of abnormal-loss units not credited",
+          "label": "C"
+        },
+        {
+          "text": "₹13,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-068",
+      "subject": "costing",
+      "microtopic_slug": "cost-equivalent-production-fifo-and-weighted-average-bcff4541",
+      "microtopic_name": "Equivalent production — FIFO and weighted average",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-PROC",
+      "stem": "**Case — Sarayu Chemicals Ltd (fictional), Process II, March**\n\nMaterials arrive from Process I at the start; conversion is added evenly. Lost units (normal and abnormal) are treated as 100% complete for both elements; normal loss is assigned no equivalent units. The company uses the **weighted average** method and credits the realisable value of normal loss to the transferred-in (materials) element.\n\n| Item | Units | Conversion stage | Cost (₹) |\n|---|---:|---:|---:|\n| Opening WIP | 1,000 | 40% | Transferred-in 42,000; conversion 9,200 |\n| Received from Process I | 9,000 | | 3,76,500 |\n| Conversion costs for March | | | 2,45,800 |\n| Transferred to finished stock | 7,400 | | |\n| Closing WIP | 1,500 | 60% | |\n\nNormal loss is 10% of units received from Process I during the month; lost units sell at ₹10 each.\n\n**Q.** The value of closing WIP is:",
+      "explanation": {
+        "steps": [
+          "Transferred-in: 1,500 × 45 = 67,500",
+          "Conversion: 900 × 30 = 27,000",
+          "Closing WIP = ₹94,500",
+          "Proof: finished 5,55,000 + abnormal 15,000 + WIP 94,500 = total costs net of scrap 6,64,500"
+        ],
+        "formula_used": "Closing WIP = Σ (EU in WIP × rate per element)",
+        "trap": "Transferred-in material is always 100% complete in Process II WIP."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹94,500",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹1,12,500",
+          "is_correct": false,
+          "error": "closing WIP treated as 100% converted",
+          "label": "B"
+        },
+        {
+          "text": "₹95,367",
+          "is_correct": false,
+          "error": "FIFO rates applied",
+          "label": "C"
+        },
+        {
+          "text": "₹85,500",
+          "is_correct": false,
+          "error": "opening WIP's 40% stage applied to closing WIP",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-069",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-MIX",
+      "stem": "**Case — Nilgiri Coatings Pvt Ltd (fictional), April**\n\nStandard mix: 100 kg of input yields 90 kg of paint base.\n\n| Material | Standard kg per batch | Standard price (₹/kg) | Actual kg used | Actual price (₹/kg) |\n|---|---:|---:|---:|---:|\n| A | 60 | 40 | 5,700 | 42 |\n| B | 40 | 65 | 4,100 | 63 |\n\nActual output: 8,550 kg. Standard labour: 0.2 hour per kg of output at ₹150 per hour. Labour paid: 1,800 hours at ₹156, including 60 hours of abnormal idle time due to a boiler breakdown.\n\n**Q.** The material price variance is:",
+      "explanation": {
+        "steps": [
+          "A: (40 − 42) × 5,700 = ₹11,400 (A)",
+          "B: (65 − 63) × 4,100 = ₹8,200 (F)",
+          "Total = ₹3,200 (A)"
+        ],
+        "formula_used": "MPV = Σ (SP − AP) × AQ",
+        "trap": "Price variances are on actual quantity."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹11,400 (A)",
+          "is_correct": false,
+          "error": "only material A's price change considered",
+          "label": "A"
+        },
+        {
+          "text": "₹3,200 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹3,200 (F)",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "C"
+        },
+        {
+          "text": "₹3,800 (A)",
+          "is_correct": false,
+          "error": "price difference applied to standard quantity",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-070",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-MIX",
+      "stem": "**Case — Nilgiri Coatings Pvt Ltd (fictional), April**\n\nStandard mix: 100 kg of input yields 90 kg of paint base.\n\n| Material | Standard kg per batch | Standard price (₹/kg) | Actual kg used | Actual price (₹/kg) |\n|---|---:|---:|---:|---:|\n| A | 60 | 40 | 5,700 | 42 |\n| B | 40 | 65 | 4,100 | 63 |\n\nActual output: 8,550 kg. Standard labour: 0.2 hour per kg of output at ₹150 per hour. Labour paid: 1,800 hours at ₹156, including 60 hours of abnormal idle time due to a boiler breakdown.\n\n**Q.** The material mix variance is:",
+      "explanation": {
+        "steps": [
+          "Actual input = 9,800 kg; revised standard mix 60 : 40 → A 5,880, B 3,920",
+          "A: (5,880 − 5,700) × 40 = ₹7,200 (F)",
+          "B: (3,920 − 4,100) × 65 = ₹11,700 (A)",
+          "Mix = ₹4,500 (A)"
+        ],
+        "formula_used": "Mix = Σ (RSQ − AQ) × SP; RSQ = Actual total input in standard ratio",
+        "trap": "Using more of the dearer material B makes the mix adverse even though A used equals standard."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹19,500 (A)",
+          "is_correct": false,
+          "error": "total usage variance reported as mix",
+          "label": "A"
+        },
+        {
+          "text": "₹4,500 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹3,780 (A)",
+          "is_correct": false,
+          "error": "mix valued at actual prices",
+          "label": "C"
+        },
+        {
+          "text": "₹4,500 (F)",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-071",
+      "subject": "costing",
+      "microtopic_slug": "cost-material-variances-price-usage-mix-yield-a9f55959",
+      "microtopic_name": "Material variances — price, usage, mix, yield",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-MIX",
+      "stem": "**Case — Nilgiri Coatings Pvt Ltd (fictional), April**\n\nStandard mix: 100 kg of input yields 90 kg of paint base.\n\n| Material | Standard kg per batch | Standard price (₹/kg) | Actual kg used | Actual price (₹/kg) |\n|---|---:|---:|---:|---:|\n| A | 60 | 40 | 5,700 | 42 |\n| B | 40 | 65 | 4,100 | 63 |\n\nActual output: 8,550 kg. Standard labour: 0.2 hour per kg of output at ₹150 per hour. Labour paid: 1,800 hours at ₹156, including 60 hours of abnormal idle time due to a boiler breakdown.\n\n**Q.** The material yield variance is:",
+      "explanation": {
+        "steps": [
+          "Standard input for actual output = 8,550 × 100/90 = 9,500 kg; actual input 9,800 kg",
+          "Standard cost per kg of input = ₹50 (per kg of output ₹55.56)",
+          "Yield = (9,500 − 9,800) × 50 = ₹15,000 (A)",
+          "Equivalently: (8,550 − 8,820) × 55.5556 = ₹15,000 (A); mix + yield = usage ₹19,500 (A)"
+        ],
+        "formula_used": "Yield = (SQ total − AQ total) × Std avg cost per kg input",
+        "trap": "Match the base: input shortfall × input cost, or output shortfall × output cost."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹13,500 (A)",
+          "is_correct": false,
+          "error": "output shortfall valued at standard cost per kg of INPUT",
+          "label": "A"
+        },
+        {
+          "text": "₹16,667 (A)",
+          "is_correct": false,
+          "error": "input shortfall valued at standard cost per kg of OUTPUT",
+          "label": "B"
+        },
+        {
+          "text": "₹15,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹19,500 (A)",
+          "is_correct": false,
+          "error": "total usage variance reported",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-072",
+      "subject": "costing",
+      "microtopic_slug": "cost-labour-variances-rate-and-efficiency-71d9cffe",
+      "microtopic_name": "Labour variances — rate and efficiency",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-MIX",
+      "stem": "**Case — Nilgiri Coatings Pvt Ltd (fictional), April**\n\nStandard mix: 100 kg of input yields 90 kg of paint base.\n\n| Material | Standard kg per batch | Standard price (₹/kg) | Actual kg used | Actual price (₹/kg) |\n|---|---:|---:|---:|---:|\n| A | 60 | 40 | 5,700 | 42 |\n| B | 40 | 65 | 4,100 | 63 |\n\nActual output: 8,550 kg. Standard labour: 0.2 hour per kg of output at ₹150 per hour. Labour paid: 1,800 hours at ₹156, including 60 hours of abnormal idle time due to a boiler breakdown.\n\n**Q.** The labour efficiency variance is:",
+      "explanation": {
+        "steps": [
+          "Standard hours = 8,550 × 0.2 = 1,710",
+          "Hours worked = 1,800 − 60 = 1,740",
+          "Efficiency = (1,710 − 1,740) × 150 = ₹4,500 (A)",
+          "(Rate ₹10,800 (A); idle time ₹9,000 (A))"
+        ],
+        "formula_used": "LEV = (SH − Hours worked) × SR",
+        "trap": "Abnormal idle time is a separate variance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹4,500 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹9,000 (A)",
+          "is_correct": false,
+          "error": "idle time variance reported",
+          "label": "B"
+        },
+        {
+          "text": "₹13,500 (A)",
+          "is_correct": false,
+          "error": "idle hours included in hours worked",
+          "label": "C"
+        },
+        {
+          "text": "₹4,680 (A)",
+          "is_correct": false,
+          "error": "valued at actual rate",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-073",
+      "subject": "costing",
+      "microtopic_slug": "cost-fixed-vs-flexible-budgets-abb5d990",
+      "microtopic_name": "Fixed vs flexible budgets",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-FLEX",
+      "stem": "**Case — Kaveri Tools Ltd (fictional), June** — standard absorption costing\n\n| Budget / standard | |\n|---|---|\n| Budgeted output and sales | 10,000 units |\n| Standard selling price | ₹500 per unit |\n| Standard variable cost | ₹300 per unit (includes variable overhead at ₹20 per hour, 2 hours per unit) |\n| Budgeted fixed overhead | ₹12,00,000 (absorbed per standard hour) |\n\n| Actual | |\n|---|---|\n| Output produced and sold | 9,200 units at ₹510 |\n| Labour hours worked | 19,000 |\n| Variable overhead | ₹3,70,500 |\n| Fixed overhead | ₹12,30,000 |\n\n**Q.** The flexed budget total cost for the actual output is:",
+      "explanation": {
+        "steps": [
+          "Variable: 9,200 × ₹300 = 27,60,000",
+          "Fixed overhead stays at 12,00,000",
+          "Flexed budget cost = ₹39,60,000"
+        ],
+        "formula_used": "Flexed cost = Standard variable cost × Actual output + Budgeted fixed cost",
+        "trap": "Fixed costs are not flexed; flex on output, not input hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹38,64,000",
+          "is_correct": false,
+          "error": "fixed overhead flexed with output",
+          "label": "A"
+        },
+        {
+          "text": "₹39,60,000",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹39,72,000",
+          "is_correct": false,
+          "error": "variable overhead flexed on actual hours instead of output",
+          "label": "C"
+        },
+        {
+          "text": "₹42,00,000",
+          "is_correct": false,
+          "error": "original (fixed) budget cost not flexed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-074",
+      "subject": "costing",
+      "microtopic_slug": "cost-sales-variances-price-volume-mix-cc222e43",
+      "microtopic_name": "Sales variances — price, volume, mix",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-FLEX",
+      "stem": "**Case — Kaveri Tools Ltd (fictional), June** — standard absorption costing\n\n| Budget / standard | |\n|---|---|\n| Budgeted output and sales | 10,000 units |\n| Standard selling price | ₹500 per unit |\n| Standard variable cost | ₹300 per unit (includes variable overhead at ₹20 per hour, 2 hours per unit) |\n| Budgeted fixed overhead | ₹12,00,000 (absorbed per standard hour) |\n\n| Actual | |\n|---|---|\n| Output produced and sold | 9,200 units at ₹510 |\n| Labour hours worked | 19,000 |\n| Variable overhead | ₹3,70,500 |\n| Fixed overhead | ₹12,30,000 |\n\n**Q.** The sales volume (profit) variance is:",
+      "explanation": {
+        "steps": [
+          "Standard profit per unit = 500 − 300 − 120 (fixed OH) = ₹80",
+          "Volume variance = (9,200 − 10,000) × 80 = ₹64,000 (A)",
+          "(Price variance = (510 − 500) × 9,200 = ₹92,000 (F))"
+        ],
+        "formula_used": "Sales volume variance (absorption) = (AQ − BQ) × Standard profit per unit",
+        "trap": "Absorption costing uses standard PROFIT per unit; marginal costing uses contribution."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹4,00,000 (A)",
+          "is_correct": false,
+          "error": "turnover (sales value) basis",
+          "label": "A"
+        },
+        {
+          "text": "₹1,60,000 (A)",
+          "is_correct": false,
+          "error": "contribution margin used (marginal-costing basis)",
+          "label": "B"
+        },
+        {
+          "text": "₹64,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹72,000 (A)",
+          "is_correct": false,
+          "error": "valued at actual-price margin",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-075",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
+      "microtopic_name": "Overhead variances — variable and fixed",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-FLEX",
+      "stem": "**Case — Kaveri Tools Ltd (fictional), June** — standard absorption costing\n\n| Budget / standard | |\n|---|---|\n| Budgeted output and sales | 10,000 units |\n| Standard selling price | ₹500 per unit |\n| Standard variable cost | ₹300 per unit (includes variable overhead at ₹20 per hour, 2 hours per unit) |\n| Budgeted fixed overhead | ₹12,00,000 (absorbed per standard hour) |\n\n| Actual | |\n|---|---|\n| Output produced and sold | 9,200 units at ₹510 |\n| Labour hours worked | 19,000 |\n| Variable overhead | ₹3,70,500 |\n| Fixed overhead | ₹12,30,000 |\n\n**Q.** The variable overhead expenditure and efficiency variances are:",
+      "explanation": {
+        "steps": [
+          "Standard hours for actual output = 9,200 × 2 = 18,400",
+          "Expenditure = 19,000 × 20 − 3,70,500 = ₹9,500 (F)",
+          "Efficiency = (18,400 − 19,000) × 20 = ₹12,000 (A)"
+        ],
+        "formula_used": "VOH exp = AH × SR − Actual; VOH eff = (SH − AH) × SR",
+        "trap": "Favourable spending can coexist with adverse efficiency."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Expenditure ₹9,500 (F); efficiency ₹11,700 (A)",
+          "is_correct": false,
+          "error": "efficiency valued at actual rate per hour",
+          "label": "A"
+        },
+        {
+          "text": "Expenditure ₹9,500 (F); efficiency ₹12,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Expenditure ₹9,500 (A); efficiency ₹12,000 (F)",
+          "is_correct": false,
+          "error": "directions reversed",
+          "label": "C"
+        },
+        {
+          "text": "Expenditure ₹2,500 (A); efficiency ₹12,000 (A)",
+          "is_correct": false,
+          "error": "expenditure allowance based on standard hours",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "CST-076",
+      "subject": "costing",
+      "microtopic_slug": "cost-overhead-variances-variable-and-fixed-f30f7130",
+      "microtopic_name": "Overhead variances — variable and fixed",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-FLEX",
+      "stem": "**Case — Kaveri Tools Ltd (fictional), June** — standard absorption costing\n\n| Budget / standard | |\n|---|---|\n| Budgeted output and sales | 10,000 units |\n| Standard selling price | ₹500 per unit |\n| Standard variable cost | ₹300 per unit (includes variable overhead at ₹20 per hour, 2 hours per unit) |\n| Budgeted fixed overhead | ₹12,00,000 (absorbed per standard hour) |\n\n| Actual | |\n|---|---|\n| Output produced and sold | 9,200 units at ₹510 |\n| Labour hours worked | 19,000 |\n| Variable overhead | ₹3,70,500 |\n| Fixed overhead | ₹12,30,000 |\n\n**Q.** The total fixed overhead cost variance and the fixed overhead efficiency variance are:",
+      "explanation": {
+        "steps": [
+          "Rate = 12,00,000 ÷ 20,000 = ₹60 per hour (₹120 per unit)",
+          "Absorbed = 9,200 × 120 = 11,04,000; total = 11,04,000 − 12,30,000 = ₹1,26,000 (A)",
+          "Efficiency = (18,400 − 19,000) × 60 = ₹36,000 (A); capacity = (19,000 − 20,000) × 60 = ₹60,000 (A)",
+          "Expenditure ₹30,000 (A) + capacity ₹60,000 (A) + efficiency ₹36,000 (A) = ₹1,26,000 (A)"
+        ],
+        "formula_used": "Total FOH = Absorbed − Actual = Expenditure + Capacity + Efficiency",
+        "trap": "Efficiency uses standard vs actual hours; capacity uses actual vs budgeted hours."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Total ₹1,26,000 (A); efficiency ₹36,000 (A)",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Total ₹30,000 (A); efficiency ₹36,000 (A)",
+          "is_correct": false,
+          "error": "expenditure variance reported as total",
+          "label": "B"
+        },
+        {
+          "text": "Total ₹1,26,000 (A); efficiency ₹60,000 (A)",
+          "is_correct": false,
+          "error": "capacity variance reported as efficiency",
+          "label": "C"
+        },
+        {
+          "text": "Total ₹1,26,000 (A); efficiency ₹12,000 (A)",
+          "is_correct": false,
+          "error": "variable overhead efficiency reported",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "CST-077",
+      "subject": "costing",
+      "microtopic_slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+      "microtopic_name": "Activity-based costing — cost pools and drivers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-ABC",
+      "stem": "**Case — Meghna Instruments Ltd (fictional)**\n\n| | Standard | Deluxe |\n|---|---:|---:|\n| Annual output (units) | 20,000 | 2,000 |\n| Machine hours per unit | 1 | 2 |\n| Batch size (units; one set-up per batch) | 500 | 100 |\n| Inspections per batch | 2 | 3 |\n\n| Cost pool | ₹ | Driver |\n|---|---:|---|\n| Machining | 4,80,000 | Machine hours |\n| Set-ups | 3,60,000 | Number of set-ups |\n| Inspection | 2,10,000 | Number of inspections |\n\nAt present all overhead (₹10,50,000) is absorbed on a single plant-wide machine-hour rate.\n\n**Q.** Overhead cost per unit of Deluxe under activity-based costing is:",
+      "explanation": {
+        "steps": [
+          "Driver rates: machining 4,80,000 ÷ 24,000 MH = ₹20; set-ups 3,60,000 ÷ 60 = ₹6,000; inspection 2,10,000 ÷ 140 = ₹1,500",
+          "Deluxe: 20 batches, 60 inspections, 4,000 MH",
+          "Cost = 80,000 + 1,20,000 + 90,000 = 2,90,000 ÷ 2,000 = ₹145.00"
+        ],
+        "formula_used": "ABC cost per unit = Σ (Driver rate × Driver quantity) ÷ Units",
+        "trap": "Low-volume Deluxe consumes far more set-ups and inspections per unit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹101.36",
+          "is_correct": false,
+          "error": "set-up pool spread on units instead of set-ups",
+          "label": "A"
+        },
+        {
+          "text": "₹87.50",
+          "is_correct": false,
+          "error": "plant-wide machine-hour rate (traditional)",
+          "label": "B"
+        },
+        {
+          "text": "₹145.00",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹135.00",
+          "is_correct": false,
+          "error": "inspection pool driven by batches instead of inspections",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "CST-078",
+      "subject": "costing",
+      "microtopic_slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+      "microtopic_name": "Activity-based costing — cost pools and drivers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-ABC",
+      "stem": "**Case — Meghna Instruments Ltd (fictional)**\n\n| | Standard | Deluxe |\n|---|---:|---:|\n| Annual output (units) | 20,000 | 2,000 |\n| Machine hours per unit | 1 | 2 |\n| Batch size (units; one set-up per batch) | 500 | 100 |\n| Inspections per batch | 2 | 3 |\n\n| Cost pool | ₹ | Driver |\n|---|---:|---|\n| Machining | 4,80,000 | Machine hours |\n| Set-ups | 3,60,000 | Number of set-ups |\n| Inspection | 2,10,000 | Number of inspections |\n\nAt present all overhead (₹10,50,000) is absorbed on a single plant-wide machine-hour rate.\n\n**Q.** Compared with ABC, the traditional system costs each unit of Standard:",
+      "explanation": {
+        "steps": [
+          "Traditional rate = 10,50,000 ÷ 24,000 MH = ₹43.75 → Standard ₹43.75",
+          "ABC Standard = machining ₹20 + set-ups ₹12 + inspection ₹6 = ₹38",
+          "Over-costing = ₹5.75 per unit (≈ 1,15,000 in total, shifted from Deluxe)"
+        ],
+        "formula_used": "Cross-subsidy = Traditional cost − ABC cost",
+        "trap": "Volume-based rates over-cost high-volume simple products."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Higher by ₹9.73",
+          "is_correct": false,
+          "error": "traditional rate taken per unit produced instead of per machine hour",
+          "label": "A"
+        },
+        {
+          "text": "Lower by ₹5.75",
+          "is_correct": false,
+          "error": "direction reversed",
+          "label": "B"
+        },
+        {
+          "text": "Higher by ₹23.75",
+          "is_correct": false,
+          "error": "only the machining element of ABC deducted",
+          "label": "C"
+        },
+        {
+          "text": "Higher by ₹5.75",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-079",
+      "subject": "costing",
+      "microtopic_slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+      "microtopic_name": "Activity-based costing — cost pools and drivers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-ABC",
+      "stem": "**Case — Meghna Instruments Ltd (fictional)**\n\n| | Standard | Deluxe |\n|---|---:|---:|\n| Annual output (units) | 20,000 | 2,000 |\n| Machine hours per unit | 1 | 2 |\n| Batch size (units; one set-up per batch) | 500 | 100 |\n| Inspections per batch | 2 | 3 |\n\n| Cost pool | ₹ | Driver |\n|---|---:|---|\n| Machining | 4,80,000 | Machine hours |\n| Set-ups | 3,60,000 | Number of set-ups |\n| Inspection | 2,10,000 | Number of inspections |\n\nAt present all overhead (₹10,50,000) is absorbed on a single plant-wide machine-hour rate.\n\n**Q.** Consider the following statements:\n\n1. Set-up costs in this case are batch-level costs and vary with the number of batches, not with units produced.\n2. The single machine-hour rate causes Standard to subsidise Deluxe.\n3. Under ABC, facility-sustaining costs such as factory security should be traced to products using unit-level drivers.\n\nWhich of the statements given above is/are correct?",
+      "explanation": {
+        "steps": [
+          "Cost hierarchy: unit-level, batch-level, product-sustaining, facility-sustaining.",
+          "Set-ups vary with batches (statement 1). Standard is over-costed by ₹5.75/unit, i.e. it subsidises Deluxe (statement 2).",
+          "Facility-sustaining costs have no cause-and-effect driver; they are usually left unallocated or allocated arbitrarily (statement 3 false)."
+        ],
+        "formula_used": "ABC cost hierarchy",
+        "trap": "Facility-level costs have no product-level driver."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "misses the cross-subsidy shown by the figures",
+          "label": "A"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "rejects the batch-level nature of set-ups",
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "facility-sustaining costs assumed traceable by unit drivers",
+          "label": "C"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "CST-080",
+      "subject": "costing",
+      "microtopic_slug": "cost-activity-based-costing-cost-pools-and-drivers-7317fd62",
+      "microtopic_name": "Activity-based costing — cost pools and drivers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "CST-CASE-ABC",
+      "stem": "**Case — Meghna Instruments Ltd (fictional)**\n\n| | Standard | Deluxe |\n|---|---:|---:|\n| Annual output (units) | 20,000 | 2,000 |\n| Machine hours per unit | 1 | 2 |\n| Batch size (units; one set-up per batch) | 500 | 100 |\n| Inspections per batch | 2 | 3 |\n\n| Cost pool | ₹ | Driver |\n|---|---:|---|\n| Machining | 4,80,000 | Machine hours |\n| Set-ups | 3,60,000 | Number of set-ups |\n| Inspection | 2,10,000 | Number of inspections |\n\nAt present all overhead (₹10,50,000) is absorbed on a single plant-wide machine-hour rate.\n\n**Q.** Deluxe has a prime cost of ₹440 per unit. Pricing at total cost plus 25% mark-up on cost, the price of Deluxe using ABC overhead is:",
+      "explanation": {
+        "steps": [
+          "ABC total cost = 440 + 145 = ₹585",
+          "Price = 585 × 1.25 = ₹731.25",
+          "(Traditional basis would give ₹659.38 — under-pricing Deluxe)"
+        ],
+        "formula_used": "Price = (Prime cost + ABC overhead) × (1 + mark-up)",
+        "trap": "Under-costed products get under-priced under traditional absorption."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard exam pattern (ICAI/ICMAI/standard texts). Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹780.00",
+          "is_correct": false,
+          "error": "25% treated as margin on price",
+          "label": "A"
+        },
+        {
+          "text": "₹695.00",
+          "is_correct": false,
+          "error": "mark-up applied to prime cost only",
+          "label": "B"
+        },
+        {
+          "text": "₹659.38",
+          "is_correct": false,
+          "error": "traditional overhead rate used",
+          "label": "C"
+        },
+        {
+          "text": "₹731.25",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    }
+  ]
+}
