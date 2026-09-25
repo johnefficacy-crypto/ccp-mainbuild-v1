@@ -1,0 +1,43 @@
+slug	exams	name	topic
+eng-connector-and-transition-cloze-adcb36dd		Connector and transition cloze	Cloze Test
+eng-double-blank-sentence-completion-86aae4e4		Double-blank sentence completion	Cloze Test
+eng-multi-blank-passage-cloze-85f89037		Multi-blank passage cloze	Cloze Test
+eng-single-blank-contextual-cloze-cd934632		Single-blank contextual cloze	Cloze Test
+eng-active-and-passive-voice-e6437f9d		Active and passive voice	Error Spotting
+eng-correlative-conjunctions-and-parallelism-ff6bd046		Correlative conjunctions and parallelism	Error Spotting
+eng-direct-and-indirect-narration-1d250c23		Direct and indirect narration	Error Spotting
+eng-preposition-and-article-errors-000b76d8		Preposition and article errors	Error Spotting
+eng-pronoun-reference-and-agreement-d6412298		Pronoun reference and agreement	Error Spotting
+eng-segment-marked-error-identification-8879fab9		Segment-marked error identification	Error Spotting
+eng-subject-verb-agreement-07be8ac5		Subject-verb agreement	Error Spotting
+eng-tense-and-sequence-of-tenses-7e82f0cb		Tense and sequence of tenses	Error Spotting
+eng-connector-based-completion-cbecd4db		Connector-based completion	Fill in the Blanks
+eng-correct-and-incorrect-usage-of-a-word-e7d37216		Correct and incorrect usage of a word	Fill in the Blanks
+eng-preposition-and-phrasal-completion-5c07ccb9		Preposition and phrasal completion	Fill in the Blanks
+eng-sentence-completion-with-a-missing-part-71b4f9ef		Sentence completion with a missing part	Fill in the Blanks
+eng-single-word-contextual-fit-601cbc5c		Single-word contextual fit	Fill in the Blanks
+eng-word-pair-fit-32a9e377		Word-pair fit	Fill in the Blanks
+eng-meaning-of-an-idiom-in-context-afcdf0c3		Meaning of an idiom in context	Idioms and Phrases
+eng-phrasal-verbs-00cf2c93		Phrasal verbs	Idioms and Phrases
+eng-argument-evaluation-in-a-passage-3f8c21ba		Argument evaluation in a passage	Reading Comprehension
+eng-author-tone-attitude-and-purpose-87729e1a		Author tone, attitude and purpose	Reading Comprehension
+eng-explicit-detail-retrieval-5825931a		Explicit detail retrieval	Reading Comprehension
+eng-inference-and-implied-meaning-a005bcd3		Inference and implied meaning	Reading Comprehension
+eng-main-idea-and-central-theme-59263450		Main idea and central theme	Reading Comprehension
+eng-passage-based-synonym-and-antonym-b6b1d1e6		Passage-based synonym and antonym	Reading Comprehension
+eng-vocabulary-from-context-within-a-passage-b55df114		Vocabulary from context within a passage	Reading Comprehension
+eng-no-improvement-required-cases-ede5f5eb		No-improvement-required cases	Sentence Improvement
+eng-phrase-replacement-623032a6		Phrase replacement	Sentence Improvement
+eng-redundancy-and-wordiness-1787d0ac		Redundancy and wordiness	Sentence Improvement
+eng-sentence-rearrangement-para-jumble-66cc898f		Sentence rearrangement (para jumble)	Sentence Improvement
+eng-sentence-level-correctness-selection-9d4e07c1		Sentence-level correctness selection	Sentence Improvement
+eng-word-interchange-within-a-sentence-e4c29104		Word interchange within a sentence	Sentence Improvement
+eng-word-order-and-modifier-placement-1b73c44c		Word order and modifier placement	Sentence Improvement
+eng-antonyms-af017948		Antonyms	Vocabulary
+eng-commonly-confused-word-pairs-f6bc9a52		Commonly confused word pairs	Vocabulary
+eng-formal-and-business-register-f2975b74		Formal and business register	Vocabulary
+eng-one-word-substitution-13964bb4		One-word substitution	Vocabulary
+eng-synonyms-6113204e		Synonyms	Vocabulary
+communication-barriers		Barriers to communication	Workplace and Interpersonal Communication
+communication-registers		Communication register by relationship	Workplace and Interpersonal Communication
+communication-tools		Tools of communication and their purpose	Workplace and Interpersonal Communication

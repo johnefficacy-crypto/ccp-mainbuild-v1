@@ -1,0 +1,61 @@
+slug	exams	name	topic
+reas-number-and-letter-analogy-2d75e3a9		Number and letter analogy	Analogy and Classification
+reas-odd-one-out-from-a-list-f44030fa		Odd one out from a list	Analogy and Classification
+reas-word-and-meaning-analogy-101b7b75		Word and meaning analogy	Analogy and Classification
+reas-coded-blood-relation-c6693c9c		Coded blood relation	Blood Relation
+reas-direct-relation-from-a-description-e0847737		Direct relation from a description	Blood Relation
+reas-family-tree-puzzle-with-generations-78d7886d		Family tree puzzle with generations	Blood Relation
+reas-relation-with-gender-ambiguity-0d4e3334		Relation with gender ambiguity	Blood Relation
+reas-conditional-coding-with-rules-0b7eaac9		Conditional coding with rules	Coding-Decoding
+reas-letter-shifting-and-alphabet-position-e476a433		Letter shifting and alphabet position	Coding-Decoding
+reas-letter-to-symbol-coding-35896380		Letter-to-symbol coding	Coding-Decoding
+reas-number-and-digit-coding-722eaafb		Number and digit coding	Coding-Decoding
+reas-word-formation-from-given-letters-3a6e82a0		Word formation from given letters	Coding-Decoding
+reas-word-substitution-message-coding-fe3dbcfc		Word-substitution message coding	Coding-Decoding
+reas-cause-and-effect-645e5e25		Cause and effect	Critical Reasoning
+reas-course-of-action-3f7e5981		Course of action	Critical Reasoning
+reas-statement-and-argument-strong-or-weak-c34d0b36		Statement and argument — strong or weak	Critical Reasoning
+reas-statement-and-assumption-f8aa8582		Statement and assumption	Critical Reasoning
+reas-statement-and-inference-65cdc759		Statement and inference	Critical Reasoning
+reas-strengthening-and-weakening-an-argument-d884876b		Strengthening and weakening an argument	Critical Reasoning
+reas-direction-of-one-point-relative-to-another-783ac0e9		Direction of one point relative to another	Direction and Distance
+reas-path-tracing-and-final-position-11904573		Path tracing and final position	Direction and Distance
+reas-shortest-distance-by-pythagoras-3a8e0d2c		Shortest distance by Pythagoras	Direction and Distance
+reas-two-person-path-problems-c50164bd		Two-person path problems	Direction and Distance
+reas-direct-coded-inequality-4e115de6		Direct coded inequality	Inequalities
+reas-either-or-conclusions-in-inequality-0a9ae6c4		Either-or conclusions in inequality	Inequalities
+reas-multi-chain-inequality-with-linked-variables-26ae9265		Multi-chain inequality with linked variables	Inequalities
+reas-symbol-substitution-inequality-92327ea2		Symbol-substitution inequality	Inequalities
+reas-arithmetic-operation-machine-258cf421		Arithmetic operation machine	Input-Output
+reas-mathematical-operations-sign-interchange-3d6288ea		Mathematical operations — sign interchange	Input-Output
+reas-shifting-and-rearrangement-machine-9b0cb8fb		Shifting and rearrangement machine	Input-Output
+reas-step-count-and-intermediate-step-questions-790ddbf0		Step count and intermediate-step questions	Input-Output
+reas-age-and-height-ordering-9e5c27d9		Age and height ordering	Order and Ranking
+reas-comparison-and-ordering-by-attribute-d24d90e3		Comparison and ordering by attribute	Order and Ranking
+reas-position-from-either-end-8ab86a4c		Position from either end	Order and Ranking
+reas-total-count-deduction-from-positions-8130a2b3		Total-count deduction from positions	Order and Ranking
+reas-box-and-stack-puzzle-60988bfb		Box and stack puzzle	Puzzles
+reas-category-and-attribute-matching-puzzle-e5f2f3ac		Category and attribute matching puzzle	Puzzles
+reas-clock-time-scheduling-puzzle-6b2a94df		Clock-time scheduling puzzle	Puzzles
+reas-data-sufficiency-with-numbered-statements-cb6e8f2a		Data sufficiency with numbered statements	Puzzles
+reas-day-and-week-scheduling-puzzle-076b2549		Day and week scheduling puzzle	Puzzles
+reas-floor-and-flat-double-variable-puzzle-fd87d2ea		Floor and flat double-variable puzzle	Puzzles
+reas-floor-puzzle-1df93898		Floor puzzle	Puzzles
+reas-month-and-date-scheduling-puzzle-3404d95a		Month and date scheduling puzzle	Puzzles
+reas-odd-one-out-within-an-arrangement-8a59afe3		Odd-one-out within an arrangement	Puzzles
+reas-circular-arrangement-facing-centre-49054cf2		Circular arrangement — facing centre	Seating Arrangement
+reas-circular-arrangement-mixed-facing-5596b070		Circular arrangement — mixed facing	Seating Arrangement
+reas-linear-row-facing-both-directions-08c55ceb		Linear row — facing both directions	Seating Arrangement
+reas-linear-row-single-row-one-direction-3c93ae0f		Linear row — single row, one direction	Seating Arrangement
+reas-row-with-unknown-number-of-persons-cb13e578		Row with unknown number of persons	Seating Arrangement
+reas-square-and-rectangular-arrangement-18e7b720		Square and rectangular arrangement	Seating Arrangement
+reas-alphabet-series-b3b70d39		Alphabet series	Series
+reas-alphanumeric-and-mixed-series-74351adc		Alphanumeric and mixed series	Series
+reas-letter-and-digit-pair-counting-8acc9fe0		Letter and digit pair counting	Series
+reas-number-series-6232574a		Number series	Series
+reas-wrong-number-series-31e436e6		Wrong-number series	Series
+reas-either-or-and-complementary-pairs-52508ad3		Either-or and complementary pairs	Syllogism
+reas-only-and-only-a-few-statements-d42e0ef7		Only and only-a-few statements	Syllogism
+reas-possibility-conclusions-b7cd9da3		Possibility conclusions	Syllogism
+reas-three-or-more-statement-syllogism-e8800438		Three or more statement syllogism	Syllogism
+reas-two-statement-syllogism-7f65e035		Two-statement syllogism	Syllogism
